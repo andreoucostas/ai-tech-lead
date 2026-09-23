@@ -11,6 +11,15 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.89.2 — Unreleased
+
+B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of
+the consumer journey; the agent install section moves below Quick Start behind a pointer, since the
+README stays in the template checkout (`install.ps1` excludes it) and installing agents still read
+it. The Hook compatibility tables become one Host support section; the duplicated
+`copilot-instructions.md` bullet, the repeated Bitbucket platform sentence and the 0.7.x changelog
+excerpt are gone. Angular's journey has no `/map-warehouse` step, which it does not ship.
+
 ## 0.89.1 — 2026-09-21
 
 B-278. B-277's nine framework-arm runs on Copilot CLI 1.0.83 never touched a skill. The carrier was

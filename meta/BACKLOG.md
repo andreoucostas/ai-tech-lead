@@ -11,8 +11,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
-| 12a | B-262 consumer README as the consumer journey | User, 2026-09-21: B-278 showed a session has nowhere to learn what a consumer does or who triggers what |
-| 12b | B-279 generators are not task-time recipes | `map-warehouse` is listed and graded as a recipe; decide with B-257 |
+| 12b | B-279 `map-warehouse` skill surface | README half shipped with B-262; the listing half rides B-256, the invocation flag B-257 |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
 | 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
 | 13b | B-281 retire `.github/copilot-instructions.md` | Third copy of the same rules now that every host reads `AGENTS.md`; do it with or after B-272 |
@@ -24,7 +23,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
+| Low | B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -119,7 +118,7 @@ v0.26.0, still carried and tested.
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P3 · **Effort:** S · **Invariants:** #1 #7
 **Status:** Open. Four files, about 97 KB, under `docs/presentation/` install into each consumer
-tree; keep the FAQ content reachable (see B-262) and link the deck instead.
+tree; keep the FAQ content reachable and link the deck instead.
 
 ### B-253 · Scheduled, non-gating with/without-framework behavioural eval on the existing harness
 **Filed against:** v0.86.7 (2026-09-18)
@@ -139,10 +138,10 @@ command string stalls every write under a bash carrier; detect in the doctor or 
 ### B-279 · Developer-triggered generators are listed and graded as task-time recipes
 **Filed against:** v0.89.1 (2026-09-21)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #2
-**Status:** Open; decide with B-257. `map-warehouse` is a re-runnable documentation pass (`bootstrap.md` says so) but
-ships as a skill whose description and 0.89.1's routing sentence invite it mid-task; README, ARCHITECTURE and Common
-Tasks list it as a recipe. B-280's journey arm (2026-09-22): the real map, pointed to by `CLAUDE.md`, was opened 0/6;
-the value reached the agent through `/bootstrap`'s file-tree note on the view, so the map's task-time role is unproven.
+**Status:** Narrowed 2026-09-23. `map-warehouse` is dual-mode: a request-only generator of `docs/warehouse-map.md` and a
+mid-task answerer (`SKILL.md` USE FOR; `add-warehouse-load` calls it); B-280 measured the doc (opened 0/6), not the skill.
+The READMEs show it as a conditional developer step (B-262). Left: Common Tasks/defaults/ARCHITECTURE listing with B-256,
+`disable-model-invocation` with B-257; no WSD until one of those settles it.
 
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)
@@ -182,13 +181,6 @@ as unstructured text; the version stamp promises a future update command. Sequen
 **Priority:** P2 · **Effort:** M · **Invariants:** #5
 **Status:** Open. The verification promise rests on the agent's self-report; the only Stop hook is
 an advisory style scan. WSD-024 keeps the Copilot nudge advisory; post-write is bounded at 45 s (B-248).
-
-### B-262 · Restructure the consumer README for a human evaluator
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** M · **Invariants:** #1
-**Status:** Open. Section 1 addresses LLMs before any human value statement; host caveats repeat;
-there is no installed-file tree, uninstall guide, linked FAQ, or register-choice table.
-Write it as the journey (install, `/bootstrap`, `/map-warehouse`, daily work): what each step produces and who triggers it.
 
 ### B-263 · State the Copilot VS Code surface as best-effort until a capability is certified
 **Filed against:** v0.86.7 (2026-09-18)
@@ -260,6 +252,12 @@ no file versus a one-line `@AGENTS.md` stub, plus the upgrade path for populated
 **Status:** Open; user-requested 2026-09-22 — every host reads `AGENTS.md` now, so the terse generated
 ruleset is a third copy. Removal also retires `/generate-copilot` and its prompt, the canary, the
 `docs-sync-check`/`template-checks` legs and the manifest entry; confirm VS Code inline completion first.
+
+### B-282 · Installed docs point at a README that is not installed
+**Filed against:** v0.89.1 (2026-09-23)
+**Priority:** P3 · **Effort:** S · **Invariants:** #1
+**Status:** Open. Each stack's `docs/ARCHITECTURE.md` (lines 4, 12, ~178) sends readers to `README.md` "Quick Start" and
+calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.md`, so in a consumer repo it is theirs.
 
 ## Archived
 

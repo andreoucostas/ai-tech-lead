@@ -12654,3 +12654,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   (marker string-replace, hand-written map, no index line), not of the framework a consumer runs. With the real
   `/bootstrap` then `/map-warehouse` output frozen as `-WarehouseMap generated`, the framework arm scored 6/6 on
   Copilot (bare 6/6); the map was opened 0/6, which is B-279's evidence. Summary in `meta/eval-results.md`.
+
+- **B-262** — DONE **2026-09-23**. The three stack READMEs lead with the value list and a who-triggers-what journey
+  table; agent install instructions follow Quick Start behind a top pointer (the README is never installed); one Host
+  support section; the 0.7.x excerpt is gone. No file tree, uninstall guide or FAQ (B-259, B-252 own those).

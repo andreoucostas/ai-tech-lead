@@ -260,7 +260,7 @@ function Read-Denylist {
 }
 
 # Blank out dated version sections so historical narration does not trip a live-claim check. A
-# shipped README carries a `## Changelog` excerpt whose `### 0.7.2` section correctly quotes the
+# shipped README carried a `## Changelog` excerpt whose `### 0.7.2` section correctly quotes the
 # pre-1.0.65 Copilot stdout behavior in the past tense -- excluding files named CHANGELOG.md is not
 # enough. Blanking (rather than removing) keeps line numbers honest. Markdown only: '#' starts a
 # comment in a PowerShell script, where the boy-scout-check headers this gate reads live.
@@ -480,7 +480,7 @@ It 'no composed distribution restates a superseded vendor claim' {
 
 It 'a dated version section may quote a superseded claim without failing' {
     # The other direction of the same rule, on a real file rather than a string: the fixture's
-    # `### 0.7.2` section quotes claim 2 verbatim, exactly as a shipped README does today.
+    # `### 0.7.2` section quotes claim 2 verbatim, exactly as the shipped READMEs did before B-262.
     $root = New-Fixture
     try {
         Assert-NoSupersededClaims -DistEntries @([pscustomobject]@{ Name = 'fixture'; Root = $root }) -Denylist $script:denylist

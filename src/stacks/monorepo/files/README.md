@@ -4,22 +4,9 @@ A working template that turns Claude Code and GitHub Copilot into a tech lead fo
 
 This install carries .NET, Angular, and warehouse-SQL rails in one repo, while `/bootstrap` selects only the profiles the Git-root evidence supports. Angular 17+ defaults (standalone components, signals, new control flow, `inject()`, `takeUntilDestroyed`) apply only after Angular workspace/version evidence; .NET conventions likewise require .NET markers. Warehouse-SQL may stand alone without either application profile.
 
-## 1. For AI agents (LLMs)
+This README is for the person evaluating or installing the framework. It stays in the framework checkout; the installer does not copy it into your repository. **An AI agent asked to install this** should read [For AI agents](#for-ai-agents) first.
 
-If you are an AI agent reading this repository, start here.
-
-**Your source of truth is [`CLAUDE.md`](./CLAUDE.md)** (Claude Code and supported Copilot agent surfaces read it directly) or its generated mirror **[`AGENTS.md`](./AGENTS.md)** (Codex and GitHub code review; Cursor reads both). Read the applicable file before doing anything else — it defines the verification rules, conventions, SOLID/leanness constraints, and the step-by-step workflow you must follow.
-
-**If you were asked to install this framework into a target codebase** — installation is a two-actor flow: you (the agent) copy files and commit; a **developer** must then run the populate command. Your task is not complete until you have handed off explicitly:
-1. **Copy the files in on Windows:** `pwsh -NoProfile -File scripts/install.ps1 <target-repo-path>`. If PowerShell 7 is unavailable, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 <target-repo-path>`. This installer carries both stacks' rails; it detects the mode itself: **greenfield** (plain copy), **brownfield** (the target already has AI tooling — the originals its copy would overwrite are moved to `docs/pre-adoption/` and `.claude/adoption-pending.json` is written), or **update** (target already stamped with `.claude/framework-version.json` — protected consumer paths are restored, framework machinery is overwritten, and `.claude/settings.json` is backed up before refresh).
-2. **Commit the copied files** in the target repo — they are team-shared config, not local settings.
-3. **Hand off to the developer.** Populating is done by **`/adopt`** (brownfield — the installer wrote `.claude/adoption-pending.json`) or **`/bootstrap`** (greenfield). Both are **developer-initiated**: the model cannot invoke them, and they only exist inside a Claude Code session started in the target repo — so you cannot run them, and you must not try to replicate them by hand. End your run by telling the developer, verbatim: *"start a Claude Code session in `<target repo>` and type `/adopt`"* (or `/bootstrap`). Until that happens, the SessionStart hook warns every new session and `scripts/docs-sync-check` fails CI — expect that check to fail at this stage; it passes only after the developer has run the command.
-
-**If you were asked to do development work in a repo that already has this installed:** follow the **Agentic Workflow** in `CLAUDE.md` — classify intent, post a plan and wait for go-ahead, execute in verified subtasks using repository-evidenced commands for the changed area, keep bug-fix cleanup outcome-bound, self-review with a verification line. Trigger the matching skill in `.claude/skills/` when the task fits one.
-
-Architecture: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · Reviewer's tour: [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md) · Full methodology: [docs/playbook.md](./docs/playbook.md).
-
-## 2. What installing this gets you
+## What installing this gets you
 
 No marketing. Each item is a concrete mechanism and the effect it produces.
 
@@ -49,6 +36,20 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 13. **Built to extend to more stacks.** Both .NET and Angular are first-class here; a third colocated stack (Node, Python) gets its own rules via path-scoped Copilot instructions (`applyTo:`) while `.cs` files keep the .NET rules and `.ts` files keep the Angular ones. One repo, correct rules per file type.
 
+## Who does what
+
+Installing is a one-time copy; populating is a developer command; after that the framework works inside ordinary sessions.
+
+| Step | Who triggers it | What it produces |
+|---|---|---|
+| 1. Install | A developer, or an AI agent a developer asked, runs `scripts/install.ps1` against the target's Git root | The framework files in the target. When the target already had AI tooling, the originals the copy would overwrite move to `docs/pre-adoption/` and `.claude/adoption-pending.json` is written. An already-stamped target is an update: follow the [upgrade checklist](docs/upgrade-checklist.md). |
+| 2. Commit | Whoever installed | The installed shared configuration, committed in the target. |
+| 3. `/bootstrap`, or `/adopt` when step 1 found existing tooling | A developer, in a Claude Code session started in the target. The model cannot invoke either command. | `CLAUDE.md` populated from the codebase, `TECH_DEBT.md`, the `AGENTS.md` mirror, `.github/copilot-instructions.md`, drafted `FRAMEWORK-CONTEXT.md` sections, and skills adjusted to the repository. |
+| 4. Review | A developer | A corrected `CLAUDE.md`: every AI tool follows it. |
+| 5. `/map-warehouse`, only when `/bootstrap` selected the warehouse-SQL profile | A developer, before the first warehouse change and again when the warehouse grows; `/bootstrap`'s summary says when it applies | A map of layers, grain, load ordering and idempotency; it offers to write `docs/warehouse-map.md`. |
+| 6. Daily work | A developer describes the task or types a workflow command; the agent classifies it and follows the matching workflow and skills; hooks run where the host supports them ([Host support](#host-support)) | Plans, verified changes, reviews, and debt and security records. |
+| 7. Upkeep | A developer: `/docs-sync` or `/rebootstrap` when conventions drift, the [upgrade checklist](docs/upgrade-checklist.md) for a new framework version | Refreshed instruction files and framework machinery. |
+
 ## Quick Start
 
 ### 1. Install into your project
@@ -70,7 +71,7 @@ printed next steps and step 2: a developer runs `/bootstrap` for greenfield or `
 pre-existing tooling was found. If the installer unexpectedly reports update mode, use the upgrade
 checklist instead of continuing to bootstrap or adopt.
 
-> **Hook prerequisite — Claude Code 2.1.141 or newer and the registered PowerShell interpreter must resolve in the Windows agent host.** PowerShell 7 is primary; native Windows PowerShell 5.1 is the Claude Code fallback. Git Bash, WSL, native Linux, macOS/BSD, and Copilot coding-agent cloud hook execution are unsupported. VS Code agent hooks remain Preview and org-gated. See `docs/enforcement-surfaces.md` and verify with the actual-host canaries.
+> **Hook prerequisite — Claude Code 2.1.141 or newer and the registered PowerShell interpreter must resolve in the Windows agent host.** Other hosts and platforms: [Host support](#host-support) and `docs/enforcement-surfaces.md`.
 > Not sure what is live on your machine? Run `pwsh -NoProfile -File scripts/framework-doctor.ps1` once per developer machine (or use the documented Windows PowerShell 5.1 fallback).
 
 ### 2. Bootstrap (greenfield) **or** Adopt (existing setup)
@@ -95,7 +96,6 @@ Either command:
 - Generates `TECH_DEBT.md` with prioritised debt
 - Audits `.claude/skills/` against your codebase, adjusts default Common-Tasks recipes, and adds new skills for project-specific patterns
 - Generates `AGENTS.md` (full portable rules mirror for Codex and GitHub code review) and the slim Copilot inline-completion instructions
-- Generates a slim `.github/copilot-instructions.md` for Copilot inline completions
 
 ### 3. Review
 Read the generated `CLAUDE.md`. It should accurately describe your codebase. Fix anything that's wrong — this is the source of truth that all AI tools will follow.
@@ -121,6 +121,21 @@ Both Claude Code and Copilot Chat use the same slash-command names:
 In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot Chat**, the same names are loaded from `.github/prompts/` — those files are thin wrappers that delegate to the canonical `.claude/commands/*.md` files, so there's a single source of truth per workflow.
 
 Or just describe what you want in natural language — `CLAUDE.md` teaches the agent to route to the right workflow automatically.
+
+## For AI agents
+
+If you are an AI agent reading this repository, start here.
+
+**Your source of truth is [`CLAUDE.md`](./CLAUDE.md)** or its generated mirror **[`AGENTS.md`](./AGENTS.md)**; [What's in the box](#whats-in-the-box) says which host reads which. Read the applicable file before doing anything else — it defines the verification rules, conventions, SOLID/leanness constraints, and the step-by-step workflow you must follow.
+
+**If you were asked to install this framework into a target codebase** — installation is a two-actor flow: you (the agent) copy files and commit; a **developer** must then run the populate command. Your task is not complete until you have handed off explicitly:
+1. **Copy the files in on Windows:** `pwsh -NoProfile -File scripts/install.ps1 <target-repo-path>`. If PowerShell 7 is unavailable, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 <target-repo-path>`. This installer carries both stacks' rails; it detects the mode itself: **greenfield** (plain copy), **brownfield** (the target already has AI tooling — the originals its copy would overwrite are moved to `docs/pre-adoption/` and `.claude/adoption-pending.json` is written), or **update** (target already stamped with `.claude/framework-version.json` — protected consumer paths are restored, framework machinery is overwritten, and `.claude/settings.json` is backed up before refresh).
+2. **Commit the copied files** in the target repo — they are team-shared config, not local settings.
+3. **Hand off to the developer.** Populating is done by **`/adopt`** (brownfield — the installer wrote `.claude/adoption-pending.json`) or **`/bootstrap`** (greenfield). Both are **developer-initiated**: the model cannot invoke them, and they only exist inside a Claude Code session started in the target repo — so you cannot run them, and you must not try to replicate them by hand. End your run by telling the developer, verbatim: *"start a Claude Code session in `<target repo>` and type `/adopt`"* (or `/bootstrap`). Until that happens, the SessionStart hook warns every new session and `scripts/docs-sync-check` fails CI — expect that check to fail at this stage; it passes only after the developer has run the command.
+
+**If you were asked to do development work in a repo that already has this installed:** follow the **Agentic Workflow** in `CLAUDE.md` — classify intent, post a plan and wait for go-ahead, execute in verified subtasks using repository-evidenced commands for the changed area, keep bug-fix cleanup outcome-bound, self-review with a verification line. Trigger the matching skill in `.claude/skills/` when the task fits one.
+
+Architecture: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · Reviewer's tour: [docs/REVIEW-GUIDE.md](./docs/REVIEW-GUIDE.md) · Full methodology: [docs/playbook.md](./docs/playbook.md).
 
 ## Framework versioning
 
@@ -180,7 +195,27 @@ Every workflow command follows the same execution model:
 
 The router is the key piece. **In Claude Code**, a developer who types *"the export endpoint is broken"* (or *"the export button is broken"*) gets the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, outcome-bound cleanup) auto-injected per-prompt, without typing a slash command. **In Copilot CLI**, the same single-entry injection was observed on 1.0.80; `AGENTS.md` self-classification is the fallback on older or unavailable hooks. VS Code's Preview-hook prompt lifecycle remains unverified. Either way, the seven workflows are also invokable explicitly as slash commands (`/feature`, `/fix`, …) for deterministic routing.
 
-#### Hook compatibility
+### Common Tasks via skills
+Recipes for "add a new endpoint end-to-end", "add a new EF Core entity", "register a new service", "add a new feature component", "add a new service", "add a new lazy route", and "add a new signal-based store" live as auto-discovered skills in `.claude/skills/`. The model triggers the relevant one when the user describes that kind of task; the body loads only when triggered, keeping main context lean.
+
+### Subagents for isolated specialist work
+Seven subagents live in `.claude/agents/` — the six user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents:
+
+| Agent | Purpose | Invoked by |
+|-------|---------|-----------|
+| `security-auditor` | OWASP-style scan of a diff (.NET: injection, auth/authz, secrets, crypto, financial/concurrency; Angular: XSS/unsafe DOM sinks, auth/route guards, secrets, sensitive-data exposure, vulnerable deps). Read-only. | `/security-review`; ad-hoc |
+| `solid-check` | Audits a diff against the framework rules and first-party project evidence for the five SOLID principles; it does not impose a stack-specific interface, abstraction, token, or DI container shape. Read-only. | `/review` Step 1; ad-hoc |
+| `convention-check` | Audits a diff against CLAUDE.md > Conventions; returns a structured findings table. Read-only. | `/review` Step 1; ad-hoc |
+| `bloat-radar` | Flags speculative abstractions, shallow wrappers, parallel implementations, comment debris, and stack-specific bloat (.NET: trivial tests; Angular: single-use pipes/directives). Read-only. | `/review` Step 1; ad-hoc |
+| `test-critic` | Audits the test/spec changes for integrity — would each test fail if the code under test broke? Flags over-mocking, tautological/weak assertions, missing paths, nondeterminism. Read-only. | `/review` Step 1; ad-hoc |
+| `debt-radar` | Maps a file path or feature area to TECH_DEBT entries; suggests trojan-horse bundles. Read-only. | `/review` Step 1; `/feature` Step 1; ad-hoc |
+| `bootstrap-pass` | Runs a single bootstrap analysis pass in isolation. Read-only. | `/bootstrap` Phase 1 (parallel) |
+
+Subagents run in isolated context — analysis chatter does not pollute the parent's main conversation. The parent receives one structured message per subagent and synthesises.
+
+All repository-evidenced verification commands run inside command workflows, not as hooks — they're too slow for per-write execution.
+
+## Host support
 
 The PowerShell hook logic is registered across three local client surfaces, with capability-specific certification:
 
@@ -209,26 +244,6 @@ Hook execution is supported on Windows only. PowerShell 7 (`pwsh`) is primary; n
 ```
 
 Hooks degrade gracefully — a failing hook doesn't break the session, you just lose that hook's contribution.
-
-### Common Tasks via skills
-Recipes for "add a new endpoint end-to-end", "add a new EF Core entity", "register a new service", "add a new feature component", "add a new service", "add a new lazy route", and "add a new signal-based store" live as auto-discovered skills in `.claude/skills/`. The model triggers the relevant one when the user describes that kind of task; the body loads only when triggered, keeping main context lean.
-
-### Subagents for isolated specialist work
-Seven subagents live in `.claude/agents/` — the six user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents:
-
-| Agent | Purpose | Invoked by |
-|-------|---------|-----------|
-| `security-auditor` | OWASP-style scan of a diff (.NET: injection, auth/authz, secrets, crypto, financial/concurrency; Angular: XSS/unsafe DOM sinks, auth/route guards, secrets, sensitive-data exposure, vulnerable deps). Read-only. | `/security-review`; ad-hoc |
-| `solid-check` | Audits a diff against the framework rules and first-party project evidence for the five SOLID principles; it does not impose a stack-specific interface, abstraction, token, or DI container shape. Read-only. | `/review` Step 1; ad-hoc |
-| `convention-check` | Audits a diff against CLAUDE.md > Conventions; returns a structured findings table. Read-only. | `/review` Step 1; ad-hoc |
-| `bloat-radar` | Flags speculative abstractions, shallow wrappers, parallel implementations, comment debris, and stack-specific bloat (.NET: trivial tests; Angular: single-use pipes/directives). Read-only. | `/review` Step 1; ad-hoc |
-| `test-critic` | Audits the test/spec changes for integrity — would each test fail if the code under test broke? Flags over-mocking, tautological/weak assertions, missing paths, nondeterminism. Read-only. | `/review` Step 1; ad-hoc |
-| `debt-radar` | Maps a file path or feature area to TECH_DEBT entries; suggests trojan-horse bundles. Read-only. | `/review` Step 1; `/feature` Step 1; ad-hoc |
-| `bootstrap-pass` | Runs a single bootstrap analysis pass in isolation. Read-only. | `/bootstrap` Phase 1 (parallel) |
-
-Subagents run in isolated context — analysis chatter does not pollute the parent's main conversation. The parent receives one structured message per subagent and synthesises.
-
-All repository-evidenced verification commands run inside command workflows, not as hooks — they're too slow for per-write execution.
 
 ## Per-stack rules (path-scoped Copilot instructions)
 
@@ -264,7 +279,7 @@ The intent is that `.cs` files see the .NET rules, `.ts` files see the Angular r
 
 ## Running on Bitbucket Data Center
 
-This framework supports local command and hook execution on **Windows** whether the remote is GitHub or **Bitbucket Data Center / Server**. Git Bash, WSL, native Linux, macOS/BSD, and Copilot coding-agent cloud hook execution are unsupported. Here's precisely what applies on a self-hosted Bitbucket repo.
+This framework supports local command and hook execution on **Windows** whether the remote is GitHub or **Bitbucket Data Center / Server**. Other platforms: [Host support](#host-support). Here's precisely what applies on a self-hosted Bitbucket repo.
 
 ### Local files, subject to client prerequisites
 - **GitHub Copilot in the IDE** (VS Code / Visual Studio / JetBrains) can read its working-tree instruction carriers regardless of git host. That does not certify Preview VS Code hooks; enable them where permitted and run the canaries before relying on enforcement.
@@ -300,15 +315,4 @@ This framework supports local command and hook execution on **Windows** whether 
 
 ## Changelog
 
-> **Current, full changelog: [CHANGELOG.md](./CHANGELOG.md).** The entry below is an older excerpt kept for context.
-
-### 0.7.2 — 2026-05-16 (Copilot routing parity)
-
-**Fixed**
-- **Natural-language routing in Copilot was a silent no-op.** Per the [GitHub Copilot hooks reference](https://docs.github.com/en/copilot/reference/hooks-configuration), the `userPromptSubmitted` event is fire-and-forget — stdout is discarded, so `route-prompt.sh|ps1` couldn't inject workflow rails on the Copilot side regardless of schema correctness. Removed the misleading `userPromptSubmitted` entry from `.github/hooks/hooks.json`.
-
-**Added**
-- **Workflow-routing primer in `SessionStart`** (both `session-start.sh` and `session-start.ps1`). Once per session, the hook now emits the seven workflow names with their trigger vocabulary so the model can self-classify natural-language prompts in Copilot. In Claude Code the per-prompt `route-prompt` router still runs (and dominates); the session-start primer is harmless reinforcement there.
-
-**Changed**
-- **README "Deterministic hooks" table** now flags `UserPromptSubmit` and `Stop` as Claude Code only, and the introductory paragraph distinguishes per-prompt routing (Claude Code) from session primer + self-classification (Copilot).
+Release history: [CHANGELOG.md](./CHANGELOG.md).

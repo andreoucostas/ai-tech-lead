@@ -5,6 +5,15 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.89.2 — Unreleased
+
+- **The README in the framework download now starts with what you get and who does what.** A new
+  table walks through install, `/bootstrap` or `/adopt`, review and daily work, naming who runs each
+  step and what it produces; the `/map-warehouse` step appears only when `/bootstrap` selects the
+  warehouse-SQL profile. Host and platform limits sit in one Host support section, and the
+  instructions for an AI agent installing the framework follow Quick Start. The README is not
+  copied into your repository, so nothing in your repository changes.
+
 ## 0.89.1 — 2026-09-21
 
 - **Your agent is now told to use a matching skill, not only shown the list.** On GitHub Copilot CLI
