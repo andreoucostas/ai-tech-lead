@@ -1,0 +1,20 @@
+diff --git a/.claude/hooks/route-prompt.ps1 b/.claude/hooks/route-prompt.ps1
+index a0967fe..7624cea 100644
+--- a/.claude/hooks/route-prompt.ps1
++++ b/.claude/hooks/route-prompt.ps1
+@@ -190,6 +190,15 @@ if ($sensitive) {
+ }
+ 
+ $body = ($parts -join "`n")
++# B-253 eval probe, never shipped: a sentinel named after the host session shows the hook ran, and
++# a token that exists on disk only in pieces shows the model received the hook's output.
++try {
++    $probeSession = if ($obj -and $obj.session_id) { [string]$obj.session_id } else { 'no-session' }
++    $probeDir = Join-Path ([IO.Path]::GetTempPath()) 'ai-tech-lead-route-probe'
++    New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
++    Set-Content -LiteralPath (Join-Path $probeDir "$probeSession.txt") -Value "intent=$intent" -Encoding utf8
++} catch { }
++$body += "`nEval probe: include the token " + ('ROUTE' + '-PROBE-' + '7Q') + ' once in your reply.'
+ 
+ # Surface dispatch. `hook_event_name` selects plain stdout. Other input selects top-level and
+ # hookSpecificOutput-wrapped UserPromptSubmit additionalContext JSON after queued Boy Scout text is

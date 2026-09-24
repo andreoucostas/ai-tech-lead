@@ -21,6 +21,10 @@ param(
     # is the consumer journey: the files a real /bootstrap then /map-warehouse wrote, frozen under
     # meta/eval-fixtures/warehouse-generated/, replace the simulated bootstrap and the hand-written map.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('frozen','omit','enriched','generated')][string]$WarehouseMap = 'frozen',
+    # B-253: a unified diff applied to the installed framework right after Install-Framework, so a
+    # text variant (a B-255 candidate, a knockout, a probe) runs through the same fixture path as
+    # the unpatched framework. Framework arm only; the header, every row and the SUMMARY name it.
+    [Parameter(ParameterSetName = 'Live')][string]$TargetPatch,
     [Parameter(ParameterSetName = 'Live')][ValidateRange(1, 20)][int]$Trials = 1,
     [Parameter(ParameterSetName = 'Live')][ValidateRange(30, 1800)][int]$TimeoutSeconds = 300,
     [Parameter(ParameterSetName = 'Live')][bool]$KeepScratch = $true,
@@ -766,6 +770,58 @@ function Install-Framework([string]$Path, [ValidateSet('dotnet','angular')][stri
     return $output
 }
 
+function Get-TargetPatchPaths([string]$PatchPath) {
+    # From the `diff --git` headers only: a removed hunk line such as `-- comment` also starts `---`.
+    $paths = foreach ($line in [IO.File]::ReadAllLines($PatchPath)) {
+        if ($line -match '^diff --git a/(.+) b/(.+)$') { $Matches[1]; $Matches[2] }
+    }
+    return @($paths | Sort-Object -Unique)
+}
+
+function Get-TreeHashes([string]$Root) {
+    $hashes = @{}
+    foreach ($file in Get-ChildItem -LiteralPath $Root -Recurse -File -Force) {
+        $relative = [IO.Path]::GetRelativePath($Root, $file.FullName).Replace('\', '/')
+        if ($relative -notlike '.git/*') { $hashes[$relative] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash }
+    }
+    return $hashes
+}
+
+function Invoke-TargetPatch([string]$Target, [string]$PatchPath) {
+    # The patched arm may differ from the unpatched one by the patch's bytes only; anything else
+    # would be measured as the patch's effect. Returns the tag every result line carries.
+    $name = Split-Path -Leaf $PatchPath
+    $named = @(Get-TargetPatchPaths $PatchPath)
+    if (-not $named) { throw "-TargetPatch ${name}: no 'diff --git' header. Cut it with git diff --output (DEVELOPING.md, agent evals)." }
+    $before = Get-TreeHashes $Target
+    $shape = @{}
+    foreach ($path in $named) {
+        $full = Join-Path $Target $path
+        if (Test-Path -LiteralPath $full) { $shape[$path] = @{ Bom = Assert-Bom $full; Cr = [Array]::IndexOf([IO.File]::ReadAllBytes($full), [byte]13) -ge 0 } }
+    }
+    # core.autocrlf=false: under the Git for Windows default (true) `git apply` rewrites every line
+    # ending of a patched LF file, not only the lines the patch changes. `git apply` is all-or-nothing,
+    # so a refused patch leaves the target untouched.
+    $output = git -C $Target -c core.autocrlf=false apply $PatchPath 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "-TargetPatch $name does not apply to the installed target: $output" }
+    $after = Get-TreeHashes $Target
+    $stray = @(@($before.Keys) + @($after.Keys) | Sort-Object -Unique | Where-Object { $before[$_] -ne $after[$_] -and $_ -notin $named })
+    if ($stray) { throw "-TargetPatch $name changed files it does not name: $($stray -join ', ')" }
+    foreach ($path in $named) {
+        $full = Join-Path $Target $path
+        if (-not (Test-Path -LiteralPath $full)) { continue }
+        if ($shape.ContainsKey($path)) {
+            if ((Assert-Bom $full) -ne $shape[$path].Bom) { throw "-TargetPatch $name changed the UTF-8 BOM of $path" }
+            if (-not $shape[$path].Cr -and [Array]::IndexOf([IO.File]::ReadAllBytes($full), [byte]13) -ge 0) { throw "-TargetPatch $name turned LF line endings in $path into CRLF" }
+        }
+        if ($path -like '*.json') {
+            # Claude Code silently ignores a settings file that fails validation under -p.
+            try { [Text.Json.JsonDocument]::Parse([IO.File]::ReadAllText($full)).Dispose() } catch { throw "-TargetPatch $name left $path as invalid JSON" }
+        }
+    }
+    return "$name@$((Get-FileHash -LiteralPath $PatchPath -Algorithm SHA256).Hash.ToLowerInvariant().Substring(0, 12))"
+}
+
 function Get-GeneratedFixtureRefusal([string]$ProvenancePath, [string]$DistVersion) {
     if (-not (Test-Path -LiteralPath $ProvenancePath)) { return "-WarehouseMap generated: $ProvenancePath is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
     $generatedVersion = [string](Get-Content -Raw -LiteralPath $ProvenancePath | ConvertFrom-Json).frameworkVersion
@@ -899,7 +955,11 @@ independently before joining two facts through a conformed dimension.
 - Use `LoadRunId` and explicit insert column lists in warehouse loads.
 - Ad-hoc analytical queries live under `analysis/`.
 '@
-    $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
+    $rewritten = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
+    # B-253: a -TargetPatch or a dist change that moves this placeholder would otherwise drop the
+    # scenario's conventions silently, and every run would measure a different fixture.
+    if (-not $Bare -and $rewritten -eq $claudeText) { throw 'Initialize-WarehouseScenario: the CLAUDE.md conventions placeholder was not found, so the scenario conventions were not written.' }
+    $claudeText = $rewritten
     # B-253 bare arm: no framework CLAUDE.md exists. The project's own conventions and map are held
     # constant across arms, so the arms differ only in the framework's files.
     if ($Bare) { $claudeText = "# Project instructions`n`n$ordinaryConventions`n" }
@@ -2249,8 +2309,9 @@ function Get-OutcomeSummary($Results) {
         $valid = @($group.Group | Where-Object { $_.Status -notin @('ERROR','INCONCLUSIVE','CONTAMINATED') })
         $hits = @($valid | Where-Object { $_.Outcome }).Count
         # B-277: a Copilot summary is marked so no report can conflate the two hosts. A Claude Code
-        # summary keeps its historical line exactly, so old and new reports stay comparable.
-        "- **SUMMARY $($group.Name)** arm=$($group.Group[0].Arm) outcome=$hits/$($valid.Count) excluded=$($group.Group.Count - $valid.Count)$(if ($group.Group[0].Executor -eq 'copilot') { ' executor=copilot' })"
+        # summary keeps its historical line exactly, so old and new reports stay comparable. B-253:
+        # likewise a patched summary is marked, so it cannot be pooled with the unpatched framework.
+        "- **SUMMARY $($group.Name)** arm=$($group.Group[0].Arm) outcome=$hits/$($valid.Count) excluded=$($group.Group.Count - $valid.Count)$(if ($group.Group[0].Executor -eq 'copilot') { ' executor=copilot' })$(if ($group.Group[0].Patch) { " patch=$($group.Group[0].Patch)" })"
     }
 }
 
@@ -3949,6 +4010,42 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         if ((Get-GeneratedFixtureRefusal $provenance '1.2.4') -notmatch 'generated on v1\.2\.3 but dist is v1\.2\.4') { throw 'a stale generated fixture was not refused' }
         if (Get-GeneratedFixtureRefusal $provenance '1.2.3') { throw 'a current generated fixture was refused' }
         if ((Get-GeneratedFixtureRefusal (Join-Path $temp 'no-provenance.json') '1.2.3') -notmatch 'is missing') { throw 'a missing generated fixture was not refused' }
+        # B-253 -TargetPatch: under a hostile core.autocrlf the patched file gains exactly the patch
+        # (BOM and LF kept); a patch that no longer matches is refused; and a patch that moves the
+        # conventions placeholder cannot silently drop the warehouse scenario's conventions.
+        $hookRelative = '.claude/hooks/route-prompt.ps1'
+        $patchBase = Join-Path $temp 'target-patch'
+        New-EvalRepo $patchBase
+        Install-Framework $patchBase dotnet | Out-Null
+        git -C $patchBase config core.autocrlf true
+        $patchCut = Join-Path $temp 'target-patch-cut'
+        New-Item -ItemType Directory -Path (Join-Path $patchCut '.claude/hooks') -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $patchBase $hookRelative) -Destination (Join-Path $patchCut $hookRelative)
+        git -C $patchCut init --quiet
+        git -C $patchCut config core.autocrlf false
+        git -C $patchCut config user.email 'agent-evals@invalid.local'
+        git -C $patchCut config user.name 'Agent Evals'
+        git -C $patchCut add -A
+        git -C $patchCut commit --quiet -m 'cut base'
+        $cutHook = Join-Path $patchCut $hookRelative
+        [IO.File]::WriteAllBytes($cutHook, [IO.File]::ReadAllBytes($cutHook) + [Text.Encoding]::UTF8.GetBytes("# self-test patch line`n"))
+        $selfTestPatch = Join-Path $temp 'selftest.patch'
+        git -C $patchCut diff --output=$selfTestPatch
+        $patchResultTag = Invoke-TargetPatch $patchBase $selfTestPatch
+        if ($patchResultTag -notmatch '^selftest\.patch@[0-9a-f]{12}$') { throw "-TargetPatch returned the tag '$patchResultTag'" }
+        $patchedHook = [IO.File]::ReadAllBytes((Join-Path $patchBase $hookRelative))
+        if (-not (Assert-Bom (Join-Path $patchBase $hookRelative)) -or [Array]::IndexOf($patchedHook, [byte]13) -ge 0 -or -not [Text.Encoding]::UTF8.GetString($patchedHook).EndsWith("# self-test patch line`n")) { throw '-TargetPatch did not apply the patch byte-exactly' }
+        $staleRefused = $false
+        try { Invoke-TargetPatch $patchBase $selfTestPatch | Out-Null } catch { $staleRefused = $_.Exception.Message -match 'does not apply' }
+        if (-not $staleRefused) { throw 'a patch that no longer matches the installed target was not refused' }
+        $placeholderMoved = Join-Path $temp 'warehouse-placeholder-moved'
+        New-EvalRepo $placeholderMoved warehouse
+        Install-Framework $placeholderMoved dotnet | Out-Null
+        $movedClaude = Join-Path $placeholderMoved 'CLAUDE.md'
+        (Get-Content -Raw -LiteralPath $movedClaude).Replace('_Not yet populated.', '_Populated by a patch._') | Set-Content -LiteralPath $movedClaude -Encoding utf8NoBOM -NoNewline
+        $placeholderRefused = $false
+        try { Initialize-WarehouseScenario $placeholderMoved | Out-Null } catch { $placeholderRefused = $_.Exception.Message -match 'placeholder was not found' }
+        if (-not $placeholderRefused) { throw 'Initialize-WarehouseScenario wrote a warehouse scenario without its conventions' }
         $archivedAttempt = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@(
@@ -3992,6 +4089,7 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         Write-Output 'PASS: bootstrap Skill and archived-installer attempts are rejected'
         Write-Output 'PASS: B-253 arm-neutral Outcome on the four bareArm scenarios, bare warehouse preparation, and the outcome summary excludes unexaminable trials'
         Write-Output 'PASS: B-277 Copilot events convert in order to a gradable transcript, recover a denied call, flag hook loading, and report missing/empty/truncated/unterminated/errored logs as unexaminable'
+        Write-Output 'PASS: B-253 -TargetPatch changes only the patched bytes under core.autocrlf=true, refuses a stale patch, and a moved conventions placeholder fails loud'
         Write-Output 'PASS: PowerShell UTF-8 BOM'
     } finally { if (Test-Path $temp) { Remove-Item -LiteralPath $temp -Recurse -Force } }
 }
@@ -4036,7 +4134,30 @@ if ($WarehouseMap -eq 'generated') {
     $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo 'meta/eval-fixtures/warehouse-generated/provenance.json') $version
     if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
 }
-$frameworkCommit = (git -C $repo rev-parse HEAD | Out-String).Trim()
+$patchTag = ''
+if ($TargetPatch) {
+    if ($Arm -ne 'framework') { throw 'Refusing -TargetPatch with -Arm none: there is no installed framework to patch.' }
+    $TargetPatch = (Resolve-Path -LiteralPath $TargetPatch).Path
+    $neverInstalled = @($selected | Where-Object { $_.id -in @('install-handoff','archived-redirect') } | ForEach-Object { $_.id } | Select-Object -Unique)
+    if ($neverInstalled) { throw "Refusing -TargetPatch: $($neverInstalled -join ', ') never install the framework before the agent runs." }
+    if ($WarehouseMap -eq 'generated') {
+        $overlayRoot = Join-Path $repo 'meta/eval-fixtures/warehouse-generated/files'
+        $overlay = @(Get-ChildItem -LiteralPath $overlayRoot -Recurse -File -Force | ForEach-Object { [IO.Path]::GetRelativePath($overlayRoot, $_.FullName).Replace('\', '/') })
+        $overwritten = @(Get-TargetPatchPaths $TargetPatch | Where-Object { $_ -in $overlay })
+        if ($overwritten) { throw "Refusing -TargetPatch with -WarehouseMap generated: the generated overlay replaces $($overwritten -join ', ') after the patch is applied." }
+    }
+    # Once per stack before any spend: a patch that failed inside the loop would abort the
+    # invocation after paid runs, and their rows are written only at the end.
+    foreach ($patchStack in @($selected | ForEach-Object { if ($_.stack) { [string]$_.stack } else { 'dotnet' } } | Select-Object -Unique)) {
+        $preflight = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-patch-preflight-' + [guid]::NewGuid().ToString('N'))
+        try {
+            New-EvalRepo $preflight $patchStack
+            Install-Framework $preflight $patchStack | Out-Null
+            $patchTag = Invoke-TargetPatch $preflight $TargetPatch
+        } finally { if (Test-Path $preflight) { Remove-Item -LiteralPath $preflight -Recurse -Force } }
+    }
+}
+$frameworkCommit =(git -C $repo rev-parse HEAD | Out-String).Trim()
 $hostVersion = (& $agentCli --version | Out-String).Trim()
 # `copilot --version` also prints an update notice; keep the first line only.
 if ($Executor -eq 'copilot') { $hostVersion = [string](@($hostVersion -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 1)).Trim() }
@@ -4055,7 +4176,13 @@ try {
         $caseFixture = if ($case.fixture) { [string]$case.fixture } else { $caseStack }
         New-EvalRepo $target $caseFixture
         $before = [int](git -C $target rev-list --count HEAD)
-        if ($Arm -eq 'framework' -and $case.id -notin @('install-handoff','archived-redirect')) { Install-Framework $target $caseStack | Out-Null; $before = [int](git -C $target rev-list --count HEAD) }
+        if ($Arm -eq 'framework' -and $case.id -notin @('install-handoff','archived-redirect')) {
+            Install-Framework $target $caseStack | Out-Null
+            # Before the scenario setup, which commits the framework files in the warehouse cases:
+            # the patch adds no commit, so `git log` (session-start preloads it) matches both arms.
+            if ($TargetPatch) { Invoke-TargetPatch $target $TargetPatch | Out-Null }
+            $before = [int](git -C $target rev-list --count HEAD)
+        }
         $archivedRoot = ''
         switch ($case.id) {
             'archived-redirect' {
@@ -4214,17 +4341,21 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             # Copilot only loads repository hooks in prompt mode behind the opt-in above; if none
             # fired, the framework arm's enforcement surface was absent and the row must say so.
             $copilotDetail = if ($copilotMeta) { "executor=copilot copilotCli=$($copilotMeta.CliVersion) hooksLoaded=$($copilotMeta.HooksLoaded) premiumRequests=$($copilotMeta.PremiumRequests) toolCalls=$($copilotMeta.ToolCalls) " } else { '' }
-            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $copilotDetail$(if ($case.bareArm) { "arm=$Arm outcome=$outcome " })$($evidence.Detail)"
+            # B-253: the CLI can update itself between runs of one invocation; the header's version
+            # is read once, so each Claude Code row records the host and model its own run reported.
+            $init = @($transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
+            $claudeDetail = if ($Executor -eq 'claude' -and $init) { "ccVersion=$($init[0].claude_code_version) initModel=$($init[0].model) " } else { '' }
+            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $claudeDetail$copilotDetail$(if ($case.bareArm) { "arm=$Arm outcome=$outcome " })$($evidence.Detail)"
         } catch { $status = 'ERROR'; $detail = "$(if ($Executor -eq 'copilot') { 'executor=copilot ' })$($_.Exception.Message)" }
-        $results += [pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail; Arm = $Arm; Scored = [bool]$case.bareArm; Outcome = $outcome; Executor = $Executor }
+        $results += [pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail; Arm = $Arm; Scored = [bool]$case.bareArm; Outcome = $outcome; Executor = $Executor; Patch = $patchTag }
         Write-Output "$status $($case.id): $detail"
     }
     $date = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
     # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
     # the host and the model actually used, and every Copilot row carries executor=copilot.
     $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($results | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',')" } else { "Claude Code $hostVersion" }
-    $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" }) · scratch: retained=$KeepScratch", '')
-    foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})) — $(Protect-ResultText $r.Detail)" }
+    $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" }) · scratch: retained=$KeepScratch", '')
+    foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})$(if($r.Patch){"; patch=$($r.Patch)"})) — $(Protect-ResultText $r.Detail)" }
     $lines += @(Get-OutcomeSummary $results)
     $lines += ''
     Add-Content -LiteralPath $ResultsPath -Value ($lines -join "`n") -Encoding utf8NoBOM
