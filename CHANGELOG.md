@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.89.2 — Unreleased
+## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of
 the consumer journey; the agent install section moves below Quick Start behind a pointer, since the
@@ -19,6 +19,14 @@ README stays in the template checkout (`install.ps1` excludes it) and installing
 it. The Hook compatibility tables become one Host support section; the duplicated
 `copilot-instructions.md` bullet, the repeated Bitbucket platform sentence and the 0.7.x changelog
 excerpt are gone. Angular's journey has no `/map-warehouse` step, which it does not ship.
+
+Maintainer tooling: `push-and-check.ps1` classified a push as records-only from the commits absent
+from every origin ref, so a cloud-session branch fast-forwarded into `master` skipped the CI watch
+while CI ran on its src/dist commits; it now classifies what the push adds to `origin/<branch>`.
+Its commit body (`56d1c7b5`) wrongly says no push the old rule watched is now skipped: a fast-forward
+onto an origin branch that holds only records was watched and ended CANT-VERIFY, and is now skipped,
+which matches CI's path filter. `AGENTS.md` allows a second push in a session when the user asks for
+one. B-284 filed.
 
 ## 0.89.1 — 2026-09-21
 

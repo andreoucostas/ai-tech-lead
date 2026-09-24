@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.89.2 — Unreleased
+## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new
   table walks through install, `/bootstrap` or `/adopt`, review and daily work, naming who runs each
