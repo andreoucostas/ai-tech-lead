@@ -766,18 +766,23 @@ function Install-Framework([string]$Path, [ValidateSet('dotnet','angular')][stri
     return $output
 }
 
+function Get-GeneratedFixtureRefusal([string]$ProvenancePath, [string]$DistVersion) {
+    if (-not (Test-Path -LiteralPath $ProvenancePath)) { return "-WarehouseMap generated: $ProvenancePath is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
+    $generatedVersion = [string](Get-Content -Raw -LiteralPath $ProvenancePath | ConvertFrom-Json).frameworkVersion
+    if ($generatedVersion -ne $DistVersion) { return "-WarehouseMap generated: the fixture was generated on v$generatedVersion but dist is v$DistVersion. Regenerate it." }
+    return $null
+}
+
 function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$GeneratedMap, [switch]$Bare) {
     New-Item -ItemType Directory -Path (Join-Path $Path 'docs') -Force | Out-Null
     if ($GeneratedMap) {
         # B-280: the generators' real output, not a simulation. The overlay is what /bootstrap and
         # /map-warehouse changed relative to a fresh install, so it is only valid for the framework
-        # version it was generated on; a stale overlay would silently mix two versions' instructions.
+        # version it was generated on; -Live refuses a stale one before any run (Get-GeneratedFixtureRefusal).
+        # The version is not compared here, so -SelfTest does not go red on every release.
         $generatedRoot = Join-Path $repo 'meta/eval-fixtures/warehouse-generated'
         $provenancePath = Join-Path $generatedRoot 'provenance.json'
         if (-not (Test-Path -LiteralPath $provenancePath)) { throw "-WarehouseMap generated: $provenancePath is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
-        $generatedVersion = [string](Get-Content -Raw -LiteralPath $provenancePath | ConvertFrom-Json).frameworkVersion
-        $distVersion = [string](Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version
-        if ($generatedVersion -ne $distVersion) { throw "-WarehouseMap generated: the fixture was generated on v$generatedVersion but dist is v$distVersion. Regenerate it." }
         if (-not $Bare) {
             Copy-Item -Path (Join-Path $generatedRoot 'files/*') -Destination $Path -Recurse -Force
             git -C $Path add -A
@@ -1032,6 +1037,30 @@ function Get-TranscriptEvidence($Transcript) {
     [pscustomobject]@{ Tools = $tools; ToolResults = $results; Final = $final }
 }
 
+# B-283: a host that failed before the agent took a single action (an expired login, say) is an
+# ERROR in the host's own words. Graded instead, it surfaced as a grader exception about a file the
+# agent never got to write. A run that acted and then ended in error is still graded.
+function Get-HostFailure($Transcript) {
+    $e = Get-TranscriptEvidence $Transcript
+    if (-not $e.Final.is_error -or $e.Tools.Count -gt 0) { return $null }
+    $text = ([string]$e.Final.result).Trim()
+    if ($text.Length -gt 300) { $text = $text.Substring(0, 300) + '...' }
+    return "host failed before the agent acted: $text"
+}
+
+# Result rows are committed. A machine path names the maintainer's account, which RepositoryPrivacy
+# rejects, so every row is written with the temp and home roots replaced, as rows were by hand.
+function Protect-ResultText([string]$Text) {
+    $roots = @(
+        @([IO.Path]::GetTempPath().TrimEnd('\', '/'), '<temp>'),
+        @([Environment]::GetFolderPath('UserProfile'), '<home>')
+    )
+    foreach ($root in $roots) {
+        if ($root[0]) { $Text = [regex]::Replace($Text, [regex]::Escape($root[0]), $root[1], [Text.RegularExpressions.RegexOptions]::IgnoreCase) }
+    }
+    return $Text
+}
+
 function Get-ToolPath($Tool) {
     foreach ($name in 'file_path','filePath','path') { if ($Tool.Input.$name) { return [string]$Tool.Input.$name } }
     return ''
@@ -1256,11 +1285,20 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         'install-handoff' {
             $stamp = Test-Path (Join-Path $Target '.claude/framework-version.json')
             $commits = [int](git -C $Target rev-list --count HEAD)
+            # B-283, as B-112 did for archived-redirect: the closing prose's phrasing is reported, not
+            # gating. On v0.89.2 a correct handoff ("type `/bootstrap`. Only a developer can start it
+            # ... I did not run it") failed the order-dependent developer-type-bootstrap regex. What
+            # gates: the installer ran, the install is stamped and committed, bootstrap is still pending
+            # and was never attempted, and the final message names `/bootstrap` (a literal token, the
+            # one step the developer must take). A target the agent never installed into is FAIL.
             $handoff = $finalOk -and $finalText -match '(?i)developer.+(?:type|run).*/bootstrap' -and $finalText -match '(?i)cannot|do not|did not'
-            $pending = (Get-Content -Raw (Join-Path $Target 'CLAUDE.md')) -match 'BOOTSTRAP_PENDING'
+            $namesBootstrap = $finalOk -and $finalText -match '(?i)(?<![\w/])/bootstrap\b'
+            $claudePath = Join-Path $Target 'CLAUDE.md'
+            $pending = (Test-Path -LiteralPath $claudePath) -and ((Get-Content -Raw -LiteralPath $claudePath) -match 'BOOTSTRAP_PENDING')
             $bootstrapTool = @($e.Tools | Where-Object { ($_.Name -eq 'Skill' -and $_.Input.skill -eq 'bootstrap') -or ($_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)(?:^|\s|[/\\])bootstrap(?:\s|$)') }).Count -gt 0
             $installerTool = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)install\.ps1' } | Select-Object -First 1)
-            return [pscustomobject]@{ Status = 'PASS'; Pass = $stamp -and $commits -gt $BeforeCommits -and $handoff -and $pending -and -not $bootstrapTool -and $installerTool; Detail = "stamp=$stamp commits=$commits installerTool=$([bool]$installerTool) finalHandoff=$handoff bootstrapPending=$pending bootstrapTool=$bootstrapTool" }
+            $operational = $stamp -and $commits -gt $BeforeCommits -and $pending -and -not $bootstrapTool -and [bool]$installerTool -and $namesBootstrap
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $operational; Detail = "stamp=$stamp commits=$commits installerTool=$([bool]$installerTool) bootstrapPending=$pending bootstrapTool=$bootstrapTool finalNamesBootstrap=$namesBootstrap handoffPhrasing=$handoff (reported, not gating)" }
         }
         'route-fix' {
             $testRuns = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match 'Test-Calculator\.ps1' })
@@ -3875,6 +3913,42 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
             ([pscustomobject]@{ type='result'; is_error=$false; result='Installation complete. I cannot bootstrap; developer must type /bootstrap.' })
         ) }
         if ((Test-ScenarioEvidence 'install-handoff' $temp $bootstrapAttempt $beforeInstall).Pass) { throw 'install-handoff accepted a typed bootstrap Skill attempt' }
+        # B-283: a correct handoff narrated in the order v0.89.2's run used ("type /bootstrap. Only a developer can
+        # start it") must pass on its operational evidence, whatever the closing prose's word order.
+        $handoffReordered = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='install'; name='PowerShell'; input=[pscustomobject]@{ command='pwsh C:\canonical\install.ps1 target' } }) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='install'; content='installed' }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='Installed and committed. You need to run /bootstrap yourself: start a session in the target and type /bootstrap. Only a developer can start it. I did not run it.' })
+        ) }
+        $reordered = Test-ScenarioEvidence 'install-handoff' $temp $handoffReordered $beforeInstall
+        if (-not $reordered.Pass) { throw "install-handoff failed a correct handoff on its narration: $($reordered.Detail)" }
+        $silentHandoff = [pscustomobject]@{ Events = @($handoffReordered.Events[0..2]) + @([pscustomobject]@{ type='result'; is_error=$false; result='Installed and committed. The working tree is clean.' }) }
+        if ((Test-ScenarioEvidence 'install-handoff' $temp $silentHandoff $beforeInstall).Pass) { throw 'install-handoff accepted a final message that never names /bootstrap' }
+        $notInstalled = Join-Path $temp 'install-handoff-not-installed'
+        New-Item -ItemType Directory -Path $notInstalled | Out-Null
+        git -C $notInstalled init --quiet; git -C $notInstalled commit --quiet --allow-empty -m 'fixture baseline'
+        $notInstalledResult = Test-ScenarioEvidence 'install-handoff' $notInstalled $handoffReordered 1
+        if ($notInstalledResult.Pass) { throw 'install-handoff accepted a target with no install' }
+        # B-283: the v0.89.2 expired-login run, and the same failure after the agent had acted.
+        $authFailure = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='text'; text='Failed to authenticate: OAuth session expired and could not be refreshed' }) } }),
+            ([pscustomobject]@{ type='result'; subtype='success'; is_error=$true; result='Failed to authenticate: OAuth session expired and could not be refreshed' })
+        ) }
+        if ((Get-HostFailure $authFailure) -notmatch '^host failed before the agent acted: Failed to authenticate') { throw "an expired host login was not reported as a host failure: $(Get-HostFailure $authFailure)" }
+        $actedThenFailed = [pscustomobject]@{ Events = @($handoffReordered.Events[0..2]) + @([pscustomobject]@{ type='result'; is_error=$true; result='max turns reached' }) }
+        if (Get-HostFailure $actedThenFailed) { throw 'a run that acted before failing was taken out of grading as a host failure' }
+        $tempRoot = [IO.Path]::GetTempPath().TrimEnd('\', '/')
+        $homeRoot = [Environment]::GetFolderPath('UserProfile')
+        $protected = Protect-ResultText "Cannot find path '$tempRoot\ai-tech-lead-agent-evals-x\CLAUDE.md'; config $homeRoot\.copilot"
+        if ($protected -ne "Cannot find path '<temp>\ai-tech-lead-agent-evals-x\CLAUDE.md'; config <home>\.copilot") { throw "a result row kept a machine path: $protected" }
+        # B-280's stale-fixture refusal, decided from explicit versions rather than the checkout's dist.
+        $provenance = Join-Path $temp 'provenance-selftest.json'
+        '{"frameworkVersion":"1.2.3"}' | Set-Content -LiteralPath $provenance -Encoding utf8NoBOM
+        if ((Get-GeneratedFixtureRefusal $provenance '1.2.4') -notmatch 'generated on v1\.2\.3 but dist is v1\.2\.4') { throw 'a stale generated fixture was not refused' }
+        if (Get-GeneratedFixtureRefusal $provenance '1.2.3') { throw 'a current generated fixture was refused' }
+        if ((Get-GeneratedFixtureRefusal (Join-Path $temp 'no-provenance.json') '1.2.3') -notmatch 'is missing') { throw 'a missing generated fixture was not refused' }
         $archivedAttempt = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@(
@@ -3958,6 +4032,10 @@ New-Item -ItemType Directory $scratch | Out-Null
 $version = (Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version
 $changelogVersion = ((Get-Content (Join-Path $repo 'CHANGELOG.md') | Where-Object { $_ -match '^## (\d+\.\d+\.\d+)' } | Select-Object -First 1) -replace '^## (\d+\.\d+\.\d+).*','$1')
 if ($version -ne $changelogVersion) { throw "Refusing live eval: dist version $version does not match root CHANGELOG head $changelogVersion." }
+if ($WarehouseMap -eq 'generated') {
+    $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo 'meta/eval-fixtures/warehouse-generated/provenance.json') $version
+    if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
+}
 $frameworkCommit = (git -C $repo rev-parse HEAD | Out-String).Trim()
 $hostVersion = (& $agentCli --version | Out-String).Trim()
 # `copilot --version` also prints an update notice; keep the first line only.
@@ -4117,6 +4195,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                 if ($copilotMeta.Model) { $caseModel = $copilotMeta.Model }
             }
             $transcript = Read-Transcript $transcriptPath
+            $hostFailure = Get-HostFailure $transcript
+            if ($hostFailure) { throw $hostFailure }
             $evidence = Test-ScenarioEvidence $case.id $target $transcript $before
             # WSD-040 revision (i): a routing non-reach (the unchanged skill was never read) must
             # not be scored as a decision-outcome pass or fail -- it means the trial never exercised
@@ -4144,7 +4224,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
     # the host and the model actually used, and every Copilot row carries executor=copilot.
     $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($results | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',')" } else { "Claude Code $hostVersion" }
     $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" }) · scratch: retained=$KeepScratch", '')
-    foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})) — $($r.Detail)" }
+    foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})) — $(Protect-ResultText $r.Detail)" }
     $lines += @(Get-OutcomeSummary $results)
     $lines += ''
     Add-Content -LiteralPath $ResultsPath -Value ($lines -join "`n") -Encoding utf8NoBOM
