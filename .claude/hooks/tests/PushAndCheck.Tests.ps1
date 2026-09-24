@@ -3,8 +3,9 @@
 # Subject: .claude/scripts/push-and-check.ps1.
 # Proved here: failed pushes preserve git's exit and never start the watcher; unwatched pushes skip
 # cleanly; watched pushes propagate watch-ci.ps1's 0/1/3 contract; omitted -Branch is resolved by
-# git; an invalid -GitPath is reported distinctly; a records-only outgoing range skips the watch
-# while any other or unclassifiable range is watched; and the light-path rule matches ci.yml's
+# git; an invalid -GitPath is reported distinctly; a records-only range (what the push adds to
+# origin/<branch>, even commits already on another origin branch) skips the watch while any other
+# or unclassifiable range is watched; and the light-path rule matches ci.yml's
 # push `paths:` filter. Every push is handled by a generated fake
 # git process. NOT proved here: that a real remote accepts a push or that GitHub Actions runs.
 #
@@ -21,9 +22,11 @@ $scratch = @()
 
 function New-GitStub {
     # -Commits: one entry per outgoing commit, each a string of '|'-separated changed paths. Absent,
-    # the range is empty -- the shape every case before WP2 relies on.
+    # the range is empty -- the shape every case before WP2 relies on. -OnOtherRemoteBranch: how many
+    # of the leading commits are already on another origin branch, so `--not --remotes=origin` omits
+    # them while `--not refs/remotes/origin/master` does not, as real git answers.
     param([int]$PushExit = 0, [string]$CurrentBranch = 'master', [switch]$BadOutgoingSubject,
-        [string[]]$Commits = @(), [switch]$DiffTreeFails)
+        [string[]]$Commits = @(), [switch]$DiffTreeFails, [int]$OnOtherRemoteBranch = 0)
     $dir = Join-Path ([IO.Path]::GetTempPath()) ('pushcheck-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $script:scratch += $dir
@@ -58,7 +61,10 @@ exit 91
         $outgoing.Add("if (`$cmd -like '* diff-tree --root --no-commit-id --name-only -r -m $c') { $lines }")
     }
     if ($shas.Count -gt 0) {
+        $unpublished = @($shas | Select-Object -Skip $OnOtherRemoteBranch)
         $outgoing.Insert(0, "if (`$cmd -like '* rev-list --reverse --topo-order master --not --remotes=origin') { " +
+            ((@($unpublished | ForEach-Object { "Write-Output '$_'" }) + 'exit 0') -join '; ') + ' }')
+        $outgoing.Insert(0, "if (`$cmd -like '* rev-list --reverse --topo-order master --not refs/remotes/origin/master') { " +
             ((@($shas | ForEach-Object { "Write-Output '$_'" }) + 'exit 0') -join '; ') + ' }')
     }
     $body = $body.Replace('__OUTGOING__', ($outgoing -join "`n"))
@@ -168,6 +174,15 @@ try {
             Assert ($r.Out -notmatch [regex]::Escape($skipLine)) "$heavy was classified records-only: $($r.Out)"
             Assert (Test-Path -LiteralPath $h.Log) "watch-ci did not run for $heavy"
         }
+    }
+    It 'a range already on another origin branch is classified by what it adds to origin/master' {
+        # B-283: a cloud session's branch fast-forwarded into master brought src/dist commits that were
+        # on origin but not on origin/master; ci.yml's push filter saw them and ran, the watch skipped.
+        $g=New-GitStub -Commits @('src/stacks/dotnet/files/README.md|dist/dotnet/README.md', 'meta/BACKLOG.md') -OnOtherRemoteBranch 1
+        $h=New-GhStub green; $r=Invoke-Subject $g $h
+        Assert ($r.Exit -eq 0) "expected 0: $($r.Out)"
+        Assert ($r.Out -notmatch [regex]::Escape($skipLine)) "a range with src/dist commits was classified records-only: $($r.Out)"
+        Assert (Test-Path -LiteralPath $h.Log) 'watch-ci did not run for commits new to origin/master'
     }
     It 'WP2 (e): an unreadable path list is watched, never records-only' {
         $g=New-GitStub -Commits @('meta/BACKLOG.md') -DiffTreeFails; $h=New-GhStub green; $r=Invoke-Subject $g $h

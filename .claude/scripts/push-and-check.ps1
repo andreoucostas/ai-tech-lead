@@ -118,11 +118,13 @@ function Test-LightChangePath {
     return ($Path -cmatch '^meta/[^/]+\.md$' -or $Path -cmatch '^\.claude/plans/')
 }
 
-# Classify before the push, while --remotes=origin still marks what is outgoing. The push is
-# records-only only when every path is light and the list is known and non-empty; anything that
-# cannot be read is watched.
+# Classify before the push, while origin/<branch> still marks the old tip. ci.yml's push filter sees
+# every commit the push adds to that branch, including commits already on another origin branch (a
+# merged cloud-session branch), so --remotes=origin would hide them. The push is records-only only
+# when every path is light and the list is known and non-empty; anything that cannot be read (no
+# origin/<branch> yet included) is watched.
 $recordsOnly = $false
-$range = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'rev-list', '--reverse', '--topo-order', $Branch, '--not', '--remotes=origin')
+$range = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'rev-list', '--reverse', '--topo-order', $Branch, '--not', "refs/remotes/origin/$Branch")
 if ($range.Exit -eq 0 -and $range.Out) {
     $changed = @()
     $readable = $true
