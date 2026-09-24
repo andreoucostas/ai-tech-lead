@@ -11,7 +11,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 
 <!-- @stack:verif-rules -->
 
-**Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable repository-evidenced commands (`CLAUDE.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. `framework-owned/overwritten` paths in `framework-ownership.json` and paths in `framework-retirements.json` are framework, not application-command, evidence. Run them only when named by an explicit framework workflow or requested for framework diagnosis; report separately from application verification. Do not run a saved Verification Commands row naming one — flag `/rebootstrap`. A delivery profile proves no technology or command. Migration/deploy is **manual/CI-only** unless its exact command is an evidenced non-mutating validation/dry-run or developer-authorized known target; otherwise do not run it.
+**Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable repository-evidenced commands (`CLAUDE.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. `framework-owned/overwritten` paths in `framework-ownership.json` and paths in `framework-retirements.json` are framework, not application-command, evidence. Run them only when named by an explicit framework workflow or requested for framework diagnosis; report separately from application verification. Do not run a saved Verification Commands row naming one — flag `/rebootstrap`. Migration/deploy is **manual/CI-only** unless its exact command is an evidenced non-mutating validation/dry-run or developer-authorized known target; otherwise do not run it.
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
 <!-- @stack:verif-rule9 -->
 
@@ -58,14 +58,12 @@ When given any task, follow this execution model:
 ### 1. Classify the intent — and run that workflow without being asked
 Natural-language requests trigger a workflow: classify silently, announce it in one line, and apply its rails. Ask if two fit; answer pure questions directly. Compound requests retain non-negotiables.
 
-> These rails are canonical. Commands and `route-prompt` may elaborate, not contradict; carriers and hooks remain independent.
+> These rails are canonical and binding. Commands and `route-prompt` may elaborate, not contradict.
 
 <!-- @stack:workflow-bullets -->
 - **Debt cleanup** — *tech debt / cleanup debt*: confirm relevant `TECH_DEBT.md` items still exist and respect dismissed proposals unless materially changed evidence is named → apply Verification command discovery; without a harness, use the strongest evidenced check rather than adding one → recommend fix-now vs defer → update the file after fixes → report outcomes, validation, and diff.
 
-Registered, observed, and instructed differ by surface; these rails remain binding.
-
-**Scoped repository knowledge.** For a non-trivial change—including an ordinary feature/fix naming neither a skill nor path—locate task areas; select relevant scoped wiki, map, skill, or example entries; exclude irrelevant/nonapplicable ones; read bodies/references on demand. Investigate conflicting applicable claims and recheck decisive correctness-material evidence. Ask, or retain unresolved, only correctness-material gaps from unresolved drafts, opposing scopes, or stale, missing, or inaccessible evidence; never infer them. Name material evidence and run repository-evidenced verification. Hook registration alone proves neither firing nor consumption; do not preload the wiki or depend on a hook.
+**Scoped repository knowledge.** For a non-trivial change—including an ordinary feature/fix naming neither a skill nor path—locate task areas; select relevant scoped wiki, map, skill, or example entries; exclude irrelevant/nonapplicable ones; read bodies/references on demand. Investigate conflicting applicable claims and recheck decisive correctness-material evidence. Ask, or retain unresolved, only correctness-material gaps from unresolved drafts, opposing scopes, or stale, missing, or inaccessible evidence; never infer them. Name material evidence and run repository-evidenced verification. Do not preload the wiki or depend on a hook.
 
 <!-- @stack:security-pass -->
 

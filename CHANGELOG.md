@@ -11,6 +11,21 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.89.3 — Unreleased
+
+B-255, narrowed. The always-loaded rules carrier drops sentences that stated what hooks can be shown
+to do instead of directing the agent: "Registered, observed, and instructed differ by surface",
+"carriers and hooks remain independent", "Hook registration alone proves neither firing nor
+consumption", the security-pass clause on host firing and consumption evidence, and the "delivery
+profile proves no command" repeats in Verification command discovery and §3 (Rule #10 and "run only
+exact recorded invocations" already carry them). The instructions beside them stay: the rails are
+binding, do not depend on a hook, the security pass holds whether or not a hook reminder appears.
+Mirrored in the three `AGENTS.md`; `SessionStartWiki.Tests.ps1` pins the new wording. `static.claude`
+falls by about 460 chars per dist (dotnet 39,705 → 39,245 against its 40,000 ceiling). Left out of
+B-255 on review: the frozen-bundle paragraph (each copy is the only one its reviewer sees, it carries
+B-226's hash check, and it costs no always-loaded bytes), the rails in `route-prompt.ps1` (B-257),
+and the command-level repeats the 2026-09-18 review counted (now pointers or role-specific).
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

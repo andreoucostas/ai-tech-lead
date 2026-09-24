@@ -13,8 +13,7 @@ $ordinaryKnowledgeRequirements = @(
     'recheck decisive correctness-material evidence.',
     'only correctness-material gaps from unresolved drafts, opposing scopes, or stale, missing, or inaccessible evidence',
     'Name material evidence and run repository-evidenced verification.',
-    'Hook registration alone proves neither firing nor consumption',
-    'do not preload the wiki',
+    'Do not preload the wiki',
     'depend on a hook.'
 )
 

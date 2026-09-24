@@ -11,8 +11,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 12b | B-279 `map-warehouse` skill surface | README half shipped with B-262; the listing half rides B-256, the invocation flag B-257 |
-| 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with `-TargetPatch` (B-253) |
-| 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
+| 13a | B-272 `AGENTS.md` as the one instruction file | Largest always-loaded saving left: Copilot's static load counts the ~18K rules text twice (`AGENTS.md` and the `applyTo` carrier); removes the mirror and its drift gate. Rank provisional, set by the filing session |
 | 13b | B-281 retire `.github/copilot-instructions.md` | Third copy of the same rules now that every host reads `AGENTS.md`; do it with or after B-272 |
 | 15 | B-264 process diet | WP5 of the lean reset plan (section 7); WSD-093 replaces WSD-089's success measure |
 | 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
@@ -134,13 +133,6 @@ command string stalls every write under a bash carrier; detect in the doctor or 
 mid-task answerer (`SKILL.md` USE FOR; `add-warehouse-load` calls it); B-280 measured the doc (opened 0/6), not the skill.
 The READMEs show it as a conditional developer step (B-262). Left: Common Tasks/defaults/ARCHITECTURE listing with B-256,
 `disable-model-invocation` with B-257; no WSD until one of those settles it.
-
-### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** M · **Invariants:** #1 #2
-**Status:** Open. The frozen-bundle paragraph appears 15 times across eight files, several hedges four to five times, the
-rails in three places. Measure the candidate with `-TargetPatch` (B-253) against the unpatched arm, non-inferiority fixed in
-advance, on a scenario that opens the changed text. Copilot CLI loads all three instruction files (~111K chars, B-278).
 
 ### B-256 · List the warehouse skills only where repository evidence selects them
 **Filed against:** v0.86.7 (2026-09-18)

@@ -12667,3 +12667,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   rule-ablation remainder became an instrument, not a knockout catalogue, after two fresh-session adversarial reviews:
   `-TargetPatch` runs a text variant through the unpatched arm's fixture path (`53a691fd`). Its first use: route-prompt
   fires and is read under `claude -p` (3/3). The n=12 hook knockout went to B-257; B-255 measures its own candidate.
+
+- **B-255** — DONE **2026-09-24**, narrowed after an adversarial review of its filing. The rules carrier and the three
+  `AGENTS.md` drop the hook-epistemic sentences and the "delivery profile proves no command" repeats, keeping every
+  instruction; `static.claude` about −460 chars per dist, `static.copilot` about −877. Dropped: the frozen-bundle paragraph
+  (no always-loaded bytes; each reviewer's only copy of B-226's hash check), `route-prompt.ps1` rails (B-257), command
+  repeats (already pointers or role-specific). Unmeasured by user decision: n=6 `-TargetPatch` detects only a collapse.

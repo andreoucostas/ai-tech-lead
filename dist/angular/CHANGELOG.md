@@ -4,6 +4,17 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.89.3 — Unreleased
+
+- **The framework rules your agent loads on every turn are shorter.** A few sentences in
+  `.github/instructions/framework-rules.instructions.md` described what hooks can and cannot be shown
+  to do, rather than telling your agent anything to do; they are gone, and "a delivery profile proves
+  no command" is no longer repeated where "run only exact recorded invocations" already says it. No
+  rule changed: workflow rails stay binding, the security pass still applies whether or not a hook
+  reminder appears, and the team wiki is still read on demand. An update does not overwrite `AGENTS.md`: run
+  `/generate-copilot` afterwards so it carries the same wording, or its mirror check reports it as
+  out of date.
+
 ## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new
