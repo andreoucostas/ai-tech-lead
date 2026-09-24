@@ -466,8 +466,8 @@ if ($changelogStamp.Stamped -gt 0) {
     Write-Host "All four authored CHANGELOG heads were already stamped $releaseDate (release retry)."
 }
 
-# ---- 2. Stamp src: core CLAUDE.md header + the three framework-version.json overlays ----
-$cl  = Join-Path $repo 'src/core/CLAUDE.md'
+# ---- 2. Stamp src: core AGENTS.md header + the three framework-version.json overlays ----
+$cl  = Join-Path $repo 'src/core/AGENTS.md'
 $txt = [System.IO.File]::ReadAllText($cl)
 $txt = [regex]::Replace($txt, '(?m)^(\s*version:\s*)\S+', "`${1}$Version", 1)
 $txt = [regex]::Replace($txt, '(?m)^(\s*applied:\s*)\S+', "`${1}$today", 1)

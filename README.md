@@ -38,7 +38,8 @@ three install modes on the target repo: **greenfield** (no AI tooling yet — pl
 **brownfield** (existing AI tooling — originals are archived to `docs/pre-adoption/` and a
 `.claude/adoption-pending.json` is written for `/adopt` to pick up), and **update** (target
 already has a `.claude/framework-version.json` stamp). Update has three ownership classes:
-consumer-owned protected paths such as `CLAUDE.md` are restored, framework-owned machinery is
+consumer-owned protected paths such as `AGENTS.md` are restored (an older layout with the project
+text in `CLAUDE.md` is moved into `AGENTS.md` once, with backups), framework-owned machinery is
 overwritten, and mixed-ownership `.claude/settings.json` is backed up to
 `.claude/.state/settings.json.pre-update` before it is refreshed and adapted to the host. Preserve
 local edits to framework-owned files before updating, and review the resulting diff before commit.
@@ -64,8 +65,8 @@ directory.
 
 Each dist's generated **`framework-ownership.json` is authoritative** for the installed path set and ownership class; review that manifest rather than relying on a hard-coded file count. The installed framework files are meant to be committed.
 That is not incidental: hooks have to exist in the tree for every developer who clones, skills and
-commands have to be on disk for the agent to find them, and `CLAUDE.md` plus the instructions
-carrier *are* the product. Nothing here is build output.
+commands have to be on disk for the agent to find them, and `AGENTS.md`, its `CLAUDE.md` import stub
+and the instructions carrier *are* the product. Nothing here is build output.
 
 Each dist ships **`framework-ownership.json`**, a generated manifest listing every installed path
 with one of three ownership classes:
@@ -110,7 +111,7 @@ pwsh -NoProfile -File install.ps1 -Stack monorepo C:\path\to\your-repo
 
 After the copy lands and is committed in the target repo, a developer starts a Claude Code (or
 Copilot) session there and runs `/bootstrap` (greenfield) or `/adopt` (brownfield) to populate
-`CLAUDE.md`/`TECH_DEBT.md` from the real codebase. See a dist's own `README.md` (e.g.
+`AGENTS.md`/`TECH_DEBT.md` from the real codebase. See a dist's own `README.md` (e.g.
 [`dist/dotnet/README.md`](./dist/dotnet/README.md)) for the full consumer-facing walkthrough —
 that's the document a developer actually reads after installing; this root README only covers
 getting the framework itself into a repo.
@@ -135,7 +136,7 @@ getting the framework itself into a repo.
 `scripts/build.ps1` is the composer: it reads `src/core` plus the target dist's
 `src/stacks/<dist>/` overrides and writes a complete `dist/<dist>/` tree. Two gates run against
 that output — `validate-dist.ps1` (marker resolution, JSON validity, PowerShell-only topology and AST parse,
-each dist's own `template-checks` for `CLAUDE.md`↔`AGENTS.md` mirror parity, and `no-meta-leak`,
+each dist's own `template-checks` for the `CLAUDE.md`→`AGENTS.md` import layout, and `no-meta-leak`,
 which fails if maintainer vocabulary reaches a shipped file) and each dist's own hook test suite
 (`dist/<dist>/tests/hooks/Invoke-HookTests.ps1`, a dependency-free PowerShell harness that pipes
 JSON fixtures at every hook and asserts the PowerShell semantics). CI (`.github/workflows/ci.yml`)

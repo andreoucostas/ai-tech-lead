@@ -12678,3 +12678,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   `warehouse-route-p1/p2/p3` row (0/61, Copilot 0.89.1 runs included) invoked `map-warehouse` mid-task; the route grader's
   outcome is the SQL artifact, the skill channel is diagnostic only; `/bootstrap` Phase 3a already gates the listing
   (B-256 narrowed to the pre-bootstrap window). `disable-model-invocation` dropped: `add-warehouse-load` step 1 calls it.
+
+- **B-272** — DONE **2026-09-24** for **v0.90.0** (WSD-098). Shipped `AGENTS.md` is the instruction file, `CLAUDE.md` a
+  two-import stub; the mirror, its gates and `SkillListParity` are gone; update mode moves the older layout once, with
+  backups. The authoring-repo half was already done by the lean reset. VS Code attachment on no-edit turns unobserved.

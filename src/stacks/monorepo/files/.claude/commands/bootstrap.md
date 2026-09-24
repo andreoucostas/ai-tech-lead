@@ -20,7 +20,7 @@ Before starting analysis:
 2. **Select evidenced profiles before dispatching a pass.** Within the bounded, excluded application-marker scope, select **.NET** only when one or more `*.csproj` files exist; a `*.sln` alone is not .NET application evidence because it may contain only SSDT/`*.sqlproj` warehouse projects. Select **Angular** only when `angular.json`; an Nx/project configuration with an exact-case Angular token in a plugin, executor, generator, schematic, or target-default field; or a `package.json` with an exact-case `"@angular/core"` key under `dependencies`, `devDependencies`, `peerDependencies`, or `optionalDependencies` exists. A key/string elsewhere in the manifest is not evidence, and malformed/unreadable JSON is an incomplete scan rather than absence. Select **warehouse-SQL** only when the repository-wide shared classifier in `scripts/warehouse-signals.tsv` finds at least two independent signal categories; report the matched categories. Profiles may coexist. If none is evidenced, report that no applicable profile was found and **STOP**: do not dispatch shared A8, synthesize findings, populate artifacts, or infer an application. Do not copy the warehouse patterns into this command — the shared table is authoritative.
 3. **Profile-specific pre-flight.** For .NET, after `*.csproj` evidence selects the profile, use solution files only as locators and inspect project roots, target frameworks, `global.json`, and `Directory.Build.props`. For Angular, locate workspace roots and inspect `@angular/core` versions/configuration. For warehouse-SQL, locate SQL roots, layer/schema layout, deployment/orchestration configuration, and validation tooling. Never inspect a profile's manifest, infer its version, or invent its command when that profile is absent.
 4. **Record executable commands from owned evidence.** Before discovery, require valid root `framework-ownership.json` and `framework-retirements.json`. Resolve every repository path cited directly or through a wrapper; normalize quoted paths, leading `./` or `.\`, and slash direction. A command whose resolved aggregate runner or direct leaf is `framework-owned/overwritten` or retired is framework evidence, not application-command evidence: do not run or record it; report framework checks separately. If an existing Verification Commands row names one, replace it as stale in this workflow (or flag `/rebootstrap` when encountered elsewhere). Inspect committed CI workflow/pipeline files, documented developer commands, checked-in scripts/Makefiles, and selected-profile manifests. Record a row for each durable category: **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**. Each available row must give an exact root-relative command, its exact evidence path, and an execution policy; a manifest script may be recorded as its package-manager invocation. Mark migration/deploy `manual/CI-only` unless the exact invocation is evidenced as non-mutating validation/dry-run: inventory is not permission to mutate an environment. For a category with no applicable selected profile or no evidenced command, write `not available (no evidenced command)`. Never invent `dotnet`, `npm`, `ng`, or any substitute command.
-5. **Check for existing configuration** — if `CLAUDE.md` already has populated content (not just template defaults), back up the existing conventions section and merge findings rather than overwriting. Never touch `LEARNINGS.md` — it is append-only.
+5. **Check for existing configuration** — if `AGENTS.md` already has populated content (not just template defaults), back up the existing conventions section and merge findings rather than overwriting. Never touch `LEARNINGS.md` — it is append-only.
 6. **Scale only selected profiles.** If .NET has more than 30 projects, Angular more than 200 components, or warehouse-SQL a large object set, focus on the most actively changed areas of that profile. Note what was analysed and skipped. When more than one application profile is selected, recommend path-scoped `.github/instructions/<stack>.instructions.md` files after generation; do not auto-generate them.
 7. **Establish ownership and dismissal boundaries.** Read root `framework-ownership.json` and require a valid `paths` inventory. Exclude every `framework-owned/overwritten` path from shared A8's evidence corpus; a `mixed` path may support a finding only when the cited evidence is consumer-authored and corroborated outside framework-owned paths. If `TECH_DEBT.md` already contains `## Dismissed proposals`, freeze those rows before analysis so generation cannot overwrite or re-propose them.
 
@@ -66,7 +66,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - If relational/EF: migration management, N+1, missing includes, untracked-query opportunities
 - If document store: collection/index conventions, query-shape vs index alignment, transaction/consistency assumptions
 - If SQL/stored-procedure based: schema organisation, parameterization vs dynamic SQL, and the deployment vehicle for schema changes (SQL project build / migration scripts)
-- If data-warehouse signals (staging/dim/fact schemas or `Dim*`/`Fact*` naming, load/orchestration procs, batch/watermark control tables, ETL pipeline artifacts): identify the layers (staging vs warehouse vs marts), load ordering (dims before facts), the rerun/idempotency mechanism (watermarks, batch ids, partition switch, versioned runs), and the slowly-changing-dimension strategy per dimension — these become Conventions; the `map-warehouse` skill deep-dives on demand. End the warehouse conventions with a **one-line index entry**, mirroring Architecture Decisions: *"Warehouse structure — tables and keys, fact → dimension relationships, load ordering — is mapped using `[docs/warehouse-map.md](./docs/warehouse-map.md)`. Read it before writing a warehouse query or load; run `/map-warehouse` to create or refresh it."* Write that line whether or not the file exists yet — it is a durable pointer, and the detail belongs in the map rather than in CLAUDE.md
+- If data-warehouse signals (staging/dim/fact schemas or `Dim*`/`Fact*` naming, load/orchestration procs, batch/watermark control tables, ETL pipeline artifacts): identify the layers (staging vs warehouse vs marts), load ordering (dims before facts), the rerun/idempotency mechanism (watermarks, batch ids, partition switch, versioned runs), and the slowly-changing-dimension strategy per dimension — these become Conventions; the `map-warehouse` skill deep-dives on demand. End the warehouse conventions with a **one-line index entry**, mirroring Architecture Decisions: *"Warehouse structure — tables and keys, fact → dimension relationships, load ordering — is mapped using `[docs/warehouse-map.md](./docs/warehouse-map.md)`. Read it before writing a warehouse query or load; run `/map-warehouse` to create or refresh it."* Write that line whether or not the file exists yet — it is a durable pointer, and the detail belongs in the map rather than in AGENTS.md
 
 #### A3: Dependency Injection & Services
 - Registration — individual / by convention / extension methods
@@ -86,7 +86,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 
 #### A5: Testing
 - Test projects, framework (xUnit/NUnit/MSTest), mocking library, and assertion library
-- Report these as a binding finding; synthesis must record them verbatim in `CLAUDE.md > Conventions > Testing`
+- Report these as a binding finding; synthesis must record them verbatim in `AGENTS.md > Conventions > Testing`
 - If no test projects exist, state that as this pass's primary finding — do not silently return it as "coverage gaps"
 - Coverage gaps
 - Test quality — behaviour vs implementation
@@ -224,7 +224,7 @@ For each item: current pattern → target pattern → brief rationale. Keep prof
 Before generating any artifact, ask the developer a small number of targeted questions — **only where human judgment materially changes the output and the code alone cannot resolve it.** Collect all questions into a **single message** (never drip one at a time). Limit to ≤5 questions.
 
 **Ask about:**
-1. **Convention contradictions** — if two conflicting patterns exist for the same area: *(.NET example)* *"Your codebase uses both [A] (e.g. `services.AddScoped<IFoo, Foo>()` in `file`) and [B] (e.g. `services.AddFromAssembly()` in `file`) for service registration. Which is the intended convention?"*; *(Angular example)* *"Your codebase uses both [A] (e.g. NgRx in `feature-a/`) and [B] (e.g. BehaviorSubject services in `feature-b/`) for state management. Which is the intended approach — or are these genuinely different contexts?"* Frame as a plain engineering question about the codebase, never about which CLAUDE.md section to use.
+1. **Convention contradictions** — if two conflicting patterns exist for the same area: *(.NET example)* *"Your codebase uses both [A] (e.g. `services.AddScoped<IFoo, Foo>()` in `file`) and [B] (e.g. `services.AddFromAssembly()` in `file`) for service registration. Which is the intended convention?"*; *(Angular example)* *"Your codebase uses both [A] (e.g. NgRx in `feature-a/`) and [B] (e.g. BehaviorSubject services in `feature-b/`) for state management. Which is the intended approach — or are these genuinely different contexts?"* Frame as a plain engineering question about the codebase, never about which AGENTS.md section to use.
 2. **Pattern intent** — if a pattern recurs but is applied inconsistently: *"I see [X] in [N] places but not all. Is this intentional (applied selectively) or drift (should be consistent)?"*
 3. **.NET only — financial domain scope** — if the .NET A7 pass fired: *"I detected financial-domain signals in [area/file]. Which invariant, tolerance, and preconditions apply, and where is their policy or executable evidence?"*
 
@@ -236,11 +236,11 @@ Before generating any artifact, ask the developer a small number of targeted que
 
 ## Phase 3 — Generate artifacts
 
-### 3a: Populate CLAUDE.md
+### 3a: Populate AGENTS.md
 
 Enter Phase 3 only when at least one profile was selected. Populate every profile-specific artifact section only for its selected profile. For a warehouse-only repository, populate warehouse purpose, schema/layer/load context, warehouse conventions and commands; skip .NET/Angular application context, Angular Version/components/forms/defaults, application manifests, and application-only skills.
 
-Read the existing CLAUDE.md template in the project root. Replace every placeholder section with real findings from this codebase:
+Read the existing AGENTS.md template in the project root. Replace every placeholder section with real findings from this codebase:
 
 Code establishes implemented surfaces, not product intent or actual user behavior or value. Label code-derived context as implementation observations. Leave intended purpose and target users unknown unless supplied by a named person or role authorized to decide them; leave actual behavior and value unknown unless supported by direct research or operational evidence.
 
@@ -248,20 +248,20 @@ Code establishes implemented surfaces, not product intent or actual user behavio
 - **Repository Structure**: actual selected-profile layout with dependency diagram — .NET project layout, Angular folder/module layout, warehouse SQL/schema/load layout, and only evidenced connections between them.
 - **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use only selected profiles' relevant checklist: .NET (Architecture, Naming, DI, Data Access, API, Async, Null Handling, Logging, Testing), Angular (Angular Version, Architecture, Component Design, Forms, State Management, RxJS, API/HTTP, Typing, Testing), and warehouse-SQL (schema/layer boundaries, grains/keys, load ordering/idempotency, deployment, validation/testing). Record observed reality and never name a technology an analysis pass did not evidence. End each applicable Testing/Validation subsection with a one-line target test shape. If Angular is selected below version 17, adjust conventions to match it. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
 
-  **Per-profile subsections:** where a CLAUDE.md section carries `### .NET` / `### Angular` / `### Warehouse-SQL` subsections, populate only selected profiles from their own directories and cite matching exemplar paths — never a `.cs` path under Angular/Warehouse-SQL or a `.ts` path under .NET/Warehouse-SQL.
-- **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of CLAUDE.md holds it within the token budget — it loads on nearly every turn.
-- **Common Tasks**: do NOT write recipes inline in CLAUDE.md. The framework-shipped skills are an applicability-gated delivery-profile superset: keep them byte-stable even when their technology or recipe is absent. Do not delete, rewrite, move, or replace a shipped skill merely because it does not apply. Requested shared A8 discovery may create only the new review drafts defined in 3a-bis; it never changes an existing project skill or its ownership. Update the Common Tasks bullet list in CLAUDE.md to advertise only skills applicable to the selected profiles and evidenced constructs — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks. Dormant shipped skills remain installed and rely on their applicability gates.
+  **Per-profile subsections:** where a AGENTS.md section carries `### .NET` / `### Angular` / `### Warehouse-SQL` subsections, populate only selected profiles from their own directories and cite matching exemplar paths — never a `.cs` path under Angular/Warehouse-SQL or a `.ts` path under .NET/Warehouse-SQL.
+- **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of AGENTS.md holds it within the token budget — it loads on nearly every turn.
+- **Common Tasks**: do NOT write recipes inline in AGENTS.md. The framework-shipped skills are an applicability-gated delivery-profile superset: keep them byte-stable even when their technology or recipe is absent. Do not delete, rewrite, move, or replace a shipped skill merely because it does not apply. Requested shared A8 discovery may create only the new review drafts defined in 3a-bis; it never changes an existing project skill or its ownership. Update the Common Tasks bullet list in AGENTS.md to advertise only skills applicable to the selected profiles and evidenced constructs — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks. Dormant shipped skills remain installed and rely on their applicability gates.
 
   **Persistence check:** if the selected .NET profile's data access is not EF Core, leave shipped `add-entity` unchanged. A grounded repeatable operation may become a new reviewed draft only under 3a-bis; it does not authorize a competing framework operation. When .NET is absent, leave application recipes dormant and unadvertised. Advertise `map-warehouse` and `add-warehouse-load` only when the warehouse-SQL profile was selected; otherwise leave both dormant and unadvertised. Absence is handled by applicability, not file deletion. `.claude/disabled-skills/` is only for an explicit maintainer decision recorded by `/rebootstrap`, never automatic profile selection. The shared warehouse classifier already separates warehouse-SQL from a raw-SQL repository.
 
   **A8 discovery boundary:** the worker reports scoped repository knowledge only; the parent applies 3a-bis. Discovery output is not team policy, executable instruction, independent proof, or permission for wider reads or writes.
 
-  **Exemplar grounding (instance-shaped skills):** For the existing instance-shaped operations—.NET: `add-endpoint`, `add-entity`, `register-service`, `add-warehouse-load`; Angular: `add-component`, `add-service`, `add-lazy-route`, `add-signal-store`—confirm a real instance exists (Verification Rule #1 — Read/Grep confirms the path) **in the matching stack's directories**. If it passes the quality cross-check (not flagged as debt), record the path in the applicable Common Tasks entry: *"For a concrete current instance in this repo, see `<path>` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict."* Never append repository-specific evidence to a framework-shipped skill. Exempt process skills (`add-tests`, `create-adr`, `dependency-audit`, `perf`, `map-warehouse`, `enforce-architecture`, `enforce-standards`) — they are not instance-shaped "add an X" recipes.
-  **Command inventory:** add a concise `### Verification Commands` table to `CLAUDE.md > Conventions` with columns for category, exact command, exact evidence path, and execution policy, using the fixed categories **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**. Mark migration/deploy `manual/CI-only` unless the exact invocation is evidenced as non-mutating validation/dry-run; it may be run otherwise only with explicit developer authorization against a known target. For every category with no applicable selected profile or no evidenced command, write `not available (no evidenced command)`. This is an inventory, not a recommendation or permission to install or run a tool.
+  **Exemplar grounding (instance-shaped skills):** For the existing instance-shaped operations—.NET: `add-endpoint`, `add-entity`, `register-service`, `add-warehouse-load`; Angular: `add-component`, `add-service`, `add-lazy-route`, `add-signal-store`—confirm a real instance exists (Verification Rule #1 — Read/Grep confirms the path) **in the matching stack's directories**. If it passes the quality cross-check (not flagged as debt), record the path in the applicable Common Tasks entry: *"For a concrete current instance in this repo, see `<path>` — reproduce its **conventions and structure**, not its contents; AGENTS.md > Conventions wins on any conflict."* Never append repository-specific evidence to a framework-shipped skill. Exempt process skills (`add-tests`, `create-adr`, `dependency-audit`, `perf`, `map-warehouse`, `enforce-architecture`, `enforce-standards`) — they are not instance-shaped "add an X" recipes.
+  **Command inventory:** add a concise `### Verification Commands` table to `AGENTS.md > Conventions` with columns for category, exact command, exact evidence path, and execution policy, using the fixed categories **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**. Mark migration/deploy `manual/CI-only` unless the exact invocation is evidenced as non-mutating validation/dry-run; it may be run otherwise only with explicit developer authorization against a known target. For every category with no applicable selected profile or no evidenced command, write `not available (no evidenced command)`. This is an inventory, not a recommendation or permission to install or run a tool.
 
-The Agentic Workflow now lives in `.github/instructions/framework-rules.instructions.md`; do not edit that framework-owned file. Preserve the `@.github/instructions/framework-rules.instructions.md` import line in `CLAUDE.md` exactly as-is. Never touch `LEARNINGS.md` — it is append-only.
+The Agentic Workflow now lives in `.github/instructions/framework-rules.instructions.md`; do not edit that framework-owned file. Leave `CLAUDE.md` exactly as-is: the stub importing `AGENTS.md` and `.github/instructions/framework-rules.instructions.md`, with no project content. Never touch `LEARNINGS.md` — it is append-only.
 
-**Token budget**: `CLAUDE.md` loads on nearly every agent turn and anchors the prompt cache — keep it ≤ ~400 lines. Put verbose detail (long ADRs, exhaustive structure dumps) in on-demand files (`docs/`, skills); keep CLAUDE.md to the high-frequency rules. `scripts/docs-sync-check.*` warns past the budget.
+**Token budget**: `AGENTS.md` loads on nearly every agent turn and anchors the prompt cache — keep it ≤ ~400 lines. Put verbose detail (long ADRs, exhaustive structure dumps) in on-demand files (`docs/`, skills); keep AGENTS.md to the high-frequency rules. `scripts/docs-sync-check.*` warns past the budget.
 
 ### 3a-bis: Capture repository knowledge as review drafts
 
@@ -365,20 +365,14 @@ Effort: S (< 1hr) / M (half day) / L (1-2 days) / XL (needs spike)
 
 Sort by severity then effort. One `## DEBT-NNN` block per item.
 
-Before generating rule carriers, reconcile `CLAUDE.md` references to specific debt items with the
-IDs actually assigned in `TECH_DEBT.md`. Update the canonical reference first, then derive both
-`AGENTS.md` and `.github/copilot-instructions.md` from it. Preserve established IDs; report any
+Before generating rule carriers, reconcile `AGENTS.md` references to specific debt items with the
+IDs actually assigned in `TECH_DEBT.md`. Update the canonical reference first, then derive
+`.github/copilot-instructions.md` from it. Preserve established IDs; report any
 ambiguous match instead of guessing or renumbering. Generic links to the register need no item ID.
 
 Before replacing the register, preserve every existing `## Dismissed proposals` row byte-for-byte. Derive `<area>::<claim-slug>` from the stable subsystem and problem, not severity or remedy. Suppress a candidate with the same key, or the same problem and consequence over overlapping paths/symbols. Reopen only for materially changed evidence; keep the dismissal and add `Reopens dismissal: <key>` plus `Evidence delta: <specific change>` to the new active block.
 
 Use only selected-profile paths and categories in the register: a warehouse-only repo uses SQL/load/orchestration paths and warehouse validation/deployment categories, not the `.cs` or `.ts` examples above. If a selected .NET or Angular testing pass found no tests, write one Severity-High Testing entry per affected profile whose recommended fix explicitly names the `add-tests` skill's suite-bootstrap mode. If W3 found no warehouse test or validation assets, write a warehouse Testing entry based on that finding without naming an application tool. Surface applicable entries in the top 3 quick wins.
-
-### 3c: AGENTS.md (generated full mirror)
-
-`AGENTS.md` is a **generated full mirror** of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks). It is the full rules carrier for **Codex and GitHub code review**; Cursor reads both `CLAUDE.md` and `AGENTS.md`. Claude Code and supported GitHub Copilot agent surfaces read `CLAUDE.md` directly. Gemini defaults to `GEMINI.md`; Aider requires explicit read configuration. **Do not hand-write a pointer file.**
-
-AGENTS.md is produced by the `/generate-copilot` workflow (Part B), which Phase 3f runs **after** Phase 3a has populated `CLAUDE.md > Conventions`. So there is nothing to do here except ensure 3f runs. If a stale or pointer-style `AGENTS.md` already exists, it will be **regenerated** (overwritten) by 3f — do not preserve hand edits to it.
 
 ### 3d: Populate FRAMEWORK-CONTEXT.md > Detected Framework Packages
 
@@ -466,14 +460,13 @@ If `SECURITY_FINDINGS.md` does not exist at the repo root, create it using the t
 
 If `SECURITY_FINDINGS.md` already exists, leave it entirely alone.
 
-### 3f: Generate the agent-facing derived files
+### 3f: Generate the agent-facing derived file
 
-Run the `/generate-copilot` workflow. It regenerates **both** derived files from the now-populated CLAUDE.md:
+Run the `/generate-copilot` workflow. It regenerates the derived file from the now-populated AGENTS.md:
 
 - **`.github/copilot-instructions.md`** — slim (≤80 lines), terse imperative one-liners, Conventions + always-apply Boy Scout only. For **inline editor completions**.
-- **`AGENTS.md`** — full mirror of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks), preserving the `GENERATED FILE` banner. It is for **Codex and GitHub code review**; Cursor reads both `CLAUDE.md` and `AGENTS.md`. Claude Code and supported GitHub Copilot agent surfaces read `CLAUDE.md` directly. Gemini defaults to `GEMINI.md`; Aider requires explicit read configuration.
 
-See `.claude/commands/generate-copilot.md` for the exact rules for each file.
+See `.claude/commands/generate-copilot.md` for the exact rules.
 
 ---
 
@@ -504,7 +497,7 @@ failure, or CANT-VERIFY result in Phase 4.
 
 ## Phase 4 — Report
 
-Run `git diff CLAUDE.md` and `git diff TECH_DEBT.md` to show the user exactly what changed. Present the diff summary before the rest of the report.
+Run `git diff AGENTS.md` and `git diff TECH_DEBT.md` to show the user exactly what changed. Present the diff summary before the rest of the report.
 
 Then output:
 - Number of findings per severity
@@ -513,7 +506,7 @@ Then output:
 - Files generated/modified
 - **Repository knowledge discovery (A8)**: list each new review draft with body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result; also list skipped duplicates/owner-routed items, actual reads, inventory-only/excluded/inaccessible areas, and the next bounded continuation. State that drafts await PR review and changed no owner-authored knowledge.
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: two named HttpClients with Polly retry on the API, auth + correlation-ID interceptors on the frontend") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).
-- **Warehouse detected — point the developer at `/map-warehouse`** (emit this bullet only when the warehouse-SQL profile was selected and Phase 3a kept the warehouse skills): one line — *"I detected data-warehouse signals and captured the essentials in CLAUDE.md > Conventions > Data Access. Before your first warehouse change, run `/map-warehouse` for a full layer / grain / load-ordering / idempotency map (it offers to write `docs/warehouse-map.md`). That is a re-runnable mapping pass, not a setup step — run it again whenever the warehouse grows. When you actually add or change a fact/dimension load, reach for the `add-warehouse-load` skill."*
+- **Warehouse detected — point the developer at `/map-warehouse`** (emit this bullet only when the warehouse-SQL profile was selected and Phase 3a kept the warehouse skills): one line — *"I detected data-warehouse signals and captured the essentials in AGENTS.md > Conventions > Data Access. Before your first warehouse change, run `/map-warehouse` for a full layer / grain / load-ordering / idempotency map (it offers to write `docs/warehouse-map.md`). That is a re-runnable mapping pass, not a setup step — run it again whenever the warehouse grows. When you actually add or change a fact/dimension load, reach for the `add-warehouse-load` skill."*
 - **Mixed-stack instructions reminder** (emit only when more than one profile was selected): recommend the user create per-stack `.github/instructions/<stack>.instructions.md` files with `applyTo:` frontmatter (see README "Per-stack rules (path-scoped Copilot instructions)").
 
 **Important**: the Conventions section was generated from code analysis and your Phase 2b answers. Verify it before relying on it — sections marked `<!-- INFERRED -->` flag specific areas where the code gave conflicting signals that couldn't be resolved automatically. All other sections reflect observed code patterns; review them for accuracy, not for AI-architecture decisions.
@@ -522,7 +515,7 @@ Then output:
 
 Unless this `/bootstrap` is being invoked from within `/adopt`, emit a prioritized checklist capped at about 10 entries. Under `/adopt`, suppress this checklist because adopt Phase 8 is the sole emitter and aggregates these sources. Re-scan the written artifacts, omit any source category with no entries, and use this priority order:
 
-1. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (CLAUDE.md > Conventions > [subsection])"
+1. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (AGENTS.md > Conventions > [subsection])"
 2. For each `(c) unsure` or tooling-only hazard from 3d-bis: "Is [specific risk] real in this codebase? If you're not sure, leave it as it is. (FRAMEWORK-CONTEXT.md > Known Hazard Areas)"
 3. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line from the report as a yes/no question with its skill file pointer.
 

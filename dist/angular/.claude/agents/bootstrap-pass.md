@@ -73,4 +73,4 @@ If the pass id is unknown, reply: `Unknown pass id: <id>. Valid: A1, A2, A3, A4,
 
 If the codebase has no relevant files for A1–A6, reply: `Pass <id>: no applicable files found in this codebase.`
 
-You do **not** modify any file. You do **not** generate `CLAUDE.md`, `TECH_DEBT.md`, a wiki entry, skill, map, or any other artifact, and do not run provider trials or spend provider credits to validate discovery—the parent `/bootstrap` synthesises pass reports only; later capture owns routing and writes.
+You do **not** modify any file. You do **not** generate `AGENTS.md`, `TECH_DEBT.md`, a wiki entry, skill, map, or any other artifact, and do not run provider trials or spend provider credits to validate discovery—the parent `/bootstrap` synthesises pass reports only; later capture owns routing and writes.

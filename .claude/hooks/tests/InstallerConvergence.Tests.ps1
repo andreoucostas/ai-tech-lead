@@ -800,7 +800,7 @@ It 'protected stale command reporting is byte-stable and identical in WhatIf and
     $candidate = New-LegacyGitHookCandidateSource
     $target = New-LegacyGitHookTarget
     try {
-        [IO.File]::WriteAllText((Join-Path $target 'CLAUDE.md'), "Run bash scripts/setup-git-hooks.sh --scan.`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $target 'CLAUDE.md'), "@AGENTS.md`nRun bash scripts/setup-git-hooks.sh --scan.`n", [Text.UTF8Encoding]::new($false))
         [IO.File]::WriteAllText((Join-Path $target 'bitbucket-pipelines.yml'), "script: ./scripts/setup-git-hooks.sh --scan`n", [Text.UTF8Encoding]::new($false))
         & git -C $target add -- CLAUDE.md bitbucket-pipelines.yml
         & git -C $target commit -q -m 'stale protected commands'

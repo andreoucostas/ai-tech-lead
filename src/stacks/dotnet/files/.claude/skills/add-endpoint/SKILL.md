@@ -13,7 +13,7 @@ description: >
 
 # Add a new API endpoint end-to-end
 
-Match CLAUDE.md > Conventions > Architecture (dependency direction), > API Design (controller thinness, DTO separation), and > Async (CancellationToken propagation).
+Match AGENTS.md > Conventions > Architecture (dependency direction), > API Design (controller thinness, DTO separation), and > Async (CancellationToken propagation).
 
 ## Project-derived pattern authority
 
@@ -31,4 +31,4 @@ Derive this operation's shape from first-party implementation, configuration, te
 6. When an applicable test harness is evidenced, add the smallest behavior-focused test at the level it already uses. Do not create a test project, runner, or fixture incidentally.
 7. Add a full HTTP-path test only when the repository already evidences that boundary (for example a `WebApplicationFactory` fixture). Otherwise report the integration-test category as **not available**.
 
-After scaffolding, derive build, test, format, lint, migration/deploy, and data-validation commands from `CLAUDE.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Run only applicable evidenced commands and report every unavailable category as **not available**; Boy Scout every touched file and self-review against CLAUDE.md > Conventions.
+After scaffolding, derive build, test, format, lint, migration/deploy, and data-validation commands from `AGENTS.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Run only applicable evidenced commands and report every unavailable category as **not available**; Boy Scout every touched file and self-review against AGENTS.md > Conventions.

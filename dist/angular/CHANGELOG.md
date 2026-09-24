@@ -4,16 +4,33 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.89.3 — Unreleased
+## 0.90.0 — Unreleased
+
+- **`AGENTS.md` is now the one instruction file you edit; `CLAUDE.md` only imports it.** Your
+  conventions, verification commands, architecture index, common tasks and Boy Scout rules live in
+  `AGENTS.md`, which GitHub Copilot, Codex and Cursor read directly. `CLAUDE.md` is a stub with two
+  import lines, `@AGENTS.md` and `@.github/instructions/framework-rules.instructions.md`, so Claude
+  Code loads the same text. Nothing is generated from `CLAUDE.md` any more: `/generate-copilot` now
+  refreshes only `.github/copilot-instructions.md`, and `docs-sync-check` checks the stub instead of
+  comparing two copies. GitHub Copilot, which also reads `CLAUDE.md`, stops loading the framework
+  rules and your conventions twice: its always-loaded instructions shrink by about 40% before
+  `/bootstrap` adds your conventions, and by more after. Codex and Cursor now reach the framework
+  rules through the pointer at the top of `AGENTS.md` instead of an inline copy.
+  **What the update does to your repository:** when `AGENTS.md` is still the generated copy (its
+  first line is the `GENERATED FILE` banner), the installer moves your `CLAUDE.md` text into `AGENTS.md` once,
+  rewrites only the opening lines that described the old layout, writes the `CLAUDE.md` stub, and
+  keeps both originals in `.claude/framework-update-backup/instruction-files/`. Review the diff and
+  bump the version stamp at the top of `AGENTS.md` before committing. If you wrote your own
+  `AGENTS.md`, the installer leaves both files as they are and says so; merge `CLAUDE.md` into
+  `AGENTS.md` yourself and replace `CLAUDE.md` with the stub (`docs/upgrade-checklist.md`, step 8).
+  Until then the session-start hook and `template-checks` remind you.
 
 - **The framework rules your agent loads on every turn are shorter.** A few sentences in
   `.github/instructions/framework-rules.instructions.md` described what hooks can and cannot be shown
   to do, rather than telling your agent anything to do; they are gone, and "a delivery profile proves
   no command" is no longer repeated where "run only exact recorded invocations" already says it. No
   rule changed: workflow rails stay binding, the security pass still applies whether or not a hook
-  reminder appears, and the team wiki is still read on demand. An update does not overwrite `AGENTS.md`: run
-  `/generate-copilot` afterwards so it carries the same wording, or its mirror check reports it as
-  out of date.
+  reminder appears, and the team wiki is still read on demand.
 
 ## 0.89.2 — 2026-09-24
 

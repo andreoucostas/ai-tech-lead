@@ -16,7 +16,7 @@ description: >
 
 # Map a SQL Data Warehouse
 
-Match CLAUDE.md > Conventions > Data Access. Produces a structural map of the warehouse —
+Match AGENTS.md > Conventions > Data Access. Produces a structural map of the warehouse —
 layers, entities, keys, relationships, loads, controls — so changes follow the patterns that are
 already there, and so a report can be written against the joins the warehouse actually has.
 
@@ -190,7 +190,7 @@ already there, and so a report can be written against the joins the warehouse ac
    equivalent (native partitioning clauses, date-suffixed tables).
 
 9. **Report.** Offer to write or refresh `docs/warehouse-map.md` with everything below — offer,
-   don't force. If CLAUDE.md > Conventions describes the warehouse and the code disagrees, flag the
+   don't force. If AGENTS.md > Conventions describes the warehouse and the code disagrees, flag the
    drift; do not silently edit either. Use these seven headings verbatim, in this order, so the
    document is predictable to the next reader and to anything that checks it:
 
@@ -238,7 +238,7 @@ already there, and so a report can be written against the joins the warehouse ac
       objects are not evidence of absence. Missing declarations alone do not establish a defect
       or justify adding constraints; cite the violated convention or demonstrated consequence.
       If remediation changes schema, say that impact analysis is
-      required first; do not invent migration cost or downstream consumers. If `CLAUDE.md` >
+      required first; do not invent migration cost or downstream consumers. If `AGENTS.md` >
       Conventions > Data Access or `docs/defaults.md` explicitly and coherently permits the pattern,
       record the convention instead of calling it a defect. Do not emit an empty placeholder row.
    7. **Querying this warehouse** — the section at the end of this file, copied into the document,

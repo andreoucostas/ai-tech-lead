@@ -3,7 +3,7 @@ description: "Tech-debt workflow: match TECH_DEBT.md entries for an area, confir
 argument-hint: "[area or DEBT-ID]"
 ---
 
-Find and fix tech debt in a specific area of this repository. Derive applicable technologies and validation from repository evidence; do not infer .NET or Angular from this framework distribution. Read TECH_DEBT.md before starting (CLAUDE.md is already loaded).
+Find and fix tech debt in a specific area of this repository. Derive applicable technologies and validation from repository evidence; do not infer .NET or Angular from this framework distribution. Read TECH_DEBT.md before starting (AGENTS.md is already loaded).
 
 ## Input
 $ARGUMENTS
@@ -22,9 +22,9 @@ If TECH_DEBT.md is empty or contains only the template placeholder, run a fresh 
 
 ### Step 2 — Fix
 For each item marked "fix now":
-- Derive applicable test and other validation commands from repository evidence: CLAUDE.md, committed CI, scripts, manifests, and configuration. If a test harness exists, establish its green baseline; otherwise report tests as **not available** and identify the strongest evidenced validation. Do not introduce a foreign harness solely for debt cleanup.
+- Derive applicable test and other validation commands from repository evidence: AGENTS.md, committed CI, scripts, manifests, and configuration. If a test harness exists, establish its green baseline; otherwise report tests as **not available** and identify the strongest evidenced validation. Do not introduce a foreign harness solely for debt cleanup.
 - Apply the fix
-- Derive exact applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands for the touched area from `CLAUDE.md`, committed CI, scripts, manifests, and configuration; run them after each fix and report every unsupported category as **not available**
+- Derive exact applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands for the touched area from `AGENTS.md`, committed CI, scripts, manifests, and configuration; run them after each fix and report every unsupported category as **not available**
 - If an applicable test harness exists but the affected code lacks coverage, add characterization coverage only when it is proportionate to the debt item.
 
 ### Step 3 — Update the register
@@ -35,7 +35,7 @@ For each item marked "fix now":
 - If you discovered new debt during the fix, add it to the register using the per-block format
 
 ### Step 4 — Boy Scout
-Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file touched during the fix.
+Apply Boy Scout Rule (AGENTS.md > Boy Scout Rule) to every file touched during the fix.
 
 ### Step 5 — Wrap up
 @.claude/workflow.md

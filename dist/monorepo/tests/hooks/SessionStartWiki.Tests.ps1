@@ -88,13 +88,8 @@ It 'index above the inline threshold is summarized' {
 }
 
 It 'ordinary feature/fix knowledge routing remains scoped, on-demand, and hook-independent' {
+    # The carrier is the only copy of the routing rules; AGENTS.md no longer mirrors them.
     $carriers = @('.github/instructions/framework-rules.instructions.md')
-    $agentsPath = Join-Path $distRoot 'AGENTS.md'
-    if (Test-Path -LiteralPath $agentsPath -PathType Leaf) {
-        $carriers += 'AGENTS.md'
-    } elseif (Test-Path -LiteralPath (Join-Path $distRoot '.claude/framework-version.json') -PathType Leaf) {
-        Assert $false 'composed distribution omits AGENTS.md'
-    }
     foreach ($relative in $carriers) {
         $path = Join-Path $distRoot ($relative -replace '/', [IO.Path]::DirectorySeparatorChar)
         Assert (Test-Path -LiteralPath $path -PathType Leaf) "knowledge carrier missing: $relative"

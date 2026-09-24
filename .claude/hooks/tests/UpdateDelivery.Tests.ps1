@@ -65,7 +65,9 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
 
 ### 1. Classify the intent (stale inline copy)
 "@ -Encoding utf8
-    Set-Content (Join-Path $t 'AGENTS.md') "# AGENTS`n`nGENERATED FILE`n" -Encoding utf8
+    # A hand-written AGENTS.md (no generated-mirror banner): the B-272 layout migration must decline
+    # it, so this consumer keeps its pre-B-272 CLAUDE.md and exercises the B-97 carrier pointer.
+    Set-Content (Join-Path $t 'AGENTS.md') "# AGENTS`n`nconsumer-authored notes`n" -Encoding utf8
     New-Item -ItemType Directory -Force -Path (Join-Path $t '.github') | Out-Null
     [IO.File]::WriteAllText((Join-Path $t '.github/copilot-instructions.md'), "# Consumer Copilot rules`r`nconsumer sentinel`r`n", [Text.UTF8Encoding]::new($false))
     Set-Content (Join-Path $t '.claude/framework-version.json') "{`"version`": `"$staleVersion`"}" -Encoding utf8
@@ -227,7 +229,8 @@ function New-B194UpdateTarget {
     New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude') | Out-Null
     [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), "{`"version`":`"0.78.2`"}`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $target '.claude/settings.json'), "{`n  `"consumerEdit`": `"B194 SETTINGS SENTINEL`"`n}`n", [Text.UTF8Encoding]::new($false))
-    [IO.File]::WriteAllText((Join-Path $target 'CLAUDE.md'), "B194 PROTECTED UPDATE SENTINEL`n", [Text.UTF8Encoding]::new($false))
+    # Already on the B-272 layout (CLAUDE.md imports AGENTS.md), so update must leave it untouched.
+    [IO.File]::WriteAllText((Join-Path $target 'CLAUDE.md'), "@AGENTS.md`nB194 PROTECTED UPDATE SENTINEL`n", [Text.UTF8Encoding]::new($false))
     return $target
 }
 
@@ -372,6 +375,7 @@ $powerShellExtension = 'ps1'
         Assert-BytesEqual -Expected $learningsExpectedBytes -Actual $learningsBefore -Message 'disabled-skill fixture was not exact BOM + HT + CRLF input'
         Assert-BytesEqual -Expected $learningsBefore -Actual ([IO.File]::ReadAllBytes($learningsPath)) -Message 'update mode modified the protected disabled-skill ledger'
         Assert ($out -match '(?m)^PLAN preserve docs/architecture-decisions\.md\r?$') "update operation plan did not classify the consumer ADR log as preserved. Output:`n$out"
+        Assert ($out -match 'AGENTS\.md is not the retired generated mirror') "a declined layout migration was not reported. Output:`n$out"
         Assert-BytesEqual -Expected $patternBefore -Actual ([IO.File]::ReadAllBytes($patternPath)) -Message 'ordinary update modified consumer-owned project-pattern sidecar'
     }
 
@@ -477,6 +481,114 @@ $powerShellExtension = 'ps1'
     }
 
     Remove-Item -Recurse -Force $target -ErrorAction SilentlyContinue
+}
+
+# B-272: the older layout (instructions in CLAUDE.md, AGENTS.md a generated mirror) moves once.
+# Consumer text survives byte-for-byte in the backups and line-for-line in AGENTS.md; only the
+# template lines that describe the old layout, and the import that moves to the stub, change.
+$powerShellExtension = 'ps1'
+& {
+    $dist = 'dotnet'
+    $t = Join-Path ([IO.Path]::GetTempPath()) "b272layout-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+    $bomUtf8 = [Text.UTF8Encoding]::new($true)
+    $stampAndTitle = @('<!--', 'ai-tech-lead-framework', '  template: dotnet', '  version: 0.89.2', '  applied: 2026-09-01', '-->', '# Acme Billing', '')
+    $body = @('## Conventions', '', 'Money is decimal(19,4); never float. B272 CONSUMER SENTINEL — DO NOT CLOBBER.', '',
+        '> Our Codex bot mirrors this: never in AGENTS.md edits, and CLAUDE.md wins on any conflict with README.md.', '',
+        '```md', '<!-- FRAMEWORK-OWNED: example -->', '@.github/instructions/framework-rules.instructions.md', '```', '',
+        '## Boy Scout Rule', '', 'Delete commented-out code.')
+    $bodyText = (@($body) -join "`n") + "`n"
+    $claudeText = ((@($stampAndTitle) + @(
+        '> This file is the repo-specific source of truth for AI-assisted development in this repository and imports the framework rules below.'
+        '> Claude Code and supported GitHub Copilot agent surfaces load this file directly. **[AGENTS.md](./AGENTS.md)** is the generated portable mirror for Codex and GitHub code review; Cursor loads both. Gemini defaults to `GEMINI.md`, and Aider requires explicit read configuration. Edit conventions here, never in AGENTS.md.'
+        '> **Companion file**: FRAMEWORK-CONTEXT.md. CLAUDE.md wins on any conflict — but flag the contradiction.'
+        ''
+        '---'
+        ''
+        '<!-- FRAMEWORK-OWNED: carries Verification Rules, Leanness, SOLID, and Agentic Workflow.'
+        '     Deleting this import disables all four rule sets for Claude Code. -->'
+        '@.github/instructions/framework-rules.instructions.md'
+        ''
+    )) -join "`r`n") + "`r`n" + $bodyText
+    $expectedAgents = ((@($stampAndTitle) + @(
+        '> This file is the repo-specific source of truth for AI-assisted development in this repository. Edit it here; `CLAUDE.md` only imports it for Claude Code.'
+        '> **Framework rules** (Verification Rules, Leanness, SOLID, Agentic Workflow) are in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md). If your agent has not already loaded that file, read it before planning or editing.'
+        '> **Companion file**: FRAMEWORK-CONTEXT.md. AGENTS.md wins on any conflict — but flag the contradiction.'
+        ''
+        '---'
+    )) -join "`r`n") + "`r`n`r`n" + $bodyText
+    [IO.File]::WriteAllText((Join-Path $t 'CLAUDE.md'), $claudeText, $bomUtf8)
+    [IO.File]::WriteAllText((Join-Path $t 'AGENTS.md'), "<!-- GENERATED FILE — do not edit by hand. -->`n# Agent Instructions`n`n## Conventions`n`nstale mirror copy`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), "{`"version`": `"0.89.2`"}`n", [Text.UTF8Encoding]::new($false))
+    $claudeBefore = [IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))
+    $agentsBefore = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))
+    $backupRoot = Join-Path $t '.claude/framework-update-backup/instruction-files'
+    $out = Invoke-Installer -Dist $dist -Target $t
+    $installExit = $LASTEXITCODE
+    $agentsAfter = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))
+    $claudeAfter = [IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))
+    $rerun = Invoke-Installer -Dist $dist -Target $t
+    $rerunExit = $LASTEXITCODE
+
+    It "update moves the older instruction layout into AGENTS.md and backs up both originals ($powerShellExtension)" {
+        # Consumer body lines, their fenced example and their LF endings pass through unchanged.
+        Assert ($installExit -eq 0) "update exited ${installExit}: $out"
+        Assert ($out -match '(?m)^PLAN replace CLAUDE\.md\r?$' -and $out -match '(?m)^PLAN replace AGENTS\.md\r?$') "the plan did not disclose the layout move. Output:`n$out"
+        Assert-BytesEqual -Expected ([byte[]]($bomUtf8.GetPreamble() + $bomUtf8.GetBytes($expectedAgents))) -Actual $agentsAfter -Message "AGENTS.md is not CLAUDE.md's text with only the layout lines rewritten (BOM and CRLF kept). Got:`n$([Text.Encoding]::UTF8.GetString($agentsAfter))"
+        Assert-BytesEqual -Expected ([IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/$dist/CLAUDE.md"))) -Actual $claudeAfter -Message 'CLAUDE.md is not the shipped two-import stub'
+        Assert-BytesEqual -Expected $claudeBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $backupRoot 'CLAUDE.md'))) -Message 'the original CLAUDE.md was not backed up byte-for-byte'
+        Assert-BytesEqual -Expected $agentsBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $backupRoot 'AGENTS.md'))) -Message 'the generated AGENTS.md was not backed up byte-for-byte'
+    }
+
+    It "a second update leaves the migrated layout and its backups alone ($powerShellExtension)" {
+        Assert ($rerunExit -eq 0) "second update exited ${rerunExit}: $rerun"
+        Assert-BytesEqual -Expected $agentsAfter -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message 'a second update changed the migrated AGENTS.md'
+        Assert-BytesEqual -Expected $claudeAfter -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))) -Message 'a second update changed the CLAUDE.md stub'
+        Assert-BytesEqual -Expected $claudeBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $backupRoot 'CLAUDE.md'))) -Message 'a second update overwrote the original CLAUDE.md backup'
+        Assert ($rerun -match '(?m)^PLAN preserve CLAUDE\.md\r?$' -and $rerun -match '(?m)^PLAN preserve AGENTS\.md\r?$') "the migrated files were not preserved on the second update. Output:`n$rerun"
+    }
+
+    Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue
+}
+
+# The move must never fire on a consumer that is already on the new layout, even when it imports
+# with `@./AGENTS.md` and its own AGENTS.md mentions "GENERATED FILE" in prose.
+$powerShellExtension = 'ps1'
+& {
+    $dist = 'dotnet'
+    $t = Join-Path ([IO.Path]::GetTempPath()) "b272done-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $t 'CLAUDE.md'), "@./AGENTS.md`n@.github/instructions/framework-rules.instructions.md`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $t 'AGENTS.md'), "# Acme`n`n## Conventions`n`n- Never edit a file marked // GENERATED FILE - DO NOT EDIT.`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), "{`"version`": `"0.89.2`"}`n", [Text.UTF8Encoding]::new($false))
+    $claudeBefore = [IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))
+    $agentsBefore = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))
+    $out = Invoke-Installer -Dist $dist -Target $t
+    $installExit = $LASTEXITCODE
+
+    It "update leaves an already-migrated layout alone even when AGENTS.md mentions GENERATED FILE ($powerShellExtension)" {
+        Assert ($installExit -eq 0) "update exited ${installExit}: $out"
+        Assert-BytesEqual -Expected $claudeBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))) -Message "an already-migrated CLAUDE.md was rewritten. Output:`n$out"
+        Assert-BytesEqual -Expected $agentsBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "a hand-written AGENTS.md was replaced. Output:`n$out"
+        Assert ($out -notmatch 'LAYOUT:') "an already-migrated layout produced a LAYOUT line. Output:`n$out"
+    }
+
+    # Claude Code honours an inline import too; a stale banner left at the top of a hand-migrated
+    # AGENTS.md must not make the installer replace it.
+    [IO.File]::WriteAllText((Join-Path $t 'CLAUDE.md'), "Project instructions: see @AGENTS.md`n@.github/instructions/framework-rules.instructions.md`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $t 'AGENTS.md'), "<!-- GENERATED FILE — do not edit by hand. -->`n# Acme`n`n## Conventions`n`n- Hand-written rules.`n", [Text.UTF8Encoding]::new($false))
+    $inlineClaude = [IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))
+    $inlineAgents = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))
+    $inlineOut = Invoke-Installer -Dist $dist -Target $t
+    $inlineExit = $LASTEXITCODE
+
+    It "update treats an inline @AGENTS.md import as already migrated ($powerShellExtension)" {
+        Assert ($inlineExit -eq 0) "update exited ${inlineExit}: $inlineOut"
+        Assert-BytesEqual -Expected $inlineClaude -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))) -Message "an inline-import CLAUDE.md was rewritten. Output:`n$inlineOut"
+        Assert-BytesEqual -Expected $inlineAgents -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "AGENTS.md was replaced although CLAUDE.md already imports it. Output:`n$inlineOut"
+    }
+
+    Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue
 }
 
 $powerShellExtension = 'ps1'

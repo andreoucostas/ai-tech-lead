@@ -250,10 +250,13 @@ try {
             'ondemand-info'  = [Collections.ArrayList]@()
         }
 
-        [void]$groups['static.claude'].Add((New-ItemRecord 'CLAUDE.md' (Get-ByteCount (Join-Path $root 'CLAUDE.md'))))
+        # Claude Code loads the CLAUDE.md stub and the two files it imports. Copilot's VS Code agent,
+        # CLI and cloud agent read CLAUDE.md as well as AGENTS.md (vendor docs, 2026-09-24).
         $frameworkRules = '.github/instructions/framework-rules.instructions.md'
-        [void]$groups['static.claude'].Add((New-ItemRecord $frameworkRules (Get-ByteCount (Join-Path $root $frameworkRules))))
-        foreach ($relative in @('AGENTS.md', '.github/copilot-instructions.md')) {
+        foreach ($relative in @('CLAUDE.md', 'AGENTS.md', $frameworkRules)) {
+            [void]$groups['static.claude'].Add((New-ItemRecord $relative (Get-ByteCount (Join-Path $root $relative))))
+        }
+        foreach ($relative in @('CLAUDE.md', 'AGENTS.md', '.github/copilot-instructions.md')) {
             [void]$groups['static.copilot'].Add((New-ItemRecord $relative (Get-ByteCount (Join-Path $root $relative))))
         }
         [void]$groups['static.copilot'].Add((New-ItemRecord $frameworkRules (Get-ByteCount (Join-Path $root $frameworkRules))))

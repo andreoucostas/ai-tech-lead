@@ -14,7 +14,7 @@ description: >
 
 # Add a new persisted entity
 
-Match CLAUDE.md > Conventions > Data Access and > Architecture. The project, rather than this
+Match AGENTS.md > Conventions > Data Access and > Architecture. The project, rather than this
 skill, selects the persistence mechanism and entity placement.
 
 ## Project-derived pattern authority
@@ -25,11 +25,11 @@ Derive this operation's shape from first-party implementation, configuration, te
 1. Place the entity/model and its invariants where the evidenced persistence pattern does.
 2. Add mapping/configuration only when that mechanism and separation are evidenced (for example, an EF Core `IEntityTypeConfiguration<T>`); otherwise follow the project’s actual mapper or collection shape.
 3. Add the entity to an access/context/collection surface only when the project’s mechanism evidences one (for example, EF Core `DbSet<T>`).
-4. Derive the exact schema-change or migration command from `CLAUDE.md > Conventions > Verification Commands`, committed CI, scripts, manifests, or configuration. Run it only when the command and mechanism are evidenced; otherwise report schema generation as **not available** and do not infer `dotnet ef`.
+4. Derive the exact schema-change or migration command from `AGENTS.md > Conventions > Verification Commands`, committed CI, scripts, manifests, or configuration. Run it only when the command and mechanism are evidenced; otherwise report schema generation as **not available** and do not infer `dotnet ef`.
 5. **Review the generated schema change before applying.** Confirm types, indexes, and data-affecting changes through the project’s evidenced review path.
 
 If the project evidences a read-mostly query pattern, plan the typical query path and preserve its query semantics (for example, `.AsNoTracking()` only where EF Core evidence selects it).
 
-Derive build, test, format, lint, migration/deploy, and data-validation commands from `CLAUDE.md >
+Derive build, test, format, lint, migration/deploy, and data-validation commands from `AGENTS.md >
 Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Run only
 applicable evidenced commands and report every unavailable category as **not available**.

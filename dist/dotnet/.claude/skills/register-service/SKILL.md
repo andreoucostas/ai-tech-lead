@@ -13,7 +13,7 @@ description: >
 
 # Add or register a new service
 
-Match CLAUDE.md > Conventions > Dependency Injection only where the project evidences dependency composition.
+Match AGENTS.md > Conventions > Dependency Injection only where the project evidences dependency composition.
 
 ## Project-derived pattern authority
 
@@ -26,4 +26,4 @@ Derive this operation's shape from first-party implementation, configuration, te
 3. Match an evidenced lifetime and verify its dependency graph; do not infer scoped, transient, or singleton from this recipe.
 4. Match the project's injection or resolution pattern and investigate lifetime mismatches; do not introduce a locator or container to satisfy this skill.
 
-Derive build, test, format, lint, migration/deploy, and data-validation commands from `CLAUDE.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Run only applicable evidenced commands and report every unavailable category as **not available**.
+Derive build, test, format, lint, migration/deploy, and data-validation commands from `AGENTS.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Run only applicable evidenced commands and report every unavailable category as **not available**.

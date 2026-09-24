@@ -1,7 +1,7 @@
 # Greenfield Conventions — Evidence-Matched Defaults
 
-> Reference defaults for technologies this repository actually evidences, including an Angular application. These apply only when CLAUDE.md > Conventions has not been populated by `/bootstrap`.
-> Once `/bootstrap` runs, CLAUDE.md > Conventions is the authoritative source — these defaults are for cold-start scaffolding only.
+> Reference defaults for technologies this repository actually evidences, including an Angular application. These apply only when AGENTS.md > Conventions has not been populated by `/bootstrap`.
+> Once `/bootstrap` runs, AGENTS.md > Conventions is the authoritative source — these defaults are for cold-start scaffolding only.
 
 The distribution name is not technology evidence. Apply the Angular headings only when the
 repository contains Angular application markers such as `angular.json`, an exact-case
@@ -13,7 +13,7 @@ configuration. A string mention elsewhere in a manifest is not evidence.
 
 For each durable category — **build**, **test**, **format**, **lint**, **migration/deploy**, and
 **data-validation** — use an exact command only when committed repository evidence names it:
-CLAUDE.md conventions, CI definitions, scripts/task runners, manifests, or tool configuration.
+AGENTS.md conventions, CI definitions, scripts/task runners, manifests, or tool configuration.
 Record that exact evidence path with the command. If a category has no applicable Angular profile or
 evidenced command, report `not available (no evidenced command)`; never invent `ng build`, `ng test`,
 a browser flag, or another command from this distribution's name.
@@ -26,7 +26,7 @@ a browser flag, or another command from this distribution's name.
 ### Architecture
 - Follow the project’s evidenced standalone/NgModule shape. A genuinely new choice needs an explicit design decision; this default does not select one.
 - Follow the project’s evidenced injection style. A genuinely new choice between `inject()` and constructor injection needs an explicit design decision; do not mix styles in one file without that evidence.
-- **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools))**: derive a service seam and registration from first-party project evidence and correctness needs. Do not introduce an abstraction, token, or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (models, DTOs, enums) are not services and get no abstraction.
+- **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID))**: derive a service seam and registration from first-party project evidence and correctness needs. Do not introduce an abstraction, token, or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (models, DTOs, enums) are not services and get no abstraction.
 - Follow the project’s evidenced route-loading mechanism. A genuinely new lazy/eager choice needs an explicit design decision; this default does not select one.
 - Barrel files (`index.ts`) only at feature boundaries — not inside feature folders (causes circular deps).
 

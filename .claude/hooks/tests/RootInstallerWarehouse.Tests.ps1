@@ -226,8 +226,8 @@ function Get-TargetFingerprint([string]$Target) {
 
 function Assert-EvidenceBoundLifecycle([string]$Target) {
     $carriers = @(
-        @{ Path = 'CLAUDE.md'; Patterns = @('delivery-profile superset', 'not evidence that'); Forbidden = @('What this application does', 'Missing unit tests for public methods') },
-        @{ Path = 'AGENTS.md'; Patterns = @('delivery-profile superset', 'not evidence that'); Forbidden = @('Missing unit tests for public methods') },
+        @{ Path = 'CLAUDE.md'; Patterns = @('@AGENTS.md', '@.github/instructions/framework-rules.instructions.md'); Forbidden = @('What this application does', 'Missing unit tests for public methods') },
+        @{ Path = 'AGENTS.md'; Patterns = @('delivery-profile superset', 'not evidence that'); Forbidden = @('What this application does', 'Missing unit tests for public methods') },
         @{ Path = '.claude/commands/bootstrap.md'; Patterns = @('warehouse-SQL', 'scripts/warehouse-signals.tsv', 'repository-wide', 'not available', 'remaining Phase 2b', '--headless', 'applicability-gated delivery-profile superset', 'Never append repository-specific evidence to a framework-shipped skill'); Forbidden = @('what this app does', 'What this application does', 'skip this phase entirely', "delete defaults that don't apply", 'delete or replace `add-entity`', 'otherwise delete both', 'retain application-only skills', 'append one prose line to the skill file') },
         @{ Path = '.claude/commands/adopt.md'; Patterns = @('Phase 7', '/bootstrap', 'selected profile(s)', 'framework-ownership.json', 'Never archive, move, or delete current stamp-owned/shipped framework state', 'immediately before invoking `/bootstrap`'); Forbidden = @('what the app does') },
         @{ Path = '.claude/commands/rebootstrap.md'; Patterns = @('build/test/format/lint/migration/deploy/data-validation', 'not available', 'manual/CI-only', 'non-mutating validation/dry-run'); Forbidden = @('migration-deploy') },

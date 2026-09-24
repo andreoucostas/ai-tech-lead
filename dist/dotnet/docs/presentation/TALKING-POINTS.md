@@ -27,7 +27,7 @@ You're presenting to two audiences. Use the **same deck**, but change emphasis a
 2. **Run the doctor and actual-host canaries.** Record which instruction, hook, and CI surfaces are live.
 3. Optionally run `scripts/metrics.ps1` for a descriptive current-state scorecard. Do **not**
    present it as an adoption baseline, before/after, or behavioral A/B.
-4. Have the repo open in VS Code in case someone wants to see CLAUDE.md or run a command live.
+4. Have the repo open in VS Code in case someone wants to see AGENTS.md or run a command live.
 5. Decide your concrete ask (slide 14): which repo, which sprint, who champions it.
 
 ---
@@ -55,7 +55,7 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 - Hammer **"authored once."** Everything hangs off one file.
 
 ### 5 · One source of truth
-- CLAUDE.md → generated mirrors for each tool. We maintain **one** rule set and project it.
+- AGENTS.md → read by every tool (Claude Code through a `CLAUDE.md` import). We maintain **one** rule set and project it.
 - The **CI drift check** is what stops this rotting in six months.
 
 ### 6 · Four pillars
@@ -76,7 +76,7 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 
 ### 8 · For tech leads
 - The framework **amplifies you** — your standards at machine scale and consistency.
-- Honest cost: **you own CLAUDE.md.** It's small and budgeted, drift-checked, but it's a living doc.
+- Honest cost: **you own AGENTS.md.** It's small and budgeted, drift-checked, but it's a living doc.
 - Land it: less review time on "you forgot a CancellationToken," more on "is this the right design."
 
 ### 9 · For developers  *(teams' core slide)*
@@ -122,9 +122,9 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 ## Anticipated questions & answers
 
 **"Does this lock us into Claude / one vendor?"**
-No. CLAUDE.md is the source, but it's mirrored to the open `AGENTS.md` standard and to Copilot's
-formats. Claude Code and supported Copilot agent surfaces read `CLAUDE.md`; Codex and GitHub code
-review use `AGENTS.md`, while Cursor reads both. Gemini and Aider can join when configured for the
+No. The source is `AGENTS.md`, the open standard, and Copilot's digest is generated from it.
+Supported Copilot agent surfaces, GitHub code review, Codex, and Cursor read `AGENTS.md`; Claude
+Code reads it through a `CLAUDE.md` import. Gemini and Aider can join when configured for the
 appropriate carrier, so changing assistants does not require rewriting the rules.
 
 **"We already have a coding-standards doc. How is this different?"**
@@ -148,8 +148,8 @@ Insights. Copilot coding-agent cloud hook execution is unsupported.
 automatically, and nothing in the output supports a comparative claim.
 
 **"What's the maintenance burden?"**
-Mainly keeping CLAUDE.md current as conventions evolve — a few hundred budgeted lines, with drift
-checks that flag when mirrors or docs fall behind. The tech lead owns it; it's a first-class artifact.
+Mainly keeping AGENTS.md current as conventions evolve — a few hundred budgeted lines, with drift
+checks that flag when the Copilot digest or docs fall behind. The tech lead owns it; it's a first-class artifact.
 
 **"What if someone needs to ship a hotfix right now?"**
 The Boy Scout / cleanup rules have a documented skip for hotfixes and incidents; unrelated deferred

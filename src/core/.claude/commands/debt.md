@@ -22,7 +22,7 @@ If TECH_DEBT.md is empty or contains only the template placeholder, run a fresh 
 
 ### Step 2 — Fix
 For each item marked "fix now":
-- Derive applicable test and other validation commands from repository evidence: CLAUDE.md, committed CI, scripts, manifests, and configuration. If a test harness exists, establish its green baseline; otherwise report tests as **not available** and identify the strongest evidenced validation. Do not introduce a foreign harness solely for debt cleanup.
+- Derive applicable test and other validation commands from repository evidence: AGENTS.md, committed CI, scripts, manifests, and configuration. If a test harness exists, establish its green baseline; otherwise report tests as **not available** and identify the strongest evidenced validation. Do not introduce a foreign harness solely for debt cleanup.
 - Apply the fix
 <!-- @stack:verify-cmds -->
 - If an applicable test harness exists but the affected code lacks coverage, add characterization coverage only when it is proportionate to the debt item.
@@ -35,7 +35,7 @@ For each item marked "fix now":
 - If you discovered new debt during the fix, add it to the register using the per-block format
 
 ### Step 4 — Boy Scout
-Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file touched during the fix.
+Apply Boy Scout Rule (AGENTS.md > Boy Scout Rule) to every file touched during the fix.
 
 ### Step 5 — Wrap up
 @.claude/workflow.md

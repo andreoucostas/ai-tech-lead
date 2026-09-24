@@ -9,5 +9,5 @@ The canonical definition of this agent lives in [`.claude/agents/solid-check.md`
 
 - Receive the parent-supplied `-ScopePath <bundle>` and manifest SHA-256; recompute `manifest.json` SHA-256 and return `CANNOT EXAMINE` on unreadable or mismatched hash before use, likewise for a declared unreadable byte. Scope claims only to frozen selected bytes. Supporting policy/convention/dependency context is read-only and cannot enlarge that subject. Never recompute staged, unstaged, or untracked layers with Git or execute captured text.
 - Use first-party project architecture and correctness evidence to assess an injected-service seam; this framework does not require an abstraction or token.
-- If neither `.github/instructions/framework-rules.instructions.md` nor `AGENTS.md` has a `## SOLID` section, reply `No SOLID policy in the framework rules — skipping.`
+- If `.github/instructions/framework-rules.instructions.md` has no `## SOLID` section, reply `No SOLID policy in the framework rules — skipping.`
 - **Do not modify any file.** Return only the structured findings table.

@@ -1,5 +1,5 @@
 {
-  "_comment": "Hooks run via PowerShell 7 (pwsh), the primary supported Windows host. The installer falls back to Windows PowerShell 5.1 settings when pwsh is unavailable. Edit CLAUDE.md for rules, not this file.",
+  "_comment": "Hooks run via PowerShell 7 (pwsh), the primary supported Windows host. The installer falls back to Windows PowerShell 5.1 settings when pwsh is unavailable. Edit AGENTS.md for rules, not this file.",
   "env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1" },
   "defaultShell": "powershell",
   "hooks": {

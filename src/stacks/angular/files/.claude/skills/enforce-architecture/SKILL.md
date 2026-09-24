@@ -10,7 +10,7 @@ description: >
 
 # Enforce architecture deterministically (evidenced Angular only)
 
-`solid-check` covers SOLID semantically per diff; this makes the *structural* part (layer / feature dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools).
+`solid-check` covers SOLID semantically per diff; this makes the *structural* part (layer / feature dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID).
 
 1. **Applicability**: proceed only when manifests/configuration evidence an Angular workspace. If it
    is absent, report **not applicable** and change nothing. Derive the package manager, install

@@ -1,5 +1,5 @@
 ---
-description: "Documentation drift check: cross-checks CLAUDE.md, AGENTS.md, copilot-instructions.md, FRAMEWORK-CONTEXT.md, registers, and skills against the codebase and each other; reports drift, contradictions, and stale entries with proposed fixes. Read-mostly; safe to run anytime."
+description: "Documentation drift check: cross-checks AGENTS.md, copilot-instructions.md, FRAMEWORK-CONTEXT.md, registers, and skills against the codebase and each other; reports drift, contradictions, and stale entries with proposed fixes. Read-mostly; safe to run anytime."
 ---
 
 Cross-check all documentation against the codebase and between instruction files. Identify drift, contradictions, and stale entries.
@@ -9,8 +9,8 @@ $ARGUMENTS
 
 ## Execution
 
-### Step 1 — Check CLAUDE.md against codebase
-For each section in CLAUDE.md:
+### Step 1 — Check AGENTS.md against codebase
+For each section in AGENTS.md:
 - **Codebase Context**: does it still accurately describe what the repository/system does, its consumers, and its domain?
 - **Repository Structure**: do the projects, layers, folders, modules, and dependencies match reality?
 - **Conventions**: for each convention, verify it's actually followed. Check for conventions the codebase follows that aren't documented.
@@ -19,24 +19,18 @@ For each section in CLAUDE.md:
 - **Common Tasks**: do the step-by-step patterns match the current code?
 - **Boy Scout Rule**: are the priorities still relevant or has debt shifted?
 
-### Step 2 — Check the generated derived files against CLAUDE.md
-Two files are generated from CLAUDE.md by `/generate-copilot` and must not drift:
+### Step 2 — Check the generated derived file against AGENTS.md
+One file is generated from AGENTS.md by `/generate-copilot` and must not drift:
 
 **`.github/copilot-instructions.md`** (slim, inline completions):
-- Every Conventions / always-apply Boy Scout rule in CLAUDE.md should appear here.
-- Every rule here should trace back to CLAUDE.md. No contradictions. Flag rules in one but not the other.
+- Every Conventions / always-apply Boy Scout rule in AGENTS.md should appear here.
+- Every rule here should trace back to AGENTS.md. No contradictions. Flag rules in one but not the other.
 - Still ≤ 80 lines.
 
-**`AGENTS.md`** (full mirror for AGENTS.md-native tools):
-- The Verification Rules, Leanness, Boy Scout, and Agentic Workflow sections should match CLAUDE.md **verbatim**. Flag any section that has diverged.
-- **Agentic Workflow section 1 ("Classify the intent…") must match `CLAUDE.md` §1 verbatim — including every workflow's inline non-negotiables, the answer-only carve-out, and the security-pass paragraph.** This is the canonical file-based routing definition, so condensing or paraphrasing it here is a hard drift finding, not a cosmetic one. A registered prompt hook is an independent, capability-specific salience path; its registration and output do not prove host firing or consumption. (Sections 2–5 may be condensed to one line each — that is expected, not drift.)
-- The Conventions section should mirror `CLAUDE.md > Conventions` (once bootstrapped).
-- It must still begin with the `GENERATED FILE — do not edit by hand` banner. If someone hand-edited AGENTS.md, flag it and recommend re-running `/generate-copilot`.
-
 **`route-prompt.ps1` rails** (registered, capability-specific salience copy of §1):
-- The six per-workflow rail blocks (`$railsFix`/`$railsFeature`/…) are a *bound salience copy* of the canonical file-based framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow; `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools) §1, not an independent source. When invoked, the hook emits the selected copy; registration and emission do not prove host firing or consumption, and current VS Code prompt-hook lifecycles are unverified. Dated local-host evidence lives in `docs/enforcement-surfaces.md`. Cross-check each rail against the matching §1 workflow: flag any **non-negotiable present in §1 but missing from the rail** (e.g. "red regression test before production code when an applicable harness exists; strongest evidenced reproduction otherwise", "applicable validation green before and during refactor", "net LOC delta", "new behavioral tests seen red before green"), or any rail instruction that **contradicts** §1. They need not be word-identical (§1 is prose, the rails are terse), but they must not diverge in substance.
+- The six per-workflow rail blocks (`$railsFix`/`$railsFeature`/…) are a *bound salience copy* of the canonical file-based framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow) §1, not an independent source. When invoked, the hook emits the selected copy; registration and emission do not prove host firing or consumption, and current VS Code prompt-hook lifecycles are unverified. Dated local-host evidence lives in `docs/enforcement-surfaces.md`. Cross-check each rail against the matching §1 workflow: flag any **non-negotiable present in §1 but missing from the rail** (e.g. "red regression test before production code when an applicable harness exists; strongest evidenced reproduction otherwise", "applicable validation green before and during refactor", "net LOC delta", "new behavioral tests seen red before green"), or any rail instruction that **contradicts** §1. They need not be word-identical (§1 is prose, the rails are terse), but they must not diverge in substance.
 
-If any file has drifted, recommend `/generate-copilot` (for the mirror) and a manual rail/§1 reconciliation (for `route-prompt`).
+If any file has drifted, recommend `/generate-copilot` (for copilot-instructions.md) and a manual rail/§1 reconciliation (for `route-prompt`).
 
 ### Step 3 — Check LEARNINGS.md
 - Does it still only say "No entries yet"? If so, prompt the team to add observations.
@@ -64,14 +58,14 @@ Do NOT apply changes automatically. Present a structured report:
 ```
 ## Documentation Sync Report
 
-### CLAUDE.md Drift
+### AGENTS.md Drift
 | Section | Issue | Suggested Update |
 |---------|-------|-----------------|
 
-### Derived files vs CLAUDE.md (copilot-instructions.md + AGENTS.md)
+### Derived file vs AGENTS.md (copilot-instructions.md)
 | File | Rule / Section | Status | Issue |
 |------|----------------|--------|-------|
-(Status: in-sync / missing-from-derived / missing-from-claude / contradicts / hand-edited)
+(Status: in-sync / missing-from-derived / missing-from-agents / contradicts / hand-edited)
 
 ### FRAMEWORK-CONTEXT.md Drift
 - Detected packages added: ...

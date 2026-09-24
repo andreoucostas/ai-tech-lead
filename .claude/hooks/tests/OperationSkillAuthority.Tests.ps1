@@ -82,7 +82,6 @@ It 'raw Unity fixture has only its evidenced composition root and lifetime' {
 
 It 'active authority carriers do not restore a framework-selected service seam' {
     $perStack = @(
-        'files/AGENTS.md',
         'files/.github/copilot-instructions.md',
         'files/.claude/agents/bloat-radar.md',
         'files/docs/defaults.md',
@@ -99,7 +98,7 @@ It 'active authority carriers do not restore a framework-selected service seam' 
         'snippets/.claude/agents/solid-check.md/scope',
         'snippets/.claude/hooks/route-prompt.ps1/leanness-feature',
         'snippets/.github/agents/solid-check.agent.md/dip-note',
-        'snippets/CLAUDE.md/bs-primary-subtract',
+        'snippets/AGENTS.md/bs-primary-subtract',
         'files/.claude/skills/enforce-architecture/SKILL.md'
     )
     foreach ($stack in @('dotnet', 'angular', 'monorepo')) {

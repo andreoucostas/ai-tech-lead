@@ -4,11 +4,10 @@
 #   - the template repo itself (wired into .github/workflows/template-ci.yml) — this is the gate
 #     that keeps the framework honest about its own invariants;
 #   - a consumer repo (invoked by docs-sync-check) — the same invariants hold after install.
-# Checks: version-stamp sync (CLAUDE.md header == framework-version.json == CHANGELOG head),
-# CLAUDE.md ↔ AGENTS.md verbatim mirror (rule sections + Agentic Workflow §1),
+# Checks: version-stamp sync (AGENTS.md header == framework-version.json == CHANGELOG head),
+# instruction layout (CLAUDE.md is the stub importing AGENTS.md and the framework rules),
 # copilot-instructions.md present and <= 80 lines, UTF-8 BOM on framework .ps1 files,
-# required PowerShell hook set, PS syntax of framework scripts, skills-directory policy, and
-# Common Tasks skill inventory parity.
+# required PowerShell hook set, PS syntax of framework scripts, and skills-directory policy.
 # 5.1-safe: no pwsh-only syntax.
 $ErrorActionPreference = 'Stop'
 
@@ -23,8 +22,8 @@ function OK($m)   { Write-Output "OK:   $m" }
 # --- 1. Version-stamp sync -------------------------------------------------------------------
 $vClaude = $null; $vJson = $null; $vLog = $null; $vLogLine = $null; $changelogHeads = @()
 $isTemplateRepo = Test-Path -LiteralPath '.template-repo' -PathType Leaf
-if (Test-Path 'CLAUDE.md') {
-    $head = Get-Content 'CLAUDE.md' -TotalCount 10
+if (Test-Path 'AGENTS.md') {
+    $head = Get-Content 'AGENTS.md' -TotalCount 10
     foreach ($l in $head) { if ($l -match '^\s*version:\s*(\S+)') { $vClaude = $Matches[1]; break } }
 }
 if (Test-Path '.claude/framework-version.json') {
@@ -53,9 +52,9 @@ if ($isTemplateRepo -and (Test-Path -LiteralPath 'CHANGELOG.md' -PathType Leaf))
     if ($stampedHead) { $vLog = $stampedHead.Version }
     elseif ($vLogLine -cmatch '^## ([0-9]+\.[0-9]+\.[0-9]+) — ([0-9]{4}-[0-9]{2}-[0-9]{2})$') { $vLog = $Matches[1] }
 }
-if (-not $vClaude) { Fail 'CLAUDE.md has no version stamp in its header comment.' }
+if (-not $vClaude) { Fail 'AGENTS.md has no version stamp in its header comment.' }
 elseif (-not $vJson) { Fail '.claude/framework-version.json missing or unparsable.' }
-elseif ($vClaude -ne $vJson) { Fail "version-stamp drift: CLAUDE.md says $vClaude, framework-version.json says $vJson." }
+elseif ($vClaude -ne $vJson) { Fail "version-stamp drift: AGENTS.md says $vClaude, framework-version.json says $vJson." }
 elseif ($isTemplateRepo -and -not (Test-Path -LiteralPath 'CHANGELOG.md' -PathType Leaf)) { Fail 'marked template repo has no CHANGELOG.md.' }
 # The version number alone is not proof the entry is released: the marked template's literal first
 # H2 must use the same dated whole-line grammar the release preflight accepts after stamping. Unmarked
@@ -92,65 +91,35 @@ if ($isTemplateRepo -and $vJson) {
     }
 }
 
-# --- 2. Framework-rules source <-> AGENTS.md verbatim mirror ------------------------------------
-function Get-Section {
-    param([string[]]$Lines, [string]$Heading)
-    $out = New-Object System.Collections.Generic.List[string]
-    $in = $false
-    foreach ($l in $Lines) {
-        if ($l -eq $Heading) { $in = $true; continue }
-        if ($in -and $l -match '^## ') { break }
-        if ($in) {
-            $t = $l.TrimEnd()
-            if ($t -ne '' -and $t -ne '---') { $out.Add($t) }
-        }
-    }
-    return ($out -join "`n")
+# --- 2. Instruction layout: AGENTS.md holds the instructions, CLAUDE.md imports it ------------
+# Claude Code reads AGENTS.md itself only when no CLAUDE.md exists, and not on every host
+# configuration, so CLAUDE.md stays as a stub whose two imports are what deliver both files.
+function Test-ImportLine($Lines, [string[]]$Import) {
+    return [bool](@($Lines) | Where-Object { $Import -ccontains $_.Trim() } | Select-Object -First 1)
 }
-function Get-Section1 {
-    param([string[]]$Lines)
-    $out = New-Object System.Collections.Generic.List[string]
-    $in = $false
-    foreach ($l in $Lines) {
-        if ($l -match '^### 1\. Classify the intent') { $in = $true; continue }
-        if ($in -and $l -match '^### ') { break }
-        if ($in) { $t = $l.TrimEnd(); if ($t -ne '') { $out.Add($t) } }
-    }
-    return ($out -join "`n")
-}
-if ((Test-Path 'CLAUDE.md') -and (Test-Path 'AGENTS.md')) {
-    # Updated consumers receive the framework-owned carrier outside protected CLAUDE.md. Consumers
-    # that have not migrated yet legitimately retain these sections inline, so prefer the carrier
-    # when present and fall back section-by-section to CLAUDE.md.
-    $cl = Get-Content 'CLAUDE.md'
-    $carrierPath = '.github/instructions/framework-rules.instructions.md'
-    $carrier = if (Test-Path $carrierPath) { @(Get-Content $carrierPath) } else { @() }
-    $ag = Get-Content 'AGENTS.md'
-    foreach ($sec in @('## Verification Rules','## Leanness','## SOLID')) {
-        $a = Get-Section $carrier $sec
-        $source = $carrierPath
-        if (-not $a) { $a = Get-Section $cl $sec; $source = 'CLAUDE.md' }
-        $b = Get-Section $ag $sec
-        if (-not $a) { Fail "section '$sec' is missing from both $carrierPath and CLAUDE.md." }
-        elseif ($a -ne $b) { Fail "AGENTS.md section '$sec' is not a verbatim mirror of $source — run /generate-copilot." }
-        else { OK "'$sec' mirrored verbatim." }
-    }
-    # Boy Scout remains consumer-owned in CLAUDE.md and is intentionally not carried separately.
-    $boyClaude = Get-Section $cl '## Boy Scout Rule'
-    $boyAgents = Get-Section $ag '## Boy Scout Rule'
-    if (-not $boyClaude) { Fail "CLAUDE.md is missing section '## Boy Scout Rule'." }
-    elseif ($boyClaude -ne $boyAgents) { Fail "AGENTS.md section '## Boy Scout Rule' is not a verbatim mirror of CLAUDE.md — run /generate-copilot." }
-    else { OK "'## Boy Scout Rule' mirrored verbatim." }
-
-    $s1c = Get-Section1 $carrier
-    $workflowSource = $carrierPath
-    if (-not $s1c) { $s1c = Get-Section1 $cl; $workflowSource = 'CLAUDE.md' }
-    $s1a = Get-Section1 $ag
-    if (-not $s1c) { Fail "Agentic Workflow §1 is missing from both $carrierPath and CLAUDE.md." }
-    elseif ($s1c -ne $s1a) { Fail "AGENTS.md Agentic Workflow §1 is not verbatim with $workflowSource (this is the only compared routing block) — run /generate-copilot." }
-    else { OK 'Agentic Workflow §1 mirrored verbatim.' }
+$layoutHelp = 'Move the project instructions into AGENTS.md and make CLAUDE.md the two-import stub (docs/upgrade-checklist.md).'
+if (-not (Test-Path -LiteralPath 'AGENTS.md' -PathType Leaf)) {
+    Fail "AGENTS.md is missing. $layoutHelp"
+} elseif (-not (Test-Path -LiteralPath 'CLAUDE.md' -PathType Leaf)) {
+    Fail 'CLAUDE.md is missing - Claude Code needs it to import AGENTS.md and the framework rules.'
 } else {
-    Fail 'CLAUDE.md or AGENTS.md missing — cannot check mirror parity.'
+    $cl = @(Get-Content 'CLAUDE.md')
+    $ag = @(Get-Content 'AGENTS.md')
+    # Any @AGENTS.md mention counts, as in the installer and session-start: Claude Code honours
+    # inline imports too, and a false "older layout" finding would send a migrated repo backwards.
+    if (-not (($cl -join "`n") -cmatch '(?<![\w/.@-])@(\./)?AGENTS\.md(?![\w-])')) {
+        Fail "CLAUDE.md does not import AGENTS.md - this repo still uses the older layout. $layoutHelp"
+    } else { OK 'CLAUDE.md imports AGENTS.md.' }
+    if (-not (Test-ImportLine $cl '@.github/instructions/framework-rules.instructions.md')) {
+        Fail 'CLAUDE.md does not import .github/instructions/framework-rules.instructions.md - Claude Code would run without the framework rules.'
+    } else { OK 'CLAUDE.md imports the framework rules.' }
+    # The retired mirror always opened with this banner; prose about generated files is the consumer's.
+    $firstLine = @($ag | Where-Object { $_.Trim() -ne '' } | Select-Object -First 1)
+    if ($firstLine.Count -eq 1 -and $firstLine[0].TrimStart([char]0xFEFF).StartsWith('<!-- GENERATED FILE', [StringComparison]::Ordinal)) {
+        Fail "AGENTS.md still carries the retired generated-mirror banner. If it is the old mirror: $layoutHelp If you wrote this file, delete that first line."
+    } elseif (-not ($ag -ccontains '## Boy Scout Rule')) {
+        Fail "AGENTS.md is missing section '## Boy Scout Rule'."
+    } else { OK 'AGENTS.md is the project instruction file.' }
 }
 
 # --- 3. copilot-instructions.md present and slim ----------------------------------------------
@@ -221,73 +190,6 @@ if ($retiredSkillSync.Count -gt 0) {
     Fail ("retired skill-mirror sync scripts exist: " + ($retiredSkillSync -join ', ') + ' — remove these framework leftovers.')
 } else {
     OK 'retired skill-mirror sync scripts are absent.'
-}
-
-# --- 8. Common Tasks skill inventory: CLAUDE.md <-> AGENTS.md ---------------------------------
-# The descriptions are intentionally allowed to be condensed in AGENTS.md. The slug inventory is
-# contractual on both surfaces, though: /generate-copilot promises Common Tasks is "the skills
-# list". Normalize BOM/CRLF before parsing so checkout encoding cannot split the input.
-function Get-CommonTaskInventory($Path) {
-    $text = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $Path).Path) -replace "`r`n", "`n"
-    if ($text.Length -gt 0 -and $text[0] -eq [char]0xFEFF) { $text = $text.Substring(1) }
-    $exists = $false
-    $inSection = $false
-    $slugs = New-Object System.Collections.Generic.List[string]
-    foreach ($line in ($text -split "`n")) {
-        if ($line -eq '## Common Tasks') { $exists = $true; $inSection = $true; continue }
-        if ($inSection -and $line -match '^## ') { break }
-        if ($inSection -and $line -cmatch '^- `(?<slug>[a-z0-9][a-z0-9-]*)` (?:—|-) ') {
-            $slugs.Add($Matches.slug)
-        }
-    }
-    return [pscustomobject]@{ Exists = $exists; Slugs = @($slugs) }
-}
-
-if ((Test-Path 'CLAUDE.md') -and (Test-Path 'AGENTS.md')) {
-    $commonClaude = Get-CommonTaskInventory 'CLAUDE.md'
-    $commonAgents = Get-CommonTaskInventory 'AGENTS.md'
-
-    # Duplicates must be diagnosed before set equality, because a set comparison hides them.
-    foreach ($side in @(@('CLAUDE.md',$commonClaude), @('AGENTS.md',$commonAgents))) {
-        $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-        $reported = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-        foreach ($slug in $side[1].Slugs) {
-            if (-not $seen.Add($slug) -and $reported.Add($slug)) {
-                Fail "Common Tasks skill inventory has duplicate slug in $($side[0]): $slug."
-            }
-        }
-    }
-
-    # Compare ordinally without sorting; the lowercase-only slug grammar makes case drift unparseable.
-    $missingAgents = @()
-    $missingClaude = @()
-    if ($commonClaude.Exists -and $commonAgents.Exists) {
-        $missingAgents = @($commonClaude.Slugs | Where-Object { -not ($commonAgents.Slugs -ccontains $_) })
-        $missingClaude = @($commonAgents.Slugs | Where-Object { -not ($commonClaude.Slugs -ccontains $_) })
-    }
-    if ($commonClaude.Exists -and $commonAgents.Exists -and
-        ($missingAgents.Count -gt 0 -or $missingClaude.Count -gt 0)) {
-        $parts = @()
-        if ($missingAgents.Count -gt 0) { $parts += "missing from AGENTS.md: $($missingAgents -join ', ')" }
-        if ($missingClaude.Count -gt 0) { $parts += "missing from CLAUDE.md: $($missingClaude -join ', ')" }
-        Fail ("Common Tasks skill inventory differs: " + ($parts -join '; ') + '.')
-    }
-
-    # A present section yielding no slugs means the list grammar changed and the check is blind.
-    if (($commonClaude.Exists -or $commonAgents.Exists) -and
-        (@($commonClaude.Slugs).Count -eq 0 -and @($commonAgents.Slugs).Count -eq 0)) {
-        Fail 'Common Tasks sections yielded zero skill slugs — the list grammar changed and this check is now blind.'
-    }
-
-    if (-not $commonClaude.Exists -and -not $commonAgents.Exists) {
-        OK 'Common Tasks section is absent from both CLAUDE.md and AGENTS.md; skill inventory check did not run.'
-    } elseif ($commonClaude.Exists -ne $commonAgents.Exists) {
-        $missingSide = if ($commonClaude.Exists) { 'AGENTS.md' } else { 'CLAUDE.md' }
-        Fail "Common Tasks section is missing from $missingSide."
-    } elseif ($missingAgents.Count -eq 0 -and $missingClaude.Count -eq 0 -and
-              @($commonClaude.Slugs).Count -gt 0 -and @($commonAgents.Slugs).Count -gt 0) {
-        OK 'Common Tasks skill inventory matches between CLAUDE.md and AGENTS.md.'
-    }
 }
 
 Write-Output ''

@@ -3,9 +3,9 @@ description: "Test workflow: follow project conventions; add the smallest risk-r
 argument-hint: "[file, class, or area]"
 ---
 
-Generate tests for code in this repository. Derive its technology and test conventions from repository evidence; do not infer Angular from this framework distribution. Follow CLAUDE.md > Conventions > Testing and the test-related Common Tasks recipes.
+Generate tests for code in this repository. Derive its technology and test conventions from repository evidence; do not infer Angular from this framework distribution. Follow AGENTS.md > Conventions > Testing and the test-related Common Tasks recipes.
 
-Match the test level to the **Test shape** heuristic in `docs/defaults.md` (or `CLAUDE.md > Conventions` once bootstrapped) — frontend testing is trophy-shaped (component/integration-weighted). This framework does not mandate test-first for features — but a bug fix or regression test is written **red-first**, and every new behavioral spec must be seen to fail before you trust it (Verification Rule #9).
+Match the test level to the **Test shape** heuristic in `docs/defaults.md` (or `AGENTS.md > Conventions` once bootstrapped) — frontend testing is trophy-shaped (component/integration-weighted). This framework does not mandate test-first for features — but a bug fix or regression test is written **red-first**, and every new behavioral spec must be seen to fail before you trust it (Verification Rule #9).
 
 ## Input
 $ARGUMENTS
@@ -40,7 +40,7 @@ For each target:
 
 ### Step 4 — Verify
 - Derive exact applicable build, test, format, lint, migration/deploy, and data-validation commands
-  from CLAUDE.md, committed CI, scripts, manifests, and configuration. Run only commands supported
+  from AGENTS.md, committed CI, scripts, manifests, and configuration. Run only commands supported
   for the changed area; `ng build`, `ng test`, and browser selection apply only when repository
   evidence proves the configured Angular targets.
 - State **not available** for each verification category with no applicable command; never substitute an invented Angular step.

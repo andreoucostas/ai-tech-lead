@@ -1,6 +1,6 @@
 # AI Tech Lead Framework — Playbook
 
-This document explains the methodology behind the framework. It's the deeper answer to "why should we bother with all this?" — the executable artifacts live in `CLAUDE.md`, `.claude/commands/`, and `.claude/settings.json`.
+This document explains the methodology behind the framework. It's the deeper answer to "why should we bother with all this?" — the executable artifacts live in `AGENTS.md`, `.claude/commands/`, and `.claude/settings.json`.
 
 ## The problem this solves
 
@@ -36,9 +36,9 @@ After three months of this, every actively-developed area is cleaner, better-tes
 Auto-loaded by GitHub Copilot on every inline suggestion. Terse imperative rules — naming, patterns, imports — handled without the developer asking. Token budget is tight here, so the file is ≤80 lines.
 
 ### Tier 2 — Directed (agent-mode reasoning)
-**Files**: `CLAUDE.md` (authored single source of truth), `AGENTS.md` (generated full mirror)
+**Files**: `AGENTS.md` (authored single source of truth), `CLAUDE.md` (Claude Code stub that imports it)
 
-Claude Code and supported GitHub Copilot agent surfaces load `CLAUDE.md` directly. `AGENTS.md` is a full copy of the portable rules for Codex and GitHub code review; Cursor loads both carriers. Gemini defaults to `GEMINI.md`, and Aider sees these rules only when explicitly configured to read them. `/generate-copilot` keeps the generated carriers current. Conventions, architecture, common tasks, agentic workflow. When a developer types a natural language request, the agent follows the applicable carrier and workflow automatically. Per-developer working preferences live in Claude Code's persistent memory, not in CLAUDE.md.
+Supported GitHub Copilot agent surfaces, GitHub code review, Codex, and Cursor load `AGENTS.md` directly; Claude Code loads it, and the framework rules, through the `CLAUDE.md` imports. Gemini defaults to `GEMINI.md`, and Aider sees these rules only when explicitly configured to read them. `/generate-copilot` keeps the generated `copilot-instructions.md` current. Conventions, architecture, common tasks, agentic workflow. When a developer types a natural language request, the agent follows the applicable carrier and workflow automatically. Per-developer working preferences live in Claude Code's persistent memory, not in AGENTS.md.
 
 ### Tier 3 — Explicit (workflow commands)
 **Files**: `.claude/commands/*.md` (canonical), `.github/prompts/*.prompt.md` (Copilot Chat wrappers)
@@ -92,7 +92,7 @@ The `/review` command checks the code. You check the developer. Use this PR temp
 ## Design Rationale
 - What approach did you take and why?
 - What alternatives did you consider?
-- What existing patterns did you follow? (reference Architecture Decisions in CLAUDE.md)
+- What existing patterns did you follow? (reference Architecture Decisions in AGENTS.md)
 - What would break if this was implemented differently?
 - Did you run /design first? If not, why not?
 ```
@@ -128,7 +128,7 @@ Do not leave a TODO merely for unrelated deferred cleanup. Use `/debt` only for 
 
 ### When conventions change
 Update these in the same commit:
-- [ ] `CLAUDE.md` — the source of truth
+- [ ] `AGENTS.md` — the source of truth
 - [ ] Run `/generate-copilot` to regenerate `copilot-instructions.md`
 - [ ] `TECH_DEBT.md` if debt priorities shifted
 - [ ] Relevant commands in `.claude/commands/` if workflow changed
@@ -144,17 +144,17 @@ Anthropic-API consumers (Claude Code, in-house tooling, eval harness) can dramat
 
 The framework is structured so the cache-friendly prefix is large and stable:
 
-1. **`CLAUDE.md` is mostly stable.** Conventions, architecture decisions, common tasks, agentic workflow, boy-scout rules — these change at human pace, not per-session. Treat the whole file as one cache prefix candidate.
+1. **`AGENTS.md` is mostly stable.** Conventions, architecture decisions, common tasks, agentic workflow, boy-scout rules — these change at human pace, not per-session. Treat the whole file as one cache prefix candidate.
 2. **`FRAMEWORK-CONTEXT.md` is mostly stable.** Maintainer-curated sections rarely change between sessions. The auto-populated "Detected Framework Packages" table changes when csproj/Directory.Packages.props change — usually rare.
-3. **Volatile content lives in hooks, not in `CLAUDE.md`.** `SessionStart` injects branch + recent commits + debt heat at session start; `UserPromptSubmit` injects routed-intent rails; `PostToolUse` injects build output. All of these append AFTER the CLAUDE.md prefix, preserving cache integrity.
+3. **Volatile content lives in hooks, not in `AGENTS.md`.** `SessionStart` injects branch + recent commits + debt heat at session start; `UserPromptSubmit` injects routed-intent rails; `PostToolUse` injects build output. All of these append AFTER the AGENTS.md prefix, preserving cache integrity.
 
-When you author or extend `CLAUDE.md`:
+When you author or extend `AGENTS.md`:
 
 - **Do not** paste current branch state, recent commit lists, or per-developer notes into the file. They cause cache misses and belong in hooks or memory.
 - **Do** keep the section ordering stable. Reordering invalidates downstream caches even if content is unchanged.
 - **Do** keep verification rules and conventions terse. The first ~200 lines get re-read most often; that is your highest-leverage real estate.
 
-For tools built on the Anthropic SDK, place the explicit `cache_control` breakpoint at the end of `CLAUDE.md` + `FRAMEWORK-CONTEXT.md`, before per-prompt user content. Read `tests/evals/cases.yaml` for framework scenarios an external harness can probe.
+For tools built on the Anthropic SDK, place the explicit `cache_control` breakpoint at the end of `AGENTS.md` + `FRAMEWORK-CONTEXT.md`, before per-prompt user content. Read `tests/evals/cases.yaml` for framework scenarios an external harness can probe.
 
 ---
 

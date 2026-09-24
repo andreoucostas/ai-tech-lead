@@ -17,7 +17,7 @@ $ARGUMENTS
 - State the root cause and your fix strategy before writing code
 
 ### Step 2 — Reproduce before fixing
-Before touching production code, derive the repository's applicable test harness and validation commands from CLAUDE.md, committed CI, scripts, manifests, and configuration.
+Before touching production code, derive the repository's applicable test harness and validation commands from AGENTS.md, committed CI, scripts, manifests, and configuration.
 - When an applicable harness exists, write a regression test that reproduces the bug and confirm it fails for the right reason before the fix. This test becomes the proof that the fix works.
 - When no applicable harness or test command exists, reproduce the bug with the strongest evidenced validation, report tests as **not available**, and do not introduce a foreign harness solely for this fix.
 

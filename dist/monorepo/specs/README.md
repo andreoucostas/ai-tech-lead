@@ -1,6 +1,6 @@
 # Specs — spec-driven development
 
-This directory holds **persistent feature specs**. For non-trivial features, `/design` writes a spec here *before any code is written*; `/feature` implements against it; `/review` verifies the change against it. The spec is the contract for one feature. `CLAUDE.md` is the **constitution** every spec must comply with (Conventions, Leanness, Architecture Decisions).
+This directory holds **persistent feature specs**. For non-trivial features, `/design` writes a spec here *before any code is written*; `/feature` implements against it; `/review` verifies the change against it. The spec is the contract for one feature. `AGENTS.md` (with the framework rules it points to) is the **constitution** every spec must comply with (Conventions, Leanness, Architecture Decisions).
 
 Why persist it: an in-chat design is lost when the session ends. A spec on disk survives across sessions, tools (Claude Code *and* Copilot read it), and reviewers — closing the "the agent subtly missed the intent" gap that pure prompt-driven work suffers.
 
@@ -41,7 +41,7 @@ What and why. Who consumes it.
 - Out: ...
 
 ### Recommended approach
-Specific files, layers, and patterns reused. Reference `CLAUDE.md > Conventions` and `> Architecture Decisions`. Note any convention this pushes against.
+Specific files, layers, and patterns reused. Reference `AGENTS.md > Conventions` and `> Architecture Decisions`. Note any convention this pushes against.
 
 ### Alternatives considered
 | Approach | Pros | Cons | Effort |

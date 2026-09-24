@@ -18,7 +18,7 @@ evidence, and a warehouse-only repository must not acquire NuGet tooling inciden
 
 ## 1. Scan now
 
-Derive each vulnerability, deprecated-package, and outdated-package command from `CLAUDE.md >
+Derive each vulnerability, deprecated-package, and outdated-package command from `AGENTS.md >
 Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Record
 the exact command and its evidence path before running it. Run only the evidenced form and report
 every unavailable scan category as **not available**; do not infer a `dotnet` command, target, or
@@ -33,7 +33,7 @@ Read the output. For each **vulnerable** or **deprecated** package, note the pac
 - **Outdated (no advisory)**: only flag majors or security-relevant minors. Do not churn the lockfile for cosmetic bumps (Leanness — no busywork).
 
 Before recommending the bump, run the exact dependency, build, and test commands evidenced by
-`CLAUDE.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and
+`AGENTS.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and
 configuration. Report unavailable categories; do not infer a solution-level command.
 
 ## 3. Automate (pick one, once per repo)

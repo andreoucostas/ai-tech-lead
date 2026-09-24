@@ -34,10 +34,10 @@ $railsFeature = @'
 1. Design check first — list affected layers, files to create/modify, failure modes, test strategy.
 2. Decompose into ordered subtasks; derive exact build, test, format, lint, migration/deploy, and data-validation commands from repository evidence, then run only safely executable applicable commands under the execution boundary above after each before continuing (report unsupported categories as not available).
 3. Apply Boy Scout to every file you touch.
-4. Self-review against CLAUDE.md > Conventions; flag new patterns or resolved tech debt.
+4. Self-review against AGENTS.md > Conventions; flag new patterns or resolved tech debt.
 5. Present what was implemented and tested.
 
-Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)):
+Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness)):
 - Prefer editing existing files over creating new ones.
 - Preserve a project-evidenced service seam; otherwise add no interface, abstract class, pipe, or directive without a second consumer or correctness need. State the evidence.
 - Wrappers must add behavior. Inline shallow service methods that just call HttpClient.
@@ -52,7 +52,7 @@ $railsRefactor = @'
 5. Verify final state — no behavior should have changed.
 6. Present a before/after summary INCLUDING net LOC delta.
 
-Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)):
+Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness)):
 - Trend toward less code: delete dead branches, inline single-use abstractions, remove now-redundant types.
 - A refactor that grows the codebase needs an explicit reason in the summary.
 - Do not introduce new interfaces, helpers, pipes, or wrappers as part of a refactor unless they replace at least as much code as they add.
@@ -87,7 +87,7 @@ $railsDebt = @'
 
 $railsReview = @'
 This is a quality gate, not a rubber stamp.
-1. Check correctness and every CLAUDE.md > Conventions item per changed file.
+1. Check correctness and every AGENTS.md > Conventions item per changed file.
 2. Check test quality — behavior coverage, descriptive names, regression detection.
 3. Derive and run only safely executable build, test, format, lint, migration/deploy, and data-validation commands supported by repository evidence yourself, subject to the execution boundary above; do not trust they pass, and report unsupported categories as not available.
 4. Check architecture/debt and task scope. For fixes, reject touch-only cleanup and unrequested public/protected or virtual/override breaks.
@@ -148,7 +148,7 @@ elseif ($lc -match '(\bfix\b|\bbug\b|\bbroken\b|\bcrash|\bfails?\b|\bfailing\b|\
 elseif ($lc -match '(\brefactor\b|cleanup|clean up|\bextract\b|\brename\b|simplify|reorganis[ez]|restructure|\btidy\b)')                  { $intent = 'refactor' }
 elseif ($lc -match '(\badd\b|\bimplement\b|\bcreate\b|\bbuild\b|new (feature|endpoint|component|service|screen|route))')                  { $intent = 'feature' }
 
-# Answer-only carve-out (CLAUDE.md section 1): a question-shaped prompt with no
+# Answer-only carve-out (framework rules, Agentic Workflow section 1): a question-shaped prompt with no
 # imperative verb asks for an explanation, not a code change -- don't impose workflow
 # ceremony. Clearing $intent suppresses the rails + plan-gate; the security overlay
 # below still fires if the question touches a sensitive surface.
@@ -166,7 +166,7 @@ $parts = New-Object System.Collections.Generic.List[string]
 if (-not [string]::IsNullOrEmpty($intent)) {
     $parts.Add("## Routed intent: ``$intent``")
     $parts.Add('')
-    $parts.Add("This natural-language prompt was classified as **$intent**. The rails below mirror the framework rules (``.github/instructions/framework-rules.instructions.md`` › Agentic Workflow; ``AGENTS.md`` › Agentic Workflow on AGENTS.md-native tools) section 1 — the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally.")
+    $parts.Add("This natural-language prompt was classified as **$intent**. The rails below mirror the framework rules (``.github/instructions/framework-rules.instructions.md`` › Agentic Workflow) section 1 — the canonical definition, already in your context; they are repeated here for salience. Apply them before responding. If the actual intent differs, say so and proceed normally.")
     $parts.Add('')
     $parts.Add($railsExecutionSafety)
     $parts.Add('')

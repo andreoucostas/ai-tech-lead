@@ -3,7 +3,7 @@ agent: agent
 <!-- @stack:desc -->
 ---
 
-Read `CLAUDE.md` (especially Conventions > Testing and Common Tasks) and `.claude/commands/test.md`, then execute the test workflow defined there for the target below.
+Read `AGENTS.md` (especially Conventions > Testing and Common Tasks) and `.claude/commands/test.md`, then execute the test workflow defined there for the target below.
 
 <!-- @stack:summary -->
 

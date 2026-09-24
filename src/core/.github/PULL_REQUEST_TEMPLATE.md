@@ -4,7 +4,7 @@
 ## Design rationale
 - What approach did you take and why?
 - What alternatives did you consider?
-- What existing patterns from CLAUDE.md did you follow?
+- What existing patterns from AGENTS.md did you follow?
 - What would break if implemented differently?
 - Did you run `/design` first? If not, why not?
 

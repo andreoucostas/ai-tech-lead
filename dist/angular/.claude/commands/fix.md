@@ -3,7 +3,7 @@ description: "Bug-fix workflow: diagnose and reproduce first, use a red regressi
 argument-hint: "[bug description or failing test]"
 ---
 
-Diagnose and fix a bug in this repository. Derive its applicable technologies and validation from repository evidence; do not infer Angular from this framework distribution. Every decision must comply with the conventions and patterns in CLAUDE.md.
+Diagnose and fix a bug in this repository. Derive its applicable technologies and validation from repository evidence; do not infer Angular from this framework distribution. Every decision must comply with the conventions and patterns in AGENTS.md.
 
 ## Input
 $ARGUMENTS
@@ -17,7 +17,7 @@ $ARGUMENTS
 - State the root cause and your fix strategy before writing code
 
 ### Step 2 — Reproduce before fixing
-Before touching production code, derive the repository's applicable test harness and validation commands from CLAUDE.md, committed CI, scripts, manifests, and configuration.
+Before touching production code, derive the repository's applicable test harness and validation commands from AGENTS.md, committed CI, scripts, manifests, and configuration.
 - When an applicable harness exists, write a regression test that reproduces the bug and confirm it fails for the right reason before the fix. This test becomes the proof that the fix works.
 - When no applicable harness or test command exists, reproduce the bug with the strongest evidenced validation, report tests as **not available**, and do not introduce a foreign harness solely for this fix.
 
@@ -27,7 +27,7 @@ Before touching production code, derive the repository's applicable test harness
 - If public/protected signatures or virtual/override behaviour change, check existing callers and extension compatibility. Identify an unrequested incompatibility; an explicitly requested addition or break remains valid.
 
 ### Step 4 — Verify
-Derive exact regression and related-suite commands plus applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence for the changed area; an Angular profile establishes only profile applicability, so use any command, target, runner, browser, project, configuration, or flags only when that exact full form is explicitly recorded in the evidence. The regression spec must pass and nothing else should break. Record each unavailable category as **not available**.
+Derive exact regression and related-suite commands plus applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `AGENTS.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence for the changed area; an Angular profile establishes only profile applicability, so use any command, target, runner, browser, project, configuration, or flags only when that exact full form is explicitly recorded in the evidence. The regression spec must pass and nothing else should break. Record each unavailable category as **not available**.
 
 ### Step 5 — Boy Scout (outcome-bound)
 Apply only the Boy Scout work permitted by Step 3. Do not boy-scout unrelated files in a bug fix.

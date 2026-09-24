@@ -10,8 +10,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 13a | B-272 `AGENTS.md` as the one instruction file | Largest always-loaded saving left: Copilot's static load counts the ~18K rules text twice (`AGENTS.md` and the `applyTo` carrier); removes the mirror and its drift gate. Rank provisional, set by the filing session |
-| 13b | B-281 retire `.github/copilot-instructions.md` | Third copy of the same rules now that every host reads `AGENTS.md`; do it with or after B-272 |
+| 13b | B-281 retire `.github/copilot-instructions.md` | Last generated copy after B-272; its inline-completion question is answered, one new cost to weigh |
 | 15 | B-264 process diet | WP5 of the lean reset plan (section 7); WSD-093 replaces WSD-089's success measure |
 | 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
@@ -21,7 +20,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -215,19 +214,12 @@ the watch exits 3 and nothing is tagged. Fails closed; WP3 edits the same file.
 unchanged by it. The header says an empty tool name emits the Claude signal, but `if (-not $tool)`
 turns `''` into `$null`, so `tool_name: ""` alone takes the Copilot JSON path at exit 0.
 
-### B-272 · Make `AGENTS.md` the one instruction file, shipped and in this repo
-**Filed against:** v0.86.7 (2026-09-19)
-**Priority:** P2 · **Effort:** L · **Invariants:** #2 (rewrites it) #1 #6 #7
-**Status:** Open; user-requested. Claude Code v2.1.277+ reads `AGENTS.md` only when no `CLAUDE.md` or
-`CLAUDE.local.md` exists; not on Bedrock, telemetry-off or `allowManagedHooksOnly` sessions. Decide
-no file versus a one-line `@AGENTS.md` stub, plus the upgrade path for populated consumer `CLAUDE.md`.
-
 ### B-281 · Retire the generated `.github/copilot-instructions.md`
 **Filed against:** v0.89.1 (2026-09-22)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #7
-**Status:** Open; user-requested 2026-09-22 — every host reads `AGENTS.md` now, so the terse generated
-ruleset is a third copy. Removal also retires `/generate-copilot` and its prompt, the canary, the
-`docs-sync-check`/`template-checks` legs and the manifest entry; confirm VS Code inline completion first.
+**Status:** Open; user-requested 2026-09-22. After B-272 it is the last generated copy. Vendor docs (2026-09-24): VS Code
+inline suggestions use no custom instructions at all, but VS Code's own code review reads only this file. Removal
+retires `/generate-copilot`, its prompt, the canary, the `docs-sync-check`/`template-checks` legs and the manifest entry.
 
 ### B-282 · Installed docs point at a README that is not installed
 **Filed against:** v0.89.1 (2026-09-23)
@@ -241,6 +233,12 @@ calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.m
 **Status:** Open; user-requested for high-churn repos, token cost. Design after a fresh-session
 adversarial review: `.claude/plans/2026-09-23-incremental-rebootstrap.md`. Scheduling was dropped
 by the user; bounding the discovery pass needs WSD-097 lifted.
+
+### B-285 · Retire the B-97 block-manifest tooling
+**Filed against:** v0.90.0 (2026-09-24)
+**Priority:** P3 · **Effort:** S · **Invariants:** none
+**Status:** Open. `.claude/scripts/build-block-manifest.ps1` and `meta/block-manifest.json` have no caller; its
+`-SelfTest` reads blocks from `dist/dotnet/CLAUDE.md`, which B-272 made a two-line stub. Delete both, or repoint.
 
 ## Archived
 

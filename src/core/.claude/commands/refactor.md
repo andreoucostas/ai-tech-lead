@@ -29,7 +29,7 @@ existing validation you will use instead; do not introduce a foreign test stack 
 - If tests fail, the refactor introduced a behavior change — fix it or revert
 
 ### Step 4 — Boy Scout
-Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file you touched.
+Apply Boy Scout Rule (AGENTS.md > Boy Scout Rule) to every file you touched.
 
 ### Step 5 — Verify final state
 <!-- @stack:verify-final -->
@@ -38,4 +38,4 @@ Apply Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file you touched.
 @.claude/workflow.md
 
 ### Step 7 — Present
-Before/after summary: what was refactored and why, what CLAUDE.md patterns were applied, **net LOC delta**, test results or strongest evidenced validation confirming no behavior change (including why tests are **not available**), and any TECH_DEBT.md items resolved. Per the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools), a refactor that grows the codebase needs an explicit reason in the summary.
+Before/after summary: what was refactored and why, what AGENTS.md patterns were applied, **net LOC delta**, test results or strongest evidenced validation confirming no behavior change (including why tests are **not available**), and any TECH_DEBT.md items resolved. Per the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness), a refactor that grows the codebase needs an explicit reason in the summary.

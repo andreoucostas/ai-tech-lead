@@ -80,7 +80,6 @@ $expectedTestFiles = @(
     'RepositoryPrivacy.Tests.ps1',
     'RootInstallerWarehouse.Tests.ps1',
     'RunnerHost.Tests.ps1',
-    'SkillListParity.Tests.ps1',
     'UpdateDelivery.Tests.ps1',
     'ValidateDist.Tests.ps1',
     'VendorClaims.Tests.ps1',

@@ -20,7 +20,7 @@ Before starting analysis:
 2. **Select the Angular profile only from evidence.** Within that bounded, excluded application-marker scope, select it only when `angular.json`; an Nx/project configuration with an exact-case Angular token in a plugin, executor, generator, schematic, or target-default field; or a `package.json` containing an exact-case `"@angular/core"` key under `dependencies`, `devDependencies`, `peerDependencies`, or `optionalDependencies` exists. A key/string elsewhere in the manifest is not evidence, and malformed/unreadable JSON is an incomplete scan rather than absence. If the profile is absent, report that no applicable Angular profile was found and **STOP**: do not dispatch passes, synthesize findings, populate artifacts, apply Angular defaults, or regenerate derived files.
 3. **Profile-specific pre-flight.** When the Angular profile is selected, locate its workspace root, read `package.json` for `@angular/core`, note whether it is 17+ (standalone default, signals, new control flow) or older, and inspect its configured build, test, and lint targets. Adjust conventions only from that evidence. If it is a monorepo (for example `apps/`), note the apps/libs and adjust generated paths.
 4. **Record executable commands from owned evidence.** Before discovery, require valid root `framework-ownership.json` and `framework-retirements.json`. Resolve every repository path cited directly or through a wrapper; normalize quoted paths, leading `./` or `.\`, and slash direction. A command whose resolved aggregate runner or direct leaf is `framework-owned/overwritten` or retired is framework evidence, not application-command evidence: do not run or record it; report framework checks separately. If an existing Verification Commands row names one, replace it as stale in this workflow (or flag `/rebootstrap` when encountered elsewhere). Inspect committed CI workflow/pipeline files, documented developer commands, checked-in scripts/Makefiles, and the selected profile's manifests/configuration. Record a row for each durable category: **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**. Each available row must give an exact root-relative command, its exact evidence path, and an execution policy; a manifest script may be recorded as its package-manager invocation. Mark migration/deploy `manual/CI-only` unless the exact invocation is evidenced as non-mutating validation/dry-run: inventory is not permission to mutate an environment. For a category with no applicable selected profile or no evidenced command, write `not available (no evidenced command)`. Never invent `ng`, a browser flag, lint, or any substitute command.
-5. **Check for existing configuration** — if `CLAUDE.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Never touch `LEARNINGS.md` — it is append-only.
+5. **Check for existing configuration** — if `AGENTS.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Never touch `LEARNINGS.md` — it is append-only.
 6. **Large codebases** — if the selected Angular profile has more than 200 components, focus analysis on the most actively changed areas (check git log). Note which areas were analysed and which were skipped.
 7. **Mixed-stack detection** — use the same bounded, excluded scope to count `.cs` / `.csproj` files. If a `*.csproj` exists or more than ~50 `.cs` source files exist, flag this as a mixed-stack repo. A `.sln` alone may be an SSDT warehouse container and is not .NET application evidence. After Phase 3 generation, add a note in the final report recommending the user create `.github/instructions/<stack>.instructions.md` with `applyTo:` frontmatter (see README "Mixed-stack repos" section). Do not auto-generate the secondary-stack instructions file — the user picks the rules.
 8. **Establish ownership and dismissal boundaries.** Read root `framework-ownership.json` and require a valid `paths` inventory. Exclude every `framework-owned/overwritten` path from A7's evidence corpus; a `mixed` path may support a finding only when the cited evidence is consumer-authored and corroborated outside framework-owned paths. If `TECH_DEBT.md` already contains `## Dismissed proposals`, freeze those rows before analysis so generation cannot overwrite or re-propose them.
@@ -129,7 +129,7 @@ For each item: current pattern → target pattern → brief rationale.
 Before generating any artifact, ask the developer a small number of targeted questions — **only where human judgment materially changes the output and the code alone cannot resolve it.** Collect all questions into a **single message** (never drip one at a time). Limit to ≤5 questions.
 
 **Ask about:**
-1. **Convention contradictions** — if two conflicting patterns exist for the same area (e.g. NgRx store in some features, BehaviorSubject services in others): *"Your codebase uses both [A] (e.g. NgRx in `feature-a/`) and [B] (e.g. BehaviorSubject services in `feature-b/`) for state management. Which is the intended approach — or are these genuinely different contexts?"* Frame as a plain engineering question about the codebase, never about which CLAUDE.md section to use.
+1. **Convention contradictions** — if two conflicting patterns exist for the same area (e.g. NgRx store in some features, BehaviorSubject services in others): *"Your codebase uses both [A] (e.g. NgRx in `feature-a/`) and [B] (e.g. BehaviorSubject services in `feature-b/`) for state management. Which is the intended approach — or are these genuinely different contexts?"* Frame as a plain engineering question about the codebase, never about which AGENTS.md section to use.
 2. **Pattern intent** — if a pattern recurs but is applied inconsistently: *"I see [X] in [N] places but not all. Is this intentional (applied selectively) or drift (should be consistent)?"*
 
 **Do not ask** about things determinable from code (naming patterns, Angular version, file structure), matters of taste with no right answer, or hazard areas (those get their own confirmation in Phase 3d-bis).
@@ -140,28 +140,28 @@ Before generating any artifact, ask the developer a small number of targeted que
 
 ## Phase 3 — Generate artifacts
 
-### 3a: Populate CLAUDE.md
+### 3a: Populate AGENTS.md
 
 Run Phase 3 only when the Angular profile was selected. Every Angular-specific section below — Angular Version, components, forms, state, RxJS, API/HTTP, typing, test shape, Angular skills, package inventory, and application context — is unsupported and skipped when that profile was absent.
 
-Read the existing CLAUDE.md template in the project root. Replace every placeholder section with real findings from this codebase:
+Read the existing AGENTS.md template in the project root. Replace every placeholder section with real findings from this codebase:
 
 Code establishes implemented surfaces, not product intent or actual user behavior or value. Label code-derived context as implementation observations. Leave intended purpose and target users unknown unless supplied by a named person or role authorized to decide them; leave actual behavior and value unknown unless supported by direct research or operational evidence.
 
 - **Codebase Context**: what the selected Angular application or library does, its users, domain concepts, and critical journeys
 - **Repository Structure**: actual Angular workspace/layout with module dependency diagram
 - **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Angular Version, Architecture, Component Design, Forms, State Management, RxJS, API/HTTP, Typing, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. End `Conventions > Testing` with a one-line target test shape for this repo (unit-dense, honeycomb, trophy-shaped, or another shape from the `docs/defaults.md` heuristic), adapted to what A1–A6 found. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
-- **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of CLAUDE.md holds it within the token budget — it loads on nearly every turn.
-- **Common Tasks**: do NOT write recipes inline in CLAUDE.md. The framework-shipped skills are an applicability-gated delivery-profile superset: keep them byte-stable even when their technology or recipe is absent. Do not delete, rewrite, move, or replace a shipped skill merely because it does not apply. Requested A7 discovery may create only the new review drafts defined in 3a-bis; it never changes an existing project skill or its ownership. Update the Common Tasks bullet list in CLAUDE.md to advertise only skills applicable to the selected Angular profile and evidenced constructs — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks. Dormant shipped skills remain installed and rely on their applicability gates. `.claude/disabled-skills/` is only for an explicit maintainer decision recorded by `/rebootstrap`, never automatic profile selection.
+- **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of AGENTS.md holds it within the token budget — it loads on nearly every turn.
+- **Common Tasks**: do NOT write recipes inline in AGENTS.md. The framework-shipped skills are an applicability-gated delivery-profile superset: keep them byte-stable even when their technology or recipe is absent. Do not delete, rewrite, move, or replace a shipped skill merely because it does not apply. Requested A7 discovery may create only the new review drafts defined in 3a-bis; it never changes an existing project skill or its ownership. Update the Common Tasks bullet list in AGENTS.md to advertise only skills applicable to the selected Angular profile and evidenced constructs — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks. Dormant shipped skills remain installed and rely on their applicability gates. `.claude/disabled-skills/` is only for an explicit maintainer decision recorded by `/rebootstrap`, never automatic profile selection.
 
   **A7 discovery boundary:** the worker reports scoped repository knowledge only; the parent applies 3a-bis. Discovery output is not team policy, executable instruction, independent proof, or permission for wider reads or writes.
 
-  **Exemplar grounding (instance-shaped skills):** For the existing instance-shaped operations `add-component`, `add-service`, `add-lazy-route`, and `add-signal-store`, confirm a real instance exists (Verification Rule #1 — Read/Grep confirms the path). If it passes the quality cross-check (not flagged as debt), record the path in the applicable Common Tasks entry: *"For a concrete current instance in this repo, see `<path>` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict."* Never append repository-specific evidence to a framework-shipped skill. Exempt process skills (`add-tests`, `create-adr`, `dependency-audit`, `enforce-architecture`) — they are not instance-shaped "add an X" recipes.
-  **Command inventory:** add a concise `### Verification Commands` table to `CLAUDE.md > Conventions` with columns for category, exact command, exact evidence path, and execution policy, using the fixed categories **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**. Mark migration/deploy `manual/CI-only` unless the exact invocation is evidenced as non-mutating validation/dry-run; it may be run otherwise only with explicit developer authorization against a known target. For every category with no applicable selected profile or no evidenced command, write `not available (no evidenced command)`. This is an inventory, not a recommendation or permission to install or run a tool.
+  **Exemplar grounding (instance-shaped skills):** For the existing instance-shaped operations `add-component`, `add-service`, `add-lazy-route`, and `add-signal-store`, confirm a real instance exists (Verification Rule #1 — Read/Grep confirms the path). If it passes the quality cross-check (not flagged as debt), record the path in the applicable Common Tasks entry: *"For a concrete current instance in this repo, see `<path>` — reproduce its **conventions and structure**, not its contents; AGENTS.md > Conventions wins on any conflict."* Never append repository-specific evidence to a framework-shipped skill. Exempt process skills (`add-tests`, `create-adr`, `dependency-audit`, `enforce-architecture`) — they are not instance-shaped "add an X" recipes.
+  **Command inventory:** add a concise `### Verification Commands` table to `AGENTS.md > Conventions` with columns for category, exact command, exact evidence path, and execution policy, using the fixed categories **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**. Mark migration/deploy `manual/CI-only` unless the exact invocation is evidenced as non-mutating validation/dry-run; it may be run otherwise only with explicit developer authorization against a known target. For every category with no applicable selected profile or no evidenced command, write `not available (no evidenced command)`. This is an inventory, not a recommendation or permission to install or run a tool.
 
-The Agentic Workflow now lives in `.github/instructions/framework-rules.instructions.md`; do not edit that framework-owned file. Preserve the `@.github/instructions/framework-rules.instructions.md` import line in `CLAUDE.md` exactly as-is. Never touch `LEARNINGS.md` — it is append-only.
+The Agentic Workflow now lives in `.github/instructions/framework-rules.instructions.md`; do not edit that framework-owned file. Leave `CLAUDE.md` exactly as-is: the stub importing `AGENTS.md` and `.github/instructions/framework-rules.instructions.md`, with no project content. Never touch `LEARNINGS.md` — it is append-only.
 
-**Token budget**: `CLAUDE.md` loads on nearly every agent turn and anchors the prompt cache — keep it ≤ ~400 lines. Put verbose detail (long ADRs, exhaustive structure dumps) in on-demand files (`docs/`, skills); keep CLAUDE.md to the high-frequency rules. `scripts/docs-sync-check.*` warns past the budget.
+**Token budget**: `AGENTS.md` loads on nearly every agent turn and anchors the prompt cache — keep it ≤ ~400 lines. Put verbose detail (long ADRs, exhaustive structure dumps) in on-demand files (`docs/`, skills); keep AGENTS.md to the high-frequency rules. `scripts/docs-sync-check.*` warns past the budget.
 
 ### 3a-bis: Capture repository knowledge as review drafts
 
@@ -264,20 +264,14 @@ Effort: S (< 1hr) / M (half day) / L (1-2 days) / XL (needs spike)
 
 Sort by severity then effort. One `## DEBT-NNN` block per item.
 
-Before generating rule carriers, reconcile `CLAUDE.md` references to specific debt items with the
-IDs actually assigned in `TECH_DEBT.md`. Update the canonical reference first, then derive both
-`AGENTS.md` and `.github/copilot-instructions.md` from it. Preserve established IDs; report any
+Before generating rule carriers, reconcile `AGENTS.md` references to specific debt items with the
+IDs actually assigned in `TECH_DEBT.md`. Update the canonical reference first, then derive
+`.github/copilot-instructions.md` from it. Preserve established IDs; report any
 ambiguous match instead of guessing or renumbering. Generic links to the register need no item ID.
 
 Before replacing the register, preserve every existing `## Dismissed proposals` row byte-for-byte. Derive `<area>::<claim-slug>` from the stable subsystem and problem, not severity or remedy. Suppress a candidate with the same key, or the same problem and consequence over overlapping paths/symbols. Reopen only for materially changed evidence; keep the dismissal and add `Reopens dismissal: <key>` plus `Evidence delta: <specific change>` to the new active block.
 
 If A6 found no spec files, write one Severity-High Testing entry whose recommended fix explicitly names the `add-tests` skill's suite-bootstrap mode. In Phase 4, surface that entry in the top 3 quick wins.
-
-### 3c: AGENTS.md (generated full mirror)
-
-`AGENTS.md` is a **generated full mirror** of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks). It is the full rules carrier for **Codex and GitHub code review**; Cursor reads both `CLAUDE.md` and `AGENTS.md`. Claude Code and supported GitHub Copilot agent surfaces read `CLAUDE.md` directly. Gemini defaults to `GEMINI.md`; Aider requires explicit read configuration. **Do not hand-write a pointer file.**
-
-AGENTS.md is produced by the `/generate-copilot` workflow (Part B), which Phase 3f runs **after** Phase 3a has populated `CLAUDE.md > Conventions`. So there is nothing to do here except ensure 3f runs. If a stale or pointer-style `AGENTS.md` already exists, it will be **regenerated** (overwritten) by 3f — do not preserve hand edits to it.
 
 ### 3d: Populate FRAMEWORK-CONTEXT.md > Detected Framework Packages
 
@@ -358,14 +352,13 @@ If `SECURITY_FINDINGS.md` does not exist at the repo root, create it using the f
 
 If `SECURITY_FINDINGS.md` already exists, leave it entirely alone.
 
-### 3f: Generate the agent-facing derived files
+### 3f: Generate the agent-facing derived file
 
-Run the `/generate-copilot` workflow. It regenerates **both** derived files from the now-populated CLAUDE.md:
+Run the `/generate-copilot` workflow. It regenerates the derived file from the now-populated AGENTS.md:
 
 - **`.github/copilot-instructions.md`** — slim (≤80 lines), terse imperative one-liners, Conventions + always-apply Boy Scout only. For **inline editor completions**.
-- **`AGENTS.md`** — full mirror of CLAUDE.md's portable rules (Verification, Leanness, Conventions, Boy Scout, Agentic Workflow, Common Tasks), preserving the `GENERATED FILE` banner. It is for **Codex and GitHub code review**; Cursor reads both `CLAUDE.md` and `AGENTS.md`. Claude Code and supported GitHub Copilot agent surfaces read `CLAUDE.md` directly. Gemini defaults to `GEMINI.md`; Aider requires explicit read configuration.
 
-See `.claude/commands/generate-copilot.md` for the exact rules for each file.
+See `.claude/commands/generate-copilot.md` for the exact rules.
 
 ---
 
@@ -396,7 +389,7 @@ failure, or CANT-VERIFY result in Phase 4.
 
 ## Phase 4 — Report
 
-Run `git diff CLAUDE.md` and `git diff TECH_DEBT.md` to show the user exactly what changed. Present the diff summary before the rest of the report.
+Run `git diff AGENTS.md` and `git diff TECH_DEBT.md` to show the user exactly what changed. Present the diff summary before the rest of the report.
 
 Then output:
 - Number of findings per severity
@@ -412,7 +405,7 @@ Then output:
 
 Unless this `/bootstrap` is being invoked from within `/adopt`, emit a prioritized checklist capped at about 10 entries. Under `/adopt`, suppress this checklist because adopt Phase 8 is the sole emitter and aggregates these sources. Re-scan the written artifacts, omit any source category with no entries, and use this priority order:
 
-1. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (CLAUDE.md > Conventions > [subsection])"
+1. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (AGENTS.md > Conventions > [subsection])"
 2. For each `(c) unsure` or tooling-only hazard from 3d-bis: "Is [specific risk] real in this codebase? If you're not sure, leave it as it is. (FRAMEWORK-CONTEXT.md > Known Hazard Areas)"
 3. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line from the report as a yes/no question with its skill file pointer.
 

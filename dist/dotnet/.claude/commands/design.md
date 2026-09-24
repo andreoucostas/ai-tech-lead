@@ -5,7 +5,7 @@ argument-hint: "[change to design]"
 
 Reason through the design of a change before writing any code. This is a thinking exercise, not an implementation task.
 
-Anchor the design in CLAUDE.md > Repository Structure, Conventions, and Architecture Decisions.
+Anchor the design in AGENTS.md > Repository Structure, Conventions, and Architecture Decisions.
 
 ## Input
 $ARGUMENTS
@@ -24,14 +24,14 @@ $ARGUMENTS
 - Which layers are affected (domain, application, API, infrastructure)?
 - Which existing files will need to change?
 - Which new files will need to be created?
-- What existing patterns from CLAUDE.md should be reused?
+- What existing patterns from AGENTS.md should be reused?
 - What data flows through the system for this feature?
 
 ### Step 3 — Consider approaches
 Identify at least two approaches. For each:
 - Brief description
 - Pros and cons
-- Which CLAUDE.md conventions it follows or conflicts with
+- Which AGENTS.md conventions it follows or conflicts with
 - Effort estimate (S/M/L)
 
 ### Step 4 — Recommend
@@ -82,6 +82,6 @@ Ordered, checkable implementation steps `/feature` will work through:
 
 For anything beyond a trivial change, write the design above to `specs/<short-kebab-slug>.md` using the template in [`specs/README.md`](../../specs/README.md), with **Status: Draft**, **including the Tasks checklist** (the ordered implementation steps). This persists the contract *and the implementation progress* across sessions and tools so `/feature` implements against it — checking off each Task as it lands — and `/review` verifies against it. For a trivial change, skip the file — say so and proceed.
 
-`CLAUDE.md` is the **constitution**: the spec must comply with its Conventions, Leanness, and Architecture Decisions. Flag any place the requirement pushes against a convention so the developer decides *before* code is written.
+`AGENTS.md` and the framework rules are the **constitution**: the spec must comply with their Conventions, Leanness, and Architecture Decisions. Flag any place the requirement pushes against a convention so the developer decides *before* code is written.
 
 When the developer is ready to implement, they run `/feature` — it picks up `specs/<slug>.md` and implements against it.

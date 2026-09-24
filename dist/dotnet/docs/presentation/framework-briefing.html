@@ -189,22 +189,21 @@
       <span class="kicker">Architecture</span>
       <h2>Write the rules once — generate the client carriers</h2>
       <div class="flow">
-        <div class="node src"><div class="t">CLAUDE.md</div><div class="s">authored · single source</div></div>
+        <div class="node src"><div class="t">AGENTS.md</div><div class="s">authored · single source · CLAUDE.md imports it</div></div>
         <div class="arrow">→</div>
         <div class="mirrors">
-          <div class="node"><div class="t">AGENTS.md</div><div class="s">full mirror</div></div>
           <div class="node"><div class="t">.github/copilot-instructions.md</div><div class="s">slim ≤80 lines</div></div>
         </div>
       </div>
       <ul class="points" style="margin-top:1.4rem">
         <li><b>Generated, not hand-copied</b> — rule carriers are produced from the source file.</li>
         <li><b>Skills are also single-source</b> — Claude Code and supported Copilot surfaces discover the same <code>.claude/skills/</code> recipes.</li>
-        <li><b>Drift-checked in CI</b> — the build fails if a mirror falls out of sync.</li>
+        <li><b>Drift-checked in CI</b> — the build fails if the instruction layout or version stamp falls out of sync.</li>
       </ul>
     </div>
     <aside class="notes">
-      <p><b>Goal:</b> show the mechanism that makes "authored once" true. Edit CLAUDE.md → regenerate its carriers; edit a project skill once under .claude/skills.</p>
-      <p>Why retain any mirrors? Codex and GitHub code review still use AGENTS.md, and inline completion has its own concise carrier. The literal skill mirror is gone because supported Copilot skill surfaces read the Claude location directly.</p>
+      <p><b>Goal:</b> show the mechanism that makes "authored once" true. Edit AGENTS.md → regenerate its Copilot carrier; edit a project skill once under .claude/skills.</p>
+      <p>Why retain any mirrors? Every agent reads AGENTS.md itself (Claude Code through CLAUDE.md); only inline completion has its own concise carrier. The literal skill mirror is gone because supported Copilot skill surfaces read the Claude location directly.</p>
       <p>The drift check is what stops this rotting in six months — emphasize for leads who've seen docs go stale.</p>
     </aside>
   </section>
@@ -266,7 +265,7 @@
         <div class="col">
           <h3 style="color:var(--warn)">You own</h3>
           <ul class="points">
-            <li>Keeping <code>CLAUDE.md</code> current — it's now a first-class artifact.</li>
+            <li>Keeping <code>AGENTS.md</code> current — it's now a first-class artifact.</li>
             <li>Deciding conventions deliberately (they're code now, so they carry weight).</li>
             <li>Championing adoption: one repo, then the team.</li>
           </ul>
@@ -275,7 +274,7 @@
     </div>
     <aside class="notes">
       <p><b>Goal:</b> make the lead see themselves in it. The framework amplifies <i>them</i> — their standards, applied at machine scale and consistency.</p>
-      <p>"You own CLAUDE.md" is the honest cost. It's small (a few hundred lines, budgeted) and the drift checks help keep it honest, but it is a living document.</p>
+      <p>"You own AGENTS.md" is the honest cost. It's small (a few hundred lines, budgeted) and the drift checks help keep it honest, but it is a living document.</p>
       <p>Land the review-time point hard: less time on "you forgot a CancellationToken," more on "is this the right design."</p>
     </aside>
   </section>
@@ -358,7 +357,7 @@
       <h2>Low-risk adoption path</h2>
       <div class="steps">
         <div class="step"><div><b>Run <code>/adopt</code> on a pilot repo</b><span>Ingests any existing AI config (Cursor, Copilot, Aider…) and <b>archives originals</b> — nothing is lost, fully reversible.</span></div></div>
-        <div class="step"><div><b><code>/bootstrap</code> learns the codebase</b><span>Fills CLAUDE.md from your actual structure, conventions, and tech debt.</span></div></div>
+        <div class="step"><div><b><code>/bootstrap</code> learns the codebase</b><span>Fills AGENTS.md from your actual structure, conventions, and tech debt.</span></div></div>
         <div class="step"><div><b>Verify the installed surfaces</b><span>Run the doctor and actual-host canaries; optionally run <code>/impact</code> for descriptive current-state metrics.</span></div></div>
         <div class="step"><div><b>The team works through slash commands</b><span>Day-to-day development, now on rails. Expand to more repos when convinced.</span></div></div>
       </div>
@@ -378,7 +377,7 @@
       <div class="grid three">
         <div class="card warnc"><h3>Token cost</h3><p>More context per turn. <b>Mitigated</b> by model routing, slim instructions, and prompt-cache-stable files.</p></div>
         <div class="card warnc"><h3>Discipline cost</h3><p>SOLID and leanness are enforced. The friction is the point — but it <i>is</i> friction.</p></div>
-        <div class="card warnc"><h3>Learning curve</h3><p>A handful of slash commands and a new habit: edit CLAUDE.md, don't fight it.</p></div>
+        <div class="card warnc"><h3>Learning curve</h3><p>A handful of slash commands and a new habit: edit AGENTS.md, don't fight it.</p></div>
       </div>
       <div class="punch">It isn't magic. It makes <em>good practice the path of least resistance.</em></div>
     </div>

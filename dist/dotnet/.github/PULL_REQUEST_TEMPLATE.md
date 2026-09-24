@@ -4,7 +4,7 @@
 ## Design rationale
 - What approach did you take and why?
 - What alternatives did you consider?
-- What existing patterns from CLAUDE.md did you follow?
+- What existing patterns from AGENTS.md did you follow?
 - What would break if implemented differently?
 - Did you run `/design` first? If not, why not?
 
@@ -15,7 +15,7 @@
 
 ## Testing
 - [ ] Smallest risk-relevant tests added/updated when an applicable harness exists; otherwise tests are recorded as `not available`
-- [ ] Applicable commands in `CLAUDE.md > Conventions > Verification Commands` pass locally, or unavailable categories are recorded as `not available`
+- [ ] Applicable commands in `AGENTS.md > Conventions > Verification Commands` pass locally, or unavailable categories are recorded as `not available`
 
 ## AI tools used
 <!-- Which slash commands or prompts you ran, if any — helps the team learn what works -->

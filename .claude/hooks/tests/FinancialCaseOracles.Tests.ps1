@@ -48,8 +48,6 @@ It 'freezes a current-record predicate and its expected report total' {
 It 'active financial carriers do not make type or mechanism names verdicts' {
     $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
     $carriers = @(
-        'src/stacks/dotnet/files/AGENTS.md',
-        'src/stacks/monorepo/files/AGENTS.md',
         'src/stacks/dotnet/files/.claude/agents/security-auditor.md',
         'src/stacks/monorepo/files/.claude/agents/security-auditor.md',
         'src/stacks/dotnet/files/.claude/agents/test-critic.md',

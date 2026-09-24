@@ -324,24 +324,39 @@ if (-not (Test-Path -LiteralPath $claudePath -PathType Leaf)) {
 } elseif ($frameworkHeadings.Count -ne 4) {
     Row MISSING 'Protected-file sync' 'framework heading inspection is incomplete; protected-file migration state cannot be verified.'
 } else {
-    $inlineHeadings = @($frameworkHeadings | Where-Object { $claudeContent -match ('(?m)^##\s+{0}\s*$' -f [regex]::Escape($_)) })
+    # The installer's layout migration moves CLAUDE.md's text into AGENTS.md, so stale inline
+    # copies of the framework sections can sit in either protected file.
+    $agentsContent = $null
+    $agentsPath = Join-Path $root 'AGENTS.md'
+    if (Test-Path -LiteralPath $agentsPath -PathType Leaf) {
+        try { $agentsContent = Get-Content -Raw -LiteralPath $agentsPath -ErrorAction Stop } catch { $agentsContent = $null }
+    }
+    $inlineHeadings = @()
+    foreach ($source in @(@('CLAUDE.md', $claudeContent), @('AGENTS.md', $agentsContent))) {
+        if (-not $source[1]) { continue }
+        foreach ($heading in $frameworkHeadings) {
+            if ($source[1] -match ('(?m)^##\s+{0}\s*$' -f [regex]::Escape($heading))) { $inlineHeadings += ('{0} ({1})' -f $heading, $source[0]) }
+        }
+    }
     if ($inlineHeadings.Count -eq 0) {
         Row OK 'Protected-file sync' 'migrated - the carrier is authoritative.'
     } else {
-        Row PENDING 'Protected-file sync' ('migration incomplete - these sections duplicate the carrier and may conflict: {0}. Fix: delete them from CLAUDE.md.' -f ($inlineHeadings -join ', '))
+        Row PENDING 'Protected-file sync' ('migration incomplete - these sections duplicate the carrier and may conflict: {0}. Fix: delete them from the named file.' -f ($inlineHeadings -join ', '))
     }
 }
 
 $adoption = Test-Path -LiteralPath (Join-Path $root '.claude/adoption-pending.json')
 $bootstrap = $false
 $bootstrapReadFailed = $false
-if (Test-Path -LiteralPath $claudePath) {
-    try { $bootstrap = [bool](Select-String -Quiet -SimpleMatch 'BOOTSTRAP_PENDING' -LiteralPath $claudePath -ErrorAction Stop) }
+# AGENTS.md is the project instruction file; a repo still on the older layout keeps it in CLAUDE.md.
+foreach ($instructionPath in @((Join-Path $root 'AGENTS.md'), $claudePath)) {
+    if (-not (Test-Path -LiteralPath $instructionPath)) { continue }
+    try { if (Select-String -Quiet -SimpleMatch 'BOOTSTRAP_PENDING' -LiteralPath $instructionPath -ErrorAction Stop) { $bootstrap = $true } }
     catch { $bootstrapReadFailed = $true }
 }
 $pending = $adoption -or $bootstrap
 if ($adoption) { Row PENDING 'Bootstrap/adoption state' 'adoption pending. A developer must run /adopt.' }
-elseif ($bootstrapReadFailed) { Row CANT-VERIFY 'Bootstrap/adoption state' 'PowerShell could not inspect CLAUDE.md; this is a host/resource problem, not evidence that repository setup is complete.' }
+elseif ($bootstrapReadFailed) { Row CANT-VERIFY 'Bootstrap/adoption state' 'PowerShell could not inspect AGENTS.md or CLAUDE.md; this is a host/resource problem, not evidence that repository setup is complete.' }
 elseif ($bootstrap) { Row PENDING 'Bootstrap/adoption state' 'bootstrap pending. A developer must run /bootstrap.' }
 else { Row OK 'Bootstrap/adoption state' 'repository setup is complete.' }
 
@@ -545,7 +560,7 @@ if ($copilotValid) {
 elseif ($copilotExists) { Row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.' }
 else { Row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing. Fix: re-run the installer.' }
 
-if ($pending) { Row PENDING 'Mirror and version integrity' 'not checked until /bootstrap or /adopt completes.' }
+if ($pending) { Row PENDING 'Layout and version integrity' 'not checked until /bootstrap or /adopt completes.' }
 else {
     $check = Join-Path $root 'scripts/template-checks.ps1'
     if (Test-Path -LiteralPath $check) {
@@ -553,7 +568,7 @@ else {
         # A bare name ('pwsh'/'powershell') is only as good as the PATH the agent host happens to
         # hand us, and when it does not resolve the failure is indistinguishable from a real drift
         # finding -- so the doctor told you "CLAUDE.md and AGENTS.md have drifted, run
-        # /generate-copilot" when the truth was "I could not start an interpreter". Observed: a
+        # /generate-copilot" (the retired mirror check) when the truth was "I could not start an interpreter". Observed: a
         # session whose PATH contained a literal unexpanded ${PATH}, leaving System32 off it, so
         # 'powershell' did not resolve under Windows PowerShell 5.1. A failure caused by the PATH is
         # not the same fact as the thing being diagnosed, and reporting them identically is what
@@ -571,12 +586,12 @@ else {
         }
         catch { $checkRan = $false }
         if (-not $checkRan -or $null -eq $checkStatus) {
-            Row CANT-VERIFY 'Mirror and version integrity' 'could not start a PowerShell host to run template-checks, so drift is UNKNOWN rather than found. This is a host/PATH problem, not a documentation problem. Fix: run scripts/template-checks.ps1 yourself and act on what it says.'
+            Row CANT-VERIFY 'Layout and version integrity' 'could not start a PowerShell host to run template-checks, so drift is UNKNOWN rather than found. This is a host/PATH problem, not a documentation problem. Fix: run scripts/template-checks.ps1 yourself and act on what it says.'
         }
-        elseif ($checkStatus -eq 0) { Row OK 'Mirror and version integrity' 'template-checks passed.' }
-        elseif ($checkStatus -eq 3) { Row MISSING 'Mirror and version integrity' 'template-checks reported integrity findings. Run it directly and follow its exact findings.' }
-        else { Row CANT-VERIFY 'Mirror and version integrity' ("template-checks did not complete (exit {0}), so integrity is UNKNOWN rather than missing. Run template-checks directly and inspect its output before changing framework files." -f $checkStatus) }
-    } else { Row MISSING 'Mirror and version integrity' 'template-checks is missing. Fix: re-run the installer.' }
+        elseif ($checkStatus -eq 0) { Row OK 'Layout and version integrity' 'template-checks passed.' }
+        elseif ($checkStatus -eq 3) { Row MISSING 'Layout and version integrity' 'template-checks reported integrity findings. Run it directly and follow its exact findings.' }
+        else { Row CANT-VERIFY 'Layout and version integrity' ("template-checks did not complete (exit {0}), so integrity is UNKNOWN rather than missing. Run template-checks directly and inspect its output before changing framework files." -f $checkStatus) }
+    } else { Row MISSING 'Layout and version integrity' 'template-checks is missing. Fix: re-run the installer.' }
 }
 
 $audit = Join-Path $root '.claude/ai-audit.log'

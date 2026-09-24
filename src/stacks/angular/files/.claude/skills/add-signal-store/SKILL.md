@@ -13,7 +13,7 @@ description: >
 
 # Add a new signal-based store
 
-Match CLAUDE.md > Conventions > State Management. Do not introduce signals if the codebase consistently uses NgRx/NGXS — use the existing pattern unless the user explicitly asks to migrate.
+Match AGENTS.md > Conventions > State Management. Do not introduce signals if the codebase consistently uses NgRx/NGXS — use the existing pattern unless the user explicitly asks to migrate.
 
 ## Project-derived pattern authority
 
@@ -37,6 +37,6 @@ establish a signal-store choice.
 
 Server-state slices: handle loading, error, and success explicitly; no optimistic assumptions.
 
-Derive build, test, format, lint, migration/deploy, and data-validation commands from CLAUDE.md >
+Derive build, test, format, lint, migration/deploy, and data-validation commands from AGENTS.md >
 Conventions > Verification Commands, committed CI, scripts, manifests, and configuration. Run only
 exact evidenced commands and report every unavailable category as **not available**.

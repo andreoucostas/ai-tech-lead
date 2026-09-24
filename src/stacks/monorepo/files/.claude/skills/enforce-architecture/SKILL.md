@@ -11,7 +11,7 @@ description: >
 
 # Enforce architecture deterministically
 
-`solid-check` covers SOLID semantically per diff; this makes the *structural* part (DIP / dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools). First identify applicable ecosystems from committed manifests and configuration, then apply only their section below. A repo-wide hardening covers every evidenced ecosystem; the monorepo delivery profile alone proves neither is present.
+`solid-check` covers SOLID semantically per diff; this makes the *structural* part (DIP / dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID). First identify applicable ecosystems from committed manifests and configuration, then apply only their section below. A repo-wide hardening covers every evidenced ecosystem; the monorepo delivery profile alone proves neither is present.
 
 ### .NET — NetArchTest
 
@@ -23,7 +23,7 @@ description: >
    - (Optional, where detectable) controllers/handlers preserve the project's evidenced service seam — supports DIP.
 3. **CI**: derive the exact scoped command that runs the new architecture project in this repo
    (for example a targeted `dotnet test` when that is the established runner), record it under
-   `CLAUDE.md > Conventions > Verification Commands`, and put that exact command in the required
+   `AGENTS.md > Conventions > Verification Commands`, and put that exact command in the required
    build. Do not assume a solution-level invocation or add the project to a nonexistent solution.
 
 ### Angular — dependency-cruiser

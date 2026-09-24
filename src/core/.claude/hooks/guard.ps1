@@ -1,5 +1,5 @@
 ﻿# PreToolUse guard — inspect writes for warning-suppressions, hardcoded secrets, or test-defeats and emit a block response.
-# Implements deterministic checks for the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #5/#7 and the no-secrets rule.
+# Implements deterministic checks for the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules) #5/#7 and the no-secrets rule.
 # Claude-shaped writes emit exit 2 plus a reason on stderr. Other write shapes emit a documented
 # Copilot-compatible permissionDecision JSON deny on stdout (exit 0). Whether a client fires this
 # hook or honors its output is capability-specific; see docs/enforcement-surfaces.md.

@@ -3,7 +3,7 @@ agent: agent
 <!-- @stack:desc -->
 ---
 
-Read `CLAUDE.md` and `.claude/commands/rebootstrap.md` in this repository, then execute the rebootstrap workflow defined there.
+Read `AGENTS.md` and `.claude/commands/rebootstrap.md` in this repository, then execute the rebootstrap workflow defined there.
 
 <!-- @stack:summary -->
 

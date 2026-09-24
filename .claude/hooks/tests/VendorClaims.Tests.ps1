@@ -153,7 +153,7 @@ $provenance = @(
         )
         Rejects = @(
             'SCAN writes queued findings and emits a Copilot-shaped response; live agentStop firing remains unverified.'
-            'Boy Scout: 2 candidate(s) found across 3 file(s) (see CLAUDE.md > Boy Scout Rule).'
+            'Boy Scout: 2 candidate(s) found across 3 file(s) (see AGENTS.md > Boy Scout Rule).'
         )
     }
     [pscustomobject]@{

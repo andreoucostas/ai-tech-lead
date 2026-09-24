@@ -14,7 +14,7 @@ description: >
 
 # Add or Extend a Warehouse Load
 
-Match CLAUDE.md > Conventions > Data Access. Derive the applicable target-family pattern before
+Match AGENTS.md > Conventions > Data Access. Derive the applicable target-family pattern before
 choosing a mechanism; preserve its evidenced rerun, grain, and reconciliation safety.
 
 ## Project-derived pattern authority

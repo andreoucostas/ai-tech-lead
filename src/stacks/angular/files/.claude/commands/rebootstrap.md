@@ -5,7 +5,7 @@ disable-model-invocation: true
 
 Refresh the AI Tech Lead framework configuration for this repository's currently evidenced Angular profile. Use when conventions have drifted, new patterns have emerged, or the team wants to re-align after months of evolution.
 
-This is NOT a replacement for `/bootstrap`. It assumes CLAUDE.md is already populated and merges updates into it rather than overwriting.
+This is NOT a replacement for `/bootstrap`. It assumes AGENTS.md is already populated and merges updates into it rather than overwriting.
 
 ## Input
 $ARGUMENTS
@@ -16,8 +16,8 @@ $ARGUMENTS
 
 Before doing anything else:
 
-1. **Check CLAUDE.md is populated** — read CLAUDE.md. If it still contains the marker `BOOTSTRAP_PENDING`, abort immediately and tell the user:
-   > "CLAUDE.md has not been bootstrapped (BOOTSTRAP_PENDING marker still present). Run `/bootstrap` first to populate it from your codebase, then return to `/rebootstrap` once the framework is set up."
+1. **Check AGENTS.md is populated** — read AGENTS.md. If it still contains the marker `BOOTSTRAP_PENDING`, abort immediately and tell the user:
+   > "AGENTS.md has not been bootstrapped (BOOTSTRAP_PENDING marker still present). Run `/bootstrap` first to populate it from your codebase, then return to `/rebootstrap` once the framework is set up."
 
 2. **Confirm git is available** — this command uses git history to focus analysis. If the repo has no commits, skip the git log step and proceed with a full scan.
 
@@ -47,7 +47,7 @@ From this output, identify actively changed areas—files and directories with t
 ## Phase 1 — Re-analysis
 
 When the Angular profile is selected, perform A1–A7. Scope A1–A6 to actively changed areas; when
-the profile is absent, dispatch nothing. For unchanged areas, carry forward existing CLAUDE.md
+the profile is absent, dispatch nothing. For unchanged areas, carry forward existing AGENTS.md
 content unless you spot an obvious contradiction. A7 instead follows its bounded repository-
 knowledge contract, rechecking changed explicit evidence/dependencies (including quiet callers)
 and continuing from prior uncovered areas. Use native worker delegation only when the host exposes
@@ -85,7 +85,7 @@ The pass remains read-only: do not capture or route its output here.
 
 ## Phase 2 — Delta synthesis
 
-Compare findings against the current CLAUDE.md:
+Compare findings against the current AGENTS.md:
 
 1. **New conventions** — patterns that now exist in the codebase but aren't documented
 2. **Stale conventions** — documented rules that the codebase no longer follows (removed, replaced, or contradicted)
@@ -107,7 +107,7 @@ Format each diff proposal as:
 ### Proposed change: <short title>
 
 **Before:**
-> [exact current text from CLAUDE.md or TECH_DEBT.md]
+> [exact current text from AGENTS.md or TECH_DEBT.md]
 
 **After:**
 > [proposed replacement]
@@ -127,7 +127,7 @@ For a finding that matches an existing operation skill (`add-component`, `add-se
 
 Recheck retained knowledge against changed explicit evidence/dependencies, including quiet callers outside recent activity. Renames, deletions, unavailable history, external state, and failed checks remain visible; path existence alone is not a semantic refresh. Any existing wiki entry, skill, map, or owner document changes only through the confirmed diff gate, preserving a historic verification date on downgrade and leaving unavailable rechecks unresolved.
 
-### 3a: Update CLAUDE.md
+### 3a: Update AGENTS.md
 
 Apply accepted changes section by section:
 - **Conventions**: add new conventions, update stale ones, remove obsolete ones; keep the fixed
@@ -145,7 +145,7 @@ Apply accepted changes section by section:
     ## Declined recipe: <name>
     The team removed this auto-mined skill. Do not re-propose it.
     ```
-- **LEARNINGS.md** (root file, no longer in CLAUDE.md): append any new lessons — never overwrite existing entries
+- **LEARNINGS.md** (root file, no longer in AGENTS.md): append any new lessons — never overwrite existing entries
 
 Do NOT touch the Codebase Context or Repository Structure sections unless a structural change was found (e.g., a new feature module, an Nx migration, a routing restructure).
 
@@ -183,9 +183,8 @@ If this command is ever run with no developer present to answer, take the "skip 
 
 ---
 
-If any skill was added, removed, or updated, reconcile `CLAUDE.md > Common Tasks` with the canonical
-`.claude/skills` inventory. If that list changed, run `/generate-copilot` now so the generated
-`AGENTS.md` list is current. The gate below rejects any legacy `.github/skills` shadow path.
+If any skill was added, removed, or updated, reconcile `AGENTS.md > Common Tasks` with the canonical
+`.claude/skills` inventory. The gate below rejects any legacy `.github/skills` shadow path.
 
 ## Deterministic completion gate
 
@@ -214,7 +213,7 @@ be examined, report `CANT-VERIFY` with the reason and **do not claim completion*
 
 After all accepted changes are applied, output:
 
-- **Sections updated in CLAUDE.md**: list each section and what changed (added / removed / updated)
+- **Sections updated in AGENTS.md**: list each section and what changed (added / removed / updated)
 - **Conventions added**: list with one-line summary each
 - **Conventions removed or changed**: list with brief reason
 - **TECH_DEBT items resolved**: list by ID and title
@@ -223,4 +222,4 @@ After all accepted changes are applied, output:
 - **Areas not re-analysed**: explicit list with reason (e.g., "no changes in last 3 months")
 - **Repository knowledge drafts and refresh**: new drafts, skipped duplicates/owner-routed items, changed evidence/dependency sources (including quiet callers), semantic refresh results, preserved verification dates, and unresolved/deleted/unavailable sources
 - **Declined recipes recorded**: list any `## Declined recipe:` blocks appended to `LEARNINGS.md` this run by the resurrection guard (or "none")
-- **Deterministic completion gate**: command run and PASS, failure, or CANT-VERIFY result; when the skill set changed, confirm `/generate-copilot` ran before this gate.
+- **Deterministic completion gate**: command run and PASS, failure, or CANT-VERIFY result.

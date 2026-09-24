@@ -29,7 +29,7 @@ $failed = $false
 function Fail($m) { Write-Output "FAIL: $m"; $script:failed = $true }
 function OK($m)   { Write-Output "OK:   $m" }
 
-# 0. Install completeness. The enforcement matrix is load-bearing: CLAUDE.md points to it for
+# 0. Install completeness. The enforcement matrix is load-bearing: AGENTS.md points to it for
 # the honest host guarantees. ci-integration.md is advisory and may be intentionally removed.
 if (-not (Test-Path "docs/enforcement-surfaces.md")) {
     Fail "framework install incomplete: docs/enforcement-surfaces.md missing — reinstall from the template."
@@ -43,45 +43,25 @@ if (Test-Path ".claude/adoption-pending.json") {
     Fail "adoption pending (.claude/adoption-pending.json present) — the installer detected pre-existing AI tooling. A developer must run /adopt (it cannot be model-invoked) to consolidate it; /adopt removes this marker in its Phase 3."
 } else { OK "no adoption-pending marker." }
 
-# 1. CLAUDE.md present, non-empty, bootstrapped.
-if (-not (Test-Path "CLAUDE.md") -or ((Get-Item "CLAUDE.md").Length -eq 0)) {
-    Fail "CLAUDE.md is missing or empty."
-} elseif (Select-String -Path "CLAUDE.md" -Pattern "BOOTSTRAP_PENDING" -Quiet) {
+# 1. AGENTS.md (the project instruction file) present, non-empty, bootstrapped. CLAUDE.md's
+#    stub shape is checked by template-checks (6b).
+if (-not (Test-Path "AGENTS.md") -or ((Get-Item "AGENTS.md").Length -eq 0)) {
+    Fail "AGENTS.md is missing or empty."
+} elseif (Select-String -Path "AGENTS.md" -Pattern "BOOTSTRAP_PENDING" -Quiet) {
     if (Test-Path ".claude/adoption-pending.json") {
-        Fail "CLAUDE.md still contains the BOOTSTRAP_PENDING marker — populated by /adopt (adoption pending, see check 0); do not run /bootstrap directly."
+        Fail "AGENTS.md still contains the BOOTSTRAP_PENDING marker — populated by /adopt (adoption pending, see check 0); do not run /bootstrap directly."
     } else {
-        Fail "CLAUDE.md still contains the BOOTSTRAP_PENDING marker — run /bootstrap."
+        Fail "AGENTS.md still contains the BOOTSTRAP_PENDING marker — run /bootstrap."
     }
-} else { OK "CLAUDE.md present and bootstrapped." }
+} else { OK "AGENTS.md present and bootstrapped." }
 
-# 1b. CLAUDE.md size budget (advisory — CLAUDE.md loads on nearly every agent turn).
-if (Test-Path "CLAUDE.md") {
+# 1b. AGENTS.md size budget (advisory — AGENTS.md loads on nearly every agent turn).
+if (Test-Path "AGENTS.md") {
     # @().Count includes blank lines; Measure-Object -Line does not.
-    $clLines = @(Get-Content "CLAUDE.md").Count
+    $clLines = @(Get-Content "AGENTS.md").Count
     if ($clLines -gt 400) {
-        Write-Output "NOTE: CLAUDE.md is $clLines lines (soft budget 400). Push verbose Architecture Decisions / Repository Structure detail into on-demand files (docs/, skills) to cut per-turn token cost. (advisory — not a failure)"
+        Write-Output "NOTE: AGENTS.md is $clLines lines (soft budget 400). Push verbose Architecture Decisions / Repository Structure detail into on-demand files (docs/, skills) to cut per-turn token cost. (advisory — not a failure)"
     }
-}
-
-# 2. AGENTS.md present AND is the generated mirror.
-if (-not (Test-Path "AGENTS.md")) {
-    Fail "AGENTS.md is missing — run /generate-copilot."
-} else {
-    # Maintenance rule 7 applies even though this check does not launch a child process. A
-    # Select-String that cannot READ the file returns nothing under -Quiet, which is indistinguishable
-    # from "the pattern is absent" -- so a locked or unreadable AGENTS.md would be reported as drift
-    # and send someone to regenerate a file nothing ever inspected. -ErrorAction Stop separates them.
-    $missing = @()
-    $probeFailed = $false
-    try {
-        if (-not (Select-String -Path "AGENTS.md" -Pattern "GENERATED FILE" -Quiet -ErrorAction Stop)) { $missing += "banner" }
-        foreach ($h in @("## Verification Rules","## Leanness","## Boy Scout Rule","## Agentic Workflow")) {
-            if (-not (Select-String -Path "AGENTS.md" -SimpleMatch -Pattern $h -Quiet -ErrorAction Stop)) { $missing += $h }
-        }
-    } catch { $probeFailed = $true }
-    if ($probeFailed) { Fail "PowerShell could not inspect AGENTS.md — this is a host/resource problem, so mirror currency cannot be verified. It is not evidence that AGENTS.md has drifted." }
-    elseif ($missing.Count -gt 0) { Fail ("AGENTS.md is not a current generated mirror (missing: " + ($missing -join ', ') + ") — run /generate-copilot.") }
-    else { OK "AGENTS.md is a generated mirror of CLAUDE.md's portable rules." }
 }
 
 # 3. copilot-instructions.md present and <= 80 lines.
@@ -119,7 +99,7 @@ if (Test-Path 'README.md') {
     if ($missingDoc.Count -gt 0) { Write-Output ("NOTE: README.md does not mention: " + ($missingDoc -join ' ') + " — update the What's-in-the-box / subagents tables (they may have drifted). (advisory — not a failure)") }
 }
 
-# 6b. Deterministic framework checks (version-stamp sync, verbatim CLAUDE.md<->AGENTS.md mirror,
+# 6b. Deterministic framework checks (version-stamp sync, CLAUDE.md -> AGENTS.md instruction layout,
 #     PowerShell hook/BOM checks) -- the same gate the template repo's CI runs after install.
 # Child process: template-checks.ps1 ends with `exit`, which would terminate this script if dot-run.
 $tc = Join-Path $here 'template-checks.ps1'

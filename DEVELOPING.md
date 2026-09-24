@@ -402,7 +402,7 @@ stamp drift twice:
    pre-release tree.
 3. From PowerShell 7, run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
    -ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`.
-   It stamps `src/core/CLAUDE.md` + the three `framework-version.json` files, rebuilds all three
+   It stamps `src/core/AGENTS.md` + the three `framework-version.json` files, rebuilds all three
     dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the four
     release-subject meta files: `DocTruth`, `ReleaseChangelogStamp`, `GateBudgetConsistency`,
     `WorkspaceBom`), **refuses to commit on any failure**, appends

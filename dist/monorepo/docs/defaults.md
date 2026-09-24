@@ -1,7 +1,7 @@
 # Greenfield Conventions — Evidence-Matched Defaults
 
-> Reference defaults for the technologies this repository actually evidences: .NET, Angular 17+, and/or SQL/warehouse sources. These apply only when CLAUDE.md > Conventions has not been populated by `/bootstrap`.
-> Once `/bootstrap` runs, CLAUDE.md > Conventions is the authoritative source — these defaults are for cold-start scaffolding only.
+> Reference defaults for the technologies this repository actually evidences: .NET, Angular 17+, and/or SQL/warehouse sources. These apply only when AGENTS.md > Conventions has not been populated by `/bootstrap`.
+> Once `/bootstrap` runs, AGENTS.md > Conventions is the authoritative source — these defaults are for cold-start scaffolding only.
 
 The distribution name is not technology evidence. Apply only the sections whose application markers
 exist; the raw-SQL and warehouse blocks under .NET Data Access also stand on their own for a
@@ -11,7 +11,7 @@ warehouse-only repository.
 
 For each durable category — **build**, **test**, **format**, **lint**, **migration/deploy**, and
 **data-validation** — use an exact command only when committed repository evidence names it:
-CLAUDE.md conventions, CI definitions, scripts/task runners, manifests, or tool configuration.
+AGENTS.md conventions, CI definitions, scripts/task runners, manifests, or tool configuration.
 Record that exact evidence path with the command. If a category has no applicable selected profile
 or evidenced command, report `not available (no evidenced command)`; never invent a .NET or Angular
 command from this distribution's name.
@@ -32,7 +32,7 @@ command from this distribution's name.
 - Files match class names exactly. One public class per file.
 
 ### Dependency Injection
-- **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools))**: derive a .NET service seam, registration, and lifetime from first-party project evidence and correctness needs. Do not introduce an interface or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (DTOs, entities, value objects, `Options`) are not services and get no interface.
+- **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID))**: derive a .NET service seam, registration, and lifetime from first-party project evidence and correctness needs. Do not introduce an interface or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (DTOs, entities, value objects, `Options`) are not services and get no interface.
 - Where the project already evidences DI, follow its established lifetime and composition-root conventions; this default does not choose scoped, transient, or singleton.
 - Follow the project’s evidenced composition-root location and registration mechanism; do not select extension methods or `Program.cs` from this default.
 - Use an options/configuration mechanism only where the project evidences it; do not select `IOptions<T>`, `IOptionsMonitor<T>`, or `IOptionsSnapshot<T>` solely from this default.
@@ -66,7 +66,7 @@ Data-access defaults are conditional on what the repo evidences in csproj packag
 - Loads are idempotent and re-runnable: use the repo's control mechanism (watermarks, batch/load ids, partition switch, versioned runs) — never load the same data twice, and a rerun after a failed run must be safe.
 - Load dimensions before the facts that reference them; apply the slowly-changing-dimension type each dimension already uses.
 - Use the `map-warehouse` skill to understand the warehouse before changing it, and `add-warehouse-load` to add or extend a load.
-- The map lives in `docs/warehouse-map.md`, indexed by a one-line pointer in CLAUDE.md > Conventions > Data Access — the same detail-on-demand split as Architecture Decisions. **Read the map before writing a warehouse query**, not only before changing a load: it carries the fact → dimension relationships, which key reaches which dimension, and the confidence in each. Reach an attribute by following a fact key to the dimension that owns it — never off a same-named column that happens to sit on a table already in the join, and never assume a relationship from a naming convention. If the map marks an edge `UNRESOLVED`, copy an existing reporting view's join path or ask; do not guess.
+- The map lives in `docs/warehouse-map.md`, indexed by a one-line pointer in AGENTS.md > Conventions > Data Access — the same detail-on-demand split as Architecture Decisions. **Read the map before writing a warehouse query**, not only before changing a load: it carries the fact → dimension relationships, which key reaches which dimension, and the confidence in each. Reach an attribute by following a fact key to the dimension that owns it — never off a same-named column that happens to sit on a table already in the join, and never assume a relationship from a naming convention. If the map marks an edge `UNRESOLVED`, copy an existing reporting view's join path or ask; do not guess.
 - T-SQL examples apply only where the repo evidences SQL Server (`.sqlproj`, `Microsoft.Data.SqlClient`, T-SQL syntax in `.sql` files).
 
 **If none detected:**
@@ -143,7 +143,7 @@ particular runner, browser, lint target, or flag set; unavailable categories rem
 ### Architecture
 - Follow the project’s evidenced standalone/NgModule shape. A genuinely new choice needs an explicit design decision; this default does not select one.
 - Follow the project’s evidenced injection style. A genuinely new choice between `inject()` and constructor injection needs an explicit design decision; do not mix styles in one file without that evidence.
-- **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools))**: derive an Angular service seam and registration from first-party project evidence and correctness needs. Do not introduce an abstraction, token, or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (models, DTOs, enums) are not services and get no abstraction.
+- **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID))**: derive an Angular service seam and registration from first-party project evidence and correctness needs. Do not introduce an abstraction, token, or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (models, DTOs, enums) are not services and get no abstraction.
 - Follow the project’s evidenced route-loading mechanism. A genuinely new lazy/eager choice needs an explicit design decision; this default does not select one.
 - Barrel files (`index.ts`) only at feature boundaries — not inside feature folders (causes circular deps).
 

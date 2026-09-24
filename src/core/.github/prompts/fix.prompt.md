@@ -3,7 +3,7 @@ agent: agent
 <!-- @stack:desc -->
 ---
 
-Read `CLAUDE.md` and `.claude/commands/fix.md` in this repository, then execute the fix workflow defined there for the bug below.
+Read `AGENTS.md` and `.claude/commands/fix.md` in this repository, then execute the fix workflow defined there for the bug below.
 
 <!-- @stack:summary -->
 

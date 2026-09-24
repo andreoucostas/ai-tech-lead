@@ -11,7 +11,7 @@ description: >
 
 # Add a new route with lazy loading
 
-Match the conventions in CLAUDE.md > Conventions > Architecture for module/standalone choice and barrel-file rules.
+Match the conventions in AGENTS.md > Conventions > Architecture for module/standalone choice and barrel-file rules.
 
 ## Project-derived pattern authority
 
@@ -28,6 +28,6 @@ distribution and template defaults do not establish an Angular project.
 3. Add guards only where the project’s route policy and the feature’s evidence require them.
 4. Add resolvers only where the project’s route pattern requires data before render; otherwise preserve its evidenced loading state.
 
-Derive build, test, format, lint, migration/deploy, and data-validation commands from CLAUDE.md >
+Derive build, test, format, lint, migration/deploy, and data-validation commands from AGENTS.md >
 Conventions > Verification Commands, committed CI, scripts, manifests, and configuration. Run only
 exact evidenced commands and report every unavailable category as **not available**.

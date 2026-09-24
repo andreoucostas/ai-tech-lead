@@ -1,1 +1,1 @@
-description: Read-only audit of in-scope files against CLAUDE.md conventions, using profile rules only when repository evidence establishes them. Returns structured findings; used by `/review` and ad-hoc audits.
+description: Read-only audit of in-scope files against AGENTS.md conventions, using profile rules only when repository evidence establishes them. Returns structured findings; used by `/review` and ad-hoc audits.

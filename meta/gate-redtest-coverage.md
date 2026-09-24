@@ -93,7 +93,6 @@ One row follows for every `*.Tests.ps1` under `.claude/hooks/tests/` on the inve
 | `RepositoryPrivacy.Tests.ps1` | concrete-home detection and missing-environment fixtures | Test exists; prior report located design but no explicit observed-red record | n/a | HAPPY-PATH-ONLY |
 | `RootInstallerWarehouse.Tests.ps1` | planted broken warehouse-selection result makes the suite reject the install | Yes — executable B-149 mutation; `2026-08-18-b149-implementation.md` | installer ps1 + sh | COVERED |
 | `ScriptTwinCoverage.Tests.ps1` | Classification assertion only; no planted unclassified-twin mutation found | UNKNOWN | inventories ps1 + sh | HAPPY-PATH-ONLY |
-| `SkillListParity.Tests.ps1` | External vacuous-pass probe | Yes — `meta/review-ledger.md` v0.53.0 | n/a | COVERED |
 | `UpdateDelivery.Tests.ps1` | missing preflight/guard and collision/ownership negative paths | Yes — `2026-08-17-b46-implementation-report.md` and v0.56.0 ledger | installer ps1 + sh | COVERED |
 | `ValidateDist.Tests.ps1` | 40+ focused mutations covering all 13 checks | Yes — records cited in validator table above | validator ps1 + sh | COVERED |
 | `WorkspaceBom.Tests.ps1` | BOM-less and invalid-UTF-8 positive controls | Yes — executable controls; B-64 report | n/a | COVERED |

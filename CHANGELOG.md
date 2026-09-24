@@ -11,7 +11,21 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.89.3 — Unreleased
+## 0.90.0 — Unreleased
+
+B-272. Shipped `AGENTS.md` becomes the project instruction file and `CLAUDE.md` a two-import stub
+(`@AGENTS.md`, `@.github/instructions/framework-rules.instructions.md`); the generated mirror, the
+`AGENTS.md` half of `/generate-copilot`, `template-checks` checks 2 and 8, the `docs-sync-check`
+mirror leg and `SkillListParity.Tests.ps1` are deleted. Why: WSD-002's premise (Copilot does not read
+`CLAUDE.md`) no longer holds, so every Copilot surface loaded the rules and the conventions twice,
+and consumers had to regenerate the mirror on every upgrade. `install.ps1` update mode moves an
+older layout once, only when `AGENTS.md` opens with the `GENERATED FILE` banner or is absent, backing
+both originals up first; a hand-written `AGENTS.md` is declined and reported, `@./AGENTS.md` counts as migrated, and `session-start`,
+`template-checks` and `framework-doctor` read either layout. `context-footprint.ps1` now counts
+`CLAUDE.md` in `static.copilot` (VS Code, Copilot CLI and the cloud agent read it by default) and
+the imported `AGENTS.md` in `static.claude`: dotnet `static.copilot` 29,389 chars against about
+51,900 before on the corrected count (44,215 as previously recorded); `static.claude` 39,245 →
+39,215. Version bumped to 0.90.0 for the consumer-visible layout change. WSD-098.
 
 B-255, narrowed. The always-loaded rules carrier drops sentences that stated what hooks can be shown
 to do instead of directing the agent: "Registered, observed, and instructed differ by surface",

@@ -76,8 +76,8 @@ Anyone may raise a tier; no one lowers one. A batch takes its highest member.
 ## Invariants
 
 1. Author once under `src/`; never hand-edit `dist/` (CI rebuilds and diffs).
-2. Per dist, the shipped `CLAUDE.md` is canonical and `AGENTS.md` its composed mirror; fix drift in
-   `src/`; the gate is `validate-dist`.
+2. Per dist, the shipped `AGENTS.md` is the one instruction file and `CLAUDE.md` a stub importing it
+   and the rules carrier; nothing is mirrored; the gate is `validate-dist`.
 3. Framework-owned executables are PowerShell on native Windows: 7 primary, 5.1 fallback; neither
    host may relaunch the other in a test leg.
 4. Every `.ps1` carries a UTF-8 BOM. The `bom-fix` hook covers Write/Edit; add it by hand otherwise.

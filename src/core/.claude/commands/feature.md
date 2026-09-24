@@ -1,5 +1,5 @@
 ---
-description: "Full feature workflow: plan gate, ordered subtasks with build+test after each, Boy Scout on touched files, self-review against CLAUDE.md Conventions. Invoke for new multi-layer functionality when the inline feature rails are not enough."
+description: "Full feature workflow: plan gate, ordered subtasks with build+test after each, Boy Scout on touched files, self-review against AGENTS.md Conventions. Invoke for new multi-layer functionality when the inline feature rails are not enough."
 argument-hint: "[feature description]"
 ---
 
@@ -16,7 +16,7 @@ $ARGUMENTS
 
 Before writing any code, reason through:
 <!-- @stack:layers -->
-- What existing patterns should be reused? Check Common Tasks in CLAUDE.md and the relevant skill in `.claude/skills/`.
+- What existing patterns should be reused? Check Common Tasks in AGENTS.md and the relevant skill in `.claude/skills/`.
 - What are the failure modes?
 - What tests will verify success?
 <!-- @stack:leanness -->
@@ -33,7 +33,7 @@ Decompose into ordered subtasks. Execute each fully before starting the next:
 <!-- @stack:verify -->
 
 ### Step 3 — Boy Scout
-Apply the Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file you modified. Mandatory.
+Apply the Boy Scout Rule (AGENTS.md > Boy Scout Rule) to every file you modified. Mandatory.
 
 ### Step 4 — Wrap up
 @.claude/workflow.md

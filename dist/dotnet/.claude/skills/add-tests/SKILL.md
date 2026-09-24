@@ -13,7 +13,7 @@ description: >
 
 # Add tests following project patterns
 
-Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools). If conventions are unbootstrapped, follow `docs/defaults.md`.
+Match `AGENTS.md > Conventions > Testing` and the Test leanness rules in the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness). If conventions are unbootstrapped, follow `docs/defaults.md`.
 
 **Applicability gate:** confirm the code under test belongs to a repository-evidenced .NET project. If no such project exists, report this skill as **not applicable**; do not create a test suite for a stale delivery-profile label. Suite bootstrap remains available only through the explicit developer-agreement checkpoint below.
 
@@ -30,7 +30,7 @@ Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in the fra
 3. **Cover behavior, not implementation.** Choose the smallest risk-relevant set: the principal behavior plus only consequential error, edge, or boundary cases. Do not create one test per category or public member. Do **not** test getters/setters, DI resolution, or that EF Core/model-binding works (Test leanness #11, #12). Mock only true external boundaries — never the type under test or owned collaborators you can construct cheaply (Test leanness #14). Every test needs a real oracle: assert a return value, state change, or thrown exception — not merely that a mock was called or that `Assert.True(true)` (Test leanness #15–16).
 4. **Financial domain**: when code touches money/balances/ledgers, derive the applicable invariant, tolerance, and preconditions from policy, implementation, tests, or executable evidence. Add only risk-relevant cases that exercise demonstrated negative-amount, duplicate-effect, precision/rounding, or temporal controls; a type/name or `MidpointRounding` alone is neither test selection nor a verdict.
 5. **Arrange-Act-Assert**, one logical assertion focus per test. Descriptive names per the project convention (e.g. `Method_Scenario_ExpectedResult`).
-6. **Run** the exact scoped test command supported by `CLAUDE.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and runner configuration; do not infer a solution-level `dotnet test`. Confirm green, then confirm each new test can **fail**. A test you have not watched go red may be over-mocked or tautological (Verification Rule #9): for a regression test, confirm it fails against the unfixed code first; for any other new test, briefly break the code under test (or assert a deliberately wrong value) to see it fail for the right reason, then restore. If no executable command is evidenced, report tests as **not available** rather than claiming a pass.
+6. **Run** the exact scoped test command supported by `AGENTS.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and runner configuration; do not infer a solution-level `dotnet test`. Confirm green, then confirm each new test can **fail**. A test you have not watched go red may be over-mocked or tautological (Verification Rule #9): for a regression test, confirm it fails against the unfixed code first; for any other new test, briefly break the code under test (or assert a deliberately wrong value) to see it fail for the right reason, then restore. If no executable command is evidenced, report tests as **not available** rather than claiming a pass.
 7. **Report** what was covered and what remains uncovered — do not claim coverage you didn't add.
 
 ---
@@ -52,7 +52,7 @@ When the goal is to make untested legacy code *safe to change* (e.g. before `/re
 1. **Confirm before scaffolding.** First inspect the whole repository/project graph and confirm no test project
    exists anywhere, not merely beside the code under test. In one message, ask the developer to
    confirm the test framework and test-project location. Prefer
-   `CLAUDE.md > Conventions > Testing`; if it is unbootstrapped and the repository is genuinely
+   `AGENTS.md > Conventions > Testing`; if it is unbootstrapped and the repository is genuinely
    test-free, propose xUnit + NSubstitute. This is a real checkpoint — do not create files until
    they answer.
 2. **Scaffold the minimum.** Create one unit-test project referencing the primary domain/application
@@ -61,6 +61,6 @@ When the goal is to make untested legacy code *safe to change* (e.g. before `/re
    Only when the repo exposes an HTTP surface, add one integration fixture using an evidenced
    `WebApplicationFactory<Program>` boundary; minimal APIs may require `public partial class Program`
    or `InternalsVisibleTo`. Add no E2E project, coverage tooling, or extra test layers on day one.
-3. **Wire it so it cannot rot.** Record the new exact test command in `CLAUDE.md > Conventions > Verification Commands` and ensure the repo's existing CI/build runs the new project(s), following `docs/ci-integration.md`. If no CI exists, flag that and route CI setup to the `enforce-standards` skill; do not build CI in this task.
-4. **Start risk-first, not coverage-first.** Test in this order: `FRAMEWORK-CONTEXT.md > Known Hazard Areas`; financial-domain invariants from step 4 above when present; critical journeys from `CLAUDE.md > Codebase Context`; then pure domain logic with branching. Write only a handful that prove the harness end to end, and apply step 6's red-check to every test.
-5. **Record the remainder honestly.** Add one `TECH_DEBT.md` entry: `Test suite bootstrapped <date>; backfill areas: …`. Do not imply broader coverage. Update `CLAUDE.md > Conventions > Testing` with the real framework, naming, and fixture location, and flag that documentation drift under Agentic Workflow §6.
+3. **Wire it so it cannot rot.** Record the new exact test command in `AGENTS.md > Conventions > Verification Commands` and ensure the repo's existing CI/build runs the new project(s), following `docs/ci-integration.md`. If no CI exists, flag that and route CI setup to the `enforce-standards` skill; do not build CI in this task.
+4. **Start risk-first, not coverage-first.** Test in this order: `FRAMEWORK-CONTEXT.md > Known Hazard Areas`; financial-domain invariants from step 4 above when present; critical journeys from `AGENTS.md > Codebase Context`; then pure domain logic with branching. Write only a handful that prove the harness end to end, and apply step 6's red-check to every test.
+5. **Record the remainder honestly.** Add one `TECH_DEBT.md` entry: `Test suite bootstrapped <date>; backfill areas: …`. Do not imply broader coverage. Update `AGENTS.md > Conventions > Testing` with the real framework, naming, and fixture location, and flag that documentation drift under Agentic Workflow §6.

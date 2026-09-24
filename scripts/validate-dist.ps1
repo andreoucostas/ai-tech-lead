@@ -11,7 +11,7 @@
 #   8. exactly 18 PowerShell hook registrations resolve with case-exact paths and required settings
 #   9. every core @stack marker expands from a non-empty stack snippet into the composed file
 #  10. section-path citations name a heading that exists in the cited shipped file
-#  11. CLAUDE.md imports the shipped framework-rules carrier
+#  11. CLAUDE.md imports AGENTS.md and the shipped framework-rules carrier
 #  12. top-level ordered-list runs are contiguous and prose step references resolve in-file
 #  13. Copilot userPromptSubmitted has at most one entry (only its last entry is delivered)
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
@@ -332,8 +332,13 @@ if (-not (Test-Path -LiteralPath $claudePath -PathType Leaf)) {
     Fail "CLAUDE.md is missing required import $importLine."
 } elseif (-not (Test-Path -LiteralPath $carrierPath -PathType Leaf)) {
     Fail "CLAUDE.md imports $importLine but the carrier file is missing from $Dist."
+} elseif (-not (Select-String -LiteralPath $claudePath -Pattern '^@AGENTS\.md\s*$' -Quiet)) {
+    # B-272: AGENTS.md holds the project instructions; Claude Code reaches it only through this import.
+    Fail "CLAUDE.md is missing required import @AGENTS.md."
+} elseif (-not (Test-Path -LiteralPath (Join-Path $DistAbs 'AGENTS.md') -PathType Leaf)) {
+    Fail "CLAUDE.md imports @AGENTS.md but AGENTS.md is missing from $Dist."
 } else {
-    OK "CLAUDE.md imports the delivered framework-rules carrier."
+    OK "CLAUDE.md imports AGENTS.md and the delivered framework-rules carrier."
 }
 }
 

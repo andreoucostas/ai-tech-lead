@@ -1,9 +1,9 @@
 ---
-description: "Full feature workflow: plan gate, ordered subtasks with build+test after each, Boy Scout on touched files, self-review against CLAUDE.md Conventions. Invoke for new multi-layer functionality when the inline feature rails are not enough."
+description: "Full feature workflow: plan gate, ordered subtasks with build+test after each, Boy Scout on touched files, self-review against AGENTS.md Conventions. Invoke for new multi-layer functionality when the inline feature rails are not enough."
 argument-hint: "[feature description]"
 ---
 
-Implement a new feature in this repository. Derive its technologies, layers, and verification from repository evidence; do not infer a .NET application from this framework distribution. Every decision must comply with the conventions and patterns in CLAUDE.md.
+Implement a new feature in this repository. Derive its technologies, layers, and verification from repository evidence; do not infer a .NET application from this framework distribution. Every decision must comply with the conventions and patterns in AGENTS.md.
 
 ## Input
 $ARGUMENTS
@@ -16,10 +16,10 @@ $ARGUMENTS
 
 Before writing any code, reason through:
 - Which layers are affected (domain, application/service, API, infrastructure)?
-- What existing patterns should be reused? Check Common Tasks in CLAUDE.md and the relevant skill in `.claude/skills/`.
+- What existing patterns should be reused? Check Common Tasks in AGENTS.md and the relevant skill in `.claude/skills/`.
 - What are the failure modes?
 - What tests will verify success?
-- **Leanness check** (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)): can this fit in existing files? Are you tempted to introduce a new interface / helper / wrapper — is there a second consumer in this change-set? If not, defer the abstraction.
+- **Leanness check** (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness)): can this fit in existing files? Are you tempted to introduce a new interface / helper / wrapper — is there a second consumer in this change-set? If not, defer the abstraction.
 
 If the feature touches a clear file or area, spawn the `debt-radar` subagent via `Task` to surface bundleable TECH_DEBT entries before you scope the work. Fold any "Yes — same blast radius" entries into the plan when the marginal effort is small.
 
@@ -36,10 +36,10 @@ Choose only layers and validation that repository evidence supports. When the re
 
 For a repository without those application layers or a test harness, use its documented structure and strongest evidenced validation. Report tests as **not available** when no harness exists; do not introduce a foreign harness solely for this feature.
 
-Before the first subtask, derive exact **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. After each subtask, run only the commands applicable to the changed area. A .NET profile establishes only profile applicability; use any command, project, configuration, runner, or flags only when that exact full form is explicitly recorded in the evidence. Record every category without a supported command as **not available**; fix applicable-command failures before the next subtask. Never leave the codebase in a broken state.
+Before the first subtask, derive exact **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `AGENTS.md`, committed CI, scripts, manifests, and configuration. After each subtask, run only the commands applicable to the changed area. A .NET profile establishes only profile applicability; use any command, project, configuration, runner, or flags only when that exact full form is explicitly recorded in the evidence. Record every category without a supported command as **not available**; fix applicable-command failures before the next subtask. Never leave the codebase in a broken state.
 
 ### Step 3 — Boy Scout
-Apply the Boy Scout Rule (CLAUDE.md > Boy Scout Rule) to every file you modified. Mandatory.
+Apply the Boy Scout Rule (AGENTS.md > Boy Scout Rule) to every file you modified. Mandatory.
 
 ### Step 4 — Wrap up
 @.claude/workflow.md

@@ -6,7 +6,7 @@
 # outputs: host firing and consumption are capability-specific. The advisory response uses
 # additionalContext and never blocks.
 #
-# Advisory patterns related to CLAUDE.md > Boy Scout Rule:
+# Advisory patterns related to AGENTS.md > Boy Scout Rule:
 #   .cs -- missing CancellationToken on async methods (best-effort)
 #       -- string-interpolated logger calls
 #       -- missing .AsNoTracking() near .ToListAsync/.FirstOrDefaultAsync
@@ -15,7 +15,7 @@
 #       -- nested .subscribe()
 #       -- explicit `any` / `as any`
 # OnPush is intentionally NOT scanned: switching a component to OnPush is a
-# semantic change, not a drive-by cleanup -- see CLAUDE.md > Boy Scout Rule.
+# semantic change, not a drive-by cleanup -- see AGENTS.md > Boy Scout Rule.
 
 param(
     [ValidateSet('scan', 'deliver')]
@@ -156,7 +156,7 @@ foreach ($f in $files) {
         } else { $run = 0 }
     }
     if ($maxRun -ge 2) {
-        $findings.Add("${f}: commented-out code block ($maxRun+ contiguous lines) -- delete; version control preserves history (CLAUDE.md > Boy Scout > Subtract)")
+        $findings.Add("${f}: commented-out code block ($maxRun+ contiguous lines) -- delete; version control preserves history (AGENTS.md > Boy Scout > Subtract)")
     }
 }
 
@@ -188,7 +188,7 @@ if ($resolvedMode -eq 'scan') {
 
 # The Claude-mode response includes findings as additionalContext plus a short systemMessage that
 # reports the candidate count; whether a host consumes either field is capability-specific.
-$summary = "Boy Scout: $($findings.Count) candidate(s) found across $checked file(s) (see CLAUDE.md > Boy Scout Rule)."
+$summary = "Boy Scout: $($findings.Count) candidate(s) found across $checked file(s) (see AGENTS.md > Boy Scout Rule)."
 
 if ($resolvedMode -eq 'claude') {
     @{ systemMessage = $summary; hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $text } } | ConvertTo-Json -Compress

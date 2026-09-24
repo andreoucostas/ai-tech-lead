@@ -19,7 +19,7 @@ because this distribution was selected.
 
 ## 1. Scan now
 
-Derive each vulnerability, outdated-package, and Angular-migration-preview command from CLAUDE.md >
+Derive each vulnerability, outdated-package, and Angular-migration-preview command from AGENTS.md >
 Conventions > Verification Commands, committed CI, scripts, manifests, and configuration. Record
 the exact command and its evidence path before running it. Run only the evidenced form and report
 every unavailable scan category as **not available**; do not infer `npm audit`, `npm outdated`,
@@ -33,7 +33,7 @@ Read the output. For each advisory, note the package, severity, the path that pu
 - **Deprecated**: add to `TECH_DEBT.md` (Category: Dependencies) with the recommended replacement.
 - **Outdated (no advisory)**: only flag majors or security-relevant updates. For `@angular/*` and ecosystem packages, use an exact evidenced migration command so its migrations run; do not hand-edit `package.json` or infer an Angular CLI command. Do not churn the lockfile for cosmetic bumps (Leanness — no busywork).
 
-Before recommending the bump, run the exact dependency-install, build, and test commands evidenced by `CLAUDE.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Report any unavailable category; do not infer Angular CLI, a runner, or flags.
+Before recommending the bump, run the exact dependency-install, build, and test commands evidenced by `AGENTS.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Report any unavailable category; do not infer Angular CLI, a runner, or flags.
 
 ## 3. Automate (pick one, once per repo)
 

@@ -23,8 +23,8 @@ flowchart TD
       P[".github/prompts/*.prompt.md (Copilot wrappers)"]
     end
     subgraph T2[Tier 2 — Directed / agent-mode]
-      CL[CLAUDE.md — authored source of truth]
-      AG[AGENTS.md — generated full mirror]
+      CL[CLAUDE.md — Claude Code import stub]
+      AG[AGENTS.md — authored source of truth]
     end
     subgraph T1[Tier 1 — Passive / inline]
       CI[".github/copilot-instructions.md (slim, generated)"]
@@ -32,32 +32,32 @@ flowchart TD
     Dev --> T3 --> T2
     Dev -->|natural language| T2
     Dev -->|typing| T1
-    CL -. generates .-> AG
-    CL -. generates .-> CI
+    CL -. imports .-> AG
+    AG -. generates .-> CI
     P -. delegates to .-> C
 ```
 
 - **Tier 1 — Passive**: `.github/copilot-instructions.md` (≤80 lines, generated) drives Copilot inline completions.
-- **Tier 2 — Directed**: `CLAUDE.md` (authored, canonical) is read by Claude Code and supported Copilot agent surfaces; `AGENTS.md` (generated full mirror) serves Codex and GitHub code review, while Cursor reads both. Gemini defaults to `GEMINI.md`; Aider needs explicit read configuration.
+- **Tier 2 — Directed**: `AGENTS.md` (authored, canonical) is read by supported Copilot agent surfaces, GitHub code review, Codex, and Cursor, and by Claude Code through the `CLAUDE.md` stub that imports it. Gemini defaults to `GEMINI.md`; Aider needs explicit read configuration.
 - **Tier 3 — Explicit**: `/feature`, `/fix`, … live canonically in `.claude/commands/`; `.github/prompts/*.prompt.md` are thin wrappers that delegate to them (single source per workflow).
 
 ---
 
 ## 3. Source of truth → generated artifacts
 
-For portable rules, `CLAUDE.md` is the hand-authored source and its generated carriers are **drift-checked in CI**. Project skills are authored once under `.claude/skills/` and discovered there by Claude Code and supported Copilot skill surfaces.
+For portable rules, `AGENTS.md` is the hand-authored source and `CLAUDE.md` imports it; that layout is **checked in CI**. Project skills are authored once under `.claude/skills/` and discovered there by Claude Code and supported Copilot skill surfaces.
 
 ```mermaid
 flowchart LR
-    CLAUDE[CLAUDE.md\nauthored] -->|/generate-copilot Part A| COP[.github/copilot-instructions.md\nslim, ≤80 lines]
-    CLAUDE -->|/generate-copilot Part B| AGENTS[AGENTS.md\nfull rule mirror]
+    AGENTS[AGENTS.md\nauthored] -->|/generate-copilot| COP[.github/copilot-instructions.md\nslim, ≤80 lines]
+    CLAUDE[CLAUDE.md\nClaude Code stub] -->|imports| AGENTS
     AGD[.claude/agents/*] -.wrapped by.-> GAG[.github/agents/*.agent.md]
 ```
 
 | File | Authored or generated | Consumed by |
 |------|----------------------|-------------|
-| `CLAUDE.md` | **Authored** (canonical) | Claude Code, supported Copilot agent surfaces, Cursor |
-| `AGENTS.md` | Generated mirror | Codex, GitHub code review, Cursor |
+| `CLAUDE.md` | Stub importing `AGENTS.md` and the framework rules | Claude Code |
+| `AGENTS.md` | **Authored** (canonical) | Supported Copilot agent surfaces, GitHub code review, Codex, Cursor; Claude Code through `CLAUDE.md` |
 | `.github/copilot-instructions.md` | Generated (slim) | Copilot inline completions |
 | `.claude/skills/` | **Authored** (canonical project skills) | Claude Code and supported Copilot skill surfaces |
 | `.github/agents/*.agent.md` | Wrappers over `.claude/agents/` | Copilot custom agents |
@@ -71,7 +71,7 @@ Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/promp
 
 | Command | Purpose |
 |---------|---------|
-| `/bootstrap` | One-time: analyse selected .NET A1–A7 and/or warehouse-SQL W1–W3 profiles, plus one shared A8 skill-discovery pass, then populate CLAUDE.md + TECH_DEBT.md, generate AGENTS.md + copilot-instructions, and write evidenced project skills under `.claude/skills` |
+| `/bootstrap` | One-time: analyse selected .NET A1–A7 and/or warehouse-SQL W1–W3 profiles, plus one shared A8 skill-discovery pass, then populate AGENTS.md + TECH_DEBT.md, generate copilot-instructions, and write evidenced project skills under `.claude/skills` |
 | `/adopt` | Ingest existing AI artifacts (Cursor/Copilot/Aider/ADRs) into this layout, then `/bootstrap` the gaps |
 | `/feature` | Implement at repository-evidenced boundaries; checks for a `specs/<slug>.md` first; verified subtasks; Boy Scout; self-review |
 | `/fix` | Cause-first diagnosis; regression test when an evidenced harness exists; outcome-bound fix |
@@ -81,9 +81,9 @@ Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/promp
 | `/debt` | Find/fix bundleable tech debt (Trojan Horse) |
 | `/review` | Quality gate — dispatches the auditor subagents (below) |
 | `/security-review` | OWASP-style scan + senior judgement + SECURITY_FINDINGS SLAs |
-| `/docs-sync` | Cross-check docs vs code and the generated mirrors for drift |
+| `/docs-sync` | Cross-check docs vs code and the generated copilot-instructions.md for drift |
 | `/rebootstrap` | Deeper periodic re-alignment |
-| `/generate-copilot` | Regenerate copilot-instructions.md + AGENTS.md from CLAUDE.md |
+| `/generate-copilot` | Regenerate copilot-instructions.md from AGENTS.md |
 
 ---
 
@@ -97,7 +97,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 | `security-auditor` | OWASP-style scan; feeds `/security-review` | inherit (strong) |
 | `solid-check` | Audits the diff against the five SOLID principles and first-party project evidence; feeds `/review` | inherit (strong) |
 | `test-critic` | Test-integrity audit — would each test go red if the code under test broke? Catches over-mocking and tautological/weak assertions; feeds `/review` | inherit (strong) |
-| `convention-check` | Diff vs CLAUDE.md > Conventions; feeds `/review` | **haiku** |
+| `convention-check` | Diff vs AGENTS.md > Conventions; feeds `/review` | **haiku** |
 | `bloat-radar` | Over-abstraction counterweight to Boy Scout; feeds `/review` | **haiku** |
 | `debt-radar` | Maps files/areas to TECH_DEBT entries (Trojan Horse) | **haiku** |
 
@@ -134,7 +134,7 @@ sequenceDiagram
 
 ---
 
-## 8. Doctrine (the rules CLAUDE.md encodes)
+## 8. Doctrine (the rules the instruction files encode)
 
 - **Verification Rules** — verify before referencing; never invent APIs; honour version pinning; failures are signals (never silence). Anti-hallucination.
 - **Leanness** — counterweight to Boy Scout's add-bias; no abstraction on data or for speculation. Reconciled with SOLID (#below).
@@ -151,7 +151,7 @@ The local files do not depend on the Git remote, but their client delivery does 
 
 | Surface | GitHub | Bitbucket Data Center |
 |---------|--------|------------------------|
-| Copilot in IDE (reads supported repository carriers, including `CLAUDE.md` and `.github` adapters) | ✅ | ✅ (local Windows working tree) |
+| Copilot in IDE (reads supported repository carriers, including `AGENTS.md` and `.github` adapters) | ✅ | ✅ (local Windows working tree) |
 | Copilot VS Code hooks | Preview + org policy; verify with canaries | Same — the Git remote does not enable them |
 | Claude Code (`CLAUDE.md`, `.claude/**`) | ✅ | ✅ |
 | Copilot CLI hooks (`.github/hooks/`) | Registered locally; firing and consumption vary by event — see `docs/enforcement-surfaces.md` | Same — the Git remote does not enable local hooks |
@@ -163,17 +163,17 @@ The local files do not depend on the Git remote, but their client delivery does 
 
 ## 10. Quality gates & drift control
 
-- **CI guardrail** — `scripts/docs-sync-check.ps1` on Windows: CLAUDE.md bootstrapped + size budget; AGENTS.md is a current mirror; copilot-instructions ≤80 lines; project skills exist only at the canonical `.claude/skills` location; FRAMEWORK-CONTEXT populated. Wrapped by the GitHub Windows workflow or wired into Bamboo/Jenkins on a self-hosted Windows agent.
+- **CI guardrail** — `scripts/docs-sync-check.ps1` on Windows: AGENTS.md bootstrapped + size budget; CLAUDE.md imports it; copilot-instructions ≤80 lines; project skills exist only at the canonical `.claude/skills` location; FRAMEWORK-CONTEXT populated. Wrapped by the GitHub Windows workflow or wired into Bamboo/Jenkins on a self-hosted Windows agent.
 - **Eval cases** — read `tests/evals/cases.yaml` as a declarative spec of intended framework behavior (Verification, Leanness, SOLID/DIP, Boy Scout, no-defensive-overcoding). It records example response patterns and plain-English review rubrics.
-- **Version stamp** — `.claude/framework-version.json` + the HTML comment atop `CLAUDE.md`; `CHANGELOG.md` records evolution.
+- **Version stamp** — `.claude/framework-version.json` + the HTML comment atop `AGENTS.md`; `CHANGELOG.md` records evolution.
 
 ---
 
 ## 11. Repo map
 
 ```
-CLAUDE.md                     authored source of truth (conventions, doctrine, workflow)
-AGENTS.md                     generated mirror for Codex and GitHub code review; Cursor also reads it
+CLAUDE.md                     Claude Code stub importing AGENTS.md and the framework rules
+AGENTS.md                     authored source of truth (conventions, architecture, common tasks)
 FRAMEWORK-CONTEXT.md          cross-repo context (shared libs, multi-tenancy, dashboard)
 README.md                     human + AI-agent entrypoint
 TECH_DEBT.md / SECURITY_FINDINGS.md   registers

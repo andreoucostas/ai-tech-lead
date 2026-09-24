@@ -17,7 +17,7 @@ Add to `cases.yaml`:
 
 ```yaml
 <!-- @stack:case-id -->
-  rule: CLAUDE.md > <Section>
+  rule: AGENTS.md > <Section>
   prompt: |
     The natural-language prompt a developer would type.
   must_match:        # optional regex list

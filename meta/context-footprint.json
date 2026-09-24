@@ -68,8 +68,8 @@
         },
         {
           "path": ".claude/commands/docs-sync.md#frontmatter",
-          "chars": 295,
-          "tok": 74
+          "chars": 284,
+          "tok": 71
         },
         {
           "path": ".claude/commands/feature.md#frontmatter",
@@ -83,8 +83,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#frontmatter",
-          "chars": 149,
-          "tok": 37
+          "chars": 106,
+          "tok": 26
         },
         {
           "path": ".claude/commands/rebootstrap.md#frontmatter",
@@ -173,13 +173,18 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17862,
-          "tok": 4466
+          "chars": 17858,
+          "tok": 4464
+        },
+        {
+          "path": "AGENTS.md",
+          "chars": 7465,
+          "tok": 1866
         },
         {
           "path": "CLAUDE.md",
-          "chars": 7703,
-          "tok": 1926
+          "chars": 266,
+          "tok": 66
         }
       ],
       "static.copilot": [
@@ -190,13 +195,18 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17862,
-          "tok": 4466
+          "chars": 17858,
+          "tok": 4464
         },
         {
           "path": "AGENTS.md",
-          "chars": 22553,
-          "tok": 5638
+          "chars": 7465,
+          "tok": 1866
+        },
+        {
+          "path": "CLAUDE.md",
+          "chars": 266,
+          "tok": 66
         }
       ],
       "instructed": [
@@ -207,13 +217,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12138,
-          "tok": 3034
+          "chars": 12160,
+          "tok": 3040
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5348,
-          "tok": 1337
+          "chars": 5410,
+          "tok": 1352
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -222,33 +232,33 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 8168,
-          "tok": 2042
+          "chars": 8178,
+          "tok": 2044
         },
         {
           "path": "docs/defaults.md",
-          "chars": 9670,
-          "tok": 2418
+          "chars": 9621,
+          "tok": 2405
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 14984,
-          "tok": 3746
+          "chars": 15101,
+          "tok": 3775
         },
         {
           "path": "docs/playbook.md",
-          "chars": 9940,
-          "tok": 2485
+          "chars": 9960,
+          "tok": 2490
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 9060,
-          "tok": 2265
+          "chars": 9091,
+          "tok": 2273
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 6763,
-          "tok": 1691
+          "chars": 7283,
+          "tok": 1821
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -264,45 +274,45 @@
       "session": [
         {
           "path": "fixture/session-start",
-          "chars": 798,
-          "tok": 200
+          "chars": 1159,
+          "tok": 290
         }
       ],
       "prompt": [
         {
           "path": "fixture/route-prompt/intent/debt",
-          "chars": 1540,
-          "tok": 385
+          "chars": 1480,
+          "tok": 370
         },
         {
           "path": "fixture/route-prompt/intent/design",
-          "chars": 1283,
-          "tok": 321
+          "chars": 1223,
+          "tok": 306
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2431,
-          "tok": 608
+          "chars": 2319,
+          "tok": 580
         },
         {
           "path": "fixture/route-prompt/intent/fix",
-          "chars": 2323,
-          "tok": 581
+          "chars": 2263,
+          "tok": 566
         },
         {
           "path": "fixture/route-prompt/intent/refactor",
-          "chars": 2497,
-          "tok": 624
+          "chars": 2385,
+          "tok": 596
         },
         {
           "path": "fixture/route-prompt/intent/review",
-          "chars": 1540,
-          "tok": 385
+          "chars": 1480,
+          "tok": 370
         },
         {
           "path": "fixture/route-prompt/intent/test",
-          "chars": 1920,
-          "tok": 480
+          "chars": 1860,
+          "tok": 465
         },
         {
           "path": "fixture/route-prompt/security-only",
@@ -311,8 +321,8 @@
         },
         {
           "path": "fixture/route-prompt/worst/fix-security",
-          "chars": 3463,
-          "tok": 866
+          "chars": 3403,
+          "tok": 851
         }
       ],
       "ondemand-info": [
@@ -343,23 +353,23 @@
         },
         {
           "path": ".claude/agents/solid-check.md#body",
-          "chars": 3770,
-          "tok": 942
+          "chars": 3672,
+          "tok": 918
         },
         {
           "path": ".claude/agents/test-critic.md#body",
-          "chars": 5373,
-          "tok": 1343
+          "chars": 5321,
+          "tok": 1330
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 39976,
-          "tok": 9994
+          "chars": 40037,
+          "tok": 10009
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 47881,
-          "tok": 11970
+          "chars": 46587,
+          "tok": 11647
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -368,18 +378,18 @@
         },
         {
           "path": ".claude/commands/design.md#body",
-          "chars": 2906,
-          "tok": 726
+          "chars": 2933,
+          "tok": 733
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
-          "chars": 6806,
-          "tok": 1702
+          "chars": 5700,
+          "tok": 1425
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 3756,
-          "tok": 939
+          "chars": 3704,
+          "tok": 926
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -388,18 +398,18 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7495,
-          "tok": 1874
+          "chars": 4418,
+          "tok": 1104
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 17576,
-          "tok": 4394
+          "chars": 17402,
+          "tok": 4350
         },
         {
           "path": ".claude/commands/refactor.md#body",
-          "chars": 2992,
-          "tok": 748
+          "chars": 2940,
+          "tok": 735
         },
         {
           "path": ".claude/commands/review.md#body",
@@ -428,8 +438,8 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
-          "chars": 7692,
-          "tok": 1923
+          "chars": 7640,
+          "tok": 1910
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#body",
@@ -438,8 +448,8 @@
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#body",
-          "chars": 2033,
-          "tok": 508
+          "chars": 2017,
+          "tok": 504
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
@@ -448,8 +458,8 @@
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
-          "chars": 1895,
-          "tok": 474
+          "chars": 1846,
+          "tok": 462
         },
         {
           "path": ".claude/skills/enforce-standards/SKILL.md#body",
@@ -473,7 +483,7 @@
         },
         {
           "path": ".claude/skills/remember-for-team/SKILL.md#body",
-          "chars": 2419,
+          "chars": 2420,
           "tok": 605
         }
       ]
@@ -537,8 +547,8 @@
         },
         {
           "path": ".claude/commands/docs-sync.md#frontmatter",
-          "chars": 295,
-          "tok": 74
+          "chars": 284,
+          "tok": 71
         },
         {
           "path": ".claude/commands/feature.md#frontmatter",
@@ -552,8 +562,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#frontmatter",
-          "chars": 149,
-          "tok": 37
+          "chars": 106,
+          "tok": 26
         },
         {
           "path": ".claude/commands/rebootstrap.md#frontmatter",
@@ -632,13 +642,18 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17570,
+          "chars": 17566,
           "tok": 4392
         },
         {
+          "path": "AGENTS.md",
+          "chars": 7885,
+          "tok": 1971
+        },
+        {
           "path": "CLAUDE.md",
-          "chars": 8123,
-          "tok": 2031
+          "chars": 266,
+          "tok": 66
         }
       ],
       "static.copilot": [
@@ -649,13 +664,18 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17570,
+          "chars": 17566,
           "tok": 4392
         },
         {
           "path": "AGENTS.md",
-          "chars": 22937,
-          "tok": 5734
+          "chars": 7885,
+          "tok": 1971
+        },
+        {
+          "path": "CLAUDE.md",
+          "chars": 266,
+          "tok": 66
         }
       ],
       "instructed": [
@@ -666,13 +686,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12085,
-          "tok": 3021
+          "chars": 12107,
+          "tok": 3027
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5568,
-          "tok": 1392
+          "chars": 5630,
+          "tok": 1408
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -681,33 +701,33 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 8010,
-          "tok": 2002
+          "chars": 8020,
+          "tok": 2005
         },
         {
           "path": "docs/defaults.md",
-          "chars": 9718,
-          "tok": 2430
+          "chars": 9669,
+          "tok": 2417
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 14984,
-          "tok": 3746
+          "chars": 15101,
+          "tok": 3775
         },
         {
           "path": "docs/playbook.md",
-          "chars": 9931,
-          "tok": 2483
+          "chars": 9951,
+          "tok": 2488
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 9060,
-          "tok": 2265
+          "chars": 9091,
+          "tok": 2273
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 6763,
-          "tok": 1691
+          "chars": 7283,
+          "tok": 1821
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -723,45 +743,45 @@
       "session": [
         {
           "path": "fixture/session-start",
-          "chars": 798,
-          "tok": 200
+          "chars": 1159,
+          "tok": 290
         }
       ],
       "prompt": [
         {
           "path": "fixture/route-prompt/intent/debt",
-          "chars": 1540,
-          "tok": 385
+          "chars": 1480,
+          "tok": 370
         },
         {
           "path": "fixture/route-prompt/intent/design",
-          "chars": 1283,
-          "tok": 321
+          "chars": 1223,
+          "tok": 306
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2464,
-          "tok": 616
+          "chars": 2352,
+          "tok": 588
         },
         {
           "path": "fixture/route-prompt/intent/fix",
-          "chars": 2323,
-          "tok": 581
+          "chars": 2263,
+          "tok": 566
         },
         {
           "path": "fixture/route-prompt/intent/refactor",
-          "chars": 2504,
-          "tok": 626
+          "chars": 2392,
+          "tok": 598
         },
         {
           "path": "fixture/route-prompt/intent/review",
-          "chars": 1540,
-          "tok": 385
+          "chars": 1480,
+          "tok": 370
         },
         {
           "path": "fixture/route-prompt/intent/test",
-          "chars": 1920,
-          "tok": 480
+          "chars": 1860,
+          "tok": 465
         },
         {
           "path": "fixture/route-prompt/security-only",
@@ -770,8 +790,8 @@
         },
         {
           "path": "fixture/route-prompt/worst/fix-security",
-          "chars": 3266,
-          "tok": 816
+          "chars": 3206,
+          "tok": 802
         }
       ],
       "ondemand-info": [
@@ -802,23 +822,23 @@
         },
         {
           "path": ".claude/agents/solid-check.md#body",
-          "chars": 3584,
-          "tok": 896
+          "chars": 3486,
+          "tok": 872
         },
         {
           "path": ".claude/agents/test-critic.md#body",
-          "chars": 4987,
-          "tok": 1247
+          "chars": 4935,
+          "tok": 1234
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 39485,
-          "tok": 9871
+          "chars": 39546,
+          "tok": 9886
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 40580,
-          "tok": 10145
+          "chars": 39286,
+          "tok": 9822
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -827,18 +847,18 @@
         },
         {
           "path": ".claude/commands/design.md#body",
-          "chars": 2971,
-          "tok": 743
+          "chars": 2998,
+          "tok": 750
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
-          "chars": 6412,
-          "tok": 1603
+          "chars": 5306,
+          "tok": 1326
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 3212,
-          "tok": 803
+          "chars": 3160,
+          "tok": 790
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -847,18 +867,18 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7302,
-          "tok": 1826
+          "chars": 4227,
+          "tok": 1057
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 16359,
-          "tok": 4090
+          "chars": 16185,
+          "tok": 4046
         },
         {
           "path": ".claude/commands/refactor.md#body",
-          "chars": 3391,
-          "tok": 848
+          "chars": 3339,
+          "tok": 835
         },
         {
           "path": ".claude/commands/review.md#body",
@@ -897,13 +917,13 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
-          "chars": 6999,
-          "tok": 1750
+          "chars": 6947,
+          "tok": 1737
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#body",
-          "chars": 2033,
-          "tok": 508
+          "chars": 2017,
+          "tok": 504
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
@@ -912,8 +932,8 @@
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
-          "chars": 1901,
-          "tok": 475
+          "chars": 1852,
+          "tok": 463
         },
         {
           "path": ".claude/skills/enforce-standards/SKILL.md#body",
@@ -922,7 +942,7 @@
         },
         {
           "path": ".claude/skills/remember-for-team/SKILL.md#body",
-          "chars": 2419,
+          "chars": 2420,
           "tok": 605
         }
       ]
@@ -986,8 +1006,8 @@
         },
         {
           "path": ".claude/commands/docs-sync.md#frontmatter",
-          "chars": 295,
-          "tok": 74
+          "chars": 284,
+          "tok": 71
         },
         {
           "path": ".claude/commands/feature.md#frontmatter",
@@ -1001,8 +1021,8 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#frontmatter",
-          "chars": 149,
-          "tok": 37
+          "chars": 106,
+          "tok": 26
         },
         {
           "path": ".claude/commands/rebootstrap.md#frontmatter",
@@ -1111,13 +1131,18 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19320,
-          "tok": 4830
+          "chars": 19316,
+          "tok": 4829
+        },
+        {
+          "path": "AGENTS.md",
+          "chars": 9519,
+          "tok": 2380
         },
         {
           "path": "CLAUDE.md",
-          "chars": 9757,
-          "tok": 2439
+          "chars": 266,
+          "tok": 66
         }
       ],
       "static.copilot": [
@@ -1128,13 +1153,18 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19320,
-          "tok": 4830
+          "chars": 19316,
+          "tok": 4829
         },
         {
           "path": "AGENTS.md",
-          "chars": 25796,
-          "tok": 6449
+          "chars": 9519,
+          "tok": 2380
+        },
+        {
+          "path": "CLAUDE.md",
+          "chars": 266,
+          "tok": 66
         }
       ],
       "instructed": [
@@ -1145,13 +1175,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12918,
-          "tok": 3230
+          "chars": 12940,
+          "tok": 3235
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5842,
-          "tok": 1460
+          "chars": 5904,
+          "tok": 1476
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -1160,33 +1190,33 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 8236,
-          "tok": 2059
+          "chars": 8246,
+          "tok": 2062
         },
         {
           "path": "docs/defaults.md",
-          "chars": 18238,
-          "tok": 4560
+          "chars": 18140,
+          "tok": 4535
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 14984,
-          "tok": 3746
+          "chars": 15101,
+          "tok": 3775
         },
         {
           "path": "docs/playbook.md",
-          "chars": 10588,
-          "tok": 2647
+          "chars": 10608,
+          "tok": 2652
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 9060,
-          "tok": 2265
+          "chars": 9091,
+          "tok": 2273
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 6763,
-          "tok": 1691
+          "chars": 7283,
+          "tok": 1821
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1202,45 +1232,45 @@
       "session": [
         {
           "path": "fixture/session-start",
-          "chars": 798,
-          "tok": 200
+          "chars": 1159,
+          "tok": 290
         }
       ],
       "prompt": [
         {
           "path": "fixture/route-prompt/intent/debt",
-          "chars": 1540,
-          "tok": 385
+          "chars": 1480,
+          "tok": 370
         },
         {
           "path": "fixture/route-prompt/intent/design",
-          "chars": 1283,
-          "tok": 321
+          "chars": 1223,
+          "tok": 306
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2494,
-          "tok": 624
+          "chars": 2382,
+          "tok": 596
         },
         {
           "path": "fixture/route-prompt/intent/fix",
-          "chars": 2323,
-          "tok": 581
+          "chars": 2263,
+          "tok": 566
         },
         {
           "path": "fixture/route-prompt/intent/refactor",
-          "chars": 2504,
-          "tok": 626
+          "chars": 2392,
+          "tok": 598
         },
         {
           "path": "fixture/route-prompt/intent/review",
-          "chars": 1540,
-          "tok": 385
+          "chars": 1480,
+          "tok": 370
         },
         {
           "path": "fixture/route-prompt/intent/test",
-          "chars": 1920,
-          "tok": 480
+          "chars": 1860,
+          "tok": 465
         },
         {
           "path": "fixture/route-prompt/security-only",
@@ -1249,8 +1279,8 @@
         },
         {
           "path": "fixture/route-prompt/worst/fix-security",
-          "chars": 3878,
-          "tok": 970
+          "chars": 3818,
+          "tok": 954
         }
       ],
       "ondemand-info": [
@@ -1281,23 +1311,23 @@
         },
         {
           "path": ".claude/agents/solid-check.md#body",
-          "chars": 4014,
-          "tok": 1004
+          "chars": 3916,
+          "tok": 979
         },
         {
           "path": ".claude/agents/test-critic.md#body",
-          "chars": 6417,
-          "tok": 1604
+          "chars": 6365,
+          "tok": 1591
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 40464,
-          "tok": 10116
+          "chars": 40525,
+          "tok": 10131
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 54515,
-          "tok": 13629
+          "chars": 53221,
+          "tok": 13305
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1306,18 +1336,18 @@
         },
         {
           "path": ".claude/commands/design.md#body",
-          "chars": 3198,
-          "tok": 800
+          "chars": 3225,
+          "tok": 806
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
-          "chars": 6930,
-          "tok": 1732
+          "chars": 5824,
+          "tok": 1456
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 4353,
-          "tok": 1088
+          "chars": 4301,
+          "tok": 1075
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -1326,18 +1356,18 @@
         },
         {
           "path": ".claude/commands/generate-copilot.md#body",
-          "chars": 7715,
-          "tok": 1929
+          "chars": 4618,
+          "tok": 1154
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 19251,
-          "tok": 4813
+          "chars": 19077,
+          "tok": 4769
         },
         {
           "path": ".claude/commands/refactor.md#body",
-          "chars": 3068,
-          "tok": 767
+          "chars": 3016,
+          "tok": 754
         },
         {
           "path": ".claude/commands/review.md#body",
@@ -1386,8 +1416,8 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
-          "chars": 9864,
-          "tok": 2466
+          "chars": 9812,
+          "tok": 2453
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#body",
@@ -1396,8 +1426,8 @@
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#body",
-          "chars": 2033,
-          "tok": 508
+          "chars": 2017,
+          "tok": 504
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
@@ -1406,8 +1436,8 @@
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
-          "chars": 3063,
-          "tok": 766
+          "chars": 3014,
+          "tok": 754
         },
         {
           "path": ".claude/skills/enforce-standards/SKILL.md#body",
@@ -1431,7 +1461,7 @@
         },
         {
           "path": ".claude/skills/remember-for-team/SKILL.md#body",
-          "chars": 2419,
+          "chars": 2420,
           "tok": 605
         }
       ]
@@ -1439,28 +1469,28 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39245,
-      "static.claude.tok": 9811,
-      "static.copilot.chars": 44215,
-      "static.copilot.tok": 11054,
-      "prompt.max.chars": 3463,
-      "prompt.max.tok": 866
+      "static.claude.chars": 39215,
+      "static.claude.tok": 9804,
+      "static.copilot.chars": 29389,
+      "static.copilot.tok": 7347,
+      "prompt.max.chars": 3403,
+      "prompt.max.tok": 851
     },
     "angular": {
-      "static.claude.chars": 37677,
-      "static.claude.tok": 9419,
-      "static.copilot.chars": 44689,
-      "static.copilot.tok": 11172,
-      "prompt.max.chars": 3266,
-      "prompt.max.tok": 816
+      "static.claude.chars": 37647,
+      "static.claude.tok": 9412,
+      "static.copilot.chars": 29899,
+      "static.copilot.tok": 7475,
+      "prompt.max.chars": 3206,
+      "prompt.max.tok": 802
     },
     "monorepo": {
-      "static.claude.chars": 46449,
-      "static.claude.tok": 11612,
-      "static.copilot.chars": 50786,
-      "static.copilot.tok": 12696,
-      "prompt.max.chars": 3878,
-      "prompt.max.tok": 970
+      "static.claude.chars": 46419,
+      "static.claude.tok": 11605,
+      "static.copilot.chars": 34771,
+      "static.copilot.tok": 8693,
+      "prompt.max.chars": 3818,
+      "prompt.max.tok": 954
     },
     "monorepo-claude-ratio-permille": 1184
   },

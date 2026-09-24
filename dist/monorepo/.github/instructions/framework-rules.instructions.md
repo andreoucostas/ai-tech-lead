@@ -3,7 +3,7 @@ applyTo: "**"
 ---
 
 <!-- FRAMEWORK-OWNED — replaced wholesale by the installer on every update. Do not edit.
-     Repo-specific rules belong in CLAUDE.md (Conventions, Boy Scout Rule). -->
+     Repo-specific rules belong in AGENTS.md (Conventions, Boy Scout Rule). -->
 
 ## Verification Rules
 
@@ -17,7 +17,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 6. **No invented fixtures.** When sample data, builders, factories, or mocks already exist, reuse them. Do not fabricate parallel ones.
 7. **Failures are signals.** Build, test, `tsc`, lint, or analyser failures are diagnostic. Read the message and fix the cause; never wrap in try/catch, `#pragma warning disable`, `// @ts-ignore`, or `as any` to silence. (A PreToolUse hook hard-blocks **editor/file writes** that add `#pragma warning disable` / `// eslint-disable` / `@ts-ignore` / `@ts-nocheck`; writes routed through a terminal tool are not intercepted — see `docs/enforcement-surfaces.md`.)
 
-**Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable repository-evidenced commands (`CLAUDE.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. `framework-owned/overwritten` paths in `framework-ownership.json` and paths in `framework-retirements.json` are framework, not application-command, evidence. Run them only when named by an explicit framework workflow or requested for framework diagnosis; report separately from application verification. Do not run a saved Verification Commands row naming one — flag `/rebootstrap`. Migration/deploy is **manual/CI-only** unless its exact command is an evidenced non-mutating validation/dry-run or developer-authorized known target; otherwise do not run it.
+**Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable repository-evidenced commands (`AGENTS.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. `framework-owned/overwritten` paths in `framework-ownership.json` and paths in `framework-retirements.json` are framework, not application-command, evidence. Run them only when named by an explicit framework workflow or requested for framework diagnosis; report separately from application verification. Do not run a saved Verification Commands row naming one — flag `/rebootstrap`. Migration/deploy is **manual/CI-only** unless its exact command is an evidenced non-mutating validation/dry-run or developer-authorized known target; otherwise do not run it.
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
 9. **A new test must be seen to fail before it is trusted.** Before relying on a new behavioral test as green, confirm it actually goes red when the behavior is broken — write it before the fix (bug fixes), or briefly break the code under test and watch it fail for the right reason. Where running the red is impractical, state the specific defect the test would catch. *Why: AI-generated tests are the highest-risk for tautological or over-mocked assertions that pass even against broken code; a test you have watched fail cannot be vacuous.*
 10. **Derive, don't assume.** Before applying or recommending any technology-specific rule or recipe (ORM/data access, validation, HTTP client, test framework, state management), verify that technology is present in this repo via a package reference, import, or config. If a default or skill assumes an absent technology, say so explicitly and derive the convention from what the codebase actually uses instead.
@@ -116,9 +116,9 @@ Every bug-fix edit must be necessary for requested behaviour, existing caller/ex
 
 ### 5. Self-review before presenting
 Before presenting work as complete:
-- Review your changes against the Conventions section above
+- Review your changes against `AGENTS.md > Conventions`
 - Apply Verification command discovery; report what ran, was unavailable, or stayed manual/CI-only
-- Check if the change introduces a new pattern → flag that this file needs updating
+- Check if the change introduces a new pattern → flag that AGENTS.md needs updating
 - Check if the change resolves a TECH_DEBT.md item → flag for removal
 - Check if the change contradicts any convention → ask whether to update the convention or change the implementation
 - If the session surfaced a team-worthy gotcha, recipe, or failed approach, offer `remember-for-team`

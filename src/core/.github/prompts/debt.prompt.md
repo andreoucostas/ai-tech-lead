@@ -3,7 +3,7 @@ agent: agent
 <!-- @stack:desc -->
 ---
 
-Read `CLAUDE.md`, `TECH_DEBT.md`, and `.claude/commands/debt.md`, then execute the debt workflow defined there for the area below.
+Read `AGENTS.md`, `TECH_DEBT.md`, and `.claude/commands/debt.md`, then execute the debt workflow defined there for the area below.
 
 <!-- @stack:summary -->
 

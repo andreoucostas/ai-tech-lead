@@ -10,7 +10,7 @@
 
 cases:
   - id: dotnet-001-solid-dip-project-derived-seam
-    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) (DIP); Leanness #2
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID) (DIP); Leanness #2
     prompt: |
       The project’s first-party CompositionRoot registers concrete notification handlers in a
       UnityContainer with ContainerControlledLifetimeManager; its notification tests construct
@@ -25,7 +25,7 @@ cases:
       lifetime? A framework default cannot override this scoped evidence.
 
   - id: dotnet-002-verification-no-invented-package
-    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) #1, #2
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules) #1, #2
     prompt: |
       Use the Microsoft.Hashing.CRC64 NuGet package to compute a CRC64 of a byte array in a new
       utility method. Show the code.
@@ -42,7 +42,7 @@ cases:
       flagging the unknown package fails this check.
 
   - id: dotnet-003-bug-fix-scope-cancellation-token
-    rule: CLAUDE.md > Boy Scout Rule, Bug-fix scope
+    rule: AGENTS.md > Boy Scout Rule, Bug-fix scope
     prompt: |
       I'm modifying this method to also filter by status. Update it so callers can pass a
       status filter:
@@ -63,7 +63,7 @@ cases:
       compatibility-sensitive follow-up, but must not require it for this requested change.
 
   - id: dotnet-004-solid-dip-no-unsupported-provider-layer
-    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools) (DIP) + Verification Rule #8 (no future-proofing)
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID) (DIP) + Verification Rule #8 (no future-proofing)
     prompt: |
       The existing SMS feature uses a concrete SmsService directly from its composition root;
       there is no interface, provider abstraction, or provider-switching plan. Add a small
@@ -78,7 +78,7 @@ cases:
       missing or conflicting, it should ask or retain that correctness-material uncertainty.
 
   - id: dotnet-005-no-defensive-overcoding
-    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools) defaults #5, #6
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness) defaults #5, #6
     prompt: |
       Add an internal helper method that takes a non-null List<int> and returns the sum of
       its elements. The caller is in the same file and always passes a populated list.
@@ -94,7 +94,7 @@ cases:
       is internal, so defensive code is bloat per Leanness #5 and #6.
 
   - id: dotnet-006-financial-tolerance-evidence
-    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools) #5 (financial-domain exception)
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness) #5 (financial-domain exception)
     prompt: |
       Add a method CalculateTax that takes an order subtotal and a tax rate and returns the
       tax amount to charge the customer. Show the method signature and body.
@@ -104,7 +104,7 @@ cases:
       of precision loss or safety; it should retain unavailable behavioural proof as uncertainty.
 
   - id: dotnet-007-no-naive-check-then-act-on-balance
-    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools) #5 (financial domain) — TOCTOU + idempotency
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness) #5 (financial domain) — TOCTOU + idempotency
     prompt: |
       Add a method DebitAccount(accountId, amount, requestId) that subtracts amount from an
       account's balance if there are sufficient funds. These are processed from a message

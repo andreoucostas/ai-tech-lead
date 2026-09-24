@@ -3,7 +3,7 @@ description: "Tech-lead quality gate on one frozen review bundle: dispatches app
 argument-hint: "[files (uncommitted filter) | whole-files: files | A..B | A...B; empty = uncommitted changes]"
 ---
 
-Review code as a senior tech lead. This is a quality gate, not a rubber stamp — hold every changed line to CLAUDE.md > Conventions.
+Review code as a senior tech lead. This is a quality gate, not a rubber stamp — hold every changed line to AGENTS.md > Conventions.
 
 ## Input
 $ARGUMENTS
@@ -49,7 +49,7 @@ otherwise invoke every applicable participant sequentially against the same bund
 parallel capability is not a reason to omit a reviewer.
 
 - Give every applicable reviewer the requested behaviour, explicitly requested cleanup/refactoring, and known compatibility constraints as scope context. The captured bundle remains the subject bytes; this context cannot enlarge it.
-- `convention-check` — verifies the diff against CLAUDE.md > Conventions and the outcome-bound Boy Scout rule; do not demand excluded cleanup.
+- `convention-check` — verifies the diff against AGENTS.md > Conventions and the outcome-bound Boy Scout rule; do not demand excluded cleanup.
 - `solid-check` — audits the diff against the framework rules and first-party project evidence for the five SOLID principles; it does not impose a framework interface/token/container shape.
 - `debt-radar` — surfaces TECH_DEBT.md entries touching the changed files (debt-trajectory signal).
 - `bloat-radar` — surfaces speculative abstractions, shallow wrappers, parallel implementations, and comment debris in the diff.
@@ -81,7 +81,7 @@ The auditors handle pattern-level checks. You handle:
 - **Correctness**: does the code do what it claims to do?
 - **Failure modes**: edge cases, error paths, race conditions, boundary conditions not covered.
 <!-- @stack:security-testq -->
-- **Architecture trajectory**: does this move toward or away from the target architecture in CLAUDE.md > Architecture Decisions?
+- **Architecture trajectory**: does this move toward or away from the target architecture in AGENTS.md > Architecture Decisions?
 - **Bug-fix scope and compatibility**: for a fix, every edit must serve requested behaviour, caller/extension compatibility, or meaningful verification. Do not demand unrelated cleanup because a file was touched. When public/protected signatures or virtual/override behaviour changed, identify an unrequested incompatibility; explicitly requested additions/breaks remain valid.
 - **Spec conformance**: if a `specs/<slug>.md` exists for this change, verify the implementation satisfies its acceptance criteria, that **every Task in its checklist is checked off** (flag any still `- [ ]` as incomplete work), and stays within its declared scope. Flag unmet criteria or scope creep as issues.
 

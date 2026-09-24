@@ -64,6 +64,7 @@ authoritative.
 - “A project `.claude/commands/<name>.md` replaces the host's built-in of the same name; the shipped `/security-review` runs.” — `meta/workspace-decisions.md WSD-095`
 - “The agent-eval self-test is a recipe (after a runner change, before a live run), not a release gate and not CI; the runner is kept for B-253.” — `meta/workspace-decisions.md WSD-096`
 - “B-222 to B-224 are held after B-253's first report; one timeboxed Copilot executor spike runs inside the existing eval runner without the CP1/RK1 isolation, relay or candidate contract.” — `meta/workspace-decisions.md WSD-097` (answers WSD-091's resumption clause)
+- “Shipped `AGENTS.md` is the one edited instruction file; `CLAUDE.md` is a two-import stub; update moves an older layout once, only over a generated mirror.” — `meta/workspace-decisions.md WSD-098` (supersedes WSD-002's mirror clause)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

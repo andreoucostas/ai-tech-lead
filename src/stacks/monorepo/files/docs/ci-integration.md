@@ -34,8 +34,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.
 Execution is supported on Windows only. PowerShell 7 is primary and native Windows PowerShell 5.1
 is the fallback. Exit `0` = pass, non-zero = fail,
 findings printed to stdout. It verifies the framework itself is healthy: adoption completed (no
-`adoption-pending.json`), `CLAUDE.md` bootstrapped, `AGENTS.md` / `copilot-instructions.md`
-mirrors current, version stamps in sync, PowerShell hook registrations and BOM intact (via
+`adoption-pending.json`), `AGENTS.md` bootstrapped, `CLAUDE.md` importing it, `copilot-instructions.md`
+within budget, version stamps in sync, PowerShell hook registrations and BOM intact (via
 `template-checks`).
 
 **What it does *not* do: gate your code.** A commit with a hardcoded secret, a skipped test, a
@@ -49,7 +49,7 @@ leg 2.
 ### Leg 2 — code-standards gate (your toolchain)
 
 Use the exact build, test, format, lint, migration/deploy, and data-validation commands recorded by
-`/bootstrap` in `CLAUDE.md > Conventions > Verification Commands`. That six-category inventory must
+`/bootstrap` in `AGENTS.md > Conventions > Verification Commands`. That six-category inventory must
 cite committed evidence: an existing CI definition, repository script/task runner, documented
 command, manifest, or tool configuration.
 The installed `monorepo` distribution is not evidence that either application stack—or its usual
@@ -100,7 +100,7 @@ One plan, one job, two script tasks (order matters — fail fast on framework st
 - **Task 1 (Script)**: on a self-hosted Windows agent, invoke
   `pwsh -NoProfile -File scripts/docs-sync-check.ps1` (or native Windows PowerShell 5.1 using the
   fallback command above).
-- **Task 2 (Script)**: the exact applicable commands from `CLAUDE.md > Conventions > Verification
+- **Task 2 (Script)**: the exact applicable commands from `AGENTS.md > Conventions > Verification
   Commands` whose execution policy permits this CI context. If it says `not available` or marks a
   command manual/CI-only without an established controlled CI target, omit that command and record
   the gap; do not substitute distribution-default commands.

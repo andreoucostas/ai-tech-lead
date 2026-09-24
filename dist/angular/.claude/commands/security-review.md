@@ -22,7 +22,7 @@ temporary `-OutputPath` outside the repository, capture the selected scope with
 If capture cannot be read or validated, report `CANNOT EXAMINE` and stop. The command owns and may
 dispose only its private bundles/path-list file, never a caller-supplied bundle.
 
-Before invoking verification or a dependency scan, derive exact applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `CLAUDE.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence; report every unsupported category and any dependency scan without an evidenced command as **not available**.
+Before invoking verification or a dependency scan, derive exact applicable **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `AGENTS.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence; report every unsupported category and any dependency scan without an evidenced command as **not available**.
 
 ## Execution
 

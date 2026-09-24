@@ -13,7 +13,8 @@
 #                steers to /adopt. Next step is /adopt.
 #   update     — target already carries .claude/framework-version.json. Consumer-owned protected
 #                paths are restored; framework-owned machinery is overwritten; mixed-ownership
-#                .claude/settings.json is backed up, refreshed, and adapted to the host.
+#                .claude/settings.json is backed up, refreshed, and adapted to the host. An older
+#                instruction layout (project text in CLAUDE.md) is moved once into AGENTS.md.
 param(
     [Parameter(Mandatory = $true)][string]$Target,
     [switch]$AllowDirtyTree,
@@ -1036,6 +1037,99 @@ foreach ($relative in $incomingPaths) {
 }
 foreach ($relative in $retirementPreserve) { [void]$preservePlan.Add($relative) }
 
+# One-time instruction-layout move. The older layout kept the project instructions in
+# CLAUDE.md and a generated mirror in AGENTS.md; now AGENTS.md holds them and CLAUDE.md is a stub
+# importing it and the framework rules. Both stay protected, so only this block moves them, and
+# only when nothing can be lost: CLAUDE.md does not import AGENTS.md yet, and AGENTS.md is absent
+# or carries the retired GENERATED FILE banner (derived text). Both originals are backed up
+# first. A hand-written AGENTS.md is left alone; session-start and template-checks then ask the
+# consumer to merge by hand.
+function ConvertTo-AgentsInstructionText {
+    param([Parameter(Mandatory = $true)][string]$Text)
+    # Split on LF only, so each line keeps its own CR and untouched lines round-trip byte-for-byte.
+    $out = New-Object System.Collections.Generic.List[string]
+    $dropBlank = $false
+    $inFence = $false
+    $inHeader = $true
+    foreach ($line in $Text.Split([char]10)) {
+        $core = $line.TrimEnd([char]13)
+        $cr = $line.Substring($core.Length)
+        if ($dropBlank) { $dropBlank = $false; if ($core.Trim() -eq '') { continue } }
+        if ($core -match '^\s*(```|~~~)') { $inFence = -not $inFence; $out.Add($line); continue }
+        if ($inFence) { $out.Add($line); continue }
+        if ($core.StartsWith('## ')) { $inHeader = $false }
+        if ($core.Trim() -cin @('@.github/instructions/framework-rules.instructions.md', '@./.github/instructions/framework-rules.instructions.md')) {
+            # The import moves to the stub, together with the shipped comment that labelled it: one
+            # or two lines directly above, opening with FRAMEWORK-OWNED. Nothing else is removed.
+            $end = $out.Count - 1
+            if ($end -ge 0 -and $out[$end].TrimEnd().EndsWith('-->')) {
+                if ($out[$end].TrimStart().StartsWith('<!-- FRAMEWORK-OWNED')) { $out.RemoveAt($end) }
+                elseif ($end -ge 1 -and $out[$end - 1].TrimStart().StartsWith('<!-- FRAMEWORK-OWNED') -and -not $out[$end - 1].Contains('-->')) { $out.RemoveRange($end - 1, 2) }
+            }
+            $dropBlank = $true
+            continue
+        }
+        # Only the opening blockquote, above the first section, carries the template's description
+        # of the old layout; a consumer's own quotes further down are left alone.
+        if (-not ($inHeader -and $core.StartsWith('>'))) { $out.Add($line); continue }
+        if ($core.Contains('never in AGENTS.md') -and $core.Contains('mirror')) {
+            $out.Add('> **Framework rules** (Verification Rules, Leanness, SOLID, Agentic Workflow) are in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md). If your agent has not already loaded that file, read it before planning or editing.' + $cr)
+            continue
+        }
+        $out.Add($core.Replace(' and imports the framework rules below.', '. Edit it here; `CLAUDE.md` only imports it for Claude Code.').Replace('CLAUDE.md wins on any conflict', 'AGENTS.md wins on any conflict').Replace('CLAUDE.md is for repo-shared conventions only', 'AGENTS.md is for repo-shared conventions only') + $cr)
+    }
+    return ($out -join [string][char]10)
+}
+
+# Claude Code honours `@AGENTS.md` inline as well as on its own line. Any such mention counts as
+# already migrated: declining the move can never lose text, and the checks still flag a banner.
+$agentsImportPattern = '(?<![\w/.@-])@(\./)?AGENTS\.md(?![\w-])'
+
+# The retired mirror always opened with this banner line; prose elsewhere that mentions generated
+# files is a consumer's own text, not the mirror.
+function Test-RetiredMirrorText {
+    param([string]$Text)
+    $first = @(($Text.TrimStart([char]0xFEFF)) -split '\r?\n' | Where-Object { $_.Trim() -ne '' } | Select-Object -First 1)
+    return ($first.Count -eq 1 -and $first[0].StartsWith('<!-- GENERATED FILE', [StringComparison]::Ordinal))
+}
+
+$layoutMove = $null
+$layoutMessage = $null
+if ($updateMode) {
+    $claudeTarget = Get-ContainedTargetPath -Relative 'CLAUDE.md'
+    $agentsTarget = Get-ContainedTargetPath -Relative 'AGENTS.md'
+    $claudeEntry = Get-Item -Force -LiteralPath $claudeTarget -ErrorAction SilentlyContinue
+    if ($claudeEntry -and -not $claudeEntry.PSIsContainer -and -not (Get-ReparsePointAncestor -Path $claudeTarget)) {
+        try {
+            $claudeBytes = [IO.File]::ReadAllBytes($claudeTarget)
+            $claudeHasBom = $claudeBytes.Length -ge 3 -and $claudeBytes[0] -eq 0xEF -and $claudeBytes[1] -eq 0xBB -and $claudeBytes[2] -eq 0xBF
+            $claudeText = [Text.UTF8Encoding]::new($false, $true).GetString($claudeBytes)
+            if ($claudeHasBom) { $claudeText = $claudeText.Substring(1) }
+        } catch { $claudeText = $null }
+        if ($null -eq $claudeText) {
+            $layoutMessage = 'LAYOUT: CLAUDE.md could not be read as UTF-8, so the instruction-layout move was not attempted. Move its content into AGENTS.md by hand (docs/upgrade-checklist.md).'
+        } elseif ($claudeText -cnotmatch $agentsImportPattern) {
+            $agentsEntry = Get-Item -Force -LiteralPath $agentsTarget -ErrorAction SilentlyContinue
+            $agentsIsMirror = $false
+            if ($agentsEntry -and -not $agentsEntry.PSIsContainer -and -not (Get-ReparsePointAncestor -Path $agentsTarget)) {
+                try { $agentsIsMirror = Test-RetiredMirrorText -Text ([IO.File]::ReadAllText($agentsTarget)) } catch { $agentsIsMirror = $false }
+            }
+            if (-not $agentsEntry -or $agentsIsMirror) {
+                $layoutMove = [pscustomobject]@{
+                    AgentsText = ConvertTo-AgentsInstructionText -Text $claudeText
+                    HasBom = $claudeHasBom
+                    BackupAgents = [bool]$agentsEntry
+                }
+                foreach ($relative in @('.claude/framework-update-backup/instruction-files/CLAUDE.md', 'CLAUDE.md', 'AGENTS.md')) { [void](Add-PlannedWrite -Relative $relative) }
+                if ($layoutMove.BackupAgents) { [void](Add-PlannedWrite -Relative '.claude/framework-update-backup/instruction-files/AGENTS.md') }
+                $layoutMessage = 'LAYOUT: moving the project instructions from CLAUDE.md into AGENTS.md (replacing the generated mirror) and writing the CLAUDE.md import stub; both originals, including any hand edits to the mirror, go to .claude/framework-update-backup/instruction-files/. Review AGENTS.md before committing.'
+            } else {
+                $layoutMessage = 'LAYOUT: AGENTS.md is not the retired generated mirror, so CLAUDE.md and AGENTS.md were left as they are. Merge CLAUDE.md into AGENTS.md by hand and make CLAUDE.md the two-import stub (docs/upgrade-checklist.md).'
+            }
+        }
+    }
+}
+
 $settingsBackupRelative = $null
 if ($updateMode -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.json') -PathType Leaf)) {
     $settingsBackupRelative = '.claude/.state/settings.json.pre-update'
@@ -1045,6 +1139,7 @@ if ($updateMode -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.j
 $adoptionMarkerRelative = $null
 if ($adoptMode) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
 $modeName = if ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
+if ($layoutMessage) { Write-Output "  $layoutMessage" }
 Write-Output "OPERATION-PLAN schema=1 mode=$modeName"
 foreach ($category in @(
     [pscustomobject]@{ Name = 'create'; Values = $createPlan },
@@ -1208,8 +1303,22 @@ foreach ($relative in $skillDeletePlan) {
     $path = Get-ContainedTargetPath -Relative $relative
     if (Test-Path -LiteralPath $path) { Remove-Item -Recurse -Force -LiteralPath $path }
 }
+if ($layoutMove) {
+    # Backups first, byte-for-byte; then AGENTS.md; the stub last, so an interrupted run leaves
+    # CLAUDE.md un-migrated and a re-run finds AGENTS.md no longer a mirror and stops.
+    $backupRoot = '.claude/framework-update-backup/instruction-files'
+    $backupDestination = Get-ContainedTargetPath -Relative "$backupRoot/CLAUDE.md"
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupDestination) | Out-Null
+    Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'CLAUDE.md') -Destination $backupDestination
+    if ($layoutMove.BackupAgents) {
+        Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'AGENTS.md') -Destination (Get-ContainedTargetPath -Relative "$backupRoot/AGENTS.md")
+    }
+    [IO.File]::WriteAllText((Get-ContainedTargetPath -Relative 'AGENTS.md'), $layoutMove.AgentsText, [Text.UTF8Encoding]::new($layoutMove.HasBom))
+    Copy-Item -Force -LiteralPath (Join-Path $src 'CLAUDE.md') -Destination (Get-ContainedTargetPath -Relative 'CLAUDE.md')
+    Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in $backupRoot/)."
+}
 if ($updateMode) {
-    $untouchedContent = @($protected | Where-Object { $_ -ne $legalLicense -or -not $copyLegalLicense })
+    $untouchedContent = @($protected | Where-Object { ($_ -ne $legalLicense -or -not $copyLegalLicense) -and -not ($layoutMove -and $_ -in @('CLAUDE.md', 'AGENTS.md')) })
     Write-Output "  consumer-owned content files left untouched ($($untouchedContent -join ', '))."
 }
 
@@ -1260,7 +1369,7 @@ if ($updateMode) {
     Write-Output "  invoke the adopt workflow with a --headless directive (use .github/prompts/adopt.prompt.md,"
     Write-Output "  or read .claude/commands/adopt.md and follow its 'Headless mode'). Headless adoption"
     Write-Output "  PREPARES a PR: it creates the adopt-ai-framework branch, archives and screens the"
-    Write-Output "  originals, and STAGES every CLAUDE.md/TECH_DEBT merge for a human to review - it does NOT"
+    Write-Output "  originals, and STAGES every AGENTS.md/TECH_DEBT merge for a human to review - it does NOT"
     Write-Output "  apply untrusted discovered content and does NOT open or merge the PR, so a person still"
     Write-Output "  approves the staged changes. Do not replicate it by hand - run the real workflow (headless)"
     Write-Output "  or hand off to a developer. Report whichever you did as the next step in your final summary."
@@ -1272,7 +1381,7 @@ if ($updateMode) {
     Write-Output "       only exists inside a session started in the target repo."
     Write-Output "  3. Until /bootstrap has run, docs-sync-check FAILS by design - that is expected at this"
     Write-Output "     stage, not a defect to fix. After it has run, verify:  $followUpPowerShell scripts/docs-sync-check.ps1"
-    Write-Output "  4. Review the generated CLAUDE.md - it is canonical; client delivery varies (see docs/enforcement-surfaces.md)."
+    Write-Output "  4. Review the generated AGENTS.md - it is canonical; CLAUDE.md only imports it (see docs/enforcement-surfaces.md)."
     Write-Output ""
     Write-Output "  IF YOU ARE AN AI AGENT running this installer: your task is NOT complete until you"
     Write-Output "  have done step 1 and then told the developer, explicitly, to start a Claude Code"

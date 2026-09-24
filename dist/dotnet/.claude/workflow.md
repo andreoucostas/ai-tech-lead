@@ -7,14 +7,14 @@
 
 ## Self-review
 Before presenting work as complete:
-- Review all changes against CLAUDE.md > Conventions.
+- Review all changes against AGENTS.md > Conventions.
 - Derive the exact applicable build, test, format, lint, migration/deploy, and data-validation
   commands from repository evidence. Run applicable non-mutating verification commands and report
   every unsupported category as **not available**. A migration/deploy inventory entry is not
   execution authority: keep it manual/CI-only unless the recorded command is explicitly evidenced
   as non-mutating validation/dry-run, or the developer explicitly authorizes execution against a
   known target.
-- New pattern introduced? → flag that CLAUDE.md may need updating.
+- New pattern introduced? → flag that AGENTS.md may need updating.
 - TECH_DEBT.md item resolved? → flag the entry for removal.
 - Convention contradicted? → ask whether to update the convention or change the implementation.
 - **Close with a Verification & confidence line** (calibration): in one or two lines, separate what
@@ -27,6 +27,6 @@ Before presenting work as complete:
 
 ## Flag drift
 At the end of your response, note if:
-- A new pattern was introduced that should be documented in CLAUDE.md.
+- A new pattern was introduced that should be documented in AGENTS.md.
 - A TECH_DEBT.md entry was resolved or a new one discovered.
 - `.github/copilot-instructions.md` needs regeneration (run `/generate-copilot`).

@@ -81,4 +81,4 @@ If the profile/pass combination is unknown, reply: `Unknown profile or pass id: 
 
 If the codebase has no relevant files for a profile pass, reply: `Pass <profile> <id>: no applicable files found in this codebase.`
 
-You do **not** modify any file. You do **not** generate `CLAUDE.md`, `TECH_DEBT.md`, a wiki entry, skill, map, or any other artifact, and do not run provider trials or spend provider credits to validate discovery—the parent `/bootstrap` synthesises pass reports only; later capture owns routing and writes.
+You do **not** modify any file. You do **not** generate `AGENTS.md`, `TECH_DEBT.md`, a wiki entry, skill, map, or any other artifact, and do not run provider trials or spend provider credits to validate discovery—the parent `/bootstrap` synthesises pass reports only; later capture owns routing and writes.

@@ -11,7 +11,7 @@ You audit **tests/specs** in a diff. Apply profile-specific guidance only when r
 
 ## Process
 
-1. Read the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules; `AGENTS.md` › Verification Rules on AGENTS.md-native tools) (esp. #5, #9) and `> Leanness > Test leanness` (#11–#16). If there is no `Test leanness` section, reply `No test policy in CLAUDE.md — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
+1. Read the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules) (esp. #5, #9) and `> Leanness > Test leanness` (#11–#16). If there is no `Test leanness` section, reply `No test policy in the framework rules — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
 2. Receive the parent-supplied `-ScopePath <bundle>` and manifest SHA-256. Recompute `manifest.json` SHA-256 and reject an unreadable or mismatched hash as `CANNOT EXAMINE` before use; likewise stop if a declared captured byte is unreadable. From its manifest and declared captured bytes, use repository evidence to establish applicable test profiles, then pick up only their captured test files:
    - **.NET (only when evidenced):** `*.cs` whose path or name marks it a test — `*Tests.cs`, `*Test.cs`, `*Spec.cs`, or anything under a `*.Tests` project / a `test`/`tests` directory. Skip non-test `*.cs`.
    - **Angular (only when evidenced):** `*.spec.ts`. Skip non-spec files.

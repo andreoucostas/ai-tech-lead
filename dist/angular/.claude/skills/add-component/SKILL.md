@@ -15,7 +15,7 @@ description: >
 
 # Add a new feature component
 
-Match the conventions in CLAUDE.md > Conventions > Component Design before scaffolding. If the codebase uses a state pattern (signals, NgRx, NGXS), match it; do not introduce a new pattern.
+Match the conventions in AGENTS.md > Conventions > Component Design before scaffolding. If the codebase uses a state pattern (signals, NgRx, NGXS), match it; do not introduce a new pattern.
 
 ## Project-derived pattern authority
 
@@ -45,7 +45,7 @@ detail when that section exists.
 
 0. **Confirm the screen or UI responsibility does not already exist.** Search routes, selectors, templates, and component names by user-visible capability. Extend or compose an existing component through ordinary `/feature` work instead of creating a parallel screen.
 
-1. Use a generator only when its exact invocation is evidenced by CLAUDE.md > Conventions >
+1. Use a generator only when its exact invocation is evidenced by AGENTS.md > Conventions >
    Verification Commands, committed scripts, manifests, or workspace configuration. Otherwise
    create the files manually by mirroring an existing component; do not infer `ng generate`.
 2. Add or extend a route only when the project’s feature pattern makes the component routable; match its evidenced loading and routing shape.
@@ -57,6 +57,6 @@ detail when that section exists.
    infrastructure incidentally; otherwise report the test category as **not available**.
 
 After scaffolding, derive build, test, format, lint, migration/deploy, and data-validation commands
-from CLAUDE.md > Conventions > Verification Commands, committed CI, scripts, manifests, and
+from AGENTS.md > Conventions > Verification Commands, committed CI, scripts, manifests, and
 configuration. Run only exact evidenced commands and report every unavailable category as **not
-available**. Boy Scout every touched file and self-review against CLAUDE.md > Conventions.
+available**. Boy Scout every touched file and self-review against AGENTS.md > Conventions.

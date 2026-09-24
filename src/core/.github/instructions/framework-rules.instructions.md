@@ -3,7 +3,7 @@ applyTo: "**"
 ---
 
 <!-- FRAMEWORK-OWNED — replaced wholesale by the installer on every update. Do not edit.
-     Repo-specific rules belong in CLAUDE.md (Conventions, Boy Scout Rule). -->
+     Repo-specific rules belong in AGENTS.md (Conventions, Boy Scout Rule). -->
 
 ## Verification Rules
 
@@ -11,7 +11,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 
 <!-- @stack:verif-rules -->
 
-**Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable repository-evidenced commands (`CLAUDE.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. `framework-owned/overwritten` paths in `framework-ownership.json` and paths in `framework-retirements.json` are framework, not application-command, evidence. Run them only when named by an explicit framework workflow or requested for framework diagnosis; report separately from application verification. Do not run a saved Verification Commands row naming one — flag `/rebootstrap`. Migration/deploy is **manual/CI-only** unless its exact command is an evidenced non-mutating validation/dry-run or developer-authorized known target; otherwise do not run it.
+**Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable repository-evidenced commands (`AGENTS.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. `framework-owned/overwritten` paths in `framework-ownership.json` and paths in `framework-retirements.json` are framework, not application-command, evidence. Run them only when named by an explicit framework workflow or requested for framework diagnosis; report separately from application verification. Do not run a saved Verification Commands row naming one — flag `/rebootstrap`. Migration/deploy is **manual/CI-only** unless its exact command is an evidenced non-mutating validation/dry-run or developer-authorized known target; otherwise do not run it.
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
 <!-- @stack:verif-rule9 -->
 
@@ -88,9 +88,9 @@ Every bug-fix edit must be necessary for requested behaviour, existing caller/ex
 
 ### 5. Self-review before presenting
 Before presenting work as complete:
-- Review your changes against the Conventions section above
+- Review your changes against `AGENTS.md > Conventions`
 - Apply Verification command discovery; report what ran, was unavailable, or stayed manual/CI-only
-- Check if the change introduces a new pattern → flag that this file needs updating
+- Check if the change introduces a new pattern → flag that AGENTS.md needs updating
 - Check if the change resolves a TECH_DEBT.md item → flag for removal
 - Check if the change contradicts any convention → ask whether to update the convention or change the implementation
 - If the session surfaced a team-worthy gotcha, recipe, or failed approach, offer `remember-for-team`

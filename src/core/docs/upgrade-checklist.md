@@ -6,7 +6,7 @@ framework checkout; that directory is the incoming framework root, and
 `C:\path\to\consumer-repo` is the separate target.
 
 1. **Establish the current and incoming versions.** In the target, read
-   `.claude/framework-version.json`; it is authoritative if the protected `CLAUDE.md` header
+   `.claude/framework-version.json`; it is authoritative if the protected `AGENTS.md` header
    disagrees. Read the incoming distribution's `CHANGELOG.md` from the fresh framework checkout.
 
 2. **Preserve local work.** Keep mutable `.claude/ai-audit.log` telemetry locally; do not commit it
@@ -54,10 +54,10 @@ framework checkout; that directory is the incoming framework root, and
    powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Target 'C:\path\to\consumer-repo'
    ```
 6. **Reconcile older protected rules conditionally.** Updating does not rewrite a populated
-   `CLAUDE.md`. If it lacks the carrier import, compare only these four old framework headings:
-   `Verification Rules`, `Leanness`, `SOLID`, and `Agentic Workflow`. Preserve deliberate
-   project-specific additions, add this canonical line, then remove only superseded framework
-   copies:
+   `AGENTS.md`. If `CLAUDE.md` lacks the carrier import or `AGENTS.md` still carries old framework
+   copies, compare only these four old framework headings: `Verification Rules`, `Leanness`,
+   `SOLID`, and `Agentic Workflow`. Preserve deliberate project-specific additions, make sure
+   `CLAUDE.md` has this canonical line, then remove only superseded framework copies:
 
    ```markdown
    @.github/instructions/framework-rules.instructions.md
@@ -88,11 +88,16 @@ framework checkout; that directory is the incoming framework root, and
    copying all fresh-template conventions or erase stricter policy the team intentionally keeps.
 
 8. **Align authored and generated instructions.** After reconciliation, copy the installed JSON
-   version and applied date into the protected `CLAUDE.md` header. Then, in an agent session rooted
-   at the target, run `/generate-copilot` to regenerate `AGENTS.md` and
-   `.github/copilot-instructions.md`. Do not hand-fix derivatives or replace a populated
-   `CLAUDE.md` with the template. Update does not run bootstrap; if adoption or bootstrap remains
-   pending, follow that workflow rather than deleting its marker.
+   version and applied date into the protected `AGENTS.md` header. Then, in an agent session rooted
+   at the target, run `/generate-copilot` to regenerate `.github/copilot-instructions.md`. Do not
+   hand-fix that derivative or replace a populated `AGENTS.md` with the template. When `AGENTS.md` is
+   still the generated copy, the first update to this layout moves `CLAUDE.md`'s text into `AGENTS.md`
+   and writes the `CLAUDE.md` stub, keeping both originals under
+   `.claude/framework-update-backup/instruction-files/`; review the moved `AGENTS.md`'s opening
+   note. If the installer's `LAYOUT:` line reported a hand-written
+   `AGENTS.md`, merge `CLAUDE.md`'s content into it and replace `CLAUDE.md` with the template stub.
+   Update does not run bootstrap; if adoption or bootstrap remains pending, follow that workflow
+   rather than deleting its marker.
 
 9. **Verify from the target root, review, and commit.** Use either host for each check:
 

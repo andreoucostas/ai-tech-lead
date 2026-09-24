@@ -321,7 +321,7 @@ SELECT $projection FROM dim.DimProduct;
 Repository evidence is not by itself a closed-world attestation. Deployment approval requires one
 of these accepted sources to state that the named repository scan covers all consumers and
 operational constraints for this change: an in-session developer statement; an explicit
-`CLAUDE.md` > Conventions line; or a named owner sign-off. Without one, report only repository-visible
+`AGENTS.md` > Conventions line; or a named owner sign-off. Without one, report only repository-visible
 compatibility and abstain from deployment approval.
 '@ | Set-Content -LiteralPath (Join-Path $Path 'docs/schema-evolution-premise.md') -Encoding utf8NoBOM
         if ($Stack -ne 'warehouse-schema-incomplete') {
@@ -942,7 +942,8 @@ independently before joining two facts through a conformed dimension.
 | FactSales | fact | one row per sale | usp_LoadFactSales | warehouse load | LoadRunId | n/a | none |
 '@ | Set-Content (Join-Path $Path 'docs/warehouse-map.md') -Encoding utf8NoBOM
     }
-    $claudePath = Join-Path $Path 'CLAUDE.md'
+    # B-272: the framework arm's conventions live in AGENTS.md; the bare arm writes its own CLAUDE.md.
+    $claudePath = Join-Path $Path $(if ($Bare) { 'CLAUDE.md' } else { 'AGENTS.md' })
     $claudeText = if ($Bare) { '' } else { (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED') }
     # Population A (design 3.4): warehouse essentials, no pointer to the skill or the map.
     # Deliberately silent on how a query should reach an attribute -- naming the dimension
@@ -958,7 +959,7 @@ independently before joining two facts through a conformed dimension.
     $rewritten = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
     # B-253: a -TargetPatch or a dist change that moves this placeholder would otherwise drop the
     # scenario's conventions silently, and every run would measure a different fixture.
-    if (-not $Bare -and $rewritten -eq $claudeText) { throw 'Initialize-WarehouseScenario: the CLAUDE.md conventions placeholder was not found, so the scenario conventions were not written.' }
+    if (-not $Bare -and $rewritten -eq $claudeText) { throw 'Initialize-WarehouseScenario: the AGENTS.md conventions placeholder was not found, so the scenario conventions were not written.' }
     $claudeText = $rewritten
     # B-253 bare arm: no framework CLAUDE.md exists. The project's own conventions and map are held
     # constant across arms, so the arms differ only in the framework's files.
@@ -980,7 +981,7 @@ function Get-WarehouseMapSwitch([string]$Variant) {
 }
 
 function Initialize-FactBindingScenario([string]$Path, [switch]$NeutralKeySemantics) {
-    $claudePath = Join-Path $Path 'CLAUDE.md'
+    $claudePath = Join-Path $Path 'AGENTS.md'
     $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
     $ordinaryConventions = if ($NeutralKeySemantics) { @'
 <!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->
@@ -1353,7 +1354,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             # one step the developer must take). A target the agent never installed into is FAIL.
             $handoff = $finalOk -and $finalText -match '(?i)developer.+(?:type|run).*/bootstrap' -and $finalText -match '(?i)cannot|do not|did not'
             $namesBootstrap = $finalOk -and $finalText -match '(?i)(?<![\w/])/bootstrap\b'
-            $claudePath = Join-Path $Target 'CLAUDE.md'
+            $claudePath = Join-Path $Target 'AGENTS.md'
             $pending = (Test-Path -LiteralPath $claudePath) -and ((Get-Content -Raw -LiteralPath $claudePath) -match 'BOOTSTRAP_PENDING')
             $bootstrapTool = @($e.Tools | Where-Object { ($_.Name -eq 'Skill' -and $_.Input.skill -eq 'bootstrap') -or ($_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)(?:^|\s|[/\\])bootstrap(?:\s|$)') }).Count -gt 0
             $installerTool = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)install\.ps1' } | Select-Object -First 1)
@@ -1851,7 +1852,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 $developerText -match '(?i)(?:all|every)\s+(?:downstream\s+)?consumers?' -and
                 $developerText -match '(?i)(?:repository|scan|visible)' -and
                 $developerText -match '(?i)operational constraints?'
-            $claudeText = if (Test-Path -LiteralPath (Join-Path $Target 'CLAUDE.md')) { Get-Content -Raw -LiteralPath (Join-Path $Target 'CLAUDE.md') } else { '' }
+            $claudeText = (@('CLAUDE.md', 'AGENTS.md') | Where-Object { Test-Path -LiteralPath (Join-Path $Target $_) } | ForEach-Object { Get-Content -Raw -LiteralPath (Join-Path $Target $_) }) -join "`n"
             $claudeAttestation = $claudeText -match '(?im)^- .*all .*consumers.*ProductColor.*operational constraints'
             $ownerFile = Join-Path $Target 'docs/product-consumer-closure.md'
             $ownerText = if (Test-Path -LiteralPath $ownerFile) { Get-Content -Raw -LiteralPath $ownerFile } else { '' }
@@ -2778,22 +2779,22 @@ GROUP BY r.RegionName;
         New-EvalRepo $warehousePreparationTemp warehouse
         $preparationBaseline = [int](git -C $warehousePreparationTemp rev-list --count HEAD)
         Install-Framework $warehousePreparationTemp dotnet | Out-Null
-        # The shipped CLAUDE.md names map-warehouse in its Common Tasks list, so a "population A with
+        # The shipped AGENTS.md names map-warehouse in its Common Tasks list, so a "population A with
         # no pointer at all" cannot be built -- every dotnet consumer carries that line in always-loaded
         # context. Measure the delta the setup introduces instead of asserting zero, and pin the shipped
         # baseline so that a template change (e.g. B-96 3.6 adding a warehouse-map index line) fails here
         # loudly rather than silently redefining which population the scenario constructs.
-        $installedClaude = Get-Content -Raw -LiteralPath (Join-Path $warehousePreparationTemp 'CLAUDE.md')
+        $installedClaude = Get-Content -Raw -LiteralPath (Join-Path $warehousePreparationTemp 'AGENTS.md')
         $baselinePointers = @([regex]::Matches($installedClaude, '(?i)map-warehouse|warehouse-map\.md')).Count
-        if ($baselinePointers -ne 1) { throw "shipped CLAUDE.md warehouse-pointer baseline changed: expected 1 (the Common Tasks skills-list entry), found $baselinePointers. Re-read design 3.4 before adjusting this number." }
+        if ($baselinePointers -ne 1) { throw "shipped AGENTS.md warehouse-pointer baseline changed: expected 1 (the Common Tasks skills-list entry), found $baselinePointers. Re-read design 3.4 before adjusting this number." }
         $preparationCommit = Initialize-WarehouseScenario $warehousePreparationTemp
         $warehouseMap = Get-Content -Raw -LiteralPath (Join-Path $warehousePreparationTemp 'docs/warehouse-map.md')
         if ($warehouseMap -notmatch '(?m)^\| entity \| layer \| grain \| load proc/pipeline \| orchestrated by \| rerun protection \| SCD \| partitioning \|$') { throw 'warehouse live-preparation smoke test is missing the eight-column map header' }
-        $preparedClaude = Get-Content -Raw -LiteralPath (Join-Path $warehousePreparationTemp 'CLAUDE.md')
+        $preparedClaude = Get-Content -Raw -LiteralPath (Join-Path $warehousePreparationTemp 'AGENTS.md')
         if ($preparedClaude -notmatch 'EVAL_BOOTSTRAPPED' -or $preparedClaude -match 'BOOTSTRAP_PENDING') { throw 'warehouse live-preparation smoke test did not replace the bootstrap marker' }
         if ($preparedClaude -match '_Not yet populated\.' -or $preparedClaude -notmatch 'SQL source is organised by `Tables/`, `StoredProcedures/`, and `Views/`\.' -or $preparedClaude -notmatch 'Ad-hoc analytical queries live under `analysis/`\.') { throw 'warehouse live-preparation smoke test did not populate the population-A conventions' }
         $preparedPointers = @([regex]::Matches($preparedClaude, '(?i)map-warehouse|warehouse-map\.md')).Count
-        if ($preparedPointers -ne $baselinePointers) { throw "warehouse setup changed the warehouse-pointer count in CLAUDE.md ($baselinePointers -> $preparedPointers); population A must add no pointer of its own" }
+        if ($preparedPointers -ne $baselinePointers) { throw "warehouse setup changed the warehouse-pointer count in AGENTS.md ($baselinePointers -> $preparedPointers); population A must add no pointer of its own" }
         if ($preparationCommit -le $preparationBaseline -or (git -C $warehousePreparationTemp log -1 --format=%s) -ne 'warehouse scenario setup') { throw 'warehouse live-preparation smoke test did not create the setup commit' }
 
         # B-253 bare arm: no install, same conventions block, same frozen map, nothing of the framework's.
@@ -2850,9 +2851,11 @@ GROUP BY r.RegionName;
         New-EvalRepo $generatedTemp warehouse
         Install-Framework $generatedTemp dotnet | Out-Null
         Initialize-WarehouseScenario $generatedTemp -GeneratedMap | Out-Null
-        $generatedClaude = Get-Content -Raw -LiteralPath (Join-Path $generatedTemp 'CLAUDE.md')
-        if ($generatedClaude -match 'BOOTSTRAP_PENDING|EVAL_BOOTSTRAPPED') { throw '-WarehouseMap generated left a bootstrap marker or the simulated conventions in CLAUDE.md' }
-        if (@([regex]::Matches($generatedClaude, '(?i)warehouse-map\.md')).Count -lt 1) { throw '-WarehouseMap generated: CLAUDE.md carries no docs/warehouse-map.md index line, so it is not a real /bootstrap result on a warehouse repository' }
+        # The generated overlay keeps the layout of the release it was captured on (pre-B-272: text in
+        # CLAUDE.md, AGENTS.md a mirror), so read both instruction files.
+        $generatedClaude = (@('CLAUDE.md', 'AGENTS.md') | ForEach-Object { Get-Content -Raw -LiteralPath (Join-Path $generatedTemp $_) }) -join "`n"
+        if ($generatedClaude -match 'BOOTSTRAP_PENDING|EVAL_BOOTSTRAPPED') { throw '-WarehouseMap generated left a bootstrap marker or the simulated conventions in its instruction files' }
+        if (@([regex]::Matches($generatedClaude, '(?i)warehouse-map\.md')).Count -lt 1) { throw '-WarehouseMap generated: the instruction files carry no docs/warehouse-map.md index line, so it is not a real /bootstrap result on a warehouse repository' }
         if ((Get-FileHash (Join-Path $generatedTemp 'docs/warehouse-map.md')).Hash -eq (Get-FileHash (Join-Path $withMapTemp 'docs/warehouse-map.md')).Hash) { throw '-WarehouseMap generated wrote the frozen fixture map' }
         $generatedBareTemp = Join-Path $temp 'warehouse-generated-bare'
         New-EvalRepo $generatedBareTemp warehouse
@@ -3692,7 +3695,7 @@ FROM stg.StgSupplierInvoice s;
             foreach ($required in @('docs/warehouse-map.md','.claude/skills/map-warehouse/SKILL.md')) {
                 if (-not (Test-Path -LiteralPath (Join-Path $base $required))) { throw "B-99 fixture lost released artifact $required" }
             }
-            $upstreamClaude = Get-Content -Raw -LiteralPath (Join-Path $base 'CLAUDE.md')
+            $upstreamClaude = Get-Content -Raw -LiteralPath (Join-Path $base 'AGENTS.md')
             if ($upstreamClaude -match 'Facts retain dimension surrogate keys' -or $upstreamClaude -notmatch 'Derive relationship and version semantics from the repository') {
                 throw 'B-99 fixture exposes a false or answer-bearing key convention'
             }
@@ -4041,7 +4044,7 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         $placeholderMoved = Join-Path $temp 'warehouse-placeholder-moved'
         New-EvalRepo $placeholderMoved warehouse
         Install-Framework $placeholderMoved dotnet | Out-Null
-        $movedClaude = Join-Path $placeholderMoved 'CLAUDE.md'
+        $movedClaude = Join-Path $placeholderMoved 'AGENTS.md'
         (Get-Content -Raw -LiteralPath $movedClaude).Replace('_Not yet populated.', '_Populated by a patch._') | Set-Content -LiteralPath $movedClaude -Encoding utf8NoBOM -NoNewline
         $placeholderRefused = $false
         try { Initialize-WarehouseScenario $placeholderMoved | Out-Null } catch { $placeholderRefused = $_.Exception.Message -match 'placeholder was not found' }
@@ -4199,11 +4202,11 @@ handoff. The archived copy is frozen and is not equivalent.
             }
             'haiku-convention-check' {
                 "namespace EvalFixture; public class ConventionViolation { public async Task WorkAsync() { await Task.Delay(1); } }" | Set-Content (Join-Path $target 'src/ConventionViolation.cs') -Encoding utf8NoBOM
-                $claudeText = Get-Content -Raw (Join-Path $target 'CLAUDE.md')
-                $claudeText.Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED') | Set-Content (Join-Path $target 'CLAUDE.md') -Encoding utf8NoBOM
+                $claudeText = Get-Content -Raw (Join-Path $target 'AGENTS.md')
+                $claudeText.Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED') | Set-Content (Join-Path $target 'AGENTS.md') -Encoding utf8NoBOM
             }
             { $_ -in @('docs-tier-ondemand','docs-tier-inline','docs-tier-nopointer') } {
-                $claudePath = Join-Path $target 'CLAUDE.md'
+                $claudePath = Join-Path $target 'AGENTS.md'
                 $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
                 $ordinaryConventions = @'
 <!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->
@@ -4230,7 +4233,7 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
                 $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
             }
             'angular-form-control' {
-                $claudePath = Join-Path $target 'CLAUDE.md'
+                $claudePath = Join-Path $target 'AGENTS.md'
                 $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
                 $ordinaryConventions = @'
 <!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->

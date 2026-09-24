@@ -50,9 +50,8 @@ function TemplateFixture {
     CopyScript template-checks $root
     Put (Join-Path $root '.template-repo') "fixture`n"
     Put (Join-Path $root CHANGELOG.md) "# Changelog`n`n## 1.2.3 — 2026-08-08`n`n- Fixture.`n"
-    $common = "## Verification Rules`nSame`n## Leanness`nSame`n## SOLID`nSame`n## Boy Scout Rule`nSame`n### Apply only when the file is the primary target of the change:`nSame primary-target rules`n## Agentic Workflow`n### 1. Classify the intent`nSame`n### 2. Continue`n## Common Tasks`n- ``alpha`` — first → second`n- ``beta`` - plain separator`n"
-    Put (Join-Path $root CLAUDE.md) "version: 1.2.3`n$common"
-    Put (Join-Path $root AGENTS.md) $common
+    Put (Join-Path $root CLAUDE.md) "@AGENTS.md`n@.github/instructions/framework-rules.instructions.md`n"
+    Put (Join-Path $root AGENTS.md) "version: 1.2.3`n## Boy Scout Rule`nSame`n## Common Tasks`n- ``alpha`` — first → second`n"
     Put (Join-Path $root '.claude/framework-version.json') '{"version":"1.2.3"}'
     Put (Join-Path $root '.github/copilot-instructions.md') "fixture`n"
     foreach ($name in @('audit-trail','boy-scout-check','guard','post-write','route-prompt','session-start')) {
@@ -62,19 +61,12 @@ function TemplateFixture {
     $root
 }
 
-function CarrierTemplateFixture {
-    $root = TemplateFixture
-    Put (Join-Path $root CLAUDE.md) "version: 1.2.3`n@.github/instructions/framework-rules.instructions.md`n## Boy Scout Rule`nSame`n### Apply only when the file is the primary target of the change:`nSame primary-target rules`n## Common Tasks`n- ``alpha`` — first → second`n- ``beta`` - plain separator`n"
-    Put (Join-Path $root '.github/instructions/framework-rules.instructions.md') "## Verification Rules`nSame`n## Leanness`nSame`n## SOLID`nSame`n## Agentic Workflow`n### 1. Classify the intent`nSame`n### 2. Carrier-only continuation`n"
-    $root
-}
-
 $expectedChecks = @(
-    'version stamps in sync', 'mirrored verbatim', 'Agentic Workflow',
+    'version stamps in sync', 'CLAUDE.md imports AGENTS.md', 'CLAUDE.md imports the framework rules',
+    'AGENTS.md is the project instruction file',
     'copilot-instructions.md present', 'carry a UTF-8 BOM',
     'all framework .ps1 files parse cleanly', 'required framework PowerShell hook set present (6)',
-    'canonical project skills use .claude/skills', 'retired skill-mirror sync scripts are absent',
-    'Common Tasks skill inventory matches'
+    'canonical project skills use .claude/skills', 'retired skill-mirror sync scripts are absent'
 )
 
 function SetWarehouseStub($Root, [int]$Status, [string]$Stream, [string]$Sentinel) {
@@ -85,8 +77,8 @@ function DocsFixture {
     $root = Temp docs
     CopyScript docs-sync-check $root
     Put (Join-Path $root 'docs/enforcement-surfaces.md') "fixture`n"
-    Put (Join-Path $root CLAUDE.md) "# ready`n"
-    Put (Join-Path $root AGENTS.md) "GENERATED FILE`n## Verification Rules`n## Leanness`n## Boy Scout Rule`n## Agentic Workflow`n"
+    Put (Join-Path $root CLAUDE.md) "@AGENTS.md`n@.github/instructions/framework-rules.instructions.md`n"
+    Put (Join-Path $root AGENTS.md) "# ready`n"
     Put (Join-Path $root '.github/copilot-instructions.md') "fixture`n"
     Put (Join-Path $root TECH_DEBT.md) "# debt`n"
     Put (Join-Path $root FRAMEWORK-CONTEXT.md) "# context`n"
@@ -129,7 +121,7 @@ It 'template-checks reaches the complete clean contract and reports planted drif
         Remove-Item -LiteralPath (Join-Path $root '.github/copilot-instructions.md') -Force
         $drift = RunArg $subject
         Assert ($drift.Exit -eq 3) "two-finding drift exit=$($drift.Exit), expected fixed status 3"
-        Assert ($drift.Out.Contains('version-stamp drift: CLAUDE.md says 1.2.3, framework-version.json says 9.9.9.')) 'version drift failure missing'
+        Assert ($drift.Out.Contains('version-stamp drift: AGENTS.md says 1.2.3, framework-version.json says 9.9.9.')) 'version drift failure missing'
         Assert ($drift.Out.Contains('2 framework check(s) FAILED.')) 'finding count changed'
 
         $absent = 'CHANGELOG.__b175_absent__'
@@ -143,75 +135,43 @@ It 'template-checks reaches the complete clean contract and reports planted drif
     } finally { Remove-Item -Recurse -Force $root }
 }
 
-It 'template-checks Common Tasks handles inventory failures and edge fixtures' {
-    $cases = @('one-sided','duplicate','zero-extraction','absent-one','case-variant','single-slug','absent-both')
-    Assert ($cases.Count -gt 0) 'Common Tasks case table is empty'
-    foreach ($case in $cases) {
+It 'template-checks names each instruction-layout defect and accepts CRLF' {
+    $cases = [ordered]@{
+        'older-layout'    = 'CLAUDE.md does not import AGENTS.md - this repo still uses the older layout.'
+        'no-rules-import' = 'CLAUDE.md does not import .github/instructions/framework-rules.instructions.md'
+        'mirror-banner'   = 'AGENTS.md still carries the retired generated-mirror banner.'
+        'no-boy-scout'    = "AGENTS.md is missing section '## Boy Scout Rule'."
+        'no-agents'       = 'AGENTS.md is missing.'
+        'crlf'            = $null
+        'generated-prose' = $null
+        'dot-slash'       = $null
+        'inline-import'   = $null
+    }
+    foreach ($case in $cases.Keys) {
         $root = TemplateFixture
         try {
             $claude = Join-Path $root CLAUDE.md
             $agents = Join-Path $root AGENTS.md
-            if ($case -eq 'one-sided') { Put $claude (([IO.File]::ReadAllText($claude)) -replace '- `alpha` —', "- ``zz-planted`` — planted`r`n- ``alpha`` —") }
-            elseif ($case -eq 'duplicate') { Put $claude (([IO.File]::ReadAllText($claude)) -replace '- `alpha` —', "- ``alpha`` — duplicate`r`n- ``alpha`` —") }
-            elseif ($case -eq 'zero-extraction') { foreach ($path in @($claude,$agents)) { Put $path (([IO.File]::ReadAllText($path)) -replace '(?m)^- `','* `') } }
-            elseif ($case -eq 'absent-one') { Put $agents (([IO.File]::ReadAllText($agents)) -replace '(?ms)^## Common Tasks\r?\n.*$','') }
-            elseif ($case -eq 'case-variant') { Put $agents (([IO.File]::ReadAllText($agents)) -replace '- `alpha` —','- `Alpha` —') }
-            elseif ($case -eq 'single-slug') { foreach ($path in @($claude,$agents)) { Put $path (([IO.File]::ReadAllText($path)) -replace '(?m)^- `beta` - plain separator\r?\n','') } }
-            elseif ($case -eq 'absent-both') { foreach ($path in @($claude,$agents)) { Put $path (([IO.File]::ReadAllText($path)) -replace '(?ms)^## Common Tasks\r?\n.*$','') } }
-            $result = RunArg (Join-Path $root scripts/template-checks.ps1)
-            if ($case -in @('one-sided','duplicate','zero-extraction','absent-one','case-variant')) { Assert ($result.Exit -ne 0) "$case should fail" }
-            else { Assert ($result.Exit -eq 0) "$case should pass: $($result.Out)" }
-            if ($case -eq 'one-sided') { Assert ($result.Out.Contains('Common Tasks skill inventory differs: missing from AGENTS.md: zz-planted.')) 'one-sided finding absent' }
-            elseif ($case -eq 'duplicate') { Assert ($result.Out.Contains('Common Tasks skill inventory has duplicate slug in CLAUDE.md: alpha.')) 'duplicate finding absent' }
-            elseif ($case -eq 'zero-extraction') { Assert ($result.Out.Contains('Common Tasks sections yielded zero skill slugs — the list grammar changed and this check is now blind.')) 'zero-extraction finding absent' }
-            elseif ($case -eq 'absent-one') {
-                Assert ($result.Out.Contains('Common Tasks section is missing from AGENTS.md.')) 'absent-one finding absent'
-                Assert (-not $result.Out.Contains('Common Tasks skill inventory differs:')) 'absent-one emitted misleading drift'
+            if ($case -eq 'older-layout') { Put $claude "version: 1.2.3`n@.github/instructions/framework-rules.instructions.md`n## Boy Scout Rule`nSame`n" }
+            elseif ($case -eq 'no-rules-import') { Put $claude "@AGENTS.md`n" }
+            elseif ($case -eq 'mirror-banner') { Put $agents ("<!-- GENERATED FILE — do not edit by hand. -->`n" + [IO.File]::ReadAllText($agents)) }
+            elseif ($case -eq 'no-boy-scout') { Put $agents "version: 1.2.3`n## Conventions`nSame`n" }
+            elseif ($case -eq 'no-agents') { Remove-Item -LiteralPath $agents -Force }
+            elseif ($case -eq 'generated-prose') { Put $agents ([IO.File]::ReadAllText($agents) + "- Do not hand-edit a generated file; regenerate it. GENERATED FILE markers in *.Designer.cs stay.`n") }
+            elseif ($case -eq 'dot-slash') { Put $claude "@./AGENTS.md`n@.github/instructions/framework-rules.instructions.md`n" }
+            elseif ($case -eq 'inline-import') { Put $claude "Project instructions: see @AGENTS.md`n@.github/instructions/framework-rules.instructions.md`n" }
+            else {
+                foreach ($path in @($claude, $agents)) { [IO.File]::WriteAllText($path, ([IO.File]::ReadAllText($path) -replace "`r`n", "`n" -replace "`n", "`r`n"), [Text.UTF8Encoding]::new($false)) }
             }
-            elseif ($case -eq 'absent-both') { Assert ($result.Out.Contains('Common Tasks section is absent from both CLAUDE.md and AGENTS.md; skill inventory check did not run.')) 'absent-both explicit OK absent' }
-        } finally { Remove-Item -Recurse -Force $root }
-    }
-}
-
-It 'template-checks accepts CRLF Common Tasks mirrors' {
-    $root = TemplateFixture
-    try {
-        foreach ($file in @('CLAUDE.md','AGENTS.md')) {
-            $path = Join-Path $root $file
-            [IO.File]::WriteAllText($path, ([IO.File]::ReadAllText($path) -replace "`r`n","`n" -replace "`n","`r`n"), [Text.UTF8Encoding]::new($false))
-        }
-        $result = RunArg (Join-Path $root scripts/template-checks.ps1)
-        Assert ($result.Exit -eq 0) "a CRLF mirror pair should pass: $($result.Out)"
-        Assert ($result.Out.Contains('Common Tasks skill inventory matches between CLAUDE.md and AGENTS.md.')) 'Common Tasks check did not run on CRLF input'
-    } finally { Remove-Item -Recurse -Force $root }
-}
-
-It 'template-checks accepts both layouts and rejects missing or divergent sections' {
-    foreach ($case in @('old-layout','carrier-layout','missing-both','leanness-drift')) {
-        $root = if ($case -eq 'carrier-layout') { CarrierTemplateFixture } else { TemplateFixture }
-        try {
-            if ($case -eq 'missing-both') { Put (Join-Path $root CLAUDE.md) "version: 1.2.3`n## Leanness`nSame`n## SOLID`nSame`n## Boy Scout Rule`nSame`n## Agentic Workflow`n### 1. Classify the intent`nSame`n" }
-            if ($case -eq 'leanness-drift') { Put (Join-Path $root AGENTS.md) "## Verification Rules`nSame`n## Leanness`nDifferent`n## SOLID`nSame`n## Boy Scout Rule`nSame`n## Agentic Workflow`n### 1. Classify the intent`nSame`n### 2. Continue`n" }
             $result = RunArg (Join-Path $root scripts/template-checks.ps1)
-            if ($case -in @('old-layout','carrier-layout')) { Assert ($result.Exit -eq 0) "$case should pass: $($result.Out)" }
-            elseif ($case -eq 'missing-both') { Assert ($result.Exit -ne 0 -and $result.Out.Contains("section '## Verification Rules' is missing from both")) 'missing-both finding absent' }
-            else { Assert ($result.Exit -ne 0 -and $result.Out.Contains("AGENTS.md section '## Leanness' is not a verbatim mirror")) 'Leanness drift finding absent' }
+            if ($null -eq $cases[$case]) {
+                Assert ($result.Exit -eq 0) "$case should pass: $($result.Out)"
+            } else {
+                Assert ($result.Exit -eq 3) "$case exit=$($result.Exit), expected 3: $($result.Out)"
+                Assert ($result.Out.Contains($cases[$case])) "$case finding absent: $($result.Out)"
+            }
         } finally { Remove-Item -Recurse -Force $root }
     }
-}
-
-It 'template-checks rejects the observed one-line Boy Scout applicability drift' {
-    $root = TemplateFixture
-    try {
-        $agents = Join-Path $root AGENTS.md
-        $before = [IO.File]::ReadAllText($agents)
-        $after = $before.Replace('### Apply only when the file is the primary target of the change:', '### Apply only when the file is the primary target')
-        Assert ($after -cne $before) 'Boy Scout mutation did not change the fixture'
-        Put $agents $after
-        $result = RunArg (Join-Path $root scripts/template-checks.ps1)
-        Assert ($result.Exit -ne 0) 'one-line Boy Scout drift should fail'
-        Assert ($result.Out.Contains("AGENTS.md section '## Boy Scout Rule' is not a verbatim mirror")) 'Boy Scout finding absent'
-    } finally { Remove-Item -Recurse -Force $root }
 }
 
 It 'template-checks rejects an Unreleased stamped head but accepts a dated one' {

@@ -10,7 +10,7 @@ description: >
 
 # Enforce architecture deterministically (.NET — NetArchTest)
 
-`solid-check` covers SOLID semantically per diff; this makes the *structural* part (DIP / dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID; `AGENTS.md` › SOLID on AGENTS.md-native tools).
+`solid-check` covers SOLID semantically per diff; this makes the *structural* part (DIP / dependency direction) a **build-breaking** CI gate. Pairs with the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID).
 
 **Applicability gate:** confirm committed .NET projects and real dependency boundaries first. If
 none exist, report this skill as not applicable; the dotnet delivery profile alone does not justify
@@ -24,6 +24,6 @@ creating a .NET architecture-test project in a warehouse-only repository.
    - (Optional, where detectable) controllers/handlers preserve the project's evidenced service seam — supports DIP.
 3. **CI**: derive the exact scoped command that runs the new architecture project in this repo
    (for example a targeted `dotnet test` when that is the established runner), record it under
-   `CLAUDE.md > Conventions > Verification Commands`, and put that exact command in the required
+   `AGENTS.md > Conventions > Verification Commands`, and put that exact command in the required
    build. Do not assume a solution-level invocation or add the project to a nonexistent solution.
 4. **Don't weaken rules to go green** — record current violations in `TECH_DEBT.md` (Category: Architecture) and burn them down via the Trojan Horse.

@@ -218,7 +218,6 @@ function Assert-VerificationOwnershipContracts {
     foreach ($dist in $DistEntries) {
         foreach ($relative in @(
             '.github/instructions/framework-rules.instructions.md',
-            'AGENTS.md',
             '.claude/commands/bootstrap.md',
             '.claude/commands/rebootstrap.md'
         )) {
@@ -226,7 +225,7 @@ function Assert-VerificationOwnershipContracts {
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "verification ownership carrier is missing in $($dist.Name): $relative" }
             $text = Read-Utf8Text $path
             $normalized = [regex]::Replace($text, '\s+', ' ')
-            $requiredOwnership = if ($relative -in @('.github/instructions/framework-rules.instructions.md', 'AGENTS.md')) {
+            $requiredOwnership = if ($relative -eq '.github/instructions/framework-rules.instructions.md') {
                 @('framework-owned/overwritten', 'framework-retirements.json', 'application-command, evidence', 'report separately from application verification')
             } else {
                 @('framework-owned/overwritten', 'framework-retirements.json', 'application-command evidence', 'report framework checks separately')

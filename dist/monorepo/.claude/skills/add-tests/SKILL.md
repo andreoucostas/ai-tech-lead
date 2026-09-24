@@ -18,7 +18,7 @@ description: >
 
 # Add tests following project patterns
 
-Match `CLAUDE.md > Conventions > Testing` and the Test leanness rules in the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools). If conventions are unbootstrapped, follow `docs/defaults.md`. Apply the section for the stack of the code under test.
+Match `AGENTS.md > Conventions > Testing` and the Test leanness rules in the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness). If conventions are unbootstrapped, follow `docs/defaults.md`. Apply the section for the stack of the code under test.
 
 **Applicability gate:** confirm the target code belongs to a repository-evidenced .NET or Angular
 application profile. If neither the target stack nor its application surface is evidenced, report
@@ -47,7 +47,7 @@ developer agreement below.
 4. **Arrange-Act-Assert**, one logical assertion focus per test. Descriptive names per the project convention (e.g. .NET `Method_Scenario_ExpectedResult`).
 5. **Financial domain (.NET backend)**: when code touches money/balances/ledgers, derive the applicable invariant, tolerance, and preconditions from policy, implementation, tests, or executable evidence. Add only risk-relevant cases that exercise demonstrated negative-amount, duplicate-effect, precision/rounding, or temporal controls; a type/name or `MidpointRounding` alone is neither test selection nor a verdict.
 6. **Async (Angular)**: use `fakeAsync`/`tick` or `await whenStable()` per the project's convention; flush `HttpTestingController` and `verify()` no outstanding requests.
-7. **Run** the touched stack's exact scoped test command supported by `CLAUDE.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and runner configuration; do not infer `dotnet test`, Angular CLI, a browser, or flags. Confirm green, then confirm each new test can **fail**. A test you have not watched go red may be over-mocked or tautological (Verification Rule #9): for a regression test, confirm it fails against the unfixed code first; for any other new test, briefly break the code under test (or assert a deliberately wrong value) to see it fail for the right reason, then restore. If no executable command is evidenced, report tests as **not available** rather than claiming a pass.
+7. **Run** the touched stack's exact scoped test command supported by `AGENTS.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and runner configuration; do not infer `dotnet test`, Angular CLI, a browser, or flags. Confirm green, then confirm each new test can **fail**. A test you have not watched go red may be over-mocked or tautological (Verification Rule #9): for a regression test, confirm it fails against the unfixed code first; for any other new test, briefly break the code under test (or assert a deliberately wrong value) to see it fail for the right reason, then restore. If no executable command is evidenced, report tests as **not available** rather than claiming a pass.
 8. **Report** what was covered and what remains uncovered — do not claim coverage you didn't add.
 
 ---
@@ -71,7 +71,7 @@ When the goal is to make untested legacy code *safe to change* (e.g. before `/re
 ## Suite bootstrap mode — when a stack has no tests
 
 1. **Confirm before scaffolding.** In one message, ask the developer to confirm the test framework
-   and location. Prefer `CLAUDE.md > Conventions > Testing`. For .NET, first inspect the whole
+   and location. Prefer `AGENTS.md > Conventions > Testing`. For .NET, first inspect the whole
    repository/project graph and confirm no test project exists anywhere; only if it is genuinely test-free and
    conventions are unbootstrapped, propose xUnit + NSubstitute. For Angular, inspect `angular.json`
    and propose the workspace's configured builder and runner (Jasmine/Karma or Jest). This is a
@@ -84,6 +84,6 @@ When the goal is to make untested legacy code *safe to change* (e.g. before `/re
      `public partial class Program` or `InternalsVisibleTo`.
    - **Angular:** keep specs colocated and create only the configuration and shared setup needed for the developer-confirmed runner; add one integration-style fixture only for an HTTP surface.
    - Add no E2E project, coverage tooling, or extra test layers on day one.
-3. **Wire it so it cannot rot.** Record the new exact test command in `CLAUDE.md > Conventions > Verification Commands` and ensure the repo's existing CI/build runs it. Follow `docs/ci-integration.md`. If no CI exists, flag it and route setup to the `enforce-standards` skill; do not build CI in this task.
-4. **Start risk-first, not coverage-first.** Test in this order: `FRAMEWORK-CONTEXT.md > Known Hazard Areas`; financial-domain invariants from step 5 above when present; critical journeys from `CLAUDE.md > Codebase Context`; then pure domain logic or state transitions with branching. Write only a handful that prove the harness end to end, and apply step 7's red-check to every test.
-5. **Record the remainder honestly.** Add one `TECH_DEBT.md` entry: `Test suite bootstrapped <date>; backfill areas: …`. Do not imply broader coverage. Update `CLAUDE.md > Conventions > Testing` with the real framework, naming, and fixture location, and flag that documentation drift under Agentic Workflow §6.
+3. **Wire it so it cannot rot.** Record the new exact test command in `AGENTS.md > Conventions > Verification Commands` and ensure the repo's existing CI/build runs it. Follow `docs/ci-integration.md`. If no CI exists, flag it and route setup to the `enforce-standards` skill; do not build CI in this task.
+4. **Start risk-first, not coverage-first.** Test in this order: `FRAMEWORK-CONTEXT.md > Known Hazard Areas`; financial-domain invariants from step 5 above when present; critical journeys from `AGENTS.md > Codebase Context`; then pure domain logic or state transitions with branching. Write only a handful that prove the harness end to end, and apply step 7's red-check to every test.
+5. **Record the remainder honestly.** Add one `TECH_DEBT.md` entry: `Test suite bootstrapped <date>; backfill areas: …`. Do not imply broader coverage. Update `AGENTS.md > Conventions > Testing` with the real framework, naming, and fixture location, and flag that documentation drift under Agentic Workflow §6.

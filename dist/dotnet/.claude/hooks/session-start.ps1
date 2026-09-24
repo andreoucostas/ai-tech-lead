@@ -3,7 +3,7 @@
 # For Claude-shaped input this script emits plain stdout; for other JSON input it emits top-level
 # and wrapped JSON additionalContext shapes. Emission and registration do not prove host firing or
 # consumption; current VS Code session-hook lifecycles are unverified. See docs/enforcement-surfaces.md.
-# Keep fast: no expensive scans. Targets git, CLAUDE.md, TECH_DEBT.md, and
+# Keep fast: no expensive scans. Targets git, CLAUDE.md, AGENTS.md, TECH_DEBT.md, and
 # FRAMEWORK-CONTEXT.md only; the hazard table is capped at ~12 entries, so parsing stays cheap.
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -76,18 +76,28 @@ if (Test-Path .git) {
 # 2. Adoption / bootstrap state warning
 if (Test-Path .claude/adoption-pending.json) {
     Write-Output "- 🔴 **ADOPTION PENDING — this repo is not consolidated yet.** The installer detected pre-existing AI tooling; the originals it displaced are archived under ``docs/pre-adoption/`` and inventoried in ``.claude/adoption-pending.json``. The required next step is ``/adopt`` — NOT ``/bootstrap``, which would skip the archive/merge/provenance flow. ``/adopt`` is developer-initiated and cannot be invoked by the model: if you are an agent, stop and tell the developer to type ``/adopt``."
-} elseif (Test-Path CLAUDE.md) {
-    $claude = Get-Content CLAUDE.md -Raw
-    if ($claude -and $claude -match 'BOOTSTRAP_PENDING') {
-        Write-Output "- ⚠ **CLAUDE.md is unbootstrapped** (BOOTSTRAP_PENDING marker present). ``/bootstrap`` must run before non-trivial work — conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type ``/bootstrap``."
+} else {
+    # AGENTS.md is the project instruction file; a repo still on the older layout keeps it in CLAUDE.md.
+    foreach ($instructionFile in @('AGENTS.md', 'CLAUDE.md')) {
+        if (-not (Test-Path $instructionFile)) { continue }
+        $text = Get-Content $instructionFile -Raw
+        if ($text -and $text -match 'BOOTSTRAP_PENDING') {
+            Write-Output "- ⚠ **$instructionFile is unbootstrapped** (BOOTSTRAP_PENDING marker present). ``/bootstrap`` must run before non-trivial work — conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type ``/bootstrap``."
+            break
+        }
     }
 }
 
-# 3. Framework-rules migration pointer. Existing consumers keep their protected CLAUDE.md on
-# update, so the newly delivered carrier needs a one-time import. This is discovery, not delivery:
-# do not duplicate the rules into hook output.
+# 3. Migration pointers. Existing consumers keep their protected CLAUDE.md and AGENTS.md on
+# update; the installer moves the older layout (instructions in CLAUDE.md) only when AGENTS.md is
+# the retired generated mirror, and the newly delivered carrier needs its import. This is
+# discovery, not delivery: do not duplicate the rules into hook output.
 if (Test-Path CLAUDE.md) {
     $claude = Get-Content CLAUDE.md -Raw
+    # Any @AGENTS.md mention counts, as in the installer: Claude Code honours inline imports too.
+    if ($claude -and $claude -cnotmatch '(?<![\w/.@-])@(\./)?AGENTS\.md(?![\w-])') {
+        Write-Output '- ⚠ **Instruction layout migration:** this repository''s instructions are still in `CLAUDE.md`; the framework now reads and writes them in `AGENTS.md`. Read `CLAUDE.md` for project conventions until this is fixed. To fix it, merge `CLAUDE.md`''s content into `AGENTS.md`, then reduce `CLAUDE.md` to the two lines `@AGENTS.md` and `@.github/instructions/framework-rules.instructions.md` (see `docs/upgrade-checklist.md`).'
+    }
     if ((Test-Path .github/instructions/framework-rules.instructions.md) -and
         $claude -and -not $claude.Contains('@.github/instructions/framework-rules.instructions.md')) {
         Write-Output '- ⚠ **Framework rules migration:** `.github/instructions/framework-rules.instructions.md` is the current framework ruleset and supersedes any identically-titled sections in `CLAUDE.md`. Read it now. To make this permanent, add `@.github/instructions/framework-rules.instructions.md` to `CLAUDE.md` where those sections are, and delete them.'
@@ -96,11 +106,11 @@ if (Test-Path CLAUDE.md) {
 
 # 4. Workflow-routing pointer. The script writes this into whichever output shape the surface
 # dispatch selects below. The framework rules (`.github/instructions/framework-rules.instructions.md`
-# › Agentic Workflow; `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools) remain the canonical
+# › Agentic Workflow) remain the canonical
 # file-based routing definition. Hook firing and consumption are capability-specific; current VS Code
 # session-hook lifecycles are unverified. The full intent->workflow vocabulary lives in section 1.
 if (Test-Path CLAUDE.md) {
-    Write-Output '- **Workflow routing:** when a prompt clearly matches a workflow and the developer did not type a `/command`, self-classify and apply that workflow''s rails from the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow; `AGENTS.md` › Agentic Workflow on AGENTS.md-native tools), section 1. State which workflow you concluded.'
+    Write-Output '- **Workflow routing:** when a prompt clearly matches a workflow and the developer did not type a `/command`, self-classify and apply that workflow''s rails from the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow), section 1. State which workflow you concluded.'
 }
 
 # 5. TECH_DEBT items touching recently changed files

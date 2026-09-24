@@ -1,6 +1,6 @@
 <!--
 ai-tech-lead-framework
-  template: dotnet
+<!-- @stack:stamp -->
   version: 0.89.2
   applied: 2026-09-24
   When you sync template updates, bump these fields and update .claude/framework-version.json.
@@ -30,16 +30,16 @@ What this repository delivers, who uses its outputs, key domain concepts, and cr
 
 <!-- Populated by /bootstrap — replaces separate CODEMAP.md -->
 
-Evidence-backed layout, boundaries, entry points, change locations.
+<!-- @stack:repo-structure -->
 
-Evidence-backed dependency/data-flow diagram, when applicable.
+<!-- @stack:repo-diagram -->
 
 ---
 
 ## Conventions
 
 <!-- BOOTSTRAP_PENDING: run /bootstrap to replace this entire section with conventions observed in the actual codebase. -->
-<!-- Until /bootstrap, use applicable docs/defaults.md blocks only; the profile proves nothing. -->
+<!-- @stack:defaults-comment -->
 <!-- Each convention: the rule, then 1-2 sentence rationale. -->
 
 _Not yet populated. Until you run `/bootstrap`, the greenfield defaults in [docs/defaults.md](./docs/defaults.md) apply. After bootstrap, this section becomes the authoritative source._
@@ -64,22 +64,14 @@ When a task matches a skill below, invoke that skill with your skill tool before
 Skills are a delivery-profile superset, not evidence that they apply. Use only when repository
 evidence satisfies the gate:
 
-- `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
-- `add-entity` — add a new EF Core entity with configuration and migration review
-- `register-service` — register a new service in DI with the right lifetime
-- `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), tables, keys and fact → dimension relationships, grain, load orchestration, SCD strategy, partitioning
-- `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns: idempotent re-runnable loads, no double-loading, SCD handling, partition alignment
-- `add-tests` — add unit/integration tests following the repo's existing test framework, fixtures, and naming
-- `perf` — scan a file, directory, or the whole repo for ~50 performance anti-patterns; produces tiered findings (Critical / Moderate / Info) with file locations and TECH_DEBT.md integration
-- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet packages and set up automated dependency scanning (Dependabot or Renovate)
+<!-- @stack:skills-list -->
 - `create-adr` — record a significant architecture decision in Architecture Decisions
 - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review
-- `enforce-architecture` — wire the deterministic DIP/layering CI gate (NetArchTest)
-- `enforce-standards` — make warnings, skipped tests, and analyzer findings build-breaking (`TreatWarningsAsErrors` + `.editorconfig` severities)
+<!-- @stack:enforce-skills -->
 
 `/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real repo exemplar. A legacy `.github/skills/` tree has higher Copilot priority and must be migrated here before framework checks pass.
 
-**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Do not merge them — audit teams treat these differently. AI-assisted file changes are appended to [.claude/ai-audit.log](./.claude/ai-audit.log) automatically by the PostToolUse hook.
+<!-- @stack:registers -->
 
 ---
 
@@ -90,28 +82,20 @@ evidence satisfies the gate:
 ### Always apply (low-effort, low-risk — subject to Bug-fix scope above):
 
 **Add:**
-1. `CancellationToken` only when outcome/compatibility requires it
-2. Structured logging only when outcome/verification requires it
-3. Missing null checks at public boundaries
-4. Missing `.AsNoTracking()` on read-only queries
+<!-- @stack:bs-add -->
 
 **Subtract:**
-5. Unused `using` directives
-6. Commented-out code blocks (more than 1 line — version control preserves them)
-7. Unreferenced private fields, methods, or local variables that the IDE/compiler flags
+<!-- @stack:bs-subtract -->
 
 ### Apply only when the file is the primary target of the change:
 
 **Add:**
-8. Split mixed-responsibility methods; never use a line-count threshold
-9. Add risk-relevant tests only, and only with a harness
+<!-- @stack:bs-primary-add -->
 
 **Subtract:**
-10. Inline single-consumer interfaces or abstract bases that are not a project-evidenced DI service seam — per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it.
-11. Collapse shallow delegate methods that add no behavior beyond calling another component
-12. Single-use private helpers — inline at the call site
+<!-- @stack:bs-primary-subtract -->
 
-Items 8–12 can significantly expand or reshape a diff. Only apply them when the file is what the task is specifically about, not when it's incidentally touched. This keeps PRs focused and reviewable.
+<!-- @stack:bs-items-note -->
 
 ---
 

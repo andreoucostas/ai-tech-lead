@@ -39,7 +39,7 @@ The write-time guard hook blocks floor violations — .NET: `#pragma warning dis
        Select-String -Pattern '^\s*\[.*\bIgnore\b'
      if ($ignored) { $ignored; throw 'NUnit [Ignore] is forbidden' }
      ```
-3. **CI**: update `CLAUDE.md > Conventions > Verification Commands` with the exact evidenced build
+3. **CI**: update `AGENTS.md > Conventions > Verification Commands` with the exact evidenced build
    and test invocations that exercise these settings, and put those commands in the required build
    (`docs/ci-integration.md`). Do not infer a solution-level `dotnet build` / `dotnet test`. Run the
    recorded command locally and show the result.
