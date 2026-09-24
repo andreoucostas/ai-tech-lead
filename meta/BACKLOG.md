@@ -10,9 +10,8 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
 | 12b | B-279 `map-warehouse` skill surface | README half shipped with B-262; the listing half rides B-256, the invocation flag B-257 |
-| 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
+| 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with `-TargetPatch` (B-253) |
 | 13a | B-272 `AGENTS.md` as the one instruction file | Same always-loaded text as B-255; removes the mirror and its drift gate. Rank provisional, set by the filing session |
 | 13b | B-281 retire `.github/copilot-instructions.md` | Third copy of the same rules now that every host reads `AGENTS.md`; do it with or after B-272 |
 | 15 | B-264 process diet | WP5 of the lean reset plan (section 7); WSD-093 replaces WSD-089's success measure |
@@ -24,7 +23,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 waits for B-253 |
+| Low | B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -121,14 +120,6 @@ v0.26.0, still carried and tested.
 **Status:** Open. Four files, about 97 KB, under `docs/presentation/` install into each consumer
 tree; keep the FAQ content reachable and link the deck instead.
 
-### B-253 · Scheduled, non-gating with/without-framework behavioural eval on the existing harness
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P1 · **Effort:** M · **Invariants:** #6
-**Status:** PARTIALLY DONE 2026-09-21. First n=6 report is in `meta/eval-results.md`: route-fix and
-warehouse-bind-sql 4/6 versus 0/6, warehouse-route-p1 6/6 both arms. `-Executor copilot` exists (B-277). The
-route scenarios' default simulates `/bootstrap` and lost to bare (B-280); run them `-WarehouseMap generated`
-(6/6, 2026-09-22) and regenerate that fixture per version. Remaining: rule ablation (B-255).
-
 ### B-276 · A missing hook interpreter is now silent on Claude Code
 **Filed against:** v0.88.0 (2026-09-21)
 **Priority:** P2 · **Effort:** S · **Invariants:** #5
@@ -147,9 +138,9 @@ The READMEs show it as a conditional developer step (B-262). Left: Common Tasks/
 ### B-255 · De-duplicate the shipped instruction text and remove maintainer-epistemic disclaimers
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #2
-**Status:** Open. The frozen-bundle paragraph appears 15 times across eight files, several hedges four
-to five times, and the workflow rails are hand-mirrored in three places. Measure with B-253.
-Copilot CLI loads `copilot-instructions.md`, `AGENTS.md` and `CLAUDE.md` together (~111K-char system prompt, B-278).
+**Status:** Open. The frozen-bundle paragraph appears 15 times across eight files, several hedges four to five times, the
+rails in three places. Measure the candidate with `-TargetPatch` (B-253) against the unpatched arm, non-inferiority fixed in
+advance, on a scenario that opens the changed text. Copilot CLI loads all three instruction files (~111K chars, B-278).
 
 ### B-256 · List the warehouse skills only where repository evidence selects them
 **Filed against:** v0.86.7 (2026-09-18)
@@ -160,9 +151,9 @@ Tasks; WSD-021 forbids a separate warehouse distribution, not an evidence-select
 ### B-257 · Investigate workflow commands as skills, retiring regex prompt routing, and path-scoped rules
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P2 · **Effort:** M · **Invariants:** #2 #5
-**Status:** Open; investigation, outcome is a WSD. `route-prompt.ps1` spawns on every prompt and
-carries a third copy of the rails. Weigh skills and `.claude/rules/` against Copilot parity,
-WSD-031/WSD-032 and WSD-045.
+**Status:** Open; investigation, outcome is a WSD. `route-prompt.ps1` spawns on every prompt, carries a third copy of the
+rails, and under `claude -p` fires and is read (B-253 probe, 3/3, 2026-09-24). Removing it needs a non-inferiority test, not
+n=12 superiority. Weigh skills and `.claude/rules/` against Copilot parity, WSD-031/WSD-032 and WSD-045.
 
 ### B-258 · Distribution re-audit: Claude Code plugin prototype versus a simplified file-copy installer
 **Filed against:** v0.86.7 (2026-09-18)
@@ -198,8 +189,8 @@ meta suite tests process or records; candidates include `GateBudgetConsistency.T
 ### B-265 · Missing consumer workflows: PR description, read-only codebase explanation, major-version upgrade, Angular perf/accessibility
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1
-**Status:** Open. Hold until B-253 can show whether a new workflow changes outcomes; split into one
-item per workflow when taken.
+**Status:** Open. Measure each new workflow on a scenario with `-TargetPatch` (B-253) before shipping it;
+split into one item per workflow when taken.
 
 ### B-266 · Add a PSScriptAnalyzer leg for framework PowerShell
 **Filed against:** v0.86.7 (2026-09-18)

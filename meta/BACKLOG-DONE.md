@@ -12662,3 +12662,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-283** — DONE **2026-09-24**. B-262's Windows legs green on `master` (build x3 reproduces `dist/`, nine suites under
   pwsh 7 and 5.1, CP437); `install-handoff` PASS on v0.89.2 once the runner stopped grading a failed host login and gating
   on the closing message's word order (`74ad37d3`). Summary in `meta/eval-results.md`.
+
+- **B-253** — DONE **2026-09-24**. First with/without report 2026-09-21 (route-fix and warehouse-bind-sql 4/6 vs 0/6); the
+  rule-ablation remainder became an instrument, not a knockout catalogue, after two fresh-session adversarial reviews:
+  `-TargetPatch` runs a text variant through the unpatched arm's fixture path (`53a691fd`). Its first use: route-prompt
+  fires and is read under `claude -p` (3/3). The n=12 hook knockout went to B-257; B-255 measures its own candidate.

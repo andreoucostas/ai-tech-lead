@@ -2202,3 +2202,36 @@ Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=T
   `/bootstrap`. Only a developer can start it").
 - PASS on the corrected grader (`74ad37d3`), with `handoffPhrasing=False` again: the agent install section that B-262 moved
   below Quick Start still leads an agent to the installer and a correct handoff. n=1 per grader, Claude Code only.
+
+## 2026-09-24 10:43:41 +01:00 — framework v0.89.2 (53a691fdf5cad919f6dbaf39c76c798978ef2fd1)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · patch: route-prompt-probe.patch@3670af7b8dd2 · scratch: retained=True
+
+- **PASS route-fix** (model=claude-sonnet-5; patch=route-prompt-probe.patch@3670af7b8dd2) — agentExit=0 timedOut=False costUsd=0.3242582 tokensIn=16 tokensOut=3160; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True routeExercised=True fixed=True redTestEvent=39 productionEdit=42 greenTestEvent=48
+- **PASS route-fix** (model=claude-sonnet-5; patch=route-prompt-probe.patch@3670af7b8dd2) — agentExit=0 timedOut=False costUsd=0.198329 tokensIn=12 tokensOut=2491; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True routeExercised=True fixed=True redTestEvent=40 productionEdit=43 greenTestEvent=49
+- **PASS route-fix** (model=claude-sonnet-5; patch=route-prompt-probe.patch@3670af7b8dd2) — agentExit=0 timedOut=False costUsd=0.2250224 tokensIn=16 tokensOut=3184; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True routeExercised=True fixed=True redTestEvent=39 productionEdit=42 greenTestEvent=60
+- **SUMMARY route-fix** arm=framework outcome=3/3 excluded=0 patch=route-prompt-probe.patch@3670af7b8dd2
+
+
+## B-253 route-prompt probe on Claude Code — 2026-09-24 (hand-written summary of the block above)
+
+Claude Code 2.1.281 and claude-sonnet-5 in every row's `system/init`; v0.89.2 at `53a691fd`; route-fix with
+`-TargetPatch route-prompt-probe.patch@3670af7b8dd2`, which adds to the installed `route-prompt.ps1` a sentinel file
+named after the hook's `session_id` and one line asking for a token that exists on disk only in pieces. 3 runs, 0.75 USD.
+
+| reading | runs |
+|---|---|
+| fired: a sentinel matching the run's own init `session_id`, written with `intent=fix` | 3/3 |
+| consumed: the token in the agent's text | 3/3, each in its first message, before any tool call |
+| contaminated: a tool call touching `route-prompt.ps1`, or a tool result showing the probe code | 0/3 |
+
+- Under `claude -p` the UserPromptSubmit hook fires and its plain-stdout rails reach the model before its first
+  action. The earlier transcripts carry SessionStart hook events and no UserPromptSubmit event: absence from the stream
+  was not absence of the hook. `host-certification.md` had firing on 2.1.247 and consumption uncertified.
+- Checked before spending, free: patched and unpatched route-fix targets differ only in `route-prompt.ps1`; `git status`,
+  `git log` and the `session-start.ps1` output are identical; the patched hook's output is the unpatched output plus the
+  probe line.
+- These runs also scored route-fix 3/3. They carry an extra instruction and are not pooled with the 4/6 and 0/6 rows.
+- Not run: the 12-per-arm knockout with the hook unregistered. With the framework at 2/3, a one-sided Fisher test at
+  n=12 has power 0.42 if the knockout keeps half the effect and 0.15 if it keeps three quarters, and "not shown" licenses
+  nothing; the question moved to B-257, which needs non-inferiority. Not measured: interactive sessions, Copilot, other intents.
