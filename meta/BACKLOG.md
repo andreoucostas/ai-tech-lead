@@ -10,7 +10,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| Before release | B-283 Windows legs for the B-262 README change | 0.89.2 is Unreleased on a side branch; its Windows evidence was not collected |
+| After 0.89.2 tag | B-283 `install-handoff` eval on 0.89.2 | The live runner refuses an Unreleased head, so the eval can only run on the stamped release |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
 | 12b | B-279 `map-warehouse` skill surface | README half shipped with B-262; the listing half rides B-256, the invocation flag B-257 |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
@@ -260,13 +260,12 @@ ruleset is a third copy. Removal also retires `/generate-copilot` and its prompt
 **Status:** Open. Each stack's `docs/ARCHITECTURE.md` (lines 4, 12, ~178) sends readers to `README.md` "Quick Start" and
 calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.md`, so in a consumer repo it is theirs.
 
-### B-283 · Collect the Windows evidence for the B-262 README change before 0.89.2 ships
+### B-283 · Run the `install-handoff` eval on 0.89.2 for the B-262 README change
 **Filed against:** v0.89.1 (2026-09-23)
-**Priority:** P1 before the next release · **Effort:** S · **Invariants:** #3
-**Status:** Open. `e22e74a8` is on `claude/backlog-executive-summary-7qw72y`, not `master`: merge it first. A Linux cloud
-session ran pwsh 7 only; still owed: the touched suites under `powershell.exe` 5.1, RepositoryPrivacy on Windows (its
-canary-host case cannot pass on Linux), an `install-handoff` eval (the agent install section moved below Quick Start), and
-the root-doc suites under 5.1 for the `AGENTS.md` push-rule edit.
+**Priority:** P1 right after the 0.89.2 tag · **Effort:** S · **Invariants:** #3
+**Status:** Windows legs done 2026-09-24 on `master` (branch merged). Left: the eval, since the agent install section moved
+below Quick Start. The runner refuses an Unreleased head ("dist version 0.89.1 does not match root CHANGELOG head
+0.89.2"), so run `-Live -Scenario install-handoff` on the stamped 0.89.2.
 
 ## Archived
 
