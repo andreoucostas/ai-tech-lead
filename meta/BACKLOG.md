@@ -10,7 +10,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| After 0.89.2 tag | B-283 `install-handoff` eval on 0.89.2 | The live runner refuses an Unreleased head, so the eval can only run on the stamped release |
 | 11 | B-253 with/without-framework eval | Gives every later product decision an instrument, and its first report is WSD-091's condition for resuming the paused rows; WSD-016 and B-98 constrain it |
 | 12b | B-279 `map-warehouse` skill surface | README half shipped with B-262; the listing half rides B-256, the invocation flag B-257 |
 | 13 | B-255 instruction-text de-duplication | Largest always-loaded saving; measure with B-253 |
@@ -260,13 +259,6 @@ ruleset is a third copy. Removal also retires `/generate-copilot` and its prompt
 **Priority:** P3 · **Effort:** S · **Invariants:** #1
 **Status:** Open. Each stack's `docs/ARCHITECTURE.md` (lines 4, 12, ~178) sends readers to `README.md` "Quick Start" and
 calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.md`, so in a consumer repo it is theirs.
-
-### B-283 · Run the `install-handoff` eval on 0.89.2 for the B-262 README change
-**Filed against:** v0.89.1 (2026-09-23)
-**Priority:** P1 right after the 0.89.2 tag · **Effort:** S · **Invariants:** #3
-**Status:** Windows legs done 2026-09-24 on `master` (branch merged). Left: the eval, since the agent install section moved
-below Quick Start. The runner refuses an Unreleased head ("dist version 0.89.1 does not match root CHANGELOG head
-0.89.2"), so run `-Live -Scenario install-handoff` on the stamped 0.89.2.
 
 ### B-284 · Make `/rebootstrap` incremental from a content-hash baseline
 **Filed against:** v0.89.1 (2026-09-23)

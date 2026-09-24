@@ -12658,3 +12658,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-262** — DONE **2026-09-23**. The three stack READMEs lead with the value list and a who-triggers-what journey
   table; agent install instructions follow Quick Start behind a top pointer (the README is never installed); one Host
   support section; the 0.7.x excerpt is gone. No file tree, uninstall guide or FAQ (B-259, B-252 own those).
+
+- **B-283** — DONE **2026-09-24**. B-262's Windows legs green on `master` (build x3 reproduces `dist/`, nine suites under
+  pwsh 7 and 5.1, CP437); `install-handoff` PASS on v0.89.2 once the runner stopped grading a failed host login and gating
+  on the closing message's word order (`74ad37d3`). Summary in `meta/eval-results.md`.

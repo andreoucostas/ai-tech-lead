@@ -2168,3 +2168,37 @@ framework arm, 6 runs, none excluded. n=6: large effects only.
   analysis, not through the map (B-279).
 - Not measured: Claude Code on this arm; whether the bare arm with the generated map also stays 6/6 (it carried
   the generated map, not the generated `CLAUDE.md`); a route task the `CLAUDE.md` tree does not already answer.
+
+## 2026-09-24 09:04:08 +01:00 — framework v0.89.2 (8aec7c9811b5e6336fd1f6bab8c8b48ad9c2e22e)
+
+Host: Claude Code 2.1.278 (Claude Code) · arm: framework · scratch: retained=True
+
+- **ERROR install-handoff** (model=sonnet) — Cannot find path '<temp>\ai-tech-lead-agent-evals-20260924-090405\install-handoff\target\CLAUDE.md' because it does not exist.
+- Hand-written: the cause was the host, not the framework. The transcript's only assistant event and its result
+  (`is_error: true`, cost 0) read "Failed to authenticate: OAuth session expired and could not be refreshed"; the agent
+  never ran a tool, so nothing about the install handoff was observed (B-283). Since 74ad37d3 the runner reports this
+  as "host failed before the agent acted", and writes `<temp>` itself.
+
+
+## 2026-09-24 09:13:35 +01:00 — framework v0.89.2 (d979ab80975531346358150e716e5e52e1b07664)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **FAIL install-handoff** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.275004 tokensIn=12 tokensOut=1450; stamp=True commits=2 installerTool=True finalHandoff=False bootstrapPending=True bootstrapTool=False
+
+
+## 2026-09-24 09:27:21 +01:00 — framework v0.89.2 (855d011121277450c44ddda15d266a390364afab)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS install-handoff** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2059016 tokensIn=14 tokensOut=1964; stamp=True commits=2 installerTool=True bootstrapPending=True bootstrapTool=False finalNamesBootstrap=True handoffPhrasing=False (reported, not gating)
+
+
+## B-283 install-handoff on v0.89.2 — 2026-09-24 (hand-written summary of the three rows above)
+
+- The ERROR row is the expired login, not evidence. The FAIL row ran at `d979ab80`, a local records commit that was
+  reset before it was pushed; its dist and runner equal `8aec7c98`'s. That agent installed, committed, left bootstrap
+  pending and told the developer to type `/bootstrap`; only the old order-dependent phrasing regex missed it ("type
+  `/bootstrap`. Only a developer can start it").
+- PASS on the corrected grader (`74ad37d3`), with `handoffPhrasing=False` again: the agent install section that B-262 moved
+  below Quick Start still leads an agent to the installer and a correct handoff. n=1 per grader, Claude Code only.
