@@ -10,7 +10,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 12b | B-279 `map-warehouse` skill surface | README half shipped with B-262; the listing half rides B-256, the invocation flag B-257 |
 | 13a | B-272 `AGENTS.md` as the one instruction file | Largest always-loaded saving left: Copilot's static load counts the ~18K rules text twice (`AGENTS.md` and the `applyTo` carrier); removes the mirror and its drift gate. Rank provisional, set by the filing session |
 | 13b | B-281 retire `.github/copilot-instructions.md` | Third copy of the same rules now that every host reads `AGENTS.md`; do it with or after B-272 |
 | 15 | B-264 process diet | WP5 of the lean reset plan (section 7); WSD-093 replaces WSD-089's success measure |
@@ -126,19 +125,12 @@ tree; keep the FAQ content reachable and link the deck instead.
 command exited 1 (a visible hook error) before B-275's suffix and exits 0 after it. A branch in the
 command string stalls every write under a bash carrier; detect in the doctor or installer instead.
 
-### B-279 · Developer-triggered generators are listed and graded as task-time recipes
-**Filed against:** v0.89.1 (2026-09-21)
-**Priority:** P2 · **Effort:** M · **Invariants:** #1 #2
-**Status:** Narrowed 2026-09-23. `map-warehouse` is dual-mode: a request-only generator of `docs/warehouse-map.md` and a
-mid-task answerer (`SKILL.md` USE FOR; `add-warehouse-load` calls it); B-280 measured the doc (opened 0/6), not the skill.
-The READMEs show it as a conditional developer step (B-262). Left: Common Tasks/defaults/ARCHITECTURE listing with B-256,
-`disable-model-invocation` with B-257; no WSD until one of those settles it.
-
 ### B-256 · List the warehouse skills only where repository evidence selects them
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1
-**Status:** Open. `map-warehouse` and `add-warehouse-load` appear in every .NET consumer's Common
-Tasks; WSD-021 forbids a separate warehouse distribution, not an evidence-selected listing.
+**Status:** Open, narrowed 2026-09-24. `/bootstrap` Phase 3a already advertises both only when the
+warehouse-SQL profile was selected (`bootstrap.md:180`); the template lists them until bootstrap runs,
+and whether `/adopt` applies the same gate is unverified. WSD-021 forbids only a separate distribution.
 
 ### B-257 · Investigate workflow commands as skills, retiring regex prompt routing, and path-scoped rules
 **Filed against:** v0.86.7 (2026-09-18)

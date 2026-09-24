@@ -12673,3 +12673,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   instruction; `static.claude` about −460 chars per dist, `static.copilot` about −877. Dropped: the frozen-bundle paragraph
   (no always-loaded bytes; each reviewer's only copy of B-226's hash check), `route-prompt.ps1` rails (B-257), command
   repeats (already pointers or role-specific). Unmeasured by user decision: n=6 `-TargetPatch` detects only a collapse.
+
+- **B-279** — CLOSED **2026-09-24** without a change, after an adversarial review of its filing. No graded
+  `warehouse-route-p1/p2/p3` row (0/61, Copilot 0.89.1 runs included) invoked `map-warehouse` mid-task; the route grader's
+  outcome is the SQL artifact, the skill channel is diagnostic only; `/bootstrap` Phase 3a already gates the listing
+  (B-256 narrowed to the pre-bootstrap window). `disable-model-invocation` dropped: `add-warehouse-load` step 1 calls it.
