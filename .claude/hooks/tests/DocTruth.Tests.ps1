@@ -187,12 +187,12 @@ It 'every live backlog item has a unique id' {
 # `@AGENTS.md` line and adds Claude-specific notes. This replaced B-82's heading-topology mapping,
 # which its own header admitted was blind to body deletion: with one canonical file there is nothing
 # to mirror. The ceilings are budgets in the WSD-055 sense, applied to the maintainer file: AGENTS.md
-# <= 200 lines (the host vendor's adherence guidance) and <= 19,500 LF bytes (1.2x the 16,043 measured
+# under 120 lines (WSD-093; the file states the rule itself) and <= 19,500 LF bytes (1.2x the 16,043 measured
 # at adoption, 2026-09-16); CLAUDE.md <= 40 lines; AGENTS.md plus a fixed allowance for the parent
 # container's ~1 KB stub stays under Codex's 32 KiB project-document cap (Codex concatenates root ->
 # cwd and silently stops adding files at the cap). Hermetic: the allowance is a constant, not a read
 # of a file outside this repository. Raising a ceiling is a recorded WSD-089 amendment.
-$rootInstructionCeilings = @{ ClaudeMaxLines = 40; AgentsMaxLines = 200; AgentsMaxBytes = 19500; ParentStubAllowanceBytes = 4096; CodexCapBytes = 32768 }
+$rootInstructionCeilings = @{ ClaudeMaxLines = 40; AgentsMaxLines = 119; AgentsMaxBytes = 19500; ParentStubAllowanceBytes = 4096; CodexCapBytes = 32768 }
 
 function Get-RootInstructionTopologyViolations {
     param(
@@ -217,7 +217,7 @@ function Get-RootInstructionTopologyViolations {
     $claudeLines = @($claudeLf.TrimEnd("`n") -split "`n").Count
     if ($claudeLines -gt $Ceilings.ClaudeMaxLines) { $bad += "root CLAUDE.md is $claudeLines lines; ceiling $($Ceilings.ClaudeMaxLines) -- Claude-specific notes only; everything else belongs in AGENTS.md" }
     $agentsLines = @($agentsLf.TrimEnd("`n") -split "`n").Count
-    if ($agentsLines -gt $Ceilings.AgentsMaxLines) { $bad += "root AGENTS.md is $agentsLines lines; ceiling $($Ceilings.AgentsMaxLines) -- adding a clause means retiring one (WSD-089)" }
+    if ($agentsLines -gt $Ceilings.AgentsMaxLines) { $bad += "root AGENTS.md is $agentsLines lines; ceiling $($Ceilings.AgentsMaxLines) -- adding a clause means cutting one (WSD-093)" }
     $agentsBytes = [Text.Encoding]::UTF8.GetByteCount($agentsLf)
     if ($agentsBytes -gt $Ceilings.AgentsMaxBytes) { $bad += "root AGENTS.md is $agentsBytes LF bytes; ceiling $($Ceilings.AgentsMaxBytes) (WSD-089)" }
     if (($agentsBytes + $Ceilings.ParentStubAllowanceBytes) -ge $Ceilings.CodexCapBytes) { $bad += "root AGENTS.md ($agentsBytes bytes) plus the $($Ceilings.ParentStubAllowanceBytes)-byte parent-stub allowance reaches Codex's $($Ceilings.CodexCapBytes)-byte project-document cap" }
@@ -237,6 +237,12 @@ It 'root CLAUDE.md imports AGENTS.md exactly once, both stay under their ceiling
     $agents = Get-Content -Raw (Join-Path $repoRoot 'AGENTS.md')
     $bad = @(Get-RootInstructionTopologyViolations -Claude $claude -Agents $agents -Ceilings $rootInstructionCeilings)
     Assert ($bad.Count -eq 0) ($bad -join '; ')
+}
+
+It 'a 120-line root AGENTS.md breaks its own "under 120 lines" rule (WSD-093)' {
+    $agents120 = "# canonical`n`n> **YOU ARE IN THE FRAMEWORK AUTHORING REPO, NOT A CONSUMER PROJECT.** banner`n" + ("- clause`n" * 117)
+    $bad = @(Get-RootInstructionTopologyViolations -Claude "# entry`n`n@AGENTS.md`n" -Agents $agents120 -Ceilings $rootInstructionCeilings)
+    Assert (@($bad | Where-Object { $_ -match 'AGENTS\.md is 120 lines' }).Count -eq 1) "a 120-line AGENTS.md was accepted: $($bad -join '; ')"
 }
 
 It 'root topology helper rejects a missing or backticked import, oversize files, a missing banner, stray tokens, and empty input' {

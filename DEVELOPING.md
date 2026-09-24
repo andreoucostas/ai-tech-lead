@@ -323,7 +323,9 @@ and persists its evidence in a follow-up commit.
 - **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite takes
   ~1–2 min. Expected, not a hang.
 
-**CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every push/PR.
+**CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every PR and on
+every push to `master` except one touching only top-level `meta/*.md` records or `.claude/plans/**`
+(`meta/eval-results.md` and `meta/review-ledger.md` still run it); `push-and-check.ps1` skips its watch for those.
 The required execution topology is eight native Windows contexts: `windows`, three `windows-hooks`
 matrix contexts, `windows-ps51`, and three `windows-hooks-ps51` matrix contexts. One additional
 required Windows job compares all four PS7/PS5.1 semantic case-count pairs after those contexts;
