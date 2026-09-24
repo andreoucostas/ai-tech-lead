@@ -21,6 +21,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
 | 18 | B-259 installer lifecycle basics | After B-258 so nothing is built twice |
 | 19 | B-261 Stop-time verification | B-248 bounded post-write at 45 s; settle Stop-hook latency against that |
+| 20 | B-284 incremental `/rebootstrap` | User-requested 2026-09-23; the discovery-pass half waits on WSD-097 |
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
@@ -266,6 +267,13 @@ calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.m
 **Status:** Windows legs done 2026-09-24 on `master` (branch merged). Left: the eval, since the agent install section moved
 below Quick Start. The runner refuses an Unreleased head ("dist version 0.89.1 does not match root CHANGELOG head
 0.89.2"), so run `-Live -Scenario install-handoff` on the stamped 0.89.2.
+
+### B-284 · Make `/rebootstrap` incremental from a content-hash baseline
+**Filed against:** v0.89.1 (2026-09-23)
+**Priority:** P2 · **Effort:** L · **Invariants:** #1 #3 #7
+**Status:** Open; user-requested for high-churn repos, token cost. Design after a fresh-session
+adversarial review: `.claude/plans/2026-09-23-incremental-rebootstrap.md`. Scheduling was dropped
+by the user; bounding the discovery pass needs WSD-097 lifted.
 
 ## Archived
 
