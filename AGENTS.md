@@ -45,7 +45,8 @@ Anyone may raise a tier; no one lowers one. A batch takes its highest member.
 - `src/**`: stacks diverge at `<!-- @stack:NAME -->` markers and `src/stacks/<stack>/` snippets and
   whole-files. Review the `src/stacks/monorepo/` sibling of any stack snippet or whole-file you
   touch (it does not reach `dist/monorepo` otherwise) → `scripts/build.ps1 <dist>` ×3 → commit the
-  resulting `dist/` change in the same commit → `scripts/validate-dist.ps1 <dist>` ×3.
+  resulting `dist/` change in the same commit → `scripts/validate-dist.ps1 <dist>` ×3 →
+  `scripts/context-footprint.ps1 -Check` (baseline change: review, `-Update`; ceiling breach: maintainer decides).
 - A hook or script: also its test file on both hosts; test the **dist** copy by piping a fixture
   JSON event and asserting `EXIT=` plus output, on both agent surfaces where it enforces on both.
 - An installer change: greenfield and brownfield smoke installs into temp directories.

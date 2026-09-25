@@ -41,6 +41,9 @@ tier may be raised, never lowered.
 2. `pwsh -NoProfile -File scripts/build.ps1 dotnet` · `angular` · `monorepo`
 3. `git status --porcelain dist/` — the resulting `dist/` change belongs in the same commit.
 4. `pwsh -NoProfile -File scripts/validate-dist.ps1 <dist>` for each dist.
+5. `pwsh -NoProfile -File scripts/context-footprint.ps1 -Check`. On a baseline difference, report it; the
+   author reviews the change, runs `-Update`, and commits `meta/context-footprint.json` in the same commit.
+   On a ceiling FAIL, stop and report: raising a ceiling or passing `-AllowCeilingBreach` is the maintainer's call.
 
 **A hook or script**
 1. Its test file, as separate direct runs under `pwsh` and under `powershell.exe`
