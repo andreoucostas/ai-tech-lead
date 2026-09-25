@@ -31,7 +31,7 @@ $railsFix = @'
 '@
 
 $railsFeature = @'
-1. Design check first — list affected layers, files to create/modify, failure modes, test strategy.
+1. Design check first — list affected layers, files to create/modify, failure modes, and the smallest useful tests when an applicable harness exists; never add a harness incidentally.
 2. Decompose into ordered subtasks; derive exact build, test, format, lint, migration/deploy, and data-validation commands from repository evidence, then run only safely executable applicable commands under the execution boundary above after each before continuing (report unsupported categories as not available).
 3. Apply Boy Scout to every file you touch.
 4. Self-review against AGENTS.md > Conventions; flag new patterns or resolved tech debt.
@@ -62,8 +62,9 @@ $railsTest = @'
 1. Match existing test structure, naming convention, framework, and mocking approach.
 2. Choose the smallest risk-relevant set: the principal behavior plus only consequential error, edge, or boundary cases; do not build a case matrix for its own sake.
 3. Do not test framework behavior — test public behavior only.
-4. Derive exact applicable build, test, format, lint, migration/deploy, and data-validation commands from repository evidence; run only safely executable applicable commands under the execution boundary above and report every unsupported category as not available.
-5. Report what was tested and what's still uncovered.
+4. See each new behavioral test fail correctly before trusting it.
+5. Derive exact applicable build, test, format, lint, migration/deploy, and data-validation commands from repository evidence; run only safely executable applicable commands under the execution boundary above and report every unsupported category as not available.
+6. Report what was tested and what's still uncovered.
 '@
 
 $railsDesign = @'

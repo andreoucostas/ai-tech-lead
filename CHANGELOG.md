@@ -53,6 +53,12 @@ B-255 on review: the frozen-bundle paragraph (each copy is the only one its revi
 B-226's hash check, and it costs no always-loaded bytes), the rails in `route-prompt.ps1` (B-257),
 and the command-level repeats the 2026-09-18 review counted (now pointers or role-specific).
 
+B-257. The `test` and `feature` rails in `route-prompt.ps1` regain two non-negotiables of the canonical
+Agentic Workflow bullets, both added there at v0.77.0 and never mirrored: see each new behavioral test fail
+correctly, and add no test harness incidentally. `RoutePrompt.Tests.ps1` pins both. Prompt-time output
+grows 84 chars (feature) and 67 (test); static context is unchanged. The hook stays, commands stay
+commands, and path-scoped rules are not adopted for the rails: WSD-100.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

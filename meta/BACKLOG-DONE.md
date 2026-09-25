@@ -12701,3 +12701,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   5.1 `-Command` shell: guard and post-write exit 0 (1 before B-275), session-start, route-prompt, audit-trail, boy-scout exit 1.
   Not silent: route-prompt errors every prompt and audit-trail every write; exit 1 never blocked, so protection is unchanged.
   The doctor tweak was declined: the error is already loud.
+
+- **B-257** — CLOSED **2026-09-25** by WSD-100 after Fable and fresh-Opus reviews: `route-prompt` stays, commands already
+  are skills on Claude Code, path-scoped rules are not used for the rails, no trial funded. Its test and feature rails had
+  dropped two §1 non-negotiables since v0.77.0; restored with two `RoutePrompt.Tests.ps1` cases. Drift prevention: B-292.

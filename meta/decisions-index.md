@@ -66,6 +66,7 @@ authoritative.
 - “B-222 to B-224 are held after B-253's first report; one timeboxed Copilot executor spike runs inside the existing eval runner without the CP1/RK1 isolation, relay or candidate contract.” — `meta/workspace-decisions.md WSD-097` (answers WSD-091's resumption clause)
 - “Shipped `AGENTS.md` is the one edited instruction file; `CLAUDE.md` is a two-import stub; update moves an older layout once, only over a generated mirror.” — `meta/workspace-decisions.md WSD-098` (supersedes WSD-002's mirror clause)
 - “`.github/copilot-instructions.md` and `/generate-copilot` are retired; Visual Studio and github.com Copilot Chat lose framework-delivered conventions by choice.” — `meta/workspace-decisions.md WSD-099`
+- “Keep `route-prompt`; commands already are skills on Claude Code; path-scoped rules are not used for the workflow rails; no non-inferiority trial is funded.” — `meta/workspace-decisions.md WSD-100`
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

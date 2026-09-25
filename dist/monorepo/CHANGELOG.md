@@ -43,6 +43,10 @@
   no command" is no longer repeated where "run only exact recorded invocations" already says it. No
   rule changed: workflow rails stay binding, the security pass still applies whether or not a hook
   reminder appears, and the team wiki is still read on demand.
+- **Plain-language test and feature requests get the full workflow rules again.** When you ask for
+  tests or a new feature without a slash command, the prompt hook's reminder now carries two rules the
+  framework rules already required but the reminder had dropped: see each new behavioral test fail
+  before trusting it, and do not add a test harness just for a feature. Nothing else in it changed.
 
 ## 0.89.2 — 2026-09-24
 

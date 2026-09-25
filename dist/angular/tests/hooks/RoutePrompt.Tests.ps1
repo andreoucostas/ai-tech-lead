@@ -34,6 +34,18 @@ It 'route-prompt.ps1 Claude event -> plain rails (fix intent)' {
     Assert (-not $r.Out.TrimStart().StartsWith('{')) 'Claude surface must not get JSON'
 }
 
+# --- Rails may elaborate the canonical Agentic Workflow bullets, not drop their non-negotiables ---
+It 'route-prompt.ps1 test rail -> each new behavioral test is seen to fail' {
+    $r = Invoke-Hook $rpPs (New-ClaudePrompt 'write tests for the date parser')
+    Assert ($r.Out -match '## Routed intent: `test`') 'test intent not routed'
+    Assert ($r.Out -match 'fail correctly') 'test rail omits seeing each new behavioral test fail'
+}
+It 'route-prompt.ps1 feature rail -> no test harness added incidentally' {
+    $r = Invoke-Hook $rpPs (New-ClaudePrompt 'implement a new export button')
+    Assert ($r.Out -match '## Routed intent: `feature`') 'feature intent not routed'
+    Assert ($r.Out -match 'never add a harness incidentally') 'feature rail permits adding a test harness incidentally'
+}
+
 # --- Copilot surface: dual-shape JSON ---
 It 'route-prompt.ps1 Copilot event -> JSON additionalContext (fix intent)' {
     $r = Invoke-Hook $rpPs (New-CopilotPrompt 'fix the broken date formatting')

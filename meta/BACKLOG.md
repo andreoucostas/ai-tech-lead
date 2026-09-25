@@ -6,11 +6,10 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276 closed 2026-09-25
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276 and B-257 closed 2026-09-25
 
 | Rank | Item | Why here |
 |---|---|---|
-| 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
 | 18 | B-259 installer lifecycle basics | After B-258 so nothing is built twice |
 | 19 | B-261 Stop-time verification | B-248 bounded post-write at 45 s; settle Stop-hook latency against that |
@@ -18,7 +17,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-291, B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-292, B-291, B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -121,13 +120,6 @@ tree; keep the FAQ content reachable and link the deck instead.
 **Status:** Open, narrowed 2026-09-24. `/bootstrap` Phase 3a already advertises both only when the
 warehouse-SQL profile was selected (`bootstrap.md:180`); the template lists them until bootstrap runs,
 and whether `/adopt` applies the same gate is unverified. WSD-021 forbids only a separate distribution.
-
-### B-257 · Investigate workflow commands as skills, retiring regex prompt routing, and path-scoped rules
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** M · **Invariants:** #2 #5
-**Status:** Open; investigation, outcome is a WSD. `route-prompt.ps1` spawns on every prompt, carries a third copy of the
-rails, and under `claude -p` fires and is read (B-253 probe, 3/3, 2026-09-24). Removing it needs a non-inferiority test, not
-n=12 superiority. Weigh skills and `.claude/rules/` against Copilot parity, WSD-031/WSD-032 and WSD-045.
 
 ### B-258 · Distribution re-audit: Claude Code plugin prototype versus a simplified file-copy installer
 **Filed against:** v0.86.7 (2026-09-18)
@@ -251,6 +243,13 @@ the release commit message (`:825`, `:827`) name the "full root meta suite"; sin
 **Status:** Open; from B-276's review. In-process guard kept exit 2/0 and saved ~0.2-0.3 s per hook; the prize is deleting the
 5.1 variant and installer copy. First observe live that Claude Code's outer shell falls back to 5.1 without `pwsh` and passes
 `-ExecutionPolicy Bypass` (read only from binary strings); if not, stop. Copilot's `hooks.json` still names `pwsh`.
+
+### B-292 · Stop the `route-prompt` rails drifting from the canonical workflow bullets
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P3 · **Effort:** S · **Invariants:** #1
+**Status:** Open; from WSD-100. The test and feature rails lost two §1 non-negotiables at v0.77.0 unnoticed; only the
+consumer-run `/docs-sync` step 2 compares them. Options: compose the rails from the §1 snippets in `build.ps1`, a
+`validate-dist` check per rail for named non-negotiables, or a pointer-only hook (changes salience, so measure it).
 
 ## Archived
 

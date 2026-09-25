@@ -4471,3 +4471,14 @@ Chat on github.com document only `copilot-instructions.md` (and `.github/instruc
 **Decision (user, 2026-09-25).** Drop it anyway: those surfaces lose the project conventions from the framework.
 Stop shipping and requiring the file; retire the generator through the ledger. The path stays protected and an
 adoption signal, so a consumer copy is never overwritten or deleted. Rejected: keep it and only correct its purpose.
+
+## WSD-100: keep `route-prompt`; commands stay commands; no path-scoped rules for the rails (2026-09-25)
+
+**Context.** B-257 (WSD-090 §5.3) asked whether to retire the per-prompt router, ship commands as skills and use
+`.claude/rules/`. Measured locally: 0.3-0.4 s per prompt (about 0.65 s in the host's outer shell), 2.3-3.4 KB only on
+a matched prompt; the one channel seen read before the first tool call (B-253 probe, 3/3). B-98's "no always-on
+router" (v0.51.0) was about skill routing; this hook already shipped then and was kept.
+**Decision (user approved the plan, 2026-09-25, after Fable and fresh-Opus reviews).** Keep the hook; fund no
+non-inferiority trial (about 44 runs per arm for one of seven intents, from 4/6). Claude Code merged commands into
+skills; routing Copilot to workflows via `.claude/skills/` stays open (B-278). Path-scoped rules cannot pick an intent.
+Drifted test/feature rails fixed; further drift is B-292. **Reopen** on process-free prompt-time context or a knockout arm.

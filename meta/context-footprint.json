@@ -281,8 +281,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2319,
-          "tok": 580
+          "chars": 2403,
+          "tok": 601
         },
         {
           "path": "fixture/route-prompt/intent/fix",
@@ -301,8 +301,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/test",
-          "chars": 1860,
-          "tok": 465
+          "chars": 1927,
+          "tok": 482
         },
         {
           "path": "fixture/route-prompt/security-only",
@@ -735,8 +735,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2352,
-          "tok": 588
+          "chars": 2436,
+          "tok": 609
         },
         {
           "path": "fixture/route-prompt/intent/fix",
@@ -755,8 +755,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/test",
-          "chars": 1860,
-          "tok": 465
+          "chars": 1927,
+          "tok": 482
         },
         {
           "path": "fixture/route-prompt/security-only",
@@ -1209,8 +1209,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2382,
-          "tok": 596
+          "chars": 2466,
+          "tok": 616
         },
         {
           "path": "fixture/route-prompt/intent/fix",
@@ -1229,8 +1229,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/test",
-          "chars": 1860,
-          "tok": 465
+          "chars": 1927,
+          "tok": 482
         },
         {
           "path": "fixture/route-prompt/security-only",
