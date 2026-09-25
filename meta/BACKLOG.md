@@ -6,17 +6,17 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293 and B-259 closed 2026-09-25; B-295 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259 and B-295 closed 2026-09-25; B-296 to B-299 filed
 
 | Rank | Item | Why here |
 |---|---|---|
-| 17 | B-295 greenfield install replaces unrecoverable files | Loses consumer data at exit 0; found by B-259's review |
+| 17 | B-299 bracketed target installs into a sibling | Mutates the wrong directory at exit 0; found by B-295's attack |
 | 19 | B-261 Stop-time verification | B-248 bounded post-write at 45 s; settle Stop-hook latency against that |
 | 20 | B-284 incremental `/rebootstrap` | User-requested 2026-09-23; the discovery-pass half waits on WSD-097 |
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-294, B-292, B-291, B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-298, B-297, B-296, B-294, B-292, B-291, B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -243,12 +243,33 @@ consumer-run `/docs-sync` step 2 compares them. Options: compose the rails from 
 **Status:** Open; from B-293's review. VS Code's hooks page (2026-09-25) says `chat.useHooks` "is on by default"; the
 shipped line 72 says "off by default". Claude-format reading (`chat.useClaudeHooks`) stays off by default.
 
-### B-295 · Greenfield install silently replaces consumer files it cannot recover
+### B-296 · Route custom Claude and Copilot extension files to `/adopt`
 **Filed against:** v0.90.0 (2026-09-25)
-**Priority:** P1 · **Effort:** M · **Invariants:** #3 #7
-**Status:** Open; from B-259's review, reproduced 2026-09-25. Greenfield skips the dirty-tree guard (`install.ps1:823`)
-and `PLAN replace` keeps no backup: untracked files in Git, any collision outside Git and a consumer `.claude/settings.json`
-are lost at exit 0. Refuse (exit 4; `-WhatIf` warns) unless the Git tree is clean; back up settings; drop "plain copy".
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open; from B-295's review. `install.ps1`'s adoption signals claim to mirror `/adopt` Phase 1 but omit
+`.claude/settings.json`, `.claude/commands|skills|agents` and `.github/prompts|agents`. Since B-295 a colliding one selects
+brownfield; a repo with only non-colliding custom ones still gets `/bootstrap`, which does not consolidate them.
+
+### B-297 · Adoption evidence records the wrong provenance for a case-variant path
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open; from B-295's attack. A tracked lowercase `.github/pull_request_template.md` is archived under the shipped
+uppercase name with `provenance=untracked localModification=unknown`, so `/adopt` cannot vouch for it and reads history at a
+path that never existed. Pre-existing in brownfield; B-295 routes far more repos there.
+
+### B-298 · The root installer's dirty-tree refusal names a switch it does not accept
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open; from B-295's attack. Root `install.ps1` forwards only `-WhatIf` and `-AllowDowngrade`; a dirty target refused
+with exit 4 is told to pass `-AllowDirtyTree`, which the root installer rejects (exit 1). B-295 makes that refusal reachable for
+any repo with an untracked colliding file.
+
+### B-299 · The installers resolve a bracketed target path as a wildcard
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P2 · **Effort:** S · **Invariants:** #3
+**Status:** Open; from B-295's attack, re-checked. `src/core/scripts/install.ps1:38` runs `Resolve-Path $Target`, so target
+`repo[a]` resolves to sibling `repoa` (dry run's `into:` names it, exit 0; the attack's real run wrote 108 files there). The
+root installer resolves it literally but hands it to that line, so it is affected too. Guarded path.
 
 ## Archived
 

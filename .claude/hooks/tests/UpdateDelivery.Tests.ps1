@@ -1071,6 +1071,45 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
             Assert (Test-Path -LiteralPath (Join-Path $t 'docs/pre-adoption/TECH_DEBT.md') -PathType Leaf) 'brownfield override did not archive the collision'
         } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
     }
+
+    It 'B-295 a shipped path holding other bytes is archived even when Git status is clean' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('b295-' + [guid]::NewGuid())
+        try {
+            # No adoption signal and only ignored collisions: git status is clean, so a dirty-tree
+            # check alone would still let a greenfield copy overwrite them.
+            $t = Join-Path $root 'ignored'
+            New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/commands') | Out-Null
+            & git -C $t init -q
+            & git -C $t config user.email 'tests@example.invalid'
+            & git -C $t config user.name 'installer tests'
+            [IO.File]::WriteAllText((Join-Path $t '.gitignore'), ".claude/`n", [Text.UTF8Encoding]::new($false))
+            & git -C $t add .gitignore
+            & git -C $t commit -qm initial
+            $collisions = [ordered]@{
+                '.claude/settings.json' = [Text.UTF8Encoding]::new($false).GetBytes("{`"env`":{`"B295`":`"consumer`"}}`n")
+                '.claude/commands/review.md' = [Text.UTF8Encoding]::new($false).GetBytes("consumer review command`r`n")
+            }
+            foreach ($rel in $collisions.Keys) { [IO.File]::WriteAllBytes((Join-Path $t $rel), $collisions[$rel]) }
+            $status = (& git -C $t status --porcelain=v1 --untracked-files=all | Out-String)
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $exit = $LASTEXITCODE
+            Assert ($status.Trim() -eq '') "calibration: the ignored collisions made git status dirty: $status"
+            Assert ($exit -eq 0 -and $out -match 'mode: brownfield' -and $out -match 'secrets') "ignored collisions did not take the brownfield archive (exit $exit): $out"
+            foreach ($rel in $collisions.Keys) {
+                $archive = Join-Path $t "docs/pre-adoption/$rel"
+                Assert ((Test-Path -LiteralPath $archive -PathType Leaf) -and
+                    (Test-B194BytesEqual $collisions[$rel] ([IO.File]::ReadAllBytes($archive)))) "'$rel' was not archived byte-for-byte: $out"
+            }
+
+            # Identical bytes lose nothing when rewritten, so an interrupted greenfield install must
+            # stay greenfield on re-run.
+            $same = Join-Path $root 'identical'
+            New-Item -ItemType Directory -Force -Path (Join-Path $same 'docs') | Out-Null
+            Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet/docs/defaults.md') -Destination (Join-Path $same 'docs/defaults.md')
+            $sameOut = Invoke-Installer -Dist 'dotnet' -Target $same
+            Assert ($LASTEXITCODE -eq 0 -and $sameOut -match 'mode: greenfield') "a byte-identical shipped file changed the mode: $sameOut"
+        } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }
 
 $legacyV083RetiredPaths = @(

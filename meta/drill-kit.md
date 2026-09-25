@@ -35,6 +35,8 @@ report; never turn an unrun step into an observation.
 3. From a clean checkout of the framework release under test, run the root installer against the
    clone. Assert the printed detected stack is correct, the mode is `greenfield`, and the complete
    agent-handoff contract is printed. Pass only if all three are present and the installer exits zero.
+   A clone already holding a file where the framework installs one (a PR template, say) reports
+   `brownfield`; it is not a greenfield target, so select the approved fallback.
 4. In an interactive maintainer-driven agent session, run `/bootstrap`. Pass only if it completes,
    replaces bootstrap placeholders with repository-specific content, and leaves its required
    verification evidence. Run `scripts/docs-sync-check` after the completion claim and require it

@@ -6,9 +6,11 @@
 # meta files (README.md, CHANGELOG.md, .gitignore, .gitattributes), and the installer itself.
 #
 # Three modes, detected automatically:
-#   greenfield — target has no AI tooling: plain copy; next step is /bootstrap.
+#   greenfield — target has no AI tooling and no shipped path holding other bytes: plain copy;
+#                next step is /bootstrap.
 #   brownfield — target already has AI tooling (CLAUDE.md, .cursorrules, Copilot instructions,
-#                ADRs, ...): the originals this copy would overwrite are moved to docs/pre-adoption/
+#                ADRs, ...) or a shipped path holding other bytes (tracked, untracked, ignored or
+#                outside Git): the originals this copy would overwrite are moved to docs/pre-adoption/
 #                first, and .claude/adoption-pending.json is written so every later session (and CI)
 #                steers to /adopt. Next step is /adopt.
 #   update     — target already carries .claude/framework-version.json. Consumer-owned protected
@@ -197,7 +199,6 @@ $detected = @()
 if (-not $updateMode) {
     $detected = @($adoptionSignals | Where-Object { Test-Path -LiteralPath (Join-Path $tgt $_) })
 }
-$adoptMode = (-not $updateMode) -and ($detected.Count -gt 0)
 
 # The incoming manifest inventories installed files; the separately authored retirement ledger is
 # the only stale-path deletion authority. Validate both before any target mutation.
@@ -271,6 +272,29 @@ if ((Test-Path -LiteralPath $targetNotice -PathType Leaf) -and
     [Console]::Error.WriteLine("ERROR: Refusing to overwrite '$legalNotice': the existing file is not marked FRAMEWORK-OWNED.")
     exit 3
 }
+
+# A shipped path already holding other bytes is consumer content the copy would overwrite, whether
+# or not it looks like AI tooling and whether or not Git can see it (untracked, ignored, no
+# repository), so it selects the brownfield archive. Identical bytes lose nothing and keep an
+# interrupted greenfield re-run greenfield; compare them raw, never line-ending-normalized.
+if (-not $updateMode) {
+    foreach ($relative in $incomingPaths) {
+        if ($relative -in $copyIfAbsent -or $relative -in @($legalLicense, $legalNotice)) { continue }
+        $existing = Get-ContainedTargetPath -Relative $relative
+        if (-not (Test-Path -LiteralPath $existing -PathType Leaf)) { continue }
+        # Never read through a link; the brownfield preflight refuses it by name.
+        if (Get-ReparsePointAncestor -Path $existing) { $detected += $relative; continue }
+        try {
+            $same = [Convert]::ToBase64String([IO.File]::ReadAllBytes($existing)) -ceq
+                [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $src $relative)))
+        } catch {
+            [Console]::Error.WriteLine("CANT-VERIFY: existing '$relative' could not be read to decide whether this install would overwrite it. Make it readable or move it aside, then re-run.")
+            exit 4
+        }
+        if (-not $same) { $detected += $relative }
+    }
+}
+$adoptMode = (-not $updateMode) -and ($detected.Count -gt 0)
 
 # Previous ownership is consumer-mutable evidence, never deletion authority. Reconciliation is
 # enabled only when the whole previous manifest is valid, and every candidate also matches bytes
@@ -859,7 +883,7 @@ Write-Output "Installing AI Tech Lead Framework"
 Write-Output "  from: $src"
 Write-Output "  into: $tgt"
 if ($updateMode)    { Write-Output "  mode: update (existing install detected via .claude/framework-version.json)" }
-elseif ($adoptMode) { Write-Output "  mode: brownfield (pre-existing AI tooling detected: $($detected -join ', '))" }
+elseif ($adoptMode) { Write-Output "  mode: brownfield (pre-existing AI tooling, or files this install would overwrite: $($detected -join ', '))" }
 else                { Write-Output "  mode: greenfield" }
 if ($updateMode -and $versionComparison -gt 0 -and $AllowDowngrade) {
     Write-Output "  override: -AllowDowngrade accepted for downgrade $installedVersion -> $incomingVersion."
@@ -1353,6 +1377,7 @@ if ($updateMode) {
     Write-Output "Done - but this repo is NOT ready for AI-assisted work yet: it has pre-existing AI"
     Write-Output "tooling that must be consolidated with /adopt. The originals this install displaced"
     Write-Output "are under docs/pre-adoption/; .claude/adoption-pending.json records the inventory."
+    Write-Output "Some may be files you had gitignored: check docs/pre-adoption/ for secrets before committing."
     Write-Output ""
     Write-Output "Next steps in the target repo:"
     Write-Output "  1. Review and commit the copied files (they are team-shared config, not local settings)."

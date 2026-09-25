@@ -12718,3 +12718,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   `AGENTS.md` header now say the installer rewrites the stamp and the header is copied by hand; stack READMEs gain a `-WhatIf`
   preview line and "Removing the framework". Dropped: `-WhatIf` refusal (B-194, disclosed), a networked update check (B-46),
   structured output (`OPERATION-PLAN` since v0.76.0), `-Uninstall` (WSD-101's hash catalogue; B-42 uses scratch clones). Found B-295.
+
+- **B-295** — CLOSED **2026-09-25**. A shipped path already holding other bytes (tracked, untracked, gitignored or outside Git)
+  now selects brownfield, so greenfield never overwrites; byte-identical files stay greenfield, unreadable ones exit 4, and the
+  brownfield handoff warns about gitignored secrets. The filed fix (greenfield dirty-tree guard, settings backup) was rejected: it
+  misses gitignored files and every non-Git target. Fable second opinion; the fresh-session attack ran 20 attacks with no
+  consumer bytes lost at exit 0. Found B-296 to B-299.

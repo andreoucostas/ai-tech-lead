@@ -63,8 +63,9 @@ pwsh -NoProfile -File scripts/install.ps1 -Target 'C:\path\to\consumer-repo'
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Target 'C:\path\to\consumer-repo'
 ```
 
-Add `-WhatIf` to either command first to preview. Each `PLAN replace` line names an existing file
-the install overwrites without a backup; commit or move those files before applying.
+Add `-WhatIf` to either command first to preview. A first install moves any file of yours it would
+overwrite to `docs/pre-adoption/` for `/adopt` to merge (one `PLAN archive` line each); only a notice
+file already marked `FRAMEWORK-OWNED` is replaced in place.
 
 Review and commit the installed shared configuration in the target. Then follow the installer's
 printed next steps and step 2: a developer runs `/bootstrap` for greenfield or `/adopt` when
@@ -127,7 +128,7 @@ If you are an AI agent reading this repository, start here.
 **Your source of truth is [`AGENTS.md`](./AGENTS.md)**, with the framework rules it points to in [`.github/instructions/framework-rules.instructions.md`](./.github/instructions/framework-rules.instructions.md); Claude Code loads both through [`CLAUDE.md`](./CLAUDE.md), and [What's in the box](#whats-in-the-box) says which host reads which. Read them before doing anything else — together they define the verification rules, conventions, SOLID/leanness constraints, and the step-by-step workflow you must follow.
 
 **If you were asked to install this framework into a target codebase** — installation is a two-actor flow: you (the agent) copy files and commit; a **developer** must then run the populate command. Your task is not complete until you have handed off explicitly:
-1. **Copy the files in on Windows:** `pwsh -NoProfile -File scripts/install.ps1 <target-repo-path>`. If PowerShell 7 is unavailable, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 <target-repo-path>`. The installer detects the mode itself: **greenfield** (plain copy), **brownfield** (the target already has AI tooling — the originals its copy would overwrite are moved to `docs/pre-adoption/` and `.claude/adoption-pending.json` is written), or **update** (target already stamped with `.claude/framework-version.json` — protected consumer paths are restored, framework machinery is overwritten, and `.claude/settings.json` is backed up before refresh).
+1. **Copy the files in on Windows:** `pwsh -NoProfile -File scripts/install.ps1 <target-repo-path>`. If PowerShell 7 is unavailable, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 <target-repo-path>`. The installer detects the mode itself: **greenfield** (plain copy), **brownfield** (the target already has AI tooling, or a file where the framework installs one — the originals its copy would overwrite are moved to `docs/pre-adoption/` and `.claude/adoption-pending.json` is written), or **update** (target already stamped with `.claude/framework-version.json` — protected consumer paths are restored, framework machinery is overwritten, and `.claude/settings.json` is backed up before refresh).
 2. **Commit the copied files** in the target repo — they are team-shared config, not local settings.
 3. **Hand off to the developer.** Populating is done by **`/adopt`** (brownfield — the installer wrote `.claude/adoption-pending.json`) or **`/bootstrap`** (greenfield). Both are **developer-initiated**: the model cannot invoke them, and they only exist inside a Claude Code session started in the target repo — so you cannot run them, and you must not try to replicate them by hand. End your run by telling the developer, verbatim: *"start a Claude Code session in `<target repo>` and type `/adopt`"* (or `/bootstrap`). Until that happens, the SessionStart hook warns every new session and `scripts/docs-sync-check` fails CI — expect that check to fail at this stage; it passes only after the developer has run the command.
 

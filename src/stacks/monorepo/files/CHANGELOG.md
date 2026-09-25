@@ -48,6 +48,14 @@
   framework rules already required but the reminder had dropped: see each new behavioral test fail
   before trusting it, and do not add a test harness just for a feature. Nothing else in it changed.
 
+- **A first install no longer overwrites files you already have.** If your repository already has a
+  file where the framework installs one (a `.github/PULL_REQUEST_TEMPLATE.md`, a `.claude/settings.json`,
+  a `.claude/commands/review.md`), even one you gitignore or one outside Git, the installer now moves it
+  to `docs/pre-adoption/` before copying and tells you to run `/adopt`, which merges it with the
+  framework's version. Before, it replaced the file without a backup. A file identical to the
+  framework's does not count. Check `docs/pre-adoption/` for secrets before you commit: it can now hold
+  files you had kept out of Git.
+
 ## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new

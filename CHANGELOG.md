@@ -59,6 +59,14 @@ correctly, and add no test harness incidentally. `RoutePrompt.Tests.ps1` pins bo
 grows 84 chars (feature) and 67 (test); static context is unchanged. The hook stays, commands stay
 commands, and path-scoped rules are not adopted for the rails: WSD-100.
 
+B-295. A first install no longer overwrites a file it did not ship. A shipped path already holding
+other bytes (tracked, untracked, gitignored or outside Git) now selects brownfield, so the original is
+moved byte-for-byte to `docs/pre-adoption/` and the handoff names `/adopt`; greenfield used to replace
+it at exit 0 with no backup. A byte-identical file does not count, so an interrupted greenfield install
+stays greenfield on re-run; an unreadable one is CANT-VERIFY, exit 4. The brownfield handoff now warns
+that the archive may hold gitignored files and so secrets. Rejected: the dirty-tree guard for greenfield,
+which misses gitignored files and every target outside Git.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

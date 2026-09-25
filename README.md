@@ -35,7 +35,8 @@ always provably fresh against `src/`.
 There are two ways in: the **root installer**, which auto-detects which stack a target repo
 needs, or a **dist installer**, run directly when you already know the stack. Both understand
 three install modes on the target repo: **greenfield** (no AI tooling yet — plain copy),
-**brownfield** (existing AI tooling — originals are archived to `docs/pre-adoption/` and a
+**brownfield** (existing AI tooling, or a file where the framework installs one — originals are
+archived to `docs/pre-adoption/` and a
 `.claude/adoption-pending.json` is written for `/adopt` to pick up), and **update** (target
 already has a `.claude/framework-version.json` stamp). Update has three ownership classes:
 consumer-owned protected paths such as `AGENTS.md` are restored (an older layout with the project
