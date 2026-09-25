@@ -12709,3 +12709,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-258** — CLOSED **2026-09-25** by WSD-101 without a spike after a fresh-context adversarial review: Copilot reads the
   `.claude/` files in the tree, so a plugin removes none of them; file-copy stays, WP7's ledger deletion is withdrawn,
   B-259 is unblocked. The docs check found B-293 (Copilot CLI also reads `.claude/settings.json` hooks).
+
+- **B-293** — CLOSED **2026-09-25** without a change (user). Live on CLI 1.0.86/1.0.88: both registrations load and
+  session-start, route-prompt and (by timing) guard run twice; post-write and audit-trail once. Seeded queue and `.cs` finding
+  both delivered, so nothing is lost; ~0.5 s per doubled event. `meta/host-certification.md` row; VS Code doc drift: B-294.

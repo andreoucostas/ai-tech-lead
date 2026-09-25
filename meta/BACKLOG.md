@@ -6,18 +6,17 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257 and B-258 closed 2026-09-25
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258 and B-293 closed 2026-09-25
 
 | Rank | Item | Why here |
 |---|---|---|
-| 17 | B-293 Copilot CLI double hook run | Possible live consumer defect on a supported surface; one host observation decides it |
 | 18 | B-259 installer lifecycle basics | Unblocked by WSD-101; the uninstall half is the path B-42 waits on |
 | 19 | B-261 Stop-time verification | B-248 bounded post-write at 45 s; settle Stop-hook latency against that |
 | 20 | B-284 incremental `/rebootstrap` | User-requested 2026-09-23; the discovery-pass half waits on WSD-097 |
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-292, B-291, B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-294, B-292, B-291, B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -120,13 +119,6 @@ tree; keep the FAQ content reachable and link the deck instead.
 **Status:** Open, narrowed 2026-09-24. `/bootstrap` Phase 3a already advertises both only when the
 warehouse-SQL profile was selected (`bootstrap.md:180`); the template lists them until bootstrap runs,
 and whether `/adopt` applies the same gate is unverified. WSD-021 forbids only a separate distribution.
-
-### B-293 · Copilot CLI may run every Claude Code hook a second time
-**Filed against:** v0.90.0 (2026-09-25)
-**Priority:** P2 · **Effort:** S observe, M fix · **Invariants:** #5
-**Status:** Open; found by B-258's docs check. GitHub's CLI config reference says the CLI also reads `hooks` from
-`.claude/settings.json`, so a write may run guard, post-write's bounded build and audit-trail twice, beside
-`.github/hooks/hooks.json`. Unobserved: count one Copilot CLI write's hook runs in a temp install first.
 
 ### B-259 · Installer lifecycle basics: uninstall, `-WhatIf` parity, structured output, a real update check
 **Filed against:** v0.86.7 (2026-09-18)
@@ -251,6 +243,12 @@ the release commit message (`:825`, `:827`) name the "full root meta suite"; sin
 **Status:** Open; from WSD-100. The test and feature rails lost two §1 non-negotiables at v0.77.0 unnoticed; only the
 consumer-run `/docs-sync` step 2 compares them. Options: compose the rails from the §1 snippets in `build.ps1`, a
 `validate-dist` check per rail for named non-negotiables, or a pointer-only hook (changes salience, so measure it).
+
+### B-294 · `enforcement-surfaces.md` says VS Code agent hooks are off by default
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P3 · **Effort:** S · **Invariants:** #1
+**Status:** Open; from B-293's review. VS Code's hooks page (2026-09-25) says `chat.useHooks` "is on by default"; the
+shipped line 72 says "off by default". Claude-format reading (`chat.useClaudeHooks`) stays off by default.
 
 ## Archived
 
