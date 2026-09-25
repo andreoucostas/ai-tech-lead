@@ -12705,3 +12705,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-257** — CLOSED **2026-09-25** by WSD-100 after Fable and fresh-Opus reviews: `route-prompt` stays, commands already
   are skills on Claude Code, path-scoped rules are not used for the rails, no trial funded. Its test and feature rails had
   dropped two §1 non-negotiables since v0.77.0; restored with two `RoutePrompt.Tests.ps1` cases. Drift prevention: B-292.
+
+- **B-258** — CLOSED **2026-09-25** by WSD-101 without a spike after a fresh-context adversarial review: Copilot reads the
+  `.claude/` files in the tree, so a plugin removes none of them; file-copy stays, WP7's ledger deletion is withdrawn,
+  B-259 is unblocked. The docs check found B-293 (Copilot CLI also reads `.claude/settings.json` hooks).

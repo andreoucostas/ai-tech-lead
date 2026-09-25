@@ -4482,3 +4482,14 @@ router" (v0.51.0) was about skill routing; this hook already shipped then and wa
 non-inferiority trial (about 44 runs per arm for one of seven intents, from 4/6). Claude Code merged commands into
 skills; routing Copilot to workflows via `.claude/skills/` stays open (B-278). Path-scoped rules cannot pick an intent.
 Drifted test/feature rails fixed; further drift is B-292. **Reopen** on process-free prompt-time context or a knockout arm.
+
+## WSD-101: distribution stays file-copy; no plugin spike; WP7's ledger deletion is withdrawn (2026-09-25)
+
+**Context.** B-258 asked for a plugin spike. Copilot reads `.claude/{commands,agents,hooks,skills}` in the tree (prompts,
+agent pointers, `hooks.json`), so a plugin removes none of them without breaking Copilot or undoing WSD-072; 8 of the
+ledger's 69 paths are under `.claude/`; shipped settings hold no permission rules and are overwritten, not merged. Vendor
+docs (2026-09-25): both hosts now have plugins, but none carries `AGENTS.md`, env or registers; Claude Code prefixes names.
+**Decision (user, 2026-09-25, after a fresh-context adversarial review).** WSD-012 and WSD-043 stand; no spike. WP7's
+manifest-only installer and ledger deletion are withdrawn: a rewrite keeps hash-gated retirement (WSD-088) and names a
+migration floor. B-259 is unblocked; B-293 filed. **Reopen** when an independent adopter exists (B-42) and one plugin is
+observed carrying the PowerShell hooks on both hosts.

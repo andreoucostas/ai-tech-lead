@@ -6,12 +6,12 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276 and B-257 closed 2026-09-25
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257 and B-258 closed 2026-09-25
 
 | Rank | Item | Why here |
 |---|---|---|
-| 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
-| 18 | B-259 installer lifecycle basics | After B-258 so nothing is built twice |
+| 17 | B-293 Copilot CLI double hook run | Possible live consumer defect on a supported surface; one host observation decides it |
+| 18 | B-259 installer lifecycle basics | Unblocked by WSD-101; the uninstall half is the path B-42 waits on |
 | 19 | B-261 Stop-time verification | B-248 bounded post-write at 45 s; settle Stop-hook latency against that |
 | 20 | B-284 incremental `/rebootstrap` | User-requested 2026-09-23; the discovery-pass half waits on WSD-097 |
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
@@ -121,18 +121,19 @@ tree; keep the FAQ content reachable and link the deck instead.
 warehouse-SQL profile was selected (`bootstrap.md:180`); the template lists them until bootstrap runs,
 and whether `/adopt` applies the same gate is unverified. WSD-021 forbids only a separate distribution.
 
-### B-258 · Distribution re-audit: Claude Code plugin prototype versus a simplified file-copy installer
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** M · **Invariants:** #1 #6
-**Status:** Open; investigation, outcome is a WSD re-auditing WSD-012/WSD-043. A one-to-two-day plugin
-spike against a manifest-only copy/delete installer; a plugin cannot deliver project `CLAUDE.md`,
-registers, `.github/` or permission rules.
+### B-293 · Copilot CLI may run every Claude Code hook a second time
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P2 · **Effort:** S observe, M fix · **Invariants:** #5
+**Status:** Open; found by B-258's docs check. GitHub's CLI config reference says the CLI also reads `hooks` from
+`.claude/settings.json`, so a write may run guard, post-write's bounded build and audit-trail twice, beside
+`.github/hooks/hooks.json`. Unobserved: count one Copilot CLI write's hook runs in a temp install first.
 
 ### B-259 · Installer lifecycle basics: uninstall, `-WhatIf` parity, structured output, a real update check
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P2 · **Effort:** L · **Invariants:** #6 #7
-**Status:** Open. No uninstall or rollback; `-WhatIf` skips the dirty-tree guard; conflicts surface
-as unstructured text; the version stamp promises a future update command. Sequence after B-258.
+**Status:** Open; unblocked by WSD-101. Two parts: (a, S) `-WhatIf` skips the dirty-tree guard (`install.ps1:823`)
+and the version stamp's `_comment` promises an update command and names a `CLAUDE.md` comment now in `AGENTS.md`; (b, L) uninstall and
+structured conflict output, the path B-42 waits on. Keep hash-gated retirement (WSD-088); no manifest-only deletes.
 
 ### B-261 · Stop-time verification on Claude Code: run the evidenced build or tests before work is presented as complete
 **Filed against:** v0.86.7 (2026-09-18)
