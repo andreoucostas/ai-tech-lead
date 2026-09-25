@@ -1133,29 +1133,34 @@ It 'B-299 a bracketed target is installed in place, never into the sibling its w
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
-if ($PSVersionTable.PSVersion.Major -ge 7) {
-    Skip 'B-299 without pwsh a bracketed target still gets the Windows PowerShell 5.1 hooks' 'a pwsh host always has pwsh; the fallback runs only under Windows PowerShell'
-} else {
-    It 'B-299 without pwsh a bracketed target still gets the Windows PowerShell 5.1 hooks' {
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('b299-' + [guid]::NewGuid())
-        $savedPath = $env:PATH
-        try {
-            # Test-Path without -LiteralPath reports a file under repo[b] absent, so the fallback
-            # left settings.json calling a pwsh the machine does not have.
-            $t = Join-Path $root 'repo[b]'
-            [void][IO.Directory]::CreateDirectory($t)
-            $env:PATH = @($savedPath -split ';' | Where-Object {
-                try { $_ -and -not [IO.File]::Exists([IO.Path]::Combine($_, 'pwsh.exe')) } catch { $true }
-            }) -join ';'
-            Assert ($null -eq (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue)) 'calibration: pwsh is still resolvable after removing its directories from PATH'
-            $out = Invoke-Installer -Dist 'dotnet' -Target $t
-            $exit = $LASTEXITCODE
-            Assert ($exit -eq 0 -and $out -match 'activated Windows PowerShell 5.1 hooks') "the 5.1 hook fallback did not run (exit $exit): $out"
-            Assert (Test-B194BytesEqual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.windows.json'))) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.json')))) "settings.json is not the Windows PowerShell 5.1 variant: $out"
-        } finally {
-            $env:PATH = $savedPath
-            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+# One case on both hosts keeps the CI case-count parity: only Windows PowerShell can take the 5.1
+# fallback, so under pwsh the same fixture asserts the shipped pwsh settings stay in place.
+It 'B-299 without pwsh on PATH a bracketed target gets the hook settings for the installing host' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b299-' + [guid]::NewGuid())
+    $savedPath = $env:PATH
+    try {
+        # Test-Path without -LiteralPath reports a file under repo[b] absent, so the fallback
+        # left settings.json calling a pwsh the machine does not have.
+        $t = Join-Path $root 'repo[b]'
+        [void][IO.Directory]::CreateDirectory($t)
+        $env:PATH = @($savedPath -split ';' | Where-Object {
+            try { $_ -and -not [IO.File]::Exists([IO.Path]::Combine($_, 'pwsh.exe')) } catch { $true }
+        }) -join ';'
+        Assert ($null -eq (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue)) 'calibration: pwsh is still resolvable after removing its directories from PATH'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0) "the bracketed install failed (exit $exit): $out"
+        $settings = [IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.json'))
+        if ($PSVersionTable.PSVersion.Major -ge 7) {
+            Assert ($out -notmatch 'activated Windows PowerShell 5.1 hooks') "a pwsh install took the 5.1 fallback: $out"
+            Assert (Test-B194BytesEqual ([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.claude/settings.json'))) $settings) "settings.json is not the shipped pwsh variant: $out"
+        } else {
+            Assert ($out -match 'activated Windows PowerShell 5.1 hooks') "the 5.1 hook fallback did not run: $out"
+            Assert (Test-B194BytesEqual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.windows.json'))) $settings) "settings.json is not the Windows PowerShell 5.1 variant: $out"
         }
+    } finally {
+        $env:PATH = $savedPath
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
