@@ -6,11 +6,10 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276 ranked 2026-09-25 (user)
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276 closed 2026-09-25
 
 | Rank | Item | Why here |
 |---|---|---|
-| 15 | B-276 silent missing hook interpreter | The only open P2 defect a consumer can hit; shipped in v0.89.0 |
 | 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
 | 18 | B-259 installer lifecycle basics | After B-258 so nothing is built twice |
@@ -115,13 +114,6 @@ v0.26.0, still carried and tested.
 **Priority:** P3 · **Effort:** S · **Invariants:** #1 #7
 **Status:** Open. Four files, about 97 KB, under `docs/presentation/` install into each consumer
 tree; keep the FAQ content reachable and link the deck instead.
-
-### B-276 · A missing hook interpreter is now silent on Claude Code
-**Filed against:** v0.88.0 (2026-09-21)
-**Priority:** P2 · **Effort:** S · **Invariants:** #5
-**Status:** Open; measured by B-275's fresh-session review. With `pwsh` off `PATH` the registered guard
-command exited 1 (a visible hook error) before B-275's suffix and exits 0 after it. A branch in the
-command string stalls every write under a bash carrier; detect in the doctor or installer instead.
 
 ### B-256 · List the warehouse skills only where repository evidence selects them
 **Filed against:** v0.86.7 (2026-09-18)

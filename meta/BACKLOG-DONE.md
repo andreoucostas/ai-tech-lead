@@ -12696,3 +12696,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-288** — CLOSED **2026-09-25** without reading WSD-093's measure, which is retired there (no decision rule, no
   instrument for minutes, releases too young to have surfaced escapes). B-275 would not count: it was introduced in v0.83.0,
   before the reset. Cadence was dropped as outside the measure. B-289 widened; B-276 ranked first (user).
+
+- **B-276** — CLOSED **2026-09-25** without a change after two adversarial reviews. With `pwsh` off `PATH`, through an outer
+  5.1 `-Command` shell: guard and post-write exit 0 (1 before B-275), session-start, route-prompt, audit-trail, boy-scout exit 1.
+  Not silent: route-prompt errors every prompt and audit-trail every write; exit 1 never blocked, so protection is unchanged.
+  The doctor tweak was declined: the error is already loud.
