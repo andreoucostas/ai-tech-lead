@@ -207,16 +207,27 @@ function Invoke-B194Installer {
     foreach ($name in $Environment.Keys) { $isolated[$name] = $Environment[$name] }
     $installer = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
     if ($isolated.ContainsKey('B194_PS_PATH')) {
-        $controlledPath = [string]$isolated['B194_PS_PATH']
+        # pwsh prepends its own directory to an inherited PATH at startup, so the controlled PATH is
+        # applied inside the child. The values travel as environment variables to a -File launcher:
+        # Microsoft Defender blocks the equivalent -EncodedCommand launch as Trojan:Win32/Commando.A!ml,
+        # which surfaced here as "Access is denied".
+        $isolated['B194_CHILD_PATH'] = [string]$isolated['B194_PS_PATH']
         $isolated.Remove('B194_PS_PATH')
-        $path64 = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($controlledPath))
-        $installer64 = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($installer))
-        $target64 = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($Target))
-        $command = "`$env:PATH=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('$path64'));`$installer=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('$installer64'));`$target=[Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('$target64'));& `$installer -Target `$target;`$code=`$LASTEXITCODE;if(`$code -in @(2,3,4)){exit `$code};exit 0"
-        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
-        return Invoke-B194Process -Executable $PowerShellExe -Arguments @(
-            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded
-        ) -Environment $isolated
+        $isolated['B194_CHILD_INSTALLER'] = $installer
+        $isolated['B194_CHILD_TARGET'] = $Target
+        $launcher = Join-Path ([IO.Path]::GetTempPath()) ('b194-launch-' + [guid]::NewGuid().ToString('N') + '.ps1')
+        [IO.File]::WriteAllText($launcher, @'
+$env:PATH = $env:B194_CHILD_PATH
+& $env:B194_CHILD_INSTALLER -Target $env:B194_CHILD_TARGET
+$code = $LASTEXITCODE
+if ($code -in @(2, 3, 4)) { exit $code }
+exit 0
+'@, [Text.UTF8Encoding]::new($true))
+        try {
+            return Invoke-B194Process -Executable $PowerShellExe -Arguments @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher
+            ) -Environment $isolated
+        } finally { Remove-Item -LiteralPath $launcher -Force -ErrorAction SilentlyContinue }
     }
     return Invoke-B194Process -Executable $PowerShellExe -Arguments @(
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $installer, '-Target', $Target
