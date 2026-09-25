@@ -18,7 +18,7 @@ One file is authored by hand — **`AGENTS.md`**. Supported clients load it dire
 
 ## How to verify the claims (don't take them on faith)
 
-- **Single source + no drift:** run `pwsh -NoProfile -File scripts/docs-sync-check.ps1` (it self-skips in the template repo via `.template-repo`; run it in a bootstrapped consumer repo). It checks AGENTS.md is bootstrapped and within budget, CLAUDE.md imports it, copilot-instructions is within budget, and project skills live only under `.claude/skills`.
+- **Single source + no drift:** run `pwsh -NoProfile -File scripts/docs-sync-check.ps1` (it self-skips in the template repo via `.template-repo`; run it in a bootstrapped consumer repo). It checks AGENTS.md is bootstrapped and within budget, CLAUDE.md imports it, and project skills live only under `.claude/skills`.
 - **Hook-script input/output fixtures (not host firing):** pipe representative JSON into `pwsh -NoProfile -File .claude/hooks/route-prompt.ps1` and `.claude/hooks/guard.ps1`; confirm `/fix` rails and exit 2 for a prohibited suppression. These direct commands prove parser and output-shape behavior only; they do not prove that a client fires the event or consumes the output.
 - **`/review` derives and runs applicable repository-evidenced checks itself** (review.md Step 2) —
   it does not trust unverified pass claims, and reports unsupported categories as `not available`.
@@ -32,7 +32,7 @@ One file is authored by hand — **`AGENTS.md`**. Supported clients load it dire
 - **Bitbucket Data Center.** Only the local Windows layer applies — Copilot coding-agent cloud hook execution is unsupported. Wire the PowerShell CI guardrail into Bamboo/Jenkins on a self-hosted Windows agent and require its build status. See README.
 - **Hooks need a working interpreter and client support.** Dated canaries cover only the capabilities they exercised, not every registered event; Copilot CLI `agentStop` firing and its queue write remain unverified, as do current VS Code Preview-hook lifecycles. VS Code hooks are Preview, off by default, and org-gated; shell writes are outside the editor guard.
 - **Evals are intentionally tiny** — a regression tripwire for the framework's own rules, not test coverage for your app.
-- **Generated files will lag if not regenerated.** `copilot-instructions.md` is generated; review `AGENTS.md`/`ARCHITECTURE.md`, and let `docs-sync` catch staleness. Project skills are canonical under `.claude/skills`; a legacy `.github/skills` tree is a migration failure because it can shadow them.
+- **Project skills are canonical under `.claude/skills`.** A legacy `.github/skills` tree is a migration failure because it can shadow them.
 
 ## Probing checklist
 

@@ -87,10 +87,10 @@ framework checkout; that directory is the incoming framework root, and
    requested outcome, caller or extension compatibility, and meaningful verification. It does not require
    copying all fresh-template conventions or erase stricter policy the team intentionally keeps.
 
-8. **Align authored and generated instructions.** After reconciliation, copy the installed JSON
-   version and applied date into the protected `AGENTS.md` header. Then, in an agent session rooted
-   at the target, run `/generate-copilot` to regenerate `.github/copilot-instructions.md`. Do not
-   hand-fix that derivative or replace a populated `AGENTS.md` with the template. When `AGENTS.md` is
+8. **Align the instruction files.** After reconciliation, copy the installed JSON version and
+   applied date into the protected `AGENTS.md` header. Do not replace a populated `AGENTS.md` with
+   the template. The framework no longer generates or checks `.github/copilot-instructions.md`; an
+   existing copy is yours to delete or maintain. When `AGENTS.md` is
    still the generated copy, the first update to this layout moves `CLAUDE.md`'s text into `AGENTS.md`
    and writes the `CLAUDE.md` stub, keeping both originals under
    `.claude/framework-update-backup/instruction-files/`; review the moved `AGENTS.md`'s opening

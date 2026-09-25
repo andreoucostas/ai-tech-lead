@@ -187,23 +187,24 @@
   <section class="slide">
     <div class="wrap">
       <span class="kicker">Architecture</span>
-      <h2>Write the rules once — generate the client carriers</h2>
+      <h2>Write the rules once — every agent reads the same file</h2>
       <div class="flow">
-        <div class="node src"><div class="t">AGENTS.md</div><div class="s">authored · single source · CLAUDE.md imports it</div></div>
+        <div class="node src"><div class="t">AGENTS.md</div><div class="s">authored · single source</div></div>
         <div class="arrow">→</div>
         <div class="mirrors">
-          <div class="node"><div class="t">.github/copilot-instructions.md</div><div class="s">slim ≤80 lines</div></div>
+          <div class="node"><div class="t">Claude Code</div><div class="s">through the CLAUDE.md import</div></div>
+          <div class="node"><div class="t">Copilot · Codex · Cursor</div><div class="s">read it directly</div></div>
         </div>
       </div>
       <ul class="points" style="margin-top:1.4rem">
-        <li><b>Generated, not hand-copied</b> — rule carriers are produced from the source file.</li>
+        <li><b>Nothing generated, nothing hand-copied</b> — there is no second copy to regenerate or drift.</li>
         <li><b>Skills are also single-source</b> — Claude Code and supported Copilot surfaces discover the same <code>.claude/skills/</code> recipes.</li>
         <li><b>Drift-checked in CI</b> — the build fails if the instruction layout or version stamp falls out of sync.</li>
       </ul>
     </div>
     <aside class="notes">
-      <p><b>Goal:</b> show the mechanism that makes "authored once" true. Edit AGENTS.md → regenerate its Copilot carrier; edit a project skill once under .claude/skills.</p>
-      <p>Why retain any mirrors? Every agent reads AGENTS.md itself (Claude Code through CLAUDE.md); only inline completion has its own concise carrier. The literal skill mirror is gone because supported Copilot skill surfaces read the Claude location directly.</p>
+      <p><b>Goal:</b> show the mechanism that makes "authored once" true. Edit AGENTS.md; edit a project skill once under .claude/skills.</p>
+      <p>Why no mirrors? Every supported agent reads AGENTS.md itself (Claude Code through CLAUDE.md). VS Code's Copilot inline suggestions read no instruction file at all, so the old slim Copilot digest is gone. The literal skill mirror is gone because supported Copilot skill surfaces read the Claude location directly.</p>
       <p>The drift check is what stops this rotting in six months — emphasize for leads who've seen docs go stale.</p>
     </aside>
   </section>

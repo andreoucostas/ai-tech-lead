@@ -64,15 +64,6 @@ if (Test-Path "AGENTS.md") {
     }
 }
 
-# 3. copilot-instructions.md present and <= 80 lines.
-if (-not (Test-Path ".github/copilot-instructions.md")) {
-    Fail ".github/copilot-instructions.md is missing — run /generate-copilot."
-} else {
-    $n = @(Get-Content ".github/copilot-instructions.md").Count
-    if ($n -gt 80) { Fail ".github/copilot-instructions.md is $n lines (limit: 80) — regenerate slimmer with /generate-copilot." }
-    else { OK ".github/copilot-instructions.md present ($n lines <= 80)." }
-}
-
 # 4. TECH_DEBT.md present.
 if (Test-Path "TECH_DEBT.md") { OK "TECH_DEBT.md present." } else { Fail "TECH_DEBT.md is missing — run /bootstrap." }
 

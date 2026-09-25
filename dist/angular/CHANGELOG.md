@@ -10,10 +10,9 @@
   conventions, verification commands, architecture index, common tasks and Boy Scout rules live in
   `AGENTS.md`, which GitHub Copilot, Codex and Cursor read directly. `CLAUDE.md` is a stub with two
   import lines, `@AGENTS.md` and `@.github/instructions/framework-rules.instructions.md`, so Claude
-  Code loads the same text. Nothing is generated from `CLAUDE.md` any more: `/generate-copilot` now
-  refreshes only `.github/copilot-instructions.md`, and `docs-sync-check` checks the stub instead of
-  comparing two copies. GitHub Copilot, which also reads `CLAUDE.md`, stops loading the framework
-  rules and your conventions twice: its always-loaded instructions shrink by about 40% before
+  Code loads the same text. Nothing is generated from `CLAUDE.md` any more, and `docs-sync-check`
+  checks the stub instead of comparing two copies. GitHub Copilot, which also reads `CLAUDE.md`,
+  stops loading the framework rules and your conventions twice: its always-loaded instructions shrink by about 40% before
   `/bootstrap` adds your conventions, and by more after. Codex and Cursor now reach the framework
   rules through the pointer at the top of `AGENTS.md` instead of an inline copy.
   **What the update does to your repository:** when `AGENTS.md` is still the generated copy (its
@@ -24,6 +23,18 @@
   `AGENTS.md`, the installer leaves both files as they are and says so; merge `CLAUDE.md` into
   `AGENTS.md` yourself and replace `CLAUDE.md` with the stub (`docs/upgrade-checklist.md`, step 8).
   Until then the session-start hook and `template-checks` remind you.
+
+- **`.github/copilot-instructions.md` and `/generate-copilot` are gone.** The framework no longer
+  ships or regenerates the slim Copilot digest, and `docs-sync-check` no longer fails without it.
+  VS Code's Copilot inline suggestions never read it, and VS Code chat, the Copilot CLI, the cloud
+  agent and GitHub code review read `AGENTS.md` as well, so they were loading your conventions twice.
+  `/bootstrap` and `/adopt` no longer write it, `/docs-sync` no longer compares it, and `/bootstrap`
+  no longer stops because one of your own is still in place.
+  **What the update does to your repository:** it deletes `.claude/commands/generate-copilot.md` and
+  `.github/prompts/generate-copilot.prompt.md` when they match a framework release, and keeps and
+  reports an edited copy. It never touches your `.github/copilot-instructions.md`: delete it, or keep
+  it as your own file if your team uses Copilot in Visual Studio or Copilot Chat on github.com, which
+  are not documented to read `AGENTS.md`. Nothing regenerates it any more.
 
 - **The framework rules your agent loads on every turn are shorter.** A few sentences in
   `.github/instructions/framework-rules.instructions.md` described what hooks can and cannot be shown

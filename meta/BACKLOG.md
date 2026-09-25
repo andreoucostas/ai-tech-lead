@@ -10,7 +10,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 13b | B-281 retire `.github/copilot-instructions.md` | Last generated copy after B-272; its inline-completion question is answered, one new cost to weigh |
 | 15 | B-264 process diet | WP5 of the lean reset plan (section 7); WSD-093 replaces WSD-089's success measure |
 | 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
@@ -20,7 +19,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -214,13 +213,6 @@ the watch exits 3 and nothing is tagged. Fails closed; WP3 edits the same file.
 unchanged by it. The header says an empty tool name emits the Claude signal, but `if (-not $tool)`
 turns `''` into `$null`, so `tool_name: ""` alone takes the Copilot JSON path at exit 0.
 
-### B-281 · Retire the generated `.github/copilot-instructions.md`
-**Filed against:** v0.89.1 (2026-09-22)
-**Priority:** P2 · **Effort:** M · **Invariants:** #1 #2 #7
-**Status:** Open; user-requested 2026-09-22. After B-272 it is the last generated copy. Vendor docs (2026-09-24): VS Code
-inline suggestions use no custom instructions at all, but VS Code's own code review reads only this file. Removal
-retires `/generate-copilot`, its prompt, the canary, the `docs-sync-check`/`template-checks` legs and the manifest entry.
-
 ### B-282 · Installed docs point at a README that is not installed
 **Filed against:** v0.89.1 (2026-09-23)
 **Priority:** P3 · **Effort:** S · **Invariants:** #1
@@ -239,6 +231,20 @@ by the user; bounding the discovery pass needs WSD-097 lifted.
 **Priority:** P3 · **Effort:** S · **Invariants:** none
 **Status:** Open. `.claude/scripts/build-block-manifest.ps1` and `meta/block-manifest.json` have no caller; its
 `-SelfTest` reads blocks from `dist/dotnet/CLAUDE.md`, which B-272 made a two-line stub. Delete both, or repoint.
+
+### B-286 · The brownfield installer says originals were displaced when none were
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open; observed by B-281's fresh-session attack. A repo whose only tooling is `.cursorrules` or, since B-281,
+its own `.github/copilot-instructions.md` gets "The originals this install displaced are under docs/pre-adoption/"
+although nothing was archived and the directory does not exist.
+
+### B-287 · Hash-gated `.md` retirements never delete a CRLF checkout
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P3 · **Effort:** S · **Invariants:** #6
+**Status:** Open; observed by B-281's fresh-session attack. Git for Windows ships `core.autocrlf=true`, so an update run
+from a fresh clone sees CRLF bytes, matches no ledger digest (none are CRLF), and preserves and reports every retired
+`.md` file instead of deleting it. Fails safe; the retirement is just never applied there.
 
 ## Archived
 

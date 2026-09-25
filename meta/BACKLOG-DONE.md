@@ -12682,3 +12682,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-272** — DONE **2026-09-24** for **v0.90.0** (WSD-098). Shipped `AGENTS.md` is the instruction file, `CLAUDE.md` a
   two-import stub; the mirror, its gates and `SkillListParity` are gone; update mode moves the older layout once, with
   backups. The authoring-repo half was already done by the lean reset. VS Code attachment on no-edit turns unobserved.
+
+- **B-281** — DONE **2026-09-25** for **v0.90.0** (WSD-099). `.github/copilot-instructions.md` no longer ships or is
+  required; `/generate-copilot` retired through the ledger. Visual Studio and github.com Copilot Chat lose
+  framework-delivered conventions, accepted by the user after an adversarial review.

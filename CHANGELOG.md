@@ -27,6 +27,19 @@ the imported `AGENTS.md` in `static.claude`: dotnet `static.copilot` 29,389 char
 51,900 before on the corrected count (44,215 as previously recorded); `static.claude` 39,245 →
 39,215. Version bumped to 0.90.0 for the consumer-visible layout change. WSD-098.
 
+B-281. `.github/copilot-instructions.md` stops shipping in all three dists and `/generate-copilot` (command and
+prompt) is retired through the ledger at 0.90.0 with 39 and 5 known digests, every released blob across the 97
+tags plus HEAD. `template-checks` check 3 and the `docs-sync-check` leg that required the file, `/bootstrap` step
+3f, `/adopt`'s generation line, `/docs-sync`'s derived-file comparison and the Tier-1 "inline completions" docs are
+deleted; the playbook and ARCHITECTURE describe two tiers. `/bootstrap` step 0 no longer lists a live
+`copilot-instructions.md` as unadopted tooling: the installer stopped archiving it, so a kept copy would have
+stopped `/adopt`'s own Phase 7 (found by the fresh-session attack, with a stale `/adopt` Phase 0.4 sentence). Why: VS Code documents that inline suggestions read no
+custom instructions, and the surfaces that read the digest (VS Code chat, Copilot CLI, cloud agent, GitHub code
+review) also read `AGENTS.md`. Accepted loss: Visual Studio and github.com Copilot Chat document no `AGENTS.md`
+support. `install.ps1` is unchanged: the path stays protected and an adoption signal, so a consumer copy is never
+overwritten or deleted. `context-footprint.ps1` drops it from `static.copilot` (dotnet 29,389 → 25,589 chars;
+`static.claude` 39,215 → 39,084). The canary that uses the file as a positive control stays. WSD-099.
+
 B-255, narrowed. The always-loaded rules carrier drops sentences that stated what hooks can be shown
 to do instead of directing the agent: "Registered, observed, and instructed differ by surface",
 "carriers and hooks remain independent", "Hook registration alone proves neither firing nor

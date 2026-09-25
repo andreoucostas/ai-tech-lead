@@ -270,7 +270,6 @@ function Assert-OnboardingCompletionGates {
         $checks = @(
             @{ Path = '.claude/commands/bootstrap.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'CANT-VERIFY', 'Do not claim completion', 'bare text', 'repository-root-relative path', 'resolves') },
             @{ Path = '.claude/commands/rebootstrap.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'CANT-VERIFY', 'Do not claim completion') },
-            @{ Path = '.claude/commands/generate-copilot.md'; Direct = $true; Required = @('## Deterministic completion gate', 'scripts/docs-sync-check.ps1', 'CANT-VERIFY', 'Do not claim completion') },
             @{ Path = '.claude/commands/adopt.md'; Direct = $false; Required = @("Phase-7 bootstrap's deterministic completion gate", 'PASS', 'Do not claim adoption complete') }
         )
         foreach ($check in $checks) {

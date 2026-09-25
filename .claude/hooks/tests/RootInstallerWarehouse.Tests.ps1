@@ -242,7 +242,6 @@ function Assert-EvidenceBoundLifecycle([string]$Target) {
         @{ Path = '.claude/hooks/route-prompt.ps1'; Patterns = @('repository evidence', 'not available', 'manual/CI-only', 'non-mutating validation/dry-run'); Forbidden = @('2. Write a failing regression test BEFORE touching production code') },
         @{ Path = '.github/instructions/framework-rules.instructions.md'; Patterns = @('repository-evidenced commands', 'not available', 'manual/CI-only', 'non-mutating validation/dry-run'); Forbidden = @('Each subtask must leave the codebase compilable and test-passing.', 'Verify all tests pass') },
         @{ Path = '.github/PULL_REQUEST_TEMPLATE.md'; Patterns = @('applicable harness', 'Verification Commands', 'not available'); Forbidden = @('Tests added/updated for changed behaviour', 'dotnet build && dotnet test') },
-        @{ Path = '.github/copilot-instructions.md'; Patterns = @('delivery-profile superset', 'not available'); Forbidden = @('No suite anywhere?', 'xUnit + NSubstitute') },
         @{ Path = '.github/prompts/fix.prompt.md'; Patterns = @('repository-evidenced', 'not available'); Forbidden = @('Never skip the test') },
         @{ Path = '.claude/skills/add-tests/SKILL.md'; Patterns = @('Applicability gate', 'solution-free'); Forbidden = @('dotnet sln add', 'this mixed') },
         @{ Path = 'docs/ci-integration.md'; Patterns = @('migration/deploy', 'data-validation', 'not available', 'manual/CI-only', 'non-mutating validation/dry-run'); Forbidden = @('Use the exact build, test, format, and lint commands') }

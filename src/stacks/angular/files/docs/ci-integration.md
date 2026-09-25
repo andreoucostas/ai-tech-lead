@@ -32,8 +32,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.
 Execution is supported on Windows only. PowerShell 7 is primary and native Windows PowerShell 5.1
 is the fallback. Exit `0` = pass, non-zero = fail,
 findings printed to stdout. It verifies the framework itself is healthy: adoption completed (no
-`adoption-pending.json`), `AGENTS.md` bootstrapped, `CLAUDE.md` importing it, `copilot-instructions.md`
-within budget, version stamps in sync, PowerShell hook registrations and BOM intact (via
+`adoption-pending.json`), `AGENTS.md` bootstrapped, `CLAUDE.md` importing it,
+version stamps in sync, PowerShell hook registrations and BOM intact (via
 `template-checks`).
 
 **What it does *not* do: gate your code.** A commit with a hardcoded secret, a skipped test, or a

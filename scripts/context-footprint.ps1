@@ -256,7 +256,7 @@ try {
         foreach ($relative in @('CLAUDE.md', 'AGENTS.md', $frameworkRules)) {
             [void]$groups['static.claude'].Add((New-ItemRecord $relative (Get-ByteCount (Join-Path $root $relative))))
         }
-        foreach ($relative in @('CLAUDE.md', 'AGENTS.md', '.github/copilot-instructions.md')) {
+        foreach ($relative in @('CLAUDE.md', 'AGENTS.md')) {
             [void]$groups['static.copilot'].Add((New-ItemRecord $relative (Get-ByteCount (Join-Path $root $relative))))
         }
         [void]$groups['static.copilot'].Add((New-ItemRecord $frameworkRules (Get-ByteCount (Join-Path $root $frameworkRules))))

@@ -12,7 +12,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 2. **Less context burned per review — subagents run isolated.** `/review` and `/security-review` fan out to subagents (solid-check, convention-check, bloat-radar, debt-radar, test-critic, security-auditor) that each run in their own context window. Their file-reading and intermediate reasoning never enter the main conversation — the parent gets one structured findings table per agent, not the full transcript.
 
-3. **One command instead of hours hand-writing the AI's context.** `/bootstrap` (or brownfield `/adopt`) selects .NET application and/or warehouse-SQL profiles from Git-root evidence, runs only their analysis passes, then writes `AGENTS.md`, `TECH_DEBT.md`, and `copilot-instructions.md`. You stop hand-authoring AI context — it's derived from the real codebase.
+3. **One command instead of hours hand-writing the AI's context.** `/bootstrap` (or brownfield `/adopt`) selects .NET application and/or warehouse-SQL profiles from Git-root evidence, runs only their analysis passes, then writes `AGENTS.md` and `TECH_DEBT.md`. You stop hand-authoring AI context — it's derived from the real codebase.
 
 4. **The AI stops inventing your repository.** Verification rules force it to confirm referenced classes, methods, packages, routes, SQL objects, and data transforms exist before using them, and to honour evidenced version pinning. Fewer hallucinated constructs means fewer wrong diffs and less rework.
 
@@ -28,7 +28,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 10. **Security is systematic, not heroic.** `/security-review` runs an OWASP-style pass (injection, auth/authz, secrets, sensitive-data exposure, crypto, financial/concurrency) on every change; findings land in `SECURITY_FINDINGS.md` with remediation SLAs.
 
-11. **One authored rule source, surface-dependent delivery.** `AGENTS.md` with the framework-rules carrier it points to (Claude Code imports both through `CLAUDE.md`) and `copilot-instructions.md` carry the same framework rules where a client loads them; host support and hook enforcement still vary by surface.
+11. **One authored rule source, surface-dependent delivery.** `AGENTS.md` and the framework-rules carrier it points to (Claude Code imports both through `CLAUDE.md`) carry the framework rules where a client loads them; host support and hook enforcement still vary by surface.
 
 12. **Local operational telemetry.** Supported PostToolUse editor/file-write events append mutable local telemetry with timestamp and branch; shell/external writes and unavailable hooks are blind spots. It is not a regulated audit trail or compliance evidence. Security findings are tracked separately with SLAs.
 
@@ -40,7 +40,7 @@ Installing is a one-time copy; populating is a developer command; after that the
 |---|---|---|
 | 1. Install | A developer, or an AI agent a developer asked, runs `scripts/install.ps1` against the target's Git root | The framework files in the target. When the target already had AI tooling, the originals the copy would overwrite move to `docs/pre-adoption/` and `.claude/adoption-pending.json` is written. An already-stamped target is an update: follow the [upgrade checklist](docs/upgrade-checklist.md). |
 | 2. Commit | Whoever installed | The installed shared configuration, committed in the target. |
-| 3. `/bootstrap`, or `/adopt` when step 1 found existing tooling | A developer, in a Claude Code session started in the target. The model cannot invoke either command. | `AGENTS.md` populated from the codebase, `TECH_DEBT.md`, `.github/copilot-instructions.md`, drafted `FRAMEWORK-CONTEXT.md` sections, and skills adjusted to the repository. |
+| 3. `/bootstrap`, or `/adopt` when step 1 found existing tooling | A developer, in a Claude Code session started in the target. The model cannot invoke either command. | `AGENTS.md` populated from the codebase, `TECH_DEBT.md`, drafted `FRAMEWORK-CONTEXT.md` sections, and skills adjusted to the repository. |
 | 4. Review | A developer | A corrected `AGENTS.md`: every AI tool follows it. |
 | 5. `/map-warehouse`, only when `/bootstrap` selected the warehouse-SQL profile | A developer, before the first warehouse change and again when the warehouse grows; `/bootstrap`'s summary says when it applies | A map of layers, grain, load ordering and idempotency; it offers to write `docs/warehouse-map.md`. |
 | 6. Daily work | A developer describes the task or types a workflow command; the agent classifies it and follows the matching workflow and skills; hooks run where the host supports them ([Host support](#host-support)) | Plans, verified changes, reviews, and debt and security records. |
@@ -92,7 +92,6 @@ Either command:
 - Populates `AGENTS.md` with your actual conventions and patterns
 - Generates `TECH_DEBT.md` with prioritised debt
 - Audits `.claude/skills/` against your codebase, adjusts default Common-Tasks recipes, and adds new skills for project-specific patterns
-- Generates the slim Copilot inline-completion instructions
 
 ### 3. Review
 Read the generated `AGENTS.md`. It should accurately describe your codebase. Fix anything that's wrong — this is the source of truth that all AI tools will follow.
@@ -112,7 +111,6 @@ Both Claude Code and Copilot Chat use the same slash-command names:
 /debt [area]               — find and fix tech debt
 /docs-sync                 — check documentation for drift
 /adopt                     — ingest existing AI-framework artifacts into this layout
-/generate-copilot          — regenerate the slim copilot-instructions.md (for inline completions)
 ```
 
 In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot Chat**, the same names are loaded from `.github/prompts/` — those files are thin wrappers that delegate to the canonical `.claude/commands/*.md` files, so there's a single source of truth per workflow.
@@ -139,9 +137,9 @@ Architecture: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · Reviewer's tour:
 The machine-readable `.claude/framework-version.json` records the installed version and is
 authoritative if the protected `AGENTS.md` header disagrees. To update from a fresh matching
 distribution, follow the [framework upgrade checklist](docs/upgrade-checklist.md). It covers
-preview and apply, file ownership, protected local-rule reconciliation, the one-time move of `CLAUDE.md`'s text into `AGENTS.md`, the generated Copilot digest, and
+preview and apply, file ownership, protected local-rule reconciliation, the one-time move of `CLAUDE.md`'s text into `AGENTS.md`, and
 verification before committing.
-Existing `CLAUDE.md`, `AGENTS.md`, and `.github/copilot-instructions.md` are
+Existing `CLAUDE.md` and `AGENTS.md` are
 protected consumer paths; `.github/instructions/framework-rules.instructions.md` is framework-owned and updates
 automatically.
 
@@ -152,7 +150,6 @@ automatically.
 | `CLAUDE.md` | Claude Code entry point — a stub that imports `AGENTS.md` and the framework rules (`.github/instructions/framework-rules.instructions.md`); edit `AGENTS.md`, not this file. |
 | `FRAMEWORK-CONTEXT.md` | Cross-repo context: shared NuGet libraries, multi-tenancy conventions, dashboard contracts, cross-service patterns. Every section is drafted by `/bootstrap` from the repo's code (cross-repo facts the code can't show are explicitly left to maintainers); "Detected Framework Packages" is also refreshed by `/docs-sync`; "Known Hazard Areas" by `/rebootstrap`. |
 | `AGENTS.md` | **Single source of truth** (authored) — conventions, architecture, common tasks, Boy Scout Rule; points to the framework rules (Verification, Leanness, SOLID, Agentic Workflow). Read directly by supported Copilot agent surfaces, GitHub code review, Codex, and Cursor; Claude Code reads it through `CLAUDE.md`. Gemini defaults to `GEMINI.md`, and Aider needs explicit read configuration. |
-| `.github/copilot-instructions.md` | **Generated** — slim imperative ruleset (≤80 lines) for Copilot **inline completions** only. Supported Copilot agent surfaces and GitHub code review read the fuller `AGENTS.md`. |
 | `.github/prompts/*.prompt.md` | Copilot Chat workflows. Thin wrappers that delegate to `.claude/commands/`. |
 | `.claude/commands/*.md` | Canonical workflow definitions (used by Claude Code natively, and by the Copilot prompt files). |
 | `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-endpoint, add-entity, register-service, map-warehouse, add-warehouse-load, add-tests, perf, dependency-audit, create-adr, enforce-architecture, enforce-standards). Shared canonical location for Claude Code and supported GitHub Copilot skill surfaces; the body loads only when triggered. |
@@ -256,15 +253,15 @@ applyTo: "**/*.ts"
 - ...
 ```
 
-The intent is that `.cs` files see the .NET rules from `copilot-instructions.md`, `.ts` files see the TypeScript rules from `.github/instructions/typescript.instructions.md`, and the repo-wide rules apply on top of either.
+The intent is that `.ts` files see the TypeScript rules from `.github/instructions/typescript.instructions.md` on top of the repo-wide `AGENTS.md` conventions.
 
 > **Verify this actually reaches your agent before relying on it.** Path-scoped instruction files are the mechanism Microsoft documents for VS Code agent mode, but **we have not been able to confirm delivery on any surface we can test**, and a scoped file that does not reach the model **fails silently** — it installs correctly, the agent simply never receives it, and nothing distinguishes that from working.
 >
 > What we measured, on **Copilot CLI 1.0.80 in `-p` mode**: a narrow `applyTo` delivered **nothing at all**, even with a matching file present and named in the prompt. That held for `"**/*.cs"`, `"**/*.ts"`, `"**/*.{ts,html}"` and `"**/*.ts,**/*.html"` alike — so it is the *narrowness*, not the brace or comma syntax, that defeated delivery. Only `applyTo: "**"` was observed to arrive. **VS Code agent mode — the surface this advice is aimed at — remains unverified.**
 >
-> The cheap check: put a distinctive marker in the scoped file ("begin every reply about this file with WIDGET"), open a matching file, and ask your agent about it. If the marker comes back, that is positive evidence of delivery and instruction-following for that run. If it does not, the result is inconclusive: delivery, instruction-following, or observation may have failed. Absence neither proves non-delivery nor makes repo-wide `copilot-instructions.md` the only reliable carrier.
+> The cheap check: put a distinctive marker in the scoped file ("begin every reply about this file with WIDGET"), open a matching file, and ask your agent about it. If the marker comes back, that is positive evidence of delivery and instruction-following for that run. If it does not, the result is inconclusive: delivery, instruction-following, or observation may have failed. Absence does not prove non-delivery.
 
-If the secondary stack is Angular, consider installing the **monorepo** distribution instead — it carries both stacks' rails and dispatches per file type. Failing that, the Angular distribution's `copilot-instructions.md` content is a sensible starting point: copy it into a `.github/instructions/typescript.instructions.md` file and add `applyTo: "**/*.{ts,html}"` at the top.
+If the secondary stack is Angular, consider installing the **monorepo** distribution instead — it carries both stacks' rails and dispatches per file type. Failing that, write the Angular conventions you adopt as terse rules in a `.github/instructions/typescript.instructions.md` file with `applyTo: "**/*.{ts,html}"` at the top.
 
 ## Running on Bitbucket Data Center
 
@@ -298,7 +295,7 @@ This framework supports local command and hook execution on **Windows** whether 
 
 ## Keeping it alive
 
-- When conventions change: update `AGENTS.md` and ask your agent (or `/generate-copilot`) to refresh `.github/copilot-instructions.md`
+- When conventions change: update `AGENTS.md`
 - Quarterly: run `/docs-sync` to find drift, or `/rebootstrap` for a deeper refresh
 - Always: apply the framework-owned bug-fix scope; separately owned debt can use `/debt`
 

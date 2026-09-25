@@ -4457,3 +4457,13 @@ carrier import, never "no CLAUDE.md"; no mirror. Update mode moves the older lay
 `GENERATED FILE` mirror or no `AGENTS.md`, backing both up; a hand-written `AGENTS.md` is declined and
 reported. Codex and Cursor get the rules through `AGENTS.md`'s pointer. Supersedes WSD-002's mirror clause.
 **Open.** Whether VS Code attaches the `applyTo: "**"` carrier on a turn that edits no file is undocumented.
+
+## WSD-099: retire the generated `.github/copilot-instructions.md` and `/generate-copilot` (2026-09-25)
+
+**Context.** Its stated job, Copilot inline completions, is void: VS Code documents that inline suggestions read no
+custom instructions. VS Code chat, Copilot CLI, the cloud agent and GitHub code review read `AGENTS.md` as well, so
+the digest duplicated the conventions there. An adversarial review found the other side: Visual Studio and Copilot
+Chat on github.com document only `copilot-instructions.md` (and `.github/instructions/` for Visual Studio).
+**Decision (user, 2026-09-25).** Drop it anyway: those surfaces lose the project conventions from the framework.
+Stop shipping and requiring the file; retire the generator through the ledger. The path stays protected and an
+adoption signal, so a consumer copy is never overwritten or deleted. Rejected: keep it and only correct its purpose.

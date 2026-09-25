@@ -1,6 +1,6 @@
 ---
 agent: agent
-description: One-time bootstrap — analyse this repository, selecting the Angular profile only when repository evidence supports it, then populate AGENTS.md, TECH_DEBT.md, and copilot-instructions.md.
+description: One-time bootstrap — analyse this repository, selecting the Angular profile only when repository evidence supports it, then populate AGENTS.md and TECH_DEBT.md.
 ---
 
 Read `.claude/commands/bootstrap.md` in this repository, then execute the bootstrap workflow defined there.

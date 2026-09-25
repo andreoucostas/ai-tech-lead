@@ -53,7 +53,6 @@ function TemplateFixture {
     Put (Join-Path $root CLAUDE.md) "@AGENTS.md`n@.github/instructions/framework-rules.instructions.md`n"
     Put (Join-Path $root AGENTS.md) "version: 1.2.3`n## Boy Scout Rule`nSame`n## Common Tasks`n- ``alpha`` — first → second`n"
     Put (Join-Path $root '.claude/framework-version.json') '{"version":"1.2.3"}'
-    Put (Join-Path $root '.github/copilot-instructions.md') "fixture`n"
     foreach ($name in @('audit-trail','boy-scout-check','guard','post-write','route-prompt','session-start')) {
         PutBom (Join-Path $root ".claude/hooks/$name.ps1") "# fixture`n"
     }
@@ -64,7 +63,7 @@ function TemplateFixture {
 $expectedChecks = @(
     'version stamps in sync', 'CLAUDE.md imports AGENTS.md', 'CLAUDE.md imports the framework rules',
     'AGENTS.md is the project instruction file',
-    'copilot-instructions.md present', 'carry a UTF-8 BOM',
+    'carry a UTF-8 BOM',
     'all framework .ps1 files parse cleanly', 'required framework PowerShell hook set present (6)',
     'canonical project skills use .claude/skills', 'retired skill-mirror sync scripts are absent'
 )
@@ -79,7 +78,6 @@ function DocsFixture {
     Put (Join-Path $root 'docs/enforcement-surfaces.md') "fixture`n"
     Put (Join-Path $root CLAUDE.md) "@AGENTS.md`n@.github/instructions/framework-rules.instructions.md`n"
     Put (Join-Path $root AGENTS.md) "# ready`n"
-    Put (Join-Path $root '.github/copilot-instructions.md') "fixture`n"
     Put (Join-Path $root TECH_DEBT.md) "# debt`n"
     Put (Join-Path $root FRAMEWORK-CONTEXT.md) "# context`n"
     Put (Join-Path $root README.md) "# fixture`n"
@@ -118,7 +116,7 @@ It 'template-checks reaches the complete clean contract and reports planted drif
         }
 
         Put (Join-Path $root '.claude/framework-version.json') '{"version":"9.9.9"}'
-        Remove-Item -LiteralPath (Join-Path $root '.github/copilot-instructions.md') -Force
+        Remove-Item -LiteralPath (Join-Path $root '.claude/hooks/guard.ps1') -Force
         $drift = RunArg $subject
         Assert ($drift.Exit -eq 3) "two-finding drift exit=$($drift.Exit), expected fixed status 3"
         Assert ($drift.Out.Contains('version-stamp drift: AGENTS.md says 1.2.3, framework-version.json says 9.9.9.')) 'version drift failure missing'

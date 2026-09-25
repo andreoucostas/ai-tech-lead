@@ -28,19 +28,14 @@ After three months of this, every actively-developed area is cleaner, better-tes
 
 ---
 
-## Three-Tier Architecture
+## Two-Tier Architecture
 
-### Tier 1 — Passive (inline completions)
-**Files**: `.github/copilot-instructions.md`, plus optional `.github/instructions/*.instructions.md` for path-scoped rules
+### Tier 1 — Directed (agent-mode reasoning)
+**Files**: `AGENTS.md` (authored single source of truth), `CLAUDE.md` (Claude Code stub that imports it), plus optional `.github/instructions/*.instructions.md` for path-scoped rules
 
-Auto-loaded by GitHub Copilot on every inline suggestion. Terse imperative rules — naming, patterns, imports — handled without the developer asking. Token budget is tight here, so the file is ≤80 lines.
+Supported GitHub Copilot agent surfaces, GitHub code review, Codex, and Cursor load `AGENTS.md` directly; Claude Code loads it, and the framework rules, through the `CLAUDE.md` imports. Gemini defaults to `GEMINI.md`, and Aider sees these rules only when explicitly configured to read them. Conventions, architecture, common tasks, agentic workflow. When a developer types a natural language request, the agent follows the applicable carrier and workflow automatically. Per-developer working preferences live in Claude Code's persistent memory, not in AGENTS.md.
 
-### Tier 2 — Directed (agent-mode reasoning)
-**Files**: `AGENTS.md` (authored single source of truth), `CLAUDE.md` (Claude Code stub that imports it)
-
-Supported GitHub Copilot agent surfaces, GitHub code review, Codex, and Cursor load `AGENTS.md` directly; Claude Code loads it, and the framework rules, through the `CLAUDE.md` imports. Gemini defaults to `GEMINI.md`, and Aider sees these rules only when explicitly configured to read them. `/generate-copilot` keeps the generated `copilot-instructions.md` current. Conventions, architecture, common tasks, agentic workflow. When a developer types a natural language request, the agent follows the applicable carrier and workflow automatically. Per-developer working preferences live in Claude Code's persistent memory, not in AGENTS.md.
-
-### Tier 3 — Explicit (workflow commands)
+### Tier 2 — Explicit (workflow commands)
 **Files**: `.claude/commands/*.md` (canonical), `.github/prompts/*.prompt.md` (Copilot Chat wrappers)
 
 Purpose-built workflows invoked via `/command` in either Claude Code or Copilot Chat. Each encodes a specific methodology: `/feature` decomposes into subtasks, `/fix` reproduces first and uses a red regression test when an applicable harness exists, and `/design` forces design thinking before code. The Copilot prompt files are thin wrappers that delegate to the canonical `.claude/commands/` files — single source of truth per workflow.
@@ -58,21 +53,17 @@ In a repository with an evidenced .NET application, hooks fire automatically aft
 Developer types: "add export button to dashboard"
                     │
                     ▼
-         CLAUDE.md (Tier 2)
+         AGENTS.md + framework rules (Tier 1)
          Classifies as: feature
          Routes to: feature workflow
                     │
                     ▼
-         /feature methodology (Tier 3)
+         /feature methodology (Tier 2)
          Plan → Subtask → Build → Test → Boy Scout → Self-review
                     │
                     ▼ (after each file write)
          Hooks (settings.json)
          applicable post-write build → catch compilation errors → self-correct
-                    │
-                    ▼ (on next Copilot interaction)
-         copilot-instructions.md (Tier 1)
-         Inline completions follow the same rules
 ```
 
 ---
@@ -114,7 +105,7 @@ Do not leave a TODO merely for unrelated deferred cleanup. Use `/debt` only for 
 
 ## Daily Workflow
 
-1. **Small stuff**: let Copilot handle it (Tier 1 rules auto-apply)
+1. **Small stuff**: just write it; VS Code's Copilot inline suggestions read no instruction file, so check them against `AGENTS.md > Conventions`
 2. **Features**: type what you want or `/feature [description]`
 3. **Bugs**: describe the bug or `/fix [description]`
 4. **Refactoring**: `/refactor [target]`
@@ -129,7 +120,6 @@ Do not leave a TODO merely for unrelated deferred cleanup. Use `/debt` only for 
 ### When conventions change
 Update these in the same commit:
 - [ ] `AGENTS.md` — the source of truth
-- [ ] Run `/generate-copilot` to regenerate `copilot-instructions.md`
 - [ ] `TECH_DEBT.md` if debt priorities shifted
 - [ ] Relevant commands in `.claude/commands/` if workflow changed
 

@@ -385,11 +385,8 @@ It 'B-231 keeps one outcome scope across fresh carriers and truthful protected u
     Assert ($carrier.Contains('public/protected signatures or virtual/override behaviour')) 'unrequested extension-contract breaks are not checked'
     foreach ($stack in @('dotnet','angular','monorepo')) {
         $dist = Join-Path $repoRoot "dist/$stack"
-        $copilot = Get-Content -Raw (Join-Path $dist '.github/copilot-instructions.md')
         $hook = Get-Content -Raw (Join-Path $dist '.claude/hooks/boy-scout-check.ps1')
         $readme = Get-Content -Raw (Join-Path $dist 'README.md')
-        Assert ($copilot.Contains('Follow framework-rules: edit only for outcome, compatibility, verification, or requested refactoring')) "$stack fresh copilot carrier omits the outcome scope"
-        Assert (-not $copilot.Contains('Boy Scout (apply only to evidenced constructs on touched files)')) "$stack fresh copilot carrier retains touched-file scope"
         Assert ($hook.Contains('advisory candidates')) "$stack hook no longer identifies its findings as advisory"
         Assert ($hook.Contains('do not add a TODO for unrelated deferred cleanup')) "$stack hook permits a touched-file TODO rule"
         Assert ($readme.Contains('protected consumer paths') -and $readme.Contains('framework-rules.instructions.md')) "$stack update guidance does not distinguish protected content from the framework-owned carrier"

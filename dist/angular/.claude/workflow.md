@@ -29,4 +29,3 @@ Before presenting work as complete:
 At the end of your response, note if:
 - A new pattern was introduced that should be documented in AGENTS.md.
 - A TECH_DEBT.md entry was resolved or a new one discovered.
-- `.github/copilot-instructions.md` needs regeneration (run `/generate-copilot`).

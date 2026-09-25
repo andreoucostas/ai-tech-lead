@@ -37,4 +37,4 @@ Full ADRs live in **`docs/architecture-decisions.md`** (append-only, loaded on d
 
 4. If this decision **supersedes** an earlier one, set the old ADR's `Status: Superseded by ADR-NNN` in `docs/architecture-decisions.md` and leave its index line (history is the point) — do not delete.
 
-5. If it introduces or changes a coding convention, also update `AGENTS.md > Conventions` and flag that `/generate-copilot` should be re-run to refresh `copilot-instructions.md`.
+5. If it introduces or changes a coding convention, also update `AGENTS.md > Conventions`.

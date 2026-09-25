@@ -82,7 +82,6 @@ It 'raw Unity fixture has only its evidenced composition root and lifetime' {
 
 It 'active authority carriers do not restore a framework-selected service seam' {
     $perStack = @(
-        'files/.github/copilot-instructions.md',
         'files/.claude/agents/bloat-radar.md',
         'files/docs/defaults.md',
         'files/docs/REVIEW-GUIDE.md',

@@ -5,9 +5,9 @@
 #     that keeps the framework honest about its own invariants;
 #   - a consumer repo (invoked by docs-sync-check) — the same invariants hold after install.
 # Checks: version-stamp sync (AGENTS.md header == framework-version.json == CHANGELOG head),
-# instruction layout (CLAUDE.md is the stub importing AGENTS.md and the framework rules),
-# copilot-instructions.md present and <= 80 lines, UTF-8 BOM on framework .ps1 files,
-# required PowerShell hook set, PS syntax of framework scripts, and skills-directory policy.
+# instruction layout (CLAUDE.md is the stub importing AGENTS.md and the framework rules), UTF-8
+# BOM on framework .ps1 files, required PowerShell hook set, PS syntax of framework scripts, and
+# skills-directory policy.
 # 5.1-safe: no pwsh-only syntax.
 $ErrorActionPreference = 'Stop'
 
@@ -120,16 +120,6 @@ if (-not (Test-Path -LiteralPath 'AGENTS.md' -PathType Leaf)) {
     } elseif (-not ($ag -ccontains '## Boy Scout Rule')) {
         Fail "AGENTS.md is missing section '## Boy Scout Rule'."
     } else { OK 'AGENTS.md is the project instruction file.' }
-}
-
-# --- 3. copilot-instructions.md present and slim ----------------------------------------------
-if (-not (Test-Path '.github/copilot-instructions.md')) {
-    Fail '.github/copilot-instructions.md is missing — run /generate-copilot.'
-} else {
-    # @().Count includes blank lines; Measure-Object -Line does not.
-    $n = @(Get-Content '.github/copilot-instructions.md').Count
-    if ($n -gt 80) { Fail ".github/copilot-instructions.md is $n lines (limit 80) — regenerate slimmer." }
-    else { OK ".github/copilot-instructions.md present ($n lines <= 80)." }
 }
 
 # --- 4. Framework .ps1 files carry a UTF-8 BOM (Windows PowerShell 5.1 requirement) -----------
