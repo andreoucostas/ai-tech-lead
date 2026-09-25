@@ -10,7 +10,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 15 | B-264 process diet | WP5 of the lean reset plan (section 7); WSD-093 replaces WSD-089's success measure |
+| 15 | B-288 read WSD-093's five-release measure | Closes the lean reset's loop; the five releases have shipped (B-264 closed as delivered) |
 | 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
 | 18 | B-259 installer lifecycle basics | After B-258 so nothing is built twice |
@@ -19,7 +19,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -162,12 +162,6 @@ an advisory style scan. WSD-024 keeps the Copilot nudge advisory; post-write is 
 **Status:** Open. Every Copilot VS Code row in `meta/host-certification.md` reads "not certified — no
 seat" while shipped text says "supported".
 
-### B-264 · Process diet: release batching, one-in-one-out for meta tests, backlog narrative trim
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** M · **Invariants:** #7
-**Status:** Open; WP5 of `.claude/plans/2026-09-19-lean-maintainer-reset.md`. About a third of the
-meta suite tests process or records; candidates include `GateBudgetConsistency.Tests.ps1`.
-
 ### B-265 · Missing consumer workflows: PR description, read-only codebase explanation, major-version upgrade, Angular perf/accessibility
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1
@@ -245,6 +239,25 @@ although nothing was archived and the directory does not exist.
 **Status:** Open; observed by B-281's fresh-session attack. Git for Windows ships `core.autocrlf=true`, so an update run
 from a fresh clone sees CRLF bytes, matches no ledger digest (none are CRLF), and preserves and reports every retired
 `.md` file instead of deleting it. Fails safe; the retirement is just never applied there.
+
+### B-288 · Read WSD-093's success measure over its five releases
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P2 · **Effort:** S · **Invariants:** —
+**Status:** Open; found by B-264's second review. WSD-093 set "escaped defects per release over the next five releases";
+v0.87.0 to v0.89.2 are those five and nothing reads it. B-275 (fixed in v0.89.0) escaped from v0.83.0, before the reset:
+say whether it counts. Also note the cadence: five tags in five days against "roughly weekly".
+
+### B-289 · `release.ps1`'s header still says the release runs the full root meta suite
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open; found by B-264's review. `release.ps1:12-13` names the "full root meta suite"; since B-245 the stage
+runs four files locally (`:606`) and CI runs the rest. Comment-only, on a guarded path.
+
+### B-290 · Re-scope or delete the SATURATED `angular-form-control` eval scenario
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open; named by the 2026-09-18 review under B-264, carried here when B-264 closed; B-253 closed without it.
+`scenarios.json:56` calls its own pass uninformative; `run-agent-evals.ps1` self-test fixtures (`:1443`, `:2556-2621`) use it.
 
 ## Archived
 

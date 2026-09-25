@@ -12686,3 +12686,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-281** — DONE **2026-09-25** for **v0.90.0** (WSD-099). `.github/copilot-instructions.md` no longer ships or is
   required; `/generate-copilot` retired through the ledger. Visual Studio and github.com Copilot Chat lose
   framework-delivered conventions, accepted by the user after an adversarial review.
+
+- **B-264** — CLOSED **2026-09-25**, narrowed after two adversarial reviews. Its strands were already met: weekly releases
+  (WP1 rule, not yet practised; see B-288), CI as the only full-suite run (B-245), the backlog cap, the 120-line ceiling
+  (855d0111). Deleted `BacklogHygiene`'s never-failing ledger case with its fixtures and `meta/gate-redtest-coverage.md`,
+  left unread (recover from `b9917b0e`). Kept `GateBudgetConsistency`, `ReleasePostEvalPrompt` (until B-267); `FidelityCheck`
+  stays with B-251; no `Release*` merge. The "third" figure held by class (~44% of lines), mostly guarding scripts.
