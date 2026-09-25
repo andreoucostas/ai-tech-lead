@@ -18,7 +18,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-291, B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -244,6 +244,13 @@ the release commit message (`:825`, `:827`) name the "full root meta suite"; sin
 **Priority:** P3 · **Effort:** S · **Invariants:** —
 **Status:** Open; named by the 2026-09-18 review under B-264, carried here when B-264 closed; B-253 closed without it.
 `scenarios.json:56` calls its own pass uninformative; `run-agent-evals.ps1` self-test fixtures (`:1443`, `:2556-2621`) use it.
+
+### B-291 · Spike: let the host's PowerShell run hooks and drop the named inner interpreter
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P3 · **Effort:** S spike, M change · **Invariants:** #3 #5
+**Status:** Open; from B-276's review. In-process guard kept exit 2/0 and saved ~0.2-0.3 s per hook; the prize is deleting the
+5.1 variant and installer copy. First observe live that Claude Code's outer shell falls back to 5.1 without `pwsh` and passes
+`-ExecutionPolicy Bypass` (read only from binary strings); if not, stop. Copilot's `hooks.json` still names `pwsh`.
 
 ## Archived
 
