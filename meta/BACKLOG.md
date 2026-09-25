@@ -6,11 +6,11 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258 and B-293 closed 2026-09-25
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293 and B-259 closed 2026-09-25; B-295 filed
 
 | Rank | Item | Why here |
 |---|---|---|
-| 18 | B-259 installer lifecycle basics | Unblocked by WSD-101; the uninstall half is the path B-42 waits on |
+| 17 | B-295 greenfield install replaces unrecoverable files | Loses consumer data at exit 0; found by B-259's review |
 | 19 | B-261 Stop-time verification | B-248 bounded post-write at 45 s; settle Stop-hook latency against that |
 | 20 | B-284 incremental `/rebootstrap` | User-requested 2026-09-23; the discovery-pass half waits on WSD-097 |
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
@@ -119,13 +119,6 @@ tree; keep the FAQ content reachable and link the deck instead.
 **Status:** Open, narrowed 2026-09-24. `/bootstrap` Phase 3a already advertises both only when the
 warehouse-SQL profile was selected (`bootstrap.md:180`); the template lists them until bootstrap runs,
 and whether `/adopt` applies the same gate is unverified. WSD-021 forbids only a separate distribution.
-
-### B-259 · Installer lifecycle basics: uninstall, `-WhatIf` parity, structured output, a real update check
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** L · **Invariants:** #6 #7
-**Status:** Open; unblocked by WSD-101. Two parts: (a, S) `-WhatIf` skips the dirty-tree guard (`install.ps1:823`)
-and the version stamp's `_comment` promises an update command and names a `CLAUDE.md` comment now in `AGENTS.md`; (b, L) uninstall and
-structured conflict output, the path B-42 waits on. Keep hash-gated retirement (WSD-088); no manifest-only deletes.
 
 ### B-261 · Stop-time verification on Claude Code: run the evidenced build or tests before work is presented as complete
 **Filed against:** v0.86.7 (2026-09-18)
@@ -249,6 +242,13 @@ consumer-run `/docs-sync` step 2 compares them. Options: compose the rails from 
 **Priority:** P3 · **Effort:** S · **Invariants:** #1
 **Status:** Open; from B-293's review. VS Code's hooks page (2026-09-25) says `chat.useHooks` "is on by default"; the
 shipped line 72 says "off by default". Claude-format reading (`chat.useClaudeHooks`) stays off by default.
+
+### B-295 · Greenfield install silently replaces consumer files it cannot recover
+**Filed against:** v0.90.0 (2026-09-25)
+**Priority:** P1 · **Effort:** M · **Invariants:** #3 #7
+**Status:** Open; from B-259's review, reproduced 2026-09-25. Greenfield skips the dirty-tree guard (`install.ps1:823`)
+and `PLAN replace` keeps no backup: untracked files in Git, any collision outside Git and a consumer `.claude/settings.json`
+are lost at exit 0. Refuse (exit 4; `-WhatIf` warns) unless the Git tree is clean; back up settings; drop "plain copy".
 
 ## Archived
 

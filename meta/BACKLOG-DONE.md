@@ -12713,3 +12713,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-293** — CLOSED **2026-09-25** without a change (user). Live on CLI 1.0.86/1.0.88: both registrations load and
   session-start, route-prompt and (by timing) guard run twice; post-write and audit-trail once. Seeded queue and `.cs` finding
   both delivered, so nothing is lost; ~0.5 s per doubled event. `meta/host-certification.md` row; VS Code doc drift: B-294.
+
+- **B-259** — CLOSED **2026-09-25**, narrowed after a fresh-session attack and a second opinion. The stamp `_comment` and
+  `AGENTS.md` header now say the installer rewrites the stamp and the header is copied by hand; stack READMEs gain a `-WhatIf`
+  preview line and "Removing the framework". Dropped: `-WhatIf` refusal (B-194, disclosed), a networked update check (B-46),
+  structured output (`OPERATION-PLAN` since v0.76.0), `-Uninstall` (WSD-101's hash catalogue; B-42 uses scratch clones). Found B-295.

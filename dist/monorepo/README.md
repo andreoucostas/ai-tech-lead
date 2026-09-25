@@ -66,6 +66,9 @@ pwsh -NoProfile -File scripts/install.ps1 -Target 'C:\path\to\consumer-repo'
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Target 'C:\path\to\consumer-repo'
 ```
 
+Add `-WhatIf` to either command first to preview. Each `PLAN replace` line names an existing file
+the install overwrites without a backup; commit or move those files before applying.
+
 Review and commit the installed shared configuration in the target. Then follow the installer's
 printed next steps and step 2: a developer runs `/bootstrap` for greenfield or `/adopt` when
 pre-existing tooling was found. If the installer unexpectedly reports update mode, use the upgrade
@@ -145,6 +148,18 @@ verification before committing.
 Existing `CLAUDE.md` and `AGENTS.md` are
 protected consumer paths; `.github/instructions/framework-rules.instructions.md` is framework-owned and updates
 automatically.
+
+### Removing the framework
+
+The installer writes only inside the target and changes no Git configuration. If nothing has been
+committed on top of the install yet (no `/bootstrap`, `/adopt` or update), revert that commit and
+delete the ignored `.claude/.state/` folder. Otherwise delete every path that
+`framework-ownership.json` marks `framework-owned/overwritten` (the list includes both manifests and
+`.claude/framework-version.json`). Paths marked `consumer-owned/protected` are yours to keep or
+delete; they may still hold template text. `.claude/settings.json` is overwritten on each update:
+delete it, or restore your copy from `.claude/.state/settings.json.pre-update` if that local backup
+exists. A brownfield install moved your earlier files to `docs/pre-adoption/`; move back what you
+want. `.claude/framework-update-backup/` holds an update's backups for review and is not needed after.
 
 ## What's in the box
 
