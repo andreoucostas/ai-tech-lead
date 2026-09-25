@@ -4389,7 +4389,11 @@ capped at 40 compact entries; `/meta-review-handoff` and `/meta-release` are rem
 WSD-028/WSD-057 ledger and review scope outside the guarded list.
 
 **New measure.** Escaped defects per release over the next five releases, and minutes from "change
-ready" to pushed.
+ready" to pushed. **Retired unread, 2026-09-25 (B-288):** it named no baseline, threshold or action;
+nothing records "change ready"; v0.87.0–v0.89.2 had 1–5 days' exposure, and B-275 took 16 days to
+surface. An escaped defect stays handled in its own commit (`AGENTS.md`, "Scope"). Seen at retirement:
+no consumer escape introduced in those releases (B-287's mechanism predates them); two false evidence
+claims in the reset's own tooling — WP2's skipped CI watch (fixed `56d1c7b5`) and WP3's (B-289).
 
 From this entry on, a decision entry is at most ten lines.
 

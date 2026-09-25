@@ -12692,3 +12692,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   (855d0111). Deleted `BacklogHygiene`'s never-failing ledger case with its fixtures and `meta/gate-redtest-coverage.md`,
   left unread (recover from `b9917b0e`). Kept `GateBudgetConsistency`, `ReleasePostEvalPrompt` (until B-267); `FidelityCheck`
   stays with B-251; no `Release*` merge. The "third" figure held by class (~44% of lines), mostly guarding scripts.
+
+- **B-288** — CLOSED **2026-09-25** without reading WSD-093's measure, which is retired there (no decision rule, no
+  instrument for minutes, releases too young to have surfaced escapes). B-275 would not count: it was introduced in v0.83.0,
+  before the reset. Cadence was dropped as outside the measure. B-289 widened; B-276 ranked first (user).

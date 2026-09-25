@@ -6,11 +6,11 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093)
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276 ranked 2026-09-25 (user)
 
 | Rank | Item | Why here |
 |---|---|---|
-| 15 | B-288 read WSD-093's five-release measure | Closes the lean reset's loop; the five releases have shipped (B-264 closed as delivered) |
+| 15 | B-276 silent missing hook interpreter | The only open P2 defect a consumer can hit; shipped in v0.89.0 |
 | 16 | B-257 commands as skills, routing, scoped rules | Host facts must be verified first; WSD-045 must be answered |
 | 17 | B-258 distribution re-audit | One-to-two-day spike; decides the shape of B-259 |
 | 18 | B-259 installer lifecycle basics | After B-258 so nothing is built twice |
@@ -240,18 +240,12 @@ although nothing was archived and the directory does not exist.
 from a fresh clone sees CRLF bytes, matches no ledger digest (none are CRLF), and preserves and reports every retired
 `.md` file instead of deleting it. Fails safe; the retirement is just never applied there.
 
-### B-288 · Read WSD-093's success measure over its five releases
-**Filed against:** v0.90.0 (2026-09-25)
-**Priority:** P2 · **Effort:** S · **Invariants:** —
-**Status:** Open; found by B-264's second review. WSD-093 set "escaped defects per release over the next five releases";
-v0.87.0 to v0.89.2 are those five and nothing reads it. B-275 (fixed in v0.89.0) escaped from v0.83.0, before the reset:
-say whether it counts. Also note the cadence: five tags in five days against "roughly weekly".
-
-### B-289 · `release.ps1`'s header still says the release runs the full root meta suite
+### B-289 · `release.ps1` still says the release runs the full root meta suite
 **Filed against:** v0.90.0 (2026-09-25)
 **Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; found by B-264's review. `release.ps1:12-13` names the "full root meta suite"; since B-245 the stage
-runs four files locally (`:606`) and CI runs the rest. Comment-only, on a guarded path.
+**Status:** Open; found by B-264's review, widened by B-288's. The header (`:12-13`), the stage comment (`:528-537`) and
+the release commit message (`:825`, `:827`) name the "full root meta suite"; since B-245 the stage runs four files locally
+(`:606`), so the v0.87.0–v0.89.2 release commits each carry a false claim. Text-only, on a guarded path.
 
 ### B-290 · Re-scope or delete the SATURATED `angular-form-control` eval scenario
 **Filed against:** v0.90.0 (2026-09-25)
