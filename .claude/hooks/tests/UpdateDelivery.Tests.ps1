@@ -1112,6 +1112,53 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
     }
 }
 
+It 'B-299 a bracketed target is installed in place, never into the sibling its wildcard matches' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b299-' + [guid]::NewGuid())
+    try {
+        # Read as a wildcard, repo[a] matches sibling repoa: that sibling took a greenfield install
+        # at exit 0 while the requested target, whose CLAUDE.md makes it brownfield, stayed untouched.
+        $t = Join-Path $root 'repo[a]'
+        $sibling = Join-Path $root 'repoa'
+        [void][IO.Directory]::CreateDirectory($t)
+        [void][IO.Directory]::CreateDirectory($sibling)
+        $claude = [Text.UTF8Encoding]::new($false).GetBytes("# consumer instructions`r`n")
+        [IO.File]::WriteAllBytes((Join-Path $t 'CLAUDE.md'), $claude)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0 -and $out -match 'into: .*\\repo\[a\]\r?\n' -and $out -match 'mode: brownfield') "the bracketed target was not installed in place as brownfield (exit $exit): $out"
+        $archive = Join-Path $t 'docs/pre-adoption/CLAUDE.md'
+        Assert ((Test-Path -LiteralPath $archive -PathType Leaf) -and
+            (Test-B194BytesEqual $claude ([IO.File]::ReadAllBytes($archive)))) "the target's CLAUDE.md was not archived byte-for-byte: $out"
+        Assert (@(Get-ChildItem -LiteralPath $sibling -Force).Count -eq 0) "the wildcard-matched sibling was written to: $out"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    Skip 'B-299 without pwsh a bracketed target still gets the Windows PowerShell 5.1 hooks' 'a pwsh host always has pwsh; the fallback runs only under Windows PowerShell'
+} else {
+    It 'B-299 without pwsh a bracketed target still gets the Windows PowerShell 5.1 hooks' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('b299-' + [guid]::NewGuid())
+        $savedPath = $env:PATH
+        try {
+            # Test-Path without -LiteralPath reports a file under repo[b] absent, so the fallback
+            # left settings.json calling a pwsh the machine does not have.
+            $t = Join-Path $root 'repo[b]'
+            [void][IO.Directory]::CreateDirectory($t)
+            $env:PATH = @($savedPath -split ';' | Where-Object {
+                try { $_ -and -not [IO.File]::Exists([IO.Path]::Combine($_, 'pwsh.exe')) } catch { $true }
+            }) -join ';'
+            Assert ($null -eq (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue)) 'calibration: pwsh is still resolvable after removing its directories from PATH'
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $exit = $LASTEXITCODE
+            Assert ($exit -eq 0 -and $out -match 'activated Windows PowerShell 5.1 hooks') "the 5.1 hook fallback did not run (exit $exit): $out"
+            Assert (Test-B194BytesEqual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.windows.json'))) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.json')))) "settings.json is not the Windows PowerShell 5.1 variant: $out"
+        } finally {
+            $env:PATH = $savedPath
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 $legacyV083RetiredPaths = @(
     '.claude/hooks/audit-trail.sh',
     '.claude/hooks/boy-scout-check.sh',

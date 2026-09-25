@@ -56,6 +56,14 @@
   framework's does not count. Check `docs/pre-adoption/` for secrets before you commit: it can now hold
   files you had kept out of Git.
 
+- **The installer now installs into a folder with square brackets in its name.** Given a path such
+  as `C:\src\app[v2]`, it read the brackets as a wildcard: it could install into a neighbouring folder
+  that matched, such as `C:\src\app2`, and still report success, or stop with an unhelpful error when
+  nothing matched. It now uses the path exactly as you give it. On a machine without PowerShell 7,
+  such a folder now also gets the Windows PowerShell 5.1 hooks, as any other folder does. Under
+  Windows PowerShell 5.1 the installer can still print CANT-VERIFY lines about files that are not in
+  such a folder; those lines are false and you can ignore them.
+
 ## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new

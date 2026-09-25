@@ -34,8 +34,9 @@ $pwshAvailable = $PSVersionTable.PSVersion.Major -ge 7 -or
 
 if (-not (Test-Path -LiteralPath $Target -PathType Container)) { Write-Error "Target '$Target' is not a directory."; exit 2 }
 
-$src = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$tgt = (Resolve-Path $Target).Path
+# -LiteralPath: read as a wildcard, 'repo[a]' resolves a sibling 'repoa' and the install lands there.
+$src = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
+$tgt = (Resolve-Path -LiteralPath $Target).Path
 if ($tgt -eq $src) { Write-Error "Target is the template repo itself — choose a different target."; exit 2 }
 # Brownfield archive paths must never traverse a reparse point. Resolving a target path is not
 # enough: a junction/symlink below it can redirect either the collision source or the archive
@@ -1361,7 +1362,7 @@ if ($adoptMode) {
 if (-not $pwshAvailable) {
     $sj  = Join-Path $tgt '.claude/settings.json'
     $sjw = Join-Path $tgt '.claude/settings.windows.json'
-    if ((Test-Path $sjw) -and (Test-Path $sj)) {
+    if ((Test-Path -LiteralPath $sjw) -and (Test-Path -LiteralPath $sj)) {
         Copy-Item -Force -LiteralPath $sjw -Destination $sj
         Write-Output "  pwsh not found - activated Windows PowerShell 5.1 hooks (settings.windows.json -> settings.json)."
     }

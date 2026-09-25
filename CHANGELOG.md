@@ -67,6 +67,16 @@ stays greenfield on re-run; an unreadable one is CANT-VERIFY, exit 4. The brownf
 that the archive may hold gitignored files and so secrets. Rejected: the dirty-tree guard for greenfield,
 which misses gitignored files and every target outside Git.
 
+B-299. The stack installer resolves its target and its own source with `Resolve-Path -LiteralPath`, so
+a bracketed target such as `repo[a]` is installed in place. Read as a wildcard, it matched a sibling
+`repoa`, which took a greenfield install at exit 0 while the target stayed untouched; with no match the
+run died on a null-binding error. The Windows PowerShell 5.1 hook fallback's two `Test-Path` checks are
+literal too: under a bracketed target they reported the settings files absent, leaving hooks that call
+a missing pwsh. The root installer already resolved literally and is unchanged. Rejected: refusing
+bracketed paths, which turns away a valid target for a change of the same size. Still open on Windows
+PowerShell 5.1 only: a bracketed target gets false CANT-VERIFY lines (B-301), and a bracketed framework
+source next to a matching sibling runs the sibling's installer (B-302).
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

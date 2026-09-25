@@ -12724,3 +12724,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   brownfield handoff warns about gitignored secrets. The filed fix (greenfield dirty-tree guard, settings backup) was rejected: it
   misses gitignored files and every non-Git target. Fable second opinion; the fresh-session attack ran 20 attacks with no
   consumer bytes lost at exit 0. Found B-296 to B-299.
+
+- **B-299** — CLOSED **2026-09-25**. The stack installer resolves target and source with `-LiteralPath`, so `repo[a]` installs in
+  place, not into sibling `repoa`; the 5.1 hook fallback's `Test-Path` checks are literal too (a line-38-only fix left them red).
+  Fresh-session attack: 34 scenarios held on both hosts; its two breaks are 5.1 host quirks, filed as B-301 and B-302.
