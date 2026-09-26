@@ -6,16 +6,15 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed
 
 | Rank | Item | Why here |
 |---|---|---|
-| 19 | B-261 Stop-time verification | B-248 bounded post-write at 45 s; settle Stop-hook latency against that |
 | 20 | B-284 incremental `/rebootstrap` | User-requested 2026-09-23; the discovery-pass half waits on WSD-097 |
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-302, B-301, B-300, B-298, B-297, B-296, B-294, B-292, B-291, B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-303, B-302, B-301, B-300, B-298, B-297, B-296, B-294, B-292, B-291, B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -118,12 +117,6 @@ tree; keep the FAQ content reachable and link the deck instead.
 **Status:** Open, narrowed 2026-09-24. `/bootstrap` Phase 3a already advertises both only when the
 warehouse-SQL profile was selected (`bootstrap.md:180`); the template lists them until bootstrap runs,
 and whether `/adopt` applies the same gate is unverified. WSD-021 forbids only a separate distribution.
-
-### B-261 · Stop-time verification on Claude Code: run the evidenced build or tests before work is presented as complete
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P2 · **Effort:** M · **Invariants:** #5
-**Status:** Open. The verification promise rests on the agent's self-report; the only Stop hook is
-an advisory style scan. WSD-024 keeps the Copilot nudge advisory; post-write is bounded at 45 s (B-248).
 
 ### B-263 · State the Copilot VS Code surface as best-effort until a capability is certified
 **Filed against:** v0.86.7 (2026-09-18)
@@ -282,6 +275,13 @@ install and 80 on update (plain dir: 0), all exit 0, nothing misplaced. Guarded 
 **Status:** Open; from B-299's attack, re-checked. 5.1 reads `-File` and root `install.ps1:245` `& $delegate` as wildcards: from
 `fw[s]\` with a sibling `fws\`, the sibling's installer runs (`from: fws`). `-File` is the host's, so only the root delegate call is
 fixable in-script (escape on 5.1 only; pwsh then fails to find it). Guarded path.
+
+### B-303 · The Claude Code Boy Scout Stop output may force an extra turn
+**Filed against:** v0.90.0 (2026-09-26)
+**Priority:** P3 · **Effort:** S · **Invariants:** #5
+**Status:** Open; from B-261's review, vendor docs only. Claude Code's hooks page (2026-09-26) says a `Stop` hook's
+`additionalContext` keeps the conversation going; `boy-scout-check.ps1` returns it on each new finding set, while shipped
+`enforcement-surfaces.md` calls the nudge advisory and read "next turn". Observe live before changing either. Guarded path.
 
 ## Archived
 

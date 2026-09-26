@@ -12728,3 +12728,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-299** — CLOSED **2026-09-25**. The stack installer resolves target and source with `-LiteralPath`, so `repo[a]` installs in
   place, not into sibling `repoa`; the 5.1 hook fallback's `Test-Path` checks are literal too (a line-38-only fix left them red).
   Fresh-session attack: 34 scenarios held on both hosts; its two breaks are 5.1 host quirks, filed as B-301 and B-302.
+
+- **B-261** — CLOSED **2026-09-26** by decision (WSD-102): no Stop-time build or test run. The one mechanical gap,
+  `post-write`'s 60 s `dotnet build` throttle and 300 s backoff, is stated in the shipped `docs/enforcement-surfaces.md`.
+  Adversarial review plus a Fable second opinion; found B-303.

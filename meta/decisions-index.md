@@ -68,6 +68,7 @@ authoritative.
 - “`.github/copilot-instructions.md` and `/generate-copilot` are retired; Visual Studio and github.com Copilot Chat lose framework-delivered conventions by choice.” — `meta/workspace-decisions.md WSD-099`
 - “Keep `route-prompt`; commands already are skills on Claude Code; path-scoped rules are not used for the workflow rails; no non-inferiority trial is funded.” — `meta/workspace-decisions.md WSD-100`
 - “Distribution stays file-copy; a plugin cannot replace the in-tree files Copilot reads; any installer rewrite keeps hash-gated retirement.” — `meta/workspace-decisions.md WSD-101` (withdraws WP7's ledger deletion)
+- “No framework hook runs test suites or `Verification Commands` rows; the post-write build throttle is a stated limit, not fixed.” — `meta/workspace-decisions.md WSD-102` (closes B-261)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

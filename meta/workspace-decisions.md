@@ -4493,3 +4493,15 @@ docs (2026-09-25): both hosts now have plugins, but none carries `AGENTS.md`, en
 manifest-only installer and ledger deletion are withdrawn: a rewrite keeps hash-gated retirement (WSD-088) and names a
 migration floor. B-259 is unblocked; B-293 filed. **Reopen** when an independent adopter exists (B-42) and one plugin is
 observed carrying the PowerShell hooks on both hosts.
+
+## WSD-102: no framework hook runs tests; the post-write build throttle is a stated limit (2026-09-26)
+
+**Context.** B-261 asked for a Claude Code `Stop` hook running the evidenced build or tests. `post-write` already builds
+after each build-relevant Write/Edit and blocks Claude on failure; the gap is its 60 s `dotnet build` throttle (`tsc` 5 s)
+and 300 s over-budget backoff, reproduced only with a shimmed `dotnet`. All 18 scored `route-fix` runs (both hosts, both
+arms) ran the test script after the production edit unprompted; no field report shows "done" on a red build.
+**Decision (user, 2026-09-26, after an adversarial review and a Fable second opinion).** No framework hook runs test
+suites or `Verification Commands` rows: a hook runs outside the host's permission prompts, the table is agent-written, and
+suites can be slow, mutating or flaky. No Stop-time build; the throttle is stated in `docs/enforcement-surfaces.md`, and
+this repo retired its own blocking Stop hook for re-firing. **Reopen** on one field report of work presented as done on a
+red build, or an eval scenario that measures it; a retry uses `stop_hook_active` and never blocks Copilot (WSD-024).
