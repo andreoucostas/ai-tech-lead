@@ -11,9 +11,10 @@
   recording a baseline, `.claude/bootstrap-baseline.tsv`; commit it with the other artifacts. It holds
   a content hash of your files and, for each convention written to `AGENTS.md`, the files that
   convention rests on. `/rebootstrap` compares your working tree with it through
-  `scripts/bootstrap-baseline.ps1`. When nothing outside the framework's own files changed, it stops
-  before any analysis. Otherwise it re-analyses only the changed areas, rechecks only the conventions
-  whose files changed or that you edited, and carries the rest forward. It runs a profile in full when
+  `scripts/bootstrap-baseline.ps1`. When nothing outside the framework's own files changed and no
+  line of `AGENTS.md` was added or edited, it stops before any analysis. Otherwise it re-analyses only
+  the changed areas, checks each edited line, rechecks only the conventions whose files changed, and
+  carries the rest forward. It runs a profile in full when
   a project manifest was added or removed, or a solution file, `angular.json`, `nx.json` or
   `dbt_project.yml` changed, or more than half of that profile's conventions are affected, and it
   records a new baseline at the end. A repository bootstrapped before this version has no baseline,
