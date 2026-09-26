@@ -77,6 +77,21 @@ bracketed paths, which turns away a valid target for a change of the same size. 
 PowerShell 5.1 only: a bracketed target gets false CANT-VERIFY lines (B-301), and a bracketed framework
 source next to a matching sibling runs the sibling's installer (B-302).
 
+B-284, first slice. `/rebootstrap` compares the working tree with a content-hash baseline,
+`.claude/bootstrap-baseline.tsv`, which the new `scripts/bootstrap-baseline.ps1 -Mode Record` writes at
+the end of `/bootstrap` (3f) and of `/rebootstrap` (3d). For profile passes, `-Mode Impact` replaces the
+3-month `git log` window: it stops before any model work when nothing outside `framework-ownership.json`
+changed; runs a profile in full when a project manifest appeared or vanished, a workspace file changed,
+or more than half its claims are affected; and otherwise lists the changed areas and the affected
+claims, carrying the rest forward. `bootstrap-pass` findings now name their own evidence (paths or
+globs; scoped, universal or absence), keyed in the baseline by a hash of the claim text. With only the
+pass-level sample, one changed file marked every claim of its pass affected, so a high-churn repository
+would have re-run nearly everything. Both files are hashed from the working tree, never a commit, so a
+squash merge or shallow clone reads the same. Shared A8 (A7 in Angular) is untouched and keeps the
+3-month window (plan point 9, held by WSD-097); renames are not re-pointed yet and read as evidence
+matching no file, so their claim is rechecked; no session-start line. The 50% threshold is provisional
+and unmeasured: every run prints its `PROFILE` line. `BootstrapBaseline.Tests.ps1`, 21 cases. WSD-103.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

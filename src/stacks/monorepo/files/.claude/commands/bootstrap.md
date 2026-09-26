@@ -459,6 +459,28 @@ If `SECURITY_FINDINGS.md` does not exist at the repo root, create it using the t
 
 If `SECURITY_FINDINGS.md` already exists, leave it entirely alone.
 
+### 3f: Record the rebootstrap baseline
+
+When the artifacts above are final, record what `/rebootstrap` will compare against. Write a claims
+file **outside the repository** (for example in the system temp directory) naming every selected
+profile (`dotnet`, `angular` or `warehouse`) and one claim per `AGENTS.md` Conventions or Architecture
+Decisions statement a pass finding supports (not the Verification Commands rows, which every run
+refreshes), with that finding's evidence kind and paths or globs:
+
+```json
+{ "profiles": ["dotnet"],
+  "claims": [ { "profile": "dotnet", "pass": "A2", "kind": "scoped",
+                "text": "<the statement, copied verbatim from AGENTS.md>",
+                "evidence": ["src/Orders/Data/OrderRepository.cs", "src/**/*Repository.cs"] } ] }
+```
+
+Run `pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Record -ClaimsPath <claims file>`
+(Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File` with the
+same arguments), then delete the claims file. Exit 0 writes `.claude/bootstrap-baseline.tsv`; commit
+it with the other artifacts. Exit 1 lists each refused claim (text not found verbatim in `AGENTS.md`,
+or evidence matching no file outside framework-owned paths): correct the claims file and rerun.
+Exit 2, or no PowerShell host, records nothing: report it, and the next `/rebootstrap` runs in full.
+
 ---
 
 ## Deterministic completion gate
@@ -495,6 +517,7 @@ Then output:
 - Top 3 architectural risks
 - Top 3 quick wins (including each Severity-High no-test-suite entry when a testing pass found no tests)
 - Files generated/modified
+- **Rebootstrap baseline (3f)**: the `RECORDED` line, or why no baseline was recorded.
 - **Repository knowledge discovery (A8)**: list each new review draft with body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result; also list skipped duplicates/owner-routed items, actual reads, inventory-only/excluded/inaccessible areas, and the next bounded continuation. State that drafts await PR review and changed no owner-authored knowledge.
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: two named HttpClients with Polly retry on the API, auth + correlation-ID interceptors on the frontend") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).
 - **Warehouse detected — point the developer at `/map-warehouse`** (emit this bullet only when the warehouse-SQL profile was selected and Phase 3a kept the warehouse skills): one line — *"I detected data-warehouse signals and captured the essentials in AGENTS.md > Conventions > Data Access. Before your first warehouse change, run `/map-warehouse` for a full layer / grain / load-ordering / idempotency map (it offers to write `docs/warehouse-map.md`). That is a re-runnable mapping pass, not a setup step — run it again whenever the warehouse grows. When you actually add or change a fact/dimension load, reach for the `add-warehouse-load` skill."*
