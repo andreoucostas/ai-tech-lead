@@ -31,6 +31,7 @@ You execute exactly one bootstrap analysis pass defined in `.claude/commands/boo
 
 ### Findings
 - <one bullet per finding — current pattern → target pattern → brief rationale>
+  Evidence (<scoped | universal | absence>): <repository-relative paths or globs this finding rests on>
 
 ### Sampled files (<count>)
 - path/to/foo.ts
@@ -39,6 +40,12 @@ You execute exactly one bootstrap analysis pass defined in `.claude/commands/boo
 ### Skipped
 <one line: areas you did not analyse and why>
 ```
+
+Every finding names its own evidence, not the pass's whole sample: the files it rests on, as
+repository-relative paths or `*`/`**`/`?` globs, never a framework-owned path. `scoped` is true of
+the files named; `universal` is an "all X do Y" finding (name the glob covering X); `absence` is a
+"no X exists" finding (name the glob that matched nothing). `/bootstrap` records this evidence so
+`/rebootstrap` re-analyses only findings whose files changed.
 
 **A7 uses this Repository knowledge shape instead of Findings:**
 

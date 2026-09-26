@@ -7,6 +7,20 @@
 
 ## 0.90.0 — Unreleased
 
+- **`/rebootstrap` re-analyses only what changed since the last run.** `/bootstrap` now ends by
+  recording a baseline, `.claude/bootstrap-baseline.tsv`; commit it with the other artifacts. It holds
+  a content hash of your files and, for each convention written to `AGENTS.md`, the files that
+  convention rests on. `/rebootstrap` compares your working tree with it through
+  `scripts/bootstrap-baseline.ps1`. When nothing outside the framework's own files changed and no
+  line of `AGENTS.md` was added or edited, it stops before any analysis. Otherwise it re-analyses only
+  the changed areas, checks each edited line, rechecks only the conventions whose files changed, and
+  carries the rest forward. It runs a profile in full when
+  a project manifest was added or removed, or a solution file, `angular.json`, `nx.json` or
+  `dbt_project.yml` changed, or more than half of that profile's conventions are affected, and it
+  records a new baseline at the end. A repository bootstrapped before this version has no baseline,
+  so its first `/rebootstrap` runs in full and records one; `/rebootstrap full` always forces a full
+  run. The repository-knowledge discovery pass is unchanged.
+
 - **`AGENTS.md` is now the one instruction file you edit; `CLAUDE.md` only imports it.** Your
   conventions, verification commands, architecture index, common tasks and Boy Scout rules live in
   `AGENTS.md`, which GitHub Copilot, Codex and Cursor read directly. `CLAUDE.md` is a stub with two
