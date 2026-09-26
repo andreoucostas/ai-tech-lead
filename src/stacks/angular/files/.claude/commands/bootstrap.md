@@ -351,6 +351,28 @@ If `SECURITY_FINDINGS.md` does not exist at the repo root, create it using the f
 
 If `SECURITY_FINDINGS.md` already exists, leave it entirely alone.
 
+### 3f: Record the rebootstrap baseline
+
+When the artifacts above are final, record what `/rebootstrap` will compare against. Write a claims
+file **outside the repository** (for example in the system temp directory) naming every selected
+profile (`angular`) and one claim per `AGENTS.md` Conventions or Architecture Decisions statement a
+pass finding supports (not the Verification Commands rows, which every run refreshes), with that
+finding's evidence kind and paths or globs:
+
+```json
+{ "profiles": ["angular"],
+  "claims": [ { "profile": "angular", "pass": "A3", "kind": "scoped",
+                "text": "<the statement, copied verbatim from AGENTS.md>",
+                "evidence": ["src/app/orders/order-list.component.ts", "src/app/**/*.component.ts"] } ] }
+```
+
+Run `pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Record -ClaimsPath <claims file>`
+(Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File` with the
+same arguments), then delete the claims file. Exit 0 writes `.claude/bootstrap-baseline.tsv`; commit
+it with the other artifacts. Exit 1 lists each refused claim (text not found verbatim in `AGENTS.md`,
+or evidence matching no file outside framework-owned paths): correct the claims file and rerun.
+Exit 2, or no PowerShell host, records nothing: report it, and the next `/rebootstrap` runs in full.
+
 ---
 
 ## Deterministic completion gate
@@ -387,6 +409,7 @@ Then output:
 - Top 3 architectural risks
 - Top 3 quick wins (including the Severity-High no-test-suite entry when A6 found no spec files)
 - Files generated/modified
+- **Rebootstrap baseline (3f)**: the `RECORDED` line, or why no baseline was recorded.
 - **Repository knowledge discovery (A7)**: list each new review draft with body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result; also list skipped duplicates/owner-routed items, actual reads, inventory-only/excluded/inaccessible areas, and the next bounded continuation. State that drafts await PR review and changed no owner-authored knowledge.
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: auth + correlation-ID interceptors, typed error envelope in `core/api/`") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).
 

@@ -323,8 +323,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 6052,
-          "tok": 1513
+          "chars": 6608,
+          "tok": 1652
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -358,8 +358,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 46002,
-          "tok": 11500
+          "chars": 47460,
+          "tok": 11865
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -388,8 +388,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 17402,
-          "tok": 4350
+          "chars": 19228,
+          "tok": 4807
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -777,8 +777,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 4990,
-          "tok": 1248
+          "chars": 5546,
+          "tok": 1386
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -812,8 +812,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 38701,
-          "tok": 9675
+          "chars": 40155,
+          "tok": 10039
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -842,8 +842,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 16185,
-          "tok": 4046
+          "chars": 18019,
+          "tok": 4505
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1251,8 +1251,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 6184,
-          "tok": 1546
+          "chars": 6740,
+          "tok": 1685
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -1286,8 +1286,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 52636,
-          "tok": 13159
+          "chars": 54105,
+          "tok": 13526
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1316,8 +1316,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 19077,
-          "tok": 4769
+          "chars": 20836,
+          "tok": 5209
         },
         {
           "path": ".claude/commands/refactor.md#body",

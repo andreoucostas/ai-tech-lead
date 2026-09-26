@@ -4505,3 +4505,14 @@ suites or `Verification Commands` rows: a hook runs outside the host's permissio
 suites can be slow, mutating or flaky. No Stop-time build; the throttle is stated in `docs/enforcement-surfaces.md`, and
 this repo retired its own blocking Stop hook for re-firing. **Reopen** on one field report of work presented as done on a
 red build, or an eval scenario that measures it; a retry uses `stop_hook_active` and never blocks Copilot (WSD-024).
+
+## WSD-103: B-284 ships without bounding A8, with per-finding evidence and a provisional 50% rule (2026-09-26)
+
+**Context.** B-284's plan left two decisions open: lift WSD-097 for point 9, and point 6's full-run rule. Two
+fresh Fable sessions judged both independently. Both kept the hold (point 9 rewrites B-222/B-223 text; A8 already
+stops at 40 files, estimated about 10% of the saving) and rejected measuring first (no harness scenario runs
+`/bootstrap`). They split on the rule; the check showed profile findings carried only a pass-level sample.
+**Decision (user, 2026-09-26, "Sure" to the recommendation).** WSD-097 stays for point 9. Each profile finding
+names its own evidence. A profile runs in full on a changed manifest or more than 50% of its claims affected; the
+50% is provisional and every run prints its `PROFILE` line. Renames (point 7) follow later; point 8 is dropped.
+**Reopen** the threshold on one dated run whose incremental result missed what a full run caught.

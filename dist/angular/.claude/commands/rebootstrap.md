@@ -38,21 +38,46 @@ Before doing anything else:
 
 ## Pre-step — What changed since last time?
 
-Run: `git log --since="3 months ago" --stat`
+Unless `$ARGUMENTS` contains `full`, compare the working tree with the baseline the last
+`/bootstrap` or `/rebootstrap` recorded:
 
-From this output, identify actively changed areas—files and directories with the most edits in the past 3 months. List them before proceeding. They prioritize A1–A6 but do not bound A7: it also rechecks retained knowledge's explicit evidence/dependency sources, including quiet callers, and continues from prior uncovered areas.
+```powershell
+pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Impact
+```
+
+(Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File
+scripts/bootstrap-baseline.ps1 -Mode Impact`.) Framework-owned paths never count as changes. Act on
+its last line:
+
+- `RESULT stop`: nothing relevant changed since the `BASELINE` date. Report that, name any bounded
+  continuation the last report left pending for A7, say that `/rebootstrap full` forces a run,
+  offer 3c's ageing-row re-confirmation if a row is older than ~90 days, and **STOP** here.
+- `RESULT incremental` or `RESULT full`: each `PROFILE` line says whether that profile runs `full`
+  or `incremental`, how many of its claims are affected, and why. `AREA` lines are the changed
+  areas; `CLAIM` lines are claims whose text was edited or whose evidence changed or vanished;
+  `RECHECK` lines are "all X" and "no X" claims, each rechecked with one cheap search.
+- Exit 3 (no usable baseline), exit 2 (cannot examine), no PowerShell host, or `full` requested:
+  run every re-selected profile in full and report why.
+
+A profile re-selected in pre-flight 3 without a `PROFILE` line runs in full.
+
+For A7 only, run `git log --since="3 months ago" --stat` and identify actively changed
+areas—files and directories with the most edits in the past 3 months. They do not bound A7: it
+also rechecks retained knowledge's explicit evidence/dependency sources, including quiet callers,
+and continues from prior uncovered areas.
 
 ---
 
 ## Phase 1 — Re-analysis
 
-When the Angular profile is selected, perform A1–A7. Scope A1–A6 to actively changed areas; when
-the profile is absent, dispatch nothing. For unchanged areas, carry forward existing AGENTS.md
-content unless you spot an obvious contradiction. A7 instead follows its bounded repository-
-knowledge contract, rechecking changed explicit evidence/dependencies (including quiet callers)
-and continuing from prior uncovered areas. Use native worker delegation only when the host exposes
-it; otherwise run the same finite passes sequentially. Do not assume Claude `Task` support in a
-Copilot host.
+When the Angular profile is selected, perform A1–A7; when it is absent, dispatch nothing. When the
+profile is `full`, run A1–A6 as `/bootstrap` does and compare every claim; when it is
+`incremental`, scope A1–A6 to the `AREA` list, recheck its `CLAIM` and `RECHECK` lines, and carry
+every other claim forward unless you spot an obvious contradiction. A7 instead follows its bounded
+repository-knowledge contract, rechecking changed explicit evidence/dependencies (including quiet
+callers) and continuing from prior uncovered areas. Use native worker delegation only when the host
+exposes it; otherwise run the same finite passes sequentially. Do not assume Claude `Task` support
+in a Copilot host.
 
 ### A1: Module Architecture & Lazy Loading
 Re-examine module layout, lazy loading strategy, barrel files, shared/core module contents, routing structure, and circular dependencies. Note any new modules, migrated NgModules, or new standalone components introduced.
@@ -91,7 +116,7 @@ Compare findings against the current AGENTS.md:
 2. **Stale conventions** — documented rules that the codebase no longer follows (removed, replaced, or contradicted)
 3. **New debt** — issues found that are neither active nor represented under `## Dismissed proposals` in TECH_DEBT.md
 4. **Resolved debt** — TECH_DEBT.md items that appear to be fixed in the codebase
-5. **Unchanged areas** — explicitly note what was not re-analysed and why
+5. **Unchanged areas** — explicitly note what was not re-analysed and why, with each profile's `PROFILE` line
 
 Present this delta to the user as a structured list before proceeding to Phase 3. This is the user's opportunity to correct misunderstandings before changes are applied.
 
@@ -181,6 +206,12 @@ and require `Area / file(s)` to include at least one repository-root-relative pa
 
 If this command is ever run with no developer present to answer, take the "skip all" path — change nothing, and report the unanswered rows.
 
+### 3d: Re-record the rebootstrap baseline
+
+After 3a–3c, record the baseline again as `/bootstrap` 3f does. List every claim this run added,
+changed or rechecked, with its current evidence. A claim still in `AGENTS.md` that you do not list
+keeps its previous evidence, so it stays affected until a run rechecks it.
+
 ---
 
 If any skill was added, removed, or updated, reconcile `AGENTS.md > Common Tasks` with the canonical
@@ -219,7 +250,8 @@ After all accepted changes are applied, output:
 - **TECH_DEBT items resolved**: list by ID and title
 - **TECH_DEBT items added**: list by ID and title
 - **Hazard areas re-confirmed**: rows verified, re-pointed, retired, or left unanswered this run (or "none")
-- **Areas not re-analysed**: explicit list with reason (e.g., "no changes in last 3 months")
+- **Areas not re-analysed**: explicit list with reason (e.g., "unchanged since the baseline of <date>")
+- **Rebootstrap baseline**: each `PROFILE` line, and the 3d `RECORDED` line or why none was recorded
 - **Repository knowledge drafts and refresh**: new drafts, skipped duplicates/owner-routed items, changed evidence/dependency sources (including quiet callers), semantic refresh results, preserved verification dates, and unresolved/deleted/unavailable sources
 - **Declined recipes recorded**: list any `## Declined recipe:` blocks appended to `LEARNINGS.md` this run by the resurrection guard (or "none")
 - **Deterministic completion gate**: command run and PASS, failure, or CANT-VERIFY result.
