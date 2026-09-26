@@ -54,8 +54,10 @@ its last line:
   offer 3c's ageing-row re-confirmation if a row is older than ~90 days, and **STOP** here.
 - `RESULT incremental` or `RESULT full`: each `PROFILE` line says whether that profile runs `full`
   or `incremental`, how many of its claims are affected, and why. `AREA` lines are the changed
-  areas; `CLAIM` lines are claims whose text was edited or whose evidence changed or vanished;
-  `RECHECK` lines are "all X" and "no X" claims, each rechecked with one cheap search.
+  areas: one three directories deep covers its whole subtree, a shallower one only the files
+  directly in it. `EDITED` lines are `AGENTS.md` lines added or changed since the baseline; check
+  each against the code. `CLAIM` lines are claims whose text was edited or whose evidence changed or
+  vanished; `RECHECK` lines are "all X" and "no X" claims, each rechecked with one cheap search.
 - Exit 3 (no usable baseline), exit 2 (cannot examine), no PowerShell host, or `full` requested:
   run every re-selected profile in full and report why.
 

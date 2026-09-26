@@ -81,9 +81,9 @@ B-284, first slice. `/rebootstrap` compares the working tree with a content-hash
 `.claude/bootstrap-baseline.tsv`, which the new `scripts/bootstrap-baseline.ps1 -Mode Record` writes at
 the end of `/bootstrap` (3f) and of `/rebootstrap` (3d). For profile passes, `-Mode Impact` replaces the
 3-month `git log` window: it stops before any model work when nothing outside `framework-ownership.json`
-changed; runs a profile in full when a project manifest appeared or vanished, a workspace file changed,
-or more than half its claims are affected; and otherwise lists the changed areas and the affected
-claims, carrying the rest forward. `bootstrap-pass` findings now name their own evidence (paths or
+changed and no `AGENTS.md` line was added or edited by hand; runs a profile in full when a project
+manifest appeared or vanished, a workspace file changed, or more than half its claims are affected;
+and otherwise lists every changed area, edited line and affected claim, carrying the rest forward. `bootstrap-pass` findings now name their own evidence (paths or
 globs; scoped, universal or absence), keyed in the baseline by a hash of the claim text. With only the
 pass-level sample, one changed file marked every claim of its pass affected, so a high-churn repository
 would have re-run nearly everything. Both files are hashed from the working tree, never a commit, so a

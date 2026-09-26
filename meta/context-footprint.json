@@ -388,8 +388,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 19228,
-          "tok": 4807
+          "chars": 19435,
+          "tok": 4859
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -842,8 +842,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 18019,
-          "tok": 4505
+          "chars": 18226,
+          "tok": 4556
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1316,8 +1316,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 20836,
-          "tok": 5209
+          "chars": 21043,
+          "tok": 5261
         },
         {
           "path": ".claude/commands/refactor.md#body",

@@ -94,6 +94,9 @@ It 'an unchanged repository stops before any re-analysis' {
         Assert (Test-Path -LiteralPath (Join-Path $r $stateRel)) 'record did not write the baseline file'
         $res = Impact $r
         ExitIs $res 0; Has $res 'CHANGED-AREAS 0'; Has $res 'RESULT stop'
+        HasNot $res '(?m)^(PROFILE|CLAIM|RECHECK|EDITED) '
+        $state = [IO.File]::ReadAllText((Join-Path $r $stateRel))
+        Assert ($state -notmatch "[ \t]\n") 'a baseline row ends in whitespace an editor would strip'
     } finally { Drop $r }
 }
 It 'a missing baseline asks for a full run and says it could not examine' {
@@ -129,12 +132,12 @@ It 'an uncommitted edit counts as a change' {
         Assert ($res.Out -match '(?m)^CLAIM changed-evidence [0-9a-f]{12} dotnet/A3: ') "uncommitted edit not seen: $($res.Out)"
     } finally { Drop $r }
 }
-It 'framework-owned and framework document edits alone stop early' {
+It 'framework-owned edits and a new version comment alone stop early' {
     $r = Fixture
     try {
         Recorded $r
         Put (Join-Path $r 'scripts/tool.ps1') "'framework v2'"
-        Put (Join-Path $r 'AGENTS.md') ((Agents @($claimRepo, $claimDi, $claimCtl, $claimNoSql)) + "`nA note added by hand.`n")
+        Put (Join-Path $r 'AGENTS.md') ("<!--`n  version: 2.0.0`n-->`n" + (Agents @($claimRepo, $claimDi, $claimCtl, $claimNoSql)))
         G $r @('commit', '-q', '-am', 'framework update')
         $res = Impact $r
         ExitIs $res 0; Has $res 'CHANGED-AREAS 0'; Has $res 'RESULT stop'
@@ -149,6 +152,51 @@ It 'a hand-edited claim is affected' {
         ExitIs $res 0
         Assert ($res.Out -match '(?m)^CLAIM edited-or-removed [0-9a-f]{12} dotnet/A3: Services are registered in ServiceRegistration') "edited claim not reported: $($res.Out)"
         Has $res 'RESULT incremental'
+    } finally { Drop $r }
+}
+It 'a line added to AGENTS.md by hand is reported and blocks the early stop' {
+    $r = Fixture
+    try {
+        Recorded $r
+        Put (Join-Path $r 'AGENTS.md') (Agents @($claimRepo, $claimDi, $claimCtl, $claimNoSql, 'All domain services are sealed classes.'))
+        $res = Impact $r
+        ExitIs $res 0; Has $res 'CHANGED-AREAS 0'
+        Has $res 'EDITED - All domain services are sealed classes.'
+        Has $res 'RESULT incremental'
+        HasNot $res '(?m)^RECHECK '
+    } finally { Drop $r }
+}
+It 'a reworded claim that keeps its old sentence is reported as edited' {
+    $r = Fixture
+    try {
+        Recorded $r
+        Put (Join-Path $r 'AGENTS.md') (Agents @($claimRepo, $claimDi, ($claimCtl + ' Legacy controllers are exempt.'), $claimNoSql))
+        $res = Impact $r
+        ExitIs $res 0
+        Has $res "EDITED - $claimCtl Legacy controllers are exempt."
+        Has $res 'RESULT incremental'
+    } finally { Drop $r }
+}
+It 'every changed area is listed, however many' {
+    $r = Fixture
+    try {
+        Recorded $r
+        for ($i = 0; $i -lt 55; $i++) { Put (Join-Path $r "lib/Mod$i/Thing.cs") "class Thing$i {}" }
+        $res = Impact $r
+        ExitIs $res 0; Has $res 'CHANGED-AREAS 55'
+        $listed = [regex]::Matches($res.Out, '(?m)^AREA lib/Mod[0-9]+\r?$').Count
+        Assert ($listed -eq 55) "expected 55 AREA lines, got $listed"
+    } finally { Drop $r }
+}
+It 'the same claim text may be recorded under two profiles' {
+    $r = Fixture
+    try {
+        $shared = @((Claim 'A1' 'scoped' $claimDi @('src/Orders/Api/ServiceRegistration.cs')),
+            [ordered]@{ profile = 'angular'; pass = 'A1'; kind = 'scoped'; text = $claimDi; evidence = @('README.md') })
+        $file = ClaimsFile $shared @('dotnet', 'angular')
+        try { $res = RunArg $baselinePs @('-Mode', 'Record', '-Root', $r, '-ClaimsPath', $file) }
+        finally { Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue }
+        ExitIs $res 0; Has $res 'RECORDED claims=2 carried=0 profiles=dotnet,angular'
     } finally { Drop $r }
 }
 It 'evidence that now matches no file is reported, not carried forward' {

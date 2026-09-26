@@ -4,7 +4,8 @@
 #   pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Impact
 # Both modes hash the working tree (tracked plus untracked, not ignored) with git hash-object, never a
 # commit SHA: a squash merge, a fresh clone or a shallow clone sees the same content the same way.
-# Paths listed in framework-ownership.json and the baseline file itself are never application churn.
+# Paths listed in framework-ownership.json and the baseline file itself are never application churn;
+# AGENTS.md is compared line by line instead, so a hand-edited line is reported as EDITED.
 # Exit codes: 0 done; 1 INVALID input; 2 CANNOT EXAMINE; 3 (Impact) no usable baseline, run in full.
 [CmdletBinding()]
 param(
@@ -18,7 +19,6 @@ if (-not $Root) { $Root = Split-Path $PSScriptRoot -Parent }
 $script:StateRel = '.claude/bootstrap-baseline.tsv'
 $script:AreaDepth = 3
 $script:MinClaimLength = 20
-$script:ListLimit = 50
 $script:Profiles = @('dotnet', 'angular', 'warehouse')
 # A project manifest counts by presence (added, removed or renamed); a workspace file also by content.
 $script:Manifests = @{
@@ -211,9 +211,17 @@ function Resolve-Evidence($Snapshot, [string]$Pattern) {
 }
 
 function Read-Agents {
+    # Text is the whole file normalized for claim lookup. Lines maps a hash of each non-empty line
+    # outside HTML comments (the version stamp lives in one) to that line.
     $agents = Join-Path $script:RootFull 'AGENTS.md'
     if (-not (Test-Path -LiteralPath $agents -PathType Leaf)) { Stop-With 2 'CANNOT EXAMINE: AGENTS.md is missing.' }
-    return (Get-Normalized ([IO.File]::ReadAllText($agents)))
+    $raw = [IO.File]::ReadAllText($agents)
+    $lines = New-PathMap
+    foreach ($line in ([regex]::Replace($raw, '(?s)<!--.*?-->', '') -split "`n")) {
+        $normalized = Get-Normalized $line
+        if ($normalized) { $lines[(Get-Sha256Hex $normalized).Substring(0, 12)] = $normalized }
+    }
+    return [pscustomobject]@{ Text = (Get-Normalized $raw); Lines = $lines }
 }
 
 function Read-State {
@@ -224,7 +232,7 @@ function Read-State {
         Recorded = ''; Profiles = New-Object 'System.Collections.Generic.List[string]'
         Areas = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
         Projects = @{}; Workspaces = @{}
-        Claims = New-Object 'System.Collections.Generic.List[object]'; ClaimsById = @{}
+        Claims = New-Object 'System.Collections.Generic.List[object]'; ClaimsById = @{}; Lines = New-PathMap
     }
     $schema = $false
     foreach ($line in ([IO.File]::ReadAllText($path).TrimStart([char]0xFEFF) -replace "`r", '').Split("`n")) {
@@ -234,6 +242,7 @@ function Read-State {
             'schema' { if ($f.Count -ne 2 -or $f[1] -ne '1') { $script:StateProblem = "$script:StateRel has an unsupported schema"; return $null }; $schema = $true }
             'recorded' { $state.Recorded = $f[1] }
             'profile' { if ($script:Profiles -notcontains $f[1]) { $script:StateProblem = "$script:StateRel names an unknown profile '$($f[1])'"; return $null }; $state.Profiles.Add($f[1]) }
+            'line' { if ($f.Count -ne 2) { $script:StateProblem = "$script:StateRel has a malformed line row"; return $null }; $state.Lines[$f[1]] = $true }
             'area' { if ($f.Count -ne 3) { $script:StateProblem = "$script:StateRel has a malformed area row"; return $null }; $state.Areas[$f[1]] = $f[2] }
             'project' {
                 if ($f.Count -ne 3) { $script:StateProblem = "$script:StateRel has a malformed project row"; return $null }
@@ -290,8 +299,8 @@ function Invoke-Record {
         if ($claim.pass -isnot [string] -or -not $claim.pass -or $claim.pass.IndexOfAny([char[]]"`t`r`n") -ge 0) { $problems.Add("INVALID: claim '$label' has no pass id."); continue }
         if ($script:Kinds -cnotcontains $claim.kind) { $problems.Add("INVALID: claim '$label' has kind '$($claim.kind)' (expected scoped, universal or absence)."); continue }
         if ($text.Length -lt $script:MinClaimLength) { $problems.Add("INVALID: claim '$label' is shorter than $script:MinClaimLength characters and cannot identify a claim."); continue }
-        if (-not $agents.Contains($text)) { $problems.Add("INVALID: claim '$label' was not found in AGENTS.md; copy its text verbatim."); continue }
-        $id = (Get-Sha256Hex $text).Substring(0, 12)
+        if (-not $agents.Text.Contains($text)) { $problems.Add("INVALID: claim '$label' was not found in AGENTS.md; copy its text verbatim."); continue }
+        $id = (Get-Sha256Hex "$($claim.profile)`n$text").Substring(0, 12)
         if ($ids.ContainsKey($id)) { $problems.Add("INVALID: claim '$label' is listed twice."); continue }
         $ids[$id] = $true
         $patterns = @($claim.evidence | Where-Object { $_ -is [string] } | ForEach-Object { ($_ -replace '\\', '/').Trim() -replace '^\./', '' })
@@ -304,7 +313,7 @@ function Invoke-Record {
                 $problems.Add("INVALID: claim '$label' evidence '$pattern' matches no file outside framework-owned paths.")
                 continue
             }
-            if ($found.Count -eq 0) { $evidenceRows.Add("evidence`t$id`t$pattern`t`t") }
+            if ($found.Count -eq 0) { $evidenceRows.Add("evidence`t$id`t$pattern`t-`t-") }
             foreach ($path in $found) { $evidenceRows.Add("evidence`t$id`t$pattern`t$path`t$($snapshot.Blobs[$path])") }
         }
         $rows.Add("claim`t$id`t$($claim.profile)`t$($claim.pass)`t$($claim.kind)`t$text")
@@ -320,7 +329,7 @@ function Invoke-Record {
     $previous = Read-State
     if ($previous) {
         foreach ($old in $previous.Claims) {
-            if ($ids.ContainsKey($old.Id) -or $selected -cnotcontains $old.Profile -or -not $agents.Contains($old.Text)) { continue }
+            if ($ids.ContainsKey($old.Id) -or $selected -cnotcontains $old.Profile -or -not $agents.Text.Contains($old.Text)) { continue }
             $ids[$old.Id] = $true
             $rows.Add($old.Line)
             $rows.AddRange($old.EvidenceLines)
@@ -335,15 +344,19 @@ function Invoke-Record {
     $out.Add("schema`t1")
     $out.Add("recorded`t$([DateTime]::UtcNow.ToString('yyyy-MM-dd'))")
     foreach ($profile in $selected) { $out.Add("profile`t$profile") }
+    $lineKeys = [string[]]@($agents.Lines.Keys)
+    [Array]::Sort($lineKeys, [StringComparer]::Ordinal)
+    foreach ($key in $lineKeys) { $out.Add("line`t$key") }
     foreach ($area in $areaKeys) { $out.Add("area`t$area`t$($areas[$area])") }
     $out.AddRange((Get-ManifestRows $snapshot $selected))
     $out.AddRange($rows)
     $target = Join-Path $script:RootFull $script:StateRel
     [IO.Directory]::CreateDirectory((Split-Path $target -Parent)) | Out-Null
+    # .NET calls, not Move-Item: Windows PowerShell 5.1 reads a bracketed -Destination as a wildcard.
     $temp = $target + '.tmp'
     [IO.File]::WriteAllText($temp, (($out.ToArray()) -join "`n") + "`n", (New-Object Text.UTF8Encoding($false)))
-    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Force }
-    Move-Item -LiteralPath $temp -Destination $target
+    [IO.File]::Copy($temp, $target, $true)
+    [IO.File]::Delete($temp)
     Say "RECORDED claims=$($ids.Count) carried=$carried profiles=$($selected -join ',')"
     Say "WROTE $script:StateRel"
     exit 0
@@ -365,19 +378,27 @@ function Invoke-Impact {
     foreach ($area in $state.Areas.Keys) { if (-not $areas.ContainsKey($area)) { $changed.Add($area) } }
     $changedSorted = [string[]]@($changed.ToArray())
     [Array]::Sort($changedSorted, [StringComparer]::Ordinal)
+    # Every changed area is listed: an incremental pass scopes to exactly this list.
     Say "CHANGED-AREAS $($changedSorted.Count)"
-    foreach ($area in @($changedSorted | Select-Object -First $script:ListLimit)) { Say "AREA $area" }
-    if ($changedSorted.Count -gt $script:ListLimit) { Say "AREA ... and $($changedSorted.Count - $script:ListLimit) more" }
+    foreach ($area in $changedSorted) { Say "AREA $area" }
+    $edited = @($agents.Lines.Keys | Where-Object { -not $state.Lines.ContainsKey($_) } | ForEach-Object { $agents.Lines[$_] } | Sort-Object)
+    foreach ($line in $edited) { Say "EDITED $(Get-Excerpt $line)" }
+    if ($changedSorted.Count -eq 0 -and $edited.Count -eq 0) {
+        $untouched = $true
+        foreach ($claim in $state.Claims) { if (-not $agents.Text.Contains($claim.Text)) { $untouched = $false; break } }
+        # Unchanged files cannot change a claim's evidence, so only an edited claim text is left to check.
+        if ($untouched) { Stop-With 0 'RESULT stop' }
+    }
 
     # Classify every claim; unaffected ones carry forward and are never printed.
     $affected = @{}; $status = @{}
     foreach ($claim in $state.Claims) {
         $reason = $null
-        if (-not $agents.Contains($claim.Text)) { $reason = 'edited-or-removed' }
+        if (-not $agents.Text.Contains($claim.Text)) { $reason = 'edited-or-removed' }
         else {
             foreach ($pattern in @($claim.Evidence | ForEach-Object { $_.Pattern } | Select-Object -Unique)) {
                 $recorded = New-PathMap
-                foreach ($row in @($claim.Evidence | Where-Object { $_.Pattern -eq $pattern -and $_.Path })) { $recorded[$row.Path] = $row.Blob }
+                foreach ($row in @($claim.Evidence | Where-Object { $_.Pattern -eq $pattern -and $_.Blob -ne '-' })) { $recorded[$row.Path] = $row.Blob }
                 $found = Resolve-Evidence $snapshot $pattern
                 if ($found.Count -eq 0 -and $claim.Kind -ne 'absence') { $reason = 'no-evidence-match'; break }
                 if ($found.Count -ne $recorded.Count) { $reason = 'changed-evidence'; continue }
@@ -427,13 +448,14 @@ function Invoke-Impact {
         if ($modes[$claim.Profile] -ne 'incremental') { continue }
         if ($status[$claim.Id]) { Say "CLAIM $($status[$claim.Id]) $($claim.Id) $($claim.Profile)/$($claim.Pass): $(Get-Excerpt $claim.Text)" }
     }
+    # With no changed file an "all X" or "no X" claim cannot have changed, so it needs no recheck.
     foreach ($claim in $state.Claims) {
+        if ($changedSorted.Count -eq 0) { break }
         if ($modes[$claim.Profile] -ne 'incremental' -or $status[$claim.Id] -or $claim.Kind -eq 'scoped') { continue }
         Say "RECHECK $($claim.Kind) $($claim.Id) $($claim.Profile)/$($claim.Pass): $(Get-Excerpt $claim.Text)"
     }
 
-    if ($changedSorted.Count -eq 0 -and $affected.Count -eq 0) { $result = 'stop' }
-    elseif (@($modes.Values | Where-Object { $_ -ne 'full' }).Count -eq 0) { $result = 'full' }
+    if (@($modes.Values | Where-Object { $_ -ne 'full' }).Count -eq 0) { $result = 'full' }
     else { $result = 'incremental' }
     Say "RESULT $result"
     exit 0
