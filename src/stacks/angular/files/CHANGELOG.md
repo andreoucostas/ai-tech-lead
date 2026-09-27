@@ -18,7 +18,9 @@
   changed, or more than half of that profile's conventions are affected, and it
   records a new baseline at the end. A repository bootstrapped before this version has no baseline,
   so its first `/rebootstrap` runs in full and records one; `/rebootstrap full` always forces a full
-  run. The repository-knowledge discovery pass is unchanged.
+  run. A convention a run finds out of date but you leave unchanged is reported again by the next run
+  rather than skipped, and `/bootstrap` lists each convention it could not tie to files, which an
+  incremental run will not recheck. The repository-knowledge discovery pass is unchanged.
 
 - **`AGENTS.md` is now the one instruction file you edit; `CLAUDE.md` only imports it.** Your
   conventions, verification commands, architecture index, common tasks and Boy Scout rules live in

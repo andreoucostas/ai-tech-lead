@@ -196,7 +196,7 @@ It 'the same claim text may be recorded under two profiles' {
         $file = ClaimsFile $shared @('dotnet', 'angular')
         try { $res = RunArg $baselinePs @('-Mode', 'Record', '-Root', $r, '-ClaimsPath', $file) }
         finally { Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue }
-        ExitIs $res 0; Has $res 'RECORDED claims=2 carried=0 profiles=dotnet,angular'
+        ExitIs $res 0; Has $res 'RECORDED claims=2 carried=0 unclaimed=3 profiles=dotnet,angular'
     } finally { Drop $r }
 }
 It 'evidence that now matches no file is reported, not carried forward' {
@@ -300,12 +300,42 @@ It 'record carries forward unlisted claims still in AGENTS.md and drops removed 
         Put (Join-Path $r 'AGENTS.md') (Agents @($claimRepo, $claimDi, $claimCtl))
         $res = Record $r @((Claim 'A2' 'scoped' $claimRepo @('src/Orders/Data/OrderRepository.cs')))
         ExitIs $res 0
-        Has $res 'RECORDED claims=3 carried=2 profiles=dotnet'
+        Has $res 'RECORDED claims=3 carried=2 unclaimed=0 profiles=dotnet'
         $state = [IO.File]::ReadAllText((Join-Path $r $stateRel))
         Assert ([regex]::Matches($state, '(?m)^claim\t').Count -eq 3) "expected 3 claim rows: $state"
         Assert ($state -notmatch 'No SQL migration') 'a claim removed from AGENTS.md was carried forward'
         $after = Impact $r
         ExitIs $after 0; Has $after 'RESULT stop'
+    } finally { Drop $r }
+}
+It 'a claim carried forward with evidence that had already changed is still reported' {
+    $r = Fixture
+    try {
+        Recorded $r
+        Put (Join-Path $r 'src/Orders/Api/ServiceRegistration.cs') 'static class ServiceRegistration { static void AddOrders() {} }'
+        G $r @('commit', '-q', '-am', 'change registration')
+        # A run that found the registration claim wrong but applied no change leaves it unlisted.
+        $res = Record $r @((Claim 'A2' 'scoped' $claimRepo @('src/Orders/Data/OrderRepository.cs')))
+        ExitIs $res 0
+        $after = Impact $r
+        ExitIs $after 0; Has $after 'CHANGED-AREAS 0'
+        Assert ($after.Out -match '(?m)^CLAIM changed-evidence [0-9a-f]{12} dotnet/A3: Services are registered') "a stale carried claim was not reported: $($after.Out)"
+        Has $after 'RESULT incremental'
+    } finally { Drop $r }
+}
+It 'record names each Conventions or Architecture Decisions statement no claim covers' {
+    $r = Fixture
+    try {
+        $extra = 'Every repository method is async and takes a CancellationToken.'
+        $adr = 'ADR-001 — Orders keep one aggregate per request — 2026-09-27'
+        Put (Join-Path $r 'AGENTS.md') ((Agents @($claimRepo, $claimDi, $claimCtl, $claimNoSql, $extra)) +
+            "`n### Verification Commands`n`n- build: dotnet build Orders.sln`n`n## Architecture Decisions`n`n- $adr`n`n## Common Tasks`n`n- add-endpoint: add an HTTP endpoint`n")
+        $res = Record $r
+        ExitIs $res 0
+        Has $res "UNCLAIMED $extra"
+        Has $res "UNCLAIMED $adr"
+        HasNot $res 'UNCLAIMED .*(dotnet build|add-endpoint)'
+        Has $res 'RECORDED claims=4 carried=0 unclaimed=2 profiles=dotnet'
     } finally { Drop $r }
 }
 It 'a corrupt baseline asks for a full run' {

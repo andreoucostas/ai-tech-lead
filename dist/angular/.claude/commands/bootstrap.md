@@ -37,7 +37,7 @@ Task(subagent_type="bootstrap-pass", description="Bootstrap pass A1", prompt="Ru
 
 When native delegation is available, send all seven worker calls in one message and wait for all to return. In the sequential fallback, complete each finite pass before the next.
 
-Each subagent returns structured findings; you do **not** redo the analysis. Just collect the seven results — they feed Phase 2.
+Each subagent returns structured findings; you do **not** redo the analysis. Just collect the seven results — they feed Phase 2. Findings follow `.claude/agents/bootstrap-pass.md`'s Output format, each naming its own evidence and kind for 3f; a host without that agent, and the sequential fallback, read that file and use the same format.
 
 The pass definitions below are the source of truth the subagents read. Do not duplicate the pass logic inline; the subagents read this file directly.
 
@@ -366,12 +366,20 @@ finding's evidence kind and paths or globs:
                 "evidence": ["src/app/orders/order-list.component.ts", "src/app/**/*.component.ts"] } ] }
 ```
 
+Evidence is the repository-relative paths or `*`/`**`/`?` globs the finding rests on. Its kind is
+`scoped` (true of the files named), `universal` (an "all X do Y" statement: the glob covering X) or
+`absence` (a "no X exists" statement: the glob that matches nothing); `/rebootstrap` rechecks the
+last two after any change.
+
 Run `pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Record -ClaimsPath <claims file>`
 (Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File` with the
 same arguments), then delete the claims file. Exit 0 writes `.claude/bootstrap-baseline.tsv`; commit
-it with the other artifacts. Exit 1 lists each refused claim (text not found verbatim in `AGENTS.md`,
-or evidence matching no file outside framework-owned paths): correct the claims file and rerun.
-Exit 2, or no PowerShell host, records nothing: report it, and the next `/rebootstrap` runs in full.
+it with the other artifacts. Each `UNCLAIMED` line it prints is a statement no claim covers: add a
+claim for each one a pass finding supports and rerun, and report the rest with why. Exit 1 lists each
+refused claim (text not found verbatim in `AGENTS.md`, or evidence matching no file outside the paths
+`framework-ownership.json` lists): correct the claims file and rerun. Exit 2, or no PowerShell host,
+records nothing: report it, and the next `/rebootstrap` runs in full. If the completion gate's repairs
+change `AGENTS.md` or a file `framework-ownership.json` does not list, record again.
 
 ---
 
@@ -409,7 +417,7 @@ Then output:
 - Top 3 architectural risks
 - Top 3 quick wins (including the Severity-High no-test-suite entry when A6 found no spec files)
 - Files generated/modified
-- **Rebootstrap baseline (3f)**: the `RECORDED` line, or why no baseline was recorded.
+- **Rebootstrap baseline (3f)**: the `RECORDED` line verbatim and why each `UNCLAIMED` statement has no claim, or why no baseline was recorded.
 - **Repository knowledge discovery (A7)**: list each new review draft with body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result; also list skipped duplicates/owner-routed items, actual reads, inventory-only/excluded/inaccessible areas, and the next bounded continuation. State that drafts await PR review and changed no owner-authored knowledge.
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: auth + correlation-ID interceptors, typed error envelope in `core/api/`") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).
 

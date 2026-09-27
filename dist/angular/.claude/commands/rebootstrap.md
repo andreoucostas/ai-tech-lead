@@ -46,12 +46,13 @@ pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Impact
 ```
 
 (Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File
-scripts/bootstrap-baseline.ps1 -Mode Impact`.) Framework-owned paths never count as changes. Act on
+scripts/bootstrap-baseline.ps1 -Mode Impact`.) Paths `framework-ownership.json` lists never count as changes. Act on
 its last line:
 
-- `RESULT stop`: nothing relevant changed since the `BASELINE` date. Report that, name any bounded
-  continuation the last report left pending for A7, say that `/rebootstrap full` forces a run,
-  offer 3c's ageing-row re-confirmation if a row is older than ~90 days, and **STOP** here.
+- `RESULT stop`: nothing relevant changed since the `BASELINE` date. Report that, quote any bounded
+  continuation left pending for A7 in `FRAMEWORK-CONTEXT.md > Repository Knowledge Discovery` and
+  `docs/discovery-notes.md`, say that `/rebootstrap full` forces a run, offer 3c's ageing-row
+  re-confirmation if a row is older than ~90 days, and **STOP** here.
 - `RESULT incremental` or `RESULT full`: each `PROFILE` line says whether that profile runs `full`
   or `incremental`, how many of its claims are affected, and why. `AREA` lines are the changed
   areas: one three directories deep covers its whole subtree, a shallower one only the files
@@ -118,7 +119,7 @@ Compare findings against the current AGENTS.md:
 2. **Stale conventions** — documented rules that the codebase no longer follows (removed, replaced, or contradicted)
 3. **New debt** — issues found that are neither active nor represented under `## Dismissed proposals` in TECH_DEBT.md
 4. **Resolved debt** — TECH_DEBT.md items that appear to be fixed in the codebase
-5. **Unchanged areas** — explicitly note what was not re-analysed and why, with each profile's `PROFILE` line
+5. **Unchanged areas** — explicitly note what was not re-analysed and why, quoting each profile's `PROFILE` line verbatim
 
 Present this delta to the user as a structured list before proceeding to Phase 3. This is the user's opportunity to correct misunderstandings before changes are applied.
 
@@ -210,9 +211,11 @@ If this command is ever run with no developer present to answer, take the "skip 
 
 ### 3d: Re-record the rebootstrap baseline
 
-After 3a–3c, record the baseline again as `/bootstrap` 3f does. List every claim this run added,
-changed or rechecked, with its current evidence. A claim still in `AGENTS.md` that you do not list
-keeps its previous evidence, so it stays affected until a run rechecks it.
+After 3a–3c, record the baseline again as `/bootstrap` 3f does. List every claim this run added or
+changed, and every rechecked claim the recheck confirmed, with its current evidence. Leave out a
+claim the recheck found wrong whose change was not applied: an unlisted claim keeps its previous
+evidence, so the next run reports it again. Name each such claim in the report. If the completion
+gate's repairs change `AGENTS.md` or a file `framework-ownership.json` does not list, record again.
 
 ---
 
@@ -253,7 +256,7 @@ After all accepted changes are applied, output:
 - **TECH_DEBT items added**: list by ID and title
 - **Hazard areas re-confirmed**: rows verified, re-pointed, retired, or left unanswered this run (or "none")
 - **Areas not re-analysed**: explicit list with reason (e.g., "unchanged since the baseline of <date>")
-- **Rebootstrap baseline**: each `PROFILE` line, and the 3d `RECORDED` line or why none was recorded
+- **Rebootstrap baseline**: each `PROFILE` line and the 3d `RECORDED` line, verbatim, or why none was recorded; each claim 3d left out because its change was not applied
 - **Repository knowledge drafts and refresh**: new drafts, skipped duplicates/owner-routed items, changed evidence/dependency sources (including quiet callers), semantic refresh results, preserved verification dates, and unresolved/deleted/unavailable sources
 - **Declined recipes recorded**: list any `## Declined recipe:` blocks appended to `LEARNINGS.md` this run by the resurrection guard (or "none")
 - **Deterministic completion gate**: command run and PASS, failure, or CANT-VERIFY result.

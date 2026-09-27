@@ -358,8 +358,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 47460,
-          "tok": 11865
+          "chars": 48344,
+          "tok": 12086
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -388,8 +388,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 19435,
-          "tok": 4859
+          "chars": 19829,
+          "tok": 4957
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -812,8 +812,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 40155,
-          "tok": 10039
+          "chars": 41039,
+          "tok": 10260
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -842,8 +842,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 18226,
-          "tok": 4556
+          "chars": 18620,
+          "tok": 4655
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1286,8 +1286,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 54105,
-          "tok": 13526
+          "chars": 54989,
+          "tok": 13747
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1316,8 +1316,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 21043,
-          "tok": 5261
+          "chars": 21437,
+          "tok": 5359
         },
         {
           "path": ".claude/commands/refactor.md#body",

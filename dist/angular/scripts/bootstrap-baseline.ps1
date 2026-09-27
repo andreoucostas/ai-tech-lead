@@ -212,16 +212,36 @@ function Resolve-Evidence($Snapshot, [string]$Pattern) {
 
 function Read-Agents {
     # Text is the whole file normalized for claim lookup. Lines maps a hash of each non-empty line
-    # outside HTML comments (the version stamp lives in one) to that line.
+    # outside HTML comments (the version stamp lives in one) to that line. Statements are the list
+    # items, wrapped lines joined, under ## Conventions (outside ### Verification Commands) and
+    # ## Architecture Decisions: the statements a claim can cover.
     $agents = Join-Path $script:RootFull 'AGENTS.md'
     if (-not (Test-Path -LiteralPath $agents -PathType Leaf)) { Stop-With 2 'CANNOT EXAMINE: AGENTS.md is missing.' }
     $raw = [IO.File]::ReadAllText($agents)
     $lines = New-PathMap
+    $statements = New-Object 'System.Collections.Generic.List[string]'
+    $section = ''; $inScope = $false; $fenced = $false; $item = $null
     foreach ($line in ([regex]::Replace($raw, '(?s)<!--.*?-->', '') -split "`n")) {
         $normalized = Get-Normalized $line
         if ($normalized) { $lines[(Get-Sha256Hex $normalized).Substring(0, 12)] = $normalized }
+        if ($normalized.StartsWith('```')) { $fenced = -not $fenced }
+        $heading = [regex]::Match($normalized, '^(#{1,6}) (.+?)(?: #+)?$')
+        $bullet = [regex]::Match($normalized, '^(?:[-*+]|\d+[.)]) (.+)$')
+        $break = $fenced -or -not $normalized -or $heading.Success -or $bullet.Success -or $normalized.StartsWith('|') -or $normalized -match '^([-*_])\1{2,}$'
+        if ($null -ne $item -and $break) { $statements.Add($item); $item = $null }
+        if ($fenced -or -not $normalized) { continue }
+        if ($heading.Success) {
+            $level = $heading.Groups[1].Value.Length
+            if ($level -le 2) { $section = $heading.Groups[2].Value; $inScope = $section -eq 'Conventions' -or $section -eq 'Architecture Decisions' }
+            elseif ($level -eq 3 -and $section -eq 'Conventions') { $inScope = $heading.Groups[2].Value -ne 'Verification Commands' }
+            continue
+        }
+        if (-not $inScope) { continue }
+        # A break other than a new list item has already closed the item, so only wrapped text appends.
+        if ($bullet.Success) { $item = $bullet.Groups[1].Value } elseif ($null -ne $item) { $item += ' ' + $normalized }
     }
-    return [pscustomobject]@{ Text = (Get-Normalized $raw); Lines = $lines }
+    if ($null -ne $item) { $statements.Add($item) }
+    return [pscustomobject]@{ Text = (Get-Normalized $raw); Lines = $lines; Statements = $statements }
 }
 
 function Read-State {
@@ -291,6 +311,7 @@ function Invoke-Record {
     foreach ($profile in $selected) { if ($script:Profiles -cnotcontains $profile) { $problems.Add("INVALID: unknown profile '$profile' (expected dotnet, angular or warehouse).") } }
     $rows = New-Object 'System.Collections.Generic.List[string]'
     $ids = @{}
+    $texts = New-Object 'System.Collections.Generic.List[string]'
     foreach ($claim in @($claimsInput.claims)) {
         if ($null -eq $claim) { continue }
         $text = if ($claim.text -is [string]) { Get-Normalized $claim.text } else { '' }
@@ -310,7 +331,7 @@ function Invoke-Record {
             if (-not (Test-SafePattern $pattern)) { $problems.Add("INVALID: claim '$label' evidence '$pattern' is not a repository-relative path or glob."); continue }
             $found = Resolve-Evidence $snapshot $pattern
             if ($found.Count -eq 0 -and $claim.kind -ne 'absence') {
-                $problems.Add("INVALID: claim '$label' evidence '$pattern' matches no file outside framework-owned paths.")
+                $problems.Add("INVALID: claim '$label' evidence '$pattern' matches no file outside the paths framework-ownership.json lists.")
                 continue
             }
             if ($found.Count -eq 0) { $evidenceRows.Add("evidence`t$id`t$pattern`t-`t-") }
@@ -318,6 +339,7 @@ function Invoke-Record {
         }
         $rows.Add("claim`t$id`t$($claim.profile)`t$($claim.pass)`t$($claim.kind)`t$text")
         $rows.AddRange($evidenceRows)
+        $texts.Add($text)
     }
     if ($problems.Count -gt 0) {
         foreach ($problem in $problems) { Say $problem }
@@ -333,8 +355,16 @@ function Invoke-Record {
             $ids[$old.Id] = $true
             $rows.Add($old.Line)
             $rows.AddRange($old.EvidenceLines)
+            $texts.Add($old.Text)
             $carried++
         }
+    }
+    # A statement no claim covers is never rechecked by an incremental run; name it for the report.
+    $unclaimed = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($statement in $agents.Statements) {
+        $covered = $false
+        foreach ($text in $texts) { if ($statement.Contains($text) -or $text.Contains($statement)) { $covered = $true; break } }
+        if (-not $covered) { $unclaimed.Add($statement) }
     }
     $areas = Get-Areas $snapshot
     $areaKeys = [string[]]@($areas.Keys)
@@ -357,7 +387,8 @@ function Invoke-Record {
     [IO.File]::WriteAllText($temp, (($out.ToArray()) -join "`n") + "`n", (New-Object Text.UTF8Encoding($false)))
     [IO.File]::Copy($temp, $target, $true)
     [IO.File]::Delete($temp)
-    Say "RECORDED claims=$($ids.Count) carried=$carried profiles=$($selected -join ',')"
+    foreach ($statement in $unclaimed) { Say "UNCLAIMED $(Get-Excerpt $statement)" }
+    Say "RECORDED claims=$($ids.Count) carried=$carried unclaimed=$($unclaimed.Count) profiles=$($selected -join ',')"
     Say "WROTE $script:StateRel"
     exit 0
 }
@@ -383,12 +414,6 @@ function Invoke-Impact {
     foreach ($area in $changedSorted) { Say "AREA $area" }
     $edited = @($agents.Lines.Keys | Where-Object { -not $state.Lines.ContainsKey($_) } | ForEach-Object { $agents.Lines[$_] } | Sort-Object)
     foreach ($line in $edited) { Say "EDITED $(Get-Excerpt $line)" }
-    if ($changedSorted.Count -eq 0 -and $edited.Count -eq 0) {
-        $untouched = $true
-        foreach ($claim in $state.Claims) { if (-not $agents.Text.Contains($claim.Text)) { $untouched = $false; break } }
-        # Unchanged files cannot change a claim's evidence, so only an edited claim text is left to check.
-        if ($untouched) { Stop-With 0 'RESULT stop' }
-    }
 
     # Classify every claim; unaffected ones carry forward and are never printed.
     $affected = @{}; $status = @{}
@@ -410,6 +435,9 @@ function Invoke-Impact {
         $status[$claim.Id] = $reason
         if ($reason) { $affected[$claim.Id] = $true }
     }
+    # Unchanged areas do not prove every claim current: a record carries an unlisted claim forward
+    # with the evidence hashes it had, which may already be stale.
+    if ($changedSorted.Count -eq 0 -and $edited.Count -eq 0 -and $affected.Count -eq 0) { Stop-With 0 'RESULT stop' }
 
     $currentManifests = @{}
     foreach ($row in (Get-ManifestRows $snapshot @($state.Profiles))) {

@@ -43,7 +43,7 @@ When native delegation is available, send all worker calls in one message and wa
 - **Warehouse-SQL passes:** W1–W3 when warehouse-SQL is selected.
 - **Skill discovery runs once, not per profile.** Dispatch profile-independent `shared A8` once when any profile is selected, and include selected profiles' constellations. Do not dispatch an absent profile's application passes.
 
-Each subagent returns structured findings; you do **not** redo the analysis. Just collect the results — they feed Phase 2.
+Each subagent returns structured findings; you do **not** redo the analysis. Just collect the results — they feed Phase 2. Findings follow `.claude/agents/bootstrap-pass.md`'s Output format, each naming its own evidence and kind for 3f; a host without that agent, and the sequential fallback, read that file and use the same format.
 
 The pass definitions below are the source of truth the subagents read. Do not duplicate the pass logic inline; the subagents read this file directly.
 
@@ -474,12 +474,20 @@ refreshes), with that finding's evidence kind and paths or globs:
                 "evidence": ["src/Orders/Data/OrderRepository.cs", "src/**/*Repository.cs"] } ] }
 ```
 
+Evidence is the repository-relative paths or `*`/`**`/`?` globs the finding rests on. Its kind is
+`scoped` (true of the files named), `universal` (an "all X do Y" statement: the glob covering X) or
+`absence` (a "no X exists" statement: the glob that matches nothing); `/rebootstrap` rechecks the
+last two after any change.
+
 Run `pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Record -ClaimsPath <claims file>`
 (Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File` with the
 same arguments), then delete the claims file. Exit 0 writes `.claude/bootstrap-baseline.tsv`; commit
-it with the other artifacts. Exit 1 lists each refused claim (text not found verbatim in `AGENTS.md`,
-or evidence matching no file outside framework-owned paths): correct the claims file and rerun.
-Exit 2, or no PowerShell host, records nothing: report it, and the next `/rebootstrap` runs in full.
+it with the other artifacts. Each `UNCLAIMED` line it prints is a statement no claim covers: add a
+claim for each one a pass finding supports and rerun, and report the rest with why. Exit 1 lists each
+refused claim (text not found verbatim in `AGENTS.md`, or evidence matching no file outside the paths
+`framework-ownership.json` lists): correct the claims file and rerun. Exit 2, or no PowerShell host,
+records nothing: report it, and the next `/rebootstrap` runs in full. If the completion gate's repairs
+change `AGENTS.md` or a file `framework-ownership.json` does not list, record again.
 
 ---
 
@@ -517,7 +525,7 @@ Then output:
 - Top 3 architectural risks
 - Top 3 quick wins (including each Severity-High no-test-suite entry when a testing pass found no tests)
 - Files generated/modified
-- **Rebootstrap baseline (3f)**: the `RECORDED` line, or why no baseline was recorded.
+- **Rebootstrap baseline (3f)**: the `RECORDED` line verbatim and why each `UNCLAIMED` statement has no claim, or why no baseline was recorded.
 - **Repository knowledge discovery (A8)**: list each new review draft with body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result; also list skipped duplicates/owner-routed items, actual reads, inventory-only/excluded/inaccessible areas, and the next bounded continuation. State that drafts await PR review and changed no owner-authored knowledge.
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: two named HttpClients with Polly retry on the API, auth + correlation-ID interceptors on the frontend") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).
 - **Warehouse detected — point the developer at `/map-warehouse`** (emit this bullet only when the warehouse-SQL profile was selected and Phase 3a kept the warehouse skills): one line — *"I detected data-warehouse signals and captured the essentials in AGENTS.md > Conventions > Data Access. Before your first warehouse change, run `/map-warehouse` for a full layer / grain / load-ordering / idempotency map (it offers to write `docs/warehouse-map.md`). That is a re-runnable mapping pass, not a setup step — run it again whenever the warehouse grows. When you actually add or change a fact/dimension load, reach for the `add-warehouse-load` skill."*

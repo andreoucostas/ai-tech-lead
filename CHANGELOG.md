@@ -92,6 +92,19 @@ squash merge or shallow clone reads the same. Shared A8 (A7 in Angular) is untou
 matching no file, so their claim is rechecked; no session-start line. The 50% threshold is provisional
 and unmeasured: every run prints its `PROFILE` line. `BootstrapBaseline.Tests.ps1`, 21 cases. WSD-103.
 
+B-284, first real-agent trial (2026-09-27; Copilot CLI 1.0.88, Opus 5.5, eShopOnWeb; six runs, 1,783
+AI credits). Agents stop on `RESULT stop` and scope to the `AREA` and `CLAIM` lines, but a claim a run
+found wrong and left unchanged had no safe 3d exit: listed, it was recorded as current; unlisted, it
+kept its stale evidence and `-Mode Impact` stopped before reading claim evidence whenever no area had
+changed, so the next run printed `RESULT stop`. Both uncapped `/rebootstrap` runs hit it; one reverted
+its own record. Impact now classifies every claim before it stops, and 3d lists only added, changed
+or confirmed claims. `/bootstrap` recorded 2 of 17 statements under a visible 300-credit cap and 7 of
+51 without one, silently: Record now prints `UNCLAIMED` for each Conventions or Architecture Decisions
+list item no claim covers and `unclaimed=K` on `RECORDED`, and 3f defines the evidence kinds, which the
+sequential fallback never read. `RESULT stop` names where the discovery continuation lives; `PROFILE`
+and `RECORDED` lines are quoted verbatim; 3f and 3d record again after a completion-gate repair; the
+refusal names the inventory it applies. `BootstrapBaseline.Tests.ps1`, 27 cases.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of
