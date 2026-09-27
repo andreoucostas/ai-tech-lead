@@ -323,8 +323,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 6608,
-          "tok": 1652
+          "chars": 6786,
+          "tok": 1696
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -388,8 +388,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 19829,
-          "tok": 4957
+          "chars": 19967,
+          "tok": 4992
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -777,8 +777,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 5546,
-          "tok": 1386
+          "chars": 5724,
+          "tok": 1431
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -842,8 +842,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 18620,
-          "tok": 4655
+          "chars": 18755,
+          "tok": 4689
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1251,8 +1251,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 6740,
-          "tok": 1685
+          "chars": 6918,
+          "tok": 1730
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -1316,8 +1316,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 21437,
-          "tok": 5359
+          "chars": 21575,
+          "tok": 5394
         },
         {
           "path": ".claude/commands/refactor.md#body",

@@ -10,7 +10,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 20 | B-284 incremental `/rebootstrap` | First slice shipped and trial-fixed (WSD-103); passes an incremental run skips, then exact renames; bounding A8 stays held by WSD-097 |
+| 20 | B-284 incremental `/rebootstrap` | Shipped, trial-fixed and re-verified (WSD-103); incremental runs that never use workers, then exact renames; bounding A8 stays held by WSD-097 |
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
@@ -178,9 +178,9 @@ calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.m
 ### B-284 · Make `/rebootstrap` incremental from a content-hash baseline
 **Filed against:** v0.89.1 (2026-09-23)
 **Priority:** P2 · **Effort:** L · **Invariants:** #1 #3 #7
-**Status:** PARTIALLY DONE (WSD-103). Shipped for 0.90.0; the 2026-09-27 Copilot trial's defects are fixed. Left: an
-incremental run that dispatched no pass missed a compile break full's A4 caught; under a UTF-8 console, 5.1 sends git a BOM,
-so Record and Impact exit 2; exact renames (plan point 7); A8 held by WSD-097. Plan: `.claude/plans/2026-09-23-incremental-rebootstrap.md`.
+**Status:** PARTIALLY DONE (WSD-103). Shipped for 0.90.0; trial defects fixed and re-verified 2026-09-27 (37 of 38 statements
+claimed). Left: incremental runs apply the pass checklists inline, never as workers, and twice missed a compile break full caught;
+claims may be 80-character prefixes; exact renames (point 7); A8 held (WSD-097). Plan: `.claude/plans/2026-09-23-incremental-rebootstrap.md`.
 
 ### B-285 · Retire the B-97 block-manifest tooling
 **Filed against:** v0.90.0 (2026-09-24)

@@ -105,6 +105,18 @@ sequential fallback never read. `RESULT stop` names where the discovery continua
 and `RECORDED` lines are quoted verbatim; 3f and 3d record again after a completion-gate repair; the
 refusal names the inventory it applies. `BootstrapBaseline.Tests.ps1`, 27 cases.
 
+B-284, trial follow-up (2026-09-27). An incremental `/rebootstrap` that dispatched no pass missed a compile
+break its full comparison caught: `/rebootstrap` now says an incremental profile still runs each of its
+passes over the `AREA` list and the claim files, and `bootstrap-pass` enumerates only a scope the caller
+names. Under a UTF-8 console, Windows PowerShell 5.1 wrote the console encoding's byte-order mark into
+`git hash-object`'s stdin, so Record and Impact exited 2; `Invoke-Git` now swaps in a preamble-free
+encoding around `Process.Start` on 5.1, and a new case forces a UTF-8 console so CI's 5.1 legs cover it.
+Re-verified the same day on a fresh clone (three runs, 967 AI credits): `/bootstrap` recorded 37 of 38
+statements (26 scoped, 11 universal) and named the last; the no-change `/rebootstrap` quoted the pending
+discovery continuation; the incremental run quoted its `PROFILE` line, left the three claims it found
+stale out of 3d, and Impact reported them again. It still applied the pass checklists inline, not as
+workers, and missed the same compile break. `BootstrapBaseline.Tests.ps1`, 28 cases.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

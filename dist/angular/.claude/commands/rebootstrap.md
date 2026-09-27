@@ -74,9 +74,11 @@ and continues from prior uncovered areas.
 ## Phase 1 — Re-analysis
 
 When the Angular profile is selected, perform A1–A7; when it is absent, dispatch nothing. When the
-profile is `full`, run A1–A6 as `/bootstrap` does and compare every claim; when it is
-`incremental`, scope A1–A6 to the `AREA` list, recheck its `CLAIM` and `RECHECK` lines, and carry
-every other claim forward unless you spot an obvious contradiction. A7 instead follows its bounded
+profile is `full`, run A1–A6 as `/bootstrap` does and compare every claim. When it is
+`incremental`, still run each of A1–A6, scoped to the `AREA` list and the files its `CLAIM` and
+`RECHECK` lines name; a pass with nothing in scope says so, and a diff review does not replace the
+passes. Recheck those lines and carry every other claim forward unless you spot an obvious
+contradiction. A7 instead follows its bounded
 repository-knowledge contract, rechecking changed explicit evidence/dependencies (including quiet
 callers) and continuing from prior uncovered areas. Use native worker delegation only when the host
 exposes it; otherwise run the same finite passes sequentially. Do not assume Claude `Task` support

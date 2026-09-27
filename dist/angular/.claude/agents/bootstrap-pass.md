@@ -11,7 +11,7 @@ You execute exactly one bootstrap analysis pass defined in `.claude/commands/boo
 
 1. Read `.claude/commands/bootstrap.md`. Locate the caller's `### <pass-id>:` heading.
 2. Read its checklist only when repository evidence selected the Angular profile; otherwise return `Pass <id>: no applicable files found in this codebase.`
-3. Use `Glob` to enumerate relevant Angular source for A1–A6 (`*.ts` for code passes; `angular.json`, `package.json`, `tsconfig.json` for build/quality passes). Bound them to ~50 files; if larger, sample the most recently changed via `git log`. A7 instead inventories repository areas then makes finite semantic reads as specified below.
+3. Use `Glob` to enumerate relevant Angular source for A1–A6 (`*.ts` for code passes; `angular.json`, `package.json`, `tsconfig.json` for build/quality passes). When the caller names a scope (`/rebootstrap`'s changed areas and rechecked claims), enumerate only that scope and read outside it only to resolve what a scoped file depends on. Bound them to ~50 files; if larger, sample the most recently changed via `git log`. A7 instead inventories repository areas then makes finite semantic reads as specified below.
 4. Read selected files and compile findings.
 5. Return the applicable structure below—no preamble or commentary outside it.
 

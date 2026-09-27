@@ -323,6 +323,22 @@ It 'a claim carried forward with evidence that had already changed is still repo
         Has $after 'RESULT incremental'
     } finally { Drop $r }
 }
+It 'a UTF-8 console with a byte-order mark still lets record and impact hash the tree' {
+    # Windows PowerShell 5.1 opens a child's redirected stdin with the console input encoding and writes
+    # its preamble first, so under a UTF-8 console git read a byte-order mark before the first path.
+    $r = Fixture
+    $previous = [Console]::InputEncoding
+    try {
+        try { [Console]::InputEncoding = New-Object Text.UTF8Encoding($true) } catch { }
+        $res = Record $r
+        ExitIs $res 0
+        $after = Impact $r
+        ExitIs $after 0; Has $after 'RESULT stop'
+    } finally {
+        try { [Console]::InputEncoding = $previous } catch { }
+        Drop $r
+    }
+}
 It 'record names each Conventions or Architecture Decisions statement no claim covers' {
     $r = Fixture
     try {

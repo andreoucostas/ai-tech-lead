@@ -4516,5 +4516,5 @@ stops at 40 files, estimated about 10% of the saving) and rejected measuring fir
 names its own evidence. A profile runs in full on a changed manifest or more than 50% of its claims affected; the
 50% is provisional and every run prints its `PROFILE` line. Renames (point 7) follow later; point 8 is dropped.
 **Reopen** the threshold on one dated run whose incremental result missed what a full run caught.
-**Trial 2026-09-27** (eShopOnWeb, Copilot CLI 1.0.88, Opus 5.5, uncapped): at 2 of 7 claims affected, incremental (123
-credits) matched full (557) except a compile break full's A4 pass caught; the incremental run dispatched no pass (B-284).
+**Trials 2026-09-27** (eShopOnWeb, Copilot CLI 1.0.88, Opus 5.5, uncapped; B-284): at 2 of 7 claims affected, incremental (123
+credits) matched full (557) except a compile break full's A4 caught; with the fixes (8 of 37, 165 credits) it again missed that break.

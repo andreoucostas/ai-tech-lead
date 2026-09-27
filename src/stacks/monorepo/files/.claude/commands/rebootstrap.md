@@ -75,9 +75,11 @@ and continues from prior uncovered areas.
 
 Perform current `/bootstrap` passes for re-selected profiles: .NET A1–A7, Angular A1–A6,
 warehouse-SQL W1–W3, and `shared A8` once when at least one profile exists. Never dispatch an
-absent profile. Run a `full` profile's passes as `/bootstrap` does and compare every claim; scope
-an `incremental` profile's passes to the `AREA` list, recheck its `CLAIM` and `RECHECK` lines, and
-carry every other claim forward unless you spot an obvious contradiction. Shared A8 instead follows its
+absent profile. Run a `full` profile's passes as `/bootstrap` does and compare every claim. An
+`incremental` profile still runs each of its passes, scoped to the `AREA` list and the files its
+`CLAIM` and `RECHECK` lines name; a pass with nothing in scope says so, and a diff review does not
+replace the passes. Recheck those lines and carry every other claim forward unless you spot an
+obvious contradiction. Shared A8 instead follows its
 bounded repository-knowledge contract, rechecking changed explicit evidence/dependencies (including
 quiet callers) and continuing from prior uncovered areas. Use native worker delegation only when the
 host exposes it; otherwise run the same finite passes sequentially. Do not assume Claude `Task`
