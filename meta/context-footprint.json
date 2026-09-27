@@ -358,8 +358,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 48344,
-          "tok": 12086
+          "chars": 48536,
+          "tok": 12134
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -812,8 +812,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 41039,
-          "tok": 10260
+          "chars": 41231,
+          "tok": 10308
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1286,8 +1286,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 54989,
-          "tok": 13747
+          "chars": 55181,
+          "tok": 13795
         },
         {
           "path": ".claude/commands/debt.md#body",

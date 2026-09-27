@@ -117,6 +117,15 @@ discovery continuation; the incremental run quoted its `PROFILE` line, left the 
 stale out of 3d, and Impact reported them again. It still applied the pass checklists inline, not as
 workers, and missed the same compile break. `BootstrapBaseline.Tests.ps1`, 28 cases.
 
+B-284, whole-statement claims (2026-09-27). The re-verified `/bootstrap` reached 37 of 38 statements by
+recording each one's first 80 characters: Record accepted any verbatim substring of `AGENTS.md`, and the
+coverage count took a fragment for the whole. Record now accepts a claim only when its text is one whole
+statement, names the statement to copy when it refuses a fragment, prints `UNCLAIMED` statements in
+full, and treats a baseline claim that is no longer a whole statement as edited: Impact reports it and
+Record stops carrying it. The 20-character minimum is gone. WSD-103 reopened and closed after a fresh
+Fable review: the trial's one incremental miss, a compile break a full run found by building, maps to no
+claim, so 50% stays. `BootstrapBaseline.Tests.ps1`, 30 cases.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

@@ -18,7 +18,6 @@ if (-not $Root) { $Root = Split-Path $PSScriptRoot -Parent }
 
 $script:StateRel = '.claude/bootstrap-baseline.tsv'
 $script:AreaDepth = 3
-$script:MinClaimLength = 20
 $script:Profiles = @('dotnet', 'angular', 'warehouse')
 # A project manifest counts by presence (added, removed or renamed); a workspace file also by content.
 $script:Manifests = @{
@@ -218,10 +217,10 @@ function Resolve-Evidence($Snapshot, [string]$Pattern) {
 }
 
 function Read-Agents {
-    # Text is the whole file normalized for claim lookup. Lines maps a hash of each non-empty line
-    # outside HTML comments (the version stamp lives in one) to that line. Statements are the list
+    # Text is the whole file normalized, to explain a refused claim. Lines maps a hash of each non-empty
+    # line outside HTML comments (the version stamp lives in one) to that line. Statements are the list
     # items, wrapped lines joined, under ## Conventions (outside ### Verification Commands) and
-    # ## Architecture Decisions: the statements a claim can cover.
+    # ## Architecture Decisions; a claim's text must equal one of them.
     $agents = Join-Path $script:RootFull 'AGENTS.md'
     if (-not (Test-Path -LiteralPath $agents -PathType Leaf)) { Stop-With 2 'CANNOT EXAMINE: AGENTS.md is missing.' }
     $raw = [IO.File]::ReadAllText($agents)
@@ -248,7 +247,9 @@ function Read-Agents {
         if ($bullet.Success) { $item = $bullet.Groups[1].Value } elseif ($null -ne $item) { $item += ' ' + $normalized }
     }
     if ($null -ne $item) { $statements.Add($item) }
-    return [pscustomobject]@{ Text = (Get-Normalized $raw); Lines = $lines; Statements = $statements }
+    $statementSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($statement in $statements) { [void]$statementSet.Add($statement) }
+    return [pscustomobject]@{ Text = (Get-Normalized $raw); Lines = $lines; Statements = $statements; StatementSet = $statementSet }
 }
 
 function Read-State {
@@ -326,8 +327,16 @@ function Invoke-Record {
         if ($selected -cnotcontains $claim.profile) { $problems.Add("INVALID: claim '$label' names profile '$($claim.profile)', which is not in profiles."); continue }
         if ($claim.pass -isnot [string] -or -not $claim.pass -or $claim.pass.IndexOfAny([char[]]"`t`r`n") -ge 0) { $problems.Add("INVALID: claim '$label' has no pass id."); continue }
         if ($script:Kinds -cnotcontains $claim.kind) { $problems.Add("INVALID: claim '$label' has kind '$($claim.kind)' (expected scoped, universal or absence)."); continue }
-        if ($text.Length -lt $script:MinClaimLength) { $problems.Add("INVALID: claim '$label' is shorter than $script:MinClaimLength characters and cannot identify a claim."); continue }
-        if (-not $agents.Text.Contains($text)) { $problems.Add("INVALID: claim '$label' was not found in AGENTS.md; copy its text verbatim."); continue }
+        if (-not $text) { $problems.Add("INVALID: claim '$label' has no text; copy one whole statement verbatim."); continue }
+        if (-not $agents.StatementSet.Contains($text)) {
+            # Name the statement to copy: the one holding this fragment, else the longest one it holds.
+            $whole = @($agents.Statements | Where-Object { $_.Contains($text) } | Select-Object -First 1)
+            if ($whole.Count -eq 0) { $whole = @($agents.Statements | Where-Object { $text.Contains($_) } | Sort-Object Length -Descending | Select-Object -First 1) }
+            if ($whole.Count -eq 1) { $problems.Add("INVALID: claim '$label' is not one whole statement; copy the whole statement: $($whole[0])") }
+            elseif ($agents.Text.Contains($text)) { $problems.Add("INVALID: claim '$label' is not a list item under ## Conventions or ## Architecture Decisions, so no claim can cover it.") }
+            else { $problems.Add("INVALID: claim '$label' was not found in AGENTS.md; copy one whole statement verbatim.") }
+            continue
+        }
         $id = (Get-Sha256Hex "$($claim.profile)`n$text").Substring(0, 12)
         if ($ids.ContainsKey($id)) { $problems.Add("INVALID: claim '$label' is listed twice."); continue }
         $ids[$id] = $true
@@ -358,7 +367,7 @@ function Invoke-Record {
     $previous = Read-State
     if ($previous) {
         foreach ($old in $previous.Claims) {
-            if ($ids.ContainsKey($old.Id) -or $selected -cnotcontains $old.Profile -or -not $agents.Text.Contains($old.Text)) { continue }
+            if ($ids.ContainsKey($old.Id) -or $selected -cnotcontains $old.Profile -or -not $agents.StatementSet.Contains($old.Text)) { continue }
             $ids[$old.Id] = $true
             $rows.Add($old.Line)
             $rows.AddRange($old.EvidenceLines)
@@ -367,12 +376,9 @@ function Invoke-Record {
         }
     }
     # A statement no claim covers is never rechecked by an incremental run; name it for the report.
-    $unclaimed = New-Object 'System.Collections.Generic.List[string]'
-    foreach ($statement in $agents.Statements) {
-        $covered = $false
-        foreach ($text in $texts) { if ($statement.Contains($text) -or $text.Contains($statement)) { $covered = $true; break } }
-        if (-not $covered) { $unclaimed.Add($statement) }
-    }
+    $claimed = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($text in $texts) { [void]$claimed.Add($text) }
+    $unclaimed = @($agents.Statements | Where-Object { -not $claimed.Contains($_) })
     $areas = Get-Areas $snapshot
     $areaKeys = [string[]]@($areas.Keys)
     [Array]::Sort($areaKeys, [StringComparer]::Ordinal)
@@ -394,7 +400,8 @@ function Invoke-Record {
     [IO.File]::WriteAllText($temp, (($out.ToArray()) -join "`n") + "`n", (New-Object Text.UTF8Encoding($false)))
     [IO.File]::Copy($temp, $target, $true)
     [IO.File]::Delete($temp)
-    foreach ($statement in $unclaimed) { Say "UNCLAIMED $(Get-Excerpt $statement)" }
+    # In full, not excerpted, so the text can be copied into a claim.
+    foreach ($statement in $unclaimed) { Say "UNCLAIMED $statement" }
     Say "RECORDED claims=$($ids.Count) carried=$carried unclaimed=$($unclaimed.Count) profiles=$($selected -join ',')"
     Say "WROTE $script:StateRel"
     exit 0
@@ -426,7 +433,7 @@ function Invoke-Impact {
     $affected = @{}; $status = @{}
     foreach ($claim in $state.Claims) {
         $reason = $null
-        if (-not $agents.Text.Contains($claim.Text)) { $reason = 'edited-or-removed' }
+        if (-not $agents.StatementSet.Contains($claim.Text)) { $reason = 'edited-or-removed' }
         else {
             foreach ($pattern in @($claim.Evidence | ForEach-Object { $_.Pattern } | Select-Object -Unique)) {
                 $recorded = New-PathMap

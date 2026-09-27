@@ -339,6 +339,33 @@ It 'a UTF-8 console with a byte-order mark still lets record and impact hash the
         Drop $r
     }
 }
+It 'record refuses a claim that is only part of a statement and names the whole statement' {
+    $r = Fixture
+    try {
+        $res = Record $r @((Claim 'A2' 'scoped' 'Data access goes through OrderRepository' @('src/Orders/Data/OrderRepository.cs')))
+        ExitIs $res 1
+        Has $res "INVALID: claim 'Data access goes through OrderRepository' is not one whole statement; copy the whole statement: $claimRepo"
+    } finally { Drop $r }
+}
+It 'a baseline claim that is only part of a statement is reported and not carried forward' {
+    $r = Fixture
+    try {
+        Recorded $r
+        # A record made before whole statements were required could hold a fragment as a claim.
+        $state = Join-Path $r $stateRel
+        $partial = [IO.File]::ReadAllText($state).Replace("`tscoped`t$claimRepo`n", "`tscoped`tData access goes through OrderRepository`n")
+        Assert ($partial.Contains("`tscoped`tData access goes through OrderRepository`n")) 'fixture did not plant the partial claim'
+        Put $state $partial
+        $after = Impact $r
+        ExitIs $after 0
+        Assert ($after.Out -match '(?m)^CLAIM edited-or-removed [0-9a-f]{12} dotnet/A2: Data access goes through OrderRepository\r?$') "a partial claim was treated as current: $($after.Out)"
+        Has $after 'RESULT incremental'
+        $res = Record $r @()
+        ExitIs $res 0
+        Has $res "UNCLAIMED $claimRepo"
+        Has $res 'RECORDED claims=3 carried=3 unclaimed=1 profiles=dotnet'
+    } finally { Drop $r }
+}
 It 'record names each Conventions or Architecture Decisions statement no claim covers' {
     $r = Fixture
     try {

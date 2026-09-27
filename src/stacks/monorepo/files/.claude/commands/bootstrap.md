@@ -470,21 +470,23 @@ refreshes), with that finding's evidence kind and paths or globs:
 ```json
 { "profiles": ["dotnet"],
   "claims": [ { "profile": "dotnet", "pass": "A2", "kind": "scoped",
-                "text": "<the statement, copied verbatim from AGENTS.md>",
+                "text": "<the whole statement, copied verbatim from AGENTS.md>",
                 "evidence": ["src/Orders/Data/OrderRepository.cs", "src/**/*Repository.cs"] } ] }
 ```
 
-Evidence is the repository-relative paths or `*`/`**`/`?` globs the finding rests on. Its kind is
-`scoped` (true of the files named), `universal` (an "all X do Y" statement: the glob covering X) or
-`absence` (a "no X exists" statement: the glob that matches nothing); `/rebootstrap` rechecks the
-last two after any change.
+A claim's text is one whole statement: a list item under those headings, wrapped lines joined, as an
+`UNCLAIMED` line prints it; Record refuses a fragment and names the statement to copy. Evidence is
+the repository-relative paths or `*`/`**`/`?` globs the finding rests on. Its kind is `scoped` (true
+of the files named), `universal` (an "all X do Y" statement: the glob covering X) or `absence` (a
+"no X exists" statement: the glob that matches nothing); `/rebootstrap` rechecks the last two after
+any change.
 
 Run `pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Record -ClaimsPath <claims file>`
 (Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File` with the
 same arguments), then delete the claims file. Exit 0 writes `.claude/bootstrap-baseline.tsv`; commit
 it with the other artifacts. Each `UNCLAIMED` line it prints is a statement no claim covers: add a
 claim for each one a pass finding supports and rerun, and report the rest with why. Exit 1 lists each
-refused claim (text not found verbatim in `AGENTS.md`, or evidence matching no file outside the paths
+refused claim (text that is not one whole statement, or evidence matching no file outside the paths
 `framework-ownership.json` lists): correct the claims file and rerun. Exit 2, or no PowerShell host,
 records nothing: report it, and the next `/rebootstrap` runs in full. If the completion gate's repairs
 change `AGENTS.md` or a file `framework-ownership.json` does not list, record again.

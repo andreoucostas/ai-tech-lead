@@ -4515,6 +4515,6 @@ stops at 40 files, estimated about 10% of the saving) and rejected measuring fir
 **Decision (user, 2026-09-26, "Sure" to the recommendation).** WSD-097 stays for point 9. Each profile finding
 names its own evidence. A profile runs in full on a changed manifest or more than 50% of its claims affected; the
 50% is provisional and every run prints its `PROFILE` line. Renames (point 7) follow later; point 8 is dropped.
-**Reopen** the threshold on one dated run whose incremental result missed what a full run caught.
-**Trials 2026-09-27** (eShopOnWeb, Copilot CLI 1.0.88, Opus 5.5, uncapped; B-284): at 2 of 7 claims affected, incremental (123
-credits) matched full (557) except a compile break full's A4 caught; with the fixes (8 of 37, 165 credits) it again missed that break.
+**Reopened and closed 2026-09-27** (user, "Go for it" to a fresh Fable review): at 2 of 7 claims affected, incremental
+(123 credits) missed only a compile break full (557) found by building; it maps to no claim, so 50% stays and no build or
+worker is required. **Reopen** only on a dated run where incremental missed a claim-level finding that full caught.
