@@ -346,7 +346,16 @@ and composes into each dist's `presentation/`, which `build.ps1` keeps out of th
 does `tests/hooks/**`. The four old paths are retired in 0.90.0 with all 30 known blob hashes (a one-off
 walk of every release tag: 1056 observations, 0 missing), and a kept copy gets its own line pointing at
 the checkout instead of the "no replacement command" one. The context-footprint baseline drops
-TALKING-POINTS.md from instructed context. A phrase list
+TALKING-POINTS.md from instructed context.
+
+B-322, split from B-321 by its design review; Fable chose the condition. Every update run copied
+`.claude/settings.json` to `.claude/.state/settings.json.pre-update`, so re-running a finished update
+replaced the consumer's settings in the backup with the framework's own, and a non-Git target kept no
+other copy. The backup is now kept when the current settings are, line endings aside, one of the
+incoming framework's variants (`settings.json`, `settings.windows.json`) and a backup exists; the run
+says so. A fresh-session attack broke a byte-for-byte first version: a `core.autocrlf` checkout rewrote
+the framework's settings with CRLF, and the next run replaced the backup again.
+B-273 and B-291 are closed by decision (see `meta/BACKLOG-DONE.md`). A phrase list
 was rejected: `RoutePrompt.Tests.ps1` already pins the two lost clauses, and a list misses the next new one.
 
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the

@@ -169,6 +169,9 @@
   unmodified `docs/presentation/` files (about 97 KB) that v0.65.0 or later installed. A copy you edited,
   or one from an older install, is kept, and each update names it until you delete it. The deck and its
   talking points stay in the framework checkout under `dist/<stack>/presentation/`.
+- **Re-running an update no longer replaces your saved settings.** `.claude/.state/settings.json.pre-update`
+  holds your `.claude/settings.json` from before the update. A later run of the same update, which finds
+  the framework's own settings in place, now keeps that backup instead of overwriting it with them.
 
 ## 0.89.2 — 2026-09-24
 

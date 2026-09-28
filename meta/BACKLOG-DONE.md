@@ -12871,3 +12871,14 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-252** — CLOSED **2026-09-28**. The presentation deck stays in the framework checkout under `dist/<stack>/presentation/`;
   an update retires the installed `docs/presentation/` copies and points an edited one at the checkout.
+
+- **B-322** — CLOSED **2026-09-28**. A re-run of a finished update keeps the consumer's pre-update settings backup
+  when the current settings are one of the framework's own variants.
+
+- **B-273** — CLOSED by decision **2026-09-28** (Fable). CANNOT_EXAMINE on a driver-style suite is an honest verdict;
+  AGENTS.md accepts the pasted failing line, and no consumer is affected. Reopen if a driver suite needs mechanized red-first.
+
+- **B-291** — CLOSED by decision **2026-09-28** (Fable). No sandbox or pwsh-less host here, and a PATH-stripped run cannot
+  simulate one (claude.exe probes %ProgramFiles%\PowerShell\7 and other fixed paths). Dropping the named inner
+  interpreter would also turn the guard off, silently, for a consumer who sets
+  CLAUDE_CODE_POWERSHELL_RESPECT_EXECUTION_POLICY; one saved process start per hook is not worth that.

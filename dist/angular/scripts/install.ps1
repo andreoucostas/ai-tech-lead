@@ -1225,9 +1225,24 @@ if ($updateMode) {
 }
 
 $settingsBackupRelative = $null
+$settingsBackupKept = $false
 if ($updateMode -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.json') -PathType Leaf)) {
-    $settingsBackupRelative = '.claude/.state/settings.json.pre-update'
-    [void](Add-PlannedWrite -Relative $settingsBackupRelative)
+    # Settings equal to one of this framework's own variants (line endings aside: a core.autocrlf checkout
+    # rewrites them) were written by an earlier run of this update; saving them again would replace the
+    # consumer's settings in the existing backup. Unreadable settings are backed up as before.
+    try { $currentSettings = Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Join-Path $tgt '.claude/settings.json'))) }
+    catch { $currentSettings = $null }
+    $shippedSettings = @(foreach ($variant in '.claude/settings.json', '.claude/settings.windows.json') {
+        $shippedPath = Join-Path $src $variant
+        if (Test-Path -LiteralPath $shippedPath -PathType Leaf) { Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes($shippedPath)) }
+    })
+    if ($currentSettings -and ($shippedSettings -ccontains $currentSettings) -and
+        (Test-Path -LiteralPath (Join-Path $tgt '.claude/.state/settings.json.pre-update') -PathType Leaf)) {
+        $settingsBackupKept = $true
+    } else {
+        $settingsBackupRelative = '.claude/.state/settings.json.pre-update'
+        [void](Add-PlannedWrite -Relative $settingsBackupRelative)
+    }
 }
 
 # Which shipped paths do the target's own ignore rules hide? A plain check-ignore never reports a
@@ -1432,6 +1447,8 @@ if ($settingsBackupRelative) {
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $settingsBackup) | Out-Null
     Copy-Item -Force -LiteralPath (Join-Path $tgt '.claude/settings.json') -Destination $settingsBackup
     Write-Output "  saved pre-update settings: $settingsBackupRelative"
+} elseif ($settingsBackupKept) {
+    Write-Output '  kept the earlier pre-update settings backup: .claude/.state/settings.json.pre-update (.claude/settings.json is already this framework''s own).'
 }
 if ($skillBackupPlan.Count -gt 0) {
     $backupIncomplete = Get-ContainedTargetPath -Relative $backupIncompleteRelative

@@ -1714,6 +1714,36 @@ It 'B-252 the presentation deck stays in the framework checkout: an update remov
     }
 }
 
+It 'B-322 a re-run of a finished update keeps the consumer''s pre-update settings backup' {
+    # Every update run saved .claude/settings.json over the last backup, so re-running a finished update
+    # replaced the consumer's settings in it with the framework's own; a non-Git target has no other copy.
+    # The crlf leg is the framework's file as a core.autocrlf checkout writes it.
+    foreach ($leg in 'crlf', 'lf') {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ("b322-$leg-" + [guid]::NewGuid())
+        try {
+            New-ArchGeneratorTarget -Target $t
+            [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/framework-ownership.json'))
+            $settings = Join-Path $t '.claude/settings.json'
+            [IO.File]::WriteAllText($settings, '{"B322":"consumer settings"}', [Text.UTF8Encoding]::new($false))
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "${leg}: the update failed (exit $LASTEXITCODE): $out"
+            $backup = Join-Path $t '.claude/.state/settings.json.pre-update'
+            Assert ((Test-Path -LiteralPath $backup -PathType Leaf) -and [IO.File]::ReadAllText($backup) -match 'B322') "${leg}: calibration: the update did not back up the consumer's settings: $out"
+            if ($leg -eq 'crlf') {
+                $lf = [IO.File]::ReadAllText($settings)
+                Assert ($lf.Contains("`n") -and -not $lf.Contains("`r")) 'crlf: calibration: the refreshed settings are not a multi-line LF file'
+                [IO.File]::WriteAllText($settings, $lf.Replace("`n", "`r`n"), [Text.UTF8Encoding]::new($false))
+            }
+            $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "${leg}: the re-run failed (exit $LASTEXITCODE): $rerun"
+            Assert ([IO.File]::ReadAllText($backup) -match 'B322') "${leg}: the re-run replaced the consumer's settings backup with the framework's: $rerun"
+            Assert (($rerun -replace '\s+', ' ') -match 'kept the earlier pre-update settings backup') "${leg}: the re-run did not say it kept the earlier backup: $rerun"
+        } finally {
+            Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 It 'B-321 a one-time skill backup that a held file or a denied write cut short is taken again, so an edited framework skill keeps a copy' {
     # A backup cut short was skipped by the next run because its folder existed, which then overwrote the
     # edited skill; it survived in no file. The denied leg fails the first write below the backup folder,
