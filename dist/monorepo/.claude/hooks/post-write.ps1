@@ -182,6 +182,19 @@ if ($branch -eq 'dotnet') {
     }
     if ($run.Code -eq 0) { exit 0 }
 
+    # NETSDK1004/1005: the packages were never restored (or the target framework changed since), so
+    # this build examined nothing. Say so instead of reporting a broken build, and back off like a timeout.
+    if (@($run.Lines | Where-Object { $_ -match '\bNETSDK100[45]\b' }).Count -gt 0) {
+        Set-Content -Path $stamp -Value ($now + 300 - 60) -Encoding ASCII
+        $note = 'Build not verified: the NuGet packages are not restored (NETSDK1004/1005); run dotnet restore once to enable the post-write build check.'
+        if ($tn -ceq 'Edit' -or $tn -ceq 'Write' -or $tn -eq '') {
+            (@{ hookSpecificOutput = @{ hookEventName = 'PostToolUse'; additionalContext = $note } } | ConvertTo-Json -Compress)
+        } else {
+            (@{ additionalContext = $note } | ConvertTo-Json -Compress)
+        }
+        exit 0
+    }
+
     # Clear the throttle stamp so the next write rebuilds instead of skipping a known-broken build.
     Remove-Item $stamp -Force
 

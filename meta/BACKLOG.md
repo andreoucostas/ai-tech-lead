@@ -6,7 +6,7 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270, B-289, B-251, B-285, B-290, B-303, B-268 and B-319 closed 2026-09-28; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-319 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270, B-289, B-251, B-285, B-290, B-303, B-268, B-319 and B-318 closed 2026-09-28; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-319 filed
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -14,7 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
 | Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
-| Low | B-318, B-317, B-316, B-315, B-308, B-305, B-292, B-291, B-252, B-265, B-269, B-273, B-274 | Take when adjacent work opens the same files; B-252 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-317, B-316, B-315, B-308, B-305, B-292, B-291, B-252, B-265, B-269, B-273, B-274 | Take when adjacent work opens the same files; B-252 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -125,13 +125,6 @@ consumer-run `/docs-sync` step 2 compares them. Options: compose the rails from 
 **Status:** Open; from the B-284 trial. Copilot shows the model its remaining credits each turn: under a 300 cap `/bootstrap`
 skipped its workers, cut A8 short and recorded 2 claims (106 credits); uncapped it dispatched 8 workers (918). The harness's
 Copilot executor defaults `-CopilotMaxAiCredits` to 30, so its runs may reflect the cap as much as the framework.
-
-### B-318 · The post-write build reports a never-restored .NET repo as broken
-**Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P2 · **Effort:** S · **Invariants:** #5
-**Status:** Open; observed live (Claude Code 2.1.281, Sonnet 5). `post-write.ps1` runs `dotnet build --no-restore`; without
-`obj/project.assets.json` it fails (NETSDK1004) and the hook says "dotnet build failed -- fix before continuing" (exit 2), so the
-agent chased `dotnet restore` for extra turns. Its own header says an unverified build is never reported as broken.
 
 ### B-317 · A case-only rename Git never recorded leaves a tracked collision recorded untracked
 **Filed against:** v0.90.0 (2026-09-28)

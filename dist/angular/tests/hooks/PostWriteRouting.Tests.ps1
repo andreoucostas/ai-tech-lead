@@ -133,6 +133,26 @@ try {
         }
     }
 
+    # NETSDK1004/1005 mean the packages were never restored (or the target framework changed since): the
+    # build examined nothing, so the hook must say "not verified", never "fix before continuing".
+    if (@($worlds | Where-Object { $_.Name -eq 'dotnet' }).Count -eq 0) {
+        Skip 'an unrestored .NET project is reported as not verified, never as a failed build' 'this post-write carries no dotnet build branch' -Invariant
+    } else {
+        It 'an unrestored .NET project is reported as not verified, never as a failed build' {
+            $world = @($worlds | Where-Object { $_.Name -eq 'dotnet' })[0]
+            $writeEvent = Reset-BuildWorld $world "@echo App.csproj : error NETSDK1004: Assets file 'obj\project.assets.json' not found. Run a NuGet package restore to generate this file.`r`n@exit /b 1`r`n"
+            $oldPath = $env:PATH
+            try {
+                $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
+                $first = Invoke-Hook $postWrite $writeEvent
+                Assert ((Get-Decision $first) -eq 'ALLOW') "an unrestored project blocked the write as a failed build: $($first.Err.Trim())"
+                Assert ($first.Out -match 'Build not verified' -and $first.Out -match 'dotnet restore') "the hook did not say the build was not verified: $($first.Out.Trim())"
+                $second = Invoke-Hook $postWrite $writeEvent
+                Assert ((Get-Decision $second) -eq 'ALLOW' -and $second.Out -notmatch 'Build not verified') "the unverified build was retried inside the back-off: $($second.Out.Trim())"
+            } finally { $env:PATH = $oldPath }
+        }
+    }
+
     # Every case above invokes post-write.ps1 directly. The agent host does not: the registration
     # carries "shell": "powershell", so the whole command STRING runs inside an outer PowerShell, and
     # `-Command` collapses a failing native command's exit code to 1 -- the build failure is then a

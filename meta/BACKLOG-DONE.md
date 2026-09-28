@@ -12838,3 +12838,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-319** — CLOSED **2026-09-28**. The NetArchTest sample ships as `scripts/ci/ArchitectureTests.cs.sample`, so a root-level
   project no longer compiles it; the old path is retired with the hashes of all four of its blobs (three released).
+
+- **B-318** — CLOSED **2026-09-28**. `post-write` reports a never-restored .NET project (NETSDK1004/1005) as not verified,
+  with one `dotnet restore` note and a five-minute back-off, instead of a failed build.

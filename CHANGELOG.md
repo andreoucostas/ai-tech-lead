@@ -281,6 +281,14 @@ old path is retired in 0.90.0 with the SHA-256 of every blob it ever had: three 
 current unreleased one, which src, both dists and the legacy template share. Keep all four; the unreleased
 one is not spurious. `enforce-architecture` names the new file in both stacks.
 
+B-318, observed live and shaped by Fable. `post-write` runs `dotnet build --no-restore`; in a clone whose
+packages were never restored that fails with NETSDK1004 (NETSDK1005 after a target-framework change), and
+the hook reported "dotnet build failed -- fix before continuing" with exit 2, although its own header says
+an unverified build is never reported as broken; the live agent then spent turns chasing `dotnet restore`.
+Both .NET hooks (dotnet, monorepo) now treat those codes as not verified: exit 0, the same five-minute
+back-off as a timed-out build, and one `additionalContext` note asking for `dotnet restore`. The hook never
+restores itself (network, `obj/` writes, budget).
+
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper
 case) was recorded under the shipped spelling, so Git's case-sensitive pathspecs called it untracked and

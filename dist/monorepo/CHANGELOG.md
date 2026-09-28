@@ -147,6 +147,10 @@
   installing. An update deletes the old file unless you edited it or your install predates v0.65.0; in
   either case delete `scripts/ci/ArchitectureTests.sample.cs` yourself. The `enforce-architecture` skill copies
   the sample into your test project as `ArchitectureTests.cs`.
+- **A never-restored .NET repository no longer reads as a broken build.** When `post-write` runs
+  `dotnet build` before the NuGet packages were ever restored (NETSDK1004/1005), it now tells your agent
+  the build was not verified and to run `dotnet restore` once, instead of "dotnet build failed -- fix
+  before continuing", and waits five minutes before trying again.
 
 ## 0.89.2 — 2026-09-24
 
