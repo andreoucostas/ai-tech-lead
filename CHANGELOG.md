@@ -231,6 +231,21 @@ instead), and docs-sync-check's adoption-pending failure says `/adopt` removes t
 before its Phase-7 bootstrap, not in Phase 3. `docs/ARCHITECTURE.md` is copy-if-absent, so the consumer
 entry tells an updating team to correct its copy by hand.
 
+B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
+shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper
+case) was recorded under the shipped spelling, so Git's case-sensitive pathspecs called it untracked and
+`/adopt` screened history at a path that never existed. `New-AdoptionArchiveEvidence` now resolves the
+spelling the disk holds (per folder, its one case-insensitive match, or the exact name where a
+case-sensitive folder holds several) and, when Git tracks exactly that spelling, records it as
+`originalPath` and runs the tracked, log and status queries against it; an untracked collision keeps the
+shipped spelling that B-309's ignore lines and `/adopt`'s personal-file check use. The first version took
+the index's case-insensitive match instead; the implementation attack showed a case-sensitive `.github`
+holding a tracked `pull_request_template.md` beside a gitignored `PULL_REQUEST_TEMPLATE.md` then recorded
+the gitignored file as the tracked one. `Get-IgnoredShippedPaths` returned `@()`
+bare, which reached its caller as `$null` (the could-not-answer value), so the handoff's generic
+gitignored-secrets line printed after Git had answered that nothing was ignored; the unary comma keeps the
+empty answer an array.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

@@ -12788,3 +12788,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   CHANGELOG or `scripts/install.ps1`); an update keeps an existing copy, and the consumer entry says to correct it by hand.
 
 - **B-310** — CLOSED **2026-09-28**. docs-sync-check's adoption-pending failure names the Phase-7 marker removal.
+
+- **B-297** — CLOSED **2026-09-28**. A tracked collision committed under another letter case records the spelling the disk holds
+  as `originalPath` when Git tracks it (provenance tracked, history readable); the empty ignore answer no longer prints the gitignored-secrets guess.

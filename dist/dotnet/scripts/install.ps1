@@ -534,6 +534,26 @@ function Get-AdoptionArchiveBaselineRevision {
     return $null
 }
 
+# The spelling the disk holds for a path found ignoring case: in each folder, its one entry of that
+# name, or the exact name where a case-sensitive folder (WSL, fsutil setCaseSensitiveInfo) holds
+# several. $null when a folder cannot be listed.
+function Get-DiskSpelling {
+    param([Parameter(Mandatory = $true)][string]$Relative)
+    $directory = $tgt
+    $segments = New-Object System.Collections.Generic.List[string]
+    foreach ($segment in $Relative.Split('/')) {
+        try { $names = @([IO.Directory]::GetFileSystemEntries($directory) | ForEach-Object { [IO.Path]::GetFileName($_) }) }
+        catch { return $null }
+        $sameName = @($names | Where-Object { $_.Equals($segment, [StringComparison]::OrdinalIgnoreCase) })
+        if ($sameName.Count -eq 1) { $name = $sameName[0] }
+        elseif ($sameName -ccontains $segment) { $name = $segment }
+        else { return $null }
+        $segments.Add($name)
+        $directory = [IO.Path]::Combine($directory, $name)
+    }
+    return ($segments -join '/')
+}
+
 function New-AdoptionArchiveEvidence {
     param(
         [Parameter(Mandatory = $true)][string]$OriginalRelative,
@@ -548,6 +568,15 @@ function New-AdoptionArchiveEvidence {
         if ($inside.Started -and $inside.ExitCode -eq 0 -and $inside.Output -ceq 'true') {
             $shallow = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-shallow-repository')
             if ($shallow.Started -and $shallow.ExitCode -eq 0) { $historyDepth = if ($shallow.Output -ceq 'true') { 'shallow' } else { 'full' } }
+            # The disk matched the shipped name ignoring case; Git's pathspecs do not. A file Git tracks
+            # under the spelling the disk holds is recorded under that spelling, so its history reads.
+            # An untracked one keeps the shipped spelling that docs/pre-adoption/.gitignore and /adopt's
+            # personal-file check use.
+            $diskSpelling = Get-DiskSpelling -Relative $OriginalRelative
+            if ($diskSpelling -and $diskSpelling -cne $OriginalRelative) {
+                $listed = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'ls-files', '--', ":(literal)$diskSpelling")
+                if ($listed.Started -and $listed.ExitCode -eq 0 -and @($listed.Output -split "`n") -ccontains $diskSpelling) { $OriginalRelative = $diskSpelling }
+            }
             $tracked = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'ls-files', '--error-unmatch', '--', $OriginalRelative)
             if ($tracked.Started -and $tracked.ExitCode -eq 0) {
                 $provenance = 'tracked'
@@ -1208,7 +1237,8 @@ function Get-IgnoredShippedPaths {
         $query = Invoke-GitText -GitPath $gitPath -Arguments (@('-C', $tgt, 'check-ignore', '--') + $incomingPaths)
     }
     if ($null -eq $query -or -not $query.Started -or $query.ExitCode -notin @(0, 1)) { $script:IgnoreUnanswered = $true; return $null }
-    return @($query.Output -split "`n" | Where-Object { $_ -cin $incomingPaths })
+    # The comma keeps "nothing ignored" an empty array; returned bare it would arrive as $null.
+    return , @($query.Output -split "`n" | Where-Object { $_ -cin $incomingPaths })
 }
 $ignoredShippedPaths = Get-IgnoredShippedPaths
 # A colliding original the consumer had gitignored is one developer's file and may hold a key. Its
@@ -1450,7 +1480,8 @@ Write-Output "Each developer should run  $followUpPowerShell scripts/framework-d
 # never get them. Asked again now: the install may have replaced the rule (a consumer .claude/.gitignore).
 # The audit log is ignored on purpose (it is per-machine state).
 $script:IgnoreUnanswered = $false
-$hiddenShipped = @(Get-IgnoredShippedPaths | Where-Object { $_ -and $_ -notin $persistentCopyIfAbsent })
+$ignoredAfterCopy = Get-IgnoredShippedPaths
+$hiddenShipped = @($ignoredAfterCopy | Where-Object { $_ -and $_ -notin $persistentCopyIfAbsent })
 if ($hiddenShipped.Count -gt 0) {
     $hiddenSummary = @($hiddenShipped | Group-Object { if ($_.Contains('/')) { $_.Split('/')[0] + '/' } else { $_ } } | Sort-Object Name |
         ForEach-Object { if ($_.Count -gt 1) { "$($_.Name) ($($_.Count) files)" } else { $_.Group[0] } }) -join ', '

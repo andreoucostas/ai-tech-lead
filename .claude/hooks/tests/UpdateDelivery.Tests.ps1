@@ -1293,6 +1293,86 @@ It 'B-313 the handoff names framework files the consumer''s ignore rules hide, a
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+It 'B-309 when Git answers that nothing is ignored, the handoff does not guess' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b309-none-' + [guid]::NewGuid())
+    try {
+        # An empty answer reached the caller as $null, the "could not answer" value, so the generic
+        # gitignored-secrets line still printed after Git had said nothing was ignored.
+        $t = New-B309GitTarget -Root $root -Name 'target' -Ignore "bin/`n"
+        [IO.File]::WriteAllText((Join-Path $t 'TECH_DEBT.md'), "# team debt`n", [Text.UTF8Encoding]::new($false))
+        & git -C $t add TECH_DEBT.md
+        & git -C $t commit -qm debt
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'Moved to docs/pre-adoption/[^\r\n]*TECH_DEBT\.md') "calibration: the tracked collision was not archived: $out"
+        Assert ($out -notmatch 'Some may be files you had gitignored' -and $out -notmatch 'Kept out of Git') "the handoff guessed at gitignored files although Git answered: $out"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-297 a tracked collision spelt differently from the shipped name records the spelling Git tracks' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b297-' + [guid]::NewGuid())
+    try {
+        # GitHub documents pull_request_template.md in lower case; the disk found it under the
+        # shipped upper-case name, Git's case-sensitive pathspecs did not, so the evidence said
+        # untracked and /adopt read history at a path that never existed.
+        $t = New-B309GitTarget -Root $root -Name 'target' -Ignore "bin/`n"
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.github') | Out-Null
+        $template = [Text.UTF8Encoding]::new($false).GetBytes("## Summary`n")
+        [IO.File]::WriteAllBytes((Join-Path $t '.github/pull_request_template.md'), $template)
+        & git -C $t add .github/pull_request_template.md
+        & git -C $t commit -qm template
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: brownfield') "the brownfield install failed: $out"
+        $marker = [IO.File]::ReadAllText((Join-Path $t '.claude/adoption-pending.json')) | ConvertFrom-Json
+        $entry = @($marker.archiveIntegrity.entries | Where-Object { $_.destination -ceq 'docs/pre-adoption/.github/PULL_REQUEST_TEMPLATE.md' })
+        Assert ($entry.Count -eq 1) "no archive entry for the template: $(@($marker.archiveIntegrity.entries | ForEach-Object { $_.destination }) -join ', ')"
+        Assert ($entry[0].originalPath -ceq '.github/pull_request_template.md' -and $entry[0].provenance -ceq 'tracked' -and $entry[0].localModification -ceq 'clean' -and $entry[0].provenanceRevision -match '^[0-9a-f]{40}$') "the evidence does not name the tracked file: $($entry[0] | ConvertTo-Json -Compress)"
+        $history = & git -C $t show "$($entry[0].provenanceRevision):$($entry[0].originalPath)" 2>&1 | Out-String
+        Assert ($LASTEXITCODE -eq 0 -and $history -match '## Summary') "history cannot be read at the recorded path: $history"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# A case-sensitive folder (WSL makes them; fsutil setCaseSensitiveInfo) can hold two case variants.
+$caseSensitiveProbe = Join-Path ([IO.Path]::GetTempPath()) ('case-sensitive-probe-' + [guid]::NewGuid())
+$caseSensitiveFoldersAvailable = $false
+try {
+    [void][IO.Directory]::CreateDirectory($caseSensitiveProbe)
+    & fsutil.exe file setCaseSensitiveInfo $caseSensitiveProbe enable 2>&1 | Out-Null
+    [IO.File]::WriteAllText((Join-Path $caseSensitiveProbe 'a.txt'), 'lower')
+    [IO.File]::WriteAllText((Join-Path $caseSensitiveProbe 'A.txt'), 'upper')
+    $caseSensitiveFoldersAvailable = @([IO.Directory]::GetFiles($caseSensitiveProbe)).Count -eq 2
+} catch { $caseSensitiveFoldersAvailable = $false }
+finally { Remove-Item -LiteralPath $caseSensitiveProbe -Recurse -Force -ErrorAction SilentlyContinue }
+
+if (-not $caseSensitiveFoldersAvailable) {
+    Skip 'B-297 a gitignored file beside a tracked case variant keeps the shipped spelling and untracked provenance' 'host cannot create a case-sensitive folder'
+} else {
+It 'B-297 a gitignored file beside a tracked case variant keeps the shipped spelling and untracked provenance' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b297-cs-' + [guid]::NewGuid())
+    try {
+        # Only the gitignored upper-case file collides and is archived. Borrowing the tracked variant's
+        # spelling made the evidence say tracked, so /adopt's personal-file exception never applied.
+        $t = New-B309GitTarget -Root $root -Name 'target' -Ignore "bin/`n"
+        $github = Join-Path $t '.github'
+        [void][IO.Directory]::CreateDirectory($github)
+        & fsutil.exe file setCaseSensitiveInfo $github enable | Out-Null
+        [IO.File]::WriteAllText((Join-Path $github 'pull_request_template.md'), "## Team template`n", [Text.UTF8Encoding]::new($false))
+        & git -C $t add .github/pull_request_template.md
+        & git -C $t commit -qm template
+        [IO.File]::AppendAllText((Join-Path $t '.gitignore'), "/.github/PULL_REQUEST_TEMPLATE.md`n", [Text.UTF8Encoding]::new($false))
+        & git -C $t commit -qam 'ignore the personal template'
+        [IO.File]::WriteAllText((Join-Path $github 'PULL_REQUEST_TEMPLATE.md'), "API_KEY=fixture-not-a-secret`n", [Text.UTF8Encoding]::new($false))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: brownfield') "the brownfield install failed: $out"
+        $marker = [IO.File]::ReadAllText((Join-Path $t '.claude/adoption-pending.json')) | ConvertFrom-Json
+        $entry = @($marker.archiveIntegrity.entries | Where-Object { $_.destination -ceq 'docs/pre-adoption/.github/PULL_REQUEST_TEMPLATE.md' })
+        Assert ($entry.Count -eq 1) "no archive entry for the template: $(@($marker.archiveIntegrity.entries | ForEach-Object { $_.destination }) -join ', ')"
+        Assert ($entry[0].originalPath -ceq '.github/PULL_REQUEST_TEMPLATE.md' -and $entry[0].provenance -ceq 'untracked') "the gitignored file borrowed the tracked variant's history: $($entry[0] | ConvertTo-Json -Compress)"
+        $archived = [IO.File]::ReadAllText((Join-Path $t 'docs/pre-adoption/.github/PULL_REQUEST_TEMPLATE.md'))
+        Assert ($archived -match 'API_KEY') "calibration: the archive is not the gitignored file: $archived"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+}
+
 It 'B-312 a developer''s Claude Code local settings stay out of Git after install' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b312-' + [guid]::NewGuid())
     try {

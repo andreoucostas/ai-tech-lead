@@ -125,6 +125,12 @@
   script that the install does not copy into your repository. An update keeps your existing copy, so
   correct its hooks sentence in section 9 and those pointers by hand. The docs-sync-check message about
   a pending adoption now names the right `/adopt` step.
+- **`/adopt` now finds the history of a moved file you committed under a different letter case.** If
+  a file the install had to move to `docs/pre-adoption/` was committed as, for example,
+  `.github/pull_request_template.md`, `.claude/adoption-pending.json` now records it as Git spells it,
+  so `/adopt` reads its author and history instead of flagging it as untracked. When Git reports that
+  none of the moved files was gitignored, the installer no longer also asks you to check
+  `docs/pre-adoption/` for gitignored secrets.
 
 ## 0.89.2 — 2026-09-24
 
