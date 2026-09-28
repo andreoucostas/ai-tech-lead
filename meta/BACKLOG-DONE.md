@@ -12732,3 +12732,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-261** — CLOSED **2026-09-26** by decision (WSD-102): no Stop-time build or test run. The one mechanical gap,
   `post-write`'s 60 s `dotnet build` throttle and 300 s backoff, is stated in the shipped `docs/enforcement-surfaces.md`.
   Adversarial review plus a Fable second opinion; found B-303.
+
+- **B-284** — CLOSED **2026-09-28**. `/rebootstrap` stops or narrows from a content-hash baseline (WSD-103); files that moved
+  unchanged are followed and 3c re-points their hazard rows. Bounding A8 stays with B-222/B-223 under WSD-097.

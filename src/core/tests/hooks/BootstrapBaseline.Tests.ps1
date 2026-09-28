@@ -78,6 +78,15 @@ function ExitIs($Result, [int]$Expected) {
     Assert ($Result.Exit -eq $Expected) "exit $($Result.Exit), expected $($Expected): $($Result.Out) $($Result.Err)"
 }
 function Drop([string]$Root) { Remove-Item -Recurse -Force -LiteralPath $Root -ErrorAction SilentlyContinue }
+function Relocate([string]$Root, [string]$From, [string]$To) {
+    $target = Join-Path $Root $To
+    [IO.Directory]::CreateDirectory((Split-Path $target -Parent)) | Out-Null
+    [IO.File]::Move((Join-Path $Root $From), $target)
+}
+function Hazards([string]$Root, [string]$Area) {
+    Put (Join-Path $Root 'FRAMEWORK-CONTEXT.md') ("# Context`n`n## Known Hazard Areas`n`n| Area / file(s) | Hazard | Status | Reviewed |`n" +
+        "|---|---|---|---|`n| $Area | Registration order is load-bearing. | [VERIFIED] | 2026-09-01 |`n`n## Shared Libraries`n")
+}
 
 Reset-Tests
 It 'fixture repository commits every fixture file' {
@@ -379,6 +388,60 @@ It 'record names each Conventions or Architecture Decisions statement no claim c
         Has $res "UNCLAIMED $adr"
         HasNot $res 'UNCLAIMED .*(dotnet build|add-endpoint)'
         Has $res 'RECORDED claims=4 carried=0 unclaimed=2 profiles=dotnet'
+    } finally { Drop $r }
+}
+It 'a file moved unchanged is followed, named for its hazard row and re-pointed by the next record' {
+    $r = Fixture
+    try {
+        Hazards $r '`src/Orders/Api/ServiceRegistration.cs` (startup wiring)'
+        Recorded $r
+        Relocate $r 'src/Orders/Data/OrderRepository.cs' 'src/Sales/Data/OrderRepository.cs'
+        Relocate $r 'src/Orders/Api/ServiceRegistration.cs' 'src/Orders/Startup/ServiceRegistration.cs'
+        Relocate $r 'src/Orders/Api/Controllers/OrdersController.cs' 'src/Orders/Api/Controllers/SalesController.cs'
+        $res = Impact $r
+        ExitIs $res 0
+        Has $res 'RENAMED src/Orders/Api/ServiceRegistration.cs -> src/Orders/Startup/ServiceRegistration.cs'
+        Has $res 'RENAMED src/Orders/Data/OrderRepository.cs -> src/Sales/Data/OrderRepository.cs'
+        Has $res 'RENAMED src/Orders/Api/Controllers/OrdersController.cs -> src/Orders/Api/Controllers/SalesController.cs'
+        Has $res 'PROFILE dotnet incremental affected=0/4 (0%) reason=none'
+        HasNot $res '(?m)^CLAIM '
+        $again = Record $r @()
+        ExitIs $again 0
+        $after = Impact $r
+        ExitIs $after 0; Has $after 'RESULT stop'
+        HasNot $after '(?m)^RENAMED '
+    } finally { Drop $r }
+}
+It 'a file moved and changed, or out of a folder its claim names, is still rechecked and never re-pointed' {
+    $r = Fixture
+    try {
+        Hazards $r '`src/Orders/Api/ServiceRegistration.cs`'
+        Recorded $r
+        # "Data access goes through ..." names the Data folder the repository leaves.
+        Relocate $r 'src/Orders/Data/OrderRepository.cs' 'src/Orders/Persistence/OrderRepository.cs'
+        Relocate $r 'src/Orders/Api/ServiceRegistration.cs' 'src/Orders/Startup/ServiceRegistration.cs'
+        Put (Join-Path $r 'src/Orders/Startup/ServiceRegistration.cs') 'static class ServiceRegistration { static void AddOrders() {} }'
+        $res = Impact $r
+        ExitIs $res 0
+        Has $res 'RENAMED src/Orders/Data/OrderRepository.cs -> src/Orders/Persistence/OrderRepository.cs'
+        HasNot $res 'RENAMED src/Orders/Api/'
+        Assert ($res.Out -match '(?m)^CLAIM names-old-path [0-9a-f]{12} dotnet/A2: Data access goes through') "a claim naming the old folder was followed: $($res.Out)"
+        Assert ($res.Out -match '(?m)^CLAIM no-evidence-match [0-9a-f]{12} dotnet/A3: Services are registered') "a moved and changed file was followed: $($res.Out)"
+        $again = Record $r @()
+        ExitIs $again 0
+        $after = Impact $r
+        ExitIs $after 0
+        Assert ($after.Out -match '(?m)^CLAIM names-old-path [0-9a-f]{12} dotnet/A2: ') "record re-pointed a claim that names the old folder: $($after.Out)"
+    } finally { Drop $r }
+}
+It 'a file moved out of the glob its claim rests on is not followed' {
+    $r = Fixture
+    try {
+        Recorded $r
+        Relocate $r 'src/Orders/Api/Controllers/OrdersController.cs' 'src/Orders/Api/OrdersController.cs'
+        $res = Impact $r
+        ExitIs $res 0
+        Assert ($res.Out -match '(?m)^CLAIM no-evidence-match [0-9a-f]{12} dotnet/A4: Every API controller') "a file that left its glob was followed: $($res.Out)"
     } finally { Drop $r }
 }
 It 'a corrupt baseline asks for a full run' {

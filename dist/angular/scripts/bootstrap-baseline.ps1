@@ -6,6 +6,8 @@
 # commit SHA: a squash merge, a fresh clone or a shallow clone sees the same content the same way.
 # Paths listed in framework-ownership.json and the baseline file itself are never application churn;
 # AGENTS.md is compared line by line instead, so a hand-edited line is reported as EDITED.
+# A recorded file whose content now sits at exactly one new path moved (RENAMED): its claims follow it,
+# and the files the Known Hazard Areas rows name are recorded so /rebootstrap can re-point those rows.
 # Exit codes: 0 done; 1 INVALID input; 2 CANNOT EXAMINE; 3 (Impact) no usable baseline, run in full.
 [CmdletBinding()]
 param(
@@ -216,6 +218,80 @@ function Resolve-Evidence($Snapshot, [string]$Pattern) {
     return , $found
 }
 
+function Get-HazardPaths($Snapshot) {
+    # Each file a Known Hazard Areas row names, found the way hazard-check finds row paths.
+    $found = New-PathMap
+    $context = Join-Path $script:RootFull 'FRAMEWORK-CONTEXT.md'
+    if (-not (Test-Path -LiteralPath $context -PathType Leaf)) { return $found }
+    $inside = $false
+    foreach ($line in ([IO.File]::ReadAllText($context).TrimStart([char]0xFEFF) -replace "`r", '').Split("`n")) {
+        if ($line.TrimEnd() -ceq '## Known Hazard Areas') { $inside = $true; continue }
+        if (-not $inside) { continue }
+        if ($line.StartsWith('## ')) { break }
+        $cells = $line.Split('|')
+        if (-not $line.StartsWith('|') -or $cells.Count -lt 3) { continue }
+        $tokens = @([regex]::Matches($cells[1], '`([^`]*)`') | ForEach-Object { $_.Groups[1].Value }) +
+            @([regex]::Replace($cells[1], '`[^`]*`', ' ') -split '[\s,;]+')
+        foreach ($token in $tokens) {
+            $path = ($token.Trim().Trim('(', ')', '"', "'").TrimEnd('.', ':') -replace '\\', '/') -replace '^\./', ''
+            if ($Snapshot.Blobs.ContainsKey($path)) { $found[$path] = $Snapshot.Blobs[$path] }
+        }
+    }
+    return $found
+}
+
+function Get-Moves($Snapshot, $State) {
+    # Maps "path<TAB>blob" to a new path for each recorded file that moved unchanged: its path is gone, and
+    # exactly one recorded path and one current path, not itself recorded, hold its content. A file that
+    # moved and changed, or was split, is not a move.
+    $now = New-PathMap
+    foreach ($path in $Snapshot.Sorted) {
+        $blob = $Snapshot.Blobs[$path]
+        if ($now.ContainsKey($blob)) { $now[$blob] = '' } else { $now[$blob] = $path }
+    }
+    $pairs = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($path in $State.Hazards.Keys) { $pairs.Add(@($path, $State.Hazards[$path])) }
+    foreach ($claim in $State.Claims) { foreach ($row in $claim.Evidence) { if ($row.Blob -ne '-') { $pairs.Add(@($row.Path, $row.Blob)) } } }
+    $was = New-PathMap; $recorded = New-PathMap
+    foreach ($pair in $pairs) {
+        $recorded[$pair[0]] = $true
+        if (-not $was.ContainsKey($pair[1])) { $was[$pair[1]] = $pair[0] } elseif ($was[$pair[1]] -cne $pair[0]) { $was[$pair[1]] = '' }
+    }
+    $moves = New-PathMap
+    foreach ($pair in $pairs) {
+        if ($Snapshot.Blobs.ContainsKey($pair[0]) -or $was[$pair[1]] -cne $pair[0] -or -not $now.ContainsKey($pair[1])) { continue }
+        $to = $now[$pair[1]]
+        if ($to -and -not $recorded.ContainsKey($to)) { $moves["$($pair[0])`t$($pair[1])"] = $to }
+    }
+    return $moves
+}
+
+function Test-NamesOldPath([string]$Text, [string]$Old, [string]$New) {
+    # True when the text names the old path, or a folder or file name the move changed.
+    if ($Text.IndexOf($Old, [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $true }
+    $kept = $New.Split('/')
+    foreach ($segment in $Old.Split('/')) {
+        if ($kept -contains $segment) { continue }
+        if ([regex]::IsMatch($Text, '(?<!\w)' + [regex]::Escape($segment) + '(?!\w)', 'IgnoreCase')) { return $true }
+    }
+    return $false
+}
+
+function Get-Followed($Snapshot, $Moves, $Claim) {
+    # The moves a claim follows: a file named exactly goes wherever it went, a glob or folder only to a path it
+    # still matches. A claim whose text names what a move changed is Named: rechecked, never re-pointed.
+    $followed = New-PathMap; $named = $false
+    foreach ($row in $Claim.Evidence) {
+        $key = "$($row.Path)`t$($row.Blob)"
+        if (-not $Moves.ContainsKey($key)) { continue }
+        $to = $Moves[$key]
+        if ($row.Pattern -cne $row.Path -and (Resolve-Evidence $Snapshot $row.Pattern) -cnotcontains $to) { continue }
+        $followed[$key] = $to
+        if (Test-NamesOldPath $Claim.Text $row.Path $to) { $named = $true }
+    }
+    return [pscustomobject]@{ Moves = $followed; Named = $named }
+}
+
 function Read-Agents {
     # Text is the whole file normalized, to explain a refused claim. Lines maps a hash of each non-empty
     # line outside HTML comments (the version stamp lives in one) to that line. Statements are the list
@@ -259,7 +335,7 @@ function Read-State {
     $state = [pscustomobject]@{
         Recorded = ''; Profiles = New-Object 'System.Collections.Generic.List[string]'
         Areas = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
-        Projects = @{}; Workspaces = @{}
+        Projects = @{}; Workspaces = @{}; Hazards = New-PathMap
         Claims = New-Object 'System.Collections.Generic.List[object]'; ClaimsById = @{}; Lines = New-PathMap
     }
     $schema = $false
@@ -282,6 +358,7 @@ function Read-State {
                 if (-not $state.Workspaces.ContainsKey($f[1])) { $state.Workspaces[$f[1]] = New-PathMap }
                 $state.Workspaces[$f[1]][$f[2]] = $f[3]
             }
+            'hazard' { if ($f.Count -ne 3) { $script:StateProblem = "$script:StateRel has a malformed hazard row"; return $null }; $state.Hazards[$f[1]] = $f[2] }
             'claim' {
                 if ($f.Count -ne 6 -or $script:Kinds -notcontains $f[4]) { $script:StateProblem = "$script:StateRel has a malformed claim row"; return $null }
                 $claim = [pscustomobject]@{ Id = $f[1]; Profile = $f[2]; Pass = $f[3]; Kind = $f[4]; Text = $f[5]; Line = $line
@@ -366,11 +443,20 @@ function Invoke-Record {
     $carried = 0
     $previous = Read-State
     if ($previous) {
+        $moves = Get-Moves $snapshot $previous
         foreach ($old in $previous.Claims) {
             if ($ids.ContainsKey($old.Id) -or $selected -cnotcontains $old.Profile -or -not $agents.StatementSet.Contains($old.Text)) { continue }
             $ids[$old.Id] = $true
             $rows.Add($old.Line)
-            $rows.AddRange($old.EvidenceLines)
+            # A file that moved unchanged is re-pointed, unless the claim's text names what the move changed.
+            $follow = Get-Followed $snapshot $moves $old
+            for ($i = 0; $i -lt $old.Evidence.Count; $i++) {
+                $row = $old.Evidence[$i]; $key = "$($row.Path)`t$($row.Blob)"
+                if ($follow.Named -or -not $follow.Moves.ContainsKey($key)) { $rows.Add($old.EvidenceLines[$i]); continue }
+                $to = $follow.Moves[$key]
+                $pattern = if ($row.Pattern -ceq $row.Path) { $to } else { $row.Pattern }
+                $rows.Add("evidence`t$($old.Id)`t$pattern`t$to`t$($row.Blob)")
+            }
             $texts.Add($old.Text)
             $carried++
         }
@@ -392,6 +478,10 @@ function Invoke-Record {
     foreach ($key in $lineKeys) { $out.Add("line`t$key") }
     foreach ($area in $areaKeys) { $out.Add("area`t$area`t$($areas[$area])") }
     $out.AddRange((Get-ManifestRows $snapshot $selected))
+    $hazards = Get-HazardPaths $snapshot
+    $hazardKeys = [string[]]@($hazards.Keys)
+    [Array]::Sort($hazardKeys, [StringComparer]::Ordinal)
+    foreach ($path in $hazardKeys) { $out.Add("hazard`t$path`t$($hazards[$path])") }
     $out.AddRange($rows)
     $target = Join-Path $script:RootFull $script:StateRel
     [IO.Directory]::CreateDirectory((Split-Path $target -Parent)) | Out-Null
@@ -428,6 +518,11 @@ function Invoke-Impact {
     foreach ($area in $changedSorted) { Say "AREA $area" }
     $edited = @($agents.Lines.Keys | Where-Object { -not $state.Lines.ContainsKey($_) } | ForEach-Object { $agents.Lines[$_] } | Sort-Object)
     foreach ($line in $edited) { Say "EDITED $(Get-Excerpt $line)" }
+    # Every move is listed: /rebootstrap re-points a hazard row that names the old path.
+    $moves = Get-Moves $snapshot $state
+    $renamed = New-Object 'System.Collections.Generic.SortedSet[string]' ([StringComparer]::Ordinal)
+    foreach ($key in $moves.Keys) { [void]$renamed.Add($key.Split("`t")[0] + ' -> ' + $moves[$key]) }
+    foreach ($line in $renamed) { Say "RENAMED $line" }
 
     # Classify every claim; unaffected ones carry forward and are never printed.
     $affected = @{}; $status = @{}
@@ -435,16 +530,23 @@ function Invoke-Impact {
         $reason = $null
         if (-not $agents.StatementSet.Contains($claim.Text)) { $reason = 'edited-or-removed' }
         else {
+            $follow = Get-Followed $snapshot $moves $claim
             foreach ($pattern in @($claim.Evidence | ForEach-Object { $_.Pattern } | Select-Object -Unique)) {
-                $recorded = New-PathMap
-                foreach ($row in @($claim.Evidence | Where-Object { $_.Pattern -eq $pattern -and $_.Blob -ne '-' })) { $recorded[$row.Path] = $row.Blob }
-                $found = Resolve-Evidence $snapshot $pattern
+                $recorded = New-PathMap; $found = New-PathMap
+                foreach ($path in (Resolve-Evidence $snapshot $pattern)) { $found[$path] = $snapshot.Blobs[$path] }
+                foreach ($row in @($claim.Evidence | Where-Object { $_.Pattern -eq $pattern -and $_.Blob -ne '-' })) {
+                    $recorded[$row.Path] = $row.Blob
+                    # A followed file counts as still at its recorded path.
+                    $key = "$($row.Path)`t$($row.Blob)"
+                    if ($follow.Moves.ContainsKey($key)) { $found.Remove($follow.Moves[$key]); $found[$row.Path] = $row.Blob }
+                }
                 if ($found.Count -eq 0 -and $claim.Kind -ne 'absence') { $reason = 'no-evidence-match'; break }
                 if ($found.Count -ne $recorded.Count) { $reason = 'changed-evidence'; continue }
-                foreach ($path in $found) {
-                    if (-not $recorded.ContainsKey($path) -or $recorded[$path] -ne $snapshot.Blobs[$path]) { $reason = 'changed-evidence'; break }
+                foreach ($path in $found.Keys) {
+                    if (-not $recorded.ContainsKey($path) -or $recorded[$path] -ne $found[$path]) { $reason = 'changed-evidence'; break }
                 }
             }
+            if (-not $reason -and $follow.Named) { $reason = 'names-old-path' }
         }
         $status[$claim.Id] = $reason
         if ($reason) { $affected[$claim.Id] = $true }

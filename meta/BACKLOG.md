@@ -6,11 +6,10 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284 closed 2026-09-28
 
 | Rank | Item | Why here |
 |---|---|---|
-| 20 | B-284 incremental `/rebootstrap` | Shipped, trial-fixed and re-verified (WSD-103); exact renames next; bounding A8 stays held by WSD-097 |
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
@@ -174,13 +173,6 @@ turns `''` into `$null`, so `tool_name: ""` alone takes the Copilot JSON path at
 **Priority:** P3 · **Effort:** S · **Invariants:** #1
 **Status:** Open. Each stack's `docs/ARCHITECTURE.md` (lines 4, 12, ~178) sends readers to `README.md` "Quick Start" and
 calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.md`, so in a consumer repo it is theirs.
-
-### B-284 · Make `/rebootstrap` incremental from a content-hash baseline
-**Filed against:** v0.89.1 (2026-09-23)
-**Priority:** P2 · **Effort:** L · **Invariants:** #1 #3 #7
-**Status:** PARTIALLY DONE (WSD-103). Shipped for 0.90.0; the 2026-09-27 trial's defects are fixed and re-verified, and a claim
-must now be one whole statement. An incremental run missed a compile break a full run found by building; WSD-103 keeps 50% and
-requires no build. Left: exact renames (plan point 7); A8 held (WSD-097). Plan: `.claude/plans/2026-09-23-incremental-rebootstrap.md`.
 
 ### B-285 · Retire the B-97 block-manifest tooling
 **Filed against:** v0.90.0 (2026-09-24)

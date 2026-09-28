@@ -126,6 +126,19 @@ Record stops carrying it. The 20-character minimum is gone. WSD-103 reopened and
 Fable review: the trial's one incremental miss, a compile break a full run found by building, maps to no
 claim, so 50% stays. `BootstrapBaseline.Tests.ps1`, 30 cases.
 
+B-284, exact renames (2026-09-28): plan point 7, its last open point (8 was dropped; bounding A8, point 9,
+stays held by WSD-097), so B-284 closes. A moved evidence file read as evidence matching no file, so its
+claim was rechecked, and a moved hazard file sent its row to 3c's question. `-Mode Impact` now prints
+`RENAMED <old> -> <new>` for each recorded file whose content exactly one recorded path held and exactly
+one new, unrecorded path holds. A claim follows the move (an exact file wherever it went, a glob or folder
+only to a path it still matches) unless its text names the old path or a folder or file name the move
+changed, which reports `CLAIM names-old-path`; Record re-points a carried claim's evidence under the same
+rule, so a claim left unchanged after that report is reported again. Record also stores the blob of each
+file a Known Hazard Areas row names, and 3c re-points a `RENAMED` hazard path without asking, keeping its
+Status and `Reviewed` (WSD-027: tooling verifies references, a human sets status); a file that moved and
+changed, or was split, still goes into 3c's single question message. A completion-gate repair of the
+hazard table now records again. `BootstrapBaseline.Tests.ps1`, 33 cases.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

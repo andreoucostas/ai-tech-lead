@@ -408,7 +408,7 @@ claim for each one a pass finding supports and rerun, and report the rest with w
 refused claim (text that is not one whole statement, or evidence matching no file outside the paths
 `framework-ownership.json` lists): correct the claims file and rerun. Exit 2, or no PowerShell host,
 records nothing: report it, and the next `/rebootstrap` runs in full. If the completion gate's repairs
-change `AGENTS.md` or a file `framework-ownership.json` does not list, record again.
+change `AGENTS.md`, the hazard table or a file `framework-ownership.json` does not list, record again.
 
 ---
 

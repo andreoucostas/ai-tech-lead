@@ -20,7 +20,10 @@
   so its first `/rebootstrap` runs in full and records one; `/rebootstrap full` always forces a full
   run. A convention a run finds out of date but you leave unchanged is reported again by the next run
   rather than skipped, and `/bootstrap` lists each convention it could not tie to files, which an
-  incremental run will not recheck. The repository-knowledge discovery pass is unchanged.
+  incremental run will not recheck. Moving or renaming a file without changing it no longer
+  rechecks the conventions resting on it, unless one names its old folder or file name, and a Known
+  Hazard Areas row that names it is re-pointed to the new path without a question, keeping its
+  status and review date. The repository-knowledge discovery pass is unchanged.
 
 - **`AGENTS.md` is now the one instruction file you edit; `CLAUDE.md` only imports it.** Your
   conventions, verification commands, architecture index, common tasks and Boy Scout rules live in
