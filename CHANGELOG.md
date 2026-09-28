@@ -234,6 +234,11 @@ copy by hand. B-314: the review guide, `/security-review`, the `dependency-audit
 `docs/ci-integration.md` and the angular and monorepo `/bootstrap` also sent readers to the framework's README or CHANGELOG, which the installer
 does not copy; each now points at an installed file or keeps the substance it already stated.
 
+B-306. `framework-doctor.ps1` kept the `Get-Item -ErrorAction Stop` absence test B-301 fixed in the
+installer: Windows PowerShell 5.1 returns nothing for a missing path under a bracketed folder, so the
+legacy-hook and retired-residue rows read absent paths as present. `Get-DoctorLiteralItem` throws
+ItemNotFound on both hosts at the three sites.
+
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper
 case) was recorded under the shipped spelling, so Git's case-sensitive pathspecs called it untracked and

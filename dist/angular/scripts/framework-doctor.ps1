@@ -52,6 +52,14 @@ function Test-NxAngularEvidence($Node) {
     foreach ($mapName in @('targets','architect','targetDefaults')) { $map=$Node.PSObject.Properties|Where-Object Name -ceq $mapName|Select-Object -First 1;if(-not($map.Value-is[System.Management.Automation.PSCustomObject])){continue};foreach($entry in $map.Value.PSObject.Properties){if($mapName-ceq'targetDefaults'-and(Test-ExactAngularPackageToken $entry.Name)){return $true};if($entry.Value-is[System.Management.Automation.PSCustomObject]){foreach($field in @('executor','generator','collection','plugin')){if(Test-ExactAngularPackageToken (Get-ExactJsonPropertyValue $entry.Value $field)){return $true}}}} }
     return $false
 }
+# Windows PowerShell 5.1 returns nothing, instead of throwing ItemNotFound, for a missing path under a
+# folder whose name holds brackets; the checks below then read the gap as an entry. Throw the same error
+# on both hosts; any other failure still escapes.
+function Get-DoctorLiteralItem([string]$Path) {
+    $item = Get-Item -Force -LiteralPath $Path -ErrorAction Stop
+    if ($null -eq $item) { throw [Management.Automation.ItemNotFoundException]::new("Cannot find path '$Path' because it does not exist.") }
+    return $item
+}
 function Get-DoctorGitChildEntry([string]$Directory, [string]$Name) {
     try { return Get-Item -Force -LiteralPath (Join-Path $Directory $Name) -ErrorAction Stop }
     catch [Management.Automation.ItemNotFoundException] { return $null }
@@ -138,7 +146,7 @@ function Get-LegacyHookDoctorResult {
     foreach ($relative in $retiredHelpers + @('.claude/hooks/guard.ps1')) {
         $path = Join-Path $root $relative
         if (Get-DoctorReparseAncestor $path) { $helperStates[$relative] = 'unverifiable'; continue }
-        try { $entry = Get-Item -Force -LiteralPath $path -ErrorAction Stop }
+        try { $entry = Get-DoctorLiteralItem $path }
         catch [Management.Automation.ItemNotFoundException] { $helperStates[$relative] = 'absent'; continue }
         catch { $helperStates[$relative] = 'unverifiable'; continue }
         if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $entry.PSIsContainer) { $helperStates[$relative] = 'unverifiable' }
@@ -153,7 +161,7 @@ function Get-LegacyHookDoctorResult {
     if (Get-DoctorReparseAncestor $hookPath) {
         return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit path traverses a reparse/symlink and was not followed.'
     }
-    try { $hookEntry = Get-Item -Force -LiteralPath $hookPath -ErrorAction Stop }
+    try { $hookEntry = Get-DoctorLiteralItem $hookPath }
     catch [Management.Automation.ItemNotFoundException] { $hookEntry = $null }
     catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit hook could not be examined.' }
     $residualHelpers = @($retiredHelpers | Where-Object { $helperStates[$_] -eq 'present' })
@@ -225,7 +233,7 @@ function Get-RetiredFrameworkResidueResult {
     foreach ($relative in $retiredPaths) {
         $candidate = Join-Path $root $relative
         if (Get-DoctorReparseAncestor $candidate) { $unverifiable.Add($relative); continue }
-        try { $entry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
+        try { $entry = Get-DoctorLiteralItem $candidate }
         catch [Management.Automation.ItemNotFoundException] { continue }
         catch { $unverifiable.Add($relative); continue }
         if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $entry.PSIsContainer) {

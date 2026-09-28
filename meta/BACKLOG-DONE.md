@@ -12808,3 +12808,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-314** — CLOSED **2026-09-28**. The review guide, `/security-review`, the `dependency-audit` skill,
   `docs/ci-integration.md` and two `/bootstrap` reports no longer send consumers to the framework's README or CHANGELOG, which the installer does not copy.
+
+- **B-306** — CLOSED **2026-09-28**. `framework-doctor` in a bracketed folder under Windows PowerShell 5.1 no longer reports
+  absent retired hook helpers and residue; the B-301 literal-item pattern now covers its three absence checks.

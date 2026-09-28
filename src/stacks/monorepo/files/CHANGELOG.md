@@ -134,6 +134,9 @@
   so `/adopt` reads its author and history instead of flagging it as untracked. When Git reports that
   none of the moved files was gitignored, the installer no longer also asks you to check
   `docs/pre-adoption/` for gitignored secrets.
+- **`framework-doctor` no longer reports retired files that are not there** when your repository's
+  folder name holds square brackets and you run it with Windows PowerShell 5.1. It used to list absent
+  retired hook helpers as `[PENDING]` and 18 absent retired paths as `[CANT-VERIFY]`.
 
 ## 0.89.2 — 2026-09-24
 

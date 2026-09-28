@@ -1373,6 +1373,25 @@ It 'B-297 a gitignored file beside a tracked case variant keeps the shipped spel
 }
 }
 
+It 'B-306 the doctor reports no phantom retired files in a folder whose name holds brackets' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b306-' + [guid]::NewGuid())
+    try {
+        # Windows PowerShell 5.1 returns nothing, instead of throwing, for a missing path under a bracketed
+        # folder; the doctor read each gap as an entry and reported absent retired files as residue.
+        $t = Join-Path $root 'br[k]'
+        [void][IO.Directory]::CreateDirectory($t)
+        [IO.File]::WriteAllBytes((Join-Path $t 'App.csproj'), [Text.Encoding]::ASCII.GetBytes('<Project />'))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: greenfield') "calibration: the install failed: $out"
+        & git -C $t init -q
+        # A relative -File: Windows PowerShell 5.1 reads a bracketed absolute -File path as a wildcard.
+        Push-Location -LiteralPath $t
+        try { $d = & (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File 'scripts/framework-doctor.ps1' 2>&1 | Out-String } finally { Pop-Location }
+        Assert ($d -match '\[OK\] Legacy Git-hook retirement - no default pre-commit hook or retired Git-hook helper remains') "phantom retired hook helpers:`n$d"
+        Assert ($d -match '\[OK\] Retired framework residue - none of the 18 v0\.83 retired framework paths remains') "phantom retired framework residue:`n$d"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 It 'B-312 a developer''s Claude Code local settings stay out of Git after install' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b312-' + [guid]::NewGuid())
     try {
