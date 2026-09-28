@@ -12868,3 +12868,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-321** — CLOSED **2026-09-28**. An interrupted one-time skill backup is taken again: a marker stays in its folder
   until the last copy, and a held file stops the update before any skill is overwritten.
+
+- **B-252** — CLOSED **2026-09-28**. The presentation deck stays in the framework checkout under `dist/<stack>/presentation/`;
+  an update retires the installed `docs/presentation/` copies and points an edited one at the checkout.

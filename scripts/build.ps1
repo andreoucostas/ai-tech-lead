@@ -383,6 +383,10 @@ foreach ($rel in @((Get-RelativeFiles $DIST) | Sort-Object)) {
     # consumer artifact: it must never enter framework-ownership.json, so installers never copy it
     # and its historical bytes are retired via framework-retirements.json (B-215 Slice A).
     if ($rel -eq 'tests/hooks' -or $rel.StartsWith('tests/hooks/')) { continue }
+    # presentation/** (the briefing decks and their talking points) stays in the framework checkout for
+    # whoever presents the framework; installers never copy it, and its old docs/presentation/ copies
+    # are retired via framework-retirements.json.
+    if ($rel -eq 'presentation' -or $rel.StartsWith('presentation/')) { continue }
     if ($rel -eq '.claude/settings.json') { $ownership = 'mixed' }
     elseif ($rel -in $psProtected -or $rel -in $extraProtected) { $ownership = 'consumer-owned/protected' }
     else { $ownership = 'framework-owned/overwritten' }

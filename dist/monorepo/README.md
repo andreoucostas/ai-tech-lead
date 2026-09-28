@@ -186,7 +186,7 @@ want. `.claude/framework-update-backup/` holds an update's backups for review an
 | `docs/playbook.md` | Methodology guide (the "why" behind the framework). |
 | `docs/ARCHITECTURE.md` | Canonical architecture map with Mermaid diagrams. |
 | `docs/REVIEW-GUIDE.md` | A senior reviewer's annotated tour — reading order, what each piece guarantees, how to verify, and the tradeoffs. |
-| `docs/presentation/` | Self-contained offline presentations: the persuasive `framework-briefing.html` + `TALKING-POINTS.md`, the implementation-level `framework-technical.html`, and the printable one-page `framework-system-map.html`. |
+| `presentation/` | Stays in this framework checkout; not installed into your repository. Self-contained offline presentations: the persuasive `framework-briefing.html` + `TALKING-POINTS.md` (runs of show, per-slide notes, anticipated questions), the implementation-level `framework-technical.html`, and the printable one-page `framework-system-map.html`. |
 
 ## How it works
 

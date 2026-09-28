@@ -165,6 +165,10 @@
   overwritten. When a file another program held cut it short, a later update skipped it and could
   overwrite a skill you had edited with no copy left. The backup now stays marked unfinished until
   its last copy, and a held file stops the update, naming the file, before any skill is overwritten.
+- **The presentation deck no longer installs into your repository.** An update removes the four
+  unmodified `docs/presentation/` files (about 97 KB) that v0.65.0 or later installed. A copy you edited,
+  or one from an older install, is kept, and each update names it until you delete it. The deck and its
+  talking points stay in the framework checkout under `dist/<stack>/presentation/`.
 
 ## 0.89.2 — 2026-09-24
 

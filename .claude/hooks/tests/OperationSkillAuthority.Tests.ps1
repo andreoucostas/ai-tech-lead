@@ -109,7 +109,7 @@ It 'active authority carriers do not restore a framework-selected service seam' 
             Assert (-not [regex]::IsMatch($text, '(?is)(every injected.{0,100}(interface|abstraction)|literal SOLID|interface per injected|abstraction/token per injected)')) "$stack/$relative restores a framework-selected service seam"
         }
     }
-    $briefing = [IO.File]::ReadAllText((Join-Path $repoRoot 'src/core/docs/presentation/framework-briefing.html'), [Text.Encoding]::UTF8)
+    $briefing = [IO.File]::ReadAllText((Join-Path $repoRoot 'src/core/presentation/framework-briefing.html'), [Text.Encoding]::UTF8)
     Assert ($briefing.Contains('derive service boundaries from project evidence')) 'framework briefing omits project-derived SOLID authority'
     Assert (-not $briefing.Contains('every injected service behind an interface')) 'framework briefing restores literal interface mandate'
 }

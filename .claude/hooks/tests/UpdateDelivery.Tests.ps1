@@ -1676,6 +1676,44 @@ It 'B-320 an active copy of a disabled skill that cannot be removed is the only 
     }
 }
 
+It 'B-252 the presentation deck stays in the framework checkout: an update removes its installed copies and points an edited one there' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b252-' + [guid]::NewGuid())
+    try {
+        # Every install copied four deck files (about 97 KB) into docs/presentation/, which nothing
+        # installed links to; the deck now stays in the checkout under presentation/.
+        foreach ($stack in 'dotnet', 'angular', 'monorepo') {
+            $manifest = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "dist/$stack/framework-ownership.json") | ConvertFrom-Json
+            Assert (@($manifest.paths | Where-Object { ([string]$_.path) -match 'presentation' }).Count -eq 0) "$stack ownership manifest still installs the deck"
+            Assert (Test-Path -LiteralPath (Join-Path $repoRoot "dist/$stack/presentation/framework-briefing.html") -PathType Leaf) "$stack checkout lost the deck"
+        }
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude'), (Join-Path $t 'docs/presentation') | Out-Null
+        [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), '{"version":"0.89.2","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.89.2:dist/dotnet/framework-ownership.json'))
+        foreach ($name in 'TALKING-POINTS.md', 'framework-briefing.html', 'framework-system-map.html', 'framework-technical.html') {
+            [IO.File]::WriteAllBytes((Join-Path $t "docs/presentation/$name"), (Get-GitBlobBytes -Spec "v0.89.2:dist/dotnet/docs/presentation/$name"))
+        }
+        # An unmodified file in a CRLF checkout, and a consumer's edit to another.
+        $map = Join-Path $t 'docs/presentation/framework-system-map.html'
+        [IO.File]::WriteAllText($map, ([IO.File]::ReadAllText($map) -replace "`r?`n", "`r`n"), [Text.UTF8Encoding]::new($false))
+        $talking = Join-Path $t 'docs/presentation/TALKING-POINTS.md'
+        [IO.File]::AppendAllText($talking, "`nB252 consumer note.`n")
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        foreach ($name in 'framework-briefing.html', 'framework-system-map.html', 'framework-technical.html') {
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t "docs/presentation/$name"))) "the update left the unmodified deck file $name installed: $out"
+        }
+        Assert ([IO.File]::ReadAllText($talking) -match 'B252 consumer note\.') "the update removed or changed the edited talking points: $out"
+        Assert ($flat -match "retained retired presentation file 'docs/presentation/TALKING-POINTS\.md' remains\. The deck is no longer installed") "the kept copy was not reported as the retired deck: $out"
+        # Whitespace removed: Windows PowerShell 5.1 may wrap a long line inside the printed path.
+        Assert (($out -replace '\s+', '') -match "thecurrentcopyisin'[^']*dist[\\/]dotnet[\\/]presentation'\.Delete'docs/presentation/TALKING-POINTS\.md'afterreview") "the kept copy did not name the checkout's deck folder and only its own file: $out"
+        Assert ($flat -notmatch 'no replacement command') "the kept deck copy was reported as a retired command: $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t 'presentation'))) "the update installed the checkout's presentation folder: $out"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'B-321 a one-time skill backup that a held file or a denied write cut short is taken again, so an edited framework skill keeps a copy' {
     # A backup cut short was skipped by the next run because its folder existed, which then overwrote the
     # edited skill; it survived in no file. The denied leg fails the first write below the backup folder,

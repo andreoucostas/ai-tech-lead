@@ -782,6 +782,8 @@ if ($updateMode) {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired sample '$retiredPath' remains. It targets an unsupported Linux container; remove it after review and use a Windows/PowerShell CI example instead.")
         } elseif ($retiredPath -in @('scripts/build-architecture-html.ps1', 'scripts/build-architecture-html.sh')) {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired generator '$retiredPath' remains. The generated architecture view is retired and has no replacement command; its output loaded third-party script from the network each time it was opened. Read docs/ARCHITECTURE.md directly, then remove this generator and any page it produced after review.")
+        } elseif ($retiredPath.StartsWith('docs/presentation/', [StringComparison]::Ordinal)) {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired presentation file '$retiredPath' remains. The deck is no longer installed; the current copy is in '$(Join-Path $src 'presentation')'. Delete '$retiredPath' after review.")
         } else {
             $twin = if ($retiredPath.EndsWith('.sh', [StringComparison]::OrdinalIgnoreCase)) {
                 $retiredPath.Substring(0, $retiredPath.Length - 3) + '.ps1'
