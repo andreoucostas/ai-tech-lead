@@ -6,7 +6,7 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310 and B-297 closed 2026-09-28; B-306 to B-317 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310 and B-297 closed 2026-09-28; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-317 filed
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -14,7 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
 | Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
-| Low | B-317, B-316, B-315, B-314, B-308, B-306, B-305, B-304, B-303, B-296, B-292, B-291, B-290, B-289, B-285, B-256, B-252, B-251, B-242, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-317, B-316, B-315, B-314, B-308, B-306, B-305, B-304, B-303, B-292, B-291, B-290, B-289, B-285, B-252, B-251, B-242, B-265, B-268, B-269, B-270, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -92,7 +92,6 @@ rewrites `meta-gates` to the two tiers; confirm no stale obligation remains, the
 **Status:** Open; observed 2026-09-18. With `-File` and a repeated `-Case`, binding fails and exits 1
 without a `RED_FIRST` line, the same code as WRONG. Decide whether to accept repeated `-Case`.
 
-
 ### B-251 · Retire `scripts/fidelity-check.ps1` and `FidelityCheck.Tests.ps1`
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P3 · **Effort:** S · **Invariants:** —
@@ -105,24 +104,11 @@ v0.26.0, still carried and tested.
 **Status:** Open. Four files, about 97 KB, under `docs/presentation/` install into each consumer
 tree; keep the FAQ content reachable and link the deck instead.
 
-### B-256 · List the warehouse skills only where repository evidence selects them
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P3 · **Effort:** M · **Invariants:** #1
-**Status:** Open, narrowed 2026-09-24. `/bootstrap` Phase 3a already advertises both only when the
-warehouse-SQL profile was selected (`bootstrap.md:180`); the template lists them until bootstrap runs,
-and whether `/adopt` applies the same gate is unverified. WSD-021 forbids only a separate distribution.
-
 ### B-265 · Missing consumer workflows: PR description, read-only codebase explanation, major-version upgrade, Angular perf/accessibility
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1
 **Status:** Open. Measure each new workflow on a scenario with `-TargetPatch` (B-253) before shipping it;
 split into one item per workflow when taken.
-
-### B-267 · The optional eval-evidence commit lands on ambient HEAD
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P3 · **Effort:** S · **Invariants:** #6
-**Status:** Open. After the tag, `release.ps1` commits eval results on whatever HEAD is and pushes
-it, so a commit made during the watch would be published beneath it; it cannot move the tag.
 
 ### B-270 · release.ps1 -NoIndependentReview files its stub under an anchor that no longer exists
 **Filed against:** v0.86.7 (2026-09-19)
@@ -130,12 +116,6 @@ it, so a commit made during the watch would be published beneath it; it cannot m
 **Status:** Open. The "Known deferred work" level-2 heading that `release.ps1:669` anchors on is
 absent from this file, so the stub filing already degrades to a WARNING; the new rules use
 `-ReviewEvidence` only.
-
-### B-271 · A release resumed on a records-only HEAD stalls its CI watch
-**Filed against:** v0.86.7 (2026-09-19)
-**Priority:** P3 · **Effort:** S · **Invariants:** #6
-**Status:** Open. With nothing to stage, `release.ps1` tags HEAD; a light HEAD (WP2) gets no CI run, so
-the watch exits 3 and nothing is tagged. Fails closed; WP3 edits the same file.
 
 ### B-273 · `assert-red-first.ps1` cannot examine a red case in a driver-style suite
 **Filed against:** v0.86.7 (2026-09-20)
@@ -148,8 +128,8 @@ the watch exits 3 and nothing is tagged. Fails closed; WP3 edits the same file.
 **Filed against:** v0.86.7 (2026-09-20)
 **Priority:** P3 · **Effort:** S · **Invariants:** #5
 **Status:** Open; observed 2026-09-20 by the fresh-session review of B-247, pre-existing and
-unchanged by it. The header says an empty tool name emits the Claude signal, but `if (-not $tool)`
-turns `''` into `$null`, so `tool_name: ""` alone takes the Copilot JSON path at exit 0.
+unchanged by it. The header's empty-tool-name claim is wrong. Fable (2026-09-28, unverified): no client sends one; when
+`guard.ps1` next opens, delete `-or ($tool -eq '')` (:37, :118) and the parenthetical, red case `toolName: ""` exit 2.
 
 ### B-285 · Retire the B-97 block-manifest tooling
 **Filed against:** v0.90.0 (2026-09-24)
@@ -183,13 +163,6 @@ the release commit message (`:825`, `:827`) name the "full root meta suite"; sin
 **Status:** Open; from WSD-100. The test and feature rails lost two §1 non-negotiables at v0.77.0 unnoticed; only the
 consumer-run `/docs-sync` step 2 compares them. Options: compose the rails from the §1 snippets in `build.ps1`, a
 `validate-dist` check per rail for named non-negotiables, or a pointer-only hook (changes salience, so measure it).
-
-### B-296 · Route custom Claude and Copilot extension files to `/adopt`
-**Filed against:** v0.90.0 (2026-09-25)
-**Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; from B-295's review. `install.ps1`'s adoption signals claim to mirror `/adopt` Phase 1 but omit
-`.claude/settings.json`, `.claude/commands|skills|agents` and `.github/prompts|agents`. Since B-295 a colliding one selects
-brownfield; a repo with only non-colliding custom ones still gets `/bootstrap`, which does not consolidate them.
 
 ### B-303 · The Claude Code Boy Scout Stop output may force an extra turn
 **Filed against:** v0.90.0 (2026-09-26)
@@ -236,9 +209,9 @@ ignored folder records `tracked` while the handoff says "Kept out of Git - you h
 ### B-315 · Shipped `.github/` files land in a consumer's differently cased `.GitHub/` folder
 **Filed against:** v0.90.0 (2026-09-28)
 **Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; from the B-297 design review, pre-existing. On a case-insensitive disk with a `.GitHub/` folder, every shipped
-`.github/**` file is written under `.GitHub/` (`?? .GitHub/workflows/`), where GitHub will not find it once committed; a replaced
-file also keeps its index spelling (` M claude.md`).
+**Status:** Open; from the B-297 review, pre-existing. With a `.GitHub/` folder every shipped `.github/**` file lands under it, where
+GitHub will not find it; a replaced `claude.md` keeps that index spelling, which a case-sensitive checkout may not load as `CLAUDE.md`.
+Warn only (Fable); take with B-308, and correct install.ps1's "(mirrors /adopt Phase 1)" comment (B-296's closure).
 
 ### B-314 · More installed files send readers to the framework's README or CHANGELOG
 **Filed against:** v0.90.0 (2026-09-28)

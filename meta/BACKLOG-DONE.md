@@ -12778,8 +12778,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-312** — CLOSED **2026-09-28**. The shipped `.claude/.gitignore` ignores `settings.local.json`; the file stays framework-owned,
   so a consumer's own `.claude/` rules belong in the root `.gitignore`.
 
-- **B-294** — CLOSED **2026-09-28**. Fifteen shipped statements said VS Code agent hooks are off by default; VS Code's page
-  (2026-09-16) says `chat.useHooks` is on. Corrected, and vendor-claims entry 19 now fails any dist that says it again.
+- **B-294** — CLOSED **2026-09-28**. Fourteen shipped statements said VS Code agent hooks are off by default; VS Code's page
+  (2026-09-16) says `chat.useHooks` is on. Corrected; vendor-claims entry 19 fails a dist that repeats those phrasings.
 
 - **B-263** — CLOSED **2026-09-28**. `docs/enforcement-surfaces.md` says to plan on instruction-only for every VS Code hook
   control until a canary on the host confirms it; the matrix already rated each capability.
@@ -12791,3 +12791,17 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-297** — CLOSED **2026-09-28**. A tracked collision committed under another letter case records the spelling the disk holds
   as `originalPath` when Git tracks it (provenance tracked, history readable); the empty ignore answer no longer prints the gitignored-secrets guess.
+
+- **B-256** — CLOSED **2026-09-28** by decision (Fable second opinion). Before `/bootstrap` the two warehouse skills are listed
+  under the "superset, not evidence that they apply" gate; `/bootstrap` 3a advertises them only for the warehouse-SQL profile,
+  and `/adopt` ends in `/bootstrap`, so no path lists them as applicable without evidence.
+
+- **B-267** — CLOSED **2026-09-28** by decision (Fable second opinion). AGENTS.md "Ship" forbids a commit to `master` while a
+  release is between push and tag, the only way one lands beneath the eval-evidence commit; maintainer tooling, no consumer effect.
+
+- **B-271** — CLOSED **2026-09-28** by decision (Fable second opinion). The watch fails closed (exit 3, nothing tagged), and
+  records ride in the work commit, so no records-only HEAD exists to release from.
+
+- **B-296** — CLOSED **2026-09-28** by decision (Fable second opinion). A colliding shipped path, `.claude/settings.json`
+  included, already routes to `/adopt` (B-295); `/adopt` also leaves a non-colliding custom command, skill or prompt in place,
+  so routing one there changes nothing. The installer's "(mirrors /adopt Phase 1)" comment is corrected with B-315.

@@ -215,21 +215,22 @@ replaced consumer copy used to keep out of Git. `/adopt` 1a-bis also counts an a
 `docs/pre-adoption/.gitignore` as personal, so adding the exceptions the warning asks for cannot switch
 the rule off. Two design reviews (the first found the tracked-`AGENTS.md` regression fixed in 699d23ae)
 and a fresh-session attack of the diff.
+
 B-294, B-263, B-282 and B-310. Shipped text now says VS Code agent hooks are on by default: VS Code's
 agent-hooks page (updated 2026-09-16) says `chat.useHooks` is on by default and an organization can turn
-it off, while fifteen shipped statements (the enforcement-surfaces matrix and narrative, the three stack
+it off, while fourteen shipped statements (the enforcement-surfaces matrix and narrative, the three stack
 READMEs, review and architecture guides, the talking points and the briefing and technical decks) said
-"off by default"
-and one told users to enable them. `docs/enforcement-surfaces.md` also says to plan on instruction-only for
-every VS Code hook control until a canary on the host confirms it, and to leave `chat.useClaudeHooks` off
-(VS Code ignores the matchers in Claude-format files). The vendor-claims gate gains entry 19; it caught
-the fourteenth statement, in the briefing deck's HTML, which a Markdown sweep had missed, and the diff
-review found the fifteenth, in the technical deck, which widened the entry. The
-installed `docs/ARCHITECTURE.md` no longer points consumers at `README.md`, `CHANGELOG.md` or
-`scripts/install.ps1`, none of which the installer copies (its repo map names `framework-doctor`
-instead), and docs-sync-check's adoption-pending failure says `/adopt` removes the marker immediately
-before its Phase-7 bootstrap, not in Phase 3. `docs/ARCHITECTURE.md` is copy-if-absent, so the consumer
-entry tells an updating team to correct its copy by hand.
+"off by default" and four told users to enable them. `docs/enforcement-surfaces.md` also says to plan on
+instruction-only for every VS Code hook control until a canary on the host confirms it, and to leave
+`chat.useClaudeHooks` off: VS Code ignores the matchers in Claude-format files and does not document
+de-duplicating them against `hooks.json`. The vendor-claims gate gains entry 19. It caught the briefing
+deck's HTML, which a Markdown sweep had missed; the diff review's two passes widened it to the technical
+deck's wording and to "VS Code agent hooks are off by default". The installed `docs/ARCHITECTURE.md` no
+longer points consumers at `README.md`, `CHANGELOG.md` or `scripts/install.ps1`, none of which the
+installer copies (its repo map names `framework-doctor` instead), and docs-sync-check's adoption-pending
+failure says `/adopt` removes the marker immediately before its Phase-7 bootstrap, not in Phase 3.
+`docs/ARCHITECTURE.md` is copy-if-absent, so the consumer entry tells an updating team to correct its
+copy by hand.
 
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper

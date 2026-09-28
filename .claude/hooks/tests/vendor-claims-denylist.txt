@@ -142,5 +142,5 @@ REASON The hook files are registered locally; firing and output consumption vary
 # stack READMEs, review and architecture guides, talking points, briefing and technical decks, through
 # v0.89.2). Only the Claude-format reading (`chat.useClaudeHooks`) stays off by default, and the pattern
 # spares it.
-DENY (?i)Preview(?:\s+hooks)?(?:\s+(?:are|remain)|,)\s+off\s+by\s+default
+DENY (?i)(?:Preview|VS\s*Code)(?:[\s-]+agent)?(?:[\s-]+hooks)?(?:\s+(?:are|remain)|,)\s+off\s+by\s+default
 REASON VS Code's agent hooks (`chat.useHooks`) are on by default (VS Code agent-hooks page, updated 2026-09-16) and an organization can turn them off; corrected 2026-09-28.
