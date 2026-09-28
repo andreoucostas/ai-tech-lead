@@ -1452,9 +1452,19 @@ foreach ($name in $skillExemplars.Keys) {
         Set-Content -LiteralPath $newFile -Value ($newText.TrimEnd() + "`n`n" + $skillExemplars[$name] + "`n") -Encoding UTF8
     }
 }
+# A disabled skill's files are already carried to .claude/disabled-skills, so a folder that cannot be
+# removed leaves only its active copy to delete by hand. The steps after this one still run and the
+# update stops at the end; a re-run is no remedy, since a Git target is dirty by then and refuses it.
+$skillsLeftActive = New-Object System.Collections.Generic.List[string]
 foreach ($relative in $skillDeletePlan) {
     $path = Get-ContainedTargetPath -Relative $relative
-    if (Test-Path -LiteralPath $path) { Remove-Item -Recurse -Force -LiteralPath $path }
+    if (-not (Test-Path -LiteralPath $path)) { continue }
+    try { Remove-Item -Recurse -Force -LiteralPath $path -ErrorAction Stop }
+    catch {
+        [Console]::Error.WriteLine("ERROR: Could not remove the active copy of disabled skill '$relative': $($_.Exception.Message)")
+        [Console]::Error.WriteLine("  Its files are kept under .claude/disabled-skills/$(Split-Path -Leaf $relative); resolve the cause above (usually a program holding a file open), then delete $relative by hand.")
+        $skillsLeftActive.Add($relative)
+    }
 }
 if ($layoutMove) {
     # Backups first, byte-for-byte; then AGENTS.md; the stub last, so an interrupted run leaves
@@ -1510,6 +1520,10 @@ if ($hiddenShipped.Count -gt 0) {
     Write-Output "WARNING: your ignore rules hide $($hiddenShipped.Count) of the framework's own files, so committing this install leaves them out and teammates will not get them: $hiddenSummary. Add exceptions for them to .gitignore before committing."
 } elseif ($script:IgnoreUnanswered) {
     Write-Output "NOTE: Git could not say whether your ignore rules hide any of the framework's files; check git status --ignored before committing."
+}
+if ($skillsLeftActive.Count -gt 0) {
+    [Console]::Error.WriteLine('  Every other step of this update is done. After deleting what is named above, continue with docs/upgrade-checklist.md.')
+    exit 3
 }
 if ($updateMode) {
     Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; .claude/settings.json was backed up and refreshed."

@@ -12862,3 +12862,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-305** — CLOSED **2026-09-28** (decided with Fable). The eval harness runs Copilot uncapped by default, and a
   Copilot results header records the credit cap, so a visible cap cannot silently shape a measured run.
+
+- **B-320** — CLOSED **2026-09-28**. A disabled skill's active copy that cannot be removed no longer stops the update
+  part-way: the later steps run, then it stops with exit 3 and names the folder to delete by hand.

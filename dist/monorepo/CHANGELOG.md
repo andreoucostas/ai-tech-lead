@@ -156,6 +156,10 @@
   retired files. It now names the file and the error, puts back any retired file it had already removed,
   and stops before copying anything, so your repository is unchanged and re-running the installer after
   you resolve the cause finishes the update.
+- **An update that cannot remove the active copy of a skill you disabled now finishes everything else
+  and says what is left.** Before, it stopped part-way with a raw PowerShell error. The skill's files are
+  already kept under `.claude/disabled-skills/`; the installer names the folder and the error, and
+  deleting that folder once nothing holds it finishes the update.
 
 ## 0.89.2 — 2026-09-24
 

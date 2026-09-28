@@ -316,7 +316,16 @@ model its remaining credits each turn; under a 300-credit cap a B-284 trial's `/
 workers and recorded 2 claims (106 credits), while uncapped it dispatched 8 workers (918). The eval
 harness's Copilot executor now runs uncapped by default (`-CopilotMaxAiCredits` 0; 30-500 still caps a
 run), and a Copilot results header records `credit cap: none` or the cap, so a capped run cannot pass for
-an uncapped one. `Get-CopilotArguments` builds the argument list so the self-test can see it. A phrase list
+an uncapped one. `Get-CopilotArguments` builds the argument list so the self-test can see it.
+
+B-320, from Fable's review of B-308. The loop that removes the active copy of a skill a consumer disabled
+runs after the copies (its files already carried to `.claude/disabled-skills/`), so a held file there threw
+a raw error with the stamp already new and skipped every step after it. It now records the failure, lets
+the later steps run, and stops at the end (exit 3) naming the folder, the exception and where the files
+are kept; deleting the folder finishes the update. A fresh-session attack broke two earlier versions: one
+stopped in place and advised a re-run, which a Git target refuses (exit 4) and an old-layout target
+answers by declining the skipped layout move; one moved the removal last, so a held `CLAUDE.md` that
+failed the move left the skill active. The case holds an old-layout target. A phrase list
 was rejected: `RoutePrompt.Tests.ps1` already pins the two lost clauses, and a list misses the next new one.
 
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the

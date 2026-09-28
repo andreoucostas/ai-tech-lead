@@ -1646,6 +1646,36 @@ It 'B-308 a retired file another program holds open stops the update unchanged, 
     }
 }
 
+It 'B-320 an active copy of a disabled skill that cannot be removed is the only step left undone, and the stop says so' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b320-' + [guid]::NewGuid())
+    $handle = $null
+    try {
+        # The disabled skill's files are carried to .claude/disabled-skills before the active copy goes. A
+        # held file there threw a raw error mid-update, and a stop at that point skipped the instruction
+        # layout move that followed it, which a re-run then declines.
+        New-ArchGeneratorTarget -Target $t
+        [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/framework-ownership.json'))
+        [IO.File]::WriteAllText((Join-Path $t 'LEARNINGS.md'), "# Learnings`n`n## Disabled framework skill: perf`n`nNot used here.`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $t 'CLAUDE.md'), "# Project`n`nB320 consumer rule.`n", [Text.UTF8Encoding]::new($false))
+        $active = Join-Path $t '.claude/skills/perf'
+        New-Item -ItemType Directory -Force -Path $active | Out-Null
+        $held = Join-Path $active 'SKILL.md'
+        [IO.File]::WriteAllText($held, "---`nname: perf`n---`n# perf`n", [Text.UTF8Encoding]::new($false))
+        $handle = [IO.File]::Open($held, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 3) "a held file in a disabled skill's active copy did not stop the update with exit 3 (exit $LASTEXITCODE): $out"
+        Assert ($flat -match "Could not remove the active copy of disabled skill '\.claude/skills/perf'") "the stop did not name the skill: $out"
+        Assert (Test-Path -LiteralPath (Join-Path $t '.claude/disabled-skills/perf/SKILL.md')) "calibration: the disabled skill was not carried before the delete: $out"
+        Assert ([IO.File]::ReadAllText((Join-Path $t 'AGENTS.md')) -match 'B320 consumer rule\.') "the stop skipped the instruction layout move: AGENTS.md does not hold the moved CLAUDE.md text: $out"
+        Assert ($flat -match 'kept under \.claude/disabled-skills/perf' -and $flat -match 'delete \.claude/skills/perf by hand' -and
+            $flat -match 'Every other step of this update is done') "the stop did not say where the files are kept and what is left: $out"
+    } finally {
+        if ($handle) { $handle.Dispose() }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'B-319 an install leaves no source file that a project at the repository root compiles' {
     foreach ($dist in 'dotnet', 'monorepo') {
         $t = Join-Path ([IO.Path]::GetTempPath()) ("b319-$dist-" + [guid]::NewGuid())
