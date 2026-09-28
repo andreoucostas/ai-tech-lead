@@ -6,7 +6,7 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270, B-289, B-251, B-285, B-290, B-303, B-268, B-319, B-318, B-308, B-292, B-305 and B-320 closed 2026-09-28; B-315, B-269, B-316, B-317 and B-274 closed by decision; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-321 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270, B-289, B-251, B-285, B-290, B-303, B-268, B-319, B-318, B-308, B-292, B-305, B-320 and B-321 closed 2026-09-28; B-315, B-269, B-316, B-317 and B-274 closed by decision; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-322 filed
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -14,8 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
 | Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
-| Next | B-321 | An interrupted update can lose a consumer's edit to a framework skill; found by B-320's attack |
-| Low | B-291, B-252, B-265, B-273 | Take when adjacent work opens the same files; B-252 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-291, B-252, B-265, B-273, B-322 | Take when adjacent work opens the same files; B-252 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -107,12 +106,12 @@ split into one item per workflow when taken.
 `add-service` step 0 forbid a one-consumer service, so agents bolt feature logic onto the nearest class. Wording, eval and Fable's
 review: `.claude/plans/2026-09-28-b311-feature-code-placement.md`. Guarded; the red-first eval must run from a released base.
 
-### B-321 · An interrupted one-time skill backup is never retried
+### B-322 · A re-run replaces the pre-update backup of `.claude/settings.json`
 **Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1 #3 #7
-**Status:** Open; found by B-320's attack. A skill file another program holds with no sharing throws at the backup copy after
-its folder exists; the next run skips the backup because the folder exists and overwrites a consumer-edited framework
-skill, so the edit survives in no file. Any re-run also replaces the pre-update backup of `.claude/settings.json`.
+**Priority:** P3 · **Effort:** S · **Invariants:** #1 #3 #7
+**Status:** Open; split from B-321 by its design review (reasoned, not run). Every update run writes
+`.claude/.state/settings.json.pre-update`, so a re-run after a stop that came after the copies backs up the framework's
+settings over the consumer's; a Git target keeps the original in history, a non-Git target may not.
 
 ## Archived
 

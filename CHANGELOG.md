@@ -325,7 +325,19 @@ the later steps run, and stops at the end (exit 3) naming the folder, the except
 are kept; deleting the folder finishes the update. A fresh-session attack broke two earlier versions: one
 stopped in place and advised a re-run, which a Git target refuses (exit 4) and an old-layout target
 answers by declining the skipped layout move; one moved the removal last, so a held `CLAUDE.md` that
-failed the move left the skill active. The case holds an old-layout target. A phrase list
+failed the move left the skill active. The case holds an old-layout target.
+
+B-321, found by B-320's attack. The one-time skill backup was planned only while
+`.claude/framework-update-backup/skills/` was absent and its copies had no error handling, so a skill file
+another program held without sharing threw a raw error part-way; the next run skipped the partial backup
+and overwrote a consumer-edited framework skill, which then survived in no file (reproduced on both
+hosts). A marker beside the backup folder, written before the folder exists and deleted after the last
+copy, now has a backup cut short taken again; a failed copy or marker write stops with the path named
+(exit 3) before any skill is overwritten. Retired skill paths are left out of the backup, which would
+otherwise copy a file the retirement loop had already deleted. A design review rejected staging and
+renaming the folder (a rename fails while a scanner holds any file inside it); a fresh-session attack
+broke a first version that wrote the marker inside the new folder, where a denied or interrupted write
+left an empty folder that the next run took as complete. A phrase list
 was rejected: `RoutePrompt.Tests.ps1` already pins the two lost clauses, and a list misses the next new one.
 
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the

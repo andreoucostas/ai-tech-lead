@@ -1676,6 +1676,59 @@ It 'B-320 an active copy of a disabled skill that cannot be removed is the only 
     }
 }
 
+It 'B-321 a one-time skill backup that a held file or a denied write cut short is taken again, so an edited framework skill keeps a copy' {
+    # A backup cut short was skipped by the next run because its folder existed, which then overwrote the
+    # edited skill; it survived in no file. The denied leg fails the first write below the backup folder,
+    # where a marker written inside the new folder once failed with the folder already there.
+    $manifestBytes = Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/framework-ownership.json'
+    $skillPaths = @(([Text.Encoding]::UTF8.GetString($manifestBytes) | ConvertFrom-Json).paths | ForEach-Object { [string]$_.path } | Where-Object { $_.StartsWith('.claude/skills/') })
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    foreach ($leg in 'denied', 'held') {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ("b321-$leg-" + [guid]::NewGuid())
+        $handle = $null; $deniedRoot = $null
+        try {
+            New-ArchGeneratorTarget -Target $t
+            [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), $manifestBytes)
+            foreach ($relative in $skillPaths) {
+                $destination = Join-Path $t $relative
+                New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+                [IO.File]::WriteAllBytes($destination, (Get-GitBlobBytes -Spec "v0.86.7:dist/dotnet/$relative"))
+            }
+            $edited = Join-Path $t '.claude/skills/remember-for-team/SKILL.md'
+            [IO.File]::AppendAllText($edited, "`nB321 consumer edit.`n")
+            if ($leg -eq 'held') {
+                # A project-adapted sidecar, as /bootstrap writes one; it sorts before the edited skill.
+                $held = Join-Path $t '.claude/skills/add-warehouse-load/references/project-pattern.md'
+                New-Item -ItemType Directory -Force -Path (Split-Path -Parent $held) | Out-Null
+                [IO.File]::WriteAllText($held, "# Project pattern`n", [Text.UTF8Encoding]::new($false))
+                $handle = [IO.File]::Open($held, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+            } else {
+                $deniedRoot = Join-Path $t '.claude/framework-update-backup'
+                New-Item -ItemType Directory -Force -Path $deniedRoot | Out-Null
+                & icacls $deniedRoot /deny "*${sid}:(OI)(CI)(IO)(WD)" | Out-Null
+                Assert ($LASTEXITCODE -eq 0) 'calibration: icacls could not deny writes below the backup folder'
+            }
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $flat = $out -replace '\s+', ' '
+            Assert ($LASTEXITCODE -eq 3) "${leg}: the cut-short backup did not stop the update with exit 3 (exit $LASTEXITCODE): $out"
+            Assert ($flat -match "Could not finish the one-time skill backup at '\.claude/skills/") "${leg}: the stop did not name where the backup stopped: $out"
+            if ($leg -eq 'held') { Assert ($flat -match "at '\.claude/skills/add-warehouse-load/references/project-pattern\.md'") "held: the stop did not name the held file: $out" }
+            Assert ([IO.File]::ReadAllText($edited) -match 'B321 consumer edit\.') "${leg}: the stop overwrote the edited skill: $out"
+            if ($handle) { $handle.Dispose(); $handle = $null }
+            if ($deniedRoot) { & icacls $deniedRoot /remove:d "*$sid" | Out-Null; $deniedRoot = $null }
+            $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "${leg}: the re-run did not finish the update (exit $LASTEXITCODE): $rerun"
+            $backup = Join-Path $t '.claude/framework-update-backup/skills/remember-for-team/SKILL.md'
+            Assert ((Test-Path -LiteralPath $backup -PathType Leaf) -and [IO.File]::ReadAllText($backup) -match 'B321 consumer edit\.') "${leg}: the re-run did not take the backup again, so the edit survives in no file: $rerun"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-update-backup/skills-backup-incomplete'))) "${leg}: the finished backup still has its incomplete marker: $rerun"
+        } finally {
+            if ($handle) { $handle.Dispose() }
+            if ($deniedRoot) { & icacls $deniedRoot /remove:d "*$sid" | Out-Null }
+            Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 It 'B-319 an install leaves no source file that a project at the repository root compiles' {
     foreach ($dist in 'dotnet', 'monorepo') {
         $t = Join-Path ([IO.Path]::GetTempPath()) ("b319-$dist-" + [guid]::NewGuid())

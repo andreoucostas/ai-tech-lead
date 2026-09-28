@@ -1074,11 +1074,19 @@ if ($updateMode) {
     }
 }
 
-# The one-time backup is a set of leaf copies, not an opaque recursive directory mutation.
+# The one-time backup is a set of leaf copies, not an opaque recursive directory mutation. It is taken
+# while its folder is absent, or again while the marker beside it exists: written before the folder is
+# created and deleted after the last copy, so a held file or an interruption never leaves a partial
+# backup that later runs mistake for the whole one.
 $backupSkillsRoot = Join-Path $tgt '.claude/framework-update-backup/skills'
-if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) -and -not (Test-Path -LiteralPath $backupSkillsRoot)) {
+$backupIncompleteRelative = '.claude/framework-update-backup/skills-backup-incomplete'
+if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) -and
+    (-not (Test-Path -LiteralPath $backupSkillsRoot) -or (Test-Path -LiteralPath (Join-Path $tgt $backupIncompleteRelative) -PathType Leaf))) {
+    [void](Assert-SafeTargetMutation -Relative $backupIncompleteRelative)
     foreach ($file in Get-ChildItem -LiteralPath $activeSkillsRoot -Recurse -File -Force) {
         $underSkills = $file.FullName.Substring($activeSkillsRoot.Length).TrimStart('\', '/') -replace '\\', '/'
+        # A retired skill file is known framework content that the retirement loop deletes first.
+        if ($deletePlan -contains ".claude/skills/$underSkills") { continue }
         $relative = ".claude/framework-update-backup/skills/$underSkills"
         [void](Add-PlannedWrite -Relative $relative -ForceCreate)
         $skillBackupPlan.Add([pscustomobject]@{ Source = $file.FullName; Relative = $relative })
@@ -1423,10 +1431,25 @@ if ($settingsBackupRelative) {
     Copy-Item -Force -LiteralPath (Join-Path $tgt '.claude/settings.json') -Destination $settingsBackup
     Write-Output "  saved pre-update settings: $settingsBackupRelative"
 }
-foreach ($entry in $skillBackupPlan) {
-    $destination = Get-ContainedTargetPath -Relative $entry.Relative
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-    Copy-Item -Force -LiteralPath $entry.Source -Destination $destination
+if ($skillBackupPlan.Count -gt 0) {
+    $backupIncomplete = Get-ContainedTargetPath -Relative $backupIncompleteRelative
+    $backupAt = $backupIncompleteRelative
+    try {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupIncomplete) | Out-Null
+        [IO.File]::WriteAllText($backupIncomplete, "This skill backup is unfinished; the next framework update takes it again.`n")
+        foreach ($entry in $skillBackupPlan) {
+            $backupAt = '.claude/skills/' + $entry.Relative.Substring('.claude/framework-update-backup/skills/'.Length)
+            $destination = Get-ContainedTargetPath -Relative $entry.Relative
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+            Copy-Item -Force -LiteralPath $entry.Source -Destination $destination -ErrorAction Stop
+        }
+        $backupAt = $backupIncompleteRelative
+        Remove-Item -Force -LiteralPath $backupIncomplete -ErrorAction Stop
+    } catch {
+        [Console]::Error.WriteLine("ERROR: Could not finish the one-time skill backup at '$backupAt': $($_.Exception.Message)")
+        [Console]::Error.WriteLine('  No skill was overwritten, and the next run takes the backup again. Resolve the cause above (usually a program holding a file open), then re-run the installer; in a Git target add -AllowDirtyTree, since the changes Git now shows are this run''s own.')
+        exit 3
+    }
 }
 foreach ($entry in $disabledCarryPlan) {
     $destination = Get-ContainedTargetPath -Relative $entry.Relative

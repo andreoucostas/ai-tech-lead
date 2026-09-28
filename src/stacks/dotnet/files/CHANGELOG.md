@@ -159,6 +159,11 @@
   and says what is left.** Before, it stopped part-way with a raw PowerShell error. The skill's files are
   already kept under `.claude/disabled-skills/`; the installer names the folder and the error, and
   deleting that folder once nothing holds it finishes the update.
+- **An update cut short while backing up your skills now takes that backup again.** The one-time
+  backup under `.claude/framework-update-backup/skills/` is taken before framework skills are
+  overwritten. When a file another program held cut it short, a later update skipped it and could
+  overwrite a skill you had edited with no copy left. The backup now stays marked unfinished until
+  its last copy, and a held file stops the update, naming the file, before any skill is overwritten.
 
 ## 0.89.2 — 2026-09-24
 
