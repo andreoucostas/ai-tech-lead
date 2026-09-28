@@ -6,15 +6,15 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286 and B-301 closed 2026-09-28; B-306 and B-307 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301 and B-287 closed 2026-09-28; B-306 to B-308 filed
 
 | Rank | Item | Why here |
 |---|---|---|
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Next | B-287, B-307, B-297 | Consumer-facing defects the 2026-09-28 installer-batch reviews confirmed or found; B-287 before B-252 so its deck retirement applies |
-| Low | B-306, B-305, B-304, B-303, B-296, B-294, B-292, B-291, B-290, B-289, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Next | B-307, B-297 | Consumer-facing defects the 2026-09-28 installer-batch reviews found or confirmed |
+| Low | B-308, B-306, B-305, B-304, B-303, B-296, B-294, B-292, B-291, B-290, B-289, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -181,13 +181,6 @@ calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.m
 **Status:** Open. `.claude/scripts/build-block-manifest.ps1` and `meta/block-manifest.json` have no caller; its
 `-SelfTest` reads blocks from `dist/dotnet/CLAUDE.md`, which B-272 made a two-line stub. Delete both, or repoint.
 
-### B-287 · Hash-gated `.md` retirements never delete a CRLF checkout
-**Filed against:** v0.90.0 (2026-09-25)
-**Priority:** P3 · **Effort:** S · **Invariants:** #6
-**Status:** Open; observed by B-281's fresh-session attack. Git for Windows ships `core.autocrlf=true`, so an update run
-from a fresh clone sees CRLF bytes, matches no ledger digest (none are CRLF), and preserves and reports every retired
-`.md` file instead of deleting it. Fails safe; the retirement is just never applied there.
-
 ### B-289 · `release.ps1` still says the release runs the full root meta suite
 **Filed against:** v0.90.0 (2026-09-25)
 **Priority:** P3 · **Effort:** S · **Invariants:** —
@@ -270,6 +263,12 @@ line naming 18 absent paths; pwsh and 5.1 in a plain folder print `[OK]`.
 gitignored, often holding API keys) and Phase 3 moves approved files to `docs/pre-adoption/` on the adopt branch; unlike the
 installer's archive, nothing tells the developer to check them for secrets, and a shell move bypasses the write guard.
 
+### B-308 · A retired file another process holds open aborts an update part-way
+**Filed against:** v0.90.0 (2026-09-28)
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open; from the B-287 attack, pre-existing. A retired file opened with FileShare.Read passes the hash, then the unguarded
+`Remove-Item` in the retirement delete loop (`install.ps1`, "retired:" step) throws: the update exits 1 with some files deleted and
+the stamp still old; a re-run recovers. B-287 lets CRLF clones reach that loop.
 ## Archived
 
 B-219 and B-221 — see `meta/BACKLOG-DONE.md`.

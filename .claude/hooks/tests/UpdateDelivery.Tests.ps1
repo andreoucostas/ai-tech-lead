@@ -1413,6 +1413,58 @@ It 'a known retired generator is deleted and a consumer-modified one is preserve
     }
 }
 
+# Git for Windows checks text out with CRLF (core.autocrlf=true); the ledger records the released LF blobs.
+function ConvertTo-B287CrlfBytes {
+    param([Parameter(Mandatory)][byte[]]$Bytes)
+    $out = New-Object 'System.Collections.Generic.List[byte]' ($Bytes.Length + 4096)
+    foreach ($b in $Bytes) { if ($b -eq 0x0A) { $out.Add([byte]0x0D) }; $out.Add($b) }
+    return ,$out.ToArray()
+}
+
+It 'B-287 a retired file checked out with CRLF line endings is retired like its LF original' {
+    $impact = Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/.claude/commands/impact.md'
+    $generator = Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/scripts/build-architecture-html.ps1'
+    # A BOM'd blob with non-ASCII bytes catches a text-level rewrite that a plain ASCII blob would not.
+    Assert ($generator.Length -gt 3 -and $generator[0] -eq 0xEF -and $generator[1] -eq 0xBB -and $generator[2] -eq 0xBF -and
+        @($generator[3..($generator.Length - 1)] | Where-Object { $_ -gt 0x7F }).Count -gt 0) 'calibration: the generator blob is not a BOM-prefixed file with non-ASCII bytes'
+    $utf8 = [Text.UTF8Encoding]::new($false)
+    $crlfImpact = ConvertTo-B287CrlfBytes $impact
+    $firstCr = [Array]::IndexOf($crlfImpact, [byte]0x0D)
+    $trailingSpace = [byte[]]($crlfImpact[0..($firstCr - 1)] + @([byte]0x20) + $crlfImpact[$firstCr..($crlfImpact.Length - 1)])
+    $cases = @(
+        @{ Label = 'crlf-ps1'; Path = 'scripts/build-architecture-html.ps1'; Bytes = (ConvertTo-B287CrlfBytes $generator); Retired = $true },
+        @{ Label = 'crlf-md'; Path = '.claude/commands/impact.md'; Bytes = (ConvertTo-B287CrlfBytes $impact); Retired = $true },
+        # Line endings are the only difference forgiven: an added BOM or an edited line is consumer content.
+        @{ Label = 'crlf-bom-md'; Path = '.claude/commands/impact.md'; Bytes = ([byte[]](0xEF, 0xBB, 0xBF) + (ConvertTo-B287CrlfBytes $impact)); Retired = $false },
+        @{ Label = 'crlf-edited-md'; Path = '.claude/commands/impact.md'; Bytes = ((ConvertTo-B287CrlfBytes $impact) + $utf8.GetBytes("# locally edited`r`n")); Retired = $false },
+        # Nothing wider than CR LF -> LF: lone CR endings and a trailing-space edit are not Git's conversion.
+        @{ Label = 'lone-cr-md'; Path = '.claude/commands/impact.md'; Bytes = ([byte[]]@($impact | ForEach-Object { if ($_ -eq 0x0A) { [byte]0x0D } else { $_ } })); Retired = $false },
+        @{ Label = 'crlf-trailing-space-md'; Path = '.claude/commands/impact.md'; Bytes = $trailingSpace; Retired = $false }
+    )
+    foreach ($case in $cases) {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ("b287-$($case.Label)-" + [guid]::NewGuid())
+        try {
+            New-ArchGeneratorTarget -Target $t
+            [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/framework-ownership.json'))
+            $planted = Join-Path $t $case.Path
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $planted) | Out-Null
+            [IO.File]::WriteAllBytes($planted, [byte[]]$case.Bytes)
+            Assert ([Array]::IndexOf([byte[]]$case.Bytes, [byte]0x0D) -ge 0) "calibration: $($case.Label) holds no CR"
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "$($case.Label) update failed: $out"
+            $escaped = [regex]::Escape($case.Path)
+            if ($case.Retired) {
+                Assert (-not (Test-Path -LiteralPath $planted)) "$($case.Label): a CRLF copy of a released blob survived the update: $out"
+                Assert ($out -match "(?m)^PLAN delete $escaped\r?$") "$($case.Label): the deletion was not planned: $out"
+            } else {
+                Assert (Test-Path -LiteralPath $planted -PathType Leaf) "$($case.Label): consumer content was deleted: $out"
+                Assert (Test-B194BytesEqual ([byte[]]$case.Bytes) ([IO.File]::ReadAllBytes($planted))) "$($case.Label): consumer content was changed: $out"
+                Assert ($out -match "CANT-VERIFY: retired path '$escaped' has consumer-modified or unknown content") "$($case.Label): the preserved file was not diagnosed: $out"
+            }
+        } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 It 'a missing previous ownership manifest never authorizes generator deletion' {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('arch-retire-nomanifest-' + [guid]::NewGuid())
     try {

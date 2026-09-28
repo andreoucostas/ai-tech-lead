@@ -66,6 +66,18 @@ function Get-LiteralItem {
     return $item
 }
 
+# SHA-256 of the raw bytes with every CR LF pair turned into LF. Git for Windows checks text out with
+# CRLF (core.autocrlf=true) while the retirement ledger records released LF blobs, so a retired file
+# differing only in line endings holds no consumer content. Mixed endings pass for the same reason; a
+# BOM, an edited line or a lone CR does not. Latin-1 maps every byte to one char and back unchanged.
+function Get-LfSha256 {
+    param([Parameter(Mandatory = $true)][AllowEmptyCollection()][byte[]]$Bytes)
+    $latin1 = [Text.Encoding]::GetEncoding(28591)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash($latin1.GetBytes($latin1.GetString($Bytes).Replace("`r`n", "`n"))))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
+}
+
 function Get-ContainedTargetPath {
     param([Parameter(Mandatory = $true)][string]$Relative)
     if ([string]::IsNullOrWhiteSpace($Relative) -or $Relative.Contains('\') -or $Relative.Contains([char]0) -or
@@ -356,7 +368,12 @@ if ($updateMode) {
                     $retirementPreserve.Add($retiredPath)
                     continue
                 }
-                try { $digest = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant() }
+                try {
+                    $digest = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant()
+                    if ($digest -notin @($retirementLedger[$retiredPath].Hashes) -and $candidateEntry.Length -le 2097152) {
+                        $digest = Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes($candidate))
+                    }
+                }
                 catch {
                     $reconciliationMessages.Add("CANT-VERIFY: retired path '$retiredPath' could not be hashed; preserving it.")
                     $retirementPreserve.Add($retiredPath)

@@ -170,6 +170,18 @@ pre-commit hook, 5.1 now retires eligible retired Git-hook helpers as pwsh does;
 used to preserve them. The new case plants an absent retired path in the previous manifest so the
 retirement inspection is reached; with that site alone reverted it fails on 5.1.
 
+B-287. Update mode retires a file that differs from a released framework blob only in line endings. Git
+for Windows checks text out with CRLF (`core.autocrlf=true`, its default) while the retirement ledger
+records LF blobs, so in such a clone every retirement kept the file and reported it as
+consumer-modified: retired commands, hooks and scripts stayed live. When the raw digest is unknown and
+the file is at most 2 MiB, the installer hashes the raw bytes with each CR LF pair turned into LF (via
+Latin-1, which maps every byte to itself); a BOM, an edited line or a lone CR still preserves the file.
+Deletion keeps its previous-manifest authority, so it happens only on the update that crosses a
+retirement: clones past the 0.81.0-0.88.0 retirements keep those files and the existing "retained
+retired path" advice, while 0.90.0's `/generate-copilot` retirement and later ones now apply. The
+design attack hashed every blob in history (all 407 ledger digests are LF, 108 with a BOM) and showed a
+text-level `ReadAllText` rewrite would miss every BOM'd blob; the new case plants a BOM'd non-ASCII
+blob and fails on that mutant.
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

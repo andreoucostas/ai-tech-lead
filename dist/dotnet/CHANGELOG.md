@@ -95,6 +95,12 @@
   originals had been moved even when nothing was, and named `CLAUDE.md` twice. The reminder at the
   start of each session no longer says originals were archived when none were.
 
+- **Retired framework files are now removed from Windows clones too.** When an update retires a
+  framework file, it deletes your copy only if you have not changed it. Git on Windows usually checks
+  files out with Windows line endings, and the installer counted that as a change, so it kept retired
+  files such as the `/generate-copilot` command and reported them as edited by you. It now ignores line
+  endings in that comparison; any other difference still keeps the file. Files retired by updates you
+  have already run are not revisited: the installer keeps listing them for you to remove.
 ## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new

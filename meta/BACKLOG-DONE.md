@@ -12753,3 +12753,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-301** — CLOSED **2026-09-28**. `Get-LiteralItem` throws ItemNotFound on both hosts, so 5.1's empty `Get-Item` result for a
   missing path under a bracketed directory no longer yields 21/80 false CANT-VERIFY lines; the design attack supplied the fixture
   that reaches the retirement site.
+
+- **B-287** — CLOSED **2026-09-28**. A retired file differing from a released blob only in CR LF line endings is retired like its LF
+  original (raw bytes, Latin-1, 2 MiB bound); a BOM, an edited line or a lone CR still preserves it. Only the update that crosses a
+  retirement deletes, so 0.81.0-0.88.0 residue in CRLF clones stays reported, not removed. Design attack hashed all 407 ledger blobs.
