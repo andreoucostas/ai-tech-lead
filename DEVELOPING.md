@@ -12,7 +12,7 @@ number and never restates them. Paths assume cwd = the repo root.
 | `src/stacks/<dist>/snippets/<rel>/<NAME>` | marker content per dist | monorepo snippet wins; else dotnet+angular concat (WSD-015) |
 | `src/stacks/<dist>/files/` | whole-file overrides + stack-only files | both-stacks collision without a monorepo override = build error |
 | `dist/{dotnet,angular,monorepo}/` | generated golden output (committed) | **never hand-edit** [#1]; `linguist-generated` |
-| `scripts/` | PowerShell composer + gates [#3] | `build`, `validate-dist`, `context-footprint`; `fidelity-check` is manual |
+| `scripts/` | PowerShell composer + gates [#3] | `build`, `validate-dist`, `context-footprint` |
 | `install.ps1` | root installer | detect stack, auto-detect mixed → monorepo, delegate to dist installer |
 | `.claude/hooks/` | meta-dev `bom-fix.ps1` hook | auto-adds the UTF-8 BOM to written `.ps1`; does not ship |
 | `.claude/hooks/_fixtures/` | JSON event fixtures for testing the hooks | see below |
@@ -141,19 +141,6 @@ This is the gate that would have caught the v0.26.3 defect: `dist/monorepo`'s RE
 agents to run `pwsh install.ps1`, which exists nowhere in that dist. If you add a pattern to
 `scripts/meta-denylist.txt`, red-test it and prefer a narrow `ALLOW <path-substring>` over weakening
 a `DENY` when a legitimate consumer-facing word trips the check.
-
-## Fidelity vs the frozen v0.25.5 baseline (manual re-audit only — no longer a CI gate)
-
-Strict EOL-normalized byte-compare of `dist/{dotnet,angular}` against the Phase-0 freeze tags
-(materialized from history — needs full clone depth). **Retired from CI at the v0.26.0 release**,
-which deliberately changed shipped content; the freeze tags are no longer a live baseline. The
-script remains for a manual re-audit against the `pre-restructure` tag (see `AGENTS.md` → Status).
-`dist/monorepo` never had a baseline (new capability).
-
-```powershell
-pwsh -NoProfile -File scripts/fidelity-check.ps1 dotnet
-pwsh -NoProfile -File scripts/fidelity-check.ps1 angular
-```
 
 ## Run the hook test suites (automated — closes the "untested hook" gap [#5])
 

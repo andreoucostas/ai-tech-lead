@@ -1440,52 +1440,6 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $classes = if ($classNames.Count -eq 0) { 'not-found' } else { $classNames -join ',' }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $followed; Detail = "loaded=$loaded followed=$followed classes=$classes" }
         }
-        'angular-form-control' {
-            $readDefaults = [bool]@($e.Tools | Where-Object {
-                $_.Name -match '^(?i:Read|ReadFile|read_file)$' -and
-                (Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)docs/defaults\.md$'
-            } | Select-Object -First 1)
-            # Which delivery tier produced the outcome. Without this the probe cannot attribute a
-            # result to the skill vs the conventions/docs tier, so a guidance change aimed at one
-            # of them intervenes on something the instrument cannot see.
-            $usedSkill = [bool]@($e.Tools | Where-Object {
-                $_.Name -eq 'Skill' -and $_.Input.skill -eq 'add-component'
-            } | Select-Object -First 1)
-            $rootCommit = (git -C $Target rev-list --max-parents=0 HEAD | Select-Object -First 1)
-            $added = @(
-                @(git -C $Target diff --name-only --diff-filter=A $rootCommit -- 'src/app/*.ts' 'src/app/**/*.ts')
-                @(git -C $Target ls-files --others --exclude-standard -- 'src/app/*.ts' 'src/app/**/*.ts')
-            ) | Where-Object { $_ } | Sort-Object -Unique
-            if ($added.Count -eq 0) {
-                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "cva=False ngcontrol=False controlAsInput=False formInputs= readDefaults=$readDefaults usedSkill=$usedSkill" }
-            }
-            $texts = @($added | ForEach-Object { Get-Content -Raw -LiteralPath (Join-Path $Target $_) })
-            $allText = $texts -join "`n"
-            # B-72(a): report the interface and the provider SEPARATELY. Combined as one boolean,
-            # the correct pattern and the circular-DI double registration scored identically, so the
-            # probe could not distinguish "implements ControlValueAccessor and provides
-            # NG_VALUE_ACCESSOR" from a component that registers itself twice. $cva is retained as
-            # the derived pass signal so the outcome is unchanged; the two conjuncts are now visible
-            # in Detail, which is where a reader decides what a result means.
-            $cvaInterface = [bool]($allText -match '\bControlValueAccessor\b')
-            $cvaProvider  = [bool]($allText -match '\bNG_VALUE_ACCESSOR\b')
-            $cva = $cvaInterface -or $cvaProvider
-            $ngcontrol = $allText -match '\binject\s*\(\s*NgControl\b' -or $allText -match '(?s)constructor\s*\([^)]*:\s*NgControl\b'
-            $controlType = '(?:AbstractControl|FormControl|FormGroup|NgControl)'
-            $controlAsInput = $allText -match "(?im)@Input\s*(?:\([^)]*\))?\s*(?:(?:public|protected|private|readonly)\s+)*[A-Za-z_][A-Za-z0-9_]*[!?]?\s*:\s*$controlType\b" -or
-                $allText -match "(?im)(?:(?:public|protected|private|readonly)\s+)*[A-Za-z_][A-Za-z0-9_]*\s*=\s*input(?:\.required)?\s*<\s*$controlType\b(?:[^<>]|<[^<>]*>)*>\s*\("
-            $formInputs = [Collections.Generic.List[string]]::new()
-            foreach ($text in $texts) {
-                # Accessor and modifier forms are deliberate, not defensive: `@Input() set disabled(v)`
-                # is the most idiomatic way to declare a form-owned input on a value accessor, and
-                # `input.required<T>()` is its signal-era equivalent. Both previously scored as
-                # "no form-owned inputs", so a component carrying exactly the reported defect passed.
-                foreach ($match in [regex]::Matches($text, '(?im)@Input\s*(?:\([^)]*\))?\s*(?:(?:public|protected|private|readonly|static|abstract|override|declare|set|get)\s+)*(required|disabled|errors|errorMessage|invalid|touched)\b')) { $formInputs.Add($match.Groups[1].Value) }
-                foreach ($match in [regex]::Matches($text, '(?im)\b(required|disabled|errors|errorMessage|invalid|touched)\s*=\s*input(?:\.required)?(?:\s*<[^;=()]+>)?\s*\(')) { $formInputs.Add($match.Groups[1].Value) }
-            }
-            $inputNames = @($formInputs | Sort-Object -Unique)
-            return [pscustomobject]@{ Status = 'PASS'; Pass = ($cva -or $ngcontrol) -and $inputNames.Count -eq 0; Detail = "cva=$cva cvaInterface=$cvaInterface cvaProvider=$cvaProvider ngcontrol=$ngcontrol controlAsInput=$controlAsInput formInputs=$($inputNames -join ',') readDefaults=$readDefaults usedSkill=$usedSkill" }
-        }
         { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
             $successful = @($e.Tools | Where-Object {
                 $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error
@@ -2534,119 +2488,6 @@ function Invoke-SelfTest {
         ) }
         $docsKeywordOnly = Test-ScenarioEvidence 'docs-tier-ondemand' $temp $docsEcho 1
         if ($docsKeywordOnly.Pass -or $docsKeywordOnly.Status -ne 'INCONCLUSIVE') { throw 'docs-tier probe accepted final-text Coordinator keyword without a matching source file' }
-        $angularTemp = Join-Path $temp 'angular-fixture'
-        New-EvalRepo $angularTemp angular
-        if (-not (Test-Path (Join-Path $angularTemp 'src/app/profile-form/profile-form.component.ts'))) { throw 'Angular fixture reactive form missing' }
-        $angularEvidence = [pscustomobject]@{ Events = @(
-            ([pscustomobject]@{ type='system'; subtype='init' }),
-            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='defaults'; name='Read'; input=[pscustomobject]@{ file_path=(Join-Path $angularTemp 'docs/defaults.md') } }) } }),
-            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
-        ) }
-        $shared = Join-Path $angularTemp 'src/app/shared'
-        New-Item -ItemType Directory -Path $shared | Out-Null
-        @'
-import { Component, Input } from '@angular/core';
-import { AbstractControl } from '@angular/forms';
-
-@Component({ selector: 'app-form-field', standalone: true, template: '<ng-content />' })
-export class FormFieldComponent {
-  @Input() control: AbstractControl | null = null;
-}
-'@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
-        $angularWrapper = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
-        if ($angularWrapper.Pass -or $angularWrapper.Detail -notmatch '^cva=False cvaInterface=False cvaProvider=False ngcontrol=False controlAsInput=True formInputs= readDefaults=True usedSkill=False$') { throw "angular-form-control failed to identify control-as-input wrapper: $($angularWrapper.Detail)" }
-        Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
-        @'
-import { Component, forwardRef } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-
-@Component({ selector: 'app-form-field', standalone: true, template: '<input />', providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => FormFieldComponent), multi: true }] })
-export class FormFieldComponent implements ControlValueAccessor {
-  writeValue(value: string): void {}
-  registerOnChange(fn: (value: string) => void): void {}
-  registerOnTouched(fn: () => void): void {}
-}
-'@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
-        $angularCva = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
-        if (-not $angularCva.Pass -or $angularCva.Detail -notmatch '^cva=True cvaInterface=True cvaProvider=True ngcontrol=False controlAsInput=False formInputs= readDefaults=True usedSkill=False$') { throw "angular-form-control rejected CVA component: $($angularCva.Detail)" }
-        Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
-        @'
-import { Component, Input } from '@angular/core';
-
-@Component({ selector: 'app-form-field', standalone: true, template: '<input />' })
-export class FormFieldComponent {
-  @Input() required = false;
-  @Input() disabled = false;
-}
-'@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
-        $angularInputs = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
-        if ($angularInputs.Pass -or $angularInputs.Detail -notmatch '^cva=False cvaInterface=False cvaProvider=False ngcontrol=False controlAsInput=False formInputs=disabled,required readDefaults=True usedSkill=False$') { throw "angular-form-control accepted form-owned inputs or failed to list them: $($angularInputs.Detail)" }
-        Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
-        # Grader-defeat regressions. Both components below ARE the reported defect -- a value
-        # accessor that re-declares state the FormControl already owns -- and both scored PASS
-        # before the formInputs patterns were widened. A green suite that misses these makes the
-        # scenario useless as a red test, because guidance recommending either idiom would flip
-        # the result without the behaviour changing.
-        @'
-import { Component, Input, forwardRef } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-
-@Component({ selector: 'app-form-field', standalone: true, template: '<input />', providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => FormFieldComponent), multi: true }] })
-export class FormFieldComponent implements ControlValueAccessor {
-  @Input() set disabled(value: boolean) { this._disabled = value; }
-  @Input() get errors() { return this._errors; }
-  private _disabled = false;
-  private _errors: unknown = null;
-  writeValue(value: string): void {}
-  registerOnChange(fn: (value: string) => void): void {}
-  registerOnTouched(fn: () => void): void {}
-}
-'@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
-        $angularAccessorInputs = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
-        if ($angularAccessorInputs.Pass -or $angularAccessorInputs.Detail -notmatch '^cva=True cvaInterface=True cvaProvider=True ngcontrol=False controlAsInput=False formInputs=disabled,errors readDefaults=True usedSkill=False$') { throw "angular-form-control missed form-owned inputs declared as @Input() set/get: $($angularAccessorInputs.Detail)" }
-        Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
-        @'
-import { Component, forwardRef, input } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-
-@Component({ selector: 'app-form-field', standalone: true, template: '<input />', providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => FormFieldComponent), multi: true }] })
-export class FormFieldComponent implements ControlValueAccessor {
-  disabled = input.required<boolean>();
-  required = input.required<boolean>();
-  writeValue(value: string): void {}
-  registerOnChange(fn: (value: string) => void): void {}
-  registerOnTouched(fn: () => void): void {}
-}
-'@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
-        $angularSignalInputs = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEvidence 1
-        if ($angularSignalInputs.Pass -or $angularSignalInputs.Detail -notmatch '^cva=True cvaInterface=True cvaProvider=True ngcontrol=False controlAsInput=False formInputs=disabled,required readDefaults=True usedSkill=False$') { throw "angular-form-control missed form-owned inputs declared as input.required<T>(): $($angularSignalInputs.Detail)" }
-        Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
-        # usedSkill must actually observe a Skill tool event, or the tier-attribution signal is inert.
-        $angularSkillEvidence = [pscustomobject]@{ Events = @(
-            ([pscustomobject]@{ type='system'; subtype='init' }),
-            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='skill'; name='Skill'; input=[pscustomobject]@{ skill='add-component' } }) } }),
-            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
-        ) }
-        @'
-import { Component, forwardRef } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-
-@Component({ selector: 'app-form-field', standalone: true, template: '<input />', providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => FormFieldComponent), multi: true }] })
-export class FormFieldComponent implements ControlValueAccessor {
-  writeValue(value: string): void {}
-  registerOnChange(fn: (value: string) => void): void {}
-  registerOnTouched(fn: () => void): void {}
-}
-'@ | Set-Content (Join-Path $shared 'form-field.component.ts') -Encoding utf8NoBOM
-        $angularSkill = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularSkillEvidence 1
-        if (-not $angularSkill.Pass -or $angularSkill.Detail -notmatch 'usedSkill=True$') { throw "angular-form-control failed to record the add-component skill invocation: $($angularSkill.Detail)" }
-        Remove-Item -LiteralPath (Join-Path $shared 'form-field.component.ts')
-        $angularEcho = [pscustomobject]@{ Events = @(
-            ([pscustomobject]@{ type='system'; subtype='init' }),
-            ([pscustomobject]@{ type='result'; is_error=$false; result='Implemented ControlValueAccessor and NG_VALUE_ACCESSOR.' })
-        ) }
-        $angularKeywordOnly = Test-ScenarioEvidence 'angular-form-control' $angularTemp $angularEcho 1
-        if ($angularKeywordOnly.Pass -or $angularKeywordOnly.Status -ne 'INCONCLUSIVE') { throw 'angular-form-control accepted final-text ControlValueAccessor without a matching file' }
         $warehouseTemp = Join-Path $temp 'warehouse-fixture'
         New-EvalRepo $warehouseTemp warehouse
         $sqlFiles = @(Get-ChildItem -LiteralPath $warehouseTemp -Filter '*.sql' -File -Recurse)
@@ -4229,19 +4070,6 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
                 } else {
                     $ordinaryConventions += "`n- Classes that orchestrate multi-step domain work are suffixed `Coordinator` in this repository. Do not use `Service`, `Manager`, or `Handler` for them — `Service` is reserved for HTTP clients."
                 }
-                $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
-                $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
-            }
-            'angular-form-control' {
-                $claudePath = Join-Path $target 'AGENTS.md'
-                $claudeText = (Get-Content -Raw $claudePath).Replace('BOOTSTRAP_PENDING', 'EVAL_BOOTSTRAPPED')
-                $ordinaryConventions = @'
-<!-- EVAL_BOOTSTRAPPED: repository conventions observed for this fixture. -->
-
-- Build UI features as standalone components.
-- Keep shared components under `src/app/shared/`.
-- Prefer dependency injection with `inject()` for services.
-'@
                 $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
                 $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
             }

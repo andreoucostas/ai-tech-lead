@@ -6,7 +6,7 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270 and B-289 closed 2026-09-28; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-317 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270, B-289, B-251, B-285 and B-290 closed 2026-09-28; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-317 filed
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -14,7 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
 | Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
-| Low | B-317, B-316, B-315, B-308, B-305, B-303, B-292, B-291, B-290, B-285, B-252, B-251, B-265, B-268, B-269, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-317, B-316, B-315, B-308, B-305, B-303, B-292, B-291, B-252, B-265, B-268, B-269, B-273, B-274 | Take when adjacent work opens the same files; B-252 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -85,12 +85,6 @@ rewrites `meta-gates` to the two tiers; confirm no stale obligation remains, the
 **Status:** Open; observed 2026-09-18. With `-File` and a repeated `-Case`, binding fails and exits 1
 without a `RED_FIRST` line, the same code as WRONG. Decide whether to accept repeated `-Case`.
 
-### B-251 · Retire `scripts/fidelity-check.ps1` and `FidelityCheck.Tests.ps1`
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open. A manual re-audit tool for the finished two-repo migration, out of CI since
-v0.26.0, still carried and tested.
-
 ### B-252 · Stop copying the presentation deck into every consumer repository
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P3 · **Effort:** S · **Invariants:** #1 #7
@@ -116,18 +110,6 @@ split into one item per workflow when taken.
 **Status:** Open; observed 2026-09-20 by the fresh-session review of B-247, pre-existing and
 unchanged by it. The header's empty-tool-name claim is wrong. Fable (2026-09-28, unverified): no client sends one; when
 `guard.ps1` next opens, delete `-or ($tool -eq '')` (:37, :118) and the parenthetical, red case `toolName: ""` exit 2.
-
-### B-285 · Retire the B-97 block-manifest tooling
-**Filed against:** v0.90.0 (2026-09-24)
-**Priority:** P3 · **Effort:** S · **Invariants:** none
-**Status:** Open. `.claude/scripts/build-block-manifest.ps1` and `meta/block-manifest.json` have no caller; its
-`-SelfTest` reads blocks from `dist/dotnet/CLAUDE.md`, which B-272 made a two-line stub. Delete both, or repoint.
-
-### B-290 · Re-scope or delete the SATURATED `angular-form-control` eval scenario
-**Filed against:** v0.90.0 (2026-09-25)
-**Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; named by the 2026-09-18 review under B-264, carried here when B-264 closed; B-253 closed without it.
-`scenarios.json:56` calls its own pass uninformative; `run-agent-evals.ps1` self-test fixtures (`:1443`, `:2556-2621`) use it.
 
 ### B-291 · Spike: let the host's PowerShell run hooks and drop the named inner interpreter
 **Filed against:** v0.90.0 (2026-09-25)

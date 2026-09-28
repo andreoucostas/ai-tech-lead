@@ -124,7 +124,7 @@ getting the framework itself into a repo.
 | `src/core/` | Single-source shared content — the common files, with `<!-- @stack:NAME -->` markers where stacks diverge. |
 | `src/stacks/{dotnet,angular,monorepo}/` | Per-dist `snippets/` (marker content) and `files/` (whole-file overrides + stack-only files). |
 | `dist/{dotnet,angular,monorepo}/` | **Generated**, committed golden output. Never hand-edited — CI rebuilds and diffs it against `src/` on every push/PR. |
-| `scripts/` | PowerShell composer/gates: `build`, `validate-dist`, `context-footprint`; `fidelity-check.ps1` remains a manual historical re-audit tool. |
+| `scripts/` | PowerShell composer/gates: `build`, `validate-dist`, `context-footprint`. |
 | `install.ps1` | Root installer — detects the target's stack (or reads `-Stack`) and delegates to the matching dist installer. |
 | `meta/` | **The maintainer layer, kept out of the product's way:** `BACKLOG.md` (work list), `workspace-decisions.md` (ADR log), `LEARNINGS.md` (meta-dev log), `ci-handover.md`, `changelogs/` (frozen pre-merge history). Never ships. |
 | `.github/workflows/ci.yml` | The CI gate — see below. |
@@ -143,9 +143,7 @@ which fails if maintainer vocabulary reaches a shipped file) and each dist's own
 JSON fixtures at every hook and asserts the PowerShell semantics). CI (`.github/workflows/ci.yml`)
 runs those plus a freshness check under eight Windows contexts: root and all three distributions
 under PowerShell 7, then the same four under native Windows PowerShell 5.1.
-`scripts/fidelity-check.ps1` (byte-compare of `dist/{dotnet,angular}` against the pre-merge
-`freeze-v0.25.5` baseline) was **retired from CI at v0.26.0**, which deliberately changed shipped
-content; it remains for manual re-audit. Full command recipes, including how to run any single gate
+Full command recipes, including how to run any single gate
 by hand, are in [`DEVELOPING.md`](./DEVELOPING.md).
 
 ## Status

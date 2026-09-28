@@ -13,9 +13,6 @@
 # test files whose subject the release commit changes (B-245). The full root meta suite and the shipped
 # hook suites run in CI: before a normal tag, CI must observe the
 # three-dist hook matrices under both PowerShell 7 and Windows PowerShell 5.1.
-# fidelity-check is deliberately NOT run here: it is the migration-era gate pinned to the
-# freeze-v0.25.5 tags, and the first release that changes shipped content must consciously
-# retire/re-baseline it (and the CI fidelity legs) in the same change — see WSD-016.
 #
 # PowerShell-only by decision (see meta/workspace-decisions.md): release/eval automation requires
 # PowerShell 7. Shipped framework scripts retain their separately tested Windows PowerShell 5.1

@@ -12823,3 +12823,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-289** — CLOSED **2026-09-28**. `release.ps1` names the four release-subject meta test files it runs locally, not the
   full root meta suite, in its header, stage comment and release commit body.
+
+- **B-251** — CLOSED **2026-09-28**. `scripts/fidelity-check.ps1` and `FidelityCheck.Tests.ps1` deleted with their doc mentions.
+
+- **B-285** — CLOSED **2026-09-28**. `.claude/scripts/build-block-manifest.ps1` and `meta/block-manifest.json` deleted; no caller.
+
+- **B-290** — CLOSED **2026-09-28**. The SATURATED `angular-form-control` eval scenario deleted with its harness cases and self-tests.

@@ -258,6 +258,13 @@ with it; the ledger is tracked, so a missing one now refuses. The refusal, the l
 DEVELOPING.md give AGENTS.md's format, and the header, stage comment and release commit body name the
 four release-subject meta test files, not the full root meta suite, which only CI runs.
 
+B-251, B-285 and B-290, deletions. `scripts/fidelity-check.ps1` and its test, a manual re-audit against
+the pre-merge freeze tags out of CI since v0.26.0, go, with their DEVELOPING, README and release.ps1
+mentions. So do `.claude/scripts/build-block-manifest.ps1` and `meta/block-manifest.json`, which had no
+caller and whose self-test read blocks from a `CLAUDE.md` that B-272 made a two-line stub. The eval
+scenario `angular-form-control`, which called its own pass uninformative (SATURATED), goes with its
+evidence case, setup case and self-tests; every full `-Live` run spent a $1.00 budget on it.
+
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper
 case) was recorded under the shipped spelling, so Git's case-sensitive pathspecs called it untracked and
