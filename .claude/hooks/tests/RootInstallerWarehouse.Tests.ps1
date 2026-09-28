@@ -470,7 +470,7 @@ Reset-Tests
                 $root = Join-Path $parent $name
                 [void][IO.Directory]::CreateDirectory((Join-Path $root 'dist/dotnet/scripts'))
                 Copy-Item -LiteralPath (Join-Path $repo 'install.ps1') -Destination (Join-Path $root 'install.ps1')
-                $stub = "param([string]`$Target, [switch]`$WhatIf, [switch]`$AllowDowngrade, [switch]`$AllowDirtyTree)`nWrite-Output 'DELEGATE: $name'`nexit 0`n"
+                $stub = "param([string]`$Target, [switch]`$WhatIf, [switch]`$AllowDowngrade, [switch]`$AllowDirtyTree)`nWrite-Output 'DELEGATE: $name'`nWrite-Output ('CWD: ' + (Get-Location).ProviderPath)`nexit 0`n"
                 [IO.File]::WriteAllText((Join-Path $root 'dist/dotnet/scripts/install.ps1'), $stub, [Text.UTF8Encoding]::new($true))
             }
             foreach ($clone in @('fw[s]', 'fw`[t]')) {
@@ -480,9 +480,20 @@ Reset-Tests
                 $exit = $LASTEXITCODE
                 Assert ($exit -eq 0 -and $out.Contains("DELEGATE: $clone")) "the dispatcher in clone '$clone' did not call its own stack installer (exit $exit): $out"
                 Assert ($out -notmatch 'DELEGATE: fws') "the dispatcher in clone '$clone' called the sibling's stack installer: $out"
+                # The stack installer runs from the caller's location, as it always did: started from the
+                # clone's scripts folder, git could not start once that path passed 260 characters.
+                Assert ($out -match ('(?m)^CWD: ' + [regex]::Escape($clonePath) + '\r?$')) "the stack installer did not run from the caller's location in clone '$clone': $out"
                 # An interactive console shares the location, so the dispatcher must hand it back.
                 Assert ($out -match ('(?m)^LOCATION: ' + [regex]::Escape($clonePath) + '\r?$')) "the dispatcher did not restore the caller's location in clone '$clone': $out"
             }
+            # Returning to a caller's folder that no longer exists must not cost the install. (The
+            # plain clone keeps 5.1's wildcard reading of an absolute path out of this fixture.)
+            $gone = Join-Path $parent 'gone'
+            [void][IO.Directory]::CreateDirectory($gone)
+            $command = "Set-Location -LiteralPath '$gone'; [IO.Directory]::Delete('$gone'); & '$(Join-Path $parent 'fws\install.ps1')' -Stack dotnet '$target'"
+            $out = @(& (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -Command $command 2>&1 | ForEach-Object { $_.ToString() }) -join "`n"
+            $exit = $LASTEXITCODE
+            Assert ($exit -eq 0 -and $out.Contains('DELEGATE: fws')) "a caller whose folder was deleted lost the install (exit $exit): $out"
         } finally { Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue }
     }
 if (-not $SkipRedTest) {

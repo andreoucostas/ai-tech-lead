@@ -142,15 +142,17 @@ hazard table now records again. `BootstrapBaseline.Tests.ps1`, 33 cases.
 B-298 and B-302. The root installer accepts `-AllowDirtyTree` and forwards it: the stack installer's
 dirty-tree refusal names that switch, and the root dispatcher rejected it with a binding error (exit 1),
 so a consumer following the message could not proceed. The stack installer's override line drops
-`(--allow-dirty-tree)`, a spelling neither entrypoint accepts. The root dispatcher now calls the stack
-installer as `.\install.ps1` from that installer's own folder and then returns to the caller's
-location with `Set-Location -LiteralPath`: Windows PowerShell 5.1's call operator read the absolute
-path as a wildcard, so a console user who changed into a clone at `fw[s]` beside one at `fws` and typed
-`.\install.ps1` got the sibling's stack installer, and escaping the path for 5.1 broke a clone named
-``fw`[t]`` (found by the batch attack; 5.1's `Pop-Location` cannot return there either). One code path
-serves both hosts. Still host behaviour: 5.1 reads a bracketed `-File` path as a wildcard before any
-framework code runs, so `powershell.exe -File` from such a clone can start the sibling's root
-installer. `-Allow` and `-AllowD`, which bound to `-AllowDowngrade`, are now ambiguous.
+`(--allow-dirty-tree)`, a spelling neither entrypoint accepts. The root dispatcher now resolves the stack
+installer with `Get-Command .\install.ps1` from that installer's own folder, returns (best effort, so a
+caller's deleted folder cannot cost the install) to the caller's location and file-system location with
+`Set-Location -LiteralPath`, and runs the resolved command from there: Windows PowerShell 5.1's call operator read the absolute path as a wildcard, so a console
+user who changed into a clone at `fw[s]` beside one at `fws` and typed `.\install.ps1` got the sibling's
+stack installer. Two intermediate forms failed their attacks: escaping the path for 5.1 broke a clone
+named ``fw`[t]``; running the installer from its scripts folder left git unable to start once that path
+passed 260 characters, and a failed return turned a finished update into exit 1. One code path serves
+both hosts. Still host behaviour: 5.1 reads a bracketed `-File` path as a wildcard before any framework
+code runs, so `powershell.exe -File` from such a clone can start the sibling's root installer. `-Allow`
+and `-AllowD`, which bound to `-AllowDowngrade`, are now ambiguous.
 
 B-300 and B-286. A brownfield install names each detected path once: `CLAUDE.md` is both an adoption
 signal and a collision, so the mode line and the adoption marker's `detectedArtifacts` listed it twice.

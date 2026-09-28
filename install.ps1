@@ -243,12 +243,19 @@ if (-not (Test-Path -LiteralPath $delegate -PathType Leaf)) { Die "Internal erro
 Write-Output "Stack: $Stack (via $reason)"
 Write-Output "Delegating to dist/$Stack/scripts/install.ps1 ..."
 Write-Output ""
-# Call the stack installer by a relative path from its own folder. Windows PowerShell 5.1's call
-# operator reads an absolute path as a wildcard: a clone at 'fw[s]' beside one at 'fws' ran the
-# sibling's installer, and escaping the path broke a clone named 'fw`[t]'. A relative path is literal.
-# Return literally too: 5.1's Pop-Location cannot find its way back to 'fw`[t]'.
+# Resolve the stack installer by a relative path from its own folder, then run it from the caller's
+# location. Windows PowerShell 5.1's call operator reads an absolute path as a wildcard (a clone at
+# 'fw[s]' beside one at 'fws' ran the sibling's installer; escaping the path broke 'fw`[t]'), while a
+# relative path resolves literally. Running from the scripts folder instead left git unable to start
+# once that path passed 260 characters. Return literally too: 5.1's Pop-Location cannot reach 'fw`[t]'.
+# The return is best effort: a caller's folder deleted before the run must not cost the install.
 $callerLocation = Get-Location
+$callerFileSystemLocation = Get-Location -PSProvider FileSystem
 Set-Location -LiteralPath (Split-Path -Parent $delegate)
-try { & .\install.ps1 -Target $tgt -WhatIf:$WhatIf -AllowDowngrade:$AllowDowngrade -AllowDirtyTree:$AllowDirtyTree }
-finally { Set-Location -LiteralPath $callerLocation.Path }
+try { $stackInstaller = Get-Command -Name .\install.ps1 -CommandType ExternalScript -ErrorAction Stop }
+finally {
+    Set-Location -LiteralPath $callerFileSystemLocation.Path -ErrorAction SilentlyContinue
+    Set-Location -LiteralPath $callerLocation.Path -ErrorAction SilentlyContinue
+}
+& $stackInstaller -Target $tgt -WhatIf:$WhatIf -AllowDowngrade:$AllowDowngrade -AllowDirtyTree:$AllowDirtyTree
 exit $LASTEXITCODE

@@ -12739,8 +12739,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-298** — CLOSED **2026-09-28**. The root installer accepts and forwards `-AllowDirtyTree`, the switch the stack installer's
   dirty-tree refusal names; the override line drops `(--allow-dirty-tree)`, which no entrypoint accepts.
 
-- **B-302** — CLOSED **2026-09-28**. The root dispatcher calls the stack installer as `.\install.ps1` from its own folder, so
-  `.\install.ps1` typed inside a clone at `fw[s]` no longer runs sibling `fws`'s installer on 5.1 (a 5.1-only escape broke ``fw`[t]``).
+- **B-302** — CLOSED **2026-09-28**. The root dispatcher resolves `.\install.ps1` from the stack installer's folder, returns, and runs it
+  from the caller's location, so a clone at `fw[s]` no longer runs sibling `fws`'s installer on 5.1 (an escape broke ``fw`[t]``; a
+  scripts-folder working directory broke clones whose path passed 260 characters).
   Closing it by decision was proposed and withdrawn: Fable and the design attack both showed the interactive flow reaches the call.
 
 - **B-300** — CLOSED **2026-09-28**. The brownfield mode line and `detectedArtifacts` name each detected path once (`CLAUDE.md` is
