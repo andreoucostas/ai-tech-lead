@@ -12762,3 +12762,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-307** — CLOSED **2026-09-28**. `adoption-archive.ps1 -Freeze` refuses a plan entry whose source or destination Git ignores
   (exit 4, one `IGNORED:` line each) and fails closed when Git cannot answer (exit 5); `/adopt` lists ignored files by path only.
   The Phase 1 "never open" rule is prompt text; exit 4 backstops the move. Design review, Fable, two attack rounds; found B-309, B-310.
+
+- **B-266** — CLOSED **2026-09-28** by decision (Fable second opinion). No PSScriptAnalyzer leg: `validate-dist`'s AST parse and the
+  two-host suites already catch what ships, and a style linter adds CI minutes and suppressions with no consumer defect behind it.
+
+- **B-243** — CLOSED **2026-09-28** by decision (Fable second opinion). The tier in a commit subject is a maintainer label; CI and
+  the gates run by changed path whatever the label says, so refusing a mislabel adds a guarded-path change for no consumer outcome.

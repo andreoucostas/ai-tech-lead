@@ -58,7 +58,7 @@ When `--headless` is set, apply these per-phase overrides in place of the intera
 
 Scan the repo for AI-framework and AI-adjacent artifacts. Build an inventory. Do not modify anything in this phase.
 
-**Files Git ignores stay out.** Before reading any discovered file, run `git status --porcelain --ignored -- ":(literal)<path>"`. A line starting `!!` marks one developer's local configuration, which may hold credentials (`.aider.conf.yml`, `.continue/config.json`): record only its path as `left in place (ignored by Git)`, and never open, screen, quote, merge or archive it.
+**Files Git ignores stay out.** Before reading any discovered file outside `docs/pre-adoption/` (1a-bis covers those), run `git status --porcelain --ignored -- ":(literal)<path>"`. A line starting `!!` marks one developer's local configuration, which may hold credentials (`.aider.conf.yml`, `.continue/config.json`): record only its path as `left in place (ignored by Git)`, and never open, screen, quote, merge or archive it.
 
 Apply the Phase-0 protected set before adding any live match to the inventory. A directory scan such as `.claude/commands/`, `.claude/skills/`, or `.github/prompts/` may include only children not listed in `framework-ownership.json`; this preserves genuinely custom extensions without mistaking the freshly installed framework for legacy input.
 
@@ -72,7 +72,7 @@ Look for these at the repo root and in standard locations:
 - `.roomodes` (Roo)
 
 ### 1a-bis. Installer-archived originals
-If `.claude/adoption-pending.json` lists `archivedOriginals`, treat each file already under `docs/pre-adoption/` as a discovered merge candidate at its **original** path (the marker records the mapping). They skip Phase 3 (already archived) but go through the same safety screen and Phase 4 merge as everything else. Screen each at its recorded `archiveIntegrity` `provenanceRevision` and `originalPath`, not at the post-install HEAD; a `provenance` of `unavailable` or `untracked` is an examination limit to disclose, never a trust or corruption finding. Never rewrite, normalize, renumber, or re-hash an already-archived original — the normalized result belongs only in the Phase 4 proposal/diff. Exception: an archived `AGENTS.md` or `CLAUDE.md` that still contains the `BOOTSTRAP_PENDING` marker is just an unused framework template — list it in the inventory, but it has no content to merge.
+If `.claude/adoption-pending.json` lists `archivedOriginals`, treat each file already under `docs/pre-adoption/` as a discovered merge candidate at its **original** path (the marker records the mapping). The one exception is a file one developer had gitignored: its `archiveIntegrity` entry records `provenance: untracked` and `git status --porcelain --ignored -- ":(literal)<originalPath>"` starts with `!!`. Record its path only, never open, screen, quote or merge it, and list it in the Phase 8 report; the developer can merge it by hand. A tracked original stays a merge candidate even when a rule such as `docs/` ignores its archive path. They skip Phase 3 (already archived) but go through the same safety screen and Phase 4 merge as everything else. Screen each at its recorded `archiveIntegrity` `provenanceRevision` and `originalPath`, not at the post-install HEAD; a `provenance` of `unavailable` or `untracked` is an examination limit to disclose, never a trust or corruption finding. Never rewrite, normalize, renumber, or re-hash an already-archived original — the normalized result belongs only in the Phase 4 proposal/diff. Exception: an archived `AGENTS.md` or `CLAUDE.md` that still contains the `BOOTSTRAP_PENDING` marker is just an unused framework template — list it in the inventory, but it has no content to merge.
 
 **Legacy installer collision recovery.** If the mapping is
 `docs/pre-adoption/docs/ARCHITECTURE.md` → `docs/ARCHITECTURE.md`, screen the archived original as
@@ -347,7 +347,7 @@ Show the user:
 - What was discovered (inventory)
 - Mature architecture corpus: paths retained byte-for-byte, files quarantined, link/gap findings, and whether an authority choice remains
 - What was archived to `docs/pre-adoption/` (with paths)
-- What was left in place because Git ignores it, or ignores its archive path (paths only)
+- What was left in place, or left unread in `docs/pre-adoption/`, because Git ignores it or its archive path (paths only; a developer can merge a personal file by hand)
 - What was merged into AGENTS.md (section by section, with rule counts)
 - What was merged into TECH_DEBT.md (item count)
 - What new commands (if any) were added to `.claude/commands/` and `.github/prompts/`

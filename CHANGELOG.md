@@ -197,7 +197,7 @@ deletion) or a `.gitignore` at either end (moving one changes what Git ignores) 
 entry and freezes nothing; when Git cannot answer it exits 5 CANT-VERIFY instead of freezing unexamined.
 `adopt.md` Phase 1 records an ignored file by path only and never opens, screens, quotes, merges or
 archives it; Phase 3 drops exactly the `IGNORED:` entries and freezes again; Phase 4, the report and the
-Definition of done cover a candidate left in place; Phase 1 asks `git status --porcelain --ignored` with a literal pathspec. Known limit: a case-only rename between index and disk can be refused as ignored (nothing leaks). The Phase 1 rule is prompt text; exit 4 backstops
+Definition of done cover a candidate left in place; Phase 1 asks `git status --porcelain --ignored` with a literal pathspec, only for live files: an installer archive counts as personal only when its entry records `provenance: untracked` and Git ignores its original path, so a tracked `AGENTS.md` archived under a broad `docs/` rule is still merged (found by the B-309 design review; pinned in the adopt-workflow guard test). Known limit: a case-only rename between index and disk can be refused as ignored (nothing leaks). The Phase 1 rule is prompt text; exit 4 backstops
 the move. Design review, Fable second opinion, and two fresh-session attack rounds whose five bypasses are now cases.
 
 ## 0.89.2 — 2026-09-24
