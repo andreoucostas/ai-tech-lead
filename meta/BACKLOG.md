@@ -6,7 +6,7 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287 and B-307 closed 2026-09-28; B-306 to B-310 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287 and B-307 closed 2026-09-28; B-306 to B-311 filed
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -14,6 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
 | Next | B-309, B-297, B-310 | Consumer-facing defects the 2026-09-28 installer-batch and B-307 reviews found or confirmed |
+| Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
 | Low | B-308, B-306, B-305, B-304, B-303, B-296, B-294, B-292, B-291, B-290, B-289, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
@@ -274,6 +275,13 @@ Freeze check never sees them, and Phase 8's `git add -A` stages them. `git check
 **Priority:** P3 · **Effort:** S · **Invariants:** #1
 **Status:** Open; from the B-307 design review. `scripts/docs-sync-check.ps1:43`'s CI failure text says "in its Phase 3"; `/adopt`
 and the installer remove the marker immediately before the Phase-7 bootstrap. Shipped text; take with the docs-truth batch.
+
+### B-311 · Shipped rules steer new feature logic into existing services instead of a new injected service
+**Filed against:** v0.90.0 (2026-09-28)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1 #3 #4 #7
+**Status:** Open; field report #8 (Angular senior lead). Leanness #1, the Feature rail, `lean-structure`, the feature hook and
+`add-service` step 0 forbid a one-consumer service, so agents bolt feature logic onto the nearest class. Wording, eval and Fable's
+review: `.claude/plans/2026-09-28-b311-feature-code-placement.md`. Guarded; the red-first eval must run from a released base.
 ## Archived
 
 B-219 and B-221 — see `meta/BACKLOG-DONE.md`.
