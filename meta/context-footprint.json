@@ -202,8 +202,8 @@
       "instructed": [
         {
           "path": "FRAMEWORK-CONTEXT.md",
-          "chars": 7681,
-          "tok": 1920
+          "chars": 7801,
+          "tok": 1950
         },
         {
           "path": "docs/ARCHITECTURE.md",
@@ -358,8 +358,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 48554,
-          "tok": 12138
+          "chars": 48875,
+          "tok": 12219
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -388,8 +388,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 20399,
-          "tok": 5100
+          "chars": 20622,
+          "tok": 5156
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -656,8 +656,8 @@
       "instructed": [
         {
           "path": "FRAMEWORK-CONTEXT.md",
-          "chars": 7561,
-          "tok": 1890
+          "chars": 7681,
+          "tok": 1920
         },
         {
           "path": "docs/ARCHITECTURE.md",
@@ -812,8 +812,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 41208,
-          "tok": 10302
+          "chars": 41529,
+          "tok": 10382
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -842,8 +842,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 19187,
-          "tok": 4797
+          "chars": 19410,
+          "tok": 4852
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1130,8 +1130,8 @@
       "instructed": [
         {
           "path": "FRAMEWORK-CONTEXT.md",
-          "chars": 8650,
-          "tok": 2162
+          "chars": 8770,
+          "tok": 2192
         },
         {
           "path": "docs/ARCHITECTURE.md",
@@ -1286,8 +1286,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 55133,
-          "tok": 13783
+          "chars": 55454,
+          "tok": 13864
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1316,8 +1316,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 22007,
-          "tok": 5502
+          "chars": 22230,
+          "tok": 5558
         },
         {
           "path": ".claude/commands/refactor.md#body",

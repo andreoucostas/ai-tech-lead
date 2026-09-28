@@ -12811,3 +12811,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-306** — CLOSED **2026-09-28**. `framework-doctor` in a bracketed folder under Windows PowerShell 5.1 no longer reports
   absent retired hook helpers and residue; the B-301 literal-item pattern now covers its three absence checks.
+
+- **B-304** — CLOSED **2026-09-28** (decided with Fable). `Reviewed` is the day a hazard row was added, or a person
+  last confirmed or dismissed it; nothing else changes it, so neither `/bootstrap` nor `/rebootstrap` re-dates a row nobody answered.

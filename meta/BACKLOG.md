@@ -6,7 +6,7 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314 and B-306 closed 2026-09-28; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-317 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306 and B-304 closed 2026-09-28; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-317 filed
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -14,7 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
 | Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
-| Low | B-317, B-316, B-315, B-308, B-305, B-304, B-303, B-292, B-291, B-290, B-289, B-285, B-252, B-251, B-242, B-265, B-268, B-269, B-270, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-317, B-316, B-315, B-308, B-305, B-303, B-292, B-291, B-290, B-289, B-285, B-252, B-251, B-242, B-265, B-268, B-269, B-270, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -170,13 +170,6 @@ consumer-run `/docs-sync` step 2 compares them. Options: compose the rails from 
 **Status:** Open; from B-261's review, vendor docs only. Claude Code's hooks page (2026-09-26) says a `Stop` hook's
 `additionalContext` keeps the conversation going; `boy-scout-check.ps1` returns it on each new finding set, while shipped
 `enforcement-surfaces.md` calls the nudge advisory and read "next turn". Observe live before changing either. Guarded path.
-
-### B-304 · `/bootstrap` stamps today's `Reviewed` date on hazard rows nobody reviewed
-**Filed against:** v0.90.0 (2026-09-27)
-**Priority:** P3 · **Effort:** S · **Invariants:** #1
-**Status:** Open; from the B-284 trial. 3d-bis dates every row, `[UNVERIFIED]` included, and `hazard-check` accepts only a
-date, while `/rebootstrap` 3c says a fresh date on an unconfirmed row manufactures false confidence. A headless agent wrote
-`never`, failed four checks, then dated the rows and flagged the conflict in its PR block.
 
 ### B-305 · A visible `--max-ai-credits` cap makes a Copilot run economise
 **Filed against:** v0.90.0 (2026-09-27)

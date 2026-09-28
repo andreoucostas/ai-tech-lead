@@ -239,6 +239,17 @@ installer: Windows PowerShell 5.1 returns nothing for a missing path under a bra
 legacy-hook and retired-residue rows read absent paths as present. `Get-DoctorLiteralItem` throws
 ItemNotFound on both hosts at the three sites.
 
+B-304, decided with Fable and sharpened by a fresh-session review: `Reviewed` is the day a hazard row
+was added, or a person last confirmed or dismissed it; nothing else changes it. `/bootstrap` 3d-bis dated
+every row, `[UNVERIFIED]` included, while `/rebootstrap` 3c said a fresh date on an unconfirmed row
+manufactures false confidence, and a headless trial agent failed four checks between them. 3d-bis now
+states the definition and keeps an existing row's date unless it is answered; 3c dates answer (b) and
+new candidates, and its "skip all" (the headless path) adds no candidate, matching its headless rule.
+The template legend defines the column. Session-start's warning already reads the date as "waited for a
+human answer" and `hazard-check` only needs a date; no script changed. The review rejected the first
+wording, "last grounded against the code", because an agent that re-checked a row could re-date it and
+silence that warning.
+
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper
 case) was recorded under the shipped spelling, so Git's case-sensitive pathspecs called it untracked and

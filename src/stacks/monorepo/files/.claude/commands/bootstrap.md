@@ -417,7 +417,7 @@ Map each answer to a row status:
 - **(b) not a risk** → `Status = [REVIEWED: not a hazard — YYYY-MM-DD]` using today's date in that ISO format (write the row — kept for auditability, not dropped)
 - **(c) unsure / skip all** → `Status = [UNVERIFIED]` (same as before this change — graceful degradation)
 
-Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed` (today's date in ISO `YYYY-MM-DD` format).
+Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed`. `Reviewed` is the day the row was added, or a person last confirmed or dismissed it, in ISO `YYYY-MM-DD`; nothing else changes it, and `Status`, not the date, says whether a person confirmed it. So a row this run adds gets today's date, `[UNVERIFIED]` included, and a row already in the table keeps its status and date unless the developer answers it (a) or (b).
 
 - Write the Status cell as **bare text**, never inside Markdown code delimiters/backticks. Its complete
   value must be one accepted token: `[VERIFIED]`, `[SUSPECTED]`, `[UNVERIFIED]`, or

@@ -136,6 +136,10 @@
 - **`framework-doctor` no longer reports retired files that are not there** when your repository's
   folder name holds square brackets and you run it with Windows PowerShell 5.1. It used to list absent
   retired hook helpers as `[PENDING]` and 18 absent retired paths as `[CANT-VERIFY]`.
+- **`/bootstrap` and `/rebootstrap` agree on what a hazard row's `Reviewed` date means:** the day the
+  row was added, or a person last confirmed or dismissed it; nothing else changes it. `/bootstrap` dates
+  the rows it adds, `[UNVERIFIED]` ones included, and keeps an existing row's date unless you answer it;
+  `/rebootstrap`'s "skip all", which a run with nobody to answer takes, adds no new candidate.
 
 ## 0.89.2 — 2026-09-24
 

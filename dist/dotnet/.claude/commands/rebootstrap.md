@@ -216,13 +216,14 @@ Reminder: items are per-block — to remove a resolved item, delete its `## DEBT
 Ask all three passes' questions in a **single message** (not dripped), with a "skip all — leave every row as it is" escape at the end. Map the answers to the same statuses `/bootstrap` writes:
 
 - **(a) confirmed** → `Status = [VERIFIED]`, `Reviewed` = today in ISO `YYYY-MM-DD`
-- **(b) not a risk** → `Status = [REVIEWED: not a hazard — YYYY-MM-DD]` (keep the row — it is kept for auditability, not dropped)
-- **(c) unsure / skip all** → leave an existing row's status and date exactly as they are; a *new* candidate is written `[UNVERIFIED]`
+- **(b) not a risk** → `Status = [REVIEWED: not a hazard — YYYY-MM-DD]` and `Reviewed` = the same date, today (keep the row — it is kept for auditability, not dropped)
+- **(c) unsure** → leave an existing row's status and date exactly as they are; a *new* candidate is written `[UNVERIFIED]` and dated today, the day it was added
+- **skip all** → leave every row exactly as it is and add no new candidate
 
 When writing or changing a row, keep the Status cell as bare text with no Markdown code delimiters,
 and require `Area / file(s)` to include at least one repository-root-relative path that resolves.
 
-**Do not upgrade an `[UNVERIFIED]` row yourself** — only the developer can, and only by answering its question. Never re-date a row the developer did not answer: a fresh `Reviewed` date on an unconfirmed row manufactures precisely the false confidence this table exists to prevent. Keep the table tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
+**Do not upgrade an `[UNVERIFIED]` row yourself** — only the developer can, and only by answering its question. Never re-date a row the developer did not answer: `Reviewed` is the day the row was added, or a person last confirmed or dismissed it, and a fresh date on a row nobody answered manufactures precisely the false confidence this table exists to prevent. Keep the table tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
 
 If this command is ever run with no developer present to answer, take the "skip all" path — change nothing but pass 1's `RENAMED` re-points, and report the unanswered rows.
 

@@ -105,9 +105,9 @@ _Not yet populated. `/bootstrap` drafts this from observed HttpClient/message-bu
        [SUSPECTED]  a human believes so but is unsure.
        [UNVERIFIED] inferred by tooling only, no human confirmation — treat as a hypothesis, not
                     a finding; it must NOT raise your confidence.
-     Re-confirm any row older than ~90 days — a stale hazard map causes false confidence. -->
+     Confirm or re-confirm any row older than ~90 days — a stale hazard map causes false confidence. -->
 
-**Legend:** `[VERIFIED]` = a person confirmed it. `[SUSPECTED]` = a person thinks so. `[UNVERIFIED]` = only the tooling flagged it — treat it as an open question, not a finding.
+**Legend:** `[VERIFIED]` = a person confirmed it. `[SUSPECTED]` = a person thinks so. `[UNVERIFIED]` = only the tooling flagged it — treat it as an open question, not a finding. `Reviewed` = the day the row was added, or a person last confirmed or dismissed it; nothing else changes it.
 
 Merging the PR does not confirm these — an item is confirmed only when a person answers its question and updates its status.
 
