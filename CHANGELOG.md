@@ -265,6 +265,13 @@ caller and whose self-test read blocks from a `CLAUDE.md` that B-272 made a two-
 scenario `angular-form-control`, which called its own pass uninformative (SATURATED), goes with its
 evidence case, setup case and self-tests; every full `-Live` run spent a $1.00 budget on it.
 
+B-303, observed live and decided with Fable: on Claude Code 2.1.281 a `Stop` hook's `additionalContext`
+continues the turn once. The Boy Scout nudge showed "Stop says: Boy Scout: 1 candidate(s) found…" and the
+model spent one more response on the candidate (declining it under the request's scope).
+`docs/enforcement-surfaces.md` said the nudge reaches the model "next turn"; it now says what happens and
+what it costs. The hook is unchanged: the continuation reaches the model while it still holds the task's
+files, and the dedup hash silences an unchanged set. The same live runs filed B-318 and B-319.
+
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper
 case) was recorded under the shipped spelling, so Git's case-sensitive pathspecs called it untracked and

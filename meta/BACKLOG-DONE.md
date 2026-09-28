@@ -12829,3 +12829,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-285** — CLOSED **2026-09-28**. `.claude/scripts/build-block-manifest.ps1` and `meta/block-manifest.json` deleted; no caller.
 
 - **B-290** — CLOSED **2026-09-28**. The SATURATED `angular-form-control` eval scenario deleted with its harness cases and self-tests.
+
+- **B-303** — CLOSED **2026-09-28** (observed live, decided with Fable). A `Stop` hook's `additionalContext` continues the
+  turn once on Claude Code 2.1.281; `enforcement-surfaces.md` now says so and what it costs; the hook is unchanged.
+
+- **B-268** — CLOSED **2026-09-28**. `meta-gates` is the only maintainer skill left and runs exactly AGENTS.md's recipes;
+  `meta-release` and `meta-review-handoff` are gone and no dropped obligation remains.
