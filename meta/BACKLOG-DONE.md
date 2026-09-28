@@ -12856,3 +12856,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-274** — CLOSED **2026-09-28** by decision (Fable). No client sends an empty tool name. When `guard.ps1` next opens, delete
   `-or ($tool -eq '')` (:37, :118) and the header parenthetical; red case: `{"toolName":"","toolArgs":{…key…}}` exits 2, fixed exits 0 with the JSON deny.
+
+- **B-292** — CLOSED **2026-09-28** (decided with Fable). `validate-dist` check 14 (`rail-sync`) fails when a canonical
+  workflow bullet or its route-prompt rail changed since `meta/rail-sync.json` recorded the pair as reviewed.

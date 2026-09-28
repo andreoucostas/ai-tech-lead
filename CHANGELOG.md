@@ -302,6 +302,16 @@ for folder and file spellings nobody has reported; reopen on a field report), B-
 provenance labels are advisory), and B-274 (its recipe is in BACKLOG-DONE for the next `guard.ps1` change).
 B-320 is filed for the skill-directory delete, which runs after the stamp is new.
 
+B-292, decided with Fable. The per-prompt `route-prompt` rails repeat the framework rules' Agentic Workflow
+bullets; v0.77.0 added two clauses to the Test and Feature bullets and no rail followed, and only a
+consumer-run `/docs-sync` could notice. `validate-dist` gains check 14, `rail-sync`: `meta/rail-sync.json`
+records per dist and workflow the SHA-256 of each composed bullet and its rail as last reviewed together,
+and a change to either fails naming which side changed, the bullet's composed line and authoring file,
+the rail's line in `route-prompt.ps1`, and the command that records the reviewed pair
+(`--update-rail-sync`); so does a section-1 bullet with no paired rail. The design review's false passes
+(continuation lines, a seventh workflow) and its unreadable-record case are covered. A phrase list
+was rejected: `RoutePrompt.Tests.ps1` already pins the two lost clauses, and a list misses the next new one.
+
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper
 case) was recorded under the shipped spelling, so Git's case-sensitive pathspecs called it untracked and

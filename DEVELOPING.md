@@ -47,7 +47,7 @@ foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/bu
 git status --porcelain dist/   # MUST print nothing — otherwise commit the dist with your src change
 ```
 
-## Validate the dists (markers, JSON, PS-AST, topology, per-dist template-checks [#2], no-meta-leak [#6], no-dead-instruction, hook-registration, step-references)
+## Validate the dists (markers, JSON, PS-AST, topology, per-dist template-checks [#2], no-meta-leak [#6], no-dead-instruction, hook-registration, step-references, rail-sync)
 
 ```powershell
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/validate-dist.ps1 $d; "exit=$LASTEXITCODE" }
@@ -127,11 +127,26 @@ try {
 } finally { Remove-Item -LiteralPath $parent -Recurse -Force }
 ```
 
+### When `rail-sync` fails (check 14)
+
+Each `route-prompt` rail (`src/core/.claude/hooks/route-prompt.ps1` plus its `@stack` snippets, composed
+per dist) repeats a section-1 Agentic Workflow bullet of the framework rules (authored in
+`src/core/.github/instructions/framework-rules.instructions.md` or a stack's `workflow-bullets` snippet).
+`meta/rail-sync.json` records the SHA-256 of each pair as last reviewed together, and check 14 fails when
+either side changed since, naming which side and where, or when a section-1 bullet has no paired rail:
+v0.77.0 added two clauses to the bullets and no rail followed. Review the rail against the bullet, edit
+the rail if it no longer carries the bullet's non-negotiables, then record the reviewed pairs and commit
+`meta/rail-sync.json` with the change:
+
+```powershell
+foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/validate-dist.ps1 $d -Check rail-sync --update-rail-sync }
+```
+
 One narrowing argument exists for focused diagnostics and is never used by `release.ps1` or CI:
 
 | Switch | Effect |
 |---|---|
-| `--content-only` | Skip checks 1–5 and run only 6, 7, 8 and 12. It prints a `NOTE:` so a partial run cannot resemble a full run. The suite's green anchors deliberately omit it. |
+| `--content-only` | Skip checks 1–5 and run only 6, 7, 8, 12, 13 and 14. It prints a `NOTE:` so a partial run cannot resemble a full run. The suite's green anchors deliberately omit it. |
 
 A registration naming a missing script is a hook that silently never runs. Check 8 deliberately
 does not reject a bare interpreter name as a generic rule; it instead enforces the exact supported

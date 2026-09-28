@@ -1,5 +1,5 @@
 ﻿# ai-tech-lead PowerShell dist validator. Validates an ALREADY-COMPOSED
-# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Thirteen checks, each
+# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Fourteen checks, each
 # with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses (ConvertFrom-Json)
@@ -14,6 +14,8 @@
 #  11. CLAUDE.md imports AGENTS.md and the shipped framework-rules carrier
 #  12. top-level ordered-list runs are contiguous and prose step references resolve in-file
 #  13. Copilot userPromptSubmitted has at most one entry (only its last entry is delivered)
+#  14. each route-prompt rail was reviewed with the canonical workflow bullet it repeats (meta/rail-sync.json;
+#      --update-rail-sync records a reviewed pair for the named dist)
 # Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
 # dist, or an input cannot be examined — reported as FATAL or FAIL, never skipped.
 #   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [-Check name[,name...]]
@@ -34,18 +36,20 @@ Set-Location $RepoRoot
 # redirects validator output to a log, so the NOTE below would not be seen on an otherwise-green
 # gate. A caller must now ask for a partial run in the command itself.
 $ContentOnly = $false
+$UpdateRailSync = $false
 $CheckArg = $null
 $positional  = @()
 for ($i = 0; $i -lt $args.Count; $i++) {
     $a = "$($args[$i])"
     if ($a -eq '--content-only') { $ContentOnly = $true }
+    elseif ($a -eq '--update-rail-sync') { $UpdateRailSync = $true }
     elseif ($a -eq '-Check') {
         $i++
         if ($i -ge $args.Count) { [Console]::Error.WriteLine('usage error: -Check requires one or more comma-separated check names.'); exit 2 }
         $CheckArg = "$($args[$i])"
     } else { $positional += $a }
 }
-$ValidChecks = @('markers','json','powershell-topology','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references','prompt-hook-cardinality')
+$ValidChecks = @('markers','json','powershell-topology','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references','prompt-hook-cardinality','rail-sync')
 $SelectedChecks = @()
 if ($null -ne $CheckArg) {
     $SelectedChecks = @($CheckArg -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
@@ -62,12 +66,20 @@ if ($ContentOnly -and $null -ne $CheckArg) {
 }
 function Test-CheckSelected($name) {
     if ($null -ne $CheckArg) { return $SelectedChecks -ccontains $name }
-    if ($ContentOnly) { return @('no-meta-leak','no-dead-instruction','hook-registration','step-references','prompt-hook-cardinality') -contains $name }
+    if ($ContentOnly) { return @('no-meta-leak','no-dead-instruction','hook-registration','step-references','prompt-hook-cardinality','rail-sync') -contains $name }
     return $true
+}
+if ($UpdateRailSync -and -not (Test-CheckSelected 'rail-sync')) {
+    [Console]::Error.WriteLine('usage error: --update-rail-sync records the rail-sync check''s pairs; select it with -Check rail-sync or run every check.')
+    exit 2
+}
+if ($UpdateRailSync -and $positional.Count -gt 1) {
+    [Console]::Error.WriteLine('usage error: --update-rail-sync records the pairs of this repository''s own dist; run it without a dist-root.')
+    exit 2
 }
 $Mode = $positional[0]
 if ($Mode -ne 'dotnet' -and $Mode -ne 'angular' -and $Mode -ne 'monorepo') {
-    [Console]::Error.WriteLine('usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [--content-only] [-Check name[,name...]]')
+    [Console]::Error.WriteLine('usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [--content-only] [-Check name[,name...]] [--update-rail-sync]')
     exit 2
 }
 $DistRoot = if ($positional.Count -ge 2 -and $positional[1]) { $positional[1] } else { 'dist' }
@@ -109,7 +121,7 @@ function Fail($m) { Record-Timing $m; Write-Output "FAIL: $m"; $script:failed++ 
 function OK($m)   { Record-Timing $m; Write-Output "OK:   $m" }
 
 # --content-only skips checks 1-5 (the parse/marker/template-checks group) and runs only the content
-# checks 6, 7, 8, 12 and 13. It exists for ValidateDist.Tests.ps1: those five re-parse every shipped file on
+# checks 6, 7, 8, 12, 13 and 14. It exists for ValidateDist.Tests.ps1: those five re-parse every shipped file on
 # every case, which made that suite 9 minutes for 15 cases x 2 legs — in a file that runs in
 # release.ps1 AND on both CI legs. Neither release.ps1 nor CI passes it, and the suite's green
 # anchors still run the FULL validator so the skipped group stays exercised on both legs.
@@ -826,6 +838,150 @@ if ($promptHookFiles.Count -eq 0) {
     $promptHookProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [prompt-hook-cardinality] $_" }
 } else {
     OK "Copilot userPromptSubmitted cardinality is delivery-safe ($($promptHookFiles.Count) hooks.json file(s), $promptHookEvents events; at most one entry per userPromptSubmitted)."
+}
+}
+
+if (Test-CheckSelected 'rail-sync') {
+# --- 14. route-prompt rails reviewed against the canonical workflow bullets ----------------------
+# The per-prompt rails repeat the framework rules' section-1 Agentic Workflow bullets; v0.77.0 added two
+# clauses to the bullets and no rail followed. meta/rail-sync.json records, per dist and workflow, the
+# SHA-256 of each composed bullet (with its continuation lines) and of its rail as last reviewed
+# together. A change to either, or a section-1 bullet with no paired rail, fails here until someone
+# reviews the pair and records it again with --update-rail-sync.
+$railSyncPath = Join-Path $RepoRoot 'meta/rail-sync.json'
+$railRulesRel = '.github/instructions/framework-rules.instructions.md'
+$railRouteRel = '.claude/hooks/route-prompt.ps1'
+$railCoreRules = 'src/core/.github/instructions/framework-rules.instructions.md'
+$railStackBullets = "src/stacks/$Mode/snippets/.github/instructions/framework-rules.instructions.md/workflow-bullets"
+$railCoreRoute = 'src/core/.claude/hooks/route-prompt.ps1'
+$railPairs = [ordered]@{ 'Bug fix' = 'railsFix'; 'Debt cleanup' = 'railsDebt'; 'Feature' = 'railsFeature'; 'Investigation / design' = 'railsDesign'; 'Refactor' = 'railsRefactor'; 'Test' = 'railsTest' }
+$railSha = [Security.Cryptography.SHA256]::Create()
+$railCurrent = [ordered]@{}
+$railProblems = @()
+$railBlind = $null
+function Get-RailSourceLine([string]$Relative, [string]$Needle) {
+    $path = Join-Path $RepoRoot $Relative
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    $lines = [IO.File]::ReadAllLines($path)
+    for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i].TrimEnd() -ceq $Needle) { return "$Relative`:$($i + 1)" } }
+    return $null
+}
+try {
+    $railRulesText = ([IO.File]::ReadAllText((Join-Path $DistAbs $railRulesRel), [Text.Encoding]::UTF8)).Replace("`r`n", "`n")
+    $railRouteText = ([IO.File]::ReadAllText((Join-Path $DistAbs $railRouteRel), [Text.Encoding]::UTF8)).Replace("`r`n", "`n")
+} catch { $railBlind = "cannot read $railRulesRel or $railRouteRel in $Dist ($($_.Exception.Message))" }
+if (-not $railBlind) {
+    $railSection = [regex]::Match($railRulesText, '(?ms)^### 1\. Classify the intent.*?(?=^### |\z)')
+    if (-not $railSection.Success) { $railBlind = "no '### 1. Classify the intent' section in $railRulesRel" }
+}
+if (-not $railBlind) {
+    # Each section-1 bullet with its continuation lines, indented or not (Markdown folds both into the
+    # item); a blank line or the next bullet ends it. Any bold-led bullet counts, whatever follows the name.
+    $railBullets = [ordered]@{}
+    $railBulletLine = @{}
+    $railOpen = $null
+    $railFirstLine = ($railRulesText.Substring(0, $railSection.Index) -split "`n").Count
+    $railSectionLines = $railSection.Value -split "`n"
+    for ($i = 0; $i -lt $railSectionLines.Count; $i++) {
+        $line = $railSectionLines[$i]
+        $start = [regex]::Match($line, '^- \*\*(.+?)\*\*')
+        if ($start.Success) {
+            $railOpen = $start.Groups[1].Value
+            if ($railBullets.Contains($railOpen)) { $railProblems += "'$railOpen': section 1 of $railRulesRel holds two bullets of that name" }
+            $railBullets[$railOpen] = $line.TrimEnd()
+            $railBulletLine[$railOpen] = $railFirstLine + $i
+        } elseif ($null -ne $railOpen -and $line.Trim()) {
+            $railBullets[$railOpen] = $railBullets[$railOpen] + "`n" + $line.TrimEnd()
+        } else { $railOpen = $null }
+    }
+    foreach ($name in @($railBullets.Keys)) {
+        if (-not $railPairs.Contains($name)) { $railProblems += "'$name': a workflow bullet in section 1 of $railRulesRel has no route-prompt rail paired in validate-dist's rail-sync map" }
+    }
+    foreach ($name in $railPairs.Keys) {
+        $var = $railPairs[$name]
+        if (-not $railBullets.Contains($name)) { $railProblems += "'$name': no canonical bullet in section 1 of $railRulesRel"; continue }
+        $rails = [regex]::Matches($railRouteText, "(?ms)^\`$$var = @'\n(.*?)\n'@")
+        if ($rails.Count -ne 1) { $railProblems += "'$name': found $($rails.Count) `$$var rail(s) in $railRouteRel; expected one"; continue }
+        $firstBulletLine = ($railBullets[$name] -split "`n")[0]
+        $bulletSource = Get-RailSourceLine $railCoreRules $firstBulletLine
+        if (-not $bulletSource) { $bulletSource = Get-RailSourceLine $railStackBullets $firstBulletLine }
+        if (-not $bulletSource) { $bulletSource = "$railCoreRules or $railStackBullets" }
+        $railSource = Get-RailSourceLine $railCoreRoute "`$$var = @'"
+        if (-not $railSource) { $railSource = $railCoreRoute }
+        $railCurrent[$name] = [pscustomobject]@{
+            Bullet = ([BitConverter]::ToString($railSha.ComputeHash([Text.Encoding]::UTF8.GetBytes($railBullets[$name])))).Replace('-', '').ToLowerInvariant()
+            Rail = ([BitConverter]::ToString($railSha.ComputeHash([Text.Encoding]::UTF8.GetBytes($rails[0].Groups[1].Value)))).Replace('-', '').ToLowerInvariant()
+            BulletAt = "$railRulesRel`:$($railBulletLine[$name]) (authored at $bulletSource)"
+            RailAt = "`$$var ($railSource, with any @stack snippet it expands from src/stacks/$Mode/snippets/.claude/hooks/route-prompt.ps1/)"
+        }
+    }
+}
+$railRecord = $null
+$railRecordError = $null
+if (Test-Path -LiteralPath $railSyncPath -PathType Leaf) {
+    try { $railRecord = [IO.File]::ReadAllText($railSyncPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -ErrorAction Stop }
+    catch { $railRecordError = $_.Exception.Message }
+    if (-not $railRecordError -and ($null -eq $railRecord -or -not ($railRecord.dists -is [pscustomobject]))) { $railRecordError = 'it holds no dists object' }
+}
+$railUpdateCommand = "scripts/validate-dist.ps1 $Mode -Check rail-sync --update-rail-sync"
+if ($railBlind) {
+    Fail "rail-sync could not examine $Dist -- $railBlind."
+} elseif ($railProblems.Count -gt 0) {
+    Fail "rail-sync could not pair every section-1 workflow bullet with its route-prompt rail -- $($railProblems.Count) finding(s)."
+    $railProblems | ForEach-Object { Write-Output "  [rail-sync] $_" }
+} elseif ($railRecordError) {
+    Fail "rail-sync cannot examine meta/rail-sync.json -- $railRecordError. Repair it, or delete it and record every dist again with $railUpdateCommand."
+} elseif ($UpdateRailSync) {
+    $record = [ordered]@{}
+    if ($null -ne $railRecord) {
+        foreach ($dist in @($railRecord.dists.PSObject.Properties | Sort-Object Name)) { $record[$dist.Name] = $dist.Value }
+    }
+    $modePairs = [ordered]@{}
+    foreach ($name in $railCurrent.Keys) { $modePairs[$name] = [pscustomobject]@{ bullet = $railCurrent[$name].Bullet; rail = $railCurrent[$name].Rail } }
+    $record[$Mode] = [pscustomobject]$modePairs
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('{')
+    $lines.Add('  "schema-version": 1,')
+    $lines.Add('  "note": "SHA-256 of each canonical Agentic Workflow bullet and its route-prompt rail, as last reviewed together. Written by scripts/validate-dist.ps1 <dist> -Check rail-sync --update-rail-sync.",')
+    $lines.Add('  "dists": {')
+    $distNames = @($record.Keys | Sort-Object)
+    for ($d = 0; $d -lt $distNames.Count; $d++) {
+        $lines.Add("    `"$($distNames[$d])`": {")
+        $pairNames = @($record[$distNames[$d]].PSObject.Properties.Name | Sort-Object)
+        for ($p = 0; $p -lt $pairNames.Count; $p++) {
+            $pair = $record[$distNames[$d]].($pairNames[$p])
+            $comma = if ($p -lt $pairNames.Count - 1) { ',' } else { '' }
+            $lines.Add("      `"$($pairNames[$p])`": { `"bullet`": `"$($pair.bullet)`", `"rail`": `"$($pair.rail)`" }$comma")
+        }
+        $lines.Add("    }$(if ($d -lt $distNames.Count - 1) { ',' } else { '' })")
+    }
+    $lines.Add('  }')
+    $lines.Add('}')
+    $railWritten = $false
+    try { [IO.File]::WriteAllText($railSyncPath, (($lines -join "`n") + "`n"), (New-Object Text.UTF8Encoding($false))); $railWritten = $true }
+    catch { Fail "rail-sync could not write meta/rail-sync.json -- $($_.Exception.Message)." }
+    if ($railWritten) { OK "rail-sync recorded $($railCurrent.Count) reviewed bullet/rail pair(s) for $Mode in meta/rail-sync.json." }
+} elseif ($null -eq $railRecord) {
+    Fail "rail-sync has no record: meta/rail-sync.json is missing. Review each route-prompt rail against its bullet, then run $railUpdateCommand."
+} else {
+    $recorded = $railRecord.dists.$Mode
+    $railDrift = @()
+    foreach ($name in $railCurrent.Keys) {
+        $was = if ($null -ne $recorded) { $recorded.$name } else { $null }
+        $now = $railCurrent[$name]
+        if ($null -eq $was) { $railDrift += "'$name': no reviewed record for $Mode; review the bullet at $($now.BulletAt) against its rail $($now.RailAt)"; continue }
+        $bulletChanged = [string]$was.bullet -cne $now.Bullet
+        $railChanged = [string]$was.rail -cne $now.Rail
+        if ($bulletChanged -and $railChanged) { $railDrift += "'$name': both changed -- the bullet at $($now.BulletAt) and its rail $($now.RailAt)" }
+        elseif ($bulletChanged) { $railDrift += "'$name': the bullet changed at $($now.BulletAt); review its rail $($now.RailAt)" }
+        elseif ($railChanged) { $railDrift += "'$name': the rail changed, $($now.RailAt); review it against the bullet at $($now.BulletAt)" }
+    }
+    if ($railDrift.Count -gt 0) {
+        Fail "a canonical workflow bullet or its route-prompt rail changed without the pair being reviewed -- $($railDrift.Count) finding(s). Review each pair, then run $railUpdateCommand."
+        $railDrift | ForEach-Object { Write-Output "  [rail-sync] $_" }
+    } else {
+        OK "route-prompt rails match the reviewed canonical workflow bullets in $Dist (rail-sync; $($railCurrent.Count) pair(s))."
+    }
 }
 }
 

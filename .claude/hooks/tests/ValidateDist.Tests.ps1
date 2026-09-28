@@ -54,7 +54,8 @@ function New-ValidatorRepoCopy {
     # Marker inventory derives from authoring src/, so its red fixture needs an isolated source tree
     # as well as an isolated dist. Never mutate the live shared snippets during a test run.
     $root = Join-Path ([IO.Path]::GetTempPath()) ('validate-dist-repo-' + [guid]::NewGuid().ToString('N'))
-    foreach ($dir in @('scripts','src','dist')) { New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force | Out-Null }
+    foreach ($dir in @('scripts','src','dist','meta')) { New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force | Out-Null }
+    Copy-Item -LiteralPath (Join-Path $repo 'meta\rail-sync.json') -Destination (Join-Path $root 'meta') -ErrorAction SilentlyContinue
     Copy-Item -LiteralPath (Join-Path $repo 'scripts\validate-dist.ps1') -Destination (Join-Path $root 'scripts')
     Copy-Item -LiteralPath (Join-Path $repo 'scripts\meta-denylist.txt') -Destination (Join-Path $root 'scripts')
     Copy-Item -LiteralPath (Join-Path $repo 'src\core') -Destination (Join-Path $root 'src') -Recurse
@@ -621,6 +622,41 @@ try {
             # process's stdout does not round-trip it under every console code page, so asserting on
             # the dash tests the typography rather than the behaviour and fails on a correct run.
         } 'CHANGELOG.md ignored, pair-check only' 'template-checks' -Green
+    }
+
+    It 'case 38: a canonical workflow bullet changed without its route-prompt rail being reviewed fails rail-sync' {
+        # v0.77.0 added two clauses to the Feature and Test bullets and no rail followed; nothing noticed.
+        Assert-Case 'rail-sync-bullet-drift' {
+            param($d)
+            $rules = Join-Path $d '.github\instructions\framework-rules.instructions.md'
+            $before = [IO.File]::ReadAllText($rules)
+            Replace-Text $rules 'report delivery and validation.' 'report delivery and validation, and a new non-negotiable.'
+            Assert ([IO.File]::ReadAllText($rules) -cne $before) 'mutation did not change the Feature bullet'
+        } '$railsFeature' 'rail-sync' -AlsoPattern 'src/core/\.claude/hooks/route-prompt\.ps1:[1-9]\d*', 'the bullet changed', '--update-rail-sync'
+        # A bullet's continuation lines are part of it, and a new workflow bullet needs a rail of its own.
+        Assert-Case 'rail-sync-continuation-drift' {
+            param($d)
+            Replace-Text (Join-Path $d '.github\instructions\framework-rules.instructions.md') 'report delivery and validation.' "report delivery and validation.`n  Also confirm the new clause."
+        } '$railsFeature' 'rail-sync' -AlsoPattern 'the bullet changed'
+        # Markdown also folds an unindented line straight after a list item into it (a lazy continuation).
+        Assert-Case 'rail-sync-lazy-continuation-drift' {
+            param($d)
+            $rules = Join-Path $d '.github\instructions\framework-rules.instructions.md'
+            $lines = [IO.File]::ReadAllLines($rules)
+            $at = [Array]::FindIndex($lines, [Predicate[string]]{ param($l) $l.StartsWith('- **Feature** — ') })
+            Assert ($at -ge 0) 'calibration: no Feature bullet to extend'
+            $edited = [Collections.Generic.List[string]]::new([string[]]$lines); $edited.Insert($at + 1, 'Also confirm the lazily continued clause.')
+            [IO.File]::WriteAllText($rules, (($edited -join "`n") + "`n"))
+        } '$railsFeature' 'rail-sync' -AlsoPattern 'the bullet changed'
+        Assert-Case 'rail-sync-colon-bullet' {
+            param($d)
+            Replace-Text (Join-Path $d '.github\instructions\framework-rules.instructions.md') '- **Debt cleanup** — ' "- **Review**: *review this change*: check it against the conventions.`n- **Debt cleanup** — "
+        } "'Review': a workflow bullet in" 'rail-sync' -AlsoPattern 'has no route-prompt rail'
+        Assert-Case 'rail-sync-unpaired-workflow' {
+            param($d)
+            Replace-Text (Join-Path $d '.github\instructions\framework-rules.instructions.md') '- **Debt cleanup** — ' "- **Review** — *review this change*: check it against the conventions.`n- **Debt cleanup** — "
+        } "'Review': a workflow bullet in" 'rail-sync' -AlsoPattern 'has no route-prompt rail'
+        Assert-Case 'rail-sync-reviewed' { param($d) } 'route-prompt rails match the reviewed canonical workflow bullets' 'rail-sync' -Green
     }
 
 } finally { foreach($p in $scratch) { if(Test-Path $p){ Remove-Item -LiteralPath $p -Recurse -Force } } }
