@@ -41,8 +41,9 @@ subclass. The model already leans the same way (earlier Claude Code system promp
 editing an existing file to creating one), so deleting our sentence is not enough: the replacement
 has to say where new code goes.
 
-Unknown: whether "extend" in the report means members added to the existing class or a literal
-`extends`. The eval gates on both.
+Resolved by the maintainer on 2026-09-28: the agent added members to the existing class and made no
+subclass. No diff or transcript exists. The eval still gates on both: the fix pushes models off the
+bolt-on path, and a subclass is the next-nearest shortcut.
 
 ## Decision
 
@@ -119,6 +120,9 @@ Keep "Preserve a project-evidenced service seam" (the same test pins it).
   not by editing a stable class or subclassing a concrete service."
 - Why "a concrete service" and not "a concrete class": subclassing framework base types, such as a
   `DbContext` or an exception, stays legitimate.
+- Why keep this change although the field case made no subclass: change 1 steers models away from
+  editing the existing class. SOLID #2 as written ("not editing a stable one") would then read as
+  pointing at a subclass instead.
 
 ### 5. Prompt hook — `src/core/.claude/hooks/route-prompt.ps1`, all stacks, both surfaces
 
@@ -282,22 +286,24 @@ Harness: `.claude/evals/run-agent-evals.ps1`, maintainer-only and `-Live`; it ne
   INCONCLUSIVE, which is not verified.
   - Unfixed base, `-Trials 3`: red means `boltOn` or `subclass` in at least 2 of 3.
   - Same base with `-TargetPatch` carrying changes 1–9: expected PASS in 3 of 3.
-  - If the unfixed base does not go red, the probe does not reproduce the field failure. Get the
-    lead's case (open question 1) before building on it.
+  - If the unfixed base does not go red, the probe does not reproduce the field failure. No diff or
+    transcript exists to fall back on, so rework the probe instead, for example with a feature closer
+    to `UserService`'s own domain, before building on it.
   - An `-Arm none` control is optional. It needs `bareArm: true`, an update of the self-test pin
     (`:2405-2406`, which lists exactly route-fix, guard-retry, warehouse-route-p1 and
     warehouse-bind-sql), a review of the arm-neutral outcome, and at least 3 trials. The bare target
     has no `AGENTS.md`.
-- **Optional second scenario** for the fallback branch, only if the lead's case involved private
-  logic. It needs a fixture service with a `private` helper and a prompt that forbids changing that
-  service. PASS: the new code is added to that service, with no `extends` and no `private` widened to
+- **Optional second scenario** for the fallback branch. Whether the field case needed another class's
+  private logic was not captured. It needs a fixture service with a `private` helper and a prompt
+  that forbids changing that service. PASS: the new code is added to that service, with no `extends` and no `private` widened to
   `protected`.
 
-## Open questions
+## Decisions — maintainer, 2026-09-28
 
-1. The lead's diff or transcript: members added, or a literal `extends`? This decides whether the
-   probe reproduces the field case.
-2. Scope: all three stacks (recommended; the same sentences ship in each) or Angular only.
+1. **Field case.** No diff or transcript can be obtained. The agent added members to the existing
+   class and made no subclass. The eval's `boltOn` conjunct is the reproduction target; `subclass`
+   guards against the fix displacing the failure.
+2. **Scope: all three stacks.** The same sentences ship in each.
 
 ## Review — Fable, 2026-09-28, and disposition
 

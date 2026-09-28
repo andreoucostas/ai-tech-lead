@@ -222,7 +222,7 @@ truthfully describe the other adapters.
 | **Date received** | 2026-09-28 |
 | **Stack / repo shape** | Angular; consumer repository, shape not captured |
 | **Framework installed** | yes (Angular distribution); version not captured |
-| **What misfired** | Implementing a new feature, the model (Opus 5.5) extended an existing class instead of creating a new feature service that injects its dependencies; reported as what it does every time. Whether "extended" meant added members or a subclass is not captured. |
+| **What misfired** | Implementing a new feature, the model (Opus 5.5) extended an existing class instead of creating a new feature service that injects its dependencies; reported as what it does every time. The maintainer later confirmed it added members to the existing class and made no subclass. |
 | **What fired** | not captured |
 | **What got ignored** | Nothing, as far as the authoring tree shows: shipped text directs the behaviour (Leanness #1, the Feature rail, `lean-structure`, the feature prompt hook, `add-service` step 0). |
 | **Hook noise** | not captured |
@@ -231,8 +231,8 @@ truthfully describe the other adapters.
 
 **Epistemic status.** The lead's rule, as relayed: a new feature that needs new code gets a new
 feature service that injects its dependencies; extending the existing class is a fallback only when
-its private methods are needed and the user does not want a refactor. No diff or transcript was
-supplied. The authoring tree independently confirms the steering text in all three distributions
+its private methods are needed and the user does not want a refactor. No diff or transcript exists;
+the shape above (members added, no subclass) is the maintainer's account. The authoring tree independently confirms the steering text in all three distributions
 (B-311's plan quotes each carrier); a live reproduction is B-311's eval.
 
 **Outcome:** B-311.
