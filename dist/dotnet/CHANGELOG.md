@@ -140,6 +140,12 @@
   row was added, or a person last confirmed or dismissed it; nothing else changes it. `/bootstrap` dates
   the rows it adds, `[UNVERIFIED]` ones included, and keeps an existing row's date unless you answer it;
   `/rebootstrap`'s "skip all", which a run with nobody to answer takes, adds no new candidate.
+- **The architecture-test sample no longer breaks your build.** `scripts/ci/ArchitectureTests.sample.cs`
+  is now `scripts/ci/ArchitectureTests.cs.sample`. A project file at your repository root compiled the old
+  one with every other `.cs` file, and it needs NetArchTest and xUnit, so `dotnet build` failed after
+  installing. An update deletes the old file unless you edited it or your install predates v0.65.0; in
+  either case delete `scripts/ci/ArchitectureTests.sample.cs` yourself. The `enforce-architecture` skill copies
+  the sample into your test project as `ArchitectureTests.cs`.
 
 ## 0.89.2 — 2026-09-24
 

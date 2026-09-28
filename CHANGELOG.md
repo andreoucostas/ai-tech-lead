@@ -272,6 +272,15 @@ model spent one more response on the candidate (declining it under the request's
 what it costs. The hook is unchanged: the continuation reaches the model while it still holds the task's
 files, and the dedup hash silences an unchanged set. The same live runs filed B-318 and B-319.
 
+B-319, observed live and ranked by Fable above the B-308/B-315 batch. The dotnet and monorepo dists
+installed `scripts/ci/ArchitectureTests.sample.cs` (NetArchTest, xUnit). An SDK-style project at the
+consumer's repository root compiles it through the default `**/*.cs` glob (only bin/, obj/ and dot-folders
+are excluded), so `dotnet build` failed right after install and post-write reported that failure on every
+`.cs` write. The sample is now `ArchitectureTests.cs.sample`, like `Directory.Build.props.sample`; the
+old path is retired in 0.90.0 with the SHA-256 of every blob it ever had: three released ones and the
+current unreleased one, which src, both dists and the legacy template share. Keep all four; the unreleased
+one is not spurious. `enforce-architecture` names the new file in both stacks.
+
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper
 case) was recorded under the shipped spelling, so Git's case-sensitive pathspecs called it untracked and

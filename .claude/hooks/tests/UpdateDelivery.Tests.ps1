@@ -1598,6 +1598,53 @@ It 'a known retired generator is deleted and a consumer-modified one is preserve
     }
 }
 
+It 'B-319 an install leaves no source file that a project at the repository root compiles' {
+    foreach ($dist in 'dotnet', 'monorepo') {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ("b319-$dist-" + [guid]::NewGuid())
+        try {
+            # An SDK-style project compiles every *.cs beneath it except under bin/, obj/ and dot-folders,
+            # so the shipped NetArchTest sample broke `dotnet build` in a repo with its project at the root.
+            [void][IO.Directory]::CreateDirectory($t)
+            [IO.File]::WriteAllBytes((Join-Path $t 'App.csproj'), [Text.Encoding]::ASCII.GetBytes('<Project Sdk="Microsoft.NET.Sdk" />'))
+            $out = Invoke-Installer -Dist $dist -Target $t
+            Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: greenfield') "calibration: the $dist install failed: $out"
+            $compiled = @(Get-ChildItem -LiteralPath $t -Recurse -File -Force | Where-Object { $_.Extension -eq '.cs' } |
+                ForEach-Object { $_.FullName.Substring($t.Length + 1).Replace('\', '/') } |
+                Where-Object { -not @($_.Split('/') | Where-Object { $_.StartsWith('.') }).Count })
+            Assert ($compiled.Count -eq 0) "$dist installs source files a root-level project compiles: $($compiled -join ', ')"
+            Assert (Test-Path -LiteralPath (Join-Path $t 'scripts/ci/ArchitectureTests.cs.sample') -PathType Leaf) "the $dist architecture-test sample was not installed under its inert name: $out"
+        } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+It 'B-319 an update retires the compiled architecture-test sample and keeps a consumer-edited one' {
+    foreach ($modified in @($false, $true)) {
+        $label = if ($modified) { 'modified' } else { 'known' }
+        $t = Join-Path ([IO.Path]::GetTempPath()) ("b319-retire-$label-" + [guid]::NewGuid())
+        try {
+            New-ArchGeneratorTarget -Target $t
+            [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/framework-ownership.json'))
+            $sample = Join-Path $t 'scripts/ci/ArchitectureTests.sample.cs'
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $sample) | Out-Null
+            $bytes = Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/scripts/ci/ArchitectureTests.sample.cs'
+            Assert ($bytes.Count -gt 0) 'calibration: the v0.86.7 sample fixture is empty'
+            if ($modified) { $bytes = $bytes + [Text.UTF8Encoding]::new($false).GetBytes("// locally edited`n") }
+            [IO.File]::WriteAllBytes($sample, $bytes)
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "$label sample update failed: $out"
+            if ($modified) {
+                Assert (Test-Path -LiteralPath $sample -PathType Leaf) 'a consumer-edited sample was deleted'
+                Assert (Test-B194BytesEqual $bytes ([IO.File]::ReadAllBytes($sample))) 'a preserved sample changed bytes'
+                Assert ($out -match "CANT-VERIFY: retired path 'scripts/ci/ArchitectureTests\.sample\.cs' has consumer-modified or unknown content") "the edited sample was not diagnosed: $out"
+            } else {
+                Assert (-not (Test-Path -LiteralPath $sample)) "a known compiled sample survived the update: $out"
+                Assert ($out -match '(?m)^PLAN delete scripts/ci/ArchitectureTests\.sample\.cs\r?$') "the sample's deletion was not planned: $out"
+            }
+            Assert (Test-Path -LiteralPath (Join-Path $t 'scripts/ci/ArchitectureTests.cs.sample') -PathType Leaf) "the inert sample was not installed: $out"
+        } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 # Git for Windows checks text out with CRLF (core.autocrlf=true); the ledger records the released LF blobs.
 function ConvertTo-B287CrlfBytes {
     param([Parameter(Mandatory)][byte[]]$Bytes)

@@ -12835,3 +12835,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-268** — CLOSED **2026-09-28**. `meta-gates` is the only maintainer skill left and runs exactly AGENTS.md's recipes;
   `meta-release` and `meta-review-handoff` are gone and no dropped obligation remains.
+
+- **B-319** — CLOSED **2026-09-28**. The NetArchTest sample ships as `scripts/ci/ArchitectureTests.cs.sample`, so a root-level
+  project no longer compiles it; the old path is retired with the hashes of all four of its blobs (three released).

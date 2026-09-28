@@ -16,7 +16,7 @@ description: >
 ### .NET — NetArchTest
 
 1. **Test project**: add NetArchTest to an existing test project if one exists (Leanness — don't create a parallel project); otherwise add `tests/ArchitectureTests/ArchitectureTests.csproj` referencing `NetArchTest.Rules` + the projects to govern.
-2. **Rules**: copy `scripts/ci/ArchitectureTests.sample.cs`, translate it to the repo's existing
+2. **Rules**: copy `scripts/ci/ArchitectureTests.cs.sample` into the test project as `ArchitectureTests.cs`, translate it to the repo's existing
    test framework if that is not xUnit, and adjust the namespaces to this repository's project graph. Cover at least:
    - Domain has **no** dependency on Application / Infrastructure / API (inward-only).
    - Application does not depend on Infrastructure / API.
