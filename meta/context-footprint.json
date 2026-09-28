@@ -212,8 +212,8 @@
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5239,
-          "tok": 1310
+          "chars": 5343,
+          "tok": 1336
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -222,8 +222,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 8137,
-          "tok": 2034
+          "chars": 8252,
+          "tok": 2063
         },
         {
           "path": "docs/defaults.md",
@@ -403,8 +403,8 @@
         },
         {
           "path": ".claude/commands/security-review.md#body",
-          "chars": 8911,
-          "tok": 2228
+          "chars": 8852,
+          "tok": 2213
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -438,8 +438,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 2532,
-          "tok": 633
+          "chars": 2466,
+          "tok": 616
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
@@ -666,8 +666,8 @@
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5459,
-          "tok": 1365
+          "chars": 5563,
+          "tok": 1391
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -676,8 +676,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 7979,
-          "tok": 1995
+          "chars": 8094,
+          "tok": 2024
         },
         {
           "path": "docs/defaults.md",
@@ -812,8 +812,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 41249,
-          "tok": 10312
+          "chars": 41208,
+          "tok": 10302
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -857,8 +857,8 @@
         },
         {
           "path": ".claude/commands/security-review.md#body",
-          "chars": 7827,
-          "tok": 1957
+          "chars": 7768,
+          "tok": 1942
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -897,8 +897,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 2776,
-          "tok": 694
+          "chars": 2710,
+          "tok": 678
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
@@ -1140,8 +1140,8 @@
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5733,
-          "tok": 1433
+          "chars": 5837,
+          "tok": 1459
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -1150,8 +1150,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 8205,
-          "tok": 2051
+          "chars": 8320,
+          "tok": 2080
         },
         {
           "path": "docs/defaults.md",
@@ -1286,8 +1286,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 55199,
-          "tok": 13800
+          "chars": 55133,
+          "tok": 13783
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1331,8 +1331,8 @@
         },
         {
           "path": ".claude/commands/security-review.md#body",
-          "chars": 10087,
-          "tok": 2522
+          "chars": 10028,
+          "tok": 2507
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -1386,8 +1386,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 3911,
-          "tok": 978
+          "chars": 3845,
+          "tok": 961
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",

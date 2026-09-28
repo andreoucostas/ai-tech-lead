@@ -50,6 +50,6 @@ Before recommending the bump, run the exact dependency-install, build, and test 
 ## 3. Automate (pick one mechanism, once per repo)
 
 - **GitHub-hosted**: add `.github/dependabot.yml` with an entry for each evidenced package ecosystem (`nuget`, `npm`, or both), weekly and grouped minor/patch.
-- **Bitbucket Data Center / non-GitHub**: Dependabot is **GitHub-only**. Use **Renovate** (self-hostable, runs in Bitbucket Pipelines / Bamboo / Jenkins) with a `renovate.json` and let it detect committed manifests, **or** add only exact repository-evidenced audit commands to CI. If none is evidenced, report audit automation as **not available**; do not invent one. See the "Running on Bitbucket Data Center" section of the README.
+- **Bitbucket Data Center / non-GitHub**: Dependabot is **GitHub-only**. Use **Renovate** (self-hostable, runs in Bitbucket Pipelines / Bamboo / Jenkins) with a `renovate.json` and let it detect committed manifests, **or** add only exact repository-evidenced audit commands to CI. If none is evidenced, report audit automation as **not available**; do not invent one.
 
 Recommend exactly one mechanism covering every evidenced ecosystem; do not configure both Dependabot and Renovate.

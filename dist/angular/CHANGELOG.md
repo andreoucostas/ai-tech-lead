@@ -123,7 +123,9 @@
   `docs/enforcement-surfaces.md` shows what has been observed and advises leaving `chat.useClaudeHooks`
   off. A new install's `docs/ARCHITECTURE.md` no longer points you at a README, changelog or installer
   script that the install does not copy into your repository. An update keeps your existing copy, so
-  correct its hooks sentence in section 9 and those pointers by hand. The docs-sync-check message about
+  correct its hooks sentence in section 9 and those pointers by hand. The review guide,
+  `/security-review`, the `dependency-audit` skill and `docs/ci-integration.md` no longer point at the
+  framework's README or changelog either; an update refreshes those. The docs-sync-check message about
   a pending adoption now names the right `/adopt` step.
 - **`/adopt` now finds the history of a moved file you committed under a different letter case.** If
   a file the install had to move to `docs/pre-adoption/` was committed as, for example,

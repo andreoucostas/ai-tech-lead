@@ -119,6 +119,6 @@ Never ingest or restate legacy active, accepted-risk, resolved, or `docs/securit
 `/security-review` is the per-change gate. Back it with automated scanning so regressions are caught between reviews:
 
 - **Dependencies**: only where repository evidence establishes a supported package profile, run the `dependency-audit` skill using the exact evidenced dependency command and configure Dependabot (GitHub) or Renovate (Bitbucket / host-agnostic). If no dependency scanner is evidenced, record it as **not available**; never infer an npm command from this framework distribution.
-- **SAST**: on GitHub, enable **CodeQL** code scanning (JavaScript/TypeScript). On **Bitbucket Data Center**, CodeQL is unavailable — run a SAST tool (Semgrep, SonarQube) in Bitbucket Pipelines / Bamboo / Jenkins and publish results via the **Code Insights API** so findings appear inline on the PR. See the README "Running on Bitbucket Data Center" section.
+- **SAST**: on GitHub, enable **CodeQL** code scanning (JavaScript/TypeScript). On **Bitbucket Data Center**, CodeQL is unavailable — run a SAST tool (Semgrep, SonarQube) in Bitbucket Pipelines / Bamboo / Jenkins and publish results via the **Code Insights API** so findings appear inline on the PR.
 
 These are infrastructure, not review steps — recommend them once, then let CI carry them.

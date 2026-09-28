@@ -39,6 +39,6 @@ configuration. Report unavailable categories; do not infer a solution-level comm
 ## 3. Automate (pick one, once per repo)
 
 - **GitHub-hosted**: add `.github/dependabot.yml` with a `nuget` ecosystem entry (weekly, grouped minor/patch) for the evidenced package root.
-- **Bitbucket Data Center / non-GitHub**: Dependabot is **GitHub-only**. Use **Renovate** (self-hostable, runs in Bitbucket Pipelines / Bamboo / Jenkins) with a `renovate.json`, **or** add a CI step that runs an exact repository-evidenced audit command and fails on the documented threshold. If none is evidenced, report audit automation as **not available**; do not invent one. See the "Running on Bitbucket Data Center" section of the README.
+- **Bitbucket Data Center / non-GitHub**: Dependabot is **GitHub-only**. Use **Renovate** (self-hostable, runs in Bitbucket Pipelines / Bamboo / Jenkins) with a `renovate.json`, **or** add a CI step that runs an exact repository-evidenced audit command and fails on the documented threshold. If none is evidenced, report audit automation as **not available**; do not invent one.
 
 Recommend exactly one mechanism; do not configure both.

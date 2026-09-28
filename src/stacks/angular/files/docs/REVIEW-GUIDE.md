@@ -14,7 +14,7 @@ One file is authored by hand — **`AGENTS.md`**. Supported clients load it dire
 4. **`.claude/agents/`** — `solid-check`, `convention-check`, `bloat-radar`, `security-auditor`, `debt-radar`. *Guarantees:* `/review` is backed by specialist passes, not one model's vibe.
 5. **`.claude/hooks/`** — `guard` (PreToolUse), `post-write`, `route-prompt`, `boy-scout-check`. *Guarantees only when live:* deterministic actions on the supported events; shell writes and unavailable hooks remain outside that scope.
 6. **`tests/evals/cases.yaml`** — a readable catalogue of intended behavior. The fastest way to see what the framework *promises* (and refuses).
-7. **`CHANGELOG.md`** — how it got here and why.
+7. **The framework's own CHANGELOG** (in the framework download; the installer does not copy it) — how it got here and why.
 
 ## How to verify the claims (don't take them on faith)
 
@@ -29,7 +29,7 @@ One file is authored by hand — **`AGENTS.md`**. Supported clients load it dire
 - **SOLID vs Leanness.** Project evidence and correctness needs select a service seam; the framework does not mandate an abstraction, token, or container. Preserve evidenced boundaries, while *data* (models/DTOs/enums) and speculative provider layers remain out of scope. Probe: does `solid-check` distinguish project evidence from speculation?
 - **Angular DI is project-shaped.** TypeScript interfaces are not runtime tokens, but this does not make `abstract class` or `InjectionToken` a framework default; follow the consumer's evidenced mechanism when a seam is needed.
 - **Deterministic DIP backstop isn't wired.** `solid-check` is semantic (an LLM pass). A consumer may choose an evidenced dependency-direction check; until one is wired, report that limitation rather than inventing dependency-cruiser or another library.
-- **Bitbucket Data Center.** Only the local Windows layer applies — Copilot coding-agent cloud hook execution is unsupported. Wire the PowerShell CI guardrail into Bamboo/Jenkins on a self-hosted Windows agent and require its build status. See README.
+- **Bitbucket Data Center.** Only the local Windows layer applies — Copilot coding-agent cloud hook execution is unsupported. Wire the PowerShell CI guardrail into Bamboo/Jenkins on a self-hosted Windows agent and require its build status; `docs/ci-integration.md` has the recipe.
 - **Hooks need a working interpreter and client support.** Dated canaries cover only the capabilities they exercised, not every registered event; Copilot CLI `agentStop` firing and its queue write remain unverified, as do current VS Code Preview-hook lifecycles. VS Code hooks are Preview and on by default, and your organization can turn them off; shell writes are outside the editor guard.
 - **Evals are intentionally tiny** — a regression tripwire for the framework's own rules, not test coverage for your app.
 - **Project skills are canonical under `.claude/skills`.** A legacy `.github/skills` tree is a migration failure because it can shadow them.

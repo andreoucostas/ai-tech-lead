@@ -136,8 +136,9 @@ feeds the required-builds merge check.
   admin can enable blocking mode. Zero custom code; covers every push including `--no-verify`.
 - **Code Insights** — optionally publish leg 1/leg 2 verdicts to the PR view via the REST API
   (`/rest/insights/1.0/...`). Cosmetic on top of required builds, not a substitute.
-- **Renovate / Semgrep or SonarQube** — dependency and SAST scanning; see the README's
-  "Standing scanners on Bitbucket" section.
+- **Renovate / Semgrep or SonarQube** — dependency and SAST scanning, each only for the ecosystems and
+  languages this repository evidences; `/security-review`'s "Standing scanners" section and the
+  `dependency-audit` skill describe the setup.
 
 ## What CI still cannot gate
 

@@ -230,7 +230,9 @@ longer points consumers at `README.md`, `CHANGELOG.md` or `scripts/install.ps1`,
 installer copies (its repo map names `framework-doctor` instead), and docs-sync-check's adoption-pending
 failure says `/adopt` removes the marker immediately before its Phase-7 bootstrap, not in Phase 3.
 `docs/ARCHITECTURE.md` is copy-if-absent, so the consumer entry tells an updating team to correct its
-copy by hand.
+copy by hand. B-314: the review guide, `/security-review`, the `dependency-audit` skill,
+`docs/ci-integration.md` and the angular and monorepo `/bootstrap` also sent readers to the framework's README or CHANGELOG, which the installer
+does not copy; each now points at an installed file or keeps the substance it already stated.
 
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper

@@ -12805,3 +12805,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-296** — CLOSED **2026-09-28** by decision (Fable second opinion). A colliding shipped path, `.claude/settings.json`
   included, already routes to `/adopt` (B-295); `/adopt` also leaves a non-colliding custom command, skill or prompt in place,
   so routing one there changes nothing. The installer's "(mirrors /adopt Phase 1)" comment is corrected with B-315.
+
+- **B-314** — CLOSED **2026-09-28**. The review guide, `/security-review`, the `dependency-audit` skill,
+  `docs/ci-integration.md` and two `/bootstrap` reports no longer send consumers to the framework's README or CHANGELOG, which the installer does not copy.

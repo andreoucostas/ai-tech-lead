@@ -144,6 +144,6 @@ If the verdict is `APPROVE` (no critical or high findings), note this in the out
 `/security-review` is the per-change gate. Back it with automated scanning so regressions are caught between reviews:
 
 - **Dependencies**: for each repository-evidenced package profile, run the `dependency-audit` skill using only its exact evidenced dependency command and configure Dependabot (GitHub) or Renovate (Bitbucket / host-agnostic). For warehouse-only or other profiles without an evidenced dependency scanner, record the scan as **not available**; never infer NuGet or npm commands from this framework distribution.
-- **SAST**: on GitHub, enable **CodeQL** code scanning (C# **and** JavaScript/TypeScript). On **Bitbucket Data Center**, CodeQL is unavailable — run a SAST tool (Semgrep, SonarQube) in Bitbucket Pipelines / Bamboo / Jenkins and publish results via the **Code Insights API** so findings appear inline on the PR. See the README "Running on Bitbucket Data Center" section.
+- **SAST**: on GitHub, enable **CodeQL** code scanning (C# **and** JavaScript/TypeScript). On **Bitbucket Data Center**, CodeQL is unavailable — run a SAST tool (Semgrep, SonarQube) in Bitbucket Pipelines / Bamboo / Jenkins and publish results via the **Code Insights API** so findings appear inline on the PR.
 
 These are infrastructure, not review steps — recommend them once, then let CI carry them.
