@@ -1191,6 +1191,35 @@ if ($updateMode -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.j
     [void](Add-PlannedWrite -Relative $settingsBackupRelative)
 }
 
+# Which shipped paths do the target's own ignore rules hide? A plain check-ignore never reports a
+# tracked path, and shipped paths hold no glob characters, so it reads them literally. Paths go as
+# arguments: Windows PowerShell appends a CR to lines piped to --stdin. $null: Git could not answer;
+# $script:IgnoreUnanswered then says whether that happened inside a work tree.
+$script:IgnoreUnanswered = $false
+function Get-IgnoredShippedPaths {
+    $git = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+    $routed = @(@('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE') | Where-Object { [Environment]::GetEnvironmentVariable($_, 'Process') }).Count -gt 0
+    if ($git.Count -eq 0 -or $routed) { return $null }
+    $gitPath = [string]$git[0].Source
+    $inside = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-inside-work-tree')
+    if (-not ($inside.Started -and $inside.ExitCode -eq 0 -and $inside.Output -ceq 'true')) { return $null }
+    $query = $null
+    if (@($incomingPaths | Where-Object { $_ -match '[\[\]*?]' }).Count -eq 0) {
+        $query = Invoke-GitText -GitPath $gitPath -Arguments (@('-C', $tgt, 'check-ignore', '--') + $incomingPaths)
+    }
+    if ($null -eq $query -or -not $query.Started -or $query.ExitCode -notin @(0, 1)) { $script:IgnoreUnanswered = $true; return $null }
+    return @($query.Output -split "`n" | Where-Object { $_ -cin $incomingPaths })
+}
+$ignoredShippedPaths = Get-IgnoredShippedPaths
+# A colliding original the consumer had gitignored is one developer's file and may hold a key. Its
+# archive stays out of Git through docs/pre-adoption/.gitignore, written before the first move.
+$keptOutEntries = @()
+if ($adoptMode -and $null -ne $ignoredShippedPaths) {
+    $keptOutEntries = @($archivePlan | Where-Object { $_.OriginalRelative -cin $ignoredShippedPaths })
+}
+$archiveIgnoreRelative = 'docs/pre-adoption/.gitignore'
+if ($keptOutEntries.Count -gt 0) { [void](Add-PlannedWrite -Relative $archiveIgnoreRelative) }
+
 $adoptionMarkerRelative = $null
 if ($adoptMode) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
 $modeName = if ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
@@ -1276,6 +1305,23 @@ if ($adoptMode) {
         Write-AdoptionMarker -InventoryComplete $true
     } catch {
         [Console]::Error.WriteLine("ERROR: Refusing brownfield install: could not persist the complete pre-move archive inventory: $($_.Exception.Message)")
+        exit 3
+    }
+}
+if ($keptOutEntries.Count -gt 0) {
+    # Written before any move, so an interrupted run never leaves a committable archive behind.
+    try {
+        $archiveIgnorePath = Get-ContainedTargetPath -Relative $archiveIgnoreRelative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archiveIgnorePath) | Out-Null
+        $archiveIgnoreText = if (Test-Path -LiteralPath $archiveIgnorePath -PathType Leaf) { [IO.File]::ReadAllText($archiveIgnorePath) } else { '' }
+        $archiveIgnoreLines = @($archiveIgnoreText -split '\r?\n')
+        $archiveIgnoreNew = @($keptOutEntries | ForEach-Object { '/' + $_.OriginalRelative } | Where-Object { $_ -cnotin $archiveIgnoreLines })
+        if ($archiveIgnoreNew.Count -gt 0) {
+            $separator = if ($archiveIgnoreText.Length -gt 0 -and -not $archiveIgnoreText.EndsWith("`n")) { "`n" } else { '' }
+            [IO.File]::AppendAllText($archiveIgnorePath, $separator + ($archiveIgnoreNew -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
+        }
+    } catch {
+        [Console]::Error.WriteLine("ERROR: Refusing brownfield install: could not write $archiveIgnoreRelative before archiving gitignored originals: $($_.Exception.Message)")
         exit 3
     }
 }
@@ -1400,6 +1446,18 @@ if (-not $pwshAvailable) {
 
 Write-Output ""
 Write-Output "Each developer should run  $followUpPowerShell scripts/framework-doctor.ps1  once on their own machine."
+# Framework files the consumer's own rules ignore would be left out of the commit, so teammates would
+# never get them. Asked again now: the install may have replaced the rule (a consumer .claude/.gitignore).
+# The audit log is ignored on purpose (it is per-machine state).
+$script:IgnoreUnanswered = $false
+$hiddenShipped = @(Get-IgnoredShippedPaths | Where-Object { $_ -and $_ -notin $persistentCopyIfAbsent })
+if ($hiddenShipped.Count -gt 0) {
+    $hiddenSummary = @($hiddenShipped | Group-Object { if ($_.Contains('/')) { $_.Split('/')[0] + '/' } else { $_ } } | Sort-Object Name |
+        ForEach-Object { if ($_.Count -gt 1) { "$($_.Name) ($($_.Count) files)" } else { $_.Group[0] } }) -join ', '
+    Write-Output "WARNING: your ignore rules hide $($hiddenShipped.Count) of the framework's own files, so committing this install leaves them out and teammates will not get them: $hiddenSummary. Add exceptions for them to .gitignore before committing."
+} elseif ($script:IgnoreUnanswered) {
+    Write-Output "NOTE: Git could not say whether your ignore rules hide any of the framework's files; check git status --ignored before committing."
+}
 if ($updateMode) {
     Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; .claude/settings.json was backed up and refreshed."
     Write-Output "  Reconcile protected rules and verify the update with docs/upgrade-checklist.md."
@@ -1412,7 +1470,9 @@ if ($updateMode) {
     Write-Output "tooling that must be consolidated with /adopt; .claude/adoption-pending.json records the inventory."
     if ($moved.Count -gt 0) { Write-Output "Moved to docs/pre-adoption/ (this install would have overwritten them): $($moved -join ', ')" }
     if ($leftInPlace.Count -gt 0) { Write-Output "Left where they were: $($leftInPlace -join ', ')" }
-    if ($moved.Count -gt 0) { Write-Output "Some may be files you had gitignored: check docs/pre-adoption/ for secrets before committing." }
+    if ($keptOutEntries.Count -gt 0) { Write-Output "Kept out of Git - you had gitignored these, and they may hold secrets: $(@($keptOutEntries | ForEach-Object { $_.OriginalRelative }) -join ', '). $archiveIgnoreRelative lists their archives; keep per-developer settings in files Git ignores, such as .claude/settings.local.json." }
+    # Without Git's answer an archived original may still be one you had gitignored.
+    if ($moved.Count -gt 0 -and $null -eq $ignoredShippedPaths) { Write-Output "Some may be files you had gitignored: check docs/pre-adoption/ for secrets before committing." }
     Write-Output ""
     Write-Output "Next steps in the target repo:"
     Write-Output "  1. Review and commit the copied files (they are team-shared config, not local settings)."

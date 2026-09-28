@@ -353,8 +353,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 41608,
-          "tok": 10402
+          "chars": 41682,
+          "tok": 10420
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
@@ -807,8 +807,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 41117,
-          "tok": 10279
+          "chars": 41191,
+          "tok": 10298
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
@@ -1281,8 +1281,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 42096,
-          "tok": 10524
+          "chars": 42170,
+          "tok": 10542
         },
         {
           "path": ".claude/commands/bootstrap.md#body",

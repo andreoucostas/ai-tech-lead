@@ -1220,6 +1220,92 @@ It 'B-286 the brownfield handoff says which detected files moved and which staye
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+function New-B309GitTarget {
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][string]$Ignore)
+    $t = Join-Path $Root $Name
+    [void][IO.Directory]::CreateDirectory($t)
+    & git -C $t init -q
+    & git -C $t config user.email 'tests@example.invalid'
+    & git -C $t config user.name 'installer tests'
+    [IO.File]::WriteAllText((Join-Path $t '.gitignore'), $Ignore, [Text.UTF8Encoding]::new($false))
+    & git -C $t add .gitignore
+    & git -C $t commit -qm base
+    return $t
+}
+
+It 'B-309 an archived file the consumer had gitignored stays out of Git' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b309-' + [guid]::NewGuid())
+    try {
+        # Anchored rules ignore the originals but not their docs/pre-adoption/ archives, so the
+        # handoff's own "commit the copied files" step staged a personal settings file with its key.
+        $t = New-B309GitTarget -Root $root -Name 'anchored' -Ignore "/.claude/settings.json`n/CLAUDE.md`n"
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+        $settings = [Text.UTF8Encoding]::new($false).GetBytes("{`"env`":{`"API_KEY`":`"sk-FIXTURE`"}}`n")
+        [IO.File]::WriteAllBytes((Join-Path $t '.claude/settings.json'), $settings)
+        [IO.File]::WriteAllText((Join-Path $t 'CLAUDE.md'), "# personal notes`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $t 'TECH_DEBT.md'), "# team debt`n", [Text.UTF8Encoding]::new($false))
+        & git -C $t add TECH_DEBT.md
+        & git -C $t commit -qm debt
+        $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+        Assert ($dry -match '(?m)^PLAN create docs/pre-adoption/\.gitignore\r?$') "the dry run did not plan docs/pre-adoption/.gitignore: $dry"
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0 -and $out -match 'mode: brownfield') "the brownfield install failed (exit $exit): $out"
+        $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
+        Assert ($status -notmatch 'docs/pre-adoption/\.claude/settings\.json' -and $status -notmatch 'docs/pre-adoption/CLAUDE\.md') "a gitignored original's archive is committable: $status"
+        Assert ($status -match 'docs/pre-adoption/TECH_DEBT\.md') "the tracked team file's archive is not committable: $status"
+        $lines = @([IO.File]::ReadAllLines((Join-Path $t 'docs/pre-adoption/.gitignore')) | Where-Object { $_ })
+        Assert (($lines -join '|') -ceq '/.claude/settings.json|/CLAUDE.md') "docs/pre-adoption/.gitignore does not hold exactly the two anchored lines: $($lines -join '|')"
+        Assert (Test-B194BytesEqual $settings ([IO.File]::ReadAllBytes((Join-Path $t 'docs/pre-adoption/.claude/settings.json')))) 'the archived settings changed bytes'
+        Assert ($out -match 'Kept out of Git[^\r\n]*\.claude/settings\.json' -and $out -match 'Kept out of Git[^\r\n]*CLAUDE\.md') "the handoff does not name the kept-out files: $out"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-313 the handoff names framework files the consumer''s ignore rules hide, and only those' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b313-' + [guid]::NewGuid())
+    try {
+        # Under /.claude/ every installed hook, command and setting is ignored: "commit the copied
+        # files" commits none of them and teammates never get them, and nothing said so.
+        $hidden = New-B309GitTarget -Root $root -Name 'hidden' -Ignore "/.claude/`n"
+        $out = Invoke-Installer -Dist 'dotnet' -Target $hidden
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: greenfield') "the greenfield install failed: $out"
+        Assert ($out -match 'WARNING: your ignore rules hide [0-9]+ of the framework''s own files[^\r\n]*\.claude/ \([0-9]+ files\)') "the handoff did not name the hidden .claude files: $out"
+
+        # A rule in the consumer's own .claude/.gitignore disappears when the install replaces that
+        # file, so nothing is hidden afterwards; the warning must reflect the installed tree.
+        $replaced = New-B309GitTarget -Root $root -Name 'replaced' -Ignore "bin/`n"
+        New-Item -ItemType Directory -Force -Path (Join-Path $replaced '.claude') | Out-Null
+        [IO.File]::WriteAllText((Join-Path $replaced '.claude/.gitignore'), "*`n!.gitignore`n", [Text.UTF8Encoding]::new($false))
+        & git -C $replaced add .claude/.gitignore
+        & git -C $replaced commit -qm 'consumer claude ignore'
+        $replacedOut = Invoke-Installer -Dist 'dotnet' -Target $replaced -AllowDirtyTree
+        Assert ($LASTEXITCODE -eq 0 -and $replacedOut -notmatch 'ignore rules hide') "a rule the install replaced still produced the hidden-files warning: $replacedOut"
+
+        # A plain repository gets no warning, before or after its install is committed; the
+        # framework's own ignored audit log is not a hidden framework file.
+        $plain = New-B309GitTarget -Root $root -Name 'plain' -Ignore "bin/`nobj/`n*.log`n"
+        $first = Invoke-Installer -Dist 'dotnet' -Target $plain
+        Assert ($LASTEXITCODE -eq 0 -and $first -notmatch 'ignore rules hide') "a plain first install warned about hidden files: $first"
+        & git -C $plain add -A
+        & git -C $plain commit -qm install
+        $update = Invoke-Installer -Dist 'dotnet' -Target $plain
+        Assert ($LASTEXITCODE -eq 0 -and $update -match 'mode: update' -and $update -notmatch 'ignore rules hide') "a committed install's update warned about hidden files: $update"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-312 a developer''s Claude Code local settings stay out of Git after install' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b312-' + [guid]::NewGuid())
+    try {
+        # The framework's .claude/.gitignore replaces a consumer copy that ignored this file.
+        $t = New-B309GitTarget -Root $root -Name 'target' -Ignore "bin/`n"
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the install failed: $out"
+        [IO.File]::WriteAllText((Join-Path $t '.claude/settings.local.json'), "{`"env`":{`"API_KEY`":`"sk-FIXTURE`"}}`n", [Text.UTF8Encoding]::new($false))
+        $status = (& git -C $t status --porcelain --ignored -- ':(literal).claude/settings.local.json' | Out-String)
+        Assert ($status -match '^!! \.claude/settings\.local\.json') "Claude Code's per-developer settings are committable after install: $status"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 # One case on both hosts keeps the CI case-count parity: only Windows PowerShell 5.1 returns nothing,
 # instead of throwing, for a missing path under a directory whose name holds brackets.
 It 'B-301 a bracketed target gets no false CANT-VERIFY line on first install or update' {

@@ -109,6 +109,14 @@
   leaves it where it is. It also leaves in place a tracked file whose archive path your `.gitignore`
   excludes, instead of committing its removal with an archive nobody else can see.
 
+- **The installer keeps your gitignored files out of Git and says when your ignore rules hide
+  framework files.** If a file the framework has to replace was one you had gitignored, such as a
+  personal `CLAUDE.md` or a `.claude/settings.json` holding keys, its copy in `docs/pre-adoption/` is now
+  listed in `docs/pre-adoption/.gitignore`, so committing the install does not commit it, and the
+  installer names these files. If your `.gitignore` hides framework files, for example with a `/.claude/`
+  rule, the installer warns and lists them: committing the install would leave them out and your
+  teammates would not get the hooks, commands or rules. The framework's `.claude/.gitignore` now also
+  ignores `.claude/settings.local.json`, Claude Code's per-developer settings file.
 ## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new

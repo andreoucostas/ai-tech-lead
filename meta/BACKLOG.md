@@ -13,7 +13,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Next | B-312, B-309, B-313, B-297, B-310 | Consumer-facing defects the 2026-09-28 installer, B-307 and B-309 reviews found or confirmed; B-312 and B-309 can leak a key into a commit |
+| Next | B-297, B-310 | Consumer-facing defects the 2026-09-28 installer and B-307 reviews found or confirmed |
 | Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
 | Low | B-308, B-306, B-305, B-304, B-303, B-296, B-294, B-292, B-291, B-290, B-289, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
@@ -251,13 +251,6 @@ line naming 18 absent paths; pwsh and 5.1 in a plain folder print `[OK]`.
 **Status:** Open; from the B-287 attack, pre-existing. A retired file opened with FileShare.Read passes the hash, then the unguarded
 `Remove-Item` in the retirement delete loop (`install.ps1`, "retired:" step) throws: the update exits 1 with some files deleted and
 the stamp still old; a re-run recovers. B-287 lets CRLF clones reach that loop.
-### B-309 · The installer archives a gitignored colliding file that `/adopt` later commits
-**Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
-**Status:** Open; from the B-307 design review. A gitignored `CLAUDE.md` (or other shipped path) holding a key is archived to
-`docs/pre-adoption/` with only the generic "check for secrets" line; installer-archived entries skip `/adopt` Phase 3, so B-307's
-Freeze check never sees them, and Phase 8's `git add -A` stages them. `git check-ignore -q -- <originalPath>` still answers.
-
 ### B-310 · docs-sync-check says `/adopt` removes the adoption marker in Phase 3
 **Filed against:** v0.90.0 (2026-09-28)
 **Priority:** P3 · **Effort:** S · **Invariants:** #1
@@ -271,19 +264,6 @@ and the installer remove the marker immediately before the Phase-7 bootstrap. Sh
 `add-service` step 0 forbid a one-consumer service, so agents bolt feature logic onto the nearest class. Wording, eval and Fable's
 review: `.claude/plans/2026-09-28-b311-feature-code-placement.md`. Guarded; the red-first eval must run from a released base.
 
-### B-313 · The installer does not say when the consumer's ignore rules hide framework files
-**Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
-**Status:** Open; from the B-309 design review. Under a `/.claude/` or `/CLAUDE.md` rule every installed file at those paths shows
-`!!`: the "commit the copied files" step commits none of them and teammates never get the hooks or rules, silently. Greenfield and
-brownfield alike; `git check-ignore --no-index` over the installed paths would name them in the handoff.
-
-### B-312 · Installing replaces the consumer's `.claude/.gitignore`, so their ignored local files become committable
-**Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
-**Status:** Open; from the B-309 design review. `.claude/.gitignore` is framework-owned and ships only `.state/` and `ai-audit.log`;
-a consumer's copy ignoring `settings.local.json` (Claude Code's per-developer settings, which can hold keys) is archived or, on
-update, overwritten, and the file then shows `??`. At least ship `settings.local.json`; decide who owns the file.
 ## Archived
 
 B-219 and B-221 — see `meta/BACKLOG-DONE.md`.

@@ -12768,3 +12768,12 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-243** — CLOSED **2026-09-28** by decision (Fable second opinion). The tier in a commit subject is a maintainer label; CI and
   the gates run by changed path whatever the label says, so refusing a mislabel adds a guarded-path change for no consumer outcome.
+
+- **B-309** — CLOSED **2026-09-28**. A colliding original the consumer had gitignored is archived with an anchored line in
+  `docs/pre-adoption/.gitignore`, written before the first move, and named in the handoff; /adopt 1a-bis treats it as personal.
+
+- **B-313** — CLOSED **2026-09-28**. Every install warns, naming them, when the consumer's ignore rules hide framework files
+  (one plain `check-ignore` over the manifest paths); the per-machine audit log is left out.
+
+- **B-312** — CLOSED **2026-09-28**. The shipped `.claude/.gitignore` ignores `settings.local.json`; the file stays framework-owned,
+  so a consumer's own `.claude/` rules belong in the root `.gitignore`.

@@ -329,7 +329,7 @@ It 'every shipped adoption workflow freezes queued quarantines only in Phase 3 a
         }
         # Asked about an installer archive's own path, the ignore check skipped a tracked team
         # AGENTS.md whenever a broad rule such as docs/ ignored docs/pre-adoption/ (B-307 follow-up).
-        foreach ($needle in @('Before reading any discovered file outside `docs/pre-adoption/`', 'records `provenance: untracked` and', 'A tracked original stays a merge candidate even when a rule such as `docs/` ignores its archive path')) {
+        foreach ($needle in @('Before reading any discovered file outside `docs/pre-adoption/`', 'records `provenance: untracked` and', 'holds the line `/<originalPath>`', 'A tracked original stays a merge candidate even when a rule such as `docs/` ignores its archive path')) {
             Assert ($adopt.Contains($needle)) "dist/$stack /adopt could treat a tracked installer-archived original as ignored local configuration: $needle"
         }
         Assert ($prompt.Contains('scripts/adoption-archive.ps1') -and $prompt.Contains('frozen inventory')) "dist/$stack Copilot adapter omits archive-integrity completion guard"

@@ -200,6 +200,21 @@ archives it; Phase 3 drops exactly the `IGNORED:` entries and freezes again; Pha
 Definition of done cover a candidate left in place; Phase 1 asks `git status --porcelain --ignored` with a literal pathspec, only for live files: an installer archive counts as personal only when its entry records `provenance: untracked` and Git ignores its original path, so a tracked `AGENTS.md` archived under a broad `docs/` rule is still merged (found by the B-309 design review; pinned in the adopt-workflow guard test). Known limit: a case-only rename between index and disk can be refused as ignored (nothing leaks). The Phase 1 rule is prompt text; exit 4 backstops
 the move. Design review, Fable second opinion, and two fresh-session attack rounds whose five bypasses are now cases.
 
+B-309, B-313 and B-312. The stack installer asks Git once, before changing anything, which shipped paths
+the target's own ignore rules hide: plain `check-ignore` over the manifest paths passed as arguments
+(tracked paths are never reported, shipped paths hold no glob characters, and Windows PowerShell appends
+a CR to lines piped to `--stdin`). Brownfield: a colliding original the consumer had gitignored (a
+personal `CLAUDE.md`, a `.claude/settings.json` whose `env` holds a key) is archived as before, but
+`docs/pre-adoption/.gitignore` first gains an anchored line for it (`PLAN create`, written before the
+first move), so under an anchored rule the handoff's own "commit the copied files" step no longer stages
+it; the handoff names those files, and the generic secrets line prints only when Git could not answer.
+Every mode: a WARNING names framework files the consumer's rules hide (a `/.claude/` rule hid every
+hook, command and setting, so teammates silently got none of them); the per-machine
+`.claude/ai-audit.log` is left out. The shipped `.claude/.gitignore` gains `settings.local.json`, which a
+replaced consumer copy used to keep out of Git. `/adopt` 1a-bis also counts an archive listed in
+`docs/pre-adoption/.gitignore` as personal, so adding the exceptions the warning asks for cannot switch
+the rule off. Two design reviews (the first found the tracked-`AGENTS.md` regression fixed in 699d23ae)
+and a fresh-session attack of the diff.
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of
