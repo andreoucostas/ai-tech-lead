@@ -91,6 +91,11 @@
   folder can still run the neighbour's copy, because Windows PowerShell reads the brackets before the
   installer starts: use PowerShell 7, or a folder name without brackets.
 
+- **The brownfield installer says exactly what it moved.** When your repository already has AI
+  tooling, the installer now lists the files it moved to `docs/pre-adoption/` because it would have
+  overwritten them, and the files it left where they were, such as `.cursorrules`. It used to say your
+  originals had been moved even when nothing was, and named `CLAUDE.md` twice. The reminder at the
+  start of each session no longer says originals were archived when none were.
 ## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new

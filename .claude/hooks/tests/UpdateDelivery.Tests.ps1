@@ -1175,6 +1175,51 @@ It 'B-299 without pwsh on PATH a bracketed target gets the hook settings for the
     }
 }
 
+It 'B-300 the brownfield mode line and adoption marker name each detected path once' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b300-' + [guid]::NewGuid())
+    try {
+        # CLAUDE.md is an adoption signal and also a shipped path holding other bytes.
+        [void][IO.Directory]::CreateDirectory($t)
+        [IO.File]::WriteAllBytes((Join-Path $t 'CLAUDE.md'), [Text.UTF8Encoding]::new($false).GetBytes("# consumer instructions`r`n"))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $mode = [regex]::Match($out, 'mode: brownfield \([^:]*: (?<paths>[^)\r\n]*)\)')
+        Assert ($exit -eq 0 -and $mode.Success) "no brownfield mode line (exit $exit): $out"
+        Assert ($mode.Groups['paths'].Value -ceq 'CLAUDE.md') "the mode line did not name CLAUDE.md exactly once: $($mode.Value)"
+        $marker = [IO.File]::ReadAllText((Join-Path $t '.claude/adoption-pending.json')) | ConvertFrom-Json
+        Assert ((@($marker.detectedArtifacts) -join ', ') -ceq 'CLAUDE.md') "detectedArtifacts did not name CLAUDE.md exactly once: $(@($marker.detectedArtifacts) -join ', ')"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-286 the brownfield handoff says which detected files moved and which stayed where they were' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b286-' + [guid]::NewGuid())
+    try {
+        # .cursorrules is an adoption signal no shipped path collides with: nothing is archived, yet
+        # the handoff said the originals it displaced were under a docs/pre-adoption/ that did not exist.
+        $signalOnly = Join-Path $root 'signal-only'
+        [void][IO.Directory]::CreateDirectory($signalOnly)
+        [IO.File]::WriteAllBytes((Join-Path $signalOnly '.cursorrules'), [Text.UTF8Encoding]::new($false).GetBytes("consumer rules`r`n"))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $signalOnly
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0 -and $out -match 'mode: brownfield') "the signal-only target did not take brownfield (exit $exit): $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $signalOnly 'docs/pre-adoption'))) "calibration: the signal-only install archived something: $out"
+        Assert ($out -notmatch 'displaced|docs/pre-adoption') "the handoff names an archive that does not exist: $out"
+        Assert ($out -match 'Left where they were: \.cursorrules\r?\n') "the handoff does not say .cursorrules stayed where it was: $out"
+
+        # A collision moves and a signal-only file stays; the handoff must say which is which.
+        $mixed = Join-Path $root 'mixed'
+        [void][IO.Directory]::CreateDirectory($mixed)
+        [IO.File]::WriteAllBytes((Join-Path $mixed 'CLAUDE.md'), [Text.UTF8Encoding]::new($false).GetBytes("# consumer instructions`r`n"))
+        [IO.File]::WriteAllBytes((Join-Path $mixed '.cursorrules'), [Text.UTF8Encoding]::new($false).GetBytes("consumer rules`r`n"))
+        $mixedOut = Invoke-Installer -Dist 'dotnet' -Target $mixed
+        $mixedExit = $LASTEXITCODE
+        Assert ($mixedExit -eq 0 -and (Test-Path -LiteralPath (Join-Path $mixed 'docs/pre-adoption/CLAUDE.md') -PathType Leaf)) "calibration: CLAUDE.md was not archived (exit $mixedExit): $mixedOut"
+        Assert ($mixedOut -match 'Moved to docs/pre-adoption/[^\r\n]*: CLAUDE\.md\r?\n') "the handoff does not name what moved: $mixedOut"
+        Assert ($mixedOut -match 'Left where they were: \.cursorrules\r?\n') "the handoff does not name what stayed: $mixedOut"
+        Assert ($mixedOut -match 'secrets') "the handoff lost the gitignored-secrets warning for archived files: $mixedOut"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 $legacyV083RetiredPaths = @(
     '.claude/hooks/audit-trail.sh',
     '.claude/hooks/boy-scout-check.sh',

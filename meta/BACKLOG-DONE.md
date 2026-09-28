@@ -12742,3 +12742,10 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-302** — CLOSED **2026-09-28**. On Windows PowerShell 5.1 the root dispatcher escapes the stack installer's path, so
   `.\install.ps1` typed inside a clone at `fw[s]` no longer runs sibling `fws`'s installer. Closing it by decision was proposed and
   withdrawn: Fable and the adversarial review both showed the interactive flow reaches the call. `-File` stays host behaviour.
+
+- **B-300** — CLOSED **2026-09-28**. The brownfield mode line and `detectedArtifacts` name each detected path once (`CLAUDE.md` is
+  both a signal and a collision).
+
+- **B-286** — CLOSED **2026-09-28**. The brownfield handoff lists what moved to `docs/pre-adoption/` and what stayed, and warns about
+  gitignored secrets only when something moved; `session-start`, which repeated the false claim each session (found by the design
+  attack), now says any moved originals are there.

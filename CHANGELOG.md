@@ -150,6 +150,13 @@ the escaped form, so the escape is 5.1-only. Still host behaviour: 5.1 reads a b
 as a wildcard before any framework code runs, so `powershell.exe -File` from such a clone can start
 the sibling's root installer. `-Allow` alone, which bound to `-AllowDowngrade`, is now ambiguous.
 
+B-300 and B-286. A brownfield install names each detected path once: `CLAUDE.md` is both an adoption
+signal and a collision, so the mode line and the adoption marker's `detectedArtifacts` listed it twice.
+The handoff now lists what moved to `docs/pre-adoption/` and what was left where it was, and warns
+about gitignored secrets only when something moved: a repository whose only tooling was `.cursorrules`
+was told its originals were displaced into a `docs/pre-adoption/` that did not exist. `session-start`'s
+adoption-pending line, which repeated that claim in every session, now says any moved originals are
+there.
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

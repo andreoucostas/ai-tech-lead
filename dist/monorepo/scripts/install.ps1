@@ -295,6 +295,9 @@ if (-not $updateMode) {
         if (-not $same) { $detected += $relative }
     }
 }
+# CLAUDE.md is both a signal and a collision: name each path once. Both lists hold fixed canonical
+# names, so the case-sensitive Select-Object -Unique is enough.
+$detected = @($detected | Select-Object -Unique)
 $adoptMode = (-not $updateMode) -and ($detected.Count -gt 0)
 
 # Previous ownership is consumer-mutable evidence, never deletion authority. Reconciliation is
@@ -1375,10 +1378,14 @@ if ($updateMode) {
     Write-Output "  Reconcile protected rules and verify the update with docs/upgrade-checklist.md."
     Write-Output "  Next: review the diff, run  $followUpPowerShell scripts/docs-sync-check.ps1 , then commit."
 } elseif ($adoptMode) {
+    # Say what the consumer will find: only colliding files move; other tooling stays in place.
+    $moved = @($archivePlan | ForEach-Object { $_.OriginalRelative })
+    $leftInPlace = @($detected | Where-Object { $_ -notin $moved })
     Write-Output "Done - but this repo is NOT ready for AI-assisted work yet: it has pre-existing AI"
-    Write-Output "tooling that must be consolidated with /adopt. The originals this install displaced"
-    Write-Output "are under docs/pre-adoption/; .claude/adoption-pending.json records the inventory."
-    Write-Output "Some may be files you had gitignored: check docs/pre-adoption/ for secrets before committing."
+    Write-Output "tooling that must be consolidated with /adopt; .claude/adoption-pending.json records the inventory."
+    if ($moved.Count -gt 0) { Write-Output "Moved to docs/pre-adoption/ (this install would have overwritten them): $($moved -join ', ')" }
+    if ($leftInPlace.Count -gt 0) { Write-Output "Left where they were: $($leftInPlace -join ', ')" }
+    if ($moved.Count -gt 0) { Write-Output "Some may be files you had gitignored: check docs/pre-adoption/ for secrets before committing." }
     Write-Output ""
     Write-Output "Next steps in the target repo:"
     Write-Output "  1. Review and commit the copied files (they are team-shared config, not local settings)."

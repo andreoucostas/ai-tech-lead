@@ -6,14 +6,14 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298 and B-302 closed 2026-09-28
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300 and B-286 closed 2026-09-28
 
 | Rank | Item | Why here |
 |---|---|---|
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Low | B-305, B-304, B-303, B-301, B-300, B-297, B-296, B-294, B-292, B-291, B-290, B-289, B-287, B-286, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-305, B-304, B-303, B-301, B-297, B-296, B-294, B-292, B-291, B-290, B-289, B-287, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -180,13 +180,6 @@ calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.m
 **Status:** Open. `.claude/scripts/build-block-manifest.ps1` and `meta/block-manifest.json` have no caller; its
 `-SelfTest` reads blocks from `dist/dotnet/CLAUDE.md`, which B-272 made a two-line stub. Delete both, or repoint.
 
-### B-286 · The brownfield installer says originals were displaced when none were
-**Filed against:** v0.90.0 (2026-09-25)
-**Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; observed by B-281's fresh-session attack. A repo whose only tooling is `.cursorrules` or, since B-281,
-its own `.github/copilot-instructions.md` gets "The originals this install displaced are under docs/pre-adoption/"
-although nothing was archived and the directory does not exist.
-
 ### B-287 · Hash-gated `.md` retirements never delete a CRLF checkout
 **Filed against:** v0.90.0 (2026-09-25)
 **Priority:** P3 · **Effort:** S · **Invariants:** #6
@@ -240,12 +233,6 @@ brownfield; a repo with only non-colliding custom ones still gets `/bootstrap`, 
 **Status:** Open; from B-295's attack. A tracked lowercase `.github/pull_request_template.md` is archived under the shipped
 uppercase name with `provenance=untracked localModification=unknown`, so `/adopt` cannot vouch for it and reads history at a
 path that never existed. Pre-existing in brownfield; B-295 routes far more repos there.
-
-### B-300 · The brownfield mode line names a file twice
-**Filed against:** v0.90.0 (2026-09-25)
-**Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; seen in B-299's smoke. A target holding only `CLAUDE.md` prints `mode: brownfield (... overwrite: CLAUDE.md,
-CLAUDE.md)`: `install.ps1` joins the tooling signal and the B-295 collision into `$detected` without de-duplicating. Guarded path.
 
 ### B-301 · Windows PowerShell 5.1 prints false CANT-VERIFY lines for a bracketed target
 **Filed against:** v0.90.0 (2026-09-25)
