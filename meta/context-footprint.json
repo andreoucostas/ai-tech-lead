@@ -168,8 +168,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17858,
-          "tok": 4464
+          "chars": 18289,
+          "tok": 4572
         },
         {
           "path": "AGENTS.md",
@@ -185,8 +185,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17858,
-          "tok": 4464
+          "chars": 18289,
+          "tok": 4572
         },
         {
           "path": "AGENTS.md",
@@ -276,8 +276,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2403,
-          "tok": 601
+          "chars": 2524,
+          "tok": 631
         },
         {
           "path": "fixture/route-prompt/intent/fix",
@@ -286,8 +286,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/refactor",
-          "chars": 2385,
-          "tok": 596
+          "chars": 2421,
+          "tok": 605
         },
         {
           "path": "fixture/route-prompt/intent/review",
@@ -338,8 +338,8 @@
         },
         {
           "path": ".claude/agents/solid-check.md#body",
-          "chars": 3672,
-          "tok": 918
+          "chars": 3829,
+          "tok": 957
         },
         {
           "path": ".claude/agents/test-critic.md#body",
@@ -373,8 +373,8 @@
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 3704,
-          "tok": 926
+          "chars": 3812,
+          "tok": 953
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -458,8 +458,8 @@
         },
         {
           "path": ".claude/skills/register-service/SKILL.md#body",
-          "chars": 2073,
-          "tok": 518
+          "chars": 2166,
+          "tok": 542
         },
         {
           "path": ".claude/skills/remember-for-team/SKILL.md#body",
@@ -617,8 +617,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17566,
-          "tok": 4392
+          "chars": 18037,
+          "tok": 4509
         },
         {
           "path": "AGENTS.md",
@@ -634,8 +634,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 17566,
-          "tok": 4392
+          "chars": 18037,
+          "tok": 4509
         },
         {
           "path": "AGENTS.md",
@@ -676,8 +676,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 9669,
-          "tok": 2417
+          "chars": 9681,
+          "tok": 2420
         },
         {
           "path": "docs/enforcement-surfaces.md",
@@ -725,8 +725,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2436,
-          "tok": 609
+          "chars": 2557,
+          "tok": 639
         },
         {
           "path": "fixture/route-prompt/intent/fix",
@@ -735,8 +735,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/refactor",
-          "chars": 2392,
-          "tok": 598
+          "chars": 2428,
+          "tok": 607
         },
         {
           "path": "fixture/route-prompt/intent/review",
@@ -787,8 +787,8 @@
         },
         {
           "path": ".claude/agents/solid-check.md#body",
-          "chars": 3486,
-          "tok": 872
+          "chars": 3643,
+          "tok": 911
         },
         {
           "path": ".claude/agents/test-critic.md#body",
@@ -822,8 +822,8 @@
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 3160,
-          "tok": 790
+          "chars": 3268,
+          "tok": 817
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -867,8 +867,8 @@
         },
         {
           "path": ".claude/skills/add-service/SKILL.md#body",
-          "chars": 2566,
-          "tok": 642
+          "chars": 2657,
+          "tok": 664
         },
         {
           "path": ".claude/skills/add-signal-store/SKILL.md#body",
@@ -1086,8 +1086,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19316,
-          "tok": 4829
+          "chars": 19805,
+          "tok": 4951
         },
         {
           "path": "AGENTS.md",
@@ -1103,8 +1103,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19316,
-          "tok": 4829
+          "chars": 19805,
+          "tok": 4951
         },
         {
           "path": "AGENTS.md",
@@ -1145,8 +1145,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 18140,
-          "tok": 4535
+          "chars": 18152,
+          "tok": 4538
         },
         {
           "path": "docs/enforcement-surfaces.md",
@@ -1194,8 +1194,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2466,
-          "tok": 616
+          "chars": 2587,
+          "tok": 647
         },
         {
           "path": "fixture/route-prompt/intent/fix",
@@ -1204,8 +1204,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/refactor",
-          "chars": 2392,
-          "tok": 598
+          "chars": 2428,
+          "tok": 607
         },
         {
           "path": "fixture/route-prompt/intent/review",
@@ -1256,8 +1256,8 @@
         },
         {
           "path": ".claude/agents/solid-check.md#body",
-          "chars": 3916,
-          "tok": 979
+          "chars": 4073,
+          "tok": 1018
         },
         {
           "path": ".claude/agents/test-critic.md#body",
@@ -1291,8 +1291,8 @@
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 4301,
-          "tok": 1075
+          "chars": 4409,
+          "tok": 1102
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -1346,8 +1346,8 @@
         },
         {
           "path": ".claude/skills/add-service/SKILL.md#body",
-          "chars": 2566,
-          "tok": 642
+          "chars": 2657,
+          "tok": 664
         },
         {
           "path": ".claude/skills/add-signal-store/SKILL.md#body",
@@ -1396,8 +1396,8 @@
         },
         {
           "path": ".claude/skills/register-service/SKILL.md#body",
-          "chars": 2073,
-          "tok": 518
+          "chars": 2166,
+          "tok": 542
         },
         {
           "path": ".claude/skills/remember-for-team/SKILL.md#body",
@@ -1409,26 +1409,26 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39072,
-      "static.claude.tok": 9768,
-      "static.copilot.chars": 25577,
-      "static.copilot.tok": 6394,
+      "static.claude.chars": 39503,
+      "static.claude.tok": 9876,
+      "static.copilot.chars": 26008,
+      "static.copilot.tok": 6502,
       "prompt.max.chars": 3403,
       "prompt.max.tok": 851
     },
     "angular": {
-      "static.claude.chars": 37504,
-      "static.claude.tok": 9376,
-      "static.copilot.chars": 25705,
-      "static.copilot.tok": 6426,
+      "static.claude.chars": 37975,
+      "static.claude.tok": 9494,
+      "static.copilot.chars": 26176,
+      "static.copilot.tok": 6544,
       "prompt.max.chars": 3206,
       "prompt.max.tok": 802
     },
     "monorepo": {
-      "static.claude.chars": 46276,
-      "static.claude.tok": 11569,
-      "static.copilot.chars": 29089,
-      "static.copilot.tok": 7272,
+      "static.claude.chars": 46765,
+      "static.claude.tok": 11691,
+      "static.copilot.chars": 29578,
+      "static.copilot.tok": 7394,
       "prompt.max.chars": 3818,
       "prompt.max.tok": 954
     },

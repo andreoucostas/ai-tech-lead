@@ -4518,3 +4518,16 @@ names its own evidence. A profile runs in full on a changed manifest or more tha
 **Reopened and closed 2026-09-27** (user, "Go for it" to a fresh Fable review): at 2 of 7 claims affected, incremental
 (123 credits) missed only a compile break full (557) found by building; it maps to no claim, so 50% stays and no build or
 worker is required. **Reopen** only on a dated run where incremental missed a claim-level finding that full caught.
+
+## WSD-104: New feature logic is placed by responsibility, not proximity (B-311, 2026-09-28)
+
+**Context.** Field report #8: an Angular lead rejected an Opus 5.5 feature that added members to an existing service.
+Shipped text caused it: Leanness #1 said "Edit existing files; do not create new ones", the Feature rail and
+`lean-structure` forbade a one-consumer service, the feature hook said "prefer editing existing files", and
+`add-service` step 0 said "extend an existing service".
+**Decision (maintainer, 2026-09-28, reviewed by Fable).** New code joins an existing class only if its name still
+describes it; otherwise it gets its own service or class even with one consumer; never a subclass of a concrete
+service; shared private logic is extracted unless the developer declines; one component's UI state stays in it. The
+second-consumer test stays for abstractions, wrappers, helpers, pipes and directives. This reverses "prefer editing
+over creating" in all three stacks. Evidence: `angular-feature-placement`, 3/3 bolt-on before, 3/3 own service after.
+**Reopen** on a field report of one-method or pass-through services created under this rule.

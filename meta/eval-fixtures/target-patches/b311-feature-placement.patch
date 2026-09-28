@@ -1,0 +1,114 @@
+diff --git a/.claude/agents/solid-check.md b/.claude/agents/solid-check.md
+index 73256e5..b888d70 100644
+--- a/.claude/agents/solid-check.md
++++ b/.claude/agents/solid-check.md
+@@ -18,7 +18,7 @@ You audit a diff against the five SOLID principles, applying the Angular interpr
+ 
+ ## SOLID checklist
+ 
+-- **S (SRP)** — `medium`: a component/service with more than ~5 injected dependencies, or a component mixing data access with presentation (smart/dumb split violated); a god service.
++- **S (SRP)** — `medium`: a component/service with more than ~5 injected dependencies, or a component mixing data access with presentation (smart/dumb split violated); a god service; a member the class's name no longer covers (e.g. storage or draft logic added to an HTTP client service); a subclass of a concrete service made to reuse it.
+ - **O (OCP)** — `low`: a `switch`/`if` over a type code with 3+ arms that recurs — should be polymorphism. Do **not** flag a seam built before the third case appears (future-proofing — `bloat-radar`'s job).
+ - **L (LSP)** — `high`: `throw new Error('not implemented')` inside an implementation of an abstraction; an override that strengthens preconditions.
+ - **I (ISP)** — `medium`: a fat service contract with unrelated members; an implementer stubbing/throwing members it doesn't need.
+diff --git a/.claude/commands/feature.md b/.claude/commands/feature.md
+index 9952d16..1fece2e 100644
+--- a/.claude/commands/feature.md
++++ b/.claude/commands/feature.md
+@@ -19,7 +19,7 @@ Before writing any code, reason through:
+ - What existing patterns should be reused? Check Common Tasks in CLAUDE.md and the relevant skill in `.claude/skills/`.
+ - What are the failure modes?
+ - What tests will verify success?
+-- **Leanness check** (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)): can this fit in existing files? Are you tempted to introduce a new interface / helper / pipe / directive — is there a second consumer in this change-set? If not, defer the abstraction.
++- **Leanness check** (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)): does this change an existing responsibility (edit its owner) or add one (its own service or class, even with one consumer — Leanness #1)? Are you tempted to introduce a new interface / helper / pipe / directive — is there a second consumer in this change-set? If not, defer the abstraction.
+ 
+ If the feature touches a clear file or area, spawn the `debt-radar` subagent via `Task` to surface bundleable TECH_DEBT entries before you scope the work. Fold any "Yes — same blast radius" entries into the plan when the marginal effort is small.
+ 
+diff --git a/.claude/hooks/route-prompt.ps1 b/.claude/hooks/route-prompt.ps1
+index 3f6b82d..bb14d12 100644
+--- a/.claude/hooks/route-prompt.ps1
++++ b/.claude/hooks/route-prompt.ps1
+@@ -38,7 +38,7 @@ $railsFeature = @'
+ 5. Present what was implemented and tested.
+ 
+ Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)):
+-- Prefer editing existing files over creating new ones.
++- Place code by responsibility (Leanness #1): a new responsibility gets its own service or class even with one consumer; never bolt it onto the nearest service or subclass one.
+ - Preserve a project-evidenced service seam; otherwise add no interface, abstract class, pipe, or directive without a second consumer or correctness need. State the evidence.
+ - Wrappers must add behavior. Inline shallow service methods that just call HttpClient.
+ - No defensive code for impossible states; no comments that restate code; no future-proofing.
+@@ -53,7 +53,7 @@ $railsRefactor = @'
+ 6. Present a before/after summary INCLUDING net LOC delta.
+ 
+ Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness; `AGENTS.md` › Leanness on AGENTS.md-native tools)):
+-- Trend toward less code: delete dead branches, inline single-use abstractions, remove now-redundant types.
++- Trend toward less code: delete dead branches, inline single-use interfaces, abstract bases, wrappers and helpers, remove now-redundant types.
+ - A refactor that grows the codebase needs an explicit reason in the summary.
+ - Do not introduce new interfaces, helpers, pipes, or wrappers as part of a refactor unless they replace at least as much code as they add.
+ '@
+diff --git a/.claude/skills/add-service/SKILL.md b/.claude/skills/add-service/SKILL.md
+index e7bd618..2cbfe7d 100644
+--- a/.claude/skills/add-service/SKILL.md
++++ b/.claude/skills/add-service/SKILL.md
+@@ -24,7 +24,7 @@ Derive this operation's shape from first-party implementation, configuration, te
+ to it. If either is absent, report this skill as **not applicable**; the selected distribution and
+ template defaults do not establish an Angular project.
+ 
+-0. **Confirm no existing service already owns the backend resource or responsibility.** Search injected services, HTTP paths, and public methods by capability. Extend an existing service through ordinary `/feature` work instead of creating a second client for the same resource.
++0. **Confirm no existing service already owns the backend resource or responsibility.** Search injected services, HTTP paths, and public methods by capability. Add to an existing service only what its name covers, through ordinary `/feature` work, instead of creating a second client for the same resource; a new responsibility still gets its own service (Leanness #1).
+ 
+ 1. Use a generator only when its exact invocation is evidenced by CLAUDE.md > Conventions >
+    Verification Commands, committed scripts, manifests, or workspace configuration. Otherwise
+diff --git a/.github/instructions/framework-rules.instructions.md b/.github/instructions/framework-rules.instructions.md
+index 509f7de..8e8d5c4 100644
+--- a/.github/instructions/framework-rules.instructions.md
++++ b/.github/instructions/framework-rules.instructions.md
+@@ -31,7 +31,7 @@ The Boy Scout Rule biases toward improvements. This counterweight requires every
+ 
+ ### Defaults
+ 
+-1. **Edit existing files; do not create new ones unless required.** A new file is a long-term commitment. If a method fits an existing service or component, put it there.
++1. **Place code by responsibility, not proximity.** Edit changed behaviour where it lives. New code joins an existing service only if that service's name still describes it (an API service: calls on its resource, nothing more); otherwise it gets its own service that injects its dependencies, even with one consumer — never bolted onto the nearest service, never a subclass of one. Need another class's private logic? Extract it for both to share; add to that class only if the developer declines. UI state used by one component stays in it.
+ 2. **Project evidence selects service seams; data gets none.** For an injected service, use an abstraction/token only when the project's evidenced boundary or correctness need requires one; do not introduce one merely from this framework. Models/DTOs never get abstractions, and don't invent abstractions for hypothetical variation.
+ 3. **No abstract base class with one subclass.** Inline it.
+ 4. **Wrappers must add behavior.** A service whose method just calls `httpClient.get(...)` and returns the observable is a layer that costs reading time and adds no value. Inline or remove.
+@@ -53,7 +53,7 @@ The Boy Scout Rule biases toward improvements. This counterweight requires every
+ 
+ ### When you must add structure
+ 
+-If a change genuinely requires a new abstraction, component, service, or pipe, state the second consumer (existing or imminent) in the design or PR description. "Imminent" means within the same change-set. Otherwise: defer the abstraction until the second case appears.
++If a change genuinely requires a new abstraction, wrapper, helper, pipe, or directive, state the second consumer (existing or imminent) in the design or PR description. "Imminent" means within the same change-set. Otherwise: defer the abstraction until the second case appears.
+ 
+ ---
+ 
+@@ -62,7 +62,7 @@ If a change genuinely requires a new abstraction, component, service, or pipe, s
+ SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leanness) governs ceremony *beyond* that structure — reconciled here and in Leanness #2.
+ 
+ 1. **Single Responsibility** — one reason to change. No god components/services; honour the smart/dumb split; split a component that mixes data access and presentation. Heuristic: more than ~5 injected collaborators, or a name needing "And"/"Manager", means split.
+-2. **Open/Closed** — extend by adding a type/strategy, not editing a stable one. When a `switch`/`if` over a type code reaches its **third** arm, replace it with polymorphism. (Don't build the seam speculatively before then — that is future-proofing.)
++2. **Open/Closed** — extend by adding a type/strategy behind a seam, not by editing a stable class or subclassing a concrete service. When a `switch`/`if` over a type code reaches its **third** arm, replace it with polymorphism. (Don't build the seam speculatively before then — that is future-proofing.)
+ 3. **Liskov Substitution** — every implementation fulfils its abstraction's contract: no `throw new Error('not implemented')`, no strengthened preconditions, no weakened postconditions.
+ 4. **Interface Segregation** — small, role-based interfaces over one fat service contract; no implementation forced to stub members it doesn't use.
+ 5. **Dependency Inversion** — derive an injected service's seam and registration from the project's evidenced architecture and correctness needs; do not require an abstraction, token, or DI container solely from this framework. Preserve an evidenced dependency boundary; data carriers (models, DTOs, enums) get no abstraction.
+@@ -82,7 +82,7 @@ Natural-language requests trigger a workflow: classify silently, announce it in
+ 
+ > These rails are canonical. Commands and `route-prompt` may elaborate, not contradict; carriers and hooks remain independent.
+ 
+-- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful specs when a harness exists; never add one incidentally → implement in evidenced subtasks → apply Verification command discovery → Boy Scout touched files → self-review → report delivery and validation. Preserve a project-evidenced service seam; otherwise add no service/abstraction without a second consumer or correctness need.
++- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful specs when a harness exists; never add one incidentally → implement in evidenced subtasks → apply Verification command discovery → Boy Scout touched files → self-review → report delivery and validation. Preserve a project-evidenced service seam; otherwise add no abstraction without a second consumer or correctness need, and place new feature logic per Leanness #1.
+ - **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: state root cause → with an applicable harness, first write a regression spec that fails correctly; otherwise use the strongest evidenced validation, report tests **not available**, and add no foreign harness → make an outcome-bound fix → apply Verification command discovery → report cause, fix, validation, and radius.
+ - **Refactor** — *cleanup / extract / rename / simplify / restructure*: establish an evidenced green baseline; add characterization coverage only to an existing applicable harness, otherwise report tests **not available** → refactor incrementally with verification → Boy Scout touched files → prove unchanged behavior → report before/after and net LOC.
+ - **Test** — *write / add tests, increase coverage*: match the existing harness → cover the principal behavior plus consequential risks only → assert rendered output, emitted events, or state rather than internals/mock trivia → see each new behavioral spec fail correctly → apply Verification command discovery → report coverage and gaps.
+diff --git a/docs/defaults.md b/docs/defaults.md
+index 37125ec..9cda98b 100644
+--- a/docs/defaults.md
++++ b/docs/defaults.md
+@@ -80,7 +80,7 @@ provider and component back to `NgControl`. A separate accessor class does not c
+ - Error handling in every stream. Use `catchError` to prevent stream death.
+ 
+ ### API / HTTP
+-- One service per backend resource (e.g., `UserService`, `OrderService`).
++- One HTTP client service per backend resource (e.g., `UserService`, `OrderService`).
+ - All HTTP return types are typed interfaces — no `any`.
+ - Interceptors handle cross-cutting concerns: auth tokens, error handling, retry logic, loading state.
+ - Environment config for API URLs. No hardcoded URLs.

@@ -197,7 +197,7 @@ provider and component back to `NgControl`. A separate accessor class does not c
 - Error handling in every stream. Use `catchError` to prevent stream death.
 
 ### API / HTTP
-- One service per backend resource (e.g., `UserService`, `OrderService`).
+- One HTTP client service per backend resource (e.g., `UserService`, `OrderService`).
 - All HTTP return types are typed interfaces — no `any`.
 - Interceptors handle cross-cutting concerns: auth tokens, error handling, retry logic, loading state.
 - Environment config for API URLs. No hardcoded URLs.

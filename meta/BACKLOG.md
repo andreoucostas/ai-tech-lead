@@ -6,15 +6,15 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270, B-289, B-251, B-285, B-290, B-303, B-268, B-319, B-318, B-308, B-292, B-305, B-320, B-321, B-252 and B-322 closed 2026-09-28; B-273 and B-291 closed by decision; B-315, B-269, B-316, B-317 and B-274 closed by decision; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-322 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270, B-289, B-251, B-285, B-290, B-303, B-268, B-319, B-318, B-308, B-292, B-305, B-320, B-321, B-252, B-322 and B-311 closed 2026-09-28; B-273 and B-291 closed by decision; B-315, B-269, B-316, B-317 and B-274 closed by decision; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-323 filed
 
 | Rank | Item | Why here |
 |---|---|---|
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
 | Low | B-265 | Not now (Fable, 2026-09-28): no field request; measure a workflow before shipping it |
+| Low | B-323 | Cosmetic: a maintainer command's closing line; take with the next validate-dist change |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -79,12 +79,12 @@ quarterly execution or general host recertification is required by this entry.
 **Status:** Open. Measure each new workflow on a scenario with `-TargetPatch` (B-253) before shipping it;
 split into one item per workflow when taken.
 
-### B-311 · Shipped rules steer new feature logic into existing services instead of a new injected service
+### B-323 · `validate-dist --update-rail-sync` prints an object instead of the dist path in its closing line
 **Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P2 · **Effort:** M · **Invariants:** #1 #3 #4 #7
-**Status:** Open; field report #8 (Angular senior lead). Leanness #1, the Feature rail, `lean-structure`, the feature hook and
-`add-service` step 0 forbid a one-consumer service, so agents bolt feature logic onto the nearest class. Wording, eval and Fable's
-review: `.claude/plans/2026-09-28-b311-feature-code-placement.md`. Guarded; the red-first eval must run from a released base.
+**Priority:** P3 · **Effort:** S · **Invariants:** —
+**Status:** Open; seen during B-311. The record loop's `$dist` is the dist path `$Dist` (PowerShell names are
+case-insensitive), so the update path ends "passed for System.Management.Automation.PSCustomObject …". Verdicts are
+unaffected: rail-sync runs last and full runs print the path. Rename the loop variable.
 
 ## Archived
 

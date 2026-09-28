@@ -38,7 +38,7 @@ $railsFeature = @'
 5. Present what was implemented and tested.
 
 Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness)):
-- Prefer editing existing files over creating new ones.
+- Place code by responsibility (Leanness #1): a new responsibility gets its own service or class even with one consumer; never bolt it onto the nearest service or subclass one.
 # @stack:leanness-feature
 - No defensive code for impossible states; no comments that restate code; no future-proofing.
 '@
@@ -52,7 +52,7 @@ $railsRefactor = @'
 6. Present a before/after summary INCLUDING net LOC delta.
 
 Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness)):
-- Trend toward less code: delete dead branches, inline single-use abstractions, remove now-redundant types.
+- Trend toward less code: delete dead branches, inline single-use interfaces, abstract bases, wrappers and helpers, remove now-redundant types.
 - A refactor that grows the codebase needs an explicit reason in the summary.
 # @stack:leanness-refactor
 '@

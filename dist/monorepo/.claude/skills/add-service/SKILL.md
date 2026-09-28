@@ -24,7 +24,7 @@ Derive this operation's shape from first-party implementation, configuration, te
 to it. If either is absent, report this skill as **not applicable**; the selected distribution and
 template defaults do not establish an Angular project.
 
-0. **Confirm no existing service already owns the backend resource or responsibility.** Search injected services, HTTP paths, and public methods by capability. Extend an existing service through ordinary `/feature` work instead of creating a second client for the same resource.
+0. **Confirm no existing service already owns the backend resource or responsibility.** Search injected services, HTTP paths, and public methods by capability. Add to an existing service only what its name covers, through ordinary `/feature` work, instead of creating a second client for the same resource; a new responsibility still gets its own service (Leanness #1).
 
 1. Use a generator only when its exact invocation is evidenced by AGENTS.md > Conventions >
    Verification Commands, committed scripts, manifests, or workspace configuration. Otherwise

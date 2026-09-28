@@ -2235,3 +2235,59 @@ named after the hook's `session_id` and one line asking for a token that exists 
 - Not run: the 12-per-arm knockout with the hook unregistered. With the framework at 2/3, a one-sided Fisher test at
   n=12 has power 0.42 if the knockout keeps half the effect and 0.15 if it keeps three quarters, and "not shown" licenses
   nothing; the question moved to B-257, which needs non-inferiority. Not measured: interactive sessions, Copilot, other intents.
+
+## 2026-09-28 21:22:09 +01:00 — framework v0.89.2 (8aec7c9811b5e6336fd1f6bab8c8b48ad9c2e22e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS angular-feature-placement** (model=opus) — agentExit=0 timedOut=False costUsd=0.65003755 tokensIn=10 tokensOut=5314; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=False subclass=False addedMembers= newInjectable=False storageInComponent=True draftLogicInInjectable=False injectsUserService=True usedSkill=add-service:False
+
+
+## 2026-09-28 21:25:24 +01:00 — framework v0.89.2 (8aec7c9811b5e6336fd1f6bab8c8b48ad9c2e22e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS angular-feature-placement** (model=opus) — agentExit=0 timedOut=False costUsd=0.5541004 tokensIn=14 tokensOut=5613; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=False subclass=False addedMembers= newInjectable=False storageInComponent=True draftLogicInInjectable=False injectsUserService=True usedSkill=add-service:False
+- **PASS angular-feature-placement** (model=opus) — agentExit=0 timedOut=False costUsd=0.4426232 tokensIn=12 tokensOut=4601; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=False subclass=False addedMembers= newInjectable=False storageInComponent=True draftLogicInInjectable=False injectsUserService=True usedSkill=add-service:False
+
+
+## 2026-09-28 21:41:29 +01:00 — framework v0.89.2 (8aec7c9811b5e6336fd1f6bab8c8b48ad9c2e22e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **FAIL angular-feature-placement** (model=opus) — agentExit=0 timedOut=False costUsd=0.3856452 tokensIn=10 tokensOut=4650; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=True subclass=False addedMembers=history,lastSaved,profileHistory,recordChange newInjectable=False featureInComponent=True featureInOtherInjectable=False injectsUserService=True usedSkill=add-service:False
+
+
+## 2026-09-28 21:44:09 +01:00 — framework v0.89.2 (8aec7c9811b5e6336fd1f6bab8c8b48ad9c2e22e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **FAIL angular-feature-placement** (model=opus) — agentExit=0 timedOut=False costUsd=0.4085776 tokensIn=10 tokensOut=4500; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=True subclass=False addedMembers=changes,lastSaved,history,recordChange newInjectable=False featureInComponent=True featureInOtherInjectable=False injectsUserService=True usedSkill=add-service:False
+- **FAIL angular-feature-placement** (model=opus) — agentExit=0 timedOut=False costUsd=0.3815636 tokensIn=10 tokensOut=4280; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=True subclass=False addedMembers=lastSaved,history,profileHistory,recordChange newInjectable=False featureInComponent=True featureInOtherInjectable=False injectsUserService=True usedSkill=add-service:False
+
+
+## 2026-09-28 21:47:53 +01:00 — framework v0.89.2 (8aec7c9811b5e6336fd1f6bab8c8b48ad9c2e22e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · patch: b311-feature-placement.patch@aa37a1292679 · scratch: retained=True
+
+- **PASS angular-feature-placement** (model=opus; patch=b311-feature-placement.patch@aa37a1292679) — agentExit=0 timedOut=False costUsd=0.3974854 tokensIn=12 tokensOut=4230; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=False subclass=False addedMembers= newInjectable=True featureInComponent=True featureInOtherInjectable=True injectsUserService=True usedSkill=add-service:False
+- **PASS angular-feature-placement** (model=opus; patch=b311-feature-placement.patch@aa37a1292679) — agentExit=0 timedOut=False costUsd=0.438932 tokensIn=12 tokensOut=4977; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=False subclass=False addedMembers= newInjectable=True featureInComponent=True featureInOtherInjectable=True injectsUserService=True usedSkill=add-service:False
+- **PASS angular-feature-placement** (model=opus; patch=b311-feature-placement.patch@aa37a1292679) — agentExit=0 timedOut=False costUsd=0.4346568 tokensIn=10 tokensOut=5904; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=False subclass=False addedMembers= newInjectable=True featureInComponent=True featureInOtherInjectable=True injectsUserService=True usedSkill=add-service:False
+
+## B-311 angular-feature-placement on v0.89.2 — 2026-09-28 (hand-written summary of the five blocks above)
+
+Claude Code 2.1.281 and claude-opus-5-5 in every row's `system/init`. The base is v0.89.2 at `8aec7c98`, carrying only
+this scenario and grader, which is what the -Live stamp check allows. `-Model opus`, budget 1.50 USD per run.
+
+| probe | arm | result | cost |
+|---|---|---|---|
+| draft autosave (the 21:22 and 21:25 blocks, grader's first field names) | unfixed | 3/3 PASS, all component-only: not discriminating | 1.64 USD |
+| profile change history (21:41, 21:44) | unfixed | 3/3 FAIL: history state and `recordChange` added to `UserService` | 1.18 USD |
+| profile change history (21:47) | `-TargetPatch b311-feature-placement.patch@aa37a1292679` | 3/3 PASS: a new root-provided `ProfileHistoryService`, `UserService` untouched | 1.27 USD |
+
+- Draft autosave is UI state, which both the old and the new text keep in the component. The history must outlive the
+  form, so its state sits above it: in `UserService` under the old text, in its own service under the new Leanness #1.
+- The patch (`meta/eval-fixtures/target-patches/b311-feature-placement.patch`) carries B-311's changes 1-9 as cut
+  from a v0.89.2 angular install: 6 files, 10 lines, the same set the change makes to `dist/angular`.
+- Not measured: .NET and monorepo (the same sentences ship there), Copilot, interactive sessions, and the fallback
+  branch (another class's private logic, declined extraction).

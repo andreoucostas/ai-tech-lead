@@ -35,6 +35,14 @@
       "assertion": "skillArtifactAndVerification"
     },
     {
+      "id": "angular-feature-placement",
+      "measures": "Field report #8: whether new feature logic gets its own service or is bolted onto the nearest existing service (or a subclass of it). The history must outlive the form, so its state lives above the component: in UserService (the failure) or its own service. Gates only on that failure; its own service, a component-only answer and a return-type edit pass, and Detail says which. A draft-autosave prompt did not reproduce the failure (3 of 3 component-only on v0.89.2, $1.64): that is UI state, which both texts keep in the component.",
+      "stack": "angular",
+      "budgetUsd": 1.50,
+      "prompt": "Add a profile change history: after each successful profile update, record when it happened and which fields changed; keep the last five entries in memory for as long as the app is open, so they survive the form being re-created; and show them under the profile form. Follow this repository's conventions. No tests needed. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.",
+      "assertion": "angularFeaturePlacement"
+    },
+    {
       "id": "docs-tier-ondemand",
       "budgetUsd": 0.75,
       "prompt": "Add a class under `src/` that orchestrates validating an order and then reserving stock. Follow this repository's conventions. Do not add tests or a project reference; one source file is enough.",

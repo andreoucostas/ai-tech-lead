@@ -31,7 +31,7 @@ The Boy Scout Rule biases toward improvements. This counterweight requires every
 
 ### Defaults
 
-1. **Edit existing files; do not create new ones unless required.** A new file is a long-term commitment. If a method fits an existing file, service, or component, put it there.
+1. **Place code by responsibility, not proximity.** Edit changed behaviour where it lives. New code joins an existing class only if that class's name still describes it (a repository or client: operations on its resource, nothing more); otherwise it gets its own class, composed the way the project already composes services, even with one consumer — never bolted onto the nearest class, never a subclass of one. Need another class's private logic? Extract it for both to share; add to that class only if the developer declines. UI state used by one component stays in it.
 2. **Project evidence selects service seams; data gets none.** For an injected service, use a stack-appropriate seam only when the project's evidenced boundary or correctness need requires one; do not introduce one merely from this framework. Data carriers (DTOs, entities, value objects, models, `Options` records) never get abstractions, and don't invent abstractions for hypothetical variation.
 3. **No abstract base class with one subclass.** Inline it.
 4. **Wrappers must add behavior.** A method that just delegates — or a service method that just calls `httpClient.get(...)` and returns the observable — is a layer that costs reading time and adds no value. Inline or remove.
@@ -53,7 +53,7 @@ The Boy Scout Rule biases toward improvements. This counterweight requires every
 
 ### When you must add structure
 
-If a change genuinely requires a new abstraction, file, component, service, or pipe, state the second consumer (existing or imminent) in the design or PR description. "Imminent" means within the same change-set. Otherwise: defer the abstraction until the second case appears.
+If a change genuinely requires a new abstraction, wrapper, helper, pipe, or directive, state the second consumer (existing or imminent) in the design or PR description. "Imminent" means within the same change-set. Otherwise: defer the abstraction until the second case appears.
 
 ---
 
@@ -62,7 +62,7 @@ If a change genuinely requires a new abstraction, file, component, service, or p
 SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leanness) governs ceremony *beyond* that structure — the two are reconciled here and in Leanness #2.
 
 1. **Single Responsibility** — one reason to change per class/component/service. No god classes or god services; keep controllers thin and delegate at an evidenced project boundary; honour the smart/dumb component split. Split anything that mixes orchestration, data access, and presentation. Heuristic: more than ~5 injected collaborators, or a name needing "And"/"Manager", means split.
-2. **Open/Closed** — extend by adding a type/strategy, not editing a stable one. When a `switch`/`if` over a type/enum code reaches its **third** arm, replace it with polymorphism. (Do not build the seam speculatively before then — that is future-proofing.)
+2. **Open/Closed** — extend by adding a type/strategy behind a seam, not by editing a stable class or subclassing a concrete service. When a `switch`/`if` over a type/enum code reaches its **third** arm, replace it with polymorphism. (Do not build the seam speculatively before then — that is future-proofing.)
 3. **Liskov Substitution** — every implementation fulfils its abstraction's contract completely: no `NotImplementedException`/`NotSupportedException` or `throw new Error('not implemented')`, no strengthened preconditions, no weakened postconditions. If a type can't honour the contract, it must not implement it.
 4. **Interface Segregation** — small, role-based interfaces over one fat `I*Service` / service contract. No implementation is forced to implement or stub members it does not use.
 5. **Dependency Inversion** — derive an injected service's seam and registration from the project's evidenced architecture and correctness needs; do not require a stack-specific abstraction, token, or DI container solely from this framework. Preserve an evidenced dependency boundary; data carriers (DTOs, entities, value objects, models, `Options` records, enums) get no abstraction.
@@ -82,7 +82,7 @@ Natural-language requests trigger a workflow: classify silently, announce it in 
 
 > These rails are canonical and binding. Commands and `route-prompt` may elaborate, not contradict.
 
-- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful tests when a harness exists; never add one incidentally → implement in evidenced dependency order → apply Verification command discovery for each technology → Boy Scout touched files → self-review → report delivery and validation. Preserve a project-evidenced service seam; otherwise add no interface/service/abstraction without a second consumer or correctness need.
+- **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful tests when a harness exists; never add one incidentally → implement in evidenced dependency order → apply Verification command discovery for each technology → Boy Scout touched files → self-review → report delivery and validation. Preserve a project-evidenced service seam; otherwise add no interface/abstraction without a second consumer or correctness need, and place new feature logic per Leanness #1.
 - **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: state root cause → with an applicable harness, first write a regression test that fails correctly; otherwise use the strongest evidenced validation, report tests **not available**, and add no foreign harness → make an outcome-bound fix → apply Verification command discovery → report cause, fix, validation, and radius.
 - **Refactor** — *cleanup / extract / rename / simplify / restructure*: establish an evidenced green baseline; add characterization coverage only to an existing applicable harness, otherwise report tests **not available** → refactor incrementally with verification → Boy Scout touched files → prove unchanged behavior → report before/after and net LOC.
 - **Test** — *write / add tests, increase coverage*: match the existing harness → cover the principal behavior plus consequential risks only → assert observable behavior, not internals or mock trivia → see each new behavioral test fail correctly → apply Verification command discovery → report coverage and gaps.

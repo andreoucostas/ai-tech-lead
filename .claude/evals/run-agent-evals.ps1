@@ -1345,6 +1345,31 @@ function ConvertFrom-CopilotEvents([string]$EventsPath, [string]$TranscriptPath)
     }
 }
 
+# Names declared directly in a TypeScript class body. Comments and string literals are blanked, and
+# text inside parentheses or nested braces (parameter lists, types, bodies, initialisers) is dropped,
+# so what is left at the class's own level is one declaration per statement or line.
+function Get-TsClassMembers([string]$Text, [string]$ClassName) {
+    $clean = [regex]::Replace($Text, '//[^\r\n]*|/\*[\s\S]*?\*/|`(?:\\[\s\S]|[^`\\])*`|''(?:\\.|[^''\\\r\n])*''|"(?:\\.|[^"\\\r\n])*"', { param($m) ' ' * $m.Value.Length })
+    $open = [regex]::Match($clean, "\bclass\s+$([regex]::Escape($ClassName))\b[^{]*\{")
+    if (-not $open.Success) { return @() }
+    $depth = 1; $parens = 0
+    $top = [Text.StringBuilder]::new()
+    for ($i = $open.Index + $open.Length; $i -lt $clean.Length -and $depth -gt 0; $i++) {
+        $c = $clean[$i]
+        if ($c -eq '{') { $depth++; if ($depth -eq 2 -and $parens -eq 0) { [void]$top.Append(';') }; continue }
+        if ($c -eq '}') { $depth--; continue }
+        if ($depth -ne 1) { continue }
+        if ($c -eq '(') { $parens++; if ($parens -eq 1) { [void]$top.Append('(') }; continue }
+        if ($c -eq ')') { if ($parens -gt 0) { $parens-- }; if ($parens -eq 0) { [void]$top.Append(')') }; continue }
+        if ($parens -eq 0) { [void]$top.Append($c) }
+    }
+    $modifier = '(?:public|private|protected|readonly|static|async|override|declare|abstract|accessor|get|set)'
+    return @($top.ToString() -split '[;\r\n]' | ForEach-Object {
+        $m = [regex]::Match($_.Trim(), "^(?:$modifier\s+)*([A-Za-z_$][\w$]*)\s*[?!]?\s*(?:[=:(<]|$)")
+        if ($m.Success) { $m.Groups[1].Value }
+    })
+}
+
 function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$BeforeCommits) {
     $e = Get-TranscriptEvidence $Transcript
     $finalText = [string]$e.Final.result
@@ -1446,6 +1471,44 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $followed = [bool]@($classNames | Where-Object { $_ -match 'Coordinator$' } | Select-Object -First 1)
             $classes = if ($classNames.Count -eq 0) { 'not-found' } else { $classNames -join ',' }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $followed; Detail = "loaded=$loaded followed=$followed classes=$classes" }
+        }
+        'angular-feature-placement' {
+            # B-311, field report #8: the failure is feature logic bolted onto the existing UserService, or
+            # a subclass of it. Member sets, not diff lines: a return-type edit on updateProfile is not a
+            # bolt-on, a draft call added inside it is. A component-only answer passes and is reported.
+            $usedSkill = [bool]@($e.Tools | Where-Object { $_.Name -eq 'Skill' -and $_.Input.skill -eq 'add-service' } | Select-Object -First 1)
+            $rootCommit = (git -C $Target rev-list --max-parents=0 HEAD | Select-Object -First 1)
+            $touched = @(
+                @(git -C $Target diff --name-only $rootCommit -- 'src/app/*.ts' 'src/app/**/*.ts')
+                @(git -C $Target ls-files --others --exclude-standard -- 'src/app/*.ts' 'src/app/**/*.ts')
+            ) | Where-Object { $_ -and (Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf) } | Sort-Object -Unique
+            if ($touched.Count -eq 0) {
+                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "boltOn=False subclass=False touched=0 usedSkill=add-service:$usedSkill" }
+            }
+            $servicePath = Join-Path $Target 'src/app/user.service.ts'
+            $serviceNow = if (Test-Path -LiteralPath $servicePath -PathType Leaf) { Get-Content -Raw -LiteralPath $servicePath } else { '' }
+            $serviceRoot = (git -C $Target show "${rootCommit}:src/app/user.service.ts") -join "`n"
+            $membersRoot = @(Get-TsClassMembers $serviceRoot 'UserService')
+            $addedMembers = @(Get-TsClassMembers $serviceNow 'UserService' | Where-Object { $_ -cnotin $membersRoot })
+            # The feature's own vocabulary, or a new tap(...) that runs it inside an existing member.
+            $featureTokens = '(?i)history|storage|draft'
+            $injectGrew = [regex]::Matches($serviceNow, '\binject\s*\(').Count -gt [regex]::Matches($serviceRoot, '\binject\s*\(').Count
+            $tokenGrew = [regex]::Matches($serviceNow, $featureTokens).Count -gt [regex]::Matches($serviceRoot, $featureTokens).Count
+            $tapGrew = [regex]::Matches($serviceNow, '\btap\s*\(').Count -gt [regex]::Matches($serviceRoot, '\btap\s*\(').Count
+            $boltOn = $addedMembers.Count -gt 0 -or $injectGrew -or $tokenGrew -or $tapGrew
+            $texts = [ordered]@{}
+            foreach ($path in $touched) { $texts[$path] = Get-Content -Raw -LiteralPath (Join-Path $Target $path) }
+            $subclass = [bool]@($texts.Values | Where-Object { $_ -match '\bclass\s+\w+\s+extends\s+UserService\b' } | Select-Object -First 1)
+            $injectableNow = 0; $injectableRoot = 0
+            foreach ($path in $touched) {
+                $injectableNow += [regex]::Matches($texts[$path], '@Injectable\b').Count
+                $injectableRoot += [regex]::Matches(((git -C $Target show "${rootCommit}:$path" 2>$null) -join "`n"), '@Injectable\b').Count
+            }
+            $newInjectable = $injectableNow -gt $injectableRoot
+            $featureInComponent = [bool]@($texts.Keys | Where-Object { $_ -match '\.component\.ts$' -and $texts[$_] -match $featureTokens } | Select-Object -First 1)
+            $featureInOtherInjectable = [bool]@($texts.Keys | Where-Object { $_ -ne 'src/app/user.service.ts' -and $texts[$_] -match '@Injectable\b' -and $texts[$_] -match $featureTokens } | Select-Object -First 1)
+            $injectsUserService = [bool]@($texts.Keys | Where-Object { $_ -ne 'src/app/user.service.ts' -and $texts[$_] -match '\binject\s*\(\s*UserService\b|:\s*UserService\b' } | Select-Object -First 1)
+            return [pscustomobject]@{ Status = 'PASS'; Pass = (-not $boltOn -and -not $subclass); Detail = "boltOn=$boltOn subclass=$subclass addedMembers=$($addedMembers -join ',') newInjectable=$newInjectable featureInComponent=$featureInComponent featureInOtherInjectable=$featureInOtherInjectable injectsUserService=$injectsUserService usedSkill=add-service:$usedSkill" }
         }
         { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
             $successful = @($e.Tools | Where-Object {
@@ -2495,6 +2558,67 @@ function Invoke-SelfTest {
         ) }
         $docsKeywordOnly = Test-ScenarioEvidence 'docs-tier-ondemand' $temp $docsEcho 1
         if ($docsKeywordOnly.Pass -or $docsKeywordOnly.Status -ne 'INCONCLUSIVE') { throw 'docs-tier probe accepted final-text Coordinator keyword without a matching source file' }
+        # B-311: angular-feature-placement gates only on the field failure, feature logic bolted onto
+        # UserService or a subclass of it. Each answer below is written into a fresh copy of the fixture.
+        $placementTemp = Join-Path $temp 'angular-placement'
+        New-EvalRepo $placementTemp angular
+        $placementEvidence = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        $placementService = @'
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+
+@Injectable({ providedIn: 'root' })
+export class UserService {
+  private readonly http = inject(HttpClient);
+
+  updateProfile(profile: { name: string; email: string }) {
+    return this.http.put('/api/profile', profile);
+  }
+}
+'@
+        $placementCases = @(
+            [pscustomobject]@{ Name = 'a ProfileDraftService'; Pass = $true; Detail = '^boltOn=False subclass=False addedMembers= newInjectable=True featureInComponent=False featureInOtherInjectable=True injectsUserService=False'; Files = @{
+                'src/app/profile-draft.service.ts' = "import { Injectable } from '@angular/core';`n`n@Injectable({ providedIn: 'root' })`nexport class ProfileDraftService {`n  private readonly key = 'profile-draft';`n  private timer: ReturnType<typeof setTimeout> | undefined;`n  save(value: { name: string; email: string }): void {`n    clearTimeout(this.timer);`n    this.timer = setTimeout(() => localStorage.setItem(this.key, JSON.stringify(value)), 2000);`n  }`n  clear(): void { localStorage.removeItem(this.key); }`n}`n" } }
+            [pscustomobject]@{ Name = 'a component-only answer'; Pass = $true; Detail = '^boltOn=False subclass=False addedMembers= newInjectable=False featureInComponent=True featureInOtherInjectable=False'; Files = @{
+                'src/app/profile-form/profile-form.component.ts' = "import { Component } from '@angular/core';`n`n@Component({ selector: 'app-profile-form', standalone: true, template: '' })`nexport class ProfileFormComponent {`n  restore(): string | null { return localStorage.getItem('profile-draft'); }`n}`n" } }
+            [pscustomobject]@{ Name = 'a return-type edit on updateProfile'; Pass = $true; Detail = '^boltOn=False subclass=False addedMembers= '; Files = @{
+                'src/app/user.service.ts' = $placementService.Replace("updateProfile(profile: { name: string; email: string }) {", "updateProfile(profile: { name: string; email: string }): Observable<unknown> {").Replace("import { HttpClient } from '@angular/common/http';", "import { HttpClient } from '@angular/common/http';`nimport { Observable } from 'rxjs';") } }
+            [pscustomobject]@{ Name = 'draft methods on UserService'; Pass = $false; Detail = '^boltOn=True subclass=False addedMembers=saveDraft,clearDraft '; Files = @{
+                'src/app/user.service.ts' = $placementService.Replace("  updateProfile(", "  saveDraft(value: string): void {`n    localStorage.setItem('profile-draft', value);`n  }`n`n  clearDraft(): void {`n    localStorage.removeItem('profile-draft');`n  }`n`n  updateProfile(") } }
+            [pscustomobject]@{ Name = 'tap(() => clearDraft()) inside updateProfile'; Pass = $false; Detail = '^boltOn=True subclass=False addedMembers= '; Files = @{
+                'src/app/user.service.ts' = $placementService.Replace("return this.http.put('/api/profile', profile);", "return this.http.put('/api/profile', profile).pipe(tap(() => clearDraft()));").Replace("import { HttpClient } from '@angular/common/http';", "import { HttpClient } from '@angular/common/http';`nimport { tap } from 'rxjs';`nimport { clearDraft } from './profile-draft';") } }
+            [pscustomobject]@{ Name = 'tap(() => recordChange()) inside updateProfile'; Pass = $false; Detail = '^boltOn=True subclass=False addedMembers= '; Files = @{
+                'src/app/user.service.ts' = $placementService.Replace("return this.http.put('/api/profile', profile);", "return this.http.put('/api/profile', profile).pipe(tap(() => recordChange(profile)));").Replace("import { HttpClient } from '@angular/common/http';", "import { HttpClient } from '@angular/common/http';`nimport { tap } from 'rxjs';`nimport { recordChange } from './profile-changes';") } }
+            [pscustomobject]@{ Name = 'a subclass of UserService'; Pass = $false; Detail = '^boltOn=False subclass=True '; Files = @{
+                'src/app/draft-user.service.ts' = "import { Injectable } from '@angular/core';`nimport { UserService } from './user.service';`n`n@Injectable({ providedIn: 'root' })`nexport class DraftUserService extends UserService {`n  clear(): void { localStorage.removeItem('profile-draft'); }`n}`n" } }
+        )
+        foreach ($case in $placementCases) {
+            git -C $placementTemp checkout --quiet -- .
+            git -C $placementTemp clean --quiet -fd -- src
+            foreach ($path in $case.Files.Keys) {
+                New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $placementTemp $path)) | Out-Null
+                $case.Files[$path] | Set-Content -LiteralPath (Join-Path $placementTemp $path) -Encoding utf8NoBOM
+            }
+            $placement = Test-ScenarioEvidence 'angular-feature-placement' $placementTemp $placementEvidence 1
+            if ($null -eq $placement -or $placement.Status -ne 'PASS' -or $placement.Pass -ne $case.Pass -or $placement.Detail -notmatch $case.Detail) {
+                throw "angular-feature-placement misjudged $($case.Name): $(if ($placement) { "$($placement.Status) pass=$($placement.Pass) $($placement.Detail)" } else { 'no result' })"
+            }
+        }
+        git -C $placementTemp checkout --quiet -- .
+        git -C $placementTemp clean --quiet -fd -- src
+        $placementUntouched = Test-ScenarioEvidence 'angular-feature-placement' $placementTemp $placementEvidence 1
+        if ($null -eq $placementUntouched -or $placementUntouched.Status -ne 'INCONCLUSIVE' -or $placementUntouched.Pass) { throw 'angular-feature-placement graded an answer that changed no src/app TypeScript file' }
+        $placementSkill = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='skill'; name='Skill'; input=[pscustomobject]@{ skill='add-service' } }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='done' })
+        ) }
+        $placementCases[0].Files['src/app/profile-draft.service.ts'] | Set-Content -LiteralPath (Join-Path $placementTemp 'src/app/profile-draft.service.ts') -Encoding utf8NoBOM
+        $placementSkilled = Test-ScenarioEvidence 'angular-feature-placement' $placementTemp $placementSkill 1
+        if ($null -eq $placementSkilled -or $placementSkilled.Detail -notmatch 'usedSkill=add-service:True$') { throw "angular-feature-placement did not observe the add-service skill: $(if ($placementSkilled) { $placementSkilled.Detail })" }
         $warehouseTemp = Join-Path $temp 'warehouse-fixture'
         New-EvalRepo $warehouseTemp warehouse
         $sqlFiles = @(Get-ChildItem -LiteralPath $warehouseTemp -Filter '*.sql' -File -Recurse)
@@ -3917,7 +4041,7 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         Write-Output 'PASS: structured Haiku positive control is accepted'
         Write-Output 'PASS: all graders reject keyword-only evidence'
         Write-Output 'PASS: docs-tier probe observes Read, class naming, and rejects keyword-only evidence'
-        Write-Output 'PASS: Angular fixture and form-control grader positive/negative/keyword-only cases'
+        Write-Output 'PASS: B-311 angular-feature-placement fails a bolt-on or a subclass of UserService and passes its own service, a component-only answer and a return-type edit'
         Write-Output 'PASS: warehouse fixture clears exact step-0 patterns and preserves dead columns'
         Write-Output 'PASS: warehouse routing categories, success semantics, and ungraded SQL signals'
         Write-Output 'PASS: warehouse preparation installs, populates population A without pointers, and commits setup'

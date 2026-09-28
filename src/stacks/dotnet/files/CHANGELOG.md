@@ -171,6 +171,11 @@
 - **Re-running an update no longer replaces your saved settings.** `.claude/.state/settings.json.pre-update`
   holds your `.claude/settings.json` from before the update. A later run of the same update, which finds
   the framework's own settings in place, now keeps that backup instead of overwriting it with them.
+- **New feature logic now goes where its responsibility belongs.** When a feature adds a new
+  responsibility, the agent puts it in its own class, composed the way your project already composes
+  services, even with one consumer, instead of adding it to the nearest existing class or subclassing
+  one. Code that belongs to an existing class's job still goes there. The framework rules, the feature
+  prompt rails, `/feature`, `register-service` and the SOLID review now agree.
 
 ## 0.89.2 — 2026-09-24
 

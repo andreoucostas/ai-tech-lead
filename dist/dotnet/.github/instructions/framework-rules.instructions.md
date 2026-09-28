@@ -31,7 +31,7 @@ The Boy Scout Rule biases toward improvements. This counterweight requires every
 
 ### Defaults
 
-1. **Edit existing files; do not create new ones unless required.** A new file is a long-term commitment. If a method fits an existing file, put it there.
+1. **Place code by responsibility, not proximity.** Edit changed behaviour where it lives. New code joins an existing class only if that class's name still describes it (a repository or client: operations on its resource, nothing more); otherwise it gets its own class, composed the way the project already composes services, even with one consumer — never bolted onto the nearest class, never a subclass of one. Need another class's private logic? Extract it for both to share; add to that class only if the developer declines.
 2. **Project evidence selects service seams; data gets none.** For an injected service, use an interface only when the project's evidenced boundary or correctness need requires one; do not introduce one merely from this framework. Data carriers (DTOs, entities, value objects, `Options` records) never get interfaces, and don't invent abstractions for hypothetical variation.
 3. **No abstract base class with one subclass.** Inline it.
 4. **Wrappers must add behavior.** A method that just delegates is a layer that costs reading time and adds no value. Inline or remove.
@@ -53,7 +53,7 @@ The Boy Scout Rule biases toward improvements. This counterweight requires every
 
 ### When you must add structure
 
-If a change genuinely requires a new abstraction, file, or wrapper, state the second consumer (existing or imminent) in the design or PR description. "Imminent" means within the same change-set. Otherwise: defer the abstraction until the second case appears.
+If a change genuinely requires a new abstraction, helper, or wrapper, state the second consumer (existing or imminent) in the design or PR description. "Imminent" means within the same change-set. Otherwise: defer the abstraction until the second case appears.
 
 ---
 
@@ -62,7 +62,7 @@ If a change genuinely requires a new abstraction, file, or wrapper, state the se
 SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leanness) governs ceremony *beyond* that structure — the two are reconciled here and in Leanness #2.
 
 1. **Single Responsibility** — one reason to change per class. No god classes; keep controllers thin and delegate at an evidenced project boundary. Split a class that mixes orchestration, data access, and presentation. Heuristic: more than ~5 injected collaborators, or a name needing "And"/"Manager", means split.
-2. **Open/Closed** — extend by adding a type, not editing a stable one. When a `switch`/`if` over a type/enum code reaches its **third** arm, replace it with polymorphism. (Do not build the seam speculatively before then — that is future-proofing.)
+2. **Open/Closed** — extend by adding a type behind a seam, not by editing a stable class or subclassing a concrete service. When a `switch`/`if` over a type/enum code reaches its **third** arm, replace it with polymorphism. (Do not build the seam speculatively before then — that is future-proofing.)
 3. **Liskov Substitution** — every implementation fulfils its interface's contract completely: no `NotImplementedException`/`NotSupportedException`, no strengthened preconditions, no weakened postconditions. If a type can't honour the contract, it must not implement it.
 4. **Interface Segregation** — small, role-based interfaces over one fat `I*Service`. No implementation is forced to implement members it does not use.
 5. **Dependency Inversion** — derive an injected service's seam and registration from the project's evidenced architecture and correctness needs; do not require an interface or DI container solely from this framework. Preserve an evidenced dependency boundary; data carriers (DTOs, entities, value objects, `Options` records, enums) get no interface.

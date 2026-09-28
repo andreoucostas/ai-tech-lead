@@ -12882,3 +12882,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   simulate one (claude.exe probes %ProgramFiles%\PowerShell\7 and other fixed paths). Dropping the named inner
   interpreter would also turn the guard off, silently, for a consumer who sets
   CLAUDE_CODE_POWERSHELL_RESPECT_EXECUTION_POLICY; one saved process start per hook is not worth that.
+
+- **B-311** — CLOSED **2026-09-28** (WSD-104). New feature logic is placed by responsibility in all three stacks;
+  the `angular-feature-placement` eval went from 3/3 bolt-on (v0.89.2, Opus 5.5) to 3/3 own service with the change.

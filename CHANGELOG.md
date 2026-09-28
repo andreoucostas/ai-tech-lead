@@ -355,6 +355,16 @@ other copy. The backup is now kept when the current settings are, line endings a
 incoming framework's variants (`settings.json`, `settings.windows.json`) and a backup exists; the run
 says so. A fresh-session attack broke a byte-for-byte first version: a `core.autocrlf` checkout rewrote
 the framework's settings with CRLF, and the next run replaced the backup again.
+
+B-311, field report #8: an Angular senior lead rejected a feature that an Opus 5.5 agent bolted onto an existing
+service. Shipped text steered it there: Leanness #1, the Feature rail, `lean-structure`, the feature hook and
+`add-service` step 0 all pointed new code at existing classes, applying the second-consumer test to concrete
+services. All three stacks now place code by responsibility (WSD-104): a new responsibility gets its own service or
+class even with one consumer, never a bolt-on or a subclass of a concrete service, and the second-consumer test stays
+with abstractions. The new `angular-feature-placement` eval on v0.89.2 with Opus 5.5 bolted a profile change history
+onto `UserService` 3/3 and, with the change as a `-TargetPatch`, gave it its own `ProfileHistoryService` 3/3 (2.45
+USD); a first draft-autosave probe did not discriminate (UI state, 3/3 component-only, 1.64 USD). The eval
+self-test's `angular-form-control` PASS line, printed since B-290 deleted those cases, gives way to the new grader's.
 B-273 and B-291 are closed by decision (see `meta/BACKLOG-DONE.md`). A phrase list
 was rejected: `RoutePrompt.Tests.ps1` already pins the two lost clauses, and a list misses the next new one.
 

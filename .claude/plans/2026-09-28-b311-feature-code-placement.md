@@ -245,29 +245,35 @@ Harness: `.claude/evals/run-agent-evals.ps1`, maintainer-only and `-Live`; it ne
 - **Fixture:** the existing `angular` fixture: `UserService` with `updateProfile` over HTTP, and
   `ProfileFormComponent`, which injects only `FormBuilder` (not `UserService`) and has no submit. No
   fixture change is needed.
-- **Prompt**, pre-approved like `angular-form-control`: "Add draft autosave to the profile form: while
-  the user edits, save the unsent name and email to localStorage at most every two seconds, restore
-  them when the form opens, and clear the draft after a successful profile update. Follow this
-  repository's conventions. No tests needed. I approve this change in advance: do not stop for a plan
-  or ask for confirmation -- implement it now, then report what you built." It routes as a feature
+- **Prompt**, pre-approved like `angular-form-control`: "Add a profile change history: after each
+  successful profile update, record when it happened and which fields changed; keep the last five
+  entries in memory for as long as the app is open, so they survive the form being re-created; and
+  show them under the profile form. Follow this repository's conventions. No tests needed. I approve
+  this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then
+  report what you built."
+- **Reworked 2026-09-28 (Fable).** The first prompt, draft autosave, did not reproduce the failure: 3
+  of 3 component-only on v0.89.2 with Opus 5.5 ($1.64). Autosave is UI state, which both the old and
+  the new text keep in the component. The history must outlive the form, so its state sits above the
+  component: in `UserService` under the old text, in its own service under the new #1. It routes as a feature
   (`\badd\b`, `route-prompt.ps1:146`). The prompt deliberately drops "in this session" from the
   harness's usual pre-approval wording: that phrase's `session` token trips the Angular security
   overlay (`sensitive-regex`), as it does today for `angular-form-control`.
-- **Why this feature:** it has one consumer, a tempting owner (`UserService`, "profile"), and no HTTP
-  of its own.
+- **Why this feature:** it has one consumer, a tempting owner (`UserService`, "profile"), no HTTP of
+  its own, and state that must outlive the component.
 - **Grader.** The scenario entry needs `stack: angular` and a branch in `Test-ScenarioEvidence`.
   - It gates only on the field failure: PASS = not `boltOn` and not `subclass`.
     - `boltOn`: the set of member names declared in `src/app/user.service.ts` grows compared with the
-      root commit, or the file gains an `inject(`, `Storage` or `Draft` token. Compare member sets,
+      root commit, or the file gains an `inject(`, a `tap(`, or a `history`, `storage` or `draft` token
+      (case-insensitive). Compare member sets,
       not diff lines: a Boy Scout return-type edit on `updateProfile` must not count, and a
       `tap(() => clearDraft())` inside it must.
     - `subclass`: any changed or added file declares `class \w+ extends UserService`.
   - Reported in Detail, not gating:
     - `newInjectable`, scanning changed files as well as added ones, since a second `@Injectable` can
       sit in the component file;
-    - `storageInComponent`;
-    - `draftLogicInInjectable` (`debounce|throttle|timer|2000` inside an `@Injectable`), because a
-      thin `StorageService` with the logic left in the component also passes the gate;
+    - `featureInComponent` (the feature's tokens in a component);
+    - `featureInOtherInjectable` (the feature's tokens in an `@Injectable` other than `UserService`),
+      because a thin service with the logic left in the component also passes the gate;
     - `injectsUserService`;
     - `usedSkill=add-service`.
 
@@ -280,6 +286,7 @@ Harness: `.claude/evals/run-agent-evals.ps1`, maintainer-only and `-Live`; it ne
     - PASS: a return-type edit on `updateProfile`;
     - FAIL: draft methods on `UserService`;
     - FAIL: `tap(() => clearDraft())` in `updateProfile`;
+    - FAIL: `tap(() => recordChange(profile))` in `updateProfile`, with no feature token (caught by `tap(`);
     - FAIL: `extends UserService`.
 - **Runs.** Use `-Model opus`: the report concerns Opus 5.5, and the harness defaults to Sonnet
   (`:10`). Set `budgetUsd` to about 1.5; Fable estimates that 1.0 truncates Opus runs to
@@ -342,3 +349,10 @@ Not adopted:
 - **"No security-overlay word in the prompt."** Wrong. The harness's pre-approval wording, "in this
   session", matches the overlay's `session` token (`sensitive-regex`, `route-prompt.ps1:158`).
   Corrected in the prompt above.
+
+## Outcome — 2026-09-28
+
+Implemented as changes 1-9 in all three stacks (WSD-104). The eval ran from a v0.89.2 clone carrying the scenario and
+grader: the history probe bolted onto `UserService` 3/3 unfixed and gave the history its own `ProfileHistoryService`
+3/3 with `b311-feature-placement.patch` (`meta/eval-results.md`, 4.09 USD in all, the draft probe included). Dropped as
+Fable advised: the `-Arm none` control, the second scenario and any wording iteration.

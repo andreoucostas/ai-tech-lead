@@ -235,7 +235,9 @@ its private methods are needed and the user does not want a refactor. No diff or
 the shape above (members added, no subclass) is the maintainer's account. The authoring tree independently confirms the steering text in all three distributions
 (B-311's plan quotes each carrier); a live reproduction is B-311's eval.
 
-**Outcome:** B-311.
+**Outcome:** B-311, closed 2026-09-28 for 0.90.0 (WSD-104). Its `angular-feature-placement` eval reproduced the
+failure on v0.89.2 with Opus 5.5 (3/3 bolt-on onto `UserService`) and the fixed text gave the history its own service
+3/3 (`meta/eval-results.md`).
 
 ---
 
