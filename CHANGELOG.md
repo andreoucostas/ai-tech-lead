@@ -157,6 +157,17 @@ about gitignored secrets only when something moved: a repository whose only tool
 was told its originals were displaced into a `docs/pre-adoption/` that did not exist. `session-start`'s
 adoption-pending line, which repeated that claim in every session, now says any moved originals are
 there.
+
+B-301. Under Windows PowerShell 5.1, `Get-Item -LiteralPath` returns nothing instead of throwing
+ItemNotFound for a missing path under a directory whose name holds brackets, so five absence checks in
+the stack installer (retirement inspection, legacy pre-commit hook, retained retired paths, and the
+protected-reference directory and candidate scans) read the gap as an entry: a bracketed target got 21
+false CANT-VERIFY lines on first install and 80 on update, all at exit 0. `Get-LiteralItem` throws
+ItemNotFound on both hosts and those sites call it; pwsh output is unchanged. On such a target with no
+pre-commit hook, 5.1 now retires eligible retired Git-hook helpers as pwsh does; the phantom hook line
+used to preserve them. The new case plants an absent retired path in the previous manifest so the
+retirement inspection is reached; with that site alone reverted it fails on 5.1.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

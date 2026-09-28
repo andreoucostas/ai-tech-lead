@@ -12749,3 +12749,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-286** — CLOSED **2026-09-28**. The brownfield handoff lists what moved to `docs/pre-adoption/` and what stayed, and warns about
   gitignored secrets only when something moved; `session-start`, which repeated the false claim each session (found by the design
   attack), now says any moved originals are there.
+
+- **B-301** — CLOSED **2026-09-28**. `Get-LiteralItem` throws ItemNotFound on both hosts, so 5.1's empty `Get-Item` result for a
+  missing path under a bracketed directory no longer yields 21/80 false CANT-VERIFY lines; the design attack supplied the fixture
+  that reaches the retirement site.

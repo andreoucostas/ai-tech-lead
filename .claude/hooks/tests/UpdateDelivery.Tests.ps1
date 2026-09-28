@@ -1220,6 +1220,33 @@ It 'B-286 the brownfield handoff says which detected files moved and which staye
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# One case on both hosts keeps the CI case-count parity: only Windows PowerShell 5.1 returns nothing,
+# instead of throwing, for a missing path under a directory whose name holds brackets.
+It 'B-301 a bracketed target gets no false CANT-VERIFY line on first install or update' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b301-' + [guid]::NewGuid())
+    try {
+        # 5.1 reported phantom paths there at exit 0: 21 CANT-VERIFY lines on first install, 80 on update.
+        $t = Join-Path $root 'u[c]'
+        [void][IO.Directory]::CreateDirectory($t)
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        $firstExit = $LASTEXITCODE
+        # An absent retired path the previous install owned reaches the retirement inspection too.
+        $manifestPath = Join-Path $t 'framework-ownership.json'
+        $manifest = [IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
+        $manifest.paths = @($manifest.paths) + @([pscustomobject]@{ path = 'scripts/sync-agent-files.ps1'; ownership = 'framework-owned/overwritten' })
+        [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+        & git -C $t init -q
+        & git -C $t add -A
+        & git -C $t -c user.name=fixture -c user.email=fixture@example.invalid commit -qm install
+        $update = Invoke-Installer -Dist 'dotnet' -Target $t
+        $updateExit = $LASTEXITCODE
+        Assert ($firstExit -eq 0 -and $first -match 'mode: greenfield') "the first install failed (exit $firstExit): $first"
+        Assert ($first -notmatch 'CANT-VERIFY') "the first install reported CANT-VERIFY for a bracketed target: $first"
+        Assert ($updateExit -eq 0 -and $update -match 'mode: update') "the update failed (exit $updateExit): $update"
+        Assert ($update -notmatch 'CANT-VERIFY|sync-agent-files') "the update reported CANT-VERIFY or the absent retired path for a bracketed target: $update"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 $legacyV083RetiredPaths = @(
     '.claude/hooks/audit-trail.sh',
     '.claude/hooks/boy-scout-check.sh',

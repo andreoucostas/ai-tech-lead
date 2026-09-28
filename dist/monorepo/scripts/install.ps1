@@ -56,6 +56,16 @@ function Get-ReparsePointAncestor {
     }
 }
 
+# Windows PowerShell 5.1 returns nothing, instead of throwing ItemNotFound, for a missing path under a
+# directory whose name holds brackets; each absence check below then read the gap as an entry and
+# reported a phantom path. Throw the same error on both hosts; any other failure still escapes.
+function Get-LiteralItem {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $item = Get-Item -Force -LiteralPath $Path -ErrorAction Stop
+    if ($null -eq $item) { throw [Management.Automation.ItemNotFoundException]::new("Cannot find path '$Path' because it does not exist.") }
+    return $item
+}
+
 function Get-ContainedTargetPath {
     param([Parameter(Mandatory = $true)][string]$Relative)
     if ([string]::IsNullOrWhiteSpace($Relative) -or $Relative.Contains('\') -or $Relative.Contains([char]0) -or
@@ -328,7 +338,7 @@ if ($updateMode) {
                 # Test-Path reports a dangling reparse point as absent. Resolve the directory
                 # entry itself so only a true ItemNotFound result can mean that this retirement
                 # candidate is absent; every other inspection failure is preservation evidence.
-                try { $candidateEntry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
+                try { $candidateEntry = Get-LiteralItem -Path $candidate }
                 catch [Management.Automation.ItemNotFoundException] { continue }
                 catch {
                     $reconciliationMessages.Add("CANT-VERIFY: retired path '$retiredPath' could not be examined; preserving it.")
@@ -624,7 +634,7 @@ function Get-LegacyGitHookInspection {
         return New-LegacyGitHookInspection -Kind 'CANT-VERIFY' -Dependencies $legacyGitHookRetiredDependencies `
             -Detail "the default pre-commit path traverses reparse/symlink '$hookReparse'; it was not followed or modified."
     }
-    try { $hookEntry = Get-Item -Force -LiteralPath $hookPath -ErrorAction Stop }
+    try { $hookEntry = Get-LiteralItem -Path $hookPath }
     catch [Management.Automation.ItemNotFoundException] {
         return New-LegacyGitHookInspection -Kind 'NONE' -Detail 'the target has no default pre-commit hook.'
     }
@@ -705,7 +715,7 @@ if ($updateMode) {
         # Specific advice below still wins where it exists; the generic arm covers the rest.
         if ($deletePlan.Contains($retiredPath)) { continue }
         $candidate = Get-ContainedTargetPath -Relative $retiredPath
-        try { $entry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
+        try { $entry = Get-LiteralItem -Path $candidate }
         catch [Management.Automation.ItemNotFoundException] { continue }
         catch {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' could not be examined; preserving it without inspection.")
@@ -785,7 +795,7 @@ function Add-BoundedReferenceDirectory {
         $reconciliationMessages.Add("CANT-VERIFY: protected reference directory '$Relative' traverses reparse/symlink '$rootReparse'; it was not followed.")
         return
     }
-    try { $rootEntry = Get-Item -Force -LiteralPath $directory -ErrorAction Stop }
+    try { $rootEntry = Get-LiteralItem -Path $directory }
     catch [Management.Automation.ItemNotFoundException] { return }
     catch { $reconciliationMessages.Add("CANT-VERIFY: protected reference directory '$Relative' could not be examined; no stale-command conclusion was inferred."); return }
     if (($rootEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or -not $rootEntry.PSIsContainer) {
@@ -828,7 +838,7 @@ foreach ($relative in @($protectedReferenceCandidates | Sort-Object)) {
         $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$relative' traverses reparse/symlink '$reparse' and was not read.")
         continue
     }
-    try { $entry = Get-Item -Force -LiteralPath $candidate -ErrorAction Stop }
+    try { $entry = Get-LiteralItem -Path $candidate }
     catch [Management.Automation.ItemNotFoundException] { continue }
     catch { $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$relative' could not be examined; no stale-command conclusion was inferred."); continue }
     if ($entry.PSIsContainer -or $entry.Length -gt 2097152) {

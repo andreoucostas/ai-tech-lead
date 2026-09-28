@@ -79,9 +79,7 @@
   as `C:\src\app[v2]`, it read the brackets as a wildcard: it could install into a neighbouring folder
   that matched, such as `C:\src\app2`, and still report success, or stop with an unhelpful error when
   nothing matched. It now uses the path exactly as you give it. On a machine without PowerShell 7,
-  such a folder now also gets the Windows PowerShell 5.1 hooks, as any other folder does. Under
-  Windows PowerShell 5.1 the installer can still print CANT-VERIFY lines about files that are not in
-  such a folder; those lines are false and you can ignore them.
+  such a folder now also gets the Windows PowerShell 5.1 hooks, as any other folder does.
 
 - **`-AllowDirtyTree` now works through the framework's root `install.ps1`.** When the installer
   stops because your repository has uncommitted changes, it tells you to re-run with `-AllowDirtyTree`
@@ -97,6 +95,7 @@
   overwritten them, and the files it left where they were, such as `.cursorrules`. It used to say your
   originals had been moved even when nothing was, and named `CLAUDE.md` twice. The reminder at the
   start of each session no longer says originals were archived when none were.
+
 ## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new
