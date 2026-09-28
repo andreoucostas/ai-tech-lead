@@ -12,7 +12,9 @@ param(
     # graders, transcript and results rows exactly as they were. -CopilotModel is never 'auto'.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('claude','copilot')][string]$Executor = 'claude',
     [Parameter(ParameterSetName = 'Live')][string]$CopilotModel = 'claude-sonnet-5',
-    [Parameter(ParameterSetName = 'Live')][ValidateRange(30, 500)][int]$CopilotMaxAiCredits = 30,
+    # B-305: 0 runs uncapped. Copilot shows the model its remaining credits each turn, so a cap reads as
+    # a budget to economise against; the results header records any cap a run used.
+    [Parameter(ParameterSetName = 'Live')][ValidateScript({ $_ -eq 0 -or ($_ -ge 30 -and $_ -le 500) })][int]$CopilotMaxAiCredits = 0,
     # B-253: 'none' skips the framework install so the same prompt and fixture run bare. Only
     # scenarios marked "bareArm" in scenarios.json carry an arm-neutral Outcome and may run bare.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('framework','none')][string]$Arm = 'framework',
@@ -1181,6 +1183,13 @@ function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [strin
 # vendor per run, which is not a measurable arm. Repo hooks are deferred in prompt mode unless the
 # folder is trusted; `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS` is the CLI's own non-interactive
 # opt-in, so the framework arm never has to write to the user's ~/.copilot/config.json.
+function Get-CopilotArguments([string]$WorkingDirectory, [string]$Prompt, [string]$ModelId, [int]$MaxAiCredits, [string]$SessionId, [string]$UsagePath) {
+    $arguments = @('-p', $Prompt, '-C', $WorkingDirectory, '--model', $ModelId, '--allow-all-tools',
+        '--no-ask-user', '--no-remote', '--no-remote-export', '--no-color', '--no-auto-update',
+        '--session-id', $SessionId, '--usage-output-file', $UsagePath)
+    if ($MaxAiCredits -gt 0) { $arguments += @('--max-ai-credits', ([string]$MaxAiCredits)) }
+    return $arguments
+}
 function Invoke-CopilotProcess([string]$WorkingDirectory, [string]$Prompt, [string]$StdoutPath, [string]$ModelId, [int]$MaxAiCredits, [int]$Timeout, [string]$SessionId, [string]$UsagePath, [bool]$LoadRepoHooks) {
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command copilot).Source
@@ -1188,9 +1197,7 @@ function Invoke-CopilotProcess([string]$WorkingDirectory, [string]$Prompt, [stri
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
-    $copilotArgs = @('-p', $Prompt, '-C', $WorkingDirectory, '--model', $ModelId, '--allow-all-tools',
-        '--no-ask-user', '--no-remote', '--no-remote-export', '--no-color', '--no-auto-update',
-        '--session-id', $SessionId, '--usage-output-file', $UsagePath, '--max-ai-credits', ([string]$MaxAiCredits))
+    $copilotArgs = Get-CopilotArguments -WorkingDirectory $WorkingDirectory -Prompt $Prompt -ModelId $ModelId -MaxAiCredits $MaxAiCredits -SessionId $SessionId -UsagePath $UsagePath
     # The runner declares #Requires -Version 7.0, so ArgumentList is always present here.
     foreach ($arg in $copilotArgs) { [void]$psi.ArgumentList.Add($arg) }
     if ($LoadRepoHooks) { $psi.Environment['GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS'] = 'true' }
@@ -3932,6 +3939,14 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         Write-Output 'PASS: install graders require an observed installer tool event'
         Write-Output 'PASS: bootstrap Skill and archived-installer attempts are rejected'
         Write-Output 'PASS: B-253 arm-neutral Outcome on the four bareArm scenarios, bare warehouse preparation, and the outcome summary excludes unexaminable trials'
+        # B-305: Copilot shows the model its remaining credits each turn, so any cap reads as a budget to
+        # economise against; runs are uncapped unless the maintainer asks for a cap, and then pass it through.
+        $uncappedArgs = @(Get-CopilotArguments -WorkingDirectory 'w' -Prompt 'p' -ModelId 'm' -MaxAiCredits 0 -SessionId 's' -UsagePath 'u')
+        if ($uncappedArgs -contains '--max-ai-credits') { throw 'B-305: an uncapped Copilot run still passed --max-ai-credits, which the model sees and economises against' }
+        $cappedArgs = @(Get-CopilotArguments -WorkingDirectory 'w' -Prompt 'p' -ModelId 'm' -MaxAiCredits 300 -SessionId 's' -UsagePath 'u')
+        $capAt = [Array]::IndexOf($cappedArgs, '--max-ai-credits')
+        if ($capAt -lt 0 -or $cappedArgs[$capAt + 1] -ne '300') { throw 'B-305: an explicit -CopilotMaxAiCredits cap was not passed through' }
+        Write-Output 'PASS: B-305 an uncapped Copilot run passes no --max-ai-credits, and an explicit cap passes through'
         Write-Output 'PASS: B-277 Copilot events convert in order to a gradable transcript, recover a denied call, flag hook loading, and report missing/empty/truncated/unterminated/errored logs as unexaminable'
         Write-Output 'PASS: B-253 -TargetPatch changes only the patched bytes under core.autocrlf=true, refuses a stale patch, and a moved conventions placeholder fails loud'
         Write-Output 'PASS: PowerShell UTF-8 BOM'
@@ -4184,7 +4199,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
     $date = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
     # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
     # the host and the model actually used, and every Copilot row carries executor=copilot.
-    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($results | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',')" } else { "Claude Code $hostVersion" }
+    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($results | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })" } else { "Claude Code $hostVersion" }
     $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" }) · scratch: retained=$KeepScratch", '')
     foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})$(if($r.Patch){"; patch=$($r.Patch)"})) — $(Protect-ResultText $r.Detail)" }
     $lines += @(Get-OutcomeSummary $results)

@@ -309,7 +309,14 @@ records per dist and workflow the SHA-256 of each composed bullet and its rail a
 and a change to either fails naming which side changed, the bullet's composed line and authoring file,
 the rail's line in `route-prompt.ps1`, and the command that records the reviewed pair
 (`--update-rail-sync`); so does a section-1 bullet with no paired rail. The design review's false passes
-(continuation lines, a seventh workflow) and its unreadable-record case are covered. A phrase list
+(continuation lines, a seventh workflow) and its unreadable-record case are covered.
+
+B-305, decided with Fable, landed before B-311's Copilot eval would measure the cap. Copilot shows the
+model its remaining credits each turn; under a 300-credit cap a B-284 trial's `/bootstrap` skipped its
+workers and recorded 2 claims (106 credits), while uncapped it dispatched 8 workers (918). The eval
+harness's Copilot executor now runs uncapped by default (`-CopilotMaxAiCredits` 0; 30-500 still caps a
+run), and a Copilot results header records `credit cap: none` or the cap, so a capped run cannot pass for
+an uncapped one. `Get-CopilotArguments` builds the argument list so the self-test can see it. A phrase list
 was rejected: `RoutePrompt.Tests.ps1` already pins the two lost clauses, and a list misses the next new one.
 
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the

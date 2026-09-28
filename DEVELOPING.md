@@ -311,7 +311,9 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm none -Trials 
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Scenario route-fix -TargetPatch meta/eval-fixtures/target-patches/route-prompt-probe.patch
 
 # B-277 (WSD-097) Copilot CLI executor — same runner, fixtures and graders; one premium request per
-# run, capped by -CopilotMaxAiCredits (default 30). -CopilotModel is always explicit ('auto' is
+# run, uncapped by default: Copilot shows the model its remaining credits each turn, and a cap made a
+# /bootstrap run skip its workers (B-305). -CopilotMaxAiCredits 30-500 caps a run, and the results header
+# records the cap ("credit cap: none" otherwise). -CopilotModel is always explicit ('auto' is
 # refused: it resolves to a different vendor per run). Copilot and Claude Code numbers are never
 # compared with each other; the header, every row and the SUMMARY carry executor=copilot. Start here:
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor copilot -Arm none -Trials 1 -Scenario warehouse-bind-sql -TimeoutSeconds 600
