@@ -463,21 +463,26 @@ Reset-Tests
         try {
             # Read as a wildcard, 'fw[s]' matches sibling 'fws': a 5.1 console user who changed into
             # the clone and typed .\install.ps1 got this dispatcher and the sibling's stack installer.
-            $clone = Join-Path $parent 'fw[s]'
-            $sibling = Join-Path $parent 'fws'
+            # Escaping the path for 5.1 then broke a clone named 'fw`[t]' there (command not found).
             $target = Join-Path $parent 'target'
             [void][IO.Directory]::CreateDirectory($target)
-            foreach ($entry in @(@{ Root = $clone; Name = 'own clone' }, @{ Root = $sibling; Name = 'sibling' })) {
-                [void][IO.Directory]::CreateDirectory((Join-Path $entry.Root 'dist/dotnet/scripts'))
-                Copy-Item -LiteralPath (Join-Path $repo 'install.ps1') -Destination (Join-Path $entry.Root 'install.ps1')
-                $stub = "param([string]`$Target, [switch]`$WhatIf, [switch]`$AllowDowngrade, [switch]`$AllowDirtyTree)`nWrite-Output 'DELEGATE: $($entry.Name)'`nexit 0`n"
-                [IO.File]::WriteAllText((Join-Path $entry.Root 'dist/dotnet/scripts/install.ps1'), $stub, [Text.UTF8Encoding]::new($true))
+            foreach ($name in @('fw[s]', 'fws', 'fw`[t]')) {
+                $root = Join-Path $parent $name
+                [void][IO.Directory]::CreateDirectory((Join-Path $root 'dist/dotnet/scripts'))
+                Copy-Item -LiteralPath (Join-Path $repo 'install.ps1') -Destination (Join-Path $root 'install.ps1')
+                $stub = "param([string]`$Target, [switch]`$WhatIf, [switch]`$AllowDowngrade, [switch]`$AllowDirtyTree)`nWrite-Output 'DELEGATE: $name'`nexit 0`n"
+                [IO.File]::WriteAllText((Join-Path $root 'dist/dotnet/scripts/install.ps1'), $stub, [Text.UTF8Encoding]::new($true))
             }
-            $command = "Set-Location -LiteralPath '$clone'; .\install.ps1 -Stack dotnet '$target'"
-            $out = @(& (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -Command $command 2>&1 | ForEach-Object { $_.ToString() }) -join "`n"
-            $exit = $LASTEXITCODE
-            Assert ($exit -eq 0 -and $out -match 'DELEGATE: own clone') "the bracketed clone's dispatcher did not call its own stack installer (exit $exit): $out"
-            Assert ($out -notmatch 'DELEGATE: sibling') "the bracketed clone's dispatcher called the sibling's stack installer: $out"
+            foreach ($clone in @('fw[s]', 'fw`[t]')) {
+                $clonePath = Join-Path $parent $clone
+                $command = "Set-Location -LiteralPath '$clonePath'; .\install.ps1 -Stack dotnet '$target'; 'LOCATION: ' + (Get-Location).ProviderPath"
+                $out = @(& (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -Command $command 2>&1 | ForEach-Object { $_.ToString() }) -join "`n"
+                $exit = $LASTEXITCODE
+                Assert ($exit -eq 0 -and $out.Contains("DELEGATE: $clone")) "the dispatcher in clone '$clone' did not call its own stack installer (exit $exit): $out"
+                Assert ($out -notmatch 'DELEGATE: fws') "the dispatcher in clone '$clone' called the sibling's stack installer: $out"
+                # An interactive console shares the location, so the dispatcher must hand it back.
+                Assert ($out -match ('(?m)^LOCATION: ' + [regex]::Escape($clonePath) + '\r?$')) "the dispatcher did not restore the caller's location in clone '$clone': $out"
+            }
         } finally { Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue }
     }
 if (-not $SkipRedTest) {

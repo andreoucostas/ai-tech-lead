@@ -243,8 +243,12 @@ if (-not (Test-Path -LiteralPath $delegate -PathType Leaf)) { Die "Internal erro
 Write-Output "Stack: $Stack (via $reason)"
 Write-Output "Delegating to dist/$Stack/scripts/install.ps1 ..."
 Write-Output ""
-# Windows PowerShell 5.1's call operator reads the path as a wildcard: in a clone at 'fw[s]' beside a
-# clone at 'fws' it ran the sibling's installer. PowerShell 7 reads it literally and rejects the escape.
-$call = if ($PSVersionTable.PSVersion.Major -lt 6) { [Management.Automation.WildcardPattern]::Escape($delegate) } else { $delegate }
-& $call -Target $tgt -WhatIf:$WhatIf -AllowDowngrade:$AllowDowngrade -AllowDirtyTree:$AllowDirtyTree
+# Call the stack installer by a relative path from its own folder. Windows PowerShell 5.1's call
+# operator reads an absolute path as a wildcard: a clone at 'fw[s]' beside one at 'fws' ran the
+# sibling's installer, and escaping the path broke a clone named 'fw`[t]'. A relative path is literal.
+# Return literally too: 5.1's Pop-Location cannot find its way back to 'fw`[t]'.
+$callerLocation = Get-Location
+Set-Location -LiteralPath (Split-Path -Parent $delegate)
+try { & .\install.ps1 -Target $tgt -WhatIf:$WhatIf -AllowDowngrade:$AllowDowngrade -AllowDirtyTree:$AllowDirtyTree }
+finally { Set-Location -LiteralPath $callerLocation.Path }
 exit $LASTEXITCODE

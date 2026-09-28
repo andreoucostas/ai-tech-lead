@@ -12739,9 +12739,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-298** — CLOSED **2026-09-28**. The root installer accepts and forwards `-AllowDirtyTree`, the switch the stack installer's
   dirty-tree refusal names; the override line drops `(--allow-dirty-tree)`, which no entrypoint accepts.
 
-- **B-302** — CLOSED **2026-09-28**. On Windows PowerShell 5.1 the root dispatcher escapes the stack installer's path, so
-  `.\install.ps1` typed inside a clone at `fw[s]` no longer runs sibling `fws`'s installer. Closing it by decision was proposed and
-  withdrawn: Fable and the adversarial review both showed the interactive flow reaches the call. `-File` stays host behaviour.
+- **B-302** — CLOSED **2026-09-28**. The root dispatcher calls the stack installer as `.\install.ps1` from its own folder, so
+  `.\install.ps1` typed inside a clone at `fw[s]` no longer runs sibling `fws`'s installer on 5.1 (a 5.1-only escape broke ``fw`[t]``).
+  Closing it by decision was proposed and withdrawn: Fable and the design attack both showed the interactive flow reaches the call.
 
 - **B-300** — CLOSED **2026-09-28**. The brownfield mode line and `detectedArtifacts` name each detected path once (`CLAUDE.md` is
   both a signal and a collision).
