@@ -102,6 +102,14 @@
   files such as the `/generate-copilot` command and reported them as edited by you. It now ignores line
   endings in that comparison; any other difference still keeps the file. Files retired by updates you
   have already run are not revisited: the installer keeps listing them for you to remove.
+
+- **`/adopt` no longer commits configuration files Git ignores.** Tool configs such as
+  `.aider.conf.yml` or `.continue/config.json` are often kept out of Git because they hold API keys.
+  `/adopt` could move such a file into `docs/pre-adoption/`, where it could be committed with the
+  adoption, and could quote its contents in its report. It now lists an ignored file by path only and
+  leaves it where it is. It also leaves in place a tracked file whose archive path your `.gitignore`
+  excludes, instead of committing its removal with an archive nobody else can see.
+
 ## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new

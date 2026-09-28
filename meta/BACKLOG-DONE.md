@@ -12758,3 +12758,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-287** — CLOSED **2026-09-28**. A retired file differing from a released blob only in CR LF line endings is retired like its LF
   original (raw bytes, Latin-1, 2 MiB bound); a BOM, an edited line or a lone CR still preserves it. Only the update that crosses a
   retirement deletes, so 0.81.0-0.88.0 residue in CRLF clones stays reported, not removed. Design attack hashed all 407 ledger blobs.
+
+- **B-307** — CLOSED **2026-09-28**. `adoption-archive.ps1 -Freeze` refuses a plan entry whose source or destination Git ignores
+  (exit 4, one `IGNORED:` line each) and fails closed when Git cannot answer (exit 5); `/adopt` lists ignored files by path only.
+  The Phase 1 "never open" rule is prompt text; exit 4 backstops the move. Design review, Fable, two attack rounds; found B-309, B-310.

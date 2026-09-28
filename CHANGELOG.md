@@ -184,6 +184,22 @@ retired path" advice, while 0.90.0's `/generate-copilot` retirement and later on
 design attack hashed every blob in history (all 407 ledger digests are LF, 108 with a BOM) and showed a
 text-level `ReadAllText` rewrite would miss every BOM'd blob; the new case plants a BOM'd non-ASCII
 blob and fails on that mutant.
+B-307. `/adopt` no longer commits a file Git ignores, and no longer loses a tracked one to an ignored
+archive path. `adoption-archive.ps1 -Freeze` keeps its structural checks first (exit 3; a missing or
+non-file source now fails there, with its old message) and adds two: a plan path segment ending in a dot
+or space, and a source not spelt exactly as its on-disk name (Windows opened the ignored file while Git
+judged the misspelling). It then asks Git about every entry's source and destination, one path per call,
+with `check-ignore -q --no-index` plus a literal `ls-files` tracked test, after a plain `check-ignore` probe that alone refuses a path inside a submodule (plain `check-ignore` read
+`cfg[1].yml` as a pattern and answered "not ignored" beside a tracked `cfg1.yml`). An ignored source (an
+anchored `/.aider.conf.yml` left its archived copy trackable, so a key rode into the adopt PR), an ignored
+destination (aider's own `.aider*` rule ignored the archive path, so a tracked config left the PR as a
+deletion) or a `.gitignore` at either end (moving one changes what Git ignores) exits 4 with one `IGNORED:` line per
+entry and freezes nothing; when Git cannot answer it exits 5 CANT-VERIFY instead of freezing unexamined.
+`adopt.md` Phase 1 records an ignored file by path only and never opens, screens, quotes, merges or
+archives it; Phase 3 drops exactly the `IGNORED:` entries and freezes again; Phase 4, the report and the
+Definition of done cover a candidate left in place; Phase 1 asks `git status --porcelain --ignored` with a literal pathspec. Known limit: a case-only rename between index and disk can be refused as ignored (nothing leaks). The Phase 1 rule is prompt text; exit 4 backstops
+the move. Design review, Fable second opinion, and two fresh-session attack rounds whose five bypasses are now cases.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

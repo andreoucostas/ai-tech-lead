@@ -22,7 +22,10 @@ Exit codes:
   2  usage error
   3  refused before mutation (path escape, reparse-point ancestor, destination collision,
      unreadable source)
-  5  CANT-VERIFY — the artifact could not be examined, or legacy evidence carries no pre-move digest
+  4  -Freeze refused: a plan entry's source or destination is ignored by Git; one IGNORED line names
+     each such entry, and nothing was frozen
+  5  CANT-VERIFY — the artifact could not be examined, legacy evidence carries no pre-move digest, or
+     Git could not say whether a -Freeze path is ignored
   6  FAIL — an archived candidate's bytes differ from the frozen digest, or a required frozen entry
      is missing
 
@@ -186,6 +189,38 @@ function Invoke-AaGit {
         Output      = $normalized
         RecordCount = $stdout.Count
     }
+}
+
+# $true when Git ignores the path, $false when it does not (a tracked path never is), $null when Git
+# could not answer. check-ignore -q takes exactly one pathname: two in one call are a fatal error.
+# --no-index reads the path literally; without it Git matched 'cfg[1].yml' as a pattern against the
+# index and answered "not ignored" because a tracked 'cfg1.yml' exists. The tracked test is literal too.
+# --no-index also answers for a path inside a submodule, which only the plain call refuses (128), so
+# that call runs first as a probe and its 0/1 answer is not used.
+function Test-AaGitIgnored {
+    param([Parameter(Mandatory = $true)][string]$Root, [Parameter(Mandatory = $true)][string]$Relative)
+    $probe = Invoke-AaGit -Root $Root -GitArgs @('check-ignore', '-q', '--', $Relative)
+    if (-not $probe.Started -or $probe.ExitCode -notin @(0, 1)) { return $null }
+    $rules = Invoke-AaGit -Root $Root -GitArgs @('check-ignore', '-q', '--no-index', '--', $Relative)
+    if (-not $rules.Started -or $rules.ExitCode -notin @(0, 1)) { return $null }
+    if ($rules.ExitCode -eq 1) { return $false }
+    $tracked = Invoke-AaGit -Root $Root -GitArgs @('ls-files', '--error-unmatch', '--', ":(literal)$Relative")
+    if (-not $tracked.Started -or $tracked.ExitCode -notin @(0, 1)) { return $null }
+    return ($tracked.ExitCode -eq 1)
+}
+
+# Windows opens a path whose spelling differs from the file's name (letter case, a trailing dot or
+# space, an 8.3 short name, another Unicode form) while Git judges the spelling it is given, so a
+# misspelt plan could freeze an ignored file. Every source segment must equal its on-disk name.
+function Test-AaExactSpelling {
+    param([Parameter(Mandatory = $true)][string]$Root, [Parameter(Mandatory = $true)][string]$Relative)
+    $current = $Root
+    foreach ($segment in $Relative.Split('/')) {
+        $match = @(Get-ChildItem -LiteralPath $current -Force -ErrorAction Stop | Where-Object { [string]::Equals($_.Name, $segment, [StringComparison]::Ordinal) })
+        if ($match.Count -ne 1) { return $false }
+        $current = $match[0].FullName
+    }
+    return $true
 }
 
 # Historical attribution, kept strictly separate from the raw-byte oracle. "unavailable" means Git
@@ -464,6 +499,7 @@ function Invoke-AaFreeze {
         $plan = Read-AaJsonDocument -Path $InventoryPlanPath
         if ($null -eq $plan.PSObject.Properties['entries']) { throw "archive plan '$InventoryPlanPath' has no entries array" }
         $newEntries = @()
+        $pairs = @()
         $seenOriginals = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
         $seenDestinations = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
         foreach ($entry in $existing.Entries) { [void]$seenOriginals.Add([string]$entry.originalPath); [void]$seenDestinations.Add([string]$entry.destination) }
@@ -472,13 +508,48 @@ function Invoke-AaFreeze {
             $destination = [string]$planned.destination
             if ([string]::IsNullOrWhiteSpace($original) -or [string]::IsNullOrWhiteSpace($destination)) { throw 'archive plan contains an entry without originalPath or destination' }
             if ($original.StartsWith('docs/pre-adoption/', [StringComparison]::Ordinal)) { throw "archive plan source is already an archive path: '$original'" }
-            [void](Get-AaContainedPath -Root $Root -Relative $original)
+            $sourceFull = Get-AaContainedPath -Root $Root -Relative $original
             $destinationFull = Get-AaContainedPath -Root $Root -Relative $destination
+            if (@(($original + '/' + $destination).Split('/') | Where-Object { $_.EndsWith('.') -or $_.EndsWith(' ') }).Count -gt 0) { throw "archive plan path has a segment ending in a dot or space, which Windows drops: '$original' -> '$destination'" }
+            $sourceItem = Get-Item -Force -LiteralPath $sourceFull -ErrorAction SilentlyContinue
+            if (-not $sourceItem) { throw "REFUSE source '$original' does not exist" }
+            if ($sourceItem.PSIsContainer) { throw "REFUSE source '$original' is not a regular file" }
+            if (-not (Test-AaExactSpelling -Root $Root -Relative $original)) { throw "archive plan source '$original' is not spelt exactly as the file on disk (letter case, short name or Unicode form); use the name a directory listing shows" }
             if (-not $destination.StartsWith('docs/pre-adoption/', [StringComparison]::Ordinal)) { throw "archive plan destination is outside docs/pre-adoption: '$destination'" }
             if (Get-AaReparseAncestor -Root $Root -Path $destinationFull) { throw "archive plan destination traverses a reparse point: '$destination'" }
             if (Test-Path -LiteralPath $destinationFull) { throw "archive plan destination already exists: '$destination'" }
             if (-not $seenOriginals.Add($original) -or -not $seenDestinations.Add($destination)) { throw "archive plan duplicates an existing original or destination: '$original' -> '$destination'" }
-            $captured = New-AaEvidenceEntry -Root $Root -OriginalRelative $original -DestinationRelative $destination -EntryOwner 'workflow'
+            $pairs += [pscustomobject]@{ Original = $original; Destination = $destination }
+        }
+        # docs/pre-adoption/ is committed. An ignored source is one developer's local configuration,
+        # which can hold credentials, and would become trackable there; an ignored destination turns a
+        # tracked file into a deletion in the adopt PR with an untracked archive. Refuse both before
+        # any capture, and fail closed when Git cannot answer.
+        $ignoredLines = @()
+        foreach ($pair in $pairs) {
+            # Moving an ignore-rule file changes what Git ignores after this check: a moved
+            # .cursor/.gitignore holding '*.mdc' ignored the archived rules beside it. A renamed
+            # destination can plant one just the same.
+            if ([IO.Path]::GetFileName($pair.Original) -ieq '.gitignore' -or [IO.Path]::GetFileName($pair.Destination) -ieq '.gitignore') {
+                $ignoredLines += "IGNORED: $($pair.Original) -> $($pair.Destination) (an ignore-rule file: moving it changes what Git ignores)"
+                continue
+            }
+            $sourceIgnored = Test-AaGitIgnored -Root $Root -Relative $pair.Original
+            $destinationIgnored = Test-AaGitIgnored -Root $Root -Relative $pair.Destination
+            if ($null -eq $sourceIgnored -or $null -eq $destinationIgnored) {
+                Write-AaError "CANT-VERIFY: Git could not say whether '$($pair.Original)' or '$($pair.Destination)' is ignored; nothing was frozen. Run inside the repository's work tree (not a submodule path) with Git available and no GIT_DIR/GIT_WORK_TREE routing."
+                exit 5
+            }
+            $which = @(@('source', 'destination') | Where-Object { ($_ -eq 'source' -and $sourceIgnored) -or ($_ -eq 'destination' -and $destinationIgnored) })
+            if ($which.Count -gt 0) { $ignoredLines += "IGNORED: $($pair.Original) -> $($pair.Destination) ($($which -join ' and ') ignored by Git)" }
+        }
+        if ($ignoredLines.Count -gt 0) {
+            foreach ($line in $ignoredLines) { Write-AaError $line }
+            Write-AaError 'ERROR: the archive plan names paths Git ignores; nothing was frozen. Remove exactly the IGNORED entries and freeze again, leaving those files where they are and listing them in the report. An ignored source is one developer''s local configuration and may hold credentials. For an ignored destination the tracked file stays in place unless a person adds the .gitignore exception !docs/pre-adoption/** first.'
+            exit 4
+        }
+        foreach ($pair in $pairs) {
+            $captured = New-AaEvidenceEntry -Root $Root -OriginalRelative $pair.Original -DestinationRelative $pair.Destination -EntryOwner 'workflow'
             $captured['verified'] = $false
             $newEntries += [pscustomobject]$captured
         }

@@ -6,14 +6,14 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301 and B-287 closed 2026-09-28; B-306 to B-308 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287 and B-307 closed 2026-09-28; B-306 to B-310 filed
 
 | Rank | Item | Why here |
 |---|---|---|
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Next | B-307, B-297 | Consumer-facing defects the 2026-09-28 installer-batch reviews found or confirmed |
+| Next | B-309, B-297, B-310 | Consumer-facing defects the 2026-09-28 installer-batch and B-307 reviews found or confirmed |
 | Low | B-308, B-306, B-305, B-304, B-303, B-296, B-294, B-292, B-291, B-290, B-289, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-243, B-266, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
@@ -256,19 +256,24 @@ Copilot executor defaults `-CopilotMaxAiCredits` to 30, so its runs may reflect 
 pattern B-301 fixed in the installer: in `br[k]` under 5.1 it prints `[PENDING]` retired hook helpers and a `[CANT-VERIFY]` residue
 line naming 18 absent paths; pwsh and 5.1 in a plain folder print `[OK]`.
 
-### B-307 · `/adopt` can move a gitignored AI-tool config holding a key into tracked `docs/pre-adoption/`
-**Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
-**Status:** Open; from the B-286 batch attack, re-checked. Phase 1d discovers `.aider.conf.yml` and `.continue/config.json` (often
-gitignored, often holding API keys) and Phase 3 moves approved files to `docs/pre-adoption/` on the adopt branch; unlike the
-installer's archive, nothing tells the developer to check them for secrets, and a shell move bypasses the write guard.
-
 ### B-308 · A retired file another process holds open aborts an update part-way
 **Filed against:** v0.90.0 (2026-09-28)
 **Priority:** P3 · **Effort:** S · **Invariants:** —
 **Status:** Open; from the B-287 attack, pre-existing. A retired file opened with FileShare.Read passes the hash, then the unguarded
 `Remove-Item` in the retirement delete loop (`install.ps1`, "retired:" step) throws: the update exits 1 with some files deleted and
 the stamp still old; a re-run recovers. B-287 lets CRLF clones reach that loop.
+### B-309 · The installer archives a gitignored colliding file that `/adopt` later commits
+**Filed against:** v0.90.0 (2026-09-28)
+**Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
+**Status:** Open; from the B-307 design review. A gitignored `CLAUDE.md` (or other shipped path) holding a key is archived to
+`docs/pre-adoption/` with only the generic "check for secrets" line; installer-archived entries skip `/adopt` Phase 3, so B-307's
+Freeze check never sees them, and Phase 8's `git add -A` stages them. `git check-ignore -q -- <originalPath>` still answers.
+
+### B-310 · docs-sync-check says `/adopt` removes the adoption marker in Phase 3
+**Filed against:** v0.90.0 (2026-09-28)
+**Priority:** P3 · **Effort:** S · **Invariants:** #1
+**Status:** Open; from the B-307 design review. `scripts/docs-sync-check.ps1:43`'s CI failure text says "in its Phase 3"; `/adopt`
+and the installer remove the marker immediately before the Phase-7 bootstrap. Shipped text; take with the docs-truth batch.
 ## Archived
 
 B-219 and B-221 — see `meta/BACKLOG-DONE.md`.

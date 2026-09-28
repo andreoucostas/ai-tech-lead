@@ -189,7 +189,8 @@ function Read-ArchivePlanExample {
 function Assert-ArchivePlanExample {
     param([Parameter(Mandatory)][string]$DocPath, [Parameter(Mandatory)][string]$HelperPath)
     $json = Read-ArchivePlanExample -Path $DocPath
-    $fx = New-FixtureRepo -NoGit
+    # Freeze asks Git whether each path is ignored, and cannot answer outside a repository.
+    $fx = New-FixtureRepo
     try {
         New-Item -ItemType Directory -Path (Join-Path $fx '.claude') | Out-Null
         $source = Join-Path $fx '.cursorrules'
@@ -400,6 +401,141 @@ It 'workflow Freeze extends an installer inventory and refreshes its identity be
         Assert ($move.Exit -eq 0) "combined inventory workflow move failed: $($move.Output)"
         $verify = Invoke-Aa @('-Verify', '-RepoRoot', $fx, '-EvidencePath', $marker)
         Assert ($verify.Exit -eq 0 -and $verify.Output -match 'RESULT: PASS') "combined inventory no longer verifies: $($verify.Output)"
+    } finally { Remove-Fixture $fx }
+}
+
+It 'B-307 Freeze refuses every plan entry whose source Git ignores, before any capture' {
+    $fx = New-FixtureRepo
+    try {
+        # Anchored rules ignore the root files but not their docs/pre-adoption/ copies, so a moved
+        # copy became trackable and a key in it rode into the adopt PR.
+        [IO.File]::WriteAllText((Join-Path $fx '.gitignore'), "/.aider.conf.yml`n/local.cfg`n/notes.md`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $fx '.cursorrules'), 'team rules')
+        Add-Commit -Repo $fx
+        foreach ($name in '.aider.conf.yml', 'local.cfg', 'notes.md') { [IO.File]::WriteAllText((Join-Path $fx $name), "openai-api-key: sk-FIXTURE-$name") }
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx '.claude') | Out-Null
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($marker))
+        $plan = New-ArchivePlanFile -Path (Join-Path $fx 'plan.json') -Entries @(
+            [ordered]@{ originalPath = '.aider.conf.yml'; destination = 'docs/pre-adoption/.aider.conf.yml' },
+            [ordered]@{ originalPath = 'local.cfg'; destination = 'docs/pre-adoption/local.cfg' },
+            [ordered]@{ originalPath = '.cursorrules'; destination = 'docs/pre-adoption/.cursorrules' },
+            [ordered]@{ originalPath = 'notes.md'; destination = 'docs/pre-adoption/notes.md' }
+        )
+        $freeze = Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)
+        Assert ($freeze.Exit -eq 4) "Freeze did not refuse ignored sources with exit 4 (exit $($freeze.Exit)): $($freeze.Output)"
+        foreach ($name in '.aider.conf.yml', 'local.cfg', 'notes.md') {
+            Assert ($freeze.Output -match ('(?m)^IGNORED: ' + [regex]::Escape($name) + ' -> docs/pre-adoption/' + [regex]::Escape($name) + ' \(source ignored by Git')) "the refusal did not name ignored source '$name': $($freeze.Output)"
+        }
+        Assert ($freeze.Output -notmatch 'IGNORED: \.cursorrules') "a tracked, not-ignored entry was refused: $($freeze.Output)"
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($marker)) -ceq $before) 'the refused Freeze changed the marker'
+        Assert (-not (Test-Path -LiteralPath (Join-Path $fx 'docs/pre-adoption'))) 'the refused Freeze created an archive path'
+
+        # Dropping exactly the named entries freezes the rest.
+        $kept = New-ArchivePlanFile -Path (Join-Path $fx 'plan-kept.json') -Entries @([ordered]@{ originalPath = '.cursorrules'; destination = 'docs/pre-adoption/.cursorrules' })
+        $again = Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $kept)
+        Assert ($again.Exit -eq 0 -and $again.Output -match 'FROZEN: 1') "the plan without the ignored entries did not freeze: $($again.Output)"
+    } finally { Remove-Fixture $fx }
+}
+
+It 'B-307 Freeze refuses a tracked file whose archive path Git ignores, leaving it tracked' {
+    $fx = New-FixtureRepo
+    try {
+        # aider adds .aider* to .gitignore itself. That rule also ignores the archive path, so a moved
+        # team config left the PR as a deletion while its archive stayed untracked on one disk.
+        $bytes = [Text.UTF8Encoding]::new($false).GetBytes("model: team-default`n")
+        [IO.File]::WriteAllBytes((Join-Path $fx '.aider.conf.yml'), $bytes)
+        Add-Commit -Repo $fx
+        [IO.File]::WriteAllText((Join-Path $fx '.gitignore'), ".aider*`n", [Text.UTF8Encoding]::new($false))
+        Add-Commit -Repo $fx
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx '.claude') | Out-Null
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($marker))
+        $plan = New-ArchivePlanFile -Path (Join-Path $fx 'plan.json') -Entries @([ordered]@{ originalPath = '.aider.conf.yml'; destination = 'docs/pre-adoption/.aider.conf.yml' })
+        $freeze = Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)
+        Assert ($freeze.Exit -eq 4 -and $freeze.Output -match '(?m)^IGNORED: \.aider\.conf\.yml -> docs/pre-adoption/\.aider\.conf\.yml \(destination ignored by Git') "Freeze did not refuse an ignored archive path (exit $($freeze.Exit)): $($freeze.Output)"
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($marker)) -ceq $before) 'the refused Freeze changed the marker'
+        & git -C $fx ls-files --error-unmatch -- .aider.conf.yml 2>&1 | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'the tracked config is no longer tracked'
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $fx '.aider.conf.yml'))) -ceq [Convert]::ToBase64String($bytes)) 'the tracked config changed'
+    } finally { Remove-Fixture $fx }
+}
+
+It 'B-307 Freeze judges the file on disk: misspelt, bracketed, ignore-rule and missing entries cannot slip past' {
+    $fx = New-FixtureRepo
+    try {
+        [IO.File]::WriteAllText((Join-Path $fx 'cfg1.yml'), 'tracked')
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx '.cursor/rules') | Out-Null
+        [IO.File]::WriteAllText((Join-Path $fx '.cursor/rules/team.mdc'), 'team rule')
+        Add-Commit -Repo $fx
+        [IO.File]::WriteAllText((Join-Path $fx '.gitignore'), "/.aider.conf.yml`ncfg*.yml`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $fx '.cursor/.gitignore'), "*.mdc`n", [Text.UTF8Encoding]::new($false))
+        Add-Commit -Repo $fx
+        [IO.File]::WriteAllText((Join-Path $fx '.aider.conf.yml'), 'openai-api-key: sk-FIXTURE')
+        [IO.File]::WriteAllText((Join-Path $fx 'cfg[1].yml'), 'openai-api-key: sk-FIXTURE')
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx '.claude') | Out-Null
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($marker))
+        foreach ($case in @(
+            # Windows drops a trailing dot and ignores letter case, so these open the ignored key
+            # file while Git judged the spelling it was given.
+            @{ Source = '.aider.conf.yml.'; Destination = 'docs/pre-adoption/.aider.conf.yml.'; Exit = 3; Pattern = 'ending in a dot or space' },
+            @{ Source = '.AIDER.conf.yml'; Destination = 'docs/pre-adoption/.AIDER.conf.yml'; Exit = 3; Pattern = 'not spelt exactly' },
+            # Read as a pattern, cfg[1].yml matched the tracked cfg1.yml and was reported not ignored.
+            @{ Source = 'cfg[1].yml'; Destination = 'docs/pre-adoption/cfg[1].yml'; Exit = 4; Pattern = 'IGNORED: cfg\[1\]\.yml -> docs/pre-adoption/cfg\[1\]\.yml \(source' },
+            # A moved ignore-rule file would ignore the archived team rule beside it, whether it is
+            # named .gitignore at the source or only at the destination.
+            @{ Source = '.cursor/.gitignore'; Destination = 'docs/pre-adoption/cursor/.gitignore'; Exit = 4; Pattern = 'IGNORED: \.cursor/\.gitignore .*ignore-rule file' },
+            @{ Source = 'cfg1.yml'; Destination = 'docs/pre-adoption/cursor/.gitignore'; Exit = 4; Pattern = 'IGNORED: cfg1\.yml -> docs/pre-adoption/cursor/\.gitignore .*ignore-rule file' },
+            # A missing source keeps its structural refusal even when a rule would match it.
+            @{ Source = 'cfg-missing.yml'; Destination = 'docs/pre-adoption/cfg-missing.yml'; Exit = 3; Pattern = 'does not exist' }
+        )) {
+            $plan = New-ArchivePlanFile -Path (Join-Path $fx ('plan-' + [guid]::NewGuid().ToString('N') + '.json')) -Entries @([ordered]@{ originalPath = $case.Source; destination = $case.Destination })
+            $freeze = Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)
+            Assert ($freeze.Exit -eq $case.Exit -and $freeze.Output -match $case.Pattern) "plan '$($case.Source)' was not refused with exit $($case.Exit) (exit $($freeze.Exit)): $($freeze.Output)"
+            Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($marker)) -ceq $before) "the refused plan '$($case.Source)' changed the marker"
+        }
+        Assert (-not (Test-Path -LiteralPath (Join-Path $fx 'docs/pre-adoption'))) 'a refused Freeze created an archive path'
+    } finally { Remove-Fixture $fx }
+}
+
+It 'B-307 Freeze fails closed for a source or destination inside a submodule' {
+    $fx = New-FixtureRepo
+    $inner = New-FixtureRepo
+    try {
+        # Asked with --no-index alone, Git answered "not ignored" for a path in a submodule, so a
+        # file its own exclude rules ignored was frozen and archived into the parent repository.
+        [IO.File]::WriteAllText((Join-Path $inner 'notes.md'), 'submodule notes')
+        Add-Commit -Repo $inner
+        [IO.File]::WriteAllText((Join-Path $fx '.cursorrules'), 'team rules')
+        Add-Commit -Repo $fx
+        # One submodule holds a source; another sits where the archive would land.
+        foreach ($mount in 'sub', 'docs/pre-adoption/mod') { & git -C $fx -c protocol.file.allow=always submodule add -q $inner $mount 2>&1 | Out-Null }
+        Assert ((Test-Path -LiteralPath (Join-Path $fx 'sub/notes.md')) -and (Test-Path -LiteralPath (Join-Path $fx 'docs/pre-adoption/mod/notes.md'))) 'calibration: the submodules were not checked out'
+        Add-Commit -Repo $fx
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx '.claude') | Out-Null
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($marker))
+        foreach ($pair in @(@('sub/notes.md', 'docs/pre-adoption/sub/notes.md'), @('.cursorrules', 'docs/pre-adoption/mod/.cursorrules'))) {
+            $plan = New-ArchivePlanFile -Path (Join-Path $fx ('plan-' + [guid]::NewGuid().ToString('N') + '.json')) -Entries @([ordered]@{ originalPath = $pair[0]; destination = $pair[1] })
+            $freeze = Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)
+            Assert ($freeze.Exit -eq 5 -and $freeze.Output -match 'CANT-VERIFY') "a plan crossing a submodule was not refused as CANT-VERIFY ('$($pair[0])' -> '$($pair[1])', exit $($freeze.Exit)): $($freeze.Output)"
+            Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($marker)) -ceq $before) "the refused plan '$($pair[0])' changed the marker"
+        }
+    } finally { Remove-Fixture $fx; Remove-Fixture $inner }
+}
+
+It 'B-307 Freeze fails closed when Git cannot say whether a path is ignored' {
+    $fx = New-FixtureRepo -NoGit
+    try {
+        [IO.File]::WriteAllText((Join-Path $fx '.cursorrules'), 'rules')
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx '.claude') | Out-Null
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($marker))
+        $plan = New-ArchivePlanFile -Path (Join-Path $fx 'plan.json') -Entries @([ordered]@{ originalPath = '.cursorrules'; destination = 'docs/pre-adoption/.cursorrules' })
+        $freeze = Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)
+        Assert ($freeze.Exit -eq 5 -and $freeze.Output -match 'CANT-VERIFY') "Freeze outside Git did not fail closed with exit 5 (exit $($freeze.Exit)): $($freeze.Output)"
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($marker)) -ceq $before) 'the unexamined Freeze changed the marker'
     } finally { Remove-Fixture $fx }
 }
 
