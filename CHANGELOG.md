@@ -250,6 +250,14 @@ human answer" and `hazard-check` only needs a date; no script changed. The revie
 wording, "last grounded against the code", because an agent that re-checked a row could re-date it and
 silence that warning.
 
+B-242, B-270 and B-289, maintainer tooling (Fable: delete rather than repoint). `release.ps1` drops
+`-NoIndependentReview`: AGENTS.md "Ship" records absent review as `reviewer none` inside
+`-ReviewEvidence`, and the switch's post-ship stub anchored on a backlog heading that no longer exists.
+`Get-NextBacklogId`, the backlog surface of `Test-ReleaseReviewRecord` and the ledger-creation block go
+with it; the ledger is tracked, so a missing one now refuses. The refusal, the ledger preamble and
+DEVELOPING.md give AGENTS.md's format, and the header, stage comment and release commit body name the
+four release-subject meta test files, not the full root meta suite, which only CI runs.
+
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper
 case) was recorded under the shipped spelling, so Git's case-sensitive pathspecs called it untracked and

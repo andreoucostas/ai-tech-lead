@@ -6,7 +6,7 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306 and B-304 closed 2026-09-28; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-317 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270 and B-289 closed 2026-09-28; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-317 filed
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -14,7 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
 | Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
-| Low | B-317, B-316, B-315, B-308, B-305, B-303, B-292, B-291, B-290, B-289, B-285, B-252, B-251, B-242, B-265, B-268, B-269, B-270, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-317, B-316, B-315, B-308, B-305, B-303, B-292, B-291, B-290, B-285, B-252, B-251, B-265, B-268, B-269, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -73,13 +73,6 @@ balanced non-author FS2 Module A pair and associated independent friction eviden
 **Status:** DEFERRED; instrument INVALID under WSD-062. The value outcome remains open. No automatic
 quarterly execution or general host recertification is required by this entry.
 
-### B-242 · Amend release.ps1 refusal text and the ledger preamble for disclosed non-review cells
-**Filed against:** v0.86.7 (2026-09-16)
-**Priority:** P3 · **Effort:** S · **Invariants:** #6
-**Status:** Open. `release.ps1`'s refusal text and the ledger preamble describe evidence only as "the
-reviewer's", and still ask for an orthogonal reviewer for high-risk changes; the stub
-`-NoIndependentReview` writes asks for one too. Text-only strings; no gate change.
-
 ### B-268 · Maintainer skills still instruct obligations WSD-092 dropped
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P3 · **Effort:** S · **Invariants:** —
@@ -110,13 +103,6 @@ tree; keep the FAQ content reachable and link the deck instead.
 **Status:** Open. Measure each new workflow on a scenario with `-TargetPatch` (B-253) before shipping it;
 split into one item per workflow when taken.
 
-### B-270 · release.ps1 -NoIndependentReview files its stub under an anchor that no longer exists
-**Filed against:** v0.86.7 (2026-09-19)
-**Priority:** P3 · **Effort:** S · **Invariants:** #7
-**Status:** Open. The "Known deferred work" level-2 heading that `release.ps1:669` anchors on is
-absent from this file, so the stub filing already degrades to a WARNING; the new rules use
-`-ReviewEvidence` only.
-
 ### B-273 · `assert-red-first.ps1` cannot examine a red case in a driver-style suite
 **Filed against:** v0.86.7 (2026-09-20)
 **Priority:** P3 · **Effort:** S · **Invariants:** —
@@ -136,13 +122,6 @@ unchanged by it. The header's empty-tool-name claim is wrong. Fable (2026-09-28,
 **Priority:** P3 · **Effort:** S · **Invariants:** none
 **Status:** Open. `.claude/scripts/build-block-manifest.ps1` and `meta/block-manifest.json` have no caller; its
 `-SelfTest` reads blocks from `dist/dotnet/CLAUDE.md`, which B-272 made a two-line stub. Delete both, or repoint.
-
-### B-289 · `release.ps1` still says the release runs the full root meta suite
-**Filed against:** v0.90.0 (2026-09-25)
-**Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; found by B-264's review, widened by B-288's. The header (`:12-13`), the stage comment (`:528-537`) and
-the release commit message (`:825`, `:827`) name the "full root meta suite"; since B-245 the stage runs four files locally
-(`:606`), so the v0.87.0–v0.89.2 release commits each carry a false claim. Text-only, on a guarded path.
 
 ### B-290 · Re-scope or delete the SATURATED `angular-form-control` eval scenario
 **Filed against:** v0.90.0 (2026-09-25)

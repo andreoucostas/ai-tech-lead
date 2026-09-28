@@ -9,8 +9,9 @@
 # "Unreleased" on any of them is stamped with the release date -- B-54: all four are mandatory, not
 # just root) and the working tree contains exactly the release changes.
 #
-# Gates (in order): compose all three dists -> validate-dist ×3 + context footprint -> full root
-# meta suite. Shipped hook suites run exclusively in CI: before a normal tag, CI must observe the
+# Gates (in order): compose all three dists -> validate-dist ×3 + context footprint -> the four meta
+# test files whose subject the release commit changes (B-245). The full root meta suite and the shipped
+# hook suites run in CI: before a normal tag, CI must observe the
 # three-dist hook matrices under both PowerShell 7 and Windows PowerShell 5.1.
 # fidelity-check is deliberately NOT run here: it is the migration-era gate pinned to the
 # freeze-v0.25.5 tags, and the first release that changes shipped content must consciously
@@ -30,18 +31,12 @@ param(
     # Escape hatch for the branch precondition below. Deliberately named for what it risks, not for
     # what it enables -- releasing off master is how v0.34.0 lost its release commit.
     [switch]$AllowNonMasterHead,
-    # The reviewer's evidence: frozen contract, immutable range, reviewer model/agent, no
-    # implementation participation + blind-first fact, independent hostile case or applied mutation
-    # observed red, clean rerun, environment/gaps, and implementer identity. Recorded verbatim in
-    # meta/review-ledger.md.
-    # The script can expose presence or absence, not judge evidence quality.
+    # The review evidence AGENTS.md "Ship" asks for, "<tier>; reviewer user|fresh session|none; <range>",
+    # recorded verbatim in meta/review-ledger.md. The script can expose presence or absence, not judge
+    # evidence quality.
     # NOT [Parameter(Mandatory)] -- that prompts, and a prompt hangs a non-interactive release. The
     # precondition below refuses instead.
     [string]$ReviewEvidence,
-    # Legacy-named escape hatch for that precondition. It means qualifying evidence was not supplied,
-    # not that the script can know whether any review occurred. That absence is never silent: the
-    # ledger records it and a post-ship review item is filed automatically.
-    [switch]$NoIndependentReview,
     # Escape hatch for the staged-set precondition at step 5 (B-80), named for what it risks: the
     # release commit will carry files that are not part of a release. There is deliberately NO
     # escape hatch for a staged gitlink -- see that check for why.
@@ -77,29 +72,12 @@ $today = Get-Date -Format 'yyyy-MM-dd'
 $fatal = $false
 function Gate($ok, $what) { if ($ok) { Write-Host "GATE ok:   $what" } else { Write-Host "GATE FAIL: $what"; $script:fatal = $true } }
 
-function Get-NextBacklogId {
-    param([Parameter(Mandatory)][string[]]$Texts)
-    $numbers = @(
-        foreach ($text in $Texts) {
-            foreach ($match in [regex]::Matches($text, '(?m)^### B-(\d+)(?:…B-(\d+))?')) {
-                [int]$match.Groups[1].Value
-                if ($match.Groups[2].Success) { [int]$match.Groups[2].Value }
-            }
-        }
-    )
-    if ($numbers.Count -eq 0) { return 1 }
-    return (($numbers | Measure-Object -Maximum).Maximum) + 1
-}
-
 function Test-ReleaseReviewRecord {
     param(
         [Parameter(Mandatory)][string]$Text,
-        [Parameter(Mandatory)][string]$Version,
-        [Parameter(Mandatory)][ValidateSet('ledger', 'backlog')][string]$Surface
+        [Parameter(Mandatory)][string]$Version
     )
-    $escaped = [regex]::Escape($Version)
-    if ($Surface -eq 'ledger') { return [regex]::IsMatch($Text, "(?m)^\| v$escaped \|") }
-    return [regex]::IsMatch($Text, "(?m)^### B-\d+ · Post-ship review owed for v$escaped(?:\s|$)")
+    return [regex]::IsMatch($Text, "(?m)^\| v$([regex]::Escape($Version)) \|")
 }
 
 # ---- Gate time budget -------------------------------------------------------------------------
@@ -221,37 +199,19 @@ slash command with a non-slash word.
     exit 2
 }
 
-# ---- 0a1. Require review evidence, or acknowledge that qualifying evidence was not supplied (B-45) ----
-# Maintenance model #2/#3: the reviewer must use a separate session, must not have participated in
-# implementation, and must supply its own hostile/red and clean evidence. Prose could not hold this
-# -- invariant #6 was written down from the start and still shipped ~190 leaking lines -- so presence
-# versus explicit absence is exposed where every shipped change already passes. This gate cannot
-# judge independence or evidence quality; it makes only the ABSENCE of supplied review evidence
-# impossible to ship silently.
+# ---- 0a1. Require review evidence (B-45) ----
+# AGENTS.md "Ship": the release records the tier, the reviewer (user, fresh session, or none) and the
+# range. This gate cannot judge independence or evidence quality; it makes only the ABSENCE of an
+# answer impossible to ship silently.
 $hasEvidence = -not [string]::IsNullOrWhiteSpace($ReviewEvidence)
-if ($hasEvidence -and $NoIndependentReview) {
-    [Console]::Error.WriteLine(
-        "FATAL: pass -ReviewEvidence OR -NoIndependentReview, not both. They record opposite facts.")
-    exit 2
-}
-if (-not $hasEvidence -and -not $NoIndependentReview) {
+if (-not $hasEvidence) {
     [Console]::Error.WriteLine(@"
 FATAL: no review evidence. Nothing has been stamped or committed.
 
-Maintenance model #2/#3 (root CLAUDE.md): the implementer's self-report is not evidence -- it has
-been a false pass twice, both times because the check ran in a sandbox whose PATH differed from the
-real environment. A separate reviewer who did not participate in implementation must record the
-frozen contract, immutable range, reviewer model/agent, blind-first fact, an independent hostile
-case or applied mutation observed red, a clean rerun, environment, and coverage gaps. High-risk
-changes also need an orthogonal reviewer or execution vantage.
-
-Re-run with the reviewer's evidence:
-  -ReviewEvidence "contract <path/hash>; range <commits>; reviewer <agent/model>; independence <no implementation participation; blind-first>; hostile <case> RED; clean <command> EXIT=0; environment/gaps <facts>; implementer <who>"
-
-Or acknowledge that qualifying evidence was not supplied -- allowed, never silent:
-  -NoIndependentReview
-which records "review evidence: none supplied" in meta/review-ledger.md and files a post-ship
-review item. The legacy switch name does not assert that no review occurred.
+AGENTS.md "Ship": re-run with
+  -ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"
+It is recorded verbatim in meta/review-ledger.md; "reviewer none" is a legitimate answer, recorded
+as given.
 "@)
     exit 2
 }
@@ -526,15 +486,14 @@ if ($fatal) {
 }
 
 # ---- 4. Deterministic gates: validate-dist per dist and the context-footprint baseline, then the
-# full root meta suite.
+# four meta test files whose subject the release commit changes.
 #
 # The footprint re-measure (which must run after the version stamps have flowed into dist, and whose
 # baseline lands in the release commit) is independent of the validators: it writes
 # meta/context-footprint.json, which no gate reads, so it rides alongside the three bounded validator
 # jobs. Shipped hook suites are deliberately absent from this local stage: a measured sequential
 # monorepo attempt was green but cost 924.1s (1004.0s for dist-gates). CI is the all-dist/all-host
-# proof required before tag. The full root meta suite still protects local authoring and release
-# mechanics before push.
+# proof required before tag, and it runs the full root meta suite on the release commit.
 Measure-Stage 'dist-gates' {
 $footprintLog = $null
 $footprintJob = $null
@@ -640,79 +599,22 @@ if ($fatal) {
     exit 1
 }
 
-# ---- 4b. Record supplied review evidence, or file the debt when none was supplied (B-45) ----
+# ---- 4b. Record the supplied review evidence (B-45) ----
 # Written after the gates pass and before `git add -A`, so the ledger row lands in the release
 # commit itself -- a claim about a release that is not in that release's commit is not evidence.
 $ledger = Join-Path $repo 'meta/review-ledger.md'
-if (-not (Test-Path -LiteralPath $ledger)) {
-    [IO.File]::WriteAllText($ledger, @"
-# Review ledger
-
-One row per release, written by ``.claude/scripts/release.ps1`` and committed with the release it
-describes. It records supplied review evidence or its explicit absence -- never whether a review
-occurred, was independent, or was good, which no gate here can judge. A ``review evidence: none
-supplied`` row is a legitimate outcome, deliberately not a silent one: it files a post-ship review
-item in ``meta/BACKLOG.md``. See root ``CLAUDE.md`` > Maintenance model.
-
-| version | date | evidence |
-|---------|------|----------|
-
-"@.TrimEnd("`r", "`n") + "`n", [Text.UTF8Encoding]::new($false))
+if (-not (Test-Path -LiteralPath $ledger -PathType Leaf)) {
+    Write-Host "`nRelease REFUSED: meta/review-ledger.md is missing; restore it from Git. Nothing was committed."
+    exit 1
 }
-$evidenceCell = if ($NoIndependentReview) {
-    'review evidence: none supplied -- post-ship review owed'
-} else {
-    # Collapse to one line and escape the cell delimiter so the row cannot break the table.
-    $ReviewEvidence -replace '\r?\n', ' ' -replace '\|', '\|'
-}
+# Collapse to one line and escape the cell delimiter so the row cannot break the table.
+$evidenceCell = $ReviewEvidence -replace '\r?\n', ' ' -replace '\|', '\|'
 $ledgerText = [IO.File]::ReadAllText($ledger)
-if (Test-ReleaseReviewRecord -Text $ledgerText -Version $Version -Surface ledger) {
+if (Test-ReleaseReviewRecord -Text $ledgerText -Version $Version) {
     Write-Host "Review ledger: existing v$Version row retained (release retry)."
 } else {
     Add-Content -LiteralPath $ledger -Value "| v$Version | $today | $evidenceCell |" -Encoding utf8
     Write-Host "Review ledger: $evidenceCell"
-}
-
-if ($NoIndependentReview) {
-    # Maintenance model #2: when no review evidence was supplied, the debt is filed automatically
-    # rather than left to memory -- the B-37 pattern, which is how it was missed before.
-    $backlog = Join-Path $repo 'meta/BACKLOG.md'
-    $archive = Join-Path $repo 'meta/BACKLOG-DONE.md'
-    $anchor  = '## Known deferred work'
-    $text    = [IO.File]::ReadAllText($backlog)
-    if (Test-ReleaseReviewRecord -Text $text -Version $Version -Surface backlog) {
-        Write-Host "Post-ship review for v$Version is already filed (release retry)."
-    } else {
-        $idTexts = @($text)
-        if (Test-Path -LiteralPath $archive -PathType Leaf) {
-            $idTexts += [IO.File]::ReadAllText($archive)
-        }
-        $next = Get-NextBacklogId -Texts $idTexts
-        $stub    = @"
-### B-$next · Post-ship review owed for v$Version
-**Effort:** S · **Priority:** P2 · filed automatically by ``release.ps1`` on $today
-**Filed against:** v$Version ($today)
-
-**Why:** v$Version shipped with ``-NoIndependentReview``, so no qualifying second-session evidence
-was supplied. Maintenance model #2 requires the review to be filed rather than inferred from missing
-evidence. Summary of what shipped: $Summary
-
-**Do:** have a reviewer who did not participate in implementation review the immutable v$Version
-diff in a separate session, starting from its frozen contract before reading the release output.
-Record the contract, reviewer model/agent, blind-first fact, an independent hostile case or applied
-mutation observed red, the clean rerun, environment, and gaps; add an orthogonal vantage for a
-high-risk surface. File any findings, then close this entry with the observed evidence.
-
----
-
-"@
-        if (([regex]::Matches($text, [regex]::Escape($anchor))).Count -eq 1) {
-            [IO.File]::WriteAllText($backlog, $text.Replace($anchor, $stub + $anchor), [Text.UTF8Encoding]::new($false))
-            Write-Host "Filed B-$next (post-ship review owed for v$Version)."
-        } else {
-            Write-Host "WARNING: could not file the post-ship review stub -- '$anchor' anchor not unique in meta/BACKLOG.md. File it by hand."
-        }
-    }
 }
 
 # ---- 5. Commit + push ----
@@ -822,9 +724,9 @@ if (-not $nothingToCommit) {
     # in the commit body with its owning item, so `git log` alone answers what this release did and
     # did not prove.
     $gateNote = if ($waiversApplied.Count -gt 0) {
-        "Released via .claude/scripts/release.ps1 — local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, full root meta suite) EXCEPT these recorded waivers: $($waiversApplied -join '; '). No shipped dist hook suite runs locally; normal tagging waits for CI's PowerShell 7/5.1 three-dist hook matrices."
+        "Released via .claude/scripts/release.ps1 — local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the four release-subject meta test files) EXCEPT these recorded waivers: $($waiversApplied -join '; '). No shipped dist hook suite runs locally; normal tagging waits for CI's PowerShell 7/5.1 three-dist hook matrices."
     } else {
-        'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, full root meta suite). No shipped dist hook suite runs locally; normal tagging waits for CI''s PowerShell 7/5.1 three-dist hook matrices.'
+        'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the four release-subject meta test files). No shipped dist hook suite runs locally; normal tagging waits for CI''s PowerShell 7/5.1 three-dist hook matrices.'
     }
     git -C $repo commit -m "v${Version}: $Summary" -m $gateNote
     if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }

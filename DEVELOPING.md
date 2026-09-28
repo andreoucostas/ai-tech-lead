@@ -411,11 +411,8 @@ stamp drift twice:
     PowerShell 7 and Windows PowerShell 5.1 runs, plus their downstream case-count parity decision.
     `-NoPush` provides a dry-ish run.
 
-   It **refuses to start** without either `-ReviewEvidence` or `-NoIndependentReview`. The latter
-   is allowed — sometimes qualifying evidence is unavailable — but never silent: it records
-   `review evidence: none supplied` in the ledger and auto-files a post-ship review item in
-   `meta/BACKLOG.md`. The switch keeps its legacy name; absence of supplied evidence does not prove
-   that no review occurred.
+   It **refuses to start** without `-ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`
+   (AGENTS.md "Ship"), which it records verbatim in the ledger; `reviewer none` is a legitimate answer.
 4. Append to `LEARNINGS.md` if there's a lesson.
 
 ### The CI watch — a tag means CI-verified green (B-88, WSD-028)

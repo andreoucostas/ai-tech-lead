@@ -12814,3 +12814,12 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-304** — CLOSED **2026-09-28** (decided with Fable). `Reviewed` is the day a hazard row was added, or a person
   last confirmed or dismissed it; nothing else changes it, so neither `/bootstrap` nor `/rebootstrap` re-dates a row nobody answered.
+
+- **B-242** — CLOSED **2026-09-28**. `release.ps1`'s refusal, both ledger preambles and DEVELOPING.md give AGENTS.md's
+  `-ReviewEvidence` format; the orthogonal-reviewer ask and the Maintenance-model citations are gone.
+
+- **B-270** — CLOSED **2026-09-28**. `-NoIndependentReview` and its post-ship stub are deleted (Fable: repointing would
+  revive a stub the Records rule forbids); `reviewer none` inside `-ReviewEvidence` records absence.
+
+- **B-289** — CLOSED **2026-09-28**. `release.ps1` names the four release-subject meta test files it runs locally, not the
+  full root meta suite, in its header, stage comment and release commit body.

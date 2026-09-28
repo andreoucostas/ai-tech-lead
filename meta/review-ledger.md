@@ -1,14 +1,11 @@
 # Review ledger
 
 One row per release, written by `.claude/scripts/release.ps1` and committed with the release it
-describes. It records supplied review evidence or its explicit absence—never whether a review
-occurred, was independent, or was good, which no gate here can judge. New releases without supplied
-evidence use `review evidence: none supplied` and file a post-ship review item in `meta/BACKLOG.md`.
-Legacy `reviewer: none` rows retain their historical wording; they likewise mean that qualifying
-evidence was not supplied, not that the ledger proved no review occurred. See root `AGENTS.md`
-(imported by `CLAUDE.md`) > Maintenance model. Since WSD-089 a prose-class release may carry a
-disclosed non-review cell (`class prose per WSD-089; reviewer …; paths …; gates … EXIT=0; no
-behavioural instrument for prose`); it is recorded verbatim like any other supplied text.
+describes. It records the `-ReviewEvidence` text verbatim (AGENTS.md "Ship": `<tier>; reviewer
+user|fresh session|none; <range>`), never whether a review occurred, was independent, or was good,
+which no gate here can judge. Older rows keep their wording: `review evidence: none supplied` and
+`reviewer: none` mean qualifying evidence was not supplied, and WSD-089 prose-class cells disclose a
+non-review.
 
 | version | date | evidence |
 |---------|------|----------|

@@ -34,15 +34,6 @@ if ($functionsReady) {
     }
 }
 
-$idFunctionAst = @($releaseAst.FindAll({
-    param($node)
-    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
-        $node.Name -eq 'Get-NextBacklogId'
-}, $true))
-$idFunctionReady = ($parseErrors.Count -eq 0 -and $idFunctionAst.Count -eq 1)
-if ($idFunctionReady) {
-    . ([scriptblock]::Create($idFunctionAst[0].Extent.Text))
-}
 $reviewFunctionAst = @($releaseAst.FindAll({
     param($node)
     $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
@@ -119,31 +110,18 @@ function Invoke-StampFixture([string]$Root) {
 }
 
 try {
-    It 'post-ship review allocation includes archived ids and cannot reuse a completed item id' {
-        Assert $idFunctionReady "release helper Get-NextBacklogId is missing or ambiguous (found $($idFunctionAst.Count))"
-        $open = "### B-176 · Open`n"
-        $archive = "### B-177…B-183 · Completed increment`n"
-        Assert ((Get-NextBacklogId -Texts @($open, $archive)) -eq 184) 'allocator ignored the archive range and would reuse a completed id'
-        Assert ((Get-NextBacklogId -Texts @("no ids`n")) -eq 1) 'empty history did not start at B-1'
-    }
-
     It 'release retry recognizes existing review records without substring collisions' {
         Assert $reviewFunctionReady "release helper Test-ReleaseReviewRecord is missing or ambiguous (found $($reviewFunctionAst.Count))"
         $ledger = "| v0.78.0 | 2026-08-27 | reviewer: none |`n"
-        $backlog = "### B-184 · Post-ship review owed for v0.78.0`n"
-        Assert (Test-ReleaseReviewRecord -Text $ledger -Version '0.78.0' -Surface ledger) 'existing ledger row was not recognized'
-        Assert (Test-ReleaseReviewRecord -Text $backlog -Version '0.78.0' -Surface backlog) 'existing backlog stub was not recognized'
-        Assert (-not (Test-ReleaseReviewRecord -Text $ledger -Version '0.7' -Surface ledger)) 'ledger matcher accepted a version substring'
-        Assert (-not (Test-ReleaseReviewRecord -Text $backlog -Version '0.7' -Surface backlog)) 'backlog matcher accepted a version substring'
+        Assert (Test-ReleaseReviewRecord -Text $ledger -Version '0.78.0') 'existing ledger row was not recognized'
+        Assert (-not (Test-ReleaseReviewRecord -Text $ledger -Version '0.7')) 'ledger matcher accepted a version substring'
     }
 
-    It 'the no-evidence path records only evidence absence, not an inferred absent reviewer' {
-        Assert ($releaseText -match [regex]::Escape("'review evidence: none supplied -- post-ship review owed'")) 'release does not emit the truthful no-evidence ledger cell'
-        Assert (-not ($releaseText -match [regex]::Escape("'reviewer: none -- post-ship review owed'"))) 'release still infers that no reviewer existed from missing evidence'
-    }
-
-    It 'automatic post-ship review stubs carry the backlog filed-against stamp' {
-        Assert ($releaseText -match '\*\*Filed against:\*\* v\$Version \(\$today\)') 'release stub omits the mandatory filed-against version/date stamp'
+    It 'the release asks only for -ReviewEvidence, in the format AGENTS.md "Ship" names' {
+        # AGENTS.md records absent review as "reviewer none" inside -ReviewEvidence; the old switch filed
+        # a stub under a backlog heading that no longer exists.
+        Assert ($releaseText -notmatch 'NoIndependentReview') 'release still offers -NoIndependentReview'
+        Assert ($releaseText -match [regex]::Escape('-ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"')) 'the refusal does not give the AGENTS.md evidence format'
     }
 
     It 'the bounded release stamp dates the root and all three authored consumer changelogs' {
