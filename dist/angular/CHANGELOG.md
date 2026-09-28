@@ -140,6 +140,11 @@
   row was added, or a person last confirmed or dismissed it; nothing else changes it. `/bootstrap` dates
   the rows it adds, `[UNVERIFIED]` ones included, and keeps an existing row's date unless you answer it;
   `/rebootstrap`'s "skip all", which a run with nobody to answer takes, adds no new candidate.
+- **An update stops cleanly when it cannot delete a retired framework file**, for example because
+  another program is reading it. It used to fail with a raw PowerShell error part-way through removing
+  retired files. It now names the file and the error, puts back any retired file it had already removed,
+  and stops before copying anything, so your repository is unchanged and re-running the installer after
+  you resolve the cause finishes the update.
 
 ## 0.89.2 — 2026-09-24
 

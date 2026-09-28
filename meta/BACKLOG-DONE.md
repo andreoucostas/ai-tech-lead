@@ -12841,3 +12841,18 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-318** — CLOSED **2026-09-28**. `post-write` reports a never-restored .NET project (NETSDK1004/1005) as not verified,
   with one `dotnet restore` note and a five-minute back-off, instead of a failed build.
+
+- **B-308** — CLOSED **2026-09-28**. A retired file that cannot be deleted stops the update with exit 3 before any copy; the
+  retired files already deleted are put back, so a Git target stays clean and a plain re-run finishes.
+
+- **B-315** — CLOSED **2026-09-28** by decision (Fable). Warn-only for a `.GitHub/` folder or a lowercase tracked `claude.md`,
+  which nobody has reported; the design review's findings are in its last status. Reopen on a field report.
+
+- **B-269** — CLOSED **2026-09-28** by decision (Fable). A repeated `-Case` is a misuse, and the missing `RED_FIRST` line
+  already tells the reader the result is not a verdict.
+
+- **B-316**, **B-317** — CLOSED **2026-09-28** by decision (Fable). Archive bytes are verified regardless; the provenance labels
+  in those rare Git states (skip-worktree, shadowing directory, force-added, case-only renames) are advisory. Reopen on a field report.
+
+- **B-274** — CLOSED **2026-09-28** by decision (Fable). No client sends an empty tool name. When `guard.ps1` next opens, delete
+  `-or ($tool -eq '')` (:37, :118) and the header parenthetical; red case: `{"toolName":"","toolArgs":{…key…}}` exits 2, fixed exits 0 with the JSON deny.

@@ -1598,6 +1598,54 @@ It 'a known retired generator is deleted and a consumer-modified one is preserve
     }
 }
 
+It 'B-308 a retired file another program holds open stops the update unchanged, and a plain re-run finishes it' {
+    foreach ($useGit in @($false, $true)) {
+        $label = if ($useGit) { 'git' } else { 'plain' }
+        $t = Join-Path ([IO.Path]::GetTempPath()) ("b308-$label-" + [guid]::NewGuid())
+        $handle = $null
+        try {
+            # The unguarded delete threw a raw error (exit 1). The held file sorts second, so the first is
+            # already deleted when the stop comes; putting it back keeps a Git target clean, which a plain
+            # re-run needs, and the old ownership manifest keeps the authority to delete.
+            New-ArchGeneratorTarget -Target $t
+            [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/framework-ownership.json'))
+            $first = Join-Path $t '.claude/commands/impact.md'
+            $held = Join-Path $t 'scripts/build-architecture-html.ps1'
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $first) | Out-Null
+            $firstBytes = Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/.claude/commands/impact.md'
+            [IO.File]::WriteAllBytes($first, $firstBytes)
+            [IO.File]::WriteAllBytes($held, (Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/scripts/build-architecture-html.ps1'))
+            if ($useGit) {
+                & git -C $t init -q
+                & git -C $t add -A
+                & git -C $t -c user.name=tests -c user.email=tests@example.invalid commit -qm 'v0.86.7 install'
+            }
+            $manifestBefore = [IO.File]::ReadAllBytes((Join-Path $t 'framework-ownership.json'))
+            # Another program reading the file without sharing delete, as an editor or a scanner does.
+            $handle = [IO.File]::Open($held, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $flat = $out -replace '\s+', ' '
+            Assert ($LASTEXITCODE -eq 3) "${label}: a held retired file did not stop the update with exit 3 (exit $LASTEXITCODE): $out"
+            Assert ($flat -match "Could not delete retired framework file 'scripts/build-architecture-html\.ps1'") "${label}: the stop did not name the held file: $out"
+            Assert ($flat -match 'was put back with its original content') "${label}: the stop did not say the deleted file was put back: $out"
+            Assert ($flat -notmatch 'retired: \.claude/commands/impact\.md') "${label}: the stop reported a put-back file as retired: $out"
+            Assert ((Test-Path -LiteralPath $first) -and (Test-B194BytesEqual $firstBytes ([IO.File]::ReadAllBytes($first)))) "${label}: the retired file deleted before the stop was not put back: $out"
+            Assert ([IO.File]::ReadAllText((Join-Path $t '.claude/framework-version.json')) -match '0\.86\.7') "${label}: the stamp was replaced before the update finished: $out"
+            Assert (Test-B194BytesEqual $manifestBefore ([IO.File]::ReadAllBytes((Join-Path $t 'framework-ownership.json')))) "${label}: the ownership manifest was replaced before the update finished: $out"
+            if ($useGit) {
+                $status = @(& git -C $t status --porcelain)
+                Assert ($status.Count -eq 0) "git: the stop left the tree dirty, so a plain re-run would refuse: $($status -join '; ')"
+            }
+            $handle.Dispose(); $handle = $null
+            $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0 -and -not (Test-Path -LiteralPath $held) -and -not (Test-Path -LiteralPath $first)) "${label}: a plain re-run did not finish the update (exit $LASTEXITCODE): $rerun"
+        } finally {
+            if ($handle) { $handle.Dispose() }
+            Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 It 'B-319 an install leaves no source file that a project at the repository root compiles' {
     foreach ($dist in 'dotnet', 'monorepo') {
         $t = Join-Path ([IO.Path]::GetTempPath()) ("b319-$dist-" + [guid]::NewGuid())

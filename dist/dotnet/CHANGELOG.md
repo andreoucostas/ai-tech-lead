@@ -150,6 +150,11 @@
   `dotnet build` before the NuGet packages were ever restored (NETSDK1004/1005), it now tells your agent
   the build was not verified and to run `dotnet restore` once, instead of "dotnet build failed -- fix
   before continuing", and waits five minutes before trying again.
+- **An update stops cleanly when it cannot delete a retired framework file**, for example because
+  another program is reading it. It used to fail with a raw PowerShell error part-way through removing
+  retired files. It now names the file and the error, puts back any retired file it had already removed,
+  and stops before copying anything, so your repository is unchanged and re-running the installer after
+  you resolve the cause finishes the update.
 
 ## 0.89.2 — 2026-09-24
 

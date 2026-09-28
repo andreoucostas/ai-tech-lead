@@ -289,6 +289,19 @@ Both .NET hooks (dotnet, monorepo) now treat those codes as not verified: exit 0
 back-off as a timed-out build, and one `additionalContext` note asking for `dotnet restore`. The hook never
 restores itself (network, `obj/` writes, budget).
 
+B-308, and closures by decision (Fable). A retired file another program held open made the retirement
+loop's unguarded delete throw a raw error (exit 1). The loop now stops at the first failed delete, prints
+the file and the exception, writes back the retired files it had already deleted, and exits 3 before any
+copy: the tree is unchanged and the old ownership manifest keeps the deletion authority, so a plain re-run
+finishes. Catch-and-continue was rejected in design review because the copy replaces that manifest; the
+first catch-and-stop version left its earlier deletions in place, and the implementation attack showed a Git
+target's re-run then refuses the dirty tree (exit 4), so they are put back. The brownfield-signal
+comment in `install.ps1` no longer claims to mirror `/adopt` Phase 1. Closed by decision: B-315 (warn-only,
+for folder and file spellings nobody has reported; reopen on a field report), B-269 (a misuse whose missing
+`RED_FIRST` line already tells the reader), B-316 and B-317 (archive bytes are verified regardless; the
+provenance labels are advisory), and B-274 (its recipe is in BACKLOG-DONE for the next `guard.ps1` change).
+B-320 is filed for the skill-directory delete, which runs after the stamp is new.
+
 B-297, and a B-309 follow-up. A tracked brownfield collision committed under another letter case than the
 shipped name (GitHub documents `.github/pull_request_template.md` in lower case; the shipped file is upper
 case) was recorded under the shipped spelling, so Git's case-sensitive pathspecs called it untracked and

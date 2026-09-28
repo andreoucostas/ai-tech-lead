@@ -207,8 +207,8 @@ $copyIfAbsent = $persistentCopyIfAbsent + @(
     'docs/wiki/INDEX.md', 'docs/ARCHITECTURE.md', 'docs/architecture-decisions.md'
 )
 
-# Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap
-# (mirrors /adopt Phase 1 discovery).
+# Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap. A shipped
+# path that collides with an existing file selects brownfield as well.
 $adoptionSignals = @('CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.cursorrules', '.cursor/rules',
     '.clinerules', '.windsurfrules', '.roomodes', '.aider.conf.yml', '.continue',
     '.github/copilot-instructions.md', '.github/instructions', '.github/chatmodes',
@@ -1391,10 +1391,32 @@ foreach ($entry in $archivePlan) {
         exit 3
     }
 }
+# Stop at the first failed delete, before any copy, and put back what this run already deleted: the
+# tree is then unchanged (a Git target stays clean) and the old ownership manifest, the deletion
+# authority, is still there, so a plain re-run finishes the job.
+$retiredDeleted = New-Object System.Collections.Generic.List[object]
 foreach ($relative in $deletePlan) {
-    Remove-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $relative)
-    Write-Output "  retired: $relative"
+    $retiredPath = Get-ContainedTargetPath -Relative $relative
+    try {
+        $retiredBytes = [IO.File]::ReadAllBytes($retiredPath)
+        Remove-Item -Force -LiteralPath $retiredPath -ErrorAction Stop
+    } catch {
+        [Console]::Error.WriteLine("ERROR: Could not delete retired framework file '$relative': $($_.Exception.Message)")
+        $notRestored = 0
+        foreach ($done in $retiredDeleted) {
+            try { [IO.File]::WriteAllBytes($done.Path, $done.Bytes) }
+            catch {
+                $notRestored++
+                [Console]::Error.WriteLine("  Deleted and could not be put back: '$($done.Relative)': $($_.Exception.Message). Restore it from Git (git checkout -- <path>) before re-running.")
+            }
+        }
+        if (-not $notRestored) { [Console]::Error.WriteLine('  Any retired file this run had already deleted was put back with its original content.') }
+        [Console]::Error.WriteLine('  Resolve the cause above, then re-run the installer.')
+        exit 3
+    }
+    $retiredDeleted.Add([pscustomobject]@{ Relative = $relative; Path = $retiredPath; Bytes = $retiredBytes })
 }
+foreach ($done in $retiredDeleted) { Write-Output "  retired: $($done.Relative)" }
 if ($settingsBackupRelative) {
     $settingsBackup = Get-ContainedTargetPath -Relative $settingsBackupRelative
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $settingsBackup) | Out-Null

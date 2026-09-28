@@ -6,7 +6,7 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270, B-289, B-251, B-285, B-290, B-303, B-268, B-319 and B-318 closed 2026-09-28; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-319 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282, B-310, B-297, B-314, B-306, B-304, B-242, B-270, B-289, B-251, B-285, B-290, B-303, B-268, B-319, B-318 and B-308 closed 2026-09-28; B-315, B-269, B-316, B-317 and B-274 closed by decision; B-256, B-267, B-271 and B-296 closed by decision; B-306 to B-320 filed
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -14,7 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
 | Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
-| Low | B-317, B-316, B-315, B-308, B-305, B-292, B-291, B-252, B-265, B-269, B-273, B-274 | Take when adjacent work opens the same files; B-252 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-320, B-305, B-292, B-291, B-252, B-265, B-273 | Take when adjacent work opens the same files; B-252 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -73,12 +73,6 @@ balanced non-author FS2 Module A pair and associated independent friction eviden
 **Status:** DEFERRED; instrument INVALID under WSD-062. The value outcome remains open. No automatic
 quarterly execution or general host recertification is required by this entry.
 
-### B-269 · assert-red-first.ps1: a parameter-binding failure exits in the WRONG domain
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; observed 2026-09-18. With `-File` and a repeated `-Case`, binding fails and exits 1
-without a `RED_FIRST` line, the same code as WRONG. Decide whether to accept repeated `-Case`.
-
 ### B-252 · Stop copying the presentation deck into every consumer repository
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P3 · **Effort:** S · **Invariants:** #1 #7
@@ -97,13 +91,6 @@ split into one item per workflow when taken.
 **Status:** Open; observed 2026-09-20 on `ValidateDist.Tests.ps1`. A failing case there prints two
 `[FAIL] <name>` lines — the child's own summary and the driver's "child exited" line — so
 `Resolve-Mark` finds two matches and exits CANNOT_EXAMINE for every red case in that suite.
-
-### B-274 · `guard.ps1`'s block-shape comment misdescribes the empty-tool-name case
-**Filed against:** v0.86.7 (2026-09-20)
-**Priority:** P3 · **Effort:** S · **Invariants:** #5
-**Status:** Open; observed 2026-09-20 by the fresh-session review of B-247, pre-existing and
-unchanged by it. The header's empty-tool-name claim is wrong. Fable (2026-09-28, unverified): no client sends one; when
-`guard.ps1` next opens, delete `-or ($tool -eq '')` (:37, :118) and the parenthetical, red case `toolName: ""` exit 2.
 
 ### B-291 · Spike: let the host's PowerShell run hooks and drop the named inner interpreter
 **Filed against:** v0.90.0 (2026-09-25)
@@ -126,33 +113,12 @@ consumer-run `/docs-sync` step 2 compares them. Options: compose the rails from 
 skipped its workers, cut A8 short and recorded 2 claims (106 credits); uncapped it dispatched 8 workers (918). The harness's
 Copilot executor defaults `-CopilotMaxAiCredits` to 30, so its runs may reflect the cap as much as the framework.
 
-### B-317 · A case-only rename Git never recorded leaves a tracked collision recorded untracked
+### B-320 · A failed skill-directory delete can leave an update half-applied after the stamp is new
 **Filed against:** v0.90.0 (2026-09-28)
 **Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; from the B-297 re-attack, pre-existing. Index `.GitHub/…` with disk `.github/…`, or a file renamed only in case on
-disk, records `untracked` though `git status` is clean. Accept an index case variant only if it resolves on disk to the same file (a
-case-sensitive folder must reject it). `Get-DiskSpelling` also pipes each listing: +5 s for 7 root collisions in 30,000 entries.
+**Status:** Open; from Fable's review of B-308. The `$skillDeletePlan` loop in `install.ps1` deletes directories after the copies,
+so a held file there throws when the stamp and manifest are already new; whether a re-run recovers is unverified.
 
-### B-316 · Archive evidence misreports some tracked collisions
-**Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; from the B-297 attack, pre-existing. A skip-worktree collision records `clean` though its bytes differ from the
-revision; a directory in the index shadowing the file records `tracked` (`git show` gives a tree); a force-added file under an
-ignored folder records `tracked` while the handoff says "Kept out of Git - you had gitignored these".
-
-### B-315 · Shipped `.github/` files land in a consumer's differently cased `.GitHub/` folder
-**Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; pre-existing. Design review 2026-09-28: Git records new files under the index's folder spelling, not the disk's, so
-check `.github/` only, via `git ls-files -- ':(icase,literal).github/'`, never advising a rename of other folders; the file check skips
-copy-if-absent paths and needs core.ignorecase=true. Warn only (Fable); take with B-308; fix the "(mirrors adopt Phase 1)" comment.
-
-### B-308 · A retired file another process holds open aborts an update part-way
-**Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P3 · **Effort:** S · **Invariants:** —
-**Status:** Open; from the B-287 attack. A held-open retired file makes the unguarded delete in the retirement loop throw:
-exit 1, stamp old; a re-run recovers. Design review 2026-09-28: catch-and-continue loses that recovery (the new manifest drops the
-authority), so say the installer will not retry or refuse before the first mutation; print the exception, not a guessed cause.
 ### B-311 · Shipped rules steer new feature logic into existing services instead of a new injected service
 **Filed against:** v0.90.0 (2026-09-28)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #3 #4 #7
