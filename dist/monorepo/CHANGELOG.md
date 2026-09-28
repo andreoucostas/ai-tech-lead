@@ -118,6 +118,15 @@
   rule, the installer warns and lists them: committing the install would leave them out and your
   teammates would not get the hooks, commands or rules. The framework's `.claude/.gitignore` now also
   ignores `.claude/settings.local.json`, Claude Code's per-developer settings file.
+- **Corrected: VS Code's agent hooks are on by default.** The docs said they were off by default;
+  VS Code turns them on (`chat.useHooks`) in a trusted workspace, and your organization can turn them
+  off. Until a canary on your host confirms a hook control there, plan on it being instruction-only;
+  `docs/enforcement-surfaces.md` shows what has been observed and advises leaving `chat.useClaudeHooks`
+  off. A new install's `docs/ARCHITECTURE.md` no longer points you at a README, changelog or installer
+  script that the install does not copy into your repository. An update keeps your existing copy, so
+  correct its hooks sentence in section 9 and those pointers by hand. The docs-sync-check message about
+  a pending adoption now names the right `/adopt` step.
+
 ## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new

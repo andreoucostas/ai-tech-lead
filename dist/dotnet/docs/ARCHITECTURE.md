@@ -1,7 +1,7 @@
 # AI Tech Lead Framework (.NET) — Architecture
 
 > **Audience.** This is the canonical, human-readable map of what this repo does and how the pieces fit. A senior reviewer should start here, then use [REVIEW-GUIDE.md](./REVIEW-GUIDE.md).
-> **AI agents do not read this file** — they read `README.md` → `CLAUDE.md` / `AGENTS.md` and run the workflow commands. This doc is for people.
+> **AI agents do not read this file** — they read `CLAUDE.md` / `AGENTS.md` and run the workflow commands. This doc is for people.
 
 ---
 
@@ -9,7 +9,7 @@
 
 A repository framework that authors the team's conventions, architecture, debt priorities, and workflows once, then delivers them through client-specific instruction carriers and hooks. Model delivery and enforcement vary by host and prerequisites; [enforcement-surfaces.md](./enforcement-surfaces.md) is the authoritative matrix.
 
-It is installed into a target repo (see README "Quick Start" / `scripts/install.ps1`), then `/bootstrap` (greenfield) or `/adopt` (existing AI setup) populates it from the real codebase.
+It is installed into a target repo by the framework's installer (see the Quick Start in the framework's own README), then `/bootstrap` (greenfield) or `/adopt` (existing AI setup) populates it from the real codebase.
 
 ---
 
@@ -138,7 +138,7 @@ sequenceDiagram
 
 ## 9. GitHub vs Bitbucket Data Center
 
-The local files do not depend on the Git remote, but their client delivery does vary. Copilot VS Code hooks are Preview, off by default, org-gated, and the full lifecycle remains uncertified; see README and `docs/enforcement-surfaces.md`.
+The local files do not depend on the Git remote, but their client delivery does vary. Copilot VS Code hooks are Preview and on by default, your organization can turn them off, and the full lifecycle remains uncertified; see `docs/enforcement-surfaces.md`.
 
 | Surface | GitHub | Bitbucket Data Center |
 |---------|--------|------------------------|
@@ -156,7 +156,7 @@ The local files do not depend on the Git remote, but their client delivery does 
 
 - **CI guardrail** — `scripts/docs-sync-check.ps1` on Windows: AGENTS.md bootstrapped + size budget; CLAUDE.md imports it; project skills exist only at the canonical `.claude/skills` location; FRAMEWORK-CONTEXT populated. Wrapped by the GitHub Windows workflow or wired into Bamboo/Jenkins on a self-hosted Windows agent.
 - **Eval cases** — read `tests/evals/cases.yaml` as a declarative spec of intended framework behavior (Verification, Leanness, SOLID/DIP, Boy Scout, no-defensive-overcoding). It records example response patterns and plain-English review rubrics.
-- **Version stamp** — `.claude/framework-version.json` + the HTML comment atop `AGENTS.md`; `CHANGELOG.md` records evolution.
+- **Version stamp** — `.claude/framework-version.json` + the HTML comment atop `AGENTS.md`; the framework's own CHANGELOG records evolution.
 
 ---
 
@@ -166,7 +166,6 @@ The local files do not depend on the Git remote, but their client delivery does 
 CLAUDE.md                     Claude Code stub importing AGENTS.md and the framework rules
 AGENTS.md                     authored source of truth (conventions, architecture, common tasks)
 FRAMEWORK-CONTEXT.md          cross-repo context (shared libs, multi-tenancy, dashboard)
-README.md                     human + AI-agent entrypoint
 TECH_DEBT.md / SECURITY_FINDINGS.md   registers
 LEARNINGS.md                  append-only lessons
 .claude/commands/             canonical workflows
@@ -176,7 +175,7 @@ LEARNINGS.md                  append-only lessons
 .claude/settings*.json        PowerShell hook registration (PS7 primary, PS5.1 fallback)
 .github/prompts|agents|hooks|instructions   distinct Copilot adapters and carriers
 .github/workflows/            GitHub Actions (GitHub-only)
-scripts/                      docs-sync-check, install, metrics, ci/
+scripts/                      docs-sync-check, framework-doctor, metrics, ci/
 specs/                        persistent feature specs (spec-driven development)
 docs/impact/                  retired; any existing output is left as-is
 docs/                         playbook, defaults, ARCHITECTURE (this), REVIEW-GUIDE, architecture-decisions

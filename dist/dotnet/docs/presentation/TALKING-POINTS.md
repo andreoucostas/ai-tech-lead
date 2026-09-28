@@ -97,7 +97,7 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 - Kills the "but we're on local Bitbucket, not GitHub cloud" objection up front.
 - GitHub Actions / Copilot cloud agent / Rovo Dev are **not** required. Supported execution is
   Windows-only: PowerShell 7 primary, native Windows PowerShell 5.1 fallback.
-- VS Code hooks are Preview, off by default, org-gated, and the full lifecycle remains uncertified;
+- VS Code hooks are Preview, on by default, can be turned off by the organization, and the full lifecycle remains uncertified;
   use the actual-host canaries before claiming the hooks are live.
 
 ### 12 · Adoption path

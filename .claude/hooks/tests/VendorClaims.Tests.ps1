@@ -218,6 +218,22 @@ $provenance = @(
             'See `docs/enforcement-surfaces.md` for capability-specific evidence.'
         )
     }
+    [pscustomobject]@{
+        Pattern = '(?i)Preview(?:\s+hooks)?(?:\s+(?:are|remain)|,)\s+off\s+by\s+default'
+        Matches = @(
+            'Preview hooks remain off by default and org-gated; verify the current host before relying on this path'
+            'Its agent-hooks are **Preview, off by default, and may be disabled by your org admin.**'
+            '| **Copilot in VS Code** | `.github/hooks/hooks.json` | VS Code tool payload | Preview, off by default, org-gated. One guard deny was observed on 2026-06-25'
+            'VS Code hooks are Preview, off by default, and org-gated; shell writes are outside the editor guard.'
+            'Copilot VS Code hooks are Preview, off by default, org-gated, and the full lifecycle remains uncertified'
+            'live Preview-hook prompt injection is unverified; Preview hooks are off by default and org-gated, and only a 2026-06-25 guard denial'
+        )
+        Rejects = @(
+            'Preview hooks are on by default in a trusted workspace (`chat.useHooks`) and your organization can turn them off'
+            'it reads the Claude-format `.claude/settings.json` only with `chat.useClaudeHooks`, which is off by default.'
+            'VS Code hooks are Preview and on by default, and your organization can turn them off;'
+        )
+    }
 )
 
 function Read-Utf8Text {

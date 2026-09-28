@@ -6,16 +6,16 @@ entry is its heading, filed-against line, priority line and at most three lines 
 evidence lives in the plans and decisions it names.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287 and B-307 closed 2026-09-28; B-306 to B-311 filed
+## Pick-up order — ranked 2026-09-18 (WSD-090, WSD-091); WP rows added 2026-09-19 (WSD-093); B-276, B-257, B-258, B-293, B-259, B-295 and B-299 closed 2026-09-25; B-296 to B-302 filed; B-261 closed 2026-09-26 (WSD-102); B-303 filed; B-284 first slice 2026-09-26 (WSD-103), trial 2026-09-27; B-304 and B-305 filed; B-284, B-298, B-302, B-300, B-286, B-301, B-287, B-307, B-309, B-312, B-313, B-294, B-263, B-282 and B-310 closed 2026-09-28; B-306 to B-314 filed
 
 | Rank | Item | Why here |
 |---|---|---|
 | Held | B-222, B-223, B-224 | WSD-097 (user, 2026-09-21): held after B-253's first report; everything already shipped stays. A defect in shipped behaviour is still fixable as its own item |
 | Held | B-216, B-226, B-232 | Shipped; what remains is live host observation or target-host acceptance that a session cannot authorize for itself |
 | Blocked | B-42 independent FS2 pair | Needs a participant; B-262 lowers the barrier |
-| Next | B-297, B-310 | Consumer-facing defects the 2026-09-28 installer and B-307 reviews found or confirmed |
+| Next | B-297 | Consumer-facing defect the 2026-09-28 installer-batch reviews confirmed |
 | Next | B-311 | Field report #8 from an Angular consumer; the design, exact wording and Fable's review are in the plan it names |
-| Low | B-308, B-306, B-305, B-304, B-303, B-296, B-294, B-292, B-291, B-290, B-289, B-285, B-282, B-263, B-256, B-252, B-251, B-242, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
+| Low | B-314, B-308, B-306, B-305, B-304, B-303, B-296, B-292, B-291, B-290, B-289, B-285, B-256, B-252, B-251, B-242, B-265, B-267, B-268, B-269, B-270, B-271, B-273, B-274 | Take when adjacent work opens the same files; B-252 and B-251 can ride any release batch; B-265 measures a workflow before shipping it |
 | Deferred | B-49 drill redesign | Instrument invalid under WSD-062; no execution authority |
 
 ## Open entries
@@ -113,12 +113,6 @@ tree; keep the FAQ content reachable and link the deck instead.
 warehouse-SQL profile was selected (`bootstrap.md:180`); the template lists them until bootstrap runs,
 and whether `/adopt` applies the same gate is unverified. WSD-021 forbids only a separate distribution.
 
-### B-263 · State the Copilot VS Code surface as best-effort until a capability is certified
-**Filed against:** v0.86.7 (2026-09-18)
-**Priority:** P3 · **Effort:** S · **Invariants:** #5
-**Status:** Open. Every Copilot VS Code row in `meta/host-certification.md` reads "not certified — no
-seat" while shipped text says "supported".
-
 ### B-265 · Missing consumer workflows: PR description, read-only codebase explanation, major-version upgrade, Angular perf/accessibility
 **Filed against:** v0.86.7 (2026-09-18)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1
@@ -158,12 +152,6 @@ the watch exits 3 and nothing is tagged. Fails closed; WP3 edits the same file.
 unchanged by it. The header says an empty tool name emits the Claude signal, but `if (-not $tool)`
 turns `''` into `$null`, so `tool_name: ""` alone takes the Copilot JSON path at exit 0.
 
-### B-282 · Installed docs point at a README that is not installed
-**Filed against:** v0.89.1 (2026-09-23)
-**Priority:** P3 · **Effort:** S · **Invariants:** #1
-**Status:** Open. Each stack's `docs/ARCHITECTURE.md` (lines 4, 12, ~178) sends readers to `README.md` "Quick Start" and
-calls it the "human + AI-agent entrypoint", but `install.ps1` excludes `README.md`, so in a consumer repo it is theirs.
-
 ### B-285 · Retire the B-97 block-manifest tooling
 **Filed against:** v0.90.0 (2026-09-24)
 **Priority:** P3 · **Effort:** S · **Invariants:** none
@@ -196,12 +184,6 @@ the release commit message (`:825`, `:827`) name the "full root meta suite"; sin
 **Status:** Open; from WSD-100. The test and feature rails lost two §1 non-negotiables at v0.77.0 unnoticed; only the
 consumer-run `/docs-sync` step 2 compares them. Options: compose the rails from the §1 snippets in `build.ps1`, a
 `validate-dist` check per rail for named non-negotiables, or a pointer-only hook (changes salience, so measure it).
-
-### B-294 · `enforcement-surfaces.md` says VS Code agent hooks are off by default
-**Filed against:** v0.90.0 (2026-09-25)
-**Priority:** P3 · **Effort:** S · **Invariants:** #1
-**Status:** Open; from B-293's review. VS Code's hooks page (2026-09-25) says `chat.useHooks` "is on by default"; the
-shipped line 72 says "off by default". Claude-format reading (`chat.useClaudeHooks`) stays off by default.
 
 ### B-296 · Route custom Claude and Copilot extension files to `/adopt`
 **Filed against:** v0.90.0 (2026-09-25)
@@ -245,18 +227,19 @@ Copilot executor defaults `-CopilotMaxAiCredits` to 30, so its runs may reflect 
 pattern B-301 fixed in the installer: in `br[k]` under 5.1 it prints `[PENDING]` retired hook helpers and a `[CANT-VERIFY]` residue
 line naming 18 absent paths; pwsh and 5.1 in a plain folder print `[OK]`.
 
+### B-314 · More installed files send readers to the framework's README or CHANGELOG
+**Filed against:** v0.90.0 (2026-09-28)
+**Priority:** P3 · **Effort:** S · **Invariants:** #1
+**Status:** Open; from the B-282 diff review. `docs/REVIEW-GUIDE.md` (item 7 `CHANGELOG.md`, the Bitbucket bullet's
+"See README."), `commands/security-review.md`, `skills/dependency-audit/SKILL.md` and `docs/ci-integration.md` point
+at the framework download's README or CHANGELOG, which the installer does not copy into a consumer repo.
+
 ### B-308 · A retired file another process holds open aborts an update part-way
 **Filed against:** v0.90.0 (2026-09-28)
 **Priority:** P3 · **Effort:** S · **Invariants:** —
 **Status:** Open; from the B-287 attack, pre-existing. A retired file opened with FileShare.Read passes the hash, then the unguarded
 `Remove-Item` in the retirement delete loop (`install.ps1`, "retired:" step) throws: the update exits 1 with some files deleted and
 the stamp still old; a re-run recovers. B-287 lets CRLF clones reach that loop.
-### B-310 · docs-sync-check says `/adopt` removes the adoption marker in Phase 3
-**Filed against:** v0.90.0 (2026-09-28)
-**Priority:** P3 · **Effort:** S · **Invariants:** #1
-**Status:** Open; from the B-307 design review. `scripts/docs-sync-check.ps1:43`'s CI failure text says "in its Phase 3"; `/adopt`
-and the installer remove the marker immediately before the Phase-7 bootstrap. Shipped text; take with the docs-truth batch.
-
 ### B-311 · Shipped rules steer new feature logic into existing services instead of a new injected service
 **Filed against:** v0.90.0 (2026-09-28)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #3 #4 #7

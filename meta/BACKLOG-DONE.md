@@ -12777,3 +12777,14 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-312** — CLOSED **2026-09-28**. The shipped `.claude/.gitignore` ignores `settings.local.json`; the file stays framework-owned,
   so a consumer's own `.claude/` rules belong in the root `.gitignore`.
+
+- **B-294** — CLOSED **2026-09-28**. Fifteen shipped statements said VS Code agent hooks are off by default; VS Code's page
+  (2026-09-16) says `chat.useHooks` is on. Corrected, and vendor-claims entry 19 now fails any dist that says it again.
+
+- **B-263** — CLOSED **2026-09-28**. `docs/enforcement-surfaces.md` says to plan on instruction-only for every VS Code hook
+  control until a canary on the host confirms it; the matrix already rated each capability.
+
+- **B-282** — CLOSED **2026-09-28**. The installed `docs/ARCHITECTURE.md` names only files a consumer repo has (no README entrypoint,
+  CHANGELOG or `scripts/install.ps1`); an update keeps an existing copy, and the consumer entry says to correct it by hand.
+
+- **B-310** — CLOSED **2026-09-28**. docs-sync-check's adoption-pending failure names the Phase-7 marker removal.

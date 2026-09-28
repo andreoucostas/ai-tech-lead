@@ -236,7 +236,7 @@ The PowerShell hook logic is registered across three local client surfaces, with
 |---------|-------------|---------------|-------|
 | **Claude Code** (CLI + VS Code extension) | `.claude/settings.json` | `tool_name` ∈ {`Write`,`Edit`}; `tool_input.file_path` | Native hook support with `matcher` field — hooks already filtered by tool name before the script runs. |
 | **GitHub Copilot CLI** | `.github/hooks/hooks.json` | `toolName` ∈ {`edit`,`create`}; `toolArgs.filePath` | Capability-specific evidence: single-entry prompt delivery on CLI 1.0.80 (2026-08-18) and post-tool context on 1.0.80 (2026-08-20); the registered `agentStop` path is unverified. Folder trust and interpreter resolution are prerequisites. |
-| **Copilot in VS Code** | `.github/hooks/hooks.json` | VS Code tool payload | Preview, off by default, org-gated. One guard deny was observed on 2026-06-25, but host/extension versions were not recorded; prompt, post-tool, and Stop lifecycles remain unverified. |
+| **Copilot in VS Code** | `.github/hooks/hooks.json` | VS Code tool payload | Preview, on by default in a trusted workspace, and your organization can turn them off. One guard deny was observed on 2026-06-25, but host/extension versions were not recorded; prompt, post-tool, and Stop lifecycles remain unverified. |
 
 Hook execution is supported on Windows only. PowerShell 7 (`pwsh`) is primary; native Windows PowerShell 5.1 is the supported Claude Code fallback. Git Bash, WSL, native Linux, macOS/BSD, and Copilot coding-agent cloud hook execution are unsupported:
 
@@ -295,7 +295,7 @@ The intent is that `.cs` files see the .NET rules, `.ts` files see the Angular r
 This framework supports local command and hook execution on **Windows** whether the remote is GitHub or **Bitbucket Data Center / Server**. Other platforms: [Host support](#host-support). Here's precisely what applies on a self-hosted Bitbucket repo.
 
 ### Local files, subject to client prerequisites
-- **GitHub Copilot in the IDE** (VS Code / Visual Studio / JetBrains) can read its working-tree instruction carriers regardless of git host. That does not certify Preview VS Code hooks; enable them where permitted and run the canaries before relying on enforcement.
+- **GitHub Copilot in the IDE** (VS Code / Visual Studio / JetBrains) can read its working-tree instruction carriers regardless of git host. That does not certify Preview VS Code hooks, which are on by default where your organization allows them; run the canaries before relying on enforcement.
 - **Claude Code** (CLI + IDE extension) — reads `CLAUDE.md` and everything under `.claude/`; framework command and hook execution is supported on Windows.
 - **GitHub Copilot CLI** — capability-specific observations, not a blanket certificate: single-entry prompt delivery on CLI 1.0.80 (2026-08-18) and post-tool context on 1.0.80 (2026-08-20). Other registered events, including `agentStop`, require their own live evidence; folder trust and interpreter resolution remain prerequisites.
 - **Skills, custom agents, prompts, slash commands** — all file-driven in the repo; no platform service required.

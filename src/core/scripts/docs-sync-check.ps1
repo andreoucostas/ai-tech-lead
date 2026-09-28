@@ -40,7 +40,7 @@ if (-not (Test-Path "docs/ci-integration.md")) {
 
 # 1. Adoption-pending marker — the installer detected pre-existing AI tooling that /adopt must consolidate.
 if (Test-Path ".claude/adoption-pending.json") {
-    Fail "adoption pending (.claude/adoption-pending.json present) — the installer detected pre-existing AI tooling. A developer must run /adopt (it cannot be model-invoked) to consolidate it; /adopt removes this marker in its Phase 3."
+    Fail "adoption pending (.claude/adoption-pending.json present) — the installer detected pre-existing AI tooling. A developer must run /adopt (it cannot be model-invoked) to consolidate it; /adopt removes this marker immediately before its Phase-7 bootstrap."
 } else { OK "no adoption-pending marker." }
 
 # 1. AGENTS.md (the project instruction file) present, non-empty, bootstrapped. CLAUDE.md's

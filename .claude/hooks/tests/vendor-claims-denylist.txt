@@ -136,3 +136,11 @@ REASON Registration proves configuration only; each architecture arrow must rema
 # --- 18. A registered local CLI hook is not an all-event execution guarantee ---------------------
 DENY (?i)\|\s*Copilot\s+CLI\s+hooks\s+\(\x60\.github/hooks/\x60\)\s*\|\s*✅\s*\|\s*✅\s+\(run\s+locally\)\s*\|
 REASON The hook files are registered locally; firing and output consumption vary by event and require the capability-specific evidence in docs/enforcement-surfaces.md.
+
+# --- 19. VS Code agent hooks are on by default -----------------------------------------------------
+# Was: "Preview, off by default, org-gated" and its variants (enforcement-surfaces matrix and narrative,
+# stack READMEs, review and architecture guides, talking points, briefing and technical decks, through
+# v0.89.2). Only the Claude-format reading (`chat.useClaudeHooks`) stays off by default, and the pattern
+# spares it.
+DENY (?i)Preview(?:\s+hooks)?(?:\s+(?:are|remain)|,)\s+off\s+by\s+default
+REASON VS Code's agent hooks (`chat.useHooks`) are on by default (VS Code agent-hooks page, updated 2026-09-16) and an organization can turn them off; corrected 2026-09-28.

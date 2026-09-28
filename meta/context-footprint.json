@@ -207,13 +207,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 11491,
-          "tok": 2873
+          "chars": 11488,
+          "tok": 2872
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5211,
-          "tok": 1303
+          "chars": 5239,
+          "tok": 1310
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -232,8 +232,8 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 15600,
-          "tok": 3900
+          "chars": 16301,
+          "tok": 4075
         },
         {
           "path": "docs/playbook.md",
@@ -242,8 +242,8 @@
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 9091,
-          "tok": 2273
+          "chars": 9118,
+          "tok": 2280
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -661,13 +661,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 11438,
-          "tok": 2860
+          "chars": 11435,
+          "tok": 2859
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5431,
-          "tok": 1358
+          "chars": 5459,
+          "tok": 1365
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -686,8 +686,8 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 15600,
-          "tok": 3900
+          "chars": 16301,
+          "tok": 4075
         },
         {
           "path": "docs/playbook.md",
@@ -696,8 +696,8 @@
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 9091,
-          "tok": 2273
+          "chars": 9118,
+          "tok": 2280
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -1135,13 +1135,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12271,
-          "tok": 3068
+          "chars": 12268,
+          "tok": 3067
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5705,
-          "tok": 1426
+          "chars": 5733,
+          "tok": 1433
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -1160,8 +1160,8 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 15600,
-          "tok": 3900
+          "chars": 16301,
+          "tok": 4075
         },
         {
           "path": "docs/playbook.md",
@@ -1170,8 +1170,8 @@
         },
         {
           "path": "docs/presentation/TALKING-POINTS.md",
-          "chars": 9091,
-          "tok": 2273
+          "chars": 9118,
+          "tok": 2280
         },
         {
           "path": "docs/upgrade-checklist.md",
