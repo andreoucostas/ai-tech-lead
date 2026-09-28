@@ -260,11 +260,12 @@ function Assert-EvidenceBoundLifecycle([string]$Target) {
 
 }
 
-function Invoke-RootInstaller([string]$Target, [string]$Stack = '', [switch]$DryRun, [switch]$AllowDowngrade) {
+function Invoke-RootInstaller([string]$Target, [string]$Stack = '', [switch]$DryRun, [switch]$AllowDowngrade, [switch]$AllowDirtyTree) {
     $arguments = @('-NoProfile', '-File', (Join-Path $repo 'install.ps1'))
     if ($Stack) { $arguments += @('-Stack', $Stack) }
     if ($DryRun) { $arguments += '-WhatIf' }
     if ($AllowDowngrade) { $arguments += '-AllowDowngrade' }
+    if ($AllowDirtyTree) { $arguments += '-AllowDirtyTree' }
     $arguments += $Target
     $out = @(& (Get-PsExe) @arguments 2>&1 | ForEach-Object { $_.ToString() })
     return [pscustomobject]@{ Exit = [int]$LASTEXITCODE; Output = ($out -join "`n") }
@@ -437,6 +438,47 @@ Reset-Tests
                 Assert ((Get-TargetFingerprint $target) -ceq $before) "$($case.Name) changed target bytes"
             })
         }
+    }
+
+    It 'B-298 root dispatcher forwards -AllowDirtyTree to the stack installer' {
+        $target = New-Target 'dotnet'
+        Invoke-WithTestFixture $target ({
+            # The untracked App.csproj and CLAUDE.md make a dirty brownfield Git target. The stack
+            # installer's refusal names -AllowDirtyTree, and the root dispatcher rejected that switch.
+            [IO.File]::WriteAllText((Join-Path $target 'CLAUDE.md'), "# consumer instructions`n", [Text.UTF8Encoding]::new($false))
+            $before = Get-TargetFingerprint $target
+            $refused = Invoke-RootInstaller $target
+            Assert ($refused.Exit -eq 4 -and $refused.Output -match 'use -AllowDirtyTree') "the dirty brownfield target was not refused with the override named, exit $($refused.Exit): $($refused.Output)"
+            Assert ((Get-TargetFingerprint $target) -ceq $before) 'the dirty-tree refusal changed target bytes'
+            $override = Invoke-RootInstaller $target -AllowDirtyTree
+            Assert ($override.Exit -eq 0 -and $override.Output -match 'override: -AllowDirtyTree accepted') "the root dispatcher did not forward -AllowDirtyTree, exit $($override.Exit): $($override.Output)"
+            Assert (Test-Path -LiteralPath (Join-Path $target 'docs/pre-adoption/CLAUDE.md') -PathType Leaf) "the forwarded override did not archive the collision: $($override.Output)"
+        })
+    }
+
+    # One case on both hosts keeps the CI case-count parity: only Windows PowerShell 5.1 reads the
+    # call operator's path as a wildcard, and PowerShell 7 must go on running the literal path.
+    It 'B-302 the root dispatcher in a bracketed clone calls its own stack installer, never a sibling''s' {
+        $parent = Join-Path ([IO.Path]::GetTempPath()) ('b302-' + [guid]::NewGuid().ToString('N'))
+        try {
+            # Read as a wildcard, 'fw[s]' matches sibling 'fws': a 5.1 console user who changed into
+            # the clone and typed .\install.ps1 got this dispatcher and the sibling's stack installer.
+            $clone = Join-Path $parent 'fw[s]'
+            $sibling = Join-Path $parent 'fws'
+            $target = Join-Path $parent 'target'
+            [void][IO.Directory]::CreateDirectory($target)
+            foreach ($entry in @(@{ Root = $clone; Name = 'own clone' }, @{ Root = $sibling; Name = 'sibling' })) {
+                [void][IO.Directory]::CreateDirectory((Join-Path $entry.Root 'dist/dotnet/scripts'))
+                Copy-Item -LiteralPath (Join-Path $repo 'install.ps1') -Destination (Join-Path $entry.Root 'install.ps1')
+                $stub = "param([string]`$Target, [switch]`$WhatIf, [switch]`$AllowDowngrade, [switch]`$AllowDirtyTree)`nWrite-Output 'DELEGATE: $($entry.Name)'`nexit 0`n"
+                [IO.File]::WriteAllText((Join-Path $entry.Root 'dist/dotnet/scripts/install.ps1'), $stub, [Text.UTF8Encoding]::new($true))
+            }
+            $command = "Set-Location -LiteralPath '$clone'; .\install.ps1 -Stack dotnet '$target'"
+            $out = @(& (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -Command $command 2>&1 | ForEach-Object { $_.ToString() }) -join "`n"
+            $exit = $LASTEXITCODE
+            Assert ($exit -eq 0 -and $out -match 'DELEGATE: own clone') "the bracketed clone's dispatcher did not call its own stack installer (exit $exit): $out"
+            Assert ($out -notmatch 'DELEGATE: sibling') "the bracketed clone's dispatcher called the sibling's stack installer: $out"
+        } finally { Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue }
     }
 if (-not $SkipRedTest) {
     It 'a PowerShell mutation that removes warehouse auto-routing makes this suite red and restores bytes' {

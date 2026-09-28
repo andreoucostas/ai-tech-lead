@@ -139,6 +139,17 @@ Status and `Reviewed` (WSD-027: tooling verifies references, a human sets status
 changed, or was split, still goes into 3c's single question message. A completion-gate repair of the
 hazard table now records again. `BootstrapBaseline.Tests.ps1`, 33 cases.
 
+B-298 and B-302. The root installer accepts `-AllowDirtyTree` and forwards it: the stack installer's
+dirty-tree refusal names that switch, and the root dispatcher rejected it with a binding error (exit 1),
+so a consumer following the message could not proceed. The stack installer's override line drops
+`(--allow-dirty-tree)`, a spelling neither entrypoint accepts. Under Windows PowerShell 5.1 the root
+dispatcher escapes the stack installer's path before calling it: the call operator read `fw[s]` as a
+wildcard, so a console user who changed into a clone at `fw[s]` beside one at `fws` and typed
+`.\install.ps1` got the sibling's stack installer. PowerShell 7 reads the path literally and cannot run
+the escaped form, so the escape is 5.1-only. Still host behaviour: 5.1 reads a bracketed `-File` path
+as a wildcard before any framework code runs, so `powershell.exe -File` from such a clone can start
+the sibling's root installer. `-Allow` alone, which bound to `-AllowDowngrade`, is now ambiguous.
+
 ## 0.89.2 — 2026-09-24
 
 B-262. The three stack READMEs open with the human value statement and a who-triggers-what table of

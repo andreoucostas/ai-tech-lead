@@ -82,6 +82,15 @@
   Windows PowerShell 5.1 the installer can still print CANT-VERIFY lines about files that are not in
   such a folder; those lines are false and you can ignore them.
 
+- **`-AllowDirtyTree` now works through the framework's root `install.ps1`.** When the installer
+  stops because your repository has uncommitted changes, it tells you to re-run with `-AllowDirtyTree`
+  once you have committed, stashed or copied them; the root installer used to reject that switch.
+  Under Windows PowerShell 5.1, typing `.\install.ps1` inside a framework copy whose folder name has
+  square brackets, such as `ai-tech-lead[2]`, now runs that copy's installer, not the one in a
+  neighbouring folder such as `ai-tech-lead2`. Starting it with `powershell.exe -File` from such a
+  folder can still run the neighbour's copy, because Windows PowerShell reads the brackets before the
+  installer starts: use PowerShell 7, or a folder name without brackets.
+
 ## 0.89.2 — 2026-09-24
 
 - **The README in the framework download now starts with what you get and who does what.** A new

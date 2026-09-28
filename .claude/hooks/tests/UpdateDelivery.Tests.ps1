@@ -1054,7 +1054,7 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
             Assert ([IO.File]::ReadAllText($dirtyPath) -eq $before) 'dirty-tree preflight mutated dirty.txt'
             Assert ($fingerprintAfter -ceq $fingerprintBefore) 'dirty-tree preflight changed the target fingerprint'
             $override = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
-            Assert ($LASTEXITCODE -eq 0 -and $override -match 'override: .*allow-dirty-tree') "dirty override failed: $override"
+            Assert ($LASTEXITCODE -eq 0 -and $override -match 'override: -AllowDirtyTree accepted') "dirty override failed: $override"
         } finally {
             if ($null -eq $priorOptionalLocks) { Remove-Item Env:GIT_OPTIONAL_LOCKS -Force -ErrorAction SilentlyContinue }
             else { [Environment]::SetEnvironmentVariable('GIT_OPTIONAL_LOCKS', $priorOptionalLocks, 'Process') }
@@ -1078,7 +1078,7 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
             Assert ($LASTEXITCODE -ne 0 -and $out -match 'commit, stash, or copy') "dirty brownfield did not refuse precisely: $out"
             Assert ((Get-Content -LiteralPath (Join-Path $t 'TECH_DEBT.md') -Raw) -eq $before) 'brownfield dirty preflight mutated the target'
             $override = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
-            Assert ($LASTEXITCODE -eq 0 -and $override -match 'override: .*allow-dirty-tree') "brownfield override failed: $override"
+            Assert ($LASTEXITCODE -eq 0 -and $override -match 'override: -AllowDirtyTree accepted') "brownfield override failed: $override"
             Assert (Test-Path -LiteralPath (Join-Path $t 'docs/pre-adoption/TECH_DEBT.md') -PathType Leaf) 'brownfield override did not archive the collision'
         } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
     }

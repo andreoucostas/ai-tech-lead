@@ -872,7 +872,7 @@ if (-not $WhatIf -and ($adoptMode -or $updateMode)) {
                     [Console]::Error.WriteLine('ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use -AllowDirtyTree only after doing so deliberately.')
                     exit 4
                 }
-                Write-Output '  override: -AllowDirtyTree (--allow-dirty-tree) accepted for this dirty Git target.'
+                Write-Output '  override: -AllowDirtyTree accepted for this dirty Git target.'
             }
         } elseif ($repositoryEvidence) {
             Stop-UnverifiableGitPreflight

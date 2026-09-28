@@ -12735,3 +12735,10 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-284** — CLOSED **2026-09-28**. `/rebootstrap` stops or narrows from a content-hash baseline (WSD-103); files that moved
   unchanged are followed and 3c re-points their hazard rows. Bounding A8 stays with B-222/B-223 under WSD-097.
+
+- **B-298** — CLOSED **2026-09-28**. The root installer accepts and forwards `-AllowDirtyTree`, the switch the stack installer's
+  dirty-tree refusal names; the override line drops `(--allow-dirty-tree)`, which no entrypoint accepts.
+
+- **B-302** — CLOSED **2026-09-28**. On Windows PowerShell 5.1 the root dispatcher escapes the stack installer's path, so
+  `.\install.ps1` typed inside a clone at `fw[s]` no longer runs sibling `fws`'s installer. Closing it by decision was proposed and
+  withdrawn: Fable and the adversarial review both showed the interactive flow reaches the call. `-File` stays host behaviour.

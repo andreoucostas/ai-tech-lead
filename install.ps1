@@ -1,5 +1,5 @@
 ﻿# AI Tech Lead Framework — root installer wrapper.
-# Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
+# Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-WhatIf] [-AllowDowngrade] [-AllowDirtyTree] C:\path\to\target-repo
 #
 # Thin dispatcher only: it selects a stack, then delegates to
 # dist/<stack>/scripts/install.ps1, which does all the real work (greenfield / brownfield /
@@ -23,11 +23,12 @@ param(
     [Parameter()][string]$Stack,
     [Parameter()][switch]$WhatIf,
     [Parameter()][switch]$AllowDowngrade,
+    [Parameter()][switch]$AllowDirtyTree,
     [Parameter(Position = 0)][string]$Target
 )
 $ErrorActionPreference = 'Stop'
 
-$usage = 'Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo'
+$usage = 'Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-WhatIf] [-AllowDowngrade] [-AllowDirtyTree] C:\path\to\target-repo'
 # Exit 2 with an actionable message on stderr. Write-Error is avoided on purpose: under
 # ErrorActionPreference=Stop it throws before the following exit runs, which -File maps to
 # exit code 1 — this keeps every wrapper-level failure at the documented exit 2.
@@ -242,5 +243,8 @@ if (-not (Test-Path -LiteralPath $delegate -PathType Leaf)) { Die "Internal erro
 Write-Output "Stack: $Stack (via $reason)"
 Write-Output "Delegating to dist/$Stack/scripts/install.ps1 ..."
 Write-Output ""
-& $delegate -Target $tgt -WhatIf:$WhatIf -AllowDowngrade:$AllowDowngrade
+# Windows PowerShell 5.1's call operator reads the path as a wildcard: in a clone at 'fw[s]' beside a
+# clone at 'fws' it ran the sibling's installer. PowerShell 7 reads it literally and rejects the escape.
+$call = if ($PSVersionTable.PSVersion.Major -lt 6) { [Management.Automation.WildcardPattern]::Escape($delegate) } else { $delegate }
+& $call -Target $tgt -WhatIf:$WhatIf -AllowDowngrade:$AllowDowngrade -AllowDirtyTree:$AllowDirtyTree
 exit $LASTEXITCODE
