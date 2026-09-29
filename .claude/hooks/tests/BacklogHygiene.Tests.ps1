@@ -12,7 +12,14 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 function Get-BacklogRecords {
     param([string]$Text)
     $matches = @([regex]::Matches($Text, '(?m)^### (B-[0-9]+(?:[A-Za-z-]*)?) · ([^\r\n]*)'))
-    if ($matches.Count -eq 0) { throw 'BACKLOG.md yielded zero open headings -- heading check is vacuous' }
+    # An empty backlog says so in one exact line; zero headings without it means the heading grammar changed.
+    # IsMatch, not -match: -match would overwrite $matches above (PowerShell's automatic $Matches).
+    $declaredEmpty = [regex]::IsMatch($Text, '(?m)^No open entries\.\r?$')
+    if ($matches.Count -eq 0) {
+        if ($declaredEmpty) { return @() }
+        throw 'BACKLOG.md yielded zero open headings -- heading check is vacuous'
+    }
+    if ($declaredEmpty) { throw "BACKLOG.md says 'No open entries.' but has $($matches.Count) open heading(s)" }
     $records = @()
     for ($i = 0; $i -lt $matches.Count; $i++) {
         $start = $matches[$i].Index
@@ -177,6 +184,20 @@ It 'open backlog headings contain no completed records' {
 
 It 'PARTIALLY DONE headings remain valid open records' {
     Assert-OpenHeadings "### B-900 · Example — **PARTIALLY DONE; REMAINDER STILL OPEN**`nBody.`n"
+}
+
+It 'a backlog that says "No open entries." passes the heading, decision and stamp checks' {
+    $empty = "## Open entries`r`n`r`nNo open entries.`r`n"
+    Assert-OpenHeadings $empty
+    Assert-DecisionsRecordedInBacklog $empty @('B-900 closed by decision')
+    $ids = @(Get-MissingFiledAgainstStamps $empty)
+    Assert ($ids.Count -eq 0) "an empty backlog reported missing filed-against stamps: $($ids -join ', ')"
+}
+
+It '"No open entries." beside an open heading is refused, so it cannot hide a grammar change' {
+    $threw = $false
+    try { Assert-OpenHeadings "No open entries.`n`n### B-900 · Example`nBody.`n" } catch { $threw = $_.Exception.Message -match 'but has 1 open heading' }
+    Assert $threw 'a stale "No open entries." line beside an open heading was accepted'
 }
 
 It 'recent commit decisions name no ids that remain open in the backlog' {

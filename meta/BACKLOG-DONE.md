@@ -12886,5 +12886,34 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-311** — CLOSED **2026-09-28** (WSD-104). New feature logic is placed by responsibility in all three stacks;
   the `angular-feature-placement` eval went from 3/3 bolt-on (v0.89.2, Opus 5.5) to 3/3 own service with the change.
 
+- **B-323** — CLOSED **2026-09-29**. `validate-dist --update-rail-sync` ends by naming the dist it validated: the record
+  loop's `$dist` had overwritten `$Dist`. ValidateDist case 39 checks the closing line.
+
+- **B-222**, **B-223**, **B-224** — CLOSED by decision **2026-09-29** (WSD-105). What shipped in v0.84.0 stays; no run shows
+  captured knowledge changing an outcome against the bare agent. B-284 point 9 (bounding A8) is dropped with them, and the
+  retired `meta/eval-fixtures/b224-ordinary-copilot/` is deleted. Reopen on a field report, or on an eval where captured
+  knowledge changes a result.
+
+- **B-216** — CLOSED by decision **2026-09-29** (WSD-105). The project-pattern contract shipped in v0.84.0 and is still in
+  the skills after B-311; other DI patterns and conflicting project notes stay unobserved. Reopen on a field report of a
+  skill overriding the project's own pattern.
+
+- **B-226** — CLOSED by decision **2026-09-29** (WSD-105). `/review`'s scope capture is tested on both hosts and stops with
+  CANNOT EXAMINE when it cannot examine its input; model dispatch stays unobserved. Reopen on a dated real `/review` whose
+  participants covered different changes.
+
+- **B-232** — CLOSED by decision **2026-09-29** (WSD-105). Delivery A shipped in v0.86.1. Delivery B's read-recovery
+  paragraph is dropped: the one probe got the whole workflow through Copilot's own large-file option, and the paragraph's
+  effect is unmeasured. Reopen on a report of Copilot cutting the adoption workflow short.
+
+- **B-42** — CLOSED by decision **2026-09-29** (WSD-105). No participant; the FS2 kit and its invitation
+  (`meta/field-study-kit.md`) stay ready. Reopen when a participant who did not build the framework is named.
+
+- **B-49** — CLOSED by decision **2026-09-29** (WSD-105). Retired: the with/without eval harness answers "does it help?"
+  on both hosts, and the consumer self-assessment waits for a consumer to ask; `meta/drill-kit.md` is deleted.
+
+- **B-265** — CLOSED by decision **2026-09-29** (WSD-105). None of the four workflows has a field request. Reopen one
+  workflow when someone asks for it.
+
 - **B-324** — CLOSED **2026-09-29**. The stack installer asks its clone's remote whether the clone is out of date and
   stops (exit 4) on a newer release tag or a branch behind its upstream; `-AllowOutdated` overrides it, and an unchecked copy installs with a NOTE.
