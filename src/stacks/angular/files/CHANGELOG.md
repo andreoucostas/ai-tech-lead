@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.90.0 — Unreleased
+## 0.90.0 — 2026-09-29
 
 - **`/rebootstrap` re-analyses only what changed since the last run.** `/bootstrap` now ends by
   recording a baseline, `.claude/bootstrap-baseline.tsv`; commit it with the other artifacts. It holds

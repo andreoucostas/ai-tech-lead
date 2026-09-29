@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.90.0 — Unreleased
+## 0.90.0 — 2026-09-29
 
 B-272. Shipped `AGENTS.md` becomes the project instruction file and `CLAUDE.md` a two-import stub
 (`@AGENTS.md`, `@.github/instructions/framework-rules.instructions.md`); the generated mirror, the

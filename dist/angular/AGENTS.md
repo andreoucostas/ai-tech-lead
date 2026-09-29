@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: angular
-  version: 0.89.2
-  applied: 2026-09-24
+  version: 0.90.0
+  applied: 2026-09-29
   After a framework update, copy these fields from .claude/framework-version.json.
 -->
 # [Project Name]
