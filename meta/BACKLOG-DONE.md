@@ -12885,3 +12885,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-311** — CLOSED **2026-09-28** (WSD-104). New feature logic is placed by responsibility in all three stacks;
   the `angular-feature-placement` eval went from 3/3 bolt-on (v0.89.2, Opus 5.5) to 3/3 own service with the change.
+
+- **B-324** — CLOSED **2026-09-29**. The stack installer asks its clone's remote whether the clone is out of date and
+  stops (exit 4) on a newer release tag or a branch behind its upstream; `-AllowOutdated` overrides it, and an unchecked copy installs with a NOTE.

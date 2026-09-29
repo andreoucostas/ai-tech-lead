@@ -11,6 +11,38 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.91.0 — Unreleased
+
+B-324, from a maintainer report: an install from a clone 68 commits behind `master` put v0.89.1 into a
+repository, and nothing said so until `/bootstrap` had run on it. Before it changes anything, the stack
+installer now asks the clone's remote, with one `git ls-remote` that fetches nothing and turns off Git's
+prompts, whether a `vX.Y.Z` tag newer than the incoming stamp exists and, on a branch with an upstream,
+whether that branch is behind it. Either stops the install (exit 4) with the command that updates the
+clone; `-AllowOutdated`, which the root dispatcher forwards, installs anyway, and a deliberate downgrade
+needs it as well as `-AllowDowngrade`. A copy that cannot be checked (no Git, not tracked at
+`dist/<stack>/` of a clone of the framework, `ls-remote` failed or silent, a branch check that did not
+finish) installs with a NOTE, never as current; the whole check shares one 10-second deadline.
+`_HookHarness.ps1` and the eval runner set `ATL_SOURCE_CHECK=off`, which prints `source: not checked`, so
+meta tests, fixture installs and the installs eval agents run stay off the network and off the clone's
+release state. A fresh-session attack broke the first version five ways, each now a case or a check: in a
+partial clone the upstream tip was looked up, which fetched it, on a 10-second budget per call (31 s),
+and a timed-out lookup left the stale clone reported current (the tip is now compared with the tracking
+ref and never looked up); `GIT_ASKPASS` still prompted (now emptied, with `SSH_ASKPASS_REQUIRE=never`);
+an untracked copy at `dist/<stack>/` inside another repository was refused by that repository's tag and
+told to check it out; a tag named `master` hid the branch (`symbolic-ref` no longer uses `--short`); eval
+agents' own installs were not switched off. A second attack broke the fixes five more ways, also closed:
+a copy committed at `dist/<stack>/` of another repository passed the tracked check (the clone must now
+also track the root dispatcher and `src/core/scripts/install.ps1`); a copy reached through a symlink was
+judged in the link's repository (the clone is now `rev-parse --show-toplevel`); a checkout at the remote
+tip with a stale tracking ref was refused (HEAD at the tip is current); a quote in a branch name split
+the git arguments (the quoting now follows the Windows rules in full); and a credential helper that timed
+out was reported as a silent remote ("did not finish"). Accepted: after a force-push moves the remote
+back, the check refuses until the advised `git pull`. Rejected: a warning only (an installing agent reads
+past one line in long output) and a check in `/bootstrap` or `session-start` (the consumer repository has
+no link to the clone, and `session-start` stays offline by B-46's design). Reproduced against the real
+remote: a clone reset 68 commits behind `origin/master` is refused, naming v0.90.0, v0.89.1 and the 68
+commits.
+
 ## 0.90.0 — 2026-09-29
 
 B-272. Shipped `AGENTS.md` becomes the project instruction file and `CLAUDE.md` a two-import stub
