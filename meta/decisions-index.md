@@ -27,7 +27,7 @@ authoritative.
 - “Read-side guidance travels on the measured channel.” — `meta/workspace-decisions.md WSD-032`
 - “Proportionality belongs inside pre-lock critique.” — `meta/workspace-decisions.md WSD-034`
 - “Updates disclose ownership classes and back up settings.” — `meta/workspace-decisions.md WSD-043`
-- “The stale quarterly-drill protocol is historical; re-lock it before any live spend.” — `meta/workspace-decisions.md WSD-062` (supersedes WSD-022/WSD-044 for execution)
+- “The stale quarterly-drill protocol is historical; re-lock it before any live spend.” — `meta/workspace-decisions.md WSD-062` (supersedes WSD-022/WSD-044 for execution; WSD-105 retires B-49)
 - “Template-check findings use a fixed status, never their count.” — `meta/workspace-decisions.md WSD-063`
 - “Scoped test-file instructions buy locality, not coverage — B-17 is rejected.” — `meta/workspace-decisions.md WSD-045`
 - “Guard regex errors split by confidence; content case is exact and routing folds.” — `meta/workspace-decisions.md WSD-046`
@@ -48,7 +48,7 @@ authoritative.
 - “Framework-maintainer tests stay in distributions but do not install into consumers or evidence application verification.” — `meta/workspace-decisions.md WSD-071`
 - “Project skills ship once under `.claude/skills`; retire only content-qualified GitHub mirrors.” — `meta/workspace-decisions.md WSD-072` (WSD-073 supersedes its Bash-adapter retention)
 - “Supported framework execution is native Windows and PowerShell only.” — `meta/workspace-decisions.md WSD-073`
-- “Discover repository knowledge broadly; capture grounded drafts in existing carriers and measure ordinary Copilot outcomes before expanding machinery.” — `meta/workspace-decisions.md WSD-074` (WSD-091 pauses its expansion until B-253 reports)
+- “Discover repository knowledge broadly; capture grounded drafts in existing carriers and measure ordinary Copilot outcomes before expanding machinery.” — `meta/workspace-decisions.md WSD-074` (WSD-091 pauses its expansion until B-253 reports; WSD-105 closes B-222 to B-224)
 - “Run eight native Windows execution contexts independently, then require one same-platform case-count parity decision.” — `meta/workspace-decisions.md WSD-075`
 - “CP1 is a separate maintainer Copilot campaign; readiness precedes purchase.” — `meta/workspace-decisions.md WSD-076` (WSD-091 closes CP1 as scoped)
 - “CP1 may assess a Hyper-V-isolated Windows container; offline feasibility does not establish paid-run readiness.” — `meta/workspace-decisions.md WSD-077` (prospectively amends WSD-076's guest requirement; WSD-091 closes CP1 as scoped)
@@ -63,7 +63,7 @@ authoritative.
 - “The write guard's edit-scope gap is documented, not hardened: scanning the pre-edit file with the new text refuses the edit that removes a leaked key.” — `meta/workspace-decisions.md WSD-094` (applies WSD-047)
 - “A project `.claude/commands/<name>.md` replaces the host's built-in of the same name; the shipped `/security-review` runs.” — `meta/workspace-decisions.md WSD-095`
 - “The agent-eval self-test is a recipe (after a runner change, before a live run), not a release gate and not CI; the runner is kept for B-253.” — `meta/workspace-decisions.md WSD-096`
-- “B-222 to B-224 are held after B-253's first report; one timeboxed Copilot executor spike runs inside the existing eval runner without the CP1/RK1 isolation, relay or candidate contract.” — `meta/workspace-decisions.md WSD-097` (answers WSD-091's resumption clause)
+- “B-222 to B-224 are held after B-253's first report; one timeboxed Copilot executor spike runs inside the existing eval runner without the CP1/RK1 isolation, relay or candidate contract.” — `meta/workspace-decisions.md WSD-097` (answers WSD-091's resumption clause; WSD-105 closes the held rows)
 - “Shipped `AGENTS.md` is the one edited instruction file; `CLAUDE.md` is a two-import stub; update moves an older layout once, only over a generated mirror.” — `meta/workspace-decisions.md WSD-098` (supersedes WSD-002's mirror clause)
 - “`.github/copilot-instructions.md` and `/generate-copilot` are retired; Visual Studio and github.com Copilot Chat lose framework-delivered conventions by choice.” — `meta/workspace-decisions.md WSD-099`
 - “Keep `route-prompt`; commands already are skills on Claude Code; path-scoped rules are not used for the workflow rails; no non-inferiority trial is funded.” — `meta/workspace-decisions.md WSD-100`
@@ -71,6 +71,7 @@ authoritative.
 - “No framework hook runs test suites or `Verification Commands` rows; the post-write build throttle is a stated limit, not fixed.” — `meta/workspace-decisions.md WSD-102` (closes B-261)
 - “B-284 keeps WSD-097's hold on bounding A8; profile findings name their own evidence; a profile runs in full on a changed manifest or more than 50% of its claims affected, provisionally.” — `meta/workspace-decisions.md WSD-103`
 - “New feature logic is placed by responsibility: its own service or class even with one consumer, never a bolt-on or a subclass of a concrete service.” — `meta/workspace-decisions.md WSD-104`
+- “The held, blocked and parked backlog is closed by decision; everything shipped stays, and each item reopens on its own trigger.” — `meta/workspace-decisions.md WSD-105` (closes WSD-097's held rows; retires B-49 under WSD-062)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

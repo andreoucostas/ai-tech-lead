@@ -176,7 +176,8 @@ It 'every live backlog item has a unique id' {
     $ids = @($backlog | ForEach-Object {
         if ($_ -match '^### (B-[0-9]+) ·') { $Matches[1] }
     })
-    Assert ($ids.Count -gt 0) 'BACKLOG.md yielded zero live item ids -- the heading grammar changed and this gate is blind'
+    # Zero ids pass only beside the exact "No open entries." line; BacklogHygiene refuses that line beside a heading.
+    Assert ($ids.Count -gt 0 -or $backlog -ccontains 'No open entries.') 'BACKLOG.md yielded zero live item ids and does not say "No open entries." -- the heading grammar changed and this gate is blind'
     $duplicates = @($ids | Group-Object | Where-Object Count -gt 1 | ForEach-Object Name)
     if ($duplicates) { Assert $false ("duplicate live backlog item ids: " + ($duplicates -join ', ')) }
     Assert $true 'clean'

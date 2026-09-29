@@ -934,7 +934,7 @@ if ($railBlind) {
 } elseif ($UpdateRailSync) {
     $record = [ordered]@{}
     if ($null -ne $railRecord) {
-        foreach ($dist in @($railRecord.dists.PSObject.Properties | Sort-Object Name)) { $record[$dist.Name] = $dist.Value }
+        foreach ($entry in @($railRecord.dists.PSObject.Properties | Sort-Object Name)) { $record[$entry.Name] = $entry.Value }
     }
     $modePairs = [ordered]@{}
     foreach ($name in $railCurrent.Keys) { $modePairs[$name] = [pscustomobject]@{ bullet = $railCurrent[$name].Bullet; rail = $railCurrent[$name].Rail } }

@@ -4531,3 +4531,16 @@ service; shared private logic is extracted unless the developer declines; one co
 second-consumer test stays for abstractions, wrappers, helpers, pipes and directives. This reverses "prefer editing
 over creating" in all three stacks. Evidence: `angular-feature-placement`, 3/3 bolt-on before, 3/3 own service after.
 **Reopen** on a field report of one-method or pass-through services created under this rule.
+
+## WSD-105: the held, blocked and parked backlog is closed by decision; the backlog is empty (2026-09-29)
+
+**Context.** After v0.90.0 nine entries waited on observation, a participant or a request: B-216, B-222 to B-224 and
+B-226 (shipped in v0.84.0), B-232's deferred read-recovery paragraph, B-42, B-49 and B-265. No run shows captured knowledge
+changing an outcome against the bare agent; in B-280 it reached Copilot through the `/bootstrap`-written `CLAUDE.md`, not the map.
+**Decision (user, 2026-09-29: "let's go with those if they make sense", then "go ahead").** A fresh Fable review picked
+"close" on all seven questions, as the maintainer session had. Close all nine; everything shipped stays. B-49's drill and
+consumer self-assessment are retired and `meta/drill-kit.md` deleted; FS2 (`meta/field-study-kit.md`) stays ready. B-284
+point 9 (bounding A8) is dropped. Accepted: capture can still write an overclaimed fact into a consumer's wiki, and `/review`
+dispatch and Copilot's unprompted large-file recovery stay unobserved.
+**Reopen** each on a field report of its gap; B-222 to B-224 also on an eval where captured knowledge changes a result (the
+cheapest is a route task the generated `CLAUDE.md` does not answer, B-280); B-226 on a dated real `/review`; B-42 on a named participant.

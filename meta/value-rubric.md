@@ -1,9 +1,10 @@
 # Framework value-add rubric
 
 Canonical executable copy of the frozen B-49 rubric in
-`.claude/plans/2026-07-17-b49-live-fire-drill-design.md` D4. Both the quarterly maintainer drill and
-the B-42/B-49 field study use this wording. Change it only by amending the locked decision and
-starting a new result series; never edit it to improve a result already observed.
+`.claude/plans/2026-07-17-b49-live-fire-drill-design.md` D4. The FS2 field study
+(`meta/field-study-kit.md`) uses this wording; the quarterly drill it was written for is retired
+(WSD-105). Change it only by amending the locked decision and starting a new result series; never
+edit it to improve a result already observed.
 
 Score each applicable dimension from transcript, diff, repository, and command evidence before
 calculating any arm delta.

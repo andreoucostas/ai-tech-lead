@@ -659,5 +659,18 @@ try {
         Assert-Case 'rail-sync-reviewed' { param($d) } 'route-prompt rails match the reviewed canonical workflow bullets' 'rail-sync' -Green
     }
 
+    It 'case 39: the rail-sync update names the dist it validated in its closing line' {
+        # B-323: the record loop's $dist overwrote $Dist (names are case-insensitive), so this path ended
+        # "passed for System.Management.Automation.PSCustomObject ...". An isolated copy keeps meta/rail-sync.json untouched.
+        $isolated = New-ValidatorRepoCopy
+        $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $isolated 'scripts\validate-dist.ps1') dotnet -Check rail-sync --update-rail-sync 2>&1
+        $code = $LASTEXITCODE
+        $text = $out -join "`n"
+        Write-Host "[ValidateDist powershell rail-sync-update-closing-line] EXIT=$code"; Write-Host $text
+        Assert ($code -eq 0) "rail-sync-update-closing-line should be green, got EXIT=${code}: $text"
+        Assert ($text -match 'rail-sync recorded \d+ reviewed bullet/rail pair\(s\) for dotnet') "rail-sync-update-closing-line did not reach the update path: $text"
+        Assert ($text.Contains("All dist validation checks passed for $(Join-Path 'dist' 'dotnet').")) "rail-sync-update-closing-line did not name the dist it validated: $text"
+    }
+
 } finally { foreach($p in $scratch) { if(Test-Path $p){ Remove-Item -LiteralPath $p -Recurse -Force } } }
 exit (Write-TestSummary 'ValidateDist.Tests (B-92)')
