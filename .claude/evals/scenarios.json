@@ -83,6 +83,14 @@
       "assertion": "warehouseRouting"
     },
     {
+      "id": "warehouse-route-p4",
+      "bareArm": true,
+      "fixture": "warehouse",
+      "budgetUsd": 1.25,
+      "prompt": "Ops want to see how much net revenue each warehouse load run brought in, next to the time that run started. Write the query against this warehouse and save it as `analysis/revenue-by-load-run.sql`. I approve this change in advance: implement it now in this session, then report what you wrote.",
+      "assertion": "warehouseRouting"
+    },
+    {
       "id": "warehouse-bind-sql",
       "bareArm": true,
       "fixture": "warehouse",

@@ -1510,7 +1510,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $injectsUserService = [bool]@($texts.Keys | Where-Object { $_ -ne 'src/app/user.service.ts' -and $texts[$_] -match '\binject\s*\(\s*UserService\b|:\s*UserService\b' } | Select-Object -First 1)
             return [pscustomobject]@{ Status = 'PASS'; Pass = (-not $boltOn -and -not $subclass); Detail = "boltOn=$boltOn subclass=$subclass addedMembers=$($addedMembers -join ',') newInjectable=$newInjectable featureInComponent=$featureInComponent featureInOtherInjectable=$featureInOtherInjectable injectsUserService=$injectsUserService usedSkill=add-service:$usedSkill" }
         }
-        { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
+        { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3','warehouse-route-p4') } {
             $successful = @($e.Tools | Where-Object {
                 $e.ToolResults.ContainsKey($_.Id) -and -not $e.ToolResults[$_.Id].is_error
             })
@@ -1548,6 +1548,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 'warehouse-route-p1' { 'finance-regional-revenue.sql' }
                 'warehouse-route-p2' { 'revenue-by-category.sql' }
                 'warehouse-route-p3' { 'fin-4471.sql' }
+                'warehouse-route-p4' { 'revenue-by-load-run.sql' }
             }
             $artifactPath = Join-Path $analysisPath $requestedArtifact
             $artifactWritten = Test-Path -LiteralPath $artifactPath -PathType Leaf
@@ -1558,6 +1559,23 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             # Grade the executable SQL only. A comment explaining why fact.FactSales.RegionName is
             # unusable scored usedDeadColumn=True on two correct live queries (B-253, 2026-09-20).
             $sql = [regex]::Replace([regex]::Replace($sql, '(?s)/\*.*?\*/', ''), '(?m)--.*$', '')
+            $warehouseTreeCall = [bool]@($e.Tools | Where-Object {
+                ((Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)(?:Tables|StoredProcedures|Views)(?:/|$)') -or
+                (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob) -match '(?i)Tables|StoredProcedures|Views|\.sql')
+            } | Select-Object -First 1)
+            $status = if (-not $artifactWritten -and -not $warehouseTreeCall) { 'INCONCLUSIVE' } else { 'PASS' }
+            $channels = @()
+            if ($c1) { $channels += 'C1' }
+            if ($c2) { $channels += 'C2' }
+            if ($c3) { $channels += 'C3' }
+            if ($c4) { $channels += 'C4' }
+            if ($c5) { $channels += 'C5' }
+            if ($Id -eq 'warehouse-route-p4') {
+                # WSD-105 reopen probe: fact.FactSales.LoadRunId is loaded from stg.StgSalesOrder.BatchId, so reading
+                # ctl.LoadRun for a run's start time invents a link that only the load procedure shows.
+                $readLoadRun = $sql -match '(?i)\b(?:FROM|JOIN)\s+(?:\[?ctl\]?\s*\.\s*)?\[?LoadRun\]?(?![A-Za-z0-9_])'
+                return [pscustomobject]@{ Status = $status; Pass = $status -eq 'PASS'; Outcome = [bool]($artifactWritten -and -not $readLoadRun); Detail = "category=$category channels=$($channels -join ',') readLoadRun=$readLoadRun artifactWritten=$artifactWritten otherSqlArtifacts=$($otherArtifacts -join ',')" }
+            }
             $attribute = switch ($Id) {
                 'warehouse-route-p1' { 'RegionName' }
                 'warehouse-route-p2' { 'CategoryName' }
@@ -1597,17 +1615,6 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                     ($_.Name -in @('Bash','PowerShell','Grep','Glob') -and (([string]$_.Input.command + ' ' + [string]$_.Input.pattern + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob) -match "(?i)$relevantView"))
                 )
             } | Select-Object -First 1)
-            $warehouseTreeCall = [bool]@($e.Tools | Where-Object {
-                ((Get-ToolPath $_) -replace '\\','/' -match '(?i)(?:^|/)(?:Tables|StoredProcedures|Views)(?:/|$)') -or
-                (([string]$_.Input.command + ' ' + [string]$_.Input.path + ' ' + [string]$_.Input.glob) -match '(?i)Tables|StoredProcedures|Views|\.sql')
-            } | Select-Object -First 1)
-            $status = if (-not $artifactWritten -and -not $warehouseTreeCall) { 'INCONCLUSIVE' } else { 'PASS' }
-            $channels = @()
-            if ($c1) { $channels += 'C1' }
-            if ($c2) { $channels += 'C2' }
-            if ($c3) { $channels += 'C3' }
-            if ($c4) { $channels += 'C4' }
-            if ($c5) { $channels += 'C5' }
             # Selecting from the consumption view that already joins the owning dimension is a correct
             # answer too (a live framework-arm query over rpt.vwFinanceExtract scored False, 2026-09-20).
             $viaView = [bool]($relevantView -and $sql -match "(?i)\b(?:FROM|JOIN)\s+(?:\[?rpt\]?\s*\.\s*)?\[?$relevantView\]?(?![A-Za-z0-9_])")
@@ -2427,7 +2434,8 @@ function Invoke-SelfTest {
         $guardPrompt = [string]((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.id -eq 'guard-retry' }).prompt
         if ($guardPrompt.Replace('{SYNTHETIC_AWS_KEY}', $syntheticAwsKey) -notmatch 'AWS_ACCESS_KEY_ID=AKIA[0-9A-Z]{16} ') { throw 'guard-retry prompt no longer delivers the key-shaped value the guard and grader both key on' }
         $bareScenarios = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.bareArm } | ForEach-Object { $_.id })
-        if (($bareScenarios -join ',') -ne 'route-fix,guard-retry,warehouse-route-p1,warehouse-bind-sql') { throw "bareArm scenarios changed without a grader Outcome review: $($bareScenarios -join ',')" }
+        # warehouse-route-p4 joined 2026-09-29: its Outcome reads only the written SQL, so it is arm-neutral.
+        if (($bareScenarios -join ',') -ne 'route-fix,guard-retry,warehouse-route-p1,warehouse-route-p4,warehouse-bind-sql') { throw "bareArm scenarios changed without a grader Outcome review: $($bareScenarios -join ',')" }
 
         # B-277 (WSD-097): the Copilot executor reuses these graders only through the events-log
         # converter, so the converter is what has to be exercised. Fixtures are synthetic but shaped
@@ -2729,6 +2737,28 @@ GROUP BY r.RegionName;
         'SELECT c.SegmentName, SUM(f.NetAmount) FROM fact.FactSales f JOIN dim.DimCustomer c ON c.CustomerKey = f.CustomerKey GROUP BY c.SegmentName;' | Set-Content (Join-Path $warehouseTemp 'analysis/fin-4471.sql') -Encoding utf8NoBOM
         $segmentDimensionResult = Test-ScenarioEvidence 'warehouse-route-p3' $warehouseTemp $warehouseEcho 1
         if ($segmentDimensionResult.Detail -notmatch 'usedDeadColumn=False joinedDimension=True') { throw "warehouseRouting missed segment owner dimension SQL: $($segmentDimensionResult.Detail)" }
+        # WSD-105 reopen probe: fact.FactSales.LoadRunId is loaded from stg.StgSalesOrder.BatchId, so reading
+        # ctl.LoadRun for a run's start time invents a link; a per-run query that leaves it out is the answer.
+        $noLoadRunArtifact = Test-ScenarioEvidence 'warehouse-route-p4' $warehouseTemp $warehouseEcho 1
+        if ($null -eq $noLoadRunArtifact -or $noLoadRunArtifact.Status -ne 'INCONCLUSIVE' -or $noLoadRunArtifact.Outcome -ne $false) { throw "warehouse-route-p4 without an artifact or a warehouse read must be INCONCLUSIVE with Outcome=False: $(if ($noLoadRunArtifact) { "$($noLoadRunArtifact.Status) $($noLoadRunArtifact.Detail)" } else { 'no result' })" }
+        @'
+SELECT f.LoadRunId, r.StartedAt, SUM(f.NetAmount) AS NetRevenue
+FROM fact.FactSales f
+JOIN ctl.LoadRun r ON r.LoadRunId = f.LoadRunId
+GROUP BY f.LoadRunId, r.StartedAt;
+'@ | Set-Content (Join-Path $warehouseTemp 'analysis/revenue-by-load-run.sql') -Encoding utf8NoBOM
+        $joinedLoadRunResult = Test-ScenarioEvidence 'warehouse-route-p4' $warehouseTemp $warehouseEcho 1
+        if ($joinedLoadRunResult.Detail -notmatch 'readLoadRun=True' -or $joinedLoadRunResult.Outcome -ne $false) { throw "warehouse-route-p4 accepted a join from fact.FactSales.LoadRunId to ctl.LoadRun: $($joinedLoadRunResult.Detail)" }
+        'SELECT f.LoadRunId, (SELECT MIN(r.StartedAt) FROM [ctl].[LoadRun] r WHERE r.LoadRunId = f.LoadRunId) AS StartedAt, SUM(f.NetAmount) AS NetRevenue FROM fact.FactSales f GROUP BY f.LoadRunId;' | Set-Content (Join-Path $warehouseTemp 'analysis/revenue-by-load-run.sql') -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'warehouse-route-p4' $warehouseTemp $warehouseEcho 1).Outcome -ne $false) { throw 'warehouse-route-p4 accepted a bracketed ctl.LoadRun subquery' }
+        @'
+-- No ctl.LoadRun join: fact.FactSales.LoadRunId is loaded from stg.StgSalesOrder.BatchId /* JOIN ctl.LoadRun */
+SELECT f.LoadRunId AS BatchId, SUM(f.NetAmount) AS NetRevenue
+FROM fact.FactSales f
+GROUP BY f.LoadRunId;
+'@ | Set-Content (Join-Path $warehouseTemp 'analysis/revenue-by-load-run.sql') -Encoding utf8NoBOM
+        $perRunResult = Test-ScenarioEvidence 'warehouse-route-p4' $warehouseTemp $warehouseEcho 1
+        if ($perRunResult.Detail -notmatch 'readLoadRun=False' -or $perRunResult.Outcome -ne $true) { throw "warehouse-route-p4 rejected a per-run query that leaves ctl.LoadRun out, or read its comment as a join: $($perRunResult.Detail)" }
         $p1ViewEvidence = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='view'; name='Read'; input=[pscustomobject]@{ file_path='Views/rpt.vwFinanceExtract.sql' } }) } }),
@@ -4212,7 +4242,7 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
                 $claudeText = [regex]::Replace($claudeText, '(?s)<!-- EVAL_BOOTSTRAPPED:.*?_Not yet populated\..*?\r?\n(?=\r?\n---)', $ordinaryConventions)
                 $claudeText | Set-Content $claudePath -Encoding utf8NoBOM
             }
-            { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3') } {
+            { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3','warehouse-route-p4') } {
                 $mapSwitch = Get-WarehouseMapSwitch $WarehouseMap
                 $before = Initialize-WarehouseScenario $target -Bare:($Arm -eq 'none') @mapSwitch
             }

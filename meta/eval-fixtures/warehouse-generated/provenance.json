@@ -1,10 +1,11 @@
 {
-  "frameworkVersion": "0.89.1",
-  "generatedOn": "2026-09-22",
-  "host": "Claude Code 2.1.260",
-  "model": "sonnet (claude-sonnet-5) as launched with `claude --model sonnet`; typed by the maintainer, not headless",
-  "fixture": "New-EvalRepo 'warehouse' baseline, then install.ps1 -Stack dotnet (dist/dotnet v0.89.1) committed",
-  "steps": "/bootstrap (Phase 2b: proceed; Phase 3d-bis: skip all - mark as unverified), then /map-warehouse accepting docs/warehouse-map.md",
-  "files": "every path `git status --porcelain` listed afterwards, copied unedited",
-  "backlog": "B-280 / B-279"
+  "frameworkVersion": "0.90.0",
+  "generatedOn": "2026-09-30",
+  "host": "Claude Code 2.1.281",
+  "model": "sonnet (claude-sonnet-5) as launched with `claude --model sonnet`; headless, not typed",
+  "fixture": "New-EvalRepo 'warehouse' baseline, then install.ps1 -Stack dotnet (dist/dotnet v0.90.0) committed",
+  "steps": "One session, headless from PowerShell: `claude -p /bootstrap`; `--resume` with 'proceed' at Phase 2b, after which Phase 3d-bis did not pause and wrote its six hazard rows [UNVERIFIED] (the state 'skip all' gives); `--resume` with `/map-warehouse`, then 'Yes, write it.' for docs/warehouse-map.md. Every call: --dangerously-skip-permissions --max-budget-usd 8",
+  "files": "every path `git status --porcelain -uall` listed afterwards, copied unedited",
+  "cost": "4.19 USD for the session (total_cost_usd is cumulative across --resume)",
+  "backlog": "WSD-105 reopen probe for B-222 to B-224 (warehouse-route-p4); B-280 / B-279"
 }

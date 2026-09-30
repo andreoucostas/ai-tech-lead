@@ -1,34 +1,92 @@
 # Architecture Decisions
 
-Append-only ADR log. Entries are added by the `create-adr` skill (format: `## ADR-NNN: <title>` with Date / Status / Decision / Context / Alternatives considered / Consequences). The one-line index lives in `CLAUDE.md > Architecture Decisions`.
+Append-only ADR log. Entries are added by the `create-adr` skill (format: `## ADR-NNN: <title>` with Date / Status / Decision / Context / Alternatives considered / Consequences). The one-line index lives in `AGENTS.md > Architecture Decisions`.
 
-## ADR-001: Load procedures use the dbo schema
+## ADR-001: Schema-per-layer naming for tables/views, not procedures
 
-- **Date**: 2026-09-22
-- **Status**: Confirmed (via `/bootstrap` Phase 2b developer clarification)
-- **Decision**: `usp_LoadDimCustomer`, `usp_LoadDimRegion`, and `usp_LoadFactSales` are created in `dbo`, not schema-qualified to the dimensional layer they load (`dim`/`fact`).
-- **Context**: Every table and view in the repo is schema-qualified to its layer (`stg`/`dim`/`fact`/`ctl`/`rpt`), but the three load procedures break that pattern by living in `dbo`. Bootstrap analysis flagged this as a possible naming-convention drift.
-- **Alternatives considered**: Schema-qualifying procedures to match their target layer (e.g. `dim.usp_LoadDimCustomer`) was considered, since it would make procedure ownership visually consistent with table/view ownership.
-- **Consequences**: `dbo` remains the home for all load orchestration code regardless of which layer(s) it touches (some procedures, like `usp_LoadFactSales`, span multiple layers and would not cleanly schema-qualify to a single one anyway). New load procedures should also be created in `dbo`.
+- **Date**: 2026-09-30
+- **Status**: Accepted (observed convention; drift flagged)
+
+### Decision
+Tables and views are named and owned by warehouse layer via SQL Server schema: `ctl` (load-run
+control), `stg` (staging), `dim` (dimensions), `fact` (facts), `rpt` (reporting/mart views). Stored
+procedures do not follow this — all three (`usp_LoadDimCustomer`, `usp_LoadDimRegion`,
+`usp_LoadFactSales`) are created under the default `dbo` schema.
+
+### Context
+Every table and view file under `Tables/` and `Views/` uses a layer-prefixed schema
+(`Tables/stg.StgSalesOrder.sql`, `Tables/dim.DimCustomer.sql`, `Tables/fact.FactSales.sql`,
+`Views/rpt.vwFinanceExtract.sql`, etc.) with no exception. All three files under
+`StoredProcedures/` instead declare `CREATE PROCEDURE dbo.usp_Load...`. No document in the repo
+records whether `dbo` for procedures is intentional or a naming-convention gap; this was raised in
+`/bootstrap` Phase 2b and the developer chose not to resolve it at bootstrap time (see
+`TECH_DEBT.md` DEBT-012).
+
+### Consequences
+- Reasoning about "what owns this object" requires checking the object type, not just applying the
+  schema convention uniformly.
+- A new load procedure can be added to `dbo` (following the only precedent that exists) or to a
+  layer-aligned schema (following the tables/views convention) — both are locally consistent with
+  *something*, which makes this an easy inconsistency to propagate further.
+
+### Review notes
+Open: confirm with the team whether `dbo` for procedures is the intended convention or should be
+migrated to a layer-aligned schema (e.g. `stg.usp_Load...` or a dedicated `etl` schema).
 
 ---
 
-## ADR-002: DimCustomer uses SCD Type 2
+## ADR-002: Reporting layer is views-only; no physical mart tables
 
-- **Date**: 2026-09-22
-- **Status**: Confirmed intended, implementation incomplete (via `/bootstrap` Phase 2b developer clarification)
-- **Decision**: `dim.DimCustomer` is designed as a Slowly Changing Dimension Type 2 — it declares `EffectiveFrom`, `EffectiveTo`, and `IsCurrent` to preserve customer attribute history over time.
-- **Context**: `usp_LoadDimCustomer` currently only has a `WHEN NOT MATCHED THEN INSERT` branch — there is no `WHEN MATCHED` branch to close out a changed row (`EffectiveTo`, `IsCurrent = 0`) and insert a new version. A customer whose `SegmentName` or `RegionKey` changes today is never updated. The developer confirmed SCD2 is still the intended target, not an accidental/vestigial schema — see `TECH_DEBT.md > DEBT-006`.
-- **Alternatives considered**: Treating `DimCustomer` as SCD Type 1 (overwrite-in-place, drop the versioning columns) was considered and rejected — attribute history is a requirement.
-- **Consequences**: The versioning/update branch in `usp_LoadDimCustomer` is open tech debt (DEBT-006), not a design to reverse. `usp_LoadFactSales` already correctly joins on `IsCurrent = 1`, anticipating this design once implemented.
+- **Date**: 2026-09-30
+- **Status**: Accepted (observed structure)
+
+### Decision
+The "mart" layer is implemented entirely as `rpt.*` views selecting directly from `fact`/`dim`
+tables. There are no physical mart or aggregate tables anywhere in the schema.
+
+### Context
+`Views/rpt.vwExecutiveSummary.sql`, `Views/rpt.vwFinanceExtract.sql`, and
+`Views/rpt.vwOrderDetail.sql` are the only reporting-layer objects in the repo. No `mart.*` or
+`dw.*` table exists under `Tables/`. Each view queries `fact.FactSales` joined to the relevant
+dimension tables live, with no intermediate materialization or pre-aggregation.
+
+### Consequences
+- A new reporting requirement should land as a new or extended `rpt.*` view by default; adding a
+  physical mart table is a deliberate escalation, not the existing pattern.
+- Query cost for reporting is paid at read time on every view execution — there is no
+  materialization to amortize repeated reads. At the current object count (one fact, four
+  dimensions) this is not evidenced as a problem, but it is worth re-checking if the warehouse
+  grows.
+
+### Review notes
+None open. Re-evaluate if a reporting view's query cost becomes a measured problem.
 
 ---
 
-## ADR-003: ctl.LoadRun reserved for incremental loading
+## ADR-003: Fact/dimension relationships are convention-only; no FOREIGN KEY constraints
 
-- **Date**: 2026-09-22
-- **Status**: Confirmed intended, not yet wired in (via `/bootstrap` Phase 2b developer clarification)
-- **Decision**: `ctl.LoadRun` (`LoadRunId`, `StartedAt`, `Watermark`) exists to support future batch/watermark-driven incremental loading of the warehouse.
-- **Context**: No current load procedure reads or writes `ctl.LoadRun`. `fact.FactSales.LoadRunId` is instead populated directly from `stg.StgSalesOrder.BatchId`, an independent value with no evidenced relationship to `ctl.LoadRun.LoadRunId`. Every load currently reprocesses the entire staging table unconditionally.
-- **Alternatives considered**: Removing `ctl.LoadRun` as dead schema was considered and rejected — the developer confirmed it is intentionally reserved for a future incremental-load implementation.
-- **Consequences**: `ctl.LoadRun` must not be repurposed or dropped. When incremental/watermark-driven loading is implemented (tracked as `TECH_DEBT.md > DEBT-009`), procedures should insert a `LoadRunId`/`StartedAt` row and scope the staging read by `Watermark`.
+- **Date**: 2026-09-30
+- **Status**: Accepted (observed gap, not a deliberate trade-off recorded anywhere)
+
+### Decision
+Referential integrity between `fact.FactSales` and its dimensions (`dim.DimCustomer`,
+`dim.DimProduct`, `dim.DimDate`), and between `dim.DimCustomer` and `dim.DimRegion`, is expressed
+only through column naming (`CustomerKey`, `ProductKey`, `OrderDateKey`, `RegionKey`) — no
+`FOREIGN KEY` constraint exists anywhere in the schema.
+
+### Context
+Every file under `Tables/` was read in full; none contains the `FOREIGN KEY` keyword. There is also
+no `UNIQUE` constraint backing `dim.DimCustomer.CustomerId` or `dim.DimProduct.ProductId` (the
+natural/business keys), so `usp_LoadDimCustomer`'s `MERGE ... ON target.CustomerId =
+source.CustomerId` relies entirely on application logic — not the engine — to prevent duplicate
+business-key rows (see `TECH_DEBT.md` DEBT-010).
+
+### Consequences
+- The engine cannot reject an orphaned fact row (a `CustomerKey`/`ProductKey`/`OrderDateKey` with no
+  matching dimension row) or a duplicate business key in a dimension — both are possible today.
+- Anyone adding a new fact or dimension should not assume FK-backed integrity checks exist; join
+  correctness must be verified by inspection or by the future `docs/warehouse-map.md`.
+
+### Review notes
+Open: decide whether to add `FOREIGN KEY`/`UNIQUE` constraints (tracked as `TECH_DEBT.md` DEBT-010)
+or to formally accept convention-only integrity as the warehouse's design.
