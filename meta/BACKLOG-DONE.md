@@ -12914,3 +12914,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-265** — CLOSED by decision **2026-09-29** (WSD-105). None of the four workflows has a field request. Reopen one
   workflow when someone asks for it.
+
+- **B-324** — CLOSED **2026-09-29**. The stack installer asks its clone's remote whether the clone is out of date and
+  stops (exit 4) on a newer release tag or a branch behind its upstream; `-AllowOutdated` overrides it, and an unchecked copy installs with a NOTE.

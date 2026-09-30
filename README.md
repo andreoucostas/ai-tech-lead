@@ -104,6 +104,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1 C:\path\to\y
 > newest tag and needs no editing between releases. Clone `master` on purpose only —
 > when you want unreleased work and can live with the stamp being wrong.
 
+Before it changes anything, the installer asks the clone's remote whether the clone is out of date. If
+a newer release tag exists, or your branch is behind its upstream, it stops and prints the `git`
+command that updates the clone; pass `-AllowOutdated` to install an older copy on purpose.
+
 Installing a mixed .NET + Angular repo, forcing the monorepo dist explicitly:
 
 ```powershell

@@ -1,5 +1,8 @@
 ﻿# Dependency-free PowerShell test harness for root maintainer checks.
 $script:PsExe = $null
+# The stack installer asks its framework clone's remote whether the clone is out of date (B-324). Runs
+# from this checkout must not read the network or depend on its release state; the B-324 cases clear it.
+$env:ATL_SOURCE_CHECK = 'off'
 
 function Get-PsExe {
     if ($script:PsExe) { return $script:PsExe }

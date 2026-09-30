@@ -271,6 +271,41 @@ function Invoke-RootInstaller([string]$Target, [string]$Stack = '', [switch]$Dry
     return [pscustomobject]@{ Exit = [int]$LASTEXITCODE; Output = ($out -join "`n") }
 }
 
+function Invoke-B324Git([string]$Repository, [string[]]$Arguments) {
+    $out = @(& git -C $Repository -c user.name=atl-test -c user.email=atl-test@invalid.local -c core.autocrlf=false @Arguments 2>&1 | ForEach-Object { $_.ToString() })
+    Assert ($LASTEXITCODE -eq 0) "fixture git $($Arguments -join ' ') failed: $($out -join ' ')"
+}
+
+# B-324: a framework clone pushed to a local bare repository, with this checkout's root dispatcher, dotnet
+# dist and installer source where a real clone has them, and a .NET target. Nothing in it reads the network.
+function New-B324Clone([string]$Parent) {
+    $fw = [pscustomobject]@{ Clone = (Join-Path $Parent 'fw'); Remote = (Join-Path $Parent 'remote.git'); Target = (Join-Path $Parent 'target'); Version = $null }
+    [void][IO.Directory]::CreateDirectory((Join-Path $fw.Clone 'dist'))
+    [void][IO.Directory]::CreateDirectory($fw.Target)
+    Copy-Item -LiteralPath (Join-Path $repo 'dist/dotnet') -Destination (Join-Path $fw.Clone 'dist/dotnet') -Recurse
+    Copy-Item -LiteralPath (Join-Path $repo 'install.ps1') -Destination (Join-Path $fw.Clone 'install.ps1')
+    [void][IO.Directory]::CreateDirectory((Join-Path $fw.Clone 'src/core/scripts'))
+    Copy-Item -LiteralPath (Join-Path $repo 'src/core/scripts/install.ps1') -Destination (Join-Path $fw.Clone 'src/core/scripts/install.ps1')
+    [IO.File]::WriteAllText((Join-Path $fw.Target 'App.csproj'), '<Project Sdk="Microsoft.NET.Sdk" />')
+    $fw.Version = [string](Get-Content -Raw -LiteralPath (Join-Path $fw.Clone 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version
+    & git init -q --bare $fw.Remote 2>&1 | Out-Null
+    Assert ($LASTEXITCODE -eq 0) 'could not create the fixture remote'
+    # -f: the real repository tracks framework files the dist's own ignore rules would hide.
+    foreach ($step in @(@('init', '-q', '-b', 'master'), @('add', '-A', '-f'), @('commit', '-q', '-m', 'release'), @('tag', "v$($fw.Version)"),
+            @('remote', 'add', 'origin', $fw.Remote), @('push', '-q', '-u', 'origin', 'master', "v$($fw.Version)"))) {
+        Invoke-B324Git $fw.Clone $step
+    }
+    return $fw
+}
+
+function Invoke-B324Installer([string]$Clone, [string]$Target, [switch]$DryRun, [switch]$AllowOutdated) {
+    $arguments = @('-NoProfile', '-File', (Join-Path $Clone 'install.ps1'), '-Stack', 'dotnet')
+    if ($DryRun) { $arguments += '-WhatIf' }
+    if ($AllowOutdated) { $arguments += '-AllowOutdated' }
+    $out = @(& (Get-PsExe) @arguments $Target 2>&1 | ForEach-Object { $_.ToString() })
+    return [pscustomobject]@{ Exit = [int]$LASTEXITCODE; Output = ($out -join "`n") }
+}
+
 Reset-Tests
 
     It 'warehouse-only auto-detection completes greenfield install without a solution' {
@@ -470,7 +505,7 @@ Reset-Tests
                 $root = Join-Path $parent $name
                 [void][IO.Directory]::CreateDirectory((Join-Path $root 'dist/dotnet/scripts'))
                 Copy-Item -LiteralPath (Join-Path $repo 'install.ps1') -Destination (Join-Path $root 'install.ps1')
-                $stub = "param([string]`$Target, [switch]`$WhatIf, [switch]`$AllowDowngrade, [switch]`$AllowDirtyTree)`nWrite-Output 'DELEGATE: $name'`nWrite-Output ('CWD: ' + (Get-Location).ProviderPath)`nexit 0`n"
+                $stub = "param([string]`$Target, [switch]`$WhatIf, [switch]`$AllowDowngrade, [switch]`$AllowDirtyTree, [switch]`$AllowOutdated)`nWrite-Output 'DELEGATE: $name'`nWrite-Output ('CWD: ' + (Get-Location).ProviderPath)`nexit 0`n"
                 [IO.File]::WriteAllText((Join-Path $root 'dist/dotnet/scripts/install.ps1'), $stub, [Text.UTF8Encoding]::new($true))
             }
             foreach ($clone in @('fw[s]', 'fw`[t]')) {
@@ -495,6 +530,101 @@ Reset-Tests
             $exit = $LASTEXITCODE
             Assert ($exit -eq 0 -and $out.Contains('DELEGATE: fws')) "a caller whose folder was deleted lost the install (exit $exit): $out"
         } finally { Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    # A clone left 68 commits behind master installed an old release, and nothing said so until after
+    # /bootstrap had run on it.
+    It 'B-324 an install from a framework clone behind its remote stops until the clone is updated or -AllowOutdated is passed' {
+        $parent = Join-Path ([IO.Path]::GetTempPath()) ('b324-' + [guid]::NewGuid().ToString('N'))
+        $savedCheck = $env:ATL_SOURCE_CHECK
+        try {
+            $env:ATL_SOURCE_CHECK = $null
+            $fw = New-B324Clone $parent
+            $parts = $fw.Version.Split('.')
+            $newer = "$($parts[0]).$($parts[1]).$([int]$parts[2] + 1)"
+            # A partial clone taken now fetches missing objects on demand. Counting to a tip it never
+            # fetched made git fetch that tip: slowly from a slow remote, and past the time limit.
+            $partial = Join-Path $parent 'partial'
+            Invoke-B324Git $fw.Remote @('config', 'uploadpack.allowFilter', 'true')
+            Invoke-B324Git $parent @('clone', '-q', '--no-local', '--filter=blob:none', $fw.Remote, $partial)
+            # The remote gains a release commit and tag that this clone then drops again.
+            foreach ($step in @(@('commit', '-q', '--allow-empty', '-m', 'next release'), @('tag', "v$newer"),
+                    @('push', '-q', 'origin', 'master', "v$newer"), @('reset', '-q', '--hard', 'HEAD~1'), @('tag', '-d', "v$newer"))) {
+                Invoke-B324Git $fw.Clone $step
+            }
+            $before = Get-TargetFingerprint $fw.Target
+            $refused = Invoke-B324Installer $fw.Clone $fw.Target
+            Assert ($refused.Exit -eq 4) "an install from a clone behind its remote was not refused, exit $($refused.Exit): $($refused.Output)"
+            Assert ($refused.Output -match ('origin has release v' + [regex]::Escape($newer) + ' and this copy is v' + [regex]::Escape($fw.Version))) "the refusal does not name the newer release: $($refused.Output)"
+            Assert ($refused.Output -match '1 commit behind origin/master' -and $refused.Output -match ' pull\b' -and $refused.Output -match '-AllowOutdated') "the refusal does not say how far behind, how to update, or how to override: $($refused.Output)"
+            Assert ((Get-TargetFingerprint $fw.Target) -ceq $before) 'the refusal changed target bytes'
+            $override = Invoke-B324Installer $fw.Clone $fw.Target -DryRun -AllowOutdated
+            Assert ($override.Exit -eq 0 -and $override.Output -match 'override: -AllowOutdated accepted: origin has release') "the root dispatcher did not forward -AllowOutdated, exit $($override.Exit): $($override.Output)"
+            $objects = @(Get-ChildItem -LiteralPath (Join-Path $partial '.git/objects') -Recurse -File -Force | ForEach-Object { $_.FullName } | Sort-Object) -join "`n"
+            $unfetched = Invoke-B324Installer $partial $fw.Target -DryRun
+            Assert ($unfetched.Exit -eq 4 -and $unfetched.Output -match 'origin/master has commits this checkout has not fetched') "a partial clone whose upstream moved on was not refused as unfetched, exit $($unfetched.Exit): $($unfetched.Output)"
+            Assert ((@(Get-ChildItem -LiteralPath (Join-Path $partial '.git/objects') -Recurse -File -Force | ForEach-Object { $_.FullName } | Sort-Object) -join "`n") -ceq $objects) 'the check fetched objects into the partial clone'
+            # The README's route: a release-tag checkout, told which newer tag to check out.
+            Invoke-B324Git $fw.Clone @('checkout', '-q', "v$($fw.Version)")
+            $detached = Invoke-B324Installer $fw.Clone $fw.Target -DryRun
+            Assert ($detached.Exit -eq 4 -and $detached.Output -match ('checkout v' + [regex]::Escape($newer))) "an older release-tag checkout was not refused with the newer tag named, exit $($detached.Exit): $($detached.Output)"
+        } finally {
+            $env:ATL_SOURCE_CHECK = $savedCheck
+            Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'B-324 a current clone installs saying so; a vendored copy, an unreachable remote or a silent one is reported unchecked and does not hold the install' {
+        $parent = Join-Path ([IO.Path]::GetTempPath()) ('b324-' + [guid]::NewGuid().ToString('N'))
+        $savedCheck = $env:ATL_SOURCE_CHECK
+        $savedSsh = $env:GIT_SSH_COMMAND
+        try {
+            $env:ATL_SOURCE_CHECK = $null
+            $fw = New-B324Clone $parent
+            $current = Invoke-B324Installer $fw.Clone $fw.Target -DryRun
+            Assert ($current.Exit -eq 0 -and $current.Output -match ('source: checked against origin: no release newer than v' + [regex]::Escape($fw.Version) + ', not behind origin/master')) "a current clone was not reported current, exit $($current.Exit): $($current.Output)"
+            # A clone that took the remote's tip by URL, which leaves its tracking ref behind, is current too.
+            $other = Join-Path $parent 'other'
+            Invoke-B324Git $parent @('clone', '-q', $fw.Remote, $other)
+            foreach ($step in @(@('commit', '-q', '--allow-empty', '-m', 'unreleased'), @('push', '-q', 'origin', 'master'))) { Invoke-B324Git $other $step }
+            foreach ($step in @(@('fetch', '-q', $fw.Remote, 'master'), @('merge', '-q', '--ff-only', 'FETCH_HEAD'))) { Invoke-B324Git $fw.Clone $step }
+            $byUrl = Invoke-B324Installer $fw.Clone $fw.Target -DryRun
+            Assert ($byUrl.Exit -eq 0 -and $byUrl.Output -match 'source: checked against origin: .*not behind origin/master') "a clone at the remote's tip with a stale tracking ref was not reported current, exit $($byUrl.Exit): $($byUrl.Output)"
+            # A copy inside another repository is not that repository's clone: its tags must not refuse the
+            # copy, nor its update advice move the host. One copy is committed below the host's root; the
+            # other is committed where a clone keeps its dist, with the root dispatcher beside it.
+            $consumer = Join-Path $parent 'consumer'
+            foreach ($root in @((Join-Path $consumer 'vendor/fw'), $consumer)) {
+                [void][IO.Directory]::CreateDirectory((Join-Path $root 'dist'))
+                Copy-Item -LiteralPath (Join-Path $fw.Clone 'dist/dotnet') -Destination (Join-Path $root 'dist/dotnet') -Recurse
+                Copy-Item -LiteralPath (Join-Path $fw.Clone 'install.ps1') -Destination (Join-Path $root 'install.ps1')
+            }
+            & git init -q --bare (Join-Path $parent 'consumer.git') 2>&1 | Out-Null
+            foreach ($step in @(@('init', '-q', '-b', 'main'), @('add', '-A', '-f'), @('commit', '-q', '-m', 'vendored'), @('tag', 'v99.0.0'),
+                    @('remote', 'add', 'origin', (Join-Path $parent 'consumer.git')), @('push', '-q', '-u', 'origin', 'main', 'v99.0.0'))) {
+                Invoke-B324Git $consumer $step
+            }
+            foreach ($copy in @((Join-Path $consumer 'vendor/fw'), $consumer)) {
+                $vendored = Invoke-B324Installer $copy $fw.Target -DryRun
+                Assert ($vendored.Exit -eq 0 -and $vendored.Output -match 'NOTE: could not check that this framework copy is up to date: this copy is not tracked at dist/dotnet/ of a Git clone of the framework') "a copy inside another repository ($copy) was judged by that repository, exit $($vendored.Exit): $($vendored.Output)"
+            }
+            Invoke-B324Git $fw.Clone @('remote', 'set-url', 'origin', (Join-Path $parent 'missing.git'))
+            $unreachable = Invoke-B324Installer $fw.Clone $fw.Target -DryRun
+            Assert ($unreachable.Exit -eq 0 -and $unreachable.Output -match 'NOTE: could not check that this framework copy is up to date: git ls-remote origin failed') "an unreachable remote was not reported unchecked, exit $($unreachable.Exit): $($unreachable.Output)"
+            Assert ($unreachable.Output -notmatch 'source: checked') "an unreachable remote was reported as checked: $($unreachable.Output)"
+            # A transport that never answers, as a black-holed network or a waiting prompt would.
+            Invoke-B324Git $fw.Clone @('remote', 'set-url', 'origin', 'ssh://atl-b324.invalid/fw.git')
+            $env:GIT_SSH_COMMAND = "sh -c 'sleep 60'"
+            $clock = [Diagnostics.Stopwatch]::StartNew()
+            $silent = Invoke-B324Installer $fw.Clone $fw.Target -DryRun
+            $clock.Stop()
+            Assert ($silent.Exit -eq 0 -and $silent.Output -match 'NOTE: could not check .*origin did not finish within 10 seconds') "a silent remote was not reported unchecked, exit $($silent.Exit): $($silent.Output)"
+            Assert ($clock.Elapsed.TotalSeconds -lt 45) "a silent remote held the install for $([int]$clock.Elapsed.TotalSeconds) s"
+        } finally {
+            $env:ATL_SOURCE_CHECK = $savedCheck
+            $env:GIT_SSH_COMMAND = $savedSsh
+            Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 if (-not $SkipRedTest) {
     It 'a PowerShell mutation that removes warehouse auto-routing makes this suite red and restores bytes' {

@@ -5,6 +5,18 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.91.0 — Unreleased
+
+- **The installer stops when the framework clone you run it from is out of date.** Before it changes
+  anything, it asks the clone's remote whether a newer release tag exists and, when your checkout
+  tracks a branch, whether that branch has moved ahead. If so it exits with code 4, names the newer
+  release or how far behind you are, and gives the `git` command that updates the clone. Add
+  `-AllowOutdated` to install the older copy on purpose; a deliberate downgrade to an older release
+  now needs it as well as `-AllowDowngrade`. The question is one `git ls-remote`: it downloads
+  nothing, turns off Git's prompts, and the whole check gives up after 10 seconds. When the check
+  cannot be made (offline, no Git, a copy that is not part of a clone) the install goes ahead with a
+  NOTE saying so.
+
 ## 0.90.0 — 2026-09-29
 
 - **`/rebootstrap` re-analyses only what changed since the last run.** `/bootstrap` now ends by

@@ -1,5 +1,11 @@
 ﻿# Install the AI Tech Lead Framework into a target repository.
-# Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] C:\path\to\target-repo
+# Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] [-AllowOutdated] C:\path\to\target-repo
+#
+# Before it changes anything, it asks the remote of the framework clone it runs from whether that
+# clone is out of date: a newer vX.Y.Z release tag than this copy's version, or an upstream branch this
+# checkout is behind, stops the install (exit 4) unless -AllowOutdated is passed. A copy that cannot be
+# checked (no Git, not a tracked clone, no answer within 10 seconds) installs with a NOTE saying so;
+# ATL_SOURCE_CHECK=off skips the check and says that instead.
 #
 # Copies the template's framework files into the target, EXCLUDING the .git directory, the
 # .template-repo marker (which would disable the consumer's CI guardrail), the template repo's own
@@ -21,7 +27,8 @@ param(
     [Parameter(Mandatory = $true)][string]$Target,
     [switch]$AllowDirtyTree,
     [switch]$WhatIf,
-    [switch]$AllowDowngrade
+    [switch]$AllowDowngrade,
+    [switch]$AllowOutdated
 )
 $ErrorActionPreference = 'Stop'
 $followUpPowerShell = if ($PSVersionTable.PSVersion.Major -ge 7) {
@@ -183,6 +190,133 @@ function Compare-ReleaseVersion {
     return 0
 }
 
+# One git command in the framework clone, bounded by the check's shared deadline so that no remote can
+# hold the install: stdin is closed, Git's own prompts are off (terminal, Git Credential Manager, askpass),
+# and at the deadline the process tree is killed, prompt or not. $null means git could not be run.
+function Invoke-SourceGit {
+    param([Parameter(Mandatory = $true)][string]$GitPath, [Parameter(Mandatory = $true)][string]$Directory,
+        [Parameter(Mandatory = $true)][datetime]$Deadline, [Parameter(Mandatory = $true)][string[]]$Arguments)
+    try {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $GitPath
+        # Windows command-line quoting: a quote is escaped, and backslashes before a quote or at the end (a
+        # drive-root clone, as a subst drive gives) are doubled, so no argument can split or run into another.
+        $psi.Arguments = ((@('-C', $Directory) + $Arguments | ForEach-Object { '"' + (($_ -replace '(\\*)"', '$1$1\"') -replace '(\\+)$', '$1$1') + '"' }) -join ' ')
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+        $psi.RedirectStandardInput = $true
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
+        $psi.EnvironmentVariables['GIT_TERMINAL_PROMPT'] = '0'
+        $psi.EnvironmentVariables['GCM_INTERACTIVE'] = 'never'
+        # Empty, not absent: git then also skips core.askPass and SSH_ASKPASS.
+        $psi.EnvironmentVariables['GIT_ASKPASS'] = ''
+        $psi.EnvironmentVariables['SSH_ASKPASS_REQUIRE'] = 'never'
+        $proc = [System.Diagnostics.Process]::Start($psi)
+        $proc.StandardInput.Close()
+        $stdout = $proc.StandardOutput.ReadToEndAsync()
+        $stderr = $proc.StandardError.ReadToEndAsync()
+    } catch { return $null }
+    # The stream reads share the deadline: a child git leaves behind can hold the pipes after git exits.
+    try {
+        $done = $proc.WaitForExit([int][Math]::Max(0, ($Deadline - [DateTime]::UtcNow).TotalMilliseconds)) -and
+            [System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]@($stdout, $stderr),
+                [int][Math]::Max(0, ($Deadline - [DateTime]::UtcNow).TotalMilliseconds))
+    } catch { $done = $false }
+    if (-not $done) {
+        $ErrorActionPreference = 'Continue'
+        try { & taskkill.exe /T /F /PID $proc.Id *> $null } catch { }
+        try { if (-not $proc.HasExited) { $proc.Kill() } } catch { }
+        return [pscustomobject]@{ TimedOut = $true; ExitCode = $null; Output = '' }
+    }
+    return [pscustomobject]@{ TimedOut = $false; ExitCode = $proc.ExitCode; Output = $stdout.Result.Trim() }
+}
+
+# Is the framework clone this copy sits in out of date? A clone left behind installs an old release,
+# and nothing later says so. The remote is read with one ls-remote, no object is looked up that the
+# clone may lack (in a partial clone that fetches it), and the whole check has 10 seconds.
+# State is current, outdated, unchecked or skipped; only current is reported as checked.
+function Get-SourceFreshness {
+    $unchecked = { param([string]$Why) [pscustomobject]@{ State = 'unchecked'; Detail = $Why; Update = $null } }
+    if ($env:ATL_SOURCE_CHECK -eq 'off') { return [pscustomobject]@{ State = 'skipped'; Detail = 'not checked (ATL_SOURCE_CHECK=off)'; Update = $null } }
+    foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE')) {
+        if (-not [string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable($name, 'Process'))) { return & $unchecked "Git routing variable $name is set" }
+    }
+    $git = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($git.Count -eq 0) { return & $unchecked 'Git was not found' }
+    $gitPath = [string]$git[0].Source
+    $deadline = [DateTime]::UtcNow.AddSeconds(10)
+    # Only a clone of the framework itself, which tracks this copy at dist/<stack>/ beside the root
+    # dispatcher and the installer's source: a copy inside another repository would otherwise be judged
+    # by that repository's tags and branches, and told to update that repository.
+    $tracked = Invoke-SourceGit -GitPath $gitPath -Directory $src -Deadline $deadline -Arguments @('ls-files', '--full-name', '--error-unmatch', '--',
+        'scripts/install.ps1', '../../install.ps1', '../../src/core/scripts/install.ps1')
+    $top = Invoke-SourceGit -GitPath $gitPath -Directory $src -Deadline $deadline -Arguments @('rev-parse', '--show-toplevel')
+    if (-not $tracked -or $tracked.ExitCode -ne 0 -or @($tracked.Output -split "`n")[0] -notmatch '^dist/[^/]+/scripts/install\.ps1$' -or
+        -not $top -or $top.ExitCode -ne 0 -or -not $top.Output) {
+        return & $unchecked "this copy is not tracked at dist/$(Split-Path -Leaf $src)/ of a Git clone of the framework"
+    }
+    # The clone as Git resolved it: a copy reached through a link or junction belongs to the clone it points into.
+    $clone = [IO.Path]::GetFullPath($top.Output)
+    $remote = 'origin'; $branch = $null
+    $head = Invoke-SourceGit -GitPath $gitPath -Directory $clone -Deadline $deadline -Arguments @('symbolic-ref', '--quiet', 'HEAD')
+    if ($head -and $head.ExitCode -eq 0 -and $head.Output -cmatch '^refs/heads/(.+)$') {
+        $local = $Matches[1]
+        $upstreamRemote = Invoke-SourceGit -GitPath $gitPath -Directory $clone -Deadline $deadline -Arguments @('config', '--get', "branch.$local.remote")
+        $upstreamBranch = Invoke-SourceGit -GitPath $gitPath -Directory $clone -Deadline $deadline -Arguments @('config', '--get', "branch.$local.merge")
+        # A remote name only: a URL configured here could carry a credential into the messages below.
+        if ($upstreamRemote -and $upstreamRemote.ExitCode -eq 0 -and $upstreamRemote.Output -match '^[\w.-]+$' -and $upstreamRemote.Output -ne '.' -and
+            $upstreamBranch -and $upstreamBranch.ExitCode -eq 0 -and $upstreamBranch.Output) {
+            $remote = $upstreamRemote.Output; $branch = $upstreamBranch.Output
+        }
+    }
+    $query = @('ls-remote', '--refs', $remote, 'refs/tags/v*')
+    if ($branch) { $query += $branch }
+    $listing = Invoke-SourceGit -GitPath $gitPath -Directory $clone -Deadline $deadline -Arguments $query
+    if (-not $listing) { return & $unchecked 'Git could not be run' }
+    if ($listing.TimedOut) { return & $unchecked "git ls-remote $remote did not finish within 10 seconds" }
+    if ($listing.ExitCode -ne 0) { return & $unchecked "git ls-remote $remote failed (exit $($listing.ExitCode))" }
+    $tips = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    foreach ($line in ($listing.Output -split "`n")) {
+        $fields = $line.Trim() -split "`t"
+        if ($fields.Count -eq 2) { $tips[$fields[1]] = $fields[0] }
+    }
+    $newest = $null
+    foreach ($ref in $tips.Keys) {
+        if ($ref -cmatch '^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$') {
+            $release = $Matches[1]
+            if (-not $newest -or (Compare-ReleaseVersion -Left $release -Right $newest) -gt 0) { $newest = $release }
+        }
+    }
+    $stale = New-Object System.Collections.Generic.List[string]
+    $fresh = New-Object System.Collections.Generic.List[string]
+    $unknown = $null
+    $update = "git -C `"$clone`" fetch --tags $remote, then git -C `"$clone`" checkout v$newest"
+    if ($newest -and (Compare-ReleaseVersion -Left $newest -Right $incomingVersion) -gt 0) { $stale.Add("$remote has release v$newest and this copy is v$incomingVersion") }
+    elseif ($newest) { $fresh.Add("no release newer than v$incomingVersion") }
+    if ($branch -and $tips.ContainsKey($branch)) {
+        $tracking = "$remote/$($branch -replace '^refs/heads/', '')"
+        # The tip is looked up only when it is HEAD or the tip this clone last fetched: any other tip is new
+        # to the clone, and looking it up would make a partial clone fetch it.
+        $headTip = Invoke-SourceGit -GitPath $gitPath -Directory $clone -Deadline $deadline -Arguments @('rev-parse', '--verify', '--quiet', 'HEAD')
+        $fetched = Invoke-SourceGit -GitPath $gitPath -Directory $clone -Deadline $deadline -Arguments @('rev-parse', '--verify', '--quiet', '@{upstream}')
+        if (-not $headTip -or $headTip.TimedOut -or -not $fetched -or $fetched.TimedOut) { $unknown = "could not tell whether this checkout is behind $tracking" }
+        elseif ($headTip.ExitCode -eq 0 -and $headTip.Output -eq $tips[$branch]) { $fresh.Add("not behind $tracking") }
+        elseif ($fetched.ExitCode -ne 0 -or $fetched.Output -ne $tips[$branch]) {
+            $stale.Add("$tracking has commits this checkout has not fetched"); $update = "git -C `"$clone`" pull"
+        } else {
+            $count = Invoke-SourceGit -GitPath $gitPath -Directory $clone -Deadline $deadline -Arguments @('rev-list', '--count', "HEAD..$($tips[$branch])")
+            if (-not $count -or $count.ExitCode -ne 0 -or $count.Output -notmatch '^[0-9]+$') { $unknown = "could not tell whether this checkout is behind $tracking" }
+            elseif ([int]$count.Output -eq 0) { $fresh.Add("not behind $tracking") }
+            else { $stale.Add("this checkout is $($count.Output) commit$(if ([int]$count.Output -ne 1) { 's' }) behind $tracking"); $update = "git -C `"$clone`" pull" }
+        }
+    }
+    if ($stale.Count -gt 0) { return [pscustomobject]@{ State = 'outdated'; Detail = ($stale -join '; '); Update = $update } }
+    if ($unknown) { return & $unchecked $unknown }
+    if ($fresh.Count -eq 0) { return & $unchecked "$remote has no vX.Y.Z release tag, and this checkout tracks none of its branches" }
+    return [pscustomobject]@{ State = 'current'; Detail = "checked against ${remote}: $($fresh -join ', ')"; Update = $null }
+}
 # Template-repo meta files that must never land in (or overwrite their namesakes in) a consumer repo.
 $metaFiles = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes')
 # Composition reads this declarative set from the installer. It is intentionally explicit so
@@ -248,6 +382,13 @@ try {
 } catch {
     [Console]::Error.WriteLine("ERROR: Cannot validate incoming framework version: $($_.Exception.Message)")
     exit 3
+}
+# Before the downgrade check: an outdated clone is the likelier cause of a downgrade, and updating it
+# answers both.
+$sourceFreshness = Get-SourceFreshness
+if ($sourceFreshness.State -eq 'outdated' -and -not $AllowOutdated) {
+    [Console]::Error.WriteLine("ERROR: Refusing to install from an out-of-date framework copy: $($sourceFreshness.Detail). Update it ($($sourceFreshness.Update)), then re-run; pass -AllowOutdated only to install this older copy on purpose.")
+    exit 4
 }
 if ($updateMode) {
     try {
@@ -950,6 +1091,9 @@ else                { Write-Output "  mode: greenfield" }
 if ($updateMode -and $versionComparison -gt 0 -and $AllowDowngrade) {
     Write-Output "  override: -AllowDowngrade accepted for downgrade $installedVersion -> $incomingVersion."
 }
+if ($sourceFreshness.State -in @('current', 'skipped')) { Write-Output "  source: $($sourceFreshness.Detail)." }
+elseif ($sourceFreshness.State -eq 'outdated') { Write-Output "  override: -AllowOutdated accepted: $($sourceFreshness.Detail)." }
+else { Write-Output "  NOTE: could not check that this framework copy is up to date: $($sourceFreshness.Detail). Confirm it is the newest release before you rely on this install." }
 foreach ($message in $reconciliationMessages) { Write-Output "  $message" }
 
 if ($updateMode) {
