@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.91.0 — Unreleased
+## 0.91.0 — 2026-09-30
 
 - **The installer stops when the framework clone you run it from is out of date.** Before it changes
   anything, it asks the clone's remote whether a newer release tag exists and, when your checkout
