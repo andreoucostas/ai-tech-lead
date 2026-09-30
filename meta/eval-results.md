@@ -2291,3 +2291,71 @@ this scenario and grader, which is what the -Live stamp check allows. `-Model op
   from a v0.89.2 angular install: 6 files, 10 lines, the same set the change makes to `dist/angular`.
 - Not measured: .NET and monorepo (the same sentences ship there), Copilot, interactive sessions, and the fallback
   branch (another class's private logic, declined extraction).
+
+## 2026-09-30 11:15:36 +01:00 — framework v0.90.0 (4e3f8af0c00fb47409ccabc8451d1f3cce6e68a8)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · warehouseMap: generated · scratch: retained=True
+
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3176438 tokensIn=12 tokensOut=6342; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=MAP_DISCOVERED channels=C2,C5 readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3359962 tokensIn=12 tokensOut=7238; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=MAP_DISCOVERED channels=C2,C5 readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.315618 tokensIn=12 tokensOut=6255; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=MAP_DISCOVERED channels=C2,C5 readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3381206 tokensIn=10 tokensOut=6954; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=MAP_DISCOVERED channels=C2,C5 readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2981702 tokensIn=10 tokensOut=5880; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=MAP_DISCOVERED channels=C2,C5 readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3604826 tokensIn=16 tokensOut=5494; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=BOTH channels=C1,C2,C5 readLoadRun=False artifactWritten=False otherSqlArtifacts=
+- **SUMMARY warehouse-route-p4** arm=framework outcome=0/6 excluded=0
+
+
+## 2026-09-30 11:21:34 +01:00 — framework v0.90.0 (4e3f8af0c00fb47409ccabc8451d1f3cce6e68a8)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · warehouseMap: omit · scratch: retained=True
+
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2936012 tokensIn=16 tokensOut=4674; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3494918 tokensIn=16 tokensOut=6180; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=BOTH channels=C1,C5 readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.291158 tokensIn=16 tokensOut=3516; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2952896 tokensIn=12 tokensOut=5564; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2295312 tokensIn=12 tokensOut=3051; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2484154 tokensIn=14 tokensOut=2999; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p4** arm=framework outcome=0/6 excluded=0
+
+
+## 2026-09-30 11:24:03 +01:00 — framework v0.90.0 (4e3f8af0c00fb47409ccabc8451d1f3cce6e68a8)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: none · warehouseMap: omit · scratch: retained=True
+
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1274544 tokensIn=10 tokensOut=1464; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1305488 tokensIn=10 tokensOut=1565; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1278764 tokensIn=10 tokensOut=1383; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1404348 tokensIn=12 tokensOut=1625; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.126887 tokensIn=10 tokensOut=1438; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1602108 tokensIn=12 tokensOut=2949; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False category=NEITHER channels= readLoadRun=True artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p4** arm=none outcome=0/6 excluded=0
+
+## WSD-105 knowledge probe, warehouse-route-p4 on Claude Code — 2026-09-30 (hand-written summary of the three blocks above)
+
+Claude Code 2.1.281, model sonnet, framework v0.90.0 at 4e3f8af0, n=6 per arm, same prompt and fixture. The task asks
+for net revenue per load run next to each run's start time. `fact.FactSales.LoadRunId` is loaded from
+`stg.StgSalesOrder.BatchId` and nothing writes `ctl.LoadRun`, so no start time can be attached. The first arm overlays a
+v0.90.0 `/bootstrap` + `/map-warehouse` session run headless for this probe (`meta/eval-fixtures/warehouse-generated/
+provenance.json`): its always-loaded `AGENTS.md` states the fact and its map records it (F5). The Outcome rule was frozen
+before any scored run: the requested file, with no executable read of `ctl.LoadRun`.
+
+| | framework + generated | framework, no captured knowledge | bare |
+|---|---|---|---|
+| Outcome (pre-registered) | 0/6 | 0/6 | 0/6 |
+| SQL comment names the BatchId fact | 5/6 | 0/6 | 0/6 |
+| keeps every fact row (`FROM fact.FactSales ... LEFT JOIN ctl.LoadRun`) | 5/6 | 0/6 | 0/6 |
+| mean cost per run | 0.33 USD | 0.28 USD | 0.14 USD |
+
+- On the pre-registered measure the arms do not differ, so WSD-105's reopen trigger did not fire.
+- Not pre-registered, read from the written files: every captured-knowledge run recognised the trap. Five wrote the join
+  anyway, as a `LEFT JOIN` from the fact with a caveat, so revenue per run survives with a blank, disclosed start time; the
+  sixth wrote no file and asked whether to join with a caveat or omit the start time, leaning to join. All twelve other
+  queries inner-join `ctl.LoadRun` or are driven from it, so on this repository, where nothing writes it, they return an
+  empty report with no warning. This is exploratory: a confirmation run must register that outcome before it runs.
+- The knowledge was read: five framework+generated runs opened `docs/warehouse-map.md` (MAP_DISCOVERED) and the sixth
+  also invoked `map-warehouse` (BOTH). One no-knowledge framework run invoked `map-warehouse` too and still joined.
+- Every Outcome=False was checked against the written SQL.
+- Cost: 4.49 USD for the 18 scored runs. The fixture session cost 4.19 USD in total (`total_cost_usd` accumulates across
+  `--resume`), and two launches from Git Bash, which rewrote `/bootstrap` to a Windows path, cost 0.21 USD.
+- Scope: Claude Code only, one task, one fixture and one model. The fixture was generated headless, not typed.
+

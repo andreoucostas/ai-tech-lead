@@ -298,9 +298,13 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm none -Trials 
 # B-280: -WarehouseMap omit|enriched swaps the warehouse-route scenarios' frozen map (route scenarios only).
 # -WarehouseMap generated is the consumer journey instead of the simulation: it overlays
 # meta/eval-fixtures/warehouse-generated/files/. Regenerate that per framework version (the runner
-# refuses a stale one): install dist/dotnet into the 'warehouse' fixture and commit; in that repo a
-# person types /bootstrap, then /map-warehouse and accepts docs/warehouse-map.md; copy every path
-# `git status --porcelain` lists into files/ unedited; record version, host and model in provenance.json.
+# refuses a stale one): install dist/dotnet into the 'warehouse' fixture and commit; in that repo run
+# /bootstrap, then /map-warehouse, and accept docs/warehouse-map.md; copy every path
+# `git status --porcelain -uall` lists into files/ unedited; record version, host, model and method in
+# provenance.json. Headless works: `claude -p /bootstrap --session-id <id>` from PowerShell (Git Bash
+# rewrites a leading `/` into a Windows path), answering each pause with `claude -p <answer> --resume <id>`;
+# a resumed run's total_cost_usd is the whole session's, not that call's.
+# warehouse-route-p4 (WSD-105) runs -WarehouseMap generated, then omit, then -Arm none -WarehouseMap omit.
 # B-253 -TargetPatch <file> (framework arm only) applies a unified diff to the installed framework
 # before scenario setup, with no extra commit, so a text variant (a B-255 candidate, a knockout, a
 # probe) runs the unpatched arm's fixture path. It is refused before any spend if it does not apply,
