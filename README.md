@@ -104,6 +104,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1 C:\path\to\y
 > newest tag and needs no editing between releases. Clone `master` on purpose only —
 > when you want unreleased work and can live with the stamp being wrong.
 
+Before it changes anything, the installer asks the clone's remote whether the clone is out of date. If
+a newer release tag exists, or your branch is behind its upstream, it stops and prints the `git`
+command that updates the clone; pass `-AllowOutdated` to install an older copy on purpose.
+
 Installing a mixed .NET + Angular repo, forcing the monorepo dist explicitly:
 
 ```powershell
@@ -148,7 +152,7 @@ by hand, are in [`DEVELOPING.md`](./DEVELOPING.md).
 
 ## Status
 
-Current shipped version is **v0.90.0** across all three dists
+Current shipped version is **v0.91.0** across all three dists
 (`dist/*/.claude/framework-version.json`). The merge is complete: this repo is the single home for
 framework development, and the two legacy repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are
 archived and read-only, frozen at v0.25.5.

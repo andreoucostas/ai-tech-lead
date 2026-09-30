@@ -34,6 +34,9 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+# The runner pins the release it evaluates. The installer's clone check (B-324) would read the network
+# and could refuse this checkout, both in fixture installs and in the installs agents run from it.
+$env:ATL_SOURCE_CHECK = 'off'
 $scenarioPath = Join-Path $PSScriptRoot 'scenarios.json'
 if (-not $ResultsPath) { $ResultsPath = Join-Path $repo 'meta/eval-results.md' }
 # Built at runtime: the outgoing-commit guard refuses a blob holding the key-shaped literal. The
