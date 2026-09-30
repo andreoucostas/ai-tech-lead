@@ -2713,3 +2713,15 @@ validator now refuses it, and the surviving rule was then observed live — a fr
 Edit tool allowed was refused on a `dist/` file. Finally, the reviewer was right that a canary with a
 new import target needs its negative control re-run: without the import line the sentinel was
 `NOT-IN-CONTEXT`, which is what makes the positive attributable to the import at all.
+
+## 2026-09-30 — Score what the consumer would receive, not a proxy for it (WSD-105 probe)
+
+The warehouse-route-p4 probe froze its Outcome before any run as "no executable read of `ctl.LoadRun`", and all three
+arms scored 0/6. The written SQL told a different story. The six agents with the `/bootstrap` knowledge saw that
+`LoadRunId` is the staging `BatchId`, and five kept every fact row behind a caveated `LEFT JOIN`. All twelve without it
+return an empty report, because nothing writes `ctl.LoadRun`. The proxy scored a correct, disclosed report the same as a
+silently empty one. Freezing the rule first was right and stays; the rule should have been the result the consumer gets
+(is the report right, or does it mislead?), with the proxy kept as a diagnostic.
+
+The same session misread its own spend. A resumed `claude -p` run reports the whole session's `total_cost_usd`, so adding
+the calls up showed 13.56 USD for a session that cost 4.19. Read the last call's total, or the per-call `usage`.

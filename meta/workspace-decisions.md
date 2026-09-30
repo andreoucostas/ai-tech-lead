@@ -4542,5 +4542,5 @@ changing an outcome against the bare agent; in B-280 it reached Copilot through 
 consumer self-assessment are retired and `meta/drill-kit.md` deleted; FS2 (`meta/field-study-kit.md`) stays ready. B-284
 point 9 (bounding A8) is dropped. Accepted: capture can still write an overclaimed fact into a consumer's wiki, and `/review`
 dispatch and Copilot's unprompted large-file recovery stay unobserved.
-**Reopen** each on a field report of its gap; B-222 to B-224 also on an eval where captured knowledge changes a result (the
-cheapest is a route task the generated `CLAUDE.md` does not answer, B-280); B-226 on a dated real `/review`; B-42 on a named participant.
+**Reopen** each on a field report of its gap; B-222 to B-224 also on an eval where captured knowledge changes a pre-registered
+result (2026-09-30 probe: 0/6 in every arm, so none; B-325 holds what it showed); B-226 on a dated real `/review`; B-42 on a named participant.
