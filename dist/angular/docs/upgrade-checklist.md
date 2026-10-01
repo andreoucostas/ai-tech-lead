@@ -87,6 +87,15 @@ framework checkout; that directory is the incoming framework root, and
    requested outcome, caller or extension compatibility, and meaningful verification. It does not require
    copying all fresh-template conventions or erase stricter policy the team intentionally keeps.
 
+   An older Boy Scout interface item may still end "are required by SOLID/DIP even with one
+   implementation; never inline those". The framework rules no longer require an interface or
+   abstraction for every service. Unless the team keeps that rule on purpose, keep the item's
+   number and replace its text with:
+
+   ```markdown
+   Inline single-consumer interfaces or abstract bases that are not a project-evidenced DI service seam — per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it.
+   ```
+
 8. **Align the instruction files.** After reconciliation, copy the installed JSON version and
    applied date into the protected `AGENTS.md` header. Do not replace a populated `AGENTS.md` with
    the template. The framework no longer generates or checks `.github/copilot-instructions.md`; an
@@ -96,6 +105,13 @@ framework checkout; that directory is the incoming framework root, and
    `.claude/framework-update-backup/instruction-files/`; review the moved `AGENTS.md`'s opening
    note. If the installer's `LAYOUT:` line reported a hand-written
    `AGENTS.md`, merge `CLAUDE.md`'s content into it and replace `CLAUDE.md` with the template stub.
+   Give the merged `AGENTS.md` the template's **Framework rules** line as the second line of its
+   opening note, so agents that read only `AGENTS.md` find the framework rules:
+
+   ```markdown
+   > **Framework rules** (Verification Rules, Leanness, SOLID, Agentic Workflow) are in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md). If your agent has not already loaded that file, read it before planning or editing.
+   ```
+
    Update does not run bootstrap; if adoption or bootstrap remains pending, follow that workflow
    rather than deleting its marker.
 

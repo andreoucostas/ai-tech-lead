@@ -27,6 +27,63 @@
   write end-to-end on Claude Code 2.1.281 (2026-09-30), while the same task without the framework
   left the key on disk; that covers the `Write` tool, not shell writes or split edits. An update
   refreshes the page.
+- **Your agent is now told to use a matching skill even when your `AGENTS.md` does not say so.**
+  Version 0.89.1 added a sentence telling your agent to invoke a matching skill before planning or
+  editing, and its notes said there was nothing for you to do. That was true only for a new
+  install: an update never rewrites your `AGENTS.md` (before 0.90.0, your `CLAUDE.md`), so a
+  repository installed before 0.89.1 never received the sentence. It now also ships in
+  `.github/instructions/framework-rules.instructions.md`, which every update replaces, so this
+  update delivers it through that file. Claude Code reads the file through the import line in
+  `CLAUDE.md`. GitHub Copilot reads it through its `applyTo: "**"` header, although VS Code is not
+  documented to attach it on a turn that edits no file. Agents that read only `AGENTS.md`, such as
+  Codex, reach it through the **Framework rules** line at the top of `AGENTS.md`. A new install's
+  `AGENTS.md` keeps the sentence at the top of `## Common Tasks`, the only place our test runs
+  measured it; whether the copy in the rules file moves your agent to a skill as reliably has not
+  been measured. To match a new install, add "When a task matches a skill below, invoke that skill
+  with your skill tool before planning or editing." as the first line under your `## Common Tasks`.
+- A new install's `AGENTS.md` no longer says that a `.github/skills/` folder must move to
+  `.claude/skills/`. `docs-sync-check` and `template-checks` still fail while one exists and say so.
+- **Some framework wording in your instruction files is out of date and contradicts the
+  framework's own files.** An update keeps your `AGENTS.md`, `FRAMEWORK-CONTEXT.md` and
+  `docs/architecture-decisions.md` exactly as they are, apart from the one-time move described
+  under 0.90.0, so wording the template changed after you installed is still there. The framework's
+  own files already carry the current rule for each line below. Search for these lines and replace
+  them, unless your team keeps one on purpose:
+  - Boy Scout item 17 ending "Service interfaces/abstractions are required by SOLID/DIP even with
+    one implementation; never inline those." (changed in 0.84.0). The framework no longer requires
+    an interface or abstraction for every service. The item now reads: "17. Inline single-consumer
+    interfaces or abstract bases that are not a project-evidenced DI service seam — per Leanness.
+    Preserve an existing project boundary when its evidence or correctness need requires it."
+  - The Boy Scout opening "When touching any file, leave it cleaner than you found it.", the
+    heading ending "do these on every touched file", items 1 and 2 ("Missing `CancellationToken`
+    propagation (.NET)", "Replace string-interpolated log messages with structured logging (.NET)")
+    and the "**When to skip**" paragraph that asks for a `// TODO: Boy Scout skipped` comment
+    (changed in 0.86.0). A bug fix now makes only the edits the requested behaviour, compatibility
+    or verification needs, and adds no such TODO. `docs/upgrade-checklist.md` step 7 gives the
+    replacement opening and heading; items 1 and 2 now read "`CancellationToken` (.NET) only when
+    outcome/compatibility requires it" and "Structured logging (.NET) only when
+    outcome/verification requires it".
+  - Under `## Common Tasks`, "Skills are mirrored to `.github/skills/` by `/generate-copilot` (and
+    `scripts/sync-agent-files`) so Copilot CLI/agent see them too." (changed in 0.82.0). Neither
+    exists any more and your skills live only in `.claude/skills/`; delete the sentence.
+  - In `FRAMEWORK-CONTEXT.md > Precedence`, "`CLAUDE.md` (this repo's authoritative source) wins",
+    and at the top of `docs/architecture-decisions.md`, "The one-line index lives in
+    `CLAUDE.md > Architecture Decisions`" (changed in 0.90.0). Both name `CLAUDE.md`, which is now
+    only the import stub; replace `CLAUDE.md` with `AGENTS.md` in those two lines.
+  - In the comment at the top of `AGENTS.md`, "When you sync template updates, bump these fields
+    and update .claude/framework-version.json." (changed in 0.90.0). The installer writes
+    `.claude/framework-version.json` on every install and update; you copy `version` and `applied`
+    from it into that comment, not the other way round. The line now reads "After a framework
+    update, copy these fields from .claude/framework-version.json."
+- **If you merged `CLAUDE.md` into `AGENTS.md` by hand, check the top of `AGENTS.md`.** When 0.90.0
+  moved your instructions into `AGENTS.md` itself, it also added a line that points agents reading
+  only `AGENTS.md` at the framework rules. A merge you made yourself may not have it. If your
+  opening note has no **Framework rules** line, add the one `docs/upgrade-checklist.md` step 8
+  quotes as its second line:
+  `> **Framework rules** (Verification Rules, Leanness, SOLID, Agentic Workflow) are in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md). If your agent has not already loaded that file, read it before planning or editing.`
+  Claude Code does not need it: it loads the rules through the
+  `@.github/instructions/framework-rules.instructions.md` line in `CLAUDE.md`, and `template-checks`
+  fails when that line is missing.
 
 ## 0.91.0 — 2026-09-30
 

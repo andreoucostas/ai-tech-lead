@@ -34,6 +34,34 @@ of the new text is unobserved. `enforcement-surfaces.md`'s Claude Code write-gua
 2026-09-30 guard-retry certification (`meta/host-certification.md`) in that row's own scope.
 Always-loaded context: dotnet -43, angular -22, monorepo -186 chars (`static.claude`).
 
+Delivery-gap audit of behaviour text in protected files, v0.79.0 to v0.91.0. An update never rewrites
+an existing `consumer-owned/protected` path: `install.ps1` puts it in the preserve plan, and the one-time
+layout move (`ConvertTo-AgentsInstructionText`) rewrites only the opening blockquote of a moved
+`CLAUDE.md`. Template text therefore reaches new installs only, and neither `/rebootstrap` (it
+reconciles the Common Tasks bullets with `.claude/skills`, not template sentences) nor
+`docs/upgrade-checklist.md` restored it. Comparing `dist/*/CLAUDE.md` at v0.79.0 with `dist/*/AGENTS.md`
+at HEAD, plus the other protected files (`docs/ARCHITECTURE.md` excluded: agents do not read it), found
+one instruction that lived nowhere else: 0.89.1's skill-invocation sentence (B-278), whose stack notes
+said there was nothing to do, so installs older than 0.89.1 never received it. The carrier's section 1
+now carries it too, located "in `AGENTS.md > Common Tasks`" instead of "below", so an update delivers
+it. The template keeps its copy, and new installs carry both: B-278 measured the sentence directly
+above the skills list on Copilot CLI (warehouse-bind-sql 4/6 against 2/6, n=6, 1.0.86), moving it would
+ship an unmeasured placement, and WSD-098 leaves open whether VS Code attaches the `applyTo: "**"`
+carrier on a turn that edits no file. The carrier placement is unmeasured. On an install older than
+0.77.0, whose Common Tasks lacks the "superset, not evidence" gate sentence, the carrier sentence now
+pushes any listed skill; Verification Rule 10 and each skill's own evidence gate are what limit it.
+Funding: the template drops its `.github/skills` migration sentence, which `docs-sync-check` and
+`template-checks` print themselves when the folder exists. Always-loaded context +10 chars per dist
+(carrier +126, template -116) in `static.claude` and `static.copilot`: dotnet `static.claude` 39,460 ->
+39,470 (530 under the ceiling), angular 37,953 -> 37,963, monorepo 46,579 -> 46,589. Five other template
+changes had their rule delivered through framework-owned files when they shipped but left wording in
+existing installs that now contradicts it: 0.82.0 skills location (`docs-sync-check`,
+`template-checks`), 0.84.0 service seams (carrier Leanness #2 and SOLID #5), 0.86.0 bug-fix scope
+(carrier section 4 and the `boy-scout-check` footer), 0.90.0 precedence and ADR index (the migrated
+`AGENTS.md` header and `create-adr`), and the 0.90.0 stamp comment (the `framework-version.json`
+`_comment`, B-259). The stack notes name each line for hand replacement; upgrade-checklist step 7 gains
+the service-interface item and step 8 quotes the **Framework rules** pointer line a hand merge can miss.
+
 ## 0.91.0 — 2026-09-30
 
 B-324, from a maintainer report: an install from a clone 68 commits behind `master` put v0.89.1 into a

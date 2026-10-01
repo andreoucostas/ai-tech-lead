@@ -57,6 +57,7 @@ When given any task, follow this execution model:
 
 ### 1. Classify the intent — and run that workflow without being asked
 Natural-language requests trigger a workflow: classify silently, announce it in one line, and apply its rails. Ask if two fit; answer pure questions directly. Compound requests retain non-negotiables.
+When a task matches a skill in `AGENTS.md > Common Tasks`, invoke that skill with your skill tool before planning or editing.
 
 > These rails are canonical and binding. Commands and `route-prompt` may elaborate, not contradict.
 

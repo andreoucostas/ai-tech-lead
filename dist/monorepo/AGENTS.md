@@ -81,7 +81,7 @@ evidence satisfies the gate:
 - `enforce-architecture` — wire the deterministic DIP/layering CI gates (NetArchTest for .NET, dependency-cruiser for Angular)
 - `enforce-standards` — make warnings, skipped tests, and analyzer/lint findings build-breaking (.NET: `TreatWarningsAsErrors` + `.editorconfig` severities; Angular: ESLint `noInlineConfig` + rule severities)
 
-`/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real repo exemplar. A legacy `.github/skills/` tree has higher Copilot priority and must be migrated here before framework checks pass.
+`/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real repo exemplar.
 
 **Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Do not merge them — audit teams treat these differently. Security findings come from `/security-review` and the `security-auditor` agent, not from feature work. AI-assisted file changes are appended to [.claude/ai-audit.log](./.claude/ai-audit.log) automatically by the PostToolUse hook.
 

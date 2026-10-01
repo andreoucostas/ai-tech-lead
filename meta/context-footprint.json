@@ -168,13 +168,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18289,
-          "tok": 4572
+          "chars": 18415,
+          "tok": 4604
         },
         {
           "path": "AGENTS.md",
-          "chars": 7427,
-          "tok": 1857
+          "chars": 7311,
+          "tok": 1828
         },
         {
           "path": "CLAUDE.md",
@@ -185,13 +185,13 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18289,
-          "tok": 4572
+          "chars": 18415,
+          "tok": 4604
         },
         {
           "path": "AGENTS.md",
-          "chars": 7427,
-          "tok": 1857
+          "chars": 7311,
+          "tok": 1828
         },
         {
           "path": "CLAUDE.md",
@@ -242,8 +242,8 @@
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 7248,
-          "tok": 1812
+          "chars": 8285,
+          "tok": 2071
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -617,13 +617,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18037,
-          "tok": 4509
+          "chars": 18163,
+          "tok": 4541
         },
         {
           "path": "AGENTS.md",
-          "chars": 7851,
-          "tok": 1963
+          "chars": 7735,
+          "tok": 1934
         },
         {
           "path": "CLAUDE.md",
@@ -634,13 +634,13 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18037,
-          "tok": 4509
+          "chars": 18163,
+          "tok": 4541
         },
         {
           "path": "AGENTS.md",
-          "chars": 7851,
-          "tok": 1963
+          "chars": 7735,
+          "tok": 1934
         },
         {
           "path": "CLAUDE.md",
@@ -691,8 +691,8 @@
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 7248,
-          "tok": 1812
+          "chars": 8285,
+          "tok": 2071
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1086,13 +1086,13 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19805,
-          "tok": 4951
+          "chars": 19931,
+          "tok": 4983
         },
         {
           "path": "AGENTS.md",
-          "chars": 9433,
-          "tok": 2358
+          "chars": 9317,
+          "tok": 2329
         },
         {
           "path": "CLAUDE.md",
@@ -1103,13 +1103,13 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19805,
-          "tok": 4951
+          "chars": 19931,
+          "tok": 4983
         },
         {
           "path": "AGENTS.md",
-          "chars": 9433,
-          "tok": 2358
+          "chars": 9317,
+          "tok": 2329
         },
         {
           "path": "CLAUDE.md",
@@ -1160,8 +1160,8 @@
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 7248,
-          "tok": 1812
+          "chars": 8285,
+          "tok": 2071
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1409,26 +1409,26 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39460,
-      "static.claude.tok": 9865,
-      "static.copilot.chars": 25982,
-      "static.copilot.tok": 6496,
+      "static.claude.chars": 39470,
+      "static.claude.tok": 9868,
+      "static.copilot.chars": 25992,
+      "static.copilot.tok": 6498,
       "prompt.max.chars": 3403,
       "prompt.max.tok": 851
     },
     "angular": {
-      "static.claude.chars": 37953,
-      "static.claude.tok": 9488,
-      "static.copilot.chars": 26154,
-      "static.copilot.tok": 6538,
+      "static.claude.chars": 37963,
+      "static.claude.tok": 9491,
+      "static.copilot.chars": 26164,
+      "static.copilot.tok": 6541,
       "prompt.max.chars": 3206,
       "prompt.max.tok": 802
     },
     "monorepo": {
-      "static.claude.chars": 46579,
-      "static.claude.tok": 11645,
-      "static.copilot.chars": 29504,
-      "static.copilot.tok": 7376,
+      "static.claude.chars": 46589,
+      "static.claude.tok": 11647,
+      "static.copilot.chars": 29514,
+      "static.copilot.tok": 7378,
       "prompt.max.chars": 3818,
       "prompt.max.tok": 954
     },

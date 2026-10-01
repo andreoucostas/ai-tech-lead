@@ -69,7 +69,7 @@ evidence satisfies the gate:
 - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review
 <!-- @stack:enforce-skills -->
 
-`/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real repo exemplar. A legacy `.github/skills/` tree has higher Copilot priority and must be migrated here before framework checks pass.
+`/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real repo exemplar.
 
 <!-- @stack:registers -->
 
