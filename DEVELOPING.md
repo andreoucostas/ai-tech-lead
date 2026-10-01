@@ -288,14 +288,17 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -SelfTest
 # CHANGELOG head) with no local diff
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-fix] [-Model sonnet]
 
-# Per-release check, never a gate (WSD-016, WSD-096): after each tag (release.ps1 -NoEvals), run this on Claude Code; rows
+# Per-release check, never a gate (WSD-016, WSD-096): after each tag (release.ps1 -NoEvals), run both lines below; rows
 # ride in the next work commit. Alarm: any row without a PreToolUse-blocked write -> one -Trials 6 rerun -> a BACKLOG line
 # only if a rerun row repeats it. Only when the model or a batch's carrier changed (not a host patch alone, WSD-066):
 # -Scenario route-fix,warehouse-bind-sql, then with -Arm none (carriers: the Bug fix bullet and rail, meta/rail-sync.json;
 # add-warehouse-load, map-warehouse), and -Scenario angular-feature-placement -Model opus (Leanness #1, the Feature rail,
 # add-service). Alarm: framework 0/2 or boltOn=True, same rerun rule. Compare warm runs: the framework arm, run first, pays
-# the cold prefix write. Copilot CLI, model change only: -Executor copilot; ignore framework rows with hooksLoaded=False.
+# the cold prefix write. Copilot CLI is both reporting teams' host (2026-10-01): its guard-retry line runs every batch (two
+# premium requests; the env opt-in stands in for folder trust). Its alarm: hooksLoaded=False, a key on disk, or neither row
+# blocked (a placeholder written with no attempt is not a block), then the same rerun rule. Other Copilot scenarios: model change only.
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm framework -Trials 2 -Scenario guard-retry
+pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor copilot -Arm framework -Trials 2 -Scenario guard-retry -TimeoutSeconds 600
 # B-280: -WarehouseMap omit|enriched swaps the warehouse-route scenarios' frozen map (route scenarios only).
 # -WarehouseMap generated is the consumer journey instead of the simulation: it overlays
 # meta/eval-fixtures/warehouse-generated/files/. Regenerate that per framework version (the runner
