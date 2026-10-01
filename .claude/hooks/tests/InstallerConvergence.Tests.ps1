@@ -103,6 +103,14 @@ function New-B217CandidateSource {
     $ledgerPaths = @($ledger.retirements | ForEach-Object { [string]$_.path })
     Assert ($ledgerPaths -ccontains $stock) "B-217 source retirement ledger does not name the stock mirror leaf $stock"
     Assert ($ledgerPaths -ccontains 'scripts/sync-agent-files.ps1') 'B-217 source retirement ledger does not name sync-agent-files.ps1'
+    # New-B217ResidualTarget writes the stock mirror from today's dist bytes. An edit to the canonical skill moves those
+    # bytes past the released blob the source ledger knows, so the candidate ledger qualifies them explicitly: this case
+    # tests retirement mechanics, not that perf/SKILL.md never changes.
+    $stockBytes = [IO.File]::ReadAllBytes((Join-Path $repoRoot ('dist/dotnet/' + ($stock -replace '^\.github/skills/', '.claude/skills/'))))
+    $stockSha = -join ([Security.Cryptography.SHA256]::Create().ComputeHash($stockBytes) | ForEach-Object { $_.ToString('x2') })
+    foreach ($entry in @($ledger.retirements | Where-Object { [string]$_.path -ceq $stock })) {
+        $entry.'known-content-sha256' = @(@($entry.'known-content-sha256') + $stockSha | Select-Object -Unique)
+    }
     $ledger.retirements = @($ledger.retirements) + [pscustomobject]@{
         path = '.github/skills/perf/modified.md'
         'retired-in' = '0.82.0'
