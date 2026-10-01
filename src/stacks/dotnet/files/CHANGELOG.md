@@ -107,17 +107,6 @@
   it yet; review the result as you would a hand-made upgrade. An update does not change your
   `AGENTS.md`; to name the upgrade in your Common Tasks list, change the `dependency-audit` line to:
   ``- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet packages, set up automated scanning, or upgrade .NET to a newer major``
-- **The rules now tell your agent to work out which is right when your repository's own records
-  contradict what a request assumes.** Verification Rules #11 in
-  `.github/instructions/framework-rules.instructions.md` gains one sentence: as far as the task
-  needs, your agent is to check the code that writes and reads the data and any read-only query or
-  test that your repository evidences, deliver only what it establishes, name what it could not, and
-  offer to update the record if the record was wrong or incomplete. Every update replaces that file,
-  so this update delivers the sentence; two sentences in the same file that gave no instruction were
-  removed. We measured the sentence once, on Claude Code in a .NET data-warehouse repository, before
-  it gained the limit to queries your repository evidences: in six runs of one task with it and six
-  without, it did not measurably change what agents delivered on that task, and more of them stopped
-  to ask you first.
 
 ## 0.91.0 — 2026-09-30
 

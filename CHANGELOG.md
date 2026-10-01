@@ -96,24 +96,16 @@ procedure, and the stack notes say so. Always-loaded context (`static.claude`): 
 (-60). Skill bodies, loaded only when the skill runs: dotnet 2,466 -> 7,182, angular 2,710 -> 6,613,
 monorepo 3,845 -> 12,310 chars.
 
-B-325, from the WSD-105 probe (WSD-107): Verification Rules #11 in all three stacks gains one sentence. When
-what the repository records contradicts a premise of the request, the agent is told to work out which holds,
-as far as the task needs, from the code that writes and reads the data and any repository-evidenced read-only
-query or test it can run, deliver only what it establishes, name what it could not, and offer to update the
-record. The user chose "Ship, test to measure" on 2026-10-01: the rule ships regardless, and the result does
-not revert it. The `warehouse-route-p4` confirmation (pre-registered at 17516aac, results at 8b1c5d02; Claude
-Code 2.1.281, claude-sonnet-5, n=6 per arm, 11.36 USD) measured the sentence without "repository-evidenced",
-added afterwards so the agent never queries a database nobody named; Verification command discovery already
-limits data-validation commands to exact repository-evidenced ones. With the sentence against without:
-ESTABLISHED-PARTIAL 0/6 vs 0/6, MISLEADING 2/6 vs 0/6, ASKED 3/6 vs 2/6, CAVEATED-JOIN 1/6 vs 4/6, not shown
-to differ at n=6. WSD-105's Rule T did not fire, so B-222 to B-224 stay closed. Its fixture's record is
-correct, so it cannot tell an agent that worked the premise out from one that obeyed the record. Funding: the carrier's two slogan sentences
-("The difference between confident output and hallucinated output." and "Bloat is not style — …"), which no
-test pinned. Always-loaded context +191 chars per dist (sentence +348, slogans -157) in `static.claude` and
-`static.copilot`: dotnet `static.claude` 39,457 -> 39,648 (352 under the ceiling), angular 37,928 -> 38,119,
-monorepo 46,529 -> 46,720. Filed B-336: without a record, the probe's twelve other runs built on the premise
-although nine read the loader that contradicts it; the confirmation's 12 runs without a record repeated it
-(12/12 MISLEADING, 11 of them having read the loader).
+B-325, from the WSD-105 probe (WSD-107): no rule change ships. A Verification Rules #11 sentence telling the
+agent to work out a request premise the repository's records contradict was committed, measured and then
+reverted before release by the user ("revert it, given it's doing more harm than good"), restoring rule 11
+and the two carrier slogans that funded it, so always-loaded context is unchanged. The `warehouse-route-p4`
+confirmation (pre-registered at 17516aac, results at 8b1c5d02; Claude Code 2.1.281, claude-sonnet-5, n=6 per
+arm, 11.36 USD), with the sentence against without: ESTABLISHED-PARTIAL 0/6 vs 0/6, MISLEADING 2/6 vs 0/6,
+ASKED 3/6 vs 2/6, CAVEATED-JOIN 1/6 vs 4/6, not shown to differ at n=6. WSD-105's Rule T did not fire, so
+B-222 to B-224 stay closed. The p4 grader now scores the consumer's result. Filed B-336: without a record,
+the confirmation's 12 runs built on the premise (12/12 MISLEADING, 11 of them having read the loader that
+contradicts it).
 
 ## 0.91.0 — 2026-09-30
 

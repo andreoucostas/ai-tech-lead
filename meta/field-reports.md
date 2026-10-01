@@ -171,6 +171,7 @@ the broader supported-host router experiment.
 | **Date received** | 2026-09-03 |
 | **Stack / repo shape** | .NET brownfield; repository documents Unity registration through each project's `IoCConfig.Configure(IUnityContainer)` and links an existing exemplar |
 | **Framework installed** | yes; version not captured |
+| **Host / IDE** | VS Code with GitHub Copilot, or Copilot CLI (follow-up reply relayed by the maintainer, 2026-10-01); model and whether the B-216 fix held not captured |
 | **What misfired** | Framework instance-shaped skills were used without adapting their concrete recipe to the solution. In particular, `register-service` directed `IServiceCollection`, an `AddXxxServices` extension and MS.DI scoped/transient/singleton vocabulary instead of the documented Unity composition root. Following it would introduce an unsupported parallel DI pattern. `add-endpoint` was also reported as using the bare framework recipe rather than the solution's established pattern. |
 | **What fired** | Framework skills; exact selection/tool transcript not captured |
 | **What got ignored** | The repository's documented convention and linked Unity `IoCConfig` exemplar |
@@ -222,6 +223,7 @@ truthfully describe the other adapters.
 | **Date received** | 2026-09-28 |
 | **Stack / repo shape** | Angular; consumer repository, shape not captured |
 | **Framework installed** | yes (Angular distribution); version not captured |
+| **Host / IDE** | VS Code with GitHub Copilot, or Copilot CLI (follow-up reply relayed by the maintainer, 2026-10-01); model and whether the B-311 fix held not captured |
 | **What misfired** | Implementing a new feature, the model (Opus 5.5) extended an existing class instead of creating a new feature service that injects its dependencies; reported as what it does every time. The maintainer later confirmed it added members to the existing class and made no subclass. |
 | **What fired** | not captured |
 | **What got ignored** | Nothing, as far as the authoring tree shows: shipped text directs the behaviour (Leanness #1, the Feature rail, `lean-structure`, the feature prompt hook, `add-service` step 0). |

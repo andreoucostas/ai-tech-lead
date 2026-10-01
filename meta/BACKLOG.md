@@ -9,17 +9,18 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
+## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
 
 | Rank | Item | Why here |
 |---|---|---|
-| 1 | B-326 | False-green class: the host steers `/security-review` to its built-in agent; interactive precedence is unobserved |
-| 2 | B-327 | Idle queue. Guarded; on-demand `/bootstrap` text, though what it writes lands in the consumer's `AGENTS.md` |
-| 3 | B-328 | Idle queue. Small and ordinary; the PR review step the Bitbucket Data Center target lacks |
-| 4 | B-329 | Idle queue. Guarded; measure first, and stop if a template check cannot fit post-write's 45 s budget |
-| 5 | B-330 | Idle queue. Before the next `-Arm none` run; it needs a baseline rerun |
-| 6 | B-336 | Idle queue. Measure first; WSD-107's sentence fires only where a project record exists |
-| Held | B-331 | Reopens on a reply from report #6's team |
+| 1 | B-326 | False-green class: the host steers `/security-review` to its built-in agent; both reporting teams use Copilot (2026-10-01) |
+| 2 | B-337 | Field-triggered: both reporting teams use VS Code Copilot or Copilot CLI, and setup text sends them to Claude Code |
+| 3 | B-327 | Idle queue. Guarded; on-demand `/bootstrap` text, though what it writes lands in the consumer's `AGENTS.md` |
+| 4 | B-328 | Idle queue. Small and ordinary; the PR review step the Bitbucket Data Center target lacks |
+| 5 | B-329 | Idle queue. Guarded; measure first, and stop if a template check cannot fit post-write's 45 s budget |
+| 6 | B-330 | Idle queue. Before the next `-Arm none` run; it needs a baseline rerun |
+| 7 | B-336 | Idle queue. Measure first; WSD-107's measured sentence did not help even where a project record exists |
+| Held | B-331 | Report #6's team replied with its host only (2026-10-01); held for whether `register-service` followed its Unity root |
 
 ## Open entries
 
@@ -29,6 +30,13 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 **Status:** Open; false-green risk: the host's delegation text steers `/security-review` to its built-in agent, and `-p` could not examine
 precedence (`meta/host-certification.md`). Bears on the carrier's `security-pass` snippet, WSD-095's unbounded index line and the READMEs'
 "deterministic routing" (:23/:25, :206/:209). Method: `copilot -i` in a real TTY, `--no-auto-update`, a benign marker, a sibling control.
+
+### B-337 · Tell Copilot-only teams how to run /bootstrap and /adopt, after observing it on Copilot
+**Filed against:** v0.91.0 (2026-10-01)
+**Priority:** P2 · **Effort:** S to observe, M to change · **Invariants:** #1 #7
+**Status:** Open; field-triggered: report #6's and #8's teams use VS Code Copilot or Copilot CLI (`meta/field-reports.md`), yet the installer
+handoff and each README's step-3 rows say `/bootstrap` and `/adopt` need a Claude Code session, while both ship as `.github/prompts`. Observe one
+Copilot `/bootstrap` on a scratch install and record a dated row first; then the guarded installer text (requirement 4) and the READMEs.
 
 ### B-327 · Teach /bootstrap to detect zoneless Angular, @defer, OpenTelemetry, Hangfire or Quartz, and minimal APIs
 **Filed against:** v0.91.0 (2026-09-30)
@@ -70,7 +78,7 @@ project's `IoCConfig.Configure(IUnityContainer)`, with an exemplar; pass = the r
 **Priority:** P3 · **Effort:** S to measure, M if the rules change · **Invariants:** #1 #7
 **Status:** Open; idle queue, measure first. An eval-measured consumer gap, not an attack finding: with no project record, A3 and A4
 of the 2026-10-01 run (`meta/eval-results.md`) were 6/6 MISLEADING each, 11 of 12 having read `usp_LoadFactSales.sql`, which fills
-`LoadRunId` from `BatchId` (probe: 12/12). WSD-107's sentence fires only on a record; candidate: extend it to premises the code contradicts.
+`LoadRunId` from `BatchId` (probe: 12/12). WSD-107's reverted sentence did not help with a record; any candidate wording is measured first.
 
 ## Archived
 

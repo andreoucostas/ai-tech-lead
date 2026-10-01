@@ -7,7 +7,7 @@ applyTo: "**"
 
 ## Verification Rules
 
-These apply to every workflow, before any convention-level rule.
+These apply to every workflow, before any convention-level rule. The difference between confident output and hallucinated output.
 
 1. **Verify before you reference.** Before naming a class, method, component, service, file, route, NuGet or npm package, namespace, module, or DI registration, confirm it exists in this codebase via `Read` / `Grep`. If you cannot confirm, say so explicitly rather than guessing.
 2. **Never invent APIs.** Do not fabricate method signatures, type names, attributes, selectors, decorators, RxJS operators, package exports, or framework features. Read the source. If a referenced shared-library API is not in `FRAMEWORK-CONTEXT.md > Detected Framework Packages` at the version this repo pins, treat it as unverified.
@@ -21,13 +21,13 @@ These apply to every workflow, before any convention-level rule.
 8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
 9. **A new test must be seen to fail before it is trusted.** Before relying on a new behavioral test as green, confirm it actually goes red when the behavior is broken — write it before the fix (bug fixes), or briefly break the code under test and watch it fail for the right reason. Where running the red is impractical, state the specific defect the test would catch. *Why: AI-generated tests are the highest-risk for tautological or over-mocked assertions that pass even against broken code; a test you have watched fail cannot be vacuous.*
 10. **Derive, don't assume.** Before applying or recommending any technology-specific rule or recipe (ORM/data access, validation, HTTP client, test framework, state management), verify that technology is present in this repo via a package reference, import, or config. If a default or skill assumes an absent technology, say so explicitly and derive the convention from what the codebase actually uses instead.
-11. **Read the repository's own description of a subsystem before writing against it.** Before writing code that depends on a database schema, warehouse, integration, or shared library, check `docs/` for a file describing it and read that file first. What the repository records about its own structure outranks what you infer from names. If it is absent, stale, or silent on what you need, say so instead of inferring. If what the repository records contradicts a premise of the request, work out which holds, as far as the task needs, from the code that writes and reads the data and any repository-evidenced read-only query or test you can run; deliver only what you establish, name what you could not, and offer to update the record if it was wrong or incomplete.
+11. **Read the repository's own description of a subsystem before writing against it.** Before writing code that depends on a database schema, warehouse, integration, or shared library, check `docs/` for a file describing it and read that file first. What the repository records about its own structure outranks what you infer from names. If it is absent, stale, or silent on what you need, say so instead of inferring.
 
 ---
 
 ## Leanness
 
-The Boy Scout Rule biases toward improvements. This counterweight requires every change also consider what to remove or not introduce.
+The Boy Scout Rule biases toward improvements. This counterweight requires every change also consider what to remove or not introduce. Bloat is not style — it is AI-assisted development's highest-cost long-term failure mode.
 
 ### Defaults
 

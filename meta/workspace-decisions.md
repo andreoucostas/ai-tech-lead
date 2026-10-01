@@ -4558,18 +4558,17 @@ the Ship rule's roughly weekly batch; a fix for one of the four harms releases w
 request or eval alarm waiting, a session takes the first idle-queue row of `meta/BACKLOG.md`'s pick-up order, not
 self-generated work. Amends WSD-105 for B-331's Held row. **Reopen** on a field report of harm from a finding closed this way.
 
-## WSD-107: a request premise the project's record contradicts is worked out from the code, as far as the task needs (B-325, 2026-10-01)
+## WSD-107: no rule for a request premise the project's record contradicts; the measured sentence was reverted (B-325, 2026-10-01)
 
 **Context.** In the WSD-105 probe (`meta/eval-results.md`, 2026-09-30) all six agents holding `/bootstrap`'s record that
 `fact.FactSales.LoadRunId` is the staging `BatchId` saw the trap; five still joined `ctl.LoadRun` behind a caveat, one asked.
-**Decision (user, 2026-09-30: "i think the point is to get the agent to work it out as needed, and maybe document it";
-2026-10-01: "Ship, test to measure").** Verification Rules #11 in all three stacks gains one sentence, funded by two carrier
-slogans (+191 bytes per dist). Its wording is this session's, not the user's. It ships regardless; no result reverts it.
+**Decision (user, 2026-09-30: "i think the point is to get the agent to work it out as needed, and maybe document it"; 2026-10-01:
+"Ship, test to measure", then on the result "revert it, given it's doing more harm than good").** A Verification Rules #11 sentence
+(this session's wording) was committed in 2c0ca15a, measured, and reverted before release with the two slogans that funded it.
 **Evidence** (`warehouse-route-p4`, Claude Code, one model; pre-registered 17516aac, results 8b1c5d02): Rule T did not fire, so B-222
-to B-224 stay closed under WSD-105. The sentence, measured without "repository-evidenced" (added afterwards so no agent queries a
-database nobody named; Verification command discovery already limits data-validation commands), gave ESTABLISHED-PARTIAL 0/6 vs 0/6,
-MISLEADING 2/6 vs 0/6, ASKED 3/6 vs 2/6, CAVEATED-JOIN 1/6 vs 4/6: not shown to differ at n=6. One fixture, record right; stale untested.
-**Reopen** on a field report of an agent refusing a premise the code supports, or building on one its project records as false.
+to B-224 stay closed under WSD-105. With the sentence against without: ESTABLISHED-PARTIAL 0/6 vs 0/6, MISLEADING 2/6 vs 0/6,
+ASKED 3/6 vs 2/6, CAVEATED-JOIN 1/6 vs 4/6: not shown to differ at n=6. One fixture, record right; a stale record is untested.
+**Reopen** on a field report of a result built on a premise the project's records name as false, or a measured wording that beats none.
 
 ## WSD-108: B-265's upgrade workflow ships as `dependency-audit` section 4; .NET goes straight to the target (2026-10-01)
 

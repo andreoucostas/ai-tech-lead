@@ -12934,7 +12934,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   not installed. Reopen on a field report.
 - **B-265** (major-version upgrade workflow) — REOPENED by maintainer request 2026-09-30 and CLOSED **2026-10-01** for 0.92.0 (WSD-108):
   section 4 of each stack's `dependency-audit`. B-265's other three workflows stay closed under WSD-105.
-- **B-325** — CLOSED **2026-10-01** for 0.92.0 (WSD-107). Verification Rules #11 in all three stacks now tells the agent, when what
-  the repository records contradicts a premise of the request, to work out which holds as far as the task needs, deliver only what it
-  establishes, name the rest and offer to update the record. Shipped before its measurement by the user's choice. Measured once on
-  Claude Code (pre-registered 17516aac, results 8b1c5d02), it did not measurably change what agents delivered on that task; more stopped to ask.
+- **B-325** — CLOSED by decision **2026-10-01** (WSD-107). No rule change ships: the Verification Rules #11 sentence committed in 2c0ca15a
+  was measured on Claude Code (pre-registered 17516aac, results 8b1c5d02; MISLEADING 2/6 with it, 0/6 without, not shown to differ at n=6)
+  and reverted before release by the user ("revert it, given it's doing more harm than good").
