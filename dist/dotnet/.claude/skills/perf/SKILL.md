@@ -7,7 +7,7 @@ description: >
   systematic anti-pattern detection across a module or whole repo, secondary validation
   after manual profiling, or when TECH_DEBT.md has open Performance items to investigate.
   DO NOT USE FOR: runtime profiling (use dotnet-trace or PerfView instead), fixing a single
-  known performance issue you've already located, benchmarking (use /benchmark), or
+  known performance issue you've already located, benchmarking, or
   auditing code that has already been through a dedicated perf review this sprint.
 ---
 

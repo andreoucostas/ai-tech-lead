@@ -10,7 +10,7 @@ This README is for the person evaluating or installing the framework. It stays i
 
 No marketing. Each item is a concrete mechanism and the effect it produces.
 
-1. **Less context burned per task — skills load on demand.** The Common-Task recipes (add-component, add-service, add-lazy-route, add-signal-store, …) ship as skills whose body loads *only when the task matches*. They don't sit in the prompt the way a monolithic CONVENTIONS doc would. You pay context for the one recipe in use, not all of them — main context stays lean.
+1. **Skills load on demand.** The Common-Task recipes (add-component, add-service, add-lazy-route, add-signal-store, …) ship as skills whose body loads *only when the task matches*. They don't sit in the prompt the way a monolithic CONVENTIONS doc would: you pay context for the one recipe in use, not all of them. What the framework as a whole adds to a task's cost depends on the task: on the Claude Code tasks we measured (September 2026, Sonnet), a run with it cost up to about 2.7 times as much as the same task without it.
 
 2. **Less context burned per review — subagents run isolated.** `/review` and `/security-review` fan out to subagents (solid-check, convention-check, bloat-radar, debt-radar, test-critic, security-auditor) that each run in their own context window. Their file-reading and intermediate reasoning never enter the main conversation — the parent gets one structured findings table per agent, not the full transcript.
 
@@ -28,7 +28,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 9. **Quality improves as a side effect of normal work.** Bug-fix cleanup serves the requested outcome, compatibility, or verification; requested refactoring remains allowed. The Trojan Horse principle bundles owned debt work into feature and fix tickets; a leanness counterweight stops needless abstraction. No dedicated debt sprints.
 
-10. **Security is systematic, not heroic.** `/security-review` runs an OWASP-style pass (XSS via unsafe HTML binding, auth/route-guard gaps, secrets in source, sensitive data in logs or responses) on every change; findings land in `SECURITY_FINDINGS.md` with remediation SLAs.
+10. **A security pass on request, and prompted on sensitive changes.** `/security-review` is an OWASP-style pass (XSS via unsafe HTML binding, auth/route-guard gaps, secrets in source, sensitive data in logs or responses) that you run on a change, or that the agent is prompted to run when a request touches auth, money or secrets; findings land in `SECURITY_FINDINGS.md` with remediation SLAs. How much it catches has not been measured.
 
 11. **One authored rule source, surface-dependent delivery.** `AGENTS.md` and the framework-rules carrier it points to (Claude Code imports both through `CLAUDE.md`) carry the framework rules where a client loads them; host support and hook enforcement still vary by surface.
 

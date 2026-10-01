@@ -64,9 +64,9 @@ When a task matches a skill below, invoke that skill with your skill tool before
 Skills are a delivery-profile superset, not evidence that they apply. Use only when repository
 evidence satisfies the gate:
 
-- `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)
-- `add-entity` — add a new EF Core entity with configuration and migration review
-- `register-service` — register a new service in DI with the right lifetime
+- `add-endpoint` — add a new HTTP API endpoint end-to-end in the project's evidenced shape
+- `add-entity` — add a new persisted entity in the project's evidenced shape, with schema-change review
+- `register-service` — add a new service in the project's evidenced shape
 - `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), tables, keys and fact → dimension relationships, grain, load orchestration, SCD strategy, partitioning
 - `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns: idempotent re-runnable loads, no double-loading, SCD handling, partition alignment
 - `add-tests` — add unit/integration tests following the repo's existing test framework, fixtures, and naming

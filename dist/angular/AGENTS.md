@@ -66,9 +66,9 @@ evidence satisfies the gate:
 
 - `add-component` — add a new Angular feature component end-to-end
 - `add-service` — add an HTTP / business-logic / signal-store service
-- `add-lazy-route` — add a lazy-loaded route with optional guards/resolvers
+- `add-lazy-route` — add a new route in the project's evidenced shape, with optional guards/resolvers
 - `add-signal-store` — add a signal-based shared-state store
-- `add-tests` — add specs following project patterns (TestBed + `HttpTestingController`, harnesses, store state-transition tests)
+- `add-tests` — add specs for existing code in the project's evidenced test shape
 - `dependency-audit` — scan for vulnerable/deprecated/outdated npm packages and set up automated dependency scanning (Dependabot or Renovate)
 - `create-adr` — record a significant architecture decision in Architecture Decisions
 - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review

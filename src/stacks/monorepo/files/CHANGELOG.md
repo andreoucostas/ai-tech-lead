@@ -5,6 +5,29 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.92.0 — Unreleased
+
+- **`AGENTS.md > Common Tasks` no longer names technology your repository may not use.** A new
+  install lists `add-endpoint`, `add-entity`, `register-service`, `add-lazy-route` and `add-tests` as
+  working in the project's evidenced shape, instead of naming a DTO → validator → controller chain,
+  EF Core, a DI lifetime, lazy loading, or TestBed with `HttpTestingController`; the skills already
+  worked from your repository's evidence, and the skill files are unchanged. An update never rewrites
+  your `AGENTS.md`. If your Common Tasks list still carries the old wording, change only the text
+  after the dash to match `dist/monorepo/AGENTS.md` in your framework clone, keep any "For a concrete
+  current instance…" pointer, and do not add lines for skills your list leaves out.
+- **`/bootstrap` is now told not to say in `AGENTS.md` whether the warehouse map exists.** In one of
+  our runs `AGENTS.md` still said no map existed after `/map-warehouse` had written
+  `docs/warehouse-map.md`, because `/map-warehouse` does not edit `AGENTS.md`. If your `AGENTS.md`
+  says no warehouse map exists and `docs/warehouse-map.md` is there, delete that remark.
+- The `add-tests` skill's description was 1,078 characters, over the 1,024 the Agent Skills
+  specification (agentskills.io) allows; it is now 991, and what the skill does is unchanged. Claude
+  Code truncates a skill's listing text only above 1,536 characters, so it was not cutting this one.
+- The `perf` skill no longer points at a `/benchmark` command; there is none.
+- `docs/enforcement-surfaces.md` now records the Claude Code write guard blocking a key-shaped file
+  write end-to-end on Claude Code 2.1.281 (2026-09-30), while the same task without the framework
+  left the key on disk; that covers the `Write` tool, not shell writes or split edits. An update
+  refreshes the page.
+
 ## 0.91.0 — 2026-09-30
 
 - **The installer stops when the framework clone you run it from is out of date.** Before it changes

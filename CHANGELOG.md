@@ -11,6 +11,29 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.92.0 — Unreleased
+
+Value-study text fixes. The Common Tasks skills-list snippets drop their technology asides (the DTO →
+validator → controller chain, EF Core, a DI lifetime, lazy loading, TestBed with `HttpTestingController`)
+for "the project's evidenced shape", matching the evidence-gated skill bodies. `AGENTS.md` is
+consumer-owned and nothing points `/rebootstrap` at the new template lines, so the stack notes carry a
+hand-apply line that keeps `/bootstrap`'s exemplar pointer and adds no line `/bootstrap` left out.
+`perf` loses its pointer to a `/benchmark` command that never shipped. The monorepo `add-tests`
+description goes from 1,078 to 991 characters and loses its `repository- evidenced` fold: this is
+conformance with agentskills.io/specification (at most 1024), not an observed truncation, since Claude
+Code cuts the description plus `when_to_use` only above 1,536 (code.claude.com/docs/en/skills). README
+items 1 and 10 stop claiming less context per task and a security pass on every change: what the
+framework adds to a task's cost depends on the task, up to about 2.7 times the bare arm on the tasks
+measured (`meta/eval-results.md`, B-253's report and its 2026-09-30 correction), and no eval measures
+`/security-review`; item 10 now names the `route-prompt` nudge `docs/enforcement-surfaces.md` already
+documents. The README is not installed, so it has no consumer note. `bootstrap.md` (dotnet, monorepo)
+is now told, beside its `map-warehouse` advertising rule, not to remark in `AGENTS.md` whether the map
+exists: the WSD-105 fixture's `AGENTS.md` (`meta/eval-fixtures/warehouse-generated/files/AGENTS.md`
+:105 and :177) said no map existed beside the map `/map-warehouse` wrote in the same session; the effect
+of the new text is unobserved. `enforcement-surfaces.md`'s Claude Code write-guard cell now carries the
+2026-09-30 guard-retry certification (`meta/host-certification.md`) in that row's own scope.
+Always-loaded context: dotnet -43, angular -22, monorepo -186 chars (`static.claude`).
+
 ## 0.91.0 — 2026-09-30
 
 B-324, from a maintainer report: an install from a clone 68 commits behind `master` put v0.89.1 into a

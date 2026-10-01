@@ -12922,3 +12922,13 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   its file I/O through `[System.IO.File]` (:54, :71), which resolves relative paths against the process working directory: a scratch
   build started from inside the repo wrote `dist/*/framework-ownership.json` in the real repo, restored with `git checkout`. A maintainer
   tool outside the four consumer harms; CI's rebuild diff catches a wrong dist. Reopen on a field report or a recurrence.
+- **B-333** — CLOSED by decision **2026-10-01** (WSD-106), never filed. `src/core/docs/enforcement-surfaces.md` labels Claude
+  Code's PostToolUse build feedback "Guaranteed" (:43) and cites the Stop Boy Scout nudge as observed on 2.1.281 (:44), while
+  `meta/host-certification.md` rows :30 and :31 still read "not certified" from the 2.1.212 quota attempt. Found while drafting the
+  0.92.0 write-guard cell. Reopen on a field report.
+- **B-334** — CLOSED by decision **2026-10-01** (WSD-106), never filed. README item 2, "Less context burned per review"
+  (`src/stacks/*/files/README.md` :13/:15), has no measurement behind it; 0.92.0 corrected item 1 only. The README is not
+  installed. Reopen on a field report.
+- **B-335** — CLOSED by decision **2026-10-01** (WSD-106), never filed. `src/stacks/{dotnet,monorepo}/files/README.md` :209/:212
+  still list "add a new EF Core entity" among the skill recipes after 0.92.0's Common Tasks lines dropped EF Core. The README is
+  not installed. Reopen on a field report.

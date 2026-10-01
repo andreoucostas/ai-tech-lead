@@ -4,6 +4,20 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.92.0 — Unreleased
+
+- **`AGENTS.md > Common Tasks` no longer assumes lazy loading or a test setup.** A new install lists
+  `add-lazy-route` and `add-tests` as working in the project's evidenced shape, instead of promising
+  a lazy-loaded route and TestBed with `HttpTestingController`; the skills already worked from your
+  repository's evidence, and the skill files are unchanged. An update never rewrites your
+  `AGENTS.md`. If your Common Tasks list still carries the old wording, change only the text after
+  the dash to match `dist/angular/AGENTS.md` in your framework clone, keep any "For a concrete
+  current instance…" pointer, and do not add lines for skills your list leaves out.
+- `docs/enforcement-surfaces.md` now records the Claude Code write guard blocking a key-shaped file
+  write end-to-end on Claude Code 2.1.281 (2026-09-30), while the same task without the framework
+  left the key on disk; that covers the `Write` tool, not shell writes or split edits. An update
+  refreshes the page.
+
 ## 0.91.0 — 2026-09-30
 
 - **The installer stops when the framework clone you run it from is out of date.** Before it changes
