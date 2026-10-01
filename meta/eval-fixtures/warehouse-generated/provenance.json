@@ -1,11 +1,12 @@
 {
-  "frameworkVersion": "0.90.0",
-  "generatedOn": "2026-09-30",
-  "host": "Claude Code 2.1.281",
-  "model": "sonnet (claude-sonnet-5) as launched with `claude --model sonnet`; headless, not typed",
-  "fixture": "New-EvalRepo 'warehouse' baseline, then install.ps1 -Stack dotnet (dist/dotnet v0.90.0) committed",
-  "steps": "One session, headless from PowerShell: `claude -p /bootstrap`; `--resume` with 'proceed' at Phase 2b, after which Phase 3d-bis did not pause and wrote its six hazard rows [UNVERIFIED] (the state 'skip all' gives); `--resume` with `/map-warehouse`, then 'Yes, write it.' for docs/warehouse-map.md. Every call: --dangerously-skip-permissions --max-budget-usd 8",
-  "files": "every path `git status --porcelain -uall` listed afterwards, copied unedited",
-  "cost": "4.19 USD for the session (total_cost_usd is cumulative across --resume)",
-  "backlog": "WSD-105 reopen probe for B-222 to B-224 (warehouse-route-p4); B-280 / B-279"
+  "frameworkVersion": "0.91.0",
+  "generatedOn": "2026-10-01",
+  "host": "Claude Code 2.1.281 (every call's system/init), DISABLE_AUTOUPDATER=1, ATL_SOURCE_CHECK=off",
+  "model": "sonnet (claude-sonnet-5 in every call's system/init) as launched with `claude --model sonnet`; headless, not typed",
+  "fixture": "New-EvalRepo 'warehouse' baseline, then install.ps1 -Stack dotnet (dist/dotnet v0.91.0, branch b325-eval at 674c272b) committed",
+  "steps": "One session, headless from PowerShell, five calls: `claude -p /bootstrap`, which paused at Phase 2b; `--resume` with 'proceed', which paused at Phase 3d-bis (it did not pause on v0.90.0); `--resume` with 'skip all', which wrote its five hazard rows [UNVERIFIED] and finished /bootstrap; `--resume` with `/map-warehouse`; then 'Yes, write it.' for docs/warehouse-map.md. Every call: --dangerously-skip-permissions --max-budget-usd 8 --output-format stream-json --verbose",
+  "attempts": "1 generation. Acceptance (B-325): AGENTS.md > Load Ordering & Idempotency records that fact.FactSales.LoadRunId is populated from stg.StgSalesOrder.BatchId and that no procedure writes ctl.LoadRun; docs/warehouse-map.md records the edge as CONFLICTING. `git diff --cached --name-status` against the install commit showed only A and M.",
+  "files": "every path `git status --porcelain -uall` listed afterwards, copied unedited; new against v0.90.0: docs/wiki/INDEX.md and the discovery draft docs/wiki/repo-is-synthetic-fixture-baseline.md, whose evidence names the generation repo's own `fixture baseline` commit",
+  "cost": "5.17 USD for the session (total_cost_usd is cumulative across --resume; 2.53 at the Phase 2b pause)",
+  "backlog": "B-325 confirmation run (warehouse-route-p4); WSD-105 reopen probe for B-222 to B-224; B-280 / B-279"
 }
