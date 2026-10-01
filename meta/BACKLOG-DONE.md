@@ -12917,3 +12917,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 
 - **B-324** — CLOSED **2026-09-29**. The stack installer asks its clone's remote whether the clone is out of date and
   stops (exit 4) on a newer release tag or a branch behind its upstream; `-AllowOutdated` overrides it, and an unchecked copy installs with a NOTE.
+
+- **B-332** — CLOSED by decision **2026-09-30** (WSD-106), never filed. `scripts/build.ps1` anchors with `Set-Location` (:33) but does
+  its file I/O through `[System.IO.File]` (:54, :71), which resolves relative paths against the process working directory: a scratch
+  build started from inside the repo wrote `dist/*/framework-ownership.json` in the real repo, restored with `git checkout`. A maintainer
+  tool outside the four consumer harms; CI's rebuild diff catches a wrong dist. Reopen on a field report or a recurrence.

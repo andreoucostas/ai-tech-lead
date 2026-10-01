@@ -4544,3 +4544,16 @@ point 9 (bounding A8) is dropped. Accepted: capture can still write an overclaim
 dispatch and Copilot's unprompted large-file recovery stay unobserved.
 **Reopen** each on a field report of its gap; B-222 to B-224 also on an eval where captured knowledge changes a pre-registered
 result (2026-09-30 probe: 0/6 in every arm, so none; B-325 holds what it showed); B-226 on a dated real `/review`; B-42 on a named participant.
+
+## WSD-106: unreported findings outside the four harms close by decision; idle sessions take the queue (2026-09-30)
+
+**Context.** B-269, B-274 and B-315 to B-317 were self-found, never field-reported, filed and then closed by decision on
+2026-09-28. Seven tags shipped 2026-09-20 to 2026-09-30 against the Ship rule's "roughly weekly"; after WSD-105 nothing
+named an idle session's work.
+**Decision (user, 2026-09-30: "ok" to the study's section 5).** A self-filed or requirement-4 attack finding outside
+AGENTS.md's four guarded harms (loses consumer data, leaks a secret, stalls a consumer's agent, reports a false green) that
+no field report raised is closed by decision in B-315's words ("which nobody has reported", "Reopen on a field report."):
+one CLOSED line in `meta/BACKLOG-DONE.md` citing WSD-106, not an entry. Requirement-4 attacks keep running. Releases follow
+the Ship rule's roughly weekly batch; a fix for one of the four harms releases when ready. With no field report, user
+request or eval alarm waiting, a session takes the first idle-queue row of `meta/BACKLOG.md`'s pick-up order, not
+self-generated work. Amends WSD-105 for B-331's Held row. **Reopen** on a field report of harm from a finding closed this way.

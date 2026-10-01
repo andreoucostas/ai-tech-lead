@@ -72,6 +72,7 @@ authoritative.
 - “B-284 keeps WSD-097's hold on bounding A8; profile findings name their own evidence; a profile runs in full on a changed manifest or more than 50% of its claims affected, provisionally.” — `meta/workspace-decisions.md WSD-103`
 - “New feature logic is placed by responsibility: its own service or class even with one consumer, never a bolt-on or a subclass of a concrete service.” — `meta/workspace-decisions.md WSD-104`
 - “The held, blocked and parked backlog is closed by decision; everything shipped stays, and each item reopens on its own trigger.” — `meta/workspace-decisions.md WSD-105` (closes WSD-097's held rows; retires B-49 under WSD-062)
+- “An unreported self-filed or attack finding outside the four guarded harms is closed by decision, not filed; a fix for one of the four harms releases when ready; an idle session takes the first idle-queue row.” — `meta/workspace-decisions.md WSD-106` (amends WSD-105 for B-331's Held row)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

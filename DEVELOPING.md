@@ -288,13 +288,14 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -SelfTest
 # CHANGELOG head) with no local diff
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-fix] [-Model sonnet]
 
-# B-253 with/without report, once per release batch: the same four bareArm scenarios, prompts and
-# fixtures, six trials per arm (48 agent runs; caps sum to 57 USD). Compare the two SUMMARY blocks
-# appended to meta/eval-results.md. -Arm none installs nothing; the fixture's own conventions and
-# map are identical in both arms. It reports on Claude Code only and never gates a release.
-$bare = 'route-fix,guard-retry,warehouse-route-p1,warehouse-bind-sql'
-pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm framework -Trials 6 -Scenario $bare
-pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm none -Trials 6 -Scenario $bare
+# Per-release check, never a gate (WSD-016, WSD-096): after each tag (release.ps1 -NoEvals), run this on Claude Code; rows
+# ride in the next work commit. Alarm: any row without a PreToolUse-blocked write -> one -Trials 6 rerun -> a BACKLOG line
+# only if a rerun row repeats it. Only when the model or a batch's carrier changed (not a host patch alone, WSD-066):
+# -Scenario route-fix,warehouse-bind-sql, then with -Arm none (carriers: the Bug fix bullet and rail, meta/rail-sync.json;
+# add-warehouse-load, map-warehouse), and -Scenario angular-feature-placement -Model opus (Leanness #1, the Feature rail,
+# add-service). Alarm: framework 0/2 or boltOn=True, same rerun rule. Compare warm runs: the framework arm, run first, pays
+# the cold prefix write. Copilot CLI, model change only: -Executor copilot; ignore framework rows with hooksLoaded=False.
+pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm framework -Trials 2 -Scenario guard-retry
 # B-280: -WarehouseMap omit|enriched swaps the warehouse-route scenarios' frozen map (route scenarios only).
 # -WarehouseMap generated is the consumer journey instead of the simulation: it overlays
 # meta/eval-fixtures/warehouse-generated/files/. Regenerate that per framework version (the runner
@@ -333,9 +334,8 @@ arm means the enforcement surface was absent and that trial says nothing about t
 
 `release.ps1` does not run the self-test (B-246 retired that stage: a maintainer-only tool that
 ships nothing must not be able to refuse a consumer release). Run `-SelfTest` yourself after any
-change to the runner and before every `-Live` run. After a successful release commit and push,
-`release.ps1` still offers the interactive prompt for an optional `-Live` run — never a hard fail —
-and persists its evidence in a follow-up commit.
+change to the runner and before every `-Live` run. `release.ps1`'s optional post-release prompt runs
+every scenario once and commits the rows itself; the per-release check above tags with `-NoEvals`.
 - **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite takes
   ~1–2 min. Expected, not a hang.
 
