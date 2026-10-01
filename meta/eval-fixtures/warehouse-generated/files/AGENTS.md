@@ -1,11 +1,11 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.90.0
-  applied: 2026-09-29
+  version: 0.91.0
+  applied: 2026-09-30
   After a framework update, copy these fields from .claude/framework-version.json.
 -->
-# [Project Name]
+# Sales Warehouse
 
 > This file is the repo-specific source of truth for AI-assisted development in this repository. Edit it here; `CLAUDE.md` only imports it for Claude Code.
 > **Framework rules** (Verification Rules, Leanness, SOLID, Agentic Workflow) are in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md). If your agent has not already loaded that file, read it before planning or editing.
@@ -20,122 +20,120 @@ ai-tech-lead-framework
 
 ## Codebase Context
 
-<!-- Populated by /bootstrap — do not fill manually -->
+This repository is a SQL Server data warehouse delivered as an SSDT-style SQL project
+(`warehouse.sqlproj`, `Microsoft.Build.Sql/0.2.0` SDK) — there is no `.csproj`, application, or API
+layer anywhere in the repo; `/bootstrap` selected the **warehouse-SQL profile only**.
 
-Implementation observations only — code establishes what is built, not confirmed product intent,
-actual users, or production behaviour. No README, product spec, or maintainer-authored description
-of this warehouse's purpose exists in the repo; treat intended purpose and actual users as unknown.
-
-- This repository is a SQL Server data warehouse delivered as an SSDT-style SQL project
-  (`warehouse.sqlproj`, `Microsoft.Build.Sql/0.2.0` SDK). No `*.csproj` exists anywhere in the
-  repo — this is a **warehouse-SQL-only** repo; the .NET-oriented sections/skills below do not apply.
-- Schema objects model a sales-order warehouse: one staging table (`stg.StgSalesOrder`), four
-  dimensions (`dim.DimCustomer`, `dim.DimProduct`, `dim.DimDate`, `dim.DimRegion`), one fact
-  (`fact.FactSales`), one load-run control table (`ctl.LoadRun`), and three reporting views
-  (`rpt.vwExecutiveSummary`, `rpt.vwFinanceExtract`, `rpt.vwOrderDetail`).
-- Domain concepts as implemented: sales orders, customers, products, regions, and calendar dates,
-  rolled up into revenue-by-category and finance/region reporting extracts.
-- Critical journey as implemented (currently incomplete — see `TECH_DEBT.md`): staging sales-order
-  rows → `usp_LoadDimCustomer` / `usp_LoadDimRegion` populate dimensions → `usp_LoadFactSales` joins
-  staging to dimensions into the fact table → `rpt.*` views serve reporting.
+**Implementation observations** (code-derived; intended purpose, actual users, and production
+behavior are *not* evidenced by this repo alone and should be treated as unknown until a maintainer
+confirms them):
+- The schema models a sales-order dimensional mart: staging (`stg`) → warehouse core (`dim`/`fact`)
+  → reporting (`rpt`), with an ETL control schema (`ctl`).
+- `fact.FactSales` (grain: one row per source sales order) joins to `dim.DimCustomer`,
+  `dim.DimProduct`, and `dim.DimDate`; three reporting views (`rpt.vwExecutiveSummary`,
+  `rpt.vwFinanceExtract`, `rpt.vwOrderDetail`) sit on top.
+- Git history shows all 13 SQL objects were added in a single `fixture baseline` commit with no
+  subsequent revisions (see `docs/wiki/repo-is-synthetic-fixture-baseline.md`) — read the gaps
+  below as a from-scratch snapshot, not years of production drift, before escalating severity.
 
 ---
 
 ## Repository Structure
 
-<!-- Populated by /bootstrap — replaces separate CODEMAP.md -->
-
 ```
-warehouse.sqlproj            SSDT-style SQL project (Microsoft.Build.Sql/0.2.0), no further config
+warehouse.sqlproj              SSDT SQL project (Microsoft.Build.Sql/0.2.0) — sole deployment vehicle
 Tables/
-  ctl.LoadRun.sql             Load-run control table — declared, never read/written (TECH_DEBT DEBT-005)
-  stg.StgSalesOrder.sql       Staging table — no in-repo producer (TECH_DEBT DEBT-006)
-  dim.DimCustomer.sql         Customer dimension — SCD2-shaped columns, loader never uses them (DEBT-002)
-  dim.DimProduct.sql          Product dimension — no in-repo loader (DEBT-006)
-  dim.DimDate.sql             Date dimension — no in-repo loader (DEBT-006)
-  dim.DimRegion.sql           Region dimension — stub loader only (DEBT-001, DEBT-004)
-  fact.FactSales.sql          Sales fact, grain = one row per stg.StgSalesOrder.SalesId
+  ctl.LoadRun.sql               control: LoadRunId, StartedAt, Watermark — defined, unused by any load proc
+  stg.StgSalesOrder.sql         staging: SalesId, CustomerId, ProductId, OrderDate, NetAmount, BatchId — no PK
+  dim.DimCustomer.sql           dimension: CustomerKey (PK) + CustomerId, RegionKey, SegmentName; SCD2 shape (EffectiveFrom/EffectiveTo/IsCurrent)
+  dim.DimProduct.sql            dimension: ProductKey (PK) + ProductId, CategoryName; static (no SCD columns)
+  dim.DimRegion.sql             dimension: RegionKey (PK) + RegionName only — no natural/business key
+  dim.DimDate.sql               dimension: DateKey (PK) + CalendarDate, CalendarMonth; static
+  fact.FactSales.sql            fact: SalesKey (PK) + CustomerKey/ProductKey/OrderDateKey/NetAmount/LoadRunId + unused RegionName/CategoryName/SegmentName
 StoredProcedures/
-  usp_LoadDimCustomer.sql     dbo schema; MERGE with insert-only branch (DEBT-002)
-  usp_LoadDimRegion.sql       dbo schema; single hardcoded row (DEBT-001)
-  usp_LoadFactSales.sql       dbo schema; unparameterized full-table insert (DEBT-009)
+  usp_LoadDimCustomer.sql        loads dim.DimCustomer — see Conventions, non-functional stub
+  usp_LoadDimRegion.sql          loads dim.DimRegion — see Conventions, non-functional stub
+  usp_LoadFactSales.sql          loads fact.FactSales from stg.StgSalesOrder joined to the three dimensions
+  (no usp_LoadDimProduct or usp_LoadDimDate exist)
 Views/
-  rpt.vwExecutiveSummary.sql  Revenue by product category
-  rpt.vwFinanceExtract.sql    Revenue by region and date — region always "Unknown" (DEBT-004)
-  rpt.vwOrderDetail.sql       Pass-through fact detail
+  rpt.vwExecutiveSummary.sql    Revenue by CategoryName (Fact ⋈ DimProduct)
+  rpt.vwFinanceExtract.sql      NetAmount by RegionName/CalendarDate (Fact ⋈ DimCustomer ⋈ DimRegion ⋈ DimDate)
+  rpt.vwOrderDetail.sql         raw fact-row projection, no dimension join
 ```
 
-Evidence-backed data flow (`?` = no in-repo producer):
+Dependency / data-flow diagram (evidenced, not inferred):
 
 ```
-? ---------------------------> stg.StgSalesOrder
-stg.StgSalesOrder --(usp_LoadDimCustomer)--> dim.DimCustomer   [insert-only, hardcoded key]
-stg.StgSalesOrder --(usp_LoadDimRegion)-----> dim.DimRegion    [single stub row]
-? ---------------------------------------> dim.DimProduct
-? ---------------------------------------> dim.DimDate
-
-stg.StgSalesOrder + dim.DimCustomer + dim.DimProduct + dim.DimDate
-    --(usp_LoadFactSales)--> fact.FactSales
-
-fact.FactSales + dim.DimProduct                              --> rpt.vwExecutiveSummary
-fact.FactSales + dim.DimCustomer + dim.DimRegion + dim.DimDate --> rpt.vwFinanceExtract
-fact.FactSales                                                --> rpt.vwOrderDetail
+stg.StgSalesOrder ──(usp_LoadFactSales, INNER JOIN)──┐
+dim.DimCustomer   <──(usp_LoadDimCustomer: stub)─────┤
+dim.DimRegion     <──(usp_LoadDimRegion: stub)───────┼──> fact.FactSales ──> rpt.vwExecutiveSummary
+dim.DimProduct    <──(no load procedure found)───────┤                  ──> rpt.vwFinanceExtract
+dim.DimDate       <──(no load procedure found)───────┘                  ──> rpt.vwOrderDetail
+ctl.LoadRun       <──(defined; never read or written by any procedure)
 ```
 
 ---
 
 ## Conventions
 
-### Data Access — warehouse structure
+### Schema / Layer Boundaries
+- `stg` = staging (loose landing, batch-tagged via `BatchId`); `dim`/`fact` = warehouse core; `rpt` =
+  reporting/consumption views; `ctl` = ETL control metadata. Objects are schema-qualified by layer —
+  follow this prefix for any new object. (Evidence: `Tables/*.sql`, `Views/*.sql`)
+- No `FOREIGN KEY` constraint is declared anywhere in the schema; referential integrity between fact
+  and dimension tables is enforced only by the load procedure's join logic, never by the database.
+  Do not assume FK enforcement exists when writing a new load or query. (Evidence: absence across
+  `Tables/*.sql`)
 
-- Schema-per-layer: `ctl` (load-run control), `stg` (staging), `dim` (dimensions), `fact` (facts),
-  `rpt` (reporting/mart views). Tables and views follow this consistently. Stored procedures do
-  **not** — all three live in `dbo` rather than a layer-aligned schema (see `TECH_DEBT.md` DEBT-012;
-  developer input on whether this is intentional was not resolved during bootstrap).
-- No physical mart layer exists — `rpt.*` views query `fact`/`dim` tables directly; there are no
-  intermediate aggregate/mart tables. A new reporting need should extend or add a view, not a table,
-  unless materialization is specifically required.
-- Fact/dimension relationships are enforced by column-naming convention only — no `FOREIGN KEY`
-  constraint exists anywhere in the schema (`TECH_DEBT.md` DEBT-010).
-- The model is a snowflake, not a pure star: `fact.FactSales` does not reference `dim.DimRegion`
-  directly — region is reached only via `dim.DimCustomer.RegionKey`. `Views/rpt.vwFinanceExtract.sql`
-  demonstrates this join path (`FactSales → DimCustomer → DimRegion`).
-- Warehouse structure — tables and keys, fact → dimension relationships, load ordering — is mapped
-  using [docs/warehouse-map.md](./docs/warehouse-map.md). Read it before writing a warehouse query or
-  load; run `/map-warehouse` to create or refresh it (no map exists yet as of this bootstrap).
+### Grain & Keys
+- `fact.FactSales` grain: one row per source sales order (`SalesKey` = `stg.StgSalesOrder.SalesId`,
+  no aggregation). (Evidence: `StoredProcedures/usp_LoadFactSales.sql`)
+- Every dimension has a surrogate primary key (`*Key`, `INT`); `dim.DimCustomer` and `dim.DimProduct`
+  additionally carry a natural/business key (`CustomerId`, `ProductId`). `dim.DimRegion` has **no**
+  natural/business key column — only `RegionKey` + `RegionName` — so there is no evidenced way to
+  match "the same region" across reloads. (Evidence: `Tables/dim.DimRegion.sql` vs.
+  `Tables/dim.DimCustomer.sql`, `Tables/dim.DimProduct.sql`)
+- `dim.DimCustomer` declares an SCD Type-2 shape (`EffectiveFrom`/`EffectiveTo`/`IsCurrent`);
+  `dim.DimRegion`, `dim.DimProduct`, `dim.DimDate` have no history columns (static/Type-1 shape).
+  Match the shape already declared on the dimension you touch. (Evidence: `Tables/dim.*.sql`)
 
-### Data Access — load correctness & idempotency
+### Load Ordering & Idempotency — read before touching a load; none of this is currently enforced
+- Dimension-before-fact load ordering is implied only by `usp_LoadFactSales`'s `INNER JOIN`s — no
+  master/orchestrator procedure or scheduler config exists to enforce it. (Evidence: absence across
+  `StoredProcedures/*.sql`)
+- `ctl.LoadRun` (`LoadRunId`/`StartedAt`/`Watermark`) is the only control/idempotency table in the
+  schema, but **no stored procedure reads or writes it**. `fact.FactSales.LoadRunId` is populated
+  from `stg.StgSalesOrder.BatchId` instead — a different identifier from a different table. Do not
+  assume `ctl.LoadRun` or `Watermark` does anything until it is actually wired into a load.
+  (Evidence: `Tables/ctl.LoadRun.sql`, `StoredProcedures/usp_LoadFactSales.sql`)
+- None of the three existing load procedures has rerun/idempotency protection: `usp_LoadFactSales`
+  and `usp_LoadDimRegion` are unconditional `INSERT`s; `usp_LoadDimCustomer`'s `MERGE` has only a
+  `WHEN NOT MATCHED` branch. Treat every existing load as **not** safely re-runnable — do not copy
+  this shape into a new load without adding the control mechanism `add-warehouse-load` calls for.
 
-- **None of the three existing load procedures are safely rerunnable as written — do not copy their
-  pattern into a new load.** `usp_LoadDimRegion` inserts one hardcoded row with no `MERGE`/existence
-  check (fails on primary key on a second run); `usp_LoadDimCustomer`'s `MERGE` has only a
-  `WHEN NOT MATCHED` branch and hardcodes the same surrogate key (`-1`) for every new customer; see
-  `TECH_DEBT.md` DEBT-001 and DEBT-002 before touching either.
-- `ctl.LoadRun` (the batch/watermark control table) exists in the schema but is not read or written
-  by any procedure — there is no incremental/watermark-based loading and no run tracking today
-  (`TECH_DEBT.md` DEBT-005). `fact.FactSales.LoadRunId` is populated from
-  `stg.StgSalesOrder.BatchId`, not from `ctl.LoadRun`.
-- No load procedure wraps its work in a transaction or `TRY/CATCH` — a failure partway through a
-  load leaves partial writes with no rollback (`TECH_DEBT.md` DEBT-008).
-- No load procedure takes a `@BatchId`/`@LoadRunId` parameter — every execution processes the whole
-  of `stg.StgSalesOrder` unconditionally (`TECH_DEBT.md` DEBT-009).
-- `dim.DimProduct`, `dim.DimDate`, and the population of `stg.StgSalesOrder` itself have no load or
-  ingestion procedure anywhere in this repo (`TECH_DEBT.md` DEBT-006) — `usp_LoadFactSales` inner-joins
-  both dimensions assuming they are already populated by a process outside this repo.
+Warehouse structure — tables and keys, fact → dimension relationships, load ordering — is mapped
+using [docs/warehouse-map.md](./docs/warehouse-map.md). Read it before writing a warehouse query or
+load; run `/map-warehouse` to create or refresh it (not yet generated as of this bootstrap run).
 
-### Testing / Validation
+### Deployment
+- `warehouse.sqlproj` (`Microsoft.Build.Sql/0.2.0` SDK) is the only evidenced deployment vehicle — no
+  publish profile, pre/post-deployment script, dbt project, SSIS package, or pipeline config exists.
+  Schema changes go through this project. (Evidence: `warehouse.sqlproj`; absence of
+  `**/*.publish.xml`, `**/dbt_project.yml`, `**/*.dtsx`)
 
-- No warehouse test or validation assets exist in this repo: no tSQLt (or equivalent) tests, no
-  data-quality/reconciliation checks, no SQL lint/format configuration, and no CI step builds or
-  validates `warehouse.sqlproj` (`TECH_DEBT.md` DEBT-003, DEBT-007).
-- Target test shape: a tSQLt (or equivalent SQL-native) test project alongside `Tables/`, `Views/`,
-  and `StoredProcedures/`, covering each load procedure's rerun/idempotency behaviour and each
-  dimension's grain, plus a CI step that builds `warehouse.sqlproj`.
+### Validation / Testing
+- No warehouse test or data-validation asset exists in this repo: no tSQLt (or other SQL unit-test
+  framework), no seed/reference data, no SQL lint/format config, and the one CI workflow
+  (`.github/workflows/docs-sync-check.yml`) runs only the framework's own doc-sync check — never a
+  warehouse build/test/validation step. See `TECH_DEBT.md`.
+- Target test shape once a harness exists: a small set of reconciliation checks per load
+  (row-count/control-total match between `stg` and `fact`/`dim`) plus one assertion per dimension's
+  declared SCD behavior — not a unit test per column.
 
 ### Verification Commands
 
-| Category | Command | Evidence | Execution policy |
-|---|---|---|---|
+| Category | Command | Evidence | Policy |
+|----------|---------|----------|--------|
 | build | not available (no evidenced command) | — | — |
 | test | not available (no evidenced command) | — | — |
 | format | not available (no evidenced command) | — | — |
@@ -143,24 +141,26 @@ fact.FactSales                                                --> rpt.vwOrderDet
 | migration/deploy | not available (no evidenced command) | — | manual/CI-only |
 | data-validation | not available (no evidenced command) | — | — |
 
-`warehouse.sqlproj` is a bare `<Project Sdk="Microsoft.Build.Sql/0.2.0" />` with no publish profile,
-deploy script, or CI step referencing it — nothing in the repo names an exact build/deploy invocation
-to record here.
+No README, `docs/*`, or `scripts/*` file names a `sqlpackage`, `dotnet build warehouse.sqlproj`, or
+other warehouse-specific command (the only `dotnet build`/`sqlpackage` mentions repo-wide are
+`framework-owned/overwritten` and describe the framework's own `.NET`-application tooling, not this
+warehouse). This is an inventory, not a recommendation to install a tool.
 
 ---
 
 ## Architecture Decisions
 
-<!-- One-line INDEX of significant decisions here (ID — title — date — link). Full ADRs
-     (Decision → Context → Consequences → Review notes) live in docs/architecture-decisions.md,
-     added by the create-adr skill. Rationale: AGENTS.md loads on nearly every agent turn and
-     anchors the prompt cache — keep it small; detail loads on demand. -->
+- **ADR-001** — Schema-per-layer naming (`stg`/`dim`/`fact`/`rpt`/`ctl`) as the warehouse's layering
+  boundary — 2026-10-01 — [detail](./docs/architecture-decisions.md#adr-001)
+- **ADR-002** — SSDT (`warehouse.sqlproj`, `Microsoft.Build.Sql` SDK) as the sole schema-deployment
+  vehicle — 2026-10-01 — [detail](./docs/architecture-decisions.md#adr-002)
+- **ADR-003** (accidental) — `fact.FactSales` denormalized columns declared but never populated by
+  the load — 2026-10-01 — [detail](./docs/architecture-decisions.md#adr-003)
+- **ADR-004** (accidental) — `ctl.LoadRun` control table declared but never wired into any load —
+  2026-10-01 — [detail](./docs/architecture-decisions.md#adr-004)
 
-A one-line index of significant decisions (including accidental ones that became convention). Full detail in [docs/architecture-decisions.md](./docs/architecture-decisions.md).
-
-- ADR-001 — Schema-per-layer naming for tables/views, not procedures — 2026-09-30
-- ADR-002 — Reporting layer is views-only; no physical mart tables — 2026-09-30
-- ADR-003 — Fact/dimension relationships are convention-only; no FOREIGN KEY constraints — 2026-09-30
+A one-line index of significant decisions (including accidental ones that became convention). Full
+detail in [docs/architecture-decisions.md](./docs/architecture-decisions.md).
 
 ---
 
@@ -169,17 +169,22 @@ A one-line index of significant decisions (including accidental ones that became
 When a task matches a skill below, invoke that skill with your skill tool before planning or editing.
 
 Skills are a delivery-profile superset, not evidence that they apply. This repo evidences the
-**warehouse-SQL** profile only (no `*.csproj` anywhere) — only the skills below are applicable here.
-The framework's .NET-oriented skills (`add-endpoint`, `add-entity`, `register-service`, `add-tests`,
-`perf`, `dependency-audit`, `enforce-architecture`, `enforce-standards`) remain installed but dormant
-and are not advertised in this list; do not invoke them against this repo.
+**warehouse-SQL profile only** (no `*.csproj` anywhere) — the skills below are the ones applicable
+here; the rest of the framework's skill set (`.NET`-specific recipes) remains installed under
+`.claude/skills/` but is dormant and not advertised in this repo:
 
-- `map-warehouse` — map this SQL data-warehouse repo: layers (staging → warehouse → marts), tables, keys and fact → dimension relationships, grain, load orchestration, SCD strategy, partitioning. No map exists yet — run this before your first warehouse change.
-- `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns: idempotent re-runnable loads, no double-loading, SCD handling, partition alignment. **No clean exemplar exists in this repo** — all three current load procedures (`usp_LoadDimCustomer`, `usp_LoadDimRegion`, `usp_LoadFactSales`) are flagged in `TECH_DEBT.md` (DEBT-001, DEBT-002, DEBT-009); do not copy their pattern.
+- `map-warehouse` — map this SQL data-warehouse: layers (staging → warehouse → marts), tables, keys
+  and fact → dimension relationships, grain, load orchestration, SCD strategy, partitioning
+- `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns —
+  **note**: the existing loads in this repo are not safe exemplars to copy as-is; see Conventions
+  above and `TECH_DEBT.md` before using them as a pattern
 - `create-adr` — record a significant architecture decision in Architecture Decisions
 - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review
 
-`/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real repo exemplar. A legacy `.github/skills/` tree has higher Copilot priority and must be migrated here before framework checks pass.
+`/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for
+Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real
+repo exemplar. A legacy `.github/skills/` tree has higher Copilot priority and must be migrated here
+before framework checks pass.
 
 **Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Do not merge them — audit teams treat these differently. AI-assisted file changes are appended to [.claude/ai-audit.log](./.claude/ai-audit.log) automatically by the PostToolUse hook.
 
@@ -192,28 +197,26 @@ and are not advertised in this list; do not invoke them against this repo.
 ### Always apply (low-effort, low-risk — subject to Bug-fix scope above):
 
 **Add:**
-1. `CancellationToken` only when outcome/compatibility requires it
-2. Structured logging only when outcome/verification requires it
-3. Missing null checks at public boundaries
-4. Missing `.AsNoTracking()` on read-only queries
+1. Missing null/existence checks at public (external-caller-facing) boundaries
+2. Parameterization where a statement would otherwise concatenate input into SQL
 
 **Subtract:**
-5. Unused `using` directives
-6. Commented-out code blocks (more than 1 line — version control preserves them)
-7. Unreferenced private fields, methods, or local variables that the IDE/compiler flags
+3. Commented-out code blocks (more than 1 line — version control preserves them)
+4. Unreferenced objects the tooling flags
 
 ### Apply only when the file is the primary target of the change:
 
 **Add:**
-8. Split mixed-responsibility methods; never use a line-count threshold
-9. Add risk-relevant tests only, and only with a harness
+5. Split a load procedure that mixes staging validation, dimension resolution, and fact insertion
+   into separate steps; never use a line-count threshold
+6. Add risk-relevant data-validation checks only, and only with an evidenced harness
 
 **Subtract:**
-10. Inline single-consumer interfaces or abstract bases that are not a project-evidenced DI service seam — per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it.
-11. Collapse shallow delegate methods that add no behavior beyond calling another component
-12. Single-use private helpers — inline at the call site
+7. Collapse shallow wrapper views/procedures that add no behavior beyond calling another object
+8. Single-use helper objects — inline at the call site
 
-Items 8–12 can significantly expand or reshape a diff. Only apply them when the file is what the task is specifically about, not when it's incidentally touched. This keeps PRs focused and reviewable.
+Items 5–8 can significantly expand or reshape a diff. Only apply them when the file is what the task
+is specifically about, not when it's incidentally touched. This keeps PRs focused and reviewable.
 
 ---
 
