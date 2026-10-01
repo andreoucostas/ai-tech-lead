@@ -56,7 +56,8 @@ and ask the developer; never list versions, ranges, or breaking changes from mem
    Report the current and next majors with evidence paths and their support dates from the
    releases page.
 2. **Blockers before edits.** Run the evidenced install, build, and test commands for a green
-   baseline. Check the next major's Node, TypeScript, and RxJS ranges at
+   baseline. If no build or test command is evidenced, say so and ask the developer for one before
+   editing. Check the next major's Node, TypeScript, and RxJS ranges at
    <https://angular.dev/reference/versions> and every third-party Angular library's peer range for
    that major. When the next major needs a different Node, ask the developer to confirm it is
    installed wherever the recorded commands run; edit nothing until they do. Name Node on other
@@ -71,8 +72,10 @@ and ask the developer; never list versions, ranges, or breaking changes from mem
    `@angular/material`, with `ng update` through the workspace's own CLI and package manager. This
    is the one Angular CLI command this skill derives without a Verification Commands row, because
    the Angular documentation names it as the migration path: show the exact command and get the
-   developer's go-ahead first. Never add `--force`, which ignores peer-dependency mismatches. Read
-   the migration output beside the breaking changes and review every file the migrations changed.
+   developer's go-ahead first. Never add `--force`, which ignores peer-dependency mismatches. In an
+   Nx workspace (`nx.json`), `ng update` is not the path: use an evidenced `nx migrate` command or
+   report the upgrade as not available. Read the migration output beside the breaking changes and
+   review every file the migrations changed.
    Move committed Node pins (`.nvmrc`, `package.json` `engines`, CI YAML) to the next major's range
    in the same pass.
 5. **Keep the pass narrow.** Accept the migrations the update requires. Optional modernisations,
@@ -81,7 +84,8 @@ and ask the developer; never list versions, ranges, or breaking changes from mem
 6. **Verify and commit the pass.** Run the evidenced install, build, lint, and test commands, fix
    what the breaking changes predict, and triage new audit findings as in the Triage section.
    Commit this major alone, then return to item 2 for the next major.
-7. **Close out.** Update statements of the old version in `AGENTS.md` and docs, except the
+7. **Close out.** Update statements of the old version in `AGENTS.md`,
+   `FRAMEWORK-CONTEXT.md > Detected Framework Packages` and docs, except the
    `framework-owned/overwritten` paths in `framework-ownership.json`, and list what the developer
    still has to do (Node on build agents and other machines, deployment). Use `create-adr` only for
    a lasting choice the upgrade forced, such as holding a library on an older major.

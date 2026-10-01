@@ -80,36 +80,44 @@
   Claude Code does not need it: it loads the rules through the
   `@.github/instructions/framework-rules.instructions.md` line in `CLAUDE.md`, and `template-checks`
   fails when that line is missing.
-- **`dependency-audit` now also upgrades .NET to a newer major version.** Ask for it by name, for
-  example "use the dependency-audit skill to upgrade us to .NET 10": we have not tested whether your
-  agent picks the skill for an upgrade request that does not name it. The skill reads your versions
-  from `global.json`, `Directory.Build.props`, `Directory.Packages.props`, each project's target
-  framework, your Dockerfiles and CI, checks that your packages support the target, and reads the
-  breaking changes of every major version up to the target on Microsoft's pages. It then moves
-  straight to the target, normally the newest long-term-support release, so no commit targets an
-  out-of-support version, which warnings-as-errors would turn into a failed build. Before it
-  changes `global.json`, it asks you to confirm the target SDK is installed where your recorded
-  build and test commands run. ASP.NET Core, EF Core and the other runtime-versioned packages move
-  with the runtime, and committed Dockerfile base-image tags and CI SDK versions move in the same
-  change, which is built and tested with the commands your repository already records and committed
-  on its own. New warnings from the new SDK, including .NET 10's audit of transitive packages, are
-  fixed or deferred on the record: an `AnalysisLevel` pin or a per-rule severity change noted in
-  `TECH_DEBT.md`, or a `NuGetAuditSuppress` entry beside its `SECURITY_FINDINGS.md` row. It never
-  adds a blanket `NoWarn`, turns warnings-as-errors off, or sets `NuGetAuditMode` to `direct` to get
-  a green build. It installs nothing: the SDK on build agents and other machines, a supporting
-  Visual Studio, and the runtime or IIS Hosting Bundle on servers are listed as your actions. A
-  .NET Framework project is reported as needing a port. An update does not change your
+- **`dependency-audit` now has a procedure for upgrading .NET to a newer major version.** Ask for
+  it by name, for example "use the dependency-audit skill to upgrade us to .NET 10": we have not
+  tested whether your agent picks the skill for an upgrade request that does not name it. The skill
+  now tells your agent to read your versions from `global.json`, `Directory.Build.props`,
+  `Directory.Packages.props`, each project's target framework, your Dockerfiles and CI, to check
+  that your packages support the target, and to read the breaking changes of every major version up
+  to the target on Microsoft's pages. It then tells the agent to move straight to the target,
+  normally the newest long-term-support release, so no commit targets an out-of-support version,
+  which warnings-as-errors would turn into a failed build. Before any edit, the agent is to ask you
+  to confirm the target SDK is installed where your recorded build and test commands run, or to ask
+  you for those commands if your repository records none. Where you have a `global.json`, the agent
+  is to change its SDK version and keep its `rollForward`, and not to add one unless you ask.
+  ASP.NET Core, EF Core and the other runtime-versioned packages are to move with the runtime, and
+  committed Dockerfile base-image tags and CI SDK versions in the same change, which is built and
+  tested with the commands your repository already records and committed on its own. New warnings
+  from the new SDK, including .NET 10's audit of transitive packages, are to be fixed or deferred on
+  the record the way `enforce-standards` handles an existing warning wall: an `AnalysisLevel` pin or
+  a per-rule severity change, noted in `TECH_DEBT.md` and raised again later rather than kept as a
+  permanent suppression, or a `NuGetAuditSuppress` entry beside its `SECURITY_FINDINGS.md` row;
+  never a blanket `NoWarn`, warnings-as-errors turned off, or `NuGetAuditMode` set to `direct` to
+  get a green build. The agent is to install nothing: the SDK on build agents and other machines, a
+  supporting Visual Studio, and the runtime or IIS Hosting Bundle on servers are listed as your
+  actions. It is to update mentions of the old version in `AGENTS.md`, `FRAMEWORK-CONTEXT.md` and
+  your docs, and to report a .NET Framework project as needing a port. No upgrade has been run with
+  it yet; review the result as you would a hand-made upgrade. An update does not change your
   `AGENTS.md`; to name the upgrade in your Common Tasks list, change the `dependency-audit` line to:
   ``- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet packages, set up automated scanning, or upgrade .NET to a newer major``
 - **The rules now tell your agent to work out which is right when your repository's own records
   contradict what a request assumes.** Verification Rules #11 in
   `.github/instructions/framework-rules.instructions.md` gains one sentence: as far as the task
   needs, your agent is to check the code that writes and reads the data and any read-only query or
-  test it can run, deliver only what it establishes, name what it could not, and offer to update the
-  record if the record was wrong or incomplete. Every update replaces that file, so this update
-  delivers the sentence; two sentences in the same file that gave no instruction were removed. What
-  the sentence changes in your agent's work has not been measured yet; one test run is planned, on
-  Claude Code only.
+  test that your repository evidences, deliver only what it establishes, name what it could not, and
+  offer to update the record if the record was wrong or incomplete. Every update replaces that file,
+  so this update delivers the sentence; two sentences in the same file that gave no instruction were
+  removed. We measured the sentence once, on Claude Code in a .NET data-warehouse repository, before
+  it gained the limit to queries your repository evidences: in six runs of one task with it and six
+  without, it did not measurably change what agents delivered on that task, and more of them stopped
+  to ask you first.
 
 ## 0.91.0 — 2026-09-30
 

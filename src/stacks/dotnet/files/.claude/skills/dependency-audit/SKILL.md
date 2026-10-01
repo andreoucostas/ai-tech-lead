@@ -60,36 +60,42 @@ report it and stop.
    Dockerfile base images, and SDK or runtime pins in committed CI. Report the current and target
    majors with evidence paths and the support dates from
    <https://dotnet.microsoft.com/platform/support/policy/dotnet-core>.
-2. **Blockers before edits.** Run the evidenced build and test commands for a green baseline.
+2. **Blockers before edits.** Run the evidenced build and test commands for a green baseline. If no
+   build or test command is evidenced, say so and ask the developer for one before editing.
    Confirm every non-Microsoft package supports the target framework (its package page or release
    notes). Ask the developer to confirm the target SDK is installed wherever the recorded commands
-   run, and which SDK version to pin; edit nothing until they do. Name the other installs as
-   developer actions: the SDK on other machines and build agents, a Visual Studio version that
-   supports it (listed on the SDK download page), and the runtime or IIS Hosting Bundle on servers.
-   Stop and report a red baseline or an unsupported package; install nothing yourself.
+   run and, if `global.json` pins an SDK, which version to pin; edit nothing until they do. Name the
+   other installs as developer actions: the SDK on other machines and build agents, a Visual Studio
+   version that supports it (listed on the SDK download page), and the runtime or IIS Hosting
+   Bundle on servers. Stop and report a red baseline or an unsupported package; install nothing
+   yourself.
 3. **Read the breaking changes** of every major after the current one up to the target, in order,
    from `https://learn.microsoft.com/dotnet/core/compatibility/<major>.0`; each page links that
    major's ASP.NET Core and EF Core pages, which apply when those packages are referenced. List
    only the entries that match code or configuration in this repository.
-4. **Move to the target.** Set `global.json` to the SDK version the developer named and change each
-   target framework, keeping platform suffixes such as `-windows`; a multi-targeted library adds the
-   new target instead of dropping one its consumers still use. Runtime-versioned packages
-   (`Microsoft.AspNetCore.*`, `Microsoft.EntityFrameworkCore.*`, `Microsoft.Extensions.*`,
-   `System.Net.Http.Json`, and tools such as `dotnet-ef`) move to the target major together; a
-   package with its own version line moves to a release that supports the target. Move committed
-   runtime pins in the same change: Dockerfile base-image tags and SDK or runtime versions in CI
-   YAML. Fix the matched breaking changes.
+4. **Move to the target.** Where `global.json` exists, set its `sdk.version` to the version the
+   developer named and keep its `rollForward`; do not add one the repository lacks unless the
+   developer asks. Change each target framework, keeping platform suffixes such as `-windows`; a
+   multi-targeted library adds the new target instead of dropping one its consumers still use.
+   Runtime-versioned packages (`Microsoft.AspNetCore.*`, `Microsoft.EntityFrameworkCore.*`,
+   `Microsoft.Extensions.*`, `System.Net.Http.Json`, and tools such as `dotnet-ef`) move to the
+   target major together; a package with its own version line moves to a release that supports the
+   target. Move committed runtime pins in the same change: Dockerfile base-image tags and SDK or
+   runtime versions in CI YAML. Fix the matched breaking changes.
 5. **Treat new warnings as findings.** A new SDK can add analyzer rules under a `latest`
    `AnalysisLevel`, new nullable annotations, and (from .NET 10) audit warnings for transitive
    packages (NU1901–NU1904). Fix them, triaging vulnerabilities as in the Triage section. The only
-   permitted deferrals: pin `AnalysisLevel` to the previous major, or lower one analyzer or nullable
-   rule's severity by its code, each recorded in `TECH_DEBT.md` (Category: Standards); suppress one
-   advisory with `NuGetAuditSuppress` only beside its `SECURITY_FINDINGS.md` row. Never add a
-   blanket `NoWarn`, turn warnings-as-errors off, or set `NuGetAuditMode` to `direct` to go green.
+   permitted deferrals follow `enforce-standards` item 4's brownfield ratchet: pin `AnalysisLevel`
+   to the previous major, or lower one analyzer or nullable rule's severity by its code, each
+   scoped, recorded in `TECH_DEBT.md` (Category: Standards) and raised again later, never a
+   permanent suppression; suppress one advisory with `NuGetAuditSuppress` only beside its
+   `SECURITY_FINDINGS.md` row. Never add a blanket `NoWarn`, turn warnings-as-errors off, or set
+   `NuGetAuditMode` to `direct` to go green.
 6. **Verify and commit.** Run the evidenced build and test commands. Where EF Core migrations are
    evidenced, use only an evidenced non-mutating check for model changes and review any schema
    change before it is applied. Commit the upgrade on its own.
-7. **Close out.** Update statements of the old version in `AGENTS.md` and docs, except the
+7. **Close out.** Update statements of the old version in `AGENTS.md`,
+   `FRAMEWORK-CONTEXT.md > Detected Framework Packages` and docs, except the
    `framework-owned/overwritten` paths in `framework-ownership.json`, and list what the developer
    still has to do (the SDK on build agents and other machines, the runtime or Hosting Bundle on
    servers, deployment). Use `create-adr` only for a lasting choice the upgrade forced, such as

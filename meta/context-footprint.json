@@ -168,8 +168,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18585,
-          "tok": 4646
+          "chars": 18606,
+          "tok": 4652
         },
         {
           "path": "AGENTS.md",
@@ -185,8 +185,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18585,
-          "tok": 4646
+          "chars": 18606,
+          "tok": 4652
         },
         {
           "path": "AGENTS.md",
@@ -433,8 +433,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 6757,
-          "tok": 1689
+          "chars": 7182,
+          "tok": 1796
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
@@ -617,8 +617,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18333,
-          "tok": 4583
+          "chars": 18354,
+          "tok": 4588
         },
         {
           "path": "AGENTS.md",
@@ -634,8 +634,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18333,
-          "tok": 4583
+          "chars": 18354,
+          "tok": 4588
         },
         {
           "path": "AGENTS.md",
@@ -887,8 +887,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 6313,
-          "tok": 1578
+          "chars": 6613,
+          "tok": 1653
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
@@ -1086,8 +1086,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 20101,
-          "tok": 5025
+          "chars": 20122,
+          "tok": 5030
         },
         {
           "path": "AGENTS.md",
@@ -1103,8 +1103,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 20101,
-          "tok": 5025
+          "chars": 20122,
+          "tok": 5030
         },
         {
           "path": "AGENTS.md",
@@ -1371,8 +1371,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 11580,
-          "tok": 2895
+          "chars": 12310,
+          "tok": 3078
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
@@ -1409,26 +1409,26 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39627,
-      "static.claude.tok": 9907,
-      "static.copilot.chars": 26157,
-      "static.copilot.tok": 6539,
+      "static.claude.chars": 39648,
+      "static.claude.tok": 9912,
+      "static.copilot.chars": 26178,
+      "static.copilot.tok": 6544,
       "prompt.max.chars": 3403,
       "prompt.max.tok": 851
     },
     "angular": {
-      "static.claude.chars": 38098,
-      "static.claude.tok": 9524,
-      "static.copilot.chars": 26335,
-      "static.copilot.tok": 6584,
+      "static.claude.chars": 38119,
+      "static.claude.tok": 9530,
+      "static.copilot.chars": 26356,
+      "static.copilot.tok": 6589,
       "prompt.max.chars": 3206,
       "prompt.max.tok": 802
     },
     "monorepo": {
-      "static.claude.chars": 46699,
-      "static.claude.tok": 11675,
-      "static.copilot.chars": 29690,
-      "static.copilot.tok": 7422,
+      "static.claude.chars": 46720,
+      "static.claude.tok": 11680,
+      "static.copilot.chars": 29711,
+      "static.copilot.tok": 7428,
       "prompt.max.chars": 3818,
       "prompt.max.tok": 954
     },

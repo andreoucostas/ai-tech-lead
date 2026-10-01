@@ -9,7 +9,7 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-30 (WSD-105 probe); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
+## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -68,9 +68,9 @@ project's `IoCConfig.Configure(IUnityContainer)`, with an exemplar; pass = the r
 ### B-336 · Measure whether agents work out a request premise the code contradicts when no project record names it
 **Filed against:** v0.91.0 (2026-10-01)
 **Priority:** P3 · **Effort:** S to measure, M if the rules change · **Invariants:** #1 #7
-**Status:** Open; idle queue, measure first. Without a project record, 12 of 12 WSD-105 probe runs (`meta/eval-results.md`, 2026-09-30)
-joined `ctl.LoadRun` or drove the query from it, although 9 read `usp_LoadFactSales.sql`, which fills `LoadRunId` from `BatchId`
-(re-read 2026-10-01). WSD-107's sentence fires only on a record. Candidate: extend "work it out" to premises the code contradicts.
+**Status:** Open; idle queue, measure first. An eval-measured consumer gap, not an attack finding: with no project record, A3 and A4
+of the 2026-10-01 run (`meta/eval-results.md`) were 6/6 MISLEADING each, 11 of 12 having read `usp_LoadFactSales.sql`, which fills
+`LoadRunId` from `BatchId` (probe: 12/12). WSD-107's sentence fires only on a record; candidate: extend it to premises the code contradicts.
 
 ## Archived
 

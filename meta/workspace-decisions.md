@@ -4564,11 +4564,11 @@ self-generated work. Amends WSD-105 for B-331's Held row. **Reopen** on a field 
 `fact.FactSales.LoadRunId` is the staging `BatchId` saw the trap; five still joined `ctl.LoadRun` behind a caveat, one asked.
 **Decision (user, 2026-09-30: "i think the point is to get the agent to work it out as needed, and maybe document it";
 2026-10-01: "Ship, test to measure").** Verification Rules #11 in all three stacks gains one sentence, funded by two carrier
-slogans (+170 bytes per dist). Its wording is this session's implementation of the decision, not the user's. It ships
-regardless of the measurement, and the result does not revert it.
-**Evidence** pending: the pre-registered `warehouse-route-p4` confirmation on branch `b325-eval`, which also tests WSD-105's
-reopen trigger. That fixture's record is correct, so it cannot tell "worked it out" from "obeyed the record"; the stale-record
-world is unmeasured, and nothing more is claimed.
+slogans (+191 bytes per dist). Its wording is this session's, not the user's. It ships regardless; no result reverts it.
+**Evidence** (`warehouse-route-p4`, Claude Code, one model; pre-registered 17516aac, results 8b1c5d02): Rule T did not fire, so B-222
+to B-224 stay closed under WSD-105. The sentence, measured without "repository-evidenced" (added afterwards so no agent queries a
+database nobody named; Verification command discovery already limits data-validation commands), gave ESTABLISHED-PARTIAL 0/6 vs 0/6,
+MISLEADING 2/6 vs 0/6, ASKED 3/6 vs 2/6, CAVEATED-JOIN 1/6 vs 4/6: not shown to differ at n=6. One fixture, record right; stale untested.
 **Reopen** on a field report of an agent refusing a premise the code supports, or building on one its project records as false.
 
 ## WSD-108: B-265's upgrade workflow ships as `dependency-audit` section 4; .NET goes straight to the target (2026-10-01)

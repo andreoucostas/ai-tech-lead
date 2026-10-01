@@ -45,7 +45,8 @@ one instruction that lived nowhere else: 0.89.1's skill-invocation sentence (B-2
 said there was nothing to do, so installs older than 0.89.1 never received it. The carrier's section 1
 now carries it too, located "in `AGENTS.md > Common Tasks`" instead of "below", so an update delivers
 it. The template keeps its copy, and new installs carry both: B-278 measured the sentence directly
-above the skills list on Copilot CLI (warehouse-bind-sql 4/6 against 2/6, n=6, 1.0.86), moving it would
+above the skills list on Copilot CLI (warehouse-bind-sql: framework with the sentence 4/6, the skill invoked
+in exactly those four; bare 2/6; n=6, 1.0.86), moving it would
 ship an unmeasured placement, and WSD-098 leaves open whether VS Code attaches the `applyTo: "**"`
 carrier on a turn that edits no file. The carrier placement is unmeasured. On an install older than
 0.77.0, whose Common Tasks lacks the "superset, not evidence" gate sentence, the carrier sentence now
@@ -78,30 +79,41 @@ such rule, shown to the developer first and never run with `--force`. The named 
 when fetched on 2026-10-01, except the angular/angular 22.0.0 release page (a 404; its `CHANGELOG.md`
 section serves, so the skill names either); the review found angular.dev/update-guide returns only its
 form, and `compatibility/9` is a 404 where `compatibility/9.0` serves the page. When a source cannot be
-opened the agent says so and asks, never lists changes from memory. Permitted deferrals are named (an
-`AnalysisLevel` pin or one rule's severity by code, recorded in `TECH_DEBT.md`; `NuGetAuditSuppress`
-beside a `SECURITY_FINDINGS.md` row), and blanket `NoWarn`, warnings-as-errors off and
+opened the skill tells the agent to say so and ask, never to list changes from memory. Permitted
+deferrals are named and tied to `enforce-standards` item 4's brownfield ratchet (an `AnalysisLevel` pin or
+one rule's severity by code, scoped, recorded in `TECH_DEBT.md` and raised again later;
+`NuGetAuditSuppress` beside a `SECURITY_FINDINGS.md` row), and blanket `NoWarn`, warnings-as-errors off and
 `NuGetAuditMode=direct` are forbidden; committed Dockerfile, CI, `.nvmrc` and `engines` pins move in the
-pass, and the developer confirms the target SDK or Node is installed before `global.json` or `engines`
-changes. Routing to the procedure is unmeasured: B-265's last status asked for a probe before shipping,
-none ran, so the stack notes tell teams to ask for `dependency-audit` by name. Always-loaded context
-(`static.claude`): dotnet 39,470 -> 39,457 (-13; frontmatter -8, `AGENTS.md` line -5), angular 37,963 ->
-37,928 (-35), monorepo 46,589 -> 46,529 (-60). Skill bodies, loaded only when the skill runs: dotnet
-2,466 -> 6,757, angular 2,710 -> 6,313, monorepo 3,845 -> 11,580 chars.
+pass, and the developer confirms the target SDK, or a Node the next major newly needs, is installed before
+any edit. The review's fixes: `global.json` changes only where one exists, keeping its `rollForward`, and none
+is added unasked; with no evidenced build or test command the skill tells the agent to ask for one before
+editing; an Nx workspace (`nx.json`) takes an evidenced `nx migrate` or reports the upgrade not available;
+close-out also updates `FRAMEWORK-CONTEXT.md > Detected Framework Packages`. Routing to the procedure is
+unmeasured: B-265's last status asked for a probe before shipping,
+none ran, so the stack notes tell teams to ask for `dependency-audit` by name. No upgrade has run with the
+procedure, and the stack notes say so. Always-loaded context (`static.claude`): dotnet 39,470 -> 39,457
+(-13; frontmatter -8, `AGENTS.md` line -5), angular 37,963 -> 37,928 (-35), monorepo 46,589 -> 46,529
+(-60). Skill bodies, loaded only when the skill runs: dotnet 2,466 -> 7,182, angular 2,710 -> 6,613,
+monorepo 3,845 -> 12,310 chars.
 
 B-325, from the WSD-105 probe (WSD-107): Verification Rules #11 in all three stacks gains one sentence. When
 what the repository records contradicts a premise of the request, the agent is told to work out which holds,
-as far as the task needs, from the code that writes and reads the data and any read-only query or test it
-can run, deliver only what it establishes, name what it could not, and offer to update the record. The user
-chose "Ship, test to measure" on 2026-10-01: the rule ships regardless, and the result does not revert it.
-Its effect is unmeasured. The pre-registered `warehouse-route-p4` confirmation on branch `b325-eval` (Claude
-Code only, one model) reports later; its fixture's record is correct, so it cannot tell an agent that worked
-the premise out from one that obeyed the record. Funding: the carrier's two slogan sentences ("The
-difference between confident output and hallucinated output." and "Bloat is not style — …"), which no test
-pinned. Always-loaded context +170 chars per dist (sentence +327, slogans -157) in `static.claude` and
-`static.copilot`: dotnet `static.claude` 39,457 -> 39,627 (373 under the ceiling), angular 37,928 -> 38,098,
-monorepo 46,529 -> 46,699. Filed B-336: without a record, the probe's twelve other runs built on the premise
-although nine read the loader that contradicts it.
+as far as the task needs, from the code that writes and reads the data and any repository-evidenced read-only
+query or test it can run, deliver only what it establishes, name what it could not, and offer to update the
+record. The user chose "Ship, test to measure" on 2026-10-01: the rule ships regardless, and the result does
+not revert it. The `warehouse-route-p4` confirmation (pre-registered at 17516aac, results at 8b1c5d02; Claude
+Code 2.1.281, claude-sonnet-5, n=6 per arm, 11.36 USD) measured the sentence without "repository-evidenced",
+added afterwards so the agent never queries a database nobody named; Verification command discovery already
+limits data-validation commands to exact repository-evidenced ones. With the sentence against without:
+ESTABLISHED-PARTIAL 0/6 vs 0/6, MISLEADING 2/6 vs 0/6, ASKED 3/6 vs 2/6, CAVEATED-JOIN 1/6 vs 4/6, not shown
+to differ at n=6. WSD-105's Rule T did not fire, so B-222 to B-224 stay closed. Its fixture's record is
+correct, so it cannot tell an agent that worked the premise out from one that obeyed the record. Funding: the carrier's two slogan sentences
+("The difference between confident output and hallucinated output." and "Bloat is not style — …"), which no
+test pinned. Always-loaded context +191 chars per dist (sentence +348, slogans -157) in `static.claude` and
+`static.copilot`: dotnet `static.claude` 39,457 -> 39,648 (352 under the ceiling), angular 37,928 -> 38,119,
+monorepo 46,529 -> 46,720. Filed B-336: without a record, the probe's twelve other runs built on the premise
+although nine read the loader that contradicts it; the confirmation's 12 runs without a record repeated it
+(12/12 MISLEADING, 11 of them having read the loader).
 
 ## 0.91.0 — 2026-09-30
 

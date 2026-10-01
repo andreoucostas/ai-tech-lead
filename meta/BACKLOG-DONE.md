@@ -12936,5 +12936,5 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   section 4 of each stack's `dependency-audit`. B-265's other three workflows stay closed under WSD-105.
 - **B-325** — CLOSED **2026-10-01** for 0.92.0 (WSD-107). Verification Rules #11 in all three stacks now tells the agent, when what
   the repository records contradicts a premise of the request, to work out which holds as far as the task needs, deliver only what it
-  establishes, name the rest and offer to update the record. Shipped before its measurement by the user's choice; the pre-registered
-  `warehouse-route-p4` confirmation on branch `b325-eval` reports later.
+  establishes, name the rest and offer to update the record. Shipped before its measurement by the user's choice. Measured once on
+  Claude Code (pre-registered 17516aac, results 8b1c5d02), it did not measurably change what agents delivered on that task; more stopped to ask.

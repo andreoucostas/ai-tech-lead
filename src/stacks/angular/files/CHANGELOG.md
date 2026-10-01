@@ -70,31 +70,40 @@
   Claude Code does not need it: it loads the rules through the
   `@.github/instructions/framework-rules.instructions.md` line in `CLAUDE.md`, and `template-checks`
   fails when that line is missing.
-- **`dependency-audit` now also upgrades Angular to a newer major version.** Ask for it by name,
-  for example "use the dependency-audit skill to upgrade us to Angular 22": we have not tested
-  whether your agent picks the skill for an upgrade request that does not name it. The skill reads
-  your versions from `package.json`, the lockfile and `angular.json`, checks the next major's Node,
-  TypeScript and RxJS ranges and your third-party libraries' support, reads that major's breaking
-  changes in the Angular changelogs on GitHub, and moves one major version per pass, as Angular
-  requires, with `ng update` so its migrations run. `ng update` is the one Angular CLI command the
-  skill uses without a row in your Verification Commands: it shows you the exact command and waits
-  for your go-ahead, never adds `--force`, and leaves optional modernisations out of the upgrade.
-  When the next major needs a different Node version, it asks you to confirm that version is
-  installed where your recorded commands run, then moves committed Node pins (`.nvmrc`, `engines`,
-  CI) in the same pass. Each pass is built and tested with the commands your repository already
-  records and committed on its own. Installing Node on build agents and other machines is listed as
-  your action. An AngularJS app is reported as needing a rewrite. An update does not change your
-  `AGENTS.md`; to name the upgrade in your Common Tasks list, change the `dependency-audit` line to:
+- **`dependency-audit` now has a procedure for upgrading Angular to a newer major version.** Ask
+  for it by name, for example "use the dependency-audit skill to upgrade us to Angular 22": we have
+  not tested whether your agent picks the skill for an upgrade request that does not name it. The
+  skill now tells your agent to read your versions from `package.json`, the lockfile and
+  `angular.json`, to check the next major's Node, TypeScript and RxJS ranges and your third-party
+  libraries' support, to read that major's breaking changes in the Angular changelogs on GitHub,
+  and to move one major version per pass, as Angular requires, with `ng update` so its migrations
+  run. `ng update` is the one Angular CLI command the skill names without a row in your
+  Verification Commands: the agent is to show you the exact command and wait for your go-ahead,
+  never to add `--force`, and to leave optional modernisations out of the upgrade. In an Nx
+  workspace it is to use an `nx migrate` command your repository records, or report the upgrade as
+  not available. If your repository records no build or test command, it is to ask you for one
+  before editing. When the next major needs a different Node version, it is to ask you to confirm
+  that version is installed where your recorded commands run, then move committed Node pins
+  (`.nvmrc`, `engines`, CI) in the same pass. Each pass is to be built and tested with the commands
+  your repository already records and committed on its own; mentions of the old version in
+  `AGENTS.md`, `FRAMEWORK-CONTEXT.md` and your docs are to be updated. Installing Node on build
+  agents and other machines is listed as your action. An AngularJS app is to be reported as needing
+  a rewrite.
+  No upgrade has been run with it yet; review the result as you would a hand-made upgrade. An
+  update does not change your `AGENTS.md`; to name the upgrade in your Common Tasks list, change the
+  `dependency-audit` line to:
   ``- `dependency-audit` — scan for vulnerable/deprecated/outdated npm packages, set up automated scanning, or upgrade Angular one major at a time``
 - **The rules now tell your agent to work out which is right when your repository's own records
   contradict what a request assumes.** Verification Rules #11 in
   `.github/instructions/framework-rules.instructions.md` gains one sentence: as far as the task
   needs, your agent is to check the code that writes and reads the data and any read-only query or
-  test it can run, deliver only what it establishes, name what it could not, and offer to update the
-  record if the record was wrong or incomplete. Every update replaces that file, so this update
-  delivers the sentence; two sentences in the same file that gave no instruction were removed. What
-  the sentence changes in your agent's work has not been measured yet; one test run is planned, on
-  Claude Code only.
+  test that your repository evidences, deliver only what it establishes, name what it could not, and
+  offer to update the record if the record was wrong or incomplete. Every update replaces that file,
+  so this update delivers the sentence; two sentences in the same file that gave no instruction were
+  removed. We measured the sentence once, on Claude Code in a .NET data-warehouse repository, before
+  it gained the limit to queries your repository evidences: in six runs of one task with it and six
+  without, it did not measurably change what agents delivered on that task, and more of them stopped
+  to ask you first.
 
 ## 0.91.0 — 2026-09-30
 

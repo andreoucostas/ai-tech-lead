@@ -11,7 +11,7 @@
   install lists `add-endpoint`, `add-entity`, `register-service`, `add-lazy-route` and `add-tests` as
   working in the project's evidenced shape, instead of naming a DTO → validator → controller chain,
   EF Core, a DI lifetime, lazy loading, or TestBed with `HttpTestingController`; the skills already
-  worked from your repository's evidence, and the skill files are unchanged. An update never rewrites
+  worked from your repository's evidence, and the skill bodies are unchanged. An update never rewrites
   your `AGENTS.md`. If your Common Tasks list still carries the old wording, change only the text
   after the dash to match `dist/monorepo/AGENTS.md` in your framework clone, keep any "For a concrete
   current instance…" pointer, and do not add lines for skills your list leaves out.
@@ -84,34 +84,44 @@
   Claude Code does not need it: it loads the rules through the
   `@.github/instructions/framework-rules.instructions.md` line in `CLAUDE.md`, and `template-checks`
   fails when that line is missing.
-- **`dependency-audit` now also upgrades .NET or Angular to a newer major version**, one stack per
-  pass. Ask for it by name, for example "use the dependency-audit skill to upgrade the API to
-  .NET 10": we have not tested whether your agent picks the skill for an upgrade request that does
-  not name it. Each pass first reads that stack's breaking changes on the vendor's pages, is built
-  and tested with the commands your repository already records, and is committed on its own. On the
-  .NET side it moves straight to the target, normally the newest long-term-support release, so no
-  commit targets an out-of-support version; after you confirm the target SDK is installed where
-  your recorded commands run, it moves the SDK pin, target frameworks, ASP.NET Core, EF Core and
-  the other runtime-versioned packages, and committed Dockerfile and CI versions together. New SDK
-  warnings, including .NET 10's audit of transitive packages, are fixed or deferred on the record
-  (an `AnalysisLevel` pin or a per-rule severity change noted in `TECH_DEBT.md`, or a
-  `NuGetAuditSuppress` entry beside its `SECURITY_FINDINGS.md` row), never by a blanket `NoWarn`,
-  by turning warnings-as-errors off, or by setting `NuGetAuditMode` to `direct`. On the Angular side
-  it moves one major version per pass, as Angular requires, with `ng update` so its migrations run:
-  the one Angular CLI command it uses without a row in your Verification Commands, shown to you
-  first and never with `--force`. It installs nothing: SDK, Node, Visual Studio and server
-  prerequisites are listed as your actions. An update does not change your `AGENTS.md`; to name the
-  upgrade in your Common Tasks list, change the `dependency-audit` line to:
+- **`dependency-audit` now has a procedure for upgrading .NET or Angular to a newer major
+  version**, one stack per pass. Ask for it by name, for example "use the dependency-audit skill to
+  upgrade the API to .NET 10": we have not tested whether your agent picks the skill for an upgrade
+  request that does not name it. The skill now tells your agent to read that stack's breaking
+  changes on the vendor's pages first, to ask you for a build and test command before editing if
+  your repository records none, to build and test each pass with the commands your repository
+  records, and to commit it on its own. On the .NET side the agent is to move straight to the
+  target, normally the newest long-term-support release, so no commit targets an out-of-support
+  version; after you confirm the target SDK is installed where your recorded commands run, it is to
+  move target frameworks, ASP.NET Core, EF Core and the other runtime-versioned packages, and
+  committed Dockerfile and CI versions together. Where you have a `global.json`, it is to change its
+  SDK version and keep its `rollForward`, and not to add one unless you ask. New SDK warnings,
+  including .NET 10's audit of transitive packages, are to be fixed or deferred on the record the
+  way `enforce-standards` handles an existing warning wall (an `AnalysisLevel` pin or a per-rule
+  severity change, noted in `TECH_DEBT.md` and raised again later rather than kept as a permanent
+  suppression, or a `NuGetAuditSuppress` entry beside its `SECURITY_FINDINGS.md` row), never by a
+  blanket `NoWarn`, by turning warnings-as-errors off, or by setting `NuGetAuditMode` to `direct`.
+  On the Angular side it is to move one major version per pass, as Angular requires, with
+  `ng update` so its migrations run: the one Angular CLI command the skill names without a row in
+  your Verification Commands, shown to you first and never with `--force`; in an Nx workspace it is
+  to use an `nx migrate` command your repository records, or report the upgrade as not available.
+  It is to install nothing: SDK, Node, Visual Studio and server prerequisites are listed as your
+  actions, and mentions of the old version in `AGENTS.md`, `FRAMEWORK-CONTEXT.md` and your docs are
+  to be updated. No upgrade has been run with it yet; review the result as you would a hand-made
+  upgrade. An update does not change your `AGENTS.md`; to name the upgrade in your Common Tasks
+  list, change the `dependency-audit` line to:
   ``- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet and npm packages, set up automated scanning, or upgrade .NET or Angular to a newer major``
 - **The rules now tell your agent to work out which is right when your repository's own records
   contradict what a request assumes.** Verification Rules #11 in
   `.github/instructions/framework-rules.instructions.md` gains one sentence: as far as the task
   needs, your agent is to check the code that writes and reads the data and any read-only query or
-  test it can run, deliver only what it establishes, name what it could not, and offer to update the
-  record if the record was wrong or incomplete. Every update replaces that file, so this update
-  delivers the sentence; two sentences in the same file that gave no instruction were removed. What
-  the sentence changes in your agent's work has not been measured yet; one test run is planned, on
-  Claude Code only.
+  test that your repository evidences, deliver only what it establishes, name what it could not, and
+  offer to update the record if the record was wrong or incomplete. Every update replaces that file,
+  so this update delivers the sentence; two sentences in the same file that gave no instruction were
+  removed. We measured the sentence once, on Claude Code in a .NET data-warehouse repository, before
+  it gained the limit to queries your repository evidences: in six runs of one task with it and six
+  without, it did not measurably change what agents delivered on that task, and more of them stopped
+  to ask you first.
 
 ## 0.91.0 — 2026-09-30
 
