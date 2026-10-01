@@ -9,4 +9,4 @@
 - `add-lazy-route` — add a new route in the project's evidenced shape, with optional guards/resolvers
 - `add-signal-store` — add a signal-based shared-state store
 - `add-tests` — add tests for existing .NET or Angular code in the project's evidenced test shape
-- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet and npm packages and set up automated dependency scanning (Dependabot or Renovate)
+- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet and npm packages, set up automated scanning, or upgrade .NET or Angular to a newer major

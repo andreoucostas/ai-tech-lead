@@ -62,6 +62,33 @@ existing installs that now contradicts it: 0.82.0 skills location (`docs-sync-ch
 `_comment`, B-259). The stack notes name each line for hand replacement; upgrade-checklist step 7 gains
 the service-interface item and step 8 quotes the **Framework rules** pointer line a hand merge can miss.
 
+B-265's major-version upgrade workflow, reopened by maintainer decision on 2026-09-30, not by a field
+report (WSD-108): it ships as section 4 of each stack's `dependency-audit`, not as a new skill (the
+design draft measured dotnet +549 static chars against 497 of headroom) or a command (it runs only when
+typed). The descriptions drop the SDK/TFM and `ng update` exclusions and name the upgrade; the
+skills-list snippets name it for new installs and drop "(Dependabot or Renovate)"; an update delivers
+the skill, and the stack notes give the Common Tasks line to paste. .NET moves straight to the target,
+the newest LTS by default, reading each skipped major's
+`learn.microsoft.com/dotnet/core/compatibility/<major>.0` page in order, because an out-of-support
+intermediate target raises NETSDK1138, which warnings-as-errors fails (.NET 8 and 9 both leave support
+on 2026-11-10 per the dotnet.microsoft.com support policy, checked 2026-10-01). Angular moves one major
+per pass, as angular.dev/reference/releases requires. `ng update` is the one Angular CLI command derived
+without a Verification Commands row, an exception to WSD-020's derive-don't-assume rule marked at each
+such rule, shown to the developer first and never run with `--force`. The named sources returned text
+when fetched on 2026-10-01, except the angular/angular 22.0.0 release page (a 404; its `CHANGELOG.md`
+section serves, so the skill names either); the review found angular.dev/update-guide returns only its
+form, and `compatibility/9` is a 404 where `compatibility/9.0` serves the page. When a source cannot be
+opened the agent says so and asks, never lists changes from memory. Permitted deferrals are named (an
+`AnalysisLevel` pin or one rule's severity by code, recorded in `TECH_DEBT.md`; `NuGetAuditSuppress`
+beside a `SECURITY_FINDINGS.md` row), and blanket `NoWarn`, warnings-as-errors off and
+`NuGetAuditMode=direct` are forbidden; committed Dockerfile, CI, `.nvmrc` and `engines` pins move in the
+pass, and the developer confirms the target SDK or Node is installed before `global.json` or `engines`
+changes. Routing to the procedure is unmeasured: B-265's last status asked for a probe before shipping,
+none ran, so the stack notes tell teams to ask for `dependency-audit` by name. Always-loaded context
+(`static.claude`): dotnet 39,470 -> 39,457 (-13; frontmatter -8, `AGENTS.md` line -5), angular 37,963 ->
+37,928 (-35), monorepo 46,589 -> 46,529 (-60). Skill bodies, loaded only when the skill runs: dotnet
+2,466 -> 6,757, angular 2,710 -> 6,313, monorepo 3,845 -> 11,580 chars.
+
 ## 0.91.0 — 2026-09-30
 
 B-324, from a maintainer report: an install from a clone 68 commits behind `master` put v0.89.1 into a

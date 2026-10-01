@@ -70,6 +70,22 @@
   Claude Code does not need it: it loads the rules through the
   `@.github/instructions/framework-rules.instructions.md` line in `CLAUDE.md`, and `template-checks`
   fails when that line is missing.
+- **`dependency-audit` now also upgrades Angular to a newer major version.** Ask for it by name,
+  for example "use the dependency-audit skill to upgrade us to Angular 22": we have not tested
+  whether your agent picks the skill for an upgrade request that does not name it. The skill reads
+  your versions from `package.json`, the lockfile and `angular.json`, checks the next major's Node,
+  TypeScript and RxJS ranges and your third-party libraries' support, reads that major's breaking
+  changes in the Angular changelogs on GitHub, and moves one major version per pass, as Angular
+  requires, with `ng update` so its migrations run. `ng update` is the one Angular CLI command the
+  skill uses without a row in your Verification Commands: it shows you the exact command and waits
+  for your go-ahead, never adds `--force`, and leaves optional modernisations out of the upgrade.
+  When the next major needs a different Node version, it asks you to confirm that version is
+  installed where your recorded commands run, then moves committed Node pins (`.nvmrc`, `engines`,
+  CI) in the same pass. Each pass is built and tested with the commands your repository already
+  records and committed on its own. Installing Node on build agents and other machines is listed as
+  your action. An AngularJS app is reported as needing a rewrite. An update does not change your
+  `AGENTS.md`; to name the upgrade in your Common Tasks list, change the `dependency-audit` line to:
+  ``- `dependency-audit` — scan for vulnerable/deprecated/outdated npm packages, set up automated scanning, or upgrade Angular one major at a time``
 
 ## 0.91.0 — 2026-09-30
 

@@ -4557,3 +4557,14 @@ one CLOSED line in `meta/BACKLOG-DONE.md` citing WSD-106, not an entry. Requirem
 the Ship rule's roughly weekly batch; a fix for one of the four harms releases when ready. With no field report, user
 request or eval alarm waiting, a session takes the first idle-queue row of `meta/BACKLOG.md`'s pick-up order, not
 self-generated work. Amends WSD-105 for B-331's Held row. **Reopen** on a field report of harm from a finding closed this way.
+
+## WSD-108: B-265's upgrade workflow ships as `dependency-audit` section 4; .NET goes straight to the target (2026-10-01)
+
+**Context.** WSD-105 closed B-265's four workflows, each to reopen on a field report. On 2026-09-30 the maintainer reopened
+one, the major-version upgrade, by request; no field report raised it. The skills excluded SDK/TFM and Angular majors.
+**Decision (user, 2026-09-30 and 2026-10-01: "ok" to the value batch).** Section 4 of each stack's `dependency-audit`, not a
+new skill or command. .NET moves straight to the target, the newest LTS by default (8 or 9 to 10), reading each skipped
+major's breaking changes in order: an out-of-support intermediate target raises NETSDK1138, which warnings-as-errors fails.
+Angular moves one major per pass, as its release policy requires. `ng update` is the one Angular CLI command derived without
+a Verification Commands row, an exception to WSD-020/B-35's derive-don't-assume rule, marked at each rule; it runs after the
+developer's go-ahead, never with `--force`. Shipped without a routing probe. **Reopen** on a field report of a stalled or wrong upgrade.

@@ -75,7 +75,7 @@ evidence satisfies the gate:
 - `add-lazy-route` — add a new route in the project's evidenced shape, with optional guards/resolvers
 - `add-signal-store` — add a signal-based shared-state store
 - `add-tests` — add tests for existing .NET or Angular code in the project's evidenced test shape
-- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet and npm packages and set up automated dependency scanning (Dependabot or Renovate)
+- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet and npm packages, set up automated scanning, or upgrade .NET or Angular to a newer major
 - `create-adr` — record a significant architecture decision in Architecture Decisions
 - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review
 - `enforce-architecture` — wire the deterministic DIP/layering CI gates (NetArchTest for .NET, dependency-cruiser for Angular)

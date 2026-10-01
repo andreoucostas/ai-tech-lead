@@ -73,6 +73,7 @@ authoritative.
 - “New feature logic is placed by responsibility: its own service or class even with one consumer, never a bolt-on or a subclass of a concrete service.” — `meta/workspace-decisions.md WSD-104`
 - “The held, blocked and parked backlog is closed by decision; everything shipped stays, and each item reopens on its own trigger.” — `meta/workspace-decisions.md WSD-105` (closes WSD-097's held rows; retires B-49 under WSD-062)
 - “An unreported self-filed or attack finding outside the four guarded harms is closed by decision, not filed; a fix for one of the four harms releases when ready; an idle session takes the first idle-queue row.” — `meta/workspace-decisions.md WSD-106` (amends WSD-105 for B-331's Held row)
+- “The major-version upgrade is `dependency-audit` section 4: .NET moves straight to the target, Angular one major per pass; `ng update` is the one Angular CLI command derived without a Verification Commands row.” — `meta/workspace-decisions.md WSD-108` (reopens one B-265 workflow by maintainer request; excepts WSD-020's derive-don't-assume rule)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

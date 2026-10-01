@@ -133,8 +133,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#frontmatter",
-          "chars": 574,
-          "tok": 144
+          "chars": 566,
+          "tok": 142
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#frontmatter",
@@ -173,8 +173,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7311,
-          "tok": 1828
+          "chars": 7306,
+          "tok": 1826
         },
         {
           "path": "CLAUDE.md",
@@ -190,8 +190,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7311,
-          "tok": 1828
+          "chars": 7306,
+          "tok": 1826
         },
         {
           "path": "CLAUDE.md",
@@ -433,8 +433,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 2466,
-          "tok": 616
+          "chars": 6757,
+          "tok": 1689
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
@@ -597,8 +597,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#frontmatter",
-          "chars": 611,
-          "tok": 153
+          "chars": 575,
+          "tok": 144
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#frontmatter",
@@ -622,7 +622,7 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7735,
+          "chars": 7736,
           "tok": 1934
         },
         {
@@ -639,7 +639,7 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7735,
+          "chars": 7736,
           "tok": 1934
         },
         {
@@ -887,8 +887,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 2710,
-          "tok": 678
+          "chars": 6313,
+          "tok": 1578
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
@@ -1051,8 +1051,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#frontmatter",
-          "chars": 726,
-          "tok": 182
+          "chars": 660,
+          "tok": 165
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#frontmatter",
@@ -1091,8 +1091,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 9317,
-          "tok": 2329
+          "chars": 9323,
+          "tok": 2331
         },
         {
           "path": "CLAUDE.md",
@@ -1108,8 +1108,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 9317,
-          "tok": 2329
+          "chars": 9323,
+          "tok": 2331
         },
         {
           "path": "CLAUDE.md",
@@ -1371,8 +1371,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 3845,
-          "tok": 961
+          "chars": 11580,
+          "tok": 2895
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
@@ -1409,30 +1409,30 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 39470,
-      "static.claude.tok": 9868,
-      "static.copilot.chars": 25992,
-      "static.copilot.tok": 6498,
+      "static.claude.chars": 39457,
+      "static.claude.tok": 9864,
+      "static.copilot.chars": 25987,
+      "static.copilot.tok": 6497,
       "prompt.max.chars": 3403,
       "prompt.max.tok": 851
     },
     "angular": {
-      "static.claude.chars": 37963,
-      "static.claude.tok": 9491,
-      "static.copilot.chars": 26164,
+      "static.claude.chars": 37928,
+      "static.claude.tok": 9482,
+      "static.copilot.chars": 26165,
       "static.copilot.tok": 6541,
       "prompt.max.chars": 3206,
       "prompt.max.tok": 802
     },
     "monorepo": {
-      "static.claude.chars": 46589,
-      "static.claude.tok": 11647,
-      "static.copilot.chars": 29514,
-      "static.copilot.tok": 7378,
+      "static.claude.chars": 46529,
+      "static.claude.tok": 11632,
+      "static.copilot.chars": 29520,
+      "static.copilot.tok": 7380,
       "prompt.max.chars": 3818,
       "prompt.max.tok": 954
     },
-    "monorepo-claude-ratio-permille": 1180
+    "monorepo-claude-ratio-permille": 1179
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",

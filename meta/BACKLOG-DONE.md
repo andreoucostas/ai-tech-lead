@@ -12932,3 +12932,5 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-335** — CLOSED by decision **2026-10-01** (WSD-106), never filed. `src/stacks/{dotnet,monorepo}/files/README.md` :209/:212
   still list "add a new EF Core entity" among the skill recipes after 0.92.0's Common Tasks lines dropped EF Core. The README is
   not installed. Reopen on a field report.
+- **B-265** (major-version upgrade workflow) — REOPENED by maintainer request 2026-09-30 and CLOSED **2026-10-01** for 0.92.0 (WSD-108):
+  section 4 of each stack's `dependency-audit`. B-265's other three workflows stay closed under WSD-105.

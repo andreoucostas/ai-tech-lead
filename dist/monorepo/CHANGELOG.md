@@ -84,6 +84,25 @@
   Claude Code does not need it: it loads the rules through the
   `@.github/instructions/framework-rules.instructions.md` line in `CLAUDE.md`, and `template-checks`
   fails when that line is missing.
+- **`dependency-audit` now also upgrades .NET or Angular to a newer major version**, one stack per
+  pass. Ask for it by name, for example "use the dependency-audit skill to upgrade the API to
+  .NET 10": we have not tested whether your agent picks the skill for an upgrade request that does
+  not name it. Each pass first reads that stack's breaking changes on the vendor's pages, is built
+  and tested with the commands your repository already records, and is committed on its own. On the
+  .NET side it moves straight to the target, normally the newest long-term-support release, so no
+  commit targets an out-of-support version; after you confirm the target SDK is installed where
+  your recorded commands run, it moves the SDK pin, target frameworks, ASP.NET Core, EF Core and
+  the other runtime-versioned packages, and committed Dockerfile and CI versions together. New SDK
+  warnings, including .NET 10's audit of transitive packages, are fixed or deferred on the record
+  (an `AnalysisLevel` pin or a per-rule severity change noted in `TECH_DEBT.md`, or a
+  `NuGetAuditSuppress` entry beside its `SECURITY_FINDINGS.md` row), never by a blanket `NoWarn`,
+  by turning warnings-as-errors off, or by setting `NuGetAuditMode` to `direct`. On the Angular side
+  it moves one major version per pass, as Angular requires, with `ng update` so its migrations run:
+  the one Angular CLI command it uses without a row in your Verification Commands, shown to you
+  first and never with `--force`. It installs nothing: SDK, Node, Visual Studio and server
+  prerequisites are listed as your actions. An update does not change your `AGENTS.md`; to name the
+  upgrade in your Common Tasks list, change the `dependency-audit` line to:
+  ``- `dependency-audit` — scan for vulnerable/deprecated/outdated NuGet and npm packages, set up automated scanning, or upgrade .NET or Angular to a newer major``
 
 ## 0.91.0 — 2026-09-30
 
