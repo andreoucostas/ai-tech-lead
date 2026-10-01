@@ -4543,7 +4543,7 @@ consumer self-assessment are retired and `meta/drill-kit.md` deleted; FS2 (`meta
 point 9 (bounding A8) is dropped. Accepted: capture can still write an overclaimed fact into a consumer's wiki, and `/review`
 dispatch and Copilot's unprompted large-file recovery stay unobserved.
 **Reopen** each on a field report of its gap; B-222 to B-224 also on an eval where captured knowledge changes a pre-registered
-result (2026-09-30 probe: 0/6 in every arm, so none; B-325 holds what it showed); B-226 on a dated real `/review`; B-42 on a named participant.
+result (2026-09-30 probe: 0/6 in every arm, so none; WSD-107 holds what it showed); B-226 on a dated real `/review`; B-42 on a named participant.
 
 ## WSD-106: unreported findings outside the four harms close by decision; idle sessions take the queue (2026-09-30)
 
@@ -4557,6 +4557,19 @@ one CLOSED line in `meta/BACKLOG-DONE.md` citing WSD-106, not an entry. Requirem
 the Ship rule's roughly weekly batch; a fix for one of the four harms releases when ready. With no field report, user
 request or eval alarm waiting, a session takes the first idle-queue row of `meta/BACKLOG.md`'s pick-up order, not
 self-generated work. Amends WSD-105 for B-331's Held row. **Reopen** on a field report of harm from a finding closed this way.
+
+## WSD-107: a request premise the project's record contradicts is worked out from the code, as far as the task needs (B-325, 2026-10-01)
+
+**Context.** In the WSD-105 probe (`meta/eval-results.md`, 2026-09-30) all six agents holding `/bootstrap`'s record that
+`fact.FactSales.LoadRunId` is the staging `BatchId` saw the trap; five still joined `ctl.LoadRun` behind a caveat, one asked.
+**Decision (user, 2026-09-30: "i think the point is to get the agent to work it out as needed, and maybe document it";
+2026-10-01: "Ship, test to measure").** Verification Rules #11 in all three stacks gains one sentence, funded by two carrier
+slogans (+170 bytes per dist). Its wording is this session's implementation of the decision, not the user's. It ships
+regardless of the measurement, and the result does not revert it.
+**Evidence** pending: the pre-registered `warehouse-route-p4` confirmation on branch `b325-eval`, which also tests WSD-105's
+reopen trigger. That fixture's record is correct, so it cannot tell "worked it out" from "obeyed the record"; the stale-record
+world is unmeasured, and nothing more is claimed.
+**Reopen** on a field report of an agent refusing a premise the code supports, or building on one its project records as false.
 
 ## WSD-108: B-265's upgrade workflow ships as `dependency-audit` section 4; .NET goes straight to the target (2026-10-01)
 

@@ -12934,3 +12934,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   not installed. Reopen on a field report.
 - **B-265** (major-version upgrade workflow) — REOPENED by maintainer request 2026-09-30 and CLOSED **2026-10-01** for 0.92.0 (WSD-108):
   section 4 of each stack's `dependency-audit`. B-265's other three workflows stay closed under WSD-105.
+- **B-325** — CLOSED **2026-10-01** for 0.92.0 (WSD-107). Verification Rules #11 in all three stacks now tells the agent, when what
+  the repository records contradicts a premise of the request, to work out which holds as far as the task needs, deliver only what it
+  establishes, name the rest and offer to update the record. Shipped before its measurement by the user's choice; the pre-registered
+  `warehouse-route-p4` confirmation on branch `b325-eval` reports later.

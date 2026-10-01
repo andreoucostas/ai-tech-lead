@@ -13,22 +13,15 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 1 | B-325 | A decision for the user; a rules change, if any, follows it |
-| 2 | B-326 | False-green class: the host steers `/security-review` to its built-in agent; interactive precedence is unobserved |
-| 3 | B-327 | Idle queue. Guarded; on-demand `/bootstrap` text, though what it writes lands in the consumer's `AGENTS.md` |
-| 4 | B-328 | Idle queue. Small and ordinary; the PR review step the Bitbucket Data Center target lacks |
-| 5 | B-329 | Idle queue. Guarded; measure first, and stop if a template check cannot fit post-write's 45 s budget |
-| 6 | B-330 | Idle queue. Before the next `-Arm none` run; it needs a baseline rerun |
+| 1 | B-326 | False-green class: the host steers `/security-review` to its built-in agent; interactive precedence is unobserved |
+| 2 | B-327 | Idle queue. Guarded; on-demand `/bootstrap` text, though what it writes lands in the consumer's `AGENTS.md` |
+| 3 | B-328 | Idle queue. Small and ordinary; the PR review step the Bitbucket Data Center target lacks |
+| 4 | B-329 | Idle queue. Guarded; measure first, and stop if a template check cannot fit post-write's 45 s budget |
+| 5 | B-330 | Idle queue. Before the next `-Arm none` run; it needs a baseline rerun |
+| 6 | B-336 | Idle queue. Measure first; WSD-107's sentence fires only where a project record exists |
 | Held | B-331 | Reopens on a reply from report #6's team |
 
 ## Open entries
-
-### B-325 · Decide what an agent does when recorded project knowledge contradicts the literal request
-**Filed against:** v0.91.0 (2026-09-30)
-**Priority:** P3 · **Effort:** S to decide, M if the rules change · **Invariants:** #1 #7
-**Status:** Open; needs the user's decision. In the WSD-105 probe (`meta/eval-results.md`, 2026-09-30) all six agents with the
-`/bootstrap` fact saw that `fact.FactSales.LoadRunId` is not a `ctl.LoadRun` key; five still joined it behind a caveat, one asked.
-Choose a rule ("never build on a relationship the project records as false; deliver what is answerable, name the gap") or the caveated join.
 
 ### B-326 · Observe Copilot CLI interactive /review and /security-review precedence against the project's command files
 **Filed against:** v0.91.0 (2026-09-30)
@@ -71,6 +64,13 @@ user `CLAUDE.md`, skills, hooks), show a user canary absent, rerun a baseline. T
 **Status:** Held until report #6's team replies (WSD-106 amends WSD-105 for this row). A synthetic .NET fixture registering through each
 project's `IoCConfig.Configure(IUnityContainer)`, with an exemplar; pass = the registration lands there and no `IServiceCollection` or
 `AddXxxServices` appears. B-216, closed by WSD-105, is unobserved since.
+
+### B-336 · Measure whether agents work out a request premise the code contradicts when no project record names it
+**Filed against:** v0.91.0 (2026-10-01)
+**Priority:** P3 · **Effort:** S to measure, M if the rules change · **Invariants:** #1 #7
+**Status:** Open; idle queue, measure first. Without a project record, 12 of 12 WSD-105 probe runs (`meta/eval-results.md`, 2026-09-30)
+joined `ctl.LoadRun` or drove the query from it, although 9 read `usp_LoadFactSales.sql`, which fills `LoadRunId` from `BatchId`
+(re-read 2026-10-01). WSD-107's sentence fires only on a record. Candidate: extend "work it out" to premises the code contradicts.
 
 ## Archived
 

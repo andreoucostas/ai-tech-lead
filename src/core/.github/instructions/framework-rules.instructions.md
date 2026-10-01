@@ -7,7 +7,7 @@ applyTo: "**"
 
 ## Verification Rules
 
-These apply to every workflow, before any convention-level rule. The difference between confident output and hallucinated output.
+These apply to every workflow, before any convention-level rule.
 
 <!-- @stack:verif-rules -->
 
@@ -19,7 +19,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 
 ## Leanness
 
-The Boy Scout Rule biases toward improvements. This counterweight requires every change also consider what to remove or not introduce. Bloat is not style — it is AI-assisted development's highest-cost long-term failure mode.
+The Boy Scout Rule biases toward improvements. This counterweight requires every change also consider what to remove or not introduce.
 
 ### Defaults
 

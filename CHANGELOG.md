@@ -89,6 +89,20 @@ none ran, so the stack notes tell teams to ask for `dependency-audit` by name. A
 37,928 (-35), monorepo 46,589 -> 46,529 (-60). Skill bodies, loaded only when the skill runs: dotnet
 2,466 -> 6,757, angular 2,710 -> 6,313, monorepo 3,845 -> 11,580 chars.
 
+B-325, from the WSD-105 probe (WSD-107): Verification Rules #11 in all three stacks gains one sentence. When
+what the repository records contradicts a premise of the request, the agent is told to work out which holds,
+as far as the task needs, from the code that writes and reads the data and any read-only query or test it
+can run, deliver only what it establishes, name what it could not, and offer to update the record. The user
+chose "Ship, test to measure" on 2026-10-01: the rule ships regardless, and the result does not revert it.
+Its effect is unmeasured. The pre-registered `warehouse-route-p4` confirmation on branch `b325-eval` (Claude
+Code only, one model) reports later; its fixture's record is correct, so it cannot tell an agent that worked
+the premise out from one that obeyed the record. Funding: the carrier's two slogan sentences ("The
+difference between confident output and hallucinated output." and "Bloat is not style — …"), which no test
+pinned. Always-loaded context +170 chars per dist (sentence +327, slogans -157) in `static.claude` and
+`static.copilot`: dotnet `static.claude` 39,457 -> 39,627 (373 under the ceiling), angular 37,928 -> 38,098,
+monorepo 46,529 -> 46,699. Filed B-336: without a record, the probe's twelve other runs built on the premise
+although nine read the loader that contradicts it.
+
 ## 0.91.0 — 2026-09-30
 
 B-324, from a maintainer report: an install from a clone 68 commits behind `master` put v0.89.1 into a
