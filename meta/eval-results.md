@@ -2499,3 +2499,95 @@ ran is reported.
 **Not measured.** Copilot; angular and monorepo; other models; interactive sessions; a queryable database; a record
 that is wrong. Here the record is right, so an agent that worked the premise out and one that obeyed the record give
 the same answer.
+
+## 2026-10-01 08:16:10 +01:00 — framework v0.91.0 (17516aace84fbd5690baf691388003f2b7e076fb)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · patch: b325-work-it-out.patch@d02f34ec81cc · warehouseMap: generated · scratch: retained=True
+
+- **PASS warehouse-route-p4** (model=sonnet; patch=b325-work-it-out.patch@d02f34ec81cc) — agentExit=0 timedOut=False costUsd=0.3209876 tokensIn=10 tokensOut=5678; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True consumer=ASKED investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes= checks=0 readLoadRun=False perRun=False proxyStart=False disclosed=True editedWarehouse=False category=BOTH channels=C1,C2,C5 artifactWritten=False otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet; patch=b325-work-it-out.patch@d02f34ec81cc) — agentExit=0 timedOut=False costUsd=0.2626724 tokensIn=8 tokensOut=6296; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True consumer=CAVEATED-JOIN investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=outer checks=0 readLoadRun=True perRun=True proxyStart=False disclosed=True editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet; patch=b325-work-it-out.patch@d02f34ec81cc) — agentExit=0 timedOut=False costUsd=0.262652 tokensIn=8 tokensOut=5273; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True consumer=ASKED investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes= checks=0 readLoadRun=False perRun=False proxyStart=False disclosed=True editedWarehouse=False category=MAP_DISCOVERED channels=C2,C5 artifactWritten=False otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet; patch=b325-work-it-out.patch@d02f34ec81cc) — agentExit=0 timedOut=False costUsd=0.2634296 tokensIn=6 tokensOut=6665; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True consumer=ASKED investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes= checks=0 readLoadRun=False perRun=False proxyStart=False disclosed=True editedWarehouse=False category=MAP_DISCOVERED channels=C2,C5 artifactWritten=False otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet; patch=b325-work-it-out.patch@d02f34ec81cc) — agentExit=0 timedOut=False costUsd=0.2935396 tokensIn=10 tokensOut=6492; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=True documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=True editedWarehouse=False category=MAP_DISCOVERED channels=C5 artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet; patch=b325-work-it-out.patch@d02f34ec81cc) — agentExit=0 timedOut=False costUsd=0.2727588 tokensIn=10 tokensOut=5674; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=True editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p4** arm=framework outcome=4/6 excluded=0 patch=b325-work-it-out.patch@d02f34ec81cc consumer=ESTABLISHED-PARTIAL:0,CAVEATED-JOIN:1,ASKED:3,MISLEADING:2,OTHER:0
+
+
+## 2026-10-01 08:22:58 +01:00 — framework v0.91.0 (17516aace84fbd5690baf691388003f2b7e076fb)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · warehouseMap: generated · scratch: retained=True
+
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.289453 tokensIn=10 tokensOut=5354; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True consumer=CAVEATED-JOIN investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=outer checks=0 readLoadRun=True perRun=True proxyStart=False disclosed=True editedWarehouse=False category=MAP_DISCOVERED channels=C2,C5 artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.256421 tokensIn=10 tokensOut=4873; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True consumer=CAVEATED-JOIN investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=outer checks=0 readLoadRun=True perRun=True proxyStart=False disclosed=True editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2414144 tokensIn=8 tokensOut=3591; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True consumer=ASKED investigated=True documentedOrOffered=False readLoader=True searchedWriters=True documented=False offered=False shapes= checks=0 readLoadRun=False perRun=False proxyStart=False disclosed=True editedWarehouse=False category=MAP_DISCOVERED channels=C2,C5 artifactWritten=False otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2368296 tokensIn=6 tokensOut=4454; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True consumer=ASKED investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes= checks=0 readLoadRun=False perRun=False proxyStart=False disclosed=True editedWarehouse=False category=MAP_DISCOVERED channels=C2,C5 artifactWritten=False otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.239417 tokensIn=8 tokensOut=4728; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True consumer=CAVEATED-JOIN investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=outer checks=0 readLoadRun=True perRun=True proxyStart=False disclosed=True editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2424522 tokensIn=8 tokensOut=4906; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=True consumer=CAVEATED-JOIN investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=outer checks=0 readLoadRun=True perRun=True proxyStart=False disclosed=True editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p4** arm=framework outcome=6/6 excluded=0 consumer=ESTABLISHED-PARTIAL:0,CAVEATED-JOIN:4,ASKED:2,MISLEADING:0,OTHER:0
+
+
+## 2026-10-01 08:33:23 +01:00 — framework v0.91.0 (17516aace84fbd5690baf691388003f2b7e076fb)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · warehouseMap: omit · scratch: retained=True
+
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3260992 tokensIn=18 tokensOut=4845; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4491994 tokensIn=26 tokensOut=8489; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2526316 tokensIn=10 tokensOut=3573; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2636128 tokensIn=12 tokensOut=3881; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=MAP_DISCOVERED channels=C5 artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3644358 tokensIn=22 tokensOut=6590; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=MAP_DISCOVERED channels=C4 artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.5197558 tokensIn=24 tokensOut=11083; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=framework outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=SKILL_ROUTED channels=C1 artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p4** arm=framework outcome=0/6 excluded=0 consumer=ESTABLISHED-PARTIAL:0,CAVEATED-JOIN:0,ASKED:0,MISLEADING:6,OTHER:0
+
+
+## 2026-10-01 08:46:27 +01:00 — framework v0.91.0 (17516aace84fbd5690baf691388003f2b7e076fb)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: none · warehouseMap: omit · scratch: retained=True
+
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1392088 tokensIn=10 tokensOut=1814; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1369626 tokensIn=12 tokensOut=1276; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False consumer=MISLEADING investigated=False documentedOrOffered=False readLoader=False searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1403126 tokensIn=12 tokensOut=1540; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.130848 tokensIn=10 tokensOut=1607; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.141491 tokensIn=10 tokensOut=2201; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **PASS warehouse-route-p4** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.143158 tokensIn=12 tokensOut=1725; ccVersion=2.1.281 initModel=claude-sonnet-5 arm=none outcome=False consumer=MISLEADING investigated=True documentedOrOffered=False readLoader=True searchedWriters=False documented=False offered=False shapes=drops checks=0 readLoadRun=True perRun=False proxyStart=False disclosed=False editedWarehouse=False category=NEITHER channels= artifactWritten=True otherSqlArtifacts=
+- **SUMMARY warehouse-route-p4** arm=none outcome=0/6 excluded=0 consumer=ESTABLISHED-PARTIAL:0,CAVEATED-JOIN:0,ASKED:0,MISLEADING:6,OTHER:0
+
+
+## B-325 confirmation run, warehouse-route-p4 on Claude Code — 2026-10-01 (hand-written summary of the four blocks above)
+
+Run as pre-registered above. Claude Code 2.1.281 and claude-sonnet-5 in every row's `system/init`, and every block cites
+the freeze commit `17516aac`. All 24 trials were valid, so none was replaced and no other invocation ran.
+
+| | A1 knowledge + sentence | A2 knowledge | A3 framework, no knowledge | A4 bare |
+|---|---|---|---|---|
+| ESTABLISHED-PARTIAL | 0/6 | 0/6 | 0/6 | 0/6 |
+| CAVEATED-JOIN | 1/6 | 4/6 | 0/6 | 0/6 |
+| ASKED | 3/6 | 2/6 | 0/6 | 0/6 |
+| MISLEADING | 2/6 | 0/6 | 6/6 | 6/6 |
+| OTHER | 0/6 | 0/6 | 0/6 | 0/6 |
+| INVESTIGATED (each by reading `usp_LoadFactSales.sql`) | 6/6 | 6/6 | 6/6 | 5/6 |
+| DOCUMENTED-OR-OFFERED, grader / hand | 0/6 / 1/6 | 0/6 / 1/6 | 0/6 / 0/6 | 0/6 / 0/6 |
+| cost, total (mean per run) | 1.68 USD (0.28) | 1.51 USD (0.25) | 2.18 USD (0.36) | 0.83 USD (0.14) |
+
+- **Rule T did not fire.** A1 had 2/6 MISLEADING; the pre-registered ceiling was 1/6 in each knowledge arm. Every hand
+  class matches the grader's, so the verdict is settled. A2 alone, 0/6 against 6/6 in A3 and in A4, is the pattern the
+  trigger names, but the rule required both knowledge arms. The re-grade of the 2026-09-30 runs predicted that it would
+  fire.
+- **The sentence's effect, described and not tested.** No run in A1 or A2 delivered revenue per batch without the start
+  time unprompted. With the sentence, three runs stopped to ask against two, one wrote the caveated join against four,
+  and two wrote a report driven from `ctl.LoadRun` (`FROM ctl.LoadRun LEFT JOIN fact.FactSales`) against none. Both of
+  those comment that the query returns zero rows or no matched revenue until `ctl.LoadRun` is written, so the consumer
+  is warned but receives no revenue. At n=6 the arms are not shown to differ. The sentence ships regardless (user,
+  2026-10-01).
+- **The record was read and checked.** All twelve A1 and A2 runs read the loader. No run in any arm changed a record
+  file or edited the warehouse. One A1 run offered to draft a `TECH_DEBT.md` entry, and one A2 run offered to add
+  one. The grader's offer pattern needs the record's name after the verb, so it missed both. That is a flag defect;
+  no category moves.
+- **Without the record, reading the code did not help.** 11 of the 12 A3 and A4 runs read `usp_LoadFactSales.sql`,
+  which loads `LoadRunId` from `s.BatchId`. All 12 still joined `ctl.LoadRun` or drove the query from it. One bare
+  run wrote that the BatchId source "maps 1:1" to `ctl.LoadRun.LoadRunId`.
+- Grader and hand disagree on no category and on two DOCUMENTED-OR-OFFERED flags (above). Rows were checked by hand
+  against each written file and final message in the retained scratch (`<temp>\ai-tech-lead-agent-evals-20261001-080816`,
+  `-081639`, `-082310`, `-084407`).
+- Cost: 6.19 USD for the 24 scored runs, plus 5.17 USD for the fixture session, 11.36 USD in all, under the 16 USD stop.
+- Scope: Claude Code only, one task, one fixture, one model, n=6 per arm. The record here is right, so the run cannot
+  separate an agent that worked the premise out from one that obeyed the record.
