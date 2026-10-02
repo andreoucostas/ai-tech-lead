@@ -2110,7 +2110,9 @@ baseline), claude-sonnet-5, 24 runs, one premium request each, none excluded. n=
   graded Copilot run had a credit cap the model could see (30 or 150; the runner allowed no uncapped run before B-305).
 - 0.89.1's reason, that Copilot's harness "does not supply that push itself", is unsupported: the 1.0.83, 1.0.86 and
   1.0.89 binaries carry skill-tool text making a matching skill's invocation mandatory as the first action. Whether that
-  text reached the model is not established (`events.jsonl` does not log tool descriptions). The 0/9 itself stands.
+  text reached the model is not established (`events.jsonl` does not log tool descriptions). The 0/9 itself stands. B-341
+  then measured the sentence on 1.0.89: the `skill` call came in 6/6 with it and 1/6 without, so in effect the host's own
+  push is weak and 0.89.1's practical conclusion holds.
 
 ## 2026-09-21 14:34:35 +01:00 — framework v0.89.1 (cc26f694e2028360dfa8427a48ae801750128329)
 
@@ -2650,3 +2652,122 @@ that skill with your skill tool before planning or editing.")?
 - Exclusion: hooksLoaded=False, ERROR (unexaminable log) or a session-limit message excludes a run, repeated once; a second
   failure is reported, not repeated. Spend stop: 16 premium requests. Two scorers read the raw logs independently; any
   disagreement is reported.
+
+## 2026-10-02 11:42:36 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=36 tokensOut=24067; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=46 arm=framework outcome=True category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-02 11:47:23 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · patch: b341-no-routing-sentence.patch@286909005eed · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot; patch=b341-no-routing-sentence.patch@286909005eed) — agentExit=0 timedOut=False costUsd=n/a tokensIn=36 tokensOut=18464; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=43 arm=framework outcome=True category=SKILL_READ channels=C2,C3 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=1/1 excluded=0 executor=copilot patch=b341-no-routing-sentence.patch@286909005eed
+
+
+## 2026-10-02 11:52:31 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=36 tokensOut=20054; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=46 arm=framework outcome=True category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-02 12:01:33 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · patch: b341-no-routing-sentence.patch@286909005eed · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot; patch=b341-no-routing-sentence.patch@286909005eed) — agentExit=0 timedOut=False costUsd=n/a tokensIn=46 tokensOut=30576; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=58 arm=framework outcome=True category=SKILL_READ channels=C2,C3 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=1/1 excluded=0 executor=copilot patch=b341-no-routing-sentence.patch@286909005eed
+
+
+## 2026-10-02 12:08:20 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=40 tokensOut=29455; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=47 arm=framework outcome=True category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-02 12:14:30 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · patch: b341-no-routing-sentence.patch@286909005eed · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot; patch=b341-no-routing-sentence.patch@286909005eed) — agentExit=0 timedOut=False costUsd=n/a tokensIn=46 tokensOut=23774; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=54 arm=framework outcome=True category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=1/1 excluded=0 executor=copilot patch=b341-no-routing-sentence.patch@286909005eed
+
+
+## 2026-10-02 12:20:41 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=44 tokensOut=24475; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=46 arm=framework outcome=True category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-02 12:25:07 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · patch: b341-no-routing-sentence.patch@286909005eed · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot; patch=b341-no-routing-sentence.patch@286909005eed) — agentExit=0 timedOut=False costUsd=n/a tokensIn=32 tokensOut=17358; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=43 arm=framework outcome=True category=SKILL_READ channels=C2,C3 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=1/1 excluded=0 executor=copilot patch=b341-no-routing-sentence.patch@286909005eed
+
+
+## 2026-10-02 12:29:54 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=36 tokensOut=18561; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=46 arm=framework outcome=True category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-02 12:36:43 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · patch: b341-no-routing-sentence.patch@286909005eed · scratch: retained=True
+
+- **FAIL warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot; patch=b341-no-routing-sentence.patch@286909005eed) — agentExit=0 timedOut=False costUsd=n/a tokensIn=32 tokensOut=23664; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=46 arm=framework outcome=False category=MAP_DISCOVERED channels=C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=0/1 excluded=0 executor=copilot patch=b341-no-routing-sentence.patch@286909005eed
+
+
+## 2026-10-02 12:42:23 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=50 tokensOut=21420; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=50 arm=framework outcome=True category=BOTH channels=C1,C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-02 12:46:58 +01:00 — framework v0.91.0 (5bcbc04d333ba635dd8845898357d8d6de3be4fd)
+
+Host: GitHub Copilot CLI 1.0.89. · executor: copilot · model: claude-sonnet-5 · credit cap: none · arm: framework · patch: b341-no-routing-sentence.patch@286909005eed · scratch: retained=True
+
+- **FAIL warehouse-bind-sql** (model=claude-sonnet-5; executor=copilot; patch=b341-no-routing-sentence.patch@286909005eed) — agentExit=0 timedOut=False costUsd=n/a tokensIn=36 tokensOut=17124; executor=copilot copilotCli=1.0.89 hooksLoaded=True premiumRequests=1 toolCalls=44 arm=framework outcome=False category=MAP_DISCOVERED channels=C2 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=True naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=0/1 excluded=0 executor=copilot patch=b341-no-routing-sentence.patch@286909005eed
+
+## B-341 results — Copilot CLI routing knockout, 2026-10-02 (hand-written summary of the twelve blocks above)
+
+As pre-registered at a61ba426: Copilot CLI 1.0.89, claude-sonnet-5, no credit cap, framework v0.91.0 from a clone at the tag,
+warehouse-bind-sql, arms alternated, 12 runs plus 2 hand controls, 14 premium requests, none excluded (hooksLoaded=True in
+all 12, every log complete, no session-limit text). Two scorers parsed the raw `events.jsonl` independently and agreed on every
+count; each session matched its row on toolCalls and tokens, and every A system message carries the routing sentence, no B one.
+
+| arm | R: `skill` call for `add-warehouse-load`, succeeded | position | graded outcome | `SKILL.md` read by `view` |
+|---|---|---|---|---|
+| A, sentence as shipped | 6/6 | first tool call in all 6 | 6/6 | 0 |
+| B, sentence removed | 1/6 (run 3) | first tool call | 4/6 | 3 (runs 1, 2, 4; all passed) |
+
+- Reading, as fixed: B at R <= 1/6 with A at R >= 4/6, so the sentence carries the routing on Copilot CLI 1.0.89 for this task
+  (two-sided Fisher 14/924, about 0.015). Without it the agent still found the skill's text by an ordinary file read in 3 of the
+  5 runs that skipped the skill tool, mid-task (tool index 22 to 32); the two runs that reached neither failed with RegionName on
+  the fact. Listing does not explain it: all 12 system messages list `add-warehouse-load` with its full 765-character description.
+- Control 1, a prompt naming `remember-for-team`: one `skill` call for it, first, succeeded. Control 2 could not examine the skill
+  tool's description: the debug log's wire requests carry only a tool fingerprint (`skill:<hash>`), not descriptions. It ran on the
+  control fixture, not an arm-A warehouse target as the pre-registration worded it. So whether the CLI's built-in "mandatory"
+  skill-tool text reaches the model is still not established; behaviourally, without the sentence the host's own push gave 1/6.
+- Observed in passing: Copilot CLI 1.0.89 puts `AGENTS.md` in the system message twice, once as a custom instruction and once
+  resolved from `CLAUDE.md`'s `@AGENTS.md` import; `framework-rules.instructions.md` also appears twice (B-344).
+- Not shown: any other task or skill, VS Code, interactive CLI, or a later CLI. Never compared with B-278's 4/6 or Claude Code.

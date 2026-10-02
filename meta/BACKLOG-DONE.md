@@ -12944,11 +12944,16 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   though angular `bootstrap.md` 3a says `/rebootstrap` records `.claude/disabled-skills/` decisions. Reopen on a field report.
 - **B-340** — CLOSED by decision **2026-10-02** (WSD-106), never filed. `src/core/scripts/framework-doctor.ps1`'s leftover-file check lists
   19 paths but its OK line says "18 v0.83 retired framework paths". Reopen on a field report.
-- **B-341** — CLOSED by decision **2026-10-02** (WSD-106), never filed; REOPENED the same day by maintainer request ("run it"), pre-registered in `meta/eval-results.md`. A Copilot CLI routing knockout (warehouse-bind-sql, routing
-  sentence kept vs removed, n=6 each, about 14 premium requests) would settle whether current CLI invokes a matching skill unprompted;
-  the sentence ships either way. Design: `meta/eval-results.md` B-277/B-278 correction. Reopen on maintainer request or a field report.
+- **B-341** — CLOSED by decision **2026-10-02** (WSD-106), never filed; REOPENED the same day by maintainer request ("run it") and CLOSED
+  **2026-10-02** with its result (`meta/eval-results.md`, pre-registered at a61ba426): on Copilot CLI 1.0.89 the `skill` call for
+  `add-warehouse-load` came in 6/6 with the routing sentence and 1/6 without (Fisher about 0.015), graded outcome 6/6 vs 4/6. The sentence
+  stays; 14 premium requests.
 - **B-342** — CLOSED by decision **2026-10-02** (WSD-106), never filed. `run-agent-evals.ps1` drops `skill.invoked` events, scores a
-  failed skill call NEITHER, and counts a shell read of a `SKILL.md` as the map channel; none changes a recorded count. Reopen with B-341.
+  failed skill call NEITHER, and counts a shell read of a `SKILL.md` as the map channel; none changes a recorded count, and B-341 was
+  scored from the raw logs. Reopen before the next runner-scored Copilot routing run. 
 - **B-343** — CLOSED by decision **2026-10-02** (WSD-106), never filed. Copilot CLI gave full descriptions to about 29 skill-list
   entries per session and name-only lines to the rest, command files included, in consumer repos with their own skills (logs 4fc642cf,
   ac96344e, 7e9da9dd); our description lengths were never measured against that budget. Reopen on a field report of a skill not invoked.
+- **B-344** — CLOSED by decision **2026-10-02** (WSD-106), never filed. Copilot CLI 1.0.89 put `AGENTS.md` in the system message twice (as
+  a custom instruction and through `CLAUDE.md`'s `@AGENTS.md` import), and `framework-rules.instructions.md` twice (B-341's logs), so
+  Copilot pays the always-loaded carrier twice. Reopen on a field report of context cost or truncation.

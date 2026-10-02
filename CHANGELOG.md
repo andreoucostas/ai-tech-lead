@@ -145,19 +145,23 @@ i suspect our historical tests on this were wrong"; plan reviewed by Fable). A r
 the B-277/B-278 logs found the 0/9 real but its records wrong in four places, now corrected in
 `meta/eval-results.md`: the "24 project skills" were 12 skills, 10 command files and 2 built-ins; the
 Claude Code comparison broke the record's own rule; 0/9 to 4/6 is confounded by a CLI self-update and a
-visible credit cap; and 0.89.1's "Copilot's harness does not supply that push itself" is unsupported,
-since the 1.0.83 to 1.0.89 binaries carry skill-tool text making a matching skill mandatory. `copilot
-skill list` on CLI 1.0.89, with no model call, failed to load two kinds of skill: a description over 1024
-characters (monorepo `add-tests` as shipped in v0.77.0 to v0.91.0, 29 tags, an escaped defect) and an
-unquoted `description: DRAFT, pending PR review: ...`, which is invalid YAML; a top-level `origin:
-discovered` key and a `name` differing from its folder loaded (`meta/host-certification.md`). So
-`/bootstrap` 3a-bis now requires a drafted skill's description as a folded `>` block or a double-quoted
-string, at most 1,024 characters, and `name` in lowercase letters, digits and hyphens equal to its
-folder; and `validate-dist` gains check 15, `skill-frontmatter`, failing a shipped description over 1024
-characters (it fails v0.91.0's monorepo dist; HEAD's longest is 921). The routing knockout (about 14
-premium requests) was not run: the routing sentence stays either way; closed by decision as B-341, with
-the eval detector's gaps (B-342) and Copilot's per-session skill-list budget (B-343).
-## 0.91.0 — 2026-09-30
+visible credit cap; and 0.89.1's "Copilot's harness does not supply that push itself" was unsupported
+when written, since the 1.0.83 to 1.0.89 binaries carry skill-tool text making a matching skill
+mandatory. `copilot skill list` on CLI 1.0.89, with no model call, failed to load two kinds of skill: a
+description over 1024 characters (monorepo `add-tests` as shipped in v0.77.0 to v0.91.0, 29 tags, an
+escaped defect) and an unquoted `description: DRAFT, pending PR review: ...`, which is invalid YAML; a
+top-level `origin: discovered` key and a `name` differing from its folder loaded
+(`meta/host-certification.md`). So `/bootstrap` 3a-bis now requires a drafted skill's description as a
+folded `>` block or a double-quoted string, at most 1,024 characters, and `name` in lowercase letters,
+digits and hyphens equal to its folder; and `validate-dist` gains check 15, `skill-frontmatter`, failing
+a shipped description over 1024 characters (it fails v0.91.0's monorepo dist; HEAD's longest is 921).
+Then, by maintainer request, the pre-registered routing knockout B-341 ran (14 premium requests, v0.91.0,
+CLI 1.0.89, warehouse-bind-sql, n=6 per arm, two independent scorers in agreement): the `skill` call came
+in 6/6 with the routing sentence, always first, and 1/6 without (two-sided Fisher about 0.015), graded
+outcome 6/6 vs 4/6, so in effect the host's own push is weak, 0.89.1's practical conclusion holds and the
+sentence stays; without it three runs still read the `SKILL.md` mid-task. Closed by decision: the eval
+detector's gaps (B-342), Copilot's per-session skill-list budget (B-343) and `AGENTS.md` reaching
+Copilot's system message twice (B-344). ## 0.91.0 — 2026-09-30
 
 B-324, from a maintainer report: an install from a clone 68 commits behind `master` put v0.89.1 into a
 repository, and nothing said so until `/bootstrap` had run on it. Before it changes anything, the stack
