@@ -2099,6 +2099,19 @@ baseline), claude-sonnet-5, 24 runs, one premium request each, none excluded. n=
   (0/2 and 3/4 against 2/2 and 4/4 above). Filed as B-280; `map-warehouse` as a generator is B-279.
 - Not measured: a repository whose map came from a real `/map-warehouse` run; Claude Code at v0.89.1.
 
+### B-277/B-278 correction (2026-10-02, read-only re-reading of the retained logs and the 1.0.83-1.0.89 CLI binaries)
+
+- "24 project skills from `.claude/skills/`" was 12 `SKILL.md` skills, 10 `.claude/commands/*.md` files Copilot lists as
+  skills (`adopt`, `bootstrap`, `rebootstrap` are hidden by `disable-model-invocation`) and 2 built-ins.
+- "on Claude Code every framework-arm warehouse-bind-sql run reached the skill" compares hosts, which this section says
+  is never done; that 6/6 was 4 file reads of the `SKILL.md` and 2 `Skill` calls. On the native skill tool alone, Claude
+  Code 2/6 and Copilot 0/3 do not differ at this n.
+- 0/9 to 4/6 is confounded: the routing sentence arrived with the CLI's self-update from 1.0.83 to 1.0.86, and every
+  graded Copilot run had a credit cap the model could see (30 or 150; the runner allowed no uncapped run before B-305).
+- 0.89.1's reason, that Copilot's harness "does not supply that push itself", is unsupported: the 1.0.83, 1.0.86 and
+  1.0.89 binaries carry skill-tool text making a matching skill's invocation mandatory as the first action. Whether that
+  text reached the model is not established (`events.jsonl` does not log tool descriptions). The 0/9 itself stands.
+
 ## 2026-09-21 14:34:35 +01:00 — framework v0.89.1 (cc26f694e2028360dfa8427a48ae801750128329)
 
 Host: GitHub Copilot CLI 1.0.86. · executor: copilot · model: claude-sonnet-5 · arm: framework · warehouseMap: omit · scratch: retained=True

@@ -406,6 +406,7 @@ function Assert-RepositoryKnowledgeCaptureContracts {
             'Write at most three skill drafts per run',
             'never under a slug root `framework-retirements.json` retires',
             '`DRAFT, pending PR review:`',
+            'as a folded `>` block or a double-quoted string, never a plain line',
             'It ends with an `## After review` paragraph',
             'Never overwrite, move, or',
             'explicit relative Markdown link to every focused reference',

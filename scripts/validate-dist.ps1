@@ -49,7 +49,7 @@ for ($i = 0; $i -lt $args.Count; $i++) {
         $CheckArg = "$($args[$i])"
     } else { $positional += $a }
 }
-$ValidChecks = @('markers','json','powershell-topology','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references','prompt-hook-cardinality','rail-sync')
+$ValidChecks = @('markers','json','powershell-topology','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references','prompt-hook-cardinality','rail-sync','skill-frontmatter')
 $SelectedChecks = @()
 if ($null -ne $CheckArg) {
     $SelectedChecks = @($CheckArg -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
@@ -66,7 +66,7 @@ if ($ContentOnly -and $null -ne $CheckArg) {
 }
 function Test-CheckSelected($name) {
     if ($null -ne $CheckArg) { return $SelectedChecks -ccontains $name }
-    if ($ContentOnly) { return @('no-meta-leak','no-dead-instruction','hook-registration','step-references','prompt-hook-cardinality','rail-sync') -contains $name }
+    if ($ContentOnly) { return @('no-meta-leak','no-dead-instruction','hook-registration','step-references','prompt-hook-cardinality','rail-sync','skill-frontmatter') -contains $name }
     return $true
 }
 if ($UpdateRailSync -and -not (Test-CheckSelected 'rail-sync')) {
@@ -982,6 +982,64 @@ if ($railBlind) {
     } else {
         OK "route-prompt rails match the reviewed canonical workflow bullets in $Dist (rail-sync; $($railCurrent.Count) pair(s))."
     }
+}
+}
+
+if (Test-CheckSelected 'skill-frontmatter') {
+# --- 15. shipped skill descriptions load on Copilot CLI -----------------------------------------
+# DELIVERY CONSTRAINT observed on Copilot CLI 1.0.89 (`copilot skill list`): a SKILL.md whose
+# description exceeds 1024 characters fails to load ("Skill description must be at most 1024
+# characters"), the Agent Skills specification's limit. monorepo add-tests shipped at 1,078 in
+# v0.77.0 to v0.91.0. Folded and literal blocks are joined the way YAML folds them.
+$skillFiles = @()
+$skillsRoot = Join-Path $DistAbs '.claude/skills'
+if (Test-Path -LiteralPath $skillsRoot -PathType Container) {
+    $skillFiles = @(Get-ChildItem -LiteralPath $skillsRoot -Directory -Force |
+        ForEach-Object { Join-Path $_.FullName 'SKILL.md' } |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+}
+$skillProblems = @()
+$longestDescription = 0
+foreach ($skillPath in $skillFiles) {
+    $relative = $skillPath.Substring($DistAbs.Length).TrimStart('\','/').Replace('\','/')
+    $lines = @([IO.File]::ReadAllLines($skillPath, [Text.Encoding]::UTF8))
+    $end = -1
+    if ($lines.Count -gt 0 -and $lines[0].Trim() -eq '---') {
+        for ($i = 1; $i -lt $lines.Count; $i++) { if ($lines[$i].Trim() -eq '---') { $end = $i; break } }
+    }
+    if ($end -lt 0) { $skillProblems += "$relative : no terminated YAML frontmatter"; continue }
+    $description = $null
+    for ($i = 1; $i -lt $end; $i++) {
+        $match = [regex]::Match($lines[$i], '^description:\s*(.*)$')
+        if (-not $match.Success) { continue }
+        $value = $match.Groups[1].Value.Trim()
+        if ($value -eq '' -or $value -match '^[>|][+-]?$') {
+            $block = New-Object System.Collections.Generic.List[string]
+            for ($j = $i + 1; $j -lt $end -and ($lines[$j] -match '^\s+\S' -or $lines[$j].Trim() -eq ''); $j++) {
+                if ($lines[$j].Trim() -ne '') { $block.Add($lines[$j].Trim()) }
+            }
+            $separator = if ($value.StartsWith('|')) { "`n" } else { ' ' }
+            $description = $block -join $separator
+        } elseif ($value -match '^"(.*)"$' -or $value -match "^'(.*)'$") {
+            $description = $Matches[1]
+        } else {
+            $description = $value
+        }
+        break
+    }
+    if ($null -eq $description) { $skillProblems += "$relative : no description in its frontmatter"; continue }
+    if ($description.Length -gt $longestDescription) { $longestDescription = $description.Length }
+    if ($description.Length -gt 1024) {
+        $skillProblems += "$relative : description is $($description.Length) characters"
+    }
+}
+if ($skillFiles.Count -eq 0) {
+    Fail "skill frontmatter scan found no .claude/skills/*/SKILL.md in $Dist -- the scan is blind."
+} elseif ($skillProblems.Count -gt 0) {
+    Fail "shipped skills Copilot CLI cannot load -- $($skillProblems.Count) finding(s). Copilot CLI 1.0.89 refuses to load a skill whose description exceeds 1024 characters."
+    $skillProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [skill-frontmatter] $_" }
+} else {
+    OK "every shipped skill description loads on Copilot CLI ($($skillFiles.Count) SKILL.md files; longest description $longestDescription of 1024 characters)."
 }
 }
 

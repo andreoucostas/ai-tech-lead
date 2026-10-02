@@ -37,7 +37,7 @@ so a dead surface is not averaged away; averaging across tiers would defeat the 
 ## Standing constraints — read before designing anything
 
 - `meta/decisions-index.md` **first**. A buried constraint has already cost one wasted design cycle.
-- **WSD-042** — the harness is locked to Claude Code, the one host that loads skills. Record
+- **WSD-042** — the harness is locked to Claude Code. (Copilot CLI loads skills too: WSD-072, B-278.) Record
   "carrier unreachable" as a **distinct outcome**, never as a failure.
 - **B-140** — codex is explicitly *out of scope* for B-129. Do not use it to "speed up" this work.
 - Pre-register the threshold **before** the run. A number that cannot produce a decision is B-112's

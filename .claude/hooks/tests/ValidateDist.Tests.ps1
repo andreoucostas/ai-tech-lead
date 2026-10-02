@@ -672,5 +672,19 @@ try {
         Assert ($text.Contains("All dist validation checks passed for $(Join-Path 'dist' 'dotnet').")) "rail-sync-update-closing-line did not name the dist it validated: $text"
     }
 
+    It 'case 40: a skill description over 1024 characters fails the Copilot skill-load check' {
+        # Escaped in v0.77.0 to v0.91.0: monorepo add-tests carried a 1,078-character description, and Copilot
+        # CLI 1.0.89 refuses to load such a skill ("Skill description must be at most 1024 characters").
+        Assert-Case 'skill-description-over-limit' {
+            param($d)
+            $path = Join-Path $d '.claude\skills\add-tests\SKILL.md'
+            $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
+            Assert ($text.Contains("description: >`n")) 'fixture add-tests no longer uses a folded description'
+            $padding = '  ' + ((1..120 | ForEach-Object { 'padding' }) -join ' ') + "`n"
+            [IO.File]::WriteAllText($path, $text.Replace("description: >`n", "description: >`n$padding"), (New-Object Text.UTF8Encoding($false)))
+        } 'refuses to load a skill whose description exceeds 1024' 'skill-frontmatter' -AlsoPattern '\.claude/skills/add-tests/SKILL\.md : description is \d+ characters'
+        Assert-Case 'skill-description-within-limit' { param($d) } 'every shipped skill description loads on Copilot CLI' 'skill-frontmatter' -Green
+    }
+
 } finally { foreach($p in $scratch) { if(Test-Path $p){ Remove-Item -LiteralPath $p -Recurse -Force } } }
 exit (Write-TestSummary 'ValidateDist.Tests (B-92)')

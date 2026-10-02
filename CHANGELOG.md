@@ -17,22 +17,24 @@ Value-study text fixes. The Common Tasks skills-list snippets drop their technol
 validator → controller chain, EF Core, a DI lifetime, lazy loading, TestBed with `HttpTestingController`)
 for "the project's evidenced shape", matching the evidence-gated skill bodies. `AGENTS.md` is
 consumer-owned and nothing points `/rebootstrap` at the new template lines, so the stack notes carry a
-hand-apply line that keeps `/bootstrap`'s exemplar pointer and adds no line `/bootstrap` left out.
-`perf` loses its pointer to a `/benchmark` command that never shipped. The monorepo `add-tests`
-description goes from 1,078 to 991 characters and loses its `repository- evidenced` fold: this is
-conformance with agentskills.io/specification (at most 1024), not an observed truncation, since Claude
-Code cuts the description plus `when_to_use` only above 1,536 (code.claude.com/docs/en/skills). README
-items 1 and 10 stop claiming less context per task and a security pass on every change: what the
-framework adds to a task's cost depends on the task, up to about 2.7 times the bare arm on the tasks
-measured (`meta/eval-results.md`, B-253's report and its 2026-09-30 correction), and no eval measures
-`/security-review`; item 10 now names the `route-prompt` nudge `docs/enforcement-surfaces.md` already
-documents. The README is not installed, so it has no consumer note. `bootstrap.md` (dotnet, monorepo)
-is now told, beside its `map-warehouse` advertising rule, not to remark in `AGENTS.md` whether the map
-exists: the WSD-105 fixture's `AGENTS.md` (`meta/eval-fixtures/warehouse-generated/files/AGENTS.md`
-:105 and :177) said no map existed beside the map `/map-warehouse` wrote in the same session; the effect
-of the new text is unobserved. `enforcement-surfaces.md`'s Claude Code write-guard cell now carries the
-2026-09-30 guard-retry certification (`meta/host-certification.md`) in that row's own scope.
-Always-loaded context: dotnet -43, angular -22, monorepo -186 chars (`static.claude`).
+hand-apply line that keeps `/bootstrap`'s exemplar pointer and adds no line `/bootstrap` left out. `perf`
+loses its pointer to a `/benchmark` command that never shipped. The monorepo `add-tests` description goes
+from 1,078 to 991 characters and loses its `repository- evidenced` fold: Copilot CLI refuses a skill over
+the 1024 of agentskills.io/specification (1.0.89 `copilot skill list`: "Skill description must be at most
+1024 characters", observed 2026-10-02), so Copilot users of the monorepo dist had no `add-tests` from
+v0.77.0 to v0.91.0; Claude Code cuts the description plus `when_to_use` only above 1,536
+(code.claude.com/docs/en/skills), so it loaded there. README items 1 and 10 stop claiming less context
+per task and a security pass on every change: what the framework adds to a task's cost depends on the
+task, up to about 2.7 times the bare arm on the tasks measured (`meta/eval-results.md`, B-253's report
+and its 2026-09-30 correction), and no eval measures `/security-review`; item 10 now names the
+`route-prompt` nudge `docs/enforcement-surfaces.md` already documents. The README is not installed, so it
+has no consumer note. `bootstrap.md` (dotnet, monorepo) is now told, beside its `map-warehouse`
+advertising rule, not to remark in `AGENTS.md` whether the map exists: the WSD-105 fixture's `AGENTS.md`
+(`meta/eval-fixtures/warehouse-generated/files/AGENTS.md` :105 and :177) said no map existed beside the
+map `/map-warehouse` wrote in the same session; the effect of the new text is unobserved.
+`enforcement-surfaces.md`'s Claude Code write-guard cell now carries the 2026-09-30 guard-retry
+certification (`meta/host-certification.md`) in that row's own scope. Always-loaded context: dotnet -43,
+angular -22, monorepo -186 chars (`static.claude`).
 
 Delivery-gap audit of behaviour text in protected files, v0.79.0 to v0.91.0. An update never rewrites
 an existing `consumer-owned/protected` path: `install.ps1` puts it in the preserve plan, and the one-time
@@ -137,6 +139,24 @@ and `add-warehouse-load` stop routing to retired skills. B-331 is retargeted to 
 Always-loaded context: `static.claude` dotnet 39,457 -> 37,265 (-2,192), angular 37,928 -> 34,995 (-2,933),
 monorepo 46,529 -> 41,335 (-5,194); `static.copilot` dotnet -225, angular -258, monorepo -538.
 
+
+Copilot skill follow-up (maintainer request 2026-10-02: "github copilot skills are fully operational ...
+i suspect our historical tests on this were wrong"; plan reviewed by Fable). A read-only re-reading of
+the B-277/B-278 logs found the 0/9 real but its records wrong in four places, now corrected in
+`meta/eval-results.md`: the "24 project skills" were 12 skills, 10 command files and 2 built-ins; the
+Claude Code comparison broke the record's own rule; 0/9 to 4/6 is confounded by a CLI self-update and a
+visible credit cap; and 0.89.1's "Copilot's harness does not supply that push itself" is unsupported,
+since the 1.0.83 to 1.0.89 binaries carry skill-tool text making a matching skill mandatory. `copilot
+skill list` on CLI 1.0.89, with no model call, failed to load two kinds of skill: a description over 1024
+characters (monorepo `add-tests` as shipped in v0.77.0 to v0.91.0, 29 tags, an escaped defect) and an
+unquoted `description: DRAFT, pending PR review: ...`, which is invalid YAML; a top-level `origin:
+discovered` key and a `name` differing from its folder loaded (`meta/host-certification.md`). So
+`/bootstrap` 3a-bis now requires a drafted skill's description as a folded `>` block or a double-quoted
+string, at most 1,024 characters, and `name` in lowercase letters, digits and hyphens equal to its
+folder; and `validate-dist` gains check 15, `skill-frontmatter`, failing a shipped description over 1024
+characters (it fails v0.91.0's monorepo dist; HEAD's longest is 921). The routing knockout (about 14
+premium requests) was not run: the routing sentence stays either way; closed by decision as B-341, with
+the eval detector's gaps (B-342) and Copilot's per-session skill-list budget (B-343).
 ## 0.91.0 — 2026-09-30
 
 B-324, from a maintainer report: an install from a clone 68 commits behind `master` put v0.89.1 into a

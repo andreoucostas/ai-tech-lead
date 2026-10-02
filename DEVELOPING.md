@@ -47,7 +47,7 @@ foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/bu
 git status --porcelain dist/   # MUST print nothing — otherwise commit the dist with your src change
 ```
 
-## Validate the dists (markers, JSON, PS-AST, topology, per-dist template-checks [#2], no-meta-leak [#6], no-dead-instruction, hook-registration, step-references, rail-sync)
+## Validate the dists (markers, JSON, PS-AST, topology, per-dist template-checks [#2], no-meta-leak [#6], no-dead-instruction, hook-registration, step-references, rail-sync, skill-frontmatter)
 
 ```powershell
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/validate-dist.ps1 $d; "exit=$LASTEXITCODE" }

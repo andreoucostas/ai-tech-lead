@@ -228,7 +228,11 @@ owner-routed change, but do not alter it.
   drafts hold independently scoped facts, constraints, gotchas, or failed approaches. Its
   frontmatter contains `name`, a trigger-rich `description`, and
   `origin: discovered` so existing lifecycle handling can find it; the `description` begins
-  `DRAFT, pending PR review:`. Its loaded body identifies candidate
+  `DRAFT, pending PR review:`. Write the `description`
+  as a folded `>` block or a double-quoted string, never a plain line: the colon after `review`
+  makes a plain line invalid YAML, and Copilot CLI then refuses to load the skill. Keep it at
+  most 1,024 characters, and make `name` lowercase letters, digits, and hyphens, at most 64,
+  equal to the folder name. Its loaded body identifies candidate
   status, scope, underlying evidence, counterevidence, unresolved steps, body provenance, and
   draft-pending-review state and records the semantic refresh trigger and actual result in the
   skill body or linked reference. The body states that the operation is derived from the current

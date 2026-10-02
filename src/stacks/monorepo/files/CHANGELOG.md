@@ -15,16 +15,17 @@
   `/rebootstrap` draft a project skill for an operation your own code repeats at least three times
   and that has at least one step specific to your repository: at most three drafts per run, each
   built from your instances, its description starting `DRAFT, pending PR review:`, and each ending
-  with the Common Tasks line to add once your team approves it. A repository with nothing repeated
-  that often gets no draft, which is expected. We have not yet seen this drafting run on any agent.
-  On update, the installer removes each of these `SKILL.md` files only when it is exactly a version
-  we shipped, and prints a `NOTICE`. A copy that you or a `/bootstrap` older than 0.77.0 edited is
-  kept, still loads as a skill, and is reported: delete it after review unless it is your own. Any
-  other file in that skill's folder, such as a `references/project-pattern.md` that `/bootstrap`
-  wrote, is yours and stays (in `.claude/disabled-skills/` if your `LEARNINGS.md` disables that
-  skill); `/rebootstrap full` reads it as a lead. An update never rewrites your `AGENTS.md`: delete
-  the `add-endpoint`, `add-entity`, `register-service`, `add-component`, `add-service`,
-  `add-lazy-route` and `add-signal-store` lines from your Common Tasks list, or run
+  with the Common Tasks line to add once your team approves it. Each draft's description is quoted
+  or folded and at most 1,024 characters, the form GitHub Copilot CLI can load. A repository with
+  nothing repeated that often gets no draft, which is expected. We have not yet seen this drafting
+  run on any agent. On update, the installer removes each of these `SKILL.md` files only when it is
+  exactly a version we shipped, and prints a `NOTICE`. A copy that you or a `/bootstrap` older than
+  0.77.0 edited is kept, still loads as a skill, and is reported: delete it after review unless it
+  is your own. Any other file in that skill's folder, such as a `references/project-pattern.md` that
+  `/bootstrap` wrote, is yours and stays (in `.claude/disabled-skills/` if your `LEARNINGS.md`
+  disables that skill); `/rebootstrap full` reads it as a lead. An update never rewrites your
+  `AGENTS.md`: delete the `add-endpoint`, `add-entity`, `register-service`, `add-component`,
+  `add-service`, `add-lazy-route` and `add-signal-store` lines from your Common Tasks list, or run
   `/rebootstrap full`, which drops lines for skills that are no longer installed (a plain
   `/rebootstrap` stops when only framework files changed).
 - **`AGENTS.md > Common Tasks` no longer assumes a test setup.** A new install lists `add-tests` as
@@ -36,9 +37,12 @@
   our runs `AGENTS.md` still said no map existed after `/map-warehouse` had written
   `docs/warehouse-map.md`, because `/map-warehouse` does not edit `AGENTS.md`. If your `AGENTS.md`
   says no warehouse map exists and `docs/warehouse-map.md` is there, delete that remark.
-- The `add-tests` skill's description was 1,078 characters, over the 1,024 the Agent Skills
-  specification (agentskills.io) allows; it is now 991, and what the skill does is unchanged. Claude
-  Code truncates a skill's listing text only above 1,536 characters, so it was not cutting this one.
+- **GitHub Copilot CLI could not load the `add-tests` skill.** Its description was 1,078 characters,
+  over the 1,024 the Agent Skills specification (agentskills.io) allows, and Copilot CLI refuses such
+  a skill: `copilot skill list` (1.0.89) reports "Skill description must be at most 1024
+  characters". So on Copilot, `add-tests` was missing from 0.77.0 to 0.91.0. Its description is now
+  within the limit, so this update restores it; what the skill does is unchanged. Claude Code cuts
+  listing text only above 1,536 characters, so it loaded there.
 - The `perf` skill no longer points at a `/benchmark` command; there is none.
 - `docs/enforcement-surfaces.md` now records the Claude Code write guard blocking a key-shaped file
   write end-to-end on Claude Code 2.1.281 (2026-09-30), while the same task without the framework

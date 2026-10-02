@@ -13,17 +13,19 @@
   `/bootstrap` and `/rebootstrap` draft a project skill for an operation your own code repeats at
   least three times and that has at least one step specific to your repository: at most three drafts
   per run, each built from your instances, its description starting `DRAFT, pending PR review:`, and
-  each ending with the Common Tasks line to add once your team approves it. A repository with
-  nothing repeated that often gets no draft, which is expected. We have not yet seen this drafting
-  run on any agent. On update, the installer removes each of these `SKILL.md` files only when it is
-  exactly a version we shipped, and prints a `NOTICE`. A copy that you or a `/bootstrap` older than
-  0.77.0 edited is kept, still loads as a skill, and is reported: delete it after review unless it
-  is your own. Any other file in that skill's folder, such as a `references/project-pattern.md` that
-  `/bootstrap` wrote, is yours and stays (in `.claude/disabled-skills/` if your `LEARNINGS.md`
-  disables that skill); `/rebootstrap full` reads it as a lead. An update never rewrites your
-  `AGENTS.md`: delete the `add-component`, `add-service`, `add-lazy-route` and `add-signal-store`
-  lines from your Common Tasks list, or run `/rebootstrap full`, which drops lines for skills that
-  are no longer installed (a plain `/rebootstrap` stops when only framework files changed).
+  each ending with the Common Tasks line to add once your team approves it. Each draft's description
+  is quoted or folded and at most 1,024 characters, the form GitHub Copilot CLI can load. A
+  repository with nothing repeated that often gets no draft, which is expected. We have not yet seen
+  this drafting run on any agent. On update, the installer removes each of these `SKILL.md` files
+  only when it is exactly a version we shipped, and prints a `NOTICE`. A copy that you or a
+  `/bootstrap` older than 0.77.0 edited is kept, still loads as a skill, and is reported: delete it
+  after review unless it is your own. Any other file in that skill's folder, such as a
+  `references/project-pattern.md` that `/bootstrap` wrote, is yours and stays (in
+  `.claude/disabled-skills/` if your `LEARNINGS.md` disables that skill); `/rebootstrap full` reads
+  it as a lead. An update never rewrites your `AGENTS.md`: delete the `add-component`,
+  `add-service`, `add-lazy-route` and `add-signal-store` lines from your Common Tasks list, or run
+  `/rebootstrap full`, which drops lines for skills that are no longer installed (a plain
+  `/rebootstrap` stops when only framework files changed).
 - **`AGENTS.md > Common Tasks` no longer assumes a test setup.** A new install lists `add-tests` as
   working in the project's evidenced shape, instead of promising TestBed with
   `HttpTestingController`; the skill already worked from your repository's evidence. An update never
