@@ -8,7 +8,7 @@ description: >
   handling, load ordering, partition alignment, and the deployment path.
   USE FOR: a new fact or dimension table plus its load, a new source feeding an existing
   table, adding columns to a dimension or fact (including the history implications).
-  DO NOT USE FOR: OLTP entities (use add-entity), one-off data corrections, understanding or
+  DO NOT USE FOR: OLTP entities (follow the repo's data-access conventions), one-off data corrections, understanding or
   mapping the warehouse (use map-warehouse), report/query tuning.
 ---
 

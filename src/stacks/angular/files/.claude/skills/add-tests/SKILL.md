@@ -8,9 +8,8 @@ description: >
   USE FOR: backfilling tests on untested code, adding edge/error-path cases, writing a regression
   test for a bug, raising coverage on an area you're about to change, or pinning the current
   behavior of untested legacy code before a refactor (characterization mode).
-  DO NOT USE FOR: scaffolding a brand-new component/service (use add-component/add-service, which
-  assess tests only against an evidenced harness), or e2e flows (use the project's
-  Cypress/Playwright setup directly).
+  DO NOT USE FOR: scaffolding new production code (use the project skill for that operation, or
+  `/feature`), or e2e flows (use the project's Cypress/Playwright setup directly).
 ---
 
 # Add tests following project patterns

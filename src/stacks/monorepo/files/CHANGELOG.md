@@ -7,14 +7,31 @@
 
 ## 0.92.0 — Unreleased
 
-- **`AGENTS.md > Common Tasks` no longer names technology your repository may not use.** A new
-  install lists `add-endpoint`, `add-entity`, `register-service`, `add-lazy-route` and `add-tests` as
-  working in the project's evidenced shape, instead of naming a DTO → validator → controller chain,
-  EF Core, a DI lifetime, lazy loading, or TestBed with `HttpTestingController`; the skills already
-  worked from your repository's evidence, and the skill bodies are unchanged. An update never rewrites
-  your `AGENTS.md`. If your Common Tasks list still carries the old wording, change only the text
-  after the dash to match `dist/monorepo/AGENTS.md` in your framework clone, keep any "For a concrete
-  current instance…" pointer, and do not add lines for skills your list leaves out.
+- **The framework no longer ships `add-endpoint`, `add-entity`, `register-service`, `add-component`,
+  `add-service`, `add-lazy-route`, or `add-signal-store`.** These were generic "add an endpoint,
+  entity, service, component, route or store" recipes the framework gave every .NET and Angular
+  install, whether or not your code has that shape; their steps mostly said "follow what the
+  repository already does", and we never measured them helping. Instead, `/bootstrap` and
+  `/rebootstrap` draft a project skill for an operation your own code repeats at least three times
+  and that has at least one step specific to your repository: at most three drafts per run, each
+  built from your instances, its description starting `DRAFT, pending PR review:`, and each ending
+  with the Common Tasks line to add once your team approves it. A repository with nothing repeated
+  that often gets no draft, which is expected. We have not yet seen this drafting run on any agent.
+  On update, the installer removes each of these `SKILL.md` files only when it is exactly a version
+  we shipped, and prints a `NOTICE`. A copy that you or a `/bootstrap` older than 0.77.0 edited is
+  kept, still loads as a skill, and is reported: delete it after review unless it is your own. Any
+  other file in that skill's folder, such as a `references/project-pattern.md` that `/bootstrap`
+  wrote, is yours and stays (in `.claude/disabled-skills/` if your `LEARNINGS.md` disables that
+  skill); `/rebootstrap full` reads it as a lead. An update never rewrites your `AGENTS.md`: delete
+  the `add-endpoint`, `add-entity`, `register-service`, `add-component`, `add-service`,
+  `add-lazy-route` and `add-signal-store` lines from your Common Tasks list, or run
+  `/rebootstrap full`, which drops lines for skills that are no longer installed (a plain
+  `/rebootstrap` stops when only framework files changed).
+- **`AGENTS.md > Common Tasks` no longer assumes a test setup.** A new install lists `add-tests` as
+  working in the project's evidenced shape, instead of promising TestBed with
+  `HttpTestingController`; the skill already worked from your repository's evidence. An update never
+  rewrites your `AGENTS.md`. If your `add-tests` line still carries the old wording, change only the
+  text after the dash to match `dist/monorepo/AGENTS.md` in your framework clone.
 - **`/bootstrap` is now told not to say in `AGENTS.md` whether the warehouse map exists.** In one of
   our runs `AGENTS.md` still said no map existed after `/map-warehouse` had written
   `docs/warehouse-map.md`, because `/map-warehouse` does not edit `AGENTS.md`. If your `AGENTS.md`

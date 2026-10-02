@@ -32,7 +32,7 @@ Before doing anything else:
    are valid. Refresh the six-row inventory only from current eligible evidence, preserving explicit
    `not available` rows.
 
-4. **Establish ownership and dismissal boundaries** — require a valid root `framework-ownership.json` `paths` inventory and exclude every `framework-owned/overwritten` path from shared A8 evidence. A `mixed` path may contribute only consumer-authored evidence corroborated outside framework-owned paths. Read and freeze every row under `TECH_DEBT.md > ## Dismissed proposals` before analysis.
+4. **Establish ownership and dismissal boundaries** — require a valid root `framework-ownership.json` `paths` inventory and exclude every `framework-owned/overwritten` path, and every path root `framework-retirements.json` lists, from shared A8 evidence. A `mixed` path may contribute only consumer-authored evidence corroborated outside framework-owned paths. Read and freeze every row under `TECH_DEBT.md > ## Dismissed proposals` before analysis.
 
 ---
 
@@ -187,7 +187,7 @@ Wait for the user's response before applying each chunk. If the user says "edit"
 
 For this requested shared A8 discovery only, after the existing provenance/adversarial screens and deduplication, automatically create an eligible **new absent** non-overwriting draft under `/bootstrap` 3a-bis for PR review. This automatic exception does not sit under the diff-and-confirm gate. It retains body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result.
 
-For a finding that matches an existing operation skill (`add-endpoint`, `add-entity`, `register-service`, `add-warehouse-load`, `add-component`, `add-service`, `add-lazy-route`, or `add-signal-store`), this exception may create only that skill's new absent consumer-owned `references/project-pattern.md`. It never creates a competing skill, changes the framework `SKILL.md`, or edits existing owner content; those retain the confirmed ownership path.
+For a finding that matches `add-warehouse-load`, this exception may create only that skill's new absent consumer-owned `references/project-pattern.md`. It never creates a competing skill, changes the framework `SKILL.md`, or edits existing owner content; those retain the confirmed ownership path.
 
 Recheck retained knowledge against changed explicit evidence/dependencies, including quiet callers outside recent activity. Renames, deletions, unavailable history, external state, and failed checks remain visible; path existence alone is not a semantic refresh. Any existing wiki entry, skill, map, or owner document changes only through the confirmed diff gate, preserving a historic verification date on downgrade and leaving unavailable rechecks unresolved.
 
@@ -202,14 +202,14 @@ Apply accepted changes section by section:
   against a known target
 - **Architecture Decisions**: add new decisions; mark old decisions as superseded if applicable
 - **Common Tasks**: update patterns to reflect current codebase reality. This existing-content change is proposed through the **same diff-and-confirm gate** as every other Phase-3 change — show the before/after and wait for the user, do not apply silently:
-  - **Project-pattern re-pinning**: for an operation skill (`add-endpoint`, `add-entity`, `register-service`, `add-warehouse-load`, `add-component`, `add-service`, `add-lazy-route`, `add-signal-store`), recheck its consumer-owned `references/project-pattern.md` against the decisive source/predicate. A new absent reference is the narrow automatic exception above; changing an existing reference or framework skill remains a confirmed diff. Confirm any cited path resolves (Verification Rule #1) and cite it from the correct stack.
+  - **Project-pattern re-pinning**: for `add-warehouse-load`, recheck its consumer-owned `references/project-pattern.md` against the decisive source/predicate. A new absent reference is the narrow automatic exception above; changing an existing reference or framework skill remains a confirmed diff. Confirm any cited path resolves (Verification Rule #1) and cite it from the correct stack.
   - **Resurrection guard** (bookkeeping side-effect, not a diff chunk): if any skill with `origin: discovered` in its frontmatter has been deleted from `.claude/skills/` since the last run, append a declined-recipe block to `LEARNINGS.md` so the discovery pass stops re-proposing it. This append is automatic but **must be listed in the Phase-4 report** (see "Declined recipes recorded"). Use this exact form:
 
     ```
     ## Declined recipe: <name>
     The team removed this auto-mined skill. Do not re-propose it.
     ```
-  - **Disabled shipped skills:** move a deliberately removed shipped skill to `.claude/disabled-skills/<name>` and record `## Disabled framework skill: <name>` plus `Disabled: <date>` and `Reason: <why>` in `LEARNINGS.md`. Do not merely delete it: update refreshes the inactive copy without reactivating it, and rebootstrap may explicitly propose restoring it.
+  - **Disabled shipped skills:** move a deliberately removed shipped skill to `.claude/disabled-skills/<name>` and record `## Disabled framework skill: <name>` plus `Disabled: <date>` and `Reason: <why>` in `LEARNINGS.md`. Do not merely delete it: update refreshes the inactive copy without reactivating it, and rebootstrap may explicitly propose restoring it while the framework still ships it.
 - **LEARNINGS.md** (root file, no longer in AGENTS.md): append any new lessons — never overwrite existing entries
 
 Do NOT touch the Codebase Context or Repository Structure sections unless a structural change was found (e.g., a new project layer, a renamed project, a migrated framework, a new feature module, an Nx migration, a routing restructure).
@@ -259,7 +259,8 @@ list, record again.
 ---
 
 If any skill was added, removed, or updated, reconcile `AGENTS.md > Common Tasks` with the canonical
-`.claude/skills` inventory. The gate below rejects any legacy `.github/skills` shadow path.
+`.claude/skills` inventory: drop the line of a skill that is no longer installed, and add an
+`origin: discovered` skill's line only after review, as its `## After review` paragraph names. The gate below rejects any legacy `.github/skills` shadow path.
 
 ## Deterministic completion gate
 

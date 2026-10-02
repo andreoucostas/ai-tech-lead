@@ -96,10 +96,11 @@ Run in isolated context; return a structured findings table to the parent. Model
 
 ## 6. Skills (`.claude/skills/`)
 
-Auto-discovered Common-Tasks recipes; the body loads only when triggered (progressive disclosure).
+Auto-discovered skills; the body loads only when triggered (progressive disclosure). The framework
+ships no generic scaffolding recipe; `/bootstrap` drafts a project skill for an operation the codebase
+repeats at least three times.
 
-- **.NET:** `add-endpoint` · `add-entity` · `register-service` · `map-warehouse` · `add-warehouse-load` · `perf`
-- **Angular:** `add-component` · `add-service` · `add-lazy-route` · `add-signal-store`
+- **.NET:** `map-warehouse` · `add-warehouse-load` · `perf`
 - **Both stacks:** `add-tests` · `dependency-audit` · `create-adr` · `enforce-architecture` · `enforce-standards`
 
 ---

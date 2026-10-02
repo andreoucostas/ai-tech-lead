@@ -48,7 +48,7 @@ authoritative.
 - “Framework-maintainer tests stay in distributions but do not install into consumers or evidence application verification.” — `meta/workspace-decisions.md WSD-071`
 - “Project skills ship once under `.claude/skills`; retire only content-qualified GitHub mirrors.” — `meta/workspace-decisions.md WSD-072` (WSD-073 supersedes its Bash-adapter retention)
 - “Supported framework execution is native Windows and PowerShell only.” — `meta/workspace-decisions.md WSD-073`
-- “Discover repository knowledge broadly; capture grounded drafts in existing carriers and measure ordinary Copilot outcomes before expanding machinery.” — `meta/workspace-decisions.md WSD-074` (WSD-091 pauses its expansion until B-253 reports; WSD-105 closes B-222 to B-224)
+- “Discover repository knowledge broadly; capture grounded drafts in existing carriers and measure ordinary Copilot outcomes before expanding machinery.” — `meta/workspace-decisions.md WSD-074` (WSD-091 pauses its expansion until B-253 reports; WSD-105 closes B-222 to B-224; WSD-109 supersedes its eight-skill clause)
 - “Run eight native Windows execution contexts independently, then require one same-platform case-count parity decision.” — `meta/workspace-decisions.md WSD-075`
 - “CP1 is a separate maintainer Copilot campaign; readiness precedes purchase.” — `meta/workspace-decisions.md WSD-076` (WSD-091 closes CP1 as scoped)
 - “CP1 may assess a Hyper-V-isolated Windows container; offline feasibility does not establish paid-run readiness.” — `meta/workspace-decisions.md WSD-077` (prospectively amends WSD-076's guest requirement; WSD-091 closes CP1 as scoped)
@@ -75,6 +75,7 @@ authoritative.
 - “An unreported self-filed or attack finding outside the four guarded harms is closed by decision, not filed; a fix for one of the four harms releases when ready; an idle session takes the first idle-queue row.” — `meta/workspace-decisions.md WSD-106` (amends WSD-105 for B-331's Held row)
 - “No rule for a request premise the project's records contradict: the measured Verification Rules #11 sentence did not help (MISLEADING 2/6 vs 0/6) and was reverted before release.” — `meta/workspace-decisions.md WSD-107` (closes B-325; its pre-registered confirmation did not fire WSD-105's reopen trigger)
 - “The major-version upgrade is `dependency-audit` section 4: .NET moves straight to the target, Angular one major per pass; `ng update` is the one Angular CLI command derived without a Verification Commands row.” — `meta/workspace-decisions.md WSD-108` (reopens one B-265 workflow by maintainer request; excepts WSD-020's derive-don't-assume rule)
+- “The framework ships an operation skill only on a field report or measured outcome; `/bootstrap` drafts a project skill for an operation the repository repeats three or more times; the seven generic recipes are retired.” — `meta/workspace-decisions.md WSD-109` (supersedes WSD-074's eight-skill clause)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

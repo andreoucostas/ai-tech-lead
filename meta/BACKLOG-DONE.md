@@ -12937,3 +12937,10 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-325** — CLOSED by decision **2026-10-01** (WSD-107). No rule change ships: the Verification Rules #11 sentence committed in 2c0ca15a
   was measured on Claude Code (pre-registered 17516aac, results 8b1c5d02; MISLEADING 2/6 with it, 0/6 without, not shown to differ at n=6)
   and reverted before release by the user ("revert it, given it's doing more harm than good").
+- **B-338** — CLOSED by decision **2026-10-02** (WSD-106), never filed. Nothing checks that a path dropped from `src/` gains a retirement
+  entry: `scripts/build.ps1` validates ledger entries, not completeness, so a forgotten retirement is neither deleted nor reported. WSD-109's
+  seven entries are pinned by `B215OwnershipBoundary.Tests.ps1`'s 0.92.0 case. Reopen on a field report.
+- **B-339** — CLOSED by decision **2026-10-02** (WSD-106), never filed. Angular `rebootstrap.md` has no "Disabled shipped skills" bullet,
+  though angular `bootstrap.md` 3a says `/rebootstrap` records `.claude/disabled-skills/` decisions. Reopen on a field report.
+- **B-340** — CLOSED by decision **2026-10-02** (WSD-106), never filed. `src/core/scripts/framework-doctor.ps1`'s leftover-file check lists
+  19 paths but its OK line says "18 v0.83 retired framework paths". Reopen on a field report.

@@ -9,7 +9,7 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
+## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -20,7 +20,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 5 | B-329 | Idle queue. Guarded; measure first, and stop if a template check cannot fit post-write's 45 s budget |
 | 6 | B-330 | Idle queue. Before the next `-Arm none` run; it needs a baseline rerun |
 | 7 | B-336 | Idle queue. Measure first; WSD-107's measured sentence did not help even where a project record exists |
-| Held | B-331 | Report #6's team replied with its host only (2026-10-01); held for whether `register-service` followed its Unity root |
+| 8 | B-331 | Idle queue. Measures WSD-109's retirement on Claude Code, about 3 USD live; report #6's `register-service` question is moot |
 
 ## Open entries
 
@@ -66,12 +66,12 @@ a template check's wall time on a real-size workspace against the 45 s budget; s
 maintainer's user-level configuration; Copilot runs read `~/.copilot`. Restrict both (confirm `--setting-sources project,local` drops
 user `CLAUDE.md`, skills, hooks), show a user canary absent, rerun a baseline. Take `tokensOut=` from `modelUsage`, not `result.usage`.
 
-### B-331 · Add a Unity register-service eval scenario for field report #6
-**Filed against:** v0.91.0 (2026-09-30)
-**Priority:** P3 · **Effort:** M, about 3 USD live · **Invariants:** #4 #6
-**Status:** Held until report #6's team replies (WSD-106 amends WSD-105 for this row). A synthetic .NET fixture registering through each
-project's `IoCConfig.Configure(IUnityContainer)`, with an exemplar; pass = the registration lands there and no `IServiceCollection` or
-`AddXxxServices` appears. B-216, closed by WSD-105, is unobserved since.
+### B-331 · Measure WSD-109's recipe retirement: a Unity fixture through /bootstrap, and a feature-placement knockout
+**Filed against:** v0.91.0 (2026-09-30); retargeted 2026-10-02 (WSD-109)
+**Priority:** P3 · **Effort:** M, about 3 USD live plus three knockout trials · **Invariants:** #4 #6
+**Status:** Open; report #6's reply no longer gates it. Three projects registering via `IoCConfig.Configure(IUnityContainer)`: does
+`/bootstrap` draft a skill, and does a new service then land there without `IServiceCollection`? Plus three angular-feature-placement
+trials without the seven (expected unchanged; `usedSkill=add-service` now always reads False).
 
 ### B-336 · Measure whether agents work out a request premise the code contradicts when no project record names it
 **Filed against:** v0.91.0 (2026-10-01)

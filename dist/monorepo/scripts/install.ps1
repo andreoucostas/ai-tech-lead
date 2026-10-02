@@ -894,13 +894,23 @@ if ($updateMode) {
     foreach ($retiredPath in @($retirementLedger.Keys | Sort-Object)) {
         $isGitHubSkill = $retiredPath -match '^\.github/skills/([^/]+)/'
         $slug = if ($isGitHubSkill) { $Matches[1] } else { $null }
+        $isRetiredClaudeSkill = $retiredPath -match '^\.claude/skills/([^/]+)/SKILL\.md$'
+        $claudeSkillSlug = if ($isRetiredClaudeSkill) { $Matches[1] } else { $null }
         $isRetiredSyncScript = $retiredPath -in @('scripts/sync-agent-files.ps1', 'scripts/sync-agent-files.sh')
         $isRetiredGitHookHelper = $retiredPath -in $legacyGitHookRetiredDependencies
         # Every retained retired path is reported. This was an allow-list of five categories, so a
         # path retired in any later release was preserved in silence -- and each new retirement had
         # to remember to add itself, which is the same shape of defect the list was added to fix.
         # Specific advice below still wins where it exists; the generic arm covers the rest.
-        if ($deletePlan.Contains($retiredPath)) { continue }
+        if ($deletePlan.Contains($retiredPath)) {
+            # A retired skill's folder can hold consumer files and protected AGENTS.md can still name it;
+            # neither is the installer's to change, so say what remains. A plain /rebootstrap stops when only
+            # framework-owned paths changed, so name the forced run.
+            if ($isRetiredClaudeSkill) {
+                $reconciliationMessages.Add("NOTICE: framework skill '$claudeSkillSlug' was retired in $($retirementLedger[$retiredPath].Version); this update removes its unmodified SKILL.md. Other files in .claude/skills/$claudeSkillSlug/ are yours: they stay, or move to .claude/disabled-skills/$claudeSkillSlug/ when LEARNINGS.md disables that skill, and /rebootstrap full reads a references/project-pattern.md that stays there as a lead for a project skill. Remove the '$claudeSkillSlug' line from AGENTS.md > Common Tasks, or run /rebootstrap full to reconcile it.")
+            }
+            continue
+        }
         $candidate = Get-ContainedTargetPath -Relative $retiredPath
         try { $entry = Get-LiteralItem -Path $candidate }
         catch [Management.Automation.ItemNotFoundException] { continue }
@@ -915,6 +925,17 @@ if ($updateMode) {
         }
         if ($isGitHubSkill) {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' was not deleted; it may shadow canonical .claude/skills/$slug. Move intentional customization to .claude/skills/$slug and remove the retained GitHub copy after review.")
+        } elseif ($isRetiredClaudeSkill) {
+            # The ledger is shared by every stack, so a file here may be a team's own skill at a generic name.
+            # A /bootstrap draft says so in its frontmatter; anything else may be the former framework recipe.
+            $isDiscoveredSkill = $false
+            if (-not $entry.PSIsContainer) {
+                try { $isDiscoveredSkill = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($candidate)) -match '(?m)^origin:\s*discovered\s*$' }
+                catch { $isDiscoveredSkill = $false }
+            }
+            if (-not $isDiscoveredSkill) {
+                $reconciliationMessages.Add("CANT-VERIFY: '$retiredPath' sits at the slug of a framework skill retired in $($retirementLedger[$retiredPath].Version) and loads as a skill, unless LEARNINGS.md disables '$claudeSkillSlug', in which case this update moves .claude/skills/$claudeSkillSlug/ to .claude/disabled-skills/$claudeSkillSlug/. If it is that former framework recipe, remove it after review together with the '$claudeSkillSlug' line in AGENTS.md > Common Tasks; a skill your team wrote can stay, with its line. Other files in that folder are yours.")
+            }
         } elseif ($isRetiredSyncScript) {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' was not deleted; running it may recreate higher-priority .github/skills shadows. Do not run it; migrate or retire it after review.")
         } elseif ($isRetiredGitHookHelper) {
@@ -1246,6 +1267,8 @@ foreach ($name in $disabledSkillNames) {
     if (Test-Path -LiteralPath $activeRoot -PathType Container) {
         foreach ($file in Get-ChildItem -LiteralPath $activeRoot -Recurse -File -Force) {
             $underSkill = $file.FullName.Substring($activeRoot.Length).TrimStart('\', '/') -replace '\\', '/'
+            # A retired skill file is known framework content that the retirement loop deletes first.
+            if ($deletePlan -contains ".claude/skills/$name/$underSkill") { continue }
             $relative = ".claude/disabled-skills/$name/$underSkill"
             [void](Add-PlannedWrite -Relative $relative)
             $disabledCarryPlan.Add([pscustomobject]@{ Source = $file.FullName; Relative = $relative })

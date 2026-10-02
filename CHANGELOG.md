@@ -107,6 +107,36 @@ B-222 to B-224 stay closed. The p4 grader now scores the consumer's result. File
 the confirmation's 12 runs built on the premise (12/12 MISLEADING, 11 of them having read the loader that
 contradicts it).
 
+Generic recipe skills retired (WSD-109, maintainer request 2026-10-01, plan revised with a Fable review). The
+seven "add an X" skills stop shipping: Angular `add-component`, `add-service`, `add-lazy-route`,
+`add-signal-store`; .NET `add-endpoint`, `add-entity`, `register-service`. They were the 2026-04-28 Common
+Tasks recipes moved into skills (1386dae6, 0c70cd13) with no measured value (`add-service` fired in 0 of 9
+angular-feature-placement runs; `add-entity` was measured only as a correct non-selection on warehouse
+prompts, 0/4; the rest unmeasured), and after B-216 their bodies deferred to evidence the carrier already
+requires. `add-warehouse-load` (4/6 vs 0/6 on Claude Code) and the process skills stay; `perf` is outside the
+decision. `/bootstrap` 3a-bis, which `/rebootstrap` reuses, now drafts a project skill only for an operation
+with three or more consumer-authored instances and a non-obvious repository-specific step: at most three a
+run, the description prefixed `DRAFT, pending PR review:`, the body stating it is a lead and opening with an
+existing-owner check (the presets' B-118 step 0), and an `## After review` paragraph naming the Common Tasks
+line, because the Common Tasks sentence that moved Copilot to a skill covers only the skills listed under it
+(B-278 measured that sentence, not per-skill lines). A one-line rule goes to Conventions and debt to
+`TECH_DEBT.md`; unique facts stay wiki drafts (WSD-074). No draft takes a retired or disabled skill's slug,
+discovery treats ledger-retired paths as framework content, and a leftover consumer
+`references/project-pattern.md` is read as a lead and never moved. Drafting under the new rule is unobserved
+on any host: B-183's one discovered candidate came from Codex CLI with gpt-5.6-sol under the old rule, and the
+Claude Code `/bootstrap` warehouse runs drafted none (Copilot `/bootstrap` is B-337). The ledger gains the
+seven `SKILL.md` paths with every released digest plus one untagged master blob each for `add-service` and
+`register-service` (44 digests). `install.ps1` reports a removed retired skill (`NOTICE`) or a kept one
+(`CANT-VERIFY`, still loading as a skill) with the files left in its folder, its stale Common Tasks line and
+`/rebootstrap full` (a plain run stops when only framework paths changed), instead of the generic "no
+replacement command" line; a kept file whose frontmatter says `origin: discovered` gets no line. The
+disabled-skill carry skips a file the retirement deletes first: a fresh-session attack showed an update
+aborting part-way when `LEARNINGS.md` disabled a retired skill whose active folder remained. This supersedes
+the asides change above for the seven retired lines: the stack notes now say to delete them. `add-tests` x3
+and `add-warehouse-load` stop routing to retired skills. B-331 is retargeted to measure the retirement.
+Always-loaded context: `static.claude` dotnet 39,457 -> 37,265 (-2,192), angular 37,928 -> 34,995 (-2,933),
+monorepo 46,529 -> 41,335 (-5,194); `static.copilot` dotnet -225, angular -258, monorepo -538.
+
 ## 0.91.0 — 2026-09-30
 
 B-324, from a maintainer report: an install from a clone 68 commits behind `master` put v0.89.1 into a

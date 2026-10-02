@@ -4580,3 +4580,16 @@ major's breaking changes in order: an out-of-support intermediate target raises 
 Angular moves one major per pass, as its release policy requires. `ng update` is the one Angular CLI command derived without
 a Verification Commands row, an exception to WSD-020/B-35's derive-don't-assume rule, marked at each rule; it runs after the
 developer's go-ahead, never with `--force`. Shipped without a routing probe. **Reopen** on a field report of a stalled or wrong upgrade.
+
+## WSD-109: the framework stops shipping generic recipe skills; `/bootstrap` drafts project skills from recurrence (2026-10-02)
+
+**Context.** Seven "add an X" skills (Angular `add-component`, `add-service`, `add-lazy-route`, `add-signal-store`; .NET `add-endpoint`,
+`add-entity`, `register-service`) were the 2026-04-28 Common Tasks recipes moved into skills (1386dae6, 0c70cd13), never shown to help:
+`add-service` fired in 0 of 9 feature-placement runs, `add-entity` was measured only as a correct non-selection. After B-216 their bodies
+defer to evidence the carrier already requires, at a cost in always-loaded frontmatter and maintainer time.
+**Decision (user, 2026-10-01: "we should instead ship skills as we see repeated patterns as part of bootstrap"; 2026-10-02: "yes go
+ahead", plan revised by a Fable review).** The ledger retires the seven (44 digests). 3a-bis drafts a project skill only for an operation
+with 3+ consumer-authored instances and a non-obvious step, at most three a run, marked `DRAFT, pending PR review:` and naming its Common
+Tasks line; unique facts stay wiki drafts (WSD-074). A new operation skill ships only on a field report or measured outcome. Supersedes
+WSD-074's "eight skills" clause; WSD-052's superset sentence holds for skills still shipped; `perf` is out of scope. Drafting is
+unobserved on any host. **Reopen** on a field report of a task no skill or rule now covers.

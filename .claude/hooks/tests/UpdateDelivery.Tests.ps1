@@ -802,7 +802,7 @@ $powerShellExtension = 'ps1'
 & {
     It "brownfield archives a same-path skill collision from the manifest ($powerShellExtension)" {
         $t = New-NoLossBrownfieldConsumer
-        $skillRel = '.claude/skills/add-endpoint/SKILL.md'
+        $skillRel = '.claude/skills/add-tests/SKILL.md'
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $t $skillRel)) | Out-Null
         Set-Content -LiteralPath (Join-Path $t $skillRel) -Value 'SKILL COLLISION SENTINEL' -Encoding utf8
         try {
@@ -1709,6 +1709,74 @@ It 'B-252 the presentation deck stays in the framework checkout: an update remov
         Assert (($out -replace '\s+', '') -match "thecurrentcopyisin'[^']*dist[\\/]dotnet[\\/]presentation'\.Delete'docs/presentation/TALKING-POINTS\.md'afterreview") "the kept copy did not name the checkout's deck folder and only its own file: $out"
         Assert ($flat -notmatch 'no replacement command') "the kept deck copy was reported as a retired command: $out"
         Assert (-not (Test-Path -LiteralPath (Join-Path $t 'presentation'))) "the update installed the checkout's presentation folder: $out"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'retired recipe skills: an update removes an unmodified copy, keeps an edited one and the folder''s consumer files, and says what remains' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('recipe-retire-' + [guid]::NewGuid())
+    try {
+        # 0.92.0 stops shipping the generic "add an X" recipes; /bootstrap drafts project skills instead.
+        foreach ($stack in 'dotnet', 'angular', 'monorepo') {
+            foreach ($name in 'add-service', 'add-component', 'register-service') {
+                Assert (-not (Test-Path -LiteralPath (Join-Path $repoRoot "dist/$stack/.claude/skills/$name"))) "$stack still ships $name"
+            }
+        }
+        $service = Join-Path $t '.claude/skills/add-service/SKILL.md'
+        $pattern = Join-Path $t '.claude/skills/add-service/references/project-pattern.md'
+        $component = Join-Path $t '.claude/skills/add-component/SKILL.md'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $pattern), (Split-Path -Parent $component) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), '{"version":"0.91.0","template":"monorepo"}', [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.91.0:dist/monorepo/framework-ownership.json'))
+        [IO.File]::WriteAllBytes($service, (Get-GitBlobBytes -Spec 'v0.91.0:dist/monorepo/.claude/skills/add-service/SKILL.md'))
+        $patternBytes = [Text.UTF8Encoding]::new($false).GetBytes("# Project pattern`nRETIRE-SIDECAR consumer evidence.`n")
+        [IO.File]::WriteAllBytes($pattern, $patternBytes)
+        # A pre-0.77 bootstrap appended an exemplar line, so this copy matches no shipped digest.
+        $componentBytes = (Get-GitBlobBytes -Spec 'v0.91.0:dist/monorepo/.claude/skills/add-component/SKILL.md') +
+            [Text.UTF8Encoding]::new($false).GetBytes("For a concrete current instance in this repo, see ``src/app/orders/orders.component.ts``.`n")
+        [IO.File]::WriteAllBytes($component, $componentBytes)
+        # A project skill /bootstrap drafted at a retired slug is the consumer's, not a retired framework copy.
+        $discovered = Join-Path $t '.claude/skills/add-entity/SKILL.md'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $discovered) | Out-Null
+        $discoveredBytes = [Text.UTF8Encoding]::new($false).GetBytes("---`nname: add-entity`ndescription: team recipe`norigin: discovered`n---`nTEAM RECIPE`n")
+        [IO.File]::WriteAllBytes($discovered, $discoveredBytes)
+        $out = Invoke-Installer -Dist 'monorepo' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        Assert (-not (Test-Path -LiteralPath $service)) "the unmodified retired add-service SKILL.md survived: $out"
+        Assert (Test-B194BytesEqual $patternBytes ([IO.File]::ReadAllBytes($pattern))) "the consumer's project-pattern.md beside a retired skill changed or vanished: $out"
+        Assert ($flat -match "NOTICE: framework skill 'add-service' was retired in 0\.92\.0") "the removed recipe was not reported: $out"
+        Assert ($flat -match "Remove the 'add-service' line from AGENTS\.md > Common Tasks, or run /rebootstrap full") "the removal did not name the stale Common Tasks line and the forced rebootstrap: $out"
+        Assert (Test-B194BytesEqual $componentBytes ([IO.File]::ReadAllBytes($component))) "the edited retired add-component SKILL.md was not kept byte-identical: $out"
+        Assert ($flat -match "'\.claude/skills/add-component/SKILL\.md' sits at the slug of a framework skill retired in 0\.92\.0 and loads as a skill, unless LEARNINGS\.md disables 'add-component'") "the kept recipe was not reported as a live skill at a retired slug: $out"
+        Assert (Test-B194BytesEqual $discoveredBytes ([IO.File]::ReadAllBytes($discovered))) "the discovered skill at a retired slug changed or vanished: $out"
+        Assert ($flat -notmatch "'\.claude/skills/add-entity/SKILL\.md' (remains|sits at the slug)") "a discovered project skill was reported as a retired framework skill: $out"
+        Assert ($flat -notmatch "'\.claude/skills/add-component/SKILL\.md' remains\. It is retired with no replacement command") "the kept recipe was reported as a retired command: $out"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'a disabled retired recipe skill: the update finishes, carries the folder''s consumer files and removes the active copy' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('recipe-disabled-' + [guid]::NewGuid())
+    try {
+        # The retirement deletes the unmodified SKILL.md first; the disabled carry must not then try to copy it.
+        $active = Join-Path $t '.claude/skills/add-service'
+        $pattern = Join-Path $active 'references/project-pattern.md'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $pattern) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), '{"version":"0.91.0","template":"monorepo"}', [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.91.0:dist/monorepo/framework-ownership.json'))
+        [IO.File]::WriteAllText((Join-Path $t 'LEARNINGS.md'), "# Learnings`n`n## Disabled framework skill: add-service`n`nNot used here.`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllBytes((Join-Path $active 'SKILL.md'), (Get-GitBlobBytes -Spec 'v0.91.0:dist/monorepo/.claude/skills/add-service/SKILL.md'))
+        $patternBytes = [Text.UTF8Encoding]::new($false).GetBytes("# Project pattern`nDISABLED-SIDECAR consumer evidence.`n")
+        [IO.File]::WriteAllBytes($pattern, $patternBytes)
+        $out = Invoke-Installer -Dist 'monorepo' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update stopped (exit $LASTEXITCODE): $out"
+        $carried = Join-Path $t '.claude/disabled-skills/add-service/references/project-pattern.md'
+        Assert ((Test-Path -LiteralPath $carried -PathType Leaf) -and (Test-B194BytesEqual $patternBytes ([IO.File]::ReadAllBytes($carried)))) "the consumer's project-pattern.md was not carried to disabled-skills: $out"
+        Assert (-not (Test-Path -LiteralPath $active)) "the disabled skill's active copy was left in place: $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/disabled-skills/add-service/SKILL.md'))) "the retired framework SKILL.md was carried instead of retired: $out"
     } finally {
         Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
     }

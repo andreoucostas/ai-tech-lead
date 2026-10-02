@@ -10,7 +10,7 @@ This README is for the person evaluating or installing the framework. It stays i
 
 No marketing. Each item is a concrete mechanism and the effect it produces.
 
-1. **Skills load on demand.** The Common-Task recipes (.NET: add-endpoint, add-entity, register-service; Angular: add-component, add-service, add-lazy-route, add-signal-store; …) ship as skills whose body loads *only when the task matches*. They don't sit in the prompt the way a monolithic CONVENTIONS doc would: you pay context for the one recipe in use, not all of them. What the framework as a whole adds to a task's cost depends on the task: on the Claude Code tasks we measured (September 2026, Sonnet), a run with it cost up to about 2.7 times as much as the same task without it.
+1. **Skills load on demand.** Skills (add-tests, dependency-audit, map-warehouse, …, plus the project skills `/bootstrap` drafts) load their body *only when the task matches*. They don't sit in the prompt the way a monolithic CONVENTIONS doc would: you pay context for the one recipe in use, not all of them. What the framework as a whole adds to a task's cost depends on the task: on the Claude Code tasks we measured (September 2026, Sonnet), a run with it cost up to about 2.7 times as much as the same task without it.
 
 2. **Less context burned per review — subagents run isolated.** `/review` and `/security-review` fan out to subagents (solid-check, convention-check, bloat-radar, debt-radar, test-critic, security-auditor) that each run in their own context window. Their file-reading and intermediate reasoning never enter the main conversation — the parent gets one structured findings table per agent, not the full transcript.
 
@@ -24,7 +24,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 7. **Natural language routes to the right workflow — no slash commands to memorise.** Typing *"the export endpoint is broken"* — or *"the export button is broken"* — auto-injects the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, outcome-bound fixes). The seven workflows are still available as explicit slash commands when you want deterministic routing.
 
-8. **Common tasks carry explicit guardrails.** Skills encode repository-grounded recipes (for example, endpoint and component work follows the evidenced domain, UI, validation, state, and verification patterns). The agent follows *your* recipe, not a generic one.
+8. **Common tasks follow your own recipes.** The framework ships no generic recipe for adding an endpoint, entity, service, component, route, or store. `/bootstrap` drafts a project skill for an operation your code repeats at least three times, built from your own instances, for your team to approve in the PR. The agent follows *your* recipe, not a generic one.
 
 9. **Quality improves as a side effect of normal work.** Bug-fix cleanup serves the requested outcome, compatibility, or verification; requested refactoring remains allowed. The Trojan Horse principle bundles owned debt work into feature and fix tickets; a leanness counterweight stops needless abstraction. No dedicated debt sprints.
 
@@ -98,7 +98,7 @@ Either command:
 - Synthesises findings into priorities
 - Populates `AGENTS.md` with your actual conventions and patterns
 - Generates `TECH_DEBT.md` with prioritised debt
-- Audits `.claude/skills/` against your codebase, adjusts default Common-Tasks recipes, and adds new skills for project-specific patterns
+- Drafts a project skill for each operation your code repeats at least three times (at most three per run), for your team to approve in the PR
 
 ### 3. Review
 Read the generated `AGENTS.md`. It should accurately describe your codebase. Fix anything that's wrong — this is the source of truth that all AI tools will follow.
@@ -171,7 +171,7 @@ want. `.claude/framework-update-backup/` holds an update's backups for review an
 | `AGENTS.md` | **Single source of truth** (authored) — conventions, architecture, common tasks, Boy Scout Rule; points to the framework rules (Verification, Leanness, SOLID, Agentic Workflow). Read directly by supported Copilot agent surfaces, GitHub code review, Codex, and Cursor; Claude Code reads it through `CLAUDE.md`. Gemini defaults to `GEMINI.md`, and Aider needs explicit read configuration. |
 | `.github/prompts/*.prompt.md` | Copilot Chat workflows. Thin wrappers that delegate to `.claude/commands/`. |
 | `.claude/commands/*.md` | Canonical workflow definitions (used by Claude Code natively, and by the Copilot prompt files). |
-| `.claude/skills/*/SKILL.md` | Auto-discovered Common Tasks recipes (add-endpoint, add-entity, register-service, map-warehouse, add-warehouse-load, add-component, add-service, add-lazy-route, add-signal-store, add-tests, perf, dependency-audit, create-adr, enforce-architecture, enforce-standards). Shared canonical location for Claude Code and supported GitHub Copilot skill surfaces; the body loads only when triggered. |
+| `.claude/skills/*/SKILL.md` | Auto-discovered skills (map-warehouse, add-warehouse-load, add-tests, perf, dependency-audit, create-adr, enforce-architecture, enforce-standards, plus the project skills `/bootstrap` drafts). Shared canonical location for Claude Code and supported GitHub Copilot skill surfaces; the body loads only when triggered. |
 | `.claude/agents/*.md` | Subagents (security-auditor, solid-check, convention-check, bloat-radar, debt-radar, test-critic, bootstrap-pass). Run in isolated context; return structured findings. The six user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents. |
 | `.claude/workflow.md` | Shared self-review + flag-drift tail inlined by the workflow commands via `@.claude/workflow.md`. |
 | `.claude/hooks/*.ps1` | SessionStart context preload, UserPromptSubmit intent router, scoped PreToolUse guard, PostToolUse build/type feedback and mutable local telemetry, Stop Boy Scout scanner. |
@@ -209,7 +209,7 @@ Every workflow command follows the same execution model:
 The router is the key piece. **In Claude Code**, a developer who types *"the export endpoint is broken"* (or *"the export button is broken"*) gets the `/fix` rails (cause-first diagnosis, an evidenced regression test when a harness exists, outcome-bound cleanup) auto-injected per-prompt, without typing a slash command. **In Copilot CLI**, the same single-entry injection was observed on 1.0.80; self-classification from the framework rules is the fallback on older or unavailable hooks. VS Code's Preview-hook prompt lifecycle remains unverified. Either way, the seven workflows are also invokable explicitly as slash commands (`/feature`, `/fix`, …) for deterministic routing.
 
 ### Common Tasks via skills
-Recipes for "add a new endpoint end-to-end", "add a new EF Core entity", "register a new service", "add a new feature component", "add a new service", "add a new lazy route", and "add a new signal-based store" live as auto-discovered skills in `.claude/skills/`. The model triggers the relevant one when the user describes that kind of task; the body loads only when triggered, keeping main context lean.
+The framework ships no generic recipe for adding an endpoint, entity, service, component, route, or store. `/bootstrap` drafts a project skill in `.claude/skills/` for an operation your code repeats at least three times; once your team approves it and adds its Common Tasks line, the model triggers it when the user describes that task, and its body loads only when triggered, keeping main context lean.
 
 ### Subagents for isolated specialist work
 Seven subagents live in `.claude/agents/` — the six user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents:

@@ -23,7 +23,7 @@ Before starting analysis:
 5. **Check for existing configuration** — if `AGENTS.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Never touch `LEARNINGS.md` — it is append-only.
 6. **Large codebases** — if the selected Angular profile has more than 200 components, focus analysis on the most actively changed areas (check git log). Note which areas were analysed and which were skipped.
 7. **Mixed-stack detection** — use the same bounded, excluded scope to count `.cs` / `.csproj` files. If a `*.csproj` exists or more than ~50 `.cs` source files exist, flag this as a mixed-stack repo. A `.sln` alone may be an SSDT warehouse container and is not .NET application evidence. After Phase 3 generation, add a note in the final report recommending the user create `.github/instructions/<stack>.instructions.md` with `applyTo:` frontmatter. Do not auto-generate the secondary-stack instructions file — the user picks the rules.
-8. **Establish ownership and dismissal boundaries.** Read root `framework-ownership.json` and require a valid `paths` inventory. Exclude every `framework-owned/overwritten` path from A7's evidence corpus; a `mixed` path may support a finding only when the cited evidence is consumer-authored and corroborated outside framework-owned paths. If `TECH_DEBT.md` already contains `## Dismissed proposals`, freeze those rows before analysis so generation cannot overwrite or re-propose them.
+8. **Establish ownership and dismissal boundaries.** Read root `framework-ownership.json` and require a valid `paths` inventory. Exclude every `framework-owned/overwritten` path, and every path root `framework-retirements.json` lists, from A7's evidence corpus: a retained retired framework file is stale framework content, not consumer evidence. A `mixed` path may support a finding only when the cited evidence is consumer-authored and corroborated outside framework-owned paths. If `TECH_DEBT.md` already contains `## Dismissed proposals`, freeze those rows before analysis so generation cannot overwrite or re-propose them.
 
 ---
 
@@ -102,9 +102,9 @@ The pass definitions below are the source of truth the subagents read. Do not du
 
 Discover grounded repository knowledge, not only recurring recipes. First inventory accessible first-party tracked source, configuration, migrations, orchestration, tests, and authoritative project documentation across the repository. Classify generated, vendored, framework-owned, inaccessible, and external material. A profile label is neither an inventory boundary nor permission to cross an access boundary. Consider local untracked source only with explicit uncommitted provenance. Never capture secrets.
 
-Select finite semantic slices from entrypoints, dependencies, callers/callees, tests, configuration, producers/consumers, and exceptions. Quiet, atypical, unique, helper-derived, and conflicting-scope evidence qualifies; recurrence and naming are leads, not gates. One decisive implementation can support a scoped fact; repeated implementations or usage do not prove intended policy or correctness. Existing generated knowledge may guide source reads but is not independent corroboration. Read at most 40 distinct content files and follow at most two additional dependency hops per selected seed. Inventory does not consume the content-read budget. Track visited sources, stop cycles, record actual reads, and leave inaccessible or unresolved dependencies unresolved with the next useful source.
+Select finite semantic slices from entrypoints, dependencies, callers/callees, tests, configuration, producers/consumers, and exceptions. Quiet, atypical, unique, helper-derived, and conflicting-scope evidence qualifies; recurrence and naming are leads, not gates. Recurrence gates one output only: a project skill (3a-bis) needs three or more distinct consumer-authored instances of the operation. One decisive implementation can support a scoped fact; repeated implementations or usage do not prove intended policy or correctness. Existing generated knowledge may guide source reads but is not independent corroboration. Read at most 40 distinct content files and follow at most two additional dependency hops per selected seed. Inventory does not consume the content-read budget. Track visited sources, stop cycles, record actual reads, and leave inaccessible or unresolved dependencies unresolved with the next useful source.
 
-Return only grounded discovery findings to the parent; this pass is read-only. Do not run provider trials or spend provider credits to validate discovery. Each finding states the actual scoped claim or ordered evidenced operation steps, with unresolved portions explicit, plus applicability and non-applicability, repository-relative paths and symbols, revision when available, counterevidence and exceptions, dependency sources, status (`observed`, `declared`, `inferred`, or `unresolved`), a meaningful recheck, and coverage as inventory-only, semantically inspected, excluded, or inaccessible. A batch may present three to five findings, but that is never an eligibility or completeness cap. Budget exhaustion is a partial result with a bounded continuation, never "nothing found" or exhaustive coverage.
+Return only grounded discovery findings to the parent; this pass is read-only. Do not run provider trials or spend provider credits to validate discovery. Each finding states the actual scoped claim or ordered evidenced operation steps, with unresolved portions explicit, plus applicability and non-applicability, repository-relative paths and symbols, revision when available, counterevidence and exceptions, dependency sources, status (`observed`, `declared`, `inferred`, or `unresolved`), a meaningful recheck, and coverage as inventory-only, semantically inspected, excluded, or inaccessible. An operation finding also lists every distinct consumer-authored instance path seen, the non-obvious repository-specific step, and where instances diverge. A batch may present three to five findings, but that is never an eligibility or completeness cap. Budget exhaustion is a partial result with a bounded continuation, never "nothing found" or exhaustive coverage.
 
 Read `LEARNINGS.md` before proposing an operation and preserve a matching `## Declined recipe:` unless changed evidence is named. The worker does not write a wiki entry, skill, map, convention, ADR, debt item, or other artifact; the parent performs the limited draft capture in Phase 3a-bis.
 
@@ -152,11 +152,10 @@ Code establishes implemented surfaces, not product intent or actual user behavio
 - **Repository Structure**: actual Angular workspace/layout with module dependency diagram
 - **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Angular Version, Architecture, Component Design, Forms, State Management, RxJS, API/HTTP, Typing, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. End `Conventions > Testing` with a one-line target test shape for this repo (unit-dense, honeycomb, trophy-shaped, or another shape from the `docs/defaults.md` heuristic), adapted to what A1–A6 found. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
 - **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of AGENTS.md holds it within the token budget — it loads on nearly every turn.
-- **Common Tasks**: do NOT write recipes inline in AGENTS.md. The framework-shipped skills are an applicability-gated delivery-profile superset: keep them byte-stable even when their technology or recipe is absent. Do not delete, rewrite, move, or replace a shipped skill merely because it does not apply. Requested A7 discovery may create only the new review drafts defined in 3a-bis; it never changes an existing project skill or its ownership. Update the Common Tasks bullet list in AGENTS.md to advertise only skills applicable to the selected Angular profile and evidenced constructs — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks. Dormant shipped skills remain installed and rely on their applicability gates. `.claude/disabled-skills/` is only for an explicit maintainer decision recorded by `/rebootstrap`, never automatic profile selection.
+- **Common Tasks**: do NOT write recipes inline in AGENTS.md. The framework-shipped skills are an applicability-gated delivery-profile superset: keep them byte-stable even when their technology or recipe is absent. Do not delete, rewrite, move, or replace a shipped skill merely because it does not apply. Requested A7 discovery may create only the new review drafts defined in 3a-bis; it never changes an existing project skill or its ownership. The framework ships no recipe for adding an component, service, route, or store: a recipe for an operation this repository repeats is a project skill drafted under 3a-bis. Never append repository-specific evidence to a framework-shipped skill. Update the Common Tasks bullet list in AGENTS.md to advertise only skills applicable to the selected Angular profile and evidenced constructs — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks. Dormant shipped skills remain installed and rely on their applicability gates. `.claude/disabled-skills/` is only for an explicit maintainer decision recorded by `/rebootstrap`, never automatic profile selection.
 
   **A7 discovery boundary:** the worker reports scoped repository knowledge only; the parent applies 3a-bis. Discovery output is not team policy, executable instruction, independent proof, or permission for wider reads or writes.
 
-  **Exemplar grounding (instance-shaped skills):** For the existing instance-shaped operations `add-component`, `add-service`, `add-lazy-route`, and `add-signal-store`, confirm a real instance exists (Verification Rule #1 — Read/Grep confirms the path). If it passes the quality cross-check (not flagged as debt), record the path in the applicable Common Tasks entry: *"For a concrete current instance in this repo, see `<path>` — reproduce its **conventions and structure**, not its contents; AGENTS.md > Conventions wins on any conflict."* Never append repository-specific evidence to a framework-shipped skill. Exempt process skills (`add-tests`, `create-adr`, `dependency-audit`, `enforce-architecture`) — they are not instance-shaped "add an X" recipes.
   **Command inventory:** add a concise `### Verification Commands` table to `AGENTS.md > Conventions` with columns for category, exact command, exact evidence path, and execution policy, using the fixed categories **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**. Mark migration/deploy `manual/CI-only` unless the exact invocation is evidenced as non-mutating validation/dry-run; it may be run otherwise only with explicit developer authorization against a known target. For every category with no applicable selected profile or no evidenced command, write `not available (no evidenced command)`. This is an inventory, not a recommendation or permission to install or run a tool.
 
 The Agentic Workflow now lives in `.github/instructions/framework-rules.instructions.md`; do not edit that framework-owned file. Leave `CLAUDE.md` exactly as-is: the stub importing `AGENTS.md` and `.github/instructions/framework-rules.instructions.md`, with no project content. Never touch `LEARNINGS.md` — it is append-only.
@@ -180,24 +179,41 @@ owner-routed change, but do not alter it.
   confidence (`observed`, `declared`, `inferred`, or `unresolved`), counterevidence/exceptions,
   dependencies/unresolved sources, a meaningful recheck, and body fields for `**Provenance:**`
   plus `**Draft status:** draft pending PR review; not team-approved policy`.
-- An evidenced operation matching `add-component`, `add-service`, `add-lazy-route`, or
-  `add-signal-store` becomes only its new absent consumer-owned `references/project-pattern.md`,
-  using the same scoped evidence, counterevidence, unresolved, provenance, draft-status, and
-  semantic-refresh envelope. Never create a competing skill, edit the framework `SKILL.md`,
-  overwrite an existing reference, or change owner content automatically.
-- An evidenced repeatable operation with grounded steps, integration points, and verification
-  becomes a new consumer-owned `.claude/skills/<slug>/SKILL.md` draft only when both the skill and
-  its focused-reference paths are absent. Create both files, never one without the other. The skill
+- An operation becomes a new consumer-owned `.claude/skills/<slug>/SKILL.md` draft only when it
+  recurs: three or more distinct consumer-authored instances share its ordered steps and files,
+  counted as whole constellations rather than file names, and at least one step is non-obvious and
+  specific to this repository. Repetition a framework or generator dictates does not qualify, and
+  generated, vendored, framework-owned, or retired framework files are not instances. When the
+  non-obvious step fits one `AGENTS.md > Conventions` line, write that line instead of a skill. An
+  operation Phase 2 flags as an anti-pattern or debt goes to `TECH_DEBT.md`, never into a skill;
+  instances that diverge without an evidenced reason leave that step unresolved in the draft.
+  Write at most three skill drafts per run and list any further qualifying operation in the
+  Phase 4 report. Write a draft only when both the skill and its focused-reference paths are
+  absent, and never under a slug root `framework-retirements.json` retires or a `LEARNINGS.md`
+  `## Disabled framework skill:` heading names; name it in this repository's vocabulary. Create
+  both files, never one without the other. The focused reference lists every instance path and
+  names the cleanest as the exemplar. The skill
   body contains an explicit relative Markdown link to every focused reference; a sibling file's
   existence is not a link. Do not also create a wiki draft that duplicates the operation; wiki
   drafts hold independently scoped facts, constraints, gotchas, or failed approaches. Its
   frontmatter contains `name`, a trigger-rich `description`, and
-  `origin: discovered` so existing lifecycle handling can find it. Its loaded body identifies candidate
+  `origin: discovered` so existing lifecycle handling can find it; the `description` begins
+  `DRAFT, pending PR review:`. Its loaded body identifies candidate
   status, scope, underlying evidence, counterevidence, unresolved steps, body provenance, and
   draft-pending-review state and records the semantic refresh trigger and actual result in the
-  skill body or linked reference. It remains
-  immediately discoverable but never self-corroborates, approves itself, or authorizes broader
-  reads/writes; do not advertise or activate it as an approved Common Task before review.
+  skill body or linked reference. The body states that the operation is derived from the current
+  first-party instances, that the draft is a lead and not authority, and that
+  `AGENTS.md > Conventions` wins on any conflict. Its first step checks whether an existing file
+  already owns the requested responsibility. It ends with an `## After review` paragraph naming
+  the one Common Tasks line to add to `AGENTS.md` and the draft wording to delete once the team
+  approves it. It remains immediately discoverable but never self-corroborates, approves itself,
+  or authorizes broader reads/writes; do not advertise or activate it as an approved Common Task
+  before review.
+- A consumer-owned `.claude/skills/<slug>/references/project-pattern.md` whose folder has no
+  `SKILL.md` was left by a framework skill that no longer ships. Read it as a lead for that
+  operation, never as corroboration: a qualifying operation gets its draft under a new slug as
+  above, and that draft's focused reference may cite the leftover file. Never overwrite, move, or
+  delete the leftover file; list it in the Phase 4 report.
 - A warehouse fact links the existing `docs/warehouse-map.md` when present rather than creating a
   second edge map. Conventions, ADRs, hazards, security findings, and debt use their current
   triage owners and retain their existing confirmation requirements.
@@ -420,7 +436,7 @@ Then output:
 - Top 3 quick wins (including the Severity-High no-test-suite entry when A6 found no spec files)
 - Files generated/modified
 - **Rebootstrap baseline (3f)**: the `RECORDED` line verbatim and why each `UNCLAIMED` statement has no claim, or why no baseline was recorded.
-- **Repository knowledge discovery (A7)**: list each new review draft with body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result; also list skipped duplicates/owner-routed items, actual reads, inventory-only/excluded/inaccessible areas, and the next bounded continuation. State that drafts await PR review and changed no owner-authored knowledge.
+- **Repository knowledge discovery (A7)**: list each new review draft with body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result; also list skipped duplicates/owner-routed items, actual reads, inventory-only/excluded/inaccessible areas, and the next bounded continuation. For each new project skill add one plain-language line: the operation, its instance count, its exemplar path, and the Common Tasks line its `## After review` paragraph names. Also list each qualifying operation left over after the three-draft limit and each leftover `references/project-pattern.md`. State that drafts await PR review and changed no owner-authored knowledge.
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: auth + correlation-ID interceptors, typed error envelope in `core/api/`") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).
 
 **Important**: the Conventions section was generated from code analysis and your Phase 2b answers. Verify it before relying on it — sections marked `<!-- INFERRED -->` flag specific areas where the code gave conflicting signals that couldn't be resolved automatically. All other sections reflect observed code patterns; review them for accuracy, not for AI-architecture decisions.
@@ -431,7 +447,7 @@ Unless this `/bootstrap` is being invoked from within `/adopt`, emit a prioritiz
 
 1. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (AGENTS.md > Conventions > [subsection])"
 2. For each `(c) unsure` or tooling-only hazard from 3d-bis: "Is [specific risk] real in this codebase? If you're not sure, leave it as it is. (FRAMEWORK-CONTEXT.md > Known Hazard Areas)"
-3. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line from the report as a yes/no question with its skill file pointer.
+3. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line from the report as a yes/no question with its skill file pointer; a yes means applying its `## After review` paragraph.
 
 Emit the result in a fenced code block whose first line is exactly:
 

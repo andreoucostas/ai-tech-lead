@@ -190,17 +190,18 @@ function Get-RawSha256([byte[]]$Bytes) {
     finally { $sha.Dispose() }
 }
 
-function Get-V083TaggedObservations {
+function Get-TaggedObservations {
+    param([string[]]$Paths, [version]$Through)
     $tagResult = Invoke-GitBytes @('tag','--list','v*')
     Assert ($tagResult.Exit -eq 0) "could not enumerate release tags: $($tagResult.Error)"
     $tags = @([Text.Encoding]::UTF8.GetString($tagResult.Bytes) -split "`r?`n" | Where-Object {
-        $_ -match '^v(\d+\.\d+\.\d+)$' -and ([version]$Matches[1] -le [version]'0.82.0')
+        $_ -match '^v(\d+\.\d+\.\d+)$' -and ([version]$Matches[1] -le $Through)
     })
-    Assert ($tags.Count -gt 0) 'release-tag enumeration through v0.82 was empty'
+    Assert ($tags.Count -gt 0) "release-tag enumeration through v$Through was empty"
 
     $observations = @()
     $wanted = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-    foreach ($path in $v083RetiredPaths) { [void]$wanted.Add($path) }
+    foreach ($path in $Paths) { [void]$wanted.Add($path) }
     foreach ($tag in $tags) {
         $tree = Invoke-GitBytes @('ls-tree','-r',$tag,'--','dist/dotnet','dist/angular','dist/monorepo')
         Assert ($tree.Exit -eq 0) "could not enumerate $tag distribution trees: $($tree.Error)"
@@ -249,7 +250,7 @@ It 'v0.83 ledger contains every raw path-specific digest released through v0.82 
     $ledger = [Text.Encoding]::UTF8.GetString($sourceBytes).TrimStart([char]0xFEFF) | ConvertFrom-Json
     $actualV083 = @($ledger.retirements | Where-Object { $_.'retired-in' -ceq '0.83.0' } | ForEach-Object path)
     Assert (($actualV083 -join "`n") -ceq ($v083RetiredPaths -join "`n")) 'v0.83 retirement paths differ from the explicit 18-path contract'
-    $observations = @(Get-V083TaggedObservations)
+    $observations = @(Get-TaggedObservations -Paths $v083RetiredPaths -Through '0.82.0')
     foreach ($path in $v083RetiredPaths) {
         Assert (@($observations | Where-Object Path -ceq $path).Count -gt 0) "no released blob was observed for $path"
         foreach ($stack in @('dotnet','angular','monorepo')) {
@@ -270,6 +271,21 @@ It 'v0.83 ledger contains every raw path-specific digest released through v0.82 
     try { Assert-TaggedDigestCompleteness $observations $badMap }
     catch { $caught = $_.Exception.Message -match 'missing tagged digest' }
     Assert $caught 'removing a released digest did not make the completeness checker go red'
+}
+
+It '0.92.0 ledger contains every released digest of the seven retired recipe skills' {
+    $paths = @('add-component', 'add-endpoint', 'add-entity', 'add-lazy-route', 'add-service', 'add-signal-store', 'register-service' |
+        ForEach-Object { ".claude/skills/$_/SKILL.md" })
+    $ledger = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot 'src/core/framework-retirements.json'))).TrimStart([char]0xFEFF) | ConvertFrom-Json
+    foreach ($path in $paths) {
+        Assert (@($ledger.retirements | Where-Object { $_.path -ceq $path -and $_.'retired-in' -ceq '0.92.0' }).Count -eq 1) "no 0.92.0 retirement entry for $path"
+    }
+    # Each recipe shipped from one stack and the monorepo union, never from all three dists.
+    $observations = @(Get-TaggedObservations -Paths $paths -Through '0.91.0')
+    foreach ($path in $paths) {
+        Assert (@($observations | Where-Object Path -ceq $path).Count -gt 0) "no released blob was observed for $path"
+    }
+    Assert-TaggedDigestCompleteness $observations (Get-LedgerDigestMap $ledger)
 }
 
 It 'raw Git capture preserves binary bytes and nonzero stderr' {

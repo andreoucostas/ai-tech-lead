@@ -64,10 +64,6 @@ When a task matches a skill below, invoke that skill with your skill tool before
 Skills are a delivery-profile superset, not evidence that they apply. Use only when repository
 evidence satisfies the gate:
 
-- `add-component` — add a new Angular feature component end-to-end
-- `add-service` — add an HTTP / business-logic / signal-store service
-- `add-lazy-route` — add a new route in the project's evidenced shape, with optional guards/resolvers
-- `add-signal-store` — add a signal-based shared-state store
 - `add-tests` — add specs for existing code in the project's evidenced test shape
 - `dependency-audit` — scan for vulnerable/deprecated/outdated npm packages, set up automated scanning, or upgrade Angular one major at a time
 - `create-adr` — record a significant architecture decision in Architecture Decisions
@@ -75,7 +71,7 @@ evidence satisfies the gate:
 - `enforce-architecture` — wire the deterministic DIP/layering CI gate (dependency-cruiser)
 - `enforce-standards` — make `@ts-ignore`, `eslint-disable`, and focused/skipped specs build-breaking (ESLint `noInlineConfig` + rule severities)
 
-`/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real repo exemplar.
+`/bootstrap` drafts a project skill under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, for an operation this repository repeats at least three times; add its line here once the team approves the draft.
 
 **Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Do not merge them — audit teams treat these differently. Security findings come from `/security-review` and the `security-auditor` agent, not from feature work. AI-assisted file changes are appended to [.claude/ai-audit.log](./.claude/ai-audit.log) automatically by the PostToolUse hook.
 

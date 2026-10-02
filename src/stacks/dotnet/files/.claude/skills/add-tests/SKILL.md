@@ -7,8 +7,8 @@ description: >
   USE FOR: backfilling tests on untested code, adding edge/error-path cases, writing a regression
   test for a bug, raising coverage on a module you're about to change, or pinning the current
   behavior of untested legacy code before a refactor (characterization mode).
-  DO NOT USE FOR: scaffolding a brand-new endpoint (use add-endpoint, which assesses tests only
-  against an evidenced harness), or runtime profiling/benchmarking.
+  DO NOT USE FOR: scaffolding new production code (use the project skill for that operation, or
+  `/feature`), or runtime profiling/benchmarking.
 ---
 
 # Add tests following project patterns

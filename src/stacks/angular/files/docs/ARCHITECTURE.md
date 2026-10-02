@@ -96,9 +96,11 @@ Run in isolated context; return a structured findings table to the parent. Model
 
 ## 6. Skills (`.claude/skills/`)
 
-Auto-discovered Common-Tasks recipes; the body loads only when triggered (progressive disclosure).
+Auto-discovered skills; the body loads only when triggered (progressive disclosure). The framework
+ships no generic scaffolding recipe; `/bootstrap` drafts a project skill for an operation the codebase
+repeats at least three times.
 
-`add-component` · `add-service` · `add-lazy-route` · `add-signal-store` · `add-tests` · `dependency-audit` · `create-adr` · `enforce-architecture` · `enforce-standards`
+`add-tests` · `dependency-audit` · `create-adr` · `enforce-architecture` · `enforce-standards`
 
 ---
 

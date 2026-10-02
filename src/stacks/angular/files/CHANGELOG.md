@@ -6,13 +6,29 @@
 
 ## 0.92.0 — Unreleased
 
-- **`AGENTS.md > Common Tasks` no longer assumes lazy loading or a test setup.** A new install lists
-  `add-lazy-route` and `add-tests` as working in the project's evidenced shape, instead of promising
-  a lazy-loaded route and TestBed with `HttpTestingController`; the skills already worked from your
-  repository's evidence, and the skill files are unchanged. An update never rewrites your
-  `AGENTS.md`. If your Common Tasks list still carries the old wording, change only the text after
-  the dash to match `dist/angular/AGENTS.md` in your framework clone, keep any "For a concrete
-  current instance…" pointer, and do not add lines for skills your list leaves out.
+- **The framework no longer ships `add-component`, `add-service`, `add-lazy-route`, or
+  `add-signal-store`.** These were generic "add a component, service, route or store" recipes the
+  framework gave every Angular install, whether or not your code has that shape; their steps mostly
+  said "follow what the repository already does", and we never measured them helping. Instead,
+  `/bootstrap` and `/rebootstrap` draft a project skill for an operation your own code repeats at
+  least three times and that has at least one step specific to your repository: at most three drafts
+  per run, each built from your instances, its description starting `DRAFT, pending PR review:`, and
+  each ending with the Common Tasks line to add once your team approves it. A repository with
+  nothing repeated that often gets no draft, which is expected. We have not yet seen this drafting
+  run on any agent. On update, the installer removes each of these `SKILL.md` files only when it is
+  exactly a version we shipped, and prints a `NOTICE`. A copy that you or a `/bootstrap` older than
+  0.77.0 edited is kept, still loads as a skill, and is reported: delete it after review unless it
+  is your own. Any other file in that skill's folder, such as a `references/project-pattern.md` that
+  `/bootstrap` wrote, is yours and stays (in `.claude/disabled-skills/` if your `LEARNINGS.md`
+  disables that skill); `/rebootstrap full` reads it as a lead. An update never rewrites your
+  `AGENTS.md`: delete the `add-component`, `add-service`, `add-lazy-route` and `add-signal-store`
+  lines from your Common Tasks list, or run `/rebootstrap full`, which drops lines for skills that
+  are no longer installed (a plain `/rebootstrap` stops when only framework files changed).
+- **`AGENTS.md > Common Tasks` no longer assumes a test setup.** A new install lists `add-tests` as
+  working in the project's evidenced shape, instead of promising TestBed with
+  `HttpTestingController`; the skill already worked from your repository's evidence. An update never
+  rewrites your `AGENTS.md`. If your `add-tests` line still carries the old wording, change only the
+  text after the dash to match `dist/angular/AGENTS.md` in your framework clone.
 - `docs/enforcement-surfaces.md` now records the Claude Code write guard blocking a key-shaped file
   write end-to-end on Claude Code 2.1.281 (2026-09-30), while the same task without the framework
   left the key on disk; that covers the `Write` tool, not shell writes or split edits. An update

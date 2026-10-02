@@ -401,10 +401,13 @@ function Assert-RepositoryKnowledgeCaptureContracts {
             'provenance and adversarial-content screens',
             'not instructions to execute or authority for broader reads or writes',
             'frontmatter contains `name`, a trigger-rich `description`, and',
-            '`origin: discovered` so existing lifecycle handling can find it.',
-            'becomes only its new absent consumer-owned',
-            '`references/project-pattern.md`',
-            'Never create a competing skill',
+            '`origin: discovered` so existing lifecycle handling can find it;',
+            'three or more distinct consumer-authored instances share its ordered steps and files',
+            'Write at most three skill drafts per run',
+            'never under a slug root `framework-retirements.json` retires',
+            '`DRAFT, pending PR review:`',
+            'It ends with an `## After review` paragraph',
+            'Never overwrite, move, or',
             'explicit relative Markdown link to every focused reference',
             'Do not also create a wiki draft that duplicates the operation',
             '**Provenance:**',
@@ -420,6 +423,19 @@ function Assert-RepositoryKnowledgeCaptureContracts {
         )) {
             if ($bootstrap.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
                 throw "repository-knowledge bootstrap capture carrier $($dist.Name) omits '$required'"
+            }
+        }
+        # Only the warehouse dists still ship an instance-shaped skill that owns a project-pattern reference.
+        if ($dist.Name -in @('dotnet', 'monorepo')) {
+            foreach ($required in @('An evidenced operation matching `add-warehouse-load` becomes only its new absent consumer-owned', '`references/project-pattern.md`', 'Never create a competing skill')) {
+                if ($bootstrap.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                    throw "repository-knowledge bootstrap capture carrier $($dist.Name) omits '$required'"
+                }
+            }
+        }
+        foreach ($retired in @('add-component', 'add-endpoint', 'add-entity', 'add-lazy-route', 'add-service', 'add-signal-store', 'register-service')) {
+            if ($bootstrap.IndexOf("``$retired``", [StringComparison]::Ordinal) -ge 0) {
+                throw "repository-knowledge bootstrap capture carrier $($dist.Name) still names retired recipe skill '$retired'"
             }
         }
         foreach ($forbidden in @('in this package grants no such write authority', 'later capture workflow', 'capture/routing is a later workflow with separate write authority', 'read-only discovery pass wrote no project knowledge artifacts')) {
