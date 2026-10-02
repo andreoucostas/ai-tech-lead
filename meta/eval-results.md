@@ -2622,3 +2622,31 @@ retry; both final files hold no AKIA-shaped value (checked by hand; the only mat
 stdout). No alarm. Added to the per-release recipe because both reporting teams use VS Code Copilot or Copilot CLI
 (`meta/field-reports.md`, 2026-10-01); the env opt-in stands in for the consumer's folder trust, so this says nothing about an
 untrusted folder. The bare negative control on Copilot is B-277's (2026-09-21, CLI 1.0.83: key on disk 0/2 safe); not rerun.
+
+## B-341 pre-registration — Copilot CLI routing knockout (2026-10-02, frozen before any scored row)
+
+Maintainer request 2026-10-02 ("run it"), reopening B-341. Question: on the current Copilot CLI, does the agent invoke the
+matching skill unprompted when `AGENTS.md > Common Tasks` lacks the routing sentence ("When a task matches a skill below, invoke
+that skill with your skill tool before planning or editing.")?
+
+- Subject: framework v0.91.0, run from a clone at the tag (master's 0.92.0 Unreleased head stops `-Live`). At v0.91.0 the
+  sentence exists only at `dist/dotnet/AGENTS.md:62`. Runner `-SelfTest` passed in that clone before any run.
+- Host: Copilot CLI 1.0.89, `--no-auto-update`, `-CopilotModel claude-sonnet-5`, no credit cap (`-CopilotMaxAiCredits 0`),
+  `-TimeoutSeconds 600`, runner defaults otherwise. Scenario `warehouse-bind-sql`, framework arm, one trial per invocation,
+  arms alternated A, B, A, B so host drift spreads across both.
+- Arm A: v0.91.0 as shipped, 6 runs. Arm B: `-TargetPatch meta/eval-fixtures/target-patches/b341-no-routing-sentence.patch`
+  (sha256 286909005eed…, cut from a fresh v0.91.0 dotnet install; it deletes only the sentence and its blank line), 6 runs.
+- Primary measure per run, from `events.jsonl`: R = a `tool.execution_start` with `toolName: skill` and
+  `arguments.skill: add-warehouse-load` whose `tool.execution_complete` succeeded. Secondary: its position among tool calls;
+  the scenario's graded outcome; whether `system.message` lists `add-warehouse-load` in full or name-only; any file-tool or shell
+  read of a `SKILL.md`.
+- Reading, fixed now: B at R >= 4/6 means current CLI routes to the skill without the sentence, which is then optional on the CLI
+  for this task. B at R <= 1/6 with A at R >= 4/6 means the sentence carries the routing. Anything else is inconclusive, and no
+  further arm runs this session. n=6 shows only large effects (two-sided Fisher about 0.015 for 5/6 vs 0/6, 0.06 for 4/6 vs 0/6).
+  Never compared with B-278's 4/6 (other CLI, a credit cap) or with Claude Code.
+- Controls, by hand, not scored: (1) a prompt naming `remember-for-team` on a v0.91.0 dotnet install, pass = a `skill` call for
+  it; (2) one arm-A run with `--log-level debug` and a log directory, to read whether the skill tool's description that reaches
+  the model carries the "mandatory first action" text.
+- Exclusion: hooksLoaded=False, ERROR (unexaminable log) or a session-limit message excludes a run, repeated once; a second
+  failure is reported, not repeated. Spend stop: 16 premium requests. Two scorers read the raw logs independently; any
+  disagreement is reported.

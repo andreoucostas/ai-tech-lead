@@ -12944,7 +12944,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   though angular `bootstrap.md` 3a says `/rebootstrap` records `.claude/disabled-skills/` decisions. Reopen on a field report.
 - **B-340** — CLOSED by decision **2026-10-02** (WSD-106), never filed. `src/core/scripts/framework-doctor.ps1`'s leftover-file check lists
   19 paths but its OK line says "18 v0.83 retired framework paths". Reopen on a field report.
-- **B-341** — CLOSED by decision **2026-10-02** (WSD-106), never filed. A Copilot CLI routing knockout (warehouse-bind-sql, routing
+- **B-341** — CLOSED by decision **2026-10-02** (WSD-106), never filed; REOPENED the same day by maintainer request ("run it"), pre-registered in `meta/eval-results.md`. A Copilot CLI routing knockout (warehouse-bind-sql, routing
   sentence kept vs removed, n=6 each, about 14 premium requests) would settle whether current CLI invokes a matching skill unprompted;
   the sentence ships either way. Design: `meta/eval-results.md` B-277/B-278 correction. Reopen on maintainer request or a field report.
 - **B-342** — CLOSED by decision **2026-10-02** (WSD-106), never filed. `run-agent-evals.ps1` drops `skill.invoked` events, scores a
