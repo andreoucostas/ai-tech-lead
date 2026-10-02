@@ -2860,3 +2860,29 @@ Question: after 0286cad9 (the A8 pass and worker return every operation with 3+ 
 - Reading on completed scored runs: FINDS THEM = P1 and P2 each SKILL in at least 2 runs (both, when only 2 complete) and no false
   positive in any run; DOES NOT FIND THEM = neither positive SKILL in 2 or more runs; otherwise PARTIAL.
 - Two scorers read the outputs independently; a referee only on disagreement; a root-cause analyst for any MISS or false positive.
+
+## B-346 results — 2026-10-02 (hand-written; no runner rows)
+
+As pre-registered at 7525fe2c (the driver ran at that commit; `dist/` equals 0286cad9; fixture v2 sha matches). Three runs,
+$21.21 ($6.53, $7.42, $7.26), none budget-cut, all finished with docs-sync-check PASS. Two scorers agreed on every value.
+
+| | Run 1 | Run 2 | Run 3 |
+|---|---|---|---|
+| P1 add an integration event | SKILL | SKILL | SKILL |
+| P2 add a report export | SKILL | SKILL | SKILL |
+| false positives | 0 | 0 | 0 |
+| A8 `evidenced operation` findings | 3: P1, P2, D2 | 3: P1, P2, D2 | 3: P1, P2, D2 |
+| D2 routed to `TECH_DEBT.md` | yes | yes | yes |
+| format checks (9 per draft) | 18/18 | 18/18 | 18/18 |
+
+- Reading: FINDS THEM. Against B-345 the clean comparison is P2: MISS, MISS before; SKILL 3/3 after. P1 changed text and fixture.
+- Mechanism: the worker now returns operations, and the parent applies 3a-bis: both positives became drafts, D2 went to debt each
+  time. D1 (CRUD x4) never came back as an operation; the workers opened 1 to 2 of its 4 controllers. D3 and D4 stayed scoped facts.
+- Caveats: run 2's parent named both planted patterns in its A8 dispatch prompt, so only runs 1 and 3 are unprompted; the worker's
+  example resembles the planted constellations (pre-registered); A8 read 60, 43 and 57 content files against its 40-file budget.
+- Draft quality, an unregistered observation (one reviewer): every report draft carries both non-obvious steps (flag, GRANT); every
+  event draft carries the version/dead-letter step, but none states that an unregistered event is not published or the raise step.
+  Run 3's event draft omits the handler's DI registration: it would build and pass the tests, then fault the host at the first
+  dispatch. Run 2's drafts omit the test step. 4 of 6 drafts give the reference as a code span, not the Markdown link 3a-bis asks for.
+  So drafts must be checked against their listed instances before approval, as 3a-bis already says.
+- Not shown: other hosts, models or operation shapes, or a real consumer repository.

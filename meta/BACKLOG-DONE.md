@@ -12960,3 +12960,10 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-345** — measurement by maintainer request, CLOSED **2026-10-02** with its result (`meta/eval-results.md`, pre-registered at
   6ed5d88f): /bootstrap drafted no project skill for either planted 3-instance operation in 2 runs ($15.05), DOES NOT FIND THEM; the A8
   worker reported no operation. Follow-up B-346.
+- **B-346** — DONE **2026-10-02** for 0.92.0 (0286cad9; results `meta/eval-results.md`, pre-registered at 7525fe2c): the discovery
+  worker returns every operation with 3+ instances and leaves eligibility to 3a-bis; the B-345 rerun on fixture v2 drafted both planted
+  skills in 3 of 3 runs with no false positive (FINDS THEM, $21.21).
+- **B-347** — CLOSED by decision **2026-10-02** (WSD-106), never filed. B-346's drafts vary in completeness: run 3's event draft omits
+  the handler's DI registration (it builds and passes the tests, then faults the host), no event draft says an unregistered event is not
+  published, run 2's omit the test step, and 4 of 6 cite the reference as a code span. 3a-bis already sends drafts to PR review against
+  their instances. Reopen on a field report of an approved draft missing a step.

@@ -4592,4 +4592,4 @@ ahead", plan revised by a Fable review).** The ledger retires the seven (44 dige
 with 3+ consumer-authored instances and a non-obvious step, at most three a run, marked `DRAFT, pending PR review:` and naming its Common
 Tasks line; unique facts stay wiki drafts (WSD-074). A new operation skill ships only on a field report or measured outcome. Supersedes
 WSD-074's "eight skills" clause; WSD-052's superset sentence holds for skills still shipped; `perf` is out of scope. Drafting is
-unobserved on any host. **Reopen** on a field report of a task no skill or rule now covers.
+observed on Claude Code (B-346). **Reopen** on a field report of a task no skill or rule now covers.

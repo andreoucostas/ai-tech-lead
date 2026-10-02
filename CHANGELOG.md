@@ -180,8 +180,12 @@ and leave eligibility, debt routing and the Conventions-line alternative to 3a-b
 "Count repeated operations" bullet. The three-instance bar, the non-obvious-step and debt clauses and the
 pinned "recurrence and naming are leads, not gates" sentence are unchanged. Expected trade-off: routine
 repetition (vanilla CRUD, naming conventions) now reaches the parent, which must reject it. The
-pre-registered rerun of B-345 follows; until it reports, the stack notes keep "do not count on drafts
-yet".
+pre-registered rerun (7525fe2c; fixture v2 with P1's pipeline made live) drafted both planted skills in 3
+of 3 runs with no false positive, FINDS THEM ($21.21; two scorers agreed): A8 returned P1, P2 and the
+anti-pattern each time, and the parent sent the anti-pattern to `TECH_DEBT.md`. Caveats: run 2's parent
+named both patterns in its A8 prompt; the worker's example resembles them; drafts vary in completeness,
+and run 3's event draft omits a DI registration that would fault the host (B-347, closed by decision).
+The stack notes say so and tell teams to check each draft against its instances.
 
 ## 0.91.0 — 2026-09-30
 
