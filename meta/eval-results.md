@@ -2804,3 +2804,31 @@ unobserved on any host; this measures it on Claude Code.
 - Reading (n=3, descriptive only): FINDS THEM = P1 and P2 each SKILL in at least 2 of 3 runs, and no false positive in any run;
   DOES NOT FIND THEM = neither positive SKILL in 2 or more runs; anything else PARTIAL. Format checks are reported as counts.
 - Spend stop: $8 per call, $20 total. Two scorers read the outputs independently; any disagreement is reported.
+
+## B-345 results — 2026-10-02 (hand-written; no runner rows)
+
+As pre-registered at 6ed5d88f (the driver ran at that commit; `dist/` is identical to the registered c6319b92). Two runs completed;
+the third was stopped seconds after launch because run 2 ($8.53) brought the total to $15.05 and a third run would pass the $20
+stop. n=2, so this is descriptive; the reading cannot change, since a third run could bring neither positive to 2 of 3.
+
+| | Run 1 ($6.51) | Run 2 ($8.53) |
+|---|---|---|
+| project-skill drafts | 0 | 0 |
+| P1 add an integration event | MISS | MISS |
+| P2 add a report export | MISS | MISS |
+| false positives | 0 | 0 |
+| D2 anti-pattern in `TECH_DEBT.md` | yes | yes |
+| bootstrap finished (Phase 4 checklist, docs-sync-check PASS) | yes | yes |
+
+- Reading: DOES NOT FIND THEM. Two scorers graded the repositories and streams independently and agreed on every value.
+- Cause, observed in the streams: 3a-bis drafts a skill only from an A8 `evidenced operation` finding, and the A8 worker returned 13
+  findings across both runs, all `scoped fact`. Run 1's worker counted P2's three instances and dropped them ("already share one
+  existing seam"), a ground the rule does not contain, and the parent repeated that verdict; run 2's worker, asked by the parent for
+  operations with 3+ instances, opened 1 of 3 exports and returned none. The parent never counts recurrence itself. Both runs kept
+  P1's version/dead-letter step as a wiki gotcha; neither recorded that an unregistered event is not published.
+- Inferred: the worker's selection text ("quiet, atypical, unique, helper-derived" evidence; "repeated implementations ... do not
+  prove intended policy") steers it to facts and away from repetition, and nothing tells it to count operations or to leave skill
+  eligibility to the parent. B-346 carries the two-sentence change and a rerun.
+- Fixture weakness for a rerun: P1's handlers are never invoked, and both runs filed that as dead-code debt, so a rule-following
+  parent could route P1 to `TECH_DEBT.md` once A8 surfaces it.
+- Not shown: any other host or model, a real consumer repository, or whether the change fixes it.

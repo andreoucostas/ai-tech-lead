@@ -161,7 +161,19 @@ in 6/6 with the routing sentence, always first, and 1/6 without (two-sided Fishe
 outcome 6/6 vs 4/6, so in effect the host's own push is weak, 0.89.1's practical conclusion holds and the
 sentence stays; without it three runs still read the `SKILL.md` mid-task. Closed by decision: the eval
 detector's gaps (B-342), Copilot's per-session skill-list budget (B-343) and `AGENTS.md` reaching
-Copilot's system message twice (B-344). ## 0.91.0 — 2026-09-30
+Copilot's system message twice (B-344).
+
+B-345, by maintainer request (pre-registered at 6ed5d88f): on a seeded .NET repository with two planted
+operations of three instances each and four decoys, headless Claude Code `/bootstrap` (sonnet) drafted no
+project skill in two runs ($15.05; a third was stopped under the $20 cap), with no false positive and the
+repeated anti-pattern sent to `TECH_DEBT.md`. The A8 discovery worker, the only source 3a-bis drafts
+from, returned 13 findings, all scoped facts, and in run 1 dropped a counted 3-instance operation on
+grounds the rule does not contain. So WSD-109's drafting path is unproven and, as written, did not fire;
+the stack notes say not to count on drafts. B-346 carries the two-sentence worker change and a rerun.
+This entry also restores the `## 0.91.0` heading that c6319b92's paragraph rewrap had folded into the
+line above it.
+
+## 0.91.0 — 2026-09-30
 
 B-324, from a maintainer report: an install from a clone 68 commits behind `master` put v0.89.1 into a
 repository, and nothing said so until `/bootstrap` had run on it. Before it changes anything, the stack

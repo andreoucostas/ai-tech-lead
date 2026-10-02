@@ -12957,3 +12957,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-344** — CLOSED by decision **2026-10-02** (WSD-106), never filed. Copilot CLI 1.0.89 put `AGENTS.md` in the system message twice (as
   a custom instruction and through `CLAUDE.md`'s `@AGENTS.md` import), and `framework-rules.instructions.md` twice (B-341's logs), so
   Copilot pays the always-loaded carrier twice. Reopen on a field report of context cost or truncation.
+- **B-345** — measurement by maintainer request, CLOSED **2026-10-02** with its result (`meta/eval-results.md`, pre-registered at
+  6ed5d88f): /bootstrap drafted no project skill for either planted 3-instance operation in 2 runs ($15.05), DOES NOT FIND THEM; the A8
+  worker reported no operation. Follow-up B-346.

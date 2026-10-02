@@ -9,20 +9,28 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
+## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue and B-346 first 2026-10-02 (WSD-109, B-345); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
 
 | Rank | Item | Why here |
 |---|---|---|
-| 1 | B-326 | False-green class: the host steers `/security-review` to its built-in agent; both reporting teams use Copilot (2026-10-01) |
-| 2 | B-337 | Field-triggered: both reporting teams use VS Code Copilot or Copilot CLI, and setup text sends them to Claude Code |
-| 3 | B-327 | Idle queue. Guarded; on-demand `/bootstrap` text, though what it writes lands in the consumer's `AGENTS.md` |
-| 4 | B-328 | Idle queue. Small and ordinary; the PR review step the Bitbucket Data Center target lacks |
-| 5 | B-329 | Idle queue. Guarded; measure first, and stop if a template check cannot fit post-write's 45 s budget |
-| 6 | B-330 | Idle queue. Before the next `-Arm none` run; it needs a baseline rerun |
-| 7 | B-336 | Idle queue. Measure first; WSD-107's measured sentence did not help even where a project record exists |
-| 8 | B-331 | Idle queue. Measures WSD-109's retirement on Claude Code, about 3 USD live; report #6's `register-service` question is moot |
+| 1 | B-346 | Maintainer-requested follow-through: WSD-109's skill drafting drafted nothing in B-345 (0 of 2 runs); before the 0.92.0 tag |
+| 2 | B-326 | False-green class: the host steers `/security-review` to its built-in agent; both reporting teams use Copilot (2026-10-01) |
+| 3 | B-337 | Field-triggered: both reporting teams use VS Code Copilot or Copilot CLI, and setup text sends them to Claude Code |
+| 4 | B-327 | Idle queue. Guarded; on-demand `/bootstrap` text, though what it writes lands in the consumer's `AGENTS.md` |
+| 5 | B-328 | Idle queue. Small and ordinary; the PR review step the Bitbucket Data Center target lacks |
+| 6 | B-329 | Idle queue. Guarded; measure first, and stop if a template check cannot fit post-write's 45 s budget |
+| 7 | B-330 | Idle queue. Before the next `-Arm none` run; it needs a baseline rerun |
+| 8 | B-336 | Idle queue. Measure first; WSD-107's measured sentence did not help even where a project record exists |
+| 9 | B-331 | Idle queue. Measures WSD-109's retirement on Claude Code, about 3 USD live; report #6's `register-service` question is moot |
 
 ## Open entries
+
+### B-346 · Make /bootstrap's discovery worker report recurring operations, then re-measure B-345
+**Filed against:** v0.91.0 (2026-10-02)
+**Priority:** P1 · **Effort:** S to change, about $15-22 to re-measure · **Invariants:** #1 #7
+**Status:** Open; guarded (`bootstrap.md` and `bootstrap-pass.md` x3). B-345: A8 returned no `evidenced operation` in 13 findings and its
+worker gated a 3-instance operation itself. Change: A8 returns every operation with 3+ instances, instance paths listed, and leaves
+eligibility to 3a-bis (`meta/eval-results.md` B-345). Re-run pre-registered, with P1's handlers made live in the fixture.
 
 ### B-326 · Observe Copilot CLI interactive /review and /security-review precedence against the project's command files
 **Filed against:** v0.91.0 (2026-09-30)
