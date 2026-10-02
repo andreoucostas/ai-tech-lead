@@ -2771,3 +2771,36 @@ count; each session matched its row on toolCalls and tokens, and every A system 
 - Observed in passing: Copilot CLI 1.0.89 puts `AGENTS.md` in the system message twice, once as a custom instruction and once
   resolved from `CLAUDE.md`'s `@AGENTS.md` import; `framework-rules.instructions.md` also appears twice (B-344).
 - Not shown: any other task or skill, VS Code, interactive CLI, or a later CLI. Never compared with B-278's 4/6 or Claude Code.
+
+## B-345 pre-registration — does /bootstrap draft skills for operations a repository repeats? (2026-10-02, frozen before any run)
+
+Maintainer request 2026-10-02 ("go for it"), after asking whether bootstrap turns every repeated pattern into a skill. WSD-109's
+3a-bis rule (a project skill only for 3+ consumer-authored instances with a non-obvious repository step, at most three a run) is
+unobserved on any host; this measures it on Claude Code.
+
+- Subject: master at c6319b92 (0.92.0 Unreleased content; installed stamp reads 0.91.0), `install.ps1 -Stack dotnet` into a fresh
+  copy of the fixture under `%TEMP%\orders-svc-<n>`, committed as "Initial commit" then "Add ai-tech-lead framework".
+- Fixture: `meta/eval-fixtures/b345-bootstrap-skills/generate.py` (sha256 a14369fd7c77…), then `dotnet new sln -n Orders` and
+  `dotnet sln add` for every csproj; it builds with 0 warnings and its 6 tests pass. Two independent pre-flight reviews forced one
+  revision (second non-obvious step per positive, answer-key comments removed, decoy D1 made vanilla); a third review found it ready.
+  - P1 add an integration event (3 instances): record + handler + `EventRegistry` line + `contracts/events/<topic>.v<N>.schema.json`
+    + test; non-obvious: an unregistered event is not published, and `[EventVersion(N)]` must match the schema's `.vN.` or the
+    dispatcher dead-letters it.
+  - P2 add a report export (3 instances): export + `rpt.vw*` view + `ReportCatalog` line + flag + test; non-obvious: a missing
+    `reports.export.<key>` flag hides it, and each view needs a `GRANT SELECT ... TO ReportReader` in `db/security/reporting-grants.sql`.
+  - Decoys, none should become a skill: D1 vanilla CRUD resource x4; D2 `new HttpClient()` + `.Result` x3 (expected in
+    `TECH_DEBT.md`); D3 `*Dto` records x5; D4 scheduled job x2 (below three).
+- Host: Claude Code 2.1.281, `claude -p /bootstrap --model sonnet --dangerously-skip-permissions --max-budget-usd 8
+  --output-format stream-json --verbose`, `DISABLE_AUTOUPDATER=1`, `ATL_SOURCE_CHECK=off`; pauses answered "proceed" then
+  "skip all" (the B-325 provenance method). Three runs.
+- Primary: drafted skills = new `.claude/skills/<slug>/SKILL.md` absent from `framework-ownership.json`. Per positive per run,
+  one outcome: SKILL (a draft covering that operation: its steps or reference name the registry or catalog step and at least two
+  instances); CONVENTIONS-ONLY (no skill, but `AGENTS.md > Conventions` or a wiki draft carries both non-obvious steps;
+  rule-permitted, not a hit and not a defect); MISS. False positive = any draft for D1-D4 or another operation.
+- Secondary, per draft: description begins `DRAFT, pending PR review:`, folded or quoted, at most 1024 characters, `name` equals
+  its folder, `origin: discovered`, a reference listing instances and an exemplar, an `## After review` paragraph naming a Common
+  Tasks line, an existing-owner check as first step, and loading in `copilot skill list` (CLI 1.0.89, no model call). Also: D2 in
+  `TECH_DEBT.md`; bootstrap finished (Phase 4 checklist); cost.
+- Reading (n=3, descriptive only): FINDS THEM = P1 and P2 each SKILL in at least 2 of 3 runs, and no false positive in any run;
+  DOES NOT FIND THEM = neither positive SKILL in 2 or more runs; anything else PARTIAL. Format checks are reported as counts.
+- Spend stop: $8 per call, $20 total. Two scorers read the outputs independently; any disagreement is reported.
