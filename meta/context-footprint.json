@@ -303,8 +303,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 6941,
-          "tok": 1735
+          "chars": 7444,
+          "tok": 1861
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -338,8 +338,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 51686,
-          "tok": 12922
+          "chars": 52036,
+          "tok": 13009
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -717,8 +717,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 5879,
-          "tok": 1470
+          "chars": 6382,
+          "tok": 1596
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -752,8 +752,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 43651,
-          "tok": 10913
+          "chars": 44001,
+          "tok": 11000
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1131,8 +1131,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 7073,
-          "tok": 1768
+          "chars": 7576,
+          "tok": 1894
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -1166,8 +1166,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 58106,
-          "tok": 14526
+          "chars": 58456,
+          "tok": 14614
         },
         {
           "path": ".claude/commands/debt.md#body",

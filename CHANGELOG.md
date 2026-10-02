@@ -173,6 +173,16 @@ the stack notes say not to count on drafts. B-346 carries the two-sentence worke
 This entry also restores the `## 0.91.0` heading that c6319b92's paragraph rewrap had folded into the
 line above it.
 
+B-346 (guarded; plan reviewed by Fable): the A8/A7 discovery pass and its worker now return, within the
+read budget, every operation with three or more distinct consumer-authored instances as an evidenced
+operation with every instance path, even when it looks routine, uniform or already behind a shared seam,
+and leave eligibility, debt routing and the Conventions-line alternative to 3a-bis; the worker gains a
+"Count repeated operations" bullet. The three-instance bar, the non-obvious-step and debt clauses and the
+pinned "recurrence and naming are leads, not gates" sentence are unchanged. Expected trade-off: routine
+repetition (vanilla CRUD, naming conventions) now reaches the parent, which must reject it. The
+pre-registered rerun of B-345 follows; until it reports, the stack notes keep "do not count on drafts
+yet".
+
 ## 0.91.0 — 2026-09-30
 
 B-324, from a maintainer report: an install from a clone 68 commits behind `master` put v0.89.1 into a
