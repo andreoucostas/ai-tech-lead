@@ -2832,3 +2832,31 @@ stop. n=2, so this is descriptive; the reading cannot change, since a third run 
 - Fixture weakness for a rerun: P1's handlers are never invoked, and both runs filed that as dead-code debt, so a rule-following
   parent could route P1 to `TECH_DEBT.md` once A8 surfaces it.
 - Not shown: any other host or model, a real consumer repository, or whether the change fixes it.
+
+## B-346 pre-registration — rerun of B-345 after the discovery-worker change (2026-10-02, frozen before any run)
+
+Maintainer request 2026-10-02 ("yup for both", "and confirm with fable"); plan reviewed by Fable, whose changes are adopted.
+Question: after 0286cad9 (the A8 pass and worker return every operation with 3+ instances and leave eligibility to 3a-bis), does
+`/bootstrap` draft project skills for the planted operations, and does it still reject the decoys?
+
+- Subject: master at 0286cad9 (0.92.0 Unreleased; installed stamp reads 0.91.0). Same host, flags, pauses and driver as B-345
+  (Claude Code 2.1.281, sonnet, `--dangerously-skip-permissions --max-budget-usd 8`, "proceed" then "skip all"; neutral path and
+  commit names); the driver records the HEAD it ran at.
+- Fixture v2: `meta/eval-fixtures/b345-bootstrap-skills/generate.py` at sha256 277d4d02951d…, then `dotnet new sln -n Orders` and
+  `dotnet sln add` for every csproj; 0 warnings, 6 tests pass. Changed from B-345 only to make P1's pipeline live (B-345's analyst:
+  both runs filed it as dead-code debt, which 3a-bis routes to `TECH_DEBT.md`): `IOutbox` and one `OrderLifecycle` raiser in
+  Application, `InMemoryOutbox`, `OutboxProcessor : BackgroundService`, handler invocation in `DispatchAsync`, a `CheckoutController`
+  calling the raiser. P2, D1-D4, README and names are unchanged. So the B-345 comparison is clean for P2 only; P1 changes text and
+  fixture together.
+- Known overlap: the worker's new example ("a type, the line that registers it, its configuration, and its test") resembles the
+  P1/P2 constellations, so a FINDS THEM result is not evidence of generalisation to other operation shapes.
+- Outcomes, false positives and secondary checks: as B-345. A P1 MISS caused by a debt route (for example the in-memory outbox's
+  durability flagged as debt) is scored MISS with that cause recorded.
+- Mechanism row, per run: the number of A8 `Kind: evidenced operation` findings; for each of P1, P2 and D1-D4, whether A8 returned it
+  with `Instances`; and the parent's 3a-bis disposition for each returned operation (skill / Conventions line / debt / no
+  non-obvious step / framework-dictated / other).
+- Runs and spend: up to 3; stop $22, checked before each run, and a run that would clearly pass it is not started; at B-345 rates
+  (about $7.50 a run) n=2 is the likely result. A call ending on its $8 budget is BUDGET-CUT: reported, not scored, not repeated.
+- Reading on completed scored runs: FINDS THEM = P1 and P2 each SKILL in at least 2 runs (both, when only 2 complete) and no false
+  positive in any run; DOES NOT FIND THEM = neither positive SKILL in 2 or more runs; otherwise PARTIAL.
+- Two scorers read the outputs independently; a referee only on disagreement; a root-cause analyst for any MISS or false positive.

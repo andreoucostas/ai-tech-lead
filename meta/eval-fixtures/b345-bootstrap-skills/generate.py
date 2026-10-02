@@ -44,7 +44,8 @@ w('src/Orders.Domain/Orders.Domain.csproj', csproj('Microsoft.NET.Sdk'))
 w('src/Orders.Application/Orders.Application.csproj', csproj('Microsoft.NET.Sdk', ['..\\Orders.Domain\\Orders.Domain.csproj'],
     [('Microsoft.Extensions.Logging.Abstractions', '8.0.2')]))
 w('src/Orders.Infrastructure/Orders.Infrastructure.csproj', csproj('Microsoft.NET.Sdk',
-    ['..\\Orders.Application\\Orders.Application.csproj', '..\\Orders.Domain\\Orders.Domain.csproj'], [ef]))
+    ['..\\Orders.Application\\Orders.Application.csproj', '..\\Orders.Domain\\Orders.Domain.csproj'],
+    [ef, ('Microsoft.Extensions.Hosting.Abstractions', '8.0.1')]))
 w('src/Orders.Reporting/Orders.Reporting.csproj', csproj('Microsoft.NET.Sdk', pkgs=[('Microsoft.Data.SqlClient', '5.2.2')]))
 w('src/Orders.Api/Orders.Api.csproj', csproj('Microsoft.NET.Sdk.Web',
     ['..\\Orders.Application\\Orders.Application.csproj', '..\\Orders.Infrastructure\\Orders.Infrastructure.csproj',
@@ -257,6 +258,7 @@ public interface IMessagePublisher
 w('src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs', '''
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.DependencyInjection;
 using Orders.Domain.Events;
 
 namespace Orders.Infrastructure.Messaging;
@@ -266,11 +268,13 @@ public sealed class OutboxDispatcher
     private static readonly Regex SchemaVersion = new(@"\\.v(\\d+)\\.schema\\.json$");
     private readonly EventRegistry _registry;
     private readonly IMessagePublisher _publisher;
+    private readonly IServiceProvider _services;
 
-    public OutboxDispatcher(EventRegistry registry, IMessagePublisher publisher)
+    public OutboxDispatcher(EventRegistry registry, IMessagePublisher publisher, IServiceProvider services)
     {
         _registry = registry;
         _publisher = publisher;
+        _services = services;
     }
 
     public async Task DispatchAsync(IIntegrationEvent @event, CancellationToken cancellationToken)
@@ -289,6 +293,139 @@ public sealed class OutboxDispatcher
         }
 
         await _publisher.PublishAsync(registration.Topic, @event, cancellationToken);
+        var handler = _services.GetRequiredService(registration.Handler);
+        var handle = registration.Handler.GetMethod("HandleAsync")!;
+        await (Task)handle.Invoke(handler, new object[] { @event, cancellationToken })!;
+    }
+}
+''')
+w('src/Orders.Application/Orders/IOutbox.cs', '''
+using Orders.Domain.Events;
+
+namespace Orders.Application.Orders;
+
+public interface IOutbox
+{
+    void Enqueue(IIntegrationEvent @event);
+    bool TryDequeue(out IIntegrationEvent @event);
+}
+''')
+w('src/Orders.Application/Orders/OrderLifecycle.cs', '''
+using Orders.Domain.Entities;
+using Orders.Domain.Events;
+
+namespace Orders.Application.Orders;
+
+public sealed class OrderLifecycle
+{
+    private readonly IOutbox _outbox;
+    public OrderLifecycle(IOutbox outbox) => _outbox = outbox;
+
+    public void Placed(Order order)
+        => _outbox.Enqueue(new OrderPlacedEvent(Guid.NewGuid(), order.Id, order.CustomerId, order.Total));
+
+    public void Shipped(Order order, string carrier, string trackingNumber)
+        => _outbox.Enqueue(new OrderShippedEvent(Guid.NewGuid(), order.Id, carrier, trackingNumber));
+
+    public void Invoiced(Invoice invoice)
+        => _outbox.Enqueue(new InvoiceIssuedEvent(Guid.NewGuid(), invoice.Id, invoice.OrderId, invoice.Amount));
+}
+''')
+w('src/Orders.Infrastructure/Messaging/InMemoryOutbox.cs', '''
+using System.Collections.Concurrent;
+using Orders.Application.Orders;
+using Orders.Domain.Events;
+
+namespace Orders.Infrastructure.Messaging;
+
+public sealed class InMemoryOutbox : IOutbox
+{
+    private readonly ConcurrentQueue<IIntegrationEvent> _queue = new();
+    public void Enqueue(IIntegrationEvent @event) => _queue.Enqueue(@event);
+    public bool TryDequeue(out IIntegrationEvent @event) => _queue.TryDequeue(out @event!);
+}
+''')
+w('src/Orders.Infrastructure/Messaging/OutboxProcessor.cs', '''
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Orders.Application.Orders;
+
+namespace Orders.Infrastructure.Messaging;
+
+public sealed class OutboxProcessor : BackgroundService
+{
+    private readonly IOutbox _outbox;
+    private readonly IServiceScopeFactory _scopes;
+
+    public OutboxProcessor(IOutbox outbox, IServiceScopeFactory scopes)
+    {
+        _outbox = outbox;
+        _scopes = scopes;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            while (_outbox.TryDequeue(out var @event))
+            {
+                using var scope = _scopes.CreateScope();
+                await scope.ServiceProvider.GetRequiredService<OutboxDispatcher>().DispatchAsync(@event, stoppingToken);
+            }
+            await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+        }
+    }
+}
+''')
+w('src/Orders.Api/Controllers/CheckoutController.cs', '''
+using Microsoft.AspNetCore.Mvc;
+using Orders.Application.Orders;
+using Orders.Infrastructure.Persistence;
+
+namespace Orders.Api.Controllers;
+
+[ApiController]
+[Route("api/checkout")]
+public class CheckoutController : ControllerBase
+{
+    private readonly OrdersDbContext _db;
+    private readonly OrderLifecycle _lifecycle;
+
+    public CheckoutController(OrdersDbContext db, OrderLifecycle lifecycle)
+    {
+        _db = db;
+        _lifecycle = lifecycle;
+    }
+
+    [HttpPost("{orderId:guid}/place")]
+    public async Task<IActionResult> Place(Guid orderId)
+    {
+        var order = await _db.Orders.FindAsync(orderId);
+        if (order is null) return NotFound();
+        order.Status = "Placed";
+        await _db.SaveChangesAsync();
+        _lifecycle.Placed(order);
+        return Accepted();
+    }
+
+    [HttpPost("{orderId:guid}/ship")]
+    public async Task<IActionResult> Ship(Guid orderId, string carrier, string trackingNumber)
+    {
+        var order = await _db.Orders.FindAsync(orderId);
+        if (order is null) return NotFound();
+        order.Status = "Shipped";
+        await _db.SaveChangesAsync();
+        _lifecycle.Shipped(order, carrier, trackingNumber);
+        return Accepted();
+    }
+
+    [HttpPost("invoices/{invoiceId:guid}/issue")]
+    public async Task<IActionResult> Issue(Guid invoiceId)
+    {
+        var invoice = await _db.Invoices.FindAsync(invoiceId);
+        if (invoice is null) return NotFound();
+        _lifecycle.Invoiced(invoice);
+        return Accepted();
     }
 }
 ''')
@@ -499,6 +636,7 @@ public static class JobSchedule
 w('src/Orders.Api/Program.cs', '''
 using Microsoft.EntityFrameworkCore;
 using Orders.Application.EventHandlers;
+using Orders.Application.Orders;
 using Orders.Infrastructure.Messaging;
 using Orders.Infrastructure.Persistence;
 using Orders.Reporting;
@@ -508,7 +646,10 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<OrdersDbContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("Orders")));
 builder.Services.AddSingleton<EventRegistry>();
 builder.Services.AddSingleton<IMessagePublisher, ServiceBusPublisher>();
+builder.Services.AddSingleton<IOutbox, InMemoryOutbox>();
+builder.Services.AddScoped<OrderLifecycle>();
 builder.Services.AddScoped<OutboxDispatcher>();
+builder.Services.AddHostedService<OutboxProcessor>();
 ''' + '\n'.join(handler_regs) + '''
 builder.Services.AddSingleton<IReportReader>(_ => new SqlReportReader(builder.Configuration.GetConnectionString("Reporting")!));
 var app = builder.Build();
