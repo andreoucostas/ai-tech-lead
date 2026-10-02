@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.92.0 — Unreleased
+## 0.92.0 — 2026-10-02
 
 Value-study text fixes. The Common Tasks skills-list snippets drop their technology asides (the DTO →
 validator → controller chain, EF Core, a DI lifetime, lazy loading, TestBed with `HttpTestingController`)

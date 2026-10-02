@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.92.0 — Unreleased
+## 0.92.0 — 2026-10-02
 
 - **The framework no longer ships `add-component`, `add-service`, `add-lazy-route`, or
   `add-signal-store`.** These were generic "add a component, service, route or store" recipes the

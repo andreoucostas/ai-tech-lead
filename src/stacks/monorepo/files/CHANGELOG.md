@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.92.0 — Unreleased
+## 0.92.0 — 2026-10-02
 
 - **The framework no longer ships `add-endpoint`, `add-entity`, `register-service`, `add-component`,
   `add-service`, `add-lazy-route`, or `add-signal-store`.** These were generic "add an endpoint,
