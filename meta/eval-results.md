@@ -2958,3 +2958,49 @@ CLI session, does `/bootstrap` reach the shipped workflow and finish it, and doe
 - Spend stop: 15 premium requests over all legs, from `--usage-output-file` and the last `totalPremiumRequests`, checked before
   every leg, a continuation budgeted at 4. Two scorers derive D and C from the raw events and the target independently; a
   disagreement is reported.
+
+## B-329 pre-registration — does an Angular template check fit post-write's 45 s budget? (2026-10-03, frozen before any run)
+
+Idle-queue item B-329. Angular `post-write.ps1` checks only a `.ts` under `src/` or a `tsconfig*.json`, with `tsc --noEmit`, which
+never reads a template. Question: does `tsc` miss a broken template binding, and does the cheapest check that sees one,
+`ngc --noEmit`, finish inside the hook's 45 s budget on a real-size workspace? No model call; $0.
+
+- Box: Intel i5-1335U (10 cores, 12 threads), 15.7 GB RAM, NVMe SSD, Windows 11 Pro 10.0.26300, Defender real-time protection on,
+  power source recorded, nothing else running; node 24.12.0, npm 11.19.0.
+- Toolchain per workspace: @angular/{common,compiler,compiler-cli,core,forms,platform-browser,router} 21.1.2, typescript 5.9.3,
+  rxjs 7.8.2, tslib 2.8.1, semver 7.7.4 (pinned: 7.8.5's tarball is not in the local npm cache), from the local npm cache only:
+  `npm install --offline --ignore-scripts --no-audit --no-fund --no-update-notifier`. No download.
+- Fixture: `meta/eval-fixtures/b329-template-check/generate.py` (sha256 a4e99cebbd8d…) `--components N --out DIR`: the tsconfig of an
+  Angular 21.1.2 CLI workspace (strict, strictTemplates), N standalone components in features of 20, each with signal inputs, an
+  output, an injected per-feature signal service and an external template of about 20 lines (@if/@else, nested @for with track,
+  uppercase/currency/date pipes, [(ngModel)] on a signal, class and event bindings, the previous component of its feature as a
+  child with two inputs and an output); a shell component per feature renders its 20; lazy routes.
+- Pre-flight, unscored, N=20 (2026-10-03): offline install exit 0; clean `ngc` and `tsc` exit 0 and write no file. With
+  `{{ b329Missing() }}` planted as the first line of `f01-c03.component.html`, full `tsc` exited 0 and `ngc` exited 1 naming the
+  member and the template: the instrument was seen red before any scored run.
+- Tiers: N=500 decides (a mid-size enterprise application). N=1500 is descriptive only: it runs after N=500 and M1, only if under
+  35 min have elapsed; skipping it, or stopping it at the 60-minute limit, is not a deviation.
+- Candidate, as post-write would run it from the workspace root: `npx --no-install ngc -p tsconfig.app.json --noEmit`. Control,
+  post-write's current check: `npx --no-install tsc --noEmit -p tsconfig.app.json --incremental --tsBuildInfoFile <tier file>`.
+  Both launched as post-write launches a tool (Process.Start on `npx.cmd`, stdin closed, both streams read), timed from launch to
+  exit; a run past 300 s is killed and recorded as >300. The scored protocol stops at 60 min of wall time.
+- Per tier, in order: generate; install; ngc ("first"); tsc ("first", no build info); then five rounds of: append `<!-- rK -->`
+  to `f01-c01.component.html`, ngc; append `// rK` to `f01-c01.component.ts`, tsc. Warm = median of the five; min and max reported.
+- M1, on N=500 after its timings: insert `{{ b329Missing() }}` as the first line of `f01-c03.component.html`, then run
+  `npx --no-install tsc --noEmit -p tsconfig.app.json` (full, no build info) and the candidate. PREMISE-HOLDS = tsc exits 0 and ngc
+  exits non-zero naming `b329Missing` and `f01-c03.component.html`. PREMISE-FALSE = tsc exits non-zero naming `b329Missing`.
+  Also recorded: ngc's stdout and stderr non-empty line counts, the error line's position from the end of stderr, ANSI present.
+- M2 false red: every clean ngc run in a tier that ran must exit 0.
+- Reading, on N=500, first match wins: CANNOT-EXAMINE = the toolchain cannot be installed offline and no other source is approved,
+  or N=500 cannot complete within 60 min. PREMISE-FALSE = as above. FALSE-RED = a clean ngc run exits non-zero. INSTRUMENT-BLIND =
+  M1 is neither PREMISE-HOLDS nor PREMISE-FALSE. FITS = PREMISE-HOLDS, ngc warm median <= 15.0 s, and ngc first <= 45 s.
+  DOES-NOT-FIT = PREMISE-HOLDS and either bound missed.
+- Why these bounds: the warm median is paid on every template write more than 5 s apart; 15 s is a third of the budget, so a
+  consumer machine half as fast as this 15 W laptop CPU still finishes inside it. "First" follows a fresh offline install, so
+  Defender's first scan of the new files may be folded into it; it is held only to the budget itself, because a first run past
+  45 s would cost each session's first template write the whole budget and report nothing.
+- Action: FITS ships the check in angular and monorepo `post-write.ps1` with a red case on each PowerShell host covering both agent
+  surfaces. DOES-NOT-FIT and PREMISE-FALSE ship no code and close B-329 with their numbers. INSTRUMENT-BLIND, FALSE-RED and
+  CANNOT-EXAMINE ship no code and leave B-329 open with the reason.
+- Known limits: generated components are uniform and use no third-party component library; one box, one Angular version, no real
+  consumer workspace; "first" follows a fresh install.
