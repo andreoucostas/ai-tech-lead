@@ -3004,3 +3004,93 @@ never reads a template. Question: does `tsc` miss a broken template binding, and
   CANNOT-EXAMINE ship no code and leave B-329 open with the reason.
 - Known limits: generated components are uniform and use no third-party component library; one box, one Angular version, no real
   consumer workspace; "first" follows a fresh install.
+
+## B-330 pre-registration — eval runner isolation from the maintainer's user-level configuration, and a bare-arm baseline (2026-10-03, frozen before any run)
+
+Backlog item B-330, run in the maintainer's batch request of 2026-10-02; plan reviewed by Fable, whose required changes are
+adopted. The commit that adds this block also gives every Claude Code launch of the runner `--setting-sources project,local`
+(`Get-ClaudeArguments`) and makes `tokensOut=` sum `result.modelUsage`; it freezes this block. Both runner blocks that follow
+must cite that commit, so nothing is committed between it and the last scored row.
+
+**Question.** Does the flag keep the maintainer's user-level configuration out of the Claude Code child while the target's
+`CLAUDE.md`, hooks, skills and agents still load; and what does the bare arm give on warehouse-route-p4 afterwards?
+
+**User-level inputs (read 2026-10-03; names and non-secret values only).** `~/.claude/settings.json`: `env`
+(`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`), `model` sonnet (the runner's `--model` overrides it), `effortLevel` high,
+`autoUpdatesChannel`, `tui`, `skipDangerousModePermissionPrompt`, `skipWorkflowUsageWarning`, `agentPushNotifEnabled`; no
+`hooks`. Nine account-synced skills under `~/.claude/skills/`, listed in init as `anthropic-skills:*` (retained inits: 0 at
+2.1.260, 8 on 2026-09-24, 9 from 2026-09-28). No `~/.claude/CLAUDE.md`, `rules/`, `agents/`, `commands/` or
+`settings.local.json`; no CLAUDE.md, CLAUDE.local.md, AGENTS.md or `.claude/rules` in any parent of `<temp>`. Copilot CLI 1.0.89:
+no `~/.copilot/skills`, `agents`, `copilot-instructions.md` or `mcp-config.json`, no `~/.agents`, no plugin, no `COPILOT_*`
+variable.
+
+**Launch context L.** The orchestrator's own shell, environment untouched (decision 1's default; the maintainer chose no
+alternative). Every retained Claude Code init (101, 2026-09-20 to 10-01) lists the PowerShell and desktop-host tools (Artifact,
+ReportFindings, SendMessage, ...), consistent with launch from a Claude Code desktop session's shell; that shell also exports
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, the user settings' `env` block, which the child inherits whatever the flag. C3 compares P0's
+init with B-325 A4's.
+
+**Fixed conditions.** Claude Code 2.1.281 with `DISABLE_AUTOUPDATER=1`; `-Model sonnet` (init model claude-sonnet-5); dist
+v0.92.0; `.claude/evals/` identical to B-325's (17516aac) apart from this commit.
+
+**Checked free before this freeze (Copilot).** C1: with `COPILOT_HOME` at a scratch directory holding `skills/b330-canary/SKILL.md`
+and `copilot-instructions.md`, `copilot skill list --json` did list the canary as a personal source (`personal-copilot`) and
+`copilot instruction list --json` did list the file, so an empty listing can be read as absence. C2: against the real
+`~/.copilot`, instruction none, skill builtin only, mcp none listed (the CLI warned that it timed out checking for the built-in
+GitHub MCP server, so that one was not shown), plugin none. Copilot CLI has no setting-source switch, and `COPILOT_HOME` also holds
+the login and the session-state the runner reads, so it is not redirected and nothing is restricted; `~/.copilot` is not modified.
+
+**Probes.** From L, in one fixture: an empty git repository (so the skill walk stops there) holding only a `CLAUDE.md` that
+names a codeword. Each probe is `claude -p "What is the codeword? Reply with the codeword only, and do not use any tools."` with
+`--model sonnet --output-format stream-json --verbose --dangerously-skip-permissions --no-session-persistence --max-budget-usd 0.50`
+and a `--debug-file`. P0 without the flag; P1 with `--setting-sources project,local`; P0b as P0, after P1. Items: init's tools,
+skills, slash_commands, agents, plugin names, mcp_server names, capabilities and terminal_slash_commands. C = P0's
+`anthropic-skills:` skills; D01 = items in P0 not P1; D10 = items in P1 not P0. A probe keeps the carrier when its result contains
+the codeword and it made no tool call; a probe that made a tool call is rerun once.
+
+**Flag outcome, first match wins.**
+1. NOT EXAMINED: a probe has no `system/init` after one retry, or P0 and P0b differ in any item after the triple is rerun once.
+2. BROKEN: P1's result is an error or unauthenticated; its permissionMode is not bypassPermissions; it lacks any of Bash,
+   PowerShell, Read, Edit, Write, Glob, Grep, Skill or Task that P0 has; or P0 keeps the carrier and P1, with no tool call, does not.
+3. OTHER: D10 is not empty.
+4. NO-CANARY: C is empty.
+5. ISOLATED: no item of C is in P1.
+6. NO-EFFECT: D01 is empty.
+7. PARTIAL: otherwise (some of C still in P1, and D01 not empty).
+Carrier: KEPT when P0 and P1 both keep it; UNOBSERVED when P0 does not keep it, or a tool call persists after the rerun.
+D01, D10 and every scalar init difference (`per_turn_effort_active`, `output_style`, `view_mode`, `fast_mode_state`,
+`apiKeySource`, `permissionMode`; presence only of `memory_paths`, `scratchpad_path`, `messaging_socket_path`,
+`powershell_path`) are listed in the results and decide nothing beyond the rules above. Effort: an effort value in the debug logs
+is recorded, otherwise "not observable"; per the vendor's settingSources table, P1 and every later row run without `effortLevel`
+high. C3: P0's items against one B-325 A4 init (same host, no flag, bare), both difference lists reported.
+
+**Framework arm (R1)**, `run-agent-evals.ps1 -Live -Arm framework -Scenario guard-retry -Model sonnet -Trials 1` from L. INTACT:
+guardExercised=True and blockedToolResult=True, a SessionStart `hook_response` before init, and init lists add-tests,
+add-warehouse-load, create-adr, dependency-audit, enforce-architecture, enforce-standards, map-warehouse, perf and
+remember-for-team and the agents bloat-radar, bootstrap-pass, convention-check, debt-radar, security-auditor, solid-check and
+test-critic. BROKEN: guardExercised=True and blockedToolResult=False, no SessionStart `hook_response`, or any of those skills or
+agents missing. Otherwise one more `-Trials 1`; if the guard is again not exercised, "guard not examined under the flag". Its
+`anthropic-skills:` count is reported.
+
+**Bare baseline (R2)**, `run-agent-evals.ps1 -Live -Arm none -Scenario warehouse-route-p4 -WarehouseMap omit -Model sonnet
+-Trials 6` from L, only if neither P1 nor R1 is BROKEN. A trial counts unless its status is ERROR, INCONCLUSIVE or CONTAMINATED;
+an invalid trial is replaced by a further invocation for the missing number only; the first 6 valid trials count; every row shows
+the host version and init model above. Reported: the SUMMARY's consumer= categories, INVESTIGATED, mean cost, the rows whose init
+lists an `anthropic-skills:` skill, and whether each row's `tokensOut` equals its transcript's `modelUsage` output sum.
+Comparator: B-325 A4 (17516aac): MISLEADING 6/6, INVESTIGATED 5/6, 0.83 USD. MISLEADING 5/6 or 6/6 reads "the flag, with what it
+drops (user settings including `effortLevel` high, and C where P1 lacked it), did not move this baseline"; 4/6 or less reads "the
+baseline moved under it". The launch context counts as A4's only if C3 finds no difference; otherwise the reading names the
+differences as further changed conditions; with a host other than 2.1.281 the A4 reading is not made. No row from this freeze on is
+pooled with an earlier row of the same scenario and arm. Described, not tested (n=6).
+
+**Actions.** ISOLATED or PARTIAL, carrier KEPT, R1 INTACT, R2 with 6 valid trials, and every row's `tokensOut` equal to its
+`modelUsage` sum: B-330 closes (PARTIAL names the synced skills as a residual). NO-CANARY or NO-EFFECT: the change stays and B-330
+stays open for the maintainer's decision on a temporary `~/.claude/CLAUDE.md` sentinel. OTHER: the change stays and B-330 stays
+open for the maintainer. BROKEN in P1: R1 and R2 do not run; a new commit removes the flag and keeps `tokensOut`; B-330 stays
+open. BROKEN in R1: R2 does not run; the same. NOT EXAMINED, carrier UNOBSERVED, guard not examined, fewer than 6 valid R2
+trials, or a `tokensOut` mismatch: R1 and R2 still run where allowed, and B-330 stays open naming what was not shown.
+
+**Spend stop.** 3.00 USD cumulative over every probe, R1, R2, retry and replacement; past it, stop and report what ran.
+
+**Not measured.** Other scenarios, arms and models; Copilot runs; the effect of any single user-level input or of the launching
+session's host tools; interactive sessions; angular and monorepo.

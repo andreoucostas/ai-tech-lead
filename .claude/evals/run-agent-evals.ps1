@@ -1114,6 +1114,22 @@ function Get-HostFailure($Transcript) {
     return "host failed before the agent acted: $text"
 }
 
+# B-330: result.usage under-reports some runs (4 of 101 retained Claude Code transcripts, one through a
+# subagent's own model), while modelUsage carries every model's count, so tokensOut sums modelUsage.
+# A Copilot transcript (ConvertFrom-CopilotEvents) carries usage only and keeps it.
+function Get-OutputTokens($Final) {
+    if ($null -eq $Final) { return 'n/a' }
+    if ($Final.modelUsage) {
+        $sum = [long]0; $seen = $false
+        foreach ($entry in $Final.modelUsage.PSObject.Properties) {
+            if ($null -ne $entry.Value.outputTokens) { $sum += [long]$entry.Value.outputTokens; $seen = $true }
+        }
+        if ($seen) { return [string]$sum }
+    }
+    if ($Final.usage -and $null -ne $Final.usage.output_tokens) { return [string]$Final.usage.output_tokens }
+    return 'n/a'
+}
+
 # Result rows are committed. A machine path names the maintainer's account, which RepositoryPrivacy
 # rejects, so every row is written with the temp and home roots replaced, as rows were by hand.
 function Protect-ResultText([string]$Text) {
@@ -1139,6 +1155,16 @@ function Get-ToolResultText($Evidence, $Tool) {
     return ($content | ConvertTo-Json -Compress -Depth 20)
 }
 
+# B-330: the target's own CLAUDE.md, .claude/settings*.json, hooks, skills and agents (the framework arm's surface) are
+# the project and local sources; ~/.claude's settings, CLAUDE.md, rules, skills, agents and commands are the user source,
+# which reached both arms. The launching shell's environment still passes through (DEVELOPING.md).
+function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent) {
+    $arguments = @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions',
+        '--no-session-persistence', '--max-budget-usd', ([string]$Budget), '--setting-sources', 'project,local')
+    if ($Agent) { $arguments += @('--agent', $Agent) }
+    return $arguments
+}
+
 function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent) {
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command claude).Source
@@ -1146,8 +1172,7 @@ function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [strin
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
-    $claudeArgs = @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions', '--no-session-persistence', '--max-budget-usd', ([string]$Budget))
-    if ($Agent) { $claudeArgs += @('--agent', $Agent) }
+    $claudeArgs = @(Get-ClaudeArguments -Prompt $Prompt -ModelId $ModelId -Budget $Budget -Agent $Agent)
     if ($null -ne $psi.ArgumentList) {
         foreach ($arg in $claudeArgs) { [void]$psi.ArgumentList.Add($arg) }
     } else {
@@ -4389,6 +4414,17 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         $capAt = [Array]::IndexOf($cappedArgs, '--max-ai-credits')
         if ($capAt -lt 0 -or $cappedArgs[$capAt + 1] -ne '300') { throw 'B-305: an explicit -CopilotMaxAiCredits cap was not passed through' }
         Write-Output 'PASS: B-305 an uncapped Copilot run passes no --max-ai-credits, and an explicit cap passes through'
+        # B-330: the Claude child loads only the target's project and local settings, and tokensOut counts every model
+        # in modelUsage (the shape below is a retained 2.1.281 opus run whose haiku subagent result.usage left out).
+        $sourceArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '')
+        $sourcesAt = [Array]::IndexOf($sourceArgs, '--setting-sources')
+        if ($sourcesAt -lt 0 -or $sourceArgs[$sourcesAt + 1] -ne 'project,local') { throw 'B-330: the Claude executor passed no --setting-sources project,local, so both arms load the maintainer''s user-level settings and skills' }
+        $twoModels = '{"type":"result","usage":{"input_tokens":10,"output_tokens":5314},"modelUsage":{"claude-opus-5-5":{"inputTokens":10,"outputTokens":5314},"claude-haiku-4-5-20251001":{"inputTokens":18,"outputTokens":1413}}}' | ConvertFrom-Json
+        $twoModelsOut = Get-OutputTokens $twoModels
+        if ($twoModelsOut -ne '6727') { throw "B-330: tokensOut read $twoModelsOut instead of modelUsage's 6727 over both models" }
+        if ((Get-OutputTokens ('{"type":"result","usage":{"input_tokens":6,"output_tokens":695}}' | ConvertFrom-Json)) -ne '695') { throw 'B-330: a Copilot-shaped result with usage only lost its output count' }
+        if ((Get-OutputTokens ('{"type":"result","is_error":false}' | ConvertFrom-Json)) -ne 'n/a') { throw 'B-330: a result with no usage did not read n/a' }
+        Write-Output 'PASS: B-330 the Claude child gets --setting-sources project,local, and tokensOut sums modelUsage over every model'
         Write-Output 'PASS: B-277 Copilot events convert in order to a gradable transcript, recover a denied call, flag hook loading, and report missing/empty/truncated/unterminated/errored logs as unexaminable'
         Write-Output 'PASS: B-253 -TargetPatch changes only the patched bytes under core.autocrlf=true, refuses a stale patch, and a moved conventions placeholder fails loud'
         Write-Output 'PASS: PowerShell UTF-8 BOM'
@@ -4624,7 +4660,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $final = @($transcript.Events | Where-Object { $_.type -eq 'result' } | Select-Object -Last 1)
             $cost = if ($final -and $null -ne $final[0].total_cost_usd) { [string]$final[0].total_cost_usd } else { 'n/a' }
             $tokensIn = if ($final -and $final[0].usage) { [string]$final[0].usage.input_tokens } else { 'n/a' }
-            $tokensOut = if ($final -and $final[0].usage) { [string]$final[0].usage.output_tokens } else { 'n/a' }
+            $tokensOut = if ($final) { Get-OutputTokens $final[0] } else { 'n/a' }
             if ($case.bareArm) { $outcome = [bool]$evidence.Outcome }
             # Copilot only loads repository hooks in prompt mode behind the opt-in above; if none
             # fired, the framework arm's enforcement surface was absent and the row must say so.
