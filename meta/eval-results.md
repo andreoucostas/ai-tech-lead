@@ -2916,3 +2916,45 @@ run the project's `.claude/commands/<name>.md`, the CLI's built-in of that name,
   routing" sentences; ASK adds the sentence only; typed /debt M-* scopes those sentences to Claude Code. The carrier's security-pass
   rule and route-prompt's overlay are not changed here; the agent's own pass is a separate measured item. WSD-095's index line is
   bounded by host in every outcome.
+
+## B-337 pre-registration — /bootstrap and /adopt typed in interactive Copilot CLI (2026-10-03, frozen before any run)
+
+Field trigger: reports #6 and #8 use VS Code Copilot or Copilot CLI (`meta/field-reports.md`); the installer handoff and each
+README's step 3 say `/bootstrap` and `/adopt` need a Claude Code session. Question: typed by a developer in an interactive Copilot
+CLI session, does `/bootstrap` reach the shipped workflow and finish it, and does `/adopt` reach its workflow? Plan reviewed by Fable.
+
+- Subject: `dist/dotnet` from tag v0.92.0 (`git archive`), installed greenfield into fixture v2 (`generate.py` sha256
+  277d4d02951d…, then `dotnet new sln -n Orders` and `dotnet sln add` per csproj), committed before and after the install. `/adopt`
+  twin: the same plus a one-line `.cursorrules` in the initial commit (brownfield). Paths under `%TEMP%\b337\`.
+- Host: Copilot CLI `--no-auto-update` (version read from `session.start`), `--model claude-sonnet-5`, `COPILOT_ALLOW_ALL=true`
+  (tools and folder trust), `--allow-all-paths --no-ask-user --no-remote --no-remote-export`, launched from PowerShell. Pre-flight,
+  free: `copilot skill list --json` and `copilot instruction list` in each target, one line in the results.
+- Leg 1, real TTY, nothing typed after launch: `-i "/bootstrap"`, fixed `--session-id`. Ends at the first wait (last event an
+  `assistant.turn_end` at least 3 min old with the input prompt idle), at 60 min, or at exit. Leg 2, headless: `copilot -p
+  "<answer>" --resume=<Leg 1 id>` with the same flags plus `--allow-all-tools`; "skip all" when the last assistant message asks the
+  hazard confirmation, otherwise "proceed"; at most 4, 45 min each. A resume that fails with a CLI error is retried once with
+  `--session-id <id>`; a second failure makes C CANNOT-EXAMINE. Leg 3, real TTY: `-i "/adopt"` on the twin; ends at the first
+  wait, 15 min, or exit.
+- Dispatch D (Leg 1 with `bootstrap.md`'s "Analyse this repository and set up the AI Tech Lead framework."; Leg 3 with `adopt.md`'s
+  "Adopt this repository into the AI Tech Lead Framework"), `skill.invoked.trigger` recorded verbatim:
+  - PROJECT: before any `tool.execution_start` with `toolName` `skill`, either a `skill.invoked` for the command whose `path` ends
+    `.claude\commands\<name>.md` (its `trigger` is not `agent-invoked`, the value on all 17 retained events), or the first
+    `user.message.transformedContent` holding the sentence.
+  - PROMPTFILE: as PROJECT, but the content that arrives is `.github/prompts/<name>.prompt.md`'s body.
+  - MODEL: neither; the literal command reaches the model (`content` and `transformedContent` read), and the body arrives only
+    through the model's own `skill` call or a `view` of the file; which one, and whether that `skill` call succeeded, is recorded.
+  - NONE: the body never reaches the model in the leg.
+  - CANNOT-EXAMINE: no events.jsonl or `session.start` for the id, an auth/model/quota error before the first model turn, a dialog
+    needing a keystroke, or events and debug log that cannot tell the above apart.
+- Completion C, checked by the orchestrator in the target after Legs 1-2, never from the agent's report: COMPLETED = (c1)
+  `scripts/docs-sync-check.ps1` exits 0 ending "All AI Tech Lead framework checks passed."; (c2) `AGENTS.md` holds neither
+  `BOOTSTRAP_PENDING` nor "_Not yet populated"; (c3) `FRAMEWORK-CONTEXT.md` no longer holds `KNOWN_HAZARD_AREAS_PENDING`; (c4) no
+  initial-commit path is modified or deleted. STRAYED = c1-c3 hold, c4 fails. INCOMPLETE = dispatched, but c1-c3 not all met at
+  the continuation or time cap, or a leg errors; last phase and cause recorded. CANNOT-EXAMINE = the resume failed twice.
+- Reported, not scored: worker mechanism (`task` calls and agent types, or sequential); each pause and the answer sent; premium
+  requests and wall time per leg.
+- Controls: none run. B-346's three Claude Code runs finished this fixture with this `bootstrap.md` (unchanged since 0286cad9),
+  docs-sync-check PASS each time. n=1 per leg: one dispatch and one completion, not output quality, not other stacks.
+- Spend stop: 15 premium requests over all legs, from `--usage-output-file` and the last `totalPremiumRequests`, checked before
+  every leg, a continuation budgeted at 4. Two scorers derive D and C from the raw events and the target independently; a
+  disagreement is reported.
