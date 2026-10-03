@@ -9,7 +9,7 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done 2026-10-03; idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
+## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done and B-336 closed by measurement 2026-10-03; idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -18,8 +18,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 3 | B-327 | Idle queue. Guarded; on-demand `/bootstrap` text, though what it writes lands in the consumer's `AGENTS.md` |
 | 4 | B-328 | Idle queue. Small and ordinary; the PR review step the Bitbucket Data Center target lacks |
 | 5 | B-329 | Idle queue. Guarded; measure first, and stop if a template check cannot fit post-write's 45 s budget |
-| 6 | B-336 | Idle queue. Measure first; WSD-107's measured sentence did not help even where a project record exists |
-| 7 | B-331 | Idle queue. Measures WSD-109's retirement on Claude Code, about 3 USD live; report #6's `register-service` question is moot |
+| 6 | B-331 | Idle queue. Measures WSD-109's retirement on Claude Code, about 3 USD live; report #6's `register-service` question is moot |
 
 ## Open entries
 
@@ -65,12 +64,6 @@ a template check's wall time on a real-size workspace against the 45 s budget; s
 `/bootstrap` draft a skill, and does a new service then land there without `IServiceCollection`? Plus three angular-feature-placement
 trials without the seven (expected unchanged; `usedSkill=add-service` now always reads False).
 
-### B-336 · Measure whether agents work out a request premise the code contradicts when no project record names it
-**Filed against:** v0.91.0 (2026-10-01)
-**Priority:** P3 · **Effort:** S to measure, M if the rules change · **Invariants:** #1 #7
-**Status:** Open; idle queue, measure first. An eval-measured consumer gap, not an attack finding: with no project record, A3 and A4
-of the 2026-10-01 run (`meta/eval-results.md`) were 6/6 MISLEADING each, 11 of 12 having read `usp_LoadFactSales.sql`, which fills
-`LoadRunId` from `BatchId` (probe: 12/12). WSD-107's reverted sentence did not help with a record; any candidate wording is measured first.
 
 ## Archived
 

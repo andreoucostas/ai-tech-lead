@@ -12972,3 +12972,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   R1 and R2; the project `CLAUDE.md`, hooks, skills and agents still loaded (codeword probe; guard-retry blocked); the bare
   warehouse-route-p4 baseline gave MISLEADING 6/6 against B-325 A4's 6/6, launched as before from the orchestrator's shell, no
   `--effort` pin; `tokensOut=` sums `modelUsage`. Copilot CLI 1.0.89 had no user-level source to restrict ($1.24).
+- **B-336** — CLOSED by measurement **2026-10-03** (`meta/eval-results.md`, pre-registered at a5298c8b): with no project record, the
+  candidate Verification Rules #12 ("Check what writes the data you build on", `b336-code-writes.patch`) gave a correct warehouse-route-p4
+  result in 0/6 against 0/6 for v0.92.0 as shipped, short of the pre-registered bar (5/6 and +4; 9/12 and +6 after the extension); it
+  moved the writer search from 1/6 to 5/6 runs, aimed at the fact's columns rather than `ctl.LoadRun`; nothing ships ($4.56). Reopen
+  on a field report of a result built on data nothing writes, or a wording measured to beat none.
