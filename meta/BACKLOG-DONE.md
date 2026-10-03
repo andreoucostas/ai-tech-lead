@@ -12967,3 +12967,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   the handler's DI registration (it builds and passes the tests, then faults the host), no event draft says an unregistered event is not
   published, run 2's omit the test step, and 4 of 6 cite the reference as a code span. 3a-bis already sends drafts to PR review against
   their instances. Reopen on a field report of an approved draft missing a step.
+- **B-330** — DONE **2026-10-03** (29f63663; results `meta/eval-results.md`, pre-registered at 29f63663): the eval runner's Claude Code
+  child runs with `--setting-sources project,local`; the nine account-synced `anthropic-skills:` skills were in P0 and absent from P1,
+  R1 and R2; the project `CLAUDE.md`, hooks, skills and agents still loaded (codeword probe; guard-retry blocked); the bare
+  warehouse-route-p4 baseline gave MISLEADING 6/6 against B-325 A4's 6/6, launched as before from the orchestrator's shell, no
+  `--effort` pin; `tokensOut=` sums `modelUsage`. Copilot CLI 1.0.89 had no user-level source to restrict ($1.24).

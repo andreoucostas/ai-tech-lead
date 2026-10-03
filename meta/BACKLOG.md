@@ -9,7 +9,7 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
+## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done 2026-10-03; idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -18,9 +18,8 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 3 | B-327 | Idle queue. Guarded; on-demand `/bootstrap` text, though what it writes lands in the consumer's `AGENTS.md` |
 | 4 | B-328 | Idle queue. Small and ordinary; the PR review step the Bitbucket Data Center target lacks |
 | 5 | B-329 | Idle queue. Guarded; measure first, and stop if a template check cannot fit post-write's 45 s budget |
-| 6 | B-330 | Idle queue. Before the next `-Arm none` run; it needs a baseline rerun |
-| 7 | B-336 | Idle queue. Measure first; WSD-107's measured sentence did not help even where a project record exists |
-| 8 | B-331 | Idle queue. Measures WSD-109's retirement on Claude Code, about 3 USD live; report #6's `register-service` question is moot |
+| 6 | B-336 | Idle queue. Measure first; WSD-107's measured sentence did not help even where a project record exists |
+| 7 | B-331 | Idle queue. Measures WSD-109's retirement on Claude Code, about 3 USD live; report #6's `register-service` question is moot |
 
 ## Open entries
 
@@ -58,13 +57,6 @@ source ref into a local branch (Bitbucket DC publishes `refs/pull-requests/<id>/
 **Status:** Open; guarded, within WSD-102. Angular `post-write.ps1` runs only for a `.ts` under `src/` or a `tsconfig*.json` (:113-117), and
 `tsc --noEmit` does not type-check templates (not run here), so a broken binding goes unreported; monorepo's hook has the same gap. Measure
 a template check's wall time on a real-size workspace against the 45 s budget; ship only if it fits, with a red case per host.
-
-### B-330 · Isolate the eval runner's bare arm from the maintainer's user-level configuration
-**Filed against:** v0.91.0 (2026-09-30)
-**Priority:** P3 · **Effort:** S, plus a baseline rerun · **Invariants:** #4
-**Status:** Open. `Invoke-ClaudeProcess` passes no setting-source restriction (`run-agent-evals.ps1:1149`), so both arms load the
-maintainer's user-level configuration; Copilot runs read `~/.copilot`. Restrict both (confirm `--setting-sources project,local` drops
-user `CLAUDE.md`, skills, hooks), show a user canary absent, rerun a baseline. Take `tokensOut=` from `modelUsage`, not `result.usage`.
 
 ### B-331 · Measure WSD-109's recipe retirement: a Unity fixture through /bootstrap, and a feature-placement knockout
 **Filed against:** v0.91.0 (2026-09-30); retargeted 2026-10-02 (WSD-109)

@@ -335,6 +335,16 @@ the CLI's own `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` opt-in rather than wr
 `~/.copilot/config.json`; each row reports `hooksLoaded=`, and `hooksLoaded=False` in the framework
 arm means the enforcement surface was absent and that trial says nothing about the framework.
 
+Neither arm loads the maintainer's `~/.claude` configuration (B-330, `meta/eval-results.md`): the Claude Code child gets
+`--setting-sources project,local`, so the target's `CLAUDE.md`, `.claude/settings*.json`, hooks, skills and agents load, and the
+account-synced skills under `~/.claude/skills` do not (observed), nor, per the vendor's settingSources table, `~/.claude`'s
+settings (your `effortLevel` included), `CLAUDE.md`, rules, agents and commands. Rows from before B-330 loaded them; do not pool
+the two. The child still inherits the launching shell's environment. From a Claude Code desktop session's shell, the context of
+every row so far, that includes your settings' `env` block and the session's host tools (PowerShell, Artifact, ReportFindings,
+...); each results block names its launch context. Copilot CLI has no such switch, and `COPILOT_HOME` also holds the login and the
+session-state the runner reads; on 2026-10-03 `~/.copilot` held no personal skill, instruction, MCP server or plugin, so a Copilot
+row carries any you add.
+
 `release.ps1` does not run the self-test (B-246 retired that stage: a maintainer-only tool that
 ships nothing must not be able to refuse a consumer release). Run `-SelfTest` yourself after any
 change to the runner and before every `-Live` run. `release.ps1`'s optional post-release prompt runs
