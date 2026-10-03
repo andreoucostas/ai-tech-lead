@@ -2886,3 +2886,33 @@ $21.21 ($6.53, $7.42, $7.26), none budget-cut, all finished with docs-sync-check
   dispatch. Run 2's drafts omit the test step. 4 of 6 drafts give the reference as a code span, not the Markdown link 3a-bis asks for.
   So drafts must be checked against their listed instances before approval, as 3a-bis already says.
 - Not shown: other hosts, models or operation shapes, or a real consumer repository.
+
+## B-326 pre-registration — Copilot CLI /security-review and /review against the project's command files (2026-10-03, frozen before any run)
+
+Plan reviewed by Fable, whose required changes are adopted. Question: on Copilot CLI 1.0.89 does `/security-review` or `/review`
+run the project's `.claude/commands/<name>.md`, the CLI's built-in of that name, or go to the model?
+
+- Host: Copilot CLI 1.0.89 (`--no-auto-update`), claude-sonnet-5, `COPILOT_ALLOW_ALL=true`, `--no-ask-user`, a real TTY (desktop
+  Terminal panel), one session per cell, fixed `--session-id`, `--log-level all`. Fixture: sibling scratch Git repositories with one
+  identical staged file; the treatment adds `.claude/commands/{security-review,review,debt}.md` and `.github/prompts/{security-review,
+  review}.prompt.md` (dist/dotnet frontmatter at this commit, benign one-line bodies naming B326-SECCMD-7KQ2, B326-RVWCMD-4XN8,
+  B326-DEBTCMD-9VJ3, B326-SECPRM-2HW6, B326-RVWPRM-6MT5). Pre-flight, free: `skill list` shows the three in treatment only; `-i '/env'`
+  must run without a model turn or prompt, else nothing is examined.
+- Stage 1, `-i`: control and treatment for each name, and `/debt` in treatment (P-DB). Classes from `events.jsonl` (main agent only),
+  then the debug log, then the screen: D-PROJECT, D-BUILTIN, D-ASK (the CLI acts first), M-PROJECT, M-BUILTIN, M-OTHER (the typed text
+  reached the model; its first routing call), CANNOT EXAMINE. Readings: PROJECT, NOT-PROJECT (D-BUILTIN, M-BUILTIN, M-OTHER),
+  MODEL-ROUTED (M-PROJECT), ASK, CANNOT EXAMINE.
+- Validity: a `-i` pair examines precedence only when its control reads D-BUILTIN; a fixture id in a control voids it.
+- Stage 2: a valid-pair reading other than PROJECT, and a P-DB other than D-PROJECT, repeats once; disagreement is CANNOT EXAMINE.
+- Stage 3, typed by the maintainer, n=1: both arms for a name without a standing `-i` reading; P-DB if still not D-PROJECT. Typed /debt
+  D-PROJECT against `-i` M-* sets every `-i` treatment reading aside. Not run: those names are CANNOT EXAMINE.
+- Stage 4: a name read NOT-PROJECT or MODEL-ROUTED gets 3 runs of "Run the <name> skill from this repository on my staged changes.";
+  PASS = 3/3 first routing calls load the project file with no built-in agent before it.
+- n=1 per dispatch cell (CLI code; M-readings at n=1 are weak). Operational failures repeat once. Two independent readers; one
+  disagreement repeats the cell, a second is CANNOT EXAMINE. Stop: 22 premium requests, checked before each cell, none started above 20.
+  Quoted host text has its home prefix replaced by `<home>`.
+- Actions fixed now: PROJECT changes no shipped text. NOT-PROJECT or MODEL-ROUTED adds a dated Copilot CLI sentence to each README's
+  Start working (ask by name on PASS; on FAIL use Claude Code and a P1 item), and for `/review` an exception to the "deterministic
+  routing" sentences; ASK adds the sentence only; typed /debt M-* scopes those sentences to Claude Code. The carrier's security-pass
+  rule and route-prompt's overlay are not changed here; the agent's own pass is a separate measured item. WSD-095's index line is
+  bounded by host in every outcome.
