@@ -3290,3 +3290,76 @@ not met.
 - Scratch: `<temp>\ai-tech-lead-agent-evals-20261003-090042` (C) and `<temp>\ai-tech-lead-agent-evals-20261003-185621` (W).
 - Spend: 4.56 USD (C 2.08, W 2.49), under the 11 USD Stage 1 and 16 USD overall stops; no premium requests.
 - Scope: Claude Code, sonnet, this fixture; Copilot, angular and monorepo not measured.
+
+## B-331 pre-registration — WSD-109's retirement on Claude Code: a Unity repository, and feature placement (2026-10-03, frozen before any run)
+
+Backlog item B-331 (retargeted by WSD-109); plan reviewed by Fable; Full by maintainer decision ("Full (Recommended)", chosen
+2026-10-03). Report #6's team registers services with Unity in each project's `IoCConfig.Configure(IUnityContainer)`; the retired
+`register-service` sent them to `IServiceCollection`. On v0.92.0, without the seven recipe skills: (1) does `/bootstrap` capture
+that registration; (2) does a new service land in an `IoCConfig.Configure` rather than on `IServiceCollection`; (3) is
+`angular-feature-placement` unchanged?
+
+- Subject: v0.92.0 (ba80225b) from a local clone at the tag in `%TEMP%`, runner `-SelfTest` exit 0 there. For this scenario its
+  grader, prompt and Angular fixture match B-311's eed1e4fd (that diff touches warehouse cases and the source-check switch only),
+  and it predates B-330. Claude Code 2.1.281 from PowerShell, `DISABLE_AUTOUPDATER=1`, `ATL_SOURCE_CHECK=off`; user-level
+  configuration loads, as in B-311, B-345 and B-346.
+- Fixture: `meta/eval-fixtures/b331-unity-registration/generate.py` (sha256 8ffba365f4ab...), then `dotnet new sln -n Billing` and
+  `dotnet sln add` for every csproj; 0 warnings, 3 tests pass. net8.0; Core, Data and Integration each register what they
+  implement in their own `IoCConfig.Configure(IUnityContainer)` (4, 3 and 3 `RegisterType<I, T>(lifetime manager)` lines, Unity
+  5.11.10, restored from nuget.org with the maintainer's approval after an audit; the cached packages' SHA-512 equals nuget.org's
+  catalog hash); `Program.cs` calls the three and puts a `UnityControllerActivator` (per-request child container) on
+  `builder.Services` beside `AddControllers()`. The README documents this and links `src/Billing.Core/IoCConfig.cs`. Observed at
+  pre-flight: GET /api/invoices/<guid> answers 404; in a copy with a probe service registered only on `builder.Services` and
+  injected into `InvoicesController`, the solution builds, its tests pass, and the same GET answers 500 with 1
+  `ResolutionFailedException` in the host log. Fresh-session fixture review: ready (its one conditional must-fix, build output in
+  the reviewed pre-flight directory, does not apply to the run repositories, which are generated fresh and committed unbuilt; its
+  notes on README wording and stub realism are not adopted).
+- Arms, in order. K: `run-agent-evals.ps1 -Live -Scenario angular-feature-placement -Model opus -Trials 3`, framework arm, from
+  the clone. U: fresh fixture, install, commit, follow-up task; `BOOTSTRAP_PENDING` stays (an un-bootstrapped install, as in K's
+  fixtures); n=3. B: fresh fixture, install, commit, `/bootstrap` (sonnet, `--dangerously-skip-permissions
+  --max-budget-usd 8` per call, `--session-id`, stream-json; a pause about hazard areas answered "skip all", any other "proceed",
+  at most four calls), commit, then the follow-up task in two fresh copies of that commit, never at the bootstrap's own path; 2 x 2.
+- Follow-up task, fresh session, sonnet, `--dangerously-skip-permissions --max-budget-usd 2`: "Add a late fee for overdue
+  invoices: a new service that computes an invoice's fee as 2% of its amount for each started 30 days past its due date, capped
+  at 10%, and zero when the invoice is paid or not yet due; expose it as GET /api/invoices/{id}/late-fee on the existing invoices
+  controller. Follow this repository's conventions. No tests needed. I approve this change in advance: do not stop for a plan or
+  ask for confirmation -- implement it now, then report what you built." It routes as `feature`, not money-sensitive, as K's does.
+- (1) Per B run, from what `/bootstrap` wrote. Captured routes: SKILL = a new `.claude/skills/<slug>/SKILL.md` outside
+  `framework-ownership.json` whose steps or reference put a new service's registration in its project's `IoCConfig.Configure` and
+  list at least two instances; CONVENTIONS = no such skill, and `AGENTS.md` (any section, reported) names Unity and
+  `IoCConfig.Configure`, or links the README's dependency-injection section or an `IoCConfig.cs`, as where services register;
+  CONTEXT = neither, but `FRAMEWORK-CONTEXT.md` says it. Not captured: WIKI-ONLY (only a `docs/wiki/` draft says it), MISS. Flag
+  WRONG: a written file tells the reader to register this repository's application services on `IServiceCollection` or
+  `builder.Services`, or through an `Add*Services` extension; MS.DI lifetime words used only to describe Unity lifetime managers
+  are reported, not flagged. 3a-bis expects CONVENTIONS; a SKILL is reported with whether it carries a step beyond that line.
+  Mechanism row as B-346 (A8 `evidenced operation` count, whether A8 returned the registration with `Instances`, the parent's
+  disposition); drafted slugs; drafts load in `copilot skill list` y/n; cost. Reading (n=2, descriptive): CAPTURED = every scored
+  run SKILL, CONVENTIONS or CONTEXT and none WRONG; NOT CAPTURED = every scored run WIKI-ONLY or MISS; WRONG if any run is flagged;
+  otherwise MIXED.
+- (2) Per follow-up, against its base commit, the first that applies: ASKED-BOOTSTRAP (no `.cs` change; the final message asks
+  for `/bootstrap`); ASKED (no `.cs` change; it asks anything else); PARALLEL (an added line registers the new service through
+  `IServiceCollection` or `(Try)Add{Scoped,Transient,Singleton}`; whether it also has a Unity registration is reported);
+  IOC-OWNING (a Unity `Register*` naming it inside `Configure(IUnityContainer)` of the `IoCConfig.cs` of the project that
+  implements it, existing or new and called from `Program.cs`); IOC-OTHER (a Unity registration elsewhere); UNREGISTERED-CONCRETE
+  (injected as a concrete class Unity builds); UNREGISTERED-INTERFACE (injected as an interface nothing registers); NEWED; OTHER
+  (no new injectable service type, or anything else). Also: `dotnet build Billing.sln` exit, lifetime manager, any Skill call to
+  a drafted skill, and for U whether the stream shows the session-start "unbootstrapped" line. Reading per arm, over trials that
+  are neither ASKED kind (at least 2, else NOT EXAMINED): LANDS THERE = all IOC-OWNING or IOC-OTHER; PARALLEL if any is; otherwise
+  MIXED. Arms are described side by side, not compared. Every arm documents the convention and none carries `register-service`,
+  so LANDS THERE says nothing about the retirement itself.
+- (3) UNCHANGED = 3/3 PASS (boltOn=False, subclass=False), as B-311's patched rows. Any boltOn=True or subclass=True = ALARM:
+  one `-Trials 6` rerun (DEVELOPING.md per-release rule), an entry only if a rerun row repeats it. `usedSkill=add-service:True` =
+  CONTAMINATED. These rows are also v0.92.0's per-release feature-placement check.
+- Validity: an INCONCLUSIVE, ERROR or CONTAMINATED K row, or a follow-up ending on its budget or erroring, is replaced once (B: in
+  a fresh copy); a second is reported, not scored. A `/bootstrap` call ending on its budget, or a run needing a fifth call, is
+  reported, not scored or repeated, and gets no follow-ups.
+- Actions: PARALLEL in any arm, WRONG, or an ALARM a rerun row repeats each file one backlog entry; a SKILL carrying no step
+  beyond the Conventions line gets one WSD-106 CLOSED line (as B-347); otherwise recorded only. A part not examined keeps B-331
+  open for that part. No shipped text changes here.
+- Spend stop $28, cumulative over K rows' `costUsd` and each session's last `total_cost_usd`, checked before each call: a
+  call starts only if the total plus its cap stays within it (K $1.50 a trial; follow-up $2; a `/bootstrap` run's first call $9,
+  which reserves its resumes).
+- Two scorers read repositories and streams independently; a referee on disagreement; a root-cause analyst for any PARALLEL,
+  WRONG or MISS.
+- Not shown: Copilot (report #6's host), other models, a .NET Framework host, an undocumented convention, a `register-service`
+  arm, a real consumer repository.
