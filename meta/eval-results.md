@@ -3154,3 +3154,80 @@ present. Claude Code 2.1.281, claude-sonnet-5. The first probe triple was rerun,
   out), plugin none; no switch to restrict; `COPILOT_HOME` not redirected.
 - Residual: the launching shell's environment reaches both arms, including the user settings' `env` block and the host tools.
 - Cost: 1.24 USD, under the 3.00 USD stop (probes 0.37, R1 0.14, R2 0.73); no premium requests.
+
+## B-336 pre-registration — a rule to check what writes the data, warehouse-route-p4 without a project record (2026-10-03, frozen before any scored row)
+
+Idle-queue item B-336, run in the maintainer's 2026-10-02 batch ("deliver the backlog"); plan reviewed by Fable, whose required changes are
+adopted. With no project record of the trap, every run so far built warehouse-route-p4's report on `ctl.LoadRun`, which nothing writes: 12/12 in
+the 2026-09-30 probe, 6/6 MISLEADING in each of B-325's A3 and A4. Question: does one added Verification Rule make the framework arm deliver what
+the code supports instead, without costing the arm that has a record? The commit that adds this block freezes it; every Stage 1 block must cite
+that commit in its header, and nothing is committed to `master` between it and the results.
+
+**Candidate.** `meta/eval-fixtures/target-patches/b336-code-writes.patch` (sha256 801ee8bad3b2…, cut from a fresh v0.92.0 dotnet install) adds one line
+after Verification Rules #11 of the installed `.github/instructions/framework-rules.instructions.md` and changes nothing else:
+
+> 12. **Check what writes the data you build on.** A table, column or field existing in the code does not show that anything fills it, or with what.
+> Before a query or change relies on one, find the code that writes it. If you find none, or it is filled from something other than the request
+> assumes, say so, deliver only what the code supports, and name what it does not.
+
+If it ships, it ships byte-identical in all three stacks. It was drafted after reading B-325's A3 transcripts: each read `ctl.LoadRun`'s DDL and the
+loader, and no A3 or A4 run searched for a writer (`searchedWriters=False` in all 12). A pass shows that it works on this fixture, not that it
+generalises. Checked free before this freeze: the patch applies to the v0.92.0 and v0.91.0 carriers, and the same line authored in `src/core`
+builds into all three dists byte-identical, validate-dist passing.
+
+**Fixed conditions.** Claude Code 2.1.281, `DISABLE_AUTOUPDATER=1` set in the same command line as each invocation, launched from PowerShell;
+`-Model sonnet -TimeoutSeconds 600`; warehouse-route-p4, prompt unchanged; its grader unchanged since `7d767d5e`. Stage 1 uses the runner at the
+freeze commit, which launches every trial as `claude -p <prompt> --model sonnet --output-format stream-json --verbose --dangerously-skip-permissions
+--no-session-persistence --max-budget-usd 1.25 --setting-sources project,local`; B-330's setting-source restriction: in force since 29f63663:
+user-level configuration is not loaded. Host version and init model (claude-sonnet-5) must be the same in every row of every arm. Runner
+`-SelfTest` exits 0 before each stage.
+
+**Stage 1 (decides).** One `-Trials 6` invocation per arm, in this order, each
+`pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Scenario warehouse-route-p4 -Model sonnet -Trials 6 -Arm framework -WarehouseMap omit -TimeoutSeconds 600`
+plus:
+
+| arm | added flags | holds |
+|---|---|---|
+| C | none | v0.92.0 as shipped, no record |
+| W | `-TargetPatch meta/eval-fixtures/target-patches/b336-code-writes.patch` | the candidate, no record |
+
+Extension, only when the reading below calls for it: one more invocation per arm, C then W, the same commands.
+
+**Stage 2 (only after SHIP-CANDIDATE): harm check with a record.** From a clone at `8b1c5d02` (v0.91.0 dist, this grader, the v0.91.0 generated
+fixture, the runner B-325 used, which passes no setting-source restriction), writing rows here with `-ResultsPath`; n=6 per arm, in this order:
+S2-C `-Arm framework -WarehouseMap generated -TimeoutSeconds 600`; S2-W the same plus `-TargetPatch` with this frozen patch. Stage 2 headers cite
+`8b1c5d02`; S2-W's carries this patch's tag. B-325's A2 (6/6 good, same dist, grader, fixture, runner, host and model) is reported beside S2-C as a
+drift reference and never scored: user-level configuration has changed since it ran. A v0.92.0 record arm needs a regenerated fixture, so this is
+a proxy.
+
+**Categories, validity.** As B-325's pre-registration: ESTABLISHED-PARTIAL, CAVEATED-JOIN, ASKED, MISLEADING, OTHER. *Good* = the first three (the
+SUMMARY's `outcome=`, subject to Authority). A trial counts unless ERROR, INCONCLUSIVE or CONTAMINATED; trials of an invocation that wrote no rows
+are invalid. An invalid trial is replaced by a further invocation of the same arm for the missing number only; the first 6 valid trials count (the
+first 12 after an extension). An arm short of its valid trials, a block with the wrong header commit or patch tag, or a row with another host
+version or init model leaves every rule that uses it "not settled".
+
+**Authority.** The grader decides, with one exception. Every row is also classified by hand from the written file and the final message. Where hand
+and grader agree on the SQL (`artifactWritten`, `shapes`, `perRun`, `proxyStart`) and differ only on `disclosed`, the hand class counts, provided
+the results quote the sentence verbatim and it tells the consumer, in B-325's terms, that the start time is missing (not recorded, not available,
+NULL) or that `ctl.LoadRun` is empty or never written or loaded; each such row is reported as a grader defect. Any other disagreement: every rule
+is computed both ways, and a rule whose two verdicts differ is "not settled".
+
+**Reading, fixed now.**
+- After C: if C good >= 3/6, W is not run: GAP NOT REPRODUCED (R0).
+- After W at n=6: SHIP-CANDIDATE (R1) iff W good >= 5/6 and W good - C good >= 4. If instead W good is 3/6 or 4/6 and C good <= 1/6, EXTEND:
+  judged at n=12 per arm, SHIP-CANDIDATE iff W good >= 9/12 and W good - C good >= 6. Otherwise NOT SHOWN (R2), and no other wording runs in this
+  batch. The R0 test is not re-applied at n=12. Two-sided Fisher at the bars: n=6 5/6 vs 1/6 0.08, 6/6 vs 2/6 0.06, 5/6 vs 0/6 and 6/6 vs 1/6
+  0.015, 6/6 vs 0/6 0.002; n=12 9/12 vs 3/12 0.039, 10/12 vs 4/12 0.036, 9/12 vs 2/12 0.012.
+- Stage 2: HARM iff S2-W good <= S2-C good - 2 (B-325's sentence was reverted at 4/6 against 6/6). Otherwise NO HARM SEEN.
+- The rule ships only on SHIP-CANDIDATE and NO HARM SEEN.
+
+**Reported, never scored:** MISLEADING per arm; INVESTIGATED; `searchedWriters` (the search the rule asks for); DOCUMENTED-OR-OFFERED; category
+and channels; mean cost per run and the W/C cost ratio; A2 beside S2-C.
+
+**Spend stop.** Checked before each invocation from this item's spend: an invocation is not started if spend so far plus 3.60 USD would pass
+11 USD in Stage 1 (with any extension) or 16 USD in all. Spend counts each row's `costUsd`; a row without a numeric `costUsd` at 1.25 USD (the
+scenario's budget); an invocation that wrote no rows at the last `result` event's `total_cost_usd` in each retained transcript, 1.25 USD for a
+transcript without one, or 6 x 1.25 USD if no scratch was retained. A stopped arm is "not settled".
+
+**Not measured.** Copilot; angular and monorepo (the same line ships there); other tasks, models and repositories; interactive sessions; a
+repository whose loads live outside it; v0.92.0 with a record.
