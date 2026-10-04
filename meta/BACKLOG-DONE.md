@@ -12981,3 +12981,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   without the seven recipe skills, `angular-feature-placement` passed 3/3 (UNCHANGED); on a three-project Unity fixture a new
   service landed in an `IoCConfig.Configure` in 7 of 7 follow-ups and on `IServiceCollection` in 0; `/bootstrap` (n=2) captured the
   registration as a drafted project skill both times, while each run's `TECH_DEBT.md` also proposed migrating to MS.DI ($16.56).
+- **B-326** — DONE **2026-10-03** for 0.93.0 (results `meta/eval-results.md`, pre-registered at ac701446): on Copilot CLI 1.0.89
+  `/security-review` and `/review` (typed) went to the CLI's own commands, whose prompt sends the model to the built-in agents; the
+  model ran the project's file in 4 of 5 treatment runs; `/debt` (typed) ran its file directly, `-i /debt` was unknown; asked by name
+  3/3 each. The READMEs say so and how to reach this framework's version. The agent's own security pass is B-348.

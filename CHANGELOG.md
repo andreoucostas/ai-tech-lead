@@ -11,6 +11,28 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.93.0 — Unreleased
+
+B-326 (pre-registered at ac701446; `meta/eval-results.md`, `meta/host-certification.md`). On Copilot CLI 1.0.89 with
+claude-sonnet-5, `/review` and `/security-review` are handled by the CLI's own commands, which turn them into an instruction to
+run its built-in code-review or security-review agent: every treatment run carried that host-written prompt, and the sibling
+controls without the project's files ran those agents. The project's `.claude/commands/review.md` and `security-review.md` ran
+only when the model chose them over that instruction, in 4 of 5 treatment runs (`skill.invoked` trigger "agent-invoked"). `/debt`,
+which has no built-in, typed after start-up was dispatched by the CLI itself to its file (trigger "user-invoked"); passed at
+start-up with `-i` it was an unknown command (twice), so every `-i` treatment reading was set aside and the readings stand on the
+typed cells, n=1 per arm. Asked by name ("Run the review|security-review skill from this repository on my staged changes."), the
+model loaded the project's file first in 3 of 3 runs for each. Each README's Start working gains a dated Copilot CLI sentence
+saying so and how to reach this framework's version, and both "deterministic routing" sentences gain an exception for `/review`
+in Copilot CLI. Deviations, recorded in the results: the TTY was a ConPTY pseudo-console the orchestrator opened, because the
+desktop Terminal panel's shell integration did not load; typed cells were keyed by the orchestrator, not the maintainer; the
+set-aside rule fired on "-i unknown command" rather than its frozen trigger "-i M-*"; the frozen D-BUILTIN clause ("runs the CLI's
+built-in … instead") is contradicted by the treatment cells, so the README uses the frozen model-routed clause and states the
+mechanism; and one typed cell was voided after an input-driver defect accepted Copilot CLI's desktop-app install prompt (the app
+was uninstalled; the driver now fails closed). The carrier's security-pass rule and `route-prompt`'s overlay are unchanged; the
+agent's own security pass on Copilot CLI is B-348 (measure first, WSD-107). The README is not installed, yet each stack CHANGELOG
+carries one consumer bullet, because it changes what a Copilot CLI user does and discloses that `/review` and `/security-review`
+started there may not have been this framework's gate. WSD-095's index line is now bounded by host. 17 premium requests.
+Always-loaded context unchanged.
 ## 0.92.0 — 2026-10-02
 
 Value-study text fixes. The Common Tasks skills-list snippets drop their technology asides (the DTO →

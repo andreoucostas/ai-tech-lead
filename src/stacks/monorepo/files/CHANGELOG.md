@@ -5,6 +5,15 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.93.0 — Unreleased
+
+- **In Copilot CLI, `/review` and `/security-review` may run the CLI's own review instead of this framework's.** Copilot CLI has
+  built-in commands with those names. In our test on Copilot CLI 1.0.89, the CLI turned either command into an instruction to use
+  its built-in review agent; with this framework's `.claude/commands/review.md` and `security-review.md` present, the model ran this
+  framework's file in 4 of 5 runs and the CLI's agent in 1, so a review started that way in Copilot CLI may not have been this
+  framework's gate. To run this framework's version there, ask for it by name, for example *"Run the security-review skill from
+  this repository on my staged changes."*, which reached this framework's file in 6 of 6 runs. Claude Code is unaffected: there the
+  project's commands replace its built-ins.
 ## 0.92.0 — 2026-10-02
 
 - **The framework no longer ships `add-endpoint`, `add-entity`, `register-service`, `add-component`,

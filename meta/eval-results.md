@@ -3429,3 +3429,55 @@ from an artifact of `-i`, not from what a developer typing the command gets.
   `events.jsonl` when the session ends (B-326's cells); the D and C classes are still read from `events.jsonl` after `/exit`.
 - Everything else stands as frozen: D and C, Leg 2's `copilot -p --resume` continuations and answers, the 15-premium-request
   stop, and two scorers.
+
+## B-326 results — 2026-10-03 (hand-written; as pre-registered at ac701446)
+
+Copilot CLI 1.0.89 (`copilotVersion` in every session), claude-sonnet-5, `COPILOT_ALLOW_ALL=true`, `--no-auto-update`,
+`--no-ask-user`, `--log-level all`; fixtures built from `dist/dotnet` at ac701446 under `<scratch>\b326`. Evidence (events, debug
+logs, raw screen) per cell under `<scratch>\b326\evidence`; sessions under `~\.copilot\session-state\<id>`.
+
+| cell | mode | class (reader 1 / reader 2) | deciding evidence (event #: type, field) | also ran | fixture id in reply | premium requests |
+|---|---|---|---|---|---|---|
+| PF | `-i /env` | gate passed | no user.message (events: start, model_change, shutdown); screen lists debt, review, security-review as Project | — | — | 0 |
+| C-SR | `-i` | D-BUILTIN / D-BUILTIN | #2 U host-written ("…via the /security-review command. Use the task tool with agent_type: "security-review"…"); #14 task security-review | Security Review Agent | none | 1 |
+| T-SR | `-i` | D-PROJECT / D-BUILTIN, then D-BUILTIN / D-BUILTIN (set aside) | #2 U identical to C-SR's; #14 skill security-review; #16 skill.invoked project, trigger "agent-invoked" | — | B326-SECCMD-7KQ2 | 1 |
+| C-RV | `-i` | D-BUILTIN / D-BUILTIN | #2 U host-written ("…via the /review command. Use the task tool with agent_type: "code-review"…"); #14 task code-review | Code Review Agent | none | 1 |
+| T-RV | `-i` | D-BUILTIN / D-BUILTIN (set aside) | #2 U identical to C-RV's; #14 task code-review | Code Review Agent | none | 1 |
+| P-DB | `-i /debt` | CANNOT EXAMINE / CANNOT EXAMINE | no user.message; screen "Unknown command: /debt" | — | — | 0 |
+| T-RV' (…42) | `-i` | D-BUILTIN (set aside) | #2 U identical to C-RV's; #14 skill review; #16 skill.invoked project, "agent-invoked" | — | B326-RVWCMD-4XN8 | 1 |
+| P-DB' (…43) | `-i /debt` | CANNOT EXAMINE | as P-DB | — | — | 0 |
+| Y-DB (…35) | typed | D-PROJECT / D-PROJECT | #2 skill.invoked debt, project, trigger "user-invoked", before U; #3 U "The user explicitly invoked the "/debt" skill…" with `<skill-context name="debt">` | — | B326-DEBTCMD-9VJ3 | 1 |
+| Y-C-SR (…31) | typed | void | driver defect: keystrokes went to Copilot CLI's desktop-app install prompt; no user.message | — | — | 0 |
+| Y-C-SR (…91) | typed | D-BUILTIN / D-BUILTIN | #2 U host-written built-in prompt; #22 task security-review | Security Review Agent | none | 1 |
+| Y-T-SR (…32) | typed | D-BUILTIN / D-BUILTIN | #2 U identical to the control's; #14 skill security-review; #16 skill.invoked project, "agent-invoked" | — | B326-SECCMD-7KQ2 | 1 |
+| Y-C-RV (…33) | typed | D-BUILTIN / D-BUILTIN | #2 U host-written built-in prompt; #14 task code-review | Code Review Agent | none | 1 |
+| Y-T-RV (…34) | typed | D-BUILTIN / D-BUILTIN | #2 U identical to the control's; #14 skill review; #16 skill.invoked project, "agent-invoked" | — | B326-RVWCMD-4XN8 | 1 |
+| W-SR1 (…92), W-SR2, W-SR3 | `-i` by name | PASS, PASS, PASS (reader 2: PASS x3) | #14 skill security-review, #16 skill.invoked project, no built-in agent | — | B326-SECCMD-7KQ2 | 1 each |
+| W-RV1, W-RV2, W-RV3 | `-i` by name | PASS, PASS, PASS (reader 2: PASS x3) | #14 skill review, #16 skill.invoked project, no built-in agent | — | B326-RVWCMD-4XN8 | 1 each |
+
+- Readings as fixed: `/security-review` and `/review` NOT-PROJECT (typed, D-BUILTIN against a D-BUILTIN control, both readers);
+  `/debt` D-PROJECT (typed). The CLI's own command handled every colliding command (`slash_command_invoked` then the built-in
+  prompt, 5/5 treatment runs); which file then ran was the model's choice: this framework's in 4 of 5 (T-SR, T-RV', Y-T-SR,
+  Y-T-RV), the built-in agent in 1 (T-RV). Stage 4: PASS 3/3 for each name.
+- Stage 2 and 3: `-i /debt` was an unknown command twice (CANNOT EXAMINE), while typed `/debt` was D-PROJECT, so every `-i`
+  treatment reading was set aside and both names went to typed cells (the frozen trigger reads "`-i` M-*"; the logic is the same).
+  T-RV and T-RV' disagreed; T-SR's reader disagreement (reader 1's D-PROJECT came from the literal "names that skill" clause; on
+  re-check reader 1 adopts D-BUILTIN, since U is byte-identical to the control's and the project skill came from the model's own
+  call) became moot with the set-aside.
+- Reader agreement: typed cells 5/5; stage 1 5/6 before the set-aside; stage 4 6/6.
+- Actions: Start working sentence in each README (the model-routed clause, with the mechanism, and "ask for it by name");
+  "deterministic routing" exception for `/review` in Copilot CLI (:23/:25, :206/:209); CHANGELOG entries; host-certification row;
+  WSD-095's index line bounded by host; B-348 filed. No B-349: asking by name passed.
+- Deviations: the TTY was a ConPTY pseudo-console the orchestrator opened (the desktop Terminal panel could not start a shell:
+  its PowerShell integration script did not load), same Windows pseudo-console API, Copilot saw an unredirected console; typed cells
+  were keyed by the orchestrator after start-up, not by the maintainer; the frozen D-BUILTIN clause ("runs the CLI's built-in …
+  instead of this framework's") is contradicted by 4 of 5 treatment cells, so the shipped text uses the frozen model-routed clause
+  and states the mechanism. The first typed cell's driver read the raw screen stream, missed Copilot CLI's "install the desktop app
+  (about 210 MB)?" prompt and pressed Enter on its default "Yes, install": the app was installed, then uninstalled with its own
+  uninstaller and checked gone; the cell was voided and rerun under …91 with a driver that reads stripped text, answers the prompt
+  N, sends no keystroke while install text is on screen, and presses Enter only on an echoed command. An 8-second diagnostic of the
+  stage 4 text under a non-registered id reached the model once and is counted below. W-SR1 ran under …92 because a diagnostic
+  `/env` used …11.
+- Premium requests: 17 (16 cells plus the diagnostic), under the stop of 22.
+- Not shown: VS Code Copilot Chat and `.github/prompts`, CLI versions other than 1.0.89, the agent's own security pass (B-348),
+  adherence to the real command bodies.
