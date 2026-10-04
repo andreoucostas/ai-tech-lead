@@ -300,6 +300,8 @@ This framework supports local command and hook execution on **Windows** whether 
 
 > Net: on Bitbucket Data Center your agentic story is **local CLI agents + IDE Copilot**, not a cloud agent, and there is no platform-side AI PR reviewer. Gate quality with `/review` and `/security-review` *before* you push, and with the CI guardrail *after*.
 
+**Reviewing a pull request locally:** run `git fetch origin`, check out the pull request's source branch with `git switch --detach origin/<source>`, then run `/review origin/<target>...HEAD` in Claude Code. The three dots review only what the pull request adds since it left `<target>`, and the checkout lets `/review`'s verification run on that code. For a pull request from a fork, run `git remote add fork <fork-url>` and `git fetch fork`, then `git switch --detach fork/<source>` instead. Copilot CLI may run its own built-in review for `/review`; there, ask for this framework's review skill by name.
+
 ### The CI guardrail on Bitbucket — a required build is expected, not optional
 **Every repo using this framework is expected to wire one required Windows build in its own CI (Bamboo/Jenkins/TeamCity) that gates PR merges.** The full recipe — the shipped `scripts/docs-sync-check.ps1` framework-state check plus only the code gates evidenced by this repository (or an explicit `not available` gap), Windows Bamboo and Jenkins configurations, and Bitbucket DC's *required builds* merge check — lives in **[docs/ci-integration.md](./docs/ci-integration.md)**.
 - **Also enable** Bitbucket DC's native **secret scanning** (8.12+, push-time blocking — zero custom code).

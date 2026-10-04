@@ -26,6 +26,12 @@
   your `AGENTS.md`: run `/rebootstrap full` to re-analyse with these checks. We have not yet watched
   a `/bootstrap` run on a repository that uses them, so check what it writes about them.
 
+- `docs/ci-integration.md` now shows how to review a pull request locally. Its "What CI still cannot
+  gate" section ends with `git fetch origin`, `git switch --detach origin/<source>`, then
+  `/review origin/<target>...HEAD` in Claude Code, which reviews only what the pull request adds since
+  it left its target branch and lets `/review`'s verification run on that code. For a pull request
+  from a fork, it adds the fork as a remote and fetches it first. An update refreshes the page.
+
 ## 0.92.0 — 2026-10-02
 
 - **The framework no longer ships `add-endpoint`, `add-entity`, `register-service`, `add-component`,

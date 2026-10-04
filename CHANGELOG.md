@@ -49,6 +49,22 @@ per-pass summaries are unchanged. API names were checked against vendor docs on 
 `/bootstrap` run has exercised the new cues. On demand only: `bootstrap.md` body +399 (dotnet), +287
 (angular), +686 (monorepo) chars; `static.claude` unchanged.
 
+Bitbucket Data Center pull-request review (B-328). Each stack README's "Running on Bitbucket Data
+Center" and `docs/ci-integration.md`'s "What CI still cannot gate" gain one paragraph:
+`git fetch origin`, `git switch --detach origin/<source>`, `/review origin/<target>...HEAD` in Claude
+Code, and for a fork `git remote add fork <fork-url>`, `git fetch fork`, `git switch --detach fork/<source>`.
+`review.md` takes `A...B` and refuses a PR number (:3, :15-17), `review-scope.ps1` diffs a three-dot
+range from the merge base (:391-397), and the checkout keeps `/review`'s verification on the
+reviewed commit (`review.md` :65-69). The backlog's `refs/pull-requests/<id>/from` is not shipped: no
+Bitbucket Data Center instance was available to confirm it, and the fork remote needs only
+documented git. Pre-check on scratch bare repos (git 2.52): three-dot names only the source's file
+(two-dot control adds the target's) for origin and fork remotes; review-scope Range ThreeDot with
+HEAD exit 0, one layer, effective base = merge base. Because B-326 found Copilot CLI's `/review` not
+deterministic, the command is scoped to Claude Code and the paragraph ends with B-326's "ask for it
+by name" route, without its "staged changes" example (asking by name for a range is unobserved).
+Instructed context +607 chars per dist (`docs/ci-integration.md`); `static.claude` unchanged. The
+README is not installed, so only `docs/ci-integration.md` has a consumer note.
+
 ## 0.92.0 — 2026-10-02
 
 Value-study text fixes. The Common Tasks skills-list snippets drop their technology asides (the DTO →

@@ -12988,3 +12988,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-327** — DONE **2026-10-03** for 0.93.0: `/bootstrap`'s .NET A1 "Entry points" and A6 "Logging" lines and the Angular A3
   "Signals adoption" line (dotnet, angular, monorepo) now name minimal APIs, Hangfire or Quartz.NET, OpenTelemetry, zoneless change
   detection (with `angular.json` `polyfills`) and `@defer`; API names checked against vendor docs, text-only, unobserved on any run.
+- **B-328** — DONE **2026-10-03** for 0.93.0: each stack README's "Running on Bitbucket Data Center" and `docs/ci-integration.md` show
+  `git fetch origin`, `git switch --detach origin/<source>`, `/review origin/<target>...HEAD` in Claude Code, and a fork remote for fork PRs.
+  `refs/pull-requests/<id>/from` not shipped: unconfirmed on an instance. Pre-check passed on scratch bare repos.

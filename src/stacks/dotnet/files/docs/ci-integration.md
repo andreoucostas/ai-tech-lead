@@ -146,3 +146,11 @@ Semantic standards — Leanness, SOLID beyond dependency direction, test *qualit
 analyzers catch — have no deterministic check. They are enforced by `/review` +
 `/security-review` before push and by human PR review. The required build is the floor, not the
 ceiling; see `docs/enforcement-surfaces.md` for the full guaranteed-vs-instructed matrix.
+
+**Reviewing a pull request locally:** run `git fetch origin`, check out the pull request's source
+branch with `git switch --detach origin/<source>`, then run `/review origin/<target>...HEAD` in
+Claude Code. The three dots review only what the pull request adds since it left `<target>`, and the
+checkout lets `/review`'s verification run on that code. For a pull request from a fork, run
+`git remote add fork <fork-url>` and `git fetch fork`, then `git switch --detach fork/<source>`
+instead. Copilot CLI may run its own built-in review for `/review`; there, ask for this framework's
+review skill by name.
