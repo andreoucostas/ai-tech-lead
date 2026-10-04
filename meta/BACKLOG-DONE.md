@@ -12992,3 +12992,10 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   `git fetch origin`, `git switch --detach origin/<source>`, `/review origin/<target>...HEAD` in Claude Code, and a fork remote for fork PRs.
   `refs/pull-requests/<id>/from` not shipped: unconfirmed on an instance. Pre-check passed on scratch bare repos.
 - **B-329** — DONE **2026-10-03** for 0.93.0 (results `meta/eval-results.md`, pre-registered at 4dd08b09): an Angular component template (`.html`) write under `src/` runs `ngc --noEmit` in angular and monorepo `post-write`, with its own throttle stamp; full `tsc` exited 0 on the planted broken binding, and `ngc` took 7.14 s warm and 6.79 s first at 500 generated components on an i5-1335U (FITS). $0.
+- **B-337** — DONE **2026-10-03** for 0.93.0 (results `meta/eval-results.md`, pre-registered at 1ae8644d, amended at 251ee332; `meta/host-certification.md`): typed in interactive Copilot CLI 1.0.89, `/bootstrap` ran the shipped command to a passing docs-sync-check on a scratch dotnet install and `/adopt` dispatched (3 premium requests); the installer handoff and the READMEs now name interactive Copilot CLI beside Claude Code; VS Code Copilot Chat untested (no seat).
+- **B-350** — CLOSED by decision **2026-10-03** (WSD-106), never filed. In B-337, Copilot CLI 1.0.89 passed the expanded `/bootstrap` and `/adopt`
+  text to the `userPromptSubmitted` hook, so `route-prompt` classified both as "review" and appended the security overlay; the model set it
+  aside both times. Reopen on a field report of a typed command derailed by the routed rails.
+- **B-351** — CLOSED by decision **2026-10-03** (WSD-106), never filed. Copilot CLI 1.0.89 substitutes every literal `$ARGUMENTS`, prose included:
+  `adopt.md`'s "when `$ARGUMENTS` contains a `--headless` directive" reached the model as "when `` contains …" (B-337 Leg 3). Reopen on a
+  field report of headless adoption misread on Copilot CLI.

@@ -28,6 +28,10 @@
   it left its target branch and lets `/review`'s verification run on that code. For a pull request
   from a fork, it adds the fork as a remote and fetches it first. An update refreshes the page.
 
+- **`/bootstrap` and `/adopt` also run in GitHub Copilot CLI.** The installer's next steps and the README said they need a Claude
+  Code session. In Copilot CLI, start an interactive session in your repository (`copilot`) and type the command; in our test,
+  `copilot -p` did not run slash commands. On Copilot CLI 1.0.89, `/bootstrap` ran to the end on a sample .NET repository, with `docs-sync-check` passing after it was told to proceed past its questions (its hazard rows were left unverified), and `/adopt` started the same way.
+
 ## 0.92.0 — 2026-10-02
 
 - **The framework no longer ships `add-endpoint`, `add-entity` or `register-service`.** These were

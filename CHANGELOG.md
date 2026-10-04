@@ -82,6 +82,18 @@ an inline template, is still checked by `tsc` alone. The READMEs and the angular
 both surfaces (red first on pwsh, powershell.exe and CP437), and no check without
 `@angular/compiler-cli`. The template world joins the throttle, budget and outer-shell cases.
 
+B-337. The installer's next steps (greenfield and brownfield) and each README's step 3 and For-AI-agents handoff now name
+interactive Copilot CLI beside Claude Code for `/bootstrap` and `/adopt`. Both field-report teams use VS Code Copilot or Copilot
+CLI (`meta/field-reports.md` #6, #8), and the text sent them to Claude Code. Observed 2026-10-03 on Copilot CLI 1.0.89,
+claude-sonnet-5 (`meta/host-certification.md`; pre-registered at 1ae8644d, amended before any run at 251ee332 to type the command
+after start-up, because B-326 found `-i` reports a project command as unknown): typed in a pseudo-console on a scratch v0.92.0
+dotnet install of the B-346 fixture, `/bootstrap` dispatched to `.claude/commands/bootstrap.md` (`skill.invoked`, trigger
+"user-invoked"), ran its eight analysis passes as `bootstrap-pass` subagents, and with its one pause answered through
+`copilot -p --resume` ("proceed") ended with an independent docs-sync-check PASS and no fixture file changed. `/adopt` dispatched
+the same way (dispatch only). 3 premium requests. The READMEs add that `copilot -p` did not run slash commands (the 2026-09-30
+row). VS Code Copilot Chat is untested (no seat); the README's existing prompt-files line is unchanged. Text-only installer
+change; requirement 4 by a fresh session.
+
 ## 0.92.0 — 2026-10-02
 
 Value-study text fixes. The Common Tasks skills-list snippets drop their technology asides (the DTO →

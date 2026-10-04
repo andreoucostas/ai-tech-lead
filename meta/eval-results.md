@@ -3503,3 +3503,25 @@ tier. The whole scored protocol took 3.2 minutes.
   payload EXIT=0 with `additionalContext`; after restoring the template EXIT=0 and silent; 7.4–11.6 s per run.
 - Not shown: a cold disk cache, other hardware, real consumer workspaces (SCSS, i18n, Nx libraries, component libraries), other
   Angular versions, model consumption of the new message.
+## B-337 results — 2026-10-03 (hand-written; no runner rows)
+
+As pre-registered at 1ae8644d and amended before any run at 251ee332 (typed after start-up in a pseudo-console). Subject: `dist/dotnet`
+from tag v0.92.0 installed greenfield (`<temp>\b337\orders`) and brownfield (`<temp>\b337\orders-adopt`) into fixture v2.
+Pre-flight: `copilot skill list --json` listed `bootstrap` and `adopt` as project skills in both targets, no `.github/prompts` entry;
+`copilot instruction list` showed only the repository's `AGENTS.md`, `CLAUDE.md` and `framework-rules.instructions.md`, no personal source.
+
+| leg | session id | CLI | D (`skill.invoked` trigger) | pauses and answers | C (c1-c4) | premium requests | wall time |
+|---|---|---|---|---|---|---|---|
+| 1, typed `/bootstrap` | `b3370001-…-000000000001` | 1.0.89 | PROJECT (event 2: `bootstrap`, `.claude\commands\bootstrap.md`, "user-invoked"; first user.message transformed holds the sentence) | Phase 2b (financial scope and policy questions) | — | 1 | 12 min to the first wait |
+| 2, `copilot -p 'proceed' --resume` | same | 1.0.89 | — | "proceed" answered Phase 2b; it ran to the Phase 4 report, marking the hazard rows UNVERIFIED without pausing | COMPLETED: c1 docs-sync-check exit 0, "All AI Tech Lead framework checks passed."; c2 no marker; c3 no `KNOWN_HAZARD_AREAS_PENDING`; c4 none of 67 initial-commit paths changed | 1 (session total 2) | 28 min |
+| 3, typed `/adopt` | `b3370003-…-000000000003` | 1.0.89 | PROJECT (event 2: `adopt`, `.claude\commands\adopt.md`, "user-invoked") | stopped at Phase 0.2's branch question (dispatch only) | — | 1 | 3 min to the first wait |
+
+- Worker mechanism: Leg 1 dispatched the eight analysis passes as `task` calls to `bootstrap-pass` subagents (8 started).
+- Reading: Variant A. The installer's greenfield and brownfield handoff and each README's step-3 cell and For-AI-agents step name
+  interactive Copilot CLI beside Claude Code; no D-MODEL modifier (both dispatches were the CLI's, not the model's).
+- Observed, not scored: A8 returned the fixture's two planted operations and this run routed both to one-line Conventions pointers,
+  not skill drafts (B-346's three Claude Code runs drafted both).
+- Scorers: the second scorer, reading only the evidence, agreed on D for both legs (trigger "user-invoked"), C (re-running the c1 gate) and the spend; it also reported two adjacent defects, re-checked here and closed per WSD-106 as B-350 (on Copilot CLI the per-prompt router classifies the expanded `/bootstrap` and `/adopt` text as "review" and appends the security overlay; the model set it aside both times) and B-351 (Copilot CLI substitutes `$ARGUMENTS` in prose, so `adopt.md`'s "when `$ARGUMENTS` contains a `--headless` directive" reached the model as "when `` contains …").
+- Spend: 3 premium requests, under the stop of 15; Copilot's usage file also reported 508.6 "AI Credits" for the 28-minute continuation.
+- Not shown: VS Code Copilot Chat (no seat), other CLI versions (1.0.91 exists), the Angular and monorepo `/bootstrap`, other models,
+  output quality.

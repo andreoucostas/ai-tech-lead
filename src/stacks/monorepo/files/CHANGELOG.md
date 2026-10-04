@@ -42,6 +42,10 @@
   inline template, is still checked by `tsc` only. The framework doctor's build-feedback canary also passes on
   `## ngc --noEmit failed` if you plant the error in a template. Nothing to do.
 
+- **`/bootstrap` and `/adopt` also run in GitHub Copilot CLI.** The installer's next steps and the README said they need a Claude
+  Code session. In Copilot CLI, start an interactive session in your repository (`copilot`) and type the command; in our test,
+  `copilot -p` did not run slash commands. We tested this with the .NET distribution on Copilot CLI 1.0.89: `/bootstrap` ran to the end and `/adopt` started the same way. This distribution's `/bootstrap` is the same kind of command file but was not run there.
+
 ## 0.92.0 — 2026-10-02
 
 - **The framework no longer ships `add-endpoint`, `add-entity`, `register-service`, `add-component`,
