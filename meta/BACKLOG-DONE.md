@@ -12977,3 +12977,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   result in 0/6 against 0/6 for v0.92.0 as shipped, short of the pre-registered bar (5/6 and +4; 9/12 and +6 after the extension); it
   moved the writer search from 1/6 to 5/6 runs, aimed at the fact's columns rather than `ctl.LoadRun`; nothing ships ($4.56). Reopen
   on a field report of a result built on data nothing writes, or a wording measured to beat none.
+- **B-331** — DONE **2026-10-03** (measurement, nothing shipped; results `meta/eval-results.md`, pre-registered at 93cbe655): on v0.92.0
+  without the seven recipe skills, `angular-feature-placement` passed 3/3 (UNCHANGED); on a three-project Unity fixture a new
+  service landed in an `IoCConfig.Configure` in 7 of 7 follow-ups and on `IServiceCollection` in 0; `/bootstrap` (n=2) captured the
+  registration as a drafted project skill both times, while each run's `TECH_DEBT.md` also proposed migrating to MS.DI ($16.56).

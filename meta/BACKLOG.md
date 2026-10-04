@@ -9,7 +9,7 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done and B-336 closed by measurement 2026-10-03; idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
+## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done, B-336 closed by measurement and B-331 done 2026-10-03; idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -18,7 +18,6 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 3 | B-327 | Idle queue. Guarded; on-demand `/bootstrap` text, though what it writes lands in the consumer's `AGENTS.md` |
 | 4 | B-328 | Idle queue. Small and ordinary; the PR review step the Bitbucket Data Center target lacks |
 | 5 | B-329 | Idle queue. Guarded; measure first, and stop if a template check cannot fit post-write's 45 s budget |
-| 6 | B-331 | Idle queue. Measures WSD-109's retirement on Claude Code, about 3 USD live; report #6's `register-service` question is moot |
 
 ## Open entries
 
@@ -57,12 +56,6 @@ source ref into a local branch (Bitbucket DC publishes `refs/pull-requests/<id>/
 `tsc --noEmit` does not type-check templates (not run here), so a broken binding goes unreported; monorepo's hook has the same gap. Measure
 a template check's wall time on a real-size workspace against the 45 s budget; ship only if it fits, with a red case per host.
 
-### B-331 · Measure WSD-109's recipe retirement: a Unity fixture through /bootstrap, and a feature-placement knockout
-**Filed against:** v0.91.0 (2026-09-30); retargeted 2026-10-02 (WSD-109)
-**Priority:** P3 · **Effort:** M, about 3 USD live plus three knockout trials · **Invariants:** #4 #6
-**Status:** Open; report #6's reply no longer gates it. Three projects registering via `IoCConfig.Configure(IUnityContainer)`: does
-`/bootstrap` draft a skill, and does a new service then land there without `IServiceCollection`? Plus three angular-feature-placement
-trials without the seven (expected unchanged; `usedSkill=add-service` now always reads False).
 
 
 ## Archived

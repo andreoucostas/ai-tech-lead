@@ -3363,3 +3363,50 @@ that registration; (2) does a new service land in an `IoCConfig.Configure` rathe
   WRONG or MISS.
 - Not shown: Copilot (report #6's host), other models, a .NET Framework host, an undocumented convention, a `register-service`
   arm, a real consumer repository.
+
+## 2026-10-03 19:20:45 +01:00 — framework v0.92.0 (ba80225b4477686938ae502f1146d0d919d1ea35)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS angular-feature-placement** (model=opus) — agentExit=0 timedOut=False costUsd=0.6471764 tokensIn=16 tokensOut=5424; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=False subclass=False addedMembers= newInjectable=True featureInComponent=True featureInOtherInjectable=True injectsUserService=True usedSkill=add-service:False
+- **PASS angular-feature-placement** (model=opus) — agentExit=0 timedOut=False costUsd=0.356168 tokensIn=8 tokensOut=4487; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=False subclass=False addedMembers= newInjectable=True featureInComponent=True featureInOtherInjectable=True injectsUserService=True usedSkill=add-service:False
+- **PASS angular-feature-placement** (model=opus) — agentExit=0 timedOut=False costUsd=0.4038114 tokensIn=10 tokensOut=4884; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=False subclass=False addedMembers= newInjectable=True featureInComponent=True featureInOtherInjectable=True injectsUserService=True usedSkill=add-service:False
+
+
+## B-331 results — 2026-10-03 (hand-written; K's rows above are the runner's)
+
+As pre-registered at 93cbe655: v0.92.0 from the clone at ba80225b (grader, prompt and Angular fixture as at eed1e4fd); fixture sha
+matches (8ffba365f4ab); $16.56 in total (K 1.41, U 1.54, B 13.62), under the $28 stop; scorers agreed on every scored value, so no
+referee ran. U's first repository is named `billing-svc-111213` (an argument-binding slip in the driver, not a different setup).
+
+| follow-up | arm | category | also Unity-registered (PARALLEL only) | implementing project | lifetime | build | cost |
+|---|---|---|---|---|---|---|---|
+| billing-svc-111213 | U | IOC-OWNING | n/a | Billing.Core | Hierarchical | 0 | 0.85 |
+| billing-svc-12 | U | IOC-OWNING | n/a | Billing.Core | ContainerControlled | 0 | 0.35 |
+| billing-svc-13 | U | IOC-OWNING | n/a | Billing.Core | Hierarchical | 0 | 0.33 |
+| billing-svc-23 (of run 21) | B | IOC-OWNING | n/a | Billing.Core | Hierarchical | 0 | 0.38 |
+| billing-svc-24 (of run 21) | B | IOC-OWNING | n/a | Billing.Core | Hierarchical | 0 | 0.33 |
+| billing-svc-25 (of run 22) | B | IOC-OWNING | n/a | Billing.Core | Hierarchical | 0 | 0.41 |
+| billing-svc-26 (of run 22) | B | IOC-OWNING | n/a | Billing.Core | Hierarchical | 0 | 0.36 |
+
+| /bootstrap | route | WRONG | AGENTS.md section | A8 operations | registration returned | disposition | drafts (load on Copilot) | cost |
+|---|---|---|---|---|---|---|---|---|
+| run 21 (3 calls) | SKILL | no | Conventions > Dependency Injection | 1 | yes, 3 instances | skill + Conventions line | wire-unity-service (y) | 5.77 |
+| run 22 (2 calls) | SKILL | no | Conventions > Architecture and > Dependency Injection | 1 | yes, 3 instances | skill + Conventions line | wire-unity-service (y) | 6.36 |
+
+- Reading (3): UNCHANGED, 3/3 PASS (boltOn=False, subclass=False, newInjectable=True), against B-311's patched rows (3/3 PASS,
+  newInjectable=True 3/3); `usedSkill=add-service:False` in every row, as expected after the retirement. These rows are v0.92.0's
+  per-release feature-placement check.
+- Reading (2): U LANDS THERE (3/3 IOC-OWNING); B LANDS THERE (4/4 IOC-OWNING). No added line registered the service on
+  `IServiceCollection`; no follow-up asked, and none called the drafted skill. All three U streams show the session-start
+  "unbootstrapped" line. Not a statement about the retirement itself: every arm documents the convention.
+- Reading (1): CAPTURED; both runs SKILL (`wire-unity-service`, outside `framework-ownership.json`, three instances), and both skills
+  carry steps beyond their Conventions line (check for an existing registration first; lifetime choice by the nearest sibling; no
+  `Program.cs` step for an existing project), so no WSD-106 line. Not flagged WRONG by either scorer, but reported: each run's
+  `TECH_DEBT.md` recommends migrating off the archived Unity package to `Microsoft.Extensions.DependencyInjection` extension methods
+  (run 21 DEBT-001, "e.g. `AddCoreServices(this IServiceCollection)`"; run 22 DEBT-005, "`AddBillingCore()`/..."), while the same
+  runs' `AGENTS.md` says to register new services in Unity's `IoCConfig.Configure`. Both scorers read these as debt proposals,
+  not registration instructions; one noted a strictly literal reading of WRONG would count run 21's.
+- Actions taken, as fixed: none (no PARALLEL, no WRONG, no repeated ALARM, no skill without a step beyond its line).
+- Not shown: Copilot (report #6's host), other models, a .NET Framework host, an undocumented convention, a `register-service`
+  arm, a real consumer repository.
