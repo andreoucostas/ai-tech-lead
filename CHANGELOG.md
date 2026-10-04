@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.93.0 — Unreleased
+## 0.93.0 — 2026-10-04
 
 B-326 (pre-registered at ac701446; `meta/eval-results.md`, `meta/host-certification.md`). On Copilot CLI 1.0.89 with
 claude-sonnet-5, `/review` and `/security-review` are handled by the CLI's own commands, which turn them into an instruction to

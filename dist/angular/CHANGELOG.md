@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.93.0 — Unreleased
+## 0.93.0 — 2026-10-04
 
 - **In Copilot CLI, `/review` and `/security-review` may run the CLI's own review instead of this framework's.** Copilot CLI has
   built-in commands with those names. In our test on Copilot CLI 1.0.89, run with the .NET distribution's copies of these files, the CLI turned either command into an instruction to use

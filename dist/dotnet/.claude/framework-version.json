@@ -1,6 +1,6 @@
 {
   "template": "dotnet",
-  "version": "0.92.0",
-  "applied": "2026-10-02",
+  "version": "0.93.0",
+  "applied": "2026-10-04",
   "_comment": "Machine-readable framework version stamp; the installer overwrites it on every install and update. The protected AGENTS.md header repeats version and applied: copy them there after an update (docs/upgrade-checklist.md step 8), or scripts/template-checks.ps1 reports version-stamp drift."
 }
