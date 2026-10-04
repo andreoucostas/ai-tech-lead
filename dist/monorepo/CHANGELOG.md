@@ -14,6 +14,18 @@
   framework's gate. To run this framework's version there, ask for it by name, for example *"Run the security-review skill from
   this repository on my staged changes."*, which reached this framework's file in 6 of 6 runs. Claude Code is unaffected: there the
   project's commands replace its built-ins.
+
+- **`/bootstrap` now looks for minimal APIs, Hangfire or Quartz.NET jobs and OpenTelemetry on the
+  .NET side, and zoneless change detection and `@defer` blocks on the Angular side.** The .NET
+  passes ask whether your endpoints are controllers or minimal APIs, whether background work runs in
+  hosted services or as Hangfire or Quartz.NET jobs, and whether OpenTelemetry sits beside your
+  logging; the Angular component-design pass checks whether your app is zoneless
+  (`provideZonelessChangeDetection`, or Angular 21 or later without `provideZoneChangeDetection`),
+  whether `angular.json` still lists `zone.js` in `polyfills`, and where your templates use `@defer`.
+  Like every pass, these are told to record only what your code shows. An update does not rewrite
+  your `AGENTS.md`: run `/rebootstrap full` to re-analyse with these checks. We have not yet watched
+  a `/bootstrap` run on a repository that uses them, so check what it writes about them.
+
 ## 0.92.0 — 2026-10-02
 
 - **The framework no longer ships `add-endpoint`, `add-entity`, `register-service`, `add-component`,

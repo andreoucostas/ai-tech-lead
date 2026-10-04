@@ -55,7 +55,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - Project layout — count, types, responsibilities
 - Layering — API/domain/application/infrastructure/shared
 - Dependency direction — inward-only correctness
-- Entry points — controllers, hosted services, middleware pipeline
+- Entry points — controllers (`[ApiController]`, `MapControllers`) versus minimal APIs (`MapGet`/`MapPost`/`MapGroup`), hosted services (`IHostedService`/`BackgroundService`) beside Hangfire (`AddHangfire`, `BackgroundJob`, `RecurringJob`) or Quartz.NET (`AddQuartz`, `IJob`) jobs, middleware pipeline
 - Configuration — appsettings, options pattern, environment splits
 
 #### A2: Domain & Data Access
@@ -97,7 +97,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - Async hygiene — sync-over-async, `async void`, missing `CancellationToken`
 - Null handling — NRT enabled, consistency
 - Exception handling patterns
-- Logging — structured, levels, sensitive data
+- Logging — structured, levels, sensitive data; OpenTelemetry tracing, metrics or log export (`AddOpenTelemetry`, `WithTracing`, `WithMetrics`, `UseOtlpExporter`/`AddOtlpExporter`) beside the `ILogger` provider
 - NuGet — outdated/deprecated/redundant
 - .NET version currency
 
@@ -143,7 +143,7 @@ If signals found, identify and report:
 - `@Input`/`@Output` patterns — anti-patterns
 - Forms: reactive or template-driven (or both); where validators live; whether any component is a custom form control, and how it participates (`NG_VALUE_ACCESSOR` provider vs injected `NgControl`)
 - Lifecycle hook misuse
-- Signals adoption (Angular 16+)
+- Signals adoption (Angular 16+); zoneless change detection (`provideZonelessChangeDetection`, earlier `provideExperimentalZonelessChangeDetection`; Angular 21+ is zoneless unless `provideZoneChangeDetection` is called) and whether `angular.json` still lists `zone.js` in `polyfills`; `@defer` blocks and their triggers
 
 #### A4: RxJS Hygiene
 - Subscription cleanup pattern — takeUntil / takeUntilDestroyed / async pipe / DestroyRef

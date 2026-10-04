@@ -33,6 +33,22 @@ agent's own security pass on Copilot CLI is B-348 (measure first, WSD-107). The 
 carries one consumer bullet, because it changes what a Copilot CLI user does and discloses that `/review` and `/security-review`
 started there may not have been this framework's gate. WSD-095's index line is now bounded by host. 17 premium requests.
 Always-loaded context unchanged.
+
+`/bootstrap`'s analysis checklists now name current stack choices (B-327). The .NET A1 "Entry
+points" line asks controllers (`[ApiController]`, `MapControllers`) versus minimal APIs (`MapGet`,
+`MapPost`, `MapGroup`), which learn.microsoft.com's ASP.NET Core "APIs overview" recommends for new
+projects, and hosted services beside Hangfire (`AddHangfire`, `BackgroundJob`, `RecurringJob`) or
+Quartz.NET (`AddQuartz`, `IJob`) jobs; the A6 "Logging" line adds OpenTelemetry (`AddOpenTelemetry`,
+`WithTracing`, `WithMetrics`, `UseOtlpExporter`/`AddOtlpExporter`). The Angular A3 "Signals adoption"
+line adds zoneless change detection (`provideZonelessChangeDetection`, stable since v20.2 per
+angular.dev, named `provideExperimentalZonelessChangeDetection` before the 20.0.0 rename; angular.dev:
+the default from v21 unless `provideZoneChangeDetection` overrides it), whether `angular.json` still
+lists `zone.js` in `polyfills`, and `@defer` blocks. The monorepo dist gets the same three lines.
+`/rebootstrap` inherits them because its Phase 1 performs the current `/bootstrap` passes; its own
+per-pass summaries are unchanged. API names were checked against vendor docs on 2026-10-02; no
+`/bootstrap` run has exercised the new cues. On demand only: `bootstrap.md` body +399 (dotnet), +287
+(angular), +686 (monorepo) chars; `static.claude` unchanged.
+
 ## 0.92.0 — 2026-10-02
 
 Value-study text fixes. The Common Tasks skills-list snippets drop their technology asides (the DTO →

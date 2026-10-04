@@ -13,6 +13,15 @@
   framework's gate. To run this framework's version there, ask for it by name, for example *"Run the security-review skill from
   this repository on my staged changes."*, which reached this framework's file in 6 of 6 runs. Claude Code is unaffected: there the
   project's commands replace its built-ins.
+
+- **`/bootstrap` now looks for zoneless change detection and `@defer` blocks.** Its component-design
+  pass checks whether your app is zoneless (`provideZonelessChangeDetection`, or Angular 21 or later
+  without `provideZoneChangeDetection`), whether `angular.json` still lists `zone.js` in `polyfills`,
+  and where your templates use `@defer`. Like every pass, it is told to record only what your code
+  shows. An update does not rewrite your `AGENTS.md`: run `/rebootstrap full` to re-analyse with
+  these checks. We have not yet watched a `/bootstrap` run on a repository that uses them, so check
+  what it writes about them.
+
 ## 0.92.0 — 2026-10-02
 
 - **The framework no longer ships `add-component`, `add-service`, `add-lazy-route`, or

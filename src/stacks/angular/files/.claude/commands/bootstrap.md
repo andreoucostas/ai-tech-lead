@@ -65,7 +65,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - `@Input`/`@Output` patterns — anti-patterns
 - Forms: reactive or template-driven (or both); where validators live; whether any component is a custom form control, and how it participates (`NG_VALUE_ACCESSOR` provider vs injected `NgControl`)
 - Lifecycle hook misuse
-- Signals adoption (Angular 16+)
+- Signals adoption (Angular 16+); zoneless change detection (`provideZonelessChangeDetection`, earlier `provideExperimentalZonelessChangeDetection`; Angular 21+ is zoneless unless `provideZoneChangeDetection` is called) and whether `angular.json` still lists `zone.js` in `polyfills`; `@defer` blocks and their triggers
 
 ### A4: RxJS Hygiene
 - Subscription cleanup pattern — takeUntil / takeUntilDestroyed / async pipe / DestroyRef

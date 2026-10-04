@@ -12985,3 +12985,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   `/security-review` and `/review` (typed) went to the CLI's own commands, whose prompt sends the model to the built-in agents; the
   model ran the project's file in 4 of 5 treatment runs; `/debt` (typed) ran its file directly, `-i /debt` was unknown; asked by name
   3/3 each. The READMEs say so and how to reach this framework's version. The agent's own security pass is B-348.
+- **B-327** — DONE **2026-10-03** for 0.93.0: `/bootstrap`'s .NET A1 "Entry points" and A6 "Logging" lines and the Angular A3
+  "Signals adoption" line (dotnet, angular, monorepo) now name minimal APIs, Hangfire or Quartz.NET, OpenTelemetry, zoneless change
+  detection (with `angular.json` `polyfills`) and `@defer`; API names checked against vendor docs, text-only, unobserved on any run.

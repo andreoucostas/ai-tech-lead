@@ -45,7 +45,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - Project layout — count, types, responsibilities
 - Layering — API/domain/application/infrastructure/shared
 - Dependency direction — inward-only correctness
-- Entry points — controllers, hosted services, middleware pipeline
+- Entry points — controllers (`[ApiController]`, `MapControllers`) versus minimal APIs (`MapGet`/`MapPost`/`MapGroup`), hosted services (`IHostedService`/`BackgroundService`) beside Hangfire (`AddHangfire`, `BackgroundJob`, `RecurringJob`) or Quartz.NET (`AddQuartz`, `IJob`) jobs, middleware pipeline
 - Configuration — appsettings, options pattern, environment splits
 
 ### A2: Domain & Data Access
@@ -87,7 +87,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - Async hygiene — sync-over-async, `async void`, missing `CancellationToken`
 - Null handling — NRT enabled, consistency
 - Exception handling patterns
-- Logging — structured, levels, sensitive data
+- Logging — structured, levels, sensitive data; OpenTelemetry tracing, metrics or log export (`AddOpenTelemetry`, `WithTracing`, `WithMetrics`, `UseOtlpExporter`/`AddOtlpExporter`) beside the `ILogger` provider
 - NuGet — outdated/deprecated/redundant
 - .NET version currency
 
