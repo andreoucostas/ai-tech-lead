@@ -3373,7 +3373,7 @@ Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=T
 - **PASS angular-feature-placement** (model=opus) — agentExit=0 timedOut=False costUsd=0.4038114 tokensIn=10 tokensOut=4884; ccVersion=2.1.281 initModel=claude-opus-5-5 boltOn=False subclass=False addedMembers= newInjectable=True featureInComponent=True featureInOtherInjectable=True injectsUserService=True usedSkill=add-service:False
 
 
-## B-331 results — 2026-10-03 (hand-written; K's rows above are the runner's)
+## B-331 results — K 2026-10-03, U and B 2026-10-04 (hand-written; K's rows above are the runner's)
 
 As pre-registered at 93cbe655: v0.92.0 from the clone at ba80225b (grader, prompt and Angular fixture as at eed1e4fd); fixture sha
 matches (8ffba365f4ab); $16.56 in total (K 1.41, U 1.54, B 13.62), under the $28 stop; scorers agreed on every scored value, so no
@@ -3411,7 +3411,7 @@ referee ran. U's first repository is named `billing-svc-111213` (an argument-bin
 - Not shown: Copilot (report #6's host), other models, a .NET Framework host, an undocumented convention, a `register-service`
   arm, a real consumer repository.
 
-## B-337 pre-registration amendment — /bootstrap and /adopt typed after start-up (2026-10-03, before any B-337 run)
+## B-337 pre-registration amendment — /bootstrap and /adopt typed after start-up (2026-10-04, before any B-337 run)
 
 Made before any B-337 leg ran, after B-326's cells in this batch (pre-registered at ac701446) observed on Copilot CLI 1.0.89 that a
 project command passed at start-up with `-i` is not dispatched: `-i /debt` printed "Unknown command: /debt" twice, with no model
@@ -3430,7 +3430,7 @@ from an artifact of `-i`, not from what a developer typing the command gets.
 - Everything else stands as frozen: D and C, Leg 2's `copilot -p --resume` continuations and answers, the 15-premium-request
   stop, and two scorers.
 
-## B-326 results — 2026-10-03 (hand-written; as pre-registered at ac701446)
+## B-326 results — cells 2026-10-03 to 2026-10-04, every reading that stands 2026-10-04 except Y-DB (hand-written; as pre-registered at ac701446)
 
 Copilot CLI 1.0.89 (`copilotVersion` in every session), claude-sonnet-5, `COPILOT_ALLOW_ALL=true`, `--no-auto-update`,
 `--no-ask-user`, `--log-level all`; fixtures built from `dist/dotnet` at ac701446 under `<scratch>\b326`. Evidence (events, debug
@@ -3501,9 +3501,14 @@ tier. The whole scored protocol took 3.2 minutes.
 - Real-toolchain piping of the built dist hooks on the 500-component workspace (pwsh and powershell.exe, angular and monorepo):
   Claude payload EXIT=2 with `## ngc --noEmit failed -- fix before continuing:` naming the member and the template, no ANSI; Copilot
   payload EXIT=0 with `additionalContext`; after restoring the template EXIT=0 and silent; 7.4–11.6 s per run.
+- Pre-push review, 2026-10-04: with two NG8107 warnings planted after the error, ngc wrote 21 non-empty stderr lines, error first,
+  and the last-20 tail dropped the error line. The runner now keeps the first 20 stderr lines when stdout is empty; the template
+  case gained two warning blocks (red on the unfixed hooks); the piping above, repeated with the warnings, carried the error line on
+  pwsh and powershell.exe, angular and monorepo, Claude and Copilot payloads.
 - Not shown: a cold disk cache, other hardware, real consumer workspaces (SCSS, i18n, Nx libraries, component libraries), other
   Angular versions, model consumption of the new message.
-## B-337 results — 2026-10-03 (hand-written; no runner rows)
+
+## B-337 results — 2026-10-04 (hand-written; no runner rows)
 
 As pre-registered at 1ae8644d and amended before any run at 251ee332 (typed after start-up in a pseudo-console). Subject: `dist/dotnet`
 from tag v0.92.0 installed greenfield (`<temp>\b337\orders`) and brownfield (`<temp>\b337\orders-adopt`) into fixture v2.

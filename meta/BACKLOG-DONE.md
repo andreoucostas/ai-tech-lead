@@ -12977,25 +12977,25 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   result in 0/6 against 0/6 for v0.92.0 as shipped, short of the pre-registered bar (5/6 and +4; 9/12 and +6 after the extension); it
   moved the writer search from 1/6 to 5/6 runs, aimed at the fact's columns rather than `ctl.LoadRun`; nothing ships ($4.56). Reopen
   on a field report of a result built on data nothing writes, or a wording measured to beat none.
-- **B-331** — DONE **2026-10-03** (measurement, nothing shipped; results `meta/eval-results.md`, pre-registered at 93cbe655): on v0.92.0
+- **B-331** — DONE **2026-10-04** (measurement, nothing shipped; results `meta/eval-results.md`, pre-registered at 93cbe655): on v0.92.0
   without the seven recipe skills, `angular-feature-placement` passed 3/3 (UNCHANGED); on a three-project Unity fixture a new
   service landed in an `IoCConfig.Configure` in 7 of 7 follow-ups and on `IServiceCollection` in 0; `/bootstrap` (n=2) captured the
   registration as a drafted project skill both times, while each run's `TECH_DEBT.md` also proposed migrating to MS.DI ($16.56).
-- **B-326** — DONE **2026-10-03** for 0.93.0 (results `meta/eval-results.md`, pre-registered at ac701446): on Copilot CLI 1.0.89
+- **B-326** — DONE **2026-10-04** for 0.93.0 (results `meta/eval-results.md`, pre-registered at ac701446): on Copilot CLI 1.0.89
   `/security-review` and `/review` (typed) went to the CLI's own commands, whose prompt sends the model to the built-in agents; the
   model ran the project's file in 4 of 5 treatment runs; `/debt` (typed) ran its file directly, `-i /debt` was unknown; asked by name
   3/3 each. The READMEs say so and how to reach this framework's version. The agent's own security pass is B-348.
-- **B-327** — DONE **2026-10-03** for 0.93.0: `/bootstrap`'s .NET A1 "Entry points" and A6 "Logging" lines and the Angular A3
+- **B-327** — DONE **2026-10-04** for 0.93.0: `/bootstrap`'s .NET A1 "Entry points" and A6 "Logging" lines and the Angular A3
   "Signals adoption" line (dotnet, angular, monorepo) now name minimal APIs, Hangfire or Quartz.NET, OpenTelemetry, zoneless change
   detection (with `angular.json` `polyfills`) and `@defer`; API names checked against vendor docs, text-only, unobserved on any run.
-- **B-328** — DONE **2026-10-03** for 0.93.0: each stack README's "Running on Bitbucket Data Center" and `docs/ci-integration.md` show
+- **B-328** — DONE **2026-10-04** for 0.93.0: each stack README's "Running on Bitbucket Data Center" and `docs/ci-integration.md` show
   `git fetch origin`, `git switch --detach origin/<source>`, `/review origin/<target>...HEAD` in Claude Code, and a fork remote for fork PRs.
   `refs/pull-requests/<id>/from` not shipped: unconfirmed on an instance. Pre-check passed on scratch bare repos.
-- **B-329** — DONE **2026-10-03** for 0.93.0 (results `meta/eval-results.md`, pre-registered at 4dd08b09): an Angular component template (`.html`) write under `src/` runs `ngc --noEmit` in angular and monorepo `post-write`, with its own throttle stamp; full `tsc` exited 0 on the planted broken binding, and `ngc` took 7.14 s warm and 6.79 s first at 500 generated components on an i5-1335U (FITS). $0.
-- **B-337** — DONE **2026-10-03** for 0.93.0 (results `meta/eval-results.md`, pre-registered at 1ae8644d, amended at 251ee332; `meta/host-certification.md`): typed in interactive Copilot CLI 1.0.89, `/bootstrap` ran the shipped command to a passing docs-sync-check on a scratch dotnet install and `/adopt` dispatched (3 premium requests); the installer handoff and the READMEs now name interactive Copilot CLI beside Claude Code; VS Code Copilot Chat untested (no seat).
-- **B-350** — CLOSED by decision **2026-10-03** (WSD-106), never filed. In B-337, Copilot CLI 1.0.89 passed the expanded `/bootstrap` and `/adopt`
+- **B-329** — DONE **2026-10-04** for 0.93.0 (results `meta/eval-results.md`, pre-registered at 4dd08b09): an Angular component template (`.html`) write under `src/` runs `ngc --noEmit` in angular and monorepo `post-write`, with its own throttle stamp; full `tsc` exited 0 on the planted broken binding, and `ngc` took 7.14 s warm and 6.79 s first at 500 generated components on an i5-1335U (FITS). $0.
+- **B-337** — DONE **2026-10-04** for 0.93.0 (results `meta/eval-results.md`, pre-registered at 1ae8644d, amended at 251ee332; `meta/host-certification.md`): typed in interactive Copilot CLI 1.0.89, `/bootstrap` ran the shipped command to a passing docs-sync-check on a scratch dotnet install and `/adopt` dispatched (3 premium requests); the installer handoff and the READMEs now name interactive Copilot CLI beside Claude Code; VS Code Copilot Chat untested (no seat).
+- **B-350** — CLOSED by decision **2026-10-04** (WSD-106), never filed. In B-337, Copilot CLI 1.0.89 passed the expanded `/bootstrap` and `/adopt`
   text to the `userPromptSubmitted` hook, so `route-prompt` classified both as "review" and appended the security overlay; the model set it
   aside both times. Reopen on a field report of a typed command derailed by the routed rails.
-- **B-351** — CLOSED by decision **2026-10-03** (WSD-106), never filed. Copilot CLI 1.0.89 substitutes every literal `$ARGUMENTS`, prose included:
+- **B-351** — CLOSED by decision **2026-10-04** (WSD-106), never filed. Copilot CLI 1.0.89 substitutes every literal `$ARGUMENTS`, prose included:
   `adopt.md`'s "when `$ARGUMENTS` contains a `--headless` directive" reached the model as "when `` contains …" (B-337 Leg 3). Reopen on a
   field report of headless adoption misread on Copilot CLI.

@@ -11,8 +11,8 @@
   its built-in review agent; with this framework's `.claude/commands/review.md` and `security-review.md` present, the model ran this
   framework's file in 4 of 5 runs and the CLI's agent in 1, so a review started that way in Copilot CLI may not have been this
   framework's gate. To run this framework's version there, ask for it by name, for example *"Run the security-review skill from
-  this repository on my staged changes."*, which reached this framework's file in 6 of 6 runs. Claude Code is unaffected: there the
-  project's commands replace its built-ins.
+  this repository on my staged changes."*, which reached this framework's file in 3 of 3 runs for each command. In Claude Code,
+  the project's commands replaced its built-ins when we tested (Claude Code 2.1.281, non-interactive).
 
 - **`/bootstrap` now looks for minimal APIs, Hangfire or Quartz.NET jobs, and OpenTelemetry.** Its
   architecture pass asks whether your endpoints are controllers or minimal APIs and whether

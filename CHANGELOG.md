@@ -73,8 +73,9 @@ generated components `ngc` took 7.14 s warm (median of 5) and 6.79 s first on an
 1.86/2.51 s); at 1,500 components it took 14.31/16.45 s. The template check keeps its own 5 s throttle
 and 300 s back-off stamp, so an over-budget template check cannot silence the `.ts` type-check. It is
 skipped when the nearest `node_modules` holds no `@angular/compiler-cli`, where npx's own error would
-otherwise read as a broken template. `ngc` prints colour-coded diagnostics on stderr only, so the
-bounded runner now keeps 20 stderr lines when stdout is empty and strips ANSI codes. The monorepo
+otherwise read as a broken template. `ngc` prints colour-coded diagnostics on stderr only, in source order,
+so the bounded runner keeps the first 20 stderr lines when stdout is empty and strips ANSI codes: a
+real report of one error and two warnings ran to 21 lines, and a last-20 tail lost the error line. The monorepo
 Angular branch matches. `framework-doctor`'s build-feedback canary and `docs/enforcement-surfaces.md`
 accept `## ngc --noEmit failed` as a pass, and the caveat says a `.ts` edit that breaks a template, or
 an inline template, is still checked by `tsc` alone. The READMEs and the angular and monorepo
@@ -84,7 +85,7 @@ both surfaces (red first on pwsh, powershell.exe and CP437), and no check withou
 
 B-337. The installer's next steps (greenfield and brownfield) and each README's step 3 and For-AI-agents handoff now name
 interactive Copilot CLI beside Claude Code for `/bootstrap` and `/adopt`. Both field-report teams use VS Code Copilot or Copilot
-CLI (`meta/field-reports.md` #6, #8), and the text sent them to Claude Code. Observed 2026-10-03 on Copilot CLI 1.0.89,
+CLI (`meta/field-reports.md` #6, #8), and the text sent them to Claude Code. Observed 2026-10-04 on Copilot CLI 1.0.89,
 claude-sonnet-5 (`meta/host-certification.md`; pre-registered at 1ae8644d, amended before any run at 251ee332 to type the command
 after start-up, because B-326 found `-i` reports a project command as unknown): typed in a pseudo-console on a scratch v0.92.0
 dotnet install of the B-346 fixture, `/bootstrap` dispatched to `.claude/commands/bootstrap.md` (`skill.invoked`, trigger

@@ -162,7 +162,8 @@ try {
         }
     }
 
-    # A component template write runs ngc --noEmit. ngc reports only on stderr, in color, error line first.
+    # A component template write runs ngc --noEmit. ngc reports only on stderr, in color, in source order;
+    # extended-diagnostic warnings after the error push the stderr past 20 lines.
     if ($hookText -notmatch 'tsc --noEmit') {
         Skip 'a template write with a failing template check is reported on both surfaces' 'this post-write carries no Angular branch' -Invariant
         Skip 'a template write outside an Angular workspace never runs a check' 'this post-write carries no Angular branch' -Invariant
@@ -178,9 +179,16 @@ try {
                 '@echo   <E>[96msrc/app/probe.component.ts<E>[0m:<E>[93m4<E>[0m:<E>[93m16<E>[0m 1>&2',
                 '@echo     <E>[7m4<E>[0m   templateUrl: ''./probe.component.html'', 1>&2',
                 '@echo     <E>[7m <E>[0m <E>[96m               ~~~~~~~~~~~~~~~~~~~~~~~~<E>[0m 1>&2',
-                '@echo     Error occurs in the template of component ProbeComponent. 1>&2',
-                '@exit /b 1'
-            ) -join "`r`n").Replace('<E>', [string][char]27) + "`r`n"
+                '@echo     Error occurs in the template of component ProbeComponent. 1>&2'
+            ) + @(foreach ($line in 2, 3) { @(
+                "@echo <E>[96msrc/app/probe.component.html<E>[0m:<E>[93m$line<E>[0m:<E>[93m10<E>[0m - <E>[93mwarning<E>[0m<E>[90m NG8107: <E>[0mThe left side of this optional chain operation does not include 'null' or 'undefined' in its type. 1>&2",
+                "@echo <E>[7m$line<E>[0m {{ title()?.length }} 1>&2",
+                '@echo <E>[7m <E>[0m <E>[93m          ~~~~~~<E>[0m 1>&2',
+                '@echo   <E>[96msrc/app/probe.component.ts<E>[0m:<E>[93m4<E>[0m:<E>[93m16<E>[0m 1>&2',
+                '@echo     <E>[7m4<E>[0m   templateUrl: ''./probe.component.html'', 1>&2',
+                '@echo     <E>[7m <E>[0m <E>[96m               ~~~~~~~~~~~~~~~~~~~~~~~~<E>[0m 1>&2',
+                '@echo     Warning occurs in the template of component ProbeComponent. 1>&2'
+            ) }) + @('@exit /b 1') -join "`r`n").Replace('<E>', [string][char]27) + "`r`n"
             $claudePayload = Reset-BuildWorld $templateWorld $shim
             $copilotPayload = '{"toolName":"create","toolArgs":{"path":"./src/app/probe.component.html","file_text":"{{ b329Missing() }}"}}'
             $argsFile = Join-Path $tmp 'npx-args'

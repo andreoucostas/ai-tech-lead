@@ -54,11 +54,12 @@ function Invoke-BoundedTool([string]$Name, [string[]]$Arguments, [string]$WorkDi
         return $null
     }
     # dotnet build and tsc report their errors on stdout: keep that tail, then a short stderr tail. ngc
-    # reports only on stderr, in color: keep a full stderr tail when stdout is empty, and strip the color codes.
+    # reports only on stderr, in color, in source order with warnings after an error: keep the stderr
+    # head when stdout is empty, and strip the color codes.
     $color = [string][char]27 + '\[[0-9;]*m'
     $outLines = @(($stdout.Result -replace $color, '') -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last 20)
-    $errTail = if ($outLines.Count -eq 0) { 20 } else { 5 }
-    $errLines = @(($stderr.Result -replace $color, '') -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last $errTail)
+    $errLines = @(($stderr.Result -replace $color, '') -split "\r?\n" | Where-Object { $_ -ne '' })
+    $errLines = @(if ($outLines.Count -eq 0) { $errLines | Select-Object -First 20 } else { $errLines | Select-Object -Last 5 })
     return [pscustomobject]@{ Code = $proc.ExitCode; Lines = @($outLines + $errLines) }
 }
 
