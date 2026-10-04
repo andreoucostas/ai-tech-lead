@@ -3410,3 +3410,22 @@ referee ran. U's first repository is named `billing-svc-111213` (an argument-bin
 - Actions taken, as fixed: none (no PARALLEL, no WRONG, no repeated ALARM, no skill without a step beyond its line).
 - Not shown: Copilot (report #6's host), other models, a .NET Framework host, an undocumented convention, a `register-service`
   arm, a real consumer repository.
+
+## B-337 pre-registration amendment — /bootstrap and /adopt typed after start-up (2026-10-03, before any B-337 run)
+
+Made before any B-337 leg ran, after B-326's cells in this batch (pre-registered at ac701446) observed on Copilot CLI 1.0.89 that a
+project command passed at start-up with `-i` is not dispatched: `-i /debt` printed "Unknown command: /debt" twice, with no model
+turn, while `/debt` typed into the input line once the UI was ready ran `.claude/commands/debt.md` through the CLI itself
+(`skill.invoked` trigger "user-invoked"). Leg 1 and Leg 3 as frozen (`-i "/bootstrap"`, `-i "/adopt"`) would therefore read NONE
+from an artifact of `-i`, not from what a developer typing the command gets.
+
+- Leg 1 and Leg 3: `copilot` starts with the frozen flags and no `-i`; once its UI is ready the command is typed into the input line
+  and Enter pressed as a separate keystroke, only after the typed text is echoed. Keystrokes come from the orchestrator through the
+  pseudo-console (the mechanism of B-326's typed cells). A desktop-app install prompt, if shown, is answered N; no keystroke is
+  sent while any install text is on screen. Each leg ends with a typed `/exit`.
+- The TTY is a ConPTY pseudo-console the orchestrator opens: the desktop Terminal panel could not start a shell in this session
+  (its shell-integration script did not load).
+- Leg 1's first wait is read from the screen (no new output for 3 minutes with the input prompt shown), because 1.0.89 writes
+  `events.jsonl` when the session ends (B-326's cells); the D and C classes are still read from `events.jsonl` after `/exit`.
+- Everything else stands as frozen: D and C, Leg 2's `copilot -p --resume` continuations and answers, the 15-premium-request
+  stop, and two scorers.
