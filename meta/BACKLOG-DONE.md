@@ -12991,3 +12991,4 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-328** — DONE **2026-10-03** for 0.93.0: each stack README's "Running on Bitbucket Data Center" and `docs/ci-integration.md` show
   `git fetch origin`, `git switch --detach origin/<source>`, `/review origin/<target>...HEAD` in Claude Code, and a fork remote for fork PRs.
   `refs/pull-requests/<id>/from` not shipped: unconfirmed on an instance. Pre-check passed on scratch bare repos.
+- **B-329** — DONE **2026-10-03** for 0.93.0 (results `meta/eval-results.md`, pre-registered at 4dd08b09): an Angular component template (`.html`) write under `src/` runs `ngc --noEmit` in angular and monorepo `post-write`, with its own throttle stamp; full `tsc` exited 0 on the planted broken binding, and `ngc` took 7.14 s warm and 6.79 s first at 500 generated components on an i5-1335U (FITS). $0.

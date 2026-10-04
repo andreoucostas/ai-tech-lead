@@ -1,9 +1,10 @@
 ﻿# PostToolUse hook -- incremental tsc --noEmit after a write/edit on build-relevant files
-# (.ts sources under src/ + tsconfig*.json anywhere).
+# (.ts sources under src/ + tsconfig*.json), and ngc --noEmit after a write to an Angular
+# component template (.html under src/, not index.html), which tsc never reads.
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  -- tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     -- toolName  in {edit,create}; path at toolArgs.filePath
-# Throttled to one type-check per 5 seconds to avoid burst-write duplication.
+# Throttled to one run of each check per 5 seconds (separate stamps) to avoid burst-write duplication.
 
 $ErrorActionPreference = 'SilentlyContinue'
 
@@ -50,9 +51,12 @@ function Invoke-BoundedTool([string]$Name, [string[]]$Arguments, [string]$WorkDi
         & taskkill.exe /T /F /PID $proc.Id *> $null
         return $null
     }
-    # The compiler reports its errors on stdout; keep its tail, then a short stderr tail.
-    $outLines = @($stdout.Result -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last 20)
-    $errLines = @($stderr.Result -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last 5)
+    # tsc reports its errors on stdout: keep that tail, then a short stderr tail. ngc reports only on
+    # stderr, in color: keep a full stderr tail when stdout is empty, and strip the color codes.
+    $color = [string][char]27 + '\[[0-9;]*m'
+    $outLines = @(($stdout.Result -replace $color, '') -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last 20)
+    $errTail = if ($outLines.Count -eq 0) { 20 } else { 5 }
+    $errLines = @(($stderr.Result -replace $color, '') -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last $errTail)
     return [pscustomobject]@{ Code = $proc.ExitCode; Lines = @($outLines + $errLines) }
 }
 
@@ -105,14 +109,17 @@ if ([string]::IsNullOrEmpty($filePath) -and $env:CLAUDE_FILE_PATH) {
 }
 
 if ([string]::IsNullOrEmpty($filePath)) { exit 0 }
-# Trigger on what `tsc --noEmit` can actually validate: .ts sources under src/, plus any
-# tsconfig*.json (it drives the type-check and typically lives OUTSIDE src/, so it bypasses the
-# src/ gate). Deliberately NOT angular.json/package.json: tsc cannot validate those -- a trigger
-# there would run a check that cannot catch the breakage.
+# Trigger on what a check can actually validate: .ts sources under src/ and any tsconfig*.json
+# (tsc --noEmit; a tsconfig typically lives OUTSIDE src/, so it bypasses the src/ gate), and
+# component templates (.html) under src/ (ngc --noEmit, since tsc never reads a template).
+# Not src/index.html (the host page, which ngc never reads), angular.json or package.json:
+# neither check can catch their breakage.
 $normalized = $filePath -replace '\\', '/'
+$template = $false
 if ($normalized -notmatch '(^|/)tsconfig[^/]*\.json$') {
-    if ($filePath -notlike '*.ts') { exit 0 }
-    # Limit the hook's scope to .ts files under src/.
+    if ($filePath -like '*.html' -and $normalized -notmatch '(^|/)index\.html$') { $template = $true }
+    elseif ($filePath -notlike '*.ts') { exit 0 }
+    # Limit the hook's scope to sources under src/.
     if ($normalized -notmatch '/src/') { exit 0 }
 }
 
@@ -150,6 +157,10 @@ while ($mp) {
     $mp = $parent
 }
 if (-not $hasModules) { exit 0 }
+# A template check needs the Angular compiler. Without @angular/compiler-cli, `npx --no-install ngc`
+# (npm turns --no-install into --yes=false) exits non-zero with npx's own error, which would be
+# reported as a broken template on every write; skip the check instead.
+if ($template -and -not (Test-Path -LiteralPath (Join-Path $mp 'node_modules\@angular\compiler-cli\package.json'))) { exit 0 }
 
 # Per-workspace state (absolute, under the repo-root .state) so multiple apps in a monorepo
 # neither clobber each other's incremental tsbuildinfo nor cross-suppress each other's throttle.
@@ -158,7 +169,9 @@ $null = New-Item -ItemType Directory -Path $repoState -Force
 $wsRel = try { [string](Resolve-Path -LiteralPath $workspace -Relative -ErrorAction Stop) } catch { $workspace }
 $key = ($wsRel -replace '[^A-Za-z0-9]', '_') -replace '_+$', ''
 if ([string]::IsNullOrEmpty($key)) { $key = 'root' }
-$stamp = Join-Path $repoState "last-build-$key"
+# The template check keeps its own throttle and back-off stamp, so one that cannot finish inside
+# the budget never silences the .ts type-check for five minutes.
+$stamp = if ($template) { Join-Path $repoState "last-template-$key" } else { Join-Path $repoState "last-build-$key" }
 $buildInfo = Join-Path $repoState "tsbuildinfo-$key"
 
 # Throttle: skip if a check was started within the last 5 seconds.
@@ -181,7 +194,12 @@ Set-Content -Path $stamp -Value $now -Encoding ASCII
 # Only surface output on failure — emitting type-check output every successful write wastes context tokens.
 # Run from the workspace dir (npx resolves tsc by walking up to the monorepo node_modules);
 # the tsBuildInfoFile is an absolute repo-root path so it is unaffected by the working directory.
-$run = Invoke-BoundedTool 'npx' @('--no-install', 'tsc', '--noEmit', '-p', $project, '--incremental', '--tsBuildInfoFile', $buildInfo) $workspace
+# ngc keeps no state between runs, so each template check compiles the whole project.
+if ($template) {
+    $run = Invoke-BoundedTool 'npx' @('--no-install', 'ngc', '-p', $project, '--noEmit') $workspace
+} else {
+    $run = Invoke-BoundedTool 'npx' @('--no-install', 'tsc', '--noEmit', '-p', $project, '--incremental', '--tsBuildInfoFile', $buildInfo) $workspace
+}
 if ($null -eq $run) {
     # Not verified (budget exceeded or no launch): back off for 300 s so a type-check that cannot
     # finish inside the budget does not cost the agent another full budget on the next write.
@@ -193,7 +211,8 @@ if ($run.Code -eq 0) { exit 0 }
 # Clear the throttle stamp so the next write re-checks instead of skipping a known-broken type-check.
 Remove-Item $stamp -Force
 
-$msg = "## tsc --noEmit failed -- fix before continuing:`n" + ($run.Lines -join "`n")
+$header = if ($template) { '## ngc --noEmit failed' } else { '## tsc --noEmit failed' }
+$msg = "$header -- fix before continuing:`n" + ($run.Lines -join "`n")
 
 # Surface per surface, discriminating by tool-name casing (mirror guard.ps1). Claude Code is the
 # only surface consuming exit 2 + stderr; its tools are PascalCase Edit/Write -- and the ambiguous

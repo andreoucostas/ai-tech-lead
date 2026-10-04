@@ -32,6 +32,16 @@
   it left its target branch and lets `/review`'s verification run on that code. For a pull request
   from a fork, it adds the fork as a remote and fetches it first. An update refreshes the page.
 
+- **On the Angular side, saving a component template now gets build feedback.** When the post-write hook is live, writing an `.html` file under `src/`
+  (other than `index.html`) runs the Angular compiler's template type-check (`ngc --noEmit`, from your installed
+  `@angular/compiler-cli`, with your app's tsconfig). It reports a broken binding to the agent the way a `.ts` type error is
+  reported today. Before, template writes were not checked, because `tsc` does not read templates. The check writes no files, is
+  skipped when `@angular/compiler-cli` is not installed, and shares the 45-second budget (`ATL_POSTWRITE_BUDGET_SEC`). On our
+  500-component sample project it took about 7 seconds a write on a mid-range laptop. A check that runs past the budget is
+  stopped, reports nothing and waits five minutes, without pausing the `.ts` check. A `.ts` edit that breaks a template, or an
+  inline template, is still checked by `tsc` only. The framework doctor's build-feedback canary also passes on
+  `## ngc --noEmit failed` if you plant the error in a template. Nothing to do.
+
 ## 0.92.0 — 2026-10-02
 
 - **The framework no longer ships `add-endpoint`, `add-entity`, `register-service`, `add-component`,

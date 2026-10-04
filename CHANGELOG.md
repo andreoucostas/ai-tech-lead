@@ -65,6 +65,23 @@ by name" route, without its "staged changes" example (asking by name for a range
 Instructed context +607 chars per dist (`docs/ci-integration.md`); `static.claude` unchanged. The
 README is not installed, so only `docs/ci-integration.md` has a consumer note.
 
+B-329: Angular `post-write` type-checks component templates. A write to an `.html` file under `src/`
+other than `index.html` runs `npx --no-install ngc -p <tsconfig> --noEmit` from the workspace, since
+`tsc --noEmit` never reads a template. On the pre-registered fixture (`meta/eval-results.md`,
+pre-registered at 4dd08b09), full `tsc` exited 0 on a planted broken binding that `ngc` reported. At 500
+generated components `ngc` took 7.14 s warm (median of 5) and 6.79 s first on an i5-1335U (tsc control
+1.86/2.51 s); at 1,500 components it took 14.31/16.45 s. The template check keeps its own 5 s throttle
+and 300 s back-off stamp, so an over-budget template check cannot silence the `.ts` type-check. It is
+skipped when the nearest `node_modules` holds no `@angular/compiler-cli`, where npx's own error would
+otherwise read as a broken template. `ngc` prints colour-coded diagnostics on stderr only, so the
+bounded runner now keeps 20 stderr lines when stdout is empty and strips ANSI codes. The monorepo
+Angular branch matches. `framework-doctor`'s build-feedback canary and `docs/enforcement-surfaces.md`
+accept `## ngc --noEmit failed` as a pass, and the caveat says a `.ts` edit that breaks a template, or
+an inline template, is still checked by `tsc` alone. The READMEs and the angular and monorepo
+`docs/ARCHITECTURE.md` name the template trigger. New `PostWriteRouting` cases: the template report on
+both surfaces (red first on pwsh, powershell.exe and CP437), and no check without
+`@angular/compiler-cli`. The template world joins the throttle, budget and outer-shell cases.
+
 ## 0.92.0 — 2026-10-02
 
 Value-study text fixes. The Common Tasks skills-list snippets drop their technology asides (the DTO →

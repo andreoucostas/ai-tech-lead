@@ -3481,3 +3481,25 @@ logs, raw screen) per cell under `<scratch>\b326\evidence`; sessions under `~\.c
 - Premium requests: 17 (16 cells plus the diagnostic), under the stop of 22.
 - Not shown: VS Code Copilot Chat and `.github/prompts`, CLI versions other than 1.0.89, the agent's own security pass (B-348),
   adherence to the real command bodies.
+
+## B-329 results — 2026-10-03 (hand-written; no runner rows)
+
+As pre-registered at 4dd08b09 (generator sha256 a4e99cebbd8d… matches). Box on AC power (battery status 2), Defender real-time
+protection on, Balanced power scheme, nothing else running; node 24.12.0, npm 11.19.0; offline install of 68 cached packages per
+tier. The whole scored protocol took 3.2 minutes.
+
+| | ngc first | ngc warm median (min–max) | tsc first | tsc warm median (min–max) |
+|---|---|---|---|---|
+| 500 components | 6.79 s | 7.14 s (6.55–8.66) | 2.51 s | 1.86 s (1.85–1.93) |
+| 1,500 components | 16.45 s | 14.31 s (13.86–16.96) | 4.00 s | 2.60 s (2.59–2.68) |
+
+- M1 (N=500): with `{{ b329Missing() }}` planted as the first line of `f01-c03.component.html`, full `tsc` exited 0 without naming it
+  (2.37 s), and `ngc` exited 1 naming `b329Missing` and the template (6.47 s): PREMISE-HOLDS. ngc wrote 0 stdout lines and 7
+  non-empty stderr lines, with the error line 7th from the end (first), ANSI colour present.
+- M2: every clean `ngc` run in both tiers exited 0.
+- Reading: FITS (PREMISE-HOLDS; warm median 7.14 s <= 15.0 s; first 6.79 s <= 45 s). Shipped in angular and monorepo `post-write`.
+- Real-toolchain piping of the built dist hooks on the 500-component workspace (pwsh and powershell.exe, angular and monorepo):
+  Claude payload EXIT=2 with `## ngc --noEmit failed -- fix before continuing:` naming the member and the template, no ANSI; Copilot
+  payload EXIT=0 with `additionalContext`; after restoring the template EXIT=0 and silent; 7.4–11.6 s per run.
+- Not shown: a cold disk cache, other hardware, real consumer workspaces (SCSS, i18n, Nx libraries, component libraries), other
+  Angular versions, model consumption of the new message.

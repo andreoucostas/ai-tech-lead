@@ -1,7 +1,9 @@
 ﻿# PostToolUse hook -- monorepo variant: dispatches per extension (trigger filters of both
 # stacks). A write to .cs/.csproj/.sln/.props/.targets/.razor/.cshtml runs an incremental
 # `dotnet build` (60 s throttle); a write to a .ts source under src/ or any tsconfig*.json runs
-# `tsc --noEmit` (5 s throttle). Other files exit silently.
+# `tsc --noEmit` (5 s throttle), and a write to an Angular component template (.html under src/,
+# not index.html) runs `ngc --noEmit` (its own 5 s throttle), since tsc never reads a template.
+# Other files exit silently.
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  -- tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     -- toolName  in {edit,create}; path at toolArgs.filePath
@@ -51,9 +53,12 @@ function Invoke-BoundedTool([string]$Name, [string[]]$Arguments, [string]$WorkDi
         & taskkill.exe /T /F /PID $proc.Id *> $null
         return $null
     }
-    # The compiler reports its errors on stdout; keep its tail, then a short stderr tail.
-    $outLines = @($stdout.Result -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last 20)
-    $errLines = @($stderr.Result -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last 5)
+    # dotnet build and tsc report their errors on stdout: keep that tail, then a short stderr tail. ngc
+    # reports only on stderr, in color: keep a full stderr tail when stdout is empty, and strip the color codes.
+    $color = [string][char]27 + '\[[0-9;]*m'
+    $outLines = @(($stdout.Result -replace $color, '') -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last 20)
+    $errTail = if ($outLines.Count -eq 0) { 20 } else { 5 }
+    $errLines = @(($stderr.Result -replace $color, '') -split "\r?\n" | Where-Object { $_ -ne '' } | Select-Object -Last $errTail)
     return [pscustomobject]@{ Code = $proc.ExitCode; Lines = @($outLines + $errLines) }
 }
 
@@ -107,14 +112,15 @@ if ([string]::IsNullOrEmpty($filePath) -and $env:CLAUDE_FILE_PATH) {
 
 if ([string]::IsNullOrEmpty($filePath)) { exit 0 }
 # Monorepo dispatch: pick the stack whose gate can actually validate this file.
-# .NET: sources plus MSBuild/Razor inputs. Angular: .ts under src/ plus any tsconfig*.json.
+# .NET: sources plus MSBuild/Razor inputs. Angular: .ts and component templates (.html, not index.html) under src/, plus any tsconfig*.json.
 # Extensions neither gate reads stay excluded -- a check cannot catch their breakage.
 $normalized = $filePath -replace '\\', '/'
 $branch = ''
 if ($filePath -match '\.(cs|csproj|sln|props|targets|razor|cshtml)$') { $branch = 'dotnet' }
 elseif ($normalized -match '(^|/)tsconfig[^/]*\.json$') { $branch = 'angular' }
-elseif ($filePath -like '*.ts' -and $normalized -match '/src/') { $branch = 'angular' }
+elseif ($normalized -match '/src/' -and ($filePath -like '*.ts' -or ($filePath -like '*.html' -and $normalized -notmatch '(^|/)index\.html$'))) { $branch = 'angular' }
 else { exit 0 }
+$template = ($branch -eq 'angular') -and ($filePath -like '*.html')
 
 $msg = ''
 if ($branch -eq 'dotnet') {
@@ -235,6 +241,10 @@ else {
         $mp = $parent
     }
     if (-not $hasModules) { exit 0 }
+    # A template check needs the Angular compiler. Without @angular/compiler-cli, `npx --no-install ngc`
+    # (npm turns --no-install into --yes=false) exits non-zero with npx's own error, which would be
+    # reported as a broken template on every write; skip the check instead.
+    if ($template -and -not (Test-Path -LiteralPath (Join-Path $mp 'node_modules\@angular\compiler-cli\package.json'))) { exit 0 }
 
     # Per-workspace state (absolute, under the repo-root .state) so multiple apps in a monorepo
     # neither clobber each other's incremental tsbuildinfo nor cross-suppress each other's throttle.
@@ -243,7 +253,9 @@ else {
     $wsRel = try { [string](Resolve-Path -LiteralPath $workspace -Relative -ErrorAction Stop) } catch { $workspace }
     $key = ($wsRel -replace '[^A-Za-z0-9]', '_') -replace '_+$', ''
     if ([string]::IsNullOrEmpty($key)) { $key = 'root' }
-    $stamp = Join-Path $repoState "last-build-$key"
+    # The template check keeps its own throttle and back-off stamp, so one that cannot finish inside
+    # the budget never silences the .ts type-check for five minutes.
+    $stamp = if ($template) { Join-Path $repoState "last-template-$key" } else { Join-Path $repoState "last-build-$key" }
     $buildInfo = Join-Path $repoState "tsbuildinfo-$key"
 
     # Throttle: skip if a check was started within the last 5 seconds.
@@ -266,7 +278,12 @@ else {
     # Only surface output on failure -- emitting type-check output every successful write wastes context tokens.
     # Run from the workspace dir (npx resolves tsc by walking up to the monorepo node_modules);
     # the tsBuildInfoFile is an absolute repo-root path so it is unaffected by the working directory.
-    $run = Invoke-BoundedTool 'npx' @('--no-install', 'tsc', '--noEmit', '-p', $project, '--incremental', '--tsBuildInfoFile', $buildInfo) $workspace
+    # ngc keeps no state between runs, so each template check compiles the whole project.
+    if ($template) {
+        $run = Invoke-BoundedTool 'npx' @('--no-install', 'ngc', '-p', $project, '--noEmit') $workspace
+    } else {
+        $run = Invoke-BoundedTool 'npx' @('--no-install', 'tsc', '--noEmit', '-p', $project, '--incremental', '--tsBuildInfoFile', $buildInfo) $workspace
+    }
     if ($null -eq $run) {
         # Not verified (budget exceeded or no launch): back off for 300 s so a type-check that cannot
         # finish inside the budget does not cost the agent another full budget on the next write.
@@ -278,7 +295,8 @@ else {
     # Clear the throttle stamp so the next write re-checks instead of skipping a known-broken type-check.
     Remove-Item $stamp -Force
 
-    $msg = "## tsc --noEmit failed -- fix before continuing:`n" + ($run.Lines -join "`n")
+    $header = if ($template) { '## ngc --noEmit failed' } else { '## tsc --noEmit failed' }
+    $msg = "$header -- fix before continuing:`n" + ($run.Lines -join "`n")
 }
 
 # Surface per surface, discriminating by tool-name casing (mirror guard.ps1). Claude Code is the

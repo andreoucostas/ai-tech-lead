@@ -75,14 +75,17 @@ try {
     }
 
     # Build-tool worlds for the throttle and budget cases: each tool branch the hook carries (dotnet
-    # build, tsc --noEmit via npx; the monorepo hook carries both) runs against a shim on PATH.
+    # build, tsc --noEmit via npx; the monorepo hook carries both; ngc --noEmit via npx for an Angular
+    # template) runs against a shim on PATH.
     $hookText = [IO.File]::ReadAllText($postWrite)
     $worlds = @()
     if ($hookText -match 'dotnet build') { $worlds += @{ Name = 'dotnet'; Shim = 'dotnet.cmd'; Probe = 'Probe.cs' } }
     if ($hookText -match 'tsc --noEmit') { $worlds += @{ Name = 'tsc'; Shim = 'npx.cmd'; Probe = 'tsconfig.json' } }
+    $templateWorld = @{ Name = 'ngc'; Shim = 'npx.cmd'; Probe = './src/app/probe.component.html' }
+    if ($hookText -match 'ngc --noEmit') { $worlds += $templateWorld }
     Assert ($worlds.Count -gt 0) 'post-write carries neither a dotnet build nor a tsc --noEmit branch'
     function Reset-BuildWorld($World, [string]$ShimBody) {
-        foreach ($artifact in 'Warehouse.sln','warehouse','bin','shim','.claude','App.csproj','Probe.cs','tsconfig.json','node_modules') {
+        foreach ($artifact in 'Warehouse.sln','warehouse','bin','shim','.claude','App.csproj','Probe.cs','tsconfig.json','node_modules','src') {
             Remove-Item -LiteralPath (Join-Path $tmp $artifact) -Recurse -Force -ErrorAction SilentlyContinue
         }
         New-Item -ItemType Directory -Path (Join-Path $tmp 'shim') -Force | Out-Null
@@ -90,6 +93,12 @@ try {
             [IO.File]::WriteAllText((Join-Path $tmp 'App.csproj'), '<Project Sdk="Microsoft.NET.Sdk" />')
         } else {
             New-Item -ItemType Directory -Path (Join-Path $tmp 'node_modules') -Force | Out-Null
+        }
+        if ($World.Name -eq 'ngc') {
+            # An Angular workspace: a tsconfig above the template and the Angular compiler installed.
+            New-Item -ItemType Directory -Path (Join-Path $tmp 'node_modules/@angular/compiler-cli'), (Join-Path $tmp 'src/app') -Force | Out-Null
+            [IO.File]::WriteAllText((Join-Path $tmp 'node_modules/@angular/compiler-cli/package.json'), '{"name":"@angular/compiler-cli"}')
+            [IO.File]::WriteAllText((Join-Path $tmp 'tsconfig.json'), '{}')
         }
         [IO.File]::WriteAllText((Join-Path $tmp $World.Probe), 'probe')
         [IO.File]::WriteAllText((Join-Path $tmp "shim/$($World.Shim)"), $ShimBody)
@@ -150,6 +159,64 @@ try {
                 $second = Invoke-Hook $postWrite $writeEvent
                 Assert ((Get-Decision $second) -eq 'ALLOW' -and $second.Out -notmatch 'Build not verified') "the unverified build was retried inside the back-off: $($second.Out.Trim())"
             } finally { $env:PATH = $oldPath }
+        }
+    }
+
+    # A component template write runs ngc --noEmit. ngc reports only on stderr, in color, error line first.
+    if ($hookText -notmatch 'tsc --noEmit') {
+        Skip 'a template write with a failing template check is reported on both surfaces' 'this post-write carries no Angular branch' -Invariant
+        Skip 'a template write outside an Angular workspace never runs a check' 'this post-write carries no Angular branch' -Invariant
+    } else {
+        It 'a template write with a failing template check is reported on both surfaces' {
+            $shim = (@(
+                '@echo %*> "%POSTWRITE_ARGS%"',
+                '@echo <E>[96msrc/app/probe.component.html<E>[0m:<E>[93m1<E>[0m:<E>[93m4<E>[0m - <E>[91merror<E>[0m<E>[90m TS2339: <E>[0mProperty ''b329Missing'' does not exist on type ''ProbeComponent''. 1>&2',
+                '@echo. 1>&2',
+                '@echo <E>[7m1<E>[0m {{ b329Missing() }} 1>&2',
+                '@echo <E>[7m <E>[0m <E>[91m   ~~~~~~~~~~~<E>[0m 1>&2',
+                '@echo. 1>&2',
+                '@echo   <E>[96msrc/app/probe.component.ts<E>[0m:<E>[93m4<E>[0m:<E>[93m16<E>[0m 1>&2',
+                '@echo     <E>[7m4<E>[0m   templateUrl: ''./probe.component.html'', 1>&2',
+                '@echo     <E>[7m <E>[0m <E>[96m               ~~~~~~~~~~~~~~~~~~~~~~~~<E>[0m 1>&2',
+                '@echo     Error occurs in the template of component ProbeComponent. 1>&2',
+                '@exit /b 1'
+            ) -join "`r`n").Replace('<E>', [string][char]27) + "`r`n"
+            $claudePayload = Reset-BuildWorld $templateWorld $shim
+            $copilotPayload = '{"toolName":"create","toolArgs":{"path":"./src/app/probe.component.html","file_text":"{{ b329Missing() }}"}}'
+            $argsFile = Join-Path $tmp 'npx-args'
+            $oldPath = $env:PATH; $oldArgs = $env:POSTWRITE_ARGS
+            try {
+                $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
+                $env:POSTWRITE_ARGS = $argsFile
+                $claude = Invoke-Hook $postWrite $claudePayload
+                $copilot = Invoke-Hook $postWrite $copilotPayload
+                $claudeDecision = Get-Decision $claude
+                $copilotReported = ((Get-Decision $copilot) -eq 'ALLOW') -and ($copilot.Out -match 'additionalContext') -and ($copilot.Out -match 'b329Missing')
+                Assert ($claudeDecision -eq 'BLOCK' -and $copilotReported) "a failing template check was not reported on both surfaces: Claude $claudeDecision (exit $($claude.Exit)), Copilot additionalContext $copilotReported"
+                Assert ($claude.Err -match '## ngc --noEmit failed -- fix before continuing') "the Claude report lacks the ngc header: $($claude.Err.Trim())"
+                Assert ($claude.Err -match "TS2339: Property 'b329Missing'") "the stderr tail lost the compiler error line: $($claude.Err.Trim())"
+                Assert ($claude.Err.IndexOf([char]27) -lt 0) 'the report still carries ANSI color codes'
+                $argText = [IO.File]::ReadAllText($argsFile)
+                Assert ($argText -match '"ngc"' -and $argText -match '"--noEmit"' -and $argText -notmatch '"tsc"') "the template write did not run ngc --noEmit: $argText"
+            } finally { $env:PATH = $oldPath; $env:POSTWRITE_ARGS = $oldArgs }
+        }
+        It 'a template write outside an Angular workspace never runs a check' {
+            $sentinel = Join-Path $tmp 'npx-invoked'
+            $null = Reset-BuildWorld $templateWorld "@echo invoked> `"%POSTWRITE_NPX_SENTINEL%`"`r`n@exit /b 1`r`n"
+            Remove-Item -LiteralPath (Join-Path $tmp 'node_modules/@angular') -Recurse -Force
+            $oldPath = $env:PATH; $oldSentinel = $env:POSTWRITE_NPX_SENTINEL
+            try {
+                $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
+                $env:POSTWRITE_NPX_SENTINEL = $sentinel
+                foreach ($payload in @(
+                    '{"tool_name":"Write","tool_input":{"file_path":"./src/app/probe.component.html","content":"<p>static page</p>"}}',
+                    '{"toolName":"create","toolArgs":{"path":"./src/app/probe.component.html","file_text":"<p>static page</p>"}}'
+                )) {
+                    Remove-Item -LiteralPath $sentinel -Force -ErrorAction SilentlyContinue
+                    $decision = Get-Decision (Invoke-Hook $postWrite $payload)
+                    Assert ($decision -eq 'ALLOW' -and -not (Test-Path -LiteralPath $sentinel)) "a template write without @angular/compiler-cli ran a check: decision $decision, npx invoked $(Test-Path -LiteralPath $sentinel)"
+                }
+            } finally { $env:PATH = $oldPath; $env:POSTWRITE_NPX_SENTINEL = $oldSentinel }
         }
     }
 

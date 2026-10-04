@@ -119,8 +119,8 @@ sequenceDiagram
     H-->>A: route-prompt emits the matched workflow's rails
     A->>H: PreToolUse / preToolUse (if the host fires a supported editor/file-write event)
     H-->>A: guard emits a deny for defined suppression/secret patterns; shell writes are outside scope
-    A->>H: PostToolUse / postToolUse (if the host fires a supported .ts editor/file-write event in src/)
-    H-->>A: script emits tsc --noEmit failures and appends mutable local hook telemetry
+    A->>H: PostToolUse / postToolUse (if the host fires a supported .ts or component template (.html) editor/file-write event in src/)
+    H-->>A: script emits tsc --noEmit (ngc --noEmit for a template) failures and appends mutable local hook telemetry
     A->>H: Stop / agentStop (if the host fires the end-of-turn event)
     H-->>A: boy-scout-check emits advisory cleanup candidates
 ```
