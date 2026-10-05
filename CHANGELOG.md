@@ -11,6 +11,29 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.94.0 — Unreleased
+
+The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a
+Write of `import … from './task-list-item-renderer-component'` or a route `{ path: 'risk-assessment-history-details'
+}` was blocked as "an API secret key" (exit 2 on Claude Code, a deny on Copilot) and the agent stopped on correct
+code; found in a Fable review on 2026-10-05, not by a field report. A key must now start a token, or follow an escape
+that ends in a letter or digit: `\n` `\r` `\t`, `\uXXXX` (System.Text.Json writes a quote as `\u0022`, Windows
+PowerShell's `ConvertTo-Json` an apostrophe as `\u0027`), `\xXX`, PowerShell's backtick `` `n `` `` `r `` `` `t ``, or
+URL-encoded `%XX`. The new pattern is the old one behind a zero-width prefix, so it matches only where the old one
+did. Scan on 2026-10-05 over 5,792 files (the three dists, the eval fixtures, dotnet/eShop,
+jasontaylordev/CleanArchitecture, gothinkster/angular-realworld-example-app, angular/components; `guard-cases.ps1`
+excluded): the old rule hit 5, the two kebab names in angular/components and this entry's three stack CHANGELOGs, and
+the new rule none. Synthetic keys of eight families (OpenAI legacy, `sk-proj-`, `sk-svcacct-`, `sk-admin-`; Anthropic
+`sk-ant-api03-`, `sk-ant-admin01-`; DeepSeek; OpenRouter) stay blocked in every delimited context tried. A
+fresh-session attack on the first version found that keys after `\u0022` (System.Text.Json's quote) and `\x22` had
+stopped being blocked; the escape list was widened before commit. Still let through: a key glued to any other letter
+or digit, for example after a twice URL-encoded `%25XX`, a JSON `\b` or `\f`, or a terminal colour code; a second
+attack found only such cases. Still refused: a token that itself starts with `sk-` and runs 20 or more characters,
+such as an `sk-`-prefixed component selector. `Guard.Tests` had no `sk-` case; it gains OpenAI and Anthropic keys, a
+key after each escape form and URL encoding, and the two kebab lines, which failed on the unfixed tree on both
+surfaces. B-352 to B-354 filed from the same review and the consumer org's host reply; B-353 also records that a
+Stripe `sk_live_` key under `"SecretKey"` passes both rules.
+
 ## 0.93.0 — 2026-10-04
 
 B-326 (pre-registered at ac701446; `meta/eval-results.md`, `meta/host-certification.md`). On Copilot CLI 1.0.89 with

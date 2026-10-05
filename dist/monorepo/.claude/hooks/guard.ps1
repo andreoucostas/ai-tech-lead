@@ -74,7 +74,10 @@ elseif (Test-GuardPattern 'AKIA[0-9A-Z]{16}' 'secret')                     { $se
 elseif (Test-GuardPattern 'gh[oprsu]_[A-Za-z0-9]{36}' 'secret')            { $secretKind = 'a classic GitHub token (gh*_…)' }
 elseif (Test-GuardPattern 'github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59,}' 'secret') { $secretKind = 'a fine-grained GitHub token (github_pat_…)' }
 elseif (Test-GuardPattern 'xox[baprs]-[A-Za-z0-9-]{10,}' 'secret')         { $secretKind = 'a Slack token (xox…)' }
-elseif (Test-GuardPattern 'sk-[A-Za-z0-9_-]{20,}' 'secret')                { $secretKind = 'an API secret key (sk-…)' }
+# An sk- key starts a token, or follows an escape that ends in a letter or digit (\n \r \t, \uXXXX as
+# System.Text.Json writes a quote, \xXX, PowerShell `n `r `t, URL-encoded %XX). Inside a kebab-case
+# name such as task-list-item-renderer it is not a key. A key glued to any other letter or digit passes.
+elseif (Test-GuardPattern '(?:(?<![A-Za-z0-9])|(?<=\\[nrt]|\\u[0-9A-Fa-f]{4}|\\x[0-9A-Fa-f]{2}|`[nrt]|%[0-9A-Fa-f]{2}))sk-[A-Za-z0-9_-]{20,}' 'secret') { $secretKind = 'an API secret key (sk-…)' }
 elseif (Test-GuardPattern 'AIza[0-9A-Za-z_-]{35}' 'secret')               { $secretKind = 'a Google API key (AIza…)' }
 # The Azurite emulator's published development key is excluded: it is not a secret.
 elseif (Test-GuardPattern 'AccountKey=(?!Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==)[A-Za-z0-9+/]{86}==' 'secret') { $secretKind = 'an Azure storage account key (AccountKey=…)' }

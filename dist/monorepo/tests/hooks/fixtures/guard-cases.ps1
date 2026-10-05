@@ -2,6 +2,11 @@
 # New-CopilotEvent wrap it into each surface's field names, so both supported surfaces receive
 # identical logical input.
 $azureKey = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8' + 'gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw' + '=='
+# Synthetic sk- keys, assembled from halves for the same reason as $azureKey.
+$openAiKey    = 'sk-proj-' + 'Qx7RkP2mVt9LwZ4nHc8JdB3sFy6GaE1u' + 'Ko5TiN0rXj2WqM7vLp4ShD9gCz3YbU8e'
+$anthropicKey = 'sk-ant-api03-' + 'Hn4Rk8PqZ2xVt6LmW9cJ3dBsF7yGa1uE' + 'o5TiK0rNj2XqM7vLp4ShD9gCz3YbU8eQ'
+# System.Text.Json's default escape for a quote, built in two pieces so no tool unescapes it.
+$u22 = '\u' + '0022'
 $GuardCases = @(
     @{ n='cs #pragma warning disable';         f='src/Foo.cs';                c='#pragma warning disable CS8602';                       block=$true; policy='test-defeat/suppression' }
     @{ n='cs [Fact(Skip=...)]';                f='tests/FooTests.cs';         c='[Fact(Skip="flaky")] public void T(){}';               block=$true }
@@ -37,6 +42,14 @@ $GuardCases = @(
     @{ n='classic GitHub ghr token';           f='src/deploy.cs';             c='var t = "ghr_0123456789abcdefghijklmnopqrstuvwxyz";';   block=$true }
     @{ n='fine-grained GitHub token';          f='src/deploy.cs';             c='var t = "github_pat_1234567890123456789012_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567";'; block=$true }
     @{ n='secret private key block';           f='src/deploy.cs';             c='-----BEGIN RSA PRIVATE KEY-----';                       block=$true; policy='secret' }
+    @{ n='OpenAI sk-proj- key';                f='src/Ai/OpenAiClientFactory.cs'; c="var key = `"$openAiKey`";";                      block=$true }
+    @{ n='Anthropic sk-ant- key in .env';      f='.env';                      c="ANTHROPIC_API_KEY=$anthropicKey";                       block=$true }
+    @{ n='sk- key after an escaped \n';        f='src/data/run-log.json';     c="{ `"out`": `"started\n$openAiKey`" }";                  block=$true }
+    @{ n='sk- key after an escaped \t';        f='src/data/run-log.json';     c="{ `"out`": `"key:\t$openAiKey`" }";                     block=$true }
+    @{ n='sk- key after a JSON unicode-escaped quote'; f='src/Api/Data/request.json'; c="{ `"body`": `"{${u22}apiKey${u22}:${u22}$openAiKey${u22}}`" }"; block=$true }
+    @{ n='sk- key after a \x22 escape';        f='src/config.js';             c="const s = `"\x22$anthropicKey\x22`";";                 block=$true }
+    @{ n='sk- key after a PowerShell backtick escape'; f='scripts/seed.ps1';  c="Set-Content keys.txt `"first``n$openAiKey`"";          block=$true }
+    @{ n='sk- key after a URL-encoded byte';   f='src/app/api.ts';            c="const url = '/login?next=%2Fv1%2Fchat%3Fkey%3D$openAiKey';"; block=$true }
     @{ n='hardcoded credential literal';       f='src/AuthService.cs';        c='var password = "hunter2hunter2";';                     block=$true }
     @{ n='connection string Password';         f='src/AuthService.cs';        c='var connectionString = "Server=db;User Id=sa;Password=hunter2;Database=app";'; block=$true }
     @{ n='connection string URI userinfo';     f='src/AuthService.cs';        c='var connectionString = "postgres://user:hunter2@host/db";'; block=$true }
@@ -66,6 +79,9 @@ $GuardCases = @(
     @{ n='SAS sig= without a token (allow)';   f='src/Storage.cs';            c='var q = "?sv=2022-11-02&sig=";';                        block=$false }
     @{ n='passwordless connection string';     f='src/AuthService.cs';       c='var connectionString = "Server=localhost;Trusted_Connection=True";'; block=$false }
     @{ n='near-miss fine-grained PAT';         f='src/deploy.cs';             c='var t = "github_pat_too_short";';                       block=$false }
+    # sk- inside a kebab-case name is not a key; both lines were blocked as one before the left boundary.
+    @{ n='kebab import containing sk- (allow)'; f='src/app/board/board.ts';  c="import { TaskListItemRenderer } from './task-list-item-renderer-component';"; block=$false }
+    @{ n='kebab route containing sk- (allow)'; f='src/app/app.routes.ts';     c="{ path: 'risk-assessment-history-details', component: RiskHistory }"; block=$false }
     # Tagged `secret` so the invalid-regex red test observes both fail-closed directions: the
     # private-key case must still block, while this near-miss must turn red if every secret probe
     # is conservatively blocked. A policy filter containing only blocking cases is an inert oracle.

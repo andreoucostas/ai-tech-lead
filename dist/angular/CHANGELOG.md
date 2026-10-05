@@ -4,6 +4,18 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.94.0 — Unreleased
+
+- **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched
+  inside names such as `task-list-item-renderer-component` or a route path such as
+  `risk-assessment-history-details`, refused the write as "an API secret key", and stopped the agent on correct
+  code. It now looks for `sk-` only where a key starts (after a space, quote, `=`, `:` or other punctuation, at the
+  start of a line, or after an escape such as `\n`, a JSON-escaped quote or a URL-encoded character), so OpenAI
+  (`sk-proj-…`) and Anthropic (`sk-ant-…`) keys are still refused. A key written directly after any other letter or
+  digit, for example after a twice URL-encoded character or a terminal colour code, is no longer refused. A name that itself starts with `sk-` and runs to 20 or more characters, such as an
+  `sk-`-prefixed component selector, is still refused: write that line yourself. An update refreshes the guard; you
+  do not need to do anything.
+
 ## 0.93.0 — 2026-10-04
 
 - **In Copilot CLI, `/review` and `/security-review` may run the CLI's own review instead of this framework's.** Copilot CLI has
