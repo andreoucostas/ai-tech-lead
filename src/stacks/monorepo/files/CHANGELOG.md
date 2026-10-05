@@ -7,15 +7,23 @@
 
 ## 0.94.0 — Unreleased
 
-- **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched
-  inside names such as `task-list-item-renderer-component` or a route path such as
-  `risk-assessment-history-details`, refused the write as "an API secret key", and stopped the agent on correct
-  code. It now looks for `sk-` only where a key starts (after a space, quote, `=`, `:` or other punctuation, at the
-  start of a line, or after an escape such as `\n`, a JSON-escaped quote or a URL-encoded character), so OpenAI
-  (`sk-proj-…`) and Anthropic (`sk-ant-…`) keys are still refused. A key written directly after any other letter or
-  digit, for example after a twice URL-encoded character or a terminal colour code, is no longer refused. A name that itself starts with `sk-` and runs to 20 or more characters, such as an
-  `sk-`-prefixed component selector, is still refused: write that line yourself. An update refreshes the guard; you
-  do not need to do anything.
+- **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside
+  names such as `task-list-item-renderer-component` or a route path such as `risk-assessment-history-details`, refused
+  the write as "an API secret key", and stopped the agent on correct code. It now looks for `sk-` only where a key
+  starts (after a space, quote, `=`, `:` or other punctuation, at the start of a line, or after an escape such as
+  `\n`, a JSON-escaped quote or a URL-encoded character), so OpenAI (`sk-proj-…`) and Anthropic (`sk-ant-…`) keys are
+  still refused. A key written directly after any other letter or digit, for example after a twice URL-encoded
+  character or a terminal colour code, is no longer refused. A name that itself starts with `sk-` and runs to 20 or
+  more characters, such as an `sk-`-prefixed component selector, is still refused: write that line yourself. An update
+  refreshes the guard; you do not need to do anything.
+
+- **Copilot needs PowerShell 7 on every machine that runs it, and `framework-doctor` now says so.**
+  `.github/hooks/hooks.json` runs every hook with `pwsh`. In our test on Copilot CLI 1.0.89, a machine without
+  PowerShell 7 had every tool call refused ("Denied by preToolUse hook … (hook errored)"), so the agent could not
+  change anything. On such a machine, run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File
+  scripts/framework-doctor.ps1`: its `Copilot surface` row now reports the gap. `docs/enforcement-surfaces.md` also
+  spells out the write-guard check the doctor prints. An update refreshes both; install PowerShell 7 wherever Copilot
+  runs.
 
 ## 0.93.0 — 2026-10-04
 

@@ -12999,3 +12999,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-351** — CLOSED by decision **2026-10-04** (WSD-106), never filed. Copilot CLI 1.0.89 substitutes every literal `$ARGUMENTS`, prose included:
   `adopt.md`'s "when `$ARGUMENTS` contains a `--headless` directive" reached the model as "when `` contains …" (B-337 Leg 3). Reopen on a
   field report of headless adoption misread on Copilot CLI.
+- **B-352** — DONE **2026-10-05** for 0.94.0: Copilot CLI 1.0.89 denied every tool call with no `pwsh` on PATH (2 premium requests,
+  `meta/host-certification.md`). Per WSD-110 `pwsh` stays required: `framework-doctor`'s `Copilot surface` row reports it under Windows
+  PowerShell 5.1, and `enforcement-surfaces.md` and the READMEs state the consequence.
+- **B-354** — DONE **2026-10-05** for 0.94.0: the doctor already printed the write-guard canary after its summary, which the entry missed;
+  `enforcement-surfaces.md` now points to it and repeats its steps.

@@ -14,6 +14,12 @@ Three delivery tiers:
 > **The registered PowerShell interpreter must resolve in the Windows agent host.** If it does
 > not, every control that hook carries is dead: no write guard, build feedback, or audit trail. The
 > host may show a launch-error notice, but the model may not receive it.
+>
+> **On Copilot a missing `pwsh` stops the agent.** `.github/hooks/hooks.json` runs every hook with
+> `pwsh` (PowerShell 7). Without it the guard's `preToolUse` hook errors, and Copilot refuses every
+> tool call ("Denied by preToolUse hook … (hook errored)"), so the agent cannot change anything
+> (observed on Copilot CLI 1.0.89, 2026-10-05). Install PowerShell 7 on every machine that runs
+> Copilot; the doctor's `Copilot surface` row reports it when run under `powershell.exe`.
 
 A configuration-only diagnostic can report healthy wiring while hooks are dead. Run
 `pwsh -NoProfile -File scripts/framework-doctor.ps1` on each Windows developer machine, or use
@@ -22,7 +28,10 @@ A configuration-only diagnostic can report healthy wiring while hooks are dead. 
 later agent-host process. The bare name is intentional team configuration across Windows machines;
 do not pin one developer's absolute path. Use the doctor's `Hook liveness` row and actual-host
 canaries. Stack-toolchain and Copilot CLI visibility likewise describe the doctor process, not the
-later agent-host process. The write-guard canary proves the actual host's enforcement path. For build feedback, make and immediately revert a harmless compile
+later agent-host process. The write-guard canary proves the actual host's enforcement path: after its
+summary the doctor prints it for each host (ask the agent to create `tmp-doctor-canary.txt` containing
+`AKIA` plus 16 uppercase letters or digits; pass = the hook answers "Blocked write to"; a polite refusal
+is not a pass; delete the file if it lands). For build feedback, make and immediately revert a harmless compile
 or type error through the actual agent after the post-write throttle has elapsed; only hook output
 starting `## dotnet build failed`, `## tsc --noEmit failed` or, after an Angular template write,
 `## ngc --noEmit failed` proves that host path. The hook gives

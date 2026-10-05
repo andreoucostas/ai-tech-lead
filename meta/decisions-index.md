@@ -76,6 +76,7 @@ authoritative.
 - “No rule for a request premise the project's records contradict: the measured Verification Rules #11 sentence did not help (MISLEADING 2/6 vs 0/6) and was reverted before release.” — `meta/workspace-decisions.md WSD-107` (closes B-325; its pre-registered confirmation did not fire WSD-105's reopen trigger)
 - “The major-version upgrade is `dependency-audit` section 4: .NET moves straight to the target, Angular one major per pass; `ng update` is the one Angular CLI command derived without a Verification Commands row.” — `meta/workspace-decisions.md WSD-108` (reopens one B-265 workflow by maintainer request; excepts WSD-020's derive-don't-assume rule)
 - “The framework ships an operation skill only on a field report or measured outcome; `/bootstrap` drafts a project skill for an operation the repository repeats three or more times; the seven generic recipes are retired.” — `meta/workspace-decisions.md WSD-109` (supersedes WSD-074's eight-skill clause)
+- “Copilot hooks keep requiring PowerShell 7; a missing `pwsh` is diagnosed by framework-doctor, not worked around in `hooks.json`.” — `meta/workspace-decisions.md WSD-110` (B-352's observed stall; WSD-073 stands)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

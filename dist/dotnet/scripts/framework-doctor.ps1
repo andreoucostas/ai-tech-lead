@@ -562,7 +562,14 @@ else {
 }
 
 if ($copilotValid) {
-    if (Has copilot) { Row OK 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment.' }
+    # hooks.json invokes pwsh by name, with no Windows PowerShell fallback. Without it the matcher-less
+    # preToolUse guard errors and Copilot denies every tool call ("hook errored"), observed on Copilot CLI 1.0.89.
+    $copilotNeedsPwsh = [regex]::IsMatch($rawCopilot, '"powershell"\s*:\s*"\s*pwsh(?:\.exe)?\s')
+    if ($copilotNeedsPwsh -and -not (Has pwsh)) {
+        if (Has copilot) { Row MISSING 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment, but PowerShell 7 (pwsh) is not: every hooks.json command runs pwsh, so Copilot refuses every tool call ("Denied by preToolUse hook ... (hook errored)"). Fix: install PowerShell 7.' }
+        else { Row CANT-VERIFY 'Copilot surface' 'hooks.json is valid; Copilot CLI and PowerShell 7 (pwsh) are absent from this doctor process environment. Every hooks.json command runs pwsh, so Copilot in VS Code or the CLI would refuse every tool call on this machine: install PowerShell 7 before using Copilot here. Claude-only teams need no action.' }
+    }
+    elseif (Has copilot) { Row OK 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment.' }
     else { Row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent from this doctor process environment. Claude-only teams need no action; Copilot teams must use the actual-surface canaries below.' }
 } elseif ($copilotReadFailed) { Row CANT-VERIFY 'Copilot surface' '.github/hooks/hooks.json exists but could not be read; its validity and Copilot hook surface are unknown. Fix read access and rerun the doctor.' }
 elseif ($copilotExists) { Row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.' }

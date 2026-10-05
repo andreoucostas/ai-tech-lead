@@ -34,6 +34,17 @@ key after each escape form and URL encoding, and the two kebab lines, which fail
 surfaces. B-352 to B-354 filed from the same review and the consumer org's host reply; B-353 also records that a
 Stripe `sk_live_` key under `"SecretKey"` passes both rules.
 
+B-352 (`meta/host-certification.md`): on Copilot CLI 1.0.89 with no `pwsh` on PATH, every `hooks.json` hook failed
+with Windows PowerShell 5.1's "The term 'pwsh' is not recognized", and Copilot denied every tool call ("Denied by
+preToolUse hook … (hook errored)"); the control with `pwsh` wrote the file; 2 premium requests. Per WSD-110 PowerShell
+7 stays required: `framework-doctor`'s `Copilot surface` row now reports a missing `pwsh` (MISSING when Copilot CLI is
+visible, CANT-VERIFY otherwise). Only a doctor run under Windows PowerShell 5.1 can see it, because PowerShell 7 puts
+its own folder on PATH, so the new `FrameworkDoctor` case runs in the 5.1 leg and is a counted skip in the pwsh leg;
+it failed on the unfixed doctor under 5.1. `enforcement-surfaces.md` says a missing `pwsh` stops a Copilot agent and
+repeats the write-guard canary the doctor prints (B-354, whose "no shipped file gives its steps" missed the doctor);
+the READMEs' host-support note says the same. On-demand context: `docs/enforcement-surfaces.md` +748 chars per dist; always-loaded
+unchanged.
+
 ## 0.93.0 — 2026-10-04
 
 B-326 (pre-registered at ac701446; `meta/eval-results.md`, `meta/host-certification.md`). On Copilot CLI 1.0.89 with

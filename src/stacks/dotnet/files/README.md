@@ -241,7 +241,7 @@ Hook execution is supported on Windows only. PowerShell 7 (`pwsh`) is primary; n
 | Windows, no `pwsh` | Windows PowerShell 5.1 | `install.ps1` auto-activates `settings.windows.json`; the 5.1 host must be available. |
 | Other execution environments | — | Unsupported; do not rely on framework commands or hooks firing. |
 
-> Local Copilot hook registrations explicitly invoke `pwsh`. They do not fall back to Windows PowerShell 5.1 and do not apply to the Copilot coding-agent cloud.
+> Local Copilot hook registrations explicitly invoke `pwsh`. They do not fall back to Windows PowerShell 5.1 and do not apply to the Copilot coding-agent cloud. Without PowerShell 7, Copilot on that machine refuses every tool call (observed on Copilot CLI 1.0.89, 2026-10-05), so install it wherever Copilot runs; `framework-doctor` run under `powershell.exe` reports it.
 
 **Verify your setup** after copying the template into your repo:
 

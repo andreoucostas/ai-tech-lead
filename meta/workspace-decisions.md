@@ -4593,3 +4593,14 @@ with 3+ consumer-authored instances and a non-obvious step, at most three a run,
 Tasks line; unique facts stay wiki drafts (WSD-074). A new operation skill ships only on a field report or measured outcome. Supersedes
 WSD-074's "eight skills" clause; WSD-052's superset sentence holds for skills still shipped; `perf` is out of scope. Drafting is
 observed on Claude Code (B-346). **Reopen** on a field report of a task no skill or rule now covers.
+
+## WSD-110: Copilot hooks keep requiring PowerShell 7; a missing `pwsh` is diagnosed, not worked around (2026-10-05)
+
+**Context.** B-352 (`meta/host-certification.md`): on Copilot CLI 1.0.89 with no `pwsh` on PATH every `hooks.json` hook errors and Copilot
+denies every tool call ("hook errored"), so the agent stalls; WSD-073 had left the pwsh-unavailable case unobserved. Copilot runs the
+`powershell` field inside a PowerShell host, so a runtime fallback to Windows PowerShell 5.1 was possible.
+**Decision (user, 2026-10-05: "Keep PS7 required, diagnose it").** WSD-073's explicit `pwsh` stands. `framework-doctor`'s `Copilot surface`
+row reports a missing `pwsh` (MISSING when Copilot CLI is visible, CANT-VERIFY otherwise); only a Windows PowerShell 5.1-hosted doctor can
+see it, because PowerShell 7 puts its own folder on PATH. `enforcement-surfaces.md` and the READMEs say Copilot refuses every tool call
+without it. Rejected: a `pwsh`-else-`powershell` command in `hooks.json` (reverses WSD-073, needs validate-dist check 8 and a live run).
+**Reopen** on a field report of a Copilot developer who cannot install PowerShell 7.
