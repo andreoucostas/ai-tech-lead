@@ -126,7 +126,7 @@ For each item: current pattern → target pattern → brief rationale.
 
 **If this `/bootstrap` is being invoked from within `/adopt`:** treat only questions explicitly resolved in `/adopt` phases 1–6 as already answered; do not repeat them. Ask any remaining Phase 2b questions surfaced by the code analysis below. Under headless `/adopt` (the `--headless` directive propagated into this Phase-7 `/bootstrap`), do not pause: apply the Skip signal to every remaining question, add `<!-- INFERRED -->` only for genuinely contradictory code signals, and surface those decisions on adopt's Phase-8 checklist.
 
-Before generating any artifact, ask the developer a small number of targeted questions — **only where human judgment materially changes the output and the code alone cannot resolve it.** Collect all questions into a **single message** (never drip one at a time). Limit to ≤5 questions.
+Before generating any artifact, ask the developer a small number of targeted questions — **only where human judgment materially changes the output and the code alone cannot resolve it.** Ask at most 5, all at this one pause and each as its own question — never merge several into one. With a question tool, give each question its own entry, as many per call as the tool accepts, and make the next call straight away; without one, number them in a single message.
 
 **Ask about:**
 1. **Convention contradictions** — if two conflicting patterns exist for the same area (e.g. NgRx store in some features, BehaviorSubject services in others): *"Your codebase uses both [A] (e.g. NgRx in `feature-a/`) and [B] (e.g. BehaviorSubject services in `feature-b/`) for state management. Which is the intended approach — or are these genuinely different contexts?"* Frame as a plain engineering question about the codebase, never about which AGENTS.md section to use.
@@ -317,19 +317,19 @@ Do **not** edit any other section of FRAMEWORK-CONTEXT.md here — `Known Hazard
 
 ### 3d-bis: Confirm and write FRAMEWORK-CONTEXT.md > Known Hazard Areas
 
-From the Phase-2 **Tier-1 architectural risks** (and any domain-invariant / security findings — e.g. RxJS subscription leaks, missing sanitisation, auth interceptor gaps), identify up to ~12 candidate hazard areas. **Before writing anything to FRAMEWORK-CONTEXT.md**, ask the developer to confirm each one — in a **single message** (not dripped):
+From the Phase-2 **Tier-1 architectural risks** (and any domain-invariant / security findings — e.g. RxJS subscription leaks, missing sanitisation, auth interceptor gaps), identify up to ~12 candidate hazard areas. **Before writing anything to FRAMEWORK-CONTEXT.md**, ask the developer to confirm each one at this one pause, **one question per hazard** — never several hazards in one question:
 
 For each candidate, ask a plain, answerable engineering question:
 > "I found a potential hazard in [Area / file]: [one plain sentence describing the specific risk — e.g. 'the auth interceptor does not retry after a 401 token refresh, so a race condition could leave the user with a broken session']. Is this (a) a confirmed risk to track, (b) not actually a risk in this codebase, or (c) you're not sure?"
 
-Add a "skip all — mark as unverified" escape at the end of the message.
+With a question tool, ask as many hazards per call as it accepts, each its own question offering (a), (b), (c) and "skip the rest — mark them unverified", and make the next call straight away. Without one, number the questions in a single message and end it with a "skip all — mark as unverified" escape.
 
 **Under headless `/adopt`** (the `--headless` directive propagated into this Phase-7 `/bootstrap`): do **not** pause for confirmation. Take the "skip all — mark as unverified" path automatically — write every candidate hazard `[UNVERIFIED]` and surface it on adopt's Phase-8 checklist. Never auto-confirm a hazard when no developer is present.
 
 Map each answer to a row status:
 - **(a) confirmed** → `Status = [VERIFIED]`
 - **(b) not a risk** → `Status = [REVIEWED: not a hazard — YYYY-MM-DD]` using today's date in that ISO format (write the row — kept for auditability, not dropped)
-- **(c) unsure / skip all** → a new row is `Status = [UNVERIFIED]` (graceful degradation); a row already in the table keeps its status
+- **(c) unsure / skip all**, and every hazard still unanswered when the developer chose "skip the rest" → a new row is `Status = [UNVERIFIED]` (graceful degradation); a row already in the table keeps its status
 
 Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed`. `Reviewed` is the day the row was added, or a person last confirmed or dismissed it, in ISO `YYYY-MM-DD`; nothing else changes it, and `Status`, not the date, says whether a person confirmed it. So a row this run adds gets today's date, `[UNVERIFIED]` included, and a row already in the table keeps its status and date unless the developer answers it (a) or (b).
 

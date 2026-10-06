@@ -1,1 +1,0 @@
-description: Security review of changed code in this repository. Apply profile-specific OWASP checks only where repository evidence and changed files support them; use senior judgement for auth, token handling, and trust boundaries.

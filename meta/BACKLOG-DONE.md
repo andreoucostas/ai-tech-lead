@@ -13010,3 +13010,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-355** — CLOSED by decision **2026-10-06** (WSD-106), never filed. Three local Windows PowerShell 5.1 runs of `Guard.Tests`
   stalled (49 min, 20 min, over 2 h) inside the harness's `Start-Process -Wait` launch; 480 direct guard calls under 5.1 each took
   under 3 s and CI's 5.1 jobs passed. Reopen if a CI 5.1 job stalls.
+- **B-358** — CLOSED by decision **2026-10-07** (WSD-106), never filed. Found by the fresh-session attack on the 0.94.0 prompt
+  retirement: a repository whose only AI tooling is its own `.github/prompts/<workflow>.prompt.md` now installs greenfield, because
+  no shipped prompt path collides with it; `$adoptionSignals` never listed `.github/prompts/`. Nothing is lost. Reopen on a field report.

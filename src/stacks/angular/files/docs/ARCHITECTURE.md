@@ -20,7 +20,7 @@ flowchart TD
     Dev[Developer prompt or /command]
     subgraph T2[Tier 2 — Explicit workflows]
       C[".claude/commands/*.md (canonical)"]
-      P[".github/prompts/*.prompt.md (Copilot wrappers)"]
+      P[".agents/skills/*/SKILL.md (Copilot wrappers)"]
     end
     subgraph T1[Tier 1 — Directed / agent-mode]
       CL[CLAUDE.md — Claude Code import stub]
@@ -33,7 +33,7 @@ flowchart TD
 ```
 
 - **Tier 1 — Directed**: `AGENTS.md` (authored, canonical) is read by supported Copilot agent surfaces, GitHub code review, Codex, and Cursor, and by Claude Code through the `CLAUDE.md` stub that imports it. Gemini defaults to `GEMINI.md`; Aider needs explicit read configuration.
-- **Tier 2 — Explicit**: `/feature`, `/fix`, … live canonically in `.claude/commands/`; `.github/prompts/*.prompt.md` are thin wrappers that delegate to them (single source per workflow).
+- **Tier 2 — Explicit**: `/feature`, `/fix`, … live canonically in `.claude/commands/`; `.agents/skills/*/SKILL.md` are thin Copilot skill wrappers that delegate to them (single source per workflow).
 
 ---
 
@@ -59,7 +59,7 @@ flowchart LR
 
 ## 4. Workflow commands (Tier 2)
 
-Same names in Claude Code (`.claude/commands/`) and Copilot Chat (`.github/prompts/`).
+Same names in Claude Code (`.claude/commands/`) and Copilot, VS Code and Copilot CLI (`.agents/skills/`).
 
 | Command | Purpose |
 |---------|---------|
@@ -174,7 +174,8 @@ LEARNINGS.md                  append-only lessons
 .claude/skills/               common-task recipes
 .claude/hooks/                PowerShell SessionStart, route-prompt, guard, post-write, boy-scout-check scripts
 .claude/settings*.json        PowerShell hook registration (PS7 primary, PS5.1 fallback)
-.github/prompts|agents|hooks|instructions   distinct Copilot adapters and carriers
+.agents/skills/               Copilot workflow skills (wrappers for .claude/commands/)
+.github/agents|hooks|instructions   distinct Copilot adapters and carriers
 .github/workflows/            GitHub Actions (GitHub-only)
 scripts/                      docs-sync-check, framework-doctor, metrics, ci/
 specs/                        persistent feature specs (spec-driven development)

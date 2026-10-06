@@ -5,7 +5,7 @@ $register = [IO.File]::ReadAllText((Join-Path $root 'SECURITY_FINDINGS.md'))
 $command = [IO.File]::ReadAllText((Join-Path $root '.claude\commands\security-review.md'))
 $auditor = [IO.File]::ReadAllText((Join-Path $root '.claude\agents\security-auditor.md'))
 $copilotAgent = [IO.File]::ReadAllText((Join-Path $root '.github\agents\security-auditor.agent.md'))
-$copilotPrompt = [IO.File]::ReadAllText((Join-Path $root '.github\prompts\security-review.prompt.md'))
+$copilotSkill = [IO.File]::ReadAllText((Join-Path $root '.agents\skills\security-review\SKILL.md'))
 $isAngular = $command -match 'It does not append findings'
 
 function Find-UnsafeHistoricalSentinel([string]$Markdown) {
@@ -38,12 +38,12 @@ It 'Claude auditor withholds secret material, masked fragments, and secret-deriv
     }
 }
 
-It 'Copilot agent and prompt carry their own compact no-echo rule' {
+It 'Copilot agent and skill carry their own compact no-echo rule' {
     foreach ($required in @('partial or masked', 'secret-derived fingerprints', 'certificate or package')) {
         Assert ($copilotAgent.Contains($required)) "Copilot agent missing: $required"
     }
-    Assert ($copilotPrompt -match 'do not echo protected incident detail') 'Copilot prompt no-echo rule missing'
-    Assert ($copilotPrompt -match 'restricted human handling') 'Copilot prompt restricted-handling response missing'
+    Assert ($copilotSkill -match 'do not echo protected incident detail') 'Copilot skill no-echo rule missing'
+    Assert ($copilotSkill -match 'restricted human handling') 'Copilot skill restricted-handling response missing'
 }
 
 It 'credential response and legacy-register paths are non-durable and fail closed' {

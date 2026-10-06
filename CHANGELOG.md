@@ -70,6 +70,71 @@ surfaces. `enforcement-surfaces.md` now states what the secrets floor matches an
 values, flat `ConnectionStrings__Main` keys, Stripe's `sk_live_`). On-demand context: `docs/enforcement-surfaces.md`
 +1,672 chars per dist; always-loaded unchanged.
 
+Copilot's workflow prompts become skills (maintainer report 2026-10-06: VS Code offered "Convert to Skills" because
+prompt files are no longer supported). VS Code 1.140 (2026-09-30) began defaulting to its Copilot harness, which runs on
+the Copilot SDK in the Agent Host and loads no prompt files (VS Code docs `prompt-files.md` and
+`agent-customization/overview.md`, approved 2026-09-30; the Local harness still loads them until it is removed). The
+twelve `.github/prompts/<name>.prompt.md` wrappers move to `.agents/skills/<name>/SKILL.md`: each keeps its prompt body,
+drops `agent: agent` and the `${input:...}` placeholder (a skill takes the text after `/name`, which the body maps to
+the command's `$ARGUMENTS`), and carries `name` plus its command's frontmatter. The folder is `.agents/skills/` because
+WSD-072 keeps `.github/skills/` red in `docs-sync-check` and `template-checks`, and a `.claude/skills/` wrapper would
+shadow the same-named command in Claude Code, which reads neither `.agents/skills/` nor prompt files (Claude Code skills
+docs, 2026-10-06); moving the workflows themselves into `.claude/skills/` was rejected as reopening WSD-100. Copilot CLI
+1.0.92's `copilot skill list` lists each wrapper in place of the same-named `.claude/commands/` file
+(`meta/host-certification.md`), so a drifted wrapper would change the description, argument hint and model invocation
+Copilot uses. Because the wrappers now reach Copilot CLI users too, three prompt-era slips were removed: the test
+wrapper's weakest-coverage target, the debt summary's missing third outcome, and the rebootstrap request that promised a
+full run or named areas the command never reads. validate-dist check 15 now also scans `.agents/skills/`: a wrapper must
+open with `name: <name>`, repeat its command's frontmatter line for line with no key repeated, bare, quoted or as `?
+key`, case-sensitively (Copilot refuses the file: for a repeated `name` it falls back to the command, and any other key
+repeats in the command too, which Copilot then refuses as well), and name `.claude/commands/<name>.md` as the single
+source of truth; a wrapper without a command and a command without a wrapper fail; a delimiter is `---` with only
+trailing whitespace (Copilot refuses ` ---`); comparisons are ordinal, because `-ceq` ignores the zero-width characters
+Copilot rejects; and the blind-scan guards count `.claude/skills/` and `.claude/commands/` apart (ValidateDist case 41:
+fourteen red sub-cases and two green controls; the case fails on the parent tree and against the previous version of
+this change's validator, which passed a quoted duplicate `name` key, and each ordinal comparison, and each way of
+repeating a key, has a sub-case that a mutant of it turns green). The ledger retires the twelve prompt paths in 0.94.0
+with 85 digests, every released blob through v0.93.0 in all three dists (new B215 case). An update that keeps an edited
+prompt names the skill that replaces it instead of the generic "retired with no replacement command". An update keeps a
+file at a wrapper path that does not name its command as the single source of truth (a team's own skill), on every
+update, because the manifest it writes lists the path as framework-owned; a file that does name it but sits at a path
+the previous manifest did not own (a copy of the old prompt, perhaps edited) is saved under
+`.claude/framework-update-backup/agents-skills/` before the wrapper replaces it: beside a different earlier save, never
+over it, as `SKILL.<hash>.md` from the first 16 hex digits of its SHA-256; not again when an earlier run saved the same
+bytes; and behind an ignore rule there when the original was gitignored or Git cannot say. A file where a wrapper needs
+a folder is kept the same way instead of stalling the update; a kept path stays out of the `framework-ownership.json`
+the update writes, so a later update that finds the sentence in it saves the file before replacing it; and the
+ignore-rule warning no longer calls a kept team skill a framework file (two new UpdateDelivery cases; the second, as
+extended, was red on the two previous versions of this change's installer, where the stall, the collision, the
+committable save, the manifest and the unsaved merged skill each fail it on their own, and its earlier form on both
+versions before that). Four fresh-session attack rounds (five lenses, three on the fixes, then two on each rework of the
+installer and validator; two refuters per finding) found those losses: an update overwrote a team's
+`.agents/skills/review/SKILL.md`; then it still overwrote an edited copy of the old prompt, unrecoverably when
+gitignored; then, one update after saying it had kept such a copy because a backup already existed, it replaced it with
+no backup. The third round also found that re-running after a failed save stopped on the run's own backup, that the save
+of a gitignored file was committable, and that validate-dist passed a quoted duplicate `name` key Copilot refuses; a
+fourth, on those fixes, found that a kept team skill was then listed as framework-owned, so a later update replaced it
+without a save once it took in the prompt's text, and that four of the validator's new rules had no sub-case. They also
+confirmed the 85 digests, the update paths from v0.93.0, v0.80.0, v0.65.0 and v0.50.0, brownfield archiving of a
+colliding team skill, and the refusal before mutation of a symlinked `.agents/skills`. The headless `/adopt` hand-off
+and adoption marker no longer name the prompt, and `/adopt` Phase 6 generates an `.agents/skills/` wrapper for an
+adopted command. A repository whose only AI tooling is its own `.github/prompts/review.prompt.md` now installs
+greenfield (B-358). Not examined: VS Code itself (no seat), whether a typed `/name` or the model loads a wrapper on any
+host, and what Copilot code review on github.com does with the `review` wrapper (B-357). On-demand context: `adopt.md`
++51, `docs/ARCHITECTURE.md` +108 and `docs/playbook.md` -1 chars per dist; measured always-loaded context unchanged. The
+nine wrappers without `disable-model-invocation` put their commands' descriptions in VS Code's skill listing, where no
+prompt description was before (Copilot CLI already listed them from `.claude/commands/`); unmeasured.
+
+`/bootstrap` Phase 2b and 3d-bis and `/rebootstrap` 3c ask one question per item (maintainer report 2026-10-06: the
+hazards arrived as one question). Their "single message (not dripped)" wording, unchanged since July, fit a chat message
+and the multi-question tools (Claude Code's `AskUserQuestion`, VS Code Local's `askQuestions`), but the Copilot SDK's
+default `ask_user` tool takes one question with optional choices (copilot-sdk READMEs, 2026-10-06; a form-based variant
+also exists), and with it the agent folded every hazard into one. Each item is now its own question, as many per call as
+the tool accepts with the next call straight away. The hazard questions offer "skip the rest": answers already given
+stand, `/bootstrap` treats the rest as unsure, and `/rebootstrap` leaves the rest as they are and adds no candidate;
+Phase 2b keeps its skip signal. Without a question tool they stay numbered in one message. Text-only and unmeasured on
+any host. On-demand context: `bootstrap.md` +535 and `rebootstrap.md` +366 chars per dist; always-loaded unchanged.
+
 ## 0.93.0 — 2026-10-04
 
 B-326 (pre-registered at ac701446; `meta/eval-results.md`, `meta/host-certification.md`). On Copilot CLI 1.0.89 with

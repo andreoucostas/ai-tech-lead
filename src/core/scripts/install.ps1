@@ -887,6 +887,75 @@ if ($legacyGitHookInspection.Kind -eq 'LEGACY') {
     $reconciliationMessages.Add("NOTICE: $($legacyGitHookInspection.Detail)")
 }
 
+# .agents/skills is shared with other agents, so a team's own skill can sit at a workflow wrapper's
+# path. A fresh install archives it as a collision; an update decides by content and history. A file
+# there without the sentence naming its command as the single source of truth, or a file where the
+# wrapper needs a folder, is the team's, kept on every update. One with the sentence repeats the
+# framework's prompt or wrapper and is replaced, but saved first when the previous manifest did not
+# own the path. A kept file stays out of the manifest this run writes, so an owned path is one we wrote.
+$teamSkillPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+$agentsSkillBackups = New-Object System.Collections.Generic.List[object]
+$priorManifest = if (Test-Path -LiteralPath 'variable:previous') { $previous } else { $null }
+# A link at the backup path may lead back to the file itself, so it never counts as a save.
+function Test-HeldBytes {
+    param([string]$Relative, [byte[]]$Bytes)
+    $held = $null
+    $heldItem = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $Relative) -ErrorAction SilentlyContinue
+    if ($null -eq $heldItem -or ($heldItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) { return $false }
+    try { $held = [IO.File]::ReadAllBytes($heldItem.FullName) } catch { return $false }
+    return [string]::Equals([Convert]::ToBase64String($held), [Convert]::ToBase64String($Bytes), [StringComparison]::Ordinal)
+}
+if ($updateMode) {
+    foreach ($relative in $incomingPaths) {
+        $agentsSkill = [regex]::Match($relative, '^\.agents/skills/([a-z0-9-]+)/SKILL\.md$')
+        if (-not $agentsSkill.Success) { continue }
+        $workflow = $agentsSkill.Groups[1].Value
+        $blocker = @('.agents', '.agents/skills', ".agents/skills/$workflow" | Where-Object {
+            $item = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $_) -ErrorAction SilentlyContinue
+            $null -ne $item -and -not $item.PSIsContainer
+        }) | Select-Object -First 1
+        if ($blocker) {
+            [void]$teamSkillPaths.Add($relative)
+            $reconciliationMessages.Add("CANT-VERIFY: '$blocker' is a file where the framework's /$workflow wrapper needs a folder, so the update kept it and did not install $relative. To get the framework's /$workflow in VS Code, move that file elsewhere, then re-run the update.")
+            continue
+        }
+        $destination = Get-ContainedTargetPath -Relative $relative
+        if ($null -eq (Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue)) { continue }
+        $existingBytes = $null
+        $existingText = $null
+        try {
+            $existingBytes = [IO.File]::ReadAllBytes($destination)
+            $existingText = [Text.UTF8Encoding]::new($false, $true).GetString($existingBytes)
+        } catch { $existingText = $null }
+        if ($null -eq $existingText -or -not $existingText.Contains('`.claude/commands/' + $workflow + '.md` is the single source of truth')) {
+            [void]$teamSkillPaths.Add($relative)
+            $reconciliationMessages.Add("CANT-VERIFY: '$relative' is not the framework's /$workflow wrapper, so the update kept it and did not install the wrapper there. To get the framework's /$workflow in VS Code, move your skill to another folder, then re-run the update.")
+            continue
+        }
+        $incomingText = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $src $relative)))
+        if ([string]::Equals($existingText.Replace("`r`n", "`n"), $incomingText.Replace("`r`n", "`n"), [StringComparison]::Ordinal)) { continue }
+        if ($null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative)) { continue }
+        # An earlier run's copy (a re-run after a failed save) counts as saved. A different file at the
+        # backup path is never overwritten: this copy goes beside it, named by its own SHA-256.
+        $backupRelative = ".claude/framework-update-backup/agents-skills/$workflow/SKILL.md"
+        if ($null -ne (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $backupRelative) -ErrorAction SilentlyContinue) -and
+            -not (Test-HeldBytes -Relative $backupRelative -Bytes $existingBytes)) {
+            $backupRelative = ".claude/framework-update-backup/agents-skills/$workflow/SKILL.$((Get-Sha256Hex -Bytes $existingBytes).Substring(0, 16)).md"
+        }
+        $backupItem = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $backupRelative) -ErrorAction SilentlyContinue
+        if ($null -ne $backupItem -and (Test-HeldBytes -Relative $backupRelative -Bytes $existingBytes)) {
+            $reconciliationMessages.Add("NOTICE: '$relative' is already saved at $backupRelative, so the update installs the framework's /$workflow wrapper there. Keep any change you need in AGENTS.md or a project skill.")
+            continue
+        }
+        if ($null -ne $backupItem) {
+            [Console]::Error.WriteLine("ERROR: Refusing update: '$relative' must be saved before the framework's /$workflow wrapper replaces it, and both $(".claude/framework-update-backup/agents-skills/$workflow/SKILL.md") and $backupRelative already hold other content. Move them out of .claude/framework-update-backup/agents-skills/$workflow/, then re-run the update. Nothing was changed.")
+            exit 3
+        }
+        $agentsSkillBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backupRelative; SourceRelative = $relative })
+        $reconciliationMessages.Add("NOTICE: '$relative' holds the framework's /$workflow text, but the previous framework-ownership.json does not list it, so the update saves it to $backupRelative, then installs the wrapper. Keep any change you need in AGENTS.md or a project skill.")
+    }
+}
+
 # A retirement can delete only where the immediately previous manifest grants authority. That
 # limitation must not hide high-risk residuals on later updates after the new manifest no longer
 # owns them. Inspect exact ledger paths read-only; this diagnostic grants no deletion authority.
@@ -898,6 +967,8 @@ if ($updateMode) {
         $claudeSkillSlug = if ($isRetiredClaudeSkill) { $Matches[1] } else { $null }
         $isRetiredSyncScript = $retiredPath -in @('scripts/sync-agent-files.ps1', 'scripts/sync-agent-files.sh')
         $isRetiredGitHookHelper = $retiredPath -in $legacyGitHookRetiredDependencies
+        $isRetiredPrompt = $retiredPath -match '^\.github/prompts/([a-z0-9-]+)\.prompt\.md$'
+        $promptWorkflow = if ($isRetiredPrompt) { $Matches[1] } else { $null }
         # Every retained retired path is reported. This was an allow-list of five categories, so a
         # path retired in any later release was preserved in silence -- and each new retirement had
         # to remember to add itself, which is the same shape of defect the list was added to fix.
@@ -946,6 +1017,11 @@ if ($updateMode) {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired generator '$retiredPath' remains. The generated architecture view is retired and has no replacement command; its output loaded third-party script from the network each time it was opened. Read docs/ARCHITECTURE.md directly, then remove this generator and any page it produced after review.")
         } elseif ($retiredPath.StartsWith('docs/presentation/', [StringComparison]::Ordinal)) {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired presentation file '$retiredPath' remains. The deck is no longer installed; the current copy is in '$(Join-Path $src 'presentation')'. Delete '$retiredPath' after review.")
+        } elseif ($isRetiredPrompt -and $teamSkillPaths.Contains(".agents/skills/$promptWorkflow/SKILL.md")) {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired prompt file '$retiredPath' remains, and the update kept your own skill or file at .agents/skills/$promptWorkflow, so the framework's wrapper for /$promptWorkflow is not installed there; VS Code's Copilot harness does not load prompt files. Keep any change you need in AGENTS.md or a project skill, then delete the prompt file after review.")
+        } elseif ($isRetiredPrompt -and $incoming.ByPath.ContainsKey(".agents/skills/$promptWorkflow/SKILL.md")) {
+            # These prompts were replaced, not dropped: the generic arm below would say there is no replacement.
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired prompt file '$retiredPath' remains. Its workflow now ships as the skill .agents/skills/$promptWorkflow/SKILL.md, which runs .claude/commands/$promptWorkflow.md, and VS Code's Copilot harness does not load prompt files. Keep any change you need in AGENTS.md or a project skill, because an update replaces framework files, then delete the prompt file after review.")
         } else {
             $twin = if ($retiredPath.EndsWith('.sh', [StringComparison]::OrdinalIgnoreCase)) {
                 $retiredPath.Substring(0, $retiredPath.Length - 3) + '.ps1'
@@ -1260,6 +1336,8 @@ if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Contain
     }
 }
 
+foreach ($entry in $agentsSkillBackups) { [void](Add-PlannedWrite -Relative $entry.Relative -ForceCreate) }
+
 # Preserve every existing leaf of a disabled skill in its inactive location, then overlay the
 # incoming framework version. Active copies are removed as explicit tree operations.
 foreach ($name in $disabledSkillNames) {
@@ -1291,8 +1369,10 @@ foreach ($relative in $incomingPaths) {
     $preserveDiscovered = $claudeSkill.Success -and $discoveredSkillNames.Contains($claudeSkill.Groups[1].Value)
     $preserve = $exists -and ($relative -in $copyIfAbsent -or
         ($updateMode -and $relative -in $protected -and $relative -ne $legalLicense) -or
-        ($relative -eq $legalLicense -and -not $copyLegalLicense) -or $preserveDiscovered)
+        ($relative -eq $legalLicense -and -not $copyLegalLicense) -or $preserveDiscovered -or
+        $teamSkillPaths.Contains($relative))
     if ($preserve) { [void]$preservePlan.Add($relative); continue }
+    if ($teamSkillPaths.Contains($relative)) { continue }
     [void](Add-PlannedWrite -Relative $relative -ForceCreate:$archiveSources.Contains($relative))
     $ordinaryApplyPaths.Add($relative)
 }
@@ -1441,6 +1521,10 @@ if ($adoptMode -and $null -ne $ignoredShippedPaths) {
 }
 $archiveIgnoreRelative = 'docs/pre-adoption/.gitignore'
 if ($keptOutEntries.Count -gt 0) { [void](Add-PlannedWrite -Relative $archiveIgnoreRelative) }
+# The same holds for a file saved from .agents/skills; when Git cannot say, its copy stays out too.
+$agentsSkillsKeptOut = @($agentsSkillBackups | Where-Object { $null -eq $ignoredShippedPaths -or $_.SourceRelative -cin $ignoredShippedPaths })
+$agentsSkillsIgnoreRelative = '.claude/framework-update-backup/agents-skills/.gitignore'
+if ($agentsSkillsKeptOut.Count -gt 0) { [void](Add-PlannedWrite -Relative $agentsSkillsIgnoreRelative) }
 
 $adoptionMarkerRelative = $null
 if ($adoptMode) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
@@ -1496,7 +1580,7 @@ function Write-AdoptionMarker {
             entries         = @($archiveEvidence | ForEach-Object { [pscustomobject]$_ })
             inventoryIdentity = $archiveInventoryIdentity
         }
-        nextStep          = '/adopt - a developer types it in a session, OR an agent runs it headless (read .claude/commands/adopt.md and follow its Headless mode, or use .github/prompts/adopt.prompt.md with a --headless directive). Headless prepares an adopt-ai-framework PR branch for human review; it does not auto-merge discovered content.'
+        nextStep          = '/adopt - a developer types it in a session, OR an agent runs it headless (read .claude/commands/adopt.md and follow its Headless mode with a --headless directive). Headless prepares an adopt-ai-framework PR branch for human review; it does not auto-merge discovered content.'
         _comment          = 'Written by the framework installer because pre-existing AI tooling was detected. Consolidate it with /adopt - NOT /bootstrap. /adopt keeps this marker through archive and merge work, verifies and copies it for recovery, deletes it only immediately before the Phase-7 bootstrap, and restores it if completion fails.'
     }
     $markerPath = Join-Path $tgt '.claude/adoption-pending.json'
@@ -1637,6 +1721,35 @@ if ($skillBackupPlan.Count -gt 0) {
         exit 3
     }
 }
+if ($agentsSkillsKeptOut.Count -gt 0) {
+    try {
+        $agentsSkillsIgnorePath = Get-ContainedTargetPath -Relative $agentsSkillsIgnoreRelative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $agentsSkillsIgnorePath) | Out-Null
+        $agentsSkillsIgnoreText = if (Test-Path -LiteralPath $agentsSkillsIgnorePath -PathType Leaf) { [IO.File]::ReadAllText($agentsSkillsIgnorePath) } else { '' }
+        $agentsSkillsIgnoreLines = @($agentsSkillsIgnoreText -split '\r?\n')
+        $agentsSkillsIgnoreNew = @($agentsSkillsKeptOut | ForEach-Object { $_.Relative.Substring('.claude/framework-update-backup/agents-skills'.Length) } | Where-Object { $_ -cnotin $agentsSkillsIgnoreLines })
+        if ($agentsSkillsIgnoreNew.Count -gt 0) {
+            $separator = if ($agentsSkillsIgnoreText.Length -gt 0 -and -not $agentsSkillsIgnoreText.EndsWith("`n")) { "`n" } else { '' }
+            [IO.File]::AppendAllText($agentsSkillsIgnorePath, $separator + ($agentsSkillsIgnoreNew -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
+        }
+    } catch {
+        [Console]::Error.WriteLine("ERROR: Could not write $agentsSkillsIgnoreRelative before saving gitignored skills: $($_.Exception.Message)")
+        [Console]::Error.WriteLine('  No file under .agents/skills was saved or overwritten. Resolve the cause above, then re-run the installer; in a Git target add -AllowDirtyTree, since the changes Git now shows are this run''s own.')
+        exit 3
+    }
+    Write-Output "  kept out of Git by ${agentsSkillsIgnoreRelative}: $(@($agentsSkillsKeptOut | ForEach-Object { $_.Relative }) -join ', '). You had gitignored the originals, or Git could not say, and they may hold secrets."
+}
+foreach ($entry in $agentsSkillBackups) {
+    try {
+        $destination = Get-ContainedTargetPath -Relative $entry.Relative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+        Copy-Item -LiteralPath $entry.Source -Destination $destination -ErrorAction Stop
+    } catch {
+        [Console]::Error.WriteLine("ERROR: Could not save '$($entry.Relative)' before replacing the file it copies: $($_.Exception.Message)")
+        [Console]::Error.WriteLine('  That file was not overwritten. Resolve the cause above, then re-run the installer; in a Git target add -AllowDirtyTree, since the changes Git now shows are this run''s own.')
+        exit 3
+    }
+}
 foreach ($entry in $disabledCarryPlan) {
     $destination = Get-ContainedTargetPath -Relative $entry.Relative
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
@@ -1646,6 +1759,20 @@ foreach ($relative in $ordinaryApplyPaths) {
     $destination = Get-ContainedTargetPath -Relative $relative
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
     Copy-Item -Force -LiteralPath (Join-Path $src $relative) -Destination $destination
+}
+# A kept team file is not the framework's, so the manifest leaves it out, written as build.ps1 writes
+# it: a later update then finds the path unowned and saves the file before any wrapper replaces it.
+if ($teamSkillPaths.Count -gt 0 -and $ordinaryApplyPaths.Contains('framework-ownership.json')) {
+    $ownedEntries = @($incoming.Entries | Where-Object { -not $teamSkillPaths.Contains([string]$_.path) })
+    $manifestLines = New-Object System.Collections.Generic.List[string]
+    $manifestLines.Add('{'); $manifestLines.Add('  "schema-version": 1,'); $manifestLines.Add('  "paths": [')
+    for ($i = 0; $i -lt $ownedEntries.Count; $i++) {
+        $comma = if ($i -lt $ownedEntries.Count - 1) { ',' } else { '' }
+        $pathJson = ([string]$ownedEntries[$i].path).Replace('\', '\\').Replace('"', '\"')
+        $manifestLines.Add(('    {{ "path": "{0}", "ownership": "{1}" }}{2}' -f $pathJson, $ownedEntries[$i].ownership, $comma))
+    }
+    $manifestLines.Add('  ]'); $manifestLines.Add('}')
+    [IO.File]::WriteAllText((Get-ContainedTargetPath -Relative 'framework-ownership.json'), (($manifestLines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
 }
 foreach ($entry in $disabledIncomingPlan) {
     $destination = Get-ContainedTargetPath -Relative $entry.Relative
@@ -1722,7 +1849,7 @@ Write-Output "Each developer should run  $followUpPowerShell scripts/framework-d
 # The audit log is ignored on purpose (it is per-machine state).
 $script:IgnoreUnanswered = $false
 $ignoredAfterCopy = Get-IgnoredShippedPaths
-$hiddenShipped = @($ignoredAfterCopy | Where-Object { $_ -and $_ -notin $persistentCopyIfAbsent })
+$hiddenShipped = @($ignoredAfterCopy | Where-Object { $_ -and $_ -notin $persistentCopyIfAbsent -and -not $teamSkillPaths.Contains($_) })
 if ($hiddenShipped.Count -gt 0) {
     $hiddenSummary = @($hiddenShipped | Group-Object { if ($_.Contains('/')) { $_.Split('/')[0] + '/' } else { $_ } } | Sort-Object Name |
         ForEach-Object { if ($_.Count -gt 1) { "$($_.Name) ($($_.Count) files)" } else { $_.Group[0] } }) -join ', '
@@ -1764,8 +1891,8 @@ if ($updateMode) {
     Write-Output "  have done step 1 (commit the copied files) and then EITHER told the developer to start a"
     Write-Output "  Claude Code or interactive Copilot CLI session in the target repo and type /adopt,"
     Write-Output "  OR run headless adoption yourself:"
-    Write-Output "  invoke the adopt workflow with a --headless directive (use .github/prompts/adopt.prompt.md,"
-    Write-Output "  or read .claude/commands/adopt.md and follow its 'Headless mode'). Headless adoption"
+    Write-Output "  invoke the adopt workflow with a --headless directive (read .claude/commands/adopt.md"
+    Write-Output "  and follow its 'Headless mode'). Headless adoption"
     Write-Output "  PREPARES a PR: it creates the adopt-ai-framework branch, archives and screens the"
     Write-Output "  originals, and STAGES every AGENTS.md/TECH_DEBT merge for a human to review - it does NOT"
     Write-Output "  apply untrusted discovered content and does NOT open or merge the PR, so a person still"

@@ -1,1 +1,0 @@
-description: Refresh the AI Tech Lead framework config for this repository — derive applicable profiles from repository evidence, then make a diff-aware merge into existing AGENTS.md and TECH_DEBT.md after months of evolution.

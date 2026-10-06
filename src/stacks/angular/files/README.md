@@ -102,7 +102,7 @@ Read the generated `AGENTS.md`. It should accurately describe your codebase. Fix
 
 ### 4. Start working
 
-Both Claude Code and Copilot Chat use the same slash-command names:
+Claude Code and Copilot (VS Code and Copilot CLI) use the same slash-command names:
 
 ```
 /feature [description]     — implement a feature at evidenced boundaries
@@ -117,7 +117,7 @@ Both Claude Code and Copilot Chat use the same slash-command names:
 /adopt                     — ingest existing AI-framework artifacts into this layout
 ```
 
-In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot Chat**, the same names are loaded from `.github/prompts/` — those files are thin wrappers that delegate to the canonical `.claude/commands/*.md` files, so there's a single source of truth per workflow. In **Copilot CLI**, the same `.claude/commands/` files load as skills, but `/review` and `/security-review` are also the CLI's own commands: the CLI turns either into an instruction to run its built-in review agent, and the model then chooses between that agent and this framework's file (observed on Copilot CLI 1.0.89, 2026-10-04); to run this framework's version there, ask for it by name, for example *"Run the security-review skill from this repository on my staged changes."*
+In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot** (VS Code and Copilot CLI), the same names are loaded as skills from `.agents/skills/` — thin wrappers that delegate to the canonical `.claude/commands/*.md` files, so there's a single source of truth per workflow. They replace the `.github/prompts/` files, which VS Code's Copilot harness does not load (VS Code 1.140, 2026-09-30). In **Copilot CLI**, `/review` and `/security-review` are also the CLI's own commands: the CLI turns either into an instruction to run its built-in review agent, and the model then chooses between that agent and this framework's file (observed on Copilot CLI 1.0.89, 2026-10-04); to run this framework's version there, ask for it by name, for example *"Run the security-review skill from this repository on my staged changes."*
 
 Or just describe what you want in natural language — the framework rules teach the agent to route to the right workflow automatically.
 
@@ -166,8 +166,8 @@ want. `.claude/framework-update-backup/` holds an update's backups for review an
 | `CLAUDE.md` | Claude Code entry point — a stub that imports `AGENTS.md` and the framework rules (`.github/instructions/framework-rules.instructions.md`); edit `AGENTS.md`, not this file. |
 | `FRAMEWORK-CONTEXT.md` | Cross-repo context: shared npm libraries, multi-tenancy conventions, dashboard contracts, cross-service patterns. Every section is drafted by `/bootstrap` from the repo's code (cross-repo facts the code can't show are explicitly left to maintainers); "Detected Framework Packages" is also refreshed by `/docs-sync`; "Known Hazard Areas" by `/rebootstrap`. |
 | `AGENTS.md` | **Single source of truth** (authored) — conventions, architecture, common tasks, Boy Scout Rule; points to the framework rules (Verification, Leanness, SOLID, Agentic Workflow). Read directly by supported Copilot agent surfaces, GitHub code review, Codex, and Cursor; Claude Code reads it through `CLAUDE.md`. Gemini defaults to `GEMINI.md`, and Aider needs explicit read configuration. |
-| `.github/prompts/*.prompt.md` | Copilot Chat workflows. Thin wrappers that delegate to `.claude/commands/`. |
-| `.claude/commands/*.md` | Canonical workflow definitions (used by Claude Code natively, and by the Copilot prompt files). |
+| `.agents/skills/*/SKILL.md` | Copilot workflows (the slash commands in VS Code and Copilot CLI). Thin wrappers that delegate to `.claude/commands/`; Claude Code does not read this folder. |
+| `.claude/commands/*.md` | Canonical workflow definitions (used by Claude Code natively, and by the `.agents/skills/` wrappers). |
 | `.claude/skills/*/SKILL.md` | Auto-discovered skills (add-tests, dependency-audit, create-adr, enforce-architecture, enforce-standards, plus the project skills `/bootstrap` drafts). Shared canonical location for Claude Code and supported GitHub Copilot skill surfaces; the body loads only when triggered. |
 | `.claude/agents/*.md` | Subagents (security-auditor, solid-check, convention-check, bloat-radar, debt-radar, test-critic, bootstrap-pass). Run in isolated context; return structured findings. The six user-facing ones are mirrored to `.github/agents/*.agent.md` as Copilot custom agents. |
 | `.claude/workflow.md` | Shared self-review + flag-drift tail inlined by the workflow commands via `@.claude/workflow.md`. |

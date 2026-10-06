@@ -36,6 +36,31 @@
   `docs/enforcement-surfaces.md` now lists exactly what the guard matches and what it does not. An update refreshes
   both.
 
+- **Copilot in VS Code keeps the slash commands: they now ship as skills in `.agents/skills/`.** VS Code 1.140
+  (2026-09-30) began making its Copilot harness the default, and that harness does not load prompt files, so `/feature`,
+  `/fix`, `/review` and the other commands left Copilot chat with a prompt to convert them to skills. Each
+  `.github/prompts/<name>.prompt.md` is now `.agents/skills/<name>/SKILL.md`, a wrapper that runs the same
+  `.claude/commands/<name>.md` workflow with that command's description and argument hint. VS Code and Copilot CLI read
+  this folder (Copilot CLI 1.0.92 lists the wrappers in place of the `.claude/commands/` files); Claude Code does not,
+  and keeps running `.claude/commands/` directly. An update removes the prompt files you have not changed (an install
+  too old to have a `framework-ownership.json` keeps them all and lists each); one you edited is kept and reported, and
+  you can delete it after moving what you need into `AGENTS.md` or a project skill. If `.agents/skills/` already holds a
+  skill of your own at one of these names, or a file where one of these folders goes, the update keeps it and says so
+  instead of installing that wrapper; a copy of the framework's own prompt there, edited or not, is saved under
+  `.claude/framework-update-backup/agents-skills/` before the wrapper replaces it, beside any earlier save there rather
+  than over it, and kept out of Git if you had gitignored the original. If you already used VS Code's **Convert to
+  Skills** on these prompts, delete the skills it made from them: this release ships its own, and `docs-sync-check`
+  fails while a `.github/skills/` folder exists. On github.com, Copilot code review can also pick up repository skills,
+  including the `/review` wrapper; we have not tested what it does with one.
+
+- **`/bootstrap` and `/rebootstrap` ask about each hazard in its own question again.** Copilot's `ask_user` question
+  tool takes one question per call in its default form, and the instruction to ask everything "in a single message" led
+  the agent to fold every hazard into one long question. The clarifying questions, the hazard confirmation and
+  `/rebootstrap`'s hazard re-confirmation now ask one question per item at the same pause: as many per call as your
+  host's question tool takes, then the next call straight away. The hazard questions also offer "skip the rest", so the
+  answers you already gave stand; the clarifying questions keep their "skip" or "proceed" answer. Without a question
+  tool they stay numbered questions in one message. An update refreshes both commands.
+
 ## 0.93.0 — 2026-10-04
 
 - **In Copilot CLI, `/review` and `/security-review` may run the CLI's own review instead of this framework's.** Copilot CLI has
