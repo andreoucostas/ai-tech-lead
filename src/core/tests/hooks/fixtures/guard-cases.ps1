@@ -53,6 +53,17 @@ $GuardCases = @(
     @{ n='hardcoded credential literal';       f='src/AuthService.cs';        c='var password = "hunter2hunter2";';                     block=$true }
     @{ n='connection string Password';         f='src/AuthService.cs';        c='var connectionString = "Server=db;User Id=sa;Password=hunter2;Database=app";'; block=$true }
     @{ n='connection string URI userinfo';     f='src/AuthService.cs';        c='var connectionString = "postgres://user:hunter2@host/db";'; block=$true }
+    # The standard appsettings.json layout keeps the password under a named entry of ConnectionStrings.
+    @{ n='ConnectionStrings section Password'; f='src/Api/appsettings.json';  c='{ "ConnectionStrings": { "Main": "Server=prod-sql;Database=app;User Id=app;Password=Pr0dS3cret!;" } }'; block=$true }
+    @{ n='ConnectionStrings later entry Password'; f='src/Api/appsettings.json'; c="{`n  `"ConnectionStrings`": {`n    `"Cache`": `"localhost:6379`",`n    `"Main`": `"Server=db;User Id=sa;Password=hunter2;`"`n  }`n}"; block=$true }
+    @{ n='ConnectionStrings section URI userinfo'; f='src/Api/appsettings.json'; c='{ "ConnectionStrings": { "Db": "postgres://app:hunter2@db/app" } }'; block=$true }
+    @{ n='ConnectionStrings Password after an ODBC Driver={...} entry'; f='src/Api/appsettings.json'; c='{ "ConnectionStrings": { "Odbc": "Driver={ODBC Driver 18 for SQL Server};Server=x;Trusted_Connection=yes", "Main": "Server=prod;User Id=app;Password=Pr0dS3cret!;" } }'; block=$true }
+    # A token exempts only the credential value it stands for, and every credential-shaped match is checked.
+    @{ n='literal password beside a server token'; f='src/Web.config'; c='<add name="Main" connectionString="Server=#{SqlServer}#;User Id=app;Password=Pr0dS3cret!;" />'; block=$true }
+    @{ n='ConnectionStrings literal password beside a server token'; f='src/Api/appsettings.json'; c='{ "ConnectionStrings": { "Main": "Server=#{SqlServer}#;User Id=app;Password=Pr0dS3cret!;" } }'; block=$true }
+    @{ n='literal credential after a tokenised one'; f='src/Api/appsettings.json'; c='{ "Db": { "Password": "#{DbPassword}#" }, "Smtp": { "Password": "Pr0dS3cret!xyz" } }'; block=$true }
+    @{ n='literal password before a token in a later password key'; f='src/Web.config'; c='<add name="Main" connectionString="Server=db;User Id=app;Password=Pr0dS3cret!;SslMode=Required;CertificatePassword=#{CertPassword}#" />'; block=$true }
+    @{ n='ConnectionStrings literal password before a token in a later password key'; f='src/Api/appsettings.json'; c='{ "ConnectionStrings": { "Main": "Host=db;Username=app;Password=Pr0dS3cret!;SSL Password=__CertPassword__" } }'; block=$true }
     # The test/sample exemption is anchored to whole path tokens: "test" inside Latest and "spec"
     # inside Specification no longer exempt production code from the credential check.
     # $azureKey is assembled from two halves at load time: a literal 88-character key in the
@@ -78,6 +89,14 @@ $GuardCases = @(
     @{ n='Azurite well-known dev key (allow)'; f='src/Storage.cs';            c='var cs = "AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";'; block=$false }
     @{ n='SAS sig= without a token (allow)';   f='src/Storage.cs';            c='var q = "?sv=2022-11-02&sig=";';                        block=$false }
     @{ n='passwordless connection string';     f='src/AuthService.cs';       c='var connectionString = "Server=localhost;Trusted_Connection=True";'; block=$false }
+    @{ n='passwordless ConnectionStrings section'; f='src/Api/appsettings.json'; c='{ "ConnectionStrings": { "Main": "Server=.;Database=app;Trusted_Connection=True" } }'; block=$false }
+    @{ n='ConnectionStrings password placeholder'; f='src/Api/appsettings.json'; c='{ "ConnectionStrings": { "Main": "Server=db;User Id=sa;Password=<from-vault>;" } }'; block=$false }
+    @{ n='ConnectionStrings in appsettings.Development.json (allow)'; f='src/Api/appsettings.Development.json'; c='{ "ConnectionStrings": { "Main": "Server=localhost;User Id=sa;Password=dev-only-pass;" } }'; block=$false }
+    # Release pipelines replace tokens in appsettings.json; a token is not a credential.
+    @{ n='ConnectionStrings #{token}# placeholders (allow)'; f='src/Api/appsettings.json'; c='{ "ConnectionStrings": { "Main": "Server=#{SqlServer}#;User Id=#{SqlUser}#;Password=#{SqlPassword}#;" } }'; block=$false }
+    @{ n='ConnectionStrings __token__ placeholder (allow)'; f='src/Api/appsettings.json'; c='{ "ConnectionStrings": { "Main": "Server=db;User Id=app;Password=__SqlPassword__;" } }'; block=$false }
+    @{ n='ConnectionStrings $(variable) placeholder (allow)'; f='src/Api/appsettings.json'; c='{ "ConnectionStrings": { "Main": "Server=db;User Id=app;Password=$(SqlPassword);" } }'; block=$false }
+    @{ n='ConnectionStrings password under 4 characters (allow)'; f='src/Api/appsettings.json'; c='{ "ConnectionStrings": { "Main": "Server=.;User Id=sa;Pwd=abc;" } }'; block=$false }
     @{ n='near-miss fine-grained PAT';         f='src/deploy.cs';             c='var t = "github_pat_too_short";';                       block=$false }
     # sk- inside a kebab-case name is not a key; both lines were blocked as one before the left boundary.
     @{ n='kebab import containing sk- (allow)'; f='src/app/board/board.ts';  c="import { TaskListItemRenderer } from './task-list-item-renderer-component';"; block=$false }

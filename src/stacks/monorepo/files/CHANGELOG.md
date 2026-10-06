@@ -25,6 +25,17 @@
   spells out the write-guard check the doctor prints. An update refreshes both; install PowerShell 7 wherever Copilot
   runs.
 
+- **The write guard now refuses a password in `appsettings.json`'s `ConnectionStrings` section.** Until now it caught
+  a connection-string password only under a `connectionString` key, so the standard .NET layout `"ConnectionStrings":
+  { "Main": "Server=…;Password=…" }` was written without a word. Any entry with `Password=`, `Pwd=` or a
+  `user:password@` address is now refused, except in test, sample and `Development` files such as
+  `appsettings.Development.json`, and a placeholder such as `<from-vault>` or `${DB_PASSWORD}`, or a release-pipeline
+  token such as `#{DbPassword}#`, `__DbPassword__` or `$(DbPassword)` used as the password itself, still passes; a
+  token elsewhere in the string does not excuse a real password beside it. A local-only password in a non-Development
+  settings file is refused too: keep it in user secrets or `appsettings.Development.json`.
+  `docs/enforcement-surfaces.md` now lists exactly what the guard matches and what it does not. An update refreshes
+  both.
+
 ## 0.93.0 — 2026-10-04
 
 - **In Copilot CLI, `/review` and `/security-review` may run the CLI's own review instead of this framework's.** Copilot CLI has

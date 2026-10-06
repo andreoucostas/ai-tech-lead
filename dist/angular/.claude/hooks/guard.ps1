@@ -101,8 +101,38 @@ if ($fp) {
     }
 }
 if (-not $credentialExempt) {
-    $m = [regex]::Match($content, '(?i)(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|client[_-]?secret)["'' ]*[:=]\s*["''][^"'']{8,}["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*(?:password|pwd)\s*=\s*[^;"'']{4,}[^"'']*["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*://[^/\s:@]+:[^/\s@]+@[^"'']*["'']')
-    if ($m.Success -and $m.Value -notmatch '(?i)(changeme|placeholder|your[_-]|example|dummy|<[^>]+>|\$\{|process\.env|%[A-Z_]+%)') {
+    # A placeholder word anywhere in the matched text exempts it, as it always has.
+    $placeholder = '(?i)(changeme|placeholder|your[_-]|example|dummy|<[^>]+>|\$\{|process\.env|%[A-Z_]+%)'
+    # A release-pipeline token (#{X}#, __X__, $(X), {{X}}) is replaced at deploy time, so it exempts the
+    # credential value it stands in for, and only that value: a token elsewhere must not hide a literal.
+    $token = '(?i)^\s*(?:#\{[^}]{1,200}\}#|__[A-Za-z0-9_.:-]{1,200}__|\$\([A-Za-z0-9_.:-]{1,200}\)|\{\{[^}]{1,200}\}\}|replace[_-]?me|\*{6,200})\s*$'
+    # A connection string can carry several passwords (CertificatePassword=, SSL Password=, Proxy
+    # Password=), so every password and userinfo value in the match must be a token to exempt it.
+    function Test-CredentialMatch($Match) {
+        if ($Match.Value -match $placeholder) { return $false }
+        $values = @($Match.Groups['v'].Value)
+        foreach ($inner in [regex]::Matches($Match.Value, '(?i)(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))|://[^/\s:@"'']+:(?<v>[^/\s@"'']+)@')) { $values += $inner.Groups['v'].Value }
+        foreach ($value in $values) { if ($value -and $value -notmatch $token) { return $true } }
+        return $false
+    }
+    # Every credential-shaped match is checked, so an earlier placeholder cannot hide a later literal.
+    $credentialHit = $false
+    foreach ($m in [regex]::Matches($content, '(?i)(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|client[_-]?secret)["'' ]*[:=]\s*["''](?<v>[^"'']{8,})["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']')) {
+        if (Test-CredentialMatch $m) { $credentialHit = $true; break }
+    }
+    # appsettings.json's standard layout names each connection string inside a ConnectionStrings
+    # object, so no connectionString key sits beside the value; check every entry of each section.
+    # The section capture skips whole strings, so a brace inside a value (ODBC Driver={...}) does not
+    # end it; atomic groups keep both patterns linear on Windows PowerShell 5.1.
+    if (-not $credentialHit) {
+        foreach ($section in [regex]::Matches($content, '(?i)"connectionstrings"\s*:\s*\{((?:(?>"(?:[^"\\]|\\.)*")|[^{}"])*)')) {
+            foreach ($entry in [regex]::Matches($section.Groups[1].Value, '(?i)"[^"]*"\s*:\s*"[^"]*(?:(?:password|pwd)\s*=\s*(?<v>(?>[^;"]{4,}))|://[^/\s:@"]+:(?<v>[^/\s@"]+)@)[^"]*"')) {
+                if (Test-CredentialMatch $entry) { $credentialHit = $true; break }
+            }
+            if ($credentialHit) { break }
+        }
+    }
+    if ($credentialHit) {
         $reasons += "assigns a hardcoded credential literal — move it to user-secrets / env vars / a vault"
     }
 }

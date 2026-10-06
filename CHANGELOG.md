@@ -45,6 +45,31 @@ repeats the write-guard canary the doctor prints (B-354, whose "no shipped file 
 the READMEs' host-support note says the same. On-demand context: `docs/enforcement-surfaces.md` +748 chars per dist; always-loaded
 unchanged.
 
+B-353: the guard's credential check now reads `appsettings.json`'s standard `"ConnectionStrings": { "Main": "…" }`
+layout. A password (`Password=`/`Pwd=`, 4+ characters) or a `user:password@` URI in any entry of a ConnectionStrings
+object is refused, with the existing placeholder and test, sample and `Development` path exemptions; before, only a
+`connectionString` key beside the value matched, so the default .NET layout passed (exit 0, reproduced). The section
+capture skips whole JSON strings, so a brace inside a value (ODBC `Driver={…}`) does not end it, and both patterns use
+atomic groups: a fresh-session attack on the first version found an unterminated 64 KB value took 47 s on Windows
+PowerShell 5.1 (now 0.34 s) and that an ODBC sibling hid the next entry. Release-pipeline tokens (`#{X}#`, `__X__`,
+`$(X)`, `{{X}}`, `REPLACE_ME`, `******`) now pass, but only as the credential value itself, and the existing check
+reads every credential-shaped match instead of the first; HEAD's placeholder words keep their whole-match meaning. The
+first attack showed tokenised `appsettings.json`, common in enterprise release pipelines, would otherwise be refused;
+a second fresh-session attack showed that adding the tokens to the whole-match placeholder list, with first-match
+reading, let a literal password beside or after a token through where HEAD refused it (a Web.config with one tokenised
+and one literal connection string); that version was never committed. A third attack found that a later password key
+in the same string (MySqlConnector `CertificatePassword=#{X}#`, Npgsql `SSL Password=__X__`, Oracle `Proxy Password=`)
+still excused an earlier literal, because the greedy match captured the last `password=`; every password and userinfo
+value in a matched string is now checked, and the attacker's 57 probes were replayed against the final guard. The
+existing `"Password": "#{X}#"` refusal goes away, and a literal after an earlier placeholder, which HEAD let through,
+is now refused. Of the 16 corpus files with a ConnectionStrings section (dotnet/eShop,
+jasontaylordev/CleanArchitecture, the dists, the eval fixtures), one changes from allowed to refused:
+CleanArchitecture's `appsettings.PostgreSQL.json`, a localhost `Username=admin;Password=…` template default.
+`Guard.Tests` gains nine refused and seven allowed cases; the refused ones failed on the unfixed tree on both
+surfaces. `enforcement-surfaces.md` now states what the secrets floor matches and what it does not (unquoted generic
+values, flat `ConnectionStrings__Main` keys, Stripe's `sk_live_`). On-demand context: `docs/enforcement-surfaces.md`
++1,672 chars per dist; always-loaded unchanged.
+
 ## 0.93.0 — 2026-10-04
 
 B-326 (pre-registered at ac701446; `meta/eval-results.md`, `meta/host-certification.md`). On Copilot CLI 1.0.89 with

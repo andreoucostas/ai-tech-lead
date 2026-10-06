@@ -13004,3 +13004,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   PowerShell 5.1, and `enforcement-surfaces.md` and the READMEs state the consequence.
 - **B-354** — DONE **2026-10-05** for 0.94.0: the doctor already printed the write-guard canary after its summary, which the entry missed;
   `enforcement-surfaces.md` now points to it and repeats its steps.
+- **B-353** — DONE **2026-10-05** for 0.94.0 (user chose to widen): a password or `user:password@` in any entry of an
+  `appsettings.json` `ConnectionStrings` section is refused; `enforcement-surfaces.md` states the secrets floor and its gaps (unquoted
+  generic values, Stripe `sk_live_`). One of 16 corpus files with a ConnectionStrings section changes to refused (a localhost template default).
+- **B-355** — CLOSED by decision **2026-10-06** (WSD-106), never filed. Three local Windows PowerShell 5.1 runs of `Guard.Tests`
+  stalled (49 min, 20 min, over 2 h) inside the harness's `Start-Process -Wait` launch; 480 direct guard calls under 5.1 each took
+  under 3 s and CI's 5.1 jobs passed. Reopen if a CI 5.1 job stalls.

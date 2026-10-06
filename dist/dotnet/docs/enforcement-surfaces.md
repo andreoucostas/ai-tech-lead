@@ -85,6 +85,25 @@ asks for one `dotnet restore`, then waits the same five minutes.
 > + content" rule above). So the floor catches a secret written as one payload; `/security-review`,
 > code review, and your own platform's secret scanning remain the net for the rest.
 
+> **What the secrets floor matches.** In any file: a private-key block, an AWS access key id
+> (`AKIA…`), a GitHub token (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`), a Slack token
+> (`xox…`), an `sk-` API key where a key starts (OpenAI, Anthropic and others), a Google API key
+> (`AIza…`), an Azure storage account key, and an Azure SAS signature. Outside test, spec, mock,
+> fixture, example, sample and `Development` paths, also a quoted value of 8 or more characters
+> assigned to a name ending in password, secret, API key, access key or client secret, and a
+> connection string with a password of 4 or more characters or a `user:password@` address, whether
+> under a `connectionString` key or in a quoted `"ConnectionStrings": { … }` object such as
+> `appsettings.json`'s. Every match, and every password inside a matched connection string, is
+> checked. A placeholder word such as `<from-vault>`, `changeme`, `example` or `${VAR}` anywhere in
+> the matched text excuses it; a release-pipeline token such as `#{X}#`, `__X__` or `$(X)` excuses
+> only a password that is exactly the token. **Not matched:** an unquoted generic value (an `.env`
+> line or a YAML scalar) unless it has one of the key formats above; a name that does not end in one
+> of those words (`SecretKey`); an `appSettings` `<add key="DbPassword" value="…" />`; flat
+> `ConnectionStrings:Main` or `ConnectionStrings__Main` keys (user secrets, `launchSettings.json`,
+> docker-compose); other key formats, such as Stripe's `sk_live_`; ConnectionStrings entries after a
+> brace in a JSON comment or after a nested object; and anything the edit and shell caveats above
+> exclude.
+
 ## Why the differences (the load-bearing facts)
 - **Claude Code** consumes `UserPromptSubmit` stdout and honours `PreToolUse` `exit 2`. `route-prompt` detects this surface (Claude events carry `hook_event_name`) and emits plain stdout there.
 - **Copilot CLI** added `userPromptSubmitted` `additionalContext` injection in **v1.0.65** and hardened it in **v1.0.76**. On **CLI 1.0.80 (observed 2026-08-18)** only the last `userPromptSubmitted` entry is delivered, so the framework registers one `route-prompt` entry and composes routing, plan-gate, security-pass, and queued Boy Scout text inside it; `session-start` emits the same model-facing shape on its separate event. Older versions ignore it as a harmless no-op, so routing then rests entirely on the instructed framework rules. The vendor documents `agentStop` from **v1.0.72** and the framework registers it, but its live firing has not been observed here. `preToolUse` deny was honoured on **CLI 1.0.70, 2026-07-17**.
