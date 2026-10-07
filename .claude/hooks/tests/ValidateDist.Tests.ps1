@@ -771,6 +771,15 @@ try {
             Replace-Text (Join-Path $d '.claude\commands\fix.md') "---`ndescription:" "---`nName: fix`ndescription:"
             Replace-Text (Join-Path $d '.agents\skills\fix\SKILL.md') "name: fix`ndescription:" "name: fix`nName: fix`ndescription:"
         } '12 workflow wrapper(s) carry their command''s frontmatter' 'skill-frontmatter' -Green
+        # install.ps1 protects a team's file only at a wrapper path named in lowercase letters, digits and hyphens.
+        Assert-Case 'skill-wrapper-folder-name-outside-installer-grammar' {
+            param($d)
+            Copy-Item -LiteralPath (Join-Path $d '.claude\commands\fix.md') -Destination (Join-Path $d '.claude\commands\fix_it.md')
+            New-Item -ItemType Directory -Force -Path (Join-Path $d '.agents\skills\fix_it') | Out-Null
+            $wrapper = [IO.File]::ReadAllText((Join-Path $d '.agents\skills\fix\SKILL.md'))
+            $wrapper = $wrapper.Replace("name: fix`n", "name: fix_it`n").Replace('`.claude/commands/fix.md` is the single source of truth', '`.claude/commands/fix_it.md` is the single source of truth')
+            [IO.File]::WriteAllText((Join-Path $d '.agents\skills\fix_it\SKILL.md'), $wrapper)
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern '\.agents/skills/fix_it/SKILL\.md : its folder name is not lowercase letters, digits and hyphens'
         Assert-Case 'skill-scan-blind-without-claude-skills' {
             param($d)
             Remove-Item -LiteralPath (Join-Path $d '.claude\skills') -Recurse -Force

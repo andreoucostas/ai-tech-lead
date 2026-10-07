@@ -45,8 +45,9 @@
   and keeps running `.claude/commands/` directly. An update removes the prompt files you have not changed (an install
   too old to have a `framework-ownership.json` keeps them all and lists each); one you edited is kept and reported, and
   you can delete it after moving what you need into `AGENTS.md` or a project skill. If `.agents/skills/` already holds a
-  skill of your own at one of these names, or a file where one of these folders goes, the update keeps it and says so
-  instead of installing that wrapper; a copy of the framework's own prompt there, edited or not, is saved under
+  skill of your own at one of these names, or a file or link where one of these folders goes (a linked `.agents/skills`
+  that shares skills with other agents, say), the install or update keeps it, writes nothing through the link, and says
+  so instead of installing that wrapper; a copy of the framework's own prompt there, edited or not, is saved under
   `.claude/framework-update-backup/agents-skills/` before the wrapper replaces it, beside any earlier save there rather
   than over it, and kept out of Git if you had gitignored the original. If you already used VS Code's **Convert to
   Skills** on these prompts, delete the skills it made from them: this release ships its own, and `docs-sync-check`

@@ -1791,7 +1791,7 @@ It 'a team''s own skill or file at a workflow wrapper path survives updates; an 
     $root = Join-Path ([IO.Path]::GetTempPath()) ('agents-skill-' + [guid]::NewGuid())
     try {
         # .agents/skills is shared with other agents; before 0.94.0 nothing the framework shipped lived there.
-        $t = New-B309GitTarget -Root $root -Name 'target' -Ignore "/.agents/skills/fix/`n"
+        $t = New-B309GitTarget -Root $root -Name 'target' -Ignore "/.agents/skills/fix/`n/.agents/skills/review/`n"
         $utf8 = [Text.UTF8Encoding]::new($false)
         New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude'), (Join-Path $t '.agents/skills/review'), (Join-Path $t '.agents/skills/fix'),
             (Join-Path $t '.agents/skills/adopt'), (Join-Path $t '.agents/skills/test'), (Join-Path $t '.claude/framework-update-backup/agents-skills/adopt'),
@@ -1811,16 +1811,23 @@ It 'a team''s own skill or file at a workflow wrapper path survives updates; an 
         [IO.File]::WriteAllBytes($debt, $debtBytes)
         # Shipped prompts converted to skills by hand, each with a line of the team's own added.
         $convert = { param($Name) $utf8.GetBytes("---`nname: $Name`ndescription: converted`n---`n") + (Get-GitBlobBytes -Spec "v0.93.0:dist/dotnet/.github/prompts/$Name.prompt.md") + $utf8.GetBytes("TEAM EDIT for ${Name}: ask before touching src/Legacy.`n") }
-        $fixBytes = [byte[]](& $convert 'fix'); $adoptBytes = [byte[]](& $convert 'adopt'); $testBytes = [byte[]](& $convert 'test')
-        foreach ($pair in @(@('fix', $fixBytes), @('adopt', $adoptBytes), @('test', $testBytes))) {
+        $fixBytes = [byte[]](& $convert 'fix'); $adoptBytes = [byte[]](& $convert 'adopt'); $testBytes = [byte[]](& $convert 'test'); $featureBytes = [byte[]](& $convert 'feature')
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.agents/skills/feature'), (Join-Path $t '.claude/framework-update-backup/agents-skills/feature') | Out-Null
+        foreach ($pair in @(@('fix', $fixBytes), @('adopt', $adoptBytes), @('test', $testBytes), @('feature', $featureBytes))) {
             [IO.File]::WriteAllBytes((Join-Path $t ".agents/skills/$($pair[0])/SKILL.md"), [byte[]]$pair[1])
         }
+        # A hard link at feature's backup path is the file itself, so it is no save: an overwrite in place would reach it.
+        New-Item -ItemType HardLink -Path (Join-Path $t '.claude/framework-update-backup/agents-skills/feature/SKILL.md') -Target (Join-Path $t '.agents/skills/feature/SKILL.md') | Out-Null
+        Assert ([string](Get-Item -LiteralPath (Join-Path $t '.agents/skills/feature/SKILL.md')).LinkType -eq 'HardLink') 'calibration: the feature skill is not reported as a hard link'
         # adopt's backup path holds an older, different save; test's holds this very file, as after a re-run.
         $olderAdopt = $utf8.GetBytes("OLDER TEAM COPY of adopt`n")
         [IO.File]::WriteAllBytes((Join-Path $t '.claude/framework-update-backup/agents-skills/adopt/SKILL.md'), $olderAdopt)
         [IO.File]::WriteAllBytes((Join-Path $t '.claude/framework-update-backup/agents-skills/test/SKILL.md'), $testBytes)
         $sha = [Security.Cryptography.SHA256]::Create()
-        try { $adoptHash = ([BitConverter]::ToString($sha.ComputeHash($adoptBytes))).Replace('-', '').ToLowerInvariant().Substring(0, 16) } finally { $sha.Dispose() }
+        try {
+            $adoptHash = ([BitConverter]::ToString($sha.ComputeHash($adoptBytes))).Replace('-', '').ToLowerInvariant().Substring(0, 16)
+            $featureHash = ([BitConverter]::ToString($sha.ComputeHash($featureBytes))).Replace('-', '').ToLowerInvariant().Substring(0, 16)
+        } finally { $sha.Dispose() }
         $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
         $flat = $out -replace '\s+', ' '
         Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
@@ -1830,7 +1837,7 @@ It 'a team''s own skill or file at a workflow wrapper path survives updates; an 
         Assert ((Test-Path -LiteralPath $debt -PathType Leaf) -and (Test-B194BytesEqual $debtBytes ([IO.File]::ReadAllBytes($debt)))) "the team's file at .agents/skills/debt was not kept byte-identical: $out"
         Assert ($flat -match "'\.agents/skills/debt' is a file where the framework's /debt wrapper needs a folder, so the update kept it") "the kept file at a wrapper folder was not reported: $out"
         $backups = '.claude/framework-update-backup/agents-skills'
-        foreach ($case in @(@('fix', $fixBytes, "$backups/fix/SKILL.md"), @('adopt', $adoptBytes, "$backups/adopt/SKILL.$adoptHash.md"), @('test', $testBytes, "$backups/test/SKILL.md"))) {
+        foreach ($case in @(@('fix', $fixBytes, "$backups/fix/SKILL.md"), @('adopt', $adoptBytes, "$backups/adopt/SKILL.$adoptHash.md"), @('test', $testBytes, "$backups/test/SKILL.md"), @('feature', $featureBytes, "$backups/feature/SKILL.$featureHash.md"))) {
             $name = $case[0]
             $shipped = [IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/dotnet/.agents/skills/$name/SKILL.md"))
             Assert (Test-B194BytesEqual $shipped ([IO.File]::ReadAllBytes((Join-Path $t ".agents/skills/$name/SKILL.md")))) "the converted copy of the framework's $name prompt was not replaced by the wrapper: $out"
@@ -1847,7 +1854,10 @@ It 'a team''s own skill or file at a workflow wrapper path survives updates; an 
         Assert ($status -notmatch 'agents-skills/fix/SKILL\.md') "the gitignored fix skill's saved copy is committable: $status"
         Assert ($status -match "agents-skills/adopt/SKILL\.$adoptHash\.md") "the tracked-eligible adopt save is not committable: $status"
         Assert ($out -match 'kept out of Git by \.claude/framework-update-backup/agents-skills/\.gitignore: \.claude/framework-update-backup/agents-skills/fix/SKILL\.md') "the handoff does not name the kept-out save: $out"
-        Assert (Test-Path -LiteralPath (Join-Path $t '.agents/skills/feature/SKILL.md') -PathType Leaf) "the update did not install the other wrappers: $out"
+        Assert (Test-Path -LiteralPath (Join-Path $t '.agents/skills/bootstrap/SKILL.md') -PathType Leaf) "the update did not install the other wrappers: $out"
+        # The ignore-rule warning counts the framework's own hidden wrapper and never the team's kept review skill,
+        # which the same rules hide; two hidden files would print as '.agents/ (2 files)'.
+        Assert ($out -match "ignore rules hide 1 of the framework's own files[^`r`n]*: \.agents/skills/fix/SKILL\.md\.") "the ignore-rule warning does not name exactly the hidden fix wrapper, so it counts the kept team skill as a framework file: $out"
         # A kept path stays out of the manifest the update writes, so the next update cannot take it for the framework's.
         $owned = (Get-Content -Raw -LiteralPath (Join-Path $t 'framework-ownership.json') | ConvertFrom-Json).paths | ForEach-Object { [string]$_.path }
         Assert (($owned -cnotcontains '.agents/skills/review/SKILL.md') -and ($owned -cnotcontains '.agents/skills/debt/SKILL.md') -and ($owned -ccontains '.agents/skills/fix/SKILL.md')) "the written manifest claims a kept team path or drops an installed wrapper: $($owned -join ', ')"
@@ -1862,6 +1872,44 @@ It 'a team''s own skill or file at a workflow wrapper path survives updates; an 
         Assert (Test-B194BytesEqual $debtBytes ([IO.File]::ReadAllBytes($debt))) "the second update did not keep the team's file at .agents/skills/debt: $again"
         Assert (Test-B194BytesEqual $fixBytes ([IO.File]::ReadAllBytes((Join-Path $t "$backups/fix/SKILL.md")))) "the second update changed the saved copy: $again"
         Assert (Test-B194BytesEqual $olderAdopt ([IO.File]::ReadAllBytes((Join-Path $t "$backups/adopt/SKILL.md")))) "the second update changed the older save: $again"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'a linked .agents/skills is kept by an install and by an update, which leave the wrappers out instead of refusing or writing through it' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('agents-link-' + [guid]::NewGuid())
+    try {
+        # A team that shares skills between agents may link .agents/skills to one folder; before 0.94.0 nothing shipped there.
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        foreach ($mode in 'update', 'greenfield') {
+            $t = Join-Path $root $mode
+            $shared = Join-Path $root "$mode-shared-skills"
+            $teamSkill = Join-Path $shared 'review/SKILL.md'
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $teamSkill), (Join-Path $t '.agents') | Out-Null
+            $teamBytes = $utf8.GetBytes("---`nname: review`ndescription: Shared team review.`n---`nSHARED REVIEW`n")
+            [IO.File]::WriteAllBytes($teamSkill, $teamBytes)
+            $link = Join-Path $t '.agents/skills'
+            # A junction needs no privilege on Windows; elsewhere, where New-Item makes no junction, a symbolic link stands in.
+            $linkType = if ($env:OS -eq 'Windows_NT') { 'Junction' } else { 'SymbolicLink' }
+            New-Item -ItemType $linkType -Path $link -Target $shared -ErrorAction Stop | Out-Null
+            $linkItem = Get-Item -Force -LiteralPath $link -ErrorAction SilentlyContinue
+            Assert ($null -ne $linkItem -and (($linkItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) "calibration: no $linkType was created at .agents/skills"
+            if ($mode -eq 'update') {
+                New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+                [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), '{"version":"0.93.0","template":"dotnet"}', $utf8)
+                [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.93.0:dist/dotnet/framework-ownership.json'))
+            }
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "the $mode with a linked .agents/skills failed (exit $LASTEXITCODE): $out"
+            Assert ($out -match "'\.agents/skills' is a link, which the (update|install) never writes through, so it kept the link and did not install \.agents/skills/review/SKILL\.md") "the $mode did not report the kept link: $out"
+            Assert (((Get-Item -Force -LiteralPath $link).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) "the $mode replaced the link: $out"
+            Assert (Test-B194BytesEqual $teamBytes ([IO.File]::ReadAllBytes($teamSkill))) "the $mode changed the team's shared skill: $out"
+            Assert (@(Get-ChildItem -LiteralPath $shared -Recurse -File -Force).Count -eq 1) "the $mode wrote a wrapper through the link: $out"
+            $owned = @((Get-Content -Raw -LiteralPath (Join-Path $t 'framework-ownership.json') | ConvertFrom-Json).paths | ForEach-Object { [string]$_.path })
+            Assert (@($owned | Where-Object { $_.StartsWith('.agents/', [StringComparison]::Ordinal) }).Count -eq 0) "the $mode's manifest claims wrapper paths it did not install: $($owned -join ', ')"
+            Assert (Test-Path -LiteralPath (Join-Path $t '.claude/commands/review.md') -PathType Leaf) "the $mode did not install the rest of the framework: $out"
+        }
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }

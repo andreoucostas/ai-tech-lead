@@ -1068,6 +1068,10 @@ foreach ($skillPath in $skillFiles) {
     if ($relative -notmatch '^\.agents/skills/([^/]+)/SKILL\.md$') { continue }
     $workflow = $Matches[1]
     $wrapperCount++
+    # install.ps1 keeps or saves a team's file at a wrapper path only for these names; another would be overwritten.
+    if ($workflow -cnotmatch '^[a-z0-9-]+$') {
+        $wrapperProblems += "$relative : its folder name is not lowercase letters, digits and hyphens, so install.ps1 would overwrite a team's file there"
+    }
     # Get-FrontmatterLines returns the line array as one object; @() around the call would nest it.
     $frontmatter = Get-FrontmatterLines $lines
     if ($null -eq $frontmatter) { $frontmatter = @() }

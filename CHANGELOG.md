@@ -88,42 +88,48 @@ full run or named areas the command never reads. validate-dist check 15 now also
 open with `name: <name>`, repeat its command's frontmatter line for line with no key repeated, bare, quoted or as `?
 key`, case-sensitively (Copilot refuses the file: for a repeated `name` it falls back to the command, and any other key
 repeats in the command too, which Copilot then refuses as well), and name `.claude/commands/<name>.md` as the single
-source of truth; a wrapper without a command and a command without a wrapper fail; a delimiter is `---` with only
+source of truth, from a folder named in lowercase letters, digits and hyphens (the only names the installer protects a
+team's file at); a wrapper without a command and a command without a wrapper fail; a delimiter is `---` with only
 trailing whitespace (Copilot refuses ` ---`); comparisons are ordinal, because `-ceq` ignores the zero-width characters
 Copilot rejects; and the blind-scan guards count `.claude/skills/` and `.claude/commands/` apart (ValidateDist case 41:
-fourteen red sub-cases and two green controls; the case fails on the parent tree and against the previous version of
-this change's validator, which passed a quoted duplicate `name` key, and each ordinal comparison, and each way of
-repeating a key, has a sub-case that a mutant of it turns green). The ledger retires the twelve prompt paths in 0.94.0
-with 85 digests, every released blob through v0.93.0 in all three dists (new B215 case). An update that keeps an edited
-prompt names the skill that replaces it instead of the generic "retired with no replacement command". An update keeps a
-file at a wrapper path that does not name its command as the single source of truth (a team's own skill), on every
-update, because the manifest it writes lists the path as framework-owned; a file that does name it but sits at a path
-the previous manifest did not own (a copy of the old prompt, perhaps edited) is saved under
-`.claude/framework-update-backup/agents-skills/` before the wrapper replaces it: beside a different earlier save, never
-over it, as `SKILL.<hash>.md` from the first 16 hex digits of its SHA-256; not again when an earlier run saved the same
-bytes; and behind an ignore rule there when the original was gitignored or Git cannot say. A file where a wrapper needs
-a folder is kept the same way instead of stalling the update; a kept path stays out of the `framework-ownership.json`
-the update writes, so a later update that finds the sentence in it saves the file before replacing it; and the
-ignore-rule warning no longer calls a kept team skill a framework file (two new UpdateDelivery cases; the second, as
-extended, was red on the two previous versions of this change's installer, where the stall, the collision, the
-committable save, the manifest and the unsaved merged skill each fail it on their own, and its earlier form on both
-versions before that). Four fresh-session attack rounds (five lenses, three on the fixes, then two on each rework of the
-installer and validator; two refuters per finding) found those losses: an update overwrote a team's
-`.agents/skills/review/SKILL.md`; then it still overwrote an edited copy of the old prompt, unrecoverably when
-gitignored; then, one update after saying it had kept such a copy because a backup already existed, it replaced it with
-no backup. The third round also found that re-running after a failed save stopped on the run's own backup, that the save
-of a gitignored file was committable, and that validate-dist passed a quoted duplicate `name` key Copilot refuses; a
-fourth, on those fixes, found that a kept team skill was then listed as framework-owned, so a later update replaced it
-without a save once it took in the prompt's text, and that four of the validator's new rules had no sub-case. They also
-confirmed the 85 digests, the update paths from v0.93.0, v0.80.0, v0.65.0 and v0.50.0, brownfield archiving of a
-colliding team skill, and the refusal before mutation of a symlinked `.agents/skills`. The headless `/adopt` hand-off
-and adoption marker no longer name the prompt, and `/adopt` Phase 6 generates an `.agents/skills/` wrapper for an
-adopted command. A repository whose only AI tooling is its own `.github/prompts/review.prompt.md` now installs
-greenfield (B-358). Not examined: VS Code itself (no seat), whether a typed `/name` or the model loads a wrapper on any
-host, and what Copilot code review on github.com does with the `review` wrapper (B-357). On-demand context: `adopt.md`
-+51, `docs/ARCHITECTURE.md` +108 and `docs/playbook.md` -1 chars per dist; measured always-loaded context unchanged. The
-nine wrappers without `disable-model-invocation` put their commands' descriptions in VS Code's skill listing, where no
-prompt description was before (Copilot CLI already listed them from `.claude/commands/`); unmeasured.
+fifteen red sub-cases and two green controls; the case fails on the parent tree and against the previous version of this
+change's validator, which passed a quoted duplicate `name` key and any folder name, and each ordinal comparison, and
+each way of repeating a key, has a sub-case that a mutant of it turns green). The ledger retires the twelve prompt paths
+in 0.94.0 with 85 digests, every released blob through v0.93.0 in all three dists (new B215 case). An update that keeps
+an edited prompt names the skill that replaces it instead of the generic "retired with no replacement command". An
+update keeps a file at a wrapper path that does not name its command as the single source of truth (a team's own skill)
+on every update; a file that does name it but sits at a path the previous manifest did not own (a copy of the old
+prompt, perhaps edited) is saved under `.claude/framework-update-backup/agents-skills/` before the wrapper replaces it:
+beside a different earlier save, never over it, as `SKILL.<hash>.md` from the first 16 hex digits of its SHA-256; not
+again when an earlier run saved the same bytes in a file of its own (a symbolic or hard link there never counts, since
+an overwrite in place would reach it); and behind an ignore rule there when the original was gitignored or Git cannot
+say. A file or link where a wrapper needs a folder, or a linked `SKILL.md`, is kept the same way by any install or
+update instead of stopping it, and nothing is written through the link; a kept path stays out of the
+`framework-ownership.json` the update writes, so a later update that finds the sentence in it saves the file before
+replacing it; and the ignore-rule warning no longer calls a kept team skill a framework file (three new UpdateDelivery
+cases; the stall, the collision, the committable save, the manifest, the unsaved merged skill and the hard link each
+failed the wrapper-path case on their own on an earlier version of this change's installer, the ignore-warning filter
+fails it under mutation, and the linked-folder case was red on the previous version). Five fresh-session attack rounds
+(five lenses, three on the fixes, two on each of two reworks, then three Fable lenses on the whole change; two refuters
+per finding) found those losses: an update overwrote a team's `.agents/skills/review/SKILL.md`; then it still overwrote
+an edited copy of the old prompt, unrecoverably when gitignored; then, one update after saying it had kept such a copy
+because a backup already existed, it replaced it with no backup. The third round also found that re-running after a
+failed save stopped on the run's own backup, that the save of a gitignored file was committable, and that validate-dist
+passed a quoted duplicate `name` key Copilot refuses; a fourth, on those fixes, found that a kept team skill was then
+listed as framework-owned, so a later update replaced it without a save once it took in the prompt's text, and that four
+of the validator's new rules had no sub-case; the fifth found a hard link at the backup path counted as a save, a linked
+`.agents/skills` stopping every install and update with exit 3, an ignore-warning filter no test could fail, wrapper
+folder names outside the installer's protection, and an empty root file named `*.bodydiff` that broke every Windows
+checkout (removed; the merge is squashed, so `master` never holds it). They also confirmed the 85 digests, the update
+paths from v0.93.0, v0.80.0, v0.65.0 and v0.50.0, brownfield archiving of a colliding team skill, and that a link at
+`.agents/skills` is never written through. The headless `/adopt` hand-off and adoption marker no longer name the prompt,
+and `/adopt` Phase 6 generates an `.agents/skills/` wrapper for an adopted command. A repository whose only AI tooling
+is its own `.github/prompts/review.prompt.md` now installs greenfield (B-358). Not examined: VS Code itself (no seat),
+whether a typed `/name` or the model loads a wrapper on any host, and what Copilot code review on github.com does with
+the `review` wrapper (B-357). On-demand context: `adopt.md` +51, `docs/ARCHITECTURE.md` +108 and `docs/playbook.md` -1
+chars per dist; measured always-loaded context unchanged. The nine wrappers without `disable-model-invocation` put their
+commands' descriptions in VS Code's skill listing, where no prompt description was before (Copilot CLI already listed
+them from `.claude/commands/`); unmeasured.
 
 `/bootstrap` Phase 2b and 3d-bis and `/rebootstrap` 3c ask one question per item (maintainer report 2026-10-06: the
 hazards arrived as one question). Their "single message (not dripped)" wording, unchanged since July, fit a chat message

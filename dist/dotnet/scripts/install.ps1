@@ -446,8 +446,12 @@ if (-not $updateMode) {
         if ($relative -in $copyIfAbsent -or $relative -in @($legalLicense, $legalNotice)) { continue }
         $existing = Get-ContainedTargetPath -Relative $relative
         if (-not (Test-Path -LiteralPath $existing -PathType Leaf)) { continue }
-        # Never read through a link; the brownfield preflight refuses it by name.
-        if (Get-ReparsePointAncestor -Path $existing) { $detected += $relative; continue }
+        # Never read through a link; the brownfield preflight refuses it by name. A linked wrapper path
+        # is no collision: the install keeps the link and leaves that wrapper out.
+        if (Get-ReparsePointAncestor -Path $existing) {
+            if ($relative -notmatch '^\.agents/skills/[a-z0-9-]+/SKILL\.md$') { $detected += $relative }
+            continue
+        }
         try {
             $same = [Convert]::ToBase64String([IO.File]::ReadAllBytes($existing)) -ceq
                 [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $src $relative)))
@@ -888,72 +892,82 @@ if ($legacyGitHookInspection.Kind -eq 'LEGACY') {
 }
 
 # .agents/skills is shared with other agents, so a team's own skill can sit at a workflow wrapper's
-# path. A fresh install archives it as a collision; an update decides by content and history. A file
-# there without the sentence naming its command as the single source of truth, or a file where the
-# wrapper needs a folder, is the team's, kept on every update. One with the sentence repeats the
-# framework's prompt or wrapper and is replaced, but saved first when the previous manifest did not
-# own the path. A kept file stays out of the manifest this run writes, so an owned path is one we wrote.
+# path. A link or a file where the wrapper needs a folder is the team's in every mode: kept, since the
+# installer never writes through a link. Otherwise a fresh install archives a colliding file, and an
+# update decides by content and history: a file without the sentence naming its command as the single
+# source of truth is the team's, kept on every update; one with it repeats the framework's prompt or
+# wrapper and is replaced, but saved first when the previous manifest did not own the path. A kept
+# path stays out of the manifest this run writes, so an owned path is one the framework wrote.
 $teamSkillPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
 $agentsSkillBackups = New-Object System.Collections.Generic.List[object]
 $priorManifest = if (Test-Path -LiteralPath 'variable:previous') { $previous } else { $null }
-# A link at the backup path may lead back to the file itself, so it never counts as a save.
+$runName = if ($updateMode) { 'update' } else { 'install' }
+# A link at the backup path, symbolic or hard, may be the file itself, so it never counts as a save.
 function Test-HeldBytes {
     param([string]$Relative, [byte[]]$Bytes)
     $held = $null
     $heldItem = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $Relative) -ErrorAction SilentlyContinue
-    if ($null -eq $heldItem -or ($heldItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) { return $false }
+    if ($null -eq $heldItem -or ($heldItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -or [string]$heldItem.LinkType -eq 'HardLink') { return $false }
     try { $held = [IO.File]::ReadAllBytes($heldItem.FullName) } catch { return $false }
     return [string]::Equals([Convert]::ToBase64String($held), [Convert]::ToBase64String($Bytes), [StringComparison]::Ordinal)
 }
-if ($updateMode) {
-    foreach ($relative in $incomingPaths) {
-        $agentsSkill = [regex]::Match($relative, '^\.agents/skills/([a-z0-9-]+)/SKILL\.md$')
-        if (-not $agentsSkill.Success) { continue }
-        $workflow = $agentsSkill.Groups[1].Value
-        $blocker = @('.agents', '.agents/skills', ".agents/skills/$workflow" | Where-Object {
-            $item = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $_) -ErrorAction SilentlyContinue
-            $null -ne $item -and -not $item.PSIsContainer
-        }) | Select-Object -First 1
-        if ($blocker) {
-            [void]$teamSkillPaths.Add($relative)
-            $reconciliationMessages.Add("CANT-VERIFY: '$blocker' is a file where the framework's /$workflow wrapper needs a folder, so the update kept it and did not install $relative. To get the framework's /$workflow in VS Code, move that file elsewhere, then re-run the update.")
-            continue
-        }
-        $destination = Get-ContainedTargetPath -Relative $relative
-        if ($null -eq (Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue)) { continue }
-        $existingBytes = $null
-        $existingText = $null
-        try {
-            $existingBytes = [IO.File]::ReadAllBytes($destination)
-            $existingText = [Text.UTF8Encoding]::new($false, $true).GetString($existingBytes)
-        } catch { $existingText = $null }
-        if ($null -eq $existingText -or -not $existingText.Contains('`.claude/commands/' + $workflow + '.md` is the single source of truth')) {
-            [void]$teamSkillPaths.Add($relative)
-            $reconciliationMessages.Add("CANT-VERIFY: '$relative' is not the framework's /$workflow wrapper, so the update kept it and did not install the wrapper there. To get the framework's /$workflow in VS Code, move your skill to another folder, then re-run the update.")
-            continue
-        }
-        $incomingText = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $src $relative)))
-        if ([string]::Equals($existingText.Replace("`r`n", "`n"), $incomingText.Replace("`r`n", "`n"), [StringComparison]::Ordinal)) { continue }
-        if ($null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative)) { continue }
-        # An earlier run's copy (a re-run after a failed save) counts as saved. A different file at the
-        # backup path is never overwritten: this copy goes beside it, named by its own SHA-256.
-        $backupRelative = ".claude/framework-update-backup/agents-skills/$workflow/SKILL.md"
-        if ($null -ne (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $backupRelative) -ErrorAction SilentlyContinue) -and
-            -not (Test-HeldBytes -Relative $backupRelative -Bytes $existingBytes)) {
-            $backupRelative = ".claude/framework-update-backup/agents-skills/$workflow/SKILL.$((Get-Sha256Hex -Bytes $existingBytes).Substring(0, 16)).md"
-        }
-        $backupItem = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $backupRelative) -ErrorAction SilentlyContinue
-        if ($null -ne $backupItem -and (Test-HeldBytes -Relative $backupRelative -Bytes $existingBytes)) {
-            $reconciliationMessages.Add("NOTICE: '$relative' is already saved at $backupRelative, so the update installs the framework's /$workflow wrapper there. Keep any change you need in AGENTS.md or a project skill.")
-            continue
-        }
-        if ($null -ne $backupItem) {
-            [Console]::Error.WriteLine("ERROR: Refusing update: '$relative' must be saved before the framework's /$workflow wrapper replaces it, and both $(".claude/framework-update-backup/agents-skills/$workflow/SKILL.md") and $backupRelative already hold other content. Move them out of .claude/framework-update-backup/agents-skills/$workflow/, then re-run the update. Nothing was changed.")
-            exit 3
-        }
-        $agentsSkillBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backupRelative; SourceRelative = $relative })
-        $reconciliationMessages.Add("NOTICE: '$relative' holds the framework's /$workflow text, but the previous framework-ownership.json does not list it, so the update saves it to $backupRelative, then installs the wrapper. Keep any change you need in AGENTS.md or a project skill.")
+foreach ($relative in $incomingPaths) {
+    $agentsSkill = [regex]::Match($relative, '^\.agents/skills/([a-z0-9-]+)/SKILL\.md$')
+    if (-not $agentsSkill.Success) { continue }
+    $workflow = $agentsSkill.Groups[1].Value
+    $blocker = $null
+    $blockerIsLink = $false
+    foreach ($onPath in '.agents', '.agents/skills', ".agents/skills/$workflow", $relative) {
+        $item = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $onPath) -ErrorAction SilentlyContinue
+        if ($null -eq $item) { break }
+        $blockerIsLink = ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+        if ($blockerIsLink -or ($onPath -cne $relative -and -not $item.PSIsContainer)) { $blocker = $onPath; break }
     }
+    if ($blocker) {
+        [void]$teamSkillPaths.Add($relative)
+        if ($blockerIsLink) {
+            $reconciliationMessages.Add("CANT-VERIFY: '$blocker' is a link, which the $runName never writes through, so it kept the link and did not install $relative. To get the framework's /$workflow in VS Code, copy that wrapper from the framework to where the link leads, or replace the link with a folder, then re-run the $runName.")
+        } else {
+            $reconciliationMessages.Add("CANT-VERIFY: '$blocker' is a file where the framework's /$workflow wrapper needs a folder, so the $runName kept it and did not install $relative. To get the framework's /$workflow in VS Code, move that file elsewhere, then re-run the $runName.")
+        }
+        continue
+    }
+    if (-not $updateMode) { continue }
+    $destination = Get-ContainedTargetPath -Relative $relative
+    if ($null -eq (Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue)) { continue }
+    $existingBytes = $null
+    $existingText = $null
+    try {
+        $existingBytes = [IO.File]::ReadAllBytes($destination)
+        $existingText = [Text.UTF8Encoding]::new($false, $true).GetString($existingBytes)
+    } catch { $existingText = $null }
+    if ($null -eq $existingText -or -not $existingText.Contains('`.claude/commands/' + $workflow + '.md` is the single source of truth')) {
+        [void]$teamSkillPaths.Add($relative)
+        $reconciliationMessages.Add("CANT-VERIFY: '$relative' is not the framework's /$workflow wrapper, so the update kept it and did not install the wrapper there. To get the framework's /$workflow in VS Code, move your skill to another folder, then re-run the update.")
+        continue
+    }
+    $incomingText = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $src $relative)))
+    if ([string]::Equals($existingText.Replace("`r`n", "`n"), $incomingText.Replace("`r`n", "`n"), [StringComparison]::Ordinal)) { continue }
+    if ($null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative)) { continue }
+    # An earlier run's copy (a re-run after a failed save) counts as saved. A different file at the
+    # backup path is never overwritten: this copy goes beside it, named by its own SHA-256.
+    $backupRelative = ".claude/framework-update-backup/agents-skills/$workflow/SKILL.md"
+    if ($null -ne (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $backupRelative) -ErrorAction SilentlyContinue) -and
+        -not (Test-HeldBytes -Relative $backupRelative -Bytes $existingBytes)) {
+        $backupRelative = ".claude/framework-update-backup/agents-skills/$workflow/SKILL.$((Get-Sha256Hex -Bytes $existingBytes).Substring(0, 16)).md"
+    }
+    $backupItem = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $backupRelative) -ErrorAction SilentlyContinue
+    if ($null -ne $backupItem -and (Test-HeldBytes -Relative $backupRelative -Bytes $existingBytes)) {
+        $reconciliationMessages.Add("NOTICE: '$relative' is already saved at $backupRelative, so the update installs the framework's /$workflow wrapper there. Keep any change you need in AGENTS.md or a project skill.")
+        continue
+    }
+    if ($null -ne $backupItem) {
+        [Console]::Error.WriteLine("ERROR: Refusing update: '$relative' must be saved before the framework's /$workflow wrapper replaces it, and both $(".claude/framework-update-backup/agents-skills/$workflow/SKILL.md") and $backupRelative already hold other content. Move them out of .claude/framework-update-backup/agents-skills/$workflow/, then re-run the update. Nothing was changed.")
+        exit 3
+    }
+    $agentsSkillBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backupRelative; SourceRelative = $relative })
+    $unowned = if ($null -eq $priorManifest) { 'there is no usable previous framework-ownership.json' } else { 'the previous framework-ownership.json does not list it' }
+    $reconciliationMessages.Add("NOTICE: '$relative' holds the framework's /$workflow text, but $unowned, so the update saves it to $backupRelative, then installs the wrapper. Keep any change you need in AGENTS.md or a project skill.")
 }
 
 # A retirement can delete only where the immediately previous manifest grants authority. That
@@ -1018,10 +1032,10 @@ if ($updateMode) {
         } elseif ($retiredPath.StartsWith('docs/presentation/', [StringComparison]::Ordinal)) {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired presentation file '$retiredPath' remains. The deck is no longer installed; the current copy is in '$(Join-Path $src 'presentation')'. Delete '$retiredPath' after review.")
         } elseif ($isRetiredPrompt -and $teamSkillPaths.Contains(".agents/skills/$promptWorkflow/SKILL.md")) {
-            $reconciliationMessages.Add("CANT-VERIFY: retained retired prompt file '$retiredPath' remains, and the update kept your own skill or file at .agents/skills/$promptWorkflow, so the framework's wrapper for /$promptWorkflow is not installed there; VS Code's Copilot harness does not load prompt files. Keep any change you need in AGENTS.md or a project skill, then delete the prompt file after review.")
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired prompt file '$retiredPath' remains, and the update kept your own skill, file or link at .agents/skills/$promptWorkflow or above it, so the framework's wrapper for /$promptWorkflow is not installed there; VS Code's Copilot harness does not load prompt files. Keep any change you need in AGENTS.md or a project skill, then delete the prompt file after review.")
         } elseif ($isRetiredPrompt -and $incoming.ByPath.ContainsKey(".agents/skills/$promptWorkflow/SKILL.md")) {
             # These prompts were replaced, not dropped: the generic arm below would say there is no replacement.
-            $reconciliationMessages.Add("CANT-VERIFY: retained retired prompt file '$retiredPath' remains. Its workflow now ships as the skill .agents/skills/$promptWorkflow/SKILL.md, which runs .claude/commands/$promptWorkflow.md, and VS Code's Copilot harness does not load prompt files. Keep any change you need in AGENTS.md or a project skill, because an update replaces framework files, then delete the prompt file after review.")
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired prompt file '$retiredPath' remains. Its workflow now ships as the skill .agents/skills/$promptWorkflow/SKILL.md, which runs .claude/commands/$promptWorkflow.md, and VS Code's Copilot harness does not load prompt files. Keep any change you need in AGENTS.md or a project skill, because an update replaces framework files, then delete the prompt file after review; a prompt your team wrote itself, rather than edited, can stay.")
         } else {
             $twin = if ($retiredPath.EndsWith('.sh', [StringComparison]::OrdinalIgnoreCase)) {
                 $retiredPath.Substring(0, $retiredPath.Length - 3) + '.ps1'
@@ -1218,7 +1232,7 @@ if ($adoptMode) {
     }
     $archivePaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
     foreach ($f in $incomingPaths) {
-        if ($f -in $copyIfAbsent -or $f -in @($legalLicense, $legalNotice)) { continue }
+        if ($f -in $copyIfAbsent -or $f -in @($legalLicense, $legalNotice) -or $teamSkillPaths.Contains($f)) { continue }
         $orig = Join-Path $tgt $f
         $sourceReparse = Get-ReparsePointAncestor -Path $orig
         if ($sourceReparse) {
