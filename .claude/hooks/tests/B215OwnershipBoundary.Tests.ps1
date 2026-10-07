@@ -288,6 +288,23 @@ It '0.92.0 ledger contains every released digest of the seven retired recipe ski
     Assert-TaggedDigestCompleteness $observations (Get-LedgerDigestMap $ledger)
 }
 
+It '0.94.0 ledger contains every released digest of the twelve retired prompt files' {
+    $paths = @('adopt', 'bootstrap', 'debt', 'design', 'docs-sync', 'feature', 'fix', 'rebootstrap', 'refactor', 'review', 'security-review', 'test' |
+        ForEach-Object { ".github/prompts/$_.prompt.md" })
+    $ledger = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot 'src/core/framework-retirements.json'))).TrimStart([char]0xFEFF) | ConvertFrom-Json
+    foreach ($path in $paths) {
+        Assert (@($ledger.retirements | Where-Object { $_.path -ceq $path -and $_.'retired-in' -ceq '0.94.0' }).Count -eq 1) "no 0.94.0 retirement entry for $path"
+    }
+    # Each prompt shipped from all three dists.
+    $observations = @(Get-TaggedObservations -Paths $paths -Through '0.93.0')
+    foreach ($path in $paths) {
+        foreach ($stack in @('dotnet', 'angular', 'monorepo')) {
+            Assert (@($observations | Where-Object { $_.Path -ceq $path -and $_.Stack -ceq $stack }).Count -gt 0) "no released $stack blob was observed for $path"
+        }
+    }
+    Assert-TaggedDigestCompleteness $observations (Get-LedgerDigestMap $ledger)
+}
+
 It 'raw Git capture preserves binary bytes and nonzero stderr' {
     $objects = Join-Path ([IO.Path]::GetTempPath()) ('b215-objects-' + [guid]::NewGuid().ToString('N'))
     $blobPath = Join-Path ([IO.Path]::GetTempPath()) ('b215-binary-' + [guid]::NewGuid().ToString('N') + '.bin')

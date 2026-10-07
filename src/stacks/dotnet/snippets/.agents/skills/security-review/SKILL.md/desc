@@ -1,0 +1,1 @@
+description: "Security gate on changed code: spawns the security-auditor subagent, cross-checks tenant isolation and shared-library auth patterns, and records only repository-safe critical/high findings in SECURITY_FINDINGS.md. Credential incidents require restricted human handling and never mutate Git automatically."

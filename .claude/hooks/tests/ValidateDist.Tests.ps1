@@ -686,5 +686,106 @@ try {
         Assert-Case 'skill-description-within-limit' { param($d) } 'every shipped skill description loads on Copilot CLI' 'skill-frontmatter' -Green
     }
 
+    It 'case 41: a workflow skill wrapper that drifts from its command, or is missing, fails the skill check' {
+        # Copilot CLI 1.0.92 lists .agents/skills/<name> in place of .claude/commands/<name>.md, so the
+        # wrapper's frontmatter is what Copilot uses; VS Code reads no .claude/commands at all.
+        Assert-Case 'skill-wrapper-description-drift' {
+            param($d)
+            $path = Join-Path $d '.agents\skills\fix\SKILL.md'
+            Assert ([IO.File]::ReadAllText($path).Contains('description: "Bug-fix workflow:')) 'fixture fix wrapper no longer carries the command description'
+            Replace-Text $path 'description: "Bug-fix workflow:' 'description: "Bug-fix flow:'
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern '\.agents/skills/fix/SKILL\.md : frontmatter after its name line differs from \.claude/commands/fix\.md'
+        Assert-Case 'skill-wrapper-missing' {
+            param($d)
+            Remove-Item -LiteralPath (Join-Path $d '.agents\skills\test') -Recurse -Force
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern '\.claude/commands/test\.md : no \.agents/skills/test/SKILL\.md wrapper'
+        # A name line inside the frontmatter's body can fall inside a folded value, where Copilot reads it as text.
+        Assert-Case 'skill-wrapper-name-not-first' {
+            param($d)
+            $path = Join-Path $d '.agents\skills\fix\SKILL.md'
+            $lines = [Collections.Generic.List[string]]::new([string[]][IO.File]::ReadAllLines($path))
+            Assert ($lines[1] -ceq 'name: fix') 'fixture fix wrapper no longer opens with its name'
+            $lines.RemoveAt(1); $lines.Insert(2, 'name: fix')
+            [IO.File]::WriteAllText($path, (($lines -join "`n") + "`n"))
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern "\.agents/skills/fix/SKILL\.md : its frontmatter does not open with 'name: fix'"
+        Assert-Case 'skill-wrapper-runs-another-command' {
+            param($d)
+            Replace-Text (Join-Path $d '.agents\skills\fix\SKILL.md') '`.claude/commands/fix.md` is the single source of truth' '`.claude/commands/feature.md` is the single source of truth'
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern '\.agents/skills/fix/SKILL\.md : its body does not name \.claude/commands/fix\.md'
+        # Copilot CLI 1.0.92 refuses ' ---' as malformed frontmatter and falls back to the command.
+        Assert-Case 'skill-wrapper-indented-delimiter' {
+            param($d)
+            $path = Join-Path $d '.agents\skills\fix\SKILL.md'
+            [IO.File]::WriteAllText($path, ' ' + [IO.File]::ReadAllText($path))
+        } 'shipped skills Copilot CLI cannot load' 'skill-frontmatter' -AlsoPattern '\.agents/skills/fix/SKILL\.md : no terminated YAML frontmatter'
+        # -ceq reads '---' plus U+FEFF as '---'; Copilot CLI 1.0.92 refuses it as malformed frontmatter.
+        Assert-Case 'skill-wrapper-zero-width-delimiter' {
+            param($d)
+            $path = Join-Path $d '.agents\skills\fix\SKILL.md'
+            [IO.File]::WriteAllText($path, ('---' + [char]0xFEFF + [IO.File]::ReadAllText($path).Substring(3)), (New-Object Text.UTF8Encoding($false)))
+        } 'shipped skills Copilot CLI cannot load' 'skill-frontmatter' -AlsoPattern '\.agents/skills/fix/SKILL\.md : no terminated YAML frontmatter'
+        Assert-Case 'skill-wrapper-zero-width-closing-delimiter' {
+            param($d)
+            Replace-Text (Join-Path $d '.agents\skills\fix\SKILL.md') "`n---`n" ("`n---" + [char]0xFEFF + "`n")
+        } 'shipped skills Copilot CLI cannot load' 'skill-frontmatter' -AlsoPattern '\.agents/skills/fix/SKILL\.md : no terminated YAML frontmatter'
+        # -ceq treats a zero-width space as nothing; Copilot CLI 1.0.92 refuses such a name ("Skill name must start with an ASCII letter").
+        Assert-Case 'skill-wrapper-zero-width-name' {
+            param($d)
+            Replace-Text (Join-Path $d '.agents\skills\test\SKILL.md') 'name: test' ('name: te' + [char]0x200B + 'st')
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern "\.agents/skills/test/SKILL\.md : its frontmatter does not open with 'name: test'"
+        # The same holds for a zero-width space in a copied value: Copilot would show the wrapper's, not the command's.
+        Assert-Case 'skill-wrapper-zero-width-description' {
+            param($d)
+            Replace-Text (Join-Path $d '.agents\skills\fix\SKILL.md') 'description: "Bug-fix workflow:' ('description: "Bug-fix' + [char]0x200B + ' workflow:')
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern '\.agents/skills/fix/SKILL\.md : frontmatter after its name line differs from \.claude/commands/fix\.md'
+        # A name key in the command as well makes the copied frontmatter a duplicate key, which Copilot cannot parse.
+        Assert-Case 'skill-wrapper-duplicate-name-key' {
+            param($d)
+            Replace-Text (Join-Path $d '.claude\commands\fix.md') "---`ndescription:" "---`nname: fix`ndescription:"
+            Replace-Text (Join-Path $d '.agents\skills\fix\SKILL.md') "name: fix`ndescription:" "name: fix`nname: fix`ndescription:"
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern "\.agents/skills/fix/SKILL\.md : its frontmatter, the name line plus \.claude/commands/fix\.md's, repeats the key\(s\) name, which Copilot refuses"
+        # Quoting the key changes nothing for Copilot CLI 1.0.92: '"name": fix' beside 'name: fix' is still "duplicate entry with key".
+        Assert-Case 'skill-wrapper-quoted-duplicate-key' {
+            param($d)
+            Replace-Text (Join-Path $d '.claude\commands\fix.md') "---`ndescription:" "---`n`"name`": fix`ndescription:"
+            Replace-Text (Join-Path $d '.agents\skills\fix\SKILL.md') "name: fix`ndescription:" "name: fix`n`"name`": fix`ndescription:"
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern "\.agents/skills/fix/SKILL\.md : its frontmatter, the name line plus \.claude/commands/fix\.md's, repeats the key\(s\) name, which Copilot refuses"
+        # So does an explicit key, comment and all, and any other repeated key, which Copilot refuses in the command as well.
+        Assert-Case 'skill-wrapper-explicit-duplicate-key' {
+            param($d)
+            Replace-Text (Join-Path $d '.claude\commands\fix.md') "---`ndescription:" "---`n? name # again`n: fix`ndescription:"
+            Replace-Text (Join-Path $d '.agents\skills\fix\SKILL.md') "name: fix`ndescription:" "name: fix`n? name # again`n: fix`ndescription:"
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern "\.agents/skills/fix/SKILL\.md : its frontmatter, the name line plus \.claude/commands/fix\.md's, repeats the key\(s\) name, which Copilot refuses"
+        Assert-Case 'skill-wrapper-repeated-other-key' {
+            param($d)
+            foreach ($path in (Join-Path $d '.claude\commands\fix.md'), (Join-Path $d '.agents\skills\fix\SKILL.md')) {
+                $text = [IO.File]::ReadAllText($path)
+                $hint = [regex]::Match($text, '(?m)^argument-hint: .*$').Value
+                Assert ($hint -ne '') 'fixture fix command no longer has an argument-hint'
+                [IO.File]::WriteAllText($path, $text.Replace($hint, "$hint`n$hint"))
+            }
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern "\.agents/skills/fix/SKILL\.md : its frontmatter, the name line plus \.claude/commands/fix\.md's, repeats the key\(s\) argument-hint, which Copilot refuses"
+        # YAML keys are case-sensitive: Copilot CLI 1.0.92 loads 'Name' beside 'name'.
+        Assert-Case 'skill-wrapper-case-distinct-keys' {
+            param($d)
+            Replace-Text (Join-Path $d '.claude\commands\fix.md') "---`ndescription:" "---`nName: fix`ndescription:"
+            Replace-Text (Join-Path $d '.agents\skills\fix\SKILL.md') "name: fix`ndescription:" "name: fix`nName: fix`ndescription:"
+        } '12 workflow wrapper(s) carry their command''s frontmatter' 'skill-frontmatter' -Green
+        # install.ps1 protects a team's file only at a wrapper path named in lowercase letters, digits and hyphens.
+        Assert-Case 'skill-wrapper-folder-name-outside-installer-grammar' {
+            param($d)
+            Copy-Item -LiteralPath (Join-Path $d '.claude\commands\fix.md') -Destination (Join-Path $d '.claude\commands\fix_it.md')
+            New-Item -ItemType Directory -Force -Path (Join-Path $d '.agents\skills\fix_it') | Out-Null
+            $wrapper = [IO.File]::ReadAllText((Join-Path $d '.agents\skills\fix\SKILL.md'))
+            $wrapper = $wrapper.Replace("name: fix`n", "name: fix_it`n").Replace('`.claude/commands/fix.md` is the single source of truth', '`.claude/commands/fix_it.md` is the single source of truth')
+            [IO.File]::WriteAllText((Join-Path $d '.agents\skills\fix_it\SKILL.md'), $wrapper)
+        } 'workflow skill wrappers drift from their commands' 'skill-frontmatter' -AlsoPattern '\.agents/skills/fix_it/SKILL\.md : its folder name is not lowercase letters, digits and hyphens'
+        Assert-Case 'skill-scan-blind-without-claude-skills' {
+            param($d)
+            Remove-Item -LiteralPath (Join-Path $d '.claude\skills') -Recurse -Force
+        } 'skill frontmatter scan found no .claude/skills/*/SKILL.md' 'skill-frontmatter' -AlsoPattern 'the scan is blind'
+        Assert-Case 'skill-wrappers-match-commands' { param($d) } '12 workflow wrapper(s) carry their command''s frontmatter' 'skill-frontmatter' -Green
+    }
+
 } finally { foreach($p in $scratch) { if(Test-Path $p){ Remove-Item -LiteralPath $p -Recurse -Force } } }
 exit (Write-TestSummary 'ValidateDist.Tests (B-92)')

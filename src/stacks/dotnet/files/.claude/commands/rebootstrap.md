@@ -213,12 +213,12 @@ Reminder: items are per-block — to remove a resolved item, delete its `## DEBT
    > "I found a potential hazard in [Area / file]: [one plain sentence describing the specific risk]. Is this (a) a confirmed risk to track, (b) not actually a risk in this codebase, or (c) you're not sure?"
 3. **Ageing rows** — list rows whose `Reviewed` date is more than ~90 days old and ask the developer to re-confirm each.
 
-Ask all three passes' questions in a **single message** (not dripped), with a "skip all — leave every row as it is" escape at the end. Map the answers to the same statuses `/bootstrap` writes:
+Ask all three passes' questions at this one pause, one question per row or candidate — never several in one question. With a question tool, ask as many per call as it accepts, each offering its answers and "skip the rest — leave them as they are", and make the next call straight away; without one, number them in a single message with a "skip all — leave every row as it is" escape at the end. Map the answers to the same statuses `/bootstrap` writes:
 
 - **(a) confirmed** → `Status = [VERIFIED]`, `Reviewed` = today in ISO `YYYY-MM-DD`
 - **(b) not a risk** → `Status = [REVIEWED: not a hazard — YYYY-MM-DD]` and `Reviewed` = the same date, today (keep the row — it is kept for auditability, not dropped)
 - **(c) unsure** → leave an existing row's status and date exactly as they are; a *new* candidate is written `[UNVERIFIED]` and dated today, the day it was added
-- **skip all** → leave every row as it is apart from pass 1's `RENAMED` re-points, and add no new candidate
+- **skip all** → leave every row as it is apart from pass 1's `RENAMED` re-points, and add no new candidate; **skip the rest** does the same for every question not yet answered, and answers already given stand
 
 When writing or changing a row, keep the Status cell as bare text with no Markdown code delimiters,
 and require `Area / file(s)` to include at least one repository-root-relative path that resolves.

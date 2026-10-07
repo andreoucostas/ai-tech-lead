@@ -991,22 +991,55 @@ if (Test-CheckSelected 'skill-frontmatter') {
 # description exceeds 1024 characters fails to load ("Skill description must be at most 1024
 # characters"), the Agent Skills specification's limit. monorepo add-tests shipped at 1,078 in
 # v0.77.0 to v0.91.0. Folded and literal blocks are joined the way YAML folds them.
+# The .agents/skills workflow wrappers are scanned too. Copilot CLI 1.0.92 (`copilot skill list`)
+# lists .agents/skills/<name> in place of a same-named .claude/commands/<name>.md, so a wrapper
+# carries that command's frontmatter plus `name: <name>`, and every command has one: a drifted
+# wrapper changes the description, argument hint and model invocation Copilot uses while Claude
+# Code keeps the command's, and a missing one leaves VS Code without the command.
 $skillFiles = @()
-$skillsRoot = Join-Path $DistAbs '.claude/skills'
-if (Test-Path -LiteralPath $skillsRoot -PathType Container) {
-    $skillFiles = @(Get-ChildItem -LiteralPath $skillsRoot -Directory -Force |
-        ForEach-Object { Join-Path $_.FullName 'SKILL.md' } |
-        Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+foreach ($skillsRelative in @('.claude/skills', '.agents/skills')) {
+    $skillsRoot = Join-Path $DistAbs $skillsRelative
+    if (Test-Path -LiteralPath $skillsRoot -PathType Container) {
+        $skillFiles += @(Get-ChildItem -LiteralPath $skillsRoot -Directory -Force |
+            ForEach-Object { Join-Path $_.FullName 'SKILL.md' } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+    }
+}
+# A delimiter is '---' with only trailing whitespace: Copilot CLI 1.0.92 loads '---  ' but refuses
+# ' ---' as malformed frontmatter, and an indented '---' inside a block scalar is content. Comparisons
+# here are ordinal: -ceq ignores zero-width characters such as U+FEFF and U+200B, and Copilot refuses
+# them in a delimiter or a name. It trims a trailing U+FEFF from a name; this check refuses that too.
+function Test-OrdinalEqual([string]$Left, [string]$Right) { return [string]::Equals($Left, $Right, [StringComparison]::Ordinal) }
+# Top-level keys, unquoted: a bare key, a quoted one, or an explicit '? key'. YAML keys are case-sensitive.
+function Get-FrontmatterKeys([string[]]$Lines) {
+    foreach ($line in $Lines) {
+        $key = [regex]::Match($line, '^\?\s+(?:"([^"]*)"|''([^'']*)''|(\S.*?))(?:\s+#.*)?\s*$')
+        if (-not $key.Success) { $key = [regex]::Match($line, '^(?:"([^"]*)"|''([^'']*)''|([^\s"''#?{\[-][^:]*?))\s*:(?:\s|$)') }
+        if (-not $key.Success) { continue }
+        foreach ($group in 1, 2, 3) { if ($key.Groups[$group].Success) { $key.Groups[$group].Value; break } }
+    }
+}
+function Get-FrontmatterEnd([string[]]$Lines) {
+    if ($Lines.Count -eq 0 -or -not (Test-OrdinalEqual $Lines[0].TrimEnd() '---')) { return -1 }
+    for ($i = 1; $i -lt $Lines.Count; $i++) { if (Test-OrdinalEqual $Lines[$i].TrimEnd() '---') { return $i } }
+    return -1
+}
+function Get-FrontmatterLines([string[]]$Lines) {
+    $close = Get-FrontmatterEnd $Lines
+    if ($close -lt 0) { return $null }
+    return , @(if ($close -gt 1) { $Lines[1..($close - 1)] })
 }
 $skillProblems = @()
+$wrapperProblems = @()
+$claudeSkillCount = 0
+$wrapperCount = 0
+$commandCount = 0
 $longestDescription = 0
 foreach ($skillPath in $skillFiles) {
     $relative = $skillPath.Substring($DistAbs.Length).TrimStart('\','/').Replace('\','/')
     $lines = @([IO.File]::ReadAllLines($skillPath, [Text.Encoding]::UTF8))
-    $end = -1
-    if ($lines.Count -gt 0 -and $lines[0].Trim() -eq '---') {
-        for ($i = 1; $i -lt $lines.Count; $i++) { if ($lines[$i].Trim() -eq '---') { $end = $i; break } }
-    }
+    if ($relative.StartsWith('.claude/skills/', [StringComparison]::Ordinal)) { $claudeSkillCount++ }
+    $end = Get-FrontmatterEnd $lines
     if ($end -lt 0) { $skillProblems += "$relative : no terminated YAML frontmatter"; continue }
     $description = $null
     for ($i = 1; $i -lt $end; $i++) {
@@ -1032,14 +1065,67 @@ foreach ($skillPath in $skillFiles) {
     if ($description.Length -gt 1024) {
         $skillProblems += "$relative : description is $($description.Length) characters"
     }
+    if ($relative -notmatch '^\.agents/skills/([^/]+)/SKILL\.md$') { continue }
+    $workflow = $Matches[1]
+    $wrapperCount++
+    # install.ps1 keeps or saves a team's file at a wrapper path only for these names; another would be overwritten.
+    if ($workflow -cnotmatch '^[a-z0-9-]+$') {
+        $wrapperProblems += "$relative : its folder name is not lowercase letters, digits and hyphens, so install.ps1 would overwrite a team's file there"
+    }
+    # Get-FrontmatterLines returns the line array as one object; @() around the call would nest it.
+    $frontmatter = Get-FrontmatterLines $lines
+    if ($null -eq $frontmatter) { $frontmatter = @() }
+    if ($frontmatter.Count -eq 0 -or -not (Test-OrdinalEqual $frontmatter[0] "name: $workflow")) {
+        $wrapperProblems += "$relative : its frontmatter does not open with 'name: $workflow'"
+    }
+    # The installer tells a framework wrapper from a team's skill at this path by this sentence.
+    $body = ($lines[($end + 1)..($lines.Count - 1)] -join "`n")
+    if ($end + 1 -ge $lines.Count -or -not $body.Contains('`.claude/commands/' + $workflow + '.md` is the single source of truth')) {
+        $wrapperProblems += "$relative : its body does not name .claude/commands/$workflow.md as the single source of truth"
+    }
+    $commandPath = Join-Path $DistAbs ".claude/commands/$workflow.md"
+    if (-not (Test-Path -LiteralPath $commandPath -PathType Leaf)) {
+        $wrapperProblems += "$relative : runs .claude/commands/$workflow.md, which does not ship"
+        continue
+    }
+    $commandFrontmatter = Get-FrontmatterLines @([IO.File]::ReadAllLines($commandPath, [Text.Encoding]::UTF8))
+    $wrapperRest = @(if ($frontmatter.Count -gt 1) { $frontmatter[1..($frontmatter.Count - 1)] })
+    # A repeated key is invalid YAML to Copilot ("duplicate entry with key"), however it is spelt; the
+    # wrapper carries the command's keys after its name line, so a name key in the command repeats too.
+    $seenKeys = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $repeatedKeys = @(Get-FrontmatterKeys $frontmatter | Where-Object { -not $seenKeys.Add($_) } | Sort-Object -CaseSensitive -Unique)
+    if ($repeatedKeys.Count -gt 0) {
+        $wrapperProblems += "$relative : its frontmatter, the name line plus .claude/commands/$workflow.md's, repeats the key(s) $($repeatedKeys -join ', '), which Copilot refuses as a duplicate entry"
+    }
+    if ($null -eq $commandFrontmatter -or -not (Test-OrdinalEqual ($wrapperRest -join "`n") ($commandFrontmatter -join "`n"))) {
+        $wrapperProblems += "$relative : frontmatter after its name line differs from .claude/commands/$workflow.md"
+    }
 }
-if ($skillFiles.Count -eq 0) {
+$commandsRoot = Join-Path $DistAbs '.claude/commands'
+if (Test-Path -LiteralPath $commandsRoot -PathType Container) {
+    foreach ($command in @(Get-ChildItem -LiteralPath $commandsRoot -File -Filter '*.md' -Force)) {
+        $commandCount++
+        $workflow = [IO.Path]::GetFileNameWithoutExtension($command.Name)
+        if (-not (Test-Path -LiteralPath (Join-Path $DistAbs ".agents/skills/$workflow/SKILL.md") -PathType Leaf)) {
+            $wrapperProblems += ".claude/commands/$($command.Name) : no .agents/skills/$workflow/SKILL.md wrapper, so VS Code has no /$workflow"
+        }
+    }
+}
+if ($claudeSkillCount -eq 0) {
     Fail "skill frontmatter scan found no .claude/skills/*/SKILL.md in $Dist -- the scan is blind."
-} elseif ($skillProblems.Count -gt 0) {
-    Fail "shipped skills Copilot CLI cannot load -- $($skillProblems.Count) finding(s). Copilot CLI 1.0.89 refuses to load a skill whose description exceeds 1024 characters."
-    $skillProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [skill-frontmatter] $_" }
+} elseif ($commandCount -eq 0) {
+    Fail "workflow wrapper scan found no .claude/commands/*.md in $Dist -- the scan is blind."
+} elseif ($skillProblems.Count -gt 0 -or $wrapperProblems.Count -gt 0) {
+    if ($skillProblems.Count -gt 0) {
+        Fail "shipped skills Copilot CLI cannot load, or that have no description -- $($skillProblems.Count) finding(s). Copilot CLI 1.0.89 refuses to load a skill whose description exceeds 1024 characters, and 1.0.92 one whose frontmatter it cannot find; one with no description loads, described by its body."
+        $skillProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [skill-frontmatter] $_" }
+    }
+    if ($wrapperProblems.Count -gt 0) {
+        Fail "workflow skill wrappers drift from their commands -- $($wrapperProblems.Count) finding(s). Copilot CLI 1.0.92 lists .agents/skills/<name>/SKILL.md in place of .claude/commands/<name>.md, so each command needs a wrapper carrying its frontmatter plus its name."
+        $wrapperProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [skill-frontmatter] $_" }
+    }
 } else {
-    OK "every shipped skill description loads on Copilot CLI ($($skillFiles.Count) SKILL.md files; longest description $longestDescription of 1024 characters)."
+    OK "every shipped skill description loads on Copilot CLI ($($skillFiles.Count) SKILL.md files; longest description $longestDescription of 1024 characters; $wrapperCount workflow wrapper(s) carry their command's frontmatter)."
 }
 }
 

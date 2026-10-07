@@ -14,9 +14,9 @@ $ARGUMENTS
 
 ## Headless mode
 
-`/adopt` is normally developer-interactive. It also runs **headless** — non-interactively, driven by an operator's one-shot prompt — when `$ARGUMENTS` contains a `--headless` directive (the `.github/prompts/adopt.prompt.md` wrapper forwards it). Headless `/adopt` **prepares** adoption autonomously and **stages** every change to canonical guidance for a human to apply at PR review. It never finalizes a merge of discovered content, and it never opens or merges the PR.
+`/adopt` is normally developer-interactive. It also runs **headless** — non-interactively, driven by an operator's one-shot prompt — when `$ARGUMENTS` contains a `--headless` directive (an operator's one-shot prompt passes it when the agent reads this file). Headless `/adopt` **prepares** adoption autonomously and **stages** every change to canonical guidance for a human to apply at PR review. It never finalizes a merge of discovered content, and it never opens or merges the PR.
 
-**The trust boundary is intact by construction.** Nothing derived from an untrusted discovered file is ever *applied* to `AGENTS.md` or `TECH_DEBT.md` without a person. The agent does only the mechanical, reversible work — branch, archive, provenance + adversarial screen, PR structuring — and writes every proposed merge as a clearly-marked, attributed, normalized proposal that a reviewer approves on the branch. This holds on every surface (Claude Code via `claude -p`, Copilot CLI via its `-p` equivalent), so it does not depend on `disable-model-invocation` (a prompt wrapper does not honour that flag anyway).
+**The trust boundary is intact by construction.** Nothing derived from an untrusted discovered file is ever *applied* to `AGENTS.md` or `TECH_DEBT.md` without a person. The agent does only the mechanical, reversible work — branch, archive, provenance + adversarial screen, PR structuring — and writes every proposed merge as a clearly-marked, attributed, normalized proposal that a reviewer approves on the branch. This holds on every surface (Claude Code via `claude -p`, Copilot CLI via its `-p` equivalent), so it does not depend on `disable-model-invocation`.
 
 **Precondition.** The operator commits the installed framework files to the **default branch** first. Headless then runs on an otherwise-clean tree; a dirty tree that is not just the pending install stops the run and reports — reversibility matters more when unattended.
 
@@ -298,7 +298,7 @@ Present the proposed additions to the user before applying.
 
 For any `.github/prompts/*.prompt.md`, `.github/chatmodes/*.chatmode.md`, `.cursor/rules/*.mdc` with prompt-like content, or custom `.claude/commands/*.md` that aren't in our template. **Do not include `.github/skills/**` here**; those skill directories and resources are excluded from command adoption and remain untouched under the Phase-1 early-stop rule:
 
-- If the workflow is genuinely useful and project-specific, copy it into `.claude/commands/<name>.md` (creating a new slash command) and generate a `.github/prompts/<name>.prompt.md` wrapper. **Ask the user first** — this expands the command surface area.
+- If the workflow is genuinely useful and project-specific, copy it into `.claude/commands/<name>.md` (creating a new slash command) and generate a `.agents/skills/<name>/SKILL.md` wrapper like the shipped ones (`name: <name>` plus the command's frontmatter), so Copilot has it too. **Ask the user first** — this expands the command surface area.
 - Otherwise, leave them in `docs/pre-adoption/` as reference.
 
 ---
@@ -350,7 +350,7 @@ Show the user:
 - What was left in place, or left unread in `docs/pre-adoption/`, because Git ignores it or its archive path (paths only; a developer can merge a personal file by hand)
 - What was merged into AGENTS.md (section by section, with rule counts)
 - What was merged into TECH_DEBT.md (item count)
-- What new commands (if any) were added to `.claude/commands/` and `.github/prompts/`
+- What new commands (if any) were added to `.claude/commands/` and `.agents/skills/`
 - What `/bootstrap` filled in
 - Phase-7 bootstrap deterministic completion gate: command run and PASS
 - Archive integrity: the pre-bootstrap and post-gate `adoption-archive.ps1 -Verify` commands and both `RESULT: PASS` lines, verified against the frozen complete inventory

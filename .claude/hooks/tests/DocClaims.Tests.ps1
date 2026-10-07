@@ -19,7 +19,7 @@ $contracts = @(
     [pscustomobject]@{ Claim = 'README.md'; Line = '"Known Hazard Areas" by `/rebootstrap`'; Command = '.claude/commands/rebootstrap.md'; Requires = 'Known Hazard Areas'; RequiresStepCount = $null; Dists = $allDists }
     [pscustomobject]@{ Claim = '.claude/commands/rebootstrap.md'; Line = 'Re-run A7 using `bootstrap.md`'; Command = '.claude/commands/rebootstrap.md'; Requires = 'Bounded Repository-Knowledge Discovery'; RequiresStepCount = $null; Dists = @('angular') }
     [pscustomobject]@{ Claim = '.claude/commands/rebootstrap.md'; Line = 'Re-run shared A8 using `bootstrap.md`'; Command = '.claude/commands/rebootstrap.md'; Requires = 'Bounded Repository-Knowledge Discovery'; RequiresStepCount = $null; Dists = @('dotnet', 'monorepo') }
-    [pscustomobject]@{ Claim = '.github/prompts/docs-sync.prompt.md'; Line = 'all six steps'; Command = '.claude/commands/docs-sync.md'; Requires = $null; RequiresStepCount = 6; Dists = $allDists }
+    [pscustomobject]@{ Claim = '.agents/skills/docs-sync/SKILL.md'; Line = 'all six steps'; Command = '.claude/commands/docs-sync.md'; Requires = $null; RequiresStepCount = 6; Dists = $allDists }
 )
 
 $completionHosts = @(

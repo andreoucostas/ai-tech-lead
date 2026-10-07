@@ -192,8 +192,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 11565,
-          "tok": 2891
+          "chars": 11673,
+          "tok": 2918
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -222,7 +222,7 @@
         },
         {
           "path": "docs/playbook.md",
-          "chars": 9439,
+          "chars": 9438,
           "tok": 2360
         },
         {
@@ -333,13 +333,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 41682,
-          "tok": 10420
+          "chars": 41733,
+          "tok": 10433
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 52435,
-          "tok": 13109
+          "chars": 52970,
+          "tok": 13242
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -368,8 +368,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 20768,
-          "tok": 5192
+          "chars": 21134,
+          "tok": 5284
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -606,8 +606,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 11550,
-          "tok": 2888
+          "chars": 11658,
+          "tok": 2914
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -636,8 +636,8 @@
         },
         {
           "path": "docs/playbook.md",
-          "chars": 9430,
-          "tok": 2358
+          "chars": 9429,
+          "tok": 2357
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -747,13 +747,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 41191,
-          "tok": 10298
+          "chars": 41242,
+          "tok": 10310
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 44288,
-          "tok": 11072
+          "chars": 44823,
+          "tok": 11206
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -782,8 +782,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 18870,
-          "tok": 4718
+          "chars": 19236,
+          "tok": 4809
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1020,8 +1020,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12281,
-          "tok": 3070
+          "chars": 12389,
+          "tok": 3097
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -1050,7 +1050,7 @@
         },
         {
           "path": "docs/playbook.md",
-          "chars": 10087,
+          "chars": 10086,
           "tok": 2522
         },
         {
@@ -1161,13 +1161,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 42170,
-          "tok": 10542
+          "chars": 42221,
+          "tok": 10555
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 59142,
-          "tok": 14786
+          "chars": 59677,
+          "tok": 14919
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1196,8 +1196,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 22236,
-          "tok": 5559
+          "chars": 22602,
+          "tok": 5650
         },
         {
           "path": ".claude/commands/refactor.md#body",

@@ -308,7 +308,7 @@ It 'every shipped adoption workflow freezes queued quarantines only in Phase 3 a
     foreach ($stack in 'dotnet', 'angular', 'monorepo') {
         $dist = Join-Path $script:RepoRoot "dist/$stack"
         $adopt = [IO.File]::ReadAllText((Join-Path $dist '.claude/commands/adopt.md'), [Text.Encoding]::UTF8)
-        $prompt = [IO.File]::ReadAllText((Join-Path $dist '.github/prompts/adopt.prompt.md'), [Text.Encoding]::UTF8)
+        $prompt = [IO.File]::ReadAllText((Join-Path $dist '.agents/skills/adopt/SKILL.md'), [Text.Encoding]::UTF8)
         $ownership = [IO.File]::ReadAllText((Join-Path $dist 'framework-ownership.json'), [Text.Encoding]::UTF8)
         $installer = [IO.File]::ReadAllText((Join-Path $dist 'scripts/install.ps1'), [Text.Encoding]::UTF8)
         foreach ($needle in @('archiveIntegrity', 'Pre-bootstrap archive verification', 'post-gate archive verification', 'RESULT: PASS', 'frozen complete inventory')) {

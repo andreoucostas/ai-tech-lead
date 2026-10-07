@@ -36,9 +36,9 @@ After three months of this, every actively-developed area is cleaner, better-tes
 Supported GitHub Copilot agent surfaces, GitHub code review, Codex, and Cursor load `AGENTS.md` directly; Claude Code loads it, and the framework rules, through the `CLAUDE.md` imports. Gemini defaults to `GEMINI.md`, and Aider sees these rules only when explicitly configured to read them. Conventions, architecture, common tasks, agentic workflow. When a developer types a natural language request, the agent follows the applicable carrier and workflow automatically. Per-developer working preferences live in Claude Code's persistent memory, not in AGENTS.md.
 
 ### Tier 2 — Explicit (workflow commands)
-**Files**: `.claude/commands/*.md` (canonical), `.github/prompts/*.prompt.md` (Copilot Chat wrappers)
+**Files**: `.claude/commands/*.md` (canonical), `.agents/skills/*/SKILL.md` (Copilot skill wrappers)
 
-Purpose-built workflows invoked via `/command` in either Claude Code or Copilot Chat. Each encodes a specific methodology: `/feature` decomposes into subtasks, `/fix` reproduces first and uses a red regression test when an applicable harness exists, and `/design` forces design thinking before code. The Copilot prompt files are thin wrappers that delegate to the canonical `.claude/commands/` files — single source of truth per workflow.
+Purpose-built workflows invoked via `/command` in either Claude Code or Copilot (VS Code and Copilot CLI). Each encodes a specific methodology: `/feature` decomposes into subtasks, `/fix` reproduces first and uses a red regression test when an applicable harness exists, and `/design` forces design thinking before code. The Copilot skill wrappers delegate to the canonical `.claude/commands/` files — single source of truth per workflow.
 
 ### Automated Verification (Hooks)
 **File**: `.claude/settings.json`
