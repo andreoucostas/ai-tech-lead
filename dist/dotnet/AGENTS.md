@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.93.0
-  applied: 2026-10-04
+  version: 0.94.0
+  applied: 2026-10-08
   After a framework update, copy these fields from .claude/framework-version.json.
 -->
 # [Project Name]

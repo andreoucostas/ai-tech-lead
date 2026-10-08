@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.94.0 — Unreleased
+## 0.94.0 — 2026-10-08
 
 The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a
 Write of `import … from './task-list-item-renderer-component'` or a route `{ path: 'risk-assessment-history-details'
