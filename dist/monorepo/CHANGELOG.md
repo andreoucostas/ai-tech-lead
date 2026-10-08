@@ -62,23 +62,25 @@
   answers you already gave stand; the clarifying questions keep their "skip" or "proceed" answer. Without a question
   tool they stay numbered questions in one message. An update refreshes both commands.
 
-- **The security pass now names this framework's `security-review` skill, not a bare `/security-review`.** On
-  Copilot CLI, `security-review` is also the name of the CLI's built-in Security Review Agent, and Copilot CLI's own
+- **The security pass now names this framework's `security-review` skill, not a bare `/security-review`.** On Copilot
+  CLI, `security-review` is also the name of the CLI's built-in Security Review Agent, and Copilot CLI's own
   instructions send `/security-review` to it. The always-loaded rules and the per-prompt security reminder said "run
   `/security-review`", so the pass the agent runs by itself could reach the CLI's agent instead of this framework's
   review, which records critical and high findings in `SECURITY_FINDINGS.md`. Both now name this repository's
-  `security-review` skill (`.claude/commands/security-review.md`), say that on Copilot CLI it is not the CLI's built-in
-  security agent, and keep the `security-auditor` agent as the alternative. This is not measured on either host, and
-  Claude Code reads the same new wording. Typing `/security-review` yourself behaves as before. An update refreshes the
-  rules and the hook; you do not need to do anything.
+  `security-review` skill (`.claude/commands/security-review.md`), say that on Copilot CLI it is not the CLI's
+  built-in security agent, and keep the `security-auditor` agent as the alternative. This is not measured on either
+  host, and Claude Code reads the same new wording. Typing `/security-review` yourself is unchanged: in Claude Code it
+  runs this framework's command, and in Copilot CLI it still reaches the CLI's own command first, as described under
+  0.93.0. An update refreshes the rules and the hook; you do not need to do anything.
 
-- **Plans now name how the next instance keeps an easy-to-miss step.** When a change adds an extension point, or
-  the third instance of something your repository does repeatedly, and adding the next one has a step that is easy to
-  miss (a flag, a grant, a registration), the plan names one record it will add for that step: a test that fails when an
-  instance skips it, otherwise one `AGENTS.md > Conventions` line, otherwise, once three or more instances exist, a
-  project skill draft marked `DRAFT, pending PR review:`. You approve it with the plan, and a skill draft still needs
-  your PR review. For other changes the rule asks for no record. This is not measured on either host. An update
-  refreshes the rules file; you do not need to do anything.
+- **Plans now name how the next instance keeps an easy-to-miss step.** When a change adds an extension point, or the
+  third instance of something your repository does repeatedly, and adding the next one has a step that is easy to miss
+  (a flag, a grant, a catalog entry), the plan names one record it will add for that step unless one exists: a test
+  over your own instances that fails when one skips it (never a test of the framework itself), otherwise one
+  `AGENTS.md > Conventions` line, otherwise, once the change makes three or more instances, a project skill draft
+  under `/bootstrap`'s own rules, marked `DRAFT, pending PR review:`. You approve it with the plan, and a skill draft
+  still needs your PR review. For other changes the rule asks for no record. This is not measured on either host. An
+  update refreshes the rules file; you do not need to do anything.
 
 ## 0.93.0 — 2026-10-04
 

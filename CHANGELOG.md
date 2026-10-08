@@ -142,22 +142,26 @@ Phase 2b keeps its skip signal. Without a question tool they stay numbered in on
 any host. On-demand context: `bootstrap.md` +535 and `rebootstrap.md` +366 chars per dist; always-loaded unchanged.
 
 B-348's wording ships unmeasured, by maintainer decision (WSD-111). Copilot CLI 1.0.89's system prompt sends
-"/security-review" to its built-in Security Review Agent ("For /security-review or explicit requests to find exploitable
-vulnerabilities, invoke security-review first…", session b3370001, event 8), and the always-loaded security-pass rule
-and `route-prompt`'s security overlay both named that bare token. The three stack `security-pass` snippets and the
-overlay now name this repository's `security-review` skill and its source `.claude/commands/security-review.md`, say
-that on Copilot CLI it is not the CLI's built-in security agent, and keep the `security-auditor` agent as the
-alternative. Not measured on either host: whether the agent's own pass now reaches this framework's review on Copilot
-CLI, and what dropping the `/security-review` form does on Claude Code, stay open as B-348. Always-loaded +116 chars
-per dist; the security overlay +140 chars per routed prompt.
+"/security-review" to its built-in Security Review Agent ("For /security-review or explicit requests to find
+exploitable vulnerabilities, invoke security-review first…": the system message of a retained local 1.0.89 session,
+b3370001, read 2026-10-08 and not otherwise recorded in meta/), and the always-loaded security-pass rule and
+`route-prompt`'s security overlay both named that bare token. The three stack `security-pass` snippets and the overlay
+now name this repository's `security-review` skill and its source `.claude/commands/security-review.md`, say that on
+Copilot CLI it is not the CLI's built-in security agent, and keep the `security-auditor` agent as the alternative. Not
+measured on either host: whether the agent's own pass now reaches this framework's review on Copilot CLI, and what
+dropping the `/security-review` form does on Claude Code, stay open as B-348. Always-loaded +116 chars per dist; the
+security overlay +140 chars per routed prompt.
 
 B-356's plan-step record bullet ships unmeasured, by maintainer decision (WSD-111; the maintainer's request of
 2026-10-05, filed as B-355 at 254c904f). Carrier §2 gains one bullet: when a change adds an extension point or a third
-instance of an operation and adding the next instance has a step that is easy to miss, the plan names the one record it
-will add for that step, a test that fails when an instance skips it, else one `AGENTS.md > Conventions` line, else, once
-three or more instances exist, a project skill draft in `/bootstrap` 3a-bis format; otherwise none. The skill clause
-keeps 3a-bis's three-instance bar. Not measured on either host: the false-offer rate on a plain CRUD change, which the
-entry said decides, stays open as B-356. Always-loaded +388 chars per dist.
+instance of an operation and adding the next instance has a step that is easy to miss, the plan names the one record
+it will add for that step unless one exists: a test over the repository's own instances that fails when one skips it
+(never a test of the framework, Test leanness #12), else one `AGENTS.md > Conventions` line, else, once this change
+makes three or more instances, a project skill draft under 3a-bis of `.claude/commands/bootstrap.md`; otherwise none.
+The skill clause binds all of 3a-bis, including its three-instance bar; the wording is the plan's reviewed candidate
+as revised after a Fable review of the commit (#12, the model-hidden `/bootstrap`, 3a-bis's screens, which instance
+counts). Not measured on either host: the false-offer rate on a plain CRUD change, which the entry said decides, stays
+open as B-356. Always-loaded +516 chars per dist.
 
 ## 0.93.0 — 2026-10-04
 

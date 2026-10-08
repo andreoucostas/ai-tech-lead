@@ -153,8 +153,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18919,
-          "tok": 4730
+          "chars": 19047,
+          "tok": 4762
         },
         {
           "path": "AGENTS.md",
@@ -170,8 +170,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18919,
-          "tok": 4730
+          "chars": 19047,
+          "tok": 4762
         },
         {
           "path": "AGENTS.md",
@@ -217,8 +217,8 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 19676,
-          "tok": 4919
+          "chars": 19707,
+          "tok": 4927
         },
         {
           "path": "docs/playbook.md",
@@ -567,8 +567,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18667,
-          "tok": 4667
+          "chars": 18795,
+          "tok": 4699
         },
         {
           "path": "AGENTS.md",
@@ -584,8 +584,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18667,
-          "tok": 4667
+          "chars": 18795,
+          "tok": 4699
         },
         {
           "path": "AGENTS.md",
@@ -631,8 +631,8 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 19676,
-          "tok": 4919
+          "chars": 19707,
+          "tok": 4927
         },
         {
           "path": "docs/playbook.md",
@@ -981,8 +981,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 20435,
-          "tok": 5109
+          "chars": 20563,
+          "tok": 5141
         },
         {
           "path": "AGENTS.md",
@@ -998,8 +998,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 20435,
-          "tok": 5109
+          "chars": 20563,
+          "tok": 5141
         },
         {
           "path": "AGENTS.md",
@@ -1045,8 +1045,8 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 19676,
-          "tok": 4919
+          "chars": 19707,
+          "tok": 4927
         },
         {
           "path": "docs/playbook.md",
@@ -1269,30 +1269,30 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 37769,
-      "static.claude.tok": 9442,
-      "static.copilot.chars": 26266,
-      "static.copilot.tok": 6566,
+      "static.claude.chars": 37897,
+      "static.claude.tok": 9474,
+      "static.copilot.chars": 26394,
+      "static.copilot.tok": 6598,
       "prompt.max.chars": 3543,
       "prompt.max.tok": 886
     },
     "angular": {
-      "static.claude.chars": 35499,
-      "static.claude.tok": 8875,
-      "static.copilot.chars": 26411,
-      "static.copilot.tok": 6603,
+      "static.claude.chars": 35627,
+      "static.claude.tok": 8907,
+      "static.copilot.chars": 26539,
+      "static.copilot.tok": 6635,
       "prompt.max.chars": 3346,
       "prompt.max.tok": 836
     },
     "monorepo": {
-      "static.claude.chars": 41839,
-      "static.claude.tok": 10460,
-      "static.copilot.chars": 29486,
-      "static.copilot.tok": 7372,
+      "static.claude.chars": 41967,
+      "static.claude.tok": 10492,
+      "static.copilot.chars": 29614,
+      "static.copilot.tok": 7404,
       "prompt.max.chars": 3958,
       "prompt.max.tok": 990
     },
-    "monorepo-claude-ratio-permille": 1108
+    "monorepo-claude-ratio-permille": 1107
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",

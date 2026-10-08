@@ -4608,9 +4608,9 @@ without it. Rejected: a `pwsh`-else-`powershell` command in `hooks.json` (revers
 ## WSD-111: B-348's and B-356's wordings ship unmeasured; their measurements stay in the backlog (2026-10-08)
 
 **Context.** B-348 and B-356 were filed measure-first (WSD-107, WSD-109). A plan for both measurements, reviewed by Fable on 2026-10-07 and
-2026-10-08 (`.claude/plans/inbox/2026-10-08-b348-b356-plan-v2.md`, local), priced them at 14 to 38 Copilot premium requests and $21 to $76.
+2026-10-08 (`.claude/plans/2026-10-08-b348-b356-plan-v2.md`), priced them at 14 to 38 Copilot premium requests and $21 to $76.
 **Decision (user, 2026-10-08: "let's go ahead now, without measuring -- we can have the measuring in the backlog for next time").** The
 security-pass rule and `route-prompt`'s overlay name this repository's `security-review` skill and say it is not Copilot CLI's built-in
-security agent (the plan's W2); carrier §2 gains the plan's 388-byte record bullet, its skill draft gated on three or more instances. Both
+security agent (the plan's W2); carrier §2 gains the plan's record bullet, revised after a review of the commit (no framework tests, all of 3a-bis). Both
 CHANGELOG voices say unmeasured. B-348 and B-356 stay open as measurements of the shipped wordings, with the plan's designs.
 **Reopen** (revert a wording) on a field report of harm from it, or when its entry's measurement shows it worse than the text it replaced.

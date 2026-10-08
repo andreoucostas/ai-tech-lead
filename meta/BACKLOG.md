@@ -26,7 +26,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 **Priority:** P2 · **Effort:** S to M to measure · **Invariants:** #1 #7
 **Status:** Open; false-green class, split from B-326 (`meta/host-certification.md`). Copilot CLI 1.0.89 sends `/security-review` to its
 built-in Security Review Agent; the security-pass rule and `route-prompt`'s overlay now name this repository's skill instead, unmeasured (WSD-111).
-Measure agent-initiated passes under it on an installed fixture; design: `.claude/plans/inbox/2026-10-08-b348-b356-plan-v2.md` Part A (local).
+Measure agent-initiated passes under it on an installed fixture; design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part A.
 
 ### B-357 · Measure whether Copilot code review on github.com loads the `review` or `security-review` skill wrapper, and what it posts
 **Filed against:** v0.93.0 (2026-10-06)
@@ -54,7 +54,7 @@ local gates were all green, and every Windows CI job failed at checkout. Candida
 **Priority:** P3 · **Effort:** M to measure, S to change · **Invariants:** #1 #7
 **Status:** Open; raised by the maintainer 2026-10-05, no field report (WSD-109). The candidate bullet shipped unmeasured in carrier §2 (WSD-111).
 Measure it (B-346 method): an extension-point feature, a third instance and a plain CRUD decoy whose false-offer rate decides whether it stays;
-design: `.claude/plans/inbox/2026-10-08-b348-b356-plan-v2.md` Part B (local).
+design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B.
 
 
 
