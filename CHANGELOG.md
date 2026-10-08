@@ -151,6 +151,14 @@ alternative. Not measured on either host: whether the agent's own pass now reach
 CLI, and what dropping the `/security-review` form does on Claude Code, stay open as B-348. Always-loaded +116 chars
 per dist; the security overlay +140 chars per routed prompt.
 
+B-356's plan-step record bullet ships unmeasured, by maintainer decision (WSD-111; the maintainer's request of
+2026-10-05, filed as B-355 at 254c904f). Carrier §2 gains one bullet: when a change adds an extension point or a third
+instance of an operation and adding the next instance has a step that is easy to miss, the plan names the one record it
+will add for that step, a test that fails when an instance skips it, else one `AGENTS.md > Conventions` line, else, once
+three or more instances exist, a project skill draft in `/bootstrap` 3a-bis format; otherwise none. The skill clause
+keeps 3a-bis's three-instance bar. Not measured on either host: the false-offer rate on a plain CRUD change, which the
+entry said decides, stays open as B-356. Always-loaded +388 chars per dist.
+
 ## 0.93.0 — 2026-10-04
 
 B-326 (pre-registered at ac701446; `meta/eval-results.md`, `meta/host-certification.md`). On Copilot CLI 1.0.89 with

@@ -71,6 +71,14 @@
   Claude Code reads the same new wording. Typing `/security-review` yourself behaves as before. An update refreshes the
   rules and the hook; you do not need to do anything.
 
+- **Plans now name how the next instance keeps an easy-to-miss step.** When a change adds an extension point, or
+  the third instance of something your repository does repeatedly, and adding the next one has a step that is easy to
+  miss (a flag, a grant, a registration), the plan names one record it will add for that step: a test that fails when an
+  instance skips it, otherwise one `AGENTS.md > Conventions` line, otherwise, once three or more instances exist, a
+  project skill draft marked `DRAFT, pending PR review:`. You approve it with the plan, and a skill draft still needs
+  your PR review. For other changes the rule asks for no record. This is not measured on either host. An update
+  refreshes the rules file; you do not need to do anything.
+
 ## 0.93.0 — 2026-10-04
 
 - **In Copilot CLI, `/review` and `/security-review` may run the CLI's own review instead of this framework's.** Copilot CLI has

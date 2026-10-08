@@ -9,13 +9,13 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done and B-336 closed by measurement 2026-10-03; B-331 done, B-326 done and B-348 filed, and B-327, B-328, B-329 and B-337 done 2026-10-04; B-352 to B-354 filed 2026-10-05 (Fable review, consumer host reply), B-352 and B-354 done the same day (WSD-110), B-353 done the same day, B-356 filed the same day (maintainer request; first numbered B-355 at 254c904f, renumbered because 99253721 closed a different B-355); B-357 filed 2026-10-06 (the 0.94.0 Copilot skill wrappers); B-359 and B-360 filed 2026-10-07 (attack rounds on those wrappers); B-348's wording shipped unmeasured 2026-10-08 (WSD-111), its measurement kept open; idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
+## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done and B-336 closed by measurement 2026-10-03; B-331 done, B-326 done and B-348 filed, and B-327, B-328, B-329 and B-337 done 2026-10-04; B-352 to B-354 filed 2026-10-05 (Fable review, consumer host reply), B-352 and B-354 done the same day (WSD-110), B-353 done the same day, B-356 filed the same day (maintainer request; first numbered B-355 at 254c904f, renumbered because 99253721 closed a different B-355); B-357 filed 2026-10-06 (the 0.94.0 Copilot skill wrappers); B-359 and B-360 filed 2026-10-07 (attack rounds on those wrappers); B-348's and B-356's wordings shipped unmeasured 2026-10-08 (WSD-111), their measurements kept open; idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
 
 | Rank | Item | Why here |
 |---|---|---|
 | 1 | B-348 | False-green class split from B-326: the agent's own security pass on Copilot CLI; its wording shipped unmeasured (WSD-111), so measure the pass under it |
 | 2 | B-357 | Possible false green or stalled review from a new wrapper on github.com; measure before changing its invocation |
-| 3 | B-356 | Maintainer idea with no field report; the decoy's false-offer rate is measured before any carrier wording |
+| 3 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
 | 4 | B-359 | Latent false green: no shipped command carries such a value today |
 | 5 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
 
@@ -52,9 +52,9 @@ local gates were all green, and every Windows CI job failed at checkout. Candida
 ### B-356 · Measure a plan-step offer of a test, Conventions line or project-skill draft when a feature creates a repeatable operation
 **Filed against:** v0.93.0 (2026-10-05)
 **Priority:** P3 · **Effort:** M to measure, S to change · **Invariants:** #1 #7
-**Status:** Open; raised by the maintainer 2026-10-05, no field report (WSD-109). Between bootstraps nothing checks whether a feature created an
-extension point or a third instance of an operation. Candidate: one plan-step carrier sentence naming the test, Conventions line or 3a-bis
-draft the plan adds. Pre-register (B-346 method): one feature of each kind plus a plain CRUD decoy; the decoy's false-offer rate decides.
+**Status:** Open; raised by the maintainer 2026-10-05, no field report (WSD-109). The candidate bullet shipped unmeasured in carrier §2 (WSD-111).
+Measure it (B-346 method): an extension-point feature, a third instance and a plain CRUD decoy whose false-offer rate decides whether it stays;
+design: `.claude/plans/inbox/2026-10-08-b348-b356-plan-v2.md` Part B (local).
 
 
 

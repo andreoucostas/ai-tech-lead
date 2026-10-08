@@ -98,6 +98,7 @@ When a task matches a skill in `AGENTS.md > Common Tasks`, invoke that skill wit
 For any non-trivial task, STOP before writing code and post a short plan:
 - The files you'll create or modify, and the order of operations
 - Evidenced validation; include tests only when a harness exists
+- If the change adds an extension point or a third instance of an operation, and adding the next instance has a step that is easy to miss, name the one record you will add for that step: a test that fails when an instance skips it, else one `AGENTS.md > Conventions` line, else, once three or more instances exist, a project skill draft in `/bootstrap` 3a-bis format; otherwise add none.
 - Your assumptions, plus **clarifying questions** for anything underspecified (ambiguous scope, unclear acceptance criteria, competing approaches). Do not guess past a material ambiguity to seem helpful — ask.
 - For larger features, persist the plan as a spec to `specs/<slug>.md` (see `/design`) and implement against it
 
