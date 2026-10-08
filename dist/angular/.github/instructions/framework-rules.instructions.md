@@ -92,7 +92,7 @@ When a task matches a skill in `AGENTS.md > Common Tasks`, invoke that skill wit
 
 **Scoped repository knowledge.** For a non-trivial change—including an ordinary feature/fix naming neither a skill nor path—locate task areas; select relevant scoped wiki, map, skill, or example entries; exclude irrelevant/nonapplicable ones; read bodies/references on demand. Investigate conflicting applicable claims and recheck decisive correctness-material evidence. Ask, or retain unresolved, only correctness-material gaps from unresolved drafts, opposing scopes, or stale, missing, or inaccessible evidence; never infer them. Name material evidence and run repository-evidenced verification. Do not preload the wiki or depend on a hook.
 
-**Security-sensitive surfaces always get a security pass.** If the work touches authentication/authorization, tokens, sessions, PII, or output sanitization (XSS/CSRF), run `/security-review` on the diff (or the `security-auditor` agent) before presenting it as complete — regardless of which workflow above applies. The rule holds whether or not a hook reminder appears.
+**Security-sensitive surfaces always get a security pass.** If the work touches authentication/authorization, tokens, sessions, PII, or output sanitization (XSS/CSRF), run this repository's `security-review` skill (`.claude/commands/security-review.md`; on Copilot CLI, not the CLI's built-in security agent) or its `security-auditor` agent on the diff before presenting it as complete — regardless of which workflow above applies. The rule holds whether or not a hook reminder appears.
 
 ### 2. Plan before coding — present, clarify, then get the go-ahead
 For any non-trivial task, STOP before writing code and post a short plan:

@@ -99,7 +99,7 @@ $railsSecurity = @'
 ## Security-sensitive surface detected
 
 This prompt touches a security- or money-sensitive area (auth, payments, balances, ledgers, idempotency, secrets, tokens, session, PII, output sanitisation). DORA's evidence is that AI amplifies existing weaknesses fastest here, so this overlay applies ON TOP OF any workflow rails above. Before presenting the change as complete:
-1. Run /security-review on the diff (or invoke the security-auditor agent) — do not self-certify.
+1. Run this repository's security-review skill (.claude/commands/security-review.md; on Copilot CLI, not the CLI's built-in security agent) or its security-auditor agent on the diff before presenting it as complete — do not self-certify.
 2. Financial logic: establish the applicable invariant, tolerance, and preconditions from policy, implementation, tests, or executable evidence; preserve demonstrated negative-amount, duplicate-effect, precision/rounding, and temporal controls. A type or mechanism name alone is not a verdict.
 3. For state changes, inspect the actual atomic, optimistic, or idempotency mechanism and relevant interleaving; report an unsafe outcome or scoped policy violation demonstrated by source, interleaving, or executable evidence, otherwise retain uncertainty.
 4. Never bypass Angular's sanitisation (bypassSecurityTrust*, direct innerHTML) without an explicit, reviewed reason; rely on the framework's escaping.

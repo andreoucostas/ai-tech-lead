@@ -61,6 +61,16 @@
   answers you already gave stand; the clarifying questions keep their "skip" or "proceed" answer. Without a question
   tool they stay numbered questions in one message. An update refreshes both commands.
 
+- **The security pass now names this framework's `security-review` skill, not a bare `/security-review`.** On
+  Copilot CLI, `security-review` is also the name of the CLI's built-in Security Review Agent, and Copilot CLI's own
+  instructions send `/security-review` to it. The always-loaded rules and the per-prompt security reminder said "run
+  `/security-review`", so the pass the agent runs by itself could reach the CLI's agent instead of this framework's
+  review, which records critical and high findings in `SECURITY_FINDINGS.md`. Both now name this repository's
+  `security-review` skill (`.claude/commands/security-review.md`), say that on Copilot CLI it is not the CLI's built-in
+  security agent, and keep the `security-auditor` agent as the alternative. This is not measured on either host, and
+  Claude Code reads the same new wording. Typing `/security-review` yourself behaves as before. An update refreshes the
+  rules and the hook; you do not need to do anything.
+
 ## 0.93.0 — 2026-10-04
 
 - **In Copilot CLI, `/review` and `/security-review` may run the CLI's own review instead of this framework's.** Copilot CLI has

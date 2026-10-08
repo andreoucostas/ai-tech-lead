@@ -141,6 +141,16 @@ stand, `/bootstrap` treats the rest as unsure, and `/rebootstrap` leaves the res
 Phase 2b keeps its skip signal. Without a question tool they stay numbered in one message. Text-only and unmeasured on
 any host. On-demand context: `bootstrap.md` +535 and `rebootstrap.md` +366 chars per dist; always-loaded unchanged.
 
+B-348's wording ships unmeasured, by maintainer decision (WSD-111). Copilot CLI 1.0.89's system prompt sends
+"/security-review" to its built-in Security Review Agent ("For /security-review or explicit requests to find exploitable
+vulnerabilities, invoke security-review first…", session b3370001, event 8), and the always-loaded security-pass rule
+and `route-prompt`'s security overlay both named that bare token. The three stack `security-pass` snippets and the
+overlay now name this repository's `security-review` skill and its source `.claude/commands/security-review.md`, say
+that on Copilot CLI it is not the CLI's built-in security agent, and keep the `security-auditor` agent as the
+alternative. Not measured on either host: whether the agent's own pass now reaches this framework's review on Copilot
+CLI, and what dropping the `/security-review` form does on Claude Code, stay open as B-348. Always-loaded +116 chars
+per dist; the security overlay +140 chars per routed prompt.
+
 ## 0.93.0 — 2026-10-04
 
 B-326 (pre-registered at ac701446; `meta/eval-results.md`, `meta/host-certification.md`). On Copilot CLI 1.0.89 with

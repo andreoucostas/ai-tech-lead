@@ -99,7 +99,7 @@ $railsSecurity = @'
 ## Security-sensitive surface detected
 
 This prompt touches a security-sensitive area (auth, tokens, session, PII, output sanitisation). DORA's evidence is that AI amplifies existing weaknesses fastest here, so this overlay applies ON TOP OF any workflow rails above. Before presenting the change as complete:
-1. Run /security-review on the diff (or invoke the security-auditor agent) — do not self-certify.
+1. Run this repository's security-review skill (.claude/commands/security-review.md; on Copilot CLI, not the CLI's built-in security agent) or its security-auditor agent on the diff before presenting it as complete — do not self-certify.
 2. Never bypass Angular's sanitisation (bypassSecurityTrust*, direct innerHTML) without an explicit, reviewed reason; rely on the framework's escaping.
 3. Keep tokens/secrets out of localStorage where an httpOnly cookie is viable; never log credentials or PII.
 4. Validate and encode at trust boundaries (route params, HTTP responses, user input); guard against XSS/CSRF.

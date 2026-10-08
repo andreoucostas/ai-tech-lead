@@ -153,8 +153,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18415,
-          "tok": 4604
+          "chars": 18531,
+          "tok": 4633
         },
         {
           "path": "AGENTS.md",
@@ -170,8 +170,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18415,
-          "tok": 4604
+          "chars": 18531,
+          "tok": 4633
         },
         {
           "path": "AGENTS.md",
@@ -286,13 +286,13 @@
         },
         {
           "path": "fixture/route-prompt/security-only",
-          "chars": 1140,
-          "tok": 285
+          "chars": 1280,
+          "tok": 320
         },
         {
           "path": "fixture/route-prompt/worst/fix-security",
-          "chars": 3403,
-          "tok": 851
+          "chars": 3543,
+          "tok": 886
         }
       ],
       "ondemand-info": [
@@ -567,8 +567,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18163,
-          "tok": 4541
+          "chars": 18279,
+          "tok": 4570
         },
         {
           "path": "AGENTS.md",
@@ -584,8 +584,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18163,
-          "tok": 4541
+          "chars": 18279,
+          "tok": 4570
         },
         {
           "path": "AGENTS.md",
@@ -700,13 +700,13 @@
         },
         {
           "path": "fixture/route-prompt/security-only",
-          "chars": 943,
-          "tok": 236
+          "chars": 1083,
+          "tok": 271
         },
         {
           "path": "fixture/route-prompt/worst/fix-security",
-          "chars": 3206,
-          "tok": 802
+          "chars": 3346,
+          "tok": 836
         }
       ],
       "ondemand-info": [
@@ -981,8 +981,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19931,
-          "tok": 4983
+          "chars": 20047,
+          "tok": 5012
         },
         {
           "path": "AGENTS.md",
@@ -998,8 +998,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19931,
-          "tok": 4983
+          "chars": 20047,
+          "tok": 5012
         },
         {
           "path": "AGENTS.md",
@@ -1114,13 +1114,13 @@
         },
         {
           "path": "fixture/route-prompt/security-only",
-          "chars": 1555,
-          "tok": 389
+          "chars": 1695,
+          "tok": 424
         },
         {
           "path": "fixture/route-prompt/worst/fix-security",
-          "chars": 3818,
-          "tok": 954
+          "chars": 3958,
+          "tok": 990
         }
       ],
       "ondemand-info": [
@@ -1269,28 +1269,28 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 37265,
-      "static.claude.tok": 9316,
-      "static.copilot.chars": 25762,
-      "static.copilot.tok": 6440,
-      "prompt.max.chars": 3403,
-      "prompt.max.tok": 851
+      "static.claude.chars": 37381,
+      "static.claude.tok": 9345,
+      "static.copilot.chars": 25878,
+      "static.copilot.tok": 6470,
+      "prompt.max.chars": 3543,
+      "prompt.max.tok": 886
     },
     "angular": {
-      "static.claude.chars": 34995,
-      "static.claude.tok": 8749,
-      "static.copilot.chars": 25907,
-      "static.copilot.tok": 6477,
-      "prompt.max.chars": 3206,
-      "prompt.max.tok": 802
+      "static.claude.chars": 35111,
+      "static.claude.tok": 8778,
+      "static.copilot.chars": 26023,
+      "static.copilot.tok": 6506,
+      "prompt.max.chars": 3346,
+      "prompt.max.tok": 836
     },
     "monorepo": {
-      "static.claude.chars": 41335,
-      "static.claude.tok": 10334,
-      "static.copilot.chars": 28982,
-      "static.copilot.tok": 7246,
-      "prompt.max.chars": 3818,
-      "prompt.max.tok": 954
+      "static.claude.chars": 41451,
+      "static.claude.tok": 10363,
+      "static.copilot.chars": 29098,
+      "static.copilot.tok": 7274,
+      "prompt.max.chars": 3958,
+      "prompt.max.tok": 990
     },
     "monorepo-claude-ratio-permille": 1109
   },
