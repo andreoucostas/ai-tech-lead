@@ -3,22 +3,22 @@
   "exceptions": [
     {
       "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
-      "sha256": "44D0D08DA87AB4416762C7B0F2B41F2462F352A121F49F6C0BBC6A6C14B40EEA",
+      "sha256": "7C5C9FDDC2A039C45E0CB192F4EEDAC398C36E18644696C6B7B40683CB7B7071",
       "reason": "Canonical guard-policy fixture intentionally contains synthetic blocked patterns."
     },
     {
       "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
-      "sha256": "44D0D08DA87AB4416762C7B0F2B41F2462F352A121F49F6C0BBC6A6C14B40EEA",
+      "sha256": "7C5C9FDDC2A039C45E0CB192F4EEDAC398C36E18644696C6B7B40683CB7B7071",
       "reason": "Generated copy of the canonical guard-policy fixture."
     },
     {
       "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
-      "sha256": "44D0D08DA87AB4416762C7B0F2B41F2462F352A121F49F6C0BBC6A6C14B40EEA",
+      "sha256": "7C5C9FDDC2A039C45E0CB192F4EEDAC398C36E18644696C6B7B40683CB7B7071",
       "reason": "Generated copy of the canonical guard-policy fixture."
     },
     {
       "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
-      "sha256": "44D0D08DA87AB4416762C7B0F2B41F2462F352A121F49F6C0BBC6A6C14B40EEA",
+      "sha256": "7C5C9FDDC2A039C45E0CB192F4EEDAC398C36E18644696C6B7B40683CB7B7071",
       "reason": "Generated copy of the canonical guard-policy fixture."
     },
     {

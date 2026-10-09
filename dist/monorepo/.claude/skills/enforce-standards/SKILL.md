@@ -15,7 +15,7 @@ description: >
 
 # Enforce standards deterministically
 
-The write-time guard hook blocks floor violations — .NET: `#pragma warning disable`, skipped tests across xUnit `[Fact(Skip=…)]` and NUnit/MSTest `[Ignore]`, and tautological asserts; Angular: `eslint-disable`, `@ts-ignore`, and focused or skipped specs (`fit`/`xit`, `it`/`describe` `.only`/`.skip` in `*.spec.*` files) — but only on surfaces where hooks run. This skill wires the same floor into the **build / lint step**, where it binds every developer, every agent, and CI. Pairs with `docs/ci-integration.md` (leg 2) and `docs/enforcement-surfaces.md`. First identify applicable ecosystems from committed manifests and configuration, then apply only their section below. A repo-wide hardening covers every evidenced ecosystem; the monorepo delivery profile alone proves neither is present.
+The write-time guard hook blocks floor violations — .NET: `#pragma warning disable`, skipped tests across xUnit `[Fact(Skip=…)]` and NUnit/MSTest `[Ignore]`, and tautological asserts; Angular: `eslint-disable`, `@ts-ignore`, and focused or skipped tests (`fit`/`xit`/`xtest`/`xcontext`/`xspecify`; `.only` and a declared `.skip` on `it`, `test`, `describe`, `suite`, `context` or `specify`, and a declared `test.fixme`, chained forms included) in `*.spec.*`, `*.test.*` and `*.cy.*` files — but only on surfaces where hooks run. This skill wires the same floor into the **build / lint step**, where it binds every developer, every agent, and CI. Pairs with `docs/ci-integration.md` (leg 2) and `docs/enforcement-surfaces.md`. First identify applicable ecosystems from committed manifests and configuration, then apply only their section below. A repo-wide hardening covers every evidenced ecosystem; the monorepo delivery profile alone proves neither is present.
 
 ### .NET — compiler + analyzers
 
@@ -62,7 +62,7 @@ scope, not an incidental verification step.
      plugin rule only in an object whose `files` match where the repository's config registers that
      plugin (`ng add angular-eslint` registers typescript-eslint under `**/*.ts`); an unscoped rule
      also reaches `*.html` and ESLint aborts with `Could not find plugin`;
-   - - `no-restricted-syntax` banning `fit` / `fdescribe` / `xit` / `xdescribe` / `xtest` and `.only`
+   - `no-restricted-syntax` banning `fit` / `fdescribe` / `xit` / `xdescribe` / `xtest` and `.only`
      / `.skip` declarations, chained forms included (`it.concurrent.only`, `test.only.each`), in
      `*.spec.ts`, `*.test.ts` and `*.cy.ts` (Vitest, the default runner for projects created on
      Angular 21 or later, runs `*.spec.ts` and `*.test.ts` and has no `fit`/`xit`).

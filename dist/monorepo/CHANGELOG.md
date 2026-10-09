@@ -44,6 +44,16 @@
   NgRx 22 and angular-eslint 22 for Angular 22), and also follows the Angular Update Guide. An update refreshes the
   skill; you do not need to do anything.
 
+- **The write guard now stops focused and skipped Vitest, Jest, Cypress and Playwright tests too.** It blocked `fit`,
+  `xit` and `it.only`/`describe.skip` only in `*.spec.*` files. Vitest, the default test runner for projects created
+  on Angular 21 or later, also runs `*.test.*` files and focuses with `test.only` or `it.concurrent.only`, which the
+  guard let through. It now covers `*.spec.*`, `*.test.*` and Cypress `*.cy.*` files in any JavaScript or TypeScript
+  extension: `.only` and a declared `.skip` on `it`, `test`, `describe`, `suite`, `context` and `specify` (chained
+  forms included), Playwright's `test.fixme('title', …)` and `test.describe.fixme`, and `xtest`, `xcontext` and
+  `xspecify`. A Playwright `test.skip(condition, reason)` or bare `test.skip()`, and Vitest's `context.skip()` inside
+  a test, are runtime conditions and still pass. The guard also no longer slows down on a test file with a very long
+  run of blank lines. An update refreshes the guard; you do not need to do anything.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside

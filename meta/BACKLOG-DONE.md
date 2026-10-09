@@ -13040,3 +13040,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   Reopen on a field report.
 - **B-370** — CLOSED by decision **2026-10-09** (WSD-106), never filed. Found by the Angular v21-v22 audit: `docs/defaults.md`'s "Use `catchError` to
   prevent stream death" can read against Leanness #6 ("only to handle"). Text only; B-367's docs batch edits that file. Reopen on a field report.
+- **B-372** — DONE **2026-10-09** for 0.95.0 (Angular v21-v22 audit, batch 2): the write guard checks `*.spec.*`, `*.test.*` and `*.cy.*`
+  and the focus and skip forms Vitest, Jest, Mocha/Cypress and Playwright document, chained ones included; on `test.skip`, `test.fixme` and
+  `context.skip` only declaration forms are blocked, so runtime skips still pass; its scans stay linear on long blank runs, chains and unclosed titles.
+  Rest of the audit: B-367.

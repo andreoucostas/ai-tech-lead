@@ -62,9 +62,26 @@ if ($fp -cmatch '(?i)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$') {
     if (Test-GuardPattern 'eslint-disable' 'test-defeat/suppression') { $reasons += "adds an 'eslint-disable' directive — fix the lint cause, don't silence it" }
     if (Test-GuardPattern '@ts-(ignore|nocheck)' 'test-defeat/suppression') { $reasons += "adds '@ts-ignore'/'@ts-nocheck' — fix the type error, don't suppress it" }
 }
-if ($fp -cmatch '(?i)\.spec\.(ts|tsx|js|jsx|mts|cts)$') {
-    if ((Test-GuardPattern '(?m)^\s*f(it|describe)\s*\(' 'test-defeat/suppression') -or (Test-GuardPattern '\b(it|describe)\.only\s*\(' 'test-defeat/suppression')) { $reasons += "adds a focused test (fit/fdescribe/.only) — it silently skips the rest of the suite; remove it before committing" }
-    if ((Test-GuardPattern '(?m)^\s*x(it|describe)\s*\(' 'test-defeat/suppression') -or (Test-GuardPattern '\b(it|describe)\.skip\s*\(' 'test-defeat/suppression')) { $reasons += "skips a test (xit/xdescribe/.skip) — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+# Test files: *.spec.* (Jasmine/Karma, Jest, Vitest, Playwright), *.test.* (Vitest and Jest; the Angular
+# unit-test builder runs both) and Cypress *.cy.*, in any JS or TS extension. The focus and skip forms
+# those runners document, chained ones included (it.concurrent.only, it.fails.skip, test.only.each,
+# test.concurrent.fails.only, describe.shuffle.skip, test.skip.concurrent, test.describe.serial.only,
+# test.fail.only, test.describe.fixme), and Mocha's specify, xcontext and xspecify, which Cypress ships.
+# Leading whitespace is [^\S\r\n]* (whitespace that cannot cross a line), never \s*: \s spans newlines,
+# which makes the scan quadratic on a long run of blank lines and stalls the hook. For the same reason a
+# modifier chain is bounded at three ({0,3}), never *: an open chain rescans a long run of chained names
+# from every name in it.
+if ($fp -cmatch '(?i)\.(spec|test|cy)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$') {
+    if ((Test-GuardPattern '(?m)^[^\S\r\n]*f(it|describe)\s*(\(|\.each\b)' 'test-defeat/suppression') -or (Test-GuardPattern '\b(it|test|describe|suite|context|specify)(\.(concurrent|sequential|fails|shuffle|fail|describe(\.(serial|parallel))?)){0,3}\.only\s*[(.`]' 'test-defeat/suppression')) { $reasons += "adds a focused test (fit/fdescribe/.only) — it silently skips the rest of the suite; remove it before committing" }
+    # On test.skip, test.fixme and Vitest's context.skip only declaration forms count: a title (string,
+    # template or X.name) followed by the body, a literal true, or a chained form such as test.skip.each.
+    # Playwright's test.skip(condition, reason) and test.skip(), and Vitest's context.skip(), run at test time.
+    # A title is read for at most 200 characters: an open read rescans a long line of unclosed calls from
+    # every call in it.
+    if ((Test-GuardPattern '(?m)^[^\S\r\n]*x(it|describe|test|context|specify)\s*(\(|\.each\b)' 'test-defeat/suppression') -or
+        (Test-GuardPattern '\b(it|describe|suite|specify)(\.(concurrent|sequential|fails|shuffle)){0,3}\.skip\s*[(.`]' 'test-defeat/suppression') -or
+        (Test-GuardPattern '\btest(\.(concurrent|sequential|fails|describe)){1,3}\.(skip|fixme)\s*[(.`]' 'test-defeat/suppression') -or
+        (Test-GuardPattern '\b(test\.(skip|fixme)|context\.skip)\s*(\.[A-Za-z_$]|\(\s*([''"`][^\n]{0,200}?[''"`]\s*,|true\b\s*[,)]|[A-Za-z_$][\w$]*\.name\s*,))' 'test-defeat/suppression')) { $reasons += "skips a test (xit/xdescribe/.skip) — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
     if ((Test-GuardPattern 'expect\(\s*true\s*\)\.toBe\(\s*true\s*\)' 'test-defeat/suppression') -or (Test-GuardPattern 'expect\(\s*false\s*\)\.toBe\(\s*false\s*\)' 'test-defeat/suppression')) { $reasons += "adds a tautological assertion (expect(true).toBe(true)) — assert observable behaviour, not a constant (Test leanness #15)" }
 }
 

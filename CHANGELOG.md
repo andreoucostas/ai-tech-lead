@@ -59,6 +59,30 @@ non-optional peer range excludes it (NgRx, and angular-eslint through its `@angu
 Guide's steps. Text and sample config only; on-demand context, plus 9 (Angular) and 8 (monorepo) always-loaded
 characters from the `enforce-standards` description.
 
+B-372, batch 2 of the 2026-10-09 Angular v21-v22 audit: the write guard's test-file rules covered only `*.spec.*` and
+the `it`/`describe` forms, so `test.only(`, `suite.only(`, `it.concurrent.only(`, `test.only.each(`, `fit.each(`,
+`xtest(`, `test.skip('title'` and `describe.skip.each(` in a spec, and `it.only(` or `expect(true).toBe(true)` in a
+Vitest `*.test.ts` or a Cypress `*.cy.ts`, were written unblocked. The guard now covers `*.spec.*`, `*.test.*` and
+`*.cy.*` in any JS or TS extension: `.only` on `it`, `test`, `describe`, `suite`, `context` and `specify` (chained
+through up to three of `concurrent`, `sequential`, `fails`, `shuffle`, `fail`, `describe`, `describe.serial` and
+`describe.parallel`); `xit`, `xdescribe`, `xtest`, `xcontext` and `xspecify`; a wide `.skip` block on `it`,
+`describe`, `suite` and `specify` (chained through `concurrent`, `sequential`, `fails` and `shuffle`);
+`test.describe.skip`, `test.describe.fixme` and `test.fails.skip`; and on `test.skip`, `test.fixme` and
+`context.skip` only declaration forms (a title followed by the body, a literal `true`, or a chain such as
+`test.skip.each`), so Playwright's `test.skip(condition, reason)` and `test.skip()` and Vitest's runtime
+`context.skip()` still pass. The two line-start anchors became `^[^\S\r\n]*`: `\s*` spanned newlines, so a spec with
+60k blank lines took 5.4 s under PowerShell 7 and one with 20k took 10.3 s under Windows PowerShell 5.1; both now take
+the same as a tiny file (best of three: 301 ms against 303 ms, and 265 ms against 260 ms). Chains are bounded, not
+open: an open chain's pattern alone took 37 s under PowerShell 7 on a line of 20k chained `describe` names, which the
+guard now scans in 328 ms. A declared title is read for at most 200 characters, so a longer one passes: reading to the
+end of the line held the hook for 74 to 112 s on one 260 KB line of unclosed `test.skip('` or `context.skip("` calls,
+now 381 to 463 ms. 32 block rows (30 of them red on the unchanged guard; `test.describe.only` and a
+form-feed-indented `fit` were already blocked) and 12 allow rows pin it. A `fit` indented with a no-break space still
+passes under a console whose input code page is not UTF-8, as it did before (B-374). A fresh session attacked the first
+version and found Vitest's runtime `context.skip()` falsely blocked, documented Vitest and Playwright forms still
+passing and the stall; its re-attack of the fixed version found no regression and alias and chain gaps, closed before
+push. The `enforce-standards` skills describe the new floor and lose a doubled list marker batch 1 left.
+
 ## 0.94.0 — 2026-10-08
 
 The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a

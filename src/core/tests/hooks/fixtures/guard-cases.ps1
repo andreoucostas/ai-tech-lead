@@ -28,6 +28,42 @@ $GuardCases = @(
     @{ n='spec fit() focused';                 f='src/app.spec.ts';           c="fit('x', () => { expect(1).toBe(1); });";              block=$true }
     @{ n='spec xit() skipped';                 f='src/app.spec.ts';           c="xit('x', () => {});";                                  block=$true }
     @{ n='spec expect(true).toBe(true)';       f='src/app.spec.ts';           c='expect(true).toBe(true);';                             block=$true }
+    # Vitest (the Angular unit-test builder's default runner from v21, which runs *.spec.* and *.test.*),
+    # Jest, Mocha/Cypress and Playwright focus and skip forms, chained ones included; Cypress specs are *.cy.*.
+    @{ n='spec test.only() focused';           f='src/app.spec.ts';           c="test.only('x', () => { expect(1).toBe(1); });";        block=$true }
+    @{ n='spec suite.only() focused';          f='src/app.spec.ts';           c="suite.only('s', () => {});";                           block=$true }
+    @{ n='spec it.concurrent.only() focused';  f='src/app.spec.ts';           c="it.concurrent.only('x', async () => { expect(1).toBe(1); });"; block=$true }
+    @{ n='spec test.only.each() focused';      f='src/app.spec.ts';           c="test.only.each([1])('x %i', (n) => { expect(n).toBe(1); });"; block=$true }
+    @{ n='spec fit.each() focused';            f='src/app.spec.ts';           c="fit.each([1])('x %i', () => {});";                      block=$true }
+    @{ n='spec test.skip(title) skipped';      f='src/app.spec.ts';           c="test.skip('x', () => { expect(1).toBe(1); });";        block=$true }
+    @{ n='spec xtest() skipped';               f='src/app.spec.ts';           c="xtest('x', () => {});";                                block=$true }
+    @{ n='spec describe.skip.each() skipped';  f='src/app.spec.ts';           c="describe.skip.each([1])('x %i', () => {});";           block=$true }
+    @{ n='playwright test.describe.only() focused'; f='e2e/home.spec.ts';     c="test.describe.only('home', () => {});";                block=$true }
+    @{ n='test.ts it.only() focused';          f='src/app.test.ts';           c="it.only('x', () => { expect(1).toBe(1); });";          block=$true }
+    @{ n='test.ts expect(true).toBe(true)';    f='src/app.test.ts';           c='expect(true).toBe(true);';                             block=$true }
+    @{ n='cy.ts it.only() focused';            f='cypress/e2e/login.cy.ts';   c="it.only('logs in', () => { cy.visit('/'); });";        block=$true }
+    @{ n='spec test.skip.concurrent() skipped'; f='src/app.spec.ts';          c="test.skip.concurrent('x', async () => {});";           block=$true }
+    @{ n='spec test.skip.failing() skipped';   f='src/app.spec.ts';           c="test.skip.failing('x', () => {});";                    block=$true }
+    @{ n='spec test.skip(X.name, body) skipped'; f='src/app.spec.ts';         c='test.skip(AppComponent.name, () => {});';              block=$true }
+    @{ n='playwright test.fixme(title) skipped'; f='e2e/home.spec.ts';        c="test.fixme('x', async ({ page }) => {});";             block=$true }
+    @{ n='playwright test.describe.fixme() skipped'; f='e2e/home.spec.ts';    c="test.describe.fixme('g', () => {});";                  block=$true }
+    @{ n='playwright test.skip(true) skipped'; f='e2e/home.spec.ts';          c="test.skip(true, 'flaky');";                            block=$true }
+    @{ n='playwright test.fail.only() focused'; f='e2e/home.spec.ts';         c="test.fail.only('x', async () => {});";                 block=$true }
+    @{ n='playwright test.describe.serial.only() focused'; f='e2e/home.spec.ts'; c="test.describe.serial.only('g', () => {});";         block=$true }
+    @{ n='mocha context.skip(title, body) skipped'; f='cypress/e2e/login.cy.ts'; c="context.skip('login', () => {});";                  block=$true }
+    @{ n='test.mjs it.only() focused';         f='src/app.test.mjs';          c="it.only('x', () => {});";                              block=$true }
+    @{ n='vitest it.fails.only() focused';     f='src/app.spec.ts';           c="it.fails.only('x', () => {});";                        block=$true }
+    @{ n='vitest describe.shuffle.only() focused'; f='src/app.spec.ts';       c="describe.shuffle.only('x', () => {});";                block=$true }
+    @{ n='vitest describe.shuffle.skip() skipped'; f='src/app.spec.ts';       c="describe.shuffle.skip('x', () => {});";                block=$true }
+    @{ n='mocha xcontext() skipped';           f='cypress/e2e/login.cy.ts';   c="xcontext('login', () => {});";                         block=$true }
+    @{ n='mocha xspecify() skipped';           f='cypress/e2e/login.cy.ts';   c="xspecify('x', () => {});";                             block=$true }
+    @{ n='mocha specify.only() focused';       f='cypress/e2e/login.cy.ts';   c="specify.only('x', () => {});";                         block=$true }
+    @{ n='vitest it.fails.skip() skipped';     f='src/app.spec.ts';           c="it.fails.skip('x', () => {});";                        block=$true }
+    @{ n='vitest test.fails.skip() skipped';   f='src/app.spec.ts';           c="test.fails.skip('x', () => {});";                      block=$true }
+    @{ n='vitest test.concurrent.fails.only() focused'; f='src/app.spec.ts';  c="test.concurrent.fails.only('x', async () => {});";      block=$true }
+    # Leading horizontal whitespace other than space and tab (here a form feed, which reads the same under
+    # every console code page) still anchors fit().
+    @{ n='spec fit() indented with a form feed'; f='src/app.spec.ts';         c="describe('a', () => {`n$([char]0x000C)fit('b', () => {});`n});"; block=$true }
     @{ n='mixed-case .CS filename routes';     f='src/Foo.CS';                c='#pragma warning disable CS8602';                       block=$true }
     @{ n='uppercase .TS filename routes';      f='src/app.TS';                c='// eslint-disable-next-line';                          block=$true }
     @{ n='uppercase .SPEC.TS filename routes'; f='src/app.SPEC.TS';           c="fit('x', () => {});";                                  block=$true }
@@ -78,6 +114,20 @@ $GuardCases = @(
     @{ n='clean .cs (allow)';                  f='src/Foo.cs';                c='public int Add(int a, int b) => a + b;';               block=$false }
     @{ n='clean .spec.ts real assertion';      f='src/app.spec.ts';           c="it('adds', () => { expect(add(1,2)).toBe(3); });";     block=$false }
     @{ n='RxJS skip() not a test-skip';        f='src/stream.spec.ts';        c='source$.pipe(skip(1)).subscribe();';                   block=$false }
+    # Playwright's test.skip(condition, reason) and bare test.skip() are runtime conditions, not committed skips.
+    @{ n='playwright test.skip(condition) (allow)'; f='e2e/home.spec.ts';     c="test.skip(isMobile, 'not on mobile');";                block=$false }
+    @{ n='playwright bare test.skip() (allow)'; f='e2e/home.spec.ts';         c='test.skip();';                                         block=$false }
+    @{ n='playwright test.skip(callback) (allow)'; f='e2e/home.spec.ts';      c="test.skip(({ browserName }) => browserName === 'webkit', 'Safari only');"; block=$false }
+    @{ n='vitest it.skipIf() (allow)';         f='src/app.spec.ts';           c="it.skipIf(isCi)('x', () => { expect(1).toBe(1); });";  block=$false }
+    @{ n='vitest test.todo() (allow)';         f='src/app.spec.ts';           c="test.todo('later');";                                  block=$false }
+    @{ n='clean .test.ts real assertion';      f='src/app.test.ts';           c="it('adds', () => { expect(add(1,2)).toBe(3); });";     block=$false }
+    @{ n='layout.fit() method call (allow)';   f='src/app.spec.ts';           c='layout.fit();';                                        block=$false }
+    # Vitest's context.skip() skips from inside a running test, the analogue of Playwright's conditional skip.
+    @{ n='vitest context.skip() at run time (allow)'; f='src/app.spec.ts';    c="test('x', (context) => { context.skip(); });";         block=$false }
+    @{ n='vitest context.skip(condition, note) (allow)'; f='src/app.spec.ts'; c="test('x', (context) => { context.skip(isCi, 'ci'); });"; block=$false }
+    @{ n='vitest context.skip(note) (allow)';  f='src/app.spec.ts';           c="test('x', (context) => { context.skip('flaky on CI'); });"; block=$false }
+    @{ n='playwright test.skip(project.name ===) (allow)'; f='e2e/home.spec.ts'; c="test.skip(project.name === 'webkit', 'no webkit');"; block=$false }
+    @{ n='playwright test.fixme(condition) (allow)'; f='e2e/home.spec.ts';    c="test.fixme(browserName === 'firefox', 'bug 123');";    block=$false }
     @{ n='cs [JsonIgnore] near-miss (allow)';  f='src/Dto.cs';                c='[JsonIgnore] public int Id { get; set; }';             block=$false }
     @{ n='cs enum Ignore member (allow)';      f='src/Mode.cs';               c='public enum Mode { None, Ignore, All }';               block=$false }
     @{ n='cs lowercase ignore arg (allow)';    f='src/Handler.cs';            c='Handle(evt, ignore, ctx);';                            block=$false }

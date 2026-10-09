@@ -16,6 +16,11 @@
   your baseline already holds such folders, the next `/rebootstrap` reports them once and records again. An update
   refreshes the script; you do not need to do anything.
 
+- **The write guard now also stops focused and skipped tests in `*.test.*` and Cypress `*.cy.*` files, and Vitest and
+  Playwright forms such as `test.only`.** It checked only `*.spec.*` files and the `it`/`describe` forms. It also no
+  longer slows down on a test file with a very long run of blank lines. This matters only if your repository has
+  JavaScript or TypeScript tests. An update refreshes the guard; you do not need to do anything.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside
