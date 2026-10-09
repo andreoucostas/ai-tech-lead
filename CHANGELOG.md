@@ -11,6 +11,21 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.95.0 — Unreleased
+
+B-362 (field report #9, 2026-10-09: "generated baseline includes temporary directories and run time"):
+`bootstrap-baseline.ps1` hashed every untracked file the consumer's ignore rules missed. Reproduced in a scratch
+Angular repository with three `.gitignore` variants (two lines, the CLI 12 template, the current CLI template):
+`.angular/cache`, `coverage`, `out-tsc`, `tmp` and `.nx` folders were recorded as areas, and the installer's own
+`.claude/framework-update-backup/` was recorded under every variant; a fresh clone and the next `ng test` then
+reported changed areas, so `/rebootstrap` never reached `RESULT stop`. Tracked files are still always hashed;
+untracked files under root-level `dist`, `tmp`, `out-tsc`, `bazel-out` and `coverage`, under `.angular`, `.nx` and
+`node_modules` at any depth, and under `.claude/framework-update-backup/` are skipped, and Record's own `.tsv.tmp` is
+excluded. The output folders are anchored at the root, as the Angular CLI template anchors them, so a new uncommitted
+file in an application folder such as `src/app/tmp/` still counts. "Run time" stays unresolved: the file stores only a
+`recorded` date, and the hooks' runtime state is already ignored. Not covered: .NET `bin`/`obj`/`TestResults`,
+Playwright and Cypress output. Tier raised to guarded, because a wrong skip reports a false `RESULT stop`.
+
 ## 0.94.0 — 2026-10-08
 
 The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a

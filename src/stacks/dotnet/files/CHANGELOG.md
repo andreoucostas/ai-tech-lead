@@ -4,6 +4,17 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.95.0 — Unreleased
+
+- **`/rebootstrap`'s baseline no longer records this framework's update backup or untracked tool output.**
+  `/bootstrap` records a baseline so a later `/rebootstrap` re-analyses only what changed. It hashed every file Git
+  does not ignore, so `.claude/framework-update-backup/`, which a framework update writes, went into it, along with
+  any untracked `tmp/`, `coverage/` or `dist/` at the repository root that your `.gitignore` misses. That content
+  never reaches a teammate's clone, so `/rebootstrap` kept finding changes and never stopped early. Those untracked
+  folders are now left out; committed files always count. .NET build output (`bin/`, `obj/`, `TestResults/`) is not
+  covered: keep it in your `.gitignore`. If your baseline already holds such folders, the next `/rebootstrap` reports
+  them once and records again. An update refreshes the script; you do not need to do anything.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside

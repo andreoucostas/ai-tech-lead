@@ -444,6 +444,37 @@ It 'a file moved out of the glob its claim rests on is not followed' {
         Assert ($res.Out -match '(?m)^CLAIM no-evidence-match [0-9a-f]{12} dotnet/A4: Every API controller') "a file that left its glob was followed: $($res.Out)"
     } finally { Drop $r }
 }
+It 'untracked tool output and framework backups are not recorded, so a fresh clone stops' {
+    $r = Fixture
+    $c = Join-Path ([IO.Path]::GetTempPath()) ('baseline-clone-' + [guid]::NewGuid())
+    try {
+        # A developer's own ng serve / ng test --code-coverage output, an update's skill backup and a killed
+        # record's write file, none of which the repository's ignore rules catch or a teammate's clone holds.
+        Put (Join-Path $r '.angular/cache/20.3.4/orders/angular-compiler.db') 'cache'
+        Put (Join-Path $r 'coverage/orders/index.html') 'coverage'
+        Put (Join-Path $r '.claude/framework-update-backup/skills/create-adr/SKILL.md') 'backup'
+        Put (Join-Path $r '.claude/bootstrap-baseline.tsv.tmp') "schema`t1`n"
+        Recorded $r
+        $state = [IO.File]::ReadAllText((Join-Path $r $stateRel))
+        Assert ($state -notmatch '(?m)^area\t(\.angular|coverage|\.claude/framework-update-backup|\.claude\t)') "machine-local output was recorded: $state"
+        G $r @('add', '--', $stateRel)
+        G $r @('commit', '-q', '-m', 'baseline')
+        G $r @('clone', '-q', $r, $c)
+        $res = Impact $c
+        ExitIs $res 0; Has $res 'CHANGED-AREAS 0'; Has $res 'RESULT stop'
+    } finally { Drop $r; Drop $c }
+}
+It 'a new uncommitted file in an application folder named like tool output still counts' {
+    $r = Fixture
+    try {
+        Recorded $r
+        Put (Join-Path $r 'src/Billing/tmp/InvoiceDraft.cs') 'class InvoiceDraft {}'
+        $res = Impact $r
+        ExitIs $res 0
+        Has $res 'AREA src/Billing/tmp'
+        HasNot $res '(?m)^RESULT stop'
+    } finally { Drop $r }
+}
 It 'a corrupt baseline asks for a full run' {
     $r = Fixture
     try {

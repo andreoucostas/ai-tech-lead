@@ -5,6 +5,18 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.95.0 — Unreleased
+
+- **`/rebootstrap`'s baseline no longer records tool output your `.gitignore` misses.** `/bootstrap` records a
+  baseline so a later `/rebootstrap` re-analyses only what changed. It hashed every file Git does not ignore, so an
+  untracked Angular cache (`.angular/cache`), test coverage, compiled test output, `tmp/`, an Nx cache or this
+  framework's own update backup (`.claude/framework-update-backup/`) went into it. That content changes on every run
+  and never reaches a teammate's clone, so `/rebootstrap` kept finding changes and never stopped early. Untracked
+  files under `dist/`, `tmp/`, `out-tsc/`, `bazel-out/` and `coverage/` at the repository root, and under `.angular/`,
+  `.nx/` and `node_modules/` anywhere, are now left out; committed files always count. If your baseline already holds
+  such folders, the next `/rebootstrap` reports them once and records again; a claim whose file pattern reached them
+  is re-listed in that run before it can stop early. An update refreshes the script; you do not need to do anything.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside

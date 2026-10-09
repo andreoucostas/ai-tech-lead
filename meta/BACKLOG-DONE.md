@@ -13013,3 +13013,11 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-358** — CLOSED by decision **2026-10-07** (WSD-106), never filed. Found by the fresh-session attack on the 0.94.0 prompt
   retirement: a repository whose only AI tooling is its own `.github/prompts/<workflow>.prompt.md` now installs greenfield, because
   no shipped prompt path collides with it; `$adoptionSignals` never listed `.github/prompts/`. Nothing is lost. Reopen on a field report.
+- **B-362** — DONE **2026-10-09** for 0.95.0 (field report #9): `bootstrap-baseline.ps1` skips untracked files under root-level
+  `dist`, `tmp`, `out-tsc`, `bazel-out` and `coverage`, any-depth `.angular`, `.nx` and `node_modules`, and `.claude/framework-update-backup/`,
+  and excludes Record's `.tsv.tmp`; tracked files always count. Reproduced first on a scratch Angular repository; two test cases seen red.
+- **B-365** — CLOSED by decision **2026-10-09** (WSD-106), never filed. Found while diagnosing field report #9: an update leaves
+  `.claude/framework-update-backup/` neither inventoried nor ignored, so a consumer can commit it, though the README says it "is not needed
+  after". The baseline now skips it. Reopen on a field report.
+- **B-366** — CLOSED by decision **2026-10-09** (WSD-106), never filed. `bootstrap-baseline.ps1 -Root` with a trailing backslash breaks
+  `Invoke-Git`'s quoting and reports "not inside a Git working tree"; the shipped commands pass no `-Root`. Reopen on a field report.

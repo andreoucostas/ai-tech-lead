@@ -5,7 +5,9 @@
 # Both modes hash the working tree (tracked plus untracked, not ignored) with git hash-object, never a
 # commit SHA: a squash merge, a fresh clone or a shallow clone sees the same content the same way.
 # Paths listed in framework-ownership.json and the baseline file itself are never application churn;
-# AGENTS.md is compared line by line instead, so a hand-edited line is reported as EDITED.
+# AGENTS.md is compared line by line instead, so a hand-edited line is reported as EDITED. An untracked
+# file in a tool's cache or build output, or in the installer's update backup, never reaches a fresh
+# clone, so it is not content even when the repository's ignore rules miss it.
 # A recorded file whose content now sits at exactly one new path moved (RENAMED): its claims follow it,
 # and the files the Known Hazard Areas rows name are recorded so /rebootstrap can re-point those rows.
 # Exit codes: 0 done; 1 INVALID input; 2 CANNOT EXAMINE; 3 (Impact) no usable baseline, run in full.
@@ -28,6 +30,9 @@ $script:Manifests = @{
     warehouse = @{ Project = @('*.sqlproj'); Workspace = @('dbt_project.yml') }
 }
 $script:Kinds = @('scoped', 'universal', 'absence')
+# Untracked tool output: the Angular CLI template's root-level output folders, and caches at any depth.
+# Anchoring the output folders keeps a new file in an application folder such as src/app/tmp/ counted.
+$script:LocalOnly = [regex]'^(?:dist|tmp|out-tsc|bazel-out|coverage)/|(?:^|/)(?:\.angular|\.nx|node_modules)/|^\.claude/framework-update-backup/'
 
 # Output goes straight to stdout: a message written inside a function whose result a caller is
 # capturing would otherwise vanish into that capture.
@@ -131,6 +136,8 @@ function Get-Excluded {
         [void]$excluded.Add($entry.path)
     }
     [void]$excluded.Add($script:StateRel)
+    # Record's own write-then-copy file, left behind only when a run is killed between the two.
+    [void]$excluded.Add($script:StateRel + '.tmp')
     return , $excluded
 }
 
@@ -141,11 +148,16 @@ function Get-Snapshot {
         Stop-With 2 "CANNOT EXAMINE: $script:RootFull is not inside a Git working tree."
     }
     $excluded = Get-Excluded
-    $listed = Invoke-Git @('ls-files', '-z', '--cached', '--others', '--exclude-standard') $null
-    if ($listed.Exit -ne 0) { Stop-With 2 "CANNOT EXAMINE: git ls-files failed: $($listed.Error.Trim())" }
+    $tracked = Invoke-Git @('ls-files', '-z', '--cached') $null
+    $untracked = Invoke-Git @('ls-files', '-z', '--others', '--exclude-standard') $null
+    foreach ($listed in @($tracked, $untracked)) {
+        if ($listed.Exit -ne 0) { Stop-With 2 "CANNOT EXAMINE: git ls-files failed: $($listed.Error.Trim())" }
+    }
     $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
     $paths = New-Object 'System.Collections.Generic.List[string]'
-    foreach ($path in $listed.Text.Split([char]0)) {
+    # Tracked files always count; untracked ones only outside tool output.
+    $candidates = @($tracked.Text.Split([char]0)) + @($untracked.Text.Split([char]0) | Where-Object { -not $script:LocalOnly.IsMatch($_) })
+    foreach ($path in $candidates) {
         if (-not $path -or $path.IndexOfAny([char[]]"`t`r`n") -ge 0) { continue }
         if ($excluded.Contains($path) -or -not $seen.Add($path)) { continue }
         # Skips deleted-but-tracked paths, submodule directories and dangling links.

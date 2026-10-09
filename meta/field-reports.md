@@ -243,6 +243,33 @@ failure on v0.89.2 with Opus 5.5 (3/3 bolt-on onto `UserService`) and the fixed 
 
 ---
 
+## Report #9 — Angular, after `/bootstrap`: test-critic's async advice and the baseline's contents
+
+| | |
+|---|---|
+| **Date received** | 2026-10-09 |
+| **Stack / repo shape** | Angular; consumer repository, shape not captured |
+| **Framework installed** | yes (Angular distribution); version not captured, 0.94.0 or close |
+| **Host / IDE** | not captured |
+| **What misfired** | Two items, relayed by the maintainer: "Test critic recommends a banned angular async test" and "generated baseline includes temporary directories and run time". |
+| **What fired** | `test-critic` (the async remedy it named); `/bootstrap` step 3f's baseline record. |
+| **What got ignored** | Verification Rule #10 ("Derive, don't assume"): `test-critic` named `fakeAsync`/`tick` unconditionally and never read the project's testing conventions. |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | a consumer, relayed by the maintainer |
+
+**Epistemic status.** Neither the Angular version, the test runner, the exact remedy text nor the baseline rows were
+captured. For the first item, the shipped `test-critic` (Angular and monorepo) named `fakeAsync`/`tick` as the fix for real
+timers; angular.dev makes Vitest and zoneless the defaults for new projects from v21, says `fakeAsync` needs Zone.js and
+cannot run under Vitest without a zone patch, and calls it no longer recommended. `docs/defaults.md`, which `/bootstrap`
+uses to seed Conventions, said the same. For the second, a scratch Angular repository reproduced cache, coverage,
+`out-tsc`, `tmp`, `.nx` and the installer's update-backup folders in the baseline; "run time" is unresolved (the file
+holds only a date, and the hooks' runtime state is ignored).
+
+**Outcome:** B-362 (baseline), done 2026-10-09 for 0.95.0.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.
