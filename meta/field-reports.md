@@ -248,7 +248,7 @@ failure on v0.89.2 with Opus 5.5 (3/3 bolt-on onto `UserService`) and the fixed 
 | | |
 |---|---|
 | **Date received** | 2026-10-09 |
-| **Stack / repo shape** | Angular; consumer repository, shape not captured |
+| **Stack / repo shape** | Angular 21.2 (maintainer, 2026-10-09); consumer repository, shape not captured |
 | **Framework installed** | yes (Angular distribution); version not captured |
 | **Host / IDE** | not captured |
 | **What misfired** | Two items, relayed by the maintainer: "Test critic recommends a banned angular async test" and "generated baseline includes temporary directories and run time". |
@@ -258,13 +258,14 @@ failure on v0.89.2 with Opus 5.5 (3/3 bolt-on onto `UserService`) and the fixed 
 | **Token pain** | not captured |
 | **Reporter** | a consumer, relayed by the maintainer |
 
-**Epistemic status.** Neither the Angular version, the test runner, the exact remedy text nor the baseline rows were
-captured. For the first item, the shipped `test-critic` (Angular and monorepo) named `fakeAsync`/`tick` as the fix for real
-timers; angular.dev makes Vitest and zoneless the defaults for new projects from v21, says `fakeAsync` needs Zone.js and
-cannot run under Vitest without a zone patch, and calls it no longer recommended. `docs/defaults.md`, which `/bootstrap`
-uses to seed Conventions, also named `fakeAsync`/`tick`. For the second, a scratch Angular repository reproduced cache, coverage,
-`out-tsc`, `tmp`, `.nx` and the installer's update-backup folders in the baseline; "run time" is unresolved (the file
-holds only a date, and the hooks' runtime state is ignored).
+**Epistemic status.** Neither the test runner, the exact remedy text nor the baseline rows were captured; the Angular
+version (21.2) was supplied by the maintainer on 2026-10-09. For the first item, the shipped `test-critic` (Angular
+and monorepo) named `fakeAsync`/`tick` as the fix for real timers; angular.dev makes Vitest and zoneless the defaults
+for new projects from v21, says `fakeAsync` needs Zone.js and cannot run under Vitest without a zone patch, and calls
+it no longer recommended. `docs/defaults.md`, which `/bootstrap` uses to seed Conventions, also named
+`fakeAsync`/`tick`. For the second, a scratch Angular repository reproduced cache, coverage, `out-tsc`, `tmp`, `.nx`
+and the installer's update-backup folders in the baseline; "run time" is unresolved (the file holds only a date, and
+the hooks' runtime state is ignored).
 
 **Outcome:** B-361 (`test-critic`, `add-tests` and `docs/defaults.md` async advice) and B-362 (baseline), both done
 2026-10-09 for 0.95.0.

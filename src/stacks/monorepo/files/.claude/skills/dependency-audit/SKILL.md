@@ -128,24 +128,33 @@ this procedure: report it and stop.
 2. **Blockers before edits.** Run the evidenced install, build, and test commands for a green
    baseline. If no build or test command is evidenced, say so and ask the developer for one before
    editing. Check the next major's Node, TypeScript, and RxJS ranges at
-   <https://angular.dev/reference/versions> and every third-party Angular library's peer range for
-   that major. When the next major needs a different Node, ask the developer to confirm it is
-   installed wherever the recorded commands run; edit nothing until they do. Name Node on other
-   machines and build agents as a developer action. Stop and report a red baseline or an
-   unsupported library.
-3. **Read the breaking changes** of the next major: the **Breaking Changes** sections of its
-   `.0.0` release in the GitHub `CHANGELOG.md` or release page of `angular/angular` and
+   <https://angular.dev/reference/versions> and, for every third-party Angular library, the release
+   whose peer range includes the next major (its registry metadata or changelog); note it for item 4.
+   A library with no such release is unsupported. When the next major needs a different Node, ask the
+   developer to confirm it is installed wherever the recorded commands run; edit nothing until they
+   do. Name Node on other machines and build agents as a developer action. Stop and report a red
+   baseline or an unsupported library.
+3. **Read the breaking changes** of the next major: the **Breaking Changes** sections of its `.0.0`
+   release in the GitHub `CHANGELOG.md` or release page of `angular/angular` and
    `angular/angular-cli`, and of `angular/components` when `@angular/material` or `@angular/cdk` is
-   evidenced. List only the items that apply to this repository.
-4. **Update with the migrations.** From a clean working tree, update `@angular/core` and
-   `@angular/cli` to the next major, plus evidenced first-party packages such as
-   `@angular/material`, with `ng update` through the workspace's own CLI and package manager. This
-   is the one Angular CLI command this skill derives without a Verification Commands row, because
-   the Angular documentation names it as the migration path: show the exact command and get the
-   developer's go-ahead first. Never add `--force`, which ignores peer-dependency mismatches. In an
-   Nx workspace (`nx.json`), `ng update` is not the path: use an evidenced `nx migrate` command or
-   report the upgrade as not available. Read the migration output beside the breaking changes and
-   review every file the migrations changed.
+   evidenced. Also take the steps the Angular Update Guide (<https://angular.dev/update-guide>) lists
+   for this from/to pair; when that page cannot be read, its data is in
+   `adev/src/app/features/update/recommendations.ts` of `angular/angular`. List only the items that
+   apply to this repository.
+4. **Update with the migrations.** From a clean working tree, update in one `ng update` through the
+   workspace's own CLI and package manager: `@angular/core` and `@angular/cli` to the next major,
+   evidenced first-party packages such as `@angular/material`, and every installed library whose peer
+   range excludes the next major, at its release that supports it (for example NgRx N and
+   angular-eslint N for Angular N: a peer range on any `@angular/*` package counts, and
+   angular-eslint's is on `@angular/cli`; naming one package of a library's `ng-update` package
+   group, such as `@ngrx/store`, updates the whole group). `ng update` refuses with "Incompatible
+   peer dependencies found" while any package listed in `package.json` has a non-optional peer range
+   that excludes the target. This is the one Angular CLI command this skill derives without a
+   Verification Commands row, because the Angular documentation names it as the migration path: show
+   the exact command and get the developer's go-ahead first. Never add `--force`, which ignores
+   peer-dependency mismatches. In an Nx workspace (`nx.json`), `ng update` is not the path: use an
+   evidenced `nx migrate` command or report the upgrade as not available. Read the migration output
+   beside the breaking changes and review every file the migrations changed.
    Move committed Node pins (`.nvmrc`, `package.json` `engines`, CI YAML) to the next major's range
    in the same pass.
 5. **Keep the pass narrow.** Accept the migrations the update requires. Optional modernisations,

@@ -9,17 +9,33 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done and B-336 closed by measurement 2026-10-03; B-331 done, B-326 done and B-348 filed, and B-327, B-328, B-329 and B-337 done 2026-10-04; B-352 to B-354 filed 2026-10-05 (Fable review, consumer host reply), B-352 and B-354 done the same day (WSD-110), B-353 done the same day, B-356 filed the same day (maintainer request; first numbered B-355 at 254c904f, renumbered because 99253721 closed a different B-355); B-357 filed 2026-10-06 (the 0.94.0 Copilot skill wrappers); B-359 and B-360 filed 2026-10-07 (attack rounds on those wrappers); B-348's and B-356's wordings shipped unmeasured 2026-10-08 (WSD-111), their measurements kept open; B-361 and B-362 done 2026-10-09 without filing (field report #9), B-363 to B-366 closed by decision the same day (WSD-106); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
+## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done and B-336 closed by measurement 2026-10-03; B-331 done, B-326 done and B-348 filed, and B-327, B-328, B-329 and B-337 done 2026-10-04; B-352 to B-354 filed 2026-10-05 (Fable review, consumer host reply), B-352 and B-354 done the same day (WSD-110), B-353 done the same day, B-356 filed the same day (maintainer request; first numbered B-355 at 254c904f, renumbered because 99253721 closed a different B-355); B-357 filed 2026-10-06 (the 0.94.0 Copilot skill wrappers); B-359 and B-360 filed 2026-10-07 (attack rounds on those wrappers); B-348's and B-356's wordings shipped unmeasured 2026-10-08 (WSD-111), their measurements kept open; B-361 and B-362 done 2026-10-09 without filing (field report #9), B-363 to B-366 closed by decision the same day (WSD-106); re-ranked 2026-10-09: B-367 filed at rank 1 (maintainer request, Angular v21-v22 audit) and B-368 done the same day, B-369 and B-370 closed by decision (WSD-106) and B-371 filed the same day (a reviewing session's build.ps1 run); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
 
 | Rank | Item | Why here |
 |---|---|---|
-| 1 | B-348 | False-green class split from B-326: the agent's own security pass on Copilot CLI; its wording shipped unmeasured (WSD-111), so measure the pass under it |
-| 2 | B-357 | Possible false green or stalled review from a new wrapper on github.com; measure before changing its invocation |
-| 3 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 4 | B-359 | Latent false green: no shipped command carries such a value today |
-| 5 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
+| 1 | B-367 | Maintainer request: consumers on Angular 21.2 get stale v21/v22 guidance today; batches in the audit's order |
+| 2 | B-348 | False-green class split from B-326: the agent's own security pass on Copilot CLI; its wording shipped unmeasured (WSD-111), so measure the pass under it |
+| 3 | B-371 | False green in a guarded build script; it wrote into the real repository once on 2026-10-09 |
+| 4 | B-357 | Possible false green or stalled review from a new wrapper on github.com; measure before changing its invocation |
+| 5 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 6 | B-359 | Latent false green: no shipped command carries such a value today |
+| 7 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
 
 ## Open entries
+
+### B-367 · Bring the shipped Angular guidance to v21-v22: the remaining batches of the 2026-10-09 audit
+**Filed against:** v0.94.0 (2026-10-09)
+**Priority:** P1 · **Effort:** L (five batches) · **Invariants:** #1 #7
+**Status:** Open; maintainer request 2026-10-09: consumers are on Angular 21.2 and keep within one or two majors of the latest, so the floor is v21. Batch 1 is B-368.
+Next, in order: the write guard's Vitest forms and `.test.ts` (item 4), post-write's solution-style false green, docs and defaults (reversing 6879e5e8's neutral
+standalone and `inject()` wording, maintainer 2026-10-09), commands, agents and skills, then metrics and evals; plan and sources: `.claude/plans/2026-10-09-angular-v21-v22-audit.md`.
+
+### B-371 · `scripts/build.ps1` writes into the caller's process directory when that is not the repository
+**Filed against:** v0.94.0 (2026-10-09)
+**Priority:** P2 · **Effort:** S · **Invariants:** #1
+**Status:** Open; found 2026-10-09 when a reviewing session ran a scratch clone's `build.ps1` with the real repository as process directory: `Set-Location`
+anchors PowerShell's location, but `[System.IO.File]` resolves relative paths against the process directory, so the run wrote into the other tree (three
+`framework-ownership.json` manifests cut to one entry, restored from HEAD) and, per that session, reported success. Anchor both, with a case seen red.
 
 ### B-348 · Measure whether the agent's own security pass on Copilot CLI runs the project's skill or the CLI's built-in agent
 **Filed against:** v0.92.0 (2026-10-04)

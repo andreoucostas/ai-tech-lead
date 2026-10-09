@@ -78,6 +78,7 @@ authoritative.
 - “The framework ships an operation skill only on a field report or measured outcome; `/bootstrap` drafts a project skill for an operation the repository repeats three or more times; the seven generic recipes are retired.” — `meta/workspace-decisions.md WSD-109` (supersedes WSD-074's eight-skill clause)
 - “Copilot hooks keep requiring PowerShell 7; a missing `pwsh` is diagnosed by framework-doctor, not worked around in `hooks.json`.” — `meta/workspace-decisions.md WSD-110` (B-352's observed stall; WSD-073 stands)
 - “B-348's security-pass wording and B-356's plan-step record bullet ship unmeasured; their measurements stay open in the backlog.” — `meta/workspace-decisions.md WSD-111` (maintainer decision; exception to WSD-107 and WSD-109)
+- “The Angular stacks prefer standalone components and `inject()` in new code again, mirroring NgModules or constructor injection only where a file already uses them.” — `meta/workspace-decisions.md WSD-112` (reverses 6879e5e8; Angular v21-v22 audit)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

@@ -38,6 +38,27 @@ Nondeterministic line points at the clock sibling specs use, otherwise the runne
 `defaults.md` had to, because /bootstrap 3a seeds Conventions from it and `test-critic` now follows Conventions.
 Text-only and unmeasured on any host; on-demand context only, always-loaded unchanged.
 
+B-368, batch 1 of the 2026-10-09 Angular v21-v22 audit (maintainer: consumers are on Angular 21.2 and keep within one
+or two majors of the latest). The `enforce-standards` ESLint sample put `@typescript-eslint/ban-ts-comment` in an
+object with no `files`, so merged into a config of the shape `ng add angular-eslint` writes, it reached `*.html` and
+ESLint aborted: reproduced by running ESLint 9.39.5 directly on a config transcribed from angular-eslint 21.4.0's
+schematic, with typescript-eslint 8.71.0 (`ng add` and `ng lint` were not run), "could not find plugin
+"@typescript-eslint"", exit 2, for an external and for an inline template. The rule is now scoped to `**/*.ts`;
+`reportUnusedDisableDirectives`, inert beside `noInlineConfig`, is gone; and the spec ban adds the `.only`/`.skip`
+forms of Vitest, Jest, Mocha, Cypress and Playwright, chained ones and `xtest` included, on `*.spec.ts`, `*.test.ts`
+and `*.cy.ts`, flagging a `.skip` only in declaration form (a string, template or `X.name` title), so a Playwright
+`test.skip(condition, reason)` stays allowed. Checked on a fresh-session reviewer's 15-file fixture set under both the
+`defineConfig` and the `tseslint.config` shapes: the documented focus and skip forms flagged, Jasmine's runtime
+`pending()` not covered, and no conditional skip, `skipIf`, `todo` or `each` form flagged. The skill's red check now
+puts the disable comment above a real focused spec, since a disable comment on a clean line is only a warning.
+`dependency-audit`'s Angular upgrade named only Angular's own packages and forbade `--force`, so on any repository
+with NgRx `ng update` refuses ("Incompatible peer dependencies found", per the CLI's update-resolver source; not run
+here) and the agent stalled. Step 2 now defines an unsupported library as one with no release whose peer range
+includes the next major, and step 4 updates in the same `ng update` every library listed in `package.json` whose
+non-optional peer range excludes it (NgRx, and angular-eslint through its `@angular/cli` peer), and takes the Update
+Guide's steps. Text and sample config only; on-demand context, plus 9 (Angular) and 8 (monorepo) always-loaded
+characters from the `enforce-standards` description.
+
 ## 0.94.0 — 2026-10-08
 
 The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a

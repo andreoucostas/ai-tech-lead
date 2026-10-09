@@ -13030,3 +13030,13 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   `test-critic` now reads the test builder directly. Reopen on a field report.
 - **B-364** — CLOSED by decision **2026-10-09** (WSD-106), never filed. Found while diagnosing field report #9: `add-tests` suite-bootstrap
   mode offers Jasmine/Karma or Jest and leaves out Vitest, the Angular 21 default runner. Reopen on a field report.
+- **B-368** — DONE **2026-10-09** for 0.95.0 (Angular v21-v22 audit, batch 1): the ESLint standards sample scopes `ban-ts-comment` to
+  `**/*.ts` (the unscoped rule aborted lint on templates: reproduced, exit 2) and bans the `.only`/`.skip` forms of the common runners,
+  chained ones included, on `*.spec.ts`, `*.test.ts` and `*.cy.ts`; `dependency-audit` updates every library whose peer range blocks the
+  next Angular major (NgRx, angular-eslint) in the same `ng update`. Rest of the audit: B-367.
+- **B-369** — CLOSED by decision **2026-10-09** (WSD-106), never filed. Found by the Angular v21-v22 audit (M13): the installer's adoption
+  signals omit the files `ng new --ai-config` writes (`.claude/CLAUDE.md`, `.gemini/GEMINI.md`, `.junie/guidelines.md`, `.windsurf/rules/guidelines.md`; v22
+  MCP configs), so such a repository is offered `/bootstrap` instead of `/adopt`; none of those paths is framework-owned, so nothing is overwritten.
+  Reopen on a field report.
+- **B-370** — CLOSED by decision **2026-10-09** (WSD-106), never filed. Found by the Angular v21-v22 audit: `docs/defaults.md`'s "Use `catchError` to
+  prevent stream death" can read against Leanness #6 ("only to handle"). Text only; B-367's docs batch edits that file. Reopen on a field report.

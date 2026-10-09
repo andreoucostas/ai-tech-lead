@@ -30,6 +30,20 @@
   the agent to use `fakeAsync` and your runner cannot, edit that line. An update refreshes the rest; you do not need
   to do anything else.
 
+- **The ESLint standards sample no longer stops lint.** Merged into a config like the one `ng add angular-eslint`
+  writes, its `@ts-ignore` rule also reached your templates, and ESLint stopped with "could not find plugin". The rule
+  now applies to TypeScript files only. The sample also catches the Vitest, Jest, Mocha, Cypress and Playwright forms
+  of a focused or skipped spec, chained ones included (`describe.only`, `it.concurrent.only`, `test.only.each`,
+  `it.skip('…')`, `xtest`), in `*.spec.ts`, `*.test.ts` and `*.cy.ts`, beside `fdescribe` and `xit`; a Playwright
+  `test.skip(condition, reason)` stays allowed. If you merged the earlier sample and changed it to make lint run,
+  compare your config with `scripts/ci/eslint-standards.sample.mjs`.
+
+- **`dependency-audit` can take a repository that uses NgRx to the next Angular major.** `ng update` refuses while any
+  installed library's peer range excludes the target, and the skill updated only Angular's own packages, so it stopped
+  there. It now names those libraries in the same `ng update`, at the release that supports the new major (for example
+  NgRx 22 and angular-eslint 22 for Angular 22), and also follows the Angular Update Guide. An update refreshes the
+  skill; you do not need to do anything.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside

@@ -4614,3 +4614,12 @@ security-pass rule and `route-prompt`'s overlay name this repository's `security
 security agent (the plan's W2); carrier §2 gains the plan's record bullet, revised after a review of the commit (no framework tests, all of 3a-bis). Both
 CHANGELOG voices say unmeasured. B-348 and B-356 stay open as measurements of the shipped wordings, with the plan's designs.
 **Reopen** (revert a wording) on a field report of harm from it, or when its entry's measurement shows it worse than the text it replaced.
+
+## WSD-112: the Angular stacks prefer standalone and `inject()` in new code again, reversing 6879e5e8 (2026-10-09)
+
+**Context.** 6879e5e8 (2026-09-05, empty body) made `docs/defaults.md`'s standalone and `inject()` guidance neutral. The Angular v21-v22
+audit (`.claude/plans/2026-10-09-angular-v21-v22-audit.md`, M6 and B0) found standalone the default since v19, `inject()` the style guide's preference, and
+angular-eslint's recommended config erroring on both since v20; the consumers are on Angular 21.2.
+**Decision (user, 2026-10-09: "ok", answering whether to reverse 6879e5e8's neutral wording).** New code is standalone and uses `inject()`;
+existing NgModule or constructor-injection code is mirrored where a file already uses it. It lands with B-367's docs and defaults batch.
+**Reopen** on a field report of a consumer whose conventions require NgModules or constructor injection in new code.
