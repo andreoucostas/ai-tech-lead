@@ -452,11 +452,17 @@ It 'untracked tool output and framework backups are not recorded, so a fresh clo
         # record's write file, none of which the repository's ignore rules catch or a teammate's clone holds.
         Put (Join-Path $r '.angular/cache/20.3.4/orders/angular-compiler.db') 'cache'
         Put (Join-Path $r 'coverage/orders/index.html') 'coverage'
+        Put (Join-Path $r 'out-tsc/spec/app.spec.js') 'compiled spec'
+        Put (Join-Path $r 'tmp/notes.md') 'scratch'
+        Put (Join-Path $r 'dist/orders/main.js') 'build'
+        Put (Join-Path $r 'bazel-out/k8-fastbuild/bin/x.js') 'bazel'
+        Put (Join-Path $r '.nx/workspace-data/project-graph.json') 'nx'
+        Put (Join-Path $r 'web/node_modules/lib/index.js') 'package'
         Put (Join-Path $r '.claude/framework-update-backup/skills/create-adr/SKILL.md') 'backup'
         Put (Join-Path $r '.claude/bootstrap-baseline.tsv.tmp') "schema`t1`n"
         Recorded $r
         $state = [IO.File]::ReadAllText((Join-Path $r $stateRel))
-        Assert ($state -notmatch '(?m)^area\t(\.angular|coverage|\.claude/framework-update-backup|\.claude\t)') "machine-local output was recorded: $state"
+        Assert ($state -notmatch '(?m)^area\t(\.angular|coverage|out-tsc|tmp|dist|bazel-out|\.nx|web/node_modules|\.claude/framework-update-backup|\.claude\t)') "machine-local output was recorded: $state"
         G $r @('add', '--', $stateRel)
         G $r @('commit', '-q', '-m', 'baseline')
         G $r @('clone', '-q', $r, $c)

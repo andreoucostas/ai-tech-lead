@@ -249,7 +249,7 @@ failure on v0.89.2 with Opus 5.5 (3/3 bolt-on onto `UserService`) and the fixed 
 |---|---|
 | **Date received** | 2026-10-09 |
 | **Stack / repo shape** | Angular; consumer repository, shape not captured |
-| **Framework installed** | yes (Angular distribution); version not captured, 0.94.0 or close |
+| **Framework installed** | yes (Angular distribution); version not captured |
 | **Host / IDE** | not captured |
 | **What misfired** | Two items, relayed by the maintainer: "Test critic recommends a banned angular async test" and "generated baseline includes temporary directories and run time". |
 | **What fired** | `test-critic` (the async remedy it named); `/bootstrap` step 3f's baseline record. |
@@ -262,7 +262,7 @@ failure on v0.89.2 with Opus 5.5 (3/3 bolt-on onto `UserService`) and the fixed 
 captured. For the first item, the shipped `test-critic` (Angular and monorepo) named `fakeAsync`/`tick` as the fix for real
 timers; angular.dev makes Vitest and zoneless the defaults for new projects from v21, says `fakeAsync` needs Zone.js and
 cannot run under Vitest without a zone patch, and calls it no longer recommended. `docs/defaults.md`, which `/bootstrap`
-uses to seed Conventions, said the same. For the second, a scratch Angular repository reproduced cache, coverage,
+uses to seed Conventions, also named `fakeAsync`/`tick`. For the second, a scratch Angular repository reproduced cache, coverage,
 `out-tsc`, `tmp`, `.nx` and the installer's update-backup folders in the baseline; "run time" is unresolved (the file
 holds only a date, and the hooks' runtime state is ignored).
 

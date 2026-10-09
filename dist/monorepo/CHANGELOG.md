@@ -13,16 +13,19 @@
   framework's own update backup (`.claude/framework-update-backup/`) went into it. That content changes on every run
   and never reaches a teammate's clone, so `/rebootstrap` kept finding changes and never stopped early. Untracked
   files under `dist/`, `tmp/`, `out-tsc/`, `bazel-out/` and `coverage/` at the repository root, and under `.angular/`,
-  `.nx/` and `node_modules/` anywhere, are now left out; committed files always count. If your baseline already holds
-  such folders, the next `/rebootstrap` reports them once and records again; a claim whose file pattern reached them
-  is re-listed in that run before it can stop early. An update refreshes the script; you do not need to do anything.
+  `.nx/` and `node_modules/` anywhere, are now left out; committed files always count. Output inside a sub-project,
+  such as `apps/web/coverage` or `projects/lib/dist`, still counts: keep it in your `.gitignore`. If your baseline
+  already holds such folders, the next `/rebootstrap` reports them once and records again; a claim whose file pattern
+  reached them is re-listed in that run before it can stop early. An update refreshes the script; you do not need to
+  do anything.
 
 - **The test critic no longer recommends `fakeAsync` to a project that cannot run it.** It named `fakeAsync`/`tick` as
   the fix for any spec using real timers, without checking your setup. From Angular 21, new projects are zoneless and
   test with Vitest, where `fakeAsync` cannot run without a zone patch, and your own conventions may rule it out. The
   test critic now reads your testing conventions, the test target's builder and polyfills, lint rules and sibling
   specs, and points at the clock your specs already use; otherwise the runner's own fake timers, RxJS marbles, or
-  `fakeAsync` only where the test runner loads zone.js. The `add-tests` skill and the greenfield defaults in
+  `fakeAsync` only where the runner is zone-patched: zone.js loaded and, under Vitest, also the
+  `zone.js/plugins/vitest-patch` polyfill (Angular 22 or later). The `add-tests` skill and the greenfield defaults in
   `docs/defaults.md` now say the same. A Conventions section `/bootstrap` already wrote is not changed: if it tells
   the agent to use `fakeAsync` and your runner cannot, edit that line. An update refreshes the rest; you do not need
   to do anything else.

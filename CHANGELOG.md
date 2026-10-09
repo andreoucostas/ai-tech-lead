@@ -24,7 +24,8 @@ untracked files under root-level `dist`, `tmp`, `out-tsc`, `bazel-out` and `cove
 excluded. The output folders are anchored at the root, as the Angular CLI template anchors them, so a new uncommitted
 file in an application folder such as `src/app/tmp/` still counts. "Run time" stays unresolved: the file stores only a
 `recorded` date, and the hooks' runtime state is already ignored. Not covered: .NET `bin`/`obj`/`TestResults`,
-Playwright and Cypress output. Tier raised to guarded, because a wrong skip reports a false `RESULT stop`.
+Playwright and Cypress output, and a sub-project's own output below the root (for example `apps/web/coverage` or
+`ClientApp/dist`). Tier raised to guarded, because a wrong skip reports a false `RESULT stop`.
 
 B-361 (field report #9, 2026-10-09: "Test critic recommends a banned angular async test"): the Angular and monorepo
 `test-critic` named `fakeAsync`/`tick` as the unconditional remedy for real timers and never read Conventions, against

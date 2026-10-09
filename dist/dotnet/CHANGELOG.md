@@ -12,8 +12,9 @@
   any untracked `tmp/`, `coverage/` or `dist/` at the repository root that your `.gitignore` misses. That content
   never reaches a teammate's clone, so `/rebootstrap` kept finding changes and never stopped early. Those untracked
   folders are now left out; committed files always count. .NET build output (`bin/`, `obj/`, `TestResults/`) is not
-  covered: keep it in your `.gitignore`. If your baseline already holds such folders, the next `/rebootstrap` reports
-  them once and records again. An update refreshes the script; you do not need to do anything.
+  covered: keep it in your `.gitignore`, along with a front end's output below the root such as `ClientApp/dist`. If
+  your baseline already holds such folders, the next `/rebootstrap` reports them once and records again. An update
+  refreshes the script; you do not need to do anything.
 
 ## 0.94.0 — 2026-10-08
 

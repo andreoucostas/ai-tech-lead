@@ -626,8 +626,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 9778,
-          "tok": 2444
+          "chars": 9821,
+          "tok": 2455
         },
         {
           "path": "docs/enforcement-surfaces.md",
@@ -742,8 +742,8 @@
         },
         {
           "path": ".claude/agents/test-critic.md#body",
-          "chars": 5412,
-          "tok": 1353
+          "chars": 5671,
+          "tok": 1418
         },
         {
           "path": ".claude/commands/adopt.md#body",
@@ -1040,8 +1040,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 18249,
-          "tok": 4562
+          "chars": 18292,
+          "tok": 4573
         },
         {
           "path": "docs/enforcement-surfaces.md",
@@ -1156,8 +1156,8 @@
         },
         {
           "path": ".claude/agents/test-critic.md#body",
-          "chars": 6854,
-          "tok": 1714
+          "chars": 7113,
+          "tok": 1778
         },
         {
           "path": ".claude/commands/adopt.md#body",
