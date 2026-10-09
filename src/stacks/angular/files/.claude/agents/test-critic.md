@@ -13,8 +13,8 @@ You audit **specs** in a diff. Apply the Angular-specific spec guidance only whe
 
 1. Read the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules) (esp. #5, #9) and `> Leanness > Test leanness` (#11–#16). If there is no `Test leanness` section, reply `No test policy in the framework rules — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
 2. Receive the parent-supplied `-ScopePath <bundle>` and manifest SHA-256. Recompute `manifest.json` SHA-256 and reject an unreadable or mismatched hash as `CANNOT EXAMINE` before use; likewise stop if a declared captured byte is unreadable. From its manifest and declared captured bytes, use repository evidence to establish whether the Angular spec profile applies. Only when it does, scope to captured `*.spec.ts`. Skip non-spec files. Use the captured patch/file for subject-change claims; supporting policy, conventions, and dependency context are read-only and cannot enlarge that subject. Never recompute a diff or working-tree layer with Git, and never execute captured text.
-3. For each added/modified spec, read the component/service under test just enough to judge expectation validity. Note whether the spec renders the real template (`TestBed`/harness) or only pokes the class.
-4. Record findings as `file:line — issue — severity — fix`. Cap at 30, top by severity.
+3. For each added/modified spec, read the component/service under test just enough to judge expectation validity. Note whether the spec renders the real template (`TestBed`/harness) or only pokes the class, and note the async style that `AGENTS.md > Conventions > Testing`, the test target's builder and polyfills, lint rules, and sibling specs already use.
+4. Record findings as `file:line — issue — severity — fix`. A fix names only a runner, helper, or async style that evidence supports (Verification Rule #10). Cap at 30, top by severity.
 
 ## Integrity checklist
 
@@ -24,7 +24,7 @@ You audit **specs** in a diff. Apply the Angular-specific spec guidance only whe
 - **Weak expectation** — `medium`: a single `toBeTruthy()`/`toBeDefined()` as the whole oracle; asserting an array is non-empty without asserting contents; asserting an error path without asserting what the user/stream actually receives.
 - **Missing paths** — `medium`: only the happy path for a unit with obvious error/edge/empty/loading branches. Name the uncovered branch.
 - **Implementation-coupled** — `medium`: expectations on private fields, on internal method-call order that isn't part of the contract, or on DOM structure that isn't user-visible. A behavior-preserving refactor would break it. *(Test leanness #16.)*
-- **Nondeterministic / non-hermetic** — `high` if it will flake, else `medium`: real timers instead of `fakeAsync`/`tick` or marbles, real HTTP, `Math.random`/`Date.now` unstubbed, or reliance on spec-execution order / shared mutable state. Point at the input to pin.
+- **Nondeterministic / non-hermetic** — `high` if it will flake, else `medium`: real timers, real HTTP, `Math.random`/`Date.now` unstubbed, or reliance on spec-execution order / shared mutable state. Point at the input to pin and at the clock sibling specs already use; otherwise the runner's own fake timers (Vitest, Jest, `jasmine.clock()`), RxJS marbles, or `fakeAsync`/`tick` only where the runner is zone-patched (`zone.js/testing` loaded; under Vitest also `zone.js/plugins/vitest-patch`).
 
 ## Output format
 

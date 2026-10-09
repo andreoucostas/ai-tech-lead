@@ -26,6 +26,17 @@ file in an application folder such as `src/app/tmp/` still counts. "Run time" st
 `recorded` date, and the hooks' runtime state is already ignored. Not covered: .NET `bin`/`obj`/`TestResults`,
 Playwright and Cypress output. Tier raised to guarded, because a wrong skip reports a false `RESULT stop`.
 
+B-361 (field report #9, 2026-10-09: "Test critic recommends a banned angular async test"): the Angular and monorepo
+`test-critic` named `fakeAsync`/`tick` as the unconditional remedy for real timers and never read Conventions, against
+Verification Rule #10. angular.dev (read 2026-10-08) makes Vitest and zoneless the new-project defaults from v21, says
+`fakeAsync` needs Zone.js and cannot run under Vitest without `zone.js/plugins/vitest-patch` (v22), and calls it no
+longer recommended. `test-critic` now reads Conventions > Testing, the test target's builder and polyfills, lint rules
+and sibling specs (Process step 3); a fix names only an async style that evidence supports (step 4); and the
+Nondeterministic line points at the clock sibling specs use, otherwise the runner's fake timers, marbles, or
+`fakeAsync` only where the runner is zone-patched. `add-tests` and `docs/defaults.md` change the same way;
+`defaults.md` had to, because /bootstrap 3a seeds Conventions from it and `test-critic` now follows Conventions.
+Text-only and unmeasured on any host; on-demand context only, always-loaded unchanged.
+
 ## 0.94.0 — 2026-10-08
 
 The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a

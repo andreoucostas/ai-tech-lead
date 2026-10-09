@@ -125,4 +125,4 @@ Choose the level by what the test actually exercises — *push each test to the 
 
 ### Test determinism
 - Tests must be deterministic and hermetic: no real network, real timers, randomness, or inter-test order dependence. An intermittently-failing test is worse than none — it trains the team to ignore red.
-- Use fake async (`fakeAsync`/`tick`) or marble tests for time; mock HTTP via `provideHttpClientTesting`; seed or stub randomness; reset state between tests.
+- Control time with the runner's fake timers (Vitest, Jest, or `jasmine.clock()`) or marble tests, and `fakeAsync`/`tick` only where the runner is zone-patched; mock HTTP via `provideHttpClientTesting`; seed or stub randomness; reset state between tests.

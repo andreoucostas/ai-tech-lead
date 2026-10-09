@@ -16,6 +16,16 @@
   such folders, the next `/rebootstrap` reports them once and records again; a claim whose file pattern reached them
   is re-listed in that run before it can stop early. An update refreshes the script; you do not need to do anything.
 
+- **The test critic no longer recommends `fakeAsync` to a project that cannot run it.** It named `fakeAsync`/`tick` as
+  the fix for any spec using real timers, without checking your setup. From Angular 21, new projects are zoneless and
+  test with Vitest, where `fakeAsync` cannot run without a zone patch, and your own conventions may rule it out. The
+  test critic now reads your testing conventions, the test target's builder and polyfills, lint rules and sibling
+  specs, and points at the clock your specs already use; otherwise the runner's own fake timers, RxJS marbles, or
+  `fakeAsync` only where the test runner loads zone.js. The `add-tests` skill and the greenfield defaults in
+  `docs/defaults.md` now say the same. A Conventions section `/bootstrap` already wrote is not changed: if it tells
+  the agent to use `fakeAsync` and your runner cannot, edit that line. An update refreshes the rest; you do not need
+  to do anything else.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside

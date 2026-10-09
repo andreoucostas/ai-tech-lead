@@ -626,8 +626,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 9681,
-          "tok": 2420
+          "chars": 9778,
+          "tok": 2444
         },
         {
           "path": "docs/enforcement-surfaces.md",
@@ -742,8 +742,8 @@
         },
         {
           "path": ".claude/agents/test-critic.md#body",
-          "chars": 4935,
-          "tok": 1234
+          "chars": 5412,
+          "tok": 1353
         },
         {
           "path": ".claude/commands/adopt.md#body",
@@ -807,8 +807,8 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
-          "chars": 6947,
-          "tok": 1737
+          "chars": 7058,
+          "tok": 1764
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#body",
@@ -1040,8 +1040,8 @@
         },
         {
           "path": "docs/defaults.md",
-          "chars": 18152,
-          "tok": 4538
+          "chars": 18249,
+          "tok": 4562
         },
         {
           "path": "docs/enforcement-surfaces.md",
@@ -1156,8 +1156,8 @@
         },
         {
           "path": ".claude/agents/test-critic.md#body",
-          "chars": 6365,
-          "tok": 1591
+          "chars": 6854,
+          "tok": 1714
         },
         {
           "path": ".claude/commands/adopt.md#body",
@@ -1221,8 +1221,8 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
-          "chars": 9812,
-          "tok": 2453
+          "chars": 9923,
+          "tok": 2481
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#body",

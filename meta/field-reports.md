@@ -266,7 +266,8 @@ uses to seed Conventions, said the same. For the second, a scratch Angular repos
 `out-tsc`, `tmp`, `.nx` and the installer's update-backup folders in the baseline; "run time" is unresolved (the file
 holds only a date, and the hooks' runtime state is ignored).
 
-**Outcome:** B-362 (baseline), done 2026-10-09 for 0.95.0.
+**Outcome:** B-361 (`test-critic`, `add-tests` and `docs/defaults.md` async advice) and B-362 (baseline), both done
+2026-10-09 for 0.95.0.
 
 ---
 

@@ -13013,6 +13013,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-358** — CLOSED by decision **2026-10-07** (WSD-106), never filed. Found by the fresh-session attack on the 0.94.0 prompt
   retirement: a repository whose only AI tooling is its own `.github/prompts/<workflow>.prompt.md` now installs greenfield, because
   no shipped prompt path collides with it; `$adoptionSignals` never listed `.github/prompts/`. Nothing is lost. Reopen on a field report.
+- **B-361** — DONE **2026-10-09** for 0.95.0 (field report #9): Angular and monorepo `test-critic` read Conventions > Testing, the test
+  builder and polyfills, lint rules and sibling specs before naming an async remedy, and name `fakeAsync`/`tick` only where the runner is
+  zone-patched; `add-tests` and `docs/defaults.md` say the same. Text-only; unmeasured on any host.
 - **B-362** — DONE **2026-10-09** for 0.95.0 (field report #9): `bootstrap-baseline.ps1` skips untracked files under root-level
   `dist`, `tmp`, `out-tsc`, `bazel-out` and `coverage`, any-depth `.angular`, `.nx` and `node_modules`, and `.claude/framework-update-backup/`,
   and excludes Record's `.tsv.tmp`; tracked files always count. Reproduced first on a scratch Angular repository; two test cases seen red.
@@ -13021,3 +13024,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   after". The baseline now skips it. Reopen on a field report.
 - **B-366** — CLOSED by decision **2026-10-09** (WSD-106), never filed. `bootstrap-baseline.ps1 -Root` with a trailing backslash breaks
   `Invoke-Git`'s quoting and reports "not inside a Git working tree"; the shipped commands pass no `-Root`. Reopen on a field report.
+- **B-363** — CLOSED by decision **2026-10-09** (WSD-106), never filed. Found while diagnosing field report #9: Angular `/bootstrap`
+  pass A6 lists Vitest but, unlike the .NET pass, does not require the test runner to be recorded verbatim in Conventions > Testing;
+  `test-critic` now reads the test builder directly. Reopen on a field report.
+- **B-364** — CLOSED by decision **2026-10-09** (WSD-106), never filed. Found while diagnosing field report #9: `add-tests` suite-bootstrap
+  mode offers Jasmine/Karma or Jest and leaves out Vitest, the Angular 21 default runner. Reopen on a field report.
