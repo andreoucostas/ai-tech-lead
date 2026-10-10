@@ -227,9 +227,11 @@ else {
     }
     if (-not $workspace) { exit 0 }
 
-    # Prefer tsconfig.app.json: an Nx/CLI app's tsconfig.json is solution-style (files:[], include:[],
-    # references), and `tsc -p` against it compiles nothing and exits 0 -- a silent false pass.
-    # tsconfig.app.json carries the real files/include, so the type-check actually runs.
+    # Prefer tsconfig.app.json: an Nx app's tsconfig.json, and since Angular CLI 20 every workspace's, is
+    # solution-style (files:[], references), and `tsc -p` or `ngc -p` against it compiles nothing and exits
+    # 0 -- a silent false pass. tsconfig.app.json carries the real files/include, so the check actually runs.
+    # Without one, as in a library-only workspace, a solution-style tsconfig.json is reported as not
+    # verified below, never checked.
     $project = if (Test-Path (Join-Path $workspace 'tsconfig.app.json')) { 'tsconfig.app.json' } else { 'tsconfig.json' }
 
     # Resolve tsc: node_modules may sit in the workspace or be hoisted to a monorepo root above it.
@@ -275,6 +277,25 @@ else {
         }
     }
     Set-Content -Path $stamp -Value $now -Encoding ASCII
+
+    # A solution-style config (no files or include of its own, only references) gives tsc and ngc nothing to
+    # check. Say so instead of running a check that cannot fail, and back off like a timeout so the note is
+    # not repeated on every write.
+    $config = try { [IO.File]::ReadAllText((Join-Path $workspace $project)) } catch { '' }
+    if ($config -match '"files"\s*:\s*\[\s*\]' -and $config -match '"references"\s*:\s*\[\s*\{' -and $config -notmatch '"include"\s*:\s*\[\s*"') {
+        Set-Content -Path $stamp -Value ($now + 300 - 5) -Encoding ASCII
+        # Named from the repository root: Resolve-Path -Relative renders the current directory itself as ..\<name>.
+        $shown = Join-Path $workspace $project
+        $here = (Get-Location).Path.TrimEnd('\') + '\'
+        if ($shown.StartsWith($here, [StringComparison]::OrdinalIgnoreCase)) { $shown = $shown.Substring($here.Length) }
+        $note = "Type-check not verified: $($shown -replace '\\', '/') is solution-style (`"files`": [] with `"references`"), so tsc and ngc check nothing against it. Verify this change with the project's own build or test command."
+        if ($tn -ceq 'Edit' -or $tn -ceq 'Write' -or $tn -eq '') {
+            (@{ hookSpecificOutput = @{ hookEventName = 'PostToolUse'; additionalContext = $note } } | ConvertTo-Json -Compress)
+        } else {
+            (@{ additionalContext = $note } | ConvertTo-Json -Compress)
+        }
+        exit 0
+    }
 
     # Only surface output on failure -- emitting type-check output every successful write wastes context tokens.
     # Run from the workspace dir (npx resolves tsc by walking up to the monorepo node_modules);

@@ -12,11 +12,11 @@
   framework's own update backup (`.claude/framework-update-backup/`) went into it. That content changes on every run
   and never reaches a teammate's clone, so `/rebootstrap` kept finding changes and never stopped early. Untracked
   files under `dist/`, `tmp/`, `out-tsc/`, `bazel-out/` and `coverage/` at the repository root, and under `.angular/`,
-  `.nx/` and `node_modules/` anywhere, are now left out; committed files always count. Output inside a sub-project,
-  such as `apps/web/coverage` or `projects/lib/dist`, still counts: keep it in your `.gitignore`. If your baseline
-  already holds such folders, the next `/rebootstrap` reports them once and records again; a claim whose file pattern
-  reached them is re-listed in that run before it can stop early. An update refreshes the script; you do not need to
-  do anything.
+  `.nx/`, `node_modules/` and Vitest's `__screenshots__/` anywhere, are now left out; committed files always count.
+  Output inside a sub-project, such as `apps/web/coverage` or `projects/lib/dist`, still counts: keep it in your
+  `.gitignore`. If your baseline already holds such folders, the next `/rebootstrap` reports them once and records
+  again; a claim whose file pattern reached them is re-listed in that run before it can stop early. An update
+  refreshes the script; you do not need to do anything.
 
 - **The test critic no longer recommends `fakeAsync` to a project that cannot run it.** It named `fakeAsync`/`tick` as
   the fix for any spec using real timers, without checking your setup. From Angular 21, new projects are zoneless and
@@ -52,6 +52,15 @@
   `xspecify`. A Playwright `test.skip(condition, reason)` or bare `test.skip()`, and Vitest's `context.skip()` inside
   a test, are runtime conditions and still pass. The guard also no longer slows down on a test file with a very long
   run of blank lines. An update refreshes the guard; you do not need to do anything.
+
+- **The type-check after a write no longer passes in silence when it checked nothing.** Since Angular CLI 20 a
+  workspace's root `tsconfig.json` lists no files of its own (`"files": []` with `"references"`). In a workspace with
+  no `tsconfig.app.json`, such as one that holds only libraries, the hook type-checked that file after a write, which
+  checks nothing, so a type error went unreported. It now says "Type-check not verified" instead, at most once every
+  five minutes, and leaves the check to your build or test command. A workspace with an application is still checked
+  through `tsconfig.app.json`, which leaves out spec and library files: `docs/enforcement-surfaces.md` now says so, and
+  `framework-doctor`'s build-feedback canary asks for an application source file. An update refreshes the hook; you
+  do not need to do anything.
 
 ## 0.94.0 — 2026-10-08
 

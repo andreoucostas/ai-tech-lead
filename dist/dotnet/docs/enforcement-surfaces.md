@@ -32,13 +32,17 @@ later agent-host process. The write-guard canary proves the actual host's enforc
 summary the doctor prints it for each host (ask the agent to create `tmp-doctor-canary.txt` containing
 `AKIA` plus 16 uppercase letters or digits; pass = the hook answers "Blocked write to"; a polite refusal
 is not a pass; delete the file if it lands). For build feedback, make and immediately revert a harmless compile
-or type error through the actual agent after the post-write throttle has elapsed; only hook output
+or type error in a .NET source file or an Angular application source file through the actual agent after the
+post-write throttle has elapsed; only hook output
 starting `## dotnet build failed`, `## tsc --noEmit failed` or, after an Angular template write,
 `## ngc --noEmit failed` proves that host path. The hook gives
 the build or type-check 45 seconds (`ATL_POSTWRITE_BUDGET_SEC`, 1-600, overrides it); a run that
 exceeds the budget is stopped and reports nothing, and the next one waits five minutes. A .NET build that
 could not run because the packages were never restored (NETSDK1004/1005) reports "Build not verified" and
-asks for one `dotnet restore`, then waits the same five minutes.
+asks for one `dotnet restore`, then waits the same five minutes. An Angular workspace with no
+`tsconfig.app.json` whose `tsconfig.json` is solution-style (`"files": []` plus `"references"`, the CLI's
+layout since v20), such as a library-only workspace, reports "Type-check not verified" instead of checking,
+then waits the same five minutes.
 
 ## Matrix
 
@@ -69,7 +73,8 @@ asks for one `dotnet restore`, then waits the same five minutes.
 > (`tsc`, and separately the Angular template check, for 5 s) as well as during the five-minute wait
 > above, so a turn can end with its last edit unbuilt. Only a template file's own write runs the template
 > check: a `.ts` edit that breaks a template binding, or an inline `template:`, gets `tsc`, which does not
-> read templates. No framework hook runs your test suite or your `Verification Commands` rows; the agent
+> read templates. The Angular checks compile the application's `tsconfig.app.json`, so a spec or library
+> file it does not include is not checked, and its write passes silently. No framework hook runs your test suite or your `Verification Commands` rows; the agent
 > runs them under your permissions, as the framework rules require.
 
 > **Scope caveat — on an edit, the guard reads the replacement text, not the resulting file.** A

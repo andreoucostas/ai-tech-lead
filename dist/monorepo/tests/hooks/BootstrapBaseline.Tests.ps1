@@ -458,11 +458,13 @@ It 'untracked tool output and framework backups are not recorded, so a fresh clo
         Put (Join-Path $r 'bazel-out/k8-fastbuild/bin/x.js') 'bazel'
         Put (Join-Path $r '.nx/workspace-data/project-graph.json') 'nx'
         Put (Join-Path $r 'web/node_modules/lib/index.js') 'package'
+        # Vitest browser mode's failure screenshots, beside the spec; the CLI's .gitignore lists them only from 20.3.3.
+        Put (Join-Path $r 'src/app/__screenshots__/app.spec.ts/renders-1.png') 'screenshot'
         Put (Join-Path $r '.claude/framework-update-backup/skills/create-adr/SKILL.md') 'backup'
         Put (Join-Path $r '.claude/bootstrap-baseline.tsv.tmp') "schema`t1`n"
         Recorded $r
         $state = [IO.File]::ReadAllText((Join-Path $r $stateRel))
-        Assert ($state -notmatch '(?m)^area\t(\.angular|coverage|out-tsc|tmp|dist|bazel-out|\.nx|web/node_modules|\.claude/framework-update-backup|\.claude\t)') "machine-local output was recorded: $state"
+        Assert ($state -notmatch '(?m)^area\t(\.angular|coverage|out-tsc|tmp|dist|bazel-out|\.nx|web/node_modules|src/app/__screenshots__|\.claude/framework-update-backup|\.claude\t)') "machine-local output was recorded: $state"
         G $r @('add', '--', $stateRel)
         G $r @('commit', '-q', '-m', 'baseline')
         G $r @('clone', '-q', $r, $c)

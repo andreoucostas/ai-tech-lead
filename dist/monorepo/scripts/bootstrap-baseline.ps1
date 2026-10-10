@@ -30,9 +30,10 @@ $script:Manifests = @{
     warehouse = @{ Project = @('*.sqlproj'); Workspace = @('dbt_project.yml') }
 }
 $script:Kinds = @('scoped', 'universal', 'absence')
-# Untracked tool output: the Angular CLI template's root-level output folders, and caches at any depth.
+# Untracked tool output: the Angular CLI template's root-level output folders, and at any depth the caches
+# and Vitest browser mode's failure screenshots, which it writes beside the spec.
 # Anchoring the output folders keeps a new file in an application folder such as src/app/tmp/ counted.
-$script:LocalOnly = [regex]'^(?:dist|tmp|out-tsc|bazel-out|coverage)/|(?:^|/)(?:\.angular|\.nx|node_modules)/|^\.claude/framework-update-backup/'
+$script:LocalOnly = [regex]'^(?:dist|tmp|out-tsc|bazel-out|coverage)/|(?:^|/)(?:\.angular|\.nx|node_modules|__screenshots__)/|^\.claude/framework-update-backup/'
 
 # Output goes straight to stdout: a message written inside a function whose result a caller is
 # capturing would otherwise vanish into that capture.

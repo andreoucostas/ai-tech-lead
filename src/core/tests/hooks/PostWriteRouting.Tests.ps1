@@ -228,6 +228,51 @@ try {
         }
     }
 
+    # Since Angular CLI 20 the root tsconfig.json is solution-style ("files": [] plus "references"). In a
+    # workspace with no tsconfig.app.json, such as a library-only one, tsc or ngc against it checks nothing
+    # and exits 0: the hook must say the write was not verified instead of passing it.
+    if ($hookText -notmatch 'tsc --noEmit') {
+        Skip 'a solution-style tsconfig is never checked and the write is reported as not verified on both surfaces' 'this post-write carries no Angular branch' -Invariant
+    } else {
+        # The CLI's application layout keeps the same root tsconfig.json beside a tsconfig.app.json, which is checked.
+        It 'a solution-style tsconfig is never checked and the write is reported as not verified on both surfaces' {
+            $null = Reset-BuildWorld $templateWorld "@echo %*> `"%POSTWRITE_ARGS%`"`r`n@exit /b 0`r`n"
+            Remove-Item -LiteralPath (Join-Path $tmp 'src') -Recurse -Force
+            [IO.File]::WriteAllText((Join-Path $tmp 'tsconfig.json'), "/* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */`n{`n  `"compileOnSave`": false,`n  `"compilerOptions`": { `"strict`": true },`n  `"files`": [],`n  `"references`": [`n    { `"path`": `"./projects/lib/tsconfig.lib.json`" },`n    { `"path`": `"./projects/lib/tsconfig.spec.json`" }`n  ]`n}`n")
+            New-Item -ItemType Directory -Path (Join-Path $tmp 'projects/lib/src/lib') -Force | Out-Null
+            [IO.File]::WriteAllText((Join-Path $tmp 'projects/lib/tsconfig.lib.json'), '{ "extends": "../../tsconfig.json", "include": ["src/**/*.ts"], "exclude": ["src/**/*.spec.ts"] }')
+            $argsFile = Join-Path $tmp 'npx-args'
+            $oldPath = $env:PATH; $oldArgs = $env:POSTWRITE_ARGS
+            try {
+                $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
+                $env:POSTWRITE_ARGS = $argsFile
+                foreach ($probe in './projects/lib/src/lib/probe.ts', './projects/lib/src/lib/probe.component.html') {
+                    [IO.File]::WriteAllText((Join-Path $tmp $probe), 'probe')
+                    foreach ($payload in @(
+                        ('{"tool_name":"Write","tool_input":{"file_path":"' + $probe + '","content":"probe"}}'),
+                        ('{"toolName":"create","toolArgs":{"path":"' + $probe + '","file_text":"probe"}}')
+                    )) {
+                        Remove-Item -LiteralPath (Join-Path $tmp '.claude/.state'), $argsFile -Recurse -Force -ErrorAction SilentlyContinue
+                        $result = Invoke-Hook $postWrite $payload
+                        $ran = if (Test-Path -LiteralPath $argsFile) { [IO.File]::ReadAllText($argsFile).Trim() } else { '' }
+                        Assert ($ran -eq '') "${probe}: a check ran against the solution-style tsconfig.json and passed: npx $ran"
+                        Assert ((Get-Decision $result) -eq 'ALLOW' -and $result.Out -match 'additionalContext' -and $result.Out -match 'Type-check not verified: tsconfig\.json is solution-style') "${probe}: the write was not reported as not verified, naming tsconfig.json from the repository root: exit $($result.Exit), stdout $($result.Out.Trim()), stderr $($result.Err.Trim())"
+                    }
+                }
+                [IO.File]::WriteAllText((Join-Path $tmp 'tsconfig.app.json'), '{ "extends": "./tsconfig.json", "include": ["src/**/*.ts"], "exclude": ["src/**/*.spec.ts"] }')
+                New-Item -ItemType Directory -Path (Join-Path $tmp 'src/app') -Force | Out-Null
+                [IO.File]::WriteAllText((Join-Path $tmp 'src/app/probe.ts'), 'probe')
+                Remove-Item -LiteralPath (Join-Path $tmp '.claude/.state'), $argsFile -Recurse -Force -ErrorAction SilentlyContinue
+                $result = Invoke-Hook $postWrite '{"tool_name":"Write","tool_input":{"file_path":"./src/app/probe.ts","content":"probe"}}'
+                $ran = if (Test-Path -LiteralPath $argsFile) { [IO.File]::ReadAllText($argsFile).Trim() } else { '' }
+                Assert ($ran -match '"tsc"' -and $ran -match '"-p" "tsconfig\.app\.json"' -and $result.Out -notmatch 'not verified') "an application write beside the solution-style tsconfig.json was not checked against tsconfig.app.json: npx $ran, stdout $($result.Out.Trim())"
+            } finally {
+                $env:PATH = $oldPath; $env:POSTWRITE_ARGS = $oldArgs
+                Remove-Item -LiteralPath (Join-Path $tmp 'projects'), (Join-Path $tmp 'tsconfig.app.json') -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
     # Every case above invokes post-write.ps1 directly. The agent host does not: the registration
     # carries "shell": "powershell", so the whole command STRING runs inside an outer PowerShell, and
     # `-Command` collapses a failing native command's exit code to 1 -- the build failure is then a

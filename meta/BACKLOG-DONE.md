@@ -13044,3 +13044,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   and the focus and skip forms Vitest, Jest, Mocha/Cypress and Playwright document, chained ones included; on `test.skip`, `test.fixme` and
   `context.skip` only declaration forms are blocked, so runtime skips still pass; its scans stay linear on long blank runs, chains and unclosed titles.
   Rest of the audit: B-367.
+- **B-375** — DONE **2026-10-10** for 0.95.0 (Angular v21-v22 audit, batch 3; escaped false green): the Angular and monorepo `post-write` hooks no
+  longer type-check a solution-style `tsconfig.json` (`"files": []` plus `"references"`, a library-only workspace since CLI 20), which passed in
+  silence; they report "Type-check not verified". The baseline also skips untracked `__screenshots__/`. Rest of the audit: B-367.

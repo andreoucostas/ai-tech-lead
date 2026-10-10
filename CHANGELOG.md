@@ -83,6 +83,22 @@ version and found Vitest's runtime `context.skip()` falsely blocked, documented 
 passing and the stall; its re-attack of the fixed version found no regression and alias and chain gaps, closed before
 push. The `enforce-standards` skills describe the new floor and lose a doubled list marker batch 1 left.
 
+B-375, batch 3 of the 2026-10-09 Angular v21-v22 audit (K3, an escaped false green): since Angular CLI 20 every
+workspace's root `tsconfig.json` is solution-style (`"files": []` plus `"references"`). The Angular and monorepo
+`post-write` hooks prefer `tsconfig.app.json` for that reason, but in a workspace without one, such as a library-only
+workspace, they ran `tsc --noEmit -p tsconfig.json`, or `ngc` after a template write, which compiles nothing and exits
+0, so a broken library file passed in silence. The new PostWriteRouting case was red on dist/angular and
+dist/monorepo, with the argument-logging `npx` shim recording `"tsc" "--noEmit" "-p" "tsconfig.json"`. The hooks now
+never run a check against a config with an empty `files`, no `include` and a `references` list: they report "Type-check
+not verified: <config> is solution-style …" on both surfaces (Claude Code `hookSpecificOutput.additionalContext`,
+Copilot `additionalContext`), exit 0, and back off five minutes like a timeout. The same case pins that an application
+write beside that root config is still checked against `tsconfig.app.json`. `docs/enforcement-surfaces.md` now says the
+Angular checks compile only `tsconfig.app.json`, so spec and library writes in an application workspace pass in
+silence, and `framework-doctor`'s canary asks for an application source file. M14 rides along: `bootstrap-baseline.ps1`
+also skips untracked `__screenshots__/` folders at any depth (Vitest browser mode's failure screenshots, in the CLI's
+`.gitignore` template only since 20.3.3); the extended baseline case was red on the unchanged script. Not done:
+type-checking a library through its `tsconfig.lib.json`, which needs timing against the 45 s budget first.
+
 ## 0.94.0 — 2026-10-08
 
 The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a
