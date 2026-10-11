@@ -9,26 +9,25 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done and B-336 closed by measurement 2026-10-03; B-331 done, B-326 done and B-348 filed, and B-327, B-328, B-329 and B-337 done 2026-10-04; B-352 to B-354 filed 2026-10-05 (Fable review, consumer host reply), B-352 and B-354 done the same day (WSD-110), B-353 done the same day, B-356 filed the same day (maintainer request; first numbered B-355 at 254c904f, renumbered because 99253721 closed a different B-355); B-357 filed 2026-10-06 (the 0.94.0 Copilot skill wrappers); B-359 and B-360 filed 2026-10-07 (attack rounds on those wrappers); B-348's and B-356's wordings shipped unmeasured 2026-10-08 (WSD-111), their measurements kept open; B-361 and B-362 done 2026-10-09 without filing (field report #9), B-363 to B-366 closed by decision the same day (WSD-106); re-ranked 2026-10-09: B-367 filed at rank 1 (maintainer request, Angular v21-v22 audit) and B-368 done the same day, B-369 and B-370 closed by decision (WSD-106) and B-371 filed the same day (a reviewing session's build.ps1 run); B-372 done and B-373 and B-374 filed the same day (audit batch 2, its fresh-session attack and its CP437 leg); B-375 filed and done 2026-10-10 and B-376 2026-10-11 (audit batches 3 and 4); re-ranked 2026-10-11: B-377 to B-382 filed (maintainer request, review of the VS Code 1.132-1.141 and Copilot CLI 1.0.80-1.0.95 releases) and B-357 to the bottom (consumers host on Bitbucket Data Center, so Copilot code review on github.com never sees their PRs), then B-348 widened to VS Code and B-383 and B-384 filed the same day (maintainer request); B-386 and B-387 filed and done the same day (audit batches 5a and 5b), and B-367 done the same day (audit batch 6, the last); idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
+## Pick-up order — ranked 2026-09-30 (WSD-105 probe); re-ranked 2026-10-01 (WSD-107, field replies); B-331 to the idle queue 2026-10-02 (WSD-109); B-346 filed and done the same day; B-330 done and B-336 closed by measurement 2026-10-03; B-331 done, B-326 done and B-348 filed, and B-327, B-328, B-329 and B-337 done 2026-10-04; B-352 to B-354 filed 2026-10-05 (Fable review, consumer host reply), B-352 and B-354 done the same day (WSD-110), B-353 done the same day, B-356 filed the same day (maintainer request; first numbered B-355 at 254c904f, renumbered because 99253721 closed a different B-355); B-357 filed 2026-10-06 (the 0.94.0 Copilot skill wrappers); B-359 and B-360 filed 2026-10-07 (attack rounds on those wrappers); B-348's and B-356's wordings shipped unmeasured 2026-10-08 (WSD-111), their measurements kept open; B-361 and B-362 done 2026-10-09 without filing (field report #9), B-363 to B-366 closed by decision the same day (WSD-106); re-ranked 2026-10-09: B-367 filed at rank 1 (maintainer request, Angular v21-v22 audit) and B-368 done the same day, B-369 and B-370 closed by decision (WSD-106) and B-371 filed the same day (a reviewing session's build.ps1 run); B-372 done and B-373 and B-374 filed the same day (audit batch 2, its fresh-session attack and its CP437 leg); B-375 filed and done 2026-10-10 and B-376 2026-10-11 (audit batches 3 and 4); re-ranked 2026-10-11: B-377 to B-382 filed (maintainer request, review of the VS Code 1.132-1.141 and Copilot CLI 1.0.80-1.0.95 releases) and B-357 to the bottom (consumers host on Bitbucket Data Center, so Copilot code review on github.com never sees their PRs), then B-348 widened to VS Code and B-383 and B-384 filed the same day (maintainer request); B-386 and B-387 filed and done the same day (audit batches 5a and 5b), and B-367 done the same day (audit batch 6, the last); B-377 closed by measurement the same day (Copilot CLI 1.0.95 still delivers the prompt hook's context), unblocking B-380; idle queue added 2026-09-30 (WSD-106); every earlier entry closed 2026-09-29 (WSD-105)
 
 | Rank | Item | Why here |
 |---|---|---|
-| 1 | B-377 | False-green class on every Copilot surface: routing, plan-gate and security-pass injection may be dropped by documented host behaviour; one canary settles it |
-| 2 | B-384 | Maintainer test method: a doc conflict on `-p` slash dispatch decides how B-348 can be measured, so it goes first; effort S |
-| 3 | B-348 | False-green class split from B-326: the agent's own security pass on Copilot CLI and VS Code; its wording shipped unmeasured (WSD-111), so measure the pass under it |
-| 4 | B-378 | The shipped matrix misdescribes the primary target once VS Code's Copilot harness is the default, which 1.141 is rolling out to enterprise users |
-| 5 | B-379 | False-green class: an organisation policy can switch hooks or every repo customization off while the doctor reports them wired |
-| 6 | B-371 | False green in a guarded build script; it wrote into the real repository once on 2026-10-09 |
-| 7 | B-381 | Stall class: a host that starts hooks outside the repository root denies every tool; fixed upstream in CLI 1.0.88, no field report |
-| 8 | B-382 | Possible false green: four reviewers may judge without the project's conventions on Copilot; measure before changing the wrappers |
-| 9 | B-380 | Improvement, blocked on B-377: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue |
-| 10 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
-| 11 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 12 | B-359 | Latent false green: no shipped command carries such a value today |
-| 13 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
-| 14 | B-373 | Stall class, but only on a degenerate C# file; no field report |
-| 15 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
-| 16 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
+| 1 | B-384 | Maintainer test method: a doc conflict on `-p` slash dispatch decides how B-348 can be measured, so it goes first; effort S |
+| 2 | B-348 | False-green class split from B-326: the agent's own security pass on Copilot CLI and VS Code; its wording shipped unmeasured (WSD-111), so measure the pass under it |
+| 3 | B-378 | The shipped matrix misdescribes the primary target once VS Code's Copilot harness is the default, which 1.141 is rolling out to enterprise users |
+| 4 | B-379 | False-green class: an organisation policy can switch hooks or every repo customization off while the doctor reports them wired |
+| 5 | B-371 | False green in a guarded build script; it wrote into the real repository once on 2026-10-09 |
+| 6 | B-381 | Stall class: a host that starts hooks outside the repository root denies every tool; fixed upstream in CLI 1.0.88, no field report |
+| 7 | B-382 | Possible false green: four reviewers may judge without the project's conventions on Copilot; measure before changing the wrappers |
+| 8 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
+| 9 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
+| 10 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 11 | B-359 | Latent false green: no shipped command carries such a value today |
+| 12 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
+| 13 | B-373 | Stall class, but only on a degenerate C# file; no field report |
+| 14 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
+| 15 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
 
 ## Open entries
 
@@ -88,13 +87,6 @@ local gates were all green, and every Windows CI job failed at checkout. Candida
 Measure it (B-346 method): an extension-point feature, a third instance and a plain CRUD decoy whose false-offer rate decides whether it stays;
 design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B.
 
-### B-377 · Measure whether Copilot still delivers `userPromptSubmitted` `additionalContext`, which GitHub now documents as dropped
-**Filed against:** v0.94.0 (2026-10-11)
-**Priority:** P1 · **Effort:** S to measure, M if dropped · **Invariants:** #5 #7
-**Status:** Open; maintainer request 2026-10-11. GitHub's hooks reference (docs.github.com/en/copilot/reference/hooks-reference) has said since 2026-08-06 that command `userPromptSubmitted`
-output is dropped, yet CLI 1.0.80 delivered it on 2026-08-18 (`meta/host-certification.md`); routing, plan-gate, security pass and the Boy Scout delivery leg ride on it. Re-run that
-sentinel canary on CLI 1.0.95; if dropped, mark those rows instructed-only on Copilot and weigh moving the static text to `sessionStart`, whose output is documented and concatenated.
-
 ### B-378 · `docs/enforcement-surfaces.md` describes only VS Code's Local harness; the Copilot harness replacing it runs both hook files
 **Filed against:** v0.94.0 (2026-10-11)
 **Priority:** P2 · **Effort:** S (docs), then one canary · **Invariants:** #5 #7
@@ -112,9 +104,9 @@ code.visualstudio.com/docs/agent-customization/hooks (2026-10-07; the cited 2026
 ### B-380 · Measure an `agentStop` `decision: block` for the Boy Scout nudge on Copilot, replacing the next-prompt queue
 **Filed against:** v0.94.0 (2026-10-11)
 **Priority:** P3 · **Effort:** M · **Invariants:** #5 #7
-**Status:** Open; maintainer request 2026-10-11, blocked on B-377. The Copilot runtime documents `{"decision":"block","reason":...}` on `agentStop` (at most 8 in a row, `stop_hook_active`
-on re-entry); VS Code's Local harness maps `agentStop` to `Stop` and needs the `hookSpecificOutput` form or exit 2. copilot-cli issue #3894 (open, not primary) reports `agentStop` firing on
-subagent turns and stalling `/review`, so run `meta/canaries/agent-stop-delivery/` with the review fan-out before changing `boy-scout-check.ps1`.
+**Status:** Open; maintainer request 2026-10-11; unblocked the same day by B-377, which saw the next-prompt queue still delivered on CLI 1.0.95 and `agentStop` fire in a `-p` run. The Copilot runtime documents
+`{"decision":"block","reason":...}` on `agentStop` (at most 8 in a row, `stop_hook_active` on re-entry); VS Code's Local harness maps `agentStop` to `Stop` and needs the `hookSpecificOutput` form or exit 2. copilot-cli
+issue #3894 (open, not primary) reports `agentStop` firing on subagent turns and stalling `/review`, so run `meta/canaries/agent-stop-delivery/` with the review fan-out before changing `boy-scout-check.ps1`.
 
 ### B-381 · `hooks.json` entries carry no `cwd`, so every hook depends on the host starting it in the repository root
 **Filed against:** v0.94.0 (2026-10-11)

@@ -13065,3 +13065,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   B-386 and B-387; batch 6 (§4 B7), the last, makes `scripts/metrics.ps1` count Vitest specs with their focus and skip forms, `new X(` for
   any `@Injectable`/`@Service` class, and `ts_strict` as true, false or null with TypeScript 6's strict default, and fixes three eval
   cases (`@Service()` as a root provider, the subscription case pinned to Angular 21 with zone.js, "HTTP interceptor").
+- **B-377** — CLOSED by measurement **2026-10-11** (`meta/host-certification.md`; 6 premium requests): Copilot CLI 1.0.95 still delivers a command
+  `userPromptSubmitted` hook's `additionalContext`, as a `<system_reminder>` appended to the prompt, although GitHub's hooks reference documents that
+  output as dropped (sentinel canary: 4/4 treatment sessions, in-session `sessionStart` and `postToolUse` controls, a clean no-hook control). The shipped
+  `route-prompt` text and a seeded Boy Scout queue sentinel reached the model on an installed `dist/dotnet`, so no matrix row becomes instructed-only and
+  nothing moves to `sessionStart`; B-380 is unblocked.
