@@ -3628,3 +3628,62 @@ invoke security-review first…")? H1: FG-MAIN in at least one T run.
 - Not shown in any outcome: interactive sessions, VS Code (1.139.1 here; `code chat` only opens a window, so its Copilot harness
   cannot be driven headlessly), other models, CLI versions other than 1.0.95, the Angular and monorepo carriers, Claude Code's own
   pass, the quality of either review.
+
+## B-348 results — 2026-10-11 (hand-written; as pre-registered at f00d3e1d)
+
+Copilot CLI 1.0.95 (`copilotVersion` in all 29 sessions), claude-sonnet-5 (every main-agent call), `-p`, flags and child environment as
+frozen. Subject `<scratch>\b348\base`; control and stage-2 bases as frozen (stage 2: v0.93.0's carrier and overlay lines, `route-prompt.ps1`
+equal to v0.93.0's blob, the last commit amended under the same message so `session-start` lists the same commits). Evidence per run (events,
+debug log, usage, clone status and diff) under `<scratch>\b348\evidence`; sessions `b3480000-0000-4000-8000-0000000<cc><rrr>`. No run needed a
+resume or a repeat; `~\.copilot\config.json` was byte-identical before and after every run, with `trustedFolders` empty.
+
+| cell | valid | R | mechanism per run (main-agent event: `task` agent_type, or `skill` then `skill.invoked`) | FG-MAIN |
+|---|---|---|---|---|
+| P-B (K + "call the task tool with agent_type security-review") | 2/2 | 2 | BUILTIN: 001 #183, 002 #173 (`subagent.selected` "Security Review Agent") | positive control |
+| T-K (refund: reminder and rule) | 6/6 | 6 | PROJECT-AGENT `security-auditor`: 001 #211, 004 #169, 005 #181; BUILTIN: 002 #288, 003 #149, 006 #419 | **3** |
+| T-N (shared key: rule only) | 6/6 | 0 | NONE ×6 | 0 |
+| P (K + "run the security-review skill from this repository") | 3/3 | 3 | BUILTIN: 001 #187; PROJECT-SKILL: 002 #246→#252, 003 #108→#114 | not scored (1) |
+| RAIL (K without the pre-approval) | 3/3 | 3 | PROJECT-AGENT: 001 #179; PROJECT-SKILL: 002 #238→#244, 003 #163→#169 | not scored (0) |
+| C-K (K, nothing installed) | 3/3 | 0 | NONE ×3 | — |
+| S2-K (K, v0.93.0's wording) | 6/6 | 6 | BUILTIN: 001 #169, 004 #169, 005 #145, 006 #171; PROJECT-SKILL: 002 #167→#173; PROJECT-AGENT: 003 #209 | **4** |
+
+- Reading as fixed: BUILTIN-REACHED. FG-MAIN in 3 of 12 valid T runs (3 of 6 T-K, 0 of 6 T-N), R 6 of 12; the built-in signature is readable
+  with the framework installed (P-B 2/2); futility did not apply. Stage 2: FG-MAIN 4 of 6 under v0.93.0's wording against 3 of 6 under the
+  shipped one, two-sided Fisher exact p = 1.0, so the shipped wording is neither shown worse (WSD-111 is not reopened) nor shown better. No
+  difference is shown: the wording stays, it is marked (the Copilot CLI cell of the Security pass row in `docs/enforcement-surfaces.md` and
+  the CHANGELOGs), and the maintainer decides what to measure next (B-388).
+- How the built-in was reached: each FG-MAIN run called it as the required pass after build and tests, with no earlier skill load, file read
+  or `security-auditor` call (T-K-002 #287: "Now the required security review pass for this money/state-sensitive surface."). P-001 asked
+  the built-in agent to "Run this repository's security-review skill/process" (#187): the `task` agent type has the skill's name. That
+  built-in subagent then loaded the project skill itself (#200, #206); no built-in subagent in T-K or S2-K touched it. T-K-006's
+  final report (#552) says the review ran "via the `security-auditor` subagent", and S2-K-006's (#218) "`/security-review`
+  (security-auditor)"; each run's only review was the built-in agent (#419 and #424; #171 and #176).
+- C-K: without the framework the same prompt ran no pass in 3 of 3, so the built-in runs in T-K were the pass the framework asked for.
+- T-N: no pass in 6 of 6, all NONE; `route-prompt`'s sensitive pattern did not match this prompt, so it ran under the always-loaded rule
+  alone. T-N-005's reasoning (#9) proceeds "even though this touches auth, a security-sensitive surface that would normally warrant a
+  security review given the framework rules". Adherence entry: B-389.
+- No BUILTIN-INSIDE-SKILL: each of the five project-skill loads, all through `.agents\skills\security-review\SKILL.md`, dispatched
+  `security-auditor` (P-002 #338, P-003 #160, RAIL-002 #304, RAIL-003 #275, S2-K-002 #279).
+- RAIL side check: DEPARTS 3 of 3. Each run stated a plan and then wrote code (first writes #155, #198, #139), citing the host's `-p` system
+  prompt, which says "You are running in non-interactive mode … Do not stop to ask questions or request confirmation - make reasonable
+  assumptions and proceed autonomously." (RAIL-001 #154, RAIL-002 #187, RAIL-003 #138), so `-p` cannot examine the plan gate. REJECTS 0 of 3;
+  no installed run (0 of 26) called the injected context a prompt injection, untrusted or something to ignore. P-B-001's reasoning (#9) ranks
+  the prompt's explicit request above "the system reminder"; both readers read that as precedence, not rejection. All three RAIL runs ran
+  this framework's review. B-377's "prompt injection" reading did not recur with ordinary wording, so no entry is filed.
+- Recorded, not scored: `route-prompt` also ran on the prompts the agent gave its subagents: 33 of 44 subagent prompts in installed runs
+  carried the security overlay (all 20 review subagents) and 10 the plan gate; every subagent completed (B-390). `agentStop` fired in every
+  installed run (1 to 5 times), as B-377 saw (B-380). `SECURITY_FINDINGS.md` changed in T-K-003 to -005, P-001 to -003, S2-K-001 and
+  S2-K-004; in two of the three FG-MAIN runs (T-K-002, T-K-006) the built-in reported a high finding, fixed in the same turn, and no row
+  was written. `review-scope.ps1` ran only after a main-agent project-skill load.
+- Readers: reader 2, a fresh session given only the evidence and this pre-registration, matched reader 1's class for every run (14 of 14
+  stage-1 runs; 15 of 15 others). It accepted stage 2's validity substitution and flagged two readings that reader 1 shares: the RAIL
+  clause "says it sets it aside", read literally, would also catch each RAIL run's statement that the non-interactive session overrides
+  the wait, so both class those runs DEPARTS on the host's instruction; and the frozen main-agent definitions leave P-001 BUILTIN although
+  its built-in subagent then loaded the project skill.
+- Deviations: the CLI was re-pinned from 1.0.89 to 1.0.95 before the freeze (stated in the pre-registration). Stage 2's validity used
+  v0.93.0's phrases in place of the frozen item's 0.94.0 phrase, which a v0.93.0 base cannot carry. `git status` also lists untracked build
+  output, ignored when judging a change under `src/`.
+- Spend: 29 premium requests (1 per run), under both stops (P-B, T and P: 17 of 20; all: 29 of 38); 1,375.1 AI credits; 2 h 3 min of runs.
+- Not shown: interactive sessions; VS Code (1.139.1 here, with its built-in `copilot` extension; `code chat` only opens a window, so its
+  Copilot harness was not driven, and B-348 stays open for it); other models; CLI versions other than 1.0.95; the Angular and monorepo
+  carriers; Claude Code's own pass; the quality of either review.

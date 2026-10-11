@@ -13,6 +13,16 @@
 
 ## 0.95.0 — Unreleased
 
+B-348 (2026-10-11; pre-registered at f00d3e1d, results in `meta/eval-results.md`): the agent's own security pass on Copilot CLI 1.0.95
+under 0.94.0's security-pass wording, shipped unmeasured (WSD-111); `-p` on one bootstrapped dotnet fixture, the change approved in
+advance, claude-sonnet-5, two readers. Refund prompt (reminder plus rule), 6 runs: a pass every time, the CLI's built-in `security-review`
+task agent in 3 (one final report naming `security-auditor`) and this framework's `security-auditor` in 3; shared-key prompt (rule only;
+`route-prompt`'s pattern missed it), 6 runs: no pass. Built-in positive control 2/2; asked by name, the `.agents/skills` wrapper 2/3 and
+the built-in 1/3; nothing installed, no pass 3/3; v0.93.0's wording, the built-in 4 of 6 (two-sided Fisher p = 1.0). The reading is
+BUILTIN-REACHED with no difference shown between the wordings, so the wording stays and is marked in the Copilot CLI cell of
+`docs/enforcement-surfaces.md`'s Security pass row and the stack CHANGELOGs. Follow-ups: B-388 (route the pass to this framework's review;
+a maintainer decision on the candidate) and B-389 (no pass without the reminder). The VS Code half stays open in B-348. 29 premium requests.
+
 B-385 (maintainer cost report from an Opus `/bootstrap`, 2026-10-11): `/bootstrap` dispatches one `bootstrap-pass` worker per analysis pass, 8 for
 .NET, 7 for Angular and up to 17 in the monorepo stack, and the worker had `model: inherit`, so an Opus session ran every worker on Opus. Each worker
 also read all of `bootstrap.md` (45 to 60 KB by stack) when only the pre-flight block (about 5 KB) and its own pass concern it. Every `/bootstrap`

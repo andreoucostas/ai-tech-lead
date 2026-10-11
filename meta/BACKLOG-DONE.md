@@ -13075,3 +13075,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   `COPILOT_ALLOW_ALL=1` do not), and skills, custom agents and `AGENTS.md` load without either, so the runner's environment and `hooksLoaded=` stand.
   `-p` still dispatches no slash command: `/env`, `/review` and `/security-review` reached the model as text, which ran the built-in security agent in
   the control and the project's `.agents/skills` wrapper in the treatment, so B-348 cannot use `-p '/security-review'` to examine the CLI's dispatch.
+- **B-390** — CLOSED by decision **2026-10-11** (WSD-106), never filed. On Copilot CLI 1.0.95 `route-prompt` also runs on the prompts the agent
+  gives its subagents: in B-348's 26 installed runs, 33 of 44 subagent prompts carried the security overlay (all 20 review subagents) and 10 the
+  plan gate; every subagent completed. Reopen on a field report of a subagent stalled or derailed by the injected rails.

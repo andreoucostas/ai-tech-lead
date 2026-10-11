@@ -136,6 +136,18 @@
   HTTP interceptor, not the class-based `HttpInterceptor`. An update refreshes the file; you do not need to do
   anything.
 
+- **On Copilot CLI, the security pass the agent runs by itself can still be the CLI's built-in review, not this
+  framework's.** 0.94.0 changed the always-loaded rule and the per-prompt security reminder to name this framework's
+  `security-review` skill and to say it is not the CLI's built-in agent, without measuring the change. We have now
+  measured it on Copilot CLI 1.0.95, on one .NET repository with the .NET distribution's rules, in non-interactive runs
+  where the change was approved in advance. When the reminder fired, the agent ran a security pass every time, but in 3
+  of 6 runs it ran the CLI's Security Review Agent instead of this framework's review (with 0.93.0's wording, 4 of 6),
+  and one of those summaries said this framework's `security-auditor` had run. On a sensitive change the reminder's
+  keywords missed, it ran no pass in 6 of 6. Asked for "the security-review skill from this repository", it ran this
+  framework's skill in 2 of 3. `docs/enforcement-surfaces.md` now says so. Your distribution's rules carry the same
+  wording, not measured separately. The wording is unchanged for now; when a change on Copilot CLI needs this
+  framework's review, ask for it by name.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside
