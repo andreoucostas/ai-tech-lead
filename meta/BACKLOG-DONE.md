@@ -13070,3 +13070,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   output as dropped (sentinel canary: 4/4 treatment sessions, in-session `sessionStart` and `postToolUse` controls, a clean no-hook control). The shipped
   `route-prompt` text and a seeded Boy Scout queue sentinel reached the model on an installed `dist/dotnet`, so no matrix row becomes instructed-only and
   nothing moves to `sessionStart`; B-380 is unblocked.
+- **B-384** — CLOSED by measurement **2026-10-11** (`meta/host-certification.md`; 5.65 premium requests): on Copilot CLI 1.0.95 the eval runner's
+  `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` alone still loads repository hooks in `-p` (`COPILOT_ALLOW_ALL=true` does too; no variable and
+  `COPILOT_ALLOW_ALL=1` do not), and skills, custom agents and `AGENTS.md` load without either, so the runner's environment and `hooksLoaded=` stand.
+  `-p` still dispatches no slash command: `/env`, `/review` and `/security-review` reached the model as text, which ran the built-in security agent in
+  the control and the project's `.agents/skills` wrapper in the treatment, so B-348 cannot use `-p '/security-review'` to examine the CLI's dispatch.
