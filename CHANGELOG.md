@@ -130,6 +130,28 @@ consumer-owned. FRAMEWORK-CONTEXT's pitfall example drops Angular 14 (F11). Text
 always-loaded +291 characters (Angular) and +302 (monorepo), the carrier shrinking by 70 and 42. `bootstrap.md`,
 `rebootstrap.md`, the agents and the skills keep their 17+ pivots and version checks until batch 5.
 
+B-386, batch 5a of the 2026-10-09 Angular v21-v22 audit (§4 B5, the commands half; drafted by a Sonnet subagent in
+an isolated worktree, reviewed and verified here): the Angular and monorepo `bootstrap`, `rebootstrap`, `test` and
+`adopt` commands. Bootstrap's pre-flight records the Angular major and its defaults and reports a major below v21, or
+one out of support, as a finding (M9); the Conventions checklist gains Styling and SSR/Hydration and loses the "below
+17" pivot (M10); A1 records injection style and v22's `@Service()` (M6), `paramsInheritanceStrategy` (M9) and
+shared/core folders in standalone layouts (F6); A2 adds SignalStore and `resource`/`httpResource`/`rxResource` (F3);
+A3 judges OnPush per major (M1), records the change-detection provider before the polyfills and drops
+`provideExperimentalZonelessChangeDetection` (M3), inventories signal and decorator inputs, `model()`, `host` and
+control flow (M4), and detects Signal Forms without defaulting to them (M5); A5 records the `provideHttpClient(…)`
+features (M7); A6 checks currency against the v21 floor, separates the deprecated webpack builders, adds
+`strictTemplates`, names `@angular/animations` and `@angular/platform-browser-dynamic` (D5) and whether specs run
+zoned (M3); 3d reads any lockfile (F7), 3d-ter no longer assumes `environment*.ts` (F8), and 3f notes both file-naming
+styles (M12). Rebootstrap's delta is a new NgModule or `standalone: false` (F6), its A3 judges OnPush and zoneless
+status per major (M1), and its A6 rechecks default-dependent conventions on a changed major and lists the migration
+residue (M9). `test.md` uses `provideHttpClientTesting()` (D1), and the monorepo's applies `should … when …` only
+without a repository convention (F5). `adopt.md` recognises the `ng new --ai-config` instruction files and leaves its
+MCP settings in place (M13), and its toolchain list adds the Vitest config and `karma.conf.js` (F9). Not done:
+bootstrap's STOP list for the `--ai-config` files, which would send the agent to an `/adopt` that stops without the
+installer's adoption marker (the installer half stays closed as B-369); and the `bootstrap-pass` glob's `*.html`,
+which is batch 5b. Text only, unmeasured; on-demand command bodies only (`bootstrap.md` +2.5 KB per stack),
+always-loaded unchanged.
+
 ## 0.94.0 — 2026-10-08
 
 The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a

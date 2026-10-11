@@ -86,6 +86,25 @@
   detection (add `ChangeDetectionStrategy.OnPush` on v21; remove `Eager`/`Default` on v22+)", and name
   `input()`/`output()` beside `@Input`/`@Output` in item 11.
 
+- **`/bootstrap`, `/rebootstrap`, `/test` and `/adopt` now read Angular v21 and v22 correctly.** For the Angular
+  profile, `/bootstrap` records your Angular major and the defaults it carries, and reports a major below v21, or one
+  outside Angular's support window, as a finding instead of adjusting to "below 17". Its analysis judges OnPush per
+  major: on v22 the gap is a component pinned to `Eager` or `Default` without a reason, and the `Eager` that
+  `ng update` adds is listed for review, not taken as your convention. It also records the change-detection provider
+  before the polyfills, whether your specs run with zone.js, the injection style, signal and decorator inputs, `host`
+  bindings, built-in control flow, Signal Forms, `resource`/`httpResource`, NgRx SignalStore, the
+  `provideHttpClient(…)` features you use, `paramsInheritanceStrategy` (whose default changes on v22 without a
+  migration), `strictTemplates`, the deprecated webpack builders, and `@angular/animations` and
+  `@angular/platform-browser-dynamic`, deprecated packages an "outdated" check never flags. It reads any lockfile, not
+  only `package-lock.json`, and no longer assumes `environment*.ts` files. `/rebootstrap` checks OnPush and zoneless
+  status the same way; when your Angular major has changed, it rechecks every convention that depends on a default and
+  lists the upgrade residue for review. `/test` follows your repository's Angular test naming before falling back to
+  `should … when …`, and uses `provideHttpClientTesting()` in a new spec instead of the deprecated
+  `HttpClientTestingModule`. `/adopt` recognises the instruction files `ng new --ai-config` writes
+  (`.claude/CLAUDE.md`, `.gemini/GEMINI.md`, `.junie/guidelines.md`), leaves its MCP settings in place, and lists
+  `vitest.config.*` and `karma.conf.js` among the toolchain files. An update refreshes the commands; conventions
+  `/bootstrap` already recorded stay as they are until you run `/rebootstrap`.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside

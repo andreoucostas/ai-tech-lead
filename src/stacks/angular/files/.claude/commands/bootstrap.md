@@ -18,7 +18,7 @@ Before starting analysis:
 0. **Redirect to `/adopt` when adoption is pending.** If `.claude/adoption-pending.json` exists, STOP immediately: the installer detected pre-existing AI tooling that `/adopt` must consolidate (archive, provenance screen, and merge) — running `/bootstrap` here would silently discard that work. Tell the developer: "This repo has pre-existing AI tooling — type `/adopt` instead; it runs /bootstrap itself as its Phase 7." Likewise STOP if AI instruction artifacts are still live at their original paths (`.cursorrules`, `.cursor/rules/`, `.clinerules`, `.windsurfrules`, `.aider.conf.yml`, `GEMINI.md`) **and** `docs/pre-adoption/` does not exist. (When `/adopt` invokes this workflow in its Phase 7, both conditions have already been cleared by its Phase 3 — this guard does not fire.)
 1. **Locate the Git root and bound application-marker discovery** — run all generated paths and commands relative to the repository root. For Angular application markers, look no deeper than two project-container levels below it. Exclude `.git`, `node_modules`, `bower_components`, `vendor`, `bin`, `obj`, `dist`, `build`, `out`, `.next`, `.angular`, `.nx`, and `coverage`. Markers found in excluded generated or dependency content never select a profile. This Angular-only bootstrap does not run a warehouse classifier; use a warehouse-capable delivery for repository-wide warehouse classification. Do not require an Angular workspace merely because this distribution was selected.
 2. **Select the Angular profile only from evidence.** Within that bounded, excluded application-marker scope, select it only when `angular.json`; an Nx/project configuration with an exact-case Angular token in a plugin, executor, generator, schematic, or target-default field; or a `package.json` containing an exact-case `"@angular/core"` key under `dependencies`, `devDependencies`, `peerDependencies`, or `optionalDependencies` exists. A key/string elsewhere in the manifest is not evidence, and malformed/unreadable JSON is an incomplete scan rather than absence. If the profile is absent, report that no applicable Angular profile was found and **STOP**: do not dispatch passes, synthesize findings, populate artifacts, apply Angular defaults, or regenerate derived files.
-3. **Profile-specific pre-flight.** When the Angular profile is selected, locate its workspace root, read `package.json` for `@angular/core`, note whether it is 17+ (standalone default, signals, new control flow) or older, and inspect its configured build, test, and lint targets. Adjust conventions only from that evidence. If it is a monorepo (for example `apps/`), note the apps/libs and adjust generated paths.
+3. **Profile-specific pre-flight.** When the Angular profile is selected, locate its workspace root, read `package.json` for `@angular/core`, record the major and the defaults it carries (v21: zoneless change detection by default, and Vitest for new projects; v22: OnPush by default, the fetch HTTP backend, `strictTemplates` on), report a major below v21 or outside Angular's support window (angular.dev/reference/releases) as a finding, and inspect its configured build, test, and lint targets. Adjust conventions only from that evidence. If it is a monorepo (for example `apps/`), note the apps/libs and adjust generated paths.
 4. **Record executable commands from owned evidence.** Before discovery, require valid root `framework-ownership.json` and `framework-retirements.json`. Resolve every repository path cited directly or through a wrapper; normalize quoted paths, leading `./` or `.\`, and slash direction. A command whose resolved aggregate runner or direct leaf is `framework-owned/overwritten` or retired is framework evidence, not application-command evidence: do not run or record it; report framework checks separately. If an existing Verification Commands row names one, replace it as stale in this workflow (or flag `/rebootstrap` when encountered elsewhere). Inspect committed CI workflow/pipeline files, documented developer commands, checked-in scripts/Makefiles, and the selected profile's manifests/configuration. Record a row for each durable category: **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**. Each available row must give an exact root-relative command, its exact evidence path, and an execution policy; a manifest script may be recorded as its package-manager invocation. Mark migration/deploy `manual/CI-only` unless the exact invocation is evidenced as non-mutating validation/dry-run: inventory is not permission to mutate an environment. For a category with no applicable selected profile or no evidenced command, write `not available (no evidenced command)`. Never invent `ng`, a browser flag, lint, or any substitute command.
 5. **Check for existing configuration** — if `AGENTS.md` already has populated content (not just template defaults), back up the existing conventions section and merge your findings with what's already there rather than overwriting. Never touch `LEARNINGS.md` — it is append-only.
 6. **Large codebases** — if the selected Angular profile has more than 200 components, focus analysis on the most actively changed areas (check git log). Note which areas were analysed and which were skipped.
@@ -43,29 +43,30 @@ The pass definitions below are the source of truth the subagents read. Do not du
 
 ### A1: Module Architecture & Lazy Loading
 - NgModules vs standalone — split, consistency
+- Injection style — `inject()` vs constructor injection, split and consistency (on v22 `ng g service` emits `@Service()`, which takes no constructor injection)
 - Lazy vs eager routes — eager justifications
 - Barrel files (`index.ts`) — usage, circular-dep risk
-- Shared/core module boundaries — clarity
-- Routing — flat/nested, guards, resolvers
+- Shared/core boundaries — modules, or folders in a standalone layout — clarity
+- Routing — flat/nested, guards, resolvers, `paramsInheritanceStrategy` (its default becomes `'always'` on v22, with no migration)
 - Module-level circular dependencies
 
 ### A2: State Management
-- Approach — NgRx / NGXS / Akita / BehaviorSubjects / signals / mix
+- Approach — NgRx (Store or SignalStore) / NGXS / Akita / BehaviorSubjects / signals / mix
 - Local vs shared state — boundary clarity
 - Informal stores — services-with-BehaviorSubjects pattern
 - Prop drilling — through how many levels
-- Server state — caching, staleness, loading/error
+- Server state — caching, staleness, loading/error; `resource`/`httpResource`/`rxResource` (experimental on v21)
 - NgRx/similar — actions/reducers/effects/selectors structure or over-engineered
 
 ### A3: Component Design
 - Smart vs dumb — applied, consistent
-- OnPush coverage — gaps
-- Template complexity — heavy logic, deep nesting, complex expressions
+- OnPush coverage — on v21, a component without `ChangeDetectionStrategy.OnPush` is a gap; on v22+ an unset `changeDetection` already is OnPush, so a gap is a component pinned to `Eager` (21.2+) or the deprecated `Default` without a documented reason, and an `Eager` that `ng update` added is pending review, not a convention
+- Template complexity — heavy logic, deep nesting, complex expressions; built-in control flow (`@if`/`@for`/`@switch`) vs `*ngIf`/`*ngFor`/`*ngSwitch` (read `*.html` as well as `*.ts`)
 - God components
-- `@Input`/`@Output` patterns — anti-patterns
-- Forms: reactive or template-driven (or both); where validators live; whether any component is a custom form control, and how it participates (`NG_VALUE_ACCESSOR` provider vs injected `NgControl`)
+- Inputs and outputs — `input()`/`output()` vs `@Input`/`@Output`, `model()` use, and the `host` property vs `@HostBinding`/`@HostListener`: split, consistency, anti-patterns
+- Forms: reactive, template-driven or Signal Forms (`form()` imported from `@angular/forms/signals`; experimental on v21, stable on v22), or a mix; where validators live; whether any component is a custom form control, and how it participates (`NG_VALUE_ACCESSOR` provider vs injected `NgControl`; `FormValueControl`/`FormCheckboxControl` under Signal Forms)
 - Lifecycle hook misuse
-- Signals adoption (Angular 16+); zoneless change detection (`provideZonelessChangeDetection`, earlier `provideExperimentalZonelessChangeDetection`; Angular 21+ is zoneless unless `provideZoneChangeDetection` is called) and whether `angular.json` still lists `zone.js` in `polyfills`; `@defer` blocks and their triggers
+- Signals adoption; zoneless change detection: the change-detection provider first (`provideZonelessChangeDetection`, or `provideZoneChangeDetection`; Angular 21+ is zoneless unless `provideZoneChangeDetection` is called), then whether the build target's `polyfills` in `angular.json` still list `zone.js`; `@defer` blocks and their triggers
 
 ### A4: RxJS Hygiene
 - Subscription cleanup pattern — takeUntil / takeUntilDestroyed / async pipe / DestroyRef
@@ -78,6 +79,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 
 ### A5: API Layer & Error Handling
 - HTTP service organisation
+- HTTP provider setup — the `provideHttpClient(…)` features in use, such as `withInterceptors`, `withFetch` and `withXhr`; on v22 fetch is the default backend, `withFetch` is deprecated, upload progress needs `withXhr`, and JSONP is deprecated from 22.1
 - Interceptors — auth/error/loading/retry coverage
 - Request/response typing — interfaces vs `any`
 - Error handling — global/per-service/inconsistent
@@ -86,12 +88,13 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - Environment config — API URLs/keys
 
 ### A6: Build, Testing & Code Quality
-- Angular version currency
-- `angular.json` — unusual config, missing optimisation flags
-- tsconfig — strict, permissive overrides
-- `package.json` — outdated/deprecated/redundant
+- Angular version currency — the major against the v21 floor and Angular's support window (angular.dev/reference/releases)
+- `angular.json` — builders (the webpack `:browser` builder and its related builders are deprecated; `@angular/build:application` and `:browser-esbuild` are not), unusual config, missing optimisation flags
+- tsconfig — `strict` and `strictTemplates`, permissive overrides
+- `package.json` — outdated/deprecated/redundant; `@angular/animations` (deprecated in 20.2, removal targeted for v23) and `@angular/platform-browser-dynamic` (deprecated in 20.0) track the current major, so an "outdated" check never flags them
 - Bundle size — obvious bloat
 - Test framework (Karma/Jasmine, Jest, Vitest, Cypress, Playwright)
+- Whether specs run zoned — zone.js loaded in the test build (the test target's polyfills, or v22 Vitest runtime detection), or overridden by `main` / `providersFile` / `setupFiles`
 - If no spec files exist, state that as this pass's primary finding — do not silently return it as "coverage gaps"
 - Coverage gaps
 - Test quality — behaviour vs implementation
@@ -163,7 +166,7 @@ Code establishes implemented surfaces, not product intent or actual user behavio
 
 - **Codebase Context**: what the selected Angular application or library does, its users, domain concepts, and critical journeys
 - **Repository Structure**: actual Angular workspace/layout with module dependency diagram
-- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Angular Version, Architecture, Component Design, Forms, State Management, RxJS, API/HTTP, Typing, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. End `Conventions > Testing` with a one-line target test shape for this repo (unit-dense, honeycomb, trophy-shaped, or another shape from the `docs/defaults.md` heuristic), adapted to what A1–A6 found. If Angular version is below 17, adjust conventions to match what's available. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
+- **Conventions**: the rules this codebase actually follows (or should follow), with rationale. Use the subsection structure from `docs/defaults.md` (Angular Version, Architecture, Component Design, Forms, State Management, RxJS, API/HTTP, Typing, Styling, SSR/Hydration, Testing) as a starting checklist; record observed reality, deviating from defaults where the codebase does. End `Conventions > Testing` with a one-line target test shape for this repo (unit-dense, honeycomb, trophy-shaped, or another shape from the `docs/defaults.md` heuristic), adapted to what A1–A6 found. If the Angular major is below v21, the defaults do not cover it: record observed reality only. **Delete the `BOOTSTRAP_PENDING` HTML comment and the "_Not yet populated_" placeholder line** when this section is filled in.
 - **Architecture Decisions**: index every significant decision found (intentional or accidental) as a one-line entry here; write the full Decision → Context → Consequences → Review notes to `docs/architecture-decisions.md` (create it if missing). Keeping detail out of AGENTS.md holds it within the token budget — it loads on nearly every turn.
 - **Common Tasks**: do NOT write recipes inline in AGENTS.md. The framework-shipped skills are an applicability-gated delivery-profile superset: keep them byte-stable even when their technology or recipe is absent. Do not delete, rewrite, move, or replace a shipped skill merely because it does not apply. Requested A7 discovery may create only the new review drafts defined in 3a-bis; it never changes an existing project skill or its ownership. The framework ships no recipe for adding an component, service, route, or store: a recipe for an operation this repository repeats is a project skill drafted under 3a-bis. Never append repository-specific evidence to a framework-shipped skill. Update the Common Tasks bullet list in AGENTS.md to advertise only skills applicable to the selected Angular profile and evidenced constructs — one terse line per skill, no USE-FOR/DO-NOT-USE-FOR trigger blocks. Dormant shipped skills remain installed and rely on their applicability gates. `.claude/disabled-skills/` is only for an explicit maintainer decision recorded by `/rebootstrap`, never automatic profile selection.
 
@@ -307,7 +310,7 @@ If A6 found no spec files, write one Severity-High Testing entry whose recommend
 
 ### 3d: Populate FRAMEWORK-CONTEXT.md > Detected Framework Packages
 
-Read `package.json` (and `package-lock.json` if present for resolved versions). For each entry in `dependencies` and `peerDependencies`, check whether the package is part of the team's shared framework.
+Read `package.json` (and the lockfile — npm, yarn, pnpm or bun — if present for resolved versions). For each entry in `dependencies` and `peerDependencies`, check whether the package is part of the team's shared framework.
 
 **How to identify framework packages**: read the existing `FRAMEWORK-CONTEXT.md > Shared Libraries` section. Any package whose name matches an entry there is a framework package. If `Shared Libraries` is empty or template, fall back to a heuristic: packages whose name starts with the org/team scope (look at the most common scope among `dependencies` — e.g. `@acme/*`, `@myorg/*`).
 
@@ -372,7 +375,7 @@ The five context sections — Production Architecture, Shared Libraries, Multi-T
 
 **Per-section evidence to gather:**
 
-- **Production Architecture** — classify the repo: application vs publishable library (`ng-packagr` targets in `angular.json` / Nx project config). Consumes: API base URLs and auth provider config in `environment*.ts` (or a runtime config fetch), backend(s) it talks to. Exposes: the route surface / app shell, published entry points for libraries. One paragraph.
+- **Production Architecture** — classify the repo: application vs publishable library (`ng-packagr` targets in `angular.json` / Nx project config). Consumes: API base URLs and auth provider config in the committed configuration the production build loads (`environment*.ts` where it exists, or a runtime config fetch), backend(s) it talks to. Exposes: the route surface / app shell, published entry points for libraries. One paragraph.
 - **Shared Libraries** — one entry per package detected in 3d, built from this repo's usage: pinned version, the components / directives / providers / services actually imported (Grep the import sites), where it is configured (e.g. `provideX(...)` in the app config). **Heading honesty**: title the API list `Consumed API surface (observed in this repo)` — never `Public API surface (latest)` — and end each entry with: `Purpose, pitfalls, and the full surface need the library's source repo or owner.` If 3d found no framework packages, apply ground rule 4.
 - **Multi-Tenancy Conventions** — Grep for tenant signals: subdomain/path tenant resolution, a tenant header set in an interceptor, tenant-scoped theming or feature flags, tenant guards/resolvers, `Tenant*` types. Document the observed resolution and scoping pattern, with file references.
 - **Dashboard Integration Contracts** — control-plane registration calls, embedded-shell or `postMessage` contracts, heartbeat/health pings, required metadata in configuration.
@@ -403,10 +406,11 @@ finding's evidence kind and paths or globs:
 
 A claim's text is one whole statement: a list item under those headings, wrapped lines joined, as an
 `UNCLAIMED` line prints it; Record refuses a fragment and names the statement to copy. Evidence is
-the repository-relative paths or `*`/`**`/`?` globs the finding rests on. Its kind is `scoped` (true
-of the files named), `universal` (an "all X do Y" statement: the glob covering X) or `absence` (a
-"no X exists" statement: the glob that matches nothing); `/rebootstrap` rechecks the last two after
-any change.
+the repository-relative paths or `*`/`**`/`?` globs the finding rests on. Both Angular naming
+styles, `foo.component.ts` and the newer `foo.ts`, coexist in v21-v22 repositories, so glob what the
+finding read, not one suffix. Its kind is `scoped` (true of the files named), `universal` (an "all X
+do Y" statement: the glob covering X) or `absence` (a "no X exists" statement: the glob that matches
+nothing); `/rebootstrap` rechecks the last two after any change.
 
 Run `pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Record -ClaimsPath <claims file>`
 (Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File` with the

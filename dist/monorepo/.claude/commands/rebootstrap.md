@@ -113,13 +113,13 @@ Only if the codebase shows financial-domain signals (see the `#### A7:` gate in 
 ### Angular passes (only when the Angular profile is selected)
 
 #### A1: Module Architecture & Lazy Loading
-Re-examine module layout, lazy loading strategy, barrel files, shared/core module contents, routing structure, and circular dependencies. Note any new modules, migrated NgModules, or new standalone components introduced.
+Re-examine module layout, lazy loading strategy, barrel files, shared/core module or folder contents, routing structure, and circular dependencies. Note any new NgModules, migrated NgModules, or `standalone: false` components introduced.
 
 #### A2: State Management
 Re-examine what approach is used, whether local vs shared state boundaries are clear, and how server state is handled. Note any new stores, signals adoption, or BehaviorSubject patterns introduced.
 
 #### A3: Component Design
-Re-examine smart/dumb separation, OnPush coverage, template complexity, component size, and lifecycle hook usage. Note any new god components or missing OnPush applied.
+Re-examine smart/dumb separation, OnPush coverage per major as `/bootstrap`'s Component Design pass states it (on v21 a component without `ChangeDetectionStrategy.OnPush`; on v22+ a component pinned to `Eager` or the deprecated `Default` without a documented reason, an `Eager` that `ng update` added being pending review), zoneless status (the change-detection provider, then whether the build `polyfills` still list `zone.js`), template complexity, component size, and lifecycle hook usage. Note any new god components, and any change in OnPush coverage.
 
 #### A4: RxJS Hygiene
 Re-examine subscription management, nested subscribes, async pipe usage, operator choices, and error handling. Flag any new memory leak risks.
@@ -128,7 +128,7 @@ Re-examine subscription management, nested subscribes, async pipe usage, operato
 Re-examine service structure, interceptors, request/response typing, error handling strategy, and environment config. Note any new interceptors, new services, or widening use of `any`.
 
 #### A6: Build, Testing & Code Quality
-Re-examine Angular version, tsconfig strictness, package.json dependencies, test coverage, and code quality. Flag outdated packages and any newly introduced `any` or console.log patterns.
+Re-examine Angular version, tsconfig strictness, package.json dependencies, test coverage, and code quality. Flag outdated packages and any newly introduced `any` or console.log patterns. Read the `@angular/core` major whatever the scope: when it differs from the one `AGENTS.md > Conventions > Angular Version` records, re-check every convention that depends on a default, as `/bootstrap` pre-flight 3 lists them, and list the migration residue (`Eager`, `strictTemplates: false`, `withXhr`, `withNoIncrementalHydration`) for review rather than as conventions.
 
 ### Warehouse-SQL passes (only when the warehouse-SQL profile is selected)
 

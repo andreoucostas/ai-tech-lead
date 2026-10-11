@@ -30,7 +30,7 @@ optimise for a coverage number.
 
 ### Step 3 — Write tests
 For each target:
-- **Service tests**: where repository evidence shows Angular HTTP services, use its established HTTP-test approach (for example `HttpClientTestingModule` / `provideHttpClientTesting`). Verify request URLs, methods, and response handling.
+- **Service tests**: where repository evidence shows Angular HTTP services, use its established HTTP-test approach. With Angular's testing API, a new spec uses `provideHttpClientTesting()` (after `provideHttpClient(…)` only when the test needs an HTTP feature); the deprecated `HttpClientTestingModule` stays only in a spec that already uses it. Verify request URLs, methods, and response handling.
 - **Component tests**: where repository evidence shows Angular components, use its established component-test approach (for example `TestBed`) to test template rendering, input/output binding, and user interactions.
 - **Pipe/utility tests**: where applicable, use straightforward input/output tests.
 - Write the smallest risk-relevant set: the principal behavior plus only consequential error, edge,

@@ -64,12 +64,15 @@ Apply the Phase-0 protected set before adding any live match to the inventory. A
 
 ### 1a. Other AI agent instruction files
 Look for these at the repo root and in standard locations:
-- `CLAUDE.md` (Claude Code) — likely main merge source
+- `CLAUDE.md` or `.claude/CLAUDE.md` (Claude Code) — likely main merge source
 - `AGENTS.md` (generic agent instructions) — likely main merge source
-- `GEMINI.md` (Gemini)
+- `GEMINI.md` or `.gemini/GEMINI.md` (Gemini)
 - `.clinerules` (Cline)
 - `.windsurfrules` or `.windsurf/rules/*` (Windsurf)
+- `.junie/guidelines.md` (JetBrains Junie)
 - `.roomodes` (Roo)
+
+`ng new --ai-config` writes `.claude/CLAUDE.md`, `.gemini/GEMINI.md`, `.junie/guidelines.md` and `.windsurf/rules/guidelines.md` and, on v22, MCP settings (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.codex/config.toml`, `.gemini/settings.json`). The four instruction files hold Angular's own version-specific rules, not evidence of this team's conventions: screen each like any other candidate. The MCP settings are tool settings, not instructions: record their paths, leave them in place, and never merge or archive them.
 
 ### 1a-bis. Installer-archived originals
 If `.claude/adoption-pending.json` lists `archivedOriginals`, treat each file already under `docs/pre-adoption/` as a discovered merge candidate at its **original** path (the marker records the mapping). The one exception is a file one developer had gitignored: its `archiveIntegrity` entry records `provenance: untracked` and either `docs/pre-adoption/.gitignore` holds the line `/<originalPath>` or `git status --porcelain --ignored -- ":(literal)<originalPath>"` starts with `!!`. Record its path only, never open, screen, quote or merge it, and list it in the Phase 8 report; the developer can merge it by hand. A tracked original stays a merge candidate even when a rule such as `docs/` ignores its archive path. They skip Phase 3 (already archived) but go through the same safety screen and Phase 4 merge as everything else. Screen each at its recorded `archiveIntegrity` `provenanceRevision` and `originalPath`, not at the post-install HEAD; a `provenance` of `unavailable` or `untracked` is an examination limit to disclose, never a trust or corruption finding. Never rewrite, normalize, renumber, or re-hash an already-archived original — the normalized result belongs only in the Phase 4 proposal/diff. Exception: an archived `AGENTS.md` or `CLAUDE.md` that still contains the `BOOTSTRAP_PENDING` marker is just an unused framework template — list it in the inventory, but it has no content to merge.
@@ -116,7 +119,7 @@ require a human authority choice. Never summarize the archived original into AGE
 - `docs/tech-debt/*`
 
 ### 1h. Toolchain config (referenced, not merged)
-- `.editorconfig`, `Directory.Build.props`, Roslyn analyser config; `angular.json`, `tsconfig.json`, `eslint.config.js` / `.eslintrc*`, `.prettierrc`, `stylelint.config.js`
+- `.editorconfig`, `Directory.Build.props`, Roslyn analyser config; `angular.json`, `tsconfig.json`, `eslint.config.js` / `.eslintrc*`, `.prettierrc`, `stylelint.config.js`, `vitest.config.*`, `karma.conf.js`
 
 Note their existence so `AGENTS.md` can reference them under the `.editorconfig & Analysers` (.NET) and `Angular Version & Tooling` (Angular) subsections. Do not merge their content.
 

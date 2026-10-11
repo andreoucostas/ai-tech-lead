@@ -747,13 +747,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 41242,
-          "tok": 10310
+          "chars": 41902,
+          "tok": 10476
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 45915,
-          "tok": 11479
+          "chars": 48425,
+          "tok": 12106
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -782,8 +782,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 19236,
-          "tok": 4809
+          "chars": 20015,
+          "tok": 5004
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -802,8 +802,8 @@
         },
         {
           "path": ".claude/commands/test.md#body",
-          "chars": 3486,
-          "tok": 872
+          "chars": 3649,
+          "tok": 912
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
@@ -1161,13 +1161,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 42221,
-          "tok": 10555
+          "chars": 42881,
+          "tok": 10720
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 60810,
-          "tok": 15202
+          "chars": 63415,
+          "tok": 15854
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1196,8 +1196,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 22602,
-          "tok": 5650
+          "chars": 23381,
+          "tok": 5845
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1216,8 +1216,8 @@
         },
         {
           "path": ".claude/commands/test.md#body",
-          "chars": 4435,
-          "tok": 1109
+          "chars": 4642,
+          "tok": 1160
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",

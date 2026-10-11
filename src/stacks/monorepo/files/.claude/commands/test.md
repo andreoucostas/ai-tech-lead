@@ -25,7 +25,7 @@ optimise for a coverage number.
 ### Step 2 — Follow project patterns
 - Match the existing test project/file structure and naming conventions of the stack under test
 - Use the same test framework and assertion style as existing tests
-- Follow that stack's naming convention — .NET: mirror the repo, or use `MethodName_Scenario_ExpectedResult` if none; Angular: `should [expected behavior] when [condition]`
+- Follow that stack's naming convention — .NET: mirror the repo, or use `MethodName_Scenario_ExpectedResult` if none; Angular: mirror the repo, or use `should [expected behavior] when [condition]` if none
 - Use the same mocking approach as the rest of the codebase
 
 ### Step 3 — Write tests
@@ -36,7 +36,7 @@ For each target, following the stack under test:
 - **Integration tests**: where repository evidence shows an ASP.NET API, use its established integration-test approach (for example `WebApplicationFactory`) to test the full request/response cycle. Otherwise use the repository's documented integration boundary; do not invent one.
 
 **Angular (only where repository evidence proves it):**
-- **Service tests**: mirror the repository's established HTTP-test setup (for example `provideHttpClientTesting` where evidenced). Verify request URLs, methods, and response handling.
+- **Service tests**: mirror the repository's established HTTP-test setup. With Angular's testing API, a new spec uses `provideHttpClientTesting()` (after `provideHttpClient(…)` only when the test needs an HTTP feature); the deprecated `HttpClientTestingModule` stays only in a spec that already uses it. Verify request URLs, methods, and response handling.
 - **Component tests**: mirror the repository's established component-test setup (for example `TestBed` where evidenced). Test observable rendering and user interactions; use component harnesses where already available.
 - **Pipe/utility tests**: pure function tests — straightforward input/output.
 
