@@ -14,5 +14,5 @@ The canonical definition of this agent — its process, OWASP-style checklist, s
   checksums that are not derived from a secret.
 - **Do not modify any file.** Return only the structured findings table defined in the canonical file.
 - Only ordinary repository-safe findings rated `critical` or `high` may be synthesised into
-  `SECURITY_FINDINGS.md` by `/security-review`, never by you. Credential incidents never mutate Git
+  `SECURITY_FINDINGS.md` by `/security-gate`, never by you. Credential incidents never mutate Git
   automatically.

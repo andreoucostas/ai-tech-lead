@@ -3840,3 +3840,31 @@ the built-in? H1: FG-MAIN in at least one run.
 - Stop: 10 premium requests in all, summed before each run from the usage files; a run that would start at or above it is not started (CANNOT-EXAMINE, spend).
 - Not shown in any outcome: interactive sessions, VS Code, other models and CLI versions, prompts other than K, the Angular and monorepo carriers, Claude Code's
   own pass, which review is better.
+
+## B-388 results — 2026-10-11 (hand-written; as pre-registered at ac9bef70)
+
+Copilot CLI 1.0.95 (`copilotVersion` in all 6 sessions), claude-sonnet-5 (every main-agent call; the CLI's own search subagent ran on `copilot-search-a`
+in T-K-001, -005 and -006), `-p`, flags and child environment as frozen. Subject as frozen. Evidence per run (events, debug log, usage, clone status and
+diff) under `<scratch>\b388\evidence`; sessions `b3880000-0000-4000-8000-000000031<rrr>`. All 6 runs were valid at the first attempt, none needed a resume
+or a repeat, and `~\.copilot\config.json` was byte-identical before and after every run, with `trustedFolders` empty.
+
+| cell | valid | R | mechanism per run (main-agent event: `skill` then `skill.invoked`, or `task` agent_type) | FG-MAIN |
+|---|---|---|---|---|
+| T-K, renamed `security-gate` (this cell) | 6/6 | 6 | PROJECT-SKILL, then `security-auditor`: 001 #187→#193 (#239), 002 #72→#78 (#134), 003 #90→#96 (#156), 004 #96→#102 (#172); PROJECT-AGENT `security-auditor`: 005 #207, 006 #135 | **0** |
+| T-K, old name `security-review` (B-348 at f00d3e1d) | 6/6 | 6 | PROJECT-AGENT ×3, BUILTIN ×3 | 3 |
+
+- Reading as fixed: NOT REACHED. FG-MAIN 0 of 6, against the old name's pooled refund runs (B-348's T-K and S2-K, 7 of 12) two-sided Fisher exact
+  p = 0.038, so the rename is shown to lower the rate; against T-K alone (3 of 6) p = 0.18, not shown; 0 of 6 bounds the per-pass FG-MAIN rate below 39%.
+  R 6 of 6, as in B-348's T-K. No main BUILTIN and no built-in subagent event in any run, so no BUILTIN-INSIDE-SKILL; no main `skill` call named
+  `security-review`, and no main assistant message mentioned the old name. The rename stays, B-388 is done, and `meta/host-certification.md` has its row.
+- How the pass ran: each of the four skill loads came through `.agents\skills\security-gate\SKILL.md` (source `project`) and then viewed
+  `.claude\commands\security-gate.md` and ran `review-scope.ps1` before dispatching `security-auditor`; in 005 and 006 the agent dispatched
+  `security-auditor` directly. Each final report named the review that ran (T-K-003: "Security review (`security-gate` skill, per the money-sensitive
+  overlay)"; T-K-005: "ran `security-auditor`").
+- Recorded, not scored: the overlay reached 7 of 9 subagent prompts (all 6 `security-auditor` prompts); `SECURITY_FINDINGS.md` changed in T-K-001 and
+  -002; no main view of `docs/enforcement-surfaces.md` or a CHANGELOG; no main assistant text called the injected context a prompt injection, untrusted
+  or something to ignore; `agentStop` fired 2 or 3 times per run.
+- Subject check: before the work commit, every framework-owned file in the base except `docs/enforcement-surfaces.md` (which gains this result) equals
+  the `dist/dotnet` blob that commit carries; `scripts/install.ps1`, which does not install, changed after the freeze in its messages only.
+- Spend: 6 premium requests (1 per run), under the stop of 10; 370.1 AI credits; 33 minutes of runs.
+- Not shown: as pre-registered.

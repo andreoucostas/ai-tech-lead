@@ -98,7 +98,7 @@ $railsSecurity = @'
 ## Security-sensitive surface detected
 
 # @stack:sec-intro
-1. Run this repository's security-review skill (.claude/commands/security-review.md; on Copilot CLI, not the CLI's built-in security agent) or its security-auditor agent on the diff before presenting it as complete — do not self-certify.
+1. Run this repository's security-gate skill (.claude/commands/security-gate.md; on Copilot CLI, not the CLI's built-in security agent) or its security-auditor agent on the diff before presenting it as complete — do not self-certify.
 # @stack:sec-items
 If this prompt does NOT actually touch a sensitive surface, say so and skip this overlay.
 '@

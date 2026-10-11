@@ -12,7 +12,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 1. **Skills load on demand.** Skills (add-tests, dependency-audit, enforce-standards, …, plus the project skills `/bootstrap` drafts) load their body *only when the task matches*. They don't sit in the prompt the way a monolithic CONVENTIONS doc would: you pay context for the one recipe in use, not all of them. What the framework as a whole adds to a task's cost depends on the task: on the Claude Code tasks we measured (September 2026, Sonnet), a run with it cost up to about 2.7 times as much as the same task without it.
 
-2. **Less context burned per review — subagents run isolated.** `/review` and `/security-review` fan out to subagents (solid-check, convention-check, bloat-radar, debt-radar, test-critic, security-auditor) that each run in their own context window. Their file-reading and intermediate reasoning never enter the main conversation — the parent gets one structured findings table per agent, not the full transcript.
+2. **Less context burned per review — subagents run isolated.** `/review` and `/security-gate` fan out to subagents (solid-check, convention-check, bloat-radar, debt-radar, test-critic, security-auditor) that each run in their own context window. Their file-reading and intermediate reasoning never enter the main conversation — the parent gets one structured findings table per agent, not the full transcript.
 
 3. **One command instead of hours hand-writing the AI's context.** `/bootstrap` (or brownfield `/adopt`) first proves an Angular profile from Git-root evidence, runs only the applicable module, state, component, RxJS, API, and verification passes, then writes `AGENTS.md` and `TECH_DEBT.md`. You stop hand-authoring AI context — it's derived from the real codebase.
 
@@ -28,7 +28,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 9. **Quality improves as a side effect of normal work.** Bug-fix cleanup serves the requested outcome, compatibility, or verification; requested refactoring remains allowed. The Trojan Horse principle bundles owned debt work into feature and fix tickets; a leanness counterweight stops needless abstraction. No dedicated debt sprints.
 
-10. **A security pass on request, and prompted on sensitive changes.** `/security-review` is an OWASP-style pass (XSS via unsafe HTML binding, auth/route-guard gaps, secrets in source, sensitive data in logs or responses) that you run on a change, or that the agent is prompted to run when a request touches auth, money or secrets; findings land in `SECURITY_FINDINGS.md` with remediation SLAs. How much it catches has not been measured.
+10. **A security pass on request, and prompted on sensitive changes.** `/security-gate` is an OWASP-style pass (XSS via unsafe HTML binding, auth/route-guard gaps, secrets in source, sensitive data in logs or responses) that you run on a change, or that the agent is prompted to run when a request touches auth, money or secrets; findings land in `SECURITY_FINDINGS.md` with remediation SLAs. How much it catches has not been measured.
 
 11. **One authored rule source, surface-dependent delivery.** `AGENTS.md` and the framework-rules carrier it points to (Claude Code imports both through `CLAUDE.md`) carry the framework rules where a client loads them; host support and hook enforcement still vary by surface.
 
@@ -109,7 +109,7 @@ Claude Code and Copilot (VS Code and Copilot CLI) use the same slash-command nam
 /fix [description]         — diagnose and fix a bug (test when a harness exists)
 /design [description]      — think through design before coding
 /review                    — review changes as a tech lead
-/security-review           — OWASP-style scan + senior judgement on auth, trust boundaries, secrets
+/security-gate             — OWASP-style scan + senior judgement on auth, trust boundaries, secrets
 /refactor [target]         — refactor with safety net
 /test [target]             — generate tests following project patterns
 /debt [area]               — find and fix tech debt
@@ -117,7 +117,7 @@ Claude Code and Copilot (VS Code and Copilot CLI) use the same slash-command nam
 /adopt                     — ingest existing AI-framework artifacts into this layout
 ```
 
-In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot** (VS Code and Copilot CLI), the same names are loaded as skills from `.agents/skills/` — thin wrappers that delegate to the canonical `.claude/commands/*.md` files, so there's a single source of truth per workflow. They replace the `.github/prompts/` files, which VS Code's Copilot harness does not load (VS Code 1.140, 2026-09-30). In **Copilot CLI**, `/review` and `/security-review` are also the CLI's own commands: the CLI turns either into an instruction to run its built-in review agent, and the model then chooses between that agent and this framework's file (observed on Copilot CLI 1.0.89, 2026-10-04); to run this framework's version there, ask for it by name, for example *"Run the security-review skill from this repository on my staged changes."*
+In **Claude Code**, these are loaded from `.claude/commands/`. In **Copilot** (VS Code and Copilot CLI), the same names are loaded as skills from `.agents/skills/` — thin wrappers that delegate to the canonical `.claude/commands/*.md` files, so there's a single source of truth per workflow. They replace the `.github/prompts/` files, which VS Code's Copilot harness does not load (VS Code 1.140, 2026-09-30). The security review is `/security-gate`, not `/security-review`: Copilot CLI and Claude Code each have a built-in `/security-review`, and on Copilot CLI the shared name sent the agent's own security pass to the CLI's built-in agent (observed on Copilot CLI 1.0.95, 2026-10-11). In **Copilot CLI**, `/review` is also the CLI's own command: the CLI turns it into an instruction to run its built-in review agent, and the model then chooses between that agent and this framework's file (observed on Copilot CLI 1.0.89, 2026-10-04); to run this framework's version there, ask for it by name, for example *"Run the review skill from this repository on my staged changes."*
 
 Or just describe what you want in natural language — the framework rules teach the agent to route to the right workflow automatically.
 
@@ -213,7 +213,7 @@ Seven subagents live in `.claude/agents/` — the six user-facing ones are mirro
 
 | Agent | Purpose | Invoked by |
 |-------|---------|-----------|
-| `security-auditor` | OWASP-style scan of a diff (XSS/unsafe DOM sinks, auth/route guards, secrets, sensitive-data exposure, vulnerable deps). Read-only. | `/security-review`; ad-hoc |
+| `security-auditor` | OWASP-style scan of a diff (XSS/unsafe DOM sinks, auth/route guards, secrets, sensitive-data exposure, vulnerable deps). Read-only. | `/security-gate`; ad-hoc |
 | `solid-check` | Audits a diff against the framework rules and first-party project evidence for the five SOLID principles; it does not impose an abstraction, token, or DI container shape. Read-only. | `/review` Step 1; ad-hoc |
 | `convention-check` | Audits a diff against AGENTS.md > Conventions; returns a structured findings table. Read-only. | `/review` Step 1; ad-hoc |
 | `bloat-radar` | Flags speculative abstractions, shallow service wrappers, parallel implementations, single-use pipes/directives, comment debris. Read-only. | `/review` Step 1; ad-hoc |
@@ -297,10 +297,10 @@ This framework supports local command and hook execution on **Windows** whether 
 | Copilot **coding agent** (async, assigned to issues, opens PRs) | Not available (github.com repos only) | Local CLI agents: Claude Code, Copilot CLI |
 | `.github/workflows/docs-sync-check.yml` (**GitHub Actions**) | Does not run | `scripts/docs-sync-check.ps1` in Bamboo/Jenkins on a self-hosted Windows agent (below) |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Not auto-applied | Bitbucket repo/project **default PR description** setting |
-| Copilot **PR code review** | Not available | `/review` + `/security-review` locally pre-push; or a SAST step in CI |
+| Copilot **PR code review** | Not available | `/review` + `/security-gate` locally pre-push; or a SAST step in CI |
 | Atlassian **Rovo Dev** (native AI agent / PR reviewer) | **Cloud-only** — not on Data Center | Local CLI agents + the CI guardrail below |
 
-> Net: on Bitbucket Data Center your agentic story is **local CLI agents + IDE Copilot**, not a cloud agent, and there is no platform-side AI PR reviewer. Gate quality with `/review` and `/security-review` *before* you push, and with the CI guardrail *after*.
+> Net: on Bitbucket Data Center your agentic story is **local CLI agents + IDE Copilot**, not a cloud agent, and there is no platform-side AI PR reviewer. Gate quality with `/review` and `/security-gate` *before* you push, and with the CI guardrail *after*.
 
 **Reviewing a pull request locally:** run `git fetch origin`, check out the pull request's source branch with `git switch --detach origin/<source>`, then run `/review origin/<target>...HEAD` in Claude Code. The three dots review only what the pull request adds since it left `<target>`, and the checkout lets `/review`'s verification run on that code. For a pull request from a fork, run `git remote add fork <fork-url>` and `git fetch fork`, then `git switch --detach fork/<source>` instead. Copilot CLI may run its own built-in review for `/review`; there, ask for this framework's review skill by name.
 

@@ -4634,3 +4634,14 @@ ran Sonnet workers (`meta/eval-results.md`; B-345, B-346); Opus workers were nev
 Tier-1 risk, .NET A7 finding and proposed hazard before Phase 2b. A hazard's status still comes only from the developer's answer. This amends WSD-011's tiering for
 `bootstrap-pass` only; `security-auditor`, `solid-check` and `test-critic` stay `inherit`. Rejected: Haiku (B-41 pilot), omitting `model:`, the parent confirming hazards.
 **Reopen** on a field report of a missed finding traced to a worker, or an eval in which Sonnet workers miss what Opus workers find.
+
+## WSD-114: the security workflow is `security-gate`, renamed so no host built-in shares its name (2026-10-11)
+
+**Context.** B-348 (`meta/eval-results.md`): on Copilot CLI 1.0.95 the agent's own security pass ran the CLI's built-in `task` agent type `security-review` in 3 of 6 refund runs.
+This framework's skill, command and `.agents/skills` wrapper had the same name, the CLI's host prompt sends "/security-review" to its agent, and Claude Code ships a built-in
+`/security-review` too (B-388). Candidates: (a) name only `security-auditor` in the rule and overlay; (b) rename the skill.
+**Decision (maintainer, 2026-10-11, in chat, relayed by the batch session: rename the framework's skill so it no longer collides, option (b), not (a)).** The skill, command and
+wrapper become `security-gate`, a name the implementing session chose and found in none of Copilot CLI 1.0.95, VS Code 1.139.1 with Copilot Chat 0.67.0 and Claude Code 2.1.281.
+The old installed paths retire through the ledger in 0.95.0, and the installer names the successor for kept copies and for protected files that still name the old command.
+Option (a) stays the next candidate if the renamed pass still reaches a host built-in.
+**Reopen** when a supported host adds a built-in named `security-gate`, or a measurement shows the renamed pass still sent to a host built-in.

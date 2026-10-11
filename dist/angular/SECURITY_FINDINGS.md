@@ -1,11 +1,11 @@
 # Security Findings Register
 
-> Managed by `/security-review`. Separate from TECH_DEBT.md — these carry remediation SLAs and require evidence of resolution for internal audit.
+> Managed by `/security-gate`. Separate from TECH_DEBT.md — these carry remediation SLAs and require evidence of resolution for internal audit.
 >
 > **Do not delete rows during ordinary maintenance.** Set Status to `Resolved` or `Risk Accepted`
 > (with rationale) instead. A human with incident authority may redact or remove unsafe metadata as
 > part of security containment.
-> Run `/security-review` to add new findings. Run `/docs-sync` to check for stale entries.
+> Run `/security-gate` to add new findings. Run `/docs-sync` to check for stale entries.
 >
 > This Git file is a minimised coordination index for ordinary repository-safe findings. It is not
 > the system of record for an active or suspected credential incident. Such incidents require
@@ -28,7 +28,7 @@
 
 | ID | Severity | Category | Affected area (redacted when sensitive) | Repository-safe summary | Discovered | Due | Status | Owner role/team (optional) | Internal reference (optional) | Resolved |
 |----|----------|----------|-----------------------------------------|-------------------------|------------|-----|--------|----------------------------|-------------------------------|----------|
-| _  | _        | _        | _                                       | _Run `/security-review` to populate_ | _ | _ | _ | _ | _ | _ |
+| _  | _        | _        | _                                       | _Run `/security-gate` to populate_ | _ | _ | _ | _ | _ | _ |
 
 Use only an organisation-approved opaque reference. A contained credential incident may gain a
 minimal historical row only when a human with incident authority explicitly authorises it. Never

@@ -305,6 +305,23 @@ It '0.94.0 ledger contains every released digest of the twelve retired prompt fi
     Assert-TaggedDigestCompleteness $observations (Get-LedgerDigestMap $ledger)
 }
 
+It '0.95.0 ledger contains every released digest of the renamed security-review command and its wrapper' {
+    # B-388: renamed to security-gate, so both installed paths join the ledger.
+    $paths = @('.claude/commands/security-review.md', '.agents/skills/security-review/SKILL.md')
+    $ledger = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot 'src/core/framework-retirements.json'))).TrimStart([char]0xFEFF) | ConvertFrom-Json
+    foreach ($path in $paths) {
+        Assert (@($ledger.retirements | Where-Object { $_.path -ceq $path -and $_.'retired-in' -ceq '0.95.0' }).Count -eq 1) "no 0.95.0 retirement entry for $path"
+    }
+    # The command shipped from all three dists since the merge; its .agents/skills wrapper in 0.94.0 only.
+    $observations = @(Get-TaggedObservations -Paths $paths -Through '0.94.0')
+    foreach ($path in $paths) {
+        foreach ($stack in @('dotnet', 'angular', 'monorepo')) {
+            Assert (@($observations | Where-Object { $_.Path -ceq $path -and $_.Stack -ceq $stack }).Count -gt 0) "no released $stack blob was observed for $path"
+        }
+    }
+    Assert-TaggedDigestCompleteness $observations (Get-LedgerDigestMap $ledger)
+}
+
 It 'raw Git capture preserves binary bytes and nonzero stderr' {
     $objects = Join-Path ([IO.Path]::GetTempPath()) ('b215-objects-' + [guid]::NewGuid().ToString('N'))
     $blobPath = Join-Path ([IO.Path]::GetTempPath()) ('b215-binary-' + [guid]::NewGuid().ToString('N') + '.bin')

@@ -13084,3 +13084,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   suppressed the always-loaded rule, not the reminder. The three stacks' sensitive patterns gain one alternation (API key, 401/403, forbid, access
   control, JWT, OAuth, OpenID, OIDC, SSO, SAML, HMAC, MFA, 2FA, two-factor; several inside names too), each word pinned by a test prompt. B-391
   filed from the fresh-session attack. Proposed, not shipped: a carrier sentence that an advance approval does not waive the pass.
+- **B-388** — DONE **2026-10-11** for 0.95.0 (WSD-114; pre-registered at ac9bef70; `meta/eval-results.md`, `meta/host-certification.md`; 6 premium requests): the
+  maintainer chose to rename the skill, so this framework's security workflow is `security-gate` in all three stacks (command, Copilot wrapper, security-pass rule,
+  `route-prompt` overlay), and the old installed paths retire through the ledger, with installer NOTICE, CANT-VERIFY and MIGRATION lines naming the successor. On
+  Copilot CLI 1.0.95, B-348's refund prompt then ran this framework's review in 6 of 6 runs and the CLI's built-in Security Review Agent in none (3 of 6 under the
+  old name; the old name's pooled 7 of 12, two-sided Fisher p = 0.038). B-392 and B-393 filed the same day.

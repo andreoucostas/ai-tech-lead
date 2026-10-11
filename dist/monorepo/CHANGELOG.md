@@ -140,17 +140,22 @@
   HTTP interceptor, not the class-based `HttpInterceptor`. An update refreshes the file; you do not need to do
   anything.
 
-- **On Copilot CLI, the security pass the agent runs by itself can still be the CLI's built-in review, not this
-  framework's.** 0.94.0 changed the always-loaded rule and the per-prompt security reminder to name this framework's
-  `security-review` skill and to say it is not the CLI's built-in agent, without measuring the change. We have now
-  measured it on Copilot CLI 1.0.95, on one .NET repository with the .NET distribution's rules, in non-interactive runs
-  where the change was approved in advance. When the reminder fired, the agent ran a security pass every time, but in 3
-  of 6 runs it ran the CLI's Security Review Agent instead of this framework's review (with 0.93.0's wording, 4 of 6),
-  and one of those summaries said this framework's `security-auditor` had run. On a sensitive change the reminder's
-  keywords missed, it ran no pass in 6 of 6. Asked for "the security-review skill from this repository", it ran this
-  framework's skill in 2 of 3. `docs/enforcement-surfaces.md` now says so. Your distribution's rules carry the same
-  wording, not measured separately. The wording is unchanged for now; when a change on Copilot CLI needs this
-  framework's review, ask for it by name.
+- **The security review is now `/security-gate`: type that instead of `/security-review`.** Copilot CLI and Claude Code
+  each have their own built-in `/security-review`, and on Copilot CLI the shared name sent the security pass the agent
+  runs by itself to the CLI's built-in review instead of this framework's. We measured it on Copilot CLI 1.0.95, on one
+  .NET repository with the .NET distribution's rules, in non-interactive runs where the change was approved in advance:
+  under 0.94.0's wording, which named this framework's `security-review` skill, the CLI's Security Review Agent ran in 3
+  of 6 runs (with 0.93.0's wording, 4 of 6), and one of those summaries said this framework's `security-auditor` had
+  run. The command, its Copilot skill, the always-loaded rule and the per-prompt security reminder now say
+  `security-gate`; with that name the same change ran this framework's review in 6 of 6 runs and the CLI's in none.
+  Your distribution's rules carry the same wording, not measured separately. Until now, typing `/security-review` in
+  Claude Code ran this framework's command; it now runs Claude Code's own review (in Copilot CLI, the CLI's own), and
+  neither records findings in `SECURITY_FINDINGS.md`. An update removes `.claude/commands/security-review.md` and
+  `.agents/skills/security-review/SKILL.md` if you have not edited them, and keeps and reports an edited copy.
+  `SECURITY_FINDINGS.md`, `docs/ARCHITECTURE.md` and `AGENTS.md` are yours, so the update leaves them as they are and
+  lists each one that still says `/security-review`: replace it with `/security-gate`. The update checks only files the
+  framework created for you, so search your own skills, wiki pages and notes for `security-review` too, and leave a
+  dated history entry as it is. `docs/enforcement-surfaces.md` records these results.
 
 - **The per-prompt security reminder now also fires on an authentication change that never says "auth".** It now
   also fires on a request that mentions an API key, 401 or 403, forbidden or `Forbid`, access control, JWT, OAuth,
@@ -161,8 +166,8 @@
   reminder's old keywords and got no security pass in 6 of 6; with the reminder firing on it, a pass in 4 of 4; and
   without the advance approval, the always-loaded rule alone got a pass in 4 of 4. Your distribution's reminder gains
   the same words, not measured separately. `docs/enforcement-surfaces.md` records these results. When you approve a
-  sensitive change in advance in words the reminder does not catch, ask for the security review by name. An update
-  refreshes the hook; you do not need to do anything.
+  sensitive change in advance in words the reminder does not catch, ask for this framework's `security-gate` review by
+  name. An update refreshes the hook; you do not need to do anything.
 
 ## 0.94.0 — 2026-10-08
 

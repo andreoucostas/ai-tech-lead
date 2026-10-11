@@ -1,6 +1,6 @@
 ---
 name: security-auditor
-description: Read-only profile-evidenced security audit. Covers injection/XSS, auth, secrets, sensitive data, crypto, financial concurrency, and vulnerable dependencies; used by `/security-review`.
+description: Read-only profile-evidenced security audit. Covers injection/XSS, auth, secrets, sensitive data, crypto, financial concurrency, and vulnerable dependencies; used by `/security-gate`.
 tools: Read, Grep, Glob, PowerShell
 model: inherit
 ---

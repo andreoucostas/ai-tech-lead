@@ -1787,6 +1787,57 @@ It 'retired prompt files: an update removes an unmodified copy, keeps an edited 
     }
 }
 
+It 'renamed /security-review: an update removes the unmodified wrapper, keeps an edited command pointed at /security-gate and names the stale references in a protected file' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('security-rename-' + [guid]::NewGuid())
+    try {
+        # B-388: Copilot CLI and Claude Code each ship a built-in /security-review, so 0.95.0 renames this framework's to /security-gate.
+        $wrapper = Join-Path $t '.agents/skills/security-review/SKILL.md'
+        $command = Join-Path $t '.claude/commands/security-review.md'
+        $register = Join-Path $t 'SECURITY_FINDINGS.md'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $wrapper), (Split-Path -Parent $command) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), '{"version":"0.94.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/framework-ownership.json'))
+        [IO.File]::WriteAllBytes($wrapper, (Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/.agents/skills/security-review/SKILL.md'))
+        $commandBytes = (Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/.claude/commands/security-review.md') +
+            [Text.UTF8Encoding]::new($false).GetBytes("Also check the team's tenant-header rule.`n")
+        [IO.File]::WriteAllBytes($command, $commandBytes)
+        # SECURITY_FINDINGS.md is consumer-owned: the update keeps it, so its stale names are reported, not rewritten.
+        $registerBytes = (Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/SECURITY_FINDINGS.md') +
+            [Text.UTF8Encoding]::new($false).GetBytes("Procedure: ``.claude/commands/security-review.md``.`n")
+        [IO.File]::WriteAllBytes($register, $registerBytes)
+        # A prompt file kept from 0.93.0: its successor is the renamed skill, not "no replacement command".
+        $prompt = Join-Path $t '.github/prompts/security-review.prompt.md'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $prompt) | Out-Null
+        $promptBytes = (Get-GitBlobBytes -Spec 'v0.93.0:dist/dotnet/.github/prompts/security-review.prompt.md') +
+            [Text.UTF8Encoding]::new($false).GetBytes("Also check the team's tenant-header rule.`n")
+        [IO.File]::WriteAllBytes($prompt, $promptBytes)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        Assert (-not (Test-Path -LiteralPath $wrapper)) "the unmodified retired security-review wrapper survived: $out"
+        Assert ($flat -match "NOTICE: this update removes the unmodified '\.agents/skills/security-review/SKILL\.md': this framework's /security-review is now /security-gate") "the removal did not name the new command: $out"
+        Assert (Test-Path -LiteralPath (Join-Path $t '.agents/skills/security-gate/SKILL.md') -PathType Leaf) "the update did not install the security-gate wrapper: $out"
+        Assert (Test-Path -LiteralPath (Join-Path $t '.claude/commands/security-gate.md') -PathType Leaf) "the update did not install the security-gate command: $out"
+        Assert (Test-B194BytesEqual $commandBytes ([IO.File]::ReadAllBytes($command))) "the edited retired security-review command was not kept byte-identical: $out"
+        Assert ($flat -match "CANT-VERIFY: retained retired path '\.claude/commands/security-review\.md' remains\. This framework's /security-review is now /security-gate") "the kept command was not pointed at its successor: $out"
+        Assert ($flat -notmatch "'\.claude/commands/security-review\.md' remains\. It is retired with no replacement command") "the kept command was reported as retired with no replacement: $out"
+        Assert (Test-B194BytesEqual $registerBytes ([IO.File]::ReadAllBytes($register))) "the protected register changed: $out"
+        # The replacement must not contain the retired name itself, or applying it never clears the report.
+        Assert ($flat -match "MIGRATION: protected consumer carrier 'SECURITY_FINDINGS\.md' names retired framework path '/security-review'\. It was not overwritten; replace that reference with: /security-gate\.") "the register's stale /security-review was not reported with the bare successor: $out"
+        Assert ($flat -match "replace that reference with: /security-gate\. Leave a dated history entry, or a mention that deliberately names the host's own built-in command of the old name, as it is\.") "the /security-review MIGRATION did not say which mentions to keep: $out"
+        Assert ($flat -match "MIGRATION: protected consumer carrier 'SECURITY_FINDINGS\.md' names retired framework path '\.claude/commands/security-review\.md'\. It was not overwritten; replace that reference with: \.claude/commands/security-gate\.md") "the register's stale command path was not reported: $out"
+        Assert (Test-B194BytesEqual $promptBytes ([IO.File]::ReadAllBytes($prompt))) "the edited retired security-review prompt was not kept byte-identical: $out"
+        Assert ($flat -match "retained retired prompt file '\.github/prompts/security-review\.prompt\.md' remains\. Its workflow now ships as the skill \.agents/skills/security-gate/SKILL\.md, which runs \.claude/commands/security-gate\.md") "the kept prompt was not pointed at the renamed skill: $out"
+        Assert ($flat -notmatch "'\.github/prompts/security-review\.prompt\.md' remains\. It is retired with no replacement command") "the kept prompt was reported as retired with no replacement: $out"
+        foreach ($stack in 'dotnet', 'angular', 'monorepo') {
+            Assert (-not (Test-Path -LiteralPath (Join-Path $repoRoot "dist/$stack/.claude/commands/security-review.md"))) "$stack still ships .claude/commands/security-review.md"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $repoRoot "dist/$stack/.agents/skills/security-review"))) "$stack still ships .agents/skills/security-review"
+        }
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'a team''s own skill or file at a workflow wrapper path survives updates; an edited copy of the framework''s prompt there, or a kept skill that later takes it in, is saved, never over an older save or into Git, then replaced' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('agents-skill-' + [guid]::NewGuid())
     try {

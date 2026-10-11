@@ -983,6 +983,10 @@ if ($updateMode) {
         $isRetiredGitHookHelper = $retiredPath -in $legacyGitHookRetiredDependencies
         $isRetiredPrompt = $retiredPath -match '^\.github/prompts/([a-z0-9-]+)\.prompt\.md$'
         $promptWorkflow = if ($isRetiredPrompt) { $Matches[1] } else { $null }
+        # Renamed, not dropped: Copilot CLI and Claude Code each ship a built-in /security-review.
+        $isRenamedSecurityReview = $retiredPath -cin @('.claude/commands/security-review.md', '.agents/skills/security-review/SKILL.md')
+        # Its prompt file, retired in 0.94.0, now names the renamed wrapper in the two prompt arms below.
+        if ($promptWorkflow -ceq 'security-review') { $promptWorkflow = 'security-gate' }
         # Every retained retired path is reported. This was an allow-list of five categories, so a
         # path retired in any later release was preserved in silence -- and each new retirement had
         # to remember to add itself, which is the same shape of defect the list was added to fix.
@@ -993,6 +997,9 @@ if ($updateMode) {
             # framework-owned paths changed, so name the forced run.
             if ($isRetiredClaudeSkill) {
                 $reconciliationMessages.Add("NOTICE: framework skill '$claudeSkillSlug' was retired in $($retirementLedger[$retiredPath].Version); this update removes its unmodified SKILL.md. Other files in .claude/skills/$claudeSkillSlug/ are yours: they stay, or move to .claude/disabled-skills/$claudeSkillSlug/ when LEARNINGS.md disables that skill, and /rebootstrap full reads a references/project-pattern.md that stays there as a lead for a project skill. Remove the '$claudeSkillSlug' line from AGENTS.md > Common Tasks, or run /rebootstrap full to reconcile it.")
+            }
+            if ($isRenamedSecurityReview) {
+                $reconciliationMessages.Add("NOTICE: this update removes the unmodified '$retiredPath': this framework's /security-review is now /security-gate (.claude/commands/security-gate.md). Type /security-gate; in Copilot CLI and Claude Code, /security-review now runs the host's own built-in security review.")
             }
             continue
         }
@@ -1036,6 +1043,8 @@ if ($updateMode) {
         } elseif ($isRetiredPrompt -and $incoming.ByPath.ContainsKey(".agents/skills/$promptWorkflow/SKILL.md")) {
             # These prompts were replaced, not dropped: the generic arm below would say there is no replacement.
             $reconciliationMessages.Add("CANT-VERIFY: retained retired prompt file '$retiredPath' remains. Its workflow now ships as the skill .agents/skills/$promptWorkflow/SKILL.md, which runs .claude/commands/$promptWorkflow.md, and VS Code's Copilot harness does not load prompt files. Keep any change you need in AGENTS.md or a project skill, because an update replaces framework files, then delete the prompt file after review; a prompt your team wrote itself, rather than edited, can stay.")
+        } elseif ($isRenamedSecurityReview) {
+            $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' remains. This framework's /security-review is now /security-gate (.claude/commands/security-gate.md); the old command file and its Copilot wrapper are both retired, and an update removes each unmodified copy, so a kept wrapper can point at a command file that is gone. On Copilot CLI a skill kept under the old name also shares that name with the CLI's built-in security agent, which the agent may run instead. If this is the framework's former file with your edits, keep any change you need in AGENTS.md or a project skill, then delete it after review; a skill your team wrote itself can stay under another name.")
         } else {
             $twin = if ($retiredPath.EndsWith('.sh', [StringComparison]::OrdinalIgnoreCase)) {
                 $retiredPath.Substring(0, $retiredPath.Length - 3) + '.ps1'
@@ -1054,9 +1063,18 @@ if ($updateMode) {
 # exact current-release retirements and a concrete replacement before the WhatIf boundary so dry-run
 # and apply classify the same bytes. Enumeration is bounded and never follows reparse points.
 $retiredReferenceReplacements = @{}
+$retiredReferenceNotes = @{}
 if ($updateMode -and (Compare-ReleaseVersion -Left $incomingVersion -Right '0.83.0') -ge 0) {
     $retiredReferenceReplacements['install.sh'] = "$followUpPowerShell install.ps1"
     $retiredReferenceReplacements['scripts/install.sh'] = "$followUpPowerShell scripts/install.ps1"
+}
+if ($updateMode) {
+    # Renamed, not dropped. Not gated on the incoming version like the ledger loop below: once
+    # this installer replaces the framework's files, the old name reaches only a host's built-in command.
+    # The successor is bare: a replacement that still held the old name would be reported again once applied.
+    $retiredReferenceReplacements['/security-review'] = '/security-gate'
+    $retiredReferenceReplacements['.claude/commands/security-review.md'] = '.claude/commands/security-gate.md'
+    $retiredReferenceNotes['/security-review'] = ' Leave a dated history entry, or a mention that deliberately names the host''s own built-in command of the old name, as it is.'
 }
 foreach ($retiredPath in $(if ($updateMode) { @($retirementLedger.Keys) } else { @() })) {
     # Keep diagnostics cumulative: a consumer may skip the release that first retired the path.
@@ -1150,7 +1168,7 @@ foreach ($relative in @($protectedReferenceCandidates | Sort-Object)) {
     foreach ($retiredPath in @($retiredReferenceReplacements.Keys | Sort-Object)) {
         $pattern = '(?i)(?<![A-Za-z0-9_./-])(?:\./)?' + [regex]::Escape($retiredPath) + '(?=$|[\s"''`(){}\[\],;:])'
         if ($content -match $pattern) {
-            $reconciliationMessages.Add("MIGRATION: protected consumer carrier '$relative' names retired framework path '$retiredPath'. It was not overwritten; replace that reference with: $($retiredReferenceReplacements[$retiredPath]).")
+            $reconciliationMessages.Add("MIGRATION: protected consumer carrier '$relative' names retired framework path '$retiredPath'. It was not overwritten; replace that reference with: $($retiredReferenceReplacements[$retiredPath]).$($retiredReferenceNotes[$retiredPath])")
         }
     }
 }

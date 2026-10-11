@@ -497,7 +497,7 @@ No interactive confirmation here — the drafts land in the PR diff where review
 
 ### 3e: Initialise SECURITY_FINDINGS.md
 
-If `SECURITY_FINDINGS.md` does not exist at the repo root, create it using the template from `.claude/skills/` (or the framework template). Do not pre-populate findings — security findings come from `/security-review`, not from bootstrap analysis.
+If `SECURITY_FINDINGS.md` does not exist at the repo root, create it using the template from `.claude/skills/` (or the framework template). Do not pre-populate findings — security findings come from `/security-gate`, not from bootstrap analysis.
 
 If `SECURITY_FINDINGS.md` already exists, leave it entirely alone.
 

@@ -2,10 +2,10 @@
 if (-not (Get-Command Reset-Tests -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $register = [IO.File]::ReadAllText((Join-Path $root 'SECURITY_FINDINGS.md'))
-$command = [IO.File]::ReadAllText((Join-Path $root '.claude\commands\security-review.md'))
+$command = [IO.File]::ReadAllText((Join-Path $root '.claude\commands\security-gate.md'))
 $auditor = [IO.File]::ReadAllText((Join-Path $root '.claude\agents\security-auditor.md'))
 $copilotAgent = [IO.File]::ReadAllText((Join-Path $root '.github\agents\security-auditor.agent.md'))
-$copilotSkill = [IO.File]::ReadAllText((Join-Path $root '.agents\skills\security-review\SKILL.md'))
+$copilotSkill = [IO.File]::ReadAllText((Join-Path $root '.agents\skills\security-gate\SKILL.md'))
 $isAngular = $command -match 'It does not append findings'
 
 function Find-UnsafeHistoricalSentinel([string]$Markdown) {

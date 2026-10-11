@@ -13,6 +13,27 @@
 
 ## 0.95.0 — Unreleased
 
+B-388 (2026-10-11; maintainer decision WSD-114, option (b); pre-registered at ac9bef70, results in `meta/eval-results.md`): B-348's refund prompt sent
+the agent's own security pass on Copilot CLI 1.0.95 to the CLI's built-in Security Review Agent in 3 of 6 runs, and this framework's skill, command
+and `.agents/skills` wrapper shared that agent's name, which the CLI's host prompt routes to it and which the CLI's slash commands and Claude Code
+2.1.281 also use. All three are renamed `security-gate` in the three stacks, a name found in none of Copilot CLI 1.0.95's bundle, agent definitions
+and built-in skills, VS Code 1.139.1 with Copilot Chat 0.67.0, or Claude Code 2.1.281's binary (the same scan finds `security-review`, `rubber-duck`
+and `code-review` in each); the command already called itself a "Security gate". The security-pass rule and `route-prompt`'s overlay change only the
+name. With the rename installed, the refund prompt ran this framework's review in 6 of 6 runs and the built-in in none: FG-MAIN 0 of 6 against the
+old name's pooled 7 of 12 (B-348's T-K and S2-K), two-sided Fisher exact p = 0.038; against T-K alone (3 of 6) p = 0.18, not shown.
+`.claude/commands/security-review.md` (15 released digests, v0.26.0 to v0.94.0) and `.agents/skills/security-review/SKILL.md` (3, v0.94.0) join the
+retirement ledger as 0.95.0, enumerated over all 102 release tags by a method that reproduces the existing `impact.md` and
+`security-review.prompt.md` entries. With the ledger alone, an update deleted the clean wrapper but told a consumer whose edited command it kept that
+it was "retired with no replacement command", and said nothing about the consumer-owned `SECURITY_FINDINGS.md`, `docs/ARCHITECTURE.md` and (Angular,
+monorepo) `AGENTS.md`, which name `/security-review`. `install.ps1` now prints a NOTICE naming `/security-gate` when it removes an unmodified copy, a
+CANT-VERIFY naming it for a kept copy, the prompt arm's successor for a kept 0.93.0 `security-review.prompt.md` (the rename had sent it to the
+generic arm), and a MIGRATION line, not gated on the incoming version, for a protected file naming `/security-review` (the bare successor plus a note
+to leave dated history and deliberate mentions of the host's command) or the old command path. A fresh session attacked three versions; the prompt
+regression, a replacement that held its own key, the missing note and two wording fixes are in this change, and an update replacing a team's own file
+at a newly shipped path unsaved predates it (B-393). Consumer-written prose forms (a sentence-final period, bold, the bare skill name) stay outside the
+shared MIGRATION pattern; the stack CHANGELOGs tell consumers to search their own files. B-392 filed (maintainer report, eval case angular-003). 6
+premium requests, 370.1 AI credits.
+
 B-389 (2026-10-11; pre-registered at 04548f59, results in `meta/eval-results.md`): B-348's shared-key prompt approved the change in advance
 ("do not stop for a plan or ask for confirmation") and missed `route-prompt`'s sensitive pattern, and got no security pass on Copilot CLI 1.0.95 in 6
 of 6 `-p` runs. Holding task, fixture and host, the same prompt with the reminder firing got a pass in 4 of 4, and the prompt without the approval

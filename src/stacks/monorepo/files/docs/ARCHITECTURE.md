@@ -72,7 +72,7 @@ Same names in Claude Code (`.claude/commands/`) and Copilot, VS Code and Copilot
 | `/test` | Smallest risk-relevant tests following project patterns |
 | `/debt` | Find/fix bundleable tech debt (Trojan Horse) |
 | `/review` | Quality gate — dispatches the auditor subagents (below) |
-| `/security-review` | OWASP-style scan (injection, auth/guards, secrets, XSS/DOM sinks) + senior judgement + SECURITY_FINDINGS SLAs |
+| `/security-gate` | OWASP-style scan (injection, auth/guards, secrets, XSS/DOM sinks) + senior judgement + SECURITY_FINDINGS SLAs |
 | `/docs-sync` | Cross-check docs vs code for drift |
 | `/rebootstrap` | Deeper periodic re-alignment |
 
@@ -85,7 +85,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 | Agent | Role | Model |
 |-------|------|-------|
 | `bootstrap-pass` | One selected-profile analysis pass (.NET A1–A7 / Angular A1–A6 / warehouse-SQL W1–W3) or shared A8 skill discovery during `/bootstrap` | **sonnet** |
-| `security-auditor` | OWASP-style scan (injection, auth/guards, secrets, XSS/DOM sinks); feeds `/security-review` | inherit (strong) |
+| `security-auditor` | OWASP-style scan (injection, auth/guards, secrets, XSS/DOM sinks); feeds `/security-gate` | inherit (strong) |
 | `solid-check` | Audits the diff against the five SOLID principles and first-party project evidence; feeds `/review` | inherit (strong) |
 | `test-critic` | Test-integrity audit — would each test go red if the code under test broke? Catches over-mocking and tautological/weak assertions; feeds `/review` | inherit (strong) |
 | `convention-check` | Diff vs AGENTS.md > Conventions; feeds `/review` | **haiku** |

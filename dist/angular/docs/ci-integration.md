@@ -136,14 +136,14 @@ feeds the required-builds merge check.
 - **Code Insights** — optionally publish leg 1/leg 2 verdicts to the PR view via the REST API
   (`/rest/insights/1.0/...`). Cosmetic on top of required builds, not a substitute.
 - **Renovate / Semgrep or SonarQube** — dependency and SAST scanning, each only for the ecosystems and
-  languages this repository evidences; `/security-review`'s "Standing scanners" section and the
+  languages this repository evidences; `/security-gate`'s "Standing scanners" section and the
   `dependency-audit` skill describe the setup.
 
 ## What CI still cannot gate
 
 Semantic standards — Leanness, SOLID beyond dependency direction, and test *quality* — have no
 universal deterministic check. They are enforced by `/review` +
-`/security-review` before push and by human PR review. The required build is the floor, not the
+`/security-gate` before push and by human PR review. The required build is the floor, not the
 ceiling; see `docs/enforcement-surfaces.md` for the full guaranteed-vs-instructed matrix.
 
 **Reviewing a pull request locally:** run `git fetch origin`, check out the pull request's source
