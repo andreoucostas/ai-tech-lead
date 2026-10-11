@@ -130,9 +130,11 @@
 
 - **The eval cases in `tests/evals/cases.yaml` follow Angular 21 and 22.** The dependency-inversion case also fails an
   answer that adds a `@Service()` class, which Angular 22 provides in root unless it sets `autoProvided: false`. The
-  subscription case now says the app is on Angular 21 with zone.js, where its manual subscription still updates the
-  view, so it tests the scope of the change rather than change detection. The token case asks for an HTTP interceptor,
-  not the class-based `HttpInterceptor`. An update refreshes the file; you do not need to do anything.
+  subscription case's rubric now reads the component's unset `changeDetection` as your Angular major defines it,
+  eager on 21 and OnPush on 22, and passes an answer that shows the email without changing the subscription, its
+  cleanup or the change detection, so it tests the scope of the change on either major. The token case asks for an
+  HTTP interceptor, not the class-based `HttpInterceptor`. An update refreshes the file; you do not need to do
+  anything.
 
 ## 0.94.0 — 2026-10-08
 

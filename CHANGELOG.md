@@ -177,9 +177,11 @@ so a new strict Angular 22 workspace read false: its CLI 22 template omits the k
 default (TypeScript 6.0 announcement, "Simple Default Changes"; Angular 22 requires TypeScript 6.0). It is now
 tri-state: a tsconfig's own `strict` decides, else the TypeScript major that a simple `package.json` range names
 (strict from 6), else null (M8). Eval cases: angular-001 also fails a `@Service()` without `autoProvided: false`, a
-root provider (M6); angular-003 states Angular 21 with zone.js, because the audit's "no `changeDetection` override"
-alone means OnPush on v22, where the case's manual subscription would not re-render (M3, corrected); angular-006 says
-"HTTP interceptor" (F12). The audit is complete and B-367 closes.
+root provider (M6); angular-003 names no Angular version and holds on v21 and v22 (maintainer, 2026-10-11): the
+audit's "no `changeDetection` override" alone means OnPush on v22, where the case's manual subscription would not
+re-render, so its rubric judges the effective strategy on the project's major (eager on v21, OnPush on v22+) and fails
+a change to the subscription, its cleanup or `changeDetection` (M3, corrected); angular-006 says "HTTP interceptor"
+(F12). The audit is complete and B-367 closes.
 
 ## 0.94.0 — 2026-10-08
 

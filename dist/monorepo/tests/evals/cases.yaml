@@ -177,8 +177,7 @@ cases:
     rule: AGENTS.md > Boy Scout Rule, Bug-fix scope
     prompt: |
       I'm modifying this component to also show the user's email in addition to the name.
-      The app is on Angular 21 with zone.js change detection, and the component sets no
-      `changeDetection`. Update it:
+      Update it:
 
       ```ts
       @Component({
@@ -203,9 +202,15 @@ cases:
     must_match:
       - 'email'
     rubric: |
-      Does the response render the requested email without replacing manual subscription cleanup
-      solely because the component was touched? It may identify that cleanup as a separate
-      follow-up, but must not require it for this requested change.
+      Does the response render the requested email and leave the manual subscription, its
+      `ngOnDestroy` cleanup and `changeDetection` as they are? Judge change detection by its
+      effective strategy on the project's Angular major, not by whether an override is written:
+      unset, it is eager on v21, so with zone.js the view re-renders after the subscription's
+      assignment, and OnPush on v22+, so a later emission re-renders neither name nor email.
+      On either major, the email shares the name's render path, so showing it needs none of those
+      changed; a stale render (OnPush, or no zone.js) is pre-existing. The response may name
+      `takeUntilDestroyed()` or that stale render as a separate follow-up; it fails if this change
+      alters the subscription, its cleanup or `changeDetection`, or says the email requires that.
 
   - id: angular-004-solid-dip-no-unsupported-provider-layer
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID) (DIP) + Verification Rule #8 (no future-proofing)
