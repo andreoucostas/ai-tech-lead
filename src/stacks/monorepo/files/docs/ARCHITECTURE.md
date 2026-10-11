@@ -130,10 +130,10 @@ sequenceDiagram
 
 ## 8. Doctrine (the rules the instruction files encode)
 
-- **Verification Rules** — verify before referencing; never invent APIs/selectors; honour version pinning (in Angular, signals, control-flow, `inject()`, `takeUntilDestroyed` are version-gated); failures are signals (never silence — no `#pragma warning disable`, `@ts-ignore`/`as any`, or suppression). Anti-hallucination.
+- **Verification Rules** — verify before referencing; never invent APIs/selectors; honour version pinning (in Angular, for example, Signal Forms, `resource`, `Eager` and `@Service()` are version-gated); failures are signals (never silence — no `#pragma warning disable`, `@ts-ignore`/`as any`, or suppression). Anti-hallucination.
 - **Leanness** — counterweight to Boy Scout's add-bias; no abstraction on data or for speculation. Reconciled with SOLID (#below).
 - **SOLID (mandatory)** — apply SRP/OCP/LSP/ISP and derive each stack's injected-service boundary from project evidence and correctness needs; this framework does not require an interface, abstraction, token, or DI container. `solid-check` is semantic; a consumer may choose an evidenced direction check. Data carriers are exempt.
-- **Bug-fix scope** — edits serve outcome, compatibility, or verification; requested refactoring remains valid. `OnPush` remains an explicit, verified change.
+- **Bug-fix scope** — edits serve outcome, compatibility, or verification; requested refactoring remains valid. Moving a component off eager change detection remains an explicit, verified change.
 - **Trojan Horse** — bundle nearby debt cleanup into feature/fix work, so quality compounds without debt sprints.
 - **Financial-domain invariants** — decimal precision, idempotency, TOCTOU/check-then-act, rounding — treated as always-possible states even in internal code (chiefly a backend concern, but the frontend must not undermine them).
 

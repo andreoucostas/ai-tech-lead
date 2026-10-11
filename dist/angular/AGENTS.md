@@ -92,21 +92,21 @@ evidence satisfies the gate:
 4. Unused TypeScript imports and unused RxJS operator imports
 5. Commented-out code or template blocks (more than 1 line — version control preserves them)
 6. Unreferenced private fields, methods, or local variables that `tsc`/lint flags
-7. Unused `@Input` / `@Output` properties
+7. Unused inputs and outputs (`@Input`/`@Output` or `input()`/`output()`)
 
-> **Not auto-applied: `ChangeDetectionStrategy.OnPush`.** Switching a component to `OnPush` is a semantic change, not a cleanup — it can silently break views that mutate inputs in place, rely on default change detection ticking from `setInterval`/Promises/third-party callbacks, or expect re-render on ambient state changes. Treat it as an explicit, tested change when the component is the primary target, not a drive-by edit. New components scaffolded from skills still default to `OnPush` (see `docs/defaults.md`).
+> **Not auto-applied: moving a component off eager change detection** — adding `ChangeDetectionStrategy.OnPush` on v21, or removing `Eager`/`Default` on v22+, where an unset `changeDetection` already means OnPush. It is a semantic change, not a cleanup — it can silently break views that mutate inputs in place, rely on change detection ticking from `setInterval`/Promises/third-party callbacks, or expect re-render on ambient state changes. Treat it as an explicit, tested change when the component is the primary target, not a drive-by edit. The `Eager` that `ng update` writes on v22 is pre-existing upgrade debt, even where lint reports it, not licence for a drive-by switch. New components follow `docs/defaults.md`.
 
 ### Apply only when the file is the primary target of the change:
 
 **Add:**
 8. Replace manual `.subscribe()` with `async` pipe where possible
-9. Extract complex template expressions into component methods or pipes
-10. Add `ChangeDetectionStrategy.OnPush` — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly.
+9. Extract complex template expressions into a `computed()`, a pipe, or a component member
+10. Move a component off eager change detection (add `ChangeDetectionStrategy.OnPush` on v21; remove `Eager`/`Default` on v22+) — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly.
 
 **Subtract:**
 11. Inline single-consumer interfaces or abstract bases that are not a project-evidenced DI service seam — per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it.
 12. Collapse shallow service methods that just delegate to `HttpClient` with no transformation
-13. Single-use pipes or directives — inline at the call site, or convert to a component method
+13. Single-use pipes or directives — inline at the call site, or convert to a `computed()` or component member
 14. Unused barrel re-exports in `index.ts`
 
 Items 8–14 can significantly expand or reshape a diff. Only apply them when the file is what the task is specifically about, not when it's incidentally touched. This keeps PRs focused and reviewable.

@@ -13047,3 +13047,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-375** — DONE **2026-10-10** for 0.95.0 (Angular v21-v22 audit, batch 3; escaped false green): the Angular and monorepo `post-write` hooks no
   longer type-check a solution-style `tsconfig.json` (`"files": []` plus `"references"`, a library-only workspace since CLI 20), which passed in
   silence; they report "Type-check not verified". The baseline also skips untracked `__screenshots__/`. Rest of the audit: B-367.
+- **B-376** — DONE **2026-10-10** for 0.95.0 (Angular v21-v22 audit, batch 4: docs and defaults): `docs/defaults.md`, the carrier, the Boy Scout
+  fragments, READMEs, ARCHITECTURE and FRAMEWORK-CONTEXT follow v21-v22 (standalone and `inject()` per WSD-112, signal inputs, OnPush per major,
+  Signal Forms detected, `provideHttpClientTesting()`, deprecated `*ngIf` family); the floor is v21-v22. Rest of the audit: B-367.

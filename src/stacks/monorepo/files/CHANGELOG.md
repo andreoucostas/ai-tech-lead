@@ -63,6 +63,20 @@
   `framework-doctor`'s build-feedback canary asks for an application source file. An update refreshes the hook; you
   do not need to do anything.
 
+- **The Angular defaults now follow v21 and v22.** `docs/defaults.md`, which the agent uses until `/bootstrap` records
+  your conventions, targets the current major and the one before it. In new code it prefers standalone components,
+  `inject()`, signal inputs and outputs, `computed()` for derived template values, and `@if`/`@for`/`@switch`:
+  `*ngIf`, `*ngFor` and `*ngSwitch` are deprecated since v20, and a template is migrated only when its file is the
+  primary target, never in a bug fix. On v22 it leaves `changeDetection` unset, since OnPush is the default there, and
+  treats the `Eager` and `strictTemplates: false` that `ng update` writes as upgrade debt, not your conventions. It
+  also recognises Signal Forms without making them the default, uses `provideHttpClientTesting()` in place of the
+  deprecated `HttpClientTestingModule`, names Vitest's `.only`/`.skip` beside Jasmine's `fit`/`xit`, and asks for the
+  change-detection provider, test runner and `strictTemplates` when recording conventions. An update refreshes
+  `docs/defaults.md` and the rules file. Your `AGENTS.md` is yours, so its Boy Scout section keeps its wording; to take
+  the new one, replace item 16's "Add `ChangeDetectionStrategy.OnPush`" with "Move a component off eager change
+  detection (add `ChangeDetectionStrategy.OnPush` on v21; remove `Eager`/`Default` on v22+)", and name
+  `input()`/`output()` beside `@Input`/`@Output` in item 11.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside

@@ -60,7 +60,7 @@ Template entries — a .NET (NuGet) shape and an Angular (npm) shape:
   - `<acme-button>` — primary/secondary/ghost variants; emits `(click)`
   - `<acme-modal>` — content-projected modal with `[open]` input
   - `provideAcmeTheme({ ... })` — global theme provider, call in `bootstrapApplication`
-- **Common pitfalls**: Do not import `acme-ui-kit/legacy` — it is for repos still on Angular 14 or below.
+- **Common pitfalls**: Do not import `acme-ui-kit/legacy` — it is for repos still on NgModule-based components.
 ```
 
 ---

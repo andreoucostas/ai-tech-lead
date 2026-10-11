@@ -99,6 +99,26 @@ also skips untracked `__screenshots__/` folders at any depth (Vitest browser mod
 `.gitignore` template only since 20.3.3); the extended baseline case was red on the unchanged script. Not done:
 type-checking a library through its `tsconfig.lib.json`, which needs timing against the 45 s budget first.
 
+B-376, batch 4 of the 2026-10-09 Angular v21-v22 audit (§4 B6, with B0 decided as WSD-112): both Angular stacks'
+`docs/defaults.md` now cover v21-v22 and name the major at each split. New code is standalone and uses `inject()`,
+mirroring NgModules and constructor injection only where a file already uses them (reversing 6879e5e8's neutral
+wording, WSD-112); inputs and outputs name `input()`/`output()`/`model()` beside the decorators, and derived template
+values go to `computed()` (M4); OnPush is set on v21 and left unset on v22, with `Eager` or the deprecated `Default`
+needing a reason and a migration-written `Eager` or `strictTemplates: false` treated as upgrade debt (M1, M8); Signal
+Forms are detected, with `FormValueControl`/`FormCheckboxControl` for their controls, but not made the greenfield
+default, per the audit's addendum (M5); the Conventions checklist asks for the change-detection provider, the build and
+test builders, the runner, zone.js in the test build and `strictTemplates` (M3); `provideHttpClientTesting()` replaces
+the deprecated `HttpClientTestingModule` (D1); the `*ngIf` family is labelled deprecated and migrated only as the
+primary target (D4); Vitest's `.only`/`.skip` sit beside Jasmine's forms (M2); SSR drops Angular Universal and prefers
+`afterNextRender` (M10). The floor becomes v21-v22 in both READMEs and the monorepo defaults header, and `(Angular 16+)`
+goes (§3, F2). Carrier rule 3 loses its example sentence, whose four APIs exist on every supported major, and the
+READMEs and ARCHITECTURE name the real gates instead: Signal Forms, `resource`, `Eager`, `@Service()` (F1). Carrier rule
+12 and the Boy Scout fragments name signal inputs, `computed()` and the move off eager change detection (M1, M4); the
+consumer CHANGELOGs tell existing installs which of their own Boy Scout items to edit, because `AGENTS.md` is
+consumer-owned. FRAMEWORK-CONTEXT's pitfall example drops Angular 14 (F11). Text only, unmeasured on any host;
+always-loaded +291 characters (Angular) and +302 (monorepo), the carrier shrinking by 70 and 42. `bootstrap.md`,
+`rebootstrap.md`, the agents and the skills keep their 17+ pivots and version checks until batch 5.
+
 ## 0.94.0 — 2026-10-08
 
 The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a

@@ -1,5 +1,5 @@
 12. Split mixed-responsibility methods; never use a line-count threshold
 13. Add risk-relevant tests only, and only with a harness
 14. Replace manual `.subscribe()` with `async` pipe where possible (Angular)
-15. Extract complex template expressions into component methods or pipes (Angular)
-16. Add `ChangeDetectionStrategy.OnPush` — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly. (Angular)
+15. Extract complex template expressions into a `computed()`, a pipe, or a component member (Angular)
+16. Move a component off eager change detection (add `ChangeDetectionStrategy.OnPush` on v21; remove `Eager`/`Default` on v22+) — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly. (Angular)

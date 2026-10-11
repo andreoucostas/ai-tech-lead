@@ -129,10 +129,10 @@ sequenceDiagram
 
 ## 8. Doctrine (the rules the instruction files encode)
 
-- **Verification Rules** — verify before referencing; never invent APIs/selectors; honour version pinning (signals, control-flow, `inject()`, `takeUntilDestroyed` are version-gated); failures are signals (never `@ts-ignore`/`as any` to silence). Anti-hallucination.
+- **Verification Rules** — verify before referencing; never invent APIs/selectors; honour version pinning (for example, Signal Forms, `resource`, `Eager` and `@Service()` are version-gated); failures are signals (never `@ts-ignore`/`as any` to silence). Anti-hallucination.
 - **Leanness** — counterweight to Boy Scout's add-bias; no abstraction on data or for speculation. Reconciled with SOLID (#below).
 - **SOLID (mandatory)** — apply SRP/OCP/LSP/ISP and derive any injected-service boundary from project evidence and correctness needs; this framework does not require an abstraction, token, or DI container. `solid-check` is semantic; a consumer may choose an evidenced direction check. Data carriers are exempt.
-- **Bug-fix scope** — edits serve outcome, compatibility, or verification; requested refactoring remains valid. `OnPush` remains an explicit, verified change.
+- **Bug-fix scope** — edits serve outcome, compatibility, or verification; requested refactoring remains valid. Moving a component off eager change detection remains an explicit, verified change.
 - **Trojan Horse** — bundle nearby debt cleanup into feature/fix work, so quality compounds without debt sprints.
 
 ---

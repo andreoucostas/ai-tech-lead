@@ -2,7 +2,7 @@
 
 A working template that turns Claude Code and GitHub Copilot into a tech lead for your Angular codebase. Clone it, run one command, and get AI-driven development with built-in conventions, verification, and continuous improvement.
 
-When repository evidence selects an Angular profile, the framework supports Angular 17+ defaults (standalone components, signals, new control flow, `inject()`, `takeUntilDestroyed`). `/bootstrap` detects the workspace and version before applying any Angular convention; an Angular distribution name is not evidence by itself.
+When repository evidence selects an Angular profile, the framework's defaults target Angular v21–v22, the current major and the one before it as of 2026-10: standalone components, `inject()`, signal inputs and `computed()`, built-in control flow, and each major's change-detection and test-runner defaults. `/bootstrap` detects the workspace and version before applying any Angular convention; an Angular distribution name is not evidence by itself.
 
 This README is for the person evaluating or installing the framework. It stays in the framework checkout; the installer does not copy it into your repository. **An AI agent asked to install this** should read [For AI agents](#for-ai-agents) first.
 
@@ -16,7 +16,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 3. **One command instead of hours hand-writing the AI's context.** `/bootstrap` (or brownfield `/adopt`) first proves an Angular profile from Git-root evidence, runs only the applicable module, state, component, RxJS, API, and verification passes, then writes `AGENTS.md` and `TECH_DEBT.md`. You stop hand-authoring AI context — it's derived from the real codebase.
 
-4. **The AI stops inventing your codebase.** Verification rules force it to confirm any component, service, route, selector, or npm package exists (via Read/Grep) before referencing it, and to honour version pinning — signals, `takeUntilDestroyed`, and the new control flow are version-gated, so it won't suggest them against a version that lacks them. Fewer hallucinated APIs means fewer wrong diffs and less rework.
+4. **The AI stops inventing your codebase.** Verification rules force it to confirm any component, service, route, selector, or npm package exists (via Read/Grep) before referencing it, and to honour version pinning — Signal Forms and `resource`/`httpResource` (experimental on v21), `ChangeDetectionStrategy.Eager` (21.2) and `@Service()` (v22) are version-gated, so it won't suggest them against a version that lacks them. Fewer hallucinated APIs means fewer wrong diffs and less rework.
 
 5. **Fast type feedback on supported editor writes.** When the PostToolUse hook and interpreter are live, a `.ts` editor/file-write event runs `tsc --noEmit`, and a component template (`.html`) write runs the Angular compiler's `ngc --noEmit`; shell/external writes do not trigger them.
 

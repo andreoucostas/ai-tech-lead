@@ -11,7 +11,7 @@ These apply to every workflow, before any convention-level rule. The difference 
 
 1. **Verify before you reference.** Before naming a component, service, route, npm package, module, or signal/store, confirm it exists in this codebase via `Read` / `Grep`. If you cannot confirm, say so explicitly rather than guessing.
 2. **Never invent APIs.** Do not fabricate selectors, decorators, RxJS operators, package exports, or framework features. Read the source. If a referenced shared-library API is not in `FRAMEWORK-CONTEXT.md > Detected Framework Packages` at the version this repo pins, treat it as unverified.
-3. **Honour version pinning.** Before suggesting a feature from `@angular/*`, RxJS, or a shared library, confirm the version in `FRAMEWORK-CONTEXT.md > Detected Framework Packages` actually has it. Signals, control flow, `inject()`, `takeUntilDestroyed()` are all version-gated. The latest API surface in `Shared Libraries` may not exist in older versions.
+3. **Honour version pinning.** Before suggesting a feature from `@angular/*`, RxJS, or a shared library, confirm the version in `FRAMEWORK-CONTEXT.md > Detected Framework Packages` actually has it. The latest API surface in `Shared Libraries` may not exist in older versions.
 4. **State uncertainty.** When a question depends on context you do not have (a file you have not read, runtime behaviour you cannot observe, a backend response shape you cannot verify), say so. Do not guess to seem helpful.
 5. **Tests are immutable safety nets during fixes and refactors.** When an existing spec fails, production is wrong (or the test is wrong for a documented reason). Do not edit assertions to make them pass without flagging it explicitly.
 6. **No invented fixtures.** When sample data, builders, factories, or HTTP mocks already exist, reuse them. Do not fabricate parallel ones.
@@ -45,7 +45,7 @@ The Boy Scout Rule biases toward improvements. This counterweight requires every
 ### Test leanness
 
 11. **Do not test getters, setters, or trivial signals.** Test behavior, not assignment.
-12. **Do not test the framework.** No tests that `@Input` decorators bind, that `Router.navigate` works, that change detection runs.
+12. **Do not test the framework.** No tests that inputs bind (`@Input` or `input()`), that `Router.navigate` works, that change detection runs.
 13. **Reuse existing test fixtures and HTTP mocks.** Do not introduce parallel test data unless existing fixtures cannot represent the case.
 14. **No over-mocking.** Mock only true external boundaries — HTTP (`provideHttpClientTesting`), time, storage, third-party SDKs. Never mock the component/service under test or its owned collaborators when the real (or a lightweight fake) instance is cheap; render the real template and inject real collaborators. *Why: AI assistants frequently produce tests that assert on mock interactions and would still pass if the real code were broken — see [Verification Rules](#verification-rules) #9.*
 15. **No tautological assertions.** A test whose only assertion is `expect(true).toBe(true)`, a lone `expect(x).toBeDefined()` on a freshly-created object, or "the spy was called" verifies nothing. Assert the rendered output, emitted value, or state change. *Why: a large share of LLM-generated assertions are weak or vacuous — they bank coverage without catching regressions.*

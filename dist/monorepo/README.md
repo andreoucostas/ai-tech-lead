@@ -2,7 +2,7 @@
 
 A working template that turns Claude Code and GitHub Copilot into a tech lead for an evidenced .NET, Angular, warehouse-SQL, or mixed codebase. Clone it, run one command, and get AI-driven development with built-in conventions, verification, and continuous improvement.
 
-This install carries .NET, Angular, and warehouse-SQL rails in one repo, while `/bootstrap` selects only the profiles the Git-root evidence supports. Angular 17+ defaults (standalone components, signals, new control flow, `inject()`, `takeUntilDestroyed`) apply only after Angular workspace/version evidence; .NET conventions likewise require .NET markers. Warehouse-SQL may stand alone without either application profile.
+This install carries .NET, Angular, and warehouse-SQL rails in one repo, while `/bootstrap` selects only the profiles the Git-root evidence supports. Angular defaults for v21–v22, the current major and the one before it as of 2026-10 (standalone components, `inject()`, signal inputs and `computed()`, built-in control flow, and each major's change-detection and test-runner defaults), apply only after Angular workspace/version evidence; .NET conventions likewise require .NET markers. Warehouse-SQL may stand alone without either application profile.
 
 This README is for the person evaluating or installing the framework. It stays in the framework checkout; the installer does not copy it into your repository. **An AI agent asked to install this** should read [For AI agents](#for-ai-agents) first.
 
@@ -16,7 +16,7 @@ No marketing. Each item is a concrete mechanism and the effect it produces.
 
 3. **One command instead of hours hand-writing the AI's context.** `/bootstrap` (or brownfield `/adopt`) selects .NET, Angular, and warehouse-SQL profiles from Git-root evidence, analyses only the profiles present, then writes `AGENTS.md` and `TECH_DEBT.md`. You stop hand-authoring AI context — it's derived from the real codebase.
 
-4. **The AI stops inventing your codebase.** Verification rules force it to confirm any class, method, NuGet package, route, component, service, selector, or npm package exists (via Read/Grep) before referencing it, and to honour version pinning — Angular signals, `takeUntilDestroyed`, and the new control flow are version-gated, so it won't suggest them against a version that lacks them. Fewer hallucinated APIs means fewer wrong diffs and less rework.
+4. **The AI stops inventing your codebase.** Verification rules force it to confirm any class, method, NuGet package, route, component, service, selector, or npm package exists (via Read/Grep) before referencing it, and to honour version pinning — Angular Signal Forms and `resource`/`httpResource` (experimental on v21), `ChangeDetectionStrategy.Eager` (21.2) and `@Service()` (v22) are version-gated, so it won't suggest them against a version that lacks them. Fewer hallucinated APIs means fewer wrong diffs and less rework.
 
 5. **Fast build/type feedback on supported editor writes.** When the PostToolUse hook and interpreter are live, `.cs`/`.ts` editor events, and Angular component template (`.html`) writes, run the matching check; shell/external writes do not trigger them.
 
