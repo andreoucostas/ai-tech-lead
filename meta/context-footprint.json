@@ -18,7 +18,7 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
-          "chars": 277,
+          "chars": 276,
           "tok": 69
         },
         {
@@ -192,8 +192,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 11673,
-          "tok": 2918
+          "chars": 12048,
+          "tok": 3012
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -303,8 +303,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 7444,
-          "tok": 1861
+          "chars": 7960,
+          "tok": 1990
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -338,8 +338,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 52970,
-          "tok": 13242
+          "chars": 54103,
+          "tok": 13526
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -447,7 +447,7 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
-          "chars": 244,
+          "chars": 243,
           "tok": 61
         },
         {
@@ -606,8 +606,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 11703,
-          "tok": 2926
+          "chars": 12078,
+          "tok": 3020
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -717,8 +717,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 6382,
-          "tok": 1596
+          "chars": 6810,
+          "tok": 1702
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -752,8 +752,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 44823,
-          "tok": 11206
+          "chars": 45915,
+          "tok": 11479
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -846,8 +846,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
-          "chars": 294,
-          "tok": 74
+          "chars": 293,
+          "tok": 73
         },
         {
           "path": ".claude/agents/convention-check.md#frontmatter",
@@ -1020,8 +1020,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12434,
-          "tok": 3108
+          "chars": 12809,
+          "tok": 3202
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -1131,8 +1131,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
-          "chars": 7576,
-          "tok": 1894
+          "chars": 8336,
+          "tok": 2084
         },
         {
           "path": ".claude/agents/convention-check.md#body",
@@ -1166,8 +1166,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 59677,
-          "tok": 14919
+          "chars": 60810,
+          "tok": 15202
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1269,7 +1269,7 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 37897,
+      "static.claude.chars": 37896,
       "static.claude.tok": 9474,
       "static.copilot.chars": 26394,
       "static.copilot.tok": 6598,
@@ -1277,7 +1277,7 @@
       "prompt.max.tok": 886
     },
     "angular": {
-      "static.claude.chars": 35927,
+      "static.claude.chars": 35926,
       "static.claude.tok": 8982,
       "static.copilot.chars": 26830,
       "static.copilot.tok": 6708,
@@ -1285,7 +1285,7 @@
       "prompt.max.tok": 836
     },
     "monorepo": {
-      "static.claude.chars": 42277,
+      "static.claude.chars": 42276,
       "static.claude.tok": 10569,
       "static.copilot.chars": 29916,
       "static.copilot.tok": 7479,

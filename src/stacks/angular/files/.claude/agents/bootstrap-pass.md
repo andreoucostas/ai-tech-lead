@@ -2,14 +2,14 @@
 name: bootstrap-pass
 description: Read-only worker for one Angular `/bootstrap` pass (A1–A6 or A7 repository-knowledge discovery). Returns structured findings; never invoke directly.
 tools: Read, Grep, Glob, PowerShell
-model: inherit
+model: sonnet
 ---
 
 You execute exactly one bootstrap analysis pass defined in `.claude/commands/bootstrap.md`. The caller specifies `A1`–`A7`. Return one structured findings message.
 
 ## Process
 
-1. Read `.claude/commands/bootstrap.md`. Locate the caller's `### <pass-id>:` heading.
+1. Read only the parts of `.claude/commands/bootstrap.md` your pass needs, not the whole file. Grep it for its heading lines, then Read (offset and limit) just the `## Pre-flight checks` section and the caller's `### <pass-id>:` section, each from its heading to the next heading of the same or a higher level. The parent has already run the pre-flight checks: read them for the exclusions and boundaries your pass must respect and do not repeat their steps; synthesis and artifact generation belong to the parent.
 2. Read its checklist only when repository evidence selected the Angular profile; otherwise return `Pass <id>: no applicable files found in this codebase.`
 3. Use `Glob` to enumerate relevant Angular source for A1–A6 (`*.ts` for code passes; `angular.json`, `package.json`, `tsconfig.json` for build/quality passes). When the caller names a scope (`/rebootstrap`'s changed areas and rechecked claims), enumerate only that scope and read outside it only to resolve what a scoped file depends on. Bound them to ~50 files; if larger, sample the most recently changed via `git log`. A7 instead inventories repository areas then makes finite semantic reads as specified below.
 4. Read selected files and compile findings.

@@ -39,7 +39,7 @@ When native delegation is available, send all seven worker calls in one message 
 
 Each subagent returns structured findings; you do **not** redo the analysis. Just collect the seven results — they feed Phase 2. Findings follow `.claude/agents/bootstrap-pass.md`'s Output format, each naming its own evidence and kind for 3f; a host without that agent, and the sequential fallback, read that file and use the same format.
 
-The pass definitions below are the source of truth the subagents read. Do not duplicate the pass logic inline; the subagents read this file directly.
+The pass definitions below are the source of truth the subagents read. Do not duplicate the pass logic inline; the subagents read this file's Pre-flight checks and their own pass section.
 
 ### A1: Module Architecture & Lazy Loading
 - NgModules vs standalone — split, consistency
@@ -119,6 +119,19 @@ From the seven analysis passes, synthesise findings into three priority tiers:
 3. **Quick wins** — improve quality with minimal effort
 
 For each item: current pattern → target pattern → brief rationale.
+
+---
+
+## Phase 2a — Recheck high-stakes findings
+
+The pass reports are your only view of the code, and a worker can misread it. Before Phase 2b, reread
+the evidence each of these findings cites: every Tier-1 architectural risk and every finding you will
+propose as a hazard in 3d-bis. Read the cited lines yourself; do not dispatch a worker. Keep a finding
+its evidence shows, and carry the exact `path:line` range you reread into its Phase 2b or 3d-bis
+question and, for a hazard, its Hazard cell. Drop a finding its evidence contradicts or does not show,
+and list it in Phase 4 with the reason. This recheck establishes what the code shows, not whether the
+risk matters in this system: it never sets or upgrades a hazard's status, which only the developer's
+answer does. Recheck no other findings.
 
 ---
 
@@ -322,6 +335,8 @@ From the Phase-2 **Tier-1 architectural risks** (and any domain-invariant / secu
 For each candidate, ask a plain, answerable engineering question:
 > "I found a potential hazard in [Area / file]: [one plain sentence describing the specific risk — e.g. 'the auth interceptor does not retry after a 401 token refresh, so a race condition could leave the user with a broken session']. Is this (a) a confirmed risk to track, (b) not actually a risk in this codebase, or (c) you're not sure?"
 
+Each question names the `path:line` range Phase 2a reread for that hazard.
+
 With a question tool, ask as many hazards per call as it accepts, each its own question offering (a), (b), (c) and "skip the rest — mark them unverified", and make the next call straight away. Without one, number the questions in a single message and end it with a "skip all — mark as unverified" escape.
 
 **Under headless `/adopt`** (the `--headless` directive propagated into this Phase-7 `/bootstrap`): do **not** pause for confirmation. Take the "skip all — mark as unverified" path automatically — write every candidate hazard `[UNVERIFIED]` and surface it on adopt's Phase-8 checklist. Never auto-confirm a hazard when no developer is present.
@@ -331,7 +346,7 @@ Map each answer to a row status:
 - **(b) not a risk** → `Status = [REVIEWED: not a hazard — YYYY-MM-DD]` using today's date in that ISO format (write the row — kept for auditability, not dropped)
 - **(c) unsure / skip all**, and every hazard still unanswered when the developer chose "skip the rest" → a new row is `Status = [UNVERIFIED]` (graceful degradation); a row already in the table keeps its status
 
-Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk) · `Status` · `Reviewed`. `Reviewed` is the day the row was added, or a person last confirmed or dismissed it, in ISO `YYYY-MM-DD`; nothing else changes it, and `Status`, not the date, says whether a person confirmed it. So a row this run adds gets today's date, `[UNVERIFIED]` included, and a row already in the table keeps its status and date unless the developer answers it (a) or (b).
+Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk, plus the `path:line` range Phase 2a reread for it) · `Status` · `Reviewed`. `Reviewed` is the day the row was added, or a person last confirmed or dismissed it, in ISO `YYYY-MM-DD`; nothing else changes it, and `Status`, not the date, says whether a person confirmed it. So a row this run adds gets today's date, `[UNVERIFIED]` included, and a row already in the table keeps its status and date unless the developer answers it (a) or (b).
 
 - Write the Status cell as **bare text**, never inside Markdown code delimiters/backticks. Its complete
   value must be one accepted token: `[VERIFIED]`, `[SUSPECTED]`, `[UNVERIFIED]`, or
@@ -439,6 +454,7 @@ Then output:
 - Top 3 architectural risks
 - Top 3 quick wins (including the Severity-High no-test-suite entry when A6 found no spec files)
 - Files generated/modified
+- **Phase 2a recheck**: each finding dropped because its cited evidence did not show it, with the reason, or "none dropped".
 - **Rebootstrap baseline (3f)**: the `RECORDED` line verbatim and why each `UNCLAIMED` statement has no claim, or why no baseline was recorded.
 - **Repository knowledge discovery (A7)**: list each new review draft with body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result; also list skipped duplicates/owner-routed items, actual reads, inventory-only/excluded/inaccessible areas, and the next bounded continuation. For each new project skill add one plain-language line: the operation, its instance count, its exemplar path, and the Common Tasks line its `## After review` paragraph names. Also list each qualifying operation left over after the three-draft limit and each leftover `references/project-pattern.md`. State that drafts await PR review and changed no owner-authored knowledge.
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: auth + correlation-ID interceptors, typed error envelope in `core/api/`") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).

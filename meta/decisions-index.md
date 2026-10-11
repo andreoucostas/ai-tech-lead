@@ -79,6 +79,7 @@ authoritative.
 - “Copilot hooks keep requiring PowerShell 7; a missing `pwsh` is diagnosed by framework-doctor, not worked around in `hooks.json`.” — `meta/workspace-decisions.md WSD-110` (B-352's observed stall; WSD-073 stands)
 - “B-348's security-pass wording and B-356's plan-step record bullet ship unmeasured; their measurements stay open in the backlog.” — `meta/workspace-decisions.md WSD-111` (maintainer decision; exception to WSD-107 and WSD-109)
 - “The Angular stacks prefer standalone components and `inject()` in new code again, mirroring NgModules or constructor injection only where a file already uses them.” — `meta/workspace-decisions.md WSD-112` (reverses 6879e5e8; Angular v21-v22 audit)
+- “`bootstrap-pass` runs on Sonnet whatever the session model and reads only the pre-flight block plus its own pass; the parent rereads the evidence behind every Tier-1 risk, .NET A7 finding and proposed hazard before asking, and a hazard's status still comes only from the developer's answer.” — `meta/workspace-decisions.md WSD-113` (amends WSD-011 for `bootstrap-pass` only; B-385)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

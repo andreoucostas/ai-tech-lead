@@ -84,13 +84,15 @@ Run in isolated context; return a structured findings table to the parent. Model
 
 | Agent | Role | Model |
 |-------|------|-------|
-| `bootstrap-pass` | One analysis pass (A1–A7) during `/bootstrap` | inherit (strong) |
+| `bootstrap-pass` | One analysis pass (A1–A7) during `/bootstrap` | **sonnet** |
 | `security-auditor` | XSS / auth / secrets scan; feeds `/security-review` | inherit (strong) |
 | `solid-check` | Audits the diff against the five SOLID principles and first-party project evidence; feeds `/review` | inherit (strong) |
 | `test-critic` | Test-integrity audit — would each test go red if the code under test broke? Catches over-mocking and tautological/weak assertions; feeds `/review` | inherit (strong) |
 | `convention-check` | Diff vs AGENTS.md > Conventions; feeds `/review` | **haiku** |
 | `bloat-radar` | Over-abstraction counterweight to Boy Scout; feeds `/review` | **haiku** |
 | `debt-radar` | Maps files/areas to TECH_DEBT entries (Trojan Horse) | **haiku** |
+
+`bootstrap-pass` runs on Sonnet whatever model your session uses; your session still synthesises the findings, asks you, and writes the artifacts on its own model. To run every subagent on one model instead, start Claude Code with `CLAUDE_CODE_SUBAGENT_MODEL=<model>` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` (Claude Code v2.1.257 or later); that also overrides the Haiku agents.
 
 ---
 

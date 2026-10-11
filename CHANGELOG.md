@@ -13,6 +13,17 @@
 
 ## 0.95.0 — Unreleased
 
+B-385 (maintainer cost report from an Opus `/bootstrap`, 2026-10-11): `/bootstrap` dispatches one `bootstrap-pass` worker per analysis pass, 8 for
+.NET, 7 for Angular and up to 17 in the monorepo stack, and the worker had `model: inherit`, so an Opus session ran every worker on Opus. Each worker
+also read all of `bootstrap.md` (45 to 60 KB by stack) when only the pre-flight block (about 5 KB) and its own pass concern it. Every `/bootstrap`
+eval on record ran Sonnet workers (`meta/eval-results.md`; B-345, B-346); Opus workers were never evaluated. Three changes (WSD-113):
+`bootstrap-pass` is `model: sonnet`; the worker reads the pre-flight block plus its own pass section, found by heading; and a new Phase 2a has the
+parent reread the evidence behind every Tier-1 architectural risk, every .NET A7 finding and every proposed hazard before Phase 2b, drop what the code
+does not show, and carry the `path:line` range into the question and the Hazard cell. A hazard's status still comes only from the developer's answer.
+Rejected: Haiku (the B-41 pilot's instruction-following failures), omitting `model:` (keeps the unevaluated Opus default), and letting the parent
+confirm hazards (a status means a person decided). Not covered: no live eval was run for this change, and Phase 2a catches a wrong worker claim, not a
+missed one.
+
 B-362 (field report #9, 2026-10-09: "generated baseline includes temporary directories and run time"):
 `bootstrap-baseline.ps1` hashed every untracked file the consumer's ignore rules missed. Reproduced in a scratch
 Angular repository with three `.gitignore` variants (two lines, the CLI 12 template, the current CLI template):

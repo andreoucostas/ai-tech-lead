@@ -6,6 +6,15 @@
 
 ## 0.95.0 — Unreleased
 
+- **`/bootstrap`'s analysis workers now run on Sonnet and read only what their pass needs, and your session rechecks
+  the code behind its top findings before it asks you anything.** Each analysis pass ran on whatever model your
+  session used, and each worker first re-read the whole workflow. Workers now run on Sonnet and read only the
+  pre-flight checks and their own pass, while your session still synthesises, asks and writes on its model. Before
+  asking you anything, your session rereads the cited code for every top architectural risk, financial-domain finding
+  and proposed hazard, drops any the code does not show, and names the lines it checked. A hazard's status still comes
+  only from your answer. `docs/ARCHITECTURE.md` §5 shows how to run every subagent on one model instead. An update
+  refreshes the files; you do not need to do anything.
+
 - **`/rebootstrap`'s baseline no longer records this framework's update backup or untracked tool output.**
   `/bootstrap` records a baseline so a later `/rebootstrap` re-analyses only what changed. It hashed every file Git
   does not ignore, so `.claude/framework-update-backup/`, which a framework update writes, went into it, along with

@@ -2,14 +2,14 @@
 name: bootstrap-pass
 description: Read-only worker for one selected `/bootstrap` pass (.NET A1–A7, warehouse W1–W3, or shared A8 repository-knowledge discovery). Returns structured findings; never invoke directly.
 tools: Read, Grep, Glob, PowerShell
-model: inherit
+model: sonnet
 ---
 
 You execute exactly one bootstrap analysis pass defined in `.claude/commands/bootstrap.md`. The caller specifies a selected profile and pass id: .NET `A1`–`A7`, warehouse-SQL `W1`–`W3`, or the profile-independent shared pass `A8`. Return one structured findings message.
 
 ## Process
 
-1. Read `.claude/commands/bootstrap.md`. Locate the caller's selected profile/pass heading; for shared A8, locate `### A8:` bounded repository-knowledge discovery.
+1. Read only the parts of `.claude/commands/bootstrap.md` your pass needs, not the whole file. Grep it for its heading lines, then Read (offset and limit) just the `## Pre-flight checks` section and the caller's selected pass section, each from its heading to the next heading of the same or a higher level: the .NET `### A1:`–`### A7:` heading or the warehouse `#### W1:`–`#### W3:` heading, or for shared A8 its `### A8:` bounded repository-knowledge discovery heading. The parent has already run the pre-flight checks: read them for the exclusions and boundaries your pass must respect and do not repeat their steps; synthesis and artifact generation belong to the parent.
 2. Read its checklist and answer it against this codebase.
 3. Use `Glob` to enumerate relevant source files for profile passes. For .NET use `*.cs` for code passes and `*.csproj`, `*.sln`, `Directory.Build.props`, `appsettings*.json` for solution/quality passes. For warehouse-SQL use SQL roots, `*.sql`, `*.sqlproj`, dbt/project configuration, migrations, deployment/orchestration scripts, CI files, and test/validation assets. Never inspect .NET files or infer a `dotnet` command for a warehouse-SQL pass. When the caller names a scope (`/rebootstrap`'s changed areas and rechecked claims), enumerate only that scope and read outside it only to resolve what a scoped file depends on. Bound profile passes to ~50 files; if larger, sample the most recently changed via `git log`. Shared A8 instead inventories repository areas then makes finite semantic reads as specified below.
 4. Read selected files and compile findings.

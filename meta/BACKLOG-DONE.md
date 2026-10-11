@@ -13050,3 +13050,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-376** — DONE **2026-10-10** for 0.95.0 (Angular v21-v22 audit, batch 4: docs and defaults): `docs/defaults.md`, the carrier, the Boy Scout
   fragments, READMEs, ARCHITECTURE and FRAMEWORK-CONTEXT follow v21-v22 (standalone and `inject()` per WSD-112, signal inputs, OnPush per major,
   Signal Forms detected, `provideHttpClientTesting()`, deprecated `*ngIf` family); the floor is v21-v22. Rest of the audit: B-367.
+- **B-385** — DONE **2026-10-11** for 0.95.0 (maintainer cost report from an Opus `/bootstrap`): `bootstrap-pass` is `model: sonnet` (was `inherit`; Opus
+  workers were never evaluated), each worker reads the pre-flight block plus its own pass instead of all of `bootstrap.md`, and `/bootstrap` gains Phase 2a,
+  where the parent rereads the evidence behind every Tier-1 risk, .NET A7 finding and proposed hazard before asking; a hazard's status still comes only
+  from the developer's answer (WSD-113). No live eval run.

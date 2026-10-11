@@ -155,7 +155,7 @@ each repo's `docs/architecture-decisions.md`.
 
 ## WSD-011: Token policy is the v0.8.0 static per-agent model tiering; no routing/budget framework
 - **Date**: 2026-07-05
-- **Status**: Accepted (records existing practice; no behavioral change)
+- **Status**: Accepted (records existing practice; no behavioral change); bootstrap-pass amended by WSD-113
 - **Decision**: the framework's and meta layer's token-cost management is **static per-agent model
   tiering as shipped in v0.8.0** — no dynamic router, no token-budget framework, no additional
   multi-agent orchestration. The tiering rubric is the v0.8.0 one (CHANGELOG "Token economy →
@@ -4623,3 +4623,14 @@ angular-eslint's recommended config erroring on both since v20; the consumers ar
 **Decision (user, 2026-10-09: "ok", answering whether to reverse 6879e5e8's neutral wording).** New code is standalone and uses `inject()`;
 existing NgModule or constructor-injection code is mirrored where a file already uses it. It lands with B-367's docs and defaults batch.
 **Reopen** on a field report of a consumer whose conventions require NgModules or constructor injection in new code.
+
+## WSD-113: `bootstrap-pass` runs on Sonnet and the parent rechecks high-stakes evidence before asking (2026-10-11)
+
+**Context.** B-385, the maintainer's cost report from an Opus `/bootstrap`: one `bootstrap-pass` worker per pass (8 .NET, 7 Angular, up to 17 monorepo),
+all `model: inherit`, each re-reading all of `bootstrap.md` (45-60 KB) for its own pass and the 5 KB pre-flight block. Every `/bootstrap` eval on record
+ran Sonnet workers (`meta/eval-results.md`; B-345, B-346); Opus workers were never evaluated.
+**Decision (user, 2026-10-11: "I like that extra step" for the recheck; "OK that's fine" for keeping hazard confirmation with the developer).**
+`bootstrap-pass` is `model: sonnet` and reads only the pre-flight block plus its own pass; `/bootstrap` Phase 2a has the parent reread the evidence behind every
+Tier-1 risk, .NET A7 finding and proposed hazard before Phase 2b. A hazard's status still comes only from the developer's answer. This amends WSD-011's tiering for
+`bootstrap-pass` only; `security-auditor`, `solid-check` and `test-critic` stay `inherit`. Rejected: Haiku (B-41 pilot), omitting `model:`, the parent confirming hazards.
+**Reopen** on a field report of a missed finding traced to a worker, or an eval in which Sonnet workers miss what Opus workers find.
