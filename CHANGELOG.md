@@ -152,6 +152,20 @@ installer's adoption marker (the installer half stays closed as B-369); and the 
 which is batch 5b. Text only, unmeasured; on-demand command bodies only (`bootstrap.md` +2.5 KB per stack),
 always-loaded unchanged.
 
+B-387, batch 5b of the 2026-10-09 Angular v21-v22 audit (§4 B5, the agents and skills half; drafted by a Sonnet
+subagent in an isolated worktree, reviewed and verified here): `bootstrap-pass` globs `*.html` in both stacks and, in
+the Angular stack, reads `angular.json` for every pass (M3, M4). `security-auditor` recognises all four ways to switch
+off XSRF (D2), accepts `canMatch` and flags `canLoad` (D3), widens its secret and non-HTTPS checks to the
+configuration the production build loads, adds a wildcard SSR `allowedHosts` and JSONP from 22.1, and its Angular
+description drops the CSP it never checked (M11). `bloat-radar` names signal inputs, prefers `computed()` for template
+logic, flags a static `style` attribute instead of `[style.x]` bindings (M4), and adds the bare `utils.ts`,
+`helpers.ts` and `common.ts` with both file-naming styles (M12). `test-critic` and `add-tests` scope to `*.spec.ts`
+and `*.test.ts` (M2) and share one zone-patched definition, with the Vitest patch supported from Angular 22 (M3);
+`add-tests`' suite bootstrap proposes the workspace's builder and runner, Vitest when `runner` is unset, instead of
+Jest (M2), and names `input()` beside `@Input` as carrier rule 12 now does (M4). The monorepo `rebootstrap` skill
+summary numbers the passes as the command does (F4). M1, D1 and the version pivots needed no change in these files.
+Text only, unmeasured; always-loaded -5 characters (Angular), on-demand bodies +0.03 to +0.46 KB.
+
 ## 0.94.0 — 2026-10-08
 
 The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a

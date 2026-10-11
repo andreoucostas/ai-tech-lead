@@ -1,6 +1,6 @@
 ---
 name: security-auditor
-description: Read-only Angular security audit, used only when that profile is evidenced. Covers XSS, auth/tokens, secrets, sensitive data, and CSP; used by `/security-review`.
+description: Read-only Angular security audit, used only when that profile is evidenced. Covers XSS, auth/tokens, secrets, and sensitive data; used by `/security-review`.
 tools: Read, Grep, Glob, PowerShell
 model: inherit
 ---
@@ -39,7 +39,7 @@ You are a security auditor for this repository. Your single job is to compare su
 - Hardcoded JWTs / API keys in source
 
 **Secrets / credentials**
-- API keys, OAuth client secrets, Firebase/AppsFlyer/etc. keys in `environments/environment*.ts` for production environments — flag any non-public key in a committed env file
+- API keys, OAuth client secrets, Firebase/AppsFlyer/etc. keys in the committed configuration the production build loads (`environment*.ts` where it exists) — flag any non-public key in a committed config file
 - Hardcoded URLs to internal/staging services in production builds
 - `.env` files committed (check `.gitignore` and current tracking status)
 
@@ -53,16 +53,18 @@ You are a security auditor for this repository. Your single job is to compare su
 - Sensitive fields displayed in DOM where they are not needed (full account number, full SSN-like identifiers)
 
 **HTTP / transport**
-- `HttpClient` calls to non-HTTPS URLs in production environment files
+- `HttpClient` calls to non-HTTPS URLs in the committed configuration the production build loads (`environment*.ts` where it exists)
 - `withCredentials: true` together with `Access-Control-Allow-Origin: *` server-side (cross-reference if observable)
-- Disabled XSRF protection (`HttpClientXsrfModule.withOptions({ ... cookieName: '' })` or removal)
+- Disabled XSRF protection: `withNoXsrfProtection()`; `withXsrfConfiguration` with an empty or mismatched cookie or header name; the deprecated `HttpClientXsrfModule.disable()` or `.withOptions({ cookieName: '' })`; or XSRF handling removed altogether
+- SSR configured with a wildcard `allowedHosts: ['*']`
+- JSONP use — deprecated from Angular 22.1; flag only when the workspace is on 22.1 or later
 
 **DOM / direct manipulation**
 - `document.write`, `document.cookie` writes for auth purposes
 - Direct DOM access bypassing Angular (`document.getElementById`, `nativeElement.innerHTML = ...`) with dynamic values
 
 **Routing / authorization**
-- Route guards (`CanActivate` / `canActivate` function) missing on routes that load sensitive features
+- Route guards (`canActivate` or `canMatch`, function or class) missing on routes that load sensitive features; flag `canLoad` as deprecated (replaced by `canMatch`)
 - Guards that always return `true` (placeholder)
 - Conditional rendering of sensitive UI based only on a UI-level role flag without backend re-check (note as defence-in-depth gap)
 

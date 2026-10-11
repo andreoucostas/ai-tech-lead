@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 Read `AGENTS.md` and `.claude/commands/rebootstrap.md` in this repository, then execute the rebootstrap workflow defined there.
 
-`.claude/commands/rebootstrap.md` is the single source of truth for this workflow. Follow it exactly: pre-flight check → baseline pre-step (stop when nothing changed) → re-analysis (A1–A8 .NET / A1–A7 Angular; each profile full or incremental) → delta synthesis → diff-aware merge with user confirmation per chunk → re-record the baseline → final report.
+`.claude/commands/rebootstrap.md` is the single source of truth for this workflow. Follow it exactly: pre-flight check → baseline pre-step (stop when nothing changed) → re-analysis (.NET A1–A7 / Angular A1–A6 / warehouse-SQL W1–W3 / shared A8; each profile full or incremental) → delta synthesis → diff-aware merge with user confirmation per chunk → re-record the baseline → final report.
 
 ## Request
 

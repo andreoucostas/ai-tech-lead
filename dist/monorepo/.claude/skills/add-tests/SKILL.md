@@ -31,7 +31,7 @@ developer agreement below.
      leanness #13). On an NUnit suite, `[Explicit]` is a legitimate opt-in marker for long-running
      or manual tests, but `[Ignore]` is a skip and stays subject to the project's no-skipping rule
      — as does MSTest's `[Ignore]` and xUnit's `[Fact(Skip=…)]`.
-   - **Angular:** a sibling `*.spec.ts` — runner (Karma/Jasmine, Jest, or Vitest), `TestBed` setup, `HttpTestingController` usage, component harnesses, and any shared fixtures/builders/HTTP mocks.
+   - **Angular:** a sibling `*.spec.ts` or `*.test.ts` — runner (Karma/Jasmine, Jest, or Vitest), `TestBed` setup, `HttpTestingController` usage, component harnesses, and any shared fixtures/builders/HTTP mocks.
    - If nothing is found anywhere for the touched stack, switch to **Suite bootstrap mode** below.
 2. **Decide the level.**
    - **.NET:** Pure logic / branching → unit test against the concrete class. Full HTTP path (routing, model binding, middleware, auth, serialization) → an integration test only when the repository already evidences that boundary (for example a `WebApplicationFactory<Program>` fixture); otherwise report it as **not available**.
@@ -41,10 +41,10 @@ developer agreement below.
      - **Pipe / guard / interceptor**: test the transform / decision / passthrough directly.
 3. **Cover behavior, not implementation.** Choose the smallest risk-relevant set: the principal behavior plus only consequential error, edge, or boundary cases. Do not create one test per category or public member. Mock only true external boundaries — never the type under test or owned collaborators you can construct cheaply (Test leanness #14). Every test needs a real oracle: a return value, state change, rendered output, emitted value, or thrown exception — not merely that a mock/spy was called or a tautology like `Assert.True(true)` / `expect(true).toBe(true)` (Test leanness #15–16).
    - **.NET:** Do **not** test getters/setters, DI resolution, or that EF Core/model-binding works (Test leanness #11, #12).
-   - **Angular:** Do **not** test that `@Input` binds, that `Router.navigate` works, or that change detection runs (Test leanness #11, #12); mock external boundaries (HTTP via `HttpTestingController`, time, storage) but render the real template for component behavior. Include failed-HTTP or empty/loading-state paths only when they materially change behavior.
+   - **Angular:** Do **not** test that inputs bind (`@Input` or `input()`), that `Router.navigate` works, or that change detection runs (Test leanness #11, #12); mock external boundaries (HTTP via `HttpTestingController`, time, storage) but render the real template for component behavior. Include failed-HTTP or empty/loading-state paths only when they materially change behavior.
 4. **Arrange-Act-Assert**, one logical assertion focus per test. Descriptive names per the project convention (e.g. .NET `Method_Scenario_ExpectedResult`).
 5. **Financial domain (.NET backend)**: when code touches money/balances/ledgers, derive the applicable invariant, tolerance, and preconditions from policy, implementation, tests, or executable evidence. Add only risk-relevant cases that exercise demonstrated negative-amount, duplicate-effect, precision/rounding, or temporal controls; a type/name or `MidpointRounding` alone is neither test selection nor a verdict.
-6. **Async (Angular)**: use the async style the project's convention and sibling specs use — `await fixture.whenStable()`, the runner's fake timers, or `fakeAsync`/`tick` only where the runner is zone-patched; flush `HttpTestingController` and `verify()` no outstanding requests.
+6. **Async (Angular)**: use the async style the project's convention and sibling specs use — `await fixture.whenStable()`, the runner's fake timers, or `fakeAsync`/`tick` only where the runner is zone-patched (zone.js in the test target's resolved polyfills or setup file; under Vitest, also the `zone.js/plugins/vitest-patch` polyfill, supported from Angular 22); flush `HttpTestingController` and `verify()` no outstanding requests.
 7. **Run** the touched stack's exact scoped test command supported by `AGENTS.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and runner configuration; do not infer `dotnet test`, Angular CLI, a browser, or flags. Confirm green, then confirm each new test can **fail**. A test you have not watched go red may be over-mocked or tautological (Verification Rule #9): for a regression test, confirm it fails against the unfixed code first; for any other new test, briefly break the code under test (or assert a deliberately wrong value) to see it fail for the right reason, then restore. If no executable command is evidenced, report tests as **not available** rather than claiming a pass.
 8. **Report** what was covered and what remains uncovered — do not claim coverage you didn't add.
 
@@ -72,8 +72,10 @@ When the goal is to make untested legacy code *safe to change* (e.g. before `/re
    and location. Prefer `AGENTS.md > Conventions > Testing`. For .NET, first inspect the whole
    repository/project graph and confirm no test project exists anywhere; only if it is genuinely test-free and
    conventions are unbootstrapped, propose xUnit + NSubstitute. For Angular, inspect `angular.json`
-   and propose the workspace's configured builder and runner (Jasmine/Karma or Jest). This is a
-   real checkpoint — do not create files until they answer.
+   and propose the workspace's configured builder and runner: `@angular/build:unit-test` runs its
+   `runner` (Vitest when unset, CLI 21+); `@angular/build:karma` runs Karma/Jasmine; Jest only
+   through a builder the workspace already configures. This is a real checkpoint — do not create
+   files until they answer.
 2. **Scaffold the minimum.**
    - **.NET:** create one unit-test project referencing the primary domain/application project. Only
      when a solution is evidenced, derive and run its exact project-registration command; a

@@ -13057,3 +13057,6 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-386** — DONE **2026-10-11** for 0.95.0 (Angular v21-v22 audit, batch 5a: the commands): `bootstrap`, `rebootstrap`, `test` and `adopt` in both Angular
   stacks follow v21-v22 (major and defaults recorded, a major below v21 reported, OnPush per major, zoned specs, Signal Forms, HTTP provider features,
   `provideHttpClientTesting()`, `ng new --ai-config` files recognised). Rest of the audit: B-367.
+- **B-387** — DONE **2026-10-11** for 0.95.0 (Angular v21-v22 audit, batch 5b: the agents and skills): `bootstrap-pass` reads templates, `security-auditor`
+  knows the standalone XSRF and `canMatch` forms and the production build's configuration, `bloat-radar`, `test-critic` and `add-tests` name signal APIs,
+  `*.test.ts` and the Vitest runner, and the monorepo `rebootstrap` skill numbers its passes as the command does. Rest of the audit: B-367.

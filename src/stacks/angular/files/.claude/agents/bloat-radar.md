@@ -18,7 +18,7 @@ For each added or modified file, evaluate:
 **1. Speculative abstraction** (An `abstract class`/interface DI seam is not bloat only when first-party project evidence or a correctness need establishes it. `solid-check` evaluates that evidence; this framework does not make it required.)
 - New `interface`/`abstract class` on a **non-service** type (model, DTO, enum wrapper). Data gets none. Flag as `high`.
 - New `abstract class` with zero or one subclass that is **not** used as a DI token/seam. Flag as `high`.
-- New generic helper file (`*.helper.ts`, `*.util.ts`, `*.utils.ts`) introduced. Flag as `medium` for justification.
+- New generic helper file (`*.helper.ts`, `*.util.ts`, `*.utils.ts`, or a bare `utils.ts`, `helpers.ts`, `common.ts`) introduced. Flag as `medium` for justification. Both naming styles (`foo.component.ts` and the newer `foo.ts`) coexist in v21-v22 repositories, so match helper names in either style.
 - New `Pipe` with one usage. `Grep` template references for the pipe name. If single use, flag as `medium`.
 - New custom `Directive` with no usages in templates. Flag as `high`.
 
@@ -42,7 +42,7 @@ For each added or modified file, evaluate:
 - New `as Foo` type assertions on values whose type is already inferable. Flag as `low`.
 
 **6. Trivial tests**
-- New tests asserting only that an `@Input` value is held in a property, or that a method invokes a mocked HttpClient exactly once with no behavior. Flag as `medium`.
+- New tests asserting only that an `@Input`, `input()` or `model()` value is held in a property, or that a method invokes a mocked HttpClient exactly once with no behavior. Flag as `medium`.
 - New tests that mirror Angular framework behavior (e.g., that `Router.navigate` was called when the test itself stubs `Router`). Flag as `medium`.
 
 **7. Net-LOC sanity**
@@ -53,8 +53,8 @@ For each added or modified file, evaluate:
 - New `export` on a previously file-local symbol without a documented external consumer. Flag as `medium`.
 
 **9. Template bloat**
-- Complex expression in a template (multiple chained operators, arithmetic, conditional logic) that should be a component method or pipe. Flag the template as `medium`.
-- Inline styles in templates (`[style.color]="..."`) when component styles already exist. Flag as `low`.
+- Complex expression in a template (multiple chained operators, arithmetic, conditional logic) that should move to a `computed()`, else a pipe, else a component member. Flag the template as `medium`.
+- A static `style="..."` attribute in a template when component styles already exist. Flag as `low`; leave `[style.x]` and `[class.x]` bindings alone.
 
 ## Output format
 

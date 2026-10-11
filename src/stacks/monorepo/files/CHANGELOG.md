@@ -105,6 +105,20 @@
   `vitest.config.*` and `karma.conf.js` among the toolchain files. An update refreshes the commands; conventions
   `/bootstrap` already recorded stay as they are until you run `/rebootstrap`.
 
+- **The review agents and the `add-tests` skill follow Angular v21 and v22.** On the Angular side, the security
+  auditor recognises every way to switch off XSRF protection, including the standalone `withNoXsrfProtection()` and an
+  empty or mismatched `withXsrfConfiguration`, which it used to miss. It accepts `canMatch` as well as `canActivate` as
+  a route guard and flags the deprecated `canLoad`, and looks for secrets and plain-HTTP URLs in whatever configuration
+  your production build loads, since new projects have no `environment*.ts`. It also flags a wildcard SSR
+  `allowedHosts` and, from 22.1, JSONP. The test critic and `add-tests` also cover `*.test.ts` specs and say when
+  `fakeAsync` can run: zone.js loaded in the test build and, under Vitest, the `zone.js/plugins/vitest-patch`
+  polyfill, supported from Angular 22. `add-tests` proposes the runner your workspace's test builder runs (Vitest by
+  default from CLI 21) instead of Jest. `bloat-radar` names signal inputs, suggests `computed()` for template logic,
+  flags a static `style` attribute instead of the `[style.x]` bindings Angular recommends, and catches bare
+  `utils.ts`, `helpers.ts` and `common.ts` files. `/bootstrap`'s Angular analysis now reads component templates too,
+  and the Copilot `rebootstrap` skill names the command's passes as the command numbers them. An update refreshes the
+  agents and skills; you do not need to do anything.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside

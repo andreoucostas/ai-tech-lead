@@ -18,7 +18,7 @@ For each added or modified file, evaluate:
 **1. Speculative abstraction** (A single-implementation interface or `abstract class` DI seam is not bloat only when first-party project evidence or a correctness need establishes it. `solid-check` evaluates that evidence; this framework does not make it required.)
 
 - **.NET:** New `interface` on a **non-service** type — a DTO, entity, value object, or `Options` record. Data gets none. Flag as `high`. New `abstract class Foo` with zero or one subclass that is **not** used as an evidenced DI seam. Flag as `high`. New generic helper class (`*Helper`, `*Util`, `*Utility`, `*Manager`). Flag as `medium` for justification — these are bloat magnets.
-- **Angular:** New `interface`/`abstract class` on a **non-service** type (model, DTO, enum wrapper). Flag as `high`. New `abstract class` with zero or one subclass **not** used as a DI token/seam. Flag as `high`. New generic helper file (`*.helper.ts`, `*.util.ts`, `*.utils.ts`). Flag as `medium`. New `Pipe` with one usage (`Grep` template references for the pipe name — if single use, flag as `medium`). New custom `Directive` with no usages in templates. Flag as `high`.
+- **Angular:** New `interface`/`abstract class` on a **non-service** type (model, DTO, enum wrapper). Flag as `high`. New `abstract class` with zero or one subclass **not** used as a DI token/seam. Flag as `high`. New generic helper file (`*.helper.ts`, `*.util.ts`, `*.utils.ts`, or a bare `utils.ts`, `helpers.ts`, `common.ts`). Flag as `medium`. Both naming styles (`foo.component.ts` and the newer `foo.ts`) coexist in v21-v22 repositories, so match helper names in either style. New `Pipe` with one usage (`Grep` template references for the pipe name — if single use, flag as `medium`). New custom `Directive` with no usages in templates. Flag as `high`.
 
 **2. Shallow wrappers**
 
@@ -43,7 +43,7 @@ For each added or modified file, evaluate:
 **6. Trivial tests**
 
 - **.NET:** New tests asserting only that a property returns the value the constructor set, or that a method invokes a mocked dependency exactly once with no other behavior. Flag as `medium`. Test method names matching the implementation method name 1:1 (e.g., `Constructor_SetsId`). Flag as `low`.
-- **Angular:** New tests asserting only that an `@Input` value is held in a property, or that a method invokes a mocked HttpClient exactly once with no behavior. Flag as `medium`. New tests that mirror Angular framework behavior (e.g., that `Router.navigate` was called when the test itself stubs `Router`). Flag as `medium`.
+- **Angular:** New tests asserting only that an `@Input`, `input()` or `model()` value is held in a property, or that a method invokes a mocked HttpClient exactly once with no behavior. Flag as `medium`. New tests that mirror Angular framework behavior (e.g., that `Router.navigate` was called when the test itself stubs `Router`). Flag as `medium`.
 
 **7. Net-LOC sanity**
 - If the total net LOC added across in-scope non-test files is more than ~3× the count of changed non-test files (heuristic), flag as `medium`: "high net-LOC density, verify scope". Skip this check for `/feature` workflows where /design has set a budget.
@@ -54,8 +54,8 @@ For each added or modified file, evaluate:
 - **Angular:** New entries in an `index.ts` barrel for symbols used only in adjacent files within the same feature folder. Flag as `low`. New `export` on a previously file-local symbol without a documented external consumer. Flag as `medium`.
 
 **9. Template bloat** (Angular)
-- Complex expression in a template (multiple chained operators, arithmetic, conditional logic) that should be a component method or pipe. Flag the template as `medium`.
-- Inline styles in templates (`[style.color]="..."`) when component styles already exist. Flag as `low`.
+- Complex expression in a template (multiple chained operators, arithmetic, conditional logic) that should move to a `computed()`, else a pipe, else a component member. Flag the template as `medium`.
+- A static `style="..."` attribute in a template when component styles already exist. Flag as `low`; leave `[style.x]` and `[class.x]` bindings alone.
 
 ## Output format
 
