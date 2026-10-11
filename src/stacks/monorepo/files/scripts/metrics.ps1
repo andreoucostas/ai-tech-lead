@@ -26,6 +26,17 @@ $asyncTotal = CountCs 'async\s+(Task|ValueTask)'
 $asyncCt    = CountCs 'async\s+(Task|ValueTask)[^)]*CancellationToken'
 $missingCt  = [Math]::Max(0, $asyncTotal - $asyncCt)
 
+# The 2025 Angular style guide drops the Service suffix (User, not UserService), so `new X(` also
+# counts when the repository declares X with @Injectable or @Service.
+$diNames = @(Get-ChildItem -Path . -Recurse -File -Include *.ts -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '[\\/](bin|obj|node_modules|dist|\.angular)[\\/]' } |
+    ForEach-Object { try { [regex]::Matches([IO.File]::ReadAllText($_.FullName), '@(?:Injectable|Service)\s*\((?:[^()]|\([^()]*\))*\)\s*(?:export\s+)?(?:default\s+)?(?:abstract\s+)?class\s+([A-Za-z_$][\w$]*)') } catch { } } |
+    ForEach-Object { [regex]::Escape($_.Groups[1].Value) } | Sort-Object -Unique)
+$newDi = 'new\s+([A-Za-z0-9_]+(Service|Store|Facade)'
+if ($diNames.Count -gt 0) { $newDi += '|' + ($diNames -join '|') }
+$newDi += ')\('
+
+# Angular specs and their focus and skip forms in Jasmine and in Vitest/Jest; `.test(` is RegExp.test.
 $m = [ordered]@{
     async_missing_cancellationtoken    = $missingCt
     interpolated_logging               = (CountCs '_?[Ll]ogger\.(Log[A-Za-z]*)\(\s*\$"')
@@ -43,12 +54,12 @@ $m = [ordered]@{
     manual_subscribe                   = (CountNg '\.subscribe\(')
     bypass_security_trust              = (CountNg 'bypassSecurityTrust')
     console_log                        = (CountNg 'console\.(log|debug|warn|error)\(')
-    test_specs                         = (CountNg '\b(it|describe)\(')
-    tests_skipped_focused              = (CountNg '\b(fit|fdescribe|xit|xdescribe)\s*\(|\b(it|describe)\.(only|skip)\s*\(')
+    test_specs                         = (CountNg '\b(it|describe|suite)\(|(?<![.\w$])test\(')
+    tests_skipped_focused              = (CountNg '\b(fit|fdescribe|xit|xdescribe)\s*\(|\b(it|test|describe|suite)(\.(concurrent|sequential|fails|shuffle)){0,3}\.(only|skip|skipIf|runIf|todo)\s*[(.]')
     tautological_expect                = (CountNg 'expect\(\s*(true|false)\s*\)\.toBe\(\s*(true|false)\s*\)')
     todo_hack_fixme                    = ((CountCs '(TODO|HACK|FIXME)') + (CountNg '(TODO|HACK|FIXME)'))
     not_implemented_throws             = ((CountCs 'throw\s+new\s+(NotImplementedException|NotSupportedException)') + (CountNg 'throw\s+new\s+Error\([''"]not implemented'))
-    concrete_service_instantiation_dip = ((CountCs 'new\s+[A-Za-z0-9_]+(Service|Repository|Handler|Manager)\(') + (CountNg 'new\s+[A-Za-z0-9_]+(Service|Store|Facade)\('))
+    concrete_service_instantiation_dip = ((CountCs 'new\s+[A-Za-z0-9_]+(Service|Repository|Handler|Manager)\(') + (CountNg $newDi))
 }
 
 # --- Readiness signals: capability disclosure, NOT a gate ---
@@ -69,8 +80,24 @@ $projFiles = Get-ChildItem -Path . -Recurse -File -Include *.csproj, Directory.B
     Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' }
 $nullable = [bool]($projFiles | Select-String -Pattern '<Nullable>\s*enable' -ErrorAction SilentlyContinue | Select-Object -First 1)
 $warnErr  = [bool]($projFiles | Select-String -Pattern '<TreatWarningsAsErrors>\s*true' -ErrorAction SilentlyContinue | Select-Object -First 1)
-$tsStrict = [bool](Get-ChildItem -Path . -Recurse -File -Filter 'tsconfig*.json' -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -notmatch '[\\/](node_modules|dist)[\\/]' } | Select-String -Pattern '"strict"\s*:\s*true' -ErrorAction SilentlyContinue | Select-Object -First 1)
+# ts_strict: a tsconfig's own "strict" decides. Without one, the default of the TypeScript major a simple
+# package.json range names decides (strict from TypeScript 6, which Angular 22 requires, so a strict v22
+# workspace omits the key). null when there is no tsconfig or no such range.
+$tsConfigs = @(Get-ChildItem -Path . -Recurse -File -Filter 'tsconfig*.json' -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '[\\/](node_modules|dist)[\\/]' })
+$tsStrict = $null
+if ($tsConfigs | Select-String -Pattern '"strict"\s*:\s*true' -ErrorAction SilentlyContinue | Select-Object -First 1) { $tsStrict = $true }
+elseif ($tsConfigs | Select-String -Pattern '"strict"\s*:\s*false' -ErrorAction SilentlyContinue | Select-Object -First 1) { $tsStrict = $false }
+elseif ($tsConfigs.Count -gt 0) {
+    $tsMajors = @(Get-ChildItem -Path . -Recurse -File -Filter 'package.json' -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '[\\/](node_modules|dist)[\\/]' } |
+        ForEach-Object { try { [regex]::Matches([IO.File]::ReadAllText($_.FullName), '"typescript"\s*:\s*"([^"]*)"') } catch { } } |
+        ForEach-Object { if ($_.Groups[1].Value -match '^\s*[\^~]?\s*v?(\d+)(\.(\d+|[xX*])){0,2}\s*$') { [int]$Matches[1] } else { -1 } })
+    if ($tsMajors.Count -gt 0 -and $tsMajors -notcontains -1) {
+        $ts6 = @($tsMajors | Where-Object { $_ -ge 6 }).Count
+        if ($ts6 -eq $tsMajors.Count) { $tsStrict = $true } elseif ($ts6 -eq 0) { $tsStrict = $false }
+    }
+}
 $r = [ordered]@{
     ci_present         = $ciPresent
     coverage_pct       = $covPct

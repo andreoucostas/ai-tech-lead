@@ -13060,3 +13060,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-387** — DONE **2026-10-11** for 0.95.0 (Angular v21-v22 audit, batch 5b: the agents and skills): `bootstrap-pass` reads templates, `security-auditor`
   knows the standalone XSRF and `canMatch` forms and the production build's configuration, `bloat-radar`, `test-critic` and `add-tests` name signal APIs,
   `*.test.ts` and the Vitest runner, and the monorepo `rebootstrap` skill numbers its passes as the command does. Rest of the audit: B-367.
+- **B-367** — DONE **2026-10-11** for 0.95.0 (maintainer request 2026-10-09: consumers are on Angular 21.2, so the shipped Angular
+  guidance follows v21-v22; plan `.claude/plans/2026-10-09-angular-v21-v22-audit.md`): batches 1 to 5b are B-368, B-372, B-375, B-376,
+  B-386 and B-387; batch 6 (§4 B7), the last, makes `scripts/metrics.ps1` count Vitest specs with their focus and skip forms, `new X(` for
+  any `@Injectable`/`@Service` class, and `ts_strict` as true, false or null with TypeScript 6's strict default, and fixes three eval
+  cases (`@Service()` as a root provider, the subscription case pinned to Angular 21 with zone.js, "HTTP interceptor").

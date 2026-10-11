@@ -119,6 +119,25 @@
   and the Copilot `rebootstrap` skill names the command's passes as the command numbers them. An update refreshes the
   agents and skills; you do not need to do anything.
 
+- **`scripts/metrics.ps1` now counts Vitest specs and suffix-less services, and knows TypeScript 6's strict default.**
+  On the Angular side, it counted only `it` and `describe` specs, Jasmine's `fit`/`xit` forms and `.only`/`.skip` on
+  `it` and `describe`, so a Vitest spec written with `test`, `test.only`, `it.skipIf`, `it.concurrent.only` or
+  `test.todo` went uncounted; `new X(` counted only when the class name ended in `Service`, `Store` or `Facade`, which
+  the 2025 style guide drops; and `ts_strict` read `false` for a tsconfig without a `"strict"` key, which is how a new
+  strict Angular 22 workspace looks, because TypeScript 6 makes strict mode the default. It now also counts `test(`
+  and `suite(` specs and the `.only`, `.skip`, `.skipIf`, `.runIf` and `.todo` forms on `it`, `test`, `describe` and
+  `suite`, chained ones included, and `new X(` for any class your repository declares with `@Injectable` or
+  `@Service`. `ts_strict` is now `true`, `false` or `null`: a tsconfig's own `strict` setting decides; without one,
+  the TypeScript major your `package.json` names does (strict from 6); `null` when neither says, as in a repository
+  with no tsconfig. Counts from earlier runs can differ for these reasons alone. An update refreshes the script; you
+  do not need to do anything.
+
+- **The eval cases in `tests/evals/cases.yaml` follow Angular 21 and 22.** The dependency-inversion case also fails an
+  answer that adds a `@Service()` class, which Angular 22 provides in root unless it sets `autoProvided: false`. The
+  subscription case now says the app is on Angular 21 with zone.js, where its manual subscription still updates the
+  view, so it tests the scope of the change rather than change detection. The token case asks for an HTTP interceptor,
+  not the class-based `HttpInterceptor`. An update refreshes the file; you do not need to do anything.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside

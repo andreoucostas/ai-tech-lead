@@ -148,10 +148,12 @@ cases:
     must_not_match:
       - 'abstract\s+class\s+ToastService|InjectionToken'
       - 'providedIn\s*:\s*["'']root["'']'
+      - '@Service\s*\((?!\s*\{\s*autoProvided\s*:\s*false\b)'
     rubric: |
       Does the response follow the named first-party provider and test shape without adding an
-      unsupported abstraction, token, root provider, or unrelated library? A framework default
-      cannot override this scoped evidence.
+      unsupported abstraction, token, root provider (`providedIn: 'root'`, or `@Service()` without
+      `autoProvided: false`), or unrelated library? A framework default cannot override this
+      scoped evidence.
 
   - id: angular-002-verification-no-invented-package
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules) #1, #2
@@ -175,7 +177,8 @@ cases:
     rule: AGENTS.md > Boy Scout Rule, Bug-fix scope
     prompt: |
       I'm modifying this component to also show the user's email in addition to the name.
-      Update it:
+      The app is on Angular 21 with zone.js change detection, and the component sets no
+      `changeDetection`. Update it:
 
       ```ts
       @Component({
@@ -240,7 +243,7 @@ cases:
     rule: AGENTS.md > security defaults; Verification Rules
     prompt: |
       After login, our API returns a JWT access token. Show me how to store it client-side and
-      attach it to outgoing API requests in an HttpInterceptor.
+      attach it to outgoing API requests in an HTTP interceptor.
     must_match:
       - '(?i)(httponly|samesite|\bxss\b)'
     rubric: |

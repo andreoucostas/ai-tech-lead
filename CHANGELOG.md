@@ -166,6 +166,21 @@ Jest (M2), and names `input()` beside `@Input` as carrier rule 12 now does (M4).
 summary numbers the passes as the command does (F4). M1, D1 and the version pivots needed no change in these files.
 Text only, unmeasured; always-loaded -5 characters (Angular), on-demand bodies +0.03 to +0.46 KB.
 
+B-367, batch 6 of the 2026-10-09 Angular v21-v22 audit and its last (§4 B7; drafted by Sonnet subagents, reviewed and
+verified here): both Angular stacks' `scripts/metrics.ps1` counted only `it`/`describe` specs and the Jasmine forms
+plus `.only`/`.skip` on `it` and `describe`, so a Vitest spec's `test(`, `test.only`, `it.skipIf`, `it.concurrent.only`
+or `test.todo` went uncounted; it now counts `test(` (not a regex's `.test(`) and `suite(` specs and `.only`, `.skip`,
+`.skipIf`, `.runIf` and `.todo` on `it`, `test`, `describe` and `suite`, chained forms included (M2). `new X(` counted
+only for a `Service`, `Store` or `Facade` suffix, which the 2025 style guide drops; it now also counts any class the
+repository declares `@Injectable` or `@Service` (M6). `ts_strict` was true only when a tsconfig said `"strict": true`,
+so a new strict Angular 22 workspace read false: its CLI 22 template omits the key because TypeScript 6 makes strict the
+default (TypeScript 6.0 announcement, "Simple Default Changes"; Angular 22 requires TypeScript 6.0). It is now
+tri-state: a tsconfig's own `strict` decides, else the TypeScript major that a simple `package.json` range names
+(strict from 6), else null (M8). Eval cases: angular-001 also fails a `@Service()` without `autoProvided: false`, a
+root provider (M6); angular-003 states Angular 21 with zone.js, because the audit's "no `changeDetection` override"
+alone means OnPush on v22, where the case's manual subscription would not re-render (M3, corrected); angular-006 says
+"HTTP interceptor" (F12). The audit is complete and B-367 closes.
+
 ## 0.94.0 — 2026-10-08
 
 The write guard's `sk-` key rule gets a left boundary. `sk-[A-Za-z0-9_-]{20,}` matched inside kebab-case names, so a

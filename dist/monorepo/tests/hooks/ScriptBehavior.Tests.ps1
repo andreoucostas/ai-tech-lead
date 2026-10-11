@@ -86,6 +86,13 @@ function DocsFixture {
     $root
 }
 
+function MetricsSubjects {
+    $local = Join-Path $scripts metrics.ps1
+    if (Test-Path $local) { return @($local) }
+    $srcRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+    @(Get-ChildItem (Join-Path $srcRoot 'stacks/*/files/scripts/metrics.ps1') | ForEach-Object { $_.FullName })
+}
+
 Reset-Tests
 
 It 'template-checks reaches the complete clean contract and reports planted drift' {
@@ -238,16 +245,9 @@ It 'docs-sync-check preserves all wrapper states and advisory prose' {
 }
 
 It 'metrics reports every expected counter as non-zero' {
-    $metricScripts = @()
-    $local = Join-Path $scripts metrics.ps1
-    if (Test-Path $local) { $metricScripts += $local }
-    else {
-        $srcRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
-        $metricScripts += @(Get-ChildItem (Join-Path $srcRoot 'stacks/*/files/scripts/metrics.ps1'))
-    }
+    $metricScripts = @(MetricsSubjects)
     Assert ($metricScripts.Count -gt 0) 'metrics subject discovery returned zero scripts'
-    foreach ($entry in $metricScripts) {
-        $subject = if ($entry.FullName) { $entry.FullName } else { [string]$entry }
+    foreach ($subject in $metricScripts) {
         $root = Temp metrics
         try {
             InitSafe $root
@@ -287,6 +287,64 @@ fit("x", () => {});
             Assert ($keys.Count -gt 0) "metrics key discovery returned zero for $subject"
             foreach ($key in $keys) { Assert ([int]$json.metrics.$key -gt 0) "$key expected non-zero, got $($json.metrics.$key)" }
         } finally { Remove-Item -Recurse -Force $root }
+    }
+}
+
+# The Angular counters on v21-v22 shapes, counted exactly: Vitest's focus and skip forms, suffix-less
+# @Service/@Injectable classes, and ts_strict's three states (TypeScript 6 makes strict the default).
+$ngMetricsCase = 'metrics counts v21-v22 spec, service and ts_strict shapes exactly'
+$ngMetrics = @(MetricsSubjects | Where-Object { [IO.File]::ReadAllText($_).Contains('tests_skipped_focused') })
+if ($ngMetrics.Count -eq 0) {
+    Skip $ngMetricsCase 'this distribution''s metrics script carries no Angular counters'
+} else {
+    It $ngMetricsCase {
+        $expected = [ordered]@{ tests_skipped_focused = 5; test_specs = 2; concrete_service_instantiation_dip = 2 }
+        foreach ($subject in $ngMetrics) {
+            $root = Temp metrics-ng
+            try {
+                InitSafe $root
+                Put (Join-Path $root 'src/app/user.ts') @'
+@Service()
+export class User {}
+@Injectable({
+  providedIn: 'root',
+})
+export class Session {}
+export class Address {}
+const u = new User();
+const s = new Session();
+const a = new Address();
+const ok = /u/.test('u');
+'@
+                Put (Join-Path $root 'src/app/user.spec.ts') @'
+describe('user', () => {
+  test('plain', () => {});
+  test.only('focused', () => {});
+  test.skip('skipped', () => {});
+  it.skipIf(true)('conditional', () => {});
+  it.concurrent.only('chained', () => {});
+  test.todo('later');
+});
+'@
+                foreach ($world in @(
+                    @{ Name = 'TypeScript 6, no strict key'; Options = '"noImplicitOverride": true'; Package = '{ "devDependencies": { "typescript": "~6.0.2" } }'; Expect = 'true' },
+                    @{ Name = 'TypeScript 6, strict false'; Options = '"strict": false, "noImplicitOverride": true'; Package = '{ "devDependencies": { "typescript": "~6.0.2" } }'; Expect = 'false' },
+                    @{ Name = 'TypeScript 5, no strict key'; Options = '"noImplicitOverride": true'; Package = '{ "devDependencies": { "typescript": "~5.9.2" } }'; Expect = 'false' },
+                    @{ Name = 'no TypeScript version'; Options = '"noImplicitOverride": true'; Package = '{ "name": "fixture" }'; Expect = 'null' }
+                )) {
+                    Put (Join-Path $root tsconfig.json) ('{ "compilerOptions": { ' + $world.Options + ' }, "angularCompilerOptions": { "strictTemplates": false }, "files": [], "references": [{ "path": "./tsconfig.app.json" }] }')
+                    Put (Join-Path $root package.json) $world.Package
+                    $result = RunHere $subject $root
+                    Assert ($result.Exit -eq 0) "metrics failed for $subject ($($world.Name)): $($result.Err)"
+                    $json = $result.Out | ConvertFrom-Json
+                    foreach ($key in $expected.Keys) {
+                        Assert ([int]$json.metrics.$key -eq $expected[$key]) "$subject ($($world.Name)): $key expected $($expected[$key]), got $($json.metrics.$key)"
+                    }
+                    $strict = if ($null -eq $json.readiness.ts_strict) { 'null' } else { ([string]$json.readiness.ts_strict).ToLowerInvariant() }
+                    Assert ($strict -eq $world.Expect) "$subject ($($world.Name)): ts_strict expected $($world.Expect), got $strict"
+                }
+            } finally { Remove-Item -Recurse -Force $root }
+        }
     }
 }
 
