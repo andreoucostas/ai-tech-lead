@@ -44,7 +44,7 @@ It 'the warehouse recipe keeps target-family mechanisms conditional' {
     }
 }
 
-It 'defaults do not select composition or Angular architecture mechanisms' {
+It 'defaults select no composition or route-loading mechanism, and Angular mirrors NgModules and constructor injection where a file uses them' {
     $dotnet = [IO.File]::ReadAllText((Join-Path $repoRoot 'src/stacks/dotnet/files/docs/defaults.md'), [Text.Encoding]::UTF8)
     $angular = [IO.File]::ReadAllText((Join-Path $repoRoot 'src/stacks/angular/files/docs/defaults.md'), [Text.Encoding]::UTF8)
     $monorepo = [IO.File]::ReadAllText((Join-Path $repoRoot 'src/stacks/monorepo/files/docs/defaults.md'), [Text.Encoding]::UTF8)
@@ -54,10 +54,11 @@ It 'defaults do not select composition or Angular architecture mechanisms' {
         Assert (-not $text.Contains('Register via extension methods per project')) 'default restores extension-method mandate'
     }
     foreach ($text in @($angular, $monorepo)) {
-        foreach ($needle in @('standalone/NgModule shape', 'choice between `inject()` and constructor injection needs an explicit design decision', 'route-loading mechanism')) {
+        # WSD-112: new code is standalone and uses inject(), and existing NgModule or constructor-injection code is
+        # mirrored where a file already uses it; route loading stays the project's choice.
+        foreach ($needle in @('Mirror NgModule declarations only where a file or feature already uses them', 'Mirror constructor injection only in a file that already uses it', 'route-loading mechanism')) {
             Assert ($text.Contains($needle)) "Angular default omits conditional mechanism '$needle'"
         }
-        Assert (-not $text.Contains('Standalone components as default')) 'default restores standalone mandate'
         Assert (-not $text.Contains('Feature areas are lazy-loaded routes')) 'default restores lazy-route mandate'
     }
 }
