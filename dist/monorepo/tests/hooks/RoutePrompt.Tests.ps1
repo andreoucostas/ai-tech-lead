@@ -70,6 +70,46 @@ It 'route-prompt.ps1 Copilot event -> security overlay for payment prompt' {
     Assert ($o.additionalContext -match 'Security-sensitive surface detected') 'security overlay missing'
 }
 
+# --- Authentication changes named by their mechanism or status code, never by "auth", still get the overlay ---
+It 'route-prompt.ps1 both surfaces -> security overlay for authentication changes that never say auth' {
+    $p = 'Only the shipping service may call the ship endpoint: make POST api/checkout/{orderId}/ship return 401 unless the X-Shipping-Key request header equals the configured Shipping:ApiKey value.'
+    $claude = Invoke-Hook $rpPs (New-ClaudePrompt $p)
+    Assert ($claude.Exit -eq 0) "Claude exit $($claude.Exit)"
+    Assert ($claude.Out -match 'Security-sensitive surface detected') 'Claude surface: no security overlay for an API-key check'
+    $copilot = Invoke-Hook $rpPs (New-CopilotPrompt $p)
+    Assert ($copilot.Exit -eq 0) "Copilot exit $($copilot.Exit)"
+    Assert (-not [string]::IsNullOrWhiteSpace($copilot.Out)) 'Copilot surface: no output for an API-key check'
+    Assert (($copilot.Out | ConvertFrom-Json).additionalContext -match 'Security-sensitive surface detected') 'Copilot surface: no security overlay for an API-key check'
+    # One prompt per keyword and per anchored half; each matches through that keyword alone.
+    foreach ($q in @(
+        'Make the orders endpoint require a valid API key',
+        'Return 403s to callers outside the partner list',
+        'Return Forbid() when the caller is not the owner',
+        'Add an AccessControl attribute to the orders controller',
+        'Configure AddJwtBearer to validate the issuer and audience',
+        'Add OAuth2 for the partner app',
+        'Add OpenID Connect to the portal',
+        'Wire up OIDC with Entra ID',
+        'Add OidcOptions to Program.cs',
+        'Call AddOidc in startup',
+        'Add SSO for the admin pages',
+        'Add Sustainsys.Saml2 to the partner portal',
+        'Verify the HMAC of incoming webhooks',
+        'Add RequireMfa to the admin policy',
+        'Set MfaEnabled for staff',
+        'Require 2FA for admins',
+        'Make TwoFactorEnabled required for admin users'
+    )) {
+        $r = Invoke-Hook $rpPs (New-ClaudePrompt $q)
+        Assert ($r.Exit -eq 0 -and $r.Out -match 'Security-sensitive surface detected') "no security overlay for: $q"
+    }
+    $plain = Invoke-Hook $rpPs (New-CopilotPrompt 'add a primary key to the orders table')
+    Assert (($plain.Out | ConvertFrom-Json).additionalContext -notmatch 'Security-sensitive surface detected') 'a primary-key change got the security overlay'
+    # Near misses: processor (sso), ItemFactory (mfa), AndroidClient (oidc), a commit hash (2fa) and an SDK version (403) must not fire.
+    $nearMiss = Invoke-Hook $rpPs (New-ClaudePrompt 'Rename OrderProcessor, ItemFactory and AndroidClient, revert commit 4c2fa91 and pin the .NET SDK to 8.0.403')
+    Assert ($nearMiss.Exit -eq 0 -and $nearMiss.Out -notmatch 'Security-sensitive surface detected') 'a near miss got the security overlay'
+}
+
 # --- No-op cases stay no-op on both surfaces ---
 It 'route-prompt.ps1 slash command -> no output (both surfaces)' {
     foreach ($evt in (New-ClaudePrompt '/fix the thing'), (New-CopilotPrompt '/fix the thing')) {

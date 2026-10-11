@@ -13,6 +13,19 @@
 
 ## 0.95.0 — Unreleased
 
+B-389 (2026-10-11; pre-registered at 04548f59, results in `meta/eval-results.md`): B-348's shared-key prompt approved the change in advance
+("do not stop for a plan or ask for confirmation") and missed `route-prompt`'s sensitive pattern, and got no security pass on Copilot CLI 1.0.95 in 6
+of 6 `-p` runs. Holding task, fixture and host, the same prompt with the reminder firing got a pass in 4 of 4, and the prompt without the approval
+sentence and without the reminder in 4 of 4 (each two-sided Fisher exact p = 0.005 against 0 of 6): the advance approval suppressed the always-loaded
+rule, not the reminder. The three stacks' `sensitive-regex` snippets now end with the same alternation, `api[ _-]?key`, `(?<![\w.])40[13]s?\b`,
+`forbid`, `access[ _-]?control`, `jwt`, `oauth`, `openid`, `\boidc|oidc\b`, `\bsso\b`, `saml`, `hmac`, `\bmfa|mfa\b`, `2fa\b` and `two[ _-]?factor`.
+The measured candidate anchored `jwt`, `saml`, `mfa`, `2fa` and the status codes, took one separator and `forbidden`, and lacked `oidc`, until the
+fresh-session attack showed "JWTs", `AddJwtBearer`, `TwoFactorEnabled`, `RequireMfa`, `AccessControl`, `Saml2` and "403s" missing; its second round
+showed `ItemFactory` and `AndroidClient` firing, hence the one-sided anchors on `mfa` and `oidc`. The prompt matches through the same two words
+either way, and `RoutePrompt.Tests` pins each alternative and each anchor, with a prompt that fires or a near miss that must not. A sensitive change
+outside these words, approved in advance, still gets the rule alone; a carrier sentence saying an advance approval does not waive the pass is
+proposed, not shipped (WSD-107); B-391 filed (Turkish-culture lowercasing). 8 premium requests, 484.0 AI credits.
+
 B-348 (2026-10-11; pre-registered at f00d3e1d, results in `meta/eval-results.md`): the agent's own security pass on Copilot CLI 1.0.95
 under 0.94.0's security-pass wording, shipped unmeasured (WSD-111); `-p` on one bootstrapped dotnet fixture, the change approved in
 advance, claude-sonnet-5, two readers. Refund prompt (reminder plus rule), 6 runs: a pass every time, the CLI's built-in `security-review`

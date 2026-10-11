@@ -13078,3 +13078,9 @@ master (B-267). B-245's planned fast path touches the same file and must keep
 - **B-390** — CLOSED by decision **2026-10-11** (WSD-106), never filed. On Copilot CLI 1.0.95 `route-prompt` also runs on the prompts the agent
   gives its subagents: in B-348's 26 installed runs, 33 of 44 subagent prompts carried the security overlay (all 20 review subagents) and 10 the
   plan gate; every subagent completed. Reopen on a field report of a subagent stalled or derailed by the injected rails.
+- **B-389** — DONE **2026-10-11** for 0.95.0 (pre-registered at 04548f59; `meta/eval-results.md`, `meta/host-certification.md`; 8 premium requests): B-348's
+  shared-key prompt, which approved the change in advance and missed `route-prompt`'s keywords, got a security pass on Copilot CLI 1.0.95 in 4 of 4 runs
+  once the reminder fired on it, and in 4 of 4 without the approval sentence or the reminder, against 0 of 6 with the approval alone: the approval
+  suppressed the always-loaded rule, not the reminder. The three stacks' sensitive patterns gain one alternation (API key, 401/403, forbid, access
+  control, JWT, OAuth, OpenID, OIDC, SSO, SAML, HMAC, MFA, 2FA, two-factor; several inside names too), each word pinned by a test prompt. B-391
+  filed from the fresh-session attack. Proposed, not shipped: a carrier sentence that an advance approval does not waive the pass.

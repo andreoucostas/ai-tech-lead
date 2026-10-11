@@ -3737,3 +3737,44 @@ H-REMINDER: with the reminder firing on N, a pass runs. H-APPROVAL: without the 
 - Not shown in any outcome: interactive sessions (`-p`'s system prompt tells the model to proceed autonomously, so N-R keeps that
   pressure), VS Code, other models and CLI versions, the Angular and monorepo carriers, sensitive prompts other than N, which review
   runs (B-388), the review's quality.
+
+## B-389 results — 2026-10-11 (hand-written; as pre-registered at 04548f59)
+
+Copilot CLI 1.0.95 (`copilotVersion` in all 8 sessions), claude-sonnet-5 (every main-agent call), `-p`, flags and child environment as frozen.
+Subjects as frozen; base-w's `route-prompt.ps1` (blob 01fed542) carries the frozen candidate, which ships amended (deviation below). Evidence
+per run (events, debug log, usage, clone status and diff) under `<scratch>\b389\evidence`; sessions
+`b3890000-0000-4000-8000-0000000<cc><rrr>`. All 8 runs were valid at the first attempt, none needed a resume or a repeat, and
+`~\.copilot\config.json` was byte-identical before and after every run, with `trustedFolders` empty.
+
+| cell | valid | PASS | mechanism per run (main-agent event: `task` agent_type, or `skill` then `skill.invoked`) |
+|---|---|---|---|
+| N-W (prompt N on base-w: approval, reminder) | 4/4 | 4 | BUILTIN: 001 #88, 002 #118; PROJECT-SKILL: 003 #92→#98, 004 #76→#82 |
+| N-R (prompt N-R on base: no approval, no reminder) | 4/4 | 4 | PROJECT-SKILL: 001 #86→#92; PROJECT-AGENT `security-auditor`: 002 #94, 003 #96; BUILTIN: 004 #90 |
+| T-N (B-348 at f00d3e1d: approval, no reminder) | 6/6 | 0 | NONE ×6 |
+
+- Reading as fixed: N-W RESTORED and N-R RESTORED, each 4 of 4 against T-N's 0 of 6 (two-sided Fisher exact p = 0.005). The advance approval
+  suppressed the always-loaded rule, not the reminder: with the reminder firing, the approved prompt got a pass every time, and without the
+  approval the rule alone got one every time. The candidate ships, amended as below, in the three stacks' `sensitive-regex` snippets;
+  only its API-key and 401 words were exercised live.
+- What the runs said: each N-R run gave auth or the rule as its reason (N-R-003 #51: "per the framework's rule that security-sensitive surfaces
+  always get a check"; N-R-004 #37: "since it's security-sensitive (authorization logic), I should still run a security review pass"), and the
+  N-W runs the overlay (N-W-004 #75: "as the overlay requires for sensitive surfaces like this"); B-348's T-N runs had each cited the approval to
+  skip the plan, and T-N-005 (#9) passed over a review it said the rules would warrant.
+- Recorded, not scored: the CLI's built-in Security Review Agent was the pass in 3 of 8 runs (N-W-001, N-W-002, N-R-004, each `subagent.selected`
+  "Security Review Agent"; B-388's question); each project-skill load dispatched `security-auditor` (N-W-003 #164, N-W-004 #152, N-R-001 #180).
+  No AD-HOC claim, no other `task`, no `view` of `docs/enforcement-surfaces.md`; `SECURITY_FINDINGS.md` changed in N-W-004 only. Every N-R run
+  wrote code without waiting for a go-ahead, as a small, unambiguous change (001, 003), on the instruction to implement now (002) or as an
+  autonomous run (004), as B-348's RAIL runs did. No run called the injected context untrusted or an injection (N-W-004 #329's prefilter hit
+  is "untrusted networks" in its findings).
+- Deviation after the runs: the fresh-session attack (requirement 4) found the candidate's anchors missing "JWTs", `AddJwtBearer`,
+  `TwoFactorEnabled`, `RequireMfa`, `AccessControl`, `Saml2` and "403s", and its second round `mfa` and `oidc` firing inside `ItemFactory` and
+  `AndroidClient`, so the shipped alternation, the same in all three stacks, is
+  `api[ _-]?key|(?<![\w.])40[13]s?\b|forbid|access[ _-]?control|jwt|oauth|openid|\boidc|oidc\b|\bsso\b|saml|hmac|\bmfa|mfa\b|2fa\b|two[ _-]?factor`.
+  Prompt N matches it through the same two words, and the injected text for N and N-R equals base-w's (the attack and the lead), so N-W's reading
+  carries over as pre-registered (N-W measures the reminder firing, not each word's recall). `RoutePrompt.Tests` pins each alternative and
+  anchor with a prompt that fires or a near miss that must not (the attack's third round found the anchor halves unpinned). Its other
+  false-green finding, culture-sensitive lowercasing under tr-TR, predates this change: B-391.
+- Spend: 8 premium requests (1 per run), under the stop of 12; 484.0 AI credits; 36 minutes of runs.
+- Proposed, not shipped (WSD-107): a carrier sentence that an approval to skip the plan or confirmation does not waive the security pass, for a
+  sensitive change the keywords still miss; T-N's cell on a base carrying it would measure it.
+- Not shown: as pre-registered.

@@ -161,7 +161,7 @@ if ($isQuestion -and -not $hasImperative -and $intent -in @('fix','feature','ref
 
 # Security overlay fires IN ADDITION to any workflow intent -- it is not an
 # exclusive intent, so a security-relevant feature still gets the feature rails.
-$sensitive = ($lc -match '(payment|balance|ledger|transaction|transfer|\bdebit\b|\bcredit\b|refund|settle|idempotenc|reconcil|\bauth\b|authenticat|authori[sz]|login|password|secret|token|credential|permission|\brole\b|encrypt|decrypt|money|currency)') -or ($lc -match '(session|cookie|\bjwt\b|\bpii\b|personal data|gdpr|sanitiz|bypasssecuritytrust|innerhtml|\bxss\b|\bcsrf\b)')
+$sensitive = ($lc -match '(payment|balance|ledger|transaction|transfer|\bdebit\b|\bcredit\b|refund|settle|idempotenc|reconcil|\bauth\b|authenticat|authori[sz]|login|password|secret|token|credential|permission|\brole\b|encrypt|decrypt|money|currency|api[ _-]?key|(?<![\w.])40[13]s?\b|forbid|access[ _-]?control|jwt|oauth|openid|\boidc|oidc\b|\bsso\b|saml|hmac|\bmfa|mfa\b|2fa\b|two[ _-]?factor)') -or ($lc -match '(session|cookie|\bjwt\b|\bpii\b|personal data|gdpr|sanitiz|bypasssecuritytrust|innerhtml|\bxss\b|\bcsrf\b)')
 
 if ([string]::IsNullOrEmpty($intent) -and -not $sensitive -and $isClaude) { exit 0 }
 

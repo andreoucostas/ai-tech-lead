@@ -41,6 +41,17 @@
   framework's skill in 2 of 3. `docs/enforcement-surfaces.md` now says so. The wording is unchanged for now; when a
   change on Copilot CLI needs this framework's review, ask for it by name.
 
+- **The per-prompt security reminder now also fires on an authentication change that never says "auth".** It now
+  also fires on a request that mentions an API key, 401 or 403, forbidden or `Forbid`, access control, JWT, OAuth,
+  OpenID or OIDC, SSO, SAML, HMAC, MFA, 2FA or two-factor, several of them also inside names such as `AddJwtBearer` or
+  `TwoFactorEnabled`. On Copilot CLI, in our non-interactive runs on one .NET repository, a request to make an endpoint
+  return 401 unless an `X-Shipping-Key` header matched a configured API key, sent with "I approve this change in
+  advance: do not stop for a plan or ask for confirmation", missed the old keywords and got no security pass in 6 of
+  6; with the reminder firing on it, a pass in 4 of 4; and without the advance approval, the always-loaded rule alone
+  got a pass in 4 of 4. `docs/enforcement-surfaces.md` records these results. When you approve a sensitive change in
+  advance in words the reminder does not catch, ask for the security review by name. An update refreshes the hook;
+  you do not need to do anything.
+
 ## 0.94.0 — 2026-10-08
 
 - **The write guard no longer refuses ordinary kebab-case names as secret keys.** Its `sk-` key rule matched inside
