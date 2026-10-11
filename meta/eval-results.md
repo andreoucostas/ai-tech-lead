@@ -3778,3 +3778,65 @@ per run (events, debug log, usage, clone status and diff) under `<scratch>\b389\
 - Proposed, not shipped (WSD-107): a carrier sentence that an approval to skip the plan or confirmation does not waive the security pass, for a
   sensitive change the keywords still miss; T-N's cell on a base carrying it would measure it.
 - Not shown: as pre-registered.
+
+## B-388 pre-registration — the agent's own security pass on Copilot CLI 1.0.95 once this framework's skill stops sharing the built-in agent's name (2026-10-11, frozen before any run)
+
+Commissioned 2026-10-11 by the maintainer's batch session; the maintainer chose, in chat, to rename the skill (option (b), WSD-114). B-348's T-K cell
+(f00d3e1d, d73b395d) ran the CLI's built-in Security Review Agent as the pass in 3 of 6 refund runs under 0.94.0's wording, whose rule and overlay named
+"this repository's `security-review` skill (`.claude/commands/security-review.md`; on Copilot CLI, not the CLI's built-in security agent)"; its S2-K cell,
+0.93.0's wording with the same name, in 4 of 6. The rename changes only the name in that wording, "`security-gate` skill (`.claude/commands/security-gate.md`;
+…)", with the command, the `.agents/skills` wrapper and every reference. Question: with the rename installed, does the refund prompt still send the pass to
+the built-in? H1: FG-MAIN in at least one run.
+
+- Subject: `<scratch>\b388\base`, a clone of B-389's base (B-348's fixture with d73b395d's `dist/dotnet`) updated in place by this repository's working-tree
+  `dist/dotnet/scripts/install.ps1` (the rename, uncommitted at the freeze; the installer's process directory a scratch folder), update mode, exit 0. The update
+  retired `.claude/commands/security-review.md` and `.agents/skills/security-review/SKILL.md` and printed MIGRATION lines for `docs/ARCHITECTURE.md` and
+  `SECURITY_FINDINGS.md`, which were edited as those lines say (`/security-review` to `/security-gate`, 2 and 3 places), as `docs/upgrade-checklist.md` directs; its
+  `.claude/framework-update-backup/` was deleted and the last commit amended under its own message, so `session-start` lists the same subjects. Its tree differs
+  from B-389's base in 14 files: the rename, the two migrated files, the ownership and retirement manifests, and `route-prompt.ps1`'s sensitive pattern as
+  66f96afe ships it, which prompt K already matched (B-348). All 89 framework-owned files equal the working tree's `dist/dotnet`; measured, SHA-256 prefix:
+  `.github/instructions/framework-rules.instructions.md` e0807beaac51; `.claude/hooks/route-prompt.ps1` ba724fbf3029; `.agents/skills/security-gate/SKILL.md`
+  3b21c83a532d; `.claude/commands/security-gate.md` a4679a9d1445; `.claude/agents/security-auditor.md` eb08a3ebacdd; `.github/agents/security-auditor.agent.md`
+  a0e948f7dc2b; `.github/hooks/hooks.json` 490608433dcb; `.claude/settings.json` 19ff56f4b8ae; `scripts/review-scope.ps1` 27037b339e9f;
+  `.claude/hooks/session-start.ps1` dffaa721c237; `.claude/hooks/guard.ps1` a4de229a3a7c. After the work commit each must equal that commit's `dist/dotnet`
+  blob; `docs/enforcement-surfaces.md` (4151a3fc2640), which will gain this result, is the one installed file allowed to differ.
+- Pre-flight, free, done: through a clone's `route-prompt` as Copilot and Claude events, prompt K routes `feature` with the plan gate and the overlay, which names
+  "this repository's security-gate skill (.claude/commands/security-gate.md;" and nowhere `security-review` (EXIT=0 both); in that clone `copilot skill list`
+  lists 21 project skills, `security-gate` among them and no `security-review`, and `copilot instruction list` shows `AGENTS.md`, `CLAUDE.md` and
+  `framework-rules.instructions.md`; in the base's own working tree, where the update left the emptied `.agents/skills/security-review/` folder, the listing is
+  the same.
+- Host and run: as frozen at f00d3e1d (CLI 1.0.95, claude-sonnet-5, `-p` and its flags, the child environment, a fresh clone per run, one run at a time, 40
+  minutes, the one-`Proceed.`-resume rule read across both turns).
+- Cell: T-K, prompt K (B-348's, exact), 6 valid runs. Session ids `b3880000-0000-4000-8000-000000031<rrr>` (rrr 001-006, 101+ for repeats), none existing
+  before.
+- Validity per run, else CANNOT-EXAMINE and one repeat: `copilotVersion` 1.0.95 and model claude-sonnet-5; a `hook.start`; the main `system.message` holds
+  "Security-sensitive surfaces always get a security pass", "run this repository's `security-gate` skill", "not the CLI's built-in security agent" and the
+  host's "For /security-review or explicit requests" (the built-in is still advertised), lists `security-gate` as a project skill and does not list
+  `security-review` as one; the first main `user.message.transformedContent` holds "Routed intent: `feature`", "Security-sensitive surface detected" and "Run
+  this repository's security-gate skill"; a change under `src/` by the end; a `session.shutdown`, not killed at the limit; no auth, quota or model error.
+- Mechanisms, main agent (no top-level `agentId`), in event order, event numbers quoted: PROJECT-SKILL, `skill` {"skill":"security-gate"} then `skill.invoked`
+  source `project` with a path ending `.agents\skills\security-gate\SKILL.md` or `.claude\commands\security-gate.md`; PROJECT-AGENT, `task` agent_type
+  `security-auditor`; PROJECT-VIEW, a `view` of `security-gate.md`, its wrapper or a `security-auditor` definition, then a `powershell` call running
+  `review-scope.ps1`; BUILTIN, `task` agent_type `security-review`, then `subagent.started` or `subagent.selected` with agentName `security-review` ("Security
+  Review Agent"). FG-MAIN, as at f00d3e1d: a main BUILTIN with no earlier main project skill load or view and no main `task` `security-auditor` in the run.
+  R: a run with any mechanism.
+- Instrument, free, done: the reader (B-389's, its project skill name a parameter) run with `security-review` on B-348's evidence reproduces B-348's classes:
+  FG-MAIN on T-K-002 (#288, built-in selected #293), T-K-003 (#149, #154) and T-K-006 (#419, #424); PROJECT-AGENT on T-K-001 (#211), -004 (#169) and -005
+  (#181); PROJECT-SKILL on P-002 (#246, #252); nothing on T-N-001. The built-in's signature was readable with the framework installed in B-348's P-B (2/2,
+  this CLI and fixture lineage), and the validity item above shows the host still advertises it in each run.
+- Reading, fixed now, on 6 valid runs; comparisons by two-sided Fisher exact test (the script reproduces B-348's p = 1.0 and B-389's p = 0.005):
+  - FG-MAIN 0 of 6 (NOT REACHED): lower than the old name's pooled refund runs (T-K and S2-K, 7 of 12; p = 0.038); against T-K alone (3 of 6) p = 0.18, not
+    shown; 0 of 6 bounds the per-pass FG-MAIN rate below 39%. The rename stays, B-388 done, a host-certification row.
+  - FG-MAIN 1 of 6 or more (REACHED): the rename alone does not keep the pass off the built-in (1 of 6: p = 0.55 against T-K and 0.15 against the pool, neither
+    shown). The rename still ships (WSD-114; it also frees a typed `/security-review` and Claude Code's built-in), the Security pass row says so, B-388 stays
+    open with the count, and the maintainer decides the next candidate (WSD-114 names option (a)).
+  - Any reading: R ≤ 4 of 6 (T-K had 6 of 6) files one adherence entry; a project skill load followed by a main BUILTIN (BUILTIN-INSIDE-SKILL) files one entry
+    against `security-gate.md` Step 1; a main `skill` call naming `security-review` is recorded with its result.
+- Recorded, not scored: the overlay in subagent prompts, a subagent-issued BUILTIN, `review-scope.ps1`, `SECURITY_FINDINGS.md` changed, what the final report says
+  ran, a main `view` of `docs/enforcement-surfaces.md` or a CHANGELOG, any main assistant text calling the injected context a prompt injection, untrusted or
+  something to ignore, premium requests, AI credits, wall time.
+- Reader: the adapted script prints the validity items, every main tool call and the mechanism events; the class follows mechanically from those events, so
+  there is no second reader; reader 1 reads each run's events for the recorded items.
+- Stop: 10 premium requests in all, summed before each run from the usage files; a run that would start at or above it is not started (CANNOT-EXAMINE, spend).
+- Not shown in any outcome: interactive sessions, VS Code, other models and CLI versions, prompts other than K, the Angular and monorepo carriers, Claude Code's
+  own pass, which review is better.
