@@ -3687,3 +3687,53 @@ resume or a repeat; `~\.copilot\config.json` was byte-identical before and after
 - Not shown: interactive sessions; VS Code (1.139.1 here, with its built-in `copilot` extension; `code chat` only opens a window, so its
   Copilot harness was not driven, and B-348 stays open for it); other models; CLI versions other than 1.0.95; the Angular and monorepo
   carriers; Claude Code's own pass; the quality of either review.
+
+## B-389 pre-registration — no security pass on B-348's shared-key change: the advance approval or the missed reminder (2026-10-11, frozen before any run)
+
+Commissioned 2026-10-11 by the maintainer's batch session, no maintainer line quoted. B-348's T-N cell (f00d3e1d, d73b395d) ran no
+security pass in 6 of 6 runs of prompt N, which both approves the change in advance and misses `route-prompt`'s sensitive pattern, so
+only the always-loaded rule asked for the pass. Each new cell changes one of the two and holds the task, host and fixture.
+H-REMINDER: with the reminder firing on N, a pass runs. H-APPROVAL: without the approval, the rule alone gets a pass.
+
+- Subjects: `<scratch>\b389\base`, a clone of B-348's base updated in place by this repository's `dist/dotnet/scripts/install.ps1` at
+  d73b395d (update mode, exit 0, its backup deleted), the last commit amended under its own message so `session-start` lists the same
+  subjects; its tree differs from B-348's base in `docs/enforcement-surfaces.md` alone (the Security pass row's B-348 text).
+  `<scratch>\b389\base-w`: base with one line changed, `.claude/hooks/route-prompt.ps1`'s `$sensitive` pattern with
+  `|api[ _-]?key|\b40[13]\b|forbidden|access[ -]control|\bjwt\b|oauth|openid|\bsso\b|\bsaml\b|hmac|\bmfa\b|\b2fa\b|two[ -]factor`
+  appended (the candidate), amended the same way. The overlay text is unchanged, so N-W measures the reminder firing on N, not the
+  recall of each added alternative.
+- Prompts: N, B-348's, exact. N-R: N without "I approve this change in advance: do not stop for a plan or ask for confirmation; ",
+  "implement" capitalised: "Only the shipping service may call the ship endpoint: make POST api/checkout/{orderId}/ship return 401
+  unless the X-Shipping-Key request header equals the configured Shipping:ApiKey value. Implement it now in this session, then report
+  what you did." Dropping the whole sentence would also drop the `feature` route, which "implement" carries.
+- Pre-flight, free, done: through each base's `route-prompt` as Copilot and Claude events, N and N-R route `feature` with the plan gate
+  on both bases, and the overlay fires on base-w only; in a clone of base, `copilot skill list` lists `security-review` and `copilot
+  instruction list` shows `AGENTS.md`, `CLAUDE.md` and `framework-rules.instructions.md`; B-348's reader, adapted, reproduces B-348's
+  mechanism events on T-K-001 (#211), T-K-002 (#288) and P-002 (#246, #252), and none on T-N-001.
+- Host and run: as frozen at f00d3e1d (CLI 1.0.95, claude-sonnet-5, `-p` and its flags, the child environment, a fresh clone per
+  run, one run at a time, 40 minutes, the one-`Proceed.`-resume rule read across both turns).
+- Cells: N-W (prompt N on base-w: approval, reminder) and N-R (prompt N-R on base: no approval, no reminder), 4 valid runs each,
+  alternating, N-W first. Session ids `b3890000-0000-4000-8000-0000000<cc><rrr>` (cc 11 N-W, 12 N-R; rrr 001-004, 101+ repeats).
+- Validity per run, else CANNOT-EXAMINE and one repeat: `copilotVersion` 1.0.95 and model claude-sonnet-5; a `hook.start`; the main
+  `system.message` holds "Security-sensitive surfaces always get a security pass"; the first main `user.message.transformedContent`
+  holds "Routed intent: `feature`", and "Security-sensitive surface detected" in N-W but not N-R; a change under `src/` by the end;
+  a `session.shutdown`, not killed at the limit; no auth, quota or model error.
+- Counted: PASS, a main-agent B-348 mechanism (PROJECT-SKILL, PROJECT-AGENT, PROJECT-VIEW or BUILTIN, as defined at f00d3e1d)
+  anywhere in the run. Recorded, not scored: the mechanism, an AD-HOC claim in the final message, any other `task` whose prompt
+  names security, a `view` of `docs/enforcement-surfaces.md`, resume legs, premium requests, AI credits.
+- Reading per cell against T-N's 0 of 6: RESTORED at 3 or 4 of 4 (two-sided Fisher exact p ≤ 0.033); NONE at 0 of 4; PARTIAL at 1
+  or 2. Fixed now:
+  - The candidate ships (guarded: the three stacks' `sensitive-regex` snippets gain the same alternation, Angular's already holding
+    `\bjwt\b`) only if N-W is RESTORED; otherwise there is no pattern edit.
+  - N-R RESTORED: the advance approval suppressed the rule-only pass. N-R NONE: the rule alone got no pass in 10 of 10 runs (T-N and
+    N-R), with or without the approval, and the Security pass row's Copilot CLI cell says a sensitive change outside the reminder's
+    keywords gets no pass. N-R PARTIAL: not settled. Each reading is recorded where B-348's was.
+  - Any reading: a wording candidate for the rule (for example, that an advance approval does not waive the pass) is proposed in one
+    line, not shipped unmeasured (WSD-107).
+- Reader: the adapted script prints the validity items, every main tool call and the mechanism events; the class follows mechanically
+  from those events, so there is no second reader; reader 1 reads each run's events for the recorded items.
+- Stop: 12 premium requests in all, summed before each run from the usage files; a run that would start at or above it is not
+  started (CANNOT-EXAMINE, spend).
+- Not shown in any outcome: interactive sessions (`-p`'s system prompt tells the model to proceed autonomously, so N-R keeps that
+  pressure), VS Code, other models and CLI versions, the Angular and monorepo carriers, sensitive prompts other than N, which review
+  runs (B-388), the review's quality.
