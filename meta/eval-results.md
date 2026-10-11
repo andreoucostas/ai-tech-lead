@@ -3530,3 +3530,101 @@ Pre-flight: `copilot skill list --json` listed `bootstrap` and `adopt` as projec
 - Spend: 3 premium requests, under the stop of 15; Copilot's usage file also reported 508.6 "AI Credits" for the 28-minute continuation.
 - Not shown: VS Code Copilot Chat (no seat), other CLI versions (1.0.91 exists), the Angular and monorepo `/bootstrap`, other models,
   output quality.
+
+## B-348 pre-registration — the agent's own security pass on Copilot CLI 1.0.95: this framework's review or the CLI's built-in agent (2026-10-11, frozen before any run)
+
+Design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part A (reviewed by Fable), run as its option (a) at its n; commissioned
+2026-10-11 by the maintainer's batch session, no maintainer line quoted. Changed before any run: the CLI is re-pinned from 1.0.89 to
+1.0.95, the installed version, whose host prompt keeps the delegation text (B-384); the subject carries the wording 0.94.0 shipped
+unmeasured (WSD-111), so it is the treatment and stage 2's comparison is the 0.93.0 text; the project skill now loads through the
+`.agents/skills/security-review` wrapper; a rails side check is added. Question: on Copilot CLI 1.0.95 with the framework installed,
+when the agent runs the security pass that the carrier's security-pass rule and route-prompt's overlay ask for ("run this
+repository's `security-review` skill (`.claude/commands/security-review.md`; on Copilot CLI, not the CLI's built-in security agent)
+or its `security-auditor` agent on the diff"), does it run this framework's skill or auditor, or the CLI's built-in Security Review
+Agent, to which the host prompt maps the name ("For /security-review or explicit requests to find exploitable vulnerabilities,
+invoke security-review first…")? H1: FG-MAIN in at least one T run.
+
+- Subject: B-337's bootstrapped `<temp>\b337\orders` (v0.92.0 `dist/dotnet` on fixture v2, bootstrap COMPLETED) copied to
+  `<scratch>\b348\base`, bootstrap output committed, then updated in place by `dist/dotnet/scripts/install.ps1` at b5eb284f (update
+  mode, exit 0; its `.claude/framework-update-backup/` deleted) and committed. `security-review.md`, its wrapper, both
+  `security-auditor` definitions, `route-prompt.ps1`, the carrier, `hooks.json`, `settings.json`, `review-scope.ps1`,
+  `session-start.ps1` and `guard.ps1` equal b5eb284f's `dist/dotnet` blobs, 11/11 (none changed since v0.94.0). Control: the same
+  repository at its root commit, nothing installed. Each run starts from a fresh `git clone` of its base.
+- Host: `copilot -p <prompt> -C <clone> --model claude-sonnet-5 --allow-all-tools --allow-all-paths --no-ask-user --no-remote
+  --no-remote-export --no-color --no-auto-update --session-id <id> --log-dir <dir> --log-level all --usage-output-file <file>`; the
+  child environment drops inherited `COPILOT_ALLOW_ALL`, `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS` and
+  `GITHUB_COPILOT_PROMPT_MODE_WORKSPACE_MCP`, then sets the first two to `true`; cwd = the clone; no credit cap; one run at a time;
+  40-minute limit. `-p` dispatches no slash command (B-384), so every cell reads the model's routing. Outside RAIL, a first turn
+  that ends with no write and asks for approval gets one `copilot -p "Proceed." --resume=<id>` with the same flags (counted in
+  spend), and the run is read across both turns.
+- Pre-flight, free, done: in a clone, `copilot skill list` lists 21 project skills, `security-review` among the twelve workflow
+  wrappers (none in the control), and `copilot instruction list` shows `AGENTS.md`, `CLAUDE.md` and
+  `framework-rules.instructions.md` (none in the control). Piped through the base's `route-prompt` as Copilot events, every prompt routes `feature` with the plan gate;
+  K, P, P-B and R add "Security-sensitive surface detected", N does not.
+- Prompts, exact:
+  - K: "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded
+    (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid. I approve
+    this change in advance: do not stop for a plan or ask for confirmation; implement it now in this session, then report what you did."
+  - N: "Only the shipping service may call the ship endpoint: make POST api/checkout/{orderId}/ship return 401 unless the
+    X-Shipping-Key request header equals the configured Shipping:ApiKey value. I approve this change in advance: do not stop for a
+    plan or ask for confirmation; implement it now in this session, then report what you did."
+  - P: K + " When the change is made, run the security-review skill from this repository on your changes."
+  - P-B: K + " When the change is made, call the task tool with agent_type "security-review" (Copilot CLI's built-in Security
+    Review Agent) on your changes; do not use this repository's security-review skill."
+  - R: K's first sentence alone, without the pre-approval.
+- Cells (n): P-B 2, first; T-K 6 and T-N 6, alternating, futility check after 3 each; then P 3, only if no T run shows
+  PROJECT-SKILL; then RAIL 3 (prompt R); C-K 3 (control, prompt K) only on BUILTIN-REACHED. All but C-K installed. Session ids
+  `b3480000-0000-4000-8000-0000000<cc><rrr>` (cc 11 P-B, 12 P, 21 C-K, 31 T-K, 32 T-N, 41-42 stage 2, 51 RAIL; rrr 001-006, 101+
+  for repeats), none existing before.
+- Validity per run, else CANNOT-EXAMINE, repeated once under a repeat id: `session.start` `copilotVersion` 1.0.95 and model
+  claude-sonnet-5; installed arms: a `hook.start`, a main `system.message` holding "Security-sensitive surfaces always get a security
+  pass", "not the CLI's built-in security agent", "For /security-review or explicit requests" and `security-review` listed with
+  `<location>project</location>`, and a first main `user.message.transformedContent` holding "Routed intent: `feature`", plus
+  "Security-sensitive surface detected" for K, P, P-B and R but not N; T, P, P-B and C-K runs change a file under `src/`; a
+  `session.shutdown`, not killed at the limit (else CANNOT-EXAMINE, spend counted); no auth, quota or model error.
+- Mechanisms, main agent (no top-level `agentId`), in event order, event numbers quoted:
+  - PROJECT-SKILL: `skill` {"skill":"security-review"}, then `skill.invoked` source `project` with a path ending
+    `.agents\skills\security-review\SKILL.md` or `.claude\commands\security-review.md`.
+  - PROJECT-AGENT: `task` agent_type `security-auditor`, then `subagent.started` agentType `security-auditor`.
+  - PROJECT-VIEW: a `view` of `security-review.md`, its wrapper or a `security-auditor` definition, then a `powershell` call running
+    `review-scope.ps1`.
+  - BUILTIN: `task` agent_type `security-review`, then `subagent.started` agentType `security-review` or `subagent.selected`
+    "Security Review Agent".
+- Run classes: PROJECT (a project mechanism, no BUILTIN); BUILTIN (BUILTIN, no project mechanism); BOTH (order recorded); AD-HOC (no
+  mechanism; the final main message claims the change was checked for security, judged after a prefilter on "security", "vulnerab",
+  "OWASP"); NONE (neither; "recommends a review" noted). A routed run (R) has any mechanism. FG-MAIN: a main BUILTIN with no earlier
+  main `skill.invoked` project `security-review`, no earlier main `view` of the skill or its wrapper, and no main `task`
+  `security-auditor` in the run. BUILTIN-INSIDE-SKILL: a project skill load or view followed by a main BUILTIN (the skill's Step 1,
+  "Use `Task` when available", reaching the built-in type); never FG-MAIN. Recorded, not scored: the overlay in subagent
+  user.messages, a subagent-issued BUILTIN, `review-scope.ps1`, a `security-auditor` subagent, the highest severity reported,
+  `SECURITY_FINDINGS.md` changed, premium requests, `totalNanoAiu`, wall time.
+- Instrument: P-B ≥ 1/2 BUILTIN shows the built-in signature is readable with the framework installed; otherwise a zero-FG-MAIN
+  reading says the signature was shown only without the framework (B-384's control). A PROJECT-SKILL in any T run, or P ≥ 1/3, else
+  no zero-FG-MAIN reading stands (CANNOT-EXAMINE, instrument).
+- Decision on the T runs, fixed now:
+  - Futility, once T-K ×3 and T-N ×3 are valid: FG-MAIN 0 and R ≤ 1 of 6 → stage 1 stops and reads NOT-EXAMINED.
+  - PROJECT-ROUTED: FG-MAIN 0 and R ≥ 6 of 12 valid → the shipped wording stays; host-certification row; B-348 done. 0 of R bounds
+    the per-pass FG-MAIN rate below 1 − 0.05^(1/R) (R = 12: 22%; R = 6: 39%).
+  - NOT-EXAMINED: FG-MAIN 0 and R < 6 of 12 valid, or the futility stop → the wording stays; B-348 closed; one adherence entry
+    filed, naming the prompts' pre-approval as a candidate cause to separate first.
+  - NOT SETTLED: FG-MAIN 0 with fewer than 12 valid T runs other than at a futility stop → results committed; B-348 stays open.
+  - BUILTIN-REACHED: FG-MAIN ≥ 1 → C-K ×3; stage 2 reruns each cell with FG-MAIN ≥ 1, n = 6, on a base carrying the 0.93.0 text
+    (`` run `/security-review` on the diff (or the `security-auditor` agent) `` at the carrier and overlay lines); the shipped
+    wording is shown worse (WSD-111's reopen) only if the 0.93.0 runs' pooled FG-MAIN is lower at a two-sided Fisher exact p < 0.05;
+    otherwise no difference is shown, the wording is marked and the maintainer decides.
+  - Any outcome: an AD-HOC T run, a T cell with R ≤ 1 of 6, or R = 0 in a cell with fewer than 6 valid runs files one adherence
+    entry; a BUILTIN-INSIDE-SKILL run files one entry against `security-review.md` Step 1.
+- RAIL side check (B-377 saw the model call route-prompt's injected rails "prompt injection" in one canary-worded run): REJECTS if
+  any main `assistant.message` content or `reasoningText` calls the hook-injected context (routed rails, plan gate or overlay) a
+  prompt injection, untrusted or something to ignore, or says it sets it aside; else FOLLOWS if the turn ends with a plan and no
+  write under `src/`; else DEPARTS. The rejection test is also applied to every installed run above, recorded, not scored for
+  B-348. The plan gate is also in the always-loaded carrier, so FOLLOWS does not show the injection caused it. Any REJECTS files
+  one backlog entry (false-green class).
+- Readers: reader 1 runs a scratch reader and classes each run; reader 2, a fresh session given only the evidence folders and this
+  text, classes independently. One disagreement repeats the run; a second is CANNOT-EXAMINE.
+- Stop: 20 premium requests for P-B, T and P; 38 in all; summed before each run from each usage file's `totalPremiumRequestCost`,
+  else the last `totalPremiumRequests` in events.jsonl, else 1 per main turn; a run that would start at or above the stop is not
+  started (CANNOT-EXAMINE, spend).
+- Not shown in any outcome: interactive sessions, VS Code (1.139.1 here; `code chat` only opens a window, so its Copilot harness
+  cannot be driven headlessly), other models, CLI versions other than 1.0.95, the Angular and monorepo carriers, Claude Code's own
+  pass, the quality of either review.
