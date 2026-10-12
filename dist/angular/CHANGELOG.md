@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.95.0 — Unreleased
+## 0.95.0 — 2026-10-12
 
 - **`docs/enforcement-surfaces.md` now names the organization policies that can switch this framework's Copilot
   controls off without anything in your repository showing it.** VS Code's `ChatHooks` policy turns hooks off in its

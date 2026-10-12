@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.95.0 — Unreleased
+## 0.95.0 — 2026-10-12
 
 B-379 (2026-10-12; maintainer request 2026-10-11; canary pre-registered at e5c35e72, results in `meta/eval-results.md`): `docs/enforcement-surfaces.md` gains a
 section naming the organization policies that switch the framework's Copilot controls off while the doctor reports them wired, each attributed to VS Code's
