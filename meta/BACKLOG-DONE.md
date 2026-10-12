@@ -13089,3 +13089,7 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   `route-prompt` overlay), and the old installed paths retire through the ledger, with installer NOTICE, CANT-VERIFY and MIGRATION lines naming the successor. On
   Copilot CLI 1.0.95, B-348's refund prompt then ran this framework's review in 6 of 6 runs and the CLI's built-in Security Review Agent in none (3 of 6 under the
   old name; the old name's pooled 7 of 12, two-sided Fisher p = 0.038). B-392 and B-393 filed the same day.
+- **B-394** — CLOSED by decision **2026-10-12** (WSD-106), never filed. Found by B-378's canary: on the runtime VS Code 1.139.1 bundles for its Copilot harness,
+  a test hook registered in both hook files ran from each on every event, its Claude-format `PostToolUse` copy too (`tool_name` `Write` for `create`), so
+  `audit-trail` would log two lines per write and `post-write` check twice (dotnet after a failed build, Angular whenever its check outlasts the 5 s throttle),
+  and the Boy Scout queue relies on `hooks.json` running first (it did, 5 of 5 events). Reopen on a field report of doubled audit lines, slow writes or a lost nudge.

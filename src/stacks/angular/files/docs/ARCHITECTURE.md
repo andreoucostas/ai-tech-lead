@@ -141,12 +141,12 @@ sequenceDiagram
 
 ## 9. GitHub vs Bitbucket Data Center
 
-The local files do not depend on the Git remote, but their client delivery does vary. Copilot VS Code hooks are Preview and on by default, your organization can turn them off, and the full lifecycle remains uncertified; see `docs/enforcement-surfaces.md`.
+The local files do not depend on the Git remote, but their client delivery does vary. In VS Code, Copilot's Local harness runs hooks as a Preview feature that is on by default, its Copilot harness runs both hook files whatever that setting says, your organization can turn hooks off, and the full lifecycle remains uncertified; see `docs/enforcement-surfaces.md`.
 
 | Surface | GitHub | Bitbucket Data Center |
 |---------|--------|------------------------|
 | Copilot in IDE (reads supported repository carriers, including `AGENTS.md` and `.github` adapters) | ✅ | ✅ (local Windows working tree) |
-| Copilot VS Code hooks | Preview + org policy; verify with canaries | Same — the Git remote does not enable them |
+| Copilot VS Code hooks | Per harness (Local: Preview setting; Copilot: both hook files) + org policy; verify with canaries | Same — the Git remote does not enable them |
 | Claude Code (`CLAUDE.md`, `.claude/**`) | ✅ | ✅ |
 | Copilot CLI hooks (`.github/hooks/`) | Registered locally; firing and consumption vary by event — see `docs/enforcement-surfaces.md` | Same — the Git remote does not enable local hooks |
 | Copilot coding-agent cloud hook execution | Unsupported | Unsupported |

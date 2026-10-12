@@ -13,6 +13,22 @@
 
 ## 0.95.0 — Unreleased
 
+B-378 (2026-10-12; maintainer request 2026-10-11; canary pre-registered at 93844fb8, results in `meta/eval-results.md`): `docs/enforcement-surfaces.md`
+described VS Code only as its Local harness, while VS Code 1.141's notes say the Copilot harness (the Copilot SDK in the Agent Host) "is gradually
+becoming the default for enterprise users who have VS Code experiments enabled". VS Code's hooks page (approved 2026-10-07) says that harness uses
+Copilot CLI's hook implementation and that `chat.useHooks`, `chat.hookFilesLocations` and `chat.useClaudeHooks` do not configure it; GitHub's hooks
+reference says that implementation also reads `.claude/settings.json`, runs every entry from every source and fails a command `preToolUse` closed; VS
+Code 1.139.1's `agentHostMain.js` creates sessions with `enableFileHooks:!0` and reads neither setting. The matrix's VS Code column is now two (Copilot
+harness, Local harness), the advice to leave `chat.useClaudeHooks` off is gone, the missing-`pwsh` box names both harnesses, and the stack READMEs'
+host table, `docs/ARCHITECTURE.md` section 9, `docs/REVIEW-GUIDE.md` and the two briefing decks follow. A canary drove the runtime VS Code 1.139.1
+bundles through its own SDK client with the Agent Host's session flags, without VS Code's window: a marker hook registered in both files ran from each
+on all five events, `hooks.json`'s first each time; the preload and routed rails reached the prompt once and `agentStop` queued a seeded Boy Scout
+candidate (2 of 2); with `pwsh` missing both `create` calls were denied ("hook errored"); claude-sonnet-5 declined the doctor's key-shaped canary write
+before any tool call (2 of 2) though the same install without hook registrations wrote it, so the guard's deny on that harness stays open in B-378 for
+a maintainer-driven VS Code session. The Claude-format `PostToolUse` entry fired too, unlike on CLI 1.0.86 and 1.0.88 (B-293), so `audit-trail` would
+log two lines per write and `post-write` check twice: closed by decision as B-394 (WSD-106). B-378's "Local is deprecated since 1.137" is in no release
+note from 1.137 to 1.141 and is not repeated. 5 premium requests, 28.1 AI credits.
+
 B-388 (2026-10-11; maintainer decision WSD-114, option (b); pre-registered at ac9bef70, results in `meta/eval-results.md`): B-348's refund prompt sent
 the agent's own security pass on Copilot CLI 1.0.95 to the CLI's built-in Security Review Agent in 3 of 6 runs, and this framework's skill, command
 and `.agents/skills` wrapper shared that agent's name, which the CLI's host prompt routes to it and which the CLI's slash commands and Claude Code

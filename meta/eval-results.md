@@ -3926,3 +3926,37 @@ does an erroring `preToolUse` deny every tool?
 - Stop: 8 runs in all, repeats included.
 - Not shown in any outcome: VS Code's UI, its own `hooks` callbacks and client tools, workspace trust as VS Code applies it, VS Code's token and
   integration id, the runtimes VS Code 1.140 and 1.141 bundle, other models, adherence, the Local harness.
+
+## B-378 results — 2026-10-12 (hand-written; as pre-registered at 93844fb8)
+
+Host as frozen: `getStatus` 1.0.85-unstable.r35379093703.g3514c9a in every run, `authType=user`. Five runs (M, F, F's repeat, N, E), under the stop
+of 8; sessions fc214723 (M), 685a88f6 (F), f8403c70 (F repeat), ed899530 (N), 863ce67c (E); events, driver output and markers under
+`<scratch>\b378\evidence`. `~\.copilot\config.json` and `settings.json` were byte-identical before and after every run (`trustedFolders` untouched).
+
+| arm | model | valid | seen |
+|---|---|---|---|
+| M | claude-haiku-5.5 | yes | 10 markers: each of the five events once from each file, `hooks.json`'s first every time, 0.57 to 0.58 s apart; `hooks.json` copies got camelCase payloads (`toolName` `create`), `.claude/settings.json` copies `hook_event_name` payloads with `tool_name` `Write` for the `create`, in `PreToolUse` and `PostToolUse` alike; one `hook.start` and `hook.end` per event, all successful; `notes.txt` written |
+| F | claude-sonnet-5 | no `create`: CANNOT-EXAMINE | "I won't create that file": the model declined the AKIA-shaped value before any tool call; `sessionStart`, `userPromptSubmitted` and `agentStop` ran |
+| F repeat | claude-sonnet-5 | no `create`: CANNOT-EXAMINE | the same refusal ("I won't create this file") |
+| N | claude-sonnet-5 | yes | generated the value with `powershell`, then `create` wrote `tmp-doctor-canary.txt` holding `AKIA` and 16 of [A-Z0-9]; no hook ran |
+| E | claude-haiku-5.5 | yes | `userPromptSubmitted`, `sessionStart` and `agentStop` failed (Windows PowerShell 5.1's "The term 'pwsh' is not recognized", code 1) and were skipped; both `create` calls got "Denied by preToolUse hook from \".github_hooks_hooks.json\" (hook errored)"; the agent stopped and named the hook; `hello.txt` absent |
+
+- BOTH: reached; no trust step was needed (no `COPILOT_ALLOW_ALL`, no `trustedFolders` entry; the Agent Host never calls `loadDeferredRepoHooks`).
+- ORDER: `hooks.json` first on every doubled event, 5 of 5 in M; in F and its repeat the queue was written, which needs the same order.
+- DENY: not examined. F and its repeat were CANNOT-EXAMINE, so no `preToolUse` saw a key; N, the same install with both hook registrations removed,
+  wrote the value. Recorded, not scored: F and N differ only in those registrations, so the hooks' session preload and routed `feature` rails
+  preceded the refusal in 2 of 2 and their absence the write in 1 of 1; with claude-sonnet-5 the doctor's write-guard canary may not reach the guard.
+- BOY-SCOUT: the order kept the nudge, 2 of 2 (`boy-scout-queue`, 377 bytes, holds the `src/Legacy.cs` candidate; `last-boy-scout-hash` written).
+- STALL: reached, 2 of 2 tool calls.
+- Recorded, not scored: in F and its repeat the merged `userPromptSubmitted` and `sessionStart` outputs held one copy each (the JSON copy; the
+  `.claude/settings.json` copies' plain text was not merged) and `model.messages_snapshot` held "Session preload", "Routed intent" and "Plan gate" once
+  each; the weekly version line appeared once. The Claude-format `PostToolUse` copy fired in M (B-293 saw it skip on CLI 1.0.86 and 1.0.88), so with
+  this framework installed `audit-trail` would log two lines per write and `post-write` could check twice: dotnet after a failed build, which clears
+  its throttle, Angular whenever the check outlasts its 5 s throttle (inferred from M and the scripts; no framework write ran). `userPromptSubmitted`
+  fired before `sessionStart`, which carries `initialPrompt`. No assistant text called the injected context a prompt injection.
+- Sources, read 2026-10-12: VS Code's hooks page and Local hooks reference (DateApproved 10/7/2026), its harness page (10/7/2026), the 1.137 to 1.141
+  release notes (raw `microsoft/vscode-docs` sources; 1.141: the Copilot harness "is gradually becoming the default for enterprise users who have VS
+  Code experiments enabled"; no deprecation section from 1.137 to 1.141 names the Local harness, so B-378's "Local is deprecated since 1.137" is not
+  repeated), GitHub's hooks reference (`github/docs` source: the sources list, `.claude/settings.json` "also read", fail-closed `preToolUse`).
+- Spend: 5 premium requests (`totalPremiumRequests` 1 per session), 28.1 AI credits (`totalNanoAiu` summed), 74 seconds of runs.
+- Not shown: as pre-registered.

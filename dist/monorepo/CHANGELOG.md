@@ -7,6 +7,21 @@
 
 ## 0.95.0 — Unreleased
 
+- **`docs/enforcement-surfaces.md` now covers VS Code's Copilot harness, and no longer advises leaving
+  `chat.useClaudeHooks` off.** VS Code runs Copilot in one of two harnesses, and 1.141 is gradually making its Copilot
+  harness the default for enterprise users who have VS Code experiments enabled. That harness uses Copilot CLI's hook
+  implementation: `chat.useHooks` and `chat.useClaudeHooks` do not apply to it, and it runs the hooks in both
+  `.github/hooks/hooks.json` and `.claude/settings.json`, so each of this framework's hooks can run twice per event.
+  We ran the Copilot runtime that VS Code 1.139.1 bundles, outside VS Code's window: a test hook registered in both
+  files ran from each, `hooks.json`'s first; on a .NET repository with this framework installed, the session and
+  per-prompt context reached the model once and the end-of-turn Boy Scout scan queued its finding once; and without
+  PowerShell 7 (`pwsh`) every tool call was denied, as on Copilot CLI. A second copy can add a second line to
+  `.claude/ai-audit.log` for one write and repeat the post-write build or type-check. The matrix now has a column for
+  each harness, and the README's host table and `docs/REVIEW-GUIDE.md` follow. A new install's `docs/ARCHITECTURE.md`
+  says the same in section 9; an update keeps your existing copy, so correct its hooks sentence and table row there by
+  hand if you want them to match. Otherwise you do not need to do anything; keep PowerShell 7 installed wherever
+  Copilot runs.
+
 - **`/bootstrap`'s analysis workers now run on Sonnet and read only what their pass needs, and your session rechecks
   the code behind its top findings before it asks you anything.** Each analysis pass ran on whatever model your
   session used, and each worker first re-read the whole workflow. Workers now run on Sonnet and read only the
