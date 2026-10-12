@@ -30,6 +30,11 @@
       "path": ".claude/hooks/tests/OutgoingCommits.Tests.ps1",
       "sha256": "7CCE24F171B4D5DBD764E1225BCA8044473951F9A84B06A124DDF3EEB4BA5053",
       "reason": "Reviewed intermediate hostile-test blob embedded a synthetic blocked token; the follow-up commit constructs it at runtime."
+    },
+    {
+      "path": "meta/eval-results.md",
+      "sha256": "5711CD74097FA0948F25E2F8D159A16BC6AF5722C4C4A343601D720C4430DD84",
+      "reason": "Frozen B-379 pre-registration (e5c35e72) quoted the eval runner's synthetic AWS example whole; the following commit writes it as {SYNTHETIC_AWS_KEY}."
     }
   ]
 }
