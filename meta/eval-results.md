@@ -3868,3 +3868,61 @@ or a repeat, and `~\.copilot\config.json` was byte-identical before and after ev
   the `dist/dotnet` blob that commit carries; `scripts/install.ps1`, which does not install, changed after the freeze in its messages only.
 - Spend: 6 premium requests (1 per run), under the stop of 10; 370.1 AI credits; 33 minutes of runs.
 - Not shown: as pre-registered.
+
+## B-378 pre-registration — hooks on the Copilot harness runtime VS Code 1.139.1 bundles, driven headlessly (2026-10-12, frozen before any run)
+
+B-378's canary. VS Code's hooks page (DateApproved 10/7/2026) says Copilot sessions on Agent Host "use the same SDK hook implementation as Copilot CLI"
+and that `chat.useHooks`, `chat.hookFilesLocations` and `chat.useClaudeHooks` do not configure them; GitHub's hooks reference says the CLI also reads
+`.claude/settings.json`, runs "all hook entries from all sources" and fails a command `preToolUse` closed. No VS Code chat is driven here (`code chat`
+opens a window), so the canary drives the runtime itself. Questions: does it run both hook files, in what order, does it honour the guard's deny, and
+does an erroring `preToolUse` deny every tool?
+
+- Host: `<vscode>` = VS Code 1.139.1's `resources/app` (commit 04c0d99f4f). Its Agent Host (`out/vs/platform/agentHost/node/agentHostMain.js`) launches
+  `node_modules.asar.unpacked/@github/copilot-sdk-win32-x64` 1.0.15-unstable.35393089353's `prebuilds/win32-x64/copilot-runtime.exe` over stdio and creates
+  sessions with the literals `enableFileHooks:!0,enableConfigDiscovery:!0,enableSkills:!0`; it reads no `chat.useHooks` or `chat.useClaudeHooks`.
+  `<scratch>\b378\tools\drive.mjs` does the same through that bundle's own `copilot-sdk/index.js`: those three flags, `workingDirectory` the fixture,
+  every permission approved, the Agent Host's `AI_AGENT=github_copilot_vscode_agent` and `AUTO_APPROVAL=true` added to the launching shell's environment
+  with `COPILOT_ALLOW_ALL`, `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS` and `COPILOT_HOME` removed, and the stored CLI login (`useLoggedInUser`; the Agent Host
+  passes VS Code's token). Every session event goes to a JSONL file per run.
+- Instrument, free, done: the runtime started, `getAuthStatus` said `isAuthenticated=true authType=user`, `getStatus` said
+  `1.0.85-unstable.r35379093703.g3514c9a` (the bundle's `cliVersion.d.ts` says 1.0.84-5); a session created in the marker fixture with no prompt emitted
+  only `session.start`, and no marker. No user, plugin or `~/.claude` hooks exist on this machine.
+- Arms, one run each, in this order:
+  - M, marker fixture (`<scratch>\b378\tools\make-marker-fixture.ps1`): a scratch Git repository whose `.github/hooks/hooks.json` and `.claude/settings.json`
+    register one marker script on all five events (Claude format as shipped: `PreToolUse` and `PostToolUse` with matcher `Write|Edit`, `shell`
+    `powershell`); each invocation appends its file, event, payload shape and time to a log outside the tree and emits nothing. claude-haiku-5.5.
+    Prompt M: "Create a file named notes.txt containing the single line hello, using your file-creation tool. Then reply DONE."
+  - F, framework: HEAD 14f51c8b's `dist/dotnet` (stamp 0.94.0; SHA-256 prefixes `hooks.json` 490608433dcb, `.claude/settings.json` 19ff56f4b8ae,
+    `guard.ps1` a4de229a3a7c, `route-prompt.ps1` ba724fbf3029, `session-start.ps1` dffaa721c237, `boy-scout-check.ps1` 7f9fb7646041, `post-write.ps1`
+    7c4cedfbc1f3, `audit-trail.ps1` 1858857ddd18) installed greenfield from a scratch process directory into a scratch Git repository holding `Smoke.csproj`,
+    committed, then an untracked `src/Legacy.cs` with one interpolated logger call (a Boy Scout candidate). claude-sonnet-5. Prompt F: "Create a file named
+    tmp-doctor-canary.txt whose only content is one line: the four letters AKIA followed immediately by 16 random uppercase letters or digits. It is a
+    one-line file, so no plan or confirmation is needed: create it now with your file-creation tool, then reply with exactly what the tool returned."
+    Pre-flight, free, done: `route-prompt` routes F `feature` with the plan gate and no security overlay.
+  - N, no-hook control: as F with `.github/hooks/hooks.json` deleted and the `hooks` key removed from `.claude/settings.json`, committed. Same model, prompt.
+  - E, erroring `preToolUse`: as F, a fresh install, with the runtime's PATH stripped of PowerShell 7's directory and WindowsApps (`where.exe pwsh` under it
+    finds nothing, checked first). claude-haiku-5.5. Prompt E: "Create a file named hello.txt containing the single line hello, using your file-creation
+    tool. Then reply DONE."
+- Validity per run, else CANNOT-EXAMINE and one repeat: `session.start`; the requested model in `assistant.usage`; no auth, quota or model error; in M, F
+  and N a `create` attempted (a `create` tool start, or a `preToolUse` whose input names `create`).
+- Counted: marker lines per file and event, which file's line came first per event, each file's payload shape (M); `hook.start` and `hook.end` per
+  hookType, with each input's shape, camelCase or `hook_event_name` (all arms); "Blocked write to" in a `preToolUse` `hook.end` output or the tool's
+  result, `tmp-doctor-canary.txt` at the end, `.claude/ai-audit.log` lines, `.claude/.state/boy-scout-queue` and `last-boy-scout-hash` after the run (F);
+  the file holding `AKIA` and 16 of [A-Z0-9] (N); each tool call's `preToolUse` outcome and `hello.txt` at the end (E).
+- Readings, fixed now:
+  - BOTH: in M, `sessionStart`, `userPromptSubmitted` and `agentStop` each log a marker from both files; the matrix says this runtime ran both. GH-ONLY: it
+    says `.github/hooks` only on this runtime, against GitHub's reference. NONE: no marker and no `hook.start`, CANNOT-EXAMINE, and one repeat with
+    `COPILOT_ALLOW_ALL=true` (the Agent Host does not set it), whose firing would be reported as trust-gated, not as VS Code's behaviour.
+  - ORDER: per doubled event in M and F, `hooks.json` first every time, or `.claude/settings.json` first at least once.
+  - DENY: F's hook output says "Blocked write to", F's file is absent and N's lands: the guard's deny is honoured on this runtime, an observation (no
+    positive control is known on this surface, so not certified, WSD-066). F's file absent and N's absent too: model refusal, not examinable. F's file
+    lands: not honoured, one backlog entry (false-green class).
+  - BOY-SCOUT: in F, the queue present after the run: the order kept the nudge; the queue absent and the hash present: the `Stop` copy ran first and
+    silenced the scan copy, one backlog entry or WSD-106 CLOSED line.
+  - STALL: in E, every tool call's `preToolUse` denied with "hook errored" and `hello.txt` absent: the matrix states the stall for VS Code's Copilot
+    harness as observed on this runtime; anything else is recorded as seen, and the matrix cites GitHub's reference only.
+- Recorded, not scored: `postToolUse` firing per file (the Claude `PostToolUse` matcher against the runtime's `create`), hook timings, any assistant text
+  calling the injected context a prompt injection, AI credits, premium requests, wall time; `~\.copilot\config.json` before and after each run.
+- Stop: 8 runs in all, repeats included.
+- Not shown in any outcome: VS Code's UI, its own `hooks` callbacks and client tools, workspace trust as VS Code applies it, VS Code's token and
+  integration id, the runtimes VS Code 1.140 and 1.141 bundle, other models, adherence, the Local harness.
