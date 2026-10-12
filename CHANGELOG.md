@@ -13,6 +13,21 @@
 
 ## 0.95.0 — Unreleased
 
+B-379 (2026-10-12; maintainer request 2026-10-11; canary pre-registered at e5c35e72, results in `meta/eval-results.md`): `docs/enforcement-surfaces.md` gains a
+section naming the organization policies that switch the framework's Copilot controls off while the doctor reports them wired, each attributed to VS Code's
+enterprise pages (approved 2026-10-07), GitHub's enterprise-managed settings reference, hooks reference and changelog, or the installed code: `ChatHooks`
+(Local harness only); `ChatAllowManagedHooksOnly` and `ChatStrictPluginOnlyCustomization` (1.132+, `VSCode.admx`; VS Code 1.139.1's workbench maps them to
+`chat.hooks.allowManagedOnly` and `chat.customizations.strictPluginOnlyCustomization`, fed by the device policy or the managed `allowManagedHooksOnly` and
+`strictPluginOnlyCustomization`, and under them drops workspace hook files, or skill, agent, hook and instruction folders plus `AGENTS.md` and `CLAUDE.md`);
+Copilot CLI 1.0.95's `allowManagedHooksOnly` and `strictPluginOnlyCustomization` (its runtime's managed-settings schema; GitHub's reference lists neither);
+managed permission rules (changelog 2026-09-09; they act on tool calls, so they switch none off); and managed sandboxing (GA 2026-10-07; repository hooks run
+inside it, per GitHub's hooks reference). VS Code's Copilot harness stays unestablished: 1.139.1's `agentHostMain.js` creates sessions with
+`enableFileHooks:!0` and forwards none of these settings, while its bundled runtime carries the CLI's lockdown. Measured on Copilot CLI 1.0.95 with d4ca19bd's
+`dist/dotnet`: the doctor's canary as written reached the guard 2 of 3 times with claude-sonnet-5 (declined once) and landed through `apply_patch` 2 of 2
+with gpt-6.1-sol, its `preToolUse` silent, because `guard.ps1` reads `toolArgs` only as JSON with a path and content (B-395 filed at rank 1); with the CLI's
+own `--sandbox` every hook ended successfully and the guard blocked a key-shaped write, but `session-start` emitted only its heading and no audit line or
+hook state reached the repository (B-396 filed). 6 premium requests, 60.0 AI credits.
+
 B-378 (2026-10-12; maintainer request 2026-10-11; canary pre-registered at 93844fb8, results in `meta/eval-results.md`): `docs/enforcement-surfaces.md`
 described VS Code only as its Local harness, while VS Code 1.141's notes say the Copilot harness (the Copilot SDK in the Agent Host) "is gradually
 becoming the default for enterprise users who have VS Code experiments enabled". VS Code's hooks page (approved 2026-10-07) says that harness uses

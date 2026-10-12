@@ -13093,3 +13093,8 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   a test hook registered in both hook files ran from each on every event, its Claude-format `PostToolUse` copy too (`tool_name` `Write` for `create`), so
   `audit-trail` would log two lines per write and `post-write` check twice (dotnet after a failed build, Angular whenever its check outlasts the 5 s throttle),
   and the Boy Scout queue relies on `hooks.json` running first (it did, 5 of 5 events). Reopen on a field report of doubled audit lines, slow writes or a lost nudge.
+- **B-379** — DONE **2026-10-12** for 0.95.0 (maintainer request 2026-10-11; pre-registered at e5c35e72; `meta/eval-results.md`, `meta/host-certification.md`; 6 premium requests):
+  `docs/enforcement-surfaces.md` names the organization policies that switch the framework's Copilot controls off with no doctor signal (`ChatHooks`; `ChatAllowManagedHooksOnly` and
+  `allowManagedHooksOnly`; `ChatStrictPluginOnlyCustomization` and `strictPluginOnlyCustomization`; managed permission rules, which switch none off; managed sandboxing), each attributed to
+  VS Code's or GitHub's pages or the VS Code 1.139.1 and Copilot CLI 1.0.95 code, VS Code's Copilot harness left unestablished. The doctor's canary as written reached the guard 2 of 3 times
+  with claude-sonnet-5 (declined once) and landed through `apply_patch` 2 of 2 with gpt-6.1-sol; B-395 and B-396 filed the same day.

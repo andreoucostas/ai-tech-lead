@@ -46,6 +46,58 @@ asks for one `dotnet restore`, then waits the same five minutes. An Angular work
 layout since v20), such as a library-only workspace, reports "Type-check not verified" instead of checking,
 then waits the same five minutes.
 
+## Organization policies that switch these controls off
+
+Your organization can switch this framework's Copilot controls off centrally, outside this repository, and nothing
+here can see it: the doctor reads only this repository and its own process, so it keeps reporting the hooks wired.
+The write-guard canary above stays the proof, run on each surface with the model your team uses. "Blocked write to"
+shows that the guard ran there; a file that lands shows only that the guard did not block that write (a policy
+below, folder trust not given, or a write tool outside the guard's scope, see the scope caveat under the matrix);
+a refusal shows nothing. Ask your administrator which of these your organization sets. Checked on 2026-10-12
+against VS Code's enterprise AI-settings page and policy reference (approved 2026-10-07), GitHub's
+enterprise-managed settings reference, hooks reference and changelog, and the code that VS Code 1.139.1 and Copilot
+CLI 1.0.95 install; "not established" means none of these settles it and it was not observed.
+
+- **`ChatHooks` set to false** (VS Code device policy, 1.109 and later) turns off every hook in VS Code's Local
+  harness. VS Code says it does not apply to the Copilot harness.
+- **`ChatAllowManagedHooksOnly`** (VS Code device policy, 1.132 and later) and **`allowManagedHooksOnly`** (Copilot
+  managed setting) let only the hooks your enterprise manages, and those of plugins its policy force-enables, run.
+  This framework's six hooks are repository hooks, so none runs: no write guard, build feedback, per-prompt rails,
+  session preload, Boy Scout nudge or audit line. VS Code 1.139.1 applies either form to the hooks it loads itself,
+  which covers the Local harness, and Copilot CLI 1.0.95's settings schema says that under it "User,
+  workspace/project, and otherwise user-enabled plugin hooks are blocked". VS Code's Copilot harness is not
+  established: the runtime VS Code 1.139.1 bundles carries the same lockdown, but VS Code's Agent Host starts every
+  Copilot session with repository hook files on and passes the runtime none of these settings.
+- **`ChatStrictPluginOnlyCustomization`** (VS Code device policy, 1.132 and later) and
+  **`strictPluginOnlyCustomization`** (Copilot managed setting) block standalone user and workspace customizations
+  and keep only what plugins provide. In VS Code that covers skills, custom agents, hooks, instruction files and MCP
+  servers, and VS Code 1.139.1 skips `AGENTS.md` and `CLAUDE.md` too, so in the Local harness none of this
+  framework's rules, skills, agents or hooks load. In Copilot CLI 1.0.95's schema it covers skills, custom agents,
+  hooks and MCP servers, or only those it lists; instruction files are not among them, so `AGENTS.md` and the
+  framework-rules file should still load there (not observed). VS Code's Copilot harness is not established, as
+  above. GitHub's enterprise-managed settings reference lists neither Copilot key; the CLI's schema defines both.
+- **Managed permission rules** (`permissions.deny`, `ask` and `allow`; generally available on 2026-09-09 in Copilot
+  CLI, the Copilot app and VS Code's Copilot harness) block, or require approval for, the agent's own operations:
+  shell commands, file reads and edits, and network domains. Hooks and customization files are not among them, so
+  these rules switch none of this framework's controls off. A deny rule that matches a command a framework workflow
+  asks the agent to run, such as `/review`'s `scripts/review-scope.ps1`, blocks that step like any other command.
+- **Managed sandboxing** (`sandbox`; local sandboxing generally available on 2026-10-07 in Copilot CLI, the Copilot
+  app and VS Code's Copilot harness, where GitHub lists the managed setting from 1.138 and VS Code calls its
+  enforcement Preview and its Windows support experimental) lets your organization require the sandbox. GitHub's
+  hooks reference says that in a sandboxed Copilot CLI session repository hooks run inside the sandbox with the
+  agent's shell access, that a hook failing there gets one warning per hook and session, and that a failing
+  `preToolUse` hook denies the tool call while one that times out lets it through (the guard's limit is 10 seconds).
+  Observed once, on Copilot CLI 1.0.95 with its own `--sandbox` and default policy (2026-10-12): every hook that
+  fired ended successfully, and the guard still blocked a key-shaped write, taking up to 3.9 seconds a call against
+  up to 1.9 outside the sandbox; but the session preload arrived as its heading alone, and no audit line or hook
+  state was written to the repository, all of which the same hooks produce outside the sandbox. Why is not
+  established, nor whether VS Code's Copilot harness runs hooks inside its sandbox.
+
+To see which apply on a machine: in VS Code, **Developer: Policy Diagnostics** lists the policies applied there and
+their sources, including enterprise-managed settings that map to a VS Code policy. `/sandbox` in Copilot CLI, and
+`/sandbox policy` in a session on VS Code's Copilot harness, show whether sandboxing is on and what your
+organization enforces.
+
 ## Matrix
 
 | Capability | Claude Code | Copilot CLI | VS Code: Copilot harness | VS Code: Local harness |
@@ -123,7 +175,7 @@ then waits the same five minutes.
 ## What this means for you
 - Run `pwsh -NoProfile -File scripts/framework-doctor.ps1` (or the native Windows PowerShell 5.1 fallback above) once on each Windows developer machine to see which script-verifiable controls are live and which agent canaries still need a human observation.
 - Treat the framework-rules workflow rails as **binding**, not advisory — wherever hooks are off (Preview disabled, older CLI), they are the *only* thing standing between a casual prompt and an unreviewed change.
-- If you want the deterministic write floor **and** the per-prompt salience injection in VS Code: in the Local harness, **keep agent hooks on** (`chat.useHooks`, the default); the Copilot harness ignores that setting and runs both hook files. In either, confirm your organization allows hooks and canary each capability on the current host before relying on it.
+- If you want the deterministic write floor **and** the per-prompt salience injection in VS Code: in the Local harness, **keep agent hooks on** (`chat.useHooks`, the default); the Copilot harness ignores that setting and runs both hook files. In either, confirm your organization allows hooks (see "Organization policies that switch these controls off" above) and canary each capability on the current host before relying on it.
 - PowerShell parses hook JSON natively; no separate Bash JSON-parser dependency is part of the supported contract.
 - The framework will not claim a control fires where it doesn't. If you find a doc or comment that implies otherwise, that's a bug — file it.
 

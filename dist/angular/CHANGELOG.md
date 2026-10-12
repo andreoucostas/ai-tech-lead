@@ -6,6 +6,18 @@
 
 ## 0.95.0 — Unreleased
 
+- **`docs/enforcement-surfaces.md` now names the organization policies that can switch this framework's Copilot
+  controls off without anything in your repository showing it.** VS Code's `ChatHooks` policy turns hooks off in its
+  Local harness. `ChatAllowManagedHooksOnly` (VS Code 1.132 and later), or the Copilot managed setting
+  `allowManagedHooksOnly`, lets only enterprise-managed hooks run, so none of this framework's six hooks does.
+  `ChatStrictPluginOnlyCustomization`, or `strictPluginOnlyCustomization`, also stops repository skills and custom
+  agents, and in VS Code your instruction files and `AGENTS.md` too. Managed permission rules switch none of these
+  controls off. A managed sandbox runs your repository's hooks inside it: in one Copilot CLI run with its sandbox on,
+  the hooks ran and the write guard still blocked a key-shaped write, but the session preload arrived empty and no
+  audit line was written. Which of these reach VS Code's Copilot harness is not established. The framework doctor
+  cannot see any of them, so run the write-guard canary on each surface with the model your team uses, and ask your
+  administrator which policies apply. Nothing changes in your repository.
+
 - **`docs/enforcement-surfaces.md` now covers VS Code's Copilot harness, and no longer advises leaving
   `chat.useClaudeHooks` off.** VS Code runs Copilot in one of two harnesses, and 1.141 is gradually making its Copilot
   harness the default for enterprise users who have VS Code experiments enabled. That harness uses Copilot CLI's hook
