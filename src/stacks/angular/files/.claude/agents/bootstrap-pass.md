@@ -2,7 +2,7 @@
 name: bootstrap-pass
 description: Read-only worker for one Angular `/bootstrap` pass (A1–A6 or A7 repository-knowledge discovery). Returns structured findings; never invoke directly.
 tools: Read, Grep, Glob, PowerShell
-model: sonnet
+model: inherit
 ---
 
 You execute exactly one bootstrap analysis pass defined in `.claude/commands/bootstrap.md`. The caller specifies `A1`–`A7`. Return one structured findings message.

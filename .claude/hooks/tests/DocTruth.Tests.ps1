@@ -281,12 +281,12 @@ function Get-RootDeliveryFactViolations([string]$Readme, [string]$Agents, [hasht
     $bad = @()
     if ($Readme -match '(?is)\binstall(?:ing|ed)?\b.{0,80}\b[0-9,]+\s+files\b') { $bad += 'README has a brittle installed-file count' }
     if ($Readme -notmatch 'framework-ownership\.json.{0,100}(?i:authoritative)') { $bad += 'README does not name framework-ownership.json as authoritative' }
-    if ($Readme -notmatch 'LICENSES/ai-tech-lead-MIT\.txt' -or $Readme -notmatch 'NOTICE-ai-tech-lead\.md') { $bad += 'README omits shipped licence/notice paths' }
+    # 0.96.0 stops shipping a licence and an attribution notice into consumer repositories.
     foreach ($stack in @('dotnet','angular','monorepo')) {
         $paths = @($ManifestPaths[$stack])
-        if ($paths -notcontains 'LICENSES/ai-tech-lead-MIT.txt' -or $paths -notcontains 'NOTICE-ai-tech-lead.md') { $bad += "$stack manifest omits licence or notice" }
+        if ($paths -contains 'LICENSES/ai-tech-lead-MIT.txt' -or $paths -contains 'NOTICE-ai-tech-lead.md') { $bad += "$stack manifest still lists a licence or notice" }
         $delivered = @($DeliveredLegalPaths[$stack])
-        if ($delivered -notcontains 'LICENSES/ai-tech-lead-MIT.txt' -or $delivered -notcontains 'NOTICE-ai-tech-lead.md') { $bad += "$stack dist omits licence or notice" }
+        if ($delivered.Count -gt 0) { $bad += "$stack dist still ships $($delivered -join ', ')" }
     }
     if ($Agents -notmatch '(?ms)^## Status\s*(?<status>.*?)(?=^## |\z)') { $bad += 'AGENTS.md omits its Status section' }
     elseif ($Matches.status -match '(?i)current shipped version|\bv?\d+\.\d+\.\d+\b|\bB-\d+\b|\b20\d{2}-\d{2}-\d{2}\b') { $bad += 'AGENTS.md retains a numeric status summary' }
@@ -364,14 +364,14 @@ function Get-ArchitectureStubViolations {
     return $bad
 }
 
-It 'root delivery facts defer counts to manifests, ship licence plus notice, and keep status pointers non-numeric' {
+It 'root delivery facts defer counts to manifests, ship no licence or notice, and keep status pointers non-numeric' {
     $readme = Get-Content -Raw (Join-Path $repoRoot 'README.md')
     $agents = Get-Content -Raw (Join-Path $repoRoot 'AGENTS.md')
     $manifests = @{}
     $delivered = @{}
     foreach ($stack in @('dotnet','angular','monorepo')) {
         $manifests[$stack] = @((Get-Content -Raw (Join-Path $repoRoot "dist/$stack/framework-ownership.json") | ConvertFrom-Json).paths | ForEach-Object path)
-        $delivered[$stack] = @('LICENSES/ai-tech-lead-MIT.txt','NOTICE-ai-tech-lead.md') | Where-Object { Test-Path -LiteralPath (Join-Path $repoRoot "dist/$stack/$_") }
+        $delivered[$stack] = @(@('LICENSES/ai-tech-lead-MIT.txt','NOTICE-ai-tech-lead.md') | Where-Object { Test-Path -LiteralPath (Join-Path $repoRoot "dist/$stack/$_") })
     }
     $bad = @(Get-RootDeliveryFactViolations $readme $agents $manifests $delivered)
     Assert ($bad.Count -eq 0) ($bad -join '; ')
@@ -456,19 +456,21 @@ It 'B-231 scope mutation is reachable and restores its scratch bytes' {
         } | Out-Null
 }
 
-It 'root delivery fact helper rejects brittle counts, omitted legal paths, and numeric status fixtures' {
-    $paths = @{ dotnet=@('LICENSES/ai-tech-lead-MIT.txt','NOTICE-ai-tech-lead.md'); angular=@('LICENSES/ai-tech-lead-MIT.txt','NOTICE-ai-tech-lead.md'); monorepo=@('LICENSES/ai-tech-lead-MIT.txt','NOTICE-ai-tech-lead.md') }
-    $good = 'framework-ownership.json is authoritative. LICENSES/ai-tech-lead-MIT.txt NOTICE-ai-tech-lead.md'
+It 'root delivery fact helper rejects brittle counts, a shipped licence or notice, and numeric status fixtures' {
+    $none = @{ dotnet=@(); angular=@(); monorepo=@() }
+    $good = 'framework-ownership.json is authoritative.'
     $pointers = "## Status`nVersion authority is dist/*/.claude/framework-version.json. Release history: CHANGELOG.md and tags. Work: meta/BACKLOG.md."
-    foreach ($fixture in @('Installing lands 166 files', 'framework-ownership.json is informative', 'LICENSES/ai-tech-lead-MIT.txt', 'NOTICE-ai-tech-lead.md')) {
-        $readme = if ($fixture -eq 'framework-ownership.json is informative') { $fixture + ' LICENSES/ai-tech-lead-MIT.txt NOTICE-ai-tech-lead.md' } elseif ($fixture -match 'LICENSE|NOTICE') { 'framework-ownership.json is authoritative. ' + $fixture } else { $good + ' ' + $fixture }
-        Assert (@(Get-RootDeliveryFactViolations $readme $pointers $paths $paths).Count -gt 0) "red fixture was accepted: $fixture"
+    Assert (@(Get-RootDeliveryFactViolations $good $pointers $none $none).Count -eq 0) 'the green fixture was rejected'
+    foreach ($fixture in @('Installing lands 166 files', 'framework-ownership.json is informative')) {
+        Assert (@(Get-RootDeliveryFactViolations $fixture $pointers $none $none).Count -gt 0) "red fixture was accepted: $fixture"
     }
-    Assert (@(Get-RootDeliveryFactViolations $good ($pointers + "`nB-123 is current") $paths $paths).Count -gt 0) 'numeric AGENTS status fixture was accepted'
-    Assert (@(Get-RootDeliveryFactViolations $good ($pointers + "`nCurrent shipped version: v1.2.3") $paths $paths).Count -gt 0) 'version-numbered AGENTS status fixture was accepted'
-    Assert (@(Get-RootDeliveryFactViolations $good ($pointers.Replace('meta/BACKLOG.md', 'the backlog')) $paths $paths).Count -gt 0) 'AGENTS fixture missing a required pointer was accepted'
-    $missingDelivery = @{} + $paths; $missingDelivery.dotnet = @('NOTICE-ai-tech-lead.md')
-    Assert (@(Get-RootDeliveryFactViolations $good $pointers $paths $missingDelivery).Count -gt 0) 'missing physical licence fixture was accepted'
+    Assert (@(Get-RootDeliveryFactViolations $good ($pointers + "`nB-123 is current") $none $none).Count -gt 0) 'numeric AGENTS status fixture was accepted'
+    Assert (@(Get-RootDeliveryFactViolations $good ($pointers + "`nCurrent shipped version: v1.2.3") $none $none).Count -gt 0) 'version-numbered AGENTS status fixture was accepted'
+    Assert (@(Get-RootDeliveryFactViolations $good ($pointers.Replace('meta/BACKLOG.md', 'the backlog')) $none $none).Count -gt 0) 'AGENTS fixture missing a required pointer was accepted'
+    $listed = @{} + $none; $listed.angular = @('NOTICE-ai-tech-lead.md')
+    Assert (@(Get-RootDeliveryFactViolations $good $pointers $listed $none).Count -gt 0) 'a manifest listing the notice was accepted'
+    $shipped = @{} + $none; $shipped.monorepo = @('LICENSES/ai-tech-lead-MIT.txt')
+    Assert (@(Get-RootDeliveryFactViolations $good $pointers $none $shipped).Count -gt 0) 'a dist shipping the licence was accepted'
 }
 
 # CI and the aggregate runner invoke this complete suite directly under both supported hosts. Keep

@@ -2292,25 +2292,52 @@ It 'a dangling retired-path reparse is CANT-VERIFY and never classified absent' 
 }
 }
 
-foreach ($case in @(
-    @{ Rel = 'LICENSES/ai-tech-lead-MIT.txt'; Text = 'consumer licence'; Message = "Refusing to overwrite 'LICENSES/ai-tech-lead-MIT.txt': the existing file is not identical to the framework licence." },
-    @{ Rel = 'NOTICE-ai-tech-lead.md'; Text = 'consumer notice'; Message = "Refusing to overwrite 'NOTICE-ai-tech-lead.md': the existing file is not marked FRAMEWORK-OWNED." }
-)) {
-    It "legal-file refusal remains exit 3 without an update completion banner ($($case.Rel))" {
-        $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-legal-' + [guid]::NewGuid())
+It 'licence and notice no longer ship: an update removes the unmodified notice and keeps an edited licence copy instead of refusing' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-legal-' + [guid]::NewGuid())
+    try {
+        # 0.96.0 stops shipping LICENSES/ai-tech-lead-MIT.txt and NOTICE-ai-tech-lead.md into consumer repositories.
+        foreach ($stack in 'dotnet', 'angular', 'monorepo') {
+            foreach ($rel in 'LICENSES/ai-tech-lead-MIT.txt', 'NOTICE-ai-tech-lead.md') {
+                Assert (-not (Test-Path -LiteralPath (Join-Path $repoRoot "dist/$stack/$rel"))) "$stack still ships $rel"
+            }
+        }
+        $notice = Join-Path $t 'NOTICE-ai-tech-lead.md'
+        $licence = Join-Path $t 'LICENSES/ai-tech-lead-MIT.txt'
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude'), (Split-Path -Parent $licence) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), '{"version":"0.95.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.95.0:dist/dotnet/framework-ownership.json'))
+        [IO.File]::WriteAllBytes($notice, (Get-GitBlobBytes -Spec 'v0.95.0:dist/dotnet/NOTICE-ai-tech-lead.md'))
+        # The licence was consumer-owned: the team decides whether to keep it, even an edited copy.
+        $licenceBytes = [Text.UTF8Encoding]::new($false).GetBytes("the team's own licence text`n")
+        [IO.File]::WriteAllBytes($licence, $licenceBytes)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        Assert (-not (Test-Path -LiteralPath $notice)) "the unmodified retired notice survived: $out"
+        Assert (Test-B194BytesEqual $licenceBytes ([IO.File]::ReadAllBytes($licence))) "the team's licence copy was not kept byte-identical: $out"
+        $manifest = Get-Content -Raw -LiteralPath (Join-Path $t 'framework-ownership.json') | ConvertFrom-Json
+        $listed = @($manifest.paths | ForEach-Object path)
+        Assert ($listed -notcontains 'NOTICE-ai-tech-lead.md' -and $listed -notcontains 'LICENSES/ai-tech-lead-MIT.txt') "the installed manifest still lists the licence or notice: $($listed -join ', ')"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+It 'an edited notice stays after the update and is named as the team''s to keep, not as a file to remove' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-notice-' + [guid]::NewGuid())
+    try {
+        $notice = Join-Path $t 'NOTICE-ai-tech-lead.md'
         New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $t $case.Rel)) | Out-Null
-        Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.55.0"}' -Encoding utf8
-        Set-Content -LiteralPath (Join-Path $t $case.Rel) -Value $case.Text -Encoding utf8
-        try {
-            $out = Invoke-Installer -Dist 'dotnet' -Target $t
-            $code = $LASTEXITCODE
-            Assert ($code -eq 3) "legal-file refusal exit changed from 3 to $code. Output:`n$out"
-            $messageText = (($out -replace '\s+', ' ').Trim())
-            $expectedText = (($case.Message -replace '\s+', ' ').Trim())
-            Assert ($messageText -match [regex]::Escape($expectedText)) "legal-file refusal message changed. Output:`n$out"
-            Assert ($out -notmatch 'Done \(update\)') "failed update printed the success-only completion banner. Output:`n$out"
-        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+        [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), '{"version":"0.95.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.95.0:dist/dotnet/framework-ownership.json'))
+        $noticeBytes = (Get-GitBlobBytes -Spec 'v0.95.0:dist/dotnet/NOTICE-ai-tech-lead.md') + [Text.UTF8Encoding]::new($false).GetBytes("Also covers the team's vendored helpers.`n")
+        [IO.File]::WriteAllBytes($notice, $noticeBytes)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        Assert (Test-B194BytesEqual $noticeBytes ([IO.File]::ReadAllBytes($notice))) "the edited notice was not kept byte-identical: $out"
+        Assert ($flat -match "NOTICE: 'NOTICE-ai-tech-lead\.md' remains because it differs from every notice this framework shipped\. The framework no longer ships a notice; the file is yours to keep or delete\.") "the kept notice was not named as the team's to keep: $out"
+        Assert ($flat -notmatch "'NOTICE-ai-tech-lead\.md' remains\. It is retired with no replacement command") "the kept notice got the generic remove-it advice: $out"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 

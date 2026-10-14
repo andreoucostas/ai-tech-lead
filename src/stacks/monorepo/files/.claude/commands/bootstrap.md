@@ -36,6 +36,12 @@ Task(subagent_type="bootstrap-pass", description="Bootstrap Angular pass A1", pr
 Task(subagent_type="bootstrap-pass", description="Bootstrap warehouse-SQL pass W1", prompt="Run warehouse-SQL pass W1.")
 ```
 
+**Worker model.** When this session runs a Claude model other than Sonnet (Opus or Haiku, say), pass Sonnet as each
+worker call's model: `sonnet` in Claude Code, and in Copilot CLI the newest `claude-sonnet-*` id its `task` tool lists.
+On any other session model pass none, so the worker runs on the session's own. `bootstrap-pass` names no model of its
+own: Copilot CLI refuses a Claude Code alias there and the worker never starts. This saves cost only: Phase 2a rechecks
+the evidence behind every high-stakes finding either way.
+
 When native delegation is available, send all worker calls in one message and wait for them to return. In the sequential fallback, complete each selected finite pass before the next.
 
 - **.NET passes:** A1–A7 when .NET is selected (A7 Financial is conditional and may self-skip).

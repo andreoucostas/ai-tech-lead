@@ -63,8 +63,6 @@ $expectedTestFiles = @(
     'GuardPatternErrors.Tests.ps1',
     'InstallerContract.Tests.ps1',
     'InstallerConvergence.Tests.ps1',
-    'LicenseDelivery.Tests.ps1',
-    'LicenseDrift.Tests.ps1',
     'MetaHooks.Tests.ps1',
     'OutgoingCommits.Tests.ps1',
     'OperationSkillAuthority.Tests.ps1',
@@ -246,7 +244,6 @@ if ($Sequential -or $files.Count -eq 1) {
         'InstallerContract.Tests.ps1'     = 51.3
         'DocsSyncCheck.Tests.ps1'         = 38.6
         'RootInstallerWarehouse.Tests.ps1'= 26.6
-        'LicenseDelivery.Tests.ps1'       = 24.5
         'ReleaseCiWatch.Tests.ps1'        = 12.9
     }
     $files = @($files | Sort-Object `

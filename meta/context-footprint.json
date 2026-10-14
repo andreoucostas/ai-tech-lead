@@ -18,7 +18,7 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
-          "chars": 276,
+          "chars": 277,
           "tok": 69
         },
         {
@@ -192,8 +192,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12207,
-          "tok": 3052
+          "chars": 12367,
+          "tok": 3092
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -338,8 +338,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 54101,
-          "tok": 13525
+          "chars": 54634,
+          "tok": 13658
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -447,7 +447,7 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
-          "chars": 243,
+          "chars": 244,
           "tok": 61
         },
         {
@@ -606,8 +606,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12237,
-          "tok": 3059
+          "chars": 12397,
+          "tok": 3099
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -752,8 +752,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 48423,
-          "tok": 12106
+          "chars": 48956,
+          "tok": 12239
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -846,8 +846,8 @@
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
-          "chars": 293,
-          "tok": 73
+          "chars": 294,
+          "tok": 74
         },
         {
           "path": ".claude/agents/convention-check.md#frontmatter",
@@ -1020,8 +1020,8 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12968,
-          "tok": 3242
+          "chars": 13128,
+          "tok": 3282
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
@@ -1166,8 +1166,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 63413,
-          "tok": 15853
+          "chars": 63946,
+          "tok": 15986
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1269,15 +1269,15 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 37890,
-      "static.claude.tok": 9472,
+      "static.claude.chars": 37891,
+      "static.claude.tok": 9473,
       "static.copilot.chars": 26390,
       "static.copilot.tok": 6598,
       "prompt.max.chars": 3539,
       "prompt.max.tok": 885
     },
     "angular": {
-      "static.claude.chars": 35913,
+      "static.claude.chars": 35914,
       "static.claude.tok": 8978,
       "static.copilot.chars": 26824,
       "static.copilot.tok": 6706,
@@ -1285,7 +1285,7 @@
       "prompt.max.tok": 836
     },
     "monorepo": {
-      "static.claude.chars": 42268,
+      "static.claude.chars": 42269,
       "static.claude.tok": 10567,
       "static.copilot.chars": 29910,
       "static.copilot.tok": 7478,

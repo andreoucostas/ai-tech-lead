@@ -4645,3 +4645,13 @@ wrapper become `security-gate`, a name the implementing session chose and found 
 The old installed paths retire through the ledger in 0.95.0, and the installer names the successor for kept copies and for protected files that still name the old command.
 Option (a) stays the next candidate if the renamed pass still reaches a host built-in.
 **Reopen** when a supported host adds a built-in named `security-gate`, or a measurement shows the renamed pass still sent to a host built-in.
+
+## WSD-115: `/bootstrap` asks for Sonnet workers in the worker call, not in `bootstrap-pass`'s frontmatter (2026-10-14)
+
+**Context.** B-398 (`meta/eval-results.md`): Copilot CLI 1.0.95 reads `.claude/agents/bootstrap-pass.md` and refuses its `model: sonnet`, so in 0.95.0 no worker
+starts on Copilot and the session runs every pass on its own model. The maintainer asked whether to pin a model or suggest one per session family.
+**Decision (maintainer, 2026-10-14: "we dont actually pin it but rather suggest").** `bootstrap-pass` is `model: inherit`; `/bootstrap` Phase 1 tells a
+session on a Claude model other than Sonnet to pass Sonnet in each worker call (`sonnet` in Claude Code, the newest `claude-sonnet-*` in Copilot CLI), and any
+other session to pass none. Amends WSD-113's mechanism, not its Sonnet choice for Claude sessions. Rejected: a pinned Copilot model list (locks GPT sessions
+onto another vendor; overrides the developer's subagent setting); Sol to Terra (the catalog prices `gpt-6.1-sol` like Sonnet and `gpt-5.6-terra` above it).
+**Reopen** if a host stops accepting a per-call model, or a field report shows workers on the session's top-tier model despite the rule.

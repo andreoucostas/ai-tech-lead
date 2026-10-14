@@ -84,7 +84,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 
 | Agent | Role | Model |
 |-------|------|-------|
-| `bootstrap-pass` | One selected-profile pass (.NET A1–A7 / warehouse-SQL W1–W3) or shared A8 skill discovery during `/bootstrap` | **sonnet** |
+| `bootstrap-pass` | One selected-profile pass (.NET A1–A7 / warehouse-SQL W1–W3) or shared A8 skill discovery during `/bootstrap` | Sonnet on a Claude session (see below) |
 | `security-auditor` | OWASP-style scan; feeds `/security-gate` | inherit (strong) |
 | `solid-check` | Audits the diff against the five SOLID principles and first-party project evidence; feeds `/review` | inherit (strong) |
 | `test-critic` | Test-integrity audit — would each test go red if the code under test broke? Catches over-mocking and tautological/weak assertions; feeds `/review` | inherit (strong) |
@@ -92,7 +92,7 @@ Run in isolated context; return a structured findings table to the parent. Model
 | `bloat-radar` | Over-abstraction counterweight to Boy Scout; feeds `/review` | **haiku** |
 | `debt-radar` | Maps files/areas to TECH_DEBT entries (Trojan Horse) | **haiku** |
 
-`bootstrap-pass` runs on Sonnet whatever model your session uses; your session still synthesises the findings, asks you, and writes the artifacts on its own model. To run every subagent on one model instead, start Claude Code with `CLAUDE_CODE_SUBAGENT_MODEL=<model>` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` (Claude Code v2.1.257 or later); that also overrides the Haiku agents.
+`bootstrap-pass` runs on Sonnet when your session runs another Claude model (`/bootstrap` passes it in each worker call, in Claude Code and Copilot CLI alike) and on your session's model otherwise; your session still synthesises the findings, asks you, and writes the artifacts on its own model. To run every subagent on one model instead, start Claude Code with `CLAUDE_CODE_SUBAGENT_MODEL=<model>` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` (Claude Code v2.1.257 or later); that also overrides the Haiku agents.
 
 ---
 

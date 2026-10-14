@@ -4141,3 +4141,17 @@ offers `claude-sonnet-5.5` and `claude-sonnet-5`, not the alias `sonnet`. Q1: wi
 - Stop: 4 runs in all, repeats included.
 - Not shown: VS Code (either harness), other session models (a GPT session is expected to inherit), a full `/bootstrap`, whether Sonnet workers find what Opus
   workers would (WSD-113's Phase 2a recheck stands).
+
+## B-398 results — `/bootstrap`'s worker model in a Copilot CLI 1.0.95 Opus session (2026-10-14; pre-registered at 2c2b6e7e)
+
+- Both runs valid (1.0.95, `claude-opus-5.5` on the main messages, repository hooks loaded). Arm B (v0.95.0) has no `subagent.started`: its one `task` call
+  (`agent_type: bootstrap-pass`, no `model` argument) failed with "Model 'sonnet' is not available. Available models: claude-sonnet-5.5, claude-sonnet-5, ...",
+  and the session ran A8 itself on `claude-opus-5.5` (10 Opus requests, 56.43 AI credits). The pre-registered validity item (a `bootstrap-pass`
+  `subagent.started`) fails, but the reason is the finding: 0.95.0's `model: sonnet` stops the worker on Copilot CLI, so every pass falls back to the
+  session's model. The report's "Opus workers" were Opus doing the passes in the session.
+- Arm T (`bootstrap.md` a0ffd0489b22): the `task` call carried `model: "claude-sonnet-5.5"`; the worker started on `claude-sonnet-5.5` with
+  `modelSelectionSource: explicit_override`, `taskModelSource: task_argument`, and returned its A8 findings (6 Opus and 4 Sonnet requests, 43.78 AI credits).
+  Reading: the rule took effect in that run, through the call's argument, which overrides the agent definition.
+- Not repeated (2 of 4 runs used): arm B's missing worker is a deterministic refusal, not a sample. Because a call without a `model` argument meets the same
+  refusal, `bootstrap-pass` goes back to `model: inherit`, which the 2026-09-27 Copilot runs started with (`session_inheritance`, 8 of 8 workers).
+  `~\.copilot\config.json` and `settings.json` unchanged in both runs.

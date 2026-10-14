@@ -16,6 +16,19 @@
   a patch. **If your team has used GPT models in Copilot since installing this framework, scan what those sessions
   committed for secrets** (for example, run your secret scanner over the commits since then) and rotate any real key it
   finds. `apply_patch` writes still get no post-write build or type-check feedback and no `.claude/ai-audit.log` line.
+- **The framework no longer installs a licence or notice file, and the session preload no longer links to a
+  release page.** An update removes an unmodified `NOTICE-ai-tech-lead.md` (an edited copy stays, and the update says
+  so). `LICENSES/ai-tech-lead-MIT.txt` was always yours: the update leaves it as it is, so delete it, and the
+  `LICENSES/` folder if nothing else is in it, if your team does not want it. A file of your own at either path no
+  longer stops an install. The weekly framework-version line in the session preload now says to re-run the installer
+  from a newer framework release instead of linking to a hosted release page.
+- **`/bootstrap`'s analysis workers start again in Copilot CLI, on Sonnet when your session runs Opus.** 0.95.0 gave
+  the `bootstrap-pass` agent `model: sonnet`, a Claude Code name that Copilot CLI refuses ("Model 'sonnet' is not
+  available"), so no worker started there and your session ran every pass on its own model, Opus included. The agent
+  now names no model of its own, and `/bootstrap` passes Sonnet in each worker call when your session runs another
+  Claude model (`sonnet` in Claude Code, the newest `claude-sonnet-*` Copilot CLI lists); a session on any other model
+  keeps its own model for the workers. In a Copilot CLI Opus session the worker started on `claude-sonnet-5.5`.
+  `docs/ARCHITECTURE.md`'s agent table says so.
 ## 0.95.0 — 2026-10-12
 
 - **`docs/enforcement-surfaces.md` now names the organization policies that can switch this framework's Copilot

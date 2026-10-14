@@ -321,7 +321,9 @@ function Assert-RepositoryKnowledgeDiscoveryContracts {
             'Do not assume Claude `Task`',
             'Copilot host.'
         ) }
+        # B-398: Copilot CLI 1.0.95 refuses 'model: sonnet' (a Claude Code alias) and the worker never starts.
         @{ Path = '.claude/agents/bootstrap-pass.md'; Required = @(
+            'model: inherit',
             'Bounded Repository-Knowledge Discovery',
             'at most 40 distinct content files',
             'at most two additional dependency hops',

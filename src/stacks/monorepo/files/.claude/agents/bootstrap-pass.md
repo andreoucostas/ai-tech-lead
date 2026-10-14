@@ -2,7 +2,7 @@
 name: bootstrap-pass
 description: Read-only worker for one selected `/bootstrap` pass (.NET A1–A7, Angular A1–A6, warehouse W1–W3, or shared A8 repository-knowledge discovery). Returns structured findings; never invoke directly.
 tools: Read, Grep, Glob, PowerShell
-model: sonnet
+model: inherit
 ---
 
 You execute exactly one bootstrap analysis pass defined in `.claude/commands/bootstrap.md`. The caller specifies profile (`.NET`, `Angular`, or `warehouse-SQL`) and pass id (.NET `A1`–`A7`, Angular `A1`–`A6`, warehouse-SQL `W1`–`W3`), or profile-independent shared `A8`. Return one structured findings message.

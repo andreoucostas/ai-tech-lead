@@ -328,7 +328,7 @@ $excludedFromInstall = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', 
 # archives them unless the copy-if-absent policy below keeps the live path for in-place screening.
 $protected = @('CLAUDE.md', 'AGENTS.md', 'TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md',
     'FRAMEWORK-CONTEXT.md', '.github/copilot-instructions.md', 'docs/ARCHITECTURE.md',
-    'docs/architecture-decisions.md', 'docs/wiki/INDEX.md', 'LICENSES/ai-tech-lead-MIT.txt')
+    'docs/architecture-decisions.md', 'docs/wiki/INDEX.md')
 # Persistent state is copied only when absent. The composer reads this policy from both installer
 # PowerShell installer authority and emits it as consumer-owned/protected in framework-ownership.json.
 $persistentCopyIfAbsent = @(
@@ -404,46 +404,13 @@ if ($updateMode) {
     }
 }
 
-# Legal files need their own preservation decision: generic protection would freeze an explicitly
-# recognised prior licence; bulk copying would clobber consumer collisions. Preflight their policy
-# before mutation and use the licence decision when planning writes below.
-$legalLicense = 'LICENSES/ai-tech-lead-MIT.txt'
-$legalNotice = 'NOTICE-ai-tech-lead.md'
-$sourceLicense = Join-Path $src $legalLicense
-$targetLicense = Join-Path $tgt $legalLicense
-$targetNotice = Join-Path $tgt $legalNotice
-$copyLegalLicense = $true
-if (Test-Path -LiteralPath $targetLicense -PathType Leaf) {
-    $sourceText = [IO.File]::ReadAllText($sourceLicense) -replace "`r`n", "`n" -replace "`r", "`n"
-    $targetText = [IO.File]::ReadAllText($targetLicense) -replace "`r`n", "`n" -replace "`r", "`n"
-    if ($sourceText -ceq $targetText) {
-        $copyLegalLicense = $false
-    } else {
-        # Only the exact prior framework notice may migrate to the contributors attribution.
-        # Hash the whole normalized text so changed holders or MIT terms still refuse.
-        $licenseSha = [Security.Cryptography.SHA256]::Create()
-        try {
-            $targetLicenseHash = [BitConverter]::ToString($licenseSha.ComputeHash([Text.Encoding]::UTF8.GetBytes($targetText))).Replace('-', '').ToLowerInvariant()
-        } finally { $licenseSha.Dispose() }
-        if ($targetLicenseHash -cne '14d518c3282ed071127059700be0498802c3a89ddeca37e42150445f93a04e17') {
-            [Console]::Error.WriteLine("ERROR: Refusing to overwrite '$legalLicense': the existing file is not identical to the framework licence.")
-            exit 3
-        }
-    }
-}
-if ((Test-Path -LiteralPath $targetNotice -PathType Leaf) -and
-    -not ([IO.File]::ReadAllText($targetNotice).Contains('FRAMEWORK-OWNED'))) {
-    [Console]::Error.WriteLine("ERROR: Refusing to overwrite '$legalNotice': the existing file is not marked FRAMEWORK-OWNED.")
-    exit 3
-}
-
 # A shipped path already holding other bytes is consumer content the copy would overwrite, whether
 # or not it looks like AI tooling and whether or not Git can see it (untracked, ignored, no
 # repository), so it selects the brownfield archive. Identical bytes lose nothing and keep an
 # interrupted greenfield re-run greenfield; compare them raw, never line-ending-normalized.
 if (-not $updateMode) {
     foreach ($relative in $incomingPaths) {
-        if ($relative -in $copyIfAbsent -or $relative -in @($legalLicense, $legalNotice)) { continue }
+        if ($relative -in $copyIfAbsent) { continue }
         $existing = Get-ContainedTargetPath -Relative $relative
         if (-not (Test-Path -LiteralPath $existing -PathType Leaf)) { continue }
         # Never read through a link; the brownfield preflight refuses it by name. A linked wrapper path
@@ -1043,6 +1010,9 @@ if ($updateMode) {
         } elseif ($isRetiredPrompt -and $incoming.ByPath.ContainsKey(".agents/skills/$promptWorkflow/SKILL.md")) {
             # These prompts were replaced, not dropped: the generic arm below would say there is no replacement.
             $reconciliationMessages.Add("CANT-VERIFY: retained retired prompt file '$retiredPath' remains. Its workflow now ships as the skill .agents/skills/$promptWorkflow/SKILL.md, which runs .claude/commands/$promptWorkflow.md, and VS Code's Copilot harness does not load prompt files. Keep any change you need in AGENTS.md or a project skill, because an update replaces framework files, then delete the prompt file after review; a prompt your team wrote itself, rather than edited, can stay.")
+        } elseif ($retiredPath -eq 'NOTICE-ai-tech-lead.md') {
+            # Not a command: a notice the team edited or wrote is theirs, so the generic remove-it advice does not fit.
+            $reconciliationMessages.Add("NOTICE: '$retiredPath' remains because it differs from every notice this framework shipped. The framework no longer ships a notice; the file is yours to keep or delete.")
         } elseif ($isRenamedSecurityReview) {
             $reconciliationMessages.Add("CANT-VERIFY: retained retired path '$retiredPath' remains. This framework's /security-review is now /security-gate (.claude/commands/security-gate.md); the old command file and its Copilot wrapper are both retired, and an update removes each unmodified copy, so a kept wrapper can point at a command file that is gone. On Copilot CLI a skill kept under the old name also shares that name with the CLI's built-in security agent, which the agent may run instead. If this is the framework's former file with your edits, keep any change you need in AGENTS.md or a project skill, then delete it after review; a skill your team wrote itself can stay under another name.")
         } else {
@@ -1250,7 +1220,7 @@ if ($adoptMode) {
     }
     $archivePaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
     foreach ($f in $incomingPaths) {
-        if ($f -in $copyIfAbsent -or $f -in @($legalLicense, $legalNotice) -or $teamSkillPaths.Contains($f)) { continue }
+        if ($f -in $copyIfAbsent -or $teamSkillPaths.Contains($f)) { continue }
         $orig = Join-Path $tgt $f
         $sourceReparse = Get-ReparsePointAncestor -Path $orig
         if ($sourceReparse) {
@@ -1400,8 +1370,7 @@ foreach ($relative in $incomingPaths) {
     $exists = $null -ne (Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue)
     $preserveDiscovered = $claudeSkill.Success -and $discoveredSkillNames.Contains($claudeSkill.Groups[1].Value)
     $preserve = $exists -and ($relative -in $copyIfAbsent -or
-        ($updateMode -and $relative -in $protected -and $relative -ne $legalLicense) -or
-        ($relative -eq $legalLicense -and -not $copyLegalLicense) -or $preserveDiscovered -or
+        ($updateMode -and $relative -in $protected) -or $preserveDiscovered -or
         $teamSkillPaths.Contains($relative))
     if ($preserve) { [void]$preservePlan.Add($relative); continue }
     if ($teamSkillPaths.Contains($relative)) { continue }
@@ -1849,7 +1818,7 @@ if ($layoutMove) {
     Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in $backupRoot/)."
 }
 if ($updateMode) {
-    $untouchedContent = @($protected | Where-Object { ($_ -ne $legalLicense -or -not $copyLegalLicense) -and -not ($layoutMove -and $_ -in @('CLAUDE.md', 'AGENTS.md')) })
+    $untouchedContent = @($protected | Where-Object { -not ($layoutMove -and $_ -in @('CLAUDE.md', 'AGENTS.md')) })
     Write-Output "  consumer-owned content files left untouched ($($untouchedContent -join ', '))."
 }
 

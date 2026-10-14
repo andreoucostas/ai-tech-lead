@@ -19,6 +19,16 @@ checks each section's added lines against that section's path (and its `Move to`
 than 200 sections, is blocked. Path+content events are unchanged. `fixtures/guard-patch-cases.ps1` holds the two envelopes Copilot captured for one
 `apply_patch` call (P-C, P-V) and 23 cases: 21 red on the unfixed guard, and two lone-CR cases red on the first fix, which split lines at a lone CR as neither host does (a fresh-session review's finding: `+x<CR>-KEY` is one added line to the hosts and passed); lines now end at LF only. Canary on the fixed `dist/dotnet` (guard f9c408c5f6c6) with gpt-6.1-sol:
 BLOCKED 3 of 3 on the CLI, 1 of 1 on the bundled runtime. `audit-trail` and `post-write` still do not see `apply_patch` (B-397).
+Maintainer request 2026-10-14: the dists stop shipping `LICENSES/ai-tech-lead-MIT.txt` and `NOTICE-ai-tech-lead.md` and the `session-start` version nudge
+drops its github.com link. `install.ps1` loses the legal-file preflight (the exit-3 refusals) and the licence's special cases; the licence leaves the
+protected set (`install.ps1`, `build.ps1`'s pin, `Composer.Tests`); the notice is retired at 0.96.0 with its two released blob hashes, so updates remove
+unmodified copies. The licence was `consumer-owned/protected`, which retirement never deletes, so existing copies stay (named in the consumer changelog).
+`LicenseDelivery.Tests` and `LicenseDrift.Tests` are deleted; `DocTruth` now fails a manifest or dist that lists either file, and `UpdateDelivery` replaces
+the two refusal cases with one update case. The root `LICENSE` stays.
+B-398 (maintainer report 2026-10-14; pre-registered at 2c2b6e7e, results in `meta/eval-results.md`; WSD-115): on Copilot CLI 1.0.95, 0.95.0's `bootstrap-pass`
+`model: sonnet` failed its `task` call ("Model 'sonnet' is not available") and the Opus session ran A8 itself. `bootstrap-pass` is `model: inherit` x3; Phase 1's
+new "Worker model" paragraph x3 passes Sonnet per call from a non-Sonnet Claude session (the treatment run's worker: `claude-sonnet-5.5`, `explicit_override`);
+ARCHITECTURE x3; `DocClaims` pins `model: inherit`. B-399 filed for the three `model: haiku` review agents.
 ## 0.95.0 — 2026-10-12
 
 B-379 (2026-10-12; maintainer request 2026-10-11; canary pre-registered at e5c35e72, results in `meta/eval-results.md`): `docs/enforcement-surfaces.md` gains a

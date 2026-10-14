@@ -32,7 +32,7 @@ $stdinJson = ''
 if ([Console]::IsInputRedirected) { $stdinJson = [Console]::In.ReadToEnd() }
 
 # Weekly, offline-only version awareness. This does not know whether a newer version exists; it
-# only names the installed stamp and points to the releases page. Claim the throttle record before
+# only names the installed stamp and says how to update. Claim the throttle record before
 # emitting so an unwritable state directory cannot turn a low-noise nudge into every-session noise.
 $versionNudge = $null
 try {
@@ -47,7 +47,7 @@ try {
         }
         if ($lastEpoch -le 0 -or ($nowEpoch - $lastEpoch) -ge (7 * 86400)) {
             [IO.File]::WriteAllText($awarenessFile, $nowEpoch.ToString(), [Text.UTF8Encoding]::new($false))
-            $versionNudge = "- **Framework version:** v$installedVersion installed; check for updates: https://github.com/andreoucostas/ai-tech-lead/releases"
+            $versionNudge = "- **Framework version:** v$installedVersion installed; to update, re-run the installer from a newer framework release."
         }
     }
 } catch { }

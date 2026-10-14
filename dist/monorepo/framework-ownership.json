@@ -67,8 +67,6 @@
     { "path": "CLAUDE.md", "ownership": "consumer-owned/protected" },
     { "path": "FRAMEWORK-CONTEXT.md", "ownership": "consumer-owned/protected" },
     { "path": "LEARNINGS.md", "ownership": "consumer-owned/protected" },
-    { "path": "LICENSES/ai-tech-lead-MIT.txt", "ownership": "consumer-owned/protected" },
-    { "path": "NOTICE-ai-tech-lead.md", "ownership": "framework-owned/overwritten" },
     { "path": "SECURITY_FINDINGS.md", "ownership": "consumer-owned/protected" },
     { "path": "TECH_DEBT.md", "ownership": "consumer-owned/protected" },
     { "path": "docs/ARCHITECTURE.md", "ownership": "consumer-owned/protected" },

@@ -340,7 +340,7 @@ $psExcluded = @(Get-SingleQuotedValues $psExcludedMatch.Groups[1].Value)
 $expectedProtected = @(
     'CLAUDE.md', 'AGENTS.md', 'TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md',
     'FRAMEWORK-CONTEXT.md', '.github/copilot-instructions.md', 'docs/ARCHITECTURE.md',
-    'docs/architecture-decisions.md', 'docs/wiki/INDEX.md', 'LICENSES/ai-tech-lead-MIT.txt'
+    'docs/architecture-decisions.md', 'docs/wiki/INDEX.md'
 )
 $expectedPersistent = @('.claude/ai-audit.log')
 $expectedMetadata = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes')

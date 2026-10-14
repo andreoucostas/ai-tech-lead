@@ -35,6 +35,12 @@ When the Angular profile was selected, run A1–A7 using native worker delegatio
 Task(subagent_type="bootstrap-pass", description="Bootstrap pass A1", prompt="Run pass A1.")
 ```
 
+**Worker model.** When this session runs a Claude model other than Sonnet (Opus or Haiku, say), pass Sonnet as each
+worker call's model: `sonnet` in Claude Code, and in Copilot CLI the newest `claude-sonnet-*` id its `task` tool lists.
+On any other session model pass none, so the worker runs on the session's own. `bootstrap-pass` names no model of its
+own: Copilot CLI refuses a Claude Code alias there and the worker never starts. This saves cost only: Phase 2a rechecks
+the evidence behind every high-stakes finding either way.
+
 When native delegation is available, send all seven worker calls in one message and wait for all to return. In the sequential fallback, complete each finite pass before the next.
 
 Each subagent returns structured findings; you do **not** redo the analysis. Just collect the seven results — they feed Phase 2. Findings follow `.claude/agents/bootstrap-pass.md`'s Output format, each naming its own evidence and kind for 3f; a host without that agent, and the sequential fallback, read that file and use the same format.
