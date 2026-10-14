@@ -35,6 +35,37 @@ foreach ($case in $selectedCases) {
         }
     }
 }
+
+# apply_patch: each case's patch is sent in the stdin Copilot captured for an apply_patch call
+# (fixtures/guard-patch-cases.ps1). A block is exit 2 for the .claude/settings.json copy, whose
+# tool_name is Edit, and a JSON deny for every other shape. The reason must name each file the
+# patch writes a blocked line to, and no file it writes cleanly.
+. (Join-Path $PSScriptRoot 'fixtures\guard-patch-cases.ps1')
+$selectedPatchCases = @($GuardPatchCases)
+if ($env:GUARD_TEST_POLICY) { $selectedPatchCases = @($GuardPatchCases | Where-Object { $_.policy -eq $env:GUARD_TEST_POLICY }) }
+foreach ($case in $selectedPatchCases) {
+    $shapes = if ($case.shapes) { @($case.shapes) } else { @('hooks.json') }
+    foreach ($shape in $shapes) {
+        $evt = New-PatchEvent $shape $case.p
+        $expected = if (-not $case.block) { 'ALLOW' } elseif ($shape -eq '.claude/settings.json') { 'BLOCK' } else { 'DENY' }
+        It "guard $expected (apply_patch, $shape): $($case.n)" {
+            $rps = Invoke-Hook $guardPs $evt
+            Assert-Decision $rps $expected $case.n
+            $reason = if ($rps.Exit -eq 2) { [string]$rps.Err } elseif ($rps.Out) { [string]($rps.Out | ConvertFrom-Json).permissionDecisionReason } else { '' }
+            foreach ($name in @($case.names)) { if ($name) { Assert ($reason.Contains("Blocked write to $name")) "$($case.n): the reason does not name $name -- $reason" } }
+            foreach ($name in @($case.notNames)) { if ($name) { Assert (-not $reason.Contains($name)) "$($case.n): the reason names $name, which the patch writes cleanly -- $reason" } }
+        }
+    }
+}
+It 'guard ALLOW (Copilot): an unrelated tool call is not read as a patch' {
+    $evt = @{ toolName = 'powershell'; toolArgs = @{ command = 'git status'; description = 'Show the working tree status' } } | ConvertTo-Json -Compress -Depth 6
+    Assert-Decision (Invoke-Hook $guardPs $evt) 'ALLOW' 'powershell tool'
+}
+It 'guard DENY (Copilot): a create whose text carries a patch is checked as that create' {
+    $evt = New-CopilotEvent 'src\Foo.cs' "*** Begin Patch`n*** Add File: notes.txt`n+x`n*** End Patch`n#pragma warning disable CS8602"
+    Assert-Decision (Invoke-Hook $guardPs $evt) 'DENY' 'create carrying patch text'
+}
+
 # Every case above pipes stdin straight into guard.ps1. The agent host does not: the registration
 # carries "shell": "powershell", so the whole command STRING runs inside an outer PowerShell, and
 # `-Command` collapses a failing native command's exit code to 1. The host then reads a non-blocking

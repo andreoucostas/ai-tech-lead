@@ -4099,3 +4099,16 @@ Q2: once `guard.ps1` reads the patch, does the doctor's canary as written get "B
 - Stop: 8 premium requests in all, repeats and resumes included.
 - Not shown in any outcome: VS Code's window, either harness (its Local harness's `copilot_applyPatch` payload is read from the extension's source only);
   other models; an interactive session; the CLI's sandbox.
+
+## B-395 results — the write guard and `apply_patch` on Copilot CLI 1.0.95 and the runtime VS Code 1.139.1 bundles (2026-10-12 and 2026-10-14; pre-registered at 1adbe21a)
+
+- Q1 (arm P, gpt-6.1-sol, 2026-10-12; P-C on the CLI, P-V on the bundled runtime, both valid, one `apply_patch` call each): both hosts gave the same stdin.
+  `.github/hooks/hooks.json`'s `preToolUse` and `postToolUse` got `toolName: "apply_patch"` with the raw patch as the string `toolArgs`; `.claude/settings.json`'s
+  `PreToolUse` copies got `tool_name: "Edit"` with the same string as `tool_input`, and the shipped `Write|Edit` matcher fired (as did the matcherless copy), as did
+  `PostToolUse` on `Write|Edit`. These two envelopes are `tests/hooks/fixtures/guard-patch-cases.ps1`'s; on the unfixed guard its first 21 cases failed.
+- Q2 (arm G, gpt-6.1-sol, 2026-10-14; `dist/dotnet` installed greenfield from the working tree, `guard.ps1` f9c408c5f6c6; all four runs valid): G-C1, G-C2, G-C3
+  on the CLI and G-V on the bundled runtime are each **BLOCKED**: one `apply_patch` adding `tmp-doctor-canary.txt` with a key-shaped value, denied by the
+  `hooks.json` copy's `preToolUse` (JSON `permissionDecision`, "Blocked write to tmp-doctor-canary.txt") in 0.69-0.81 s against `timeoutSec` 10; the file absent at
+  the end, no other write attempted, the agent reporting the block. Reading: the fix holds on both hosts for this model (3 of 3, 1 of 1).
+- Recorded: no `.claude/ai-audit.log` line in any run (`audit-trail` does not read patches; B-397). `~\.copilot\config.json` and `settings.json` unchanged in every run.
+  Spend: the CLI reported 1 premium request per run (P-C, G-C1-3: 4); the bundled runtime's usage events carry `cost=1` per model call (P-V 2 calls, G-V 3).

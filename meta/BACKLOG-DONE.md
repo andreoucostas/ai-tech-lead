@@ -13098,3 +13098,4 @@ master (B-267). B-245's planned fast path touches the same file and must keep
   `allowManagedHooksOnly`; `ChatStrictPluginOnlyCustomization` and `strictPluginOnlyCustomization`; managed permission rules, which switch none off; managed sandboxing), each attributed to
   VS Code's or GitHub's pages or the VS Code 1.139.1 and Copilot CLI 1.0.95 code, VS Code's Copilot harness left unestablished. The doctor's canary as written reached the guard 2 of 3 times
   with claude-sonnet-5 (declined once) and landed through `apply_patch` 2 of 2 with gpt-6.1-sol; B-395 and B-396 filed the same day.
+- **B-395** — DONE **2026-10-14** for 0.96.0 (pre-registered at 1adbe21a; `meta/eval-results.md`): `guard.ps1` reads an `apply_patch` patch and checks each file's added lines; the fixed guard blocked gpt-6.1-sol's canary 3 of 3 on Copilot CLI 1.0.95 and 1 of 1 on VS Code 1.139.1's bundled runtime; B-397 filed.

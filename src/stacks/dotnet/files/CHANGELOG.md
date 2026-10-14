@@ -4,6 +4,18 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.96.0 — Unreleased
+
+- **The write guard now checks `apply_patch`, the file tool GPT models use in Copilot CLI and VS Code.** Until this
+  release the guard did not read that tool's patch, so every file a GPT model created or changed with it passed
+  unchecked for secrets, test-defeats and suppressions, although the enforcement matrix called Copilot CLI's write blocks
+  guaranteed. On Copilot CLI 1.0.95, gpt-6.1-sol wrote the doctor's key-shaped canary that way in 2 of 2 runs; with this
+  release the guard blocked it in 3 of 3 runs, and in 1 of 1 on the runtime VS Code 1.139.1 bundles. Each file in a
+  patch is now checked like an edit: the lines the patch adds, against that file's path rules (both paths when it moves
+  a file). An `apply_patch` call the guard cannot read, or one with more than 200 file sections, is blocked; split such
+  a patch. **If your team has used GPT models in Copilot since installing this framework, scan what those sessions
+  committed for secrets** (for example, run your secret scanner over the commits since then) and rotate any real key it
+  finds. `apply_patch` writes still get no post-write build or type-check feedback and no `.claude/ai-audit.log` line.
 ## 0.95.0 — 2026-10-12
 
 - **`docs/enforcement-surfaces.md` now names the organization policies that can switch this framework's Copilot

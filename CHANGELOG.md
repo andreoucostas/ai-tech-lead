@@ -11,6 +11,14 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.96.0 — Unreleased
+
+B-395 (2026-10-14; found by B-379's canary; pre-registered at 1adbe21a, results in `meta/eval-results.md`): `guard.ps1` reads an `apply_patch` call's patch
+(the raw string in `toolArgs` or `tool_input`, or an object's `input`), splits it into file sections the way Copilot CLI 1.0.95's runtime parser does, and
+checks each section's added lines against that section's path (and its `Move to` path) with the existing rules; a patch it cannot read, or one with more
+than 200 sections, is blocked. Path+content events are unchanged. `fixtures/guard-patch-cases.ps1` holds the two envelopes Copilot captured for one
+`apply_patch` call (P-C, P-V) and 23 cases: 21 red on the unfixed guard, and two lone-CR cases red on the first fix, which split lines at a lone CR as neither host does (a fresh-session review's finding: `+x<CR>-KEY` is one added line to the hosts and passed); lines now end at LF only. Canary on the fixed `dist/dotnet` (guard f9c408c5f6c6) with gpt-6.1-sol:
+BLOCKED 3 of 3 on the CLI, 1 of 1 on the bundled runtime. `audit-trail` and `post-write` still do not see `apply_patch` (B-397).
 ## 0.95.0 — 2026-10-12
 
 B-379 (2026-10-12; maintainer request 2026-10-11; canary pre-registered at e5c35e72, results in `meta/eval-results.md`): `docs/enforcement-surfaces.md` gains a
