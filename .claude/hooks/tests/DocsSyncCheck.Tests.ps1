@@ -3,7 +3,7 @@
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $psExe = (Get-Process -Id $PID).Path
-$cases = @('PowerShell docs sync')
+$cases = @('PowerShell docs sync', 'AGENTS.md byte budget')
 $failed = 0
 
 function Invoke-DocsSyncCandidate {
@@ -15,6 +15,28 @@ function Invoke-DocsSyncCandidate {
 
 foreach ($case in $cases) {
     $scratch = Join-Path ([IO.Path]::GetTempPath()) ('docs-sync-b217-' + [guid]::NewGuid().ToString('N'))
+    if ($case -eq 'AGENTS.md byte budget') {
+        try {
+            Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $scratch -Recurse -Force
+            # An installed repository has no template marker; with it, the consumer checks are skipped.
+            [IO.File]::Delete((Join-Path $scratch '.template-repo'))
+            $template = Invoke-DocsSyncCandidate -Root $scratch
+            if ($template.Output -match 'NOTE: AGENTS\.md is') { throw "the shipped template tripped the size note: $($template.Output)" }
+            # About 240 lines and 20 KB: under the old 400-line budget, over the byte budget.
+            $agents = Join-Path $scratch 'AGENTS.md'
+            $pad = (1..120 | ForEach-Object { '- ' + ('x' * 110) }) -join "`n"
+            [IO.File]::WriteAllText($agents, [IO.File]::ReadAllText($agents) + "`n" + $pad + "`n", [Text.UTF8Encoding]::new($false))
+            $long = Invoke-DocsSyncCandidate -Root $scratch
+            if ($long.Output -notmatch 'NOTE: AGENTS\.md is \d+ bytes \(soft budget 16000\)') { throw "a 20 KB AGENTS.md did not get the size note: $($long.Output)" }
+            Write-Host "[ok] ${case}: the template is under it, a 20 KB file of 240 lines is over it"
+        } catch {
+            $failed++
+            [Console]::Error.WriteLine("[FAIL] ${case}: $($_.Exception.Message)")
+        } finally {
+            if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+        }
+        continue
+    }
     try {
         Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $scratch -Recurse -Force
 

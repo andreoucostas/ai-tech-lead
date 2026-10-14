@@ -31,9 +31,8 @@ Derive this operation's shape from first-party implementation, configuration, te
 
 1. **Establish current warehouse evidence, then find the pattern to copy.** A current
    `docs/warehouse-map.md` is preferred, but the artifact is optional: if the check above reports
-   it missing or stale, inspect the live SQL/schema/view and orchestration definitions and
-   write down the equivalent table, business-key, relationship, and load-order inventory before
-   continuing. **Do not design a dimension from absent or stale evidence.** The map is a snapshot, not a
+   it missing or stale, or the map has no rows for the target or its sibling loads, run
+   `map-warehouse`'s scoped pass on them and continue from the rows it produces. **Do not design a dimension from absent or stale evidence.** The map is a snapshot, not a
    live view** — nothing refreshes it when the warehouse changes. Before copying a pattern out
    of it, confirm the entities and load procs it names still exist in the SQL tree; where the
    map and the code disagree the code wins — re-run `map-warehouse` rather than trusting it

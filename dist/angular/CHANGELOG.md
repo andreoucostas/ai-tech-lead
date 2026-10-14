@@ -6,6 +6,12 @@
 
 ## 0.96.0 — Unreleased
 
+- **`/bootstrap` writes a shorter `AGENTS.md`.** The file loads on nearly every turn, and the old limit of about 400
+  lines allowed tens of kilobytes. `/bootstrap` (and `/adopt`) now keep the sections they write under about 6 KB
+  together and the whole file under 16 KB: Repository Structure lists directories and their roles, not every file;
+  a dependency diagram stays at the level of layers or projects; each convention is one line with its reason and
+  evidence. `scripts/docs-sync-check.ps1` notes a file over 16,000 bytes instead of one over 400 lines. Your
+  existing `AGENTS.md` is not changed; if the check now notes it, trim Repository Structure first.
 - **The write guard now checks `apply_patch`, the file tool GPT models use in Copilot CLI and VS Code.** Until this
   release the guard did not read that tool's patch, so every file a GPT model created or changed with it passed
   unchecked for secrets, test-defeats and suppressions, although the enforcement matrix called Copilot CLI's write blocks

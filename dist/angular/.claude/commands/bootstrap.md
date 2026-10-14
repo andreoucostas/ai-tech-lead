@@ -182,7 +182,7 @@ Code establishes implemented surfaces, not product intent or actual user behavio
 
 The Agentic Workflow now lives in `.github/instructions/framework-rules.instructions.md`; do not edit that framework-owned file. Leave `CLAUDE.md` exactly as-is: the stub importing `AGENTS.md` and `.github/instructions/framework-rules.instructions.md`, with no project content. Never touch `LEARNINGS.md` — it is append-only.
 
-**Token budget**: `AGENTS.md` loads on nearly every agent turn and anchors the prompt cache — keep it ≤ ~400 lines. Put verbose detail (long ADRs, exhaustive structure dumps) in on-demand files (`docs/`, skills); keep AGENTS.md to the high-frequency rules. `scripts/docs-sync-check.*` warns past the budget.
+**Token budget**: `AGENTS.md` loads on nearly every agent turn and anchors the prompt cache. Keep the sections you write (Codebase Context, Repository Structure, Conventions and the Architecture Decisions index) under about 6 KB together and the whole file under 16 KB; `scripts/docs-sync-check.*` warns past 16 KB. Codebase Context: at most six lines. Repository Structure: directories or projects with their roles, entry points, and where each kind of change goes, never one line per file; a dependency diagram only between layers or projects, at most ten lines. Per-object detail belongs in on-demand files (`docs/warehouse-map.md` for a warehouse, `docs/architecture-decisions.md` for decisions) or stays in the code. Conventions: one bullet per rule with its reason and one evidence path, without restating the framework rules; keep the Verification Commands table whole.
 
 ### 3a-bis: Capture repository knowledge as review drafts
 

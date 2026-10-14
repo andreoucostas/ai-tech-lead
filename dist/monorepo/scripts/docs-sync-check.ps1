@@ -57,10 +57,10 @@ if (-not (Test-Path "AGENTS.md") -or ((Get-Item "AGENTS.md").Length -eq 0)) {
 
 # 1b. AGENTS.md size budget (advisory — AGENTS.md loads on nearly every agent turn).
 if (Test-Path "AGENTS.md") {
-    # @().Count includes blank lines; Measure-Object -Line does not.
-    $clLines = @(Get-Content "AGENTS.md").Count
-    if ($clLines -gt 400) {
-        Write-Output "NOTE: AGENTS.md is $clLines lines (soft budget 400). Push verbose Architecture Decisions / Repository Structure detail into on-demand files (docs/, skills) to cut per-turn token cost. (advisory — not a failure)"
+    # Bytes, not lines: long lines are what made a file under 400 lines cost thousands of tokens.
+    $clBytes = (Get-Item -LiteralPath "AGENTS.md").Length
+    if ($clBytes -gt 16000) {
+        Write-Output "NOTE: AGENTS.md is $clBytes bytes (soft budget 16000). Describe Repository Structure by directory, not by file, keep one line per convention, and push detail into on-demand files (docs/, skills) to cut per-turn token cost. (advisory — not a failure)"
     }
 }
 

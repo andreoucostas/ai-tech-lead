@@ -240,7 +240,7 @@ Merge principles:
 - **Normalise voice** — convert do/don't lists, bullet points, or arbitrary prose into our convention format: rule + 1-2 sentence rationale
 - **Preserve attribution** — at the end of each merged section, add a comment: `<!-- Merged from: docs/pre-adoption/.cursorrules, docs/pre-adoption/CONVENTIONS.md -->` (name a candidate left in place by its live path)
 - **Summarise large content** — if a source file is over 200 lines, summarise key points and add a reference: `See \`docs/pre-adoption/[file]\` for full detail.`
-- **Keep AGENTS.md scannable** — target under 400 lines total
+- **Keep AGENTS.md scannable** — under 16 KB in all, per `/bootstrap` Phase 3a's token budget
 
 ### 4a — Merge into Conventions
 Read `.cursorrules`, `.cursor/rules/*.mdc`, `docs/CONVENTIONS.md`, `.windsurfrules`, `.clinerules`, Aider's `CONVENTIONS.md`, and any other instruction file. For each rule:

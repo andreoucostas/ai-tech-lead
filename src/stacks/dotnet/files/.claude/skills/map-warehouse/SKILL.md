@@ -6,7 +6,8 @@ description: >
   relationships, entity grain, load orchestration and ordering, batch/watermark control,
   slowly-changing-dimension strategy, partitioning, and the reporting views on top.
   USE FOR: onboarding to a data-warehouse repo, seeing where an entity is loaded before
-  changing it, refreshing docs/warehouse-map.md, writing or replicating a report or
+  changing it, refreshing docs/warehouse-map.md, mapping only the tables, views or procedures a task
+  touches when the map is missing, stale or silent on them, writing or replicating a report or
   analytical query, answering "which loads touch table X", "what feeds this report", or
   "which dimension owns this attribute".
   DO NOT USE FOR: OLTP/application databases (EF Core or Dapper CRUD — follow the repo's
@@ -249,6 +250,23 @@ already there, and so a report can be written against the joins the warehouse ac
 
 Results are grep-based structure detection, not execution — confirm against a load run or the
 team before relying on them for a destructive change.
+
+## Scoped pass — only the objects a task needs
+
+Use it when a request, `add-warehouse-load`, or Verification Rule 11 names tables, views or
+procedures that `docs/warehouse-map.md` lacks, or describes only from a stale snapshot. Run step 0,
+then steps 1–8 for those objects and the dimensions they reach in one hop: read their DDL, every view
+and procedure that reads or writes them, and the orchestration that calls those procedures. Read
+the repository's own sources. Read a live database catalog only through a read-only command that
+`AGENTS.md > Conventions > Verification Commands` records; never compose a connection or a query
+against a live database yourself.
+
+Then offer to write the result into `docs/warehouse-map.md`, creating it with step 9's seven headings
+if it does not exist: add rows for the objects it lacks; keep an existing row unless your evidence is
+stronger (Declared over In use over Load-derived), otherwise add a `CONFLICTING` row beside it; add
+one dated line to Coverage naming the objects this pass mapped and those it left inventory-only; leave
+the Querying section as it is. A scoped pass does not make the rest of the map current: say which
+objects it did not read.
 
 ---
 

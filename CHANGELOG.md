@@ -13,6 +13,13 @@
 
 ## 0.96.0 — Unreleased
 
+B-400 (maintainer request 2026-10-14, "agents.md is very big", meaning the bootstrapped file; Fable's proposal reviewed in session): `/bootstrap` 3a's
+token budget x3 is about 6 KB for the sections it writes and 16 KB for the file (directories not files in Repository Structure, layer-level diagram,
+one line per convention); `/adopt` x3 follows it; `docs-sync-check.ps1` notes past 16,000 bytes instead of 400 lines (`DocsSyncCheck.Tests` case, red on
+the old check). The frozen v0.91.0 bootstrap output is 14,386 bytes, 227 lines. Not done: Fable's relocation of framework rules into skills (the
+maintainer meant the bootstrapped file; measured adherence argues against it). B-401: `map-warehouse` gains a scoped pass (description, new section),
+`add-warehouse-load` step 1 and Verification Rule 11 (dotnet, monorepo) hand off to it; `run-agent-evals.ps1 -WarehouseMap partial` (the generated
+overlay without the map rows naming ctl.LoadRun or LoadRunId; self-test red first). Both measured under one pre-registration (`meta/eval-results.md`).
 B-395 (2026-10-14; found by B-379's canary; pre-registered at 1adbe21a, results in `meta/eval-results.md`): `guard.ps1` reads an `apply_patch` call's patch
 (the raw string in `toolArgs` or `tool_input`, or an object's `input`), splits it into file sections the way Copilot CLI 1.0.95's runtime parser does, and
 checks each section's added lines against that section's path (and its `Move to` path) with the existing rules; a patch it cannot read, or one with more

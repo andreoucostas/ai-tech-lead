@@ -22,7 +22,8 @@ param(
     # B-98 fixture; 'omit' and 'enriched' separate the map's effect from the framework's. 'generated'
     # is the consumer journey: the files a real /bootstrap then /map-warehouse wrote, frozen under
     # meta/eval-fixtures/warehouse-generated/, replace the simulated bootstrap and the hand-written map.
-    [Parameter(ParameterSetName = 'Live')][ValidateSet('frozen','omit','enriched','generated')][string]$WarehouseMap = 'frozen',
+    # 'partial' is that overlay with the map silent on ctl.LoadRun and LoadRunId (no table row names them).
+    [Parameter(ParameterSetName = 'Live')][ValidateSet('frozen','omit','enriched','generated','partial')][string]$WarehouseMap = 'frozen',
     # B-253: a unified diff applied to the installed framework right after Install-Framework, so a
     # text variant (a B-255 candidate, a knockout, a probe) runs through the same fixture path as
     # the unpatched framework. Framework arm only; the header, every row and the SUMMARY name it.
@@ -834,7 +835,16 @@ function Get-GeneratedFixtureRefusal([string]$ProvenancePath, [string]$DistVersi
     return $null
 }
 
-function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$GeneratedMap, [switch]$Bare) {
+# -WarehouseMap partial: drop every table row naming ctl.LoadRun or LoadRunId, so the map is silent on
+# the objects warehouse-route-p4 needs. A map with no such row is a drifted fixture, not a partial one.
+function Remove-WarehouseMapLoadRunRows([string]$MapPath) {
+    $lines = [IO.File]::ReadAllText($MapPath) -split "`n"
+    $kept = @($lines | Where-Object { -not ($_ -match '^\s*\|' -and $_ -match 'ctl\.LoadRun|LoadRunId') })
+    if ($kept.Count -eq $lines.Count) { throw "-WarehouseMap partial: $MapPath has no row naming ctl.LoadRun or LoadRunId" }
+    [IO.File]::WriteAllText($MapPath, ($kept -join "`n"), [Text.UTF8Encoding]::new($false))
+}
+
+function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$GeneratedMap, [switch]$PartialMap, [switch]$Bare) {
     New-Item -ItemType Directory -Path (Join-Path $Path 'docs') -Force | Out-Null
     if ($GeneratedMap) {
         # B-280: the generators' real output, not a simulation. The overlay is what /bootstrap and
@@ -846,12 +856,14 @@ function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$
         if (-not (Test-Path -LiteralPath $provenancePath)) { throw "-WarehouseMap generated: $provenancePath is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
         if (-not $Bare) {
             Copy-Item -Path (Join-Path $generatedRoot 'files/*') -Destination $Path -Recurse -Force
+            if ($PartialMap) { Remove-WarehouseMapLoadRunRows (Join-Path $Path 'docs/warehouse-map.md') }
             git -C $Path add -A
             git -C $Path commit --quiet -m 'warehouse scenario setup'
             return [int](git -C $Path rev-list --count HEAD)
         }
         # Bare arm: the project's own map is held constant across arms; nothing else is the project's.
         Copy-Item -LiteralPath (Join-Path $generatedRoot 'files/docs/warehouse-map.md') -Destination (Join-Path $Path 'docs/warehouse-map.md') -Force
+        if ($PartialMap) { Remove-WarehouseMapLoadRunRows (Join-Path $Path 'docs/warehouse-map.md') }
     }
     # THREE map states, and the default one is FROZEN ON PURPOSE. meta/eval-results.md ties the
     # recorded 0/6 -> 6/6 (p~0.002) B-98 step 2 result to "same scenarios, grader, FIXTURE, model and
@@ -981,6 +993,7 @@ function Get-WarehouseMapSwitch([string]$Variant) {
         'omit' { return @{ OmitMap = $true } }
         'enriched' { return @{ EnrichedMap = $true } }
         'generated' { return @{ GeneratedMap = $true } }
+        'partial' { return @{ GeneratedMap = $true; PartialMap = $true } }
         default { throw "Unknown -WarehouseMap '$Variant'." }
     }
 }
@@ -3172,6 +3185,20 @@ GROUP BY r.RegionName;
         if ($generatedClaude -match 'BOOTSTRAP_PENDING|EVAL_BOOTSTRAPPED') { throw '-WarehouseMap generated left a bootstrap marker or the simulated conventions in its instruction files' }
         if (@([regex]::Matches($generatedClaude, '(?i)warehouse-map\.md')).Count -lt 1) { throw '-WarehouseMap generated: the instruction files carry no docs/warehouse-map.md index line, so it is not a real /bootstrap result on a warehouse repository' }
         if ((Get-FileHash (Join-Path $generatedTemp 'docs/warehouse-map.md')).Hash -eq (Get-FileHash (Join-Path $withMapTemp 'docs/warehouse-map.md')).Hash) { throw '-WarehouseMap generated wrote the frozen fixture map' }
+        # 'partial' is the generated overlay with the map silent on the objects warehouse-route-p4 needs:
+        # no table row names ctl.LoadRun or LoadRunId, and nothing else in the overlay changes.
+        $partialSwitch = Get-WarehouseMapSwitch 'partial'
+        if (-not $partialSwitch.GeneratedMap -or -not $partialSwitch.PartialMap) { throw "-WarehouseMap partial does not select the generated overlay with the partial map" }
+        $partialTemp = Join-Path $temp 'warehouse-partial'
+        New-EvalRepo $partialTemp warehouse
+        Install-Framework $partialTemp dotnet | Out-Null
+        Initialize-WarehouseScenario $partialTemp @partialSwitch | Out-Null
+        $partialMap = Get-Content -LiteralPath (Join-Path $partialTemp 'docs/warehouse-map.md')
+        if (@($partialMap | Where-Object { $_ -match '^\s*\|' -and $_ -match 'ctl\.LoadRun|LoadRunId' }).Count -ne 0) { throw '-WarehouseMap partial left a map row naming ctl.LoadRun or LoadRunId' }
+        $generatedMap = Get-Content -LiteralPath (Join-Path $generatedTemp 'docs/warehouse-map.md')
+        if (@($generatedMap | Where-Object { $_ -match '^\s*\|' -and $_ -match 'ctl\.LoadRun|LoadRunId' }).Count -eq 0) { throw '-WarehouseMap generated has no ctl.LoadRun or LoadRunId row, so partial removes nothing' }
+        if (@($partialMap | Where-Object { $_ -match '^\s*\|' }).Count -lt 10) { throw '-WarehouseMap partial removed more than the LoadRun rows' }
+        if ((Get-FileHash (Join-Path $partialTemp 'AGENTS.md')).Hash -ne (Get-FileHash (Join-Path $generatedTemp 'AGENTS.md')).Hash) { throw '-WarehouseMap partial changed AGENTS.md, which must stay the generated one' }
         $generatedBareTemp = Join-Path $temp 'warehouse-generated-bare'
         New-EvalRepo $generatedBareTemp warehouse
         Initialize-WarehouseScenario $generatedBareTemp -GeneratedMap -Bare | Out-Null
@@ -4467,7 +4494,7 @@ New-Item -ItemType Directory $scratch | Out-Null
 $version = (Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version
 $changelogVersion = ((Get-Content (Join-Path $repo 'CHANGELOG.md') | Where-Object { $_ -match '^## (\d+\.\d+\.\d+)' } | Select-Object -First 1) -replace '^## (\d+\.\d+\.\d+).*','$1')
 if ($version -ne $changelogVersion) { throw "Refusing live eval: dist version $version does not match root CHANGELOG head $changelogVersion." }
-if ($WarehouseMap -eq 'generated') {
+if ($WarehouseMap -in @('generated','partial')) {
     $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo 'meta/eval-fixtures/warehouse-generated/provenance.json') $version
     if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
 }
@@ -4477,7 +4504,7 @@ if ($TargetPatch) {
     $TargetPatch = (Resolve-Path -LiteralPath $TargetPatch).Path
     $neverInstalled = @($selected | Where-Object { $_.id -in @('install-handoff','archived-redirect') } | ForEach-Object { $_.id } | Select-Object -Unique)
     if ($neverInstalled) { throw "Refusing -TargetPatch: $($neverInstalled -join ', ') never install the framework before the agent runs." }
-    if ($WarehouseMap -eq 'generated') {
+    if ($WarehouseMap -in @('generated','partial')) {
         $overlayRoot = Join-Path $repo 'meta/eval-fixtures/warehouse-generated/files'
         $overlay = @(Get-ChildItem -LiteralPath $overlayRoot -Recurse -File -Force | ForEach-Object { [IO.Path]::GetRelativePath($overlayRoot, $_.FullName).Replace('\', '/') })
         $overwritten = @(Get-TargetPatchPaths $TargetPatch | Where-Object { $_ -in $overlay })
