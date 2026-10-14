@@ -4189,3 +4189,16 @@ in the v0.91.0 fixture, `AGENTS.md`) still state the `ctl.LoadRun`/`LoadRunId` f
 `partial` now removes every line naming `ctl.LoadRun` or `LoadRunId` from every generated Markdown document (the SQL keeps them); the fixture is Q1's
 generation; arm W is the tree with the review's fixes (merge rule, catalog policy, full-pass stamp, `/adopt`), arm C restores v0.95.0's `map-warehouse` and
 `add-warehouse-load` SKILL.md and Verification Rule 11 on that same tree. Counts, readings, extension and stop are unchanged.
+
+## B-400/B-401 results (2026-10-14; pre-registered at 06c7ab75, amended before Q2 at e003c8c8; eval branch 9540086e, never pushed)
+
+- Q1 (one generation, Claude Code 2.1.281, sonnet, 3.43 USD): the bootstrapped `AGENTS.md` is 9,846 bytes, 142 lines (v0.91.0: 14,386, 227); Codebase
+  Context 762, Repository Structure 893, Conventions 2,493, Architecture Decisions 353, together 4,501 bytes (v0.91.0 about 9,300). Reading: the budget held.
+  It does not name `ctl.LoadRun` or `LoadRunId`; `TECH_DEBT.md` (DEBT-002), `FRAMEWORK-CONTEXT.md` and the map do. `/map-warehouse` wrote the map without
+  offering first (its step 9 says offer); recorded, not scored. The generation is now `meta/eval-fixtures/warehouse-generated` (provenance 0.96.0).
+- Q2 (`warehouse-route-p4 -WarehouseMap partial`, sonnet, all six runs valid): arm W 1 good of 3 (CAVEATED-JOIN; it called `map-warehouse`, ran the scoped
+  pass and documented the rows), 2 MISLEADING (neither called the skill); arm C 0 of 3, 3 MISLEADING (no skill call). Hand read agrees with the grader.
+  Cost W 1.33 USD, C 0.86 USD.
+- Reading: no pre-registered reading covers W 1/3 against C 0/3 (ship needed W ≥ 2/3; revert needed W ≤ C; the extension covered two other cells), so this
+  is not evidence that the change helps on this case. What the runs do show: the scoped pass produced the right answer in the one run that reached it, and
+  Rule 11's pointer reached it in 1 of 3. The text ships (it reverts only on W ≤ C); trigger strength is B-402. Total spend 5.62 USD of the 12-run stop.
