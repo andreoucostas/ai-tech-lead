@@ -4112,3 +4112,32 @@ Q2: once `guard.ps1` reads the patch, does the doctor's canary as written get "B
   the end, no other write attempted, the agent reporting the block. Reading: the fix holds on both hosts for this model (3 of 3, 1 of 1).
 - Recorded: no `.claude/ai-audit.log` line in any run (`audit-trail` does not read patches; B-397). `~\.copilot\config.json` and `settings.json` unchanged in every run.
   Spend: the CLI reported 1 premium request per run (P-C, G-C1-3: 4); the bundled runtime's usage events carry `cost=1` per model call (P-V 2 calls, G-V 3).
+
+## B-398 pre-registration — which model `/bootstrap`'s workers run on in a Copilot CLI 1.0.95 Opus session, with 0.95.0's `model: sonnet` and with the worker-model rule (2026-10-14, frozen before any run)
+
+Maintainer report 2026-10-14: on Copilot, `/bootstrap` still runs every worker on Opus, inherited from the session. Copilot CLI 1.0.95 discovers
+`.claude/agents/bootstrap-pass.md` as a custom agent and its changelog says custom agents may name a `model`; every recorded Copilot `/bootstrap` here
+(2026-09-27 to 2026-10-04, all before 0.95.0's `model: sonnet`) logged `modelSelectionSource: session_inheritance`. The catalog (`listModels`, no model call)
+offers `claude-sonnet-5.5` and `claude-sonnet-5`, not the alias `sonnet`. Q1: with 0.95.0 installed, on what model and from which selection source does a
+`bootstrap-pass` worker start? Q2: with the working tree's Phase 1 "Worker model" paragraph, does it start on a `claude-sonnet-*` model?
+
+- Host: Copilot CLI 1.0.95, Windows 11 Pro 10.0.26300, PowerShell 7.6.6; session model `claude-opus-5.5`.
+- Fixtures: a scratch Git repository holding `Smoke.csproj`, committed, with `dist/dotnet` installed greenfield and committed: arm B from tag v0.95.0
+  (`bootstrap-pass.md` `model: sonnet`, no worker-model paragraph); arm T from the working tree rebuilt with the paragraph (its `bootstrap.md` SHA-256 prefix
+  recorded before the run). Each run clones its fixture.
+- Prompt W, both arms: "Run only the shared A8 worker of /bootstrap for this repository: follow .claude/commands/bootstrap.md's Pre-flight checks and its
+  Phase 1 instructions for dispatching a worker, dispatch shared A8 alone, then report its findings in at most five lines and stop. Do not run any other pass
+  or any later phase, and do not edit any file."
+- CLI flags as B-395's runner (`b395-run.ps1`, B-379's flags) with `--model claude-opus-5.5`; one run per arm.
+- Validity per run, else CANNOT-EXAMINE and one repeat: a session start with 1.0.95; `claude-opus-5.5` on the main assistant messages; no auth, quota or
+  model error; repository hooks loaded; at least one `subagent.started` whose `agentName` is `bootstrap-pass`.
+- Counted, per run, from the first `bootstrap-pass` `subagent.started`: its `model`, `modelSelectionSource` and `taskModelSource`, and the `model` argument of
+  the task call that started it (absent or a value).
+- Readings, fixed now: Q1 is descriptive; `claude-opus-5.5` with `session_inheritance` confirms the report (0.95.0's `model: sonnet` is not honoured on the
+  CLI). Q2: a `claude-sonnet-*` worker model means the rule took effect in that run; the session's model means it did not, and the rule does not ship as a
+  Copilot fix until that is explained. One run per arm shows the mechanism, not a rate.
+- Recorded, not scored: whether arm T's worker model came from the task call's argument or the agent definition; the worker's findings line count; AI credits,
+  premium requests, wall time; `~\.copilot\config.json` and `settings.json` hashes before and after (restored if changed).
+- Stop: 4 runs in all, repeats included.
+- Not shown: VS Code (either harness), other session models (a GPT session is expected to inherit), a full `/bootstrap`, whether Sonnet workers find what Opus
+  workers would (WSD-113's Phase 2a recheck stands).
