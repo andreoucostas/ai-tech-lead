@@ -13,6 +13,12 @@
 
 ## 0.96.0 — Unreleased
 
+B-403 (maintainer question 2026-10-14, "does the framework interview like a tech lead?"; plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`): the plan gate
+asks before it plans. `framework-rules` section 2 and `$railsPlanGate` (`route-prompt.ps1`, ride-along on fix/feature/refactor/test) now say: on a material gap post
+at most five tech-lead questions (consumers, failure and detection, rollback, data that moves, blast radius against Known Hazard Areas), each with the assumption
+otherwise made, and plan only after the answers; every assumption names its evidence or is marked unverified. `$railsDesign` step 1, `design.md` Step 1 and the
+Output Format, and the `specs/README.md` template follow (new Assumptions table). No new skill, agent or command. Ships unmeasured (the eval runner's `-p` prompts
+say "proceed autonomously"; WSD-111 precedent); B-403 asks for a multi-turn measurement. `RoutePrompt.Tests` gains one case, red first.
 B-400 (maintainer request 2026-10-14, "agents.md is very big", meaning the bootstrapped file; Fable's proposal reviewed in session): `/bootstrap` 3a's
 token budget x3 is about 6 KB for the sections it writes and 16 KB for the file (directories not files in Repository Structure, layer-level diagram,
 one line per convention); `/adopt` x3 follows it; `docs-sync-check.ps1` notes past 16,000 bytes instead of 400 lines (`DocsSyncCheck.Tests` case, red on

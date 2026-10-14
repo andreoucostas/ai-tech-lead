@@ -175,6 +175,12 @@ and check that VS Code accepts the key, before adding it to the `.github/agents`
 harness at 15,000 characters (`chat.copilot.skillCharBudget`, experimental; seen in source and the settings text, not the release notes; 30,000 on `main`), overflow undocumented. Shipped
 `.claude/skills` plus `.agents/skills` descriptions total about 5.9k (angular), 8.1k (dotnet) and 8.9k (monorepo) before any other skill; state the cap, then decide on a validate-dist ceiling.
 
+### B-403 · Measure whether the plan gate asks its tech-lead questions before it plans
+**Filed against:** v0.96.0 (2026-10-14)
+**Priority:** P3 · **Effort:** M · **Invariants:** #5
+**Status:** Open; shipped unmeasured (WSD-111 precedent, plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`). The runner's `-p` prompts say "proceed autonomously", so
+it cannot see questions-before-plan. Needs a developer-reply turn, or a one-turn grader scoring the first assistant message on an underspecified feature prompt, on both surfaces.
+
 
 
 

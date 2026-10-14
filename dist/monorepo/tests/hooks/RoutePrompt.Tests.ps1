@@ -63,6 +63,14 @@ It 'route-prompt.ps1 Copilot event -> plan gate included for feature intent' {
     Assert ($o.additionalContext -match 'Plan gate') 'plan gate missing'
 }
 
+It 'route-prompt.ps1 both surfaces -> plan gate asks first with the tech-lead list and evidence-tagged assumptions' {
+    $c = Invoke-Hook $rpPs (New-CopilotPrompt 'implement a new export button')
+    $o = $c.Out | ConvertFrom-Json
+    Assert ($o.additionalContext -match 'ASK FIRST' -and $o.additionalContext -match 'at most five' -and $o.additionalContext -match 'marked unverified') 'Copilot plan gate lacks ask-first, the cap or the evidence tag'
+    $k = Invoke-Hook $rpPs (New-ClaudePrompt 'implement a new export button')
+    Assert ($k.Out -match 'ASK FIRST' -and $k.Out -match 'at most five' -and $k.Out -match 'marked unverified') 'Claude plan gate lacks ask-first, the cap or the evidence tag'
+}
+
 # --- Security overlay reaches the Copilot shape ---
 It 'route-prompt.ps1 Copilot event -> security overlay for payment prompt' {
     $r = Invoke-Hook $rpPs (New-CopilotPrompt 'implement payment processing')

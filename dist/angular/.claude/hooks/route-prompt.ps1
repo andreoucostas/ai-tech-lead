@@ -69,7 +69,7 @@ $railsTest = @'
 
 $railsDesign = @'
 **DO NOT WRITE ANY CODE.** Produce a design document only.
-1. Understand the requirement — goal, users, acceptance criteria, scope boundary.
+1. Understand the requirement — goal, users, acceptance criteria, scope boundary; on a material gap, ask the tech-lead questions (plan gate) and wait before step 2.
 2. Analyse impact — layers affected, files changing, patterns to reuse.
 3. Consider at least two approaches with pros/cons and effort estimates.
 4. Recommend, with specifics — component structure, state, services, tests.
@@ -108,8 +108,8 @@ If this prompt does NOT actually touch a sensitive surface, say so and skip this
 '@
 
 $railsPlanGate = @'
-## Plan gate (present -> clarify -> confirm)
-Before writing code: post a short plan (files to change, order of operations, how you'll verify) AND any clarifying questions for whatever is underspecified — do not guess past a material ambiguity to seem helpful. Then WAIT for the developer's explicit go-ahead before editing code. Skip the wait only for a trivial, unambiguous change (typo, one-liner), and say that you're skipping it and why.
+## Plan gate (ask -> plan -> confirm)
+Before writing code: if the request leaves a material gap, ASK FIRST — at most five tech-lead questions (who consumes this and what breaks for them; what fails and how you'd know in production; rollback; data that moves or changes shape; blast radius against the hazard list), each with the assumption you'd otherwise make — and post the plan only after the answers. Otherwise post the plan now (files to change, order of operations, how you'll verify), each assumption with the file, command or query that verified it or marked unverified. Do not guess past a material ambiguity to seem helpful. Then WAIT for the developer's explicit go-ahead before editing code. Skip the wait only for a trivial, unambiguous change (typo, one-liner), and say that you're skipping it and why.
 '@
 
 $railsExecutionSafety = @'

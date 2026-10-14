@@ -6,6 +6,12 @@
 
 ## 0.96.0 — Unreleased
 
+- **The plan gate now asks before it plans.** On a request with a material gap the agent posts up to five tech-lead
+  questions (consumers and what breaks for them, failure and how you would know, rollback, data that moves, blast
+  radius against your hazard list), each with the assumption it would otherwise make, and plans only after your
+  answers. Every assumption in a plan or `/design` spec now names the evidence that verified it, or says it is
+  unverified. `/design` asks the same questions before drafting approaches, and its spec template gains an
+  Assumptions table. Existing specs are not changed.
 - **`/bootstrap` writes a shorter `AGENTS.md`.** The file loads on nearly every turn, and the old limit of about 400
   lines allowed tens of kilobytes. `/bootstrap` (and `/adopt`) now keep the sections they write under about 6 KB
   together and the whole file under 16 KB: Repository Structure lists directories and their roles, not every file;

@@ -20,6 +20,8 @@ $ARGUMENTS
 - What are the acceptance criteria?
 - What's the scope boundary — what is explicitly NOT part of this?
 
+If any of these has a material gap, ask the tech-lead questions from the framework rules (Agentic Workflow, section 2), at most five, each with the assumption you would otherwise make, and wait for the answers before Step 2. The answers shape the design; do not draft approaches around guesses.
+
 ### Step 2 — Analyse the impact
 - Which layers are affected (domain, application, API, infrastructure)?
 - Which existing files will need to change?
@@ -73,6 +75,10 @@ List anything you're unsure about or that the developer needs to decide before i
 Ordered, checkable implementation steps `/feature` will work through:
 - [ ] ...
 - [ ] ...
+
+### Assumptions
+| Assumption | Evidence (file, command or query), or "unverified — developer confirms" |
+|------------|------------------------------------------------------------------------|
 
 ### Open Questions
 [decisions needed from the developer]

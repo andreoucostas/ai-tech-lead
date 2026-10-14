@@ -153,8 +153,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19165,
-          "tok": 4791
+          "chars": 19639,
+          "tok": 4910
         },
         {
           "path": "AGENTS.md",
@@ -170,8 +170,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 19165,
-          "tok": 4791
+          "chars": 19639,
+          "tok": 4910
         },
         {
           "path": "AGENTS.md",
@@ -256,23 +256,23 @@
         },
         {
           "path": "fixture/route-prompt/intent/design",
-          "chars": 1223,
-          "tok": 306
+          "chars": 1306,
+          "tok": 326
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2524,
-          "tok": 631
+          "chars": 2901,
+          "tok": 725
         },
         {
           "path": "fixture/route-prompt/intent/fix",
-          "chars": 2263,
-          "tok": 566
+          "chars": 2640,
+          "tok": 660
         },
         {
           "path": "fixture/route-prompt/intent/refactor",
-          "chars": 2421,
-          "tok": 605
+          "chars": 2798,
+          "tok": 700
         },
         {
           "path": "fixture/route-prompt/intent/review",
@@ -281,8 +281,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/test",
-          "chars": 1927,
-          "tok": 482
+          "chars": 2304,
+          "tok": 576
         },
         {
           "path": "fixture/route-prompt/security-only",
@@ -291,8 +291,8 @@
         },
         {
           "path": "fixture/route-prompt/worst/fix-security",
-          "chars": 3539,
-          "tok": 885
+          "chars": 3916,
+          "tok": 979
         }
       ],
       "ondemand-info": [
@@ -348,8 +348,8 @@
         },
         {
           "path": ".claude/commands/design.md#body",
-          "chars": 2933,
-          "tok": 733
+          "chars": 3425,
+          "tok": 856
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
@@ -567,8 +567,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18721,
-          "tok": 4680
+          "chars": 19195,
+          "tok": 4799
         },
         {
           "path": "AGENTS.md",
@@ -584,8 +584,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 18721,
-          "tok": 4680
+          "chars": 19195,
+          "tok": 4799
         },
         {
           "path": "AGENTS.md",
@@ -670,23 +670,23 @@
         },
         {
           "path": "fixture/route-prompt/intent/design",
-          "chars": 1223,
-          "tok": 306
+          "chars": 1306,
+          "tok": 326
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2557,
-          "tok": 639
+          "chars": 2934,
+          "tok": 734
         },
         {
           "path": "fixture/route-prompt/intent/fix",
-          "chars": 2263,
-          "tok": 566
+          "chars": 2640,
+          "tok": 660
         },
         {
           "path": "fixture/route-prompt/intent/refactor",
-          "chars": 2428,
-          "tok": 607
+          "chars": 2805,
+          "tok": 701
         },
         {
           "path": "fixture/route-prompt/intent/review",
@@ -695,8 +695,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/test",
-          "chars": 1927,
-          "tok": 482
+          "chars": 2304,
+          "tok": 576
         },
         {
           "path": "fixture/route-prompt/security-only",
@@ -705,8 +705,8 @@
         },
         {
           "path": "fixture/route-prompt/worst/fix-security",
-          "chars": 3342,
-          "tok": 836
+          "chars": 3719,
+          "tok": 930
         }
       ],
       "ondemand-info": [
@@ -762,8 +762,8 @@
         },
         {
           "path": ".claude/commands/design.md#body",
-          "chars": 2998,
-          "tok": 750
+          "chars": 3490,
+          "tok": 872
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
@@ -981,8 +981,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 20639,
-          "tok": 5160
+          "chars": 21113,
+          "tok": 5278
         },
         {
           "path": "AGENTS.md",
@@ -998,8 +998,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 20639,
-          "tok": 5160
+          "chars": 21113,
+          "tok": 5278
         },
         {
           "path": "AGENTS.md",
@@ -1084,23 +1084,23 @@
         },
         {
           "path": "fixture/route-prompt/intent/design",
-          "chars": 1223,
-          "tok": 306
+          "chars": 1306,
+          "tok": 326
         },
         {
           "path": "fixture/route-prompt/intent/feature",
-          "chars": 2587,
-          "tok": 647
+          "chars": 2964,
+          "tok": 741
         },
         {
           "path": "fixture/route-prompt/intent/fix",
-          "chars": 2263,
-          "tok": 566
+          "chars": 2640,
+          "tok": 660
         },
         {
           "path": "fixture/route-prompt/intent/refactor",
-          "chars": 2428,
-          "tok": 607
+          "chars": 2805,
+          "tok": 701
         },
         {
           "path": "fixture/route-prompt/intent/review",
@@ -1109,8 +1109,8 @@
         },
         {
           "path": "fixture/route-prompt/intent/test",
-          "chars": 1927,
-          "tok": 482
+          "chars": 2304,
+          "tok": 576
         },
         {
           "path": "fixture/route-prompt/security-only",
@@ -1119,8 +1119,8 @@
         },
         {
           "path": "fixture/route-prompt/worst/fix-security",
-          "chars": 3954,
-          "tok": 988
+          "chars": 4331,
+          "tok": 1083
         }
       ],
       "ondemand-info": [
@@ -1176,8 +1176,8 @@
         },
         {
           "path": ".claude/commands/design.md#body",
-          "chars": 3225,
-          "tok": 806
+          "chars": 3717,
+          "tok": 929
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
@@ -1269,30 +1269,30 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 38121,
-      "static.claude.tok": 9530,
-      "static.copilot.chars": 26508,
-      "static.copilot.tok": 6627,
-      "prompt.max.chars": 3539,
-      "prompt.max.tok": 885
+      "static.claude.chars": 38595,
+      "static.claude.tok": 9649,
+      "static.copilot.chars": 26982,
+      "static.copilot.tok": 6746,
+      "prompt.max.chars": 3916,
+      "prompt.max.tok": 979
     },
     "angular": {
-      "static.claude.chars": 35910,
-      "static.claude.tok": 8978,
-      "static.copilot.chars": 26820,
-      "static.copilot.tok": 6705,
-      "prompt.max.chars": 3342,
-      "prompt.max.tok": 836
+      "static.claude.chars": 36384,
+      "static.claude.tok": 9096,
+      "static.copilot.chars": 27294,
+      "static.copilot.tok": 6824,
+      "prompt.max.chars": 3719,
+      "prompt.max.tok": 930
     },
     "monorepo": {
-      "static.claude.chars": 42499,
-      "static.claude.tok": 10625,
-      "static.copilot.chars": 30028,
-      "static.copilot.tok": 7507,
-      "prompt.max.chars": 3954,
-      "prompt.max.tok": 988
+      "static.claude.chars": 42973,
+      "static.claude.tok": 10743,
+      "static.copilot.chars": 30502,
+      "static.copilot.tok": 7626,
+      "prompt.max.chars": 4331,
+      "prompt.max.tok": 1083
     },
-    "monorepo-claude-ratio-permille": 1115
+    "monorepo-claude-ratio-permille": 1113
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",

@@ -60,6 +60,11 @@ Ordered, checkable implementation steps the agent works through (the *how*; dist
 - [ ] ...
 - [ ] ...
 
+### Assumptions
+Each assumption names what verified it, or is marked unverified for the developer to confirm.
+| Assumption | Evidence (file, command or query), or "unverified — developer confirms" |
+|------------|------------------------------------------------------------------------|
+
 ### Open questions
 Decisions the developer must make before implementation.
 ```
