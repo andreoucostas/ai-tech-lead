@@ -4155,3 +4155,28 @@ offers `claude-sonnet-5.5` and `claude-sonnet-5`, not the alias `sonnet`. Q1: wi
 - Not repeated (2 of 4 runs used): arm B's missing worker is a deterministic refusal, not a sample. Because a call without a `model` argument meets the same
   refusal, `bootstrap-pass` goes back to `model: inherit`, which the 2026-09-27 Copilot runs started with (`session_inheritance`, 8 of 8 workers).
   `~\.copilot\config.json` and `settings.json` unchanged in both runs.
+
+## B-400/B-401 pre-registration — the bootstrapped `AGENTS.md` under the new budget, and `map-warehouse`'s scoped pass when the map is silent on the task's objects (2026-10-14, frozen before any run)
+
+B-400 replaced `/bootstrap` 3a's "≤ ~400 lines" with a budget of about 6 KB for the sections it writes and 16 KB for the file; the only bootstrapped file on
+record (`meta/eval-fixtures/warehouse-generated`, v0.91.0) is 14,386 bytes, 227 lines, its written sections about 9.3 KB. B-401 added a scoped pass to
+`map-warehouse` and pointed Verification Rule 11 and `add-warehouse-load` at it. Q1: under the new budget, how large is a bootstrapped `AGENTS.md`, and does it
+still record the facts B-325's acceptance names? Q2: with the map silent on `ctl.LoadRun` and `LoadRunId`, does `warehouse-route-p4` come out right more
+often with B-401's text than without it?
+
+- Tree: b30adcf2 on a local branch that only stamps the version 0.96.0 (dist and CHANGELOG head agree, as the runner requires); never pushed.
+- Q1, one generation, Claude Code (`claude --model sonnet`, headless from PowerShell), DEVELOPING.md's recipe: `New-EvalRepo warehouse`, `dist/dotnet`
+  installed and committed; `claude -p /bootstrap`, each pause answered as B-325's generation was (Phase 2b "proceed", Phase 3d-bis "skip all"), then
+  `/map-warehouse` and "Yes, write it."; `--max-budget-usd 8` per call. The changed files become `meta/eval-fixtures/warehouse-generated` (provenance 0.96.0).
+- Q1 counted: `AGENTS.md` bytes and lines; bytes of Codebase Context, Repository Structure, Conventions and the Architecture Decisions index together; whether
+  Conventions records that `fact.FactSales.LoadRunId` comes from `stg.StgSalesOrder.BatchId` and that no procedure writes `ctl.LoadRun`.
+  Reading: file ≤ 16,000 bytes and written sections ≤ 7,000 bytes means the budget held in this run; the two facts are reported, not scored.
+- Q2: `run-agent-evals.ps1 -Live -Model sonnet -Scenario warehouse-route-p4 -WarehouseMap partial -Trials 3`, arm W (b30adcf2 as installed) and arm C
+  (`-TargetPatch` restoring v0.95.0's `map-warehouse` and `add-warehouse-load` SKILL.md and Verification Rule 11, cut from a fresh install as DEVELOPING.md
+  says; nothing else differs). Both arms run on Q1's fixture. Valid run: the grader returns a category; host or budget errors are repeated once.
+- Q2 counted, per run: B-325's categories (ESTABLISHED-PARTIAL, CAVEATED-JOIN, ASKED good; MISLEADING, OTHER bad), read by hand beside the grader. Recorded,
+  not scored: a `map-warehouse` skill call; rows for `ctl.LoadRun`/`LoadRunId` added to `docs/warehouse-map.md`; a Coverage line; cost.
+- Q2 readings, fixed now: W ≥ 2/3 good with C ≤ 1/3 good: the scoped pass helps on this case, ship. W ≤ C: no effect seen; revert Rule 11's clause and the
+  `add-warehouse-load` handoff, keep the skill's section. W 2/3 and C 2/3, or W 3/3 and C 2/3: three more runs per arm, then the same readings at n=6.
+- Stop: one generation (8 USD per call cap) and at most 12 scenario runs.
+- Not shown: Copilot; other warehouses; a map that is wrong rather than silent; whether a smaller `AGENTS.md` changes outcomes outside this scenario.
