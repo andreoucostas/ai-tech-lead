@@ -40,7 +40,7 @@ Evidence-backed dependency diagram, when applicable.
 
 <!-- BOOTSTRAP_PENDING: run /bootstrap to replace this entire section with conventions observed in the actual codebase. -->
 <!-- Until /bootstrap, use Angular defaults only when Git-root evidence selects that profile. -->
-<!-- Each convention: the rule, then 1-2 sentence rationale. -->
+<!-- Each convention: one line, the rule and its reason. -->
 
 _Not yet populated. Until you run `/bootstrap`, the greenfield defaults in [docs/defaults.md](./docs/defaults.md) apply. After bootstrap, this section becomes the authoritative source._
 

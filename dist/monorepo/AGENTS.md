@@ -40,7 +40,7 @@ Evidence-backed dependency/data-flow diagram, when applicable.
 
 <!-- BOOTSTRAP_PENDING: run /bootstrap to replace this entire section with conventions observed in the actual codebase. -->
 <!-- Until /bootstrap, use applicable docs/defaults.md blocks only; the profile proves nothing. -->
-<!-- Each convention: the rule, then 1-2 sentence rationale. -->
+<!-- Each convention: one line, the rule and its reason. -->
 
 _Not yet populated. Until you run `/bootstrap`, the greenfield defaults in [docs/defaults.md](./docs/defaults.md) apply. After bootstrap, this section becomes the authoritative source._
 

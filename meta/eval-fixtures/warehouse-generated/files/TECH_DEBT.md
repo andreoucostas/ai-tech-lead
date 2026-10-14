@@ -4,219 +4,129 @@
 
 ---
 
-## DEBT-001: Fact load depends on two dimensions that have no load procedure
+## DEBT-001: usp_LoadDimCustomer hardcodes the surrogate key for new customers
 
-- **Key**: factsales-load::missing-dim-loads
-- **Category**: Architecture
+- **Key**: warehouse-load::dimcustomer-key-collision
+- **Category**: Load Correctness
 - **Severity**: Critical
-- **Effort**: L (needs a real source for Product/Date reference data, or confirmation of an external seeding process this repo doesn't own)
-- **Files**: `StoredProcedures/usp_LoadFactSales.sql:4-6`, `Tables/dim.DimProduct.sql`, `Tables/dim.DimDate.sql`
+- **Effort**: M (half day)
+- **Files**: `StoredProcedures/usp_LoadDimCustomer.sql:1`, `Tables/dim.DimCustomer.sql:2`
 
 ### Issue
-`usp_LoadFactSales` `INNER JOIN`s `dim.DimProduct` and `dim.DimDate` to resolve surrogate keys, but
-no procedure anywhere in this repository (`StoredProcedures/` has only `usp_LoadDimCustomer`,
-`usp_LoadDimRegion`, `usp_LoadFactSales`) loads either dimension. On a clean environment the fact
-load will silently return zero or incomplete rows — no error, just missing data.
+`usp_LoadDimCustomer`'s `MERGE ... WHEN NOT MATCHED THEN INSERT` inserts the literal constant `CustomerKey = -1` for every unmatched customer. `CustomerKey` is `dim.DimCustomer`'s `PRIMARY KEY`, so a staging batch containing more than one distinct new `CustomerId` would attempt two inserts with the same key and fail with a primary-key violation on the second.
 
 ### Recommended fix
-Either add `usp_LoadDimProduct` and `usp_LoadDimDate` following the warehouse's load pattern, or
-document the external/manual process that populates these two dimensions if one genuinely exists
-outside this SQL project.
+Derive a real surrogate key (identity column, sequence, or `MAX(CustomerKey)+1` pattern) instead of the literal `-1`, and add a `WHEN MATCHED` branch that closes the prior row (`EffectiveTo`, `IsCurrent = 0`) and inserts a new version when a tracked attribute changes — the table's `EffectiveFrom`/`EffectiveTo`/`IsCurrent` columns already imply SCD2, but no update path exists today.
 
 ---
 
-## DEBT-002: `usp_LoadDimCustomer` is a non-functional stub, not a working SCD2 load
+## DEBT-002: usp_LoadFactSales has no idempotency or watermark guard
 
-- **Key**: dimcustomer-load::hardcoded-stub-no-scd2
-- **Category**: Data Access
+- **Key**: warehouse-load::factsales-no-watermark
+- **Category**: Load Correctness
 - **Severity**: Critical
-- **Effort**: L (needs real surrogate-key generation, a real source for RegionKey/SegmentName, and a WHEN MATCHED branch)
-- **Files**: `StoredProcedures/usp_LoadDimCustomer.sql:1`, `Tables/dim.DimCustomer.sql:1-9`
+- **Effort**: M (half day)
+- **Files**: `StoredProcedures/usp_LoadFactSales.sql:1-7`, `Tables/ctl.LoadRun.sql:1`, `Tables/fact.FactSales.sql:3`
 
 ### Issue
-The procedure's only logic is `MERGE ... WHEN NOT MATCHED THEN INSERT (CustomerKey, CustomerId,
-RegionKey, SegmentName, EffectiveFrom, IsCurrent) VALUES (-1, source.CustomerId, -1, 'Unknown',
-SYSUTCDATETIME(), 1)`. `CustomerKey` and `RegionKey` are hardcoded literal `-1` (not a
-generated/sequenced surrogate key) and `SegmentName` is hardcoded `'Unknown'`. Because `CustomerKey`
-is the table's `PRIMARY KEY` and always `-1`, inserting a second distinct new `CustomerId` raises a
-primary-key violation. There is no `WHEN MATCHED` branch, so the declared SCD Type-2 shape
-(`EffectiveFrom`/`EffectiveTo`/`IsCurrent`) is never implemented — no customer is ever updated or
-versioned.
+`usp_LoadFactSales` is a plain `INSERT ... SELECT` with no existence check, watermark filter, or batch guard. `ctl.LoadRun` declares `LoadRunId`/`StartedAt`/`Watermark` columns that imply incremental-load control, but no procedure in the repo reads or writes `ctl.LoadRun` — confirmed dead by repo-wide grep. Re-running the load over a staging batch that was already loaded (e.g., after a partial failure) reinserts the same `SalesKey` values and violates `fact.FactSales`'s `PRIMARY KEY`.
 
 ### Recommended fix
-Replace the stub with a real `MERGE` that assigns a generated surrogate key per new `CustomerId`,
-sources `RegionKey`/`SegmentName` from wherever they actually originate (not present in
-`stg.StgSalesOrder` today — may need a staging/schema change), and adds a `WHEN MATCHED AND
-<changed>` branch that closes the prior row (`EffectiveTo`, `IsCurrent = 0`) before inserting the
-new version.
+Either wire `ctl.LoadRun` into the load (write a row per run, filter staging by a watermark/batch id not yet processed) or add a simpler guard (`WHERE NOT EXISTS` against `fact.FactSales.SalesKey`, or `MERGE`) so a rerun is safe. Pick one mechanism — `AGENTS.md > Conventions` should name whichever is adopted, so it isn't selected ad hoc the next time a load is added.
 
 ---
 
-## DEBT-003: `usp_LoadDimRegion` never loads real region data and isn't re-runnable
+## DEBT-003: usp_LoadDimRegion is not idempotent and has no real region source
 
-- **Key**: dimregion-load::stub-no-source-no-rerun
-- **Category**: Data Access
+- **Key**: warehouse-load::dimregion-not-idempotent
+- **Category**: Load Correctness
 - **Severity**: Critical
-- **Effort**: M (add a natural/business key column, source real region data, rewrite as an upsert)
-- **Files**: `StoredProcedures/usp_LoadDimRegion.sql:1`, `Tables/dim.DimRegion.sql:1`
+- **Effort**: XL (needs spike)
 
 ### Issue
-`INSERT INTO dim.DimRegion (RegionKey, RegionName) SELECT DISTINCT -1, 'Unknown' FROM
-stg.StgSalesOrder` inserts only the literal `-1`/`'Unknown'` pair — `stg.StgSalesOrder` has no
-region column at all, so no real region is ever sourced. `dim.DimRegion` also has no natural/business
-key column (only `RegionKey` + `RegionName`), so there is no way to match "the same region" across
-runs even with a correct upsert. `RegionKey` is `PRIMARY KEY`, so any rerun after the first
-successful run raises a primary-key violation.
+`usp_LoadDimRegion` is `INSERT INTO dim.DimRegion (RegionKey, RegionName) SELECT DISTINCT -1, 'Unknown' FROM stg.StgSalesOrder` — no existence guard, so running it twice violates the `PRIMARY KEY` on `RegionKey`. More fundamentally, `stg.StgSalesOrder` carries no region attribute at all (confirmed by reading its full column list), so there is currently no path to load a real region — every run can only ever produce the same placeholder row. This blocks `dim.DimCustomer.RegionKey` (also hardcoded `-1` in DEBT-001) and therefore `rpt.vwFinanceExtract`'s region breakdown from ever reflecting real data.
 
 ### Recommended fix
-Add a natural/business key column to `dim.DimRegion`, source real region values from wherever they
-actually originate (not present in `stg.StgSalesOrder` today), and rewrite the load as a keyed
-upsert (`MERGE` or existence check).
+This needs a source decision, not just a guard: identify where real region data should come from (a customer master/reference feed, most likely, since region is a customer attribute in this model) before the load logic can be fixed. Add the idempotency guard regardless, but treat "no region source exists" as the primary blocker — a spike to locate or define that source should come first.
 
 ---
 
-## DEBT-004: `ctl.LoadRun` control/watermark table is completely unused
+## DEBT-004: dim.DimProduct has no load procedure
 
-- **Key**: ctl-loadrun::orphaned-control-table
-- **Category**: Data Access
+- **Key**: warehouse-load::dimproduct-missing-load
+- **Category**: Load Correctness
 - **Severity**: High
-- **Effort**: M (wire an insert-at-start/watermark-read/update-on-completion flow into the three existing load procedures, or remove the table)
-- **Files**: `Tables/ctl.LoadRun.sql`, `StoredProcedures/usp_LoadFactSales.sql:3`
+- **Effort**: M (half day)
+- **Files**: `Tables/dim.DimProduct.sql`, `StoredProcedures/usp_LoadFactSales.sql:6`
 
 ### Issue
-`ctl.LoadRun` (`LoadRunId`/`StartedAt`/`Watermark`) is never read or written by any stored
-procedure. `fact.FactSales.LoadRunId` is populated from `stg.StgSalesOrder.BatchId` instead — a
-different identifier from a different table — so the fact table's `LoadRunId` column does not
-actually correlate to a row in the control table it is named after.
+`usp_LoadFactSales` inner-joins `dim.DimProduct` on `ProductId`, but no `usp_LoadDimProduct` (or equivalent) exists anywhere in the repository to populate that table. Confirmed by globbing `StoredProcedures/**` — only three procedures exist, none for `DimProduct` or `DimDate`. Until `dim.DimProduct` is populated by some other, unevidenced mechanism, the fact load's `INNER JOIN` silently drops every staging row with no error.
 
 ### Recommended fix
-Either wire `ctl.LoadRun` into each load (insert a run row at start, use `Watermark` to bound the
-staging read, update on completion) or remove the table if it is genuinely not needed.
+Add `usp_LoadDimProduct`, following whichever key-generation and rerun-safety fix is adopted for DEBT-001/DEBT-003, so the pattern is consistent across all dimension loads.
 
 ---
 
-## DEBT-005: No load has rerun/idempotency protection
+## DEBT-005: No warehouse test or validation assets exist
 
-- **Key**: warehouse-loads::no-rerun-guard
-- **Category**: Data Access
-- **Severity**: High
-- **Effort**: M (add a MERGE/existence-check/batch-dedup guard to each load)
-- **Files**: `StoredProcedures/usp_LoadFactSales.sql:1-7`, `StoredProcedures/usp_LoadDimRegion.sql:1`
-
-### Issue
-`usp_LoadFactSales` and `usp_LoadDimRegion` are unconditional `INSERT`s with no `WHERE` clause,
-existence check, or `MERGE`. A rerun against unchanged staging content fails on a primary-key
-violation rather than silently duplicating — but nothing prevents an already-loaded batch from
-being picked up again if staging is only appended-to, and there is no evidenced watermark/batch-id
-guard anywhere.
-
-### Recommended fix
-Add a batch-id dedup check (skip a `BatchId` already recorded as loaded) or a `MERGE`/upsert keyed
-on business key, matching the control mechanism once `ctl.LoadRun` (DEBT-004) is actually wired in.
-
----
-
-## DEBT-006: No warehouse test or data-validation asset exists
-
-- **Key**: warehouse-testing::no-assets
+- **Key**: warehouse-testing::no-validation-assets
 - **Category**: Testing
 - **Severity**: High
-- **Effort**: M
-- **Files**: _(repository-wide absence — no file to cite)_
+- **Effort**: L (1-2 days)
 
 ### Issue
-There is no tSQLt (or other SQL unit-test framework) reference, no `.testsettings` file, no
-seed/reference-data script, and no SQL linter/formatter configuration anywhere in the repository.
-The only CI workflow (`.github/workflows/docs-sync-check.yml`) runs exclusively the framework's own
-documentation-sync check — no build, deploy, schema-validation, or data-quality step for the
-warehouse exists. `tests/evals/` is the AI Tech Lead framework's own eval harness
-(`framework-owned/overwritten`), not a warehouse test asset.
+The repository has no tSQLt tests, dbt tests, data-quality scripts, or any other validation tooling for the warehouse objects (confirmed by glob/grep — no test folder, no `tSQLt`/`dbt_project.yml` reference anywhere). Given the correctness issues in DEBT-001–004, there is currently no automated way to catch a regression in any load procedure.
 
 ### Recommended fix
-Introduce a lightweight reconciliation-check script (row-count/control-total comparison between
-`stg` and `fact`/`dim` per load) or a tSQLt-based unit-test project, and wire it into CI alongside
-the existing `docs-sync-check.ps1` workflow.
+Introduce a minimal SQL validation harness appropriate to this stack — for example tSQLt unit tests around each load procedure's merge/insert logic, or a lighter-weight data-quality script that checks referential integrity (every fact row resolves to a current dimension row) and row-count reconciliation between `stg` and `fact` per run. Do not reach for a .NET test framework or tool — nothing in this repository evidences one.
 
 ---
 
-## DEBT-007: No orchestrator enforces dimension-before-fact load ordering
+## DEBT-006: fact.FactSales carries denormalized columns that nothing populates or reads
 
-- **Key**: warehouse-loads::no-orchestration
-- **Category**: Architecture
+- **Key**: warehouse-model::factsales-dead-columns
+- **Category**: Data Modeling
 - **Severity**: Medium
-- **Effort**: M (add an orchestrator procedure, e.g. `usp_LoadWarehouse`, that `EXEC`s loads in dependency order)
-- **Files**: `StoredProcedures/*.sql` (absence)
+- **Effort**: S (<1hr)
+- **Files**: `Tables/fact.FactSales.sql:7-9`, `StoredProcedures/usp_LoadFactSales.sql:2-3`
 
 ### Issue
-Load ordering (dimensions before the fact that references them) is implied only by
-`usp_LoadFactSales`'s `INNER JOIN`s. None of the three procedures `EXEC`s another, so sequencing
-correctness depends entirely on whoever invokes these procedures externally.
+`fact.FactSales` declares `RegionName`, `CategoryName`, and `SegmentName` as nullable denormalized columns, but `usp_LoadFactSales`'s `INSERT` column list omits all three, so they are permanently `NULL`. All three reporting views (`rpt.vwExecutiveSummary`, `rpt.vwFinanceExtract`, `rpt.vwOrderDetail`) independently re-derive the same attributes by joining the dimension tables directly rather than reading these columns — confirmed by reading every view. The columns have zero producers and zero consumers.
 
 ### Recommended fix
-Add an explicit orchestrator procedure that calls dimension loads before `usp_LoadFactSales`, or
-document the required external run order if orchestration genuinely lives outside this repo.
+Drop the three columns unless there's a specific reporting-performance reason to denormalize them (in which case wire them into `usp_LoadFactSales`'s `INSERT` and have the views read them instead of re-joining). Carrying unused nullable columns invites a future reader to assume they're populated.
 
 ---
 
-## DEBT-008: `fact.FactSales` denormalized columns are dead schema (always NULL)
+## DEBT-007: dim.DimDate has no evidenced generation mechanism
 
-- **Key**: factsales::dead-denormalized-columns
-- **Category**: Data Access
+- **Key**: warehouse-load::dimdate-no-generation
+- **Category**: Load Correctness
 - **Severity**: Medium
-- **Effort**: S (either populate the columns in the load, or drop them)
-- **Files**: `Tables/fact.FactSales.sql:7-9`, `StoredProcedures/usp_LoadFactSales.sql:2-3`, `Views/rpt.vwExecutiveSummary.sql:1`, `Views/rpt.vwFinanceExtract.sql:1-6`
+- **Effort**: S (<1hr)
+- **Files**: `Tables/dim.DimDate.sql`
 
 ### Issue
-`fact.FactSales` declares `RegionName`, `CategoryName`, `SegmentName` as nullable denormalized
-columns, but `usp_LoadFactSales`'s `INSERT` column list omits all three, so they are always `NULL`.
-The `rpt.*` views instead re-derive the same attributes via live joins to
-`dim.DimProduct`/`dim.DimRegion`, so no current consumer reads the denormalized columns. See
-`docs/architecture-decisions.md#adr-003`.
+Like `dim.DimProduct`, `dim.DimDate` has no corresponding load/generation procedure in the repo. Date dimensions are often seeded once by a static generation script rather than an incremental load, but no such script exists here either (confirmed by glob) — it's unclear whether this table is expected to be seeded externally or is simply unpopulated.
 
 ### Recommended fix
-Decide intent: populate the columns in the load (true denormalization) or drop them. Either is a
-small, contained change — the risk is only in leaving the ambiguity in place for a future reader who
-assumes the columns are live.
+Add a date-dimension generation script (a one-time or idempotent calendar-row generator) under the repo's own load pattern, or document where/how it is actually seeded if that happens outside this repository.
 
 ---
 
-## DEBT-009: No `FOREIGN KEY` constraints anywhere in the schema
+## DEBT-008: No evidenced build, test, lint, or deploy command for the warehouse project
 
-- **Key**: warehouse-schema::no-fk-constraints
-- **Category**: Architecture
-- **Severity**: Low
-- **Effort**: M (add FK constraints, a natural key to `dim.DimRegion`, and a primary key to `stg.StgSalesOrder` — each is a schema migration)
-- **Files**: `Tables/*.sql` (absence)
-
-### Issue
-No table in the project declares an actual `FOREIGN KEY`; referential integrity between fact and
-dimension tables is enforced only by load-time joins. Additionally, `dim.DimRegion` has no
-natural/business key column, and `stg.StgSalesOrder` has no declared `PRIMARY KEY`.
-
-### Recommended fix
-Add `FOREIGN KEY` constraints from `fact.FactSales` to its dimensions where the business accepts
-the enforcement cost, add a natural key column to `dim.DimRegion`, and add a `PRIMARY KEY` (or at
-minimum a uniqueness constraint) to `stg.StgSalesOrder`.
-
----
-
-## DEBT-010: `rpt.vwFinanceExtract` doesn't filter `IsCurrent = 1` on `DimCustomer`
-
-- **Key**: vwfinanceextract::missing-iscurrent-filter
-- **Category**: Data Access
-- **Severity**: Low
-- **Effort**: S (add `AND c.IsCurrent = 1` to the join predicate)
-- **Files**: `Views/rpt.vwFinanceExtract.sql:1-6`
+- **Key**: warehouse-deploy::no-evidenced-commands
+- **Category**: Deployment
+- **Severity**: Medium
+- **Effort**: S (<1hr)
+- **Files**: `warehouse.sqlproj`
 
 ### Issue
-`rpt.vwFinanceExtract` joins `dim.DimCustomer` without an `IsCurrent = 1` filter, unlike
-`usp_LoadFactSales`, which does filter. This is latent only while `usp_LoadDimCustomer` never
-actually versions customers (DEBT-002) — if DimCustomer's SCD2 history is ever correctly
-implemented, this view will double-count across historical customer versions.
+No committed CI workflow, script, or documented command builds, tests, lints, or deploys `warehouse.sqlproj` (confirmed by glob/grep — no `*.publish.xml`, no `Scripts/` pre/post-deployment folder, no `sqlpackage`/`dacpac` reference, no warehouse-specific CI workflow). See `AGENTS.md > Conventions > Verification Commands`, which records all six categories as not available for this reason.
 
 ### Recommended fix
-Add `AND c.IsCurrent = 1` to the view's join predicate now, so the fix doesn't have to be
-remembered later alongside DEBT-002.
+Add a CI step that at minimum builds the project (the `Microsoft.Build.Sql` SDK supports a standard `dotnet build` once a build command is actually wired into committed CI) and, once DEBT-005 adds a validation harness, runs it. Until a command is committed, treat any build/deploy as manual/CI-only.
 
 ---
 
@@ -233,8 +143,9 @@ remembered later alongside DEBT-002.
 
 ## Trojan Horse Opportunities
 
-- **Customer/Region dimension loads**: DEBT-002, DEBT-003
-- **Load control & orchestration**: DEBT-001, DEBT-004, DEBT-005, DEBT-007
-- **Fact & reporting schema**: DEBT-008, DEBT-010
-- **Schema integrity**: DEBT-009
-- **Testing & validation**: DEBT-006
+Group DEBT IDs by feature area so developers can bundle cleanup into feature work:
+
+- **Customer & Region Dimension Loads**: DEBT-001, DEBT-003
+- **Fact Load & Rerun Safety**: DEBT-002, DEBT-004
+- **Warehouse Delivery & Validation**: DEBT-005, DEBT-007, DEBT-008
+- **Data Modeling**: DEBT-006

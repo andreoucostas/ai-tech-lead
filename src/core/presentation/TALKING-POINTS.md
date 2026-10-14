@@ -148,7 +148,7 @@ Insights. Copilot coding-agent cloud hook execution is unsupported.
 automatically, and nothing in the output supports a comparative claim.
 
 **"What's the maintenance burden?"**
-Mainly keeping AGENTS.md current as conventions evolve — a few hundred budgeted lines, with drift
+Mainly keeping AGENTS.md current as conventions evolve — kept under a 16 KB budget, with drift
 checks that flag when the Copilot digest or docs fall behind. The tech lead owns it; it's a first-class artifact.
 
 **"What if someone needs to ship a hotfix right now?"**

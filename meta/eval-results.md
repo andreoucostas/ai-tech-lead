@@ -4180,3 +4180,12 @@ often with B-401's text than without it?
   `add-warehouse-load` handoff, keep the skill's section. W 2/3 and C 2/3, or W 3/3 and C 2/3: three more runs per arm, then the same readings at n=6.
 - Stop: one generation (8 USD per call cap) and at most 12 scenario runs.
 - Not shown: Copilot; other warehouses; a map that is wrong rather than silent; whether a smaller `AGENTS.md` changes outcomes outside this scenario.
+
+### B-400/B-401 amendment, frozen before any Q2 run (2026-10-14)
+
+Q1 ran as registered (one generation, 3.43 USD; results below once Q2 is in). A fresh-session review of b30adcf2 then showed Q2 could not isolate the scoped
+pass: `-WarehouseMap partial` removed only the map's table rows, while the map's prose, the generated `TECH_DEBT.md`, `FRAMEWORK-CONTEXT.md` and ADRs (and,
+in the v0.91.0 fixture, `AGENTS.md`) still state the `ctl.LoadRun`/`LoadRunId` facts, so both arms could answer from them. Amended before any Q2 run:
+`partial` now removes every line naming `ctl.LoadRun` or `LoadRunId` from every generated Markdown document (the SQL keeps them); the fixture is Q1's
+generation; arm W is the tree with the review's fixes (merge rule, catalog policy, full-pass stamp, `/adopt`), arm C restores v0.95.0's `map-warehouse` and
+`add-warehouse-load` SKILL.md and Verification Rule 11 on that same tree. Counts, readings, extension and stop are unchanged.

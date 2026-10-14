@@ -17,7 +17,9 @@
   those objects, the views, procedures and orchestration around them, and the dimensions they reach, then offers to
   add their rows to the map with a dated Coverage line. Verification Rule 11 and `add-warehouse-load` now send the
   agent there instead of stopping at "the map does not say". It reads your repository's SQL; it reads a live database
-  only through a read-only command your `AGENTS.md > Conventions > Verification Commands` already records.
+  only through a read-only command your `AGENTS.md > Conventions > Verification Commands` already records and lets an
+  agent run. A full `map-warehouse` pass now stamps the map with its time, and `scripts/warehouse-map-check.ps1`
+  judges freshness from that stamp, so adding a few rows does not make the rest of the map look current.
 - **The write guard now checks `apply_patch`, the file tool GPT models use in Copilot CLI and VS Code.** Until this
   release the guard did not read that tool's patch, so every file a GPT model created or changed with it passed
   unchecked for secrets, test-defeats and suppressions, although the enforcement matrix called Copilot CLI's write blocks

@@ -51,6 +51,15 @@ if (-not (Test-Path -LiteralPath $map -PathType Leaf)) {
     Write-Output 'WAREHOUSE_MAP missing - run /map-warehouse or inspect the live schema before a warehouse write.'; exit 1
 }
 $mapTime = (Get-Item -LiteralPath $map).LastWriteTimeUtc
+# A scoped pass rewrites the file but reads only some objects, so the last full pass's stamp, when the
+# map carries one, is the freshness that counts; the earlier of the two times wins.
+$mapText = [IO.File]::ReadAllText($map)
+if ($mapText.Contains('<!-- warehouse-map full pass: none -->')) { Write-Output 'WAREHOUSE_MAP stale (no full pass yet) - run /map-warehouse for the whole warehouse before trusting rows a scoped pass did not write.'; exit 1 }
+$stamp = [regex]::Match($mapText, '<!-- warehouse-map full pass: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?Z) -->')
+if ($stamp.Success) {
+    $fullPass = [DateTime]::MinValue
+    if ([DateTime]::TryParse($stamp.Groups[1].Value, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AdjustToUniversal -bor [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$fullPass) -and $fullPass -lt $mapTime) { $mapTime = $fullPass }
+}
 $newer = @($files | Where-Object { $_.LastWriteTimeUtc -gt $mapTime })
 if ($newer.Count -gt 0) { Write-Output "WAREHOUSE_MAP stale ($($newer.Count) warehouse artifact(s) newer than the map)"; exit 1 }
 Write-Output "WAREHOUSE_MAP current ($($hits.Count) independent signal categories)"; exit 0

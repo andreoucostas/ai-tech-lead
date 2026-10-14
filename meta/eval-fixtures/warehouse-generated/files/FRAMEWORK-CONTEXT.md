@@ -13,54 +13,56 @@
 
 ## Production Architecture
 
-<!-- Auto-drafted by /bootstrap on 2026-10-01 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
+<!-- Auto-drafted by /bootstrap on 2026-10-14 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
 
-This repository is a SQL Server data warehouse delivered as schema (tables, views, stored
-procedures) via an SSDT-style SQL project (`warehouse.sqlproj`, `Microsoft.Build.Sql/0.2.0` SDK) —
-it is not a running application service. It consumes staged sales-order data
-(`stg.StgSalesOrder`, loaded by something outside this repo) and exposes three reporting views
-(`rpt.vwExecutiveSummary`, `rpt.vwFinanceExtract`, `rpt.vwOrderDetail`) as its consumption surface.
-No API, worker service, or other application layer exists anywhere in this repo. Where and how
-other systems load `stg.StgSalesOrder`, or consume the `rpt.*` views, is not evidenced here — a
-maintainer should document the upstream/downstream systems.
+This repository is a SQL Server data warehouse delivered as a SQL Server Database Project (`warehouse.sqlproj`, `Microsoft.Build.Sql` SDK) — there is no application/API host. It consumes staged sales-order data (`stg.StgSalesOrder`) and produces a star-schema fact table (`fact.FactSales`) joined to four dimensions (`dim.DimCustomer`, `dim.DimProduct`, `dim.DimDate`, `dim.DimRegion`), exposed through three reporting views (`rpt.vwExecutiveSummary`, `rpt.vwFinanceExtract`, `rpt.vwOrderDetail`). How staging data arrives (an upstream ETL stage, a message feed, or a direct load) and how/when the schema is actually deployed are not evidenced in this repository — no CI workflow, scheduler, or orchestration file is committed here.
 
 ---
 
 ## Shared Libraries
 
-<!-- Auto-drafted by /bootstrap on 2026-10-01 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
+<!-- Auto-drafted by /bootstrap on 2026-10-14 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
 
-_No shared/framework libraries detected in this repo as of 2026-10-01 — this is a warehouse-SQL
-repo with no application package references (see `Detected Framework Packages` below). The only
-build-time reference is the `Microsoft.Build.Sql` SSDT SDK (`0.2.0`) in `warehouse.sqlproj`, which
-is a project-build SDK, not a consumed shared library, so it is not listed as an entry here._
+_No framework packages detected in this repo. This is a warehouse-only repository (no `.csproj` files, no NuGet references) — the only evidenced tooling is the `Microsoft.Build.Sql` SDK (version `0.2.0`) referenced by `warehouse.sqlproj`, which builds/packages the schema as a database project. It is not a shared application library, so it is not entered as one below._
+
+Template entry (kept for reference — fill in if an application profile is added later):
+
+```markdown
+### Acme.Framework.Auth
+
+- **Source**: https://github.com/<org>/Acme.Framework.Auth
+- **Purpose**: Tenant-aware authentication primitives, JWT bearer middleware, OIDC handlers.
+- **Latest version**: 4.2.0
+- **Public API surface (latest)**:
+  - `services.AddAcmeAuthentication(options => ...)` — registers JWT bearer + OIDC + tenant resolver
+  - `services.AddAcmeAuthorization()` — registers default policy + role handlers
+  - `[RequireTenant]` attribute — enforces tenant claim on the action
+- **Common pitfalls**: Do not call `AddAuthentication()` directly after `AddAcmeAuthentication()` — it overwrites the scheme registration.
+```
 
 ---
 
 ## Multi-Tenancy Conventions
 
-<!-- Auto-drafted by /bootstrap on 2026-10-01 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
+<!-- Auto-drafted by /bootstrap on 2026-10-14 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
 
-_No multi-tenancy signals found in this repo (no `TenantId`-shaped columns, tenant-scoped views, row-level-security policies, or tenant-resolution logic in any of the 13 SQL files) as of 2026-10-01. If this warehouse serves multiple tenants at another layer — e.g. database-per-tenant, or row-level security deployed outside this SQL project — a maintainer should document it here._
+_No multi-tenancy signals found in this repo (no `TenantId` columns, tenant claims, or tenant-scoped query filters, as of 2026-10-14 — checked every table and view). If this warehouse is multi-tenant at another layer (e.g., row-level security applied outside this project, or one database per tenant), a maintainer should document it here._
 
 ---
 
 ## Dashboard Integration Contracts
 
-<!-- Auto-drafted by /bootstrap on 2026-10-01 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
+<!-- Auto-drafted by /bootstrap on 2026-10-14 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
 
-_No dashboard/control-plane registration or health-check wiring found — not applicable to a
-schema-only SQL project with no running service, as of 2026-10-01._
+_No dashboard/control-plane integration signals found in this repo (no health-check endpoints, heartbeat calls, or registration metadata — this repository contains only warehouse schema/load/view objects, with no application host to register one). If this warehouse registers with a control plane through an external deployment pipeline, a maintainer should document it here._
 
 ---
 
 ## Cross-Service Communication
 
-<!-- Auto-drafted by /bootstrap on 2026-10-01 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
+<!-- Auto-drafted by /bootstrap on 2026-10-14 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
 
-_No cross-service communication patterns (HTTP clients, message bus, correlation-ID propagation)
-found — not applicable to a schema-only SQL warehouse project with no application code, as of
-2026-10-01._
+_No cross-service communication signals found in this repo (no HTTP client registrations, message-bus packages, or correlation-ID propagation — this repository contains only warehouse schema/load/view objects, with no application host). If staging data (`stg.StgSalesOrder`) arrives via an external integration or message bus, a maintainer should document that feed here._
 
 ---
 
@@ -83,56 +85,37 @@ found — not applicable to a schema-only SQL warehouse project with no applicat
 
 Merging the PR does not confirm these — an item is confirmed only when a person answers its question and updates its status.
 
-All five candidates below were put to the developer during `/bootstrap` (2026-10-01); the
-developer chose "skip all", so every row is `[UNVERIFIED]` pending a future confirmation.
-
 | Area / file(s) | Hazard | Status | Reviewed |
 |----------------|--------|--------|----------|
-| `StoredProcedures/usp_LoadFactSales.sql`, `Tables/dim.DimProduct.sql`, `Tables/dim.DimDate.sql` | Fact load inner-joins `dim.DimProduct` and `dim.DimDate`, but no procedure in this repo loads either dimension — the fact load can silently return zero or partial rows. | [UNVERIFIED] | 2026-10-01 |
-| `StoredProcedures/usp_LoadDimCustomer.sql`, `Tables/dim.DimCustomer.sql` | Only inserts a hardcoded placeholder row (`CustomerKey = -1`) and never implements the table's SCD2 shape; a second distinct new customer raises a primary-key violation. | [UNVERIFIED] | 2026-10-01 |
-| `StoredProcedures/usp_LoadDimRegion.sql`, `Tables/dim.DimRegion.sql` | Never loads real region data (staging has no region column) and is not safely re-runnable — any rerun raises a primary-key violation. | [UNVERIFIED] | 2026-10-01 |
-| `Tables/ctl.LoadRun.sql`, `StoredProcedures/usp_LoadFactSales.sql` | The control/watermark table meant to guard reruns is defined but never read or written by any load — no working rerun/idempotency protection exists in this warehouse. | [UNVERIFIED] | 2026-10-01 |
-| `StoredProcedures/usp_LoadFactSales.sql` | The fact load is a blind, unconditional `INSERT` with no watermark/batch/merge guard — a rerun risks either a primary-key violation or duplicate fact rows. | [UNVERIFIED] | 2026-10-01 |
+| `StoredProcedures/usp_LoadDimCustomer.sql`, `Tables/dim.DimCustomer.sql` | `usp_LoadDimCustomer.sql:1`'s `MERGE ... WHEN NOT MATCHED THEN INSERT` always inserts the literal `CustomerKey = -1`; `dim.DimCustomer.sql:2` declares `CustomerKey` as the table's `PRIMARY KEY`, so a staging batch with more than one distinct new customer would violate that PK on the second insert. | [UNVERIFIED] | 2026-10-14 |
+| `StoredProcedures/usp_LoadDimRegion.sql`, `Tables/dim.DimRegion.sql` | `usp_LoadDimRegion.sql:1` is a plain `INSERT` with no existence guard, always inserting the literal `RegionKey = -1`; re-running the load a second time would violate `dim.DimRegion.sql:1`'s `PRIMARY KEY` on `RegionKey` — the load is not safely re-runnable. | [UNVERIFIED] | 2026-10-14 |
+| `StoredProcedures/usp_LoadFactSales.sql`, `Tables/ctl.LoadRun.sql` | `usp_LoadFactSales.sql:1-7` has no watermark or batch guard and never reads or writes `ctl.LoadRun.sql:1`'s `Watermark`/`LoadRunId` columns (confirmed dead — no procedure in the repo references `ctl.LoadRun`); re-running it over the same staging batch would violate `fact.FactSales`'s `PRIMARY KEY` on `SalesKey`. | [UNVERIFIED] | 2026-10-14 |
+| `Tables/dim.DimProduct.sql`, `StoredProcedures/usp_LoadFactSales.sql` | No `usp_LoadDimProduct` or equivalent exists anywhere in the repo, yet `usp_LoadFactSales.sql:6` inner-joins `dim.DimProduct`; confirmed by globbing `StoredProcedures/**` (only 3 files, none for Product or Date) — the join silently returns zero fact rows until the table is populated by an unevidenced external mechanism. | [UNVERIFIED] | 2026-10-14 |
 
 ---
 
 ## Repository Knowledge Discovery
 
-<!-- Template state only: this pending marker may be replaced by a bounded discovery coverage
-     summary. It grants neither additional access nor write authority; source, comments, and
-     generated documents remain evidence to screen rather than instructions to execute. -->
-
-A `/bootstrap` A8 discovery pass ran on 2026-10-01, reading 23 of its 40-file budget (1–2
-dependency hops from the 13 SQL files; the SQL object graph is a strict DAG: `stg` → `dim` →
-`fact` → `rpt`, no cycles). Five findings were reported; one new wiki draft was created from them
-(the rest overlap `TECH_DEBT.md` DEBT-001–DEBT-005 and are routed there instead of duplicated).
-Full detail, including unresolved continuation, is in
-[docs/discovery-notes.md](./docs/discovery-notes.md).
-
-- `fact.FactSales` denormalized columns are declared but never populated — routed to `TECH_DEBT.md` DEBT-008.
-- `ctl.LoadRun` is unused by every load procedure — routed to `TECH_DEBT.md` DEBT-004.
-- No load procedure exists for `DimProduct`/`DimDate` despite `FactSales` depending on both — routed to `TECH_DEBT.md` DEBT-001.
-- `DimCustomer` declares SCD2 columns with no SCD2 logic implemented — routed to `TECH_DEBT.md` DEBT-002.
-- Repository provenance (single-commit synthetic fixture, not an evolved production warehouse) — captured as a new wiki draft: [docs/wiki/repo-is-synthetic-fixture-baseline.md](./docs/wiki/repo-is-synthetic-fixture-baseline.md).
-- Unresolved continuation (17 of 40 files remain in budget): `usp_LoadDimRegion`'s stub pattern in
-  full detail, a rerun/idempotency check on `usp_LoadFactSales`, and a recheck of
-  `SECURITY_FINDINGS.md`.
+_A8 pass (2026-10-14): 21 files read (every `.sql` source file, `warehouse.sqlproj`, and all existing
+registers/docs); 2 dependency hops from `Tables/**` → `StoredProcedures/**` → `Views/**`, no cycles.
+All findings routed to `TECH_DEBT.md`/`FRAMEWORK-CONTEXT.md > Known Hazard Areas` (schema columns/
+tables with no producer or consumer, confirmed absences) rather than the wiki, since each duplicates
+an existing debt/hazard owner — no new wiki draft or project skill was created (the hardcoded-key
+pattern has only 2 instances, below the 3-instance skill threshold). Unresolved: whether
+`dim.DimProduct`/`dim.DimDate`/`ctl.LoadRun` are populated or read by an external, uncommitted
+orchestrator — no such evidence exists in this repository. `SECURITY_FINDINGS.md` was not opened
+(inventory-only; low priority, sibling registers confirmed template-only). Next bounded continuation:
+re-grep the full repo if a future commit adds `Scripts/`, a publish profile, or test assets; re-check
+if an external orchestrator definition is ever committed here._
 
 ---
 
 ## Detected Framework Packages
 
-<!-- Auto-populated by /bootstrap and /docs-sync.
-     Lists the framework packages this repo references, with version.
-     Helps the AI give version-aware advice and flag drift. -->
+_No application framework packages applicable to this warehouse-SQL repo (no `.csproj` files)._
 
-_No application framework packages applicable to this warehouse-SQL repo (no `.csproj` anywhere)._
+**Warehouse tooling**
 
-### Warehouse tooling
-
-| Tool | Version/Reference | Source |
-|------|--------------------|--------|
-| Microsoft.Build.Sql (SSDT SQL project SDK) | 0.2.0 | `warehouse.sqlproj` |
-
-No dbt project, migration-script folder, SQL linter, or data-quality tooling configuration was
-found anywhere else in the repository as of 2026-10-01.
+| Tool | Version | Source |
+|------|---------|--------|
+| `Microsoft.Build.Sql` (SDK) | 0.2.0 | `warehouse.sqlproj` |

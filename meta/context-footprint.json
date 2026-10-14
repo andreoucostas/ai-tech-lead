@@ -158,8 +158,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7081,
-          "tok": 1770
+          "chars": 7077,
+          "tok": 1769
         },
         {
           "path": "CLAUDE.md",
@@ -175,8 +175,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7081,
-          "tok": 1770
+          "chars": 7077,
+          "tok": 1769
         },
         {
           "path": "CLAUDE.md",
@@ -333,8 +333,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 41765,
-          "tok": 10441
+          "chars": 41949,
+          "tok": 10487
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
@@ -423,8 +423,8 @@
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#body",
-          "chars": 22942,
-          "tok": 5736
+          "chars": 23385,
+          "tok": 5846
         },
         {
           "path": ".claude/skills/perf/SKILL.md#body",
@@ -572,8 +572,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7837,
-          "tok": 1959
+          "chars": 7833,
+          "tok": 1958
         },
         {
           "path": "CLAUDE.md",
@@ -589,8 +589,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7837,
-          "tok": 1959
+          "chars": 7833,
+          "tok": 1958
         },
         {
           "path": "CLAUDE.md",
@@ -747,8 +747,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 41934,
-          "tok": 10484
+          "chars": 42102,
+          "tok": 10526
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
@@ -986,8 +986,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 9127,
-          "tok": 2282
+          "chars": 9123,
+          "tok": 2281
         },
         {
           "path": "CLAUDE.md",
@@ -1003,8 +1003,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 9127,
-          "tok": 2282
+          "chars": 9123,
+          "tok": 2281
         },
         {
           "path": "CLAUDE.md",
@@ -1161,8 +1161,8 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 42913,
-          "tok": 10728
+          "chars": 43080,
+          "tok": 10770
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
@@ -1251,8 +1251,8 @@
         },
         {
           "path": ".claude/skills/map-warehouse/SKILL.md#body",
-          "chars": 22942,
-          "tok": 5736
+          "chars": 23385,
+          "tok": 5846
         },
         {
           "path": ".claude/skills/perf/SKILL.md#body",
@@ -1269,26 +1269,26 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 38125,
-      "static.claude.tok": 9531,
-      "static.copilot.chars": 26512,
-      "static.copilot.tok": 6628,
+      "static.claude.chars": 38121,
+      "static.claude.tok": 9530,
+      "static.copilot.chars": 26508,
+      "static.copilot.tok": 6627,
       "prompt.max.chars": 3539,
       "prompt.max.tok": 885
     },
     "angular": {
-      "static.claude.chars": 35914,
+      "static.claude.chars": 35910,
       "static.claude.tok": 8978,
-      "static.copilot.chars": 26824,
-      "static.copilot.tok": 6706,
+      "static.copilot.chars": 26820,
+      "static.copilot.tok": 6705,
       "prompt.max.chars": 3342,
       "prompt.max.tok": 836
     },
     "monorepo": {
-      "static.claude.chars": 42503,
-      "static.claude.tok": 10626,
-      "static.copilot.chars": 30032,
-      "static.copilot.tok": 7508,
+      "static.claude.chars": 42499,
+      "static.claude.tok": 10625,
+      "static.copilot.chars": 30028,
+      "static.copilot.tok": 7507,
       "prompt.max.chars": 3954,
       "prompt.max.tok": 988
     },

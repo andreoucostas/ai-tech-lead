@@ -22,7 +22,7 @@ param(
     # B-98 fixture; 'omit' and 'enriched' separate the map's effect from the framework's. 'generated'
     # is the consumer journey: the files a real /bootstrap then /map-warehouse wrote, frozen under
     # meta/eval-fixtures/warehouse-generated/, replace the simulated bootstrap and the hand-written map.
-    # 'partial' is that overlay with the map silent on ctl.LoadRun and LoadRunId (no table row names them).
+    # 'partial' is that overlay with every generated document silent on ctl.LoadRun and LoadRunId.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('frozen','omit','enriched','generated','partial')][string]$WarehouseMap = 'frozen',
     # B-253: a unified diff applied to the installed framework right after Install-Framework, so a
     # text variant (a B-255 candidate, a knockout, a probe) runs through the same fixture path as
@@ -835,13 +835,22 @@ function Get-GeneratedFixtureRefusal([string]$ProvenancePath, [string]$DistVersi
     return $null
 }
 
-# -WarehouseMap partial: drop every table row naming ctl.LoadRun or LoadRunId, so the map is silent on
-# the objects warehouse-route-p4 needs. A map with no such row is a drifted fixture, not a partial one.
-function Remove-WarehouseMapLoadRunRows([string]$MapPath) {
-    $lines = [IO.File]::ReadAllText($MapPath) -split "`n"
-    $kept = @($lines | Where-Object { -not ($_ -match '^\s*\|' -and $_ -match 'ctl\.LoadRun|LoadRunId') })
-    if ($kept.Count -eq $lines.Count) { throw "-WarehouseMap partial: $MapPath has no row naming ctl.LoadRun or LoadRunId" }
-    [IO.File]::WriteAllText($MapPath, ($kept -join "`n"), [Text.UTF8Encoding]::new($false))
+# -WarehouseMap partial: drop every line naming ctl.LoadRun or LoadRunId from the generated documents
+# (Markdown only; the SQL stays), so the repository's own description is silent on the objects
+# warehouse-route-p4 needs. A fixture with no such line has drifted; it is not a partial one.
+function Remove-LoadRunMentions([string]$Root, [string[]]$Documents) {
+    $removed = 0
+    foreach ($doc in $Documents) {
+        $docPath = Join-Path $Root $doc
+        if (-not (Test-Path -LiteralPath $docPath -PathType Leaf)) { continue }
+        $lines = [IO.File]::ReadAllText($docPath) -split "`n"
+        $kept = @($lines | Where-Object { $_ -notmatch 'ctl\.LoadRun|LoadRunId' })
+        if ($kept.Count -ne $lines.Count) {
+            $removed += $lines.Count - $kept.Count
+            [IO.File]::WriteAllText($docPath, ($kept -join "`n"), [Text.UTF8Encoding]::new($false))
+        }
+    }
+    if ($removed -eq 0) { throw "-WarehouseMap partial: no generated document under $Root names ctl.LoadRun or LoadRunId" }
 }
 
 function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$GeneratedMap, [switch]$PartialMap, [switch]$Bare) {
@@ -856,14 +865,14 @@ function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$
         if (-not (Test-Path -LiteralPath $provenancePath)) { throw "-WarehouseMap generated: $provenancePath is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
         if (-not $Bare) {
             Copy-Item -Path (Join-Path $generatedRoot 'files/*') -Destination $Path -Recurse -Force
-            if ($PartialMap) { Remove-WarehouseMapLoadRunRows (Join-Path $Path 'docs/warehouse-map.md') }
+            if ($PartialMap) { Remove-LoadRunMentions $Path (@(Get-ChildItem -LiteralPath (Join-Path $generatedRoot 'files') -Recurse -File -Filter '*.md' | ForEach-Object { [IO.Path]::GetRelativePath((Join-Path $generatedRoot 'files'), $_.FullName) })) }
             git -C $Path add -A
             git -C $Path commit --quiet -m 'warehouse scenario setup'
             return [int](git -C $Path rev-list --count HEAD)
         }
         # Bare arm: the project's own map is held constant across arms; nothing else is the project's.
         Copy-Item -LiteralPath (Join-Path $generatedRoot 'files/docs/warehouse-map.md') -Destination (Join-Path $Path 'docs/warehouse-map.md') -Force
-        if ($PartialMap) { Remove-WarehouseMapLoadRunRows (Join-Path $Path 'docs/warehouse-map.md') }
+        if ($PartialMap) { Remove-LoadRunMentions $Path @('docs/warehouse-map.md') }
     }
     # THREE map states, and the default one is FROZEN ON PURPOSE. meta/eval-results.md ties the
     # recorded 0/6 -> 6/6 (p~0.002) B-98 step 2 result to "same scenarios, grader, FIXTURE, model and
@@ -3185,8 +3194,8 @@ GROUP BY r.RegionName;
         if ($generatedClaude -match 'BOOTSTRAP_PENDING|EVAL_BOOTSTRAPPED') { throw '-WarehouseMap generated left a bootstrap marker or the simulated conventions in its instruction files' }
         if (@([regex]::Matches($generatedClaude, '(?i)warehouse-map\.md')).Count -lt 1) { throw '-WarehouseMap generated: the instruction files carry no docs/warehouse-map.md index line, so it is not a real /bootstrap result on a warehouse repository' }
         if ((Get-FileHash (Join-Path $generatedTemp 'docs/warehouse-map.md')).Hash -eq (Get-FileHash (Join-Path $withMapTemp 'docs/warehouse-map.md')).Hash) { throw '-WarehouseMap generated wrote the frozen fixture map' }
-        # 'partial' is the generated overlay with the map silent on the objects warehouse-route-p4 needs:
-        # no table row names ctl.LoadRun or LoadRunId, and nothing else in the overlay changes.
+        # 'partial' is the generated overlay with every generated document silent on the objects
+        # warehouse-route-p4 needs: no line names ctl.LoadRun or LoadRunId; the SQL still does.
         $partialSwitch = Get-WarehouseMapSwitch 'partial'
         if (-not $partialSwitch.GeneratedMap -or -not $partialSwitch.PartialMap) { throw "-WarehouseMap partial does not select the generated overlay with the partial map" }
         $partialTemp = Join-Path $temp 'warehouse-partial'
@@ -3194,11 +3203,16 @@ GROUP BY r.RegionName;
         Install-Framework $partialTemp dotnet | Out-Null
         Initialize-WarehouseScenario $partialTemp @partialSwitch | Out-Null
         $partialMap = Get-Content -LiteralPath (Join-Path $partialTemp 'docs/warehouse-map.md')
-        if (@($partialMap | Where-Object { $_ -match '^\s*\|' -and $_ -match 'ctl\.LoadRun|LoadRunId' }).Count -ne 0) { throw '-WarehouseMap partial left a map row naming ctl.LoadRun or LoadRunId' }
+        $partialDocs = @('AGENTS.md', 'FRAMEWORK-CONTEXT.md', 'TECH_DEBT.md') + @(Get-ChildItem -LiteralPath (Join-Path $partialTemp 'docs') -Recurse -File -Filter '*.md' | ForEach-Object { [IO.Path]::GetRelativePath($partialTemp, $_.FullName) })
+        foreach ($doc in $partialDocs) {
+            $docPath = Join-Path $partialTemp $doc
+            if ((Test-Path -LiteralPath $docPath) -and (Select-String -LiteralPath $docPath -Pattern 'ctl\.LoadRun|LoadRunId' -Quiet)) { throw "-WarehouseMap partial left $doc naming ctl.LoadRun or LoadRunId" }
+        }
+        if (-not (Select-String -LiteralPath (Join-Path $partialTemp 'Tables/ctl.LoadRun.sql') -Pattern 'LoadRunId' -Quiet)) { throw '-WarehouseMap partial touched the SQL it must leave for the agent to read' }
         $generatedMap = Get-Content -LiteralPath (Join-Path $generatedTemp 'docs/warehouse-map.md')
         if (@($generatedMap | Where-Object { $_ -match '^\s*\|' -and $_ -match 'ctl\.LoadRun|LoadRunId' }).Count -eq 0) { throw '-WarehouseMap generated has no ctl.LoadRun or LoadRunId row, so partial removes nothing' }
         if (@($partialMap | Where-Object { $_ -match '^\s*\|' }).Count -lt 10) { throw '-WarehouseMap partial removed more than the LoadRun rows' }
-        if ((Get-FileHash (Join-Path $partialTemp 'AGENTS.md')).Hash -ne (Get-FileHash (Join-Path $generatedTemp 'AGENTS.md')).Hash) { throw '-WarehouseMap partial changed AGENTS.md, which must stay the generated one' }
+
         $generatedBareTemp = Join-Path $temp 'warehouse-generated-bare'
         New-EvalRepo $generatedBareTemp warehouse
         Initialize-WarehouseScenario $generatedBareTemp -GeneratedMap -Bare | Out-Null

@@ -20,6 +20,10 @@ the old check). The frozen v0.91.0 bootstrap output is 14,386 bytes, 227 lines. 
 maintainer meant the bootstrapped file; measured adherence argues against it). B-401: `map-warehouse` gains a scoped pass (description, new section),
 `add-warehouse-load` step 1 and Verification Rule 11 (dotnet, monorepo) hand off to it; `run-agent-evals.ps1 -WarehouseMap partial` (the generated
 overlay without the map rows naming ctl.LoadRun or LoadRunId; self-test red first). Both measured under one pre-registration (`meta/eval-results.md`).
+A fresh-session review then found a scoped write made a stale map read current (`warehouse-map-check.ps1` judged by file time): a full pass now
+stamps `<!-- warehouse-map full pass: <UTC> -->`, a scoped-only map `none`, and the check uses the stamp (two `WarehouseMapCheck` cases, red first);
+the merge rule keeps the old row and adds `CONFLICTING`; catalog reads need a Verification Commands row an agent may run; a new scoped map carries the
+Querying rules; `/adopt` x3 and two presentation lines follow the budget; `partial` now silences every generated document (amendment before Q2).
 B-395 (2026-10-14; found by B-379's canary; pre-registered at 1adbe21a, results in `meta/eval-results.md`): `guard.ps1` reads an `apply_patch` call's patch
 (the raw string in `toolArgs` or `tool_input`, or an object's `input`), splits it into file sections the way Copilot CLI 1.0.95's runtime parser does, and
 checks each section's added lines against that section's path (and its `Move to` path) with the existing rules; a patch it cannot read, or one with more

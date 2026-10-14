@@ -192,7 +192,9 @@ already there, and so a report can be written against the joins the warehouse ac
 
 9. **Report.** Offer to write or refresh `docs/warehouse-map.md` with everything below — offer,
    don't force. If AGENTS.md > Conventions describes the warehouse and the code disagrees, flag the
-   drift; do not silently edit either. Use these seven headings verbatim, in this order, so the
+   drift; do not silently edit either. Make the first line `<!-- warehouse-map full pass: <UTC time,
+   yyyy-MM-ddTHH:mmZ> -->`, the time this full pass read the SQL: `scripts/warehouse-map-check.ps1`
+   judges freshness from it. Use these seven headings verbatim, in this order, so the
    document is predictable to the next reader and to anything that checks it:
 
    1. **Table inventory**, one table per layer:
@@ -257,16 +259,17 @@ Use it when a request, `add-warehouse-load`, or Verification Rule 11 names table
 procedures that `docs/warehouse-map.md` lacks, or describes only from a stale snapshot. Run step 0,
 then steps 1–8 for those objects and the dimensions they reach in one hop: read their DDL, every view
 and procedure that reads or writes them, and the orchestration that calls those procedures. Read
-the repository's own sources. Read a live database catalog only through a read-only command that
-`AGENTS.md > Conventions > Verification Commands` records; never compose a connection or a query
-against a live database yourself.
+the repository's own sources. Read a live database catalog only through a data-validation command that
+`AGENTS.md > Conventions > Verification Commands` records with an execution policy that lets an agent
+run it; never compose a connection or a query against a live database yourself.
 
-Then offer to write the result into `docs/warehouse-map.md`, creating it with step 9's seven headings
-if it does not exist: add rows for the objects it lacks; keep an existing row unless your evidence is
-stronger (Declared over In use over Load-derived), otherwise add a `CONFLICTING` row beside it; add
-one dated line to Coverage naming the objects this pass mapped and those it left inventory-only; leave
-the Querying section as it is. A scoped pass does not make the rest of the map current: say which
-objects it did not read.
+Then offer to write the result into `docs/warehouse-map.md`. If it does not exist, create it with step
+9's seven headings, the Querying section included, and the first line `<!-- warehouse-map full pass: none -->`. Otherwise add rows for the
+objects it lacks; where an existing row disagrees with what you read now, keep it and add a
+`CONFLICTING` row beside it naming both sources (do not pick one; for the work at hand, the code you
+read wins). Add one dated line to Coverage naming the objects this pass mapped and those it left
+inventory-only. Leave the full-pass line and the Querying section as they are: a scoped pass does not
+make the rest of the map current, and the full-pass line is how the freshness check knows.
 
 ---
 
