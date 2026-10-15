@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.97.0 — Unreleased
+## 0.97.0 — 2026-10-15
 
 - **Two new guides in `docs/`.** `docs/getting-started.md` walks a developer from the install to a first
   reviewed fix. `docs/reference.md` lists every command, reviewer, skill, hook, script and installed file,

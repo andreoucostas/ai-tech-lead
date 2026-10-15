@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.97.0 — Unreleased
+## 0.97.0 — 2026-10-15
 
 Consumer documentation as a product, second pass (maintainer request 2026-10-15): redesigned from the spec in
 `.claude/plans/2026-10-15-consumer-docs-spec.md` (audiences, journeys, touchpoints, a target doc set with one
