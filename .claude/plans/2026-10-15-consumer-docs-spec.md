@@ -18,8 +18,9 @@
 1. **One job per document**, stated in its first two lines with its reader. A second job moves to the document that owns it.
 2. **Agent-facing steps are a runbook:** numbered, imperative, one command per step, an explicit stop. The same hand-off
    (who types which command where) in the root README, the installer output and the SessionStart reminder. Tool output
-   states it plainly and names the commit; it never demands a sentence be repeated "word for word": in arm A an agent
-   read that as an injection and declined the commit beside it (`meta/eval-results.md`).
+   states it plainly; it never demands a sentence be repeated "word for word", and never pushes an agent past its own
+   rules ("do not stop to ask"): agents read both as injection, and fewer committed (arms A and A2 in
+   `meta/eval-results.md`). Whether to commit is the developer's to ask, so the README gives them a prompt that does.
 3. **Caveats move, they are not deleted.** Version-dated host observations live in `docs/enforcement-surfaces.md`; the
    README and the tutorial carry one line and a link.
 4. **Nothing a consumer reads names maintainer machinery** (backlog ids, decisions, eval names). The consumer CHANGELOG

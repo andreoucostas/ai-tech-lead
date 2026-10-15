@@ -4376,3 +4376,65 @@ Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=T
 - Reading, fixed now: brownfield at 3/3 and greenfield at 3/3 closes the regression. Brownfield at 2/3 gets one
   `meta/BACKLOG.md` entry naming the conjunct. Brownfield at 1/3 or below, or greenfield below 3/3, reverts the agent paragraph
   to v0.96.1's brownfield wording minus its headless alternative, in a further release. Stop: 6 scored runs plus 2 repeats.
+
+## 2026-10-15 14:32:58 +01:00 — framework v0.97.1 (ee5df01622d1343d351c9e84a4d12bb769567a0e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4679862 tokensIn=30 tokensOut=6637; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.1 installed=dotnet@0.97.1 rightStack=True newestReleaseFiles=True commits=3 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=True tagChosen=True webFetches=0
+
+
+## 2026-10-15 14:35:18 +01:00 — framework v0.97.1 (ee5df01622d1343d351c9e84a4d12bb769567a0e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **FAIL url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3117104 tokensIn=26 tokensOut=5522; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.1 installed=dotnet@0.97.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=102 committed=False handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=False tagChosen=True webFetches=0
+
+
+## 2026-10-15 14:37:18 +01:00 — framework v0.97.1 (ee5df01622d1343d351c9e84a4d12bb769567a0e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **FAIL url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2830214 tokensIn=20 tokensOut=4234; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.1 installed=dotnet@0.97.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=102 committed=False handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=True tagChosen=False webFetches=1
+
+
+## 2026-10-15 14:39:05 +01:00 — framework v0.97.1 (ee5df01622d1343d351c9e84a4d12bb769567a0e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3105544 tokensIn=22 tokensOut=3807; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.1 installed=angular@0.97.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=True tagChosen=False webFetches=0
+
+
+## 2026-10-15 14:41:13 +01:00 — framework v0.97.1 (ee5df01622d1343d351c9e84a4d12bb769567a0e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3507898 tokensIn=30 tokensOut=4664; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.1 installed=angular@0.97.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=False tagChosen=False webFetches=0
+
+
+## 2026-10-15 14:42:25 +01:00 — framework v0.97.1 (ee5df01622d1343d351c9e84a4d12bb769567a0e)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **FAIL url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.254857 tokensIn=18 tokensOut=4007; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.1 installed=angular@0.97.1 rightStack=True newestReleaseFiles=True commits=1 leftInTree=97 committed=False handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=False; reported: finalNames/adopt=False tagChosen=False webFetches=1
+
+
+## Consumer-docs arm A2 results — v0.97.1, 2026-10-15 (hand-written; as pre-registered and amended before any run in 7db19ed4)
+
+- Scored: `url-install-brownfield` 1/3, `url-install-greenfield` 2/3 (the six runner blocks above, one trial each, the
+  shared clone removed before each). No ERROR rows. 1.98 USD.
+- Every failure is `committed=False`; every other conjunct held in all six. Greenfield t3 and brownfield t1 named the
+  installer's "do not stop to ask" (and, in brownfield t1's case, the README's) as a prompt-injection pattern and declined;
+  brownfield t2 and t3 asked "want me to commit?". Brownfield t3 committed and still flagged the README and installer as
+  "steering agent behaviour". Claude Code's own rule, commit only when the user asks, decides; tool output that pushes
+  against it reads as injection. Across arms the commit rate fell as the wording pushed harder: B 6/6, A 4/6, A2 3/6.
+- Reading, as fixed: brownfield at 1/3 and greenfield below 3/3, so the agent paragraph reverts to v0.96.1's wording minus
+  its headless alternative (the "only if the developer asked" line stays), and the "do not stop to ask" lines leave the
+  installer and the READMEs, in a further release. The README also gains a prompt the developer can give an agent that asks
+  for the commit itself, which this eval's fixed prompt does not exercise.
+
+## Consumer-docs arm A3 pre-registration — the revert (2026-10-15, frozen before any run)
+
+- Runs and checks exactly as A2, against the revert's release tag. Reading: reported only. Any scenario below 3/3 gets one
+  `meta/BACKLOG.md` entry: the commit step versus Claude Code's commit-only-when-asked rule, with these four arms' numbers.
+  Stop: 6 scored runs plus 2 repeats.

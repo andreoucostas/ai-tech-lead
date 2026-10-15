@@ -9,6 +9,9 @@ teams hosting on Bitbucket Data Center.
 ## Install it into your repository
 
 These steps are written so that you, or an AI agent you hand this page to, can follow them exactly.
+To hand it to an agent, start the agent in your repository and ask for the commit too:
+*"Install https://github.com/andreoucostas/ai-tech-lead into this repository and commit it."* Most
+agents commit only when you ask.
 
 **You need:** Windows; Git; PowerShell 7 (`pwsh`), or Windows PowerShell 5.1 as a fallback; and
 Claude Code 2.1.141 or newer, or GitHub Copilot (VS Code or Copilot CLI). Your repository's working
@@ -65,12 +68,11 @@ tree must be clean: commit or stash first, or the installer stops.
 
 5. **Review `AGENTS.md`** and correct anything that is wrong. Every AI tool in the repository follows it.
 
-> **If you are an AI agent installing this:** do steps 1 to 3, including the commit: a request to
-> install this framework is a request to commit it, so do not stop to ask. Then stop. `/bootstrap`
-> and `/adopt` can only be started by a developer, and must not be imitated by hand. End by telling
-> the developer to start a Claude Code or interactive Copilot CLI session in their repository and type
-> `/adopt` (or `/bootstrap`, whichever the installer reported). Until they do, new sessions in the
-> repository show a reminder.
+> **If you are an AI agent installing this:** do steps 1 to 3, then stop. `/bootstrap` and `/adopt`
+> can only be started by a developer, and must not be imitated by hand. End by telling the developer
+> to start a Claude Code or interactive Copilot CLI session in their repository and type `/adopt` (or
+> `/bootstrap`, whichever the installer reported). Until they do, new sessions in the repository show
+> a reminder.
 
 ## After that
 

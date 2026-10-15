@@ -4,6 +4,14 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.97.2 — Unreleased
+
+- **The installer's closing message for an installing agent is back to 0.96.1's wording**, without its offer of
+  unattended `/adopt` (that remains available only when the developer asks for it). The 0.97 releases pressed agents to
+  commit without asking; in our tests fewer of them committed, and several said the message read like a prompt injection.
+  To have an agent install and commit in one go, ask it to: the root README gives the prompt. Nothing changes in an
+  installed repository.
+
 ## 0.97.1 — 2026-10-15
 
 - **The installer tells an installing agent to commit again.** 0.97.0's closing message asked the agent to repeat a

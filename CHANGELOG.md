@@ -11,6 +11,15 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.97.2 — Unreleased
+
+Revert under the consumer-docs arm A2 reading: v0.97.1 scored `url-install-brownfield` 1/3 and `url-install-greenfield`
+2/3, every failure `committed=False`; three agents called "do not stop to ask" (installer and README) a prompt-injection
+pattern, two asked first. Commit rate across arms B 6/6, A 4/6, A2 3/6. The installer's agent paragraphs return to
+v0.96.1's wording (brownfield without the headless alternative; the "only if the developer asked" line stays);
+InstallerContract refuses "do not stop to ask". The READMEs drop the push, and the root README suggests the prompt
+"Install ... into this repository and commit it". Arm A3 pre-registered in `meta/eval-results.md`.
+
 ## 0.97.1 — 2026-10-15
 
 Regression fix for 0.97.0's installer closing block, as the consumer-docs pre-registration required: arm A scored

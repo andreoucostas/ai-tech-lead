@@ -25,12 +25,7 @@ $contract = @(
     @{ Name = 'forbids hand-replicating the populate command'; Pattern = 'replicate it by hand' },
     @{ Name = 'warns docs-sync-check is red BY DESIGN until populate runs'; Pattern = 'by design|until /(bootstrap|adopt) has run' }
     @{ Name = 'tells every developer to run framework-doctor locally'; Pattern = 'Each developer should run.+framework-doctor' }
-    # The agent paragraph itself names the commit: v0.97.0's "step 1 (the commit)" left 2 of 3 brownfield
-    # eval agents asking whether to commit (meta/eval-results.md, consumer-docs arm A).
-    @{ Name = 'names the commit in the agent paragraph'; Pattern = 'NOT complete until you have done step 1 \(commit the installed files' }
-    # Claude Code commits only when asked; the installer says the install request is that ask (arm A2 attack).
-    @{ Name = 'says the commit is part of the install the agent was asked for'; Pattern = 'Committing is part of the install you were asked to do' }
-    @{ Name = 'tells the agent what the developer must type'; Pattern = 'told the developer to start a Claude Code or interactive Copilot CLI session in the target repo and type /(bootstrap|adopt)' }
+    @{ Name = 'tells the agent what the developer must type'; Pattern = 'told the developer,?(?:\s+explicitly,)?\s+to\s+start\s+a\s+Claude\s+Code\s+or\s+(?:an\s+)?interactive\s+Copilot\s+CLI\s+session\s+in\s+the\s+target\s+repo\s+and\s+type\s+/(bootstrap|adopt)' }
     @{ Name = 'points the developer at the installed tutorial'; Pattern = 'docs/getting-started\.md' }
 )
 
@@ -86,6 +81,10 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
                     # injection, and it declined the commit the same paragraph asked for (consumer-docs arm A).
                     Assert (-not ($guidance -match '(?i)word for word')) `
                         "$label : asks the agent to recite text word for word, which agents treat as untrusted tool output"
+                    # Claude Code commits only when the user asks. Tool output pushing past that ("do not stop to ask")
+                    # read as injection, and fewer eval agents committed, not more (consumer-docs arms A, A2).
+                    Assert (-not ($guidance -match '(?i)do not stop to ask|part of the install you were asked')) `
+                        "$label : tells the agent to commit without asking, which agents treat as prompt injection"
                     Assert ($guidance -match [regex]::Escape($expectCmd)) `
                         "$label : never names $expectCmd -- the developer is left with a half-installed repo."
                     # The wrong populate command is worse than none: /bootstrap on a brownfield repo
