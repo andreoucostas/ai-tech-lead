@@ -1,0 +1,1 @@
+| `post-write.ps1` | after a file write | Per file type: a .NET write runs an incremental `dotnet build`; a `.ts` write under `src/` (or a `tsconfig*.json`) runs `tsc --noEmit`, and `ngc --noEmit` for a component template. The agent sees the errors. |

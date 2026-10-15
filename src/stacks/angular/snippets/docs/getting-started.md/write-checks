@@ -1,0 +1,2 @@
+Where hooks run, writing a `.ts` file triggers `tsc --noEmit` and a component template triggers
+`ngc --noEmit`, and the agent sees any errors.

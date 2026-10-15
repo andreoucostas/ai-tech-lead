@@ -1,0 +1,1 @@
+| `post-write.ps1` | after a file write | After a `.ts` write under `src/` (or a `tsconfig*.json`), runs `tsc --noEmit`, and `ngc --noEmit` for a component template, and shows the agent the errors. |

@@ -1,6 +1,9 @@
-# AI Tech Lead Framework — Playbook
+# How AI Tech Lead works, and why (.NET)
 
-This document explains the methodology behind the framework. It's the deeper answer to "why should we bother with all this?" — the executable artifacts live in `AGENTS.md`, `.claude/commands/`, and `.claude/settings.json`.
+For a tech lead deciding whether to adopt AI Tech Lead, and for anyone who wants to know why it
+behaves as it does: the problem, the approach, what is guaranteed, what it costs, its limits, and how
+to check the claims. To start using it, read [getting-started.md](getting-started.md); for the exact
+list of commands and files, [reference.md](reference.md).
 
 ## The problem this solves
 
@@ -68,6 +71,86 @@ Developer types: "add export button to dashboard"
 
 ---
 
+## The rules the instruction files encode
+
+- **Verification Rules:** verify before referencing; never invent APIs; honour version pinning;
+  failures are signals, never silenced.
+- **Leanness:** the counterweight to Boy Scout cleanups; no abstraction over data or for speculation.
+- **SOLID:** single responsibility and the rest, with any injected-service boundary derived from
+  project evidence and correctness needs; the framework requires no interface or DI container, and
+  data carriers are exempt.
+- **Bug-fix scope:** every edit serves the requested outcome, compatibility or verification.
+- **Trojan Horse:** nearby debt rides along with feature and fix work, so quality compounds without
+  debt sprints.
+- **Financial-domain invariants:** decimal precision, idempotency, check-then-act races and rounding
+  are treated as always possible, even in internal code.
+
+---
+
+## What is guaranteed, and what is only instructed
+
+Every rule reaches the agent in one of three ways, and they are not equally strong:
+
+- **Enforced by a hook:** a script runs on an event and the client acts on its result, whatever the
+  model would prefer: a write that adds a warning suppression or a hardcoded secret is blocked, a
+  compile error after a write is shown to the agent. This holds only where the client runs hooks
+  (native Windows, with PowerShell, in a client and version that fires that event) and only for
+  writes made through the editor or file tools; a shell command that writes a file is not inspected.
+- **Instructed:** the framework rules and `AGENTS.md` are loaded into the agent's context and it is
+  told to follow them: plan before coding, verify before referencing, a failing test before a fix.
+  Strong, but a model can skip an instruction under a casual prompt or a long context.
+- **On demand:** supporting material such as `docs/defaults.md` is there for the agent to open; it
+  may not open it.
+
+The required build in your CI is the only control that holds for every person and every tool:
+[ci-integration.md](ci-integration.md). What each client enforces, event by event, with the date
+each behaviour was observed, is in [enforcement-surfaces.md](enforcement-surfaces.md). The Copilot
+cloud coding agent runs no hooks, and Linux, WSL and macOS are not supported.
+
+## What it costs
+
+- **Setup:** one install commit, then one `/bootstrap` (or `/adopt`) session per repository, plus the
+  time to review the `AGENTS.md` it writes. Each developer runs `scripts/framework-doctor.ps1` once.
+- **Platform:** Windows; Git; PowerShell 7, or Windows PowerShell 5.1; Claude Code 2.1.141 or newer,
+  or GitHub Copilot in VS Code or Copilot CLI.
+- **Every session:** `AGENTS.md` and the framework rules load on every turn. `/bootstrap` keeps the
+  sections it writes to about 6 KB and the whole file under 16 KB; the session preload and the
+  per-prompt workflow rules add a little more.
+- **Every change:** the plan gate waits for your go-ahead, and `/review` runs several reviewers in
+  parallel (three of them on Haiku). That is slower than accepting the first draft, by design.
+- **Ongoing:** someone keeps `AGENTS.md` true and applies updates with
+  [upgrade-checklist.md](upgrade-checklist.md), which also describes removing the framework.
+
+## Limits worth knowing
+
+- **SOLID against Leanness.** Your project's evidence selects service boundaries; the framework does
+  not demand an interface or a container. `solid-check` is a model's judgement; a deterministic check
+  of dependency direction exists only if you wire one (the `enforce-architecture` skill).
+- **Bitbucket Data Center** gets everything local, but none of GitHub's cloud features; wire the
+  required build into Bamboo or Jenkins.
+- **Hooks need a working interpreter and client support.** Some events have not been observed firing
+  on every client; [enforcement-surfaces.md](enforcement-surfaces.md) says which.
+- **The eval cases in `tests/evals/` are deliberately small:** a catalogue of intended behaviour, not
+  test coverage for your application.
+- **Project skills live only in `.claude/skills/`.** A legacy `.github/skills` folder can shadow them.
+
+## Check the claims yourself
+
+- Read `AGENTS.md`, then the framework rules it points to
+  (`.github/instructions/framework-rules.instructions.md`), then the workflows in
+  `.claude/commands/` (`feature.md`, `fix.md`, `review.md`, `bootstrap.md`) and the reviewers in
+  `.claude/agents/`.
+- Run `pwsh -NoProfile -File scripts/docs-sync-check.ps1` in a bootstrapped repository: it checks that
+  `AGENTS.md` is populated and within budget, that `CLAUDE.md` imports it, and that project skills are
+  in one place.
+- Pipe a sample event into a hook to see its output, for example a write that adds a suppression into
+  `.claude/hooks/guard.ps1`, which should exit 2. That proves the script, not that your client runs it;
+  `scripts/framework-doctor.ps1` and the canaries it lists check that.
+- Read `tests/evals/cases.yaml`: the fastest way to see what the framework promises and refuses.
+- Ask of any control: is it live and blocking here, or is it an instruction?
+
+---
+
 ## Design Culture: Keeping Developers Thinking
 
 ### The risk
@@ -100,18 +183,6 @@ The Boy Scout Rule is mandatory during normal development. Skip it during:
 - **Proof-of-concept branches**: throwaway code doesn't need polishing
 
 Do not leave a TODO merely for unrelated deferred cleanup. Use `/debt` only for a real, separately owned debt item.
-
----
-
-## Daily Workflow
-
-1. **Small stuff**: just write it; VS Code's Copilot inline suggestions read no instruction file, so check them against `AGENTS.md > Conventions`
-2. **Features**: type what you want or `/feature [description]`
-3. **Bugs**: describe the bug or `/fix [description]`
-4. **Refactoring**: `/refactor [target]`
-5. **Reviews**: `/review` on changes before PR
-6. **Design**: `/design [feature]` before complex work
-7. **Tech debt**: `/debt [area]` to find bundleable cleanup
 
 ---
 

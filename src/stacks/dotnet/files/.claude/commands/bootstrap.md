@@ -518,3 +518,5 @@ Paste this into your PR (or commit message)
 If every category is empty, replace the questions with the single line: `No open judgment calls — the run resolved everything against your code.`
 
 Then nudge the developer to commit these changes on a branch and open a PR; paste the block above into the description so your team sees what needs a human answer.
+
+End the report with **What now**, in three lines: from here on the developer describes a task in plain words (or names a workflow such as `/fix` or `/feature`), and you plan and wait for their go-ahead before changing code; run `/review` before opening a pull request; `docs/getting-started.md` walks through a first task.

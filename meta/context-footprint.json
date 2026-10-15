@@ -192,13 +192,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12367,
-          "tok": 3092
+          "chars": 495,
+          "tok": 124
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5423,
-          "tok": 1356
+          "chars": 3359,
+          "tok": 840
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -221,14 +221,24 @@
           "tok": 8135
         },
         {
+          "path": "docs/getting-started.md",
+          "chars": 6306,
+          "tok": 1576
+        },
+        {
           "path": "docs/playbook.md",
-          "chars": 9438,
-          "tok": 2360
+          "chars": 14182,
+          "tok": 3546
+        },
+        {
+          "path": "docs/reference.md",
+          "chars": 9795,
+          "tok": 2449
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 8285,
-          "tok": 2071
+          "chars": 9619,
+          "tok": 2405
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -338,8 +348,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 55199,
-          "tok": 13800
+          "chars": 55523,
+          "tok": 13881
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -606,13 +616,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 12397,
-          "tok": 3099
+          "chars": 495,
+          "tok": 124
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5643,
-          "tok": 1411
+          "chars": 3358,
+          "tok": 840
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -635,14 +645,24 @@
           "tok": 8135
         },
         {
+          "path": "docs/getting-started.md",
+          "chars": 6168,
+          "tok": 1542
+        },
+        {
           "path": "docs/playbook.md",
-          "chars": 9429,
-          "tok": 2357
+          "chars": 14224,
+          "tok": 3556
+        },
+        {
+          "path": "docs/reference.md",
+          "chars": 9689,
+          "tok": 2422
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 8285,
-          "tok": 2071
+          "chars": 9619,
+          "tok": 2405
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -752,8 +772,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 49521,
-          "tok": 12380
+          "chars": 49845,
+          "tok": 12461
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1020,13 +1040,13 @@
         },
         {
           "path": "docs/ARCHITECTURE.md",
-          "chars": 13128,
-          "tok": 3282
+          "chars": 495,
+          "tok": 124
         },
         {
           "path": "docs/REVIEW-GUIDE.md",
-          "chars": 5917,
-          "tok": 1479
+          "chars": 3367,
+          "tok": 842
         },
         {
           "path": "docs/architecture-decisions.md",
@@ -1049,14 +1069,24 @@
           "tok": 8135
         },
         {
+          "path": "docs/getting-started.md",
+          "chars": 6435,
+          "tok": 1609
+        },
+        {
           "path": "docs/playbook.md",
-          "chars": 10086,
-          "tok": 2522
+          "chars": 15144,
+          "tok": 3786
+        },
+        {
+          "path": "docs/reference.md",
+          "chars": 9814,
+          "tok": 2454
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 8285,
-          "tok": 2071
+          "chars": 9619,
+          "tok": 2405
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1166,8 +1196,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 64511,
-          "tok": 16128
+          "chars": 64835,
+          "tok": 16209
         },
         {
           "path": ".claude/commands/debt.md#body",

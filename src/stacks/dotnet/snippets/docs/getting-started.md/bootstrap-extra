@@ -1,0 +1,3 @@
+
+In a data warehouse, run `/map-warehouse` before the first warehouse change. It maps layers, grain,
+load ordering and idempotency, and offers to write `docs/warehouse-map.md`.

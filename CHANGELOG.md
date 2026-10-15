@@ -11,6 +11,20 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.97.0 — Unreleased
+
+Consumer documentation as a product, second pass (maintainer request 2026-10-15): redesigned from the spec in
+`.claude/plans/2026-10-15-consumer-docs-spec.md` (audiences, journeys, touchpoints, a target doc set with one
+job per document, and a file-by-file audit) rather than condensed. New installed `docs/getting-started.md`
+(tutorial) and `docs/reference.md` (reference, from the framework map that sat in the protected
+`docs/ARCHITECTURE.md`, now a short note); `upgrade-checklist.md` gains the common path from a tag with the
+root installer, and removal; `REVIEW-GUIDE.md` becomes the review-a-pull-request guide; `playbook.md` the one
+explanation doc (guarantees, costs, limits, how to check the claims). Stack READMEs become landing pages; the
+root README gains what is guaranteed and what it costs, and clones to a short path (5 of 6 arm B agents hit "Filename too long" in deep scratch folders first). Installer closing block: the README's hand-off
+sentence word for word, the tutorial pointer, and headless `/adopt` only on the developer's request
+(InstallerContract cases). `/bootstrap` Phase 4 ends with "What now". Eval: `url-install-greenfield`,
+`url-install-brownfield` and `dev-setup` (pre-registered in `meta/eval-results.md`).
+
 ## 0.96.1 — 2026-10-15
 
 Consumer documentation as a product (maintainer request 2026-10-15): the root README is now an install brief that a developer, or the AI agent they hand the GitHub link to, can follow step by step (12.6 KB to 6 KB; maintainer material reduced to one paragraph); each stack README is a getting-started page of about 9 KB instead of 37-39 KB, with version-dated host observations left to `docs/enforcement-surfaces.md`. The monorepo README no longer claims to ship path-scoped `.cs`/`.ts` instruction files (it ships none). DocClaims.Tests drops its two README contracts with the sentences; the FRAMEWORK-CONTEXT.md contracts remain. WSD-116: agents never wait on a maintainer review.

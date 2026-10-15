@@ -1,44 +1,60 @@
-# Reviewer's Guide (Angular)
+# Reviewing changes and pull requests (Angular)
 
-> For a senior developer reviewing what this framework actually does — and whether it holds up. Start with [ARCHITECTURE.md](./ARCHITECTURE.md) for the map; this guide gives you a reading order, what each piece *guarantees*, how to *verify* the claims yourself, and the tradeoffs worth probing.
+For a developer checking their own change before pushing, or reviewing a colleague's pull request,
+with AI Tech Lead. The reviewers themselves are listed in [reference.md](reference.md#specialist-reviewers).
 
-## 30-second orientation
+## Your own change, before you push
 
-One file is authored by hand — **`AGENTS.md`**. Supported clients load it directly or, in Claude Code, through the `CLAUDE.md` import; actual model delivery and hook enforcement vary by host. The framework's two opposing forces are **Boy Scout** and **Leanness + `bloat-radar`**; deterministic controls apply only on their documented hooked/CI surfaces.
+1. Type `/review`. With no argument it reviews everything uncommitted: staged, unstaged and new files.
+   To review only some files, name them (`/review src/Orders.cs`); to review a range of commits, give
+   it (`/review main...HEAD`).
+2. It freezes the changes it will review, runs the specialist reviewers on them in parallel, runs
+   your repository's own build and test commands itself rather than trusting a claim that they pass,
+   and returns **APPROVE** or **REQUEST CHANGES** with the findings that decided it. A check your
+   repository has no command for is reported as `not available`, not as passed.
+3. Fix what it asks for, or say why not, and run it again.
+4. If the change touches authentication, authorization, money or secrets, also run `/security-gate`
+   (unsafe HTML binding and DOM sinks, route-guard gaps, secrets in source). The agent is told to run it on such changes by itself; check that it did.
 
-## Reading order (≈45 min)
+In Copilot CLI, `/review` is the CLI's own command. Ask for this repository's review by name: "run
+the review skill from this repository on my staged changes".
 
-1. **`AGENTS.md`** — the authored rule source, plus the framework-rules carrier it points to. Read Verification Rules, Leanness, SOLID, Boy Scout; verify the client carrier and host support before relying on delivery.
-2. **`docs/ARCHITECTURE.md`** — how the pieces connect (diagrams).
-3. **`.claude/commands/`** — the workflows. Read `feature.md`, `fix.md`, `review.md`, `bootstrap.md`. *Guarantees:* a repeatable execution model (plan → verified subtasks → Boy Scout → self-review).
-4. **`.claude/agents/`** — `solid-check`, `convention-check`, `bloat-radar`, `security-auditor`, `debt-radar`. *Guarantees:* `/review` is backed by specialist passes, not one model's vibe.
-5. **`.claude/hooks/`** — `guard` (PreToolUse), `post-write`, `route-prompt`, `boy-scout-check`. *Guarantees only when live:* deterministic actions on the supported events; shell writes and unavailable hooks remain outside that scope.
-6. **`tests/evals/cases.yaml`** — a readable catalogue of intended behavior. The fastest way to see what the framework *promises* (and refuses).
-7. **The framework's own CHANGELOG** (in the framework download; the installer does not copy it) — how it got here and why.
+## A colleague's pull request
 
-## How to verify the claims (don't take them on faith)
+Review it locally, against the branch it will merge into:
 
-- **Single source + no drift:** run `pwsh -NoProfile -File scripts/docs-sync-check.ps1` (it self-skips in the template repo via `.template-repo`; run it in a bootstrapped consumer repo). It checks AGENTS.md is bootstrapped and within budget, CLAUDE.md imports it, and project skills live only under `.claude/skills`.
-- **Hook-script input/output fixtures (not host firing):** pipe representative JSON into `pwsh -NoProfile -File .claude/hooks/route-prompt.ps1` and `.claude/hooks/guard.ps1`; confirm `/fix` rails and exit 2 for a prohibited suppression. These direct commands prove parser and output-shape behavior only; they do not prove that a client fires the event or consumes the output.
-- **`/review` derives and runs applicable repository-evidenced checks itself** (review.md Step 2) —
-  it does not trust unverified pass claims, and reports unsupported categories as `not available`.
-- **Behavior is documented as cases:** read `tests/evals/cases.yaml`. e.g. `angular-001` and `angular-004` derive a service seam from named project evidence and reject an unsupported token, container, or provider layer.
+```powershell
+git fetch origin
+git switch --detach origin/<source-branch>
+```
 
-## Tradeoffs worth probing (named honestly)
+Then type `/review origin/<target-branch>...HEAD`. The three dots review only what the pull request
+adds, not what the target branch gained since. `/review` does not look a pull request up by number;
+give it the two branches.
 
-- **SOLID vs Leanness.** Project evidence and correctness needs select a service seam; the framework does not mandate an abstraction, token, or container. Preserve evidenced boundaries, while *data* (models/DTOs/enums) and speculative provider layers remain out of scope. Probe: does `solid-check` distinguish project evidence from speculation?
-- **Angular DI is project-shaped.** TypeScript interfaces are not runtime tokens, but this does not make `abstract class` or `InjectionToken` a framework default; follow the consumer's evidenced mechanism when a seam is needed.
-- **Deterministic DIP backstop isn't wired.** `solid-check` is semantic (an LLM pass). A consumer may choose an evidenced dependency-direction check; until one is wired, report that limitation rather than inventing dependency-cruiser or another library.
-- **Bitbucket Data Center.** Only the local Windows layer applies — Copilot coding-agent cloud hook execution is unsupported. Wire the PowerShell CI guardrail into Bamboo/Jenkins on a self-hosted Windows agent and require its build status; `docs/ci-integration.md` has the recipe.
-- **Hooks need a working interpreter and client support.** Dated canaries cover only the capabilities they exercised, not every registered event; Copilot CLI `agentStop` firing and its queue write remain unverified, as do current VS Code Preview-hook lifecycles. In VS Code, the Local harness's hooks are Preview and on by default and the Copilot harness runs both hook files regardless, and your organization can turn them off; shell writes are outside the editor guard.
-- **Evals are intentionally tiny** — a regression tripwire for the framework's own rules, not test coverage for your app.
-- **Project skills are canonical under `.claude/skills`.** A legacy `.github/skills` tree is a migration failure because it can shadow them.
+## Reading what it says
 
-## Probing checklist
+- **Conventions** findings compare the change with `AGENTS.md > Conventions`. If the convention is
+  wrong rather than the code, fix `AGENTS.md` in the same pull request.
+- **SOLID** findings are judged against your project evidence (the boundaries your code already
+  uses), not against a shape the framework imposes; it never asks for an interface per service.
+- **Bloat** findings push back on abstraction nobody needs yet; they are the counterweight to the
+  cleanups the agent makes as it goes.
+- **Test** findings ask whether each test would fail if the code it covers broke.
+- **Debt** findings name `TECH_DEBT.md` entries the change touches: a chance to fix one on the way.
 
-- [ ] Is `AGENTS.md` genuinely the only hand-authored ruleset, with everything else generated + drift-checked?
-- [ ] Do the workflows force *verification before reference* (anti-hallucination) and *tests before fixes*?
-- [ ] Which hooks and CI jobs are actually live and blocking here, and which controls remain instruction or judgement only?
-- [ ] Do the eval cases derive the seam from named project evidence rather than a framework default?
-- [ ] Does Angular DI follow its evidenced mechanism without adding token ceremony?
-- [ ] For our platform (Bitbucket DC): is the CI guardrail wired where Actions can't run?
+## Questions worth asking about a change an agent wrote
+
+- Can the author explain why this design, in their own words? The plan the agent posted before
+  coding, and its assumptions with their evidence, are a good place to start.
+- Did a new test fail before the fix? The agent reports it; the diff should show it.
+- Does the closing **Verification & confidence** line separate what was run from what is only
+  asserted?
+
+## What review does not cover
+
+The reviewers are model judgement, apart from the scripts that freeze the changes and report removed
+assertions. A rule your CI does not enforce can still slip through, and nothing here stops a push.
+The one gate that holds for every person and tool is the required build in your CI:
+[ci-integration.md](ci-integration.md). Which local checks run in which client is in
+[enforcement-surfaces.md](enforcement-surfaces.md).

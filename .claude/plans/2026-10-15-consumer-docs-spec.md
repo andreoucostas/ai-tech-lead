@@ -55,7 +55,7 @@
 
 | File | Verdict | Reason |
 |---|---|---|
-| root `README.md` | **Rewrite** (light) | The runbook is sound. Missing: what is guaranteed and what it costs for the tech lead; a pointer to the tutorial for humans. "Status" and "For maintainers" stay one line each. |
+| root `README.md` | **Rewrite** (light) | The runbook is sound (arm B: 6 of 6 URL installs passed). Missing: what is guaranteed and what it costs for the tech lead; a pointer to the tutorial for humans. In 5 of 6 arm B transcripts agents first cloned into a deep scratch folder, failed with "Filename too long" and retried at a short path, so step 1 now names one. "Status" and "For maintainers" stay one line each. |
 | `src/stacks/*/files/README.md` | **Rewrite** | Two jobs: a getting-started page that is never installed (so a developer in their repo cannot find it) and a second install runbook that differs from the root one (runs the stack installer directly). Becomes a landing page: what the stack adds, a doc map, a pointer to the root runbook. Its daily-work table, PR recipe and removal steps move to the tutorial, `REVIEW-GUIDE.md` and `upgrade-checklist.md`. |
 | `src/core/docs/upgrade-checklist.md` | **Rewrite** | Step 3 runs the stack installer from a "fresh framework checkout" without saying to check out the newest tag, unlike the README; nine dense steps mix the common path with rare migrations. Becomes: the common path in five steps from a clone at the newest tag, then the migrations as a reference list, then removal (moved from the stack README). Every caveat kept. |
 | `src/stacks/*/files/docs/ci-integration.md` | **Keep** | One job, already a task guide; pinned by `RootInstallerWarehouse.Tests`. |
@@ -68,7 +68,7 @@
 | `src/core/docs/architecture-decisions.md`, `docs/wiki/*` | **Keep** | Consumer content. |
 | `specs/README.md`, `tests/evals/README.md` | **Keep** | Workflow artifacts with one job each. |
 | `presentation/*` (not installed) | **Keep** | The tech lead's deck; checked for contradictions only. |
-| Installer output | **Rewrite** the closing block | Two pages of capitals; brownfield invites the agent to run headless adoption as an equal alternative, which contradicts the README's "stop". Pinned phrases (`InstallerContract`, `RootInstallerWarehouse`) kept. Guarded: red-first, both hosts, CP437, fresh-session attack. |
+| Installer output | **Rewrite** the closing block | Two pages of capitals; brownfield invites the agent to run headless adoption as an equal alternative, which contradicts the README's "stop"; in arm B all three brownfield agents raised it and two ended by asking the developer to choose. Pinned phrases (`InstallerContract`, `RootInstallerWarehouse`) kept. Guarded: red-first, both hosts, CP437, fresh-session attack. |
 | SessionStart text | **Keep** | Already names the command and who must type it. |
 | `/bootstrap` Phase 4 report | **Rewrite** the ending | Add the "what now" lines. Guarded path (`src/stacks/*/files/.claude/**`), text only. |
 | `AGENTS.md` template | **Keep** | Agent-facing, footprint-ceilinged. |

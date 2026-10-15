@@ -1,0 +1,1 @@
+| `post-write.ps1` | after a file write | After a `.cs` (or project, `.razor`, `.cshtml`) write, runs an incremental `dotnet build` against the nearest solution or project and shows the agent the errors. A warehouse-only repository has no such build. |

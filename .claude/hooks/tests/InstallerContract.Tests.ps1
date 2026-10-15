@@ -25,6 +25,9 @@ $contract = @(
     @{ Name = 'forbids hand-replicating the populate command'; Pattern = 'replicate it by hand' },
     @{ Name = 'warns docs-sync-check is red BY DESIGN until populate runs'; Pattern = 'by design|until /(bootstrap|adopt) has run' }
     @{ Name = 'tells every developer to run framework-doctor locally'; Pattern = 'Each developer should run.+framework-doctor' }
+    # The root README gives an installing agent the same sentence; one wording across both surfaces.
+    @{ Name = 'gives the agent the hand-off sentence word for word'; Pattern = 'word for word:\s+"Start a Claude Code or interactive Copilot CLI session in .+ and type /(bootstrap|adopt)"' }
+    @{ Name = 'points the developer at the installed tutorial'; Pattern = 'docs/getting-started\.md' }
 )
 
 function New-Target {
@@ -88,6 +91,12 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
                         # pre-move digest; a mode branch that stops doing this is the B-230 regression.
                         Assert ($out -match 'archived: .+ -> docs/pre-adoption/.+ \(pre/post-move bytes verified\)') `
                             "$label : brownfield install did not report a byte-verified archive move"
+                        # An agent asked only to install must stop at the hand-off. Unattended adoption
+                        # is offered only when the developer asked for it, never as an equal way to finish.
+                        Assert (-not ($guidance -match '(?im)^\s*OR run headless')) `
+                            "$label : offers the installing agent headless adoption as an alternative to handing off"
+                        Assert ($guidance -match 'Only if the developer asked') `
+                            "$label : does not limit headless adoption to a developer's request"
                     }
                 }
             }

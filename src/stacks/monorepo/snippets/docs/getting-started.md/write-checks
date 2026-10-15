@@ -1,0 +1,2 @@
+Where hooks run, writing a `.cs` file triggers an incremental `dotnet build`, a `.ts` file
+`tsc --noEmit` and a component template `ngc --noEmit`, and the agent sees any errors.

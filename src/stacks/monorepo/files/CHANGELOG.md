@@ -5,6 +5,26 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.97.0 — Unreleased
+
+- **Two new guides in `docs/`.** `docs/getting-started.md` walks a developer from the install to a first
+  reviewed fix. `docs/reference.md` lists every command, reviewer, skill, hook, script and installed file,
+  and who owns each. Nothing to do.
+- **Each of the other guides now does one job.** `docs/upgrade-checklist.md` covers updating, from a clone
+  at the newest release tag with the root installer, and now also removing the framework.
+  `docs/REVIEW-GUIDE.md` is how to review a change or a pull request. `docs/playbook.md` explains why the
+  framework works as it does, what is and is not guaranteed, what it costs, and its limits. No caveat was
+  dropped; dated observations of each client stay in `docs/enforcement-surfaces.md`.
+- **`docs/ARCHITECTURE.md` is yours.** The framework creates it once and never updates it, so the map of
+  the framework it held went stale after your first update; that map is now `docs/reference.md`, which is
+  updated with the framework. A new install gets a short note in its place. Your existing copy is not
+  changed: keep it, replace it with your own architecture notes, or delete it.
+- **The installer's closing message is shorter.** It gives an installing agent the same hand-off sentence
+  as the README, word for word, points the developer to `docs/getting-started.md`, and offers unattended
+  `/adopt` only when the developer asked for it, instead of as an equal way to finish an install.
+- **`/bootstrap` now ends with what to do next:** describe a task in plain words, run `/review` before a
+  pull request, and read `docs/getting-started.md`.
+
 ## 0.96.1 — 2026-10-15
 
 - **Shorter, clearer README.** This distribution's README is now a getting-started page: what you get, how to install, your first steps, daily commands, where it works, and links to the reference docs. Nothing installed in your repository changes. The previous README said this distribution ships path-scoped `.cs`/`.ts` Copilot instruction files; it does not, and never did. Each file still gets its own stack's rules from the framework rules file.

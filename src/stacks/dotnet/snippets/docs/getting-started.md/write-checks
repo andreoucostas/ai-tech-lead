@@ -1,0 +1,2 @@
+Where hooks run, writing a `.cs` file triggers an incremental `dotnet build` and shows the agent any
+errors.

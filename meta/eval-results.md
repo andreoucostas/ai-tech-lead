@@ -4279,3 +4279,45 @@ that carries the rework in `.claude/plans/2026-10-15-consumer-docs-spec.md` (arm
   must not fall below and shows where the journey breaks today.
 - Stop: 18 scored runs plus at most 4 repeats.
 - Not shown: Copilot (no subscription), other models or phrasings, a real `/bootstrap`, the developer's work after it.
+
+## 2026-10-15 12:35:07 +01:00 — framework v0.96.1 (98857e9fa3e2f7a7e84628a5ccca5db0d9f13e6c)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS dev-setup** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1282198 tokensIn=4 tokensOut=917; ccVersion=2.1.281 initModel=claude-sonnet-5 bootstrapPending=True changedInstructionFiles=0 commits=2 workflowTool=False finalNamesBootstrap=True; reported: fileEdits=0 finalNamesFix=False
+- **PASS dev-setup** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1107542 tokensIn=2 tokensOut=671; ccVersion=2.1.281 initModel=claude-sonnet-5 bootstrapPending=True changedInstructionFiles=0 commits=2 workflowTool=False finalNamesBootstrap=True; reported: fileEdits=0 finalNamesFix=True
+- **PASS dev-setup** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1619262 tokensIn=6 tokensOut=1618; ccVersion=2.1.281 initModel=claude-sonnet-5 bootstrapPending=True changedInstructionFiles=0 commits=2 workflowTool=False finalNamesBootstrap=True; reported: fileEdits=0 finalNamesFix=True
+
+
+## 2026-10-15 12:38:09 +01:00 — framework v0.96.1 (98857e9fa3e2f7a7e84628a5ccca5db0d9f13e6c)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.5502126 tokensIn=30 tokensOut=5647; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.96.1 installed=angular@0.96.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=False tagChosen=False webFetches=3
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2259098 tokensIn=18 tokensOut=2772; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.96.1 installed=angular@0.96.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=False tagChosen=False webFetches=1
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4298428 tokensIn=36 tokensOut=5154; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.96.1 installed=angular@0.96.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=False tagChosen=True webFetches=3
+
+
+## 2026-10-15 12:40:43 +01:00 — framework v0.96.1 (98857e9fa3e2f7a7e84628a5ccca5db0d9f13e6c)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4341248 tokensIn=30 tokensOut=7892; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.96.1 installed=dotnet@0.96.1 rightStack=True newestReleaseFiles=True commits=3 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=False tagChosen=True webFetches=1
+- **PASS url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.5413224 tokensIn=32 tokensOut=8499; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.96.1 installed=dotnet@0.96.1 rightStack=True newestReleaseFiles=True commits=3 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=False tagChosen=True webFetches=1
+- **PASS url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.5306228 tokensIn=40 tokensOut=8896; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.96.1 installed=dotnet@0.96.1 rightStack=True newestReleaseFiles=True commits=3 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=False tagChosen=True webFetches=0
+
+
+## Consumer-docs arm B results — v0.96.1, 2026-10-15 (hand-written; as pre-registered at 98857e9f)
+
+- Scored: `url-install-greenfield` 3/3, `url-install-brownfield` 3/3, `dev-setup` 3/3 (the three runner blocks above). No ERROR
+  rows, no repeats. Cost 0.11-0.55 USD a run, 3.11 USD in all. Every URL run fetched or cloned from GitHub, chose v0.96.1,
+  installed the right stack, committed, left nothing in the tree and named the expected command; no run called a workflow.
+- Reading: arm B is at the ceiling on every gate, so arm A can only show a regression, as the pre-registration allows for.
+- `tagChosen` (reported) is a false negative in greenfield t1 and t2: both ran `git checkout $tag` after
+  `$tag = git describe --tags --abbrev=0`, which the reported regex does not follow through a variable. Not gating; left as
+  pre-registered.
+- Post-hoc, from the transcripts, not scored: in all three brownfield runs the final message raised the installer's headless
+  `/adopt` option, and two of the three ended by asking the developer to choose between it and typing `/adopt`, instead of
+  handing off. In five of the six URL runs (greenfield t1 and t3, all three brownfield) the agent first cloned into its own
+  deep scratch folder, failed with "Filename too long", and retried at a shorter path (`C:\atl-src`, `C:\ait-install`). Both shaped the rework (installer closing block; README
+  step 1). The same two observations are read from arm A's transcripts for comparison.

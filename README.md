@@ -14,17 +14,19 @@ These steps are written so that you, or an AI agent you hand this page to, can f
 Claude Code 2.1.141 or newer, or GitHub Copilot (VS Code or Copilot CLI). Your repository's working
 tree must be clean: commit or stash first, or the installer stops.
 
-1. **Get the framework at its newest release**, somewhere outside your repository:
+1. **Get the framework at its newest release**, outside your repository and at a short path:
 
    ```powershell
-   git clone https://github.com/andreoucostas/ai-tech-lead.git
-   cd ai-tech-lead
+   git clone https://github.com/andreoucostas/ai-tech-lead.git C:\src\ai-tech-lead
+   cd C:\src\ai-tech-lead
    git checkout "$(git describe --tags --abbrev=0)"
    ```
 
-   Install from a release tag, not from `master`: `master` carries unreleased work stamped with the
-   previous version, which confuses later updates. The installer checks the clone against its remote
-   and stops if a newer release exists.
+   A deep folder (an agent's scratch or temp directory, say) can push the clone's paths past Windows'
+   260-character limit, and `git clone` then fails with "Filename too long". Install from a release
+   tag, not from `master`: `master` carries unreleased work stamped with the previous version, which
+   confuses later updates. The installer checks the clone against its remote and stops if a newer
+   release exists.
 
 2. **Run the installer against your repository's Git root:**
 
@@ -70,12 +72,31 @@ tree must be clean: commit or stash first, or the installer stops.
 ## After that
 
 Describe tasks in plain language ("the export endpoint returns 500 for empty orders", "add paging to
-the customer list") and the agent follows the matching workflow: it plans first, waits for your
-go-ahead, makes verified changes and reviews its own work. You can also name a workflow directly:
-`/feature`, `/fix`, `/design`, `/refactor`, `/test`, `/debt`, `/review`, `/security-gate`.
+the customer list") and the agent follows the matching workflow: it asks what is unclear, plans,
+waits for your go-ahead, makes verified changes and reviews its own work. You can also name a
+workflow directly: `/feature`, `/fix`, `/design`, `/refactor`, `/test`, `/debt`, `/review`,
+`/security-gate`.
 
-The full guide for developers is your distribution's README:
+Developers start with `docs/getting-started.md` in their repository, which walks from the install to
+a first reviewed fix; every installed guide is listed in your distribution's README:
 [.NET](./dist/dotnet/README.md) · [Angular](./dist/angular/README.md) · [Monorepo](./dist/monorepo/README.md).
+
+## What is guaranteed, and what it costs
+
+- **Guaranteed only where hooks run:** on native Windows, in a client that fires the event, a file
+  write that adds a warning suppression or a hardcoded secret is blocked and a compile error is shown
+  to the agent. Writes made by shell commands are not inspected, and the Copilot cloud coding agent
+  runs no hooks.
+- **Instructed everywhere else:** planning first, verifying before referencing, a failing test
+  before a fix, reviewing its own work. The agent is told to; it can still skip an instruction.
+- **The one gate for every person and tool** is a required build in your CI; each distribution's
+  `docs/ci-integration.md` has the recipe for Bitbucket Data Center.
+- **Costs:** one `/bootstrap` session per repository and the time to review what it writes; an
+  `AGENTS.md` of up to 16 KB loaded on every turn; the wait for the plan gate and for `/review`'s
+  reviewers on each change; someone who applies updates.
+
+Why it works this way, and its limits: `docs/playbook.md` in each distribution
+([.NET](./dist/dotnet/docs/playbook.md)).
 
 ## What the install changes
 
@@ -90,7 +111,7 @@ of three ownership classes:
 | `mixed` | Shared: `.claude/settings.json` holds the framework's hook registrations next to your own settings, and is backed up before each update. |
 
 **Updating:** follow `docs/upgrade-checklist.md` in your repository; it starts from a fresh clone at
-the newest release tag. **Removing:** see "Removing the framework" in your distribution's README.
+the newest release tag. **Removing:** the same checklist ends with "Remove the framework".
 
 ## Where it runs
 
