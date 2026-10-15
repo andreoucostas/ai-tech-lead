@@ -82,6 +82,7 @@ authoritative.
 - “`bootstrap-pass` runs on Sonnet whatever the session model and reads only the pre-flight block plus its own pass; the parent rereads the evidence behind every Tier-1 risk, .NET A7 finding and proposed hazard before asking, and a hazard's status still comes only from the developer's answer.” — `meta/workspace-decisions.md WSD-113` (amends WSD-011 for `bootstrap-pass` only; B-385)
 - “The security workflow is `security-gate`, renamed from `security-review` so that no host built-in command or agent shares its name; the old installed paths retire through the ledger in 0.95.0.” — `meta/workspace-decisions.md WSD-114` (maintainer decision, B-388 option (b))
 - “`/bootstrap` asks for Sonnet workers in each worker call when the session runs another Claude model; `bootstrap-pass` itself is `model: inherit`, because Copilot CLI refuses a Claude Code alias there.” — `meta/workspace-decisions.md WSD-115` (amends WSD-113)
+- “Agents never wait on a maintainer review: a step-4 change gets a fresh session's executed attack, everything else ships once its gates pass.” — `meta/workspace-decisions.md WSD-116` (maintainer, 2026-10-15)
 - “do not try to make this a deterministic gate” — `meta/BACKLOG-DONE.md B-83`
 - “no always-on router or no-match hook” — `meta/BACKLOG-DONE.md B-98`
 - “Reuse the B-41 harness; do not build a second one.” — `meta/BACKLOG-DONE.md B-98`

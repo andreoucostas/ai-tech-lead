@@ -4655,3 +4655,12 @@ session on a Claude model other than Sonnet to pass Sonnet in each worker call (
 other session to pass none. Amends WSD-113's mechanism, not its Sonnet choice for Claude sessions. Rejected: a pinned Copilot model list (locks GPT sessions
 onto another vendor; overrides the developer's subagent setting); Sol to Terra (the catalog prices `gpt-6.1-sol` like Sonnet and `gpt-5.6-terra` above it).
 **Reopen** if a host stops accepting a per-call model, or a field report shows workers on the session's top-tier model despite the rule.
+
+## WSD-116: the maintainer does not review diffs; step 4 is always a fresh-session attack (2026-10-15)
+
+**Context.** `AGENTS.md` step 4 accepts the maintainer's read of a diff or a fresh session's executed attack on it, and agents had been asking the
+maintainer to look at drafts before merging. **Decision (maintainer, 2026-10-15: "i dont want to be manually reviewing things").** Agents never wait
+on a maintainer review: a step-4 change gets a fresh session that did not implement it, which attacks the diff and reports one executed attack; every
+other change ships once its gates pass, with no draft-approval checkpoint. Releases follow as soon as work lands (consumers onboard from the newest tag).
+The maintainer still decides a context-footprint ceiling breach and anything needing their accounts. **Reopen** if an escaped defect shows a fresh-session
+attack missing what a maintainer read would have caught.
