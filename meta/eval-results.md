@@ -4243,3 +4243,39 @@ from which selection source? Q2: does a `task` call with no `model` argument to 
   access)` and `Error loading models: 403 "unauthorized: not authorized to use this Copilot feature"`. The maintainer's Copilot subscription was cancelled
   2026-10-14. Arm D was not run. 2 of 3 runs used; no AI credits or premium requests; `~\.copilot\config.json` and `settings.json` unchanged.
 - No reading. Before a rerun, the stop is amended to count only runs that reached a model request.
+
+## Consumer-docs pre-registration — a fresh agent installing from the GitHub URL alone, and a developer's first set-up prompt (2026-10-15, frozen before any run)
+
+Does the consumer documentation, with the installer's output, let (1) a fresh Claude Code agent given only the GitHub URL install
+the newest release for the right stack, commit, and stop at the `/bootstrap` or `/adopt` hand-off, and (2) a developer's
+plain-words set-up prompt reach `/bootstrap` without the agent improvising it? Measured on v0.96.1 (arm B) and on the release
+that carries the rework in `.claude/plans/2026-10-15-consumer-docs-spec.md` (arm A).
+
+- Host: Claude Code 2.1.281 (each row records its own), `-Model sonnet` (the runner's default), Windows 11 Pro; the runner and
+  `scenarios.json` at this commit; `-TimeoutSeconds 900`.
+- `url-install-greenfield`: the runner's Angular fixture, no AI tooling. `url-install-brownfield`: its .NET fixture plus a
+  committed team `CLAUDE.md`. Both: prompt "Install this into my repo: https://github.com/andreoucostas/ai-tech-lead", the
+  fixture as the working directory, real GitHub (WebFetch allowed, the installer's own clone check on). Expected: angular and
+  `/bootstrap`; dotnet and `/adopt`. The reference is the newest vX.Y.Z tag on GitHub when the invocation starts.
+- `dev-setup`: the .NET fixture with the checkout's `dist/dotnet` installed by the runner and committed; prompt "AI Tech Lead
+  was just installed in this repo and committed. Set it up so I can start using it for my work."
+- Gating, url-install (all of): the installer ran; the stamp names the expected stack; stamp version = the newest tag, and
+  `.claude/commands/fix.md` and `docs/upgrade-checklist.md` equal that tag's bytes (CR, BOM, trailing newlines ignored); at
+  least one new commit and nothing left in `git status --porcelain --untracked-files=all` (so no framework clone inside the
+  repository); the hand-off still pending (`BOOTSTRAP_PENDING` in `AGENTS.md`, or `.claude/adoption-pending.json` present);
+  no Skill call to bootstrap or adopt; no `adopt-ai-framework` branch; the final message names the expected command.
+- Gating, dev-setup: `AGENTS.md` still `BOOTSTRAP_PENDING`; `AGENTS.md`, `TECH_DEBT.md`, `FRAMEWORK-CONTEXT.md` and
+  `.claude/skills` unchanged; no new commit; no Skill call to bootstrap or adopt; the final message names `/bootstrap`.
+- Reported, not gating: whether the agent chose the tag itself (a git clone, checkout or switch naming a vX.Y.Z tag, or
+  `describe --tags`); the gate cannot tell master from the tag while master is the tagged commit, as it will be in both arms.
+  Also the other command named in the final message, WebFetch calls, dev-setup's file edits and whether it names `/fix`, cost.
+- Arm B: v0.96.1 (GitHub's newest tag; `dev-setup` installs the checkout at the v0.96.1 tag commit with no edits). Arm A: the
+  same commands after the rework's release is tagged and pushed.
+- n: 3 runs per scenario per arm, 18 in all; per-run caps 2.5, 2.5 and 1.0 USD, at most 36 USD.
+- Validity: an ERROR row (host failure, timeout, non-zero agent exit) is repeated once and not scored; at most 2 repeats per arm.
+- Readings, fixed now: three runs show failure modes, not rates. A scenario where A passes 2 or more fewer runs than B is a
+  regression: its failing conjunct is fixed in a follow-up release before this work closes. A scenario below 3/3 in A gets one
+  `meta/BACKLOG.md` entry naming the conjunct that failed. Arm B does not decide whether the rework ships; it sets the bar A
+  must not fall below and shows where the journey breaks today.
+- Stop: 18 scored runs plus at most 4 repeats.
+- Not shown: Copilot (no subscription), other models or phrasings, a real `/bootstrap`, the developer's work after it.

@@ -1187,7 +1187,7 @@ function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget
     return $arguments
 }
 
-function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent) {
+function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [switch]$LiveSourceCheck) {
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command claude).Source
     $psi.WorkingDirectory = $WorkingDirectory
@@ -1195,6 +1195,8 @@ function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [strin
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $claudeArgs = @(Get-ClaudeArguments -Prompt $Prompt -ModelId $ModelId -Budget $Budget -Agent $Agent)
+    # An install from GitHub is the consumer's journey, the installer's own clone check included.
+    if ($LiveSourceCheck) { [void]$psi.Environment.Remove('ATL_SOURCE_CHECK') }
     if ($null -ne $psi.ArgumentList) {
         foreach ($arg in $claudeArgs) { [void]$psi.ArgumentList.Add($arg) }
     } else {
@@ -1562,6 +1564,56 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $installerTool = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)install\.ps1' } | Select-Object -First 1)
             $operational = $stamp -and $commits -gt $BeforeCommits -and $pending -and -not $bootstrapTool -and [bool]$installerTool -and $namesBootstrap
             return [pscustomobject]@{ Status = 'PASS'; Pass = $operational; Detail = "stamp=$stamp commits=$commits installerTool=$([bool]$installerTool) bootstrapPending=$pending bootstrapTool=$bootstrapTool finalNamesBootstrap=$namesBootstrap handoffPhrasing=$handoff (reported, not gating)" }
+        }
+        # The consumer-docs eval (2026-10-15): the agent gets only the GitHub URL. What gates is what the developer is
+        # left with: the newest release's files for the right stack, committed with nothing else left in the tree, and
+        # the hand-off still pending and named. Whether the agent chose the tag itself is reported: when master is the
+        # tagged commit, the installed bytes cannot tell the two apart.
+        { $_ -in @('url-install-greenfield','url-install-brownfield') } {
+            $expect = $script:CaseExpect
+            $reference = $script:UrlInstallReference
+            $stampPath = Join-Path $Target '.claude/framework-version.json'
+            $stamp = if (Test-Path -LiteralPath $stampPath) { Get-Content -Raw -LiteralPath $stampPath | ConvertFrom-Json } else { $null }
+            $rightStack = [bool]($stamp -and $stamp.template -ceq $expect.Stack)
+            $newest = $rightStack -and "v$($stamp.version)" -ceq $reference.Tag
+            if ($rightStack) {
+                foreach ($relative in '.claude/commands/fix.md', 'docs/upgrade-checklist.md') {
+                    $installedPath = Join-Path $Target $relative
+                    $expected = & $reference.Read $expect.Stack $relative
+                    $installed = if (Test-Path -LiteralPath $installedPath) { Get-Content -Raw -LiteralPath $installedPath } else { $null }
+                    if ($null -eq $installed -or $null -eq $expected -or
+                        ($installed -replace "`r|^﻿", '').TrimEnd("`n") -cne ($expected -replace "`r|^﻿", '').TrimEnd("`n")) { $newest = $false }
+                }
+            }
+            $commits = [int](git -C $Target rev-list --count HEAD)
+            $leftOver = @(git -C $Target status --porcelain=v1 --untracked-files=all)
+            $committed = $commits -gt $BeforeCommits -and $leftOver.Count -eq 0
+            $agentsPath = Join-Path $Target 'AGENTS.md'
+            $pending = if ($expect.Command -eq '/adopt') { Test-Path -LiteralPath (Join-Path $Target '.claude/adoption-pending.json') }
+                else { (Test-Path -LiteralPath $agentsPath) -and ((Get-Content -Raw -LiteralPath $agentsPath) -match 'BOOTSTRAP_PENDING') }
+            $workflowTool = @($e.Tools | Where-Object { $_.Name -eq 'Skill' -and $_.Input.skill -in @('bootstrap','adopt') }).Count -gt 0
+            $headlessBranch = [bool](git -C $Target branch --list 'adopt-ai-framework')
+            $installerTool = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)install\.ps1' }).Count -gt 0
+            $namesCommand = $finalOk -and $finalText -match "(?i)(?<![\w/])$([regex]::Escape($expect.Command))\b"
+            $other = if ($expect.Command -eq '/adopt') { '/bootstrap' } else { '/adopt' }
+            $namesOther = $finalText -match "(?i)(?<![\w/])$([regex]::Escape($other))\b"
+            $tagChosen = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)\bgit\b[^\r\n]*\b(?:checkout|switch|clone)\b[^\r\n]*(?:\bv\d+\.\d+\.\d+|describe\s+--tags|--branch\s+v)' }).Count -gt 0
+            $webFetches = @($e.Tools | Where-Object Name -eq 'WebFetch').Count
+            $pass = $finalOk -and $installerTool -and $rightStack -and $newest -and $committed -and $pending -and -not $workflowTool -and -not $headlessBranch -and $namesCommand
+            return [pscustomobject]@{ Status = 'PASS'; Pass = [bool]$pass; Detail = "newestTag=$($reference.Tag) installed=$(if ($stamp) { "$($stamp.template)@$($stamp.version)" } else { 'none' }) rightStack=$rightStack newestReleaseFiles=$newest commits=$commits leftInTree=$($leftOver.Count) committed=$committed handoffPending=$pending workflowTool=$workflowTool headlessBranch=$headlessBranch installerTool=$installerTool finalNames$($expect.Command)=$namesCommand; reported: finalNames$other=$namesOther tagChosen=$tagChosen webFetches=$webFetches" }
+        }
+        # A developer's first prompt after the install, in plain words. /bootstrap is the developer's to type: the agent
+        # names it and changes nothing.
+        'dev-setup' {
+            $agentsPath = Join-Path $Target 'AGENTS.md'
+            $pending = (Test-Path -LiteralPath $agentsPath) -and ((Get-Content -Raw -LiteralPath $agentsPath) -match 'BOOTSTRAP_PENDING')
+            $changed = @(git -C $Target status --porcelain=v1 --untracked-files=all -- AGENTS.md TECH_DEBT.md FRAMEWORK-CONTEXT.md .claude/skills)
+            $commits = [int](git -C $Target rev-list --count HEAD)
+            $workflowTool = @($e.Tools | Where-Object { $_.Name -eq 'Skill' -and $_.Input.skill -in @('bootstrap','adopt') }).Count -gt 0
+            $namesBootstrap = $finalOk -and $finalText -match '(?i)(?<![\w/])/bootstrap\b'
+            $edits = @($e.Tools | Where-Object { $_.Name -in @('Edit','Write','MultiEdit','NotebookEdit') }).Count
+            $pass = $pending -and $changed.Count -eq 0 -and $commits -eq $BeforeCommits -and -not $workflowTool -and $namesBootstrap
+            return [pscustomobject]@{ Status = 'PASS'; Pass = [bool]$pass; Detail = "bootstrapPending=$pending changedInstructionFiles=$($changed.Count) commits=$commits workflowTool=$workflowTool finalNamesBootstrap=$namesBootstrap; reported: fileEdits=$edits finalNamesFix=$($finalText -match '(?i)(?<![\w/])/fix\b')" }
         }
         'route-fix' {
             $testRuns = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match 'Test-Calculator\.ps1' })
@@ -4345,6 +4397,57 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         if (-not $reordered.Pass) { throw "install-handoff failed a correct handoff on its narration: $($reordered.Detail)" }
         $silentHandoff = [pscustomobject]@{ Events = @($handoffReordered.Events[0..2]) + @([pscustomobject]@{ type='result'; is_error=$false; result='Installed and committed. The working tree is clean.' }) }
         if ((Test-ScenarioEvidence 'install-handoff' $temp $silentHandoff $beforeInstall).Pass) { throw 'install-handoff accepted a final message that never names /bootstrap' }
+        # The consumer-docs eval (2026-10-15): an install from the GitHub URL alone, and a developer's set-up prompt.
+        # A fixture of their own: $temp carries earlier cases' files. The working tree's dist/dotnet, installed and
+        # committed, stands in for the newest release.
+        $urlTarget = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-url-install-' + [guid]::NewGuid().ToString('N'))
+        New-EvalRepo $urlTarget
+        $urlBefore = [int](git -C $urlTarget rev-list --count HEAD)
+        Install-Framework $urlTarget | Out-Null
+        git -C $urlTarget add -A
+        git -C $urlTarget commit --quiet -m 'install AI Tech Lead'
+        $script:UrlInstallReference = [pscustomobject]@{
+            Tag = "v$((Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version)"
+            Read = { param($Stack, $Relative) Get-Content -Raw -LiteralPath (Join-Path $repo "dist/$Stack/$Relative") }
+        }
+        $script:CaseExpect = [pscustomobject]@{ Stack = 'dotnet'; Command = '/bootstrap' }
+        $urlInstalled = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='clone'; name='PowerShell'; input=[pscustomobject]@{ command='git clone https://github.com/andreoucostas/ai-tech-lead.git C:\fw; git -C C:\fw checkout v0.96.1' } }) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='clone'; content='HEAD is now at v0.96.1' }) } }),
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='install'; name='PowerShell'; input=[pscustomobject]@{ command='pwsh -NoProfile -File C:\fw\install.ps1 C:\target' } }) } }),
+            ([pscustomobject]@{ type='user'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_result'; tool_use_id='install'; content='Done.' }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='Installed and committed. Start a Claude Code session in this repository and type /bootstrap; only you can start it.' })
+        ) }
+        $urlResult = Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlInstalled $urlBefore
+        if (-not $urlResult.Pass) { throw "url-install failed a committed newest-release install that stopped at /bootstrap: $($urlResult.Detail)" }
+        $script:CaseExpect = [pscustomobject]@{ Stack = 'angular'; Command = '/bootstrap' }
+        if ((Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlInstalled $urlBefore).Pass) { throw 'url-install accepted the wrong distribution' }
+        $script:CaseExpect = [pscustomobject]@{ Stack = 'dotnet'; Command = '/adopt' }
+        if ((Test-ScenarioEvidence 'url-install-brownfield' $urlTarget $urlInstalled $urlBefore).Pass) { throw 'url-install accepted /bootstrap where /adopt is the hand-off' }
+        $script:CaseExpect = [pscustomobject]@{ Stack = 'dotnet'; Command = '/bootstrap' }
+        $urlBootstrapped = [pscustomobject]@{ Events = @($urlInstalled.Events[0..4]) + @(
+            ([pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='tool_use'; id='bootstrap'; name='Skill'; input=[pscustomobject]@{ skill='bootstrap' } }) } }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='Installed and committed. Type /bootstrap.' })
+        ) }
+        if ((Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlBootstrapped $urlBefore).Pass) { throw 'url-install accepted a bootstrap Skill attempt' }
+        $nestedClone = Join-Path $urlTarget 'ai-tech-lead'
+        New-Item -ItemType Directory -Path $nestedClone | Out-Null
+        'clone' | Set-Content -LiteralPath (Join-Path $nestedClone 'install.ps1') -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlInstalled $urlBefore).Pass) { throw 'url-install accepted a framework clone left inside the target' }
+        Remove-Item -LiteralPath $nestedClone -Recurse -Force
+        $setupHandoff = [pscustomobject]@{ Events = @(
+            ([pscustomobject]@{ type='system'; subtype='init' }),
+            ([pscustomobject]@{ type='result'; is_error=$false; result='Setting it up is one command you type yourself: /bootstrap. It reads the code and writes AGENTS.md; I cannot start it for you.' })
+        ) }
+        $installedCommits = [int](git -C $urlTarget rev-list --count HEAD)
+        $setupResult = Test-ScenarioEvidence 'dev-setup' $urlTarget $setupHandoff $installedCommits
+        if (-not $setupResult.Pass) { throw "dev-setup failed a hand-off to /bootstrap that changed nothing: $($setupResult.Detail)" }
+        $agentsBytes = [IO.File]::ReadAllBytes((Join-Path $urlTarget 'AGENTS.md'))
+        Add-Content -LiteralPath (Join-Path $urlTarget 'AGENTS.md') -Value '- Use xUnit.' -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'dev-setup' $urlTarget $setupHandoff $installedCommits).Pass) { throw 'dev-setup accepted an AGENTS.md the agent wrote itself' }
+        [IO.File]::WriteAllBytes((Join-Path $urlTarget 'AGENTS.md'), $agentsBytes)
+        Remove-Item -LiteralPath $urlTarget -Recurse -Force
         $notInstalled = Join-Path $temp 'install-handoff-not-installed'
         New-Item -ItemType Directory -Path $notInstalled | Out-Null
         git -C $notInstalled init --quiet; git -C $notInstalled commit --quiet --allow-empty -m 'fixture baseline'
@@ -4516,7 +4619,7 @@ $patchTag = ''
 if ($TargetPatch) {
     if ($Arm -ne 'framework') { throw 'Refusing -TargetPatch with -Arm none: there is no installed framework to patch.' }
     $TargetPatch = (Resolve-Path -LiteralPath $TargetPatch).Path
-    $neverInstalled = @($selected | Where-Object { $_.id -in @('install-handoff','archived-redirect') } | ForEach-Object { $_.id } | Select-Object -Unique)
+    $neverInstalled = @($selected | Where-Object { $_.id -in @('install-handoff','archived-redirect','url-install-greenfield','url-install-brownfield') } | ForEach-Object { $_.id } | Select-Object -Unique)
     if ($neverInstalled) { throw "Refusing -TargetPatch: $($neverInstalled -join ', ') never install the framework before the agent runs." }
     if ($WarehouseMap -in @('generated','partial')) {
         $overlayRoot = Join-Path $repo 'meta/eval-fixtures/warehouse-generated/files'
@@ -4533,6 +4636,22 @@ if ($TargetPatch) {
             Install-Framework $preflight $patchStack | Out-Null
             $patchTag = Invoke-TargetPatch $preflight $TargetPatch
         } finally { if (Test-Path $preflight) { Remove-Item -LiteralPath $preflight -Recurse -Force } }
+    }
+}
+if (@($selected | Where-Object assertion -eq 'urlInstall').Count) {
+    # The URL scenarios install whatever GitHub's newest release is; the installed bytes are compared with that tag here.
+    $releaseTags = @(git ls-remote --tags --refs 'https://github.com/andreoucostas/ai-tech-lead.git' 'refs/tags/v*' | ForEach-Object { if ($_ -match 'refs/tags/(v\d+\.\d+\.\d+)$') { $Matches[1] } })
+    if ($LASTEXITCODE -ne 0 -or -not $releaseTags) { throw 'Refusing the url-install scenarios: could not list the release tags on GitHub.' }
+    $newestTag = $releaseTags | Sort-Object { [version]$_.Substring(1) } | Select-Object -Last 1
+    git -C $repo cat-file -e "$newestTag^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) { throw "Refusing the url-install scenarios: $newestTag is not in this checkout; run git fetch --tags first." }
+    $script:UrlInstallReference = [pscustomobject]@{
+        Tag = $newestTag
+        Read = { param($Stack, $Relative)
+            $encoding = [Console]::OutputEncoding
+            [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+            try { $text = git -C $repo show "$($script:UrlInstallReference.Tag):dist/$Stack/$Relative" 2>$null; if ($LASTEXITCODE -eq 0) { $text -join "`n" } else { $null } }
+            finally { [Console]::OutputEncoding = $encoding } }
     }
 }
 $frameworkCommit =(git -C $repo rev-parse HEAD | Out-String).Trim()
@@ -4554,7 +4673,7 @@ try {
         $caseFixture = if ($case.fixture) { [string]$case.fixture } else { $caseStack }
         New-EvalRepo $target $caseFixture
         $before = [int](git -C $target rev-list --count HEAD)
-        if ($Arm -eq 'framework' -and $case.id -notin @('install-handoff','archived-redirect')) {
+        if ($Arm -eq 'framework' -and $case.id -notin @('install-handoff','archived-redirect','url-install-greenfield','url-install-brownfield')) {
             Install-Framework $target $caseStack | Out-Null
             # Before the scenario setup, which commits the framework files in the warehouse cases:
             # the patch adds no commit, so `git log` (session-start preloads it) matches both arms.
@@ -4574,6 +4693,17 @@ $repo. Install from that canonical repository into the requested target, then ob
 handoff. The archived copy is frozen and is not equivalent.
 "@ | Set-Content (Join-Path $archivedRoot 'README.md') -Encoding utf8NoBOM
                 "New-Item -ItemType File -Path '$target\FROZEN_INSTALL_RAN' -Force" | Set-Content (Join-Path $archivedRoot 'install.ps1') -Encoding utf8NoBOM
+            }
+            'url-install-brownfield' {
+                "# Team notes`n`n- Tests use xUnit; name them Method_State_Result.`n" | Set-Content (Join-Path $target 'CLAUDE.md') -Encoding utf8NoBOM
+                git -C $target add CLAUDE.md
+                git -C $target commit --quiet -m 'team AI notes'
+                $before = [int](git -C $target rev-list --count HEAD)
+            }
+            'dev-setup' {
+                git -C $target add -A
+                git -C $target commit --quiet -m 'install AI Tech Lead'
+                $before = [int](git -C $target rev-list --count HEAD)
             }
             'haiku-convention-check' {
                 "namespace EvalFixture; public class ConventionViolation { public async Task WorkAsync() { await Task.Delay(1); } }" | Set-Content (Join-Path $target 'src/ConventionViolation.cs') -Encoding utf8NoBOM
@@ -4677,7 +4807,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework')
         } else {
-            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent
+            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall')
         }
         $agentExit = $run.ExitCode
         try {
@@ -4689,6 +4819,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $transcript = Read-Transcript $transcriptPath
             $hostFailure = Get-HostFailure $transcript
             if ($hostFailure) { throw $hostFailure }
+            $script:CaseExpect = [pscustomobject]@{ Stack = [string]$case.expectStack; Command = [string]$case.expectCommand }
             $evidence = Test-ScenarioEvidence $case.id $target $transcript $before
             # WSD-040 revision (i): a routing non-reach (the unchanged skill was never read) must
             # not be scored as a decision-outcome pass or fail -- it means the trial never exercised

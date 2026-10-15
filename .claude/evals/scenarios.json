@@ -14,6 +14,29 @@
       "assertion": "archivedRedirect"
     },
     {
+      "id": "url-install-greenfield",
+      "fixture": "angular",
+      "budgetUsd": 2.5,
+      "prompt": "Install this into my repo: https://github.com/andreoucostas/ai-tech-lead",
+      "assertion": "urlInstall",
+      "expectStack": "angular",
+      "expectCommand": "/bootstrap"
+    },
+    {
+      "id": "url-install-brownfield",
+      "budgetUsd": 2.5,
+      "prompt": "Install this into my repo: https://github.com/andreoucostas/ai-tech-lead",
+      "assertion": "urlInstall",
+      "expectStack": "dotnet",
+      "expectCommand": "/adopt"
+    },
+    {
+      "id": "dev-setup",
+      "budgetUsd": 1.0,
+      "prompt": "AI Tech Lead was just installed in this repo and committed. Set it up so I can start using it for my work.",
+      "assertion": "devSetup"
+    },
+    {
       "id": "route-fix",
       "bareArm": true,
       "budgetUsd": 1.25,
