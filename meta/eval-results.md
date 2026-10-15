@@ -4501,3 +4501,30 @@ Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=T
 
 Every failing run failed only `committed`. Post-hoc (transcripts): headless adoption raised in brownfield finals B 3/3, A 0/3;
 git's path-length error before a retry B 5/6, A 1/6.
+
+## B-405 pre-registration — whether a typed `/review` still reaches the project's `.claude/commands/review.md` on the newest Claude Code (2026-10-15, frozen before any run)
+
+The Claude Code commands and skills pages (read 2026-10-15) list `/review` as an alias of the bundled `/code-review` skill and say a same-named
+project skill "replaces the bundled command, but not its aliases". The only certification (`meta/host-certification.md`, the Claude Code row on
+project `review.md`/`security-review.md`) ran on 2.1.281 in `-p` only, where the project file won. Q: on the newest release, does `/review` run
+the project file or the bundled `/code-review`, in `-p` and in an interactive session?
+
+- Host: Claude Code updated with `claude update` to the newest release before the first run (version read from `claude --version` and each
+  `system/init` or transcript); Windows 11 Pro 10.0.26300, PowerShell 7.6.6; `--model haiku`; every `CLAUDE*` variable blanked.
+- Fixture, as the 2.1.281 row: sibling scratch Git repositories with one identical staged file. Treatment: `dist/dotnet/.claude/commands/review.md`
+  at its shipped path, frontmatter kept, body replaced by one line telling the model to reply with a random marker `B405-RV-<6 chars>` and call no
+  tool. Control: no `.claude/` directory.
+- Cells, n=1 each: P-T and P-C, `claude -p "/review" --max-turns 3 --output-format stream-json --verbose`. I-T and I-C, an interactive `claude` in a
+  ConPTY pseudo-console the orchestrator opens: `/review` typed once the input prompt shows, then Enter, then a wait until no new output for 60 s
+  (cap 4 min), then `/exit`; read from the session transcript under `~\.claude\projects`. If a ConPTY session cannot be driven, the interactive
+  cells are CANNOT-EXAMINE and are not replaced by a positional-prompt launch.
+- Classes per cell: PROJECT (the marker in an assistant message, or the treatment body expanded as the command's content); BUILTIN (`local_command`
+  `review` or `code_review` on the result, `<command-name>` naming `code-review`, or the bundled skill's content or agents launched); TEXT (the
+  literal `/review` reached the model as a user message). CANNOT-EXAMINE: an auth, quota or model error, no model turn, or a version other than the
+  one recorded; one repeat.
+- Validity: a control must not be PROJECT; the marker appears in no other file of the fixture.
+- Readings, fixed now: I-T PROJECT and P-T PROJECT — the row is re-certified on the new version and the work stops. I-T BUILTIN — the review gate is
+  unreachable by `/review` where consumers type it; rename per WSD-114, whatever P-T shows. P-T BUILTIN with I-T PROJECT — recorded as a `-p`
+  difference, no rename. One run per cell shows dispatch, which is deterministic CLI code, not a rate.
+- Stop: 8 runs in all, repeats included. Spend recorded.
+- Not shown: the VS Code extension, the desktop app, other models, adherence to the real command body, Copilot (access ended 2026-10-14, B-399).
