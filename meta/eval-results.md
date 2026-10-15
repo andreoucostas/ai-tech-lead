@@ -4528,3 +4528,24 @@ the project file or the bundled `/code-review`, in `-p` and in an interactive se
   difference, no rename. One run per cell shows dispatch, which is deterministic CLI code, not a rate.
 - Stop: 8 runs in all, repeats included. Spend recorded.
 - Not shown: the VS Code extension, the desktop app, other models, adherence to the real command body, Copilot (access ended 2026-10-14, B-399).
+
+## B-405 results — 2026-10-15 (pre-registered at 1564d2c0)
+
+Claude Code 2.1.281 updated to 2.1.300 by `claude update`; 2.1.300 in every `system/init` and transcript. Marker `B405-RV-C36HPG`, only in the
+treatment's `review.md`. Evidence (stream-json, transcripts, raw screens, driver) in the session scratchpad under `b405\`, not kept.
+
+| cell | mode | class | deciding evidence | model | spend |
+|---|---|---|---|---|---|
+| P-T | `-p` | PROJECT | `init` lists `review` and `code-review` as separate slash commands; one turn, no tool call, result `B405-RV-C36HPG`, `local_command` null | claude-haiku-4-5-20251001 | 0.018 USD |
+| P-C | `-p` | BUILTIN | `task_started` description `/code-review`, result `local_command: review`, a diff review of `a.txt` | claude-haiku-5-5 | 0.006 USD |
+| I-T | interactive, typed | PROJECT | the menu for `/review` showed the project's description above `/code-review (review)`; transcript `<command-name>/review</command-name>`, then the marker body as the command's content; reply `B405-RV-C36HPG` | claude-haiku-5-5 | 0.003 USD |
+| I-C | interactive, typed | BUILTIN | transcript: the typed `/review` recorded as the local command `/code-review`, `forked-skill-launch` `skillName: code-review`, run in the background | claude-haiku-5-5 | 0.017 USD |
+
+- Reading, as fixed: I-T and P-T PROJECT, both controls BUILTIN, so on 2.1.300 a same-named project command still takes `/review` from the bundled
+  alias, in `-p` and when typed. No rename. The docs' "the bundled alias `/review` never runs your skill" describes a project skill named
+  `code-review`, not one named `review`.
+- Runs: 6 of 8. Two I-T attempts were CANNOT-EXAMINE with no model request: the driver's child inherited redirected standard handles and started
+  in print mode ("Input must be provided ... when using --print"), then Enter on the folder-trust dialog chose its default "No, exit". The driver
+  was then smoke-tested twice in a neutral repository that never typed `/review` (one model turn, under 0.01 USD); those are not cells.
+- Side observation, not scored: I-C's background `/code-review` agent reviewed this worktree's commit 1564d2c0 instead of the fixture, likely
+  through the `PWD` variable Git Bash exported to the session (not isolated); the dispatch class rests on the transcript, not on that review.
