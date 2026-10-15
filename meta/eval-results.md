@@ -4235,3 +4235,11 @@ from which selection source? Q2: does a `task` call with no `model` argument to 
   before and after (restored if changed).
 - Stop: 3 runs in all, repeats included.
 - Not shown: VS Code (either harness), other session models, a full `/review`, the reviewers' finding quality on Haiku against the session model.
+
+## B-399 results — 2026-10-15 (pre-registered at 8e0048c9)
+
+- Both runs CANNOT-EXAMINE, no model request: arm R (session `b3990000-0000-4000-8000-000000000101`) and its one repeat (`-0102`) exited 1 within 8 s with
+  "Access denied by policy settings"; the CLI log shows the stored user token authenticated, then `server policy: none for this account (403: no Copilot
+  access)` and `Error loading models: 403 "unauthorized: not authorized to use this Copilot feature"`. The maintainer's Copilot subscription was cancelled
+  2026-10-14. Arm D was not run. 2 of 3 runs used; no AI credits or premium requests; `~\.copilot\config.json` and `settings.json` unchanged.
+- No reading. Before a rerun, the stop is amended to count only runs that reached a model request.

@@ -52,9 +52,9 @@ function Initialize-ComposerSubject {
 }
 
 function Invoke-Composer {
-    param([string]$SubjectRoot, [string]$Mode = 'dotnet')
+    param([string]$SubjectRoot, [string]$Mode = 'dotnet', [string]$WorkingDirectory = $SubjectRoot)
     $process = Start-Process -FilePath $psExe -ArgumentList @('-NoProfile','-File',(Join-Path $SubjectRoot 'scripts\build.ps1'),$Mode) `
-        -WorkingDirectory $SubjectRoot -Wait -PassThru -NoNewWindow
+        -WorkingDirectory $WorkingDirectory -Wait -PassThru -NoNewWindow
     return [int]$process.ExitCode
 }
 
@@ -163,6 +163,31 @@ try {
     [Console]::Error.WriteLine("[FAIL] ownership-policy extraction: $($_.Exception.Message)")
 } finally {
     if (Test-Path -LiteralPath $normalRoot) { Remove-Item -Recurse -Force -LiteralPath $normalRoot }
+}
+
+# The composer must act on the repo its script lives in, not on the process working directory it was
+# launched from (B-371: a build.ps1 launched from another repo rewrote that repo's dist/).
+$anchorSubject = Join-Path ([IO.Path]::GetTempPath()) ('composer-anchor-subject-' + [guid]::NewGuid())
+$anchorDecoy = Join-Path ([IO.Path]::GetTempPath()) ('composer-anchor-decoy-' + [guid]::NewGuid())
+try {
+    Initialize-ComposerSubject $anchorSubject
+    Initialize-ComposerSubject $anchorDecoy
+    # A decoy that already holds the composer's output root, as the real repository did.
+    New-Item -ItemType Directory -Path (Join-Path $anchorDecoy 'dist/dotnet') -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $anchorDecoy 'dist/dotnet/framework-retirements.json'), '[]')
+    $decoyBefore = @(Get-ChildItem -LiteralPath $anchorDecoy -Recurse -Force -File | ForEach-Object { $_.FullName.Substring($anchorDecoy.Length) + '|' + $_.Length + '|' + $_.LastWriteTimeUtc.Ticks } | Sort-Object)
+    $exit = Invoke-Composer $anchorSubject 'dotnet' $anchorDecoy
+    if ($exit -ne 0) { throw "composer launched from a foreign working directory exited $exit" }
+    $decoyAfter = @(Get-ChildItem -LiteralPath $anchorDecoy -Recurse -Force -File | ForEach-Object { $_.FullName.Substring($anchorDecoy.Length) + '|' + $_.Length + '|' + $_.LastWriteTimeUtc.Ticks } | Sort-Object)
+    if (($decoyBefore -join "`n") -cne ($decoyAfter -join "`n")) { throw 'composer touched the foreign working directory instead of its own repo' }
+    if (-not (Test-Path -LiteralPath (Join-Path $anchorSubject 'dist/dotnet/framework-ownership.json') -PathType Leaf)) { throw 'composer did not produce dist/dotnet in its own repo' }
+    $executed++
+    Write-Host '[ok] composer anchors to its own repo when launched from another working directory'
+} catch {
+    $failed++
+    [Console]::Error.WriteLine("[FAIL] composer anchors to its own repo when launched from another working directory -- $($_.Exception.Message)")
+} finally {
+    foreach ($dir in @($anchorSubject, $anchorDecoy)) { if (Test-Path -LiteralPath $dir) { Remove-Item -Recurse -Force -LiteralPath $dir } }
 }
 
 # Retirement metadata authorizes deletion in consumers; keep its four composer boundaries under

@@ -31,6 +31,8 @@ if ($Mode -ne 'dotnet' -and $Mode -ne 'angular' -and $Mode -ne 'monorepo') {
 
 # Anchor to the repo this script lives in (scripts/..), not the caller's cwd.
 Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+# Set-Location leaves the .NET process directory alone; the [System.IO.File] calls below resolve against it.
+[Environment]::CurrentDirectory = (Get-Location).ProviderPath
 
 $CORE = "src/core"
 $SNIP = "src/stacks/$Mode/snippets"
