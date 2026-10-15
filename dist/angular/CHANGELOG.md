@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.96.0 — Unreleased
+## 0.96.0 — 2026-10-15
 
 - **The plan gate now asks before it plans.** On a request with a material gap the agent posts up to five tech-lead
   questions (consumers and what breaks for them, failure and how you would know, rollback, data that moves, blast

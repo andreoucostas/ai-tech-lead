@@ -7,11 +7,26 @@
   "ceilings-seconds": {
     "compose": 60,
     "dist-gates": 700,
-    "meta-suite": 30,
-    "total-local-gates": 790
+    "meta-suite": 45,
+    "total-local-gates": 805
   },
   "ceiling-revisions": [
     {
+      "date": "2026-10-15",
+      "stage": "meta-suite",
+      "from": 30,
+      "to": 45,
+      "why": "Maintainer-approved 2026-10-15. Two consecutive v0.96.0 release attempts passed every functional gate and were refused only here, at 30.5s and 30.1s against 30s, on a loaded box (several Claude sessions, worktrees and test runs live). DocTruth.Tests alone was measured at 23.0s on the same box that day against B-245's 8.9s idle reading, so part of this is real growth of the release-subject files and part is load; neither was measured idle. Set to about 1.5x the worse observation, the loaded-host policy of the 2026-08-07 and 2026-08-08 revisions. This still catches the stage doubling from here.",
+      "measured": 30.5
+    },
+    {
+      "date": "2026-10-15",
+      "stage": "total-local-gates",
+      "from": 790,
+      "to": 805,
+      "why": "Recomputed to the literal sum after the meta-suite revision above: compose 60 + dist-gates 700 + meta-suite 45 = 805. Bookkeeping, not a separate allowance.",
+      "measured": 49.5
+    },    {
       "date": "2026-09-20",
       "stage": "eval-selftest",
       "from": 120,

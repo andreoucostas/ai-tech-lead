@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.96.0 — Unreleased
+## 0.96.0 — 2026-10-15
 
 B-403 (maintainer question 2026-10-14, "does the framework interview like a tech lead?"; plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`): the plan gate
 asks before it plans. `framework-rules` section 2 and `$railsPlanGate` (`route-prompt.ps1`, ride-along on fix/feature/refactor/test) now say: on a material gap post
