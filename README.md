@@ -126,7 +126,7 @@ distribution's `docs/enforcement-surfaces.md` lists it surface by surface.
 
 ## Status
 
-Current shipped version is **v0.97.1** across all three distributions. Release history:
+Current shipped version is **v0.97.2** across all three distributions. Release history:
 [CHANGELOG.md](./CHANGELOG.md).
 
 ## For maintainers
