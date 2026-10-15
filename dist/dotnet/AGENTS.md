@@ -1,7 +1,7 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.96.0
+  version: 0.96.1
   applied: 2026-10-15
   After a framework update, copy these fields from .claude/framework-version.json.
 -->

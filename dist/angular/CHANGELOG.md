@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.96.1 — Unreleased
+## 0.96.1 — 2026-10-15
 
 - **Shorter, clearer README.** This distribution's README is now a getting-started page: what you get, how to install, your first steps, daily commands, where it works, and links to the reference docs. Nothing installed in your repository changes.
 
