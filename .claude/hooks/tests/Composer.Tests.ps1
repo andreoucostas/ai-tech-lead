@@ -190,6 +190,73 @@ try {
     foreach ($dir in @($anchorSubject, $anchorDecoy)) { if (Test-Path -LiteralPath $dir) { Remove-Item -Recurse -Force -LiteralPath $dir } }
 }
 
+# A host scanner (antivirus, indexer) may map a dist file the moment it appears, and truncating a
+# mapped file fails (0x800704C8: four of five 0.96.0 releases refused at compose dist/monorepo).
+# The composer must write each dist path once; here a watcher maps a path that three overlays carry.
+$mapSubject = Join-Path ([IO.Path]::GetTempPath()) ('composer-mapped-' + [guid]::NewGuid())
+$mapSync = [hashtable]::Synchronized(@{ Armed = $false; Mapped = $false; Stop = $false; Error = $null })
+$mapShell = $null
+try {
+    Initialize-ComposerSubject $mapSubject
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    foreach ($stack in @('dotnet','angular','monorepo')) {
+        [IO.File]::WriteAllText((Join-Path $mapSubject "src/stacks/$stack/files/a-mapped.md"), "$stack overlay`n", $utf8)
+    }
+    # Writes that fall between the first and the last overlay of a-mapped.md, giving the watcher time.
+    for ($i = 0; $i -lt 300; $i++) { [IO.File]::WriteAllText((Join-Path $mapSubject "src/stacks/dotnet/files/z-filler-$i.md"), "filler`n", $utf8) }
+    $mapShell = [powershell]::Create()
+    [void]$mapShell.AddScript({
+        param($Path, $Sync)
+        $deadline = [DateTime]::UtcNow.AddSeconds(60)
+        $fs = $null; $mmf = $null; $view = $null
+        $Sync.Armed = $true
+        try {
+            while (-not $view -and -not $Sync.Stop -and [DateTime]::UtcNow -lt $deadline) {
+                try {
+                    $fs = New-Object System.IO.FileStream($Path, 'Open', 'Read', 'ReadWrite, Delete')
+                    if ($fs.Length -gt 0) {
+                        if ($PSVersionTable.PSEdition -eq 'Desktop') {
+                            $mmf = [System.IO.MemoryMappedFiles.MemoryMappedFile]::CreateFromFile($fs, [NullString]::Value, 0, 'Read', $null, 'None', $true)
+                        } else {
+                            $mmf = [System.IO.MemoryMappedFiles.MemoryMappedFile]::CreateFromFile($fs, [NullString]::Value, 0, 'Read', 'None', $true)
+                        }
+                        $view = $mmf.CreateViewAccessor(0, 0, 'Read')
+                        $Sync.Mapped = $true
+                    } else { $fs.Dispose(); $fs = $null }
+                } catch {
+                    $Sync.Error = $_.Exception.Message
+                    if ($mmf) { $mmf.Dispose(); $mmf = $null }
+                    if ($fs) { $fs.Dispose(); $fs = $null }
+                }
+                if (-not $view) { Start-Sleep -Milliseconds 1 }
+            }
+            while (-not $Sync.Stop -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 20 }
+        } finally {
+            if ($view) { $view.Dispose() }
+            if ($mmf) { $mmf.Dispose() }
+            if ($fs) { $fs.Dispose() }
+        }
+    }).AddArgument((Join-Path $mapSubject 'dist/monorepo/a-mapped.md')).AddArgument($mapSync)
+    $mapAsync = $mapShell.BeginInvoke()
+    $armDeadline = [DateTime]::UtcNow.AddSeconds(10)
+    while (-not $mapSync.Armed -and [DateTime]::UtcNow -lt $armDeadline) { Start-Sleep -Milliseconds 20 }
+    if (-not $mapSync.Armed) { throw 'watcher never started; case cannot examine the composer' }
+    $exit = Invoke-Composer $mapSubject 'monorepo'
+    if (-not $mapSync.Mapped) { throw "watcher never mapped dist/monorepo/a-mapped.md ($($mapSync.Error)); case cannot examine the composer" }
+    if ($exit -ne 0) { throw "composer exited $exit after a scanner mapped a dist file it had already written" }
+    $mapped = [IO.File]::ReadAllText((Join-Path $mapSubject 'dist/monorepo/a-mapped.md'))
+    if ($mapped -cne "monorepo overlay`n") { throw "dist/monorepo/a-mapped.md is not the monorepo overlay: $mapped" }
+    $executed++
+    Write-Host '[ok] composer writes each dist path once while a scanner maps it'
+} catch {
+    $failed++
+    [Console]::Error.WriteLine("[FAIL] composer writes each dist path once while a scanner maps it -- $($_.Exception.Message)")
+} finally {
+    $mapSync.Stop = $true
+    if ($mapShell) { try { [void]$mapShell.EndInvoke($mapAsync) } catch { }; $mapShell.Dispose() }
+    if (Test-Path -LiteralPath $mapSubject) { Remove-Item -Recurse -Force -LiteralPath $mapSubject }
+}
+
 # Retirement metadata authorizes deletion in consumers; keep its four composer boundaries under
 # the supported PowerShell implementation.
 foreach ($kind in @('unsafe-path','still-shipped','disappeared','synchronized-disappearance')) {

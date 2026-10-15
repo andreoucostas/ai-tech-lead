@@ -267,9 +267,20 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
 if (Test-Path $DIST) { Remove-Item -Recurse -Force $DIST }
 New-Item -ItemType Directory -Force -Path $DIST | Out-Null
 
+# Each dist path is written once: the last overlay carrying a path supplies it, and core skips a path
+# an overlay replaces. A host scanner may map a file between two writes, and truncating a mapped file
+# fails (0x800704C8 refused four 0.96.0 releases at compose dist/monorepo).
+$overlaySource = [ordered]@{}
+foreach ($FILES in $OVERLAYS) {
+    if (Test-Path $FILES) {
+        foreach ($rel in (Get-RelativeFiles $FILES)) { $overlaySource[$rel] = Join-Path $FILES $rel }
+    }
+}
+
 # 1. core, with marker substitution; normalize to LF
 $coreFiles = Get-RelativeFiles $CORE
 foreach ($rel in $coreFiles) {
+    if ($overlaySource.Contains($rel)) { continue }
     $srcPath = Join-Path $CORE $rel
     $dstPath = Join-Path $DIST $rel
     $r = Read-TextFile $srcPath
@@ -299,17 +310,10 @@ foreach ($rel in $coreFiles) {
 
 # 2. overlay per-stack files (whole-file overrides + stack-only), normalized LF.
 # monorepo = union of both stacks plus monorepo overrides (collisions already vetted above).
-foreach ($FILES in $OVERLAYS) {
-    if (Test-Path $FILES) {
-        $overlayFiles = Get-RelativeFiles $FILES
-        foreach ($rel in $overlayFiles) {
-            $srcPath = Join-Path $FILES $rel
-            $dstPath = Join-Path $DIST $rel
-            $r = Read-TextFile $srcPath
-            $stripped = [regex]::Replace($r.Text, '(?m)\r$', '')
-            Write-TextFile -Path $dstPath -HasBom $r.HasBom -Text $stripped
-        }
-    }
+foreach ($rel in $overlaySource.Keys) {
+    $r = Read-TextFile $overlaySource[$rel]
+    $stripped = [regex]::Replace($r.Text, '(?m)\r$', '')
+    Write-TextFile -Path (Join-Path $DIST $rel) -HasBom $r.HasBom -Text $stripped
 }
 
 # 3. Generate the installed-path ownership manifest. The path inventory comes from the composed
