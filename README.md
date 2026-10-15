@@ -1,171 +1,118 @@
-# ai-tech-lead
+# AI Tech Lead
 
-> **Want to *use* the framework in your repo? → go to [`dist/`](./dist).** Pick your stack
-> (`dist/dotnet`, `dist/angular`, `dist/monorepo`) and read its `README.md` — that is the whole
-> product, and it is the only thing that ships. **Everything else in this repo is how the framework
-> is *built*, and is written for its maintainers.**
+AI Tech Lead makes AI coding agents (Claude Code and GitHub Copilot) work in your repository the way
+your team does. It installs instruction files, workflow commands, specialist review agents and guard
+hooks; then one command reads your codebase and writes down its conventions, so the agent follows your
+patterns instead of inventing its own. It is built for .NET and Angular teams on Windows, including
+teams hosting on Bitbucket Data Center.
 
-**AI Tech Lead** is a per-repository instruction layer — `CLAUDE.md`/`AGENTS.md`, skills,
-commands, subagents, and deterministic hooks — that makes AI coding agents (Claude Code and
-GitHub Copilot, dual-surface) follow a team's conventions, architecture, and risk posture instead
-of inventing their own. It targets .NET and Angular shops running on Bitbucket Data Center and
-Windows, and ships machine checks plus scoped write-time guards and local hook-dependent telemetry
-next to the instructions. Exact guarantees depend on the client and host prerequisites documented
-in each dist's `docs/enforcement-surfaces.md`.
+## Install it into your repository
 
-The supported and release-tested host platform is **native Windows**. Claude Code 2.1.141 or newer
-is required. PowerShell 7 is preferred; Windows PowerShell 5.1 is the installer and framework-script fallback. Linux, WSL, macOS, BSD, and
-Copilot cloud hook execution are unsupported and untested; incidental execution is not a guarantee.
+These steps are written so that you, or an AI agent you hand this page to, can follow them exactly.
 
-This repository is the **authoring repo** for the framework, not a consumer project. It used to
-be two separate template repos — `ai-tech-lead-dotnet` and `ai-tech-lead-angular` — merged into
-one with history preserved. Shared content (conventions, skills, hooks, commands) is authored
-**once** under `src/core/`, with per-stack differences layered in from `src/stacks/{dotnet,
-angular,monorepo}/`. A deterministic PowerShell composer (`scripts/build.ps1`) reads that single
-source and emits three installable, committed distributions under `dist/`: `dist/dotnet`,
-`dist/angular`, and `dist/monorepo` (for repos that mix both stacks — e.g. a .NET API with a
-colocated Angular SPA). Consumers never see `src/`; they install straight from a `dist/`.
+**You need:** Windows; Git; PowerShell 7 (`pwsh`), or Windows PowerShell 5.1 as a fallback; and
+Claude Code 2.1.141 or newer, or GitHub Copilot (VS Code or Copilot CLI). Your repository's working
+tree must be clean: commit or stash first, or the installer stops.
 
-`dist/` is generated output, `linguist-generated`, and never hand-edited — CI rebuilds all three
-dists on every push/PR and fails if the rebuild differs from what's committed, so `dist/` is
-always provably fresh against `src/`.
+1. **Get the framework at its newest release**, somewhere outside your repository:
 
-## Installing
+   ```powershell
+   git clone https://github.com/andreoucostas/ai-tech-lead.git
+   cd ai-tech-lead
+   git checkout "$(git describe --tags --abbrev=0)"
+   ```
 
-There are two ways in: the **root installer**, which auto-detects which stack a target repo
-needs, or a **dist installer**, run directly when you already know the stack. Both understand
-three install modes on the target repo: **greenfield** (no AI tooling yet — plain copy),
-**brownfield** (existing AI tooling, or a file where the framework installs one — originals are
-archived to `docs/pre-adoption/` and a
-`.claude/adoption-pending.json` is written for `/adopt` to pick up), and **update** (target
-already has a `.claude/framework-version.json` stamp). Update has three ownership classes:
-consumer-owned protected paths such as `AGENTS.md` are restored (an older layout with the project
-text in `CLAUDE.md` is moved into `AGENTS.md` once, with backups), framework-owned machinery is
-overwritten, and mixed-ownership `.claude/settings.json` is backed up to
-`.claude/.state/settings.json.pre-update` before it is refreshed and adapted to the host. Preserve
-local edits to framework-owned files before updating, and review the resulting diff before commit.
+   Install from a release tag, not from `master`: `master` carries unreleased work stamped with the
+   previous version, which confuses later updates. The installer checks the clone against its remote
+   and stops if a newer release exists.
 
-| Dist | Who it's for | Root installer (auto-detect) | Direct dist installer |
-|------|---------------|-------------------------------|------------------------|
-| `dist/dotnet` | Repositories with `.NET` application evidence, or warehouse-SQL repositories with at least two independent warehouse signal categories | `pwsh -NoProfile -File install.ps1 C:\path\to\repo` | `pwsh -NoProfile -File dist/dotnet/scripts/install.ps1 -Target C:\path\to\repo` |
-| `dist/angular` | Angular workspaces evidenced by `angular.json`, an exact-case `"@angular/core"` dependency-map key, or an exact-case Angular token in an Nx/project plugin, executor, generator, schematic, or target-default field | same, auto-detects `angular` | `pwsh -NoProfile -File dist/angular/scripts/install.ps1 -Target C:\path\to\repo` |
-| `dist/monorepo` | Mixed repositories with both .NET and Angular evidence, or Angular plus warehouse-SQL evidence | same, auto-detects `monorepo` (union of the applicable profiles' rails) | `pwsh -NoProfile -File dist/monorepo/scripts/install.ps1 -Target C:\path\to\repo` |
+2. **Run the installer against your repository's Git root:**
 
-Pass `-Stack dotnet|angular|monorepo` to override
-auto-detection. On an existing install, the root installer defaults to whatever stack is
-recorded in the target's `.claude/framework-version.json` (update mode) rather than
-re-detecting. If the repository's evidenced profiles change, rerun the root installer with the
-appropriate explicit `-Stack` (usually `monorepo` when profiles coexist) before
-running `/rebootstrap`. Application markers are searched at the target root and two directory levels below;
-warehouse evidence is classified repository-wide while generated and dependency directories are
-pruned. The PowerShell dispatcher uses an embedded strict JSON reader. The root installer is a thin
-dispatcher only — all real copy logic lives in the install script under the chosen dist's `scripts/`
-directory.
+   ```powershell
+   pwsh -NoProfile -File install.ps1 C:\path\to\your-repo
+   ```
 
-### What the install adds, and why it is committed
+   Without PowerShell 7: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1 C:\path\to\your-repo`.
+   Add `-WhatIf` first to preview without changing anything.
 
-Each dist's generated **`framework-ownership.json` is authoritative** for the installed path set and ownership class; review that manifest rather than relying on a hard-coded file count. The installed framework files are meant to be committed.
-That is not incidental: hooks have to exist in the tree for every developer who clones, skills and
-commands have to be on disk for the agent to find them, and `AGENTS.md`, its `CLAUDE.md` import stub
-and the instructions carrier *are* the product. Nothing here is build output.
+   The installer picks the distribution from what it finds in your repository:
 
-Each dist ships **`framework-ownership.json`**, a generated manifest listing every installed path
-with one of three ownership classes:
+   | Your repository | Distribution |
+   |---|---|
+   | A .NET application, or a SQL data warehouse | `dotnet` |
+   | An Angular workspace | `angular` |
+   | Both .NET (or a warehouse) and Angular | `monorepo` |
 
-| class | what it means for you |
+   Pass `-Stack dotnet`, `-Stack angular` or `-Stack monorepo` to choose it yourself.
+
+3. **Review and commit the installed files** in your repository. They are shared team configuration,
+   not build output: every developer who clones needs them.
+
+4. **Populate it from your codebase.** A developer starts a Claude Code session, or an interactive
+   Copilot CLI session, in the repository and types one command:
+   - `/bootstrap` if the repository had no AI tooling before;
+   - `/adopt` if it already had some (a `CLAUDE.md`, `.cursorrules`, Copilot instructions and so on).
+     The installer says which: it moves any file it would have overwritten to `docs/pre-adoption/`
+     and writes `.claude/adoption-pending.json`. `/adopt` merges that earlier material in; nothing is
+     deleted.
+
+   The command analyses the code and writes `AGENTS.md` (your conventions and architecture) and
+   `TECH_DEBT.md`.
+
+5. **Review `AGENTS.md`** and correct anything that is wrong. Every AI tool in the repository follows it.
+
+> **If you are an AI agent installing this:** do steps 1 to 3, then stop. `/bootstrap` and `/adopt`
+> can only be started by a developer, and must not be imitated by hand. End by telling the developer,
+> word for word: *"Start a Claude Code or interactive Copilot CLI session in `<your repo>` and type
+> `/adopt`"* (or `/bootstrap`, whichever the installer reported). Until they do, new sessions in the
+> repository show a reminder.
+
+## After that
+
+Describe tasks in plain language ("the export endpoint returns 500 for empty orders", "add paging to
+the customer list") and the agent follows the matching workflow: it plans first, waits for your
+go-ahead, makes verified changes and reviews its own work. You can also name a workflow directly:
+`/feature`, `/fix`, `/design`, `/refactor`, `/test`, `/debt`, `/review`, `/security-gate`.
+
+The full guide for developers is your distribution's README:
+[.NET](./dist/dotnet/README.md) · [Angular](./dist/angular/README.md) · [Monorepo](./dist/monorepo/README.md).
+
+## What the install changes
+
+The installer writes only inside your repository and changes no Git configuration. Each
+distribution's `framework-ownership.json` is authoritative for what it installs, giving every path one
+of three ownership classes:
+
+| Class | What it means for you |
 |---|---|
-| `framework-owned/overwritten` | replaced on every update — do not edit, your changes will be lost |
-| `consumer-owned/protected` | yours; created once if absent, never touched again |
-| `mixed` | shared — `.claude/settings.json` carries our hook registrations alongside your settings |
+| `framework-owned/overwritten` | Replaced on every update. Do not edit; your changes would be lost. |
+| `consumer-owned/protected` | Yours. Created once if absent, never touched again. |
+| `mixed` | Shared: `.claude/settings.json` holds the framework's hook registrations next to your own settings, and is backed up before each update. |
 
-Read that file rather than the diff when reviewing the first commit, and consult it before editing
-anything under `.claude/` or `scripts/` if you want the edit to survive an update. It is generated
-during composition and cross-checked against the installer's own preservation lists, so it cannot
-quietly disagree with what the installer actually does.
-## Quick start
+**Updating:** follow `docs/upgrade-checklist.md` in your repository; it starts from a fresh clone at
+the newest release tag. **Removing:** see "Removing the framework" in your distribution's README.
 
-The installers run *from a local clone of this repo* against a target repo elsewhere on disk — so
-get the framework first, then point it at your codebase:
+## Where it runs
 
-```powershell
-git clone https://github.com/andreoucostas/ai-tech-lead.git
-cd ai-tech-lead
-git checkout (git describe --tags --abbrev=0)   # newest release tag -- see the note below
-pwsh -NoProfile -File install.ps1 C:\path\to\your-repo
-# Windows PowerShell 5.1 fallback:
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1 C:\path\to\your-repo
-```
-
-> **Install from a release tag, not from `master`.** `master` is this project's pre-release
-> channel: it carries work that is merged but not yet released, and that work is still stamped with
-> the *previous* version. Cloning it therefore installs framework files whose
-> `.claude/framework-version.json` understates what you actually got — and that stamp is what the
-> installer reads on its next run to decide it is in update mode. The `git checkout` above pins the
-> newest tag and needs no editing between releases. Clone `master` on purpose only —
-> when you want unreleased work and can live with the stamp being wrong.
-
-Before it changes anything, the installer asks the clone's remote whether the clone is out of date. If
-a newer release tag exists, or your branch is behind its upstream, it stops and prints the `git`
-command that updates the clone; pass `-AllowOutdated` to install an older copy on purpose.
-
-Installing a mixed .NET + Angular repo, forcing the monorepo dist explicitly:
-
-```powershell
-pwsh -NoProfile -File install.ps1 -Stack monorepo C:\path\to\your-repo
-```
-
-After the copy lands and is committed in the target repo, a developer starts a Claude Code (or
-Copilot) session there and runs `/bootstrap` (greenfield) or `/adopt` (brownfield) to populate
-`AGENTS.md`/`TECH_DEBT.md` from the real codebase. See a dist's own `README.md` (e.g.
-[`dist/dotnet/README.md`](./dist/dotnet/README.md)) for the full consumer-facing walkthrough —
-that's the document a developer actually reads after installing; this root README only covers
-getting the framework itself into a repo.
-
-## Repo layout
-
-| Path | What it is |
-|------|-----------|
-| `src/core/` | Single-source shared content — the common files, with `<!-- @stack:NAME -->` markers where stacks diverge. |
-| `src/stacks/{dotnet,angular,monorepo}/` | Per-dist `snippets/` (marker content) and `files/` (whole-file overrides + stack-only files). |
-| `dist/{dotnet,angular,monorepo}/` | **Generated**, committed golden output. Never hand-edited — CI rebuilds and diffs it against `src/` on every push/PR. |
-| `scripts/` | PowerShell composer/gates: `build`, `validate-dist`, `context-footprint`. |
-| `install.ps1` | Root installer — detects the target's stack (or reads `-Stack`) and delegates to the matching dist installer. |
-| `meta/` | **The maintainer layer, kept out of the product's way:** `BACKLOG.md` (work list), `workspace-decisions.md` (ADR log), `LEARNINGS.md` (meta-dev log), `ci-handover.md`, `changelogs/` (frozen pre-merge history). Never ships. |
-| `.github/workflows/ci.yml` | The CI gate — see below. |
-| `AGENTS.md` / `CLAUDE.md` | Governance for developing *this* repo (maintainer instructions — not shipped; distinct from the `CLAUDE.md`/`AGENTS.md` templates inside each `dist/`). `AGENTS.md` is the single canonical file; `CLAUDE.md` imports it (`@AGENTS.md`) and adds Claude Code specifics. They sit at the repo root because Claude Code and Codex load them from there, so `AGENTS.md` opens with an explicit "you are in the authoring repo" banner as the tie-breaker. |
-| `DEVELOPING.md` | Operational runbook: the exact commands behind every gate below. |
-| `.claude/` | Maintainer-only Claude Code config (hooks, release automation, plans). Never ships. |
-
-## How it's built and validated
-
-`scripts/build.ps1` is the composer: it reads `src/core` plus the target dist's
-`src/stacks/<dist>/` overrides and writes a complete `dist/<dist>/` tree. Two gates run against
-that output — `validate-dist.ps1` (marker resolution, JSON validity, PowerShell-only topology and AST parse,
-each dist's own `template-checks` for the `CLAUDE.md`→`AGENTS.md` import layout, and `no-meta-leak`,
-which fails if maintainer vocabulary reaches a shipped file) and each dist's own hook test suite
-(`dist/<dist>/tests/hooks/Invoke-HookTests.ps1`, a dependency-free PowerShell harness that pipes
-JSON fixtures at every hook and asserts the PowerShell semantics). CI (`.github/workflows/ci.yml`)
-runs those plus a freshness check under eight Windows contexts: root and all three distributions
-under PowerShell 7, then the same four under native Windows PowerShell 5.1.
-Full command recipes, including how to run any single gate
-by hand, are in [`DEVELOPING.md`](./DEVELOPING.md).
+Native Windows is the supported and release-tested platform. Linux, WSL and macOS are not supported,
+and Copilot's cloud coding agent does not run the hooks. What each client enforces differs; each
+distribution's `docs/enforcement-surfaces.md` lists it surface by surface.
 
 ## Status
 
-Current shipped version is **v0.96.0** across all three dists
-(`dist/*/.claude/framework-version.json`). The merge is complete: this repo is the single home for
-framework development, and the two legacy repos (`ai-tech-lead-dotnet`, `ai-tech-lead-angular`) are
-archived and read-only, frozen at v0.25.5.
+Current shipped version is **v0.96.0** across all three distributions. Release history:
+[CHANGELOG.md](./CHANGELOG.md).
 
-## Maintainer docs
+## For maintainers
 
-- [`CLAUDE.md`](./CLAUDE.md) — how to develop the framework itself: repo map, meta-invariants, workflows.
-- [`DEVELOPING.md`](./DEVELOPING.md) — command recipes behind every gate described above.
-- [`meta/BACKLOG.md`](./meta/BACKLOG.md) — the prioritized work list.
-- [`meta/workspace-decisions.md`](./meta/workspace-decisions.md) — the ADR log for framework-level decisions (merge strategy, mirror strategy, hook semantics, composition rules).
-- [`meta/LEARNINGS.md`](./meta/LEARNINGS.md) — the meta-dev log: what went wrong building this and what changed as a result.
+This repository is also where the framework is built. Shared content is authored once under
+`src/core/`, with per-stack differences in `src/stacks/`. `scripts/build.ps1` composes the three
+installable distributions under `dist/`, which are generated, committed and never edited by hand; CI
+rebuilds them on every push and fails if they differ. Only `dist/` ships. The maintainer rules are in
+[`AGENTS.md`](./AGENTS.md), the command recipes in [`DEVELOPING.md`](./DEVELOPING.md), and the work
+list in [`meta/BACKLOG.md`](./meta/BACKLOG.md).
 
 ## Licence
 
-[MIT](./LICENSE) — copyright (c) 2026 ai-tech-lead contributors. This covers the authoring
-repository; from 0.96.0 the dists ship no licence or notice file into consumer repositories.
+[MIT](./LICENSE). This covers this repository; from 0.96.0 the distributions install no licence or
+notice file into your repository.
