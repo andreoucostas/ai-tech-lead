@@ -9,6 +9,7 @@
 # fail because Invoke-Hook appends a line when it should not. The static guards below go red
 # the moment the skip expression or the append call disappears from the source file.
 if (-not (Get-Command Reset-Tests -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
+. (Join-Path $PSScriptRoot 'fixtures\guard-patch-cases.ps1')
 $hookPs = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks\audit-trail.ps1')).Path
 $srcPs  = [System.IO.File]::ReadAllText($hookPs)
 
@@ -103,6 +104,33 @@ try {
             Assert (@($lines)[0] -match '\[path-normalisation-failed\]') 'outside path was not redacted'
             Assert (@($lines)[0] -notmatch [regex]::Escape([IO.Path]::GetFileName($outside))) 'outside filename leaked'
         } finally { Remove-Item -LiteralPath $outside -Force -ErrorAction SilentlyContinue }
+    }
+
+    # apply_patch, in the envelopes Copilot CLI 1.0.95 sent its two hook files (fixtures/guard-patch-cases.ps1):
+    # one line per path the captured patch names (an add, an update, a delete, and an update that moves its
+    # file). The deleted file and the moved file's old path no longer exist, so their lines carry the sentinel.
+    foreach ($shape in 'hooks.json', '.claude/settings.json') {
+        It "apply_patch event appends one line per file the patch writes ($shape)" {
+            [System.IO.File]::WriteAllText($logPath, '')
+            foreach ($name in 'a', 'b', 'e') { $null = New-Item -ItemType File -Force -Path "notes/$name.txt" }
+            $r = Invoke-Hook $hookPs (New-PatchEvent $shape $CapturedPatch)
+            Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
+            $lines = Get-AuditLines
+            Assert ($lines.Count -eq 5) "expected 5 lines (notes\a.txt to notes\e.txt), got $($lines.Count)"
+            foreach ($name in 'a', 'b', 'e') {
+                Assert (@($lines | Where-Object { ($_ -split "`t")[2] -match "notes[\\/]$name\.txt$" }).Count -eq 1) "no line names notes\$name.txt"
+            }
+        }
+    }
+
+    It 'apply_patch event: a skipped path drops only its own line' {
+        [System.IO.File]::WriteAllText($logPath, '')
+        $null = New-Item -ItemType File -Force -Path 'notes/a.txt'
+        $patch = "*** Begin Patch`n*** Update File: .claude\ai-audit.log`n@@`n+x`n*** Add File: notes\a.txt`n+alpha`n*** End Patch`n"
+        $r = Invoke-Hook $hookPs (New-PatchEvent 'hooks.json' $patch)
+        Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
+        $lines = Get-AuditLines
+        Assert ($lines.Count -eq 1 -and (@($lines)[0] -split "`t")[2] -match 'notes[\\/]a\.txt$') "expected one line for notes\a.txt, got: $($lines -join ' | ')"
     }
 
 } finally {

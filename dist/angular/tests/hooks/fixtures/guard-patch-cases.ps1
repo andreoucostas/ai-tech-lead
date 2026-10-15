@@ -1,4 +1,4 @@
-﻿# apply_patch fixtures for Guard.Tests.ps1. The two envelopes are the stdin Copilot CLI 1.0.95 gave its two
+﻿# apply_patch fixtures for Guard.Tests.ps1 (AuditTrail.Tests.ps1 and PostWriteRouting.Tests.ps1 reuse the envelopes). The two envelopes are the stdin Copilot CLI 1.0.95 gave its two
 # preToolUse hooks for one gpt-6.1-sol apply_patch call on 2026-10-12 (the runtime VS Code 1.139.1 bundles sent
 # the same): toolName apply_patch with the raw patch in toolArgs (.github/hooks/hooks.json), and tool_name Edit
 # with it in tool_input (.claude/settings.json). Only the session id and cwd are replaced; {{PATCH}} stands where

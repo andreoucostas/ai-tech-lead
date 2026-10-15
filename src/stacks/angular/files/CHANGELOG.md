@@ -27,7 +27,13 @@
   a file). An `apply_patch` call the guard cannot read, or one with more than 200 file sections, is blocked; split such
   a patch. **If your team has used GPT models in Copilot since installing this framework, scan what those sessions
   committed for secrets** (for example, run your secret scanner over the commits since then) and rotate any real key it
-  finds. `apply_patch` writes still get no post-write build or type-check feedback and no `.claude/ai-audit.log` line.
+  finds.
+- **`apply_patch` writes now get the post-write build or type-check and a `.claude/ai-audit.log` line.** Until this
+  release both hooks read only a file path and content, so a file a GPT model wrote with `apply_patch` in Copilot was
+  never built or type-checked and never logged. The audit log now gets one line per file the patch names (a deleted
+  file, or the old path of a moved one, logs the usual `[path-normalisation-failed]` placeholder, since it no longer
+  exists). The post-write check runs for the first file in the patch that it reads; it reads the patch the same way
+  the write guard does.
 - **The framework no longer installs a licence or notice file, and the session preload no longer links to a
   release page.** An update removes an unmodified `NOTICE-ai-tech-lead.md` (an edited copy stays, and the update says
   so). `LICENSES/ai-tech-lead-MIT.txt` was always yours: the update leaves it as it is, so delete it, and the

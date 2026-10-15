@@ -36,7 +36,12 @@ B-395 (2026-10-14; found by B-379's canary; pre-registered at 1adbe21a, results 
 checks each section's added lines against that section's path (and its `Move to` path) with the existing rules; a patch it cannot read, or one with more
 than 200 sections, is blocked. Path+content events are unchanged. `fixtures/guard-patch-cases.ps1` holds the two envelopes Copilot captured for one
 `apply_patch` call (P-C, P-V) and 23 cases: 21 red on the unfixed guard, and two lone-CR cases red on the first fix, which split lines at a lone CR as neither host does (a fresh-session review's finding: `+x<CR>-KEY` is one added line to the hosts and passed); lines now end at LF only. Canary on the fixed `dist/dotnet` (guard f9c408c5f6c6) with gpt-6.1-sol:
-BLOCKED 3 of 3 on the CLI, 1 of 1 on the bundled runtime. `audit-trail` and `post-write` still do not see `apply_patch` (B-397).
+BLOCKED 3 of 3 on the CLI, 1 of 1 on the bundled runtime.
+B-397 (2026-10-15): `audit-trail` and the three `post-write` hooks read an `apply_patch` event's paths with the guard's own `Get-PatchSections`, loaded
+from `guard.ps1` by its AST (no second parser, no new shipped file, guard unchanged). `audit-trail` logs one line per path (its stack skip lines now
+`continue`); `post-write` checks the first path its trigger reads (monorepo: one stack per patch). Red first: `AuditTrail.Tests` x3 and
+`PostWriteRouting.Tests` x2, built on the B-395 envelopes; these are preToolUse captures, and the postToolUse envelope is assumed to carry the same
+tool fields (no Copilot access to capture it: the subscription ended 2026-10-14).
 Maintainer request 2026-10-14: the dists stop shipping `LICENSES/ai-tech-lead-MIT.txt` and `NOTICE-ai-tech-lead.md` and the `session-start` version nudge
 drops its github.com link. `install.ps1` loses the legal-file preflight (the exit-3 refusals) and the licence's special cases; the licence leaves the
 protected set (`install.ps1`, `build.ps1`'s pin, `Composer.Tests`); the notice is retired at 0.96.0 with its two released blob hashes, so updates remove

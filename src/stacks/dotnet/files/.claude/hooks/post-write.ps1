@@ -3,6 +3,7 @@
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  -- tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     -- toolName  in {edit,create}; path at toolArgs.filePath
+#   apply_patch (GPT models on Copilot)    -- the first file its patch names that a check reads
 # Throttled to one build per 60 seconds to avoid stomping on a long-running compile.
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -60,6 +61,7 @@ $null = New-Item -ItemType Directory -Path .claude\.state -Force
 
 $inputJson = [Console]::In.ReadToEnd()
 $filePath = ''
+$patchPaths = @()
 # Pre-declare so a malformed/empty payload leaves $tn = '' (not $null): the surface-routing at the
 # end uses `$tn -eq ''` for Claude's empty-case exit-2 path, and $null -eq '' is False in PowerShell
 # -- which would misroute a build failure to the Copilot exit-0 branch. Keeping it '' preserves the
@@ -95,20 +97,35 @@ if (-not [string]::IsNullOrEmpty($inputJson)) {
                           $obj.tool_input.file_text, $obj.tool_input.new_str, $obj.tool_input.text,
                           $ta.content, $ta.new_string, $ta.newString, $ta.file_text, $ta.new_str, $ta.text) |
                          Where-Object { $_ }
+        # apply_patch, the file tool GPT models use on Copilot, sends one V4A patch string instead of a
+        # path and content: as toolArgs (.github/hooks/hooks.json, toolName apply_patch) or tool_input
+        # (.claude/settings.json, tool_name Edit), or as the `input` of either. Its paths -- each
+        # section's, and its new one when it moves -- come from guard.ps1's own section split, loaded
+        # from that file, so this hook and the guard never read one patch differently.
+        $patchText = $null
+        foreach ($v in @($ta.input, $obj.tool_input.input, $ta, $obj.tool_input)) { if ($v -is [string]) { $patchText = $v; break } }
+        if ($null -eq $patchText -and $obj.toolArgs -is [string] -and $null -eq $ta) { $patchText = $obj.toolArgs }
+        if ($tn -eq 'apply_patch' -or (-not ($filePath -or $contentParts) -and $patchText -match '\*\*\* (?:Add|Update|Delete) File:')) {
+            $guardAst = [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'guard.ps1'), [ref]$null, [ref]$null)
+            $split = $guardAst.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-PatchSections' }, $true)
+            . ([scriptblock]::Create($split.Extent.Text))
+            $patchPaths = @(foreach ($section in (Get-PatchSections ([string]$patchText) ([int]::MaxValue))) { $section.Paths })
+        }
         $knownWrite = (@('Write','Edit','edit','create') -contains $tn) -or ($tn -eq '')
-        if (-not ($knownWrite -or ($filePath -and $contentParts))) { exit 0 }
+        if (-not ($knownWrite -or ($filePath -and $contentParts) -or $patchPaths)) { exit 0 }
     } catch { }
 }
 
-if ([string]::IsNullOrEmpty($filePath) -and $env:CLAUDE_FILE_PATH) {
+if ([string]::IsNullOrEmpty($filePath) -and $patchPaths.Count -eq 0 -and $env:CLAUDE_FILE_PATH) {
     $filePath = $env:CLAUDE_FILE_PATH
 }
 
-if ([string]::IsNullOrEmpty($filePath)) { exit 0 }
 # Trigger on what `dotnet build` actually consumes: sources plus MSBuild/Razor inputs.
 # A broken .csproj/.sln/.props/.targets edit breaks the build as surely as a .cs edit; extensions
-# the build doesn't read stay excluded -- a build cannot catch their breakage.
-if ($filePath -notmatch '\.(cs|csproj|sln|props|targets|razor|cshtml)$') { exit 0 }
+# the build doesn't read stay excluded -- a build cannot catch their breakage. A patch builds for the
+# first file it names that the build reads.
+$filePath = @(@($filePath) + $patchPaths | Where-Object { $_ -match '\.(cs|csproj|sln|props|targets|razor|cshtml)$' })[0]
+if (-not $filePath) { exit 0 }
 
 # Bail cleanly if no dotnet CLI on PATH.
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { exit 0 }

@@ -2,6 +2,7 @@
 if (-not (Get-Command Reset-Tests -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $hooks = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path
 $postWrite = Join-Path $hooks 'post-write.ps1'
+. (Join-Path $PSScriptRoot 'fixtures\guard-patch-cases.ps1')
 Reset-Tests
 
 $cases = @(
@@ -302,6 +303,29 @@ try {
                 Assert ($result.Exit -eq 2) "$($world.Name): failing build exited $($result.Exit) through the outer -Command shell, not 2; the host reads anything but 2 as a non-blocking error and the agent is never told. stderr: $($result.Err.Trim())"
                 Assert ($result.Err -match 'fix before continuing') "$($world.Name): the outer -Command shell lost the failure report on stderr: $($result.Err.Trim())"
             } finally { $env:PATH = $oldPath }
+        }
+    }
+
+    # apply_patch, in the envelopes Copilot CLI 1.0.95 sent its two hook files (fixtures/guard-patch-cases.ps1):
+    # toolName apply_patch from .github/hooks/hooks.json gets the additionalContext JSON, tool_name Edit from
+    # .claude/settings.json the exit 2. The patch's first file is one no check reads, so the checked file
+    # must come from its second section.
+    foreach ($shape in 'hooks.json', '.claude/settings.json') {
+        It "an apply_patch write with a failing build or type-check is reported ($shape)" {
+            foreach ($world in $worlds) {
+                $null = Reset-BuildWorld $world "@echo simulated build failure 1>&2`r`n@exit /b 1`r`n"
+                $patch = "*** Begin Patch`n*** Add File: notes.txt`n+hello`n*** Update File: $($world.Probe)`n@@`n-probe`n+probe 2`n*** End Patch`n"
+                $oldPath = $env:PATH
+                try {
+                    $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
+                    $result = Invoke-Hook $postWrite (New-PatchEvent $shape $patch)
+                    if ($shape -eq 'hooks.json') {
+                        Assert ($result.Exit -eq 0 -and $result.Out -match '"additionalContext"' -and $result.Out -match 'fix before continuing') "$($world.Name): expected exit 0 with the failure as additionalContext, got exit $($result.Exit), stdout: $($result.Out.Trim())"
+                    } else {
+                        Assert ($result.Exit -eq 2 -and $result.Err -match 'fix before continuing') "$($world.Name): expected exit 2 with the failure on stderr, got exit $($result.Exit), stderr: $($result.Err.Trim())"
+                    }
+                } finally { $env:PATH = $oldPath }
+            }
         }
     }
 } finally {

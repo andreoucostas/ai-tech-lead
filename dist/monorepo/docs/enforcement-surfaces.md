@@ -115,8 +115,12 @@ organization enforces.
 > **Scope caveat — write hooks only see supported editor/file-write events.** `guard.ps1` is
 > registered on `Write`/`Edit` tool calls (Claude Code) and on Copilot tool calls that carry a file
 > path + content or an `apply_patch` patch (the patch only from 0.96.0; before, every `apply_patch`
-> write passed unchecked) — nothing else. `audit-trail.ps1` and `post-write` see only the file path +
-> content calls, so an `apply_patch` write gets no audit line and no build or type-check feedback. A write routed through a **terminal/shell tool** —
+> write passed unchecked) — nothing else. `audit-trail.ps1` and `post-write` see the same calls (the
+> patch only from 0.96.0, read with the guard's own section split): the audit log gets one line per
+> file the patch names, and `post-write` checks the first file in the patch that it reads, so in the
+> monorepo dist a patch that changes both a .NET and an Angular file is checked for one stack only. Both
+> are tested on the `preToolUse` envelopes Copilot CLI 1.0.95 sent, not on an observed `postToolUse`
+> one. A write routed through a **terminal/shell tool** —
 > Claude Code's PowerShell tool running `Set-Content`, `Add-Content`, or redirection —
 > carries no `Write`/`Edit` payload, so neither the secrets/test-defeat/suppression floor nor the
 > local telemetry hook fires on it. Externally written content is outside the same boundary.

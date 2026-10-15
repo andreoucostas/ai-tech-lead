@@ -4,6 +4,7 @@
 # Tool surfaces handled:
 #   Claude Code (CLI + VS Code extension)  -- tool_name in {Write,Edit}; path at tool_input.file_path
 #   GitHub Copilot (cloud agent + CLI)     -- toolName  in {edit,create}; path at toolArgs.filePath
+#   apply_patch (GPT models on Copilot)    -- the first file its patch names that a check reads
 # Throttled to one run of each check per 5 seconds (separate stamps) to avoid burst-write duplication.
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -65,6 +66,7 @@ $null = New-Item -ItemType Directory -Path .claude\.state -Force
 
 $inputJson = [Console]::In.ReadToEnd()
 $filePath = ''
+$patchPaths = @()
 # Pre-declare so a malformed/empty payload leaves $tn = '' (not $null): the surface-routing at the
 # end uses `$tn -eq ''` for Claude's empty-case exit-2 path, and $null -eq '' is False in PowerShell
 # -- which would misroute a build failure to the Copilot exit-0 branch. Keeping it '' preserves the
@@ -100,29 +102,43 @@ if (-not [string]::IsNullOrEmpty($inputJson)) {
                           $obj.tool_input.file_text, $obj.tool_input.new_str, $obj.tool_input.text,
                           $ta.content, $ta.new_string, $ta.newString, $ta.file_text, $ta.new_str, $ta.text) |
                          Where-Object { $_ }
+        # apply_patch, the file tool GPT models use on Copilot, sends one V4A patch string instead of a
+        # path and content: as toolArgs (.github/hooks/hooks.json, toolName apply_patch) or tool_input
+        # (.claude/settings.json, tool_name Edit), or as the `input` of either. Its paths -- each
+        # section's, and its new one when it moves -- come from guard.ps1's own section split, loaded
+        # from that file, so this hook and the guard never read one patch differently.
+        $patchText = $null
+        foreach ($v in @($ta.input, $obj.tool_input.input, $ta, $obj.tool_input)) { if ($v -is [string]) { $patchText = $v; break } }
+        if ($null -eq $patchText -and $obj.toolArgs -is [string] -and $null -eq $ta) { $patchText = $obj.toolArgs }
+        if ($tn -eq 'apply_patch' -or (-not ($filePath -or $contentParts) -and $patchText -match '\*\*\* (?:Add|Update|Delete) File:')) {
+            $guardAst = [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'guard.ps1'), [ref]$null, [ref]$null)
+            $split = $guardAst.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-PatchSections' }, $true)
+            . ([scriptblock]::Create($split.Extent.Text))
+            $patchPaths = @(foreach ($section in (Get-PatchSections ([string]$patchText) ([int]::MaxValue))) { $section.Paths })
+        }
         $knownWrite = (@('Write','Edit','edit','create') -contains $tn) -or ($tn -eq '')
-        if (-not ($knownWrite -or ($filePath -and $contentParts))) { exit 0 }
+        if (-not ($knownWrite -or ($filePath -and $contentParts) -or $patchPaths)) { exit 0 }
     } catch { }
 }
 
-if ([string]::IsNullOrEmpty($filePath) -and $env:CLAUDE_FILE_PATH) {
+if ([string]::IsNullOrEmpty($filePath) -and $patchPaths.Count -eq 0 -and $env:CLAUDE_FILE_PATH) {
     $filePath = $env:CLAUDE_FILE_PATH
 }
 
-if ([string]::IsNullOrEmpty($filePath)) { exit 0 }
 # Trigger on what a check can actually validate: .ts sources under src/ and any tsconfig*.json
 # (tsc --noEmit; a tsconfig typically lives OUTSIDE src/, so it bypasses the src/ gate), and
 # component templates (.html) under src/ (ngc --noEmit, since tsc never reads a template).
 # Not src/index.html (the host page, which ngc never reads), angular.json or package.json:
-# neither check can catch their breakage.
-$normalized = $filePath -replace '\\', '/'
-$template = $false
-if ($normalized -notmatch '(^|/)tsconfig[^/]*\.json$') {
-    if ($filePath -like '*.html' -and $normalized -notmatch '(^|/)index\.html$') { $template = $true }
-    elseif ($filePath -notlike '*.ts') { exit 0 }
-    # Limit the hook's scope to sources under src/.
-    if ($normalized -notmatch '/src/') { exit 0 }
+# neither check can catch their breakage. A patch is checked for the first file it names that a
+# check reads.
+function Test-CheckInput([string]$Path) {
+    $n = $Path -replace '\\', '/'
+    if ($n -match '(^|/)tsconfig[^/]*\.json$') { return $true }
+    return ($n -match '/src/') -and ($Path -like '*.ts' -or ($Path -like '*.html' -and $n -notmatch '(^|/)index\.html$'))
 }
+$filePath = @(@($filePath) + $patchPaths | Where-Object { $_ -and (Test-CheckInput $_) })[0]
+if (-not $filePath) { exit 0 }
+$template = ($filePath -like '*.html') -and (($filePath -replace '\\', '/') -notmatch '(^|/)tsconfig[^/]*\.json$')
 
 # Discover the workspace root: walk up from the written file to the nearest ancestor holding
 # an Angular tsconfig. Supports root, ClientApp/, and Nx apps/* layouts -- the old root-cwd
