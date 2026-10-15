@@ -4202,3 +4202,36 @@ generation; arm W is the tree with the review's fixes (merge rule, catalog polic
 - Reading: no pre-registered reading covers W 1/3 against C 0/3 (ship needed W ≥ 2/3; revert needed W ≤ C; the extension covered two other cells), so this
   is not evidence that the change helps on this case. What the runs do show: the scoped pass produced the right answer in the one run that reached it, and
   Rule 11's pointer reached it in 1 of 3. The text ships (it reverts only on W ≤ C); trigger strength is B-402. Total spend 5.62 USD of the 12-run stop.
+
+## B-399 pre-registration — which definition and model `/review`'s `model: haiku` reviewers start on in a Copilot CLI 1.0.95 Opus session (2026-10-15, frozen before any run)
+
+B-398 saw Copilot CLI 1.0.95 refuse `bootstrap-pass`'s `model: sonnet` ("Model 'sonnet' is not available") on a `task` call with no `model` argument.
+`convention-check`, `debt-radar` and `bloat-radar` say `model: haiku` in `.claude/agents/*.md` and also ship `.github/agents/*.agent.md` wrappers of the same
+name with no `model` and no `tools`. Q1: when `/review`'s Step 1 dispatches them, which definition does the CLI select, and does each start, on what model,
+from which selection source? Q2: does a `task` call with no `model` argument to one of them meet B-398's refusal?
+
+- Host: Copilot CLI 1.0.95, Windows 11 Pro 10.0.26300, PowerShell 7.6.6; session model `claude-opus-5.5`.
+- Fixture: HEAD 0938ae77's `dist/dotnet` installed greenfield into a scratch Git repository holding `Smoke.csproj` and committed, then an untracked
+  `src/Legacy.cs` (B-378's `make-framework-fixture.ps1`, variant F); each run clones it. SHA-256 prefixes of the three `.claude/agents` files and their
+  wrappers recorded before the first run.
+- Arm R, one run. Prompt R: "Run only Step 1 of this repository's /review on the uncommitted changes: follow .claude/commands/review.md's Input section
+  with no argument to capture the bundle, then dispatch the convention-check, debt-radar, bloat-radar and solid-check reviewers against it as Step 1
+  says, wait for them, report in at most six lines which reviewers ran and what each returned, and stop. Do not run Steps 2 to 4 and do not edit any
+  file." `solid-check` (`model: inherit`) is the control: it shows dispatch works at all.
+- Arm D, one run, only if no arm R `task` call to a haiku reviewer lacked a `model` argument. Prompt D: "Use the task tool exactly once, with agent_type
+  convention-check and no model argument, asking it to reply with the single word ready. Then report its reply or the tool's error verbatim and stop."
+- CLI flags as B-398 (`b395-run.ps1`, B-379's flags) with `--model claude-opus-5.5`.
+- Validity per run, else CANNOT-EXAMINE and one repeat: a session start with 1.0.95; `claude-opus-5.5` on the main assistant messages; no auth, quota or
+  model error on a main-session request; repository hooks loaded; arm R also needs at least one `task` call naming one of the three.
+- Counted, per haiku reviewer: its `task` call(s) and their `model` argument (absent or a value); the call's result (`subagent.started`, or the error text);
+  from `subagent.started`/`subagent.selected`: `model`, `modelSelectionSource`, `taskModelSource`, `agentDescription` and `tools`, which name the
+  definition (the `.claude` file's description and `tools: Read, Grep, Glob, PowerShell`, or the wrapper's description and no tools list); whether the
+  session then did that reviewer's scan itself. The same for `solid-check`.
+- Readings, fixed now: a no-`model`-argument call refused as "not available": B-399 confirmed, and the WSD-115 fix (agents `inherit`, the model passed in
+  the call) is made with a red case. Every no-argument call started, on a model chosen from the definition's `haiku` or inherited from the session: no
+  refusal on CLI 1.0.95, B-399 closes by measurement and the definition seen is recorded. A start only through a `model` argument the session added:
+  no reading for the shipped text until arm D runs. One run per arm shows the mechanism, not a rate.
+- Recorded, not scored: each reviewer's returned line count; AI credits, premium requests, wall time; `~\.copilot\config.json` and `settings.json` hashes
+  before and after (restored if changed).
+- Stop: 3 runs in all, repeats included.
+- Not shown: VS Code (either harness), other session models, a full `/review`, the reviewers' finding quality on Haiku against the session model.
