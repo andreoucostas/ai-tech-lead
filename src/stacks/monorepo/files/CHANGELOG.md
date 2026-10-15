@@ -5,6 +5,10 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.96.1 — Unreleased
+
+- **Shorter, clearer README.** This distribution's README is now a getting-started page: what you get, how to install, your first steps, daily commands, where it works, and links to the reference docs. Nothing installed in your repository changes. The previous README said this distribution ships path-scoped `.cs`/`.ts` Copilot instruction files; it does not, and never did. Each file still gets its own stack's rules from the framework rules file.
+
 ## 0.96.0 — 2026-10-15
 
 - **The plan gate now asks before it plans.** On a request with a material gap the agent posts up to five tech-lead

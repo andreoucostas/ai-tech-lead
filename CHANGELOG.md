@@ -11,6 +11,10 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.96.1 — Unreleased
+
+Consumer documentation as a product (maintainer request 2026-10-15): the root README is now an install brief that a developer, or the AI agent they hand the GitHub link to, can follow step by step (12.6 KB to 6 KB; maintainer material reduced to one paragraph); each stack README is a getting-started page of about 9 KB instead of 37-39 KB, with version-dated host observations left to `docs/enforcement-surfaces.md`. The monorepo README no longer claims to ship path-scoped `.cs`/`.ts` instruction files (it ships none). DocClaims.Tests drops its two README contracts with the sentences; the FRAMEWORK-CONTEXT.md contracts remain. WSD-116: agents never wait on a maintainer review.
+
 ## 0.96.0 — 2026-10-15
 
 B-403 (maintainer question 2026-10-14, "does the framework interview like a tech lead?"; plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`): the plan gate
