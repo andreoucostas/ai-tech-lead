@@ -165,6 +165,13 @@ harness at 15,000 characters (`chat.copilot.skillCharBudget`, experimental; seen
 **Status:** Open; shipped unmeasured (WSD-111 precedent, plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`). The runner's `-p` prompts say "proceed autonomously", so
 it cannot see questions-before-plan. Needs a developer-reply turn, or a one-turn grader scoring the first assistant message on an underspecified feature prompt, on both surfaces.
 
+### B-404 · An installing agent given "install this" sometimes asks before committing
+**Filed against:** v0.97.2 (2026-10-15)
+**Priority:** P3 · **Effort:** S · **Invariants:** none
+**Status:** Open; consumer-docs arms in `meta/eval-results.md`: URL-install commits B 6/6, A 4/6, A2 3/6, A3 5/6; every miss asked first, under Claude Code's
+commit-only-when-asked rule, and pushing wording read as injection. The README now suggests a prompt that asks for the commit; measure that prompt (a
+scenario variant), and decide whether the gate should count "asked before committing" as a pass.
+
 
 
 

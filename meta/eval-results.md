@@ -4438,3 +4438,66 @@ Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=T
 - Runs and checks exactly as A2, against the revert's release tag. Reading: reported only. Any scenario below 3/3 gets one
   `meta/BACKLOG.md` entry: the commit step versus Claude Code's commit-only-when-asked rule, with these four arms' numbers.
   Stop: 6 scored runs plus 2 repeats.
+
+## 2026-10-15 15:30:09 +01:00 — framework v0.97.2 (a7538bd3658dd59e33530c30a776f02c80cef4d5)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **FAIL url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2303934 tokensIn=20 tokensOut=3723; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.2 installed=dotnet@0.97.2 rightStack=True newestReleaseFiles=True commits=2 leftInTree=102 committed=False handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=False tagChosen=False webFetches=0
+
+
+## 2026-10-15 15:31:28 +01:00 — framework v0.97.2 (a7538bd3658dd59e33530c30a776f02c80cef4d5)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3338908 tokensIn=22 tokensOut=3567; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.2 installed=dotnet@0.97.2 rightStack=True newestReleaseFiles=True commits=3 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=True tagChosen=False webFetches=0
+
+
+## 2026-10-15 15:32:50 +01:00 — framework v0.97.2 (a7538bd3658dd59e33530c30a776f02c80cef4d5)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.407877 tokensIn=34 tokensOut=5118; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.2 installed=dotnet@0.97.2 rightStack=True newestReleaseFiles=True commits=3 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=True tagChosen=True webFetches=0
+
+
+## 2026-10-15 15:34:45 +01:00 — framework v0.97.2 (a7538bd3658dd59e33530c30a776f02c80cef4d5)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.355886 tokensIn=30 tokensOut=5466; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.2 installed=angular@0.97.2 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=False tagChosen=False webFetches=0
+
+
+## 2026-10-15 15:35:47 +01:00 — framework v0.97.2 (a7538bd3658dd59e33530c30a776f02c80cef4d5)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3237442 tokensIn=26 tokensOut=2790; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.2 installed=angular@0.97.2 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=False tagChosen=False webFetches=0
+
+
+## 2026-10-15 15:36:57 +01:00 — framework v0.97.2 (a7538bd3658dd59e33530c30a776f02c80cef4d5)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3957446 tokensIn=28 tokensOut=3676; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.2 installed=angular@0.97.2 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=False tagChosen=False webFetches=0
+
+
+## Consumer-docs arm A3 results — v0.97.2, 2026-10-15 (hand-written; as pre-registered in 3d0bb01b)
+
+- Scored: `url-install-brownfield` 2/3, `url-install-greenfield` 3/3 (the six runner blocks above, one trial each, the shared
+  clone removed before each). No ERROR rows. 2.05 USD.
+- The one failure is `committed=False`: brownfield t1 asked "want me to go ahead and commit the installed files now?". No
+  final message called the installer or the README an injection. URL-install commits across arms: B 6/6, A 4/6, A2 3/6, A3 5/6.
+- Reading, as fixed: below 3/3, so `meta/BACKLOG.md` gains B-404 (the commit step against Claude Code's commit-only-when-asked
+  rule). Three runs per cell cannot separate A3 from B; what the arms do show is that wording which pushes past the agent's own
+  rules lowered the commit rate, and that every miss was an agent asking, never a wrong install.
+
+## Consumer-docs summary (2026-10-15)
+
+| Scenario | B v0.96.1 | A v0.97.0 | A2 v0.97.1 | A3 v0.97.2 |
+|---|---|---|---|---|
+| `url-install-greenfield` | 3/3 | 3/3 | 2/3 | 3/3 |
+| `url-install-brownfield` | 3/3 | 1/3 | 1/3 | 2/3 |
+| `dev-setup` | 3/3 | 3/3 | not run | not run |
+
+Every failing run failed only `committed`. Post-hoc (transcripts): headless adoption raised in brownfield finals B 3/3, A 0/3;
+git's path-length error before a retry B 5/6, A 1/6.
