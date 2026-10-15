@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.97.1 — Unreleased
+## 0.97.1 — 2026-10-15
 
 Regression fix for 0.97.0's installer closing block, as the consumer-docs pre-registration required: arm A scored
 `url-install-brownfield` 1/3 against arm B's 3/3, both failures `committed=False`; one agent named the "word for word"

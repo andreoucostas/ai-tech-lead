@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.97.1 — Unreleased
+## 0.97.1 — 2026-10-15
 
 - **The installer tells an installing agent to commit again.** 0.97.0's closing message asked the agent to repeat a
   sentence "word for word" and only referred to "the commit"; in our tests some agents then left the installed files

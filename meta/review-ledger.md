@@ -95,3 +95,4 @@ non-review.
 | v0.96.0 | 2026-10-15 | guarded; reviewer fresh session; v0.95.0..10aae59c (step-4 attacks executed by fresh sessions, recorded in 4213ef4d for guard.ps1 and 573aa91c for install.ps1 and the retirement policy) |
 | v0.96.1 | 2026-10-15 | guarded; reviewer fresh session; v0.96.0..19cc4e0c (19cc4e0c scripts/build.ps1: fresh-session attack recorded in its commit; the rest is ordinary documentation and records) |
 | v0.97.0 | 2026-10-15 | guarded; reviewer fresh session; 98857e9f..7a18e4d6 |
+| v0.97.1 | 2026-10-15 | guarded; reviewer fresh session; 6066c616..7db19ed4 |
