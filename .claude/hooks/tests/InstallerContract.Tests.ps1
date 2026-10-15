@@ -25,8 +25,12 @@ $contract = @(
     @{ Name = 'forbids hand-replicating the populate command'; Pattern = 'replicate it by hand' },
     @{ Name = 'warns docs-sync-check is red BY DESIGN until populate runs'; Pattern = 'by design|until /(bootstrap|adopt) has run' }
     @{ Name = 'tells every developer to run framework-doctor locally'; Pattern = 'Each developer should run.+framework-doctor' }
-    # The root README gives an installing agent the same sentence; one wording across both surfaces.
-    @{ Name = 'gives the agent the hand-off sentence word for word'; Pattern = 'word for word:\s+"Start a Claude Code or interactive Copilot CLI session in .+ and type /(bootstrap|adopt)"' }
+    # The agent paragraph itself names the commit: v0.97.0's "step 1 (the commit)" left 2 of 3 brownfield
+    # eval agents asking whether to commit (meta/eval-results.md, consumer-docs arm A).
+    @{ Name = 'names the commit in the agent paragraph'; Pattern = 'NOT complete until you have done step 1 \(commit the installed files' }
+    # Claude Code commits only when asked; the installer says the install request is that ask (arm A2 attack).
+    @{ Name = 'says the commit is part of the install the agent was asked for'; Pattern = 'Committing is part of the install you were asked to do' }
+    @{ Name = 'tells the agent what the developer must type'; Pattern = 'told the developer to start a Claude Code or interactive Copilot CLI session in the target repo and type /(bootstrap|adopt)' }
     @{ Name = 'points the developer at the installed tutorial'; Pattern = 'docs/getting-started\.md' }
 )
 
@@ -78,6 +82,10 @@ foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
                         Assert ($guidance -match $c.Pattern) `
                             "$label : installer never $($c.Name) (no match for /$($c.Pattern)/). Agents get this wrong without being told."
                     }
+                    # Tool output that demands a sentence be repeated "word for word" read to an eval agent as an
+                    # injection, and it declined the commit the same paragraph asked for (consumer-docs arm A).
+                    Assert (-not ($guidance -match '(?i)word for word')) `
+                        "$label : asks the agent to recite text word for word, which agents treat as untrusted tool output"
                     Assert ($guidance -match [regex]::Escape($expectCmd)) `
                         "$label : never names $expectCmd -- the developer is left with a half-installed repo."
                     # The wrong populate command is worse than none: /bootstrap on a brownfield repo

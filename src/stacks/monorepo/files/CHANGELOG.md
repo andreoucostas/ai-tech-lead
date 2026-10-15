@@ -5,6 +5,14 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.97.1 — Unreleased
+
+- **The installer tells an installing agent to commit again.** 0.97.0's closing message asked the agent to repeat a
+  sentence "word for word" and only referred to "the commit"; in our tests some agents then left the installed files
+  uncommitted and asked first. The message, and the README's steps for agents, now say plainly that committing is part of
+  the install you asked for, then that the developer types `/bootstrap` (or `/adopt`). Nothing changes in an installed
+  repository.
+
 ## 0.97.0 — 2026-10-15
 
 - **Two new guides in `docs/`.** `docs/getting-started.md` walks a developer from the install to a first

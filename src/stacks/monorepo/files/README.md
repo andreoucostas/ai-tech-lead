@@ -74,10 +74,11 @@ framework-owned and is replaced on each update.
 
 **Asked to install this into a repository:** clone the framework at its newest release tag outside
 that repository, run the root `install.ps1` against the repository's Git root, and commit the
-installed files there. Then stop: `/bootstrap` (new to AI tooling) or `/adopt` (the installer found
-existing AI tooling) can only be started by a developer, and must not be run or imitated. Tell the
-developer, word for word: *"Start a Claude Code or interactive Copilot CLI session in `<your repo>`
-and type `/bootstrap`"* (or `/adopt`, whichever the installer named). Until they do, new sessions
+installed files there; a request to install is a request to commit, so do not stop to ask. Then
+stop: `/bootstrap` (new to AI tooling) or `/adopt` (the installer found existing AI tooling) can only
+be started by a developer, and must not be run or imitated. Tell the developer to start a Claude Code
+or interactive Copilot CLI session in their repository and type `/bootstrap` (or `/adopt`, whichever
+the installer named). Until they do, new sessions
 show a reminder and `scripts/docs-sync-check.ps1` fails CI; that is expected.
 
 **Working in a repository that has this installed:** your source of truth is `AGENTS.md`, with the

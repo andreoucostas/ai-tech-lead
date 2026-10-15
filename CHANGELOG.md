@@ -11,6 +11,16 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.97.1 — Unreleased
+
+Regression fix for 0.97.0's installer closing block, as the consumer-docs pre-registration required: arm A scored
+`url-install-brownfield` 1/3 against arm B's 3/3, both failures `committed=False`; one agent named the "word for word"
+demand as untrusted tool output, the other asked before committing after "step 1 (commit the copied files)" became "step
+1 (the commit)"; a fresh-context attack's live run then declined the commit under Claude Code's commit-only-when-asked rule.
+The agent paragraph names the commit, says it is part of the install the agent was asked for, and names the command
+plainly (InstallerContract: commit named and part of the ask, no word-for-word demand); the READMEs say the same and drop
+"word for word". README step 1 reuses an existing clone. Arm A2 pre-registered in `meta/eval-results.md`.
+
 ## 0.97.0 — 2026-10-15
 
 Consumer documentation as a product, second pass (maintainer request 2026-10-15): redesigned from the spec in

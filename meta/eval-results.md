@@ -4321,3 +4321,58 @@ Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=T
   handing off. In five of the six URL runs (greenfield t1 and t3, all three brownfield) the agent first cloned into its own
   deep scratch folder, failed with "Filename too long", and retried at a shorter path (`C:\atl-src`, `C:\ait-install`). Both shaped the rework (installer closing block; README
   step 1). The same two observations are read from arm A's transcripts for comparison.
+
+## 2026-10-15 13:37:49 +01:00 — framework v0.97.0 (6066c616d1fcf503e277984702783488d086644b)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS dev-setup** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1569926 tokensIn=6 tokensOut=1385; ccVersion=2.1.281 initModel=claude-sonnet-5 bootstrapPending=True changedInstructionFiles=0 commits=2 workflowTool=False finalNamesBootstrap=True; reported: fileEdits=0 finalNamesFix=False
+- **PASS dev-setup** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1555574 tokensIn=6 tokensOut=1529; ccVersion=2.1.281 initModel=claude-sonnet-5 bootstrapPending=True changedInstructionFiles=0 commits=2 workflowTool=False finalNamesBootstrap=True; reported: fileEdits=0 finalNamesFix=False
+- **PASS dev-setup** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1094402 tokensIn=2 tokensOut=538; ccVersion=2.1.281 initModel=claude-sonnet-5 bootstrapPending=True changedInstructionFiles=0 commits=2 workflowTool=False finalNamesBootstrap=True; reported: fileEdits=0 finalNamesFix=False
+
+
+## 2026-10-15 13:40:17 +01:00 — framework v0.97.0 (6066c616d1fcf503e277984702783488d086644b)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3075032 tokensIn=22 tokensOut=3750; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.0 installed=angular@0.97.0 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=False tagChosen=False webFetches=1
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4514934 tokensIn=34 tokensOut=3989; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.0 installed=angular@0.97.0 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=False tagChosen=True webFetches=0
+- **PASS url-install-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4110988 tokensIn=32 tokensOut=4922; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.0 installed=angular@0.97.0 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: finalNames/adopt=False tagChosen=False webFetches=0
+
+
+## 2026-10-15 13:40:25 +01:00 — framework v0.97.0 (6066c616d1fcf503e277984702783488d086644b)
+
+Host: Claude Code 2.1.281 (Claude Code) · arm: framework · scratch: retained=True
+
+- **FAIL url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2838012 tokensIn=22 tokensOut=3841; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.0 installed=dotnet@0.97.0 rightStack=True newestReleaseFiles=True commits=2 leftInTree=102 committed=False handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=True tagChosen=True webFetches=0
+- **FAIL url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1964618 tokensIn=16 tokensOut=3531; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.0 installed=dotnet@0.97.0 rightStack=True newestReleaseFiles=True commits=2 leftInTree=102 committed=False handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=False tagChosen=False webFetches=1
+- **PASS url-install-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4104238 tokensIn=28 tokensOut=5779; ccVersion=2.1.281 initModel=claude-sonnet-5 newestTag=v0.97.0 installed=dotnet@0.97.0 rightStack=True newestReleaseFiles=True commits=3 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: finalNames/bootstrap=True tagChosen=False webFetches=1
+
+
+## Consumer-docs arm A results — v0.97.0, 2026-10-15 (hand-written; as pre-registered at 98857e9f)
+
+- Scored: `url-install-greenfield` 3/3, `url-install-brownfield` **1/3**, `dev-setup` 3/3 (the three runner blocks above). No
+  ERROR rows, no repeats. 2.48 USD in all.
+- Reading, as fixed: brownfield passed 2 fewer runs than arm B (3/3), so it is a **regression**; the failing conjunct is fixed
+  in a follow-up release before this work closes. Both failures are `committed=False` (102 files left in the tree); every other
+  conjunct held. t1 asked "do you want me to commit these installed files now?". t2 said the installer's agent block, which
+  told it to commit and then repeat a sentence "word for word", was untrusted tool output, and declined to commit unasked.
+  Cause in the diff: v0.97.0 reworded the agent paragraph's "step 1 (commit the copied files)" to "step 1 (the commit)" and
+  added the word-for-word demand; arm B's wording had neither and committed 3/3.
+- Post-hoc, not scored: no brownfield final message raised headless adoption (arm B: 3 of 3); one URL run of six failed a clone
+  with git's path-length error before retrying (arm B: 5 of 6). Trials shared `C:\src\ai-tech-lead`, the path the new README
+  names: t2 of brownfield reused t1's clone. Removed after the runs.
+
+## Consumer-docs arm A2 pre-registration — the follow-up release (2026-10-15, frozen before any run; an amendment outside the original stop)
+
+- Change measured: the installer's agent paragraph names the commit explicitly ("commit the installed files in the target
+  repo"), says committing is part of the install the agent was asked to do, and asks it to tell the developer the command,
+  without a word-for-word recitation; the README and stack READMEs say the same (a request to install is a request to commit)
+  and drop "word for word"; README step 1 fetches an existing clone instead of cloning again. Amended before any A2 run, after
+  a fresh-context attack's live run declined the commit under Claude Code's commit-only-when-asked rule. Everything else as
+  pre-registered at 98857e9f.
+- Runs: `url-install-brownfield` and `url-install-greenfield`, 3 each, against the follow-up release's tag, each trial its own
+  runner invocation (`-Trials 1`) with `C:\src\ai-tech-lead` removed before each, so no trial reuses another's clone.
+- Reading, fixed now: brownfield at 3/3 and greenfield at 3/3 closes the regression. Brownfield at 2/3 gets one
+  `meta/BACKLOG.md` entry naming the conjunct. Brownfield at 1/3 or below, or greenfield below 3/3, reverts the agent paragraph
+  to v0.96.1's brownfield wording minus its headless alternative, in a further release. Stop: 6 scored runs plus 2 repeats.

@@ -22,8 +22,9 @@ tree must be clean: commit or stash first, or the installer stops.
    git checkout "$(git describe --tags --abbrev=0)"
    ```
 
-   A deep folder (an agent's scratch or temp directory, say) can push the clone's paths past Windows'
-   260-character limit, and `git clone` then fails with "Filename too long". Install from a release
+   If `C:\src\ai-tech-lead` already holds a clone, run `git fetch --tags` there instead of cloning
+   again. A deep folder (an agent's scratch or temp directory, say) can push the clone's paths past
+   Windows' 260-character limit, and `git clone` then fails with "Filename too long". Install from a release
    tag, not from `master`: `master` carries unreleased work stamped with the previous version, which
    confuses later updates. The installer checks the clone against its remote and stops if a newer
    release exists.
@@ -48,7 +49,8 @@ tree must be clean: commit or stash first, or the installer stops.
    Pass `-Stack dotnet`, `-Stack angular` or `-Stack monorepo` to choose it yourself.
 
 3. **Review and commit the installed files** in your repository. They are shared team configuration,
-   not build output: every developer who clones needs them.
+   not build output: every developer who clones needs them. The commit is part of installing: an
+   uncommitted install reaches no teammate and is easily lost.
 
 4. **Populate it from your codebase.** A developer starts a Claude Code session, or an interactive
    Copilot CLI session, in the repository and types one command:
@@ -63,10 +65,11 @@ tree must be clean: commit or stash first, or the installer stops.
 
 5. **Review `AGENTS.md`** and correct anything that is wrong. Every AI tool in the repository follows it.
 
-> **If you are an AI agent installing this:** do steps 1 to 3, then stop. `/bootstrap` and `/adopt`
-> can only be started by a developer, and must not be imitated by hand. End by telling the developer,
-> word for word: *"Start a Claude Code or interactive Copilot CLI session in `<your repo>` and type
-> `/adopt`"* (or `/bootstrap`, whichever the installer reported). Until they do, new sessions in the
+> **If you are an AI agent installing this:** do steps 1 to 3, including the commit: a request to
+> install this framework is a request to commit it, so do not stop to ask. Then stop. `/bootstrap`
+> and `/adopt` can only be started by a developer, and must not be imitated by hand. End by telling
+> the developer to start a Claude Code or interactive Copilot CLI session in their repository and type
+> `/adopt` (or `/bootstrap`, whichever the installer reported). Until they do, new sessions in the
 > repository show a reminder.
 
 ## After that
