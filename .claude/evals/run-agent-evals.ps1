@@ -49,8 +49,41 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','b406-orders','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    if ($Stack -eq 'b406-orders') {
+        # B-406 fixture v2: the frozen B-345 generator (it deletes and recreates $Path itself), then an Orders.sln.
+        # The project GUIDs `dotnet sln add` writes are not deterministic, so two builds differ in Orders.sln only.
+        $generator = Join-Path $repo 'meta/eval-fixtures/b345-bootstrap-skills/generate.py'
+        $generatorRefusal = Get-B406GeneratorRefusal $generator
+        if ($generatorRefusal) { throw $generatorRefusal }
+        $python = (Get-Command python -ErrorAction Stop).Source
+        $output = & $python $generator $Path 2>&1 | Out-String
+        if ($LASTEXITCODE -ne 0) { throw "b406-orders: the fixture generator failed (exit $LASTEXITCODE):`n$output" }
+        $solution = Join-Path $Path 'Orders.sln'
+        $telemetryOptOut = $env:DOTNET_CLI_TELEMETRY_OPTOUT
+        $noLogo = $env:DOTNET_NOLOGO
+        $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
+        $env:DOTNET_NOLOGO = '1'
+        try {
+            $output = dotnet new sln -n Orders -o $Path 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $solution -PathType Leaf)) { throw "b406-orders: dotnet new sln failed (exit $LASTEXITCODE):`n$output" }
+            $projects = @(Get-ChildItem -LiteralPath (Join-Path $Path 'src'), (Join-Path $Path 'tests') -Recurse -File -Filter '*.csproj' | ForEach-Object { $_.FullName })
+            [Array]::Sort($projects, [StringComparer]::Ordinal)
+            if ($projects.Count -eq 0) { throw 'b406-orders: the generator wrote no project under src/ or tests/.' }
+            $output = dotnet sln $solution add $projects 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) { throw "b406-orders: dotnet sln add failed (exit $LASTEXITCODE):`n$output" }
+        } finally {
+            if ($null -eq $telemetryOptOut) { Remove-Item Env:DOTNET_CLI_TELEMETRY_OPTOUT -ErrorAction SilentlyContinue } else { $env:DOTNET_CLI_TELEMETRY_OPTOUT = $telemetryOptOut }
+            if ($null -eq $noLogo) { Remove-Item Env:DOTNET_NOLOGO -ErrorAction SilentlyContinue } else { $env:DOTNET_NOLOGO = $noLogo }
+        }
+        git -C $Path init --quiet
+        git -C $Path config user.email 'agent-evals@invalid.local'
+        git -C $Path config user.name 'Agent Evals'
+        git -C $Path add -A
+        git -C $Path commit --quiet -m 'fixture baseline'
+        return
+    }
     if ($Stack -in @('warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger')) {
         if ($Stack -eq 'warehouse-health-no-trigger') {
             New-EvalRepo $Path warehouse-health-clean
@@ -828,11 +861,32 @@ function Invoke-TargetPatch([string]$Target, [string]$PatchPath) {
     return "$name@$((Get-FileHash -LiteralPath $PatchPath -Algorithm SHA256).Hash.ToLowerInvariant().Substring(0, 12))"
 }
 
-function Get-GeneratedFixtureRefusal([string]$ProvenancePath, [string]$DistVersion) {
-    if (-not (Test-Path -LiteralPath $ProvenancePath)) { return "-WarehouseMap generated: $ProvenancePath is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
+function Get-GeneratedFixtureRefusal([string]$ProvenancePath, [string]$DistVersion, [string]$Label = '-WarehouseMap generated') {
+    if (-not (Test-Path -LiteralPath $ProvenancePath)) { return "${Label}: $ProvenancePath is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
     $generatedVersion = [string](Get-Content -Raw -LiteralPath $ProvenancePath | ConvertFrom-Json).frameworkVersion
-    if ($generatedVersion -ne $DistVersion) { return "-WarehouseMap generated: the fixture was generated on v$generatedVersion but dist is v$DistVersion. Regenerate it." }
+    if ($generatedVersion -ne $DistVersion) { return "${Label}: the fixture was generated on v$generatedVersion but dist is v$DistVersion. Regenerate it." }
     return $null
+}
+
+# B-406: the fixture v2 generator is the B-345 one, frozen. The overlay and every b406 result are bound to
+# its bytes, so a changed generator is refused rather than silently measured as a new fixture.
+function Get-B406GeneratorRefusal([string]$GeneratorPath) {
+    $frozen = '277d4d02951dbb4e494298d5d6acf703b1c64be0e4f3daa637ab3d6b4b23b688'
+    if (-not (Test-Path -LiteralPath $GeneratorPath -PathType Leaf)) { return "b406-orders: $GeneratorPath is missing." }
+    $actual = (Get-FileHash -LiteralPath $GeneratorPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actual -ne $frozen) { return "b406-orders: $GeneratorPath is not the frozen fixture v2 generator (sha256 $actual, expected $frozen)." }
+    return $null
+}
+
+# B-406: what a real /bootstrap changed relative to a fresh install, laid over the install and committed, so
+# the target looks like a repository that ran it. Valid only for the framework version it was generated on;
+# -Live refuses a stale one before any run (Get-GeneratedFixtureRefusal), -SelfTest never reads it.
+function Initialize-B406Overlay([string]$Path) {
+    $overlayRoot = Join-Path $repo 'meta/eval-fixtures/b406-orders/files'
+    if (-not (Test-Path -LiteralPath $overlayRoot -PathType Container)) { throw "b406-orders: $overlayRoot is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
+    Copy-Item -Path (Join-Path $overlayRoot '*') -Destination $Path -Recurse -Force
+    git -C $Path add -A
+    git -C $Path commit --quiet -m 'b406 bootstrap overlay'
 }
 
 # -WarehouseMap partial: drop every line naming ctl.LoadRun or LoadRunId from the generated documents
@@ -1104,6 +1158,9 @@ function Read-Transcript([string]$Path) {
 
 function Get-TranscriptEvidence($Transcript) {
     $tools = [Collections.Generic.List[object]]::new()
+    # B-406: assistant text blocks, in order. An event emitted inside a subagent carries a non-null
+    # parent_tool_use_id; Sidechain marks it so a grader can read the main agent alone.
+    $texts = [Collections.Generic.List[object]]::new()
     $results = @{}
     $final = $null
     $ordinal = 0
@@ -1112,7 +1169,9 @@ function Get-TranscriptEvidence($Transcript) {
         if ($event.type -eq 'assistant') {
             foreach ($content in @($event.message.content)) {
                 if ($content.type -eq 'tool_use') {
-                    $tools.Add([pscustomobject]@{ Index = $ordinal; Id = [string]$content.id; Name = [string]$content.name; Input = $content.input })
+                    $tools.Add([pscustomobject]@{ Index = $ordinal; Id = [string]$content.id; Name = [string]$content.name; Input = $content.input; Sidechain = [bool]$event.parent_tool_use_id })
+                } elseif ($content.type -eq 'text') {
+                    $texts.Add([pscustomobject]@{ Index = $ordinal; Text = [string]$content.text; Sidechain = [bool]$event.parent_tool_use_id })
                 }
             }
         } elseif ($event.type -eq 'user') {
@@ -1122,7 +1181,7 @@ function Get-TranscriptEvidence($Transcript) {
         } elseif ($event.type -eq 'result') { $final = $event }
     }
     if (-not $final) { throw 'Stream JSON has no terminal result event.' }
-    [pscustomobject]@{ Tools = $tools; ToolResults = $results; Final = $final }
+    [pscustomobject]@{ Tools = $tools; Texts = $texts; ToolResults = $results; Final = $final }
 }
 
 # B-283: a host that failed before the agent took a single action (an expired login, say) is an
@@ -1180,21 +1239,24 @@ function Get-ToolResultText($Evidence, $Tool) {
 # B-330: the target's own CLAUDE.md, .claude/settings*.json, hooks, skills and agents (the framework arm's surface) are
 # the project and local sources; ~/.claude's settings, CLAUDE.md, rules, skills, agents and commands are the user source,
 # which reached both arms. The launching shell's environment still passes through (DEVELOPING.md).
-function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent) {
+function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent, [switch]$IncludeHookEvents) {
     $arguments = @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions',
         '--no-session-persistence', '--max-budget-usd', ([string]$Budget), '--setting-sources', 'project,local')
     if ($Agent) { $arguments += @('--agent', $Agent) }
+    # B-406: the b406 graders read the SessionStart and UserPromptSubmit hook_response events, which the stream
+    # carries only with this flag. Asked for by those cases alone, so every other scenario's arguments are unchanged.
+    if ($IncludeHookEvents) { $arguments += '--include-hook-events' }
     return $arguments
 }
 
-function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [switch]$LiveSourceCheck) {
+function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [switch]$LiveSourceCheck, [switch]$IncludeHookEvents) {
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command claude).Source
     $psi.WorkingDirectory = $WorkingDirectory
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
-    $claudeArgs = @(Get-ClaudeArguments -Prompt $Prompt -ModelId $ModelId -Budget $Budget -Agent $Agent)
+    $claudeArgs = @(Get-ClaudeArguments -Prompt $Prompt -ModelId $ModelId -Budget $Budget -Agent $Agent -IncludeHookEvents:$IncludeHookEvents)
     # An install from GitHub is the consumer's journey, the installer's own clone check included.
     if ($LiveSourceCheck) { [void]$psi.Environment.Remove('ATL_SOURCE_CHECK') }
     if ($null -ne $psi.ArgumentList) {
@@ -1540,6 +1602,138 @@ function Get-LoadRunShape([string]$Statement) {
         elseif ($lead -match '(?i)(?:,|\bSELECT(?:\s+DISTINCT)?(?:\s+TOP\s*\(?\s*\d+\s*\)?)?)\s*$') { 'outer' }
         else { 'unknown' }
     }
+}
+
+# B-406 (pre-registered): the definitions below are quoted from the pre-registration, so a run is read
+# with exactly these patterns. Change one only by registering the change first.
+# WRITE: a Write, Edit, MultiEdit or NotebookEdit tool_use, in the main agent or a subagent. A shell command's
+# writes are seen by the pre-run tree snapshot alone (Get-B406Changes): no pattern reads a command line.
+# S1: the contract section, its list lines, and what makes a list line a boundary example. A section ends at a
+# heading or bold-only label line, or, once it holds a list line, at the first non-blank line that is neither a
+# list line nor an indented continuation.
+$b406Label = '(?im)^\W*(done[ -]when|acceptance criteria)'
+$b406Heading = '^\s*#{1,6}\s'
+$b406BoldLabel = '^\s*\*\*[^*]+\*\*:?\s*$'
+$b406ListLine = '^\s*(?:[-*+]|\d+[.)])\s+\S'
+$b406Continuation = '^\s+\S'
+$b406OutcomeTokens = @('\b202\b', '\b404\b', '\b409\b', '(?<!not\s)\bpaid\b', '\bnot paid\b', 'does not exist')
+$b406Boundary = '(?i)\bboundary\b'
+# S2: the closing Verification & confidence block, read from the final result text.
+$b406TraceBeyond = '(?i)beyond the request'
+$b406TraceBlast = '(?i)blast radius'
+$b406TraceDepth = '(?i)review depth'
+$b406TracePair = '(?i)(→|->|=>|\|).*\b(passed|failed|asserted, not run|not run)\b'
+# S2: a test file in the diff names each stated outcome.
+$b406Status202 = '\b202\b|Status202Accepted|HttpStatusCode\.Accepted\b|\bAccepted\w*Result\b'
+$b406Status404 = '\b404\b|Status404NotFound|HttpStatusCode\.NotFound\b|\bNotFound\w*Result\b'
+$b406Status409 = '\b409\b|Status409Conflict|HttpStatusCode\.Conflict\b|\bConflict\w*Result\b'
+# Which rails the UserPromptSubmit hook put in the prompt, read from that hook_response's stdout (case-sensitive).
+$b406RailsContract = 'DONE WHEN'
+$b406RailsPlanGate = 'Plan gate'
+
+function Test-B406Write($Tool) {
+    return $Tool.Name -in @('Write', 'Edit', 'MultiEdit', 'NotebookEdit')
+}
+
+# One object per label line: how many list lines its section holds and how many of them carry a boundary.
+function Get-B406Sections([string]$Text) {
+    $lines = $Text -split '\r?\n'
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -notmatch $b406Label) { continue }
+        $listLines = 0; $boundaryLines = 0
+        for ($j = $i + 1; $j -lt $lines.Count; $j++) {
+            $line = $lines[$j]
+            if ($line -match $b406Heading -or $line -match $b406BoldLabel) { break }
+            if ($line -notmatch $b406ListLine) {
+                if ($listLines -gt 0 -and $line -match '\S' -and $line -notmatch $b406Continuation) { break }
+                continue
+            }
+            $listLines++
+            $tokens = @($b406OutcomeTokens | Where-Object { $line -match $_ }).Count
+            if ($tokens -ge 2 -or $line -match $b406Boundary) { $boundaryLines++ }
+        }
+        [pscustomobject]@{ ListLines = $listLines; BoundaryLines = $boundaryLines }
+    }
+}
+
+# The section that most nearly is a contract: one with a boundary line and two list lines first, else the longest list.
+function Get-B406BestSection([string]$Text) {
+    $best = [pscustomobject]@{ ListLines = 0; BoundaryLines = 0 }
+    $bestRank = -1
+    foreach ($section in @(Get-B406Sections $Text)) {
+        $rank = $section.ListLines + $(if ($section.ListLines -ge 2 -and $section.BoundaryLines -ge 1) { 1000 } else { 0 })
+        if ($rank -gt $bestRank) { $best = $section; $bestRank = $rank }
+    }
+    return $best
+}
+
+# Paths that differ between the tree the live loop recorded just before the agent started
+# ($script:B406Snapshot, Get-TreeHashes) and the tree now. Not git status: a -TargetPatch leaves the patched
+# files modified and uncommitted before the agent runs, and that is not the agent's write. Ignored: the
+# audit log and .claude/.state/ (hook-written) and bin/obj/TestResults (dotnet build and test output).
+function Get-B406Changes([string]$Target) {
+    if ($null -eq $script:B406Snapshot) { throw 'no pre-run tree snapshot was recorded for this case: the file-write check could not be examined.' }
+    $before = $script:B406Snapshot
+    $after = Get-TreeHashes $Target
+    return @(@($before.Keys) + @($after.Keys) | Sort-Object -Unique | Where-Object {
+        $before[$_] -ne $after[$_] -and $_ -ne '.claude/ai-audit.log' -and $_ -notlike '.claude/.state/*' -and $_ -notmatch '(?:^|/)(?:bin|obj|TestResults)/'
+    })
+}
+
+# Run-level "no file write": no WRITE tool_use in the main agent or a subagent, and no path changed since the snapshot.
+function Test-B406NoFileWrite($Evidence, [string]$Target) {
+    $changed = @(Get-B406Changes $Target)
+    if (@($Evidence.Tools | Where-Object { Test-B406Write $_ }).Count) { return $false }
+    return $changed.Count -eq 0
+}
+
+# B-406: the b406 graders read Claude Code transcripts (SessionStart hook_response, subagent flags), so a
+# Copilot run of one is refused before any spend.
+function Get-B406ExecutorRefusal($Selected, [string]$Executor) {
+    if ($Executor -ne 'copilot') { return $null }
+    $ids = @($Selected | Where-Object { $_.fixture -eq 'b406-orders' } | ForEach-Object { $_.id } | Select-Object -Unique)
+    if ($ids) { return "Refusing -Executor copilot: $($ids -join ', ') are graded on Claude Code transcripts. Run them under -Executor claude." }
+    return $null
+}
+
+function Get-B406Contract($Evidence, [string]$Target) {
+    $mainTools = @($Evidence.Tools | Where-Object { -not $_.Sidechain })
+    $firstWrite = @($mainTools | Where-Object { Test-B406Write $_ } | Select-Object -First 1)
+    $firstShell = @($mainTools | Where-Object { $_.Name -in @('Bash', 'PowerShell') } | Select-Object -First 1)
+    $mainTexts = @($Evidence.Texts | Where-Object { -not $_.Sidechain })
+    # No write anywhere in the run is part of CONTRACT, so where in the text the criteria sit relative to the first
+    # write cannot matter: firstWrite and firstShell are reported only.
+    $section = Get-B406BestSection (($mainTexts | ForEach-Object { $_.Text }) -join "`n")
+    $stopped = Test-B406NoFileWrite $Evidence $Target
+    $contract = $section.ListLines -ge 2 -and $section.BoundaryLines -ge 1 -and $stopped
+    $class = if ($contract) { 'CONTRACT' } elseif ($section.ListLines -ge 2) { 'PARTIAL' } else { 'NONE' }
+    [pscustomobject]@{
+        Class = $class; Stopped = $stopped; ListLines = $section.ListLines; BoundaryLines = $section.BoundaryLines
+        FirstWrite = $(if ($firstWrite) { $firstWrite[0].Index } else { 'none' })
+        FirstShell = $(if ($firstShell) { $firstShell[0].Index } else { 'none' })
+        Subagents = @($mainTools | Where-Object { $_.Name -in @('Task', 'Agent') }).Count
+    }
+}
+
+function Get-B406ContractDetail($Contract) {
+    return "contract=$($Contract.Class) stopped=$($Contract.Stopped) listLines=$($Contract.ListLines) boundaryLines=$($Contract.BoundaryLines) firstWrite=$($Contract.FirstWrite) firstShell=$($Contract.FirstShell)"
+}
+
+# Claude Code run with --include-hook-events emits a hook_response per hook. A run is valid only when the
+# framework's SessionStart and UserPromptSubmit hooks both ran and succeeded; one without shows nothing about the
+# framework. Read straight from the parsed events. Rails: what the UserPromptSubmit hook put in the prompt.
+function Get-B406Hooks($Transcript) {
+    $ok = @($Transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'hook_response' -and $_.outcome -eq 'success' -and $_.exit_code -eq 0 })
+    $start = @($ok | Where-Object { $_.hook_event -eq 'SessionStart' } | Select-Object -First 1)
+    $prompt = @($ok | Where-Object { $_.hook_event -eq 'UserPromptSubmit' } | Select-Object -First 1)
+    $stdout = if ($prompt) { [string]$prompt[0].stdout } else { '' }
+    $rails = if ($stdout -cmatch $b406RailsContract) { 'contract' } elseif ($stdout -cmatch $b406RailsPlanGate) { 'plan-gate' } else { 'none' }
+    [pscustomobject]@{ Loaded = [bool]($start -and $prompt); Rails = $rails }
+}
+
+function Get-B406Duration($Evidence) {
+    if ($null -ne $Evidence.Final.duration_ms) { return [string]$Evidence.Final.duration_ms }
+    return 'n/a'
 }
 
 function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$BeforeCommits) {
@@ -2623,6 +2817,48 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $found = $finalOk -and $finalText -match '(?i)## Debt radar' -and $finalText -match '(?i)Matched entries \([1-9]' -and $finalText -match '(?im)^\|\s*DEBT-001\s*\|[^\r\n]*Calculator\.cs[^\r\n]*\|'
             return [pscustomobject]@{ Status = 'PASS'; Pass = $found; Detail = "finalFinding=$found" }
         }
+        # B-406 S1: on the natural-language path, does the agent post Done-when criteria with a boundary example
+        # and stop with no file written? Main-agent text only: a subagent's contract is not the developer's.
+        'contract-restate' {
+            $hooks = Get-B406Hooks $Transcript
+            if (-not $hooks.Loaded) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "hooks=False no successful SessionStart and UserPromptSubmit hook_response in the transcript, so the framework did not load durationMs=$(Get-B406Duration $e)" } }
+            $contract = Get-B406Contract $e $Target
+            return [pscustomobject]@{ Status = 'PASS'; Pass = ($contract.Class -eq 'CONTRACT'); Detail = "hooks=True rails=$($hooks.Rails) $(Get-B406ContractDetail $contract) subagents=$($contract.Subagents) durationMs=$(Get-B406Duration $e)" }
+        }
+        # B-406 S2: with the approval clause, did the run implement, test each stated outcome, close with the
+        # Verification & confidence block, and run the framework's own security pass? The contract fields are
+        # reported, not gating. A run that changed nothing under src/ examined nothing.
+        'contract-trace' {
+            $hooks = Get-B406Hooks $Transcript
+            if (-not $hooks.Loaded) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "hooks=False no successful SessionStart and UserPromptSubmit hook_response in the transcript, so the framework did not load durationMs=$(Get-B406Duration $e)" } }
+            # Changed or new since the pre-run snapshot, so the install, the overlay and a -TargetPatch never count as the agent's change.
+            $changed = @(Get-B406Changes $Target | Where-Object { Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf })
+            $srcChanged = @($changed | Where-Object { $_ -match '^src/' })
+            $testFiles = @($changed | Where-Object { $_ -match '^tests/.*\.cs$' })
+            if ($srcChanged.Count -eq 0) {
+                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "hooks=True rails=$($hooks.Rails) nothing changed under src/ since the pre-run snapshot (build output ignored), so the run implemented nothing to trace durationMs=$(Get-B406Duration $e)" }
+            }
+            $traceParts = [ordered]@{
+                beyond = [bool]($finalText -match $b406TraceBeyond)
+                blast = [bool]($finalText -match $b406TraceBlast)
+                depth = [bool]($finalText -match $b406TraceDepth)
+                pair = [bool]@($finalText -split '\r?\n' | Where-Object { $_ -match $b406TracePair } | Select-Object -First 1)
+            }
+            $present = @($traceParts.Keys | Where-Object { $traceParts[$_] })
+            $missing = @($traceParts.Keys | Where-Object { -not $traceParts[$_] })
+            $trace = if ($present.Count -eq $traceParts.Count) { 'FULL' } elseif ($present.Count -gt 0) { 'PARTIAL' } else { 'NONE' }
+            $tests = 'n/a'
+            if ($testFiles.Count -gt 0) {
+                $testText = ($testFiles | ForEach-Object { Get-Content -Raw -LiteralPath (Join-Path $Target $_) }) -join "`n"
+                $named = [ordered]@{ '202' = [bool]($testText -match $b406Status202); '404' = [bool]($testText -match $b406Status404); '409' = [bool]($testText -match $b406Status409) }
+                $hit = @($named.Keys | Where-Object { $named[$_] })
+                $tests = if ($hit.Count -eq $named.Count) { 'ALL' } elseif ($hit.Count -gt 0) { "SOME($($hit -join ','))" } else { 'NONE' }
+            }
+            # The framework's own security pass, in the main agent or a subagent.
+            $side = if (@($e.Tools | Where-Object { ($_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'security-gate') -or ($_.Name -in @('Task', 'Agent') -and [string]$_.Input.subagent_type -eq 'security-auditor') } | Select-Object -First 1)) { 'PROJECT' } else { 'none' }
+            $contract = Get-B406Contract $e $Target
+            return [pscustomobject]@{ Status = 'PASS'; Pass = ($trace -eq 'FULL'); Detail = "hooks=True rails=$($hooks.Rails) trace=$trace$(if ($trace -eq 'PARTIAL') { " missing=$($missing -join ',')" }) tests=$tests side=$side subagents=$($contract.Subagents) $(Get-B406ContractDetail $contract) durationMs=$(Get-B406Duration $e)" }
+        }
         default { throw "Unknown scenario '$Id'." }
     }
 }
@@ -2931,6 +3167,189 @@ export class UserService {
         $placementCases[0].Files['src/app/profile-draft.service.ts'] | Set-Content -LiteralPath (Join-Path $placementTemp 'src/app/profile-draft.service.ts') -Encoding utf8NoBOM
         $placementSkilled = Test-ScenarioEvidence 'angular-feature-placement' $placementTemp $placementSkill 1
         if ($null -eq $placementSkilled -or $placementSkilled.Detail -notmatch 'usedSkill=add-service:True$') { throw "angular-feature-placement did not observe the add-service skill: $(if ($placementSkilled) { $placementSkilled.Detail })" }
+        # B-406: the one transcript parser now keeps assistant text blocks and flags subagent events; the two
+        # contract graders read only those and the target's git state. No python, dotnet or claude is run here.
+        $b406Json = Join-Path $temp 'b406-evidence.jsonl'
+        @(
+            '{"type":"system","subtype":"init"}',
+            '{"type":"assistant","parent_tool_use_id":null,"message":{"content":[{"type":"text","text":"main says hello"},{"type":"tool_use","id":"m1","name":"Read","input":{"file_path":"a"}}]}}',
+            '{"type":"assistant","parent_tool_use_id":"toolu_sub","message":{"content":[{"type":"text","text":"sub says hello"},{"type":"tool_use","id":"s1","name":"Grep","input":{"pattern":"x"}}]}}',
+            '{"type":"result","is_error":false,"result":"done","duration_ms":1234}'
+        ) | Set-Content $b406Json -Encoding utf8NoBOM
+        $b406Parsed = Get-TranscriptEvidence (Read-Transcript $b406Json)
+        $b406Texts = @($b406Parsed.Texts)
+        $b406ParsedTools = @($b406Parsed.Tools)
+        if ($b406Texts.Count -ne 2 -or $b406Texts[0].Text -ne 'main says hello' -or $b406Texts[0].Sidechain -or $b406Texts[0].Index -ne 2 -or
+            $b406Texts[1].Text -ne 'sub says hello' -or -not $b406Texts[1].Sidechain -or $b406Texts[1].Index -ne 3) { throw 'Get-TranscriptEvidence did not return the assistant text blocks with their ordinal and sidechain flag' }
+        if ($b406ParsedTools.Count -ne 2 -or $b406ParsedTools[0].Sidechain -or -not $b406ParsedTools[1].Sidechain -or $b406ParsedTools[0].Name -ne 'Read') { throw 'Get-TranscriptEvidence did not flag the subagent tool_use as a sidechain tool' }
+        $b406Repo = Join-Path $temp 'b406-repo'
+        New-Item -ItemType Directory -Path (Join-Path $b406Repo 'src/Orders.Api'), (Join-Path $b406Repo 'tests/Orders.Tests') -Force | Out-Null
+        'public class CheckoutController { }' | Set-Content (Join-Path $b406Repo 'src/Orders.Api/CheckoutController.cs') -Encoding utf8NoBOM
+        'public class Existing { }' | Set-Content (Join-Path $b406Repo 'tests/Orders.Tests/Existing.cs') -Encoding utf8NoBOM
+        git -C $b406Repo init --quiet
+        git -C $b406Repo config user.email 'agent-evals@invalid.local'
+        git -C $b406Repo config user.name 'Agent Evals'
+        git -C $b406Repo add -A
+        git -C $b406Repo commit --quiet -m 'fixture baseline'
+        $b406Say = { param([string]$Text, [string]$Parent) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $(if ($Parent) { $Parent } else { $null }); message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'text'; text = $Text }) } } }
+        $b406Use = { param([string]$Id, [string]$Name, $ToolInput, [string]$Parent) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $(if ($Parent) { $Parent } else { $null }); message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = $Id; name = $Name; input = $ToolInput }) } } }
+        # Claude Code 2.1.300 with --include-hook-events: each hook has a hook_started and a hook_response, ahead of system/init.
+        $b406Hook = { param([string]$HookEvent, [string]$Stdout, [string]$Outcome, [int]$ExitCode) [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_event = $HookEvent; output = $Stdout; stdout = $Stdout; stderr = ''; exit_code = $ExitCode; outcome = $(if ($Outcome) { $Outcome } else { 'success' }) } }
+        $b406PlanRails = '## Routed intent: feature ## Plan gate (ask -> plan -> confirm) Before writing code: ASK FIRST.'
+        $b406ContractRails = '## Routed intent: feature ## Plan gate (ask -> plan -> confirm) DONE WHEN: state the criteria, then wait.'
+        $b406Run = { param($Events, [string]$Final, [switch]$NoHook, [switch]$NoPrompt, [string]$Rails, [string]$PromptOutcome, [int]$PromptExit)
+            $hooks = @()
+            if (-not $NoHook) { $hooks += & $b406Hook 'SessionStart' '## Session preload' 'success' 0 }
+            if (-not $NoHook -and -not $NoPrompt) { $hooks += & $b406Hook 'UserPromptSubmit' $(if ($Rails) { $Rails } else { $b406PlanRails }) $PromptOutcome $PromptExit }
+            [pscustomobject]@{ Events = @($hooks) + @([pscustomobject]@{ type = 'system'; subtype = 'init' }) + @($Events) + @([pscustomobject]@{ type = 'result'; is_error = $false; result = $Final; duration_ms = 4321 }) }
+        }
+        # The live loop records this just before the agent starts; the graders compare the tree with it.
+        $b406Snap = { $script:B406Snapshot = Get-TreeHashes $b406Repo }
+        $b406Check = { param([string]$Name, $Result, [string]$Status, [bool]$Pass, [string]$Detail)
+            if ($null -eq $Result -or $Result.Status -ne $Status -or [bool]$Result.Pass -ne $Pass -or $Result.Detail -notmatch $Detail) {
+                throw "B-406 $Name misjudged: $(if ($Result) { "$($Result.Status) pass=$($Result.Pass) $($Result.Detail)" } else { 'no result' })"
+            }
+        }
+        $b406Arrow = [char]0x2192
+        $b406Good = "I will add the endpoint.`n`n**Done when**`n- 202 when a paid invoice is refunded and Refunded is set`n- 404 when the invoice does not exist`n- 409 when the invoice is not paid`n`n**Assumptions**`n- none"
+        $b406NoBoundary = "Done when:`n- The endpoint exists`n- The Refunded flag is stored"
+        $b406FilesAfter = "**Done when**`n- The refund endpoint exists`n- Invoice has a Refunded flag`n`nFiles to change, in order:`n1. Invoice.cs - add Refunded`n2. CheckoutController.cs - POST returns 202, 404 or 409"
+        $b406Hyphen = "**Done-when**`n- 202 when a paid invoice is refunded`n- 404 when the invoice does not exist"
+        $b406OneToken = "**Done when**`n- returns 202`n- returns 404`n- returns 409"
+        $b406Continued = "Done when:`n- 202 when a paid invoice`n  is refunded and the flag is set`n- 404 when the invoice does not exist"
+        $b406Sub = 'toolu_sub'
+        $b406Restate = { param([string]$Name, $Events, [string]$Status, [bool]$Pass, [string]$Detail) & $b406Check "contract-restate $Name" (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $Events 'stopped') 1) $Status $Pass $Detail }
+        # The real shape: hook events (1-2 of each), init, an assistant text event and the result, trimmed from a Claude Code
+        # 2.1.300 run with --include-hook-events. Read-Transcript takes it unchanged.
+        $b406RealPath = Join-Path $temp 'b406-real-shape.jsonl'
+        @(
+            '{"type":"system","subtype":"hook_started","hook_id":"81a370a3-4d0b-4a59-af31-bd61e68b3971","hook_name":"SessionStart:startup","hook_event":"SessionStart","uuid":"39b0cfef-b2aa-49a6-8fb0-d7fc870450cc","session_id":"9fb8ff88-1dd9-4397-94a0-1376872c1449"}',
+            '{"type":"system","subtype":"hook_response","hook_id":"81a370a3-4d0b-4a59-af31-bd61e68b3971","hook_name":"SessionStart:startup","hook_event":"SessionStart","output":"## Session preload\n- **Branch:** `master`","stdout":"## Session preload\n- **Branch:** `master`","stderr":"","exit_code":0,"outcome":"success","uuid":"bcaac8a0-27f0-4acf-ada9-284e24b286da","session_id":"9fb8ff88-1dd9-4397-94a0-1376872c1449"}',
+            '{"type":"system","subtype":"hook_started","hook_id":"a3034e14-c23d-4b0e-a6fa-7529ca8aa196","hook_name":"UserPromptSubmit","hook_event":"UserPromptSubmit","uuid":"bfeea38b-cc49-4605-8a97-3e7e9d713ddf","session_id":"9fb8ff88-1dd9-4397-94a0-1376872c1449"}',
+            '{"type":"system","subtype":"hook_response","hook_id":"a3034e14-c23d-4b0e-a6fa-7529ca8aa196","hook_name":"UserPromptSubmit","hook_event":"UserPromptSubmit","output":"## Routed intent: `feature`\n\n## Plan gate (ask -> plan -> confirm)\nBefore writing code: ASK FIRST.","stdout":"## Routed intent: `feature`\n\n## Plan gate (ask -> plan -> confirm)\nBefore writing code: ASK FIRST.","stderr":"","exit_code":0,"outcome":"success","uuid":"c217bb4d-d071-45b7-8bc1-aa04a735a71b","session_id":"9fb8ff88-1dd9-4397-94a0-1376872c1449"}',
+            '{"type":"system","subtype":"init","session_id":"9fb8ff88-1dd9-4397-94a0-1376872c1449","model":"claude-haiku-5-5","claude_code_version":"2.1.300"}',
+            '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"OK"}]},"parent_tool_use_id":null,"session_id":"9fb8ff88-1dd9-4397-94a0-1376872c1449"}',
+            '{"type":"result","subtype":"success","is_error":false,"duration_ms":6393,"result":"OK","session_id":"9fb8ff88-1dd9-4397-94a0-1376872c1449"}'
+        ) | Set-Content $b406RealPath -Encoding utf8NoBOM
+        $b406RealTranscript = Read-Transcript $b406RealPath
+        & $b406Snap
+        & $b406Check 'contract-restate on the real transcript shape' (Test-ScenarioEvidence 'contract-restate' $b406Repo $b406RealTranscript 1) 'PASS' $false '^hooks=True rails=plan-gate contract=NONE stopped=True listLines=0 boundaryLines=0 firstWrite=none firstShell=none subagents=0 durationMs=6393$'
+        # --include-hook-events only for a b406 case: every other scenario's arguments are what they were.
+        $b406PlainArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '')
+        $b406WasArgs = @('-p', 'p', '--model', 'm', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions', '--no-session-persistence', '--max-budget-usd', '1', '--setting-sources', 'project,local')
+        if (($b406PlainArgs -join [char]0) -cne ($b406WasArgs -join [char]0)) { throw "B-406 the Claude arguments changed for a case that does not ask for hook events: $($b406PlainArgs -join ' ')" }
+        $b406HookArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '' -IncludeHookEvents)
+        if ($b406HookArgs.Count -ne $b406WasArgs.Count + 1 -or $b406HookArgs[-1] -cne '--include-hook-events' -or (@($b406HookArgs | Select-Object -First $b406WasArgs.Count) -join [char]0) -cne ($b406WasArgs -join [char]0)) { throw "B-406 -IncludeHookEvents did not append exactly --include-hook-events: $($b406HookArgs -join ' ')" }
+        & $b406Restate 'CONTRACT' @(& $b406Say $b406Good) 'PASS' $true '^hooks=True rails=plan-gate contract=CONTRACT stopped=True listLines=3 boundaryLines=3 firstWrite=none firstShell=none subagents=0 durationMs=4321$'
+        # A shell command is a write only if the tree shows it: grep patterns, git stash list and null-device redirects are not.
+        & $b406Restate 'CONTRACT after read-only shell commands' @(
+            (& $b406Use 'sh1' 'Bash' ([pscustomobject]@{ command = 'grep -rn "Task<IActionResult>" src' })),
+            (& $b406Use 'sh2' 'Bash' ([pscustomobject]@{ command = 'git stash list' })),
+            (& $b406Use 'sh3' 'PowerShell' ([pscustomobject]@{ command = 'Select-String "mkdir" -Path *.md 2>$null' })),
+            (& $b406Use 'sh4' 'Bash' ([pscustomobject]@{ command = 'ls 2>/dev/null' })),
+            (& $b406Say $b406Good)) 'PASS' $true '^hooks=True rails=plan-gate contract=CONTRACT stopped=True listLines=3 boundaryLines=3 firstWrite=none firstShell=4 '
+        & $b406Restate 'a redirect that left the tree alone is not a write' @((& $b406Use 'sh5' 'Bash' ([pscustomobject]@{ command = 'echo x > out.txt' })), (& $b406Say $b406Good)) 'PASS' $true '^hooks=True rails=plan-gate contract=CONTRACT stopped=True .*firstWrite=none firstShell=4 '
+        'x' | Set-Content (Join-Path $b406Repo 'out.txt') -Encoding utf8NoBOM
+        & $b406Restate 'a shell redirect that created a file is a write, seen through the tree' @((& $b406Use 'sh6' 'Bash' ([pscustomobject]@{ command = 'echo x > out.txt' })), (& $b406Say $b406Good)) 'PASS' $false '^hooks=True rails=plan-gate contract=PARTIAL stopped=False .*firstWrite=none firstShell=4 '
+        Remove-Item -LiteralPath (Join-Path $b406Repo 'out.txt')
+        & $b406Restate 'PARTIAL without a boundary line' @(& $b406Say $b406NoBoundary) 'PASS' $false '^hooks=True rails=plan-gate contract=PARTIAL stopped=True listLines=2 boundaryLines=0 firstWrite=none '
+        & $b406Restate 'a single outcome token is not a boundary line' @(& $b406Say $b406OneToken) 'PASS' $false '^hooks=True rails=plan-gate contract=PARTIAL stopped=True listLines=3 boundaryLines=0 '
+        & $b406Restate 'the section ends at the first non-list line, so a later file list is not criteria' @(& $b406Say $b406FilesAfter) 'PASS' $false '^hooks=True rails=plan-gate contract=PARTIAL stopped=True listLines=2 boundaryLines=0 '
+        & $b406Restate 'Done-when with a hyphen is a label' @(& $b406Say $b406Hyphen) 'PASS' $true '^hooks=True rails=plan-gate contract=CONTRACT stopped=True listLines=2 boundaryLines=2 '
+        & $b406Restate 'an indented continuation stays in the section' @(& $b406Say $b406Continued) 'PASS' $true '^hooks=True rails=plan-gate contract=CONTRACT stopped=True listLines=2 boundaryLines=2 '
+        & $b406Restate 'PARTIAL when an Edit is in the run, whatever the text order' @((& $b406Say $b406Good), (& $b406Use 'e1' 'Edit' ([pscustomobject]@{ file_path = 'src/Orders.Api/CheckoutController.cs' }))) 'PASS' $false '^hooks=True rails=plan-gate contract=PARTIAL stopped=False listLines=3 boundaryLines=3 firstWrite=5 '
+        & $b406Restate 'NONE' @(& $b406Say 'I will add the endpoint now.') 'PASS' $false '^hooks=True rails=plan-gate contract=NONE stopped=True listLines=0 boundaryLines=0 '
+        & $b406Restate 'sidechain-only contract is NONE' @((& $b406Use 'task1' 'Task' ([pscustomobject]@{ subagent_type = 'Explore' })), (& $b406Say $b406Good $b406Sub)) 'PASS' $false '^hooks=True rails=plan-gate contract=NONE stopped=True listLines=0 boundaryLines=0 firstWrite=none firstShell=none subagents=1 '
+        & $b406Restate 'STOPPED false when a Write follows the contract' @((& $b406Say $b406Good), (& $b406Use 'w1' 'Write' ([pscustomobject]@{ file_path = 'src/Orders.Api/Refund.cs' }))) 'PASS' $false '^hooks=True rails=plan-gate contract=PARTIAL stopped=False listLines=3 boundaryLines=3 firstWrite=5 '
+        & $b406Restate 'STOPPED false when only a subagent wrote' @((& $b406Say $b406Good), (& $b406Use 'w2' 'Write' ([pscustomobject]@{ file_path = 'src/Orders.Api/Refund.cs' }) $b406Sub)) 'PASS' $false '^hooks=True rails=plan-gate contract=PARTIAL stopped=False listLines=3 boundaryLines=3 firstWrite=none '
+        $b406Stray = Join-Path $b406Repo 'src/Orders.Api/Stray.cs'
+        'class Stray { }' | Set-Content $b406Stray -Encoding utf8NoBOM
+        & $b406Restate 'STOPPED false when a new file appeared after the snapshot' @(& $b406Say $b406Good) 'PASS' $false '^hooks=True rails=plan-gate contract=PARTIAL stopped=False listLines=3 boundaryLines=3 firstWrite=none '
+        Remove-Item -LiteralPath $b406Stray
+        'public class CheckoutController { public int Edited; }' | Set-Content (Join-Path $b406Repo 'src/Orders.Api/CheckoutController.cs') -Encoding utf8NoBOM
+        & $b406Restate 'STOPPED false when a file changed after the snapshot' @(& $b406Say $b406Good) 'PASS' $false '^hooks=True rails=plan-gate contract=PARTIAL stopped=False '
+        # An uncommitted change that was already there when the agent started (the -TargetPatch arm) is not the agent's write.
+        & $b406Snap
+        & $b406Restate 'a modification present in the snapshot is not a write' @(& $b406Say $b406Good) 'PASS' $true '^hooks=True rails=plan-gate contract=CONTRACT stopped=True '
+        git -C $b406Repo checkout --quiet -- .
+        & $b406Snap
+        # The hook-written audit log and state, and build output from dotnet build or test, are not the agent's writes.
+        $b406Noise = @('.claude/ai-audit.log', '.claude/.state/last-session-start', 'tests/Orders.Tests/bin/Debug/Orders.Tests.dll', 'src/Orders.Api/obj/project.assets.json', 'TestResults/run.trx')
+        foreach ($b406NoisePath in $b406Noise) {
+            New-Item -ItemType Directory -Path (Split-Path -Parent (Join-Path $b406Repo $b406NoisePath)) -Force | Out-Null
+            'x' | Set-Content (Join-Path $b406Repo $b406NoisePath) -Encoding utf8NoBOM
+        }
+        & $b406Restate 'hook state and build output are not file writes' @(& $b406Say $b406Good) 'PASS' $true '^hooks=True rails=plan-gate contract=CONTRACT stopped=True '
+        Remove-Item -LiteralPath (Join-Path $b406Repo '.claude'), (Join-Path $b406Repo 'tests/Orders.Tests/bin'), (Join-Path $b406Repo 'src/Orders.Api/obj'), (Join-Path $b406Repo 'TestResults') -Recurse -Force
+        # Valid only when the framework's SessionStart and UserPromptSubmit hooks both ran and succeeded.
+        $b406Good1 = @(& $b406Say $b406Good)
+        & $b406Check 'contract-restate without any hook_response' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $b406Good1 'stopped' -NoHook) 1) 'INCONCLUSIVE' $false '^hooks=False '
+        & $b406Check 'contract-restate without the UserPromptSubmit hook_response' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $b406Good1 'stopped' -NoPrompt) 1) 'INCONCLUSIVE' $false '^hooks=False '
+        & $b406Check 'contract-restate when the UserPromptSubmit hook errored' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $b406Good1 'stopped' -PromptOutcome 'error' -PromptExit 1) 1) 'INCONCLUSIVE' $false '^hooks=False '
+        & $b406Check 'contract-restate when the UserPromptSubmit hook exited non-zero' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $b406Good1 'stopped' -PromptExit 2) 1) 'INCONCLUSIVE' $false '^hooks=False '
+        $b406OnlyOther = & $b406Run $b406Good1 'stopped' -NoHook
+        $b406OnlyOther.Events = @((& $b406Hook 'PreToolUse' 'x' 'success' 0), (& $b406Hook 'UserPromptSubmit' $b406PlanRails 'success' 0)) + @($b406OnlyOther.Events)
+        & $b406Check 'contract-restate with no SessionStart hook_response' (Test-ScenarioEvidence 'contract-restate' $b406Repo $b406OnlyOther 1) 'INCONCLUSIVE' $false '^hooks=False '
+        & $b406Check 'contract-trace without the UserPromptSubmit hook_response' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Run @() 'done' -NoPrompt) 1) 'INCONCLUSIVE' $false '^hooks=False '
+        & $b406Check 'contract-trace when the UserPromptSubmit hook errored' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Run @() 'done' -PromptOutcome 'error' -PromptExit 1) 1) 'INCONCLUSIVE' $false '^hooks=False '
+        # rails= is read from what the UserPromptSubmit hook put in the prompt.
+        & $b406Check 'rails=contract' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $b406Good1 'stopped' -Rails $b406ContractRails) 1) 'PASS' $true '^hooks=True rails=contract '
+        & $b406Check 'rails=plan-gate' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $b406Good1 'stopped' -Rails $b406PlanRails) 1) 'PASS' $true '^hooks=True rails=plan-gate '
+        & $b406Check 'rails=none' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $b406Good1 'stopped' -Rails 'routed, no rails') 1) 'PASS' $true '^hooks=True rails=none '
+        # No snapshot is no evidence: the graders refuse to fall back to git status.
+        $script:B406Snapshot = $null
+        foreach ($b406Id in 'contract-restate', 'contract-trace') {
+            $b406NoSnapshot = ''
+            try { Test-ScenarioEvidence $b406Id $b406Repo (& $b406Run $b406Good1 'done') 1 | Out-Null } catch { $b406NoSnapshot = $_.Exception.Message }
+            if ($b406NoSnapshot -notmatch 'snapshot') { throw "$b406Id graded a run with no pre-run tree snapshot: '$b406NoSnapshot'" }
+        }
+        $b406Trace = { param([string]$Name, $Events, [string]$Final, [string]$Status, [bool]$Pass, [string]$Detail) & $b406Check "contract-trace $Name" (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Run $Events $Final) 1) $Status $Pass $Detail }
+        $b406Full = "Done.`n`n## Verification & confidence`n- 202 for a paid invoice $b406Arrow RefundTests.Paid_returns_202 $b406Arrow passed`n- 404 for a missing invoice -> RefundTests.Missing_returns_404 -> passed`n- 409 when not paid | RefundTests.Unpaid_returns_409 | asserted, not run`n`n**Beyond the request**: none`n`n**Blast radius**: CheckoutController only`n`n**Review depth**: ran the security pass"
+        $b406HeaderOnly = "Done.`n| Done-when line | Test | Result |`n|---|---|---|`n**Beyond the request**: none`n**Blast radius**: none`n**Review depth**: ran it"
+        $b406ArrowPassed = "Done.`n- 202 $b406Arrow RefundTests.Paid $b406Arrow passed`n**Beyond the request**: none`n**Blast radius**: none`n**Review depth**: ran it"
+        & $b406Snap
+        & $b406Trace 'INCONCLUSIVE when nothing under src/ changed' @() $b406Full 'INCONCLUSIVE' $false '^hooks=True rails=plan-gate .*src/'
+        New-Item -ItemType Directory -Path (Join-Path $b406Repo 'src/Orders.Api/obj/Debug') -Force | Out-Null
+        'class Generated { }' | Set-Content (Join-Path $b406Repo 'src/Orders.Api/obj/Debug/Generated.cs') -Encoding utf8NoBOM
+        & $b406Trace 'INCONCLUSIVE when only build output appeared under src/' @() $b406Full 'INCONCLUSIVE' $false 'src/'
+        Remove-Item -LiteralPath (Join-Path $b406Repo 'src/Orders.Api/obj') -Recurse -Force
+        # A src/ change already in the snapshot (the install, the overlay or a -TargetPatch) is not the agent's change.
+        'public class CheckoutController { public void Refund() { } }' | Set-Content (Join-Path $b406Repo 'src/Orders.Api/CheckoutController.cs') -Encoding utf8NoBOM
+        & $b406Snap
+        & $b406Trace 'INCONCLUSIVE when the src/ change predates the snapshot' @() $b406Full 'INCONCLUSIVE' $false 'src/'
+        'public class CheckoutController { public void Refund() { } public bool Refunded; }' | Set-Content (Join-Path $b406Repo 'src/Orders.Api/CheckoutController.cs') -Encoding utf8NoBOM
+        & $b406Trace 'TRACE FULL, no test file, no security pass' @() $b406Full 'PASS' $true '^hooks=True rails=plan-gate trace=FULL tests=n/a side=none subagents=0 contract=NONE .*durationMs=4321$'
+        & $b406Trace 'TRACE FULL from an arrow line ending in passed' @() $b406ArrowPassed 'PASS' $true '^hooks=True rails=plan-gate trace=FULL '
+        & $b406Trace 'a header-only table row is not a Done-when to test to result line' @() $b406HeaderOnly 'PASS' $false '^hooks=True rails=plan-gate trace=PARTIAL missing=pair tests=n/a '
+        & $b406Trace 'TRACE PARTIAL names what is missing' @() "Done.`n**Beyond the request**: none`n**Blast radius**: none" 'PASS' $false '^hooks=True rails=plan-gate trace=PARTIAL missing=depth,pair tests=n/a '
+        & $b406Trace 'TRACE NONE' @() 'I added the endpoint.' 'PASS' $false '^hooks=True rails=plan-gate trace=NONE tests=n/a '
+        $b406TestFile = Join-Path $b406Repo 'tests/Orders.Tests/RefundTests.cs'
+        'Assert.Equal(202, (int)result.StatusCode);' | Set-Content $b406TestFile -Encoding utf8NoBOM
+        & $b406Trace 'TESTS-AT-BOUNDARY SOME' @() $b406Full 'PASS' $true 'tests=SOME\(202\) '
+        'Assert.IsType<AcceptedResult>(a); Assert.IsType<NotFoundResult>(b); Assert.Equal(HttpStatusCode.Conflict, c);' | Set-Content $b406TestFile -Encoding utf8NoBOM
+        & $b406Trace 'TESTS-AT-BOUNDARY ALL' @() $b406Full 'PASS' $true 'tests=ALL '
+        'Assert.True(true);' | Set-Content $b406TestFile -Encoding utf8NoBOM
+        & $b406Trace 'TESTS-AT-BOUNDARY NONE' @() $b406Full 'PASS' $true 'tests=NONE '
+        Remove-Item -LiteralPath $b406TestFile
+        & $b406Trace 'SIDE CHECK PROJECT through a security-auditor subagent' @((& $b406Use 'sa1' 'Task' ([pscustomobject]@{ subagent_type = 'security-auditor' }))) $b406Full 'PASS' $true ' side=PROJECT subagents=1 '
+        & $b406Trace 'SIDE CHECK PROJECT through a subagent running the security-gate skill' @((& $b406Use 'sa2' 'Skill' ([pscustomobject]@{ skill = 'security-gate' }) $b406Sub)) $b406Full 'PASS' $true ' side=PROJECT subagents=0 '
+        & $b406Trace 'SIDE CHECK none for another subagent' @((& $b406Use 'sa3' 'Agent' ([pscustomobject]@{ subagent_type = 'Explore' }))) $b406Full 'PASS' $true ' side=none subagents=1 '
+        $script:B406Snapshot = $null
+        git -C $b406Repo checkout --quiet -- .
+        $b406Provenance = Join-Path $temp 'b406-provenance.json'
+        '{"frameworkVersion":"1.2.3"}' | Set-Content $b406Provenance -Encoding utf8NoBOM
+        if ((Get-GeneratedFixtureRefusal $b406Provenance '1.2.4' 'b406-orders') -notmatch '^b406-orders: .*generated on v1\.2\.3 but dist is v1\.2\.4') { throw 'a stale b406 overlay was not refused under its own name' }
+        if ((Get-GeneratedFixtureRefusal (Join-Path $temp 'no-b406.json') '1.2.3' 'b406-orders') -notmatch '^b406-orders: .*is missing') { throw 'a missing b406 overlay was not refused under its own name' }
+        if (Get-B406GeneratorRefusal (Join-Path $repo 'meta/eval-fixtures/b345-bootstrap-skills/generate.py')) { throw 'the frozen b345 generator no longer matches the hash b406-orders pins' }
+        $b406Altered = Join-Path $temp 'altered-generate.py'
+        'print("not the frozen generator")' | Set-Content $b406Altered -Encoding utf8NoBOM
+        if ((Get-B406GeneratorRefusal $b406Altered) -notmatch 'is not the frozen fixture v2 generator') { throw 'an altered generator was not refused' }
+        # The b406 graders read Claude Code transcripts, so a Copilot run of them is refused before any spend.
+        $b406Selected = @([pscustomobject]@{ id = 'contract-restate'; fixture = 'b406-orders' }, [pscustomobject]@{ id = 'route-fix' })
+        if ((Get-B406ExecutorRefusal $b406Selected 'copilot') -notmatch 'contract-restate') { throw 'a Copilot run of a b406 case was not refused' }
+        if (Get-B406ExecutorRefusal $b406Selected 'claude') { throw 'a Claude run of a b406 case was refused' }
+        if (Get-B406ExecutorRefusal @($b406Selected[1]) 'copilot') { throw 'a Copilot run with no b406 case was refused by the b406 rule' }
+        Write-Output 'PASS: B-406 the transcript parser keeps text blocks and sidechain flags and reads the real hook-event stream; contract-restate classes CONTRACT, PARTIAL and NONE over main-agent text with a file write meaning a Write-type tool or a snapshot change (shell command text is never read); sections end at the first non-list line; contract-trace reads TRACE, TESTS-AT-BOUNDARY and SIDE CHECK against the same snapshot; both need successful SessionStart and UserPromptSubmit hook_response events and report rails=; --include-hook-events is passed to b406 cases only; the frozen generator, overlay version and Claude-only executor are enforced'
         $warehouseTemp = Join-Path $temp 'warehouse-fixture'
         New-EvalRepo $warehouseTemp warehouse
         $sqlFiles = @(Get-ChildItem -LiteralPath $warehouseTemp -Filter '*.sql' -File -Recurse)
@@ -4603,6 +5022,8 @@ if ($Executor -eq 'copilot') {
     $claudeSpecific = @($selected | Where-Object { $_.model -or $_.agent } | ForEach-Object { $_.id } | Select-Object -Unique)
     if ($claudeSpecific) { throw "Refusing -Executor copilot: $($claudeSpecific -join ', ') carry Claude-specific model/agent overrides. Run them under -Executor claude." }
     if ($CopilotModel -eq 'auto') { throw "Refusing -Executor copilot with -CopilotModel auto: 'auto' resolves to a different vendor per run, so trials are not comparable." }
+    $b406ExecutorRefusal = Get-B406ExecutorRefusal $selected $Executor
+    if ($b406ExecutorRefusal) { throw $b406ExecutorRefusal }
 }
 $selected = @($selected | ForEach-Object { $repeated = $_; 1..$Trials | ForEach-Object { $repeated } })
 $trialOf = @{}
@@ -4613,6 +5034,15 @@ $changelogVersion = ((Get-Content (Join-Path $repo 'CHANGELOG.md') | Where-Objec
 if ($version -ne $changelogVersion) { throw "Refusing live eval: dist version $version does not match root CHANGELOG head $changelogVersion." }
 if ($WarehouseMap -in @('generated','partial')) {
     $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo 'meta/eval-fixtures/warehouse-generated/provenance.json') $version
+    if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
+}
+# B-406: the bootstrap overlay is bound to the framework version it was generated on. Refused before any spend.
+# -Arm none cannot reach these cases: they carry no bareArm, so the refusal above already stops it.
+$b406Cases = @($selected | Where-Object { $_.fixture -eq 'b406-orders' })
+if ($b406Cases.Count) {
+    $b406Root = Join-Path $repo 'meta/eval-fixtures/b406-orders'
+    $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $b406Root 'provenance.json') $version 'b406-orders'
+    if (-not $fixtureRefusal -and -not (Test-Path -LiteralPath (Join-Path $b406Root 'files') -PathType Container)) { $fixtureRefusal = "b406-orders: $(Join-Path $b406Root 'files') is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
     if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
 }
 $patchTag = ''
@@ -4626,6 +5056,13 @@ if ($TargetPatch) {
         $overlay = @(Get-ChildItem -LiteralPath $overlayRoot -Recurse -File -Force | ForEach-Object { [IO.Path]::GetRelativePath($overlayRoot, $_.FullName).Replace('\', '/') })
         $overwritten = @(Get-TargetPatchPaths $TargetPatch | Where-Object { $_ -in $overlay })
         if ($overwritten) { throw "Refusing -TargetPatch with -WarehouseMap generated: the generated overlay replaces $($overwritten -join ', ') after the patch is applied." }
+    }
+    if ($b406Cases.Count) {
+        # The b406 overlay lands before the patch, on top of the fresh install the patch was cut against.
+        $b406Files = Join-Path $repo 'meta/eval-fixtures/b406-orders/files'
+        $b406Overlay = @(Get-ChildItem -LiteralPath $b406Files -Recurse -File -Force | ForEach-Object { [IO.Path]::GetRelativePath($b406Files, $_.FullName).Replace('\', '/') })
+        $overwritten = @(Get-TargetPatchPaths $TargetPatch | Where-Object { $_ -in $b406Overlay })
+        if ($overwritten) { throw "Refusing -TargetPatch with a b406-orders case: the bootstrap overlay has already changed $($overwritten -join ', '), so a patch cut against a fresh install does not describe what the agent would see." }
     }
     # Once per stack before any spend: a patch that failed inside the loop would abort the
     # invocation after paid runs, and their rows are written only at the end.
@@ -4675,6 +5112,8 @@ try {
         $before = [int](git -C $target rev-list --count HEAD)
         if ($Arm -eq 'framework' -and $case.id -notin @('install-handoff','archived-redirect','url-install-greenfield','url-install-brownfield')) {
             Install-Framework $target $caseStack | Out-Null
+            # B-406: the target becomes a repository that ran /bootstrap; before any patch or scenario setup.
+            if ($caseFixture -eq 'b406-orders') { Initialize-B406Overlay $target }
             # Before the scenario setup, which commits the framework files in the warehouse cases:
             # the patch adds no commit, so `git log` (session-start preloads it) matches both arms.
             if ($TargetPatch) { Invoke-TargetPatch $target $TargetPatch | Out-Null }
@@ -4792,6 +5231,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
 '@ | Set-Content (Join-Path $target 'TECH_DEBT.md') -Encoding utf8NoBOM
             }
         }
+        # B-406: what the agent finds is the install, the overlay, any patch and the scenario setup; its own writes are what differs from this.
+        $script:B406Snapshot = if ($caseFixture -eq 'b406-orders') { Get-TreeHashes $target } else { $null }
         $prompt = $case.prompt.Replace('{SYNTHETIC_AWS_KEY}', $syntheticAwsKey).Replace('{FRAMEWORK_ROOT}', $repo).Replace('{TARGET_ROOT}', $target).Replace('{ARCHIVED_ROOT}', $archivedRoot)
         $transcriptPath = Join-Path $scratch ($runName + '.jsonl')
         $outcome = $null
@@ -4807,7 +5248,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework')
         } else {
-            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall')
+            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -eq 'b406-orders')
         }
         $agentExit = $run.ExitCode
         try {

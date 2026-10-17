@@ -4549,3 +4549,117 @@ treatment's `review.md`. Evidence (stream-json, transcripts, raw screens, driver
   was then smoke-tested twice in a neutral repository that never typed `/review` (one model turn, under 0.01 USD); those are not cells.
 - Side observation, not scored: I-C's background `/code-review` agent reviewed this worktree's commit 1564d2c0 instead of the fixture, likely
   through the `PWD` variable Git Bash exported to the session (not isolated); the dispatch class rests on the transcript, not on that review.
+
+## B-406 pre-registration — the contract loop on the natural-language path, Claude Code (2026-10-17, frozen before any run)
+
+Q. On the natural-language path, with the contract patch installed, does the agent (a) post Done-when lines with at least one boundary example before any
+file write and stop for the go-ahead; (b) write tests that assert each stated outcome; (c) close with the Verification & confidence block? Compared with
+0.97.2 as installed. Design: `.claude/plans/2026-10-17-delivery-architecture.md` v2 §4 (committed at 2e5bb5b7); this entry supersedes v1's draft at ecf1479e.
+
+- T and C. T: `-TargetPatch meta/eval-fixtures/target-patches/b406-contract.patch`, cut in Phase 1 before any run with `git diff --output` from a clean install of
+  HEAD's `dist/dotnet` in a scratch repository with `core.autocrlf=false` (DEVELOPING.md, agent evals), applying the plan's §3.1 (carrier section 2), §3.2
+  (Rule 5), §3.3 (the Verification & confidence block) and §3.4 (the rails in `route-prompt.ps1`, BOM kept) to the installed
+  `.github/instructions/framework-rules.instructions.md` and `.claude/hooks/route-prompt.ps1`, nothing else; its SHA-256 prefix is the `patch=` tag every T
+  row carries. C: 0.97.2 as installed, no patch.
+- Fixture, and a deviation from the plan, stated plainly. The plan names B-337's bootstrapped orders repository. It could not be recovered: on 2026-10-17
+  `%TEMP%\b337\orders` held only its two commits (fixture v2 and the v0.92.0 install) with all 125 tracked files deleted from the working tree, the
+  `/bootstrap` output had never been committed there, and B-348's `b348\base` copy is gone. By maintainer decision (2026-10-17) the fixture is regenerated
+  the same way: fixture v2 (`meta/eval-fixtures/b345-bootstrap-skills/generate.py`, sha256 277d4d02951d…, which the runner pins and refuses on mismatch),
+  `dotnet new sln -n Orders` and `dotnet sln add` per csproj, committed; HEAD's `dist/dotnet` (0.97.2) installed; then one headless Claude Code `/bootstrap`
+  (`claude -p /bootstrap`, `--resume` with "proceed" on a pause, `--model sonnet`, `--dangerously-skip-permissions`, `--max-budget-usd 8`,
+  `--setting-sources project,local`, `DISABLE_AUTOUPDATER=1`, `ATL_SOURCE_CHECK=off`), whose changes relative to the fresh install are frozen as the overlay
+  `meta/eval-fixtures/b406-orders/files/` with `provenance.json` (framework version, host version, steps, cost, the overlay's file list and a SHA-256 over
+  it), after the RepositoryPrivacy test passes on it and its size is reported.
+  Generated 2026-10-17 by the maintainer from the base above (install from 2e5bb5b7): Claude Code 2.1.300, `claude-sonnet-5-5` in
+  `system/init`; three calls, paused at Phase 2b and at Phase 3d-bis, each answered "proceed"; it finished with the hazard rows
+  `[UNVERIFIED]` and two project skill drafts; 1.38 USD. Overlay: 11 files, 65,434 bytes, LF only, nothing under `src/` or `tests/`
+  (`.claude/bootstrap-baseline.tsv`, two `.claude/skills/*` drafts with references, `AGENTS.md`, `FRAMEWORK-CONTEXT.md`, `TECH_DEBT.md`,
+  `docs/architecture-decisions.md`, `docs/wiki/INDEX.md`, `docs/wiki/scheduled-jobs-not-wired.md`); sha256 `14dbf2aec55e…` over the
+  sorted `<file sha256>  <path>` lines (`provenance.json`). Spend before Phase 1: 1.38 USD plus about 0.02 USD of hook-event probes.
+  The runner rebuilds the fixture per run: `New-EvalRepo b406-orders`, `Install-Framework dotnet`, the overlay committed as `b406 bootstrap overlay`, then
+  (T) the patch, uncommitted; a `-Live` run refuses before any spend when `provenance.json` is missing or names another framework version, and refuses a
+  patch naming an overlay path. Orders.sln project GUIDs differ per build (not deterministic); nothing else does.
+- Prompts, exact. S1 `contract-restate`: B-348's prompt K without its approval clause (K's first sentence, B-348's R): "Add a refund endpoint to
+  CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404
+  when the invoice does not exist, and 409 when it is not paid." S2 `contract-trace`: K as written, that sentence plus " I approve this change in advance: do
+  not stop for a plan or ask for confirmation; implement it now in this session, then report what you did." Pre-flight, done 2026-10-17 through the
+  installed dist `route-prompt.ps1` (byte-identical to HEAD's `dist/dotnet`) on both event shapes (Claude `{hook_event_name: UserPromptSubmit, prompt}` and
+  Copilot `{prompt, timestamp}`): all four EXIT=0, first line "## Routed intent: `feature`", the plan gate present, "Security-sensitive surface detected"
+  present.
+- Cells. S1-T, S1-C, S2-T, S2-C; 6 valid runs each, one run per invocation, each from a fresh fixture build: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1
+  -Live -Executor claude -Model sonnet -Scenario <id> -Trials 1 -TimeoutSeconds 1200` (T adds `-TargetPatch …`). Order: S1-T and S1-C alternating until 6 valid
+  each, then S2-T and S2-C alternating until 6 valid each; an extension alternates the same way with its cell's counterpart only if the counterpart also needs
+  it, otherwise runs alone. Per-run cap (scenario `budgetUsd`): S1 1.00 USD, S2 2.50 USD. The per-run caps, the alternation and the per-run stop check are
+  additions to the plan, which says only "Stop: 25 USD". Claude Code only; the Copilot arm waits for restored access (B-399), and the runner refuses
+  `-Executor copilot` for these cases because the graders read Claude transcripts.
+- Validity. Frozen host and model (the Claude Code version from `system/init`, the same in every row; model sonnet); the b406 cases run with
+  `--include-hook-events` (passed only for them) and are valid only with a `hook_response` for SessionStart and one for UserPromptSubmit, each `outcome` success
+  and `exit_code` 0 (observed shape on Claude Code 2.1.300, probe 2026-10-17, about 0.02 USD). Each row reports `rails=` from the UserPromptSubmit response's
+  stdout (case-sensitive): `contract` if it contains `DONE WHEN`, else `plan-gate` if it contains `Plan gate`, else `none`. A T row is valid only with
+  rails=contract, a C row only with rails=plan-gate (the observed proof that the patch reached the agent's prompt). Also: normal shutdown (a terminal `result`
+  event, no host error); for S2 a change under `src/` since the pre-run snapshot. Otherwise CANNOT-EXAMINE (INCONCLUSIVE or ERROR row), repeated once. If the
+  repeat is also CANNOT-EXAMINE the run counts as not reaching the class (not CONTRACT, not FULL) and is reported by its reason: the conservative reading, open
+  to the maintainer's ruling. An S2-T run that stops despite the approval clause has no `src/` change and so is CANNOT-EXAMINE by this rule; it is reported as
+  such, never silently dropped.
+- Grader (`Test-ScenarioEvidence` cases `contract-restate` and `contract-trace` in `.claude/evals/run-agent-evals.ps1`; `Get-TranscriptEvidence` now also
+  keeps assistant `text` blocks with their ordinal and flags subagent events by `parent_tool_use_id`, no second parser). Amended before any run after a
+  fresh-session attack on the grader: shell-command text is no longer read for writes, the contract section's end rule and best-section choice are fixed, the
+  TRACE pair needs a result word, and hook evidence and `rails=` replace the old hooks-loaded clause. Main agent only unless stated. These definitions are
+  frozen with this entry (PowerShell `-match`, case-insensitive):
+
+```
+$b406Label = '(?im)^\W*(done[ -]when|acceptance criteria)'
+$b406Heading = '^\s*#{1,6}\s'
+$b406BoldLabel = '^\s*\*\*[^*]+\*\*:?\s*$'
+$b406ListLine = '^\s*(?:[-*+]|\d+[.)])\s+\S'
+$b406Continuation = '^\s+\S'
+$b406OutcomeTokens = @('\b202\b', '\b404\b', '\b409\b', '(?<!not\s)\bpaid\b', '\bnot paid\b', 'does not exist')
+$b406Boundary = '(?i)\bboundary\b'
+$b406TraceBeyond = '(?i)beyond the request'
+$b406TraceBlast = '(?i)blast radius'
+$b406TraceDepth = '(?i)review depth'
+$b406TracePair = '(?i)(→|->|=>|\|).*\b(passed|failed|asserted, not run|not run)\b'
+$b406Status202 = '\b202\b|Status202Accepted|HttpStatusCode\.Accepted\b|\bAccepted\w*Result\b'
+$b406Status404 = '\b404\b|Status404NotFound|HttpStatusCode\.NotFound\b|\bNotFound\w*Result\b'
+$b406Status409 = '\b409\b|Status409Conflict|HttpStatusCode\.Conflict\b|\bConflict\w*Result\b'
+$b406RailsContract = 'DONE WHEN'
+$b406RailsPlanGate = 'Plan gate'
+```
+
+  The classes, in words:
+  - WRITE: a `Write`, `Edit`, `MultiEdit` or `NotebookEdit` tool_use (main agent or subagent). A shell command's writes are seen only by the pre-run tree
+    snapshot; shell command text is never read (a command regex misread C# generics in grep patterns as redirects). The plan's "text before the first write …
+    and the run ends with no file write" collapses to "no file write in the run", because a contract followed by a write is PARTIAL either way. `firstWrite=`
+    (the first main-agent Write-type tool_use) and `firstShell=` (the plan's literal shell boundary, the first main-agent Bash/PowerShell call) are reported in
+    every row, not gating.
+  - File write in the run: any WRITE tool_use, or any path whose content differs from the tree snapshot the runner takes immediately before the agent starts
+    (after install, overlay, patch), ignoring `.claude/ai-audit.log`, `.claude/.state/`, and `bin/`, `obj/`, `TestResults/` build output.
+  - CONTRACT (S1): over all main-agent text (text blocks joined in order with newlines, so a section may span blocks), the best section has at least two list
+    lines and at least one boundary line, and the run has no file write. A section is the lines after a `$b406Label` line, ending at a heading, a bold-only label
+    line, or, once one list line has been seen, the first non-blank line that is neither a list line nor an indented continuation (`$b406Continuation`). Best
+    is a section with at least two list lines and at least one boundary line, else the one with the most list lines. A boundary line names two or more distinct
+    outcome tokens or the word "boundary" (the plan's rule; a list line echoing the prompt, e.g. "returns 202 for a paid invoice", qualifies, a known
+    looseness of the plan's definition, accepted). PARTIAL: such a section with at least two list lines that is not CONTRACT. NONE otherwise. Writing
+    `specs/<slug>.md` in S1 is a file write, so PARTIAL, as the plan's "ends with no file write" requires. STOPPED (reported): no file write in the run. A
+    subagent's text never counts.
+  - TESTS-AT-BOUNDARY (S2): over changed or new `tests/**/*.cs` since the snapshot (build output excluded), whether the content matches each of
+    `$b406Status202/404/409`: ALL, SOME(which), NONE; n/a when no test file changed. A name match, not a check that the test asserts it or would fail.
+  - TRACE (S2): the final result text matches `$b406TraceBeyond`, `$b406TraceBlast`, `$b406TraceDepth`, and has at least one line with an arrow or table bar
+    followed by a result word (passed, failed, asserted, not run; `$b406TracePair`): FULL, PARTIAL (which parts missing), NONE.
+  - SIDE CHECK (S2, B-389): this framework's security pass in the run, main agent or subagent: a `Skill` tool_use for `security-gate` or a `Task`/`Agent`
+    tool_use with `subagent_type` `security-auditor`, as B-348's PROJECT class; S2-C's count recorded beside S2-T's.
+  - Per run, from the row: `costUsd`, `tokensIn`, `tokensOut`, `durationMs` (the result event's `duration_ms`), `subagents` (main-agent Task/Agent calls).
+    Per scenario: median T minus median C for cost, tokens and wall time.
+  - Known limits, noted not fixed: a Done-when table or a single-line list has no list lines (NONE); a pairing line without an arrow or table bar (e.g. "pinned
+    by RefundTests, result: passed") does not count; SIDE CHECK does not see a run that follows `security-gate.md` by reading it without the Skill tool
+    (B-348's PROJECT-VIEW class, not in the plan). On a Copilot transcript, today's grader drops `skill.invoked` (B-342); irrelevant to this Claude-only arm.
+- Readings, fixed now (from plan §4, not reinterpreted). R1 REACHED: S1-T CONTRACT in 5 or 6 of 6 with S1-C at most 2 (two-sided Fisher exact reported, counts
+  decide), and S2-T TRACE FULL in 5 or 6 of 6. R2 ABANDON: S1-T CONTRACT 3 or fewer, or S2-T TRACE FULL 3 or fewer: ship nothing from §3.1 to §3.7; file the
+  finding. 4 of 6 in either cell: six more runs of that cell, pooled (10 or more of 12 → R1). SIDE CHECK below 5 of 6 in S2-T: revert the patch; ship nothing.
+  TESTS-AT-BOUNDARY is reported, and gating only if S2-T ALL is below S2-C ALL. Cost above 1.5× C tokens or 8 minutes added is recorded in the
+  `meta/host-certification.md` row, not a reading. A reading is applied as written; the maintainer decides anything it does not cover.
+- Cost and stop. 25 USD in all for B-406 Phase 1. Before each run: not started if spend so far plus that run's cap (S1 1.00, S2 2.50 USD) would pass 25 USD;
+  spend counts each row's `costUsd` (a row without one at its cap), the fixture generation and the probes. A cell the stop leaves short of 6 valid runs (or of
+  12 for an extension) is "not settled", never read as R1 or R2. Premium requests: not applicable (no Copilot arm).
+- Not shown: the fix path (plan Phase 4); the resume across a real second turn (S1 shows the stop, not what follows a go-ahead); Copilot CLI until access
+  returns (B-399); VS Code; Angular and monorepo; the `review` skill's own behaviour; whether the tests would fail if the code were broken; field use.

@@ -1,0 +1,12 @@
+{
+  "frameworkVersion": "0.97.2",
+  "generatedOn": "2026-10-17",
+  "host": "Claude Code 2.1.300 (system/init), DISABLE_AUTOUPDATER=1, ATL_SOURCE_CHECK=off, --setting-sources project,local",
+  "model": "sonnet as launched with `claude --model sonnet` (claude-sonnet-5-5 in system/init); headless, not typed",
+  "fixture": "fixture v2: meta/eval-fixtures/b345-bootstrap-skills/generate.py (sha256 277d4d02951dbb4e494298d5d6acf703b1c64be0e4f3daa637ab3d6b4b23b688), dotnet new sln -n Orders and dotnet sln add per csproj (dotnet 8.0.426), committed (67 files); then install.ps1 -Stack dotnet from HEAD 2e5bb5b7 (dist/dotnet 0.97.2), committed",
+  "steps": "One session, headless from PowerShell, run by the maintainer: `claude -p /bootstrap`, which paused at Phase 2b (financial scope, CancellationToken intent); `--resume` with 'proceed', which wrote the artifacts and paused at Phase 3d-bis (five hazard confirmations); `--resume` with 'proceed', which finished /bootstrap with the hazard rows [UNVERIFIED] and an open-questions block. Every call: --model sonnet --output-format stream-json --verbose --dangerously-skip-permissions --max-budget-usd 8",
+  "attempts": "1 generation (B-406 Phase 0). BOOTSTRAP_PENDING removed from AGENTS.md; 7 [UNVERIFIED] marks in FRAMEWORK-CONTEXT.md; two project skill drafts (add-integration-event, add-report-export); nothing under src/ or tests/ changed",
+  "files": "every path `git status --porcelain -uall` listed afterwards, copied unedited (11 files, 65,434 bytes, LF only); overlay sha256 14dbf2aec55ef1ff316f5d08363c457a478587bd467f9b53d0a0252be0d6426a over the sorted lines `<file sha256>  <path>` joined with LF plus a trailing LF",
+  "cost": "1.38 USD for the session (total_cost_usd is cumulative across --resume: 0.43 at the Phase 2b pause, 1.13 at the Phase 3d-bis pause); wall 66 s + 208 s + 56 s",
+  "backlog": "B-406 S1 contract-restate and S2 contract-trace"
+}

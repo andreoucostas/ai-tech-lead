@@ -162,8 +162,9 @@ harness at 15,000 characters (`chat.copilot.skillCharBudget`, experimental; seen
 ### B-403 · Measure whether the plan gate asks its tech-lead questions before it plans
 **Filed against:** v0.96.0 (2026-10-14)
 **Priority:** P3 · **Effort:** M · **Invariants:** #5
-**Status:** Open; shipped unmeasured (WSD-111 precedent, plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`). The runner's `-p` prompts say "proceed autonomously", so
-it cannot see questions-before-plan. Needs a developer-reply turn, or a one-turn grader scoring the first assistant message on an underspecified feature prompt, on both surfaces.
+**Status:** Open; shipped unmeasured (WSD-111 precedent, plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`). The runner has no "proceed autonomously" string (`Get-ClaudeArguments` passes `--dangerously-skip-permissions`) and its scenario prompts carry the approval clause; on Copilot CLI
+the host's own `-p` system prompt says to proceed autonomously (B-348's RAIL result, `meta/host-certification.md`); whether Claude Code `-p` without the clause stops before the plan is first measured by B-406 S1.
+Needs a grader scoring the first assistant message on an underspecified feature prompt, on both surfaces.
 
 ### B-404 · An installing agent given "install this" sometimes asks before committing
 **Filed against:** v0.97.2 (2026-10-15)
@@ -171,6 +172,12 @@ it cannot see questions-before-plan. Needs a developer-reply turn, or a one-turn
 **Status:** Open; consumer-docs arms in `meta/eval-results.md`: URL-install commits B 6/6, A 4/6, A2 3/6, A3 5/6; every miss asked first, under Claude Code's
 commit-only-when-asked rule, and pushing wording read as injection. The README now suggests a prompt that asks for the commit; measure that prompt (a
 scenario variant), and decide whether the gate should count "asked before committing" as a pass.
+
+### B-406 · Measure whether the contract loop lands on the natural-language path
+**Filed against:** v0.97.2 (2026-10-17)
+**Priority:** P2 · **Effort:** M · **Invariants:** none
+**Status:** Open; plan `.claude/plans/2026-10-17-delivery-architecture.md` (v2) Phases 0-2, pre-registered in `meta/eval-results.md` (B-406 pre-registration). Phase 1 runs S1/S2 × T/C on Claude Code only
+(Copilot access ended 2026-10-14, B-399); Phase 2 (the contract patch, guarded) ships only on R1 and a passing side check.
 
 
 
