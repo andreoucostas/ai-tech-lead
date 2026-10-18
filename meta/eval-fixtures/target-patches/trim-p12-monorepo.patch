@@ -1,5 +1,5 @@
 diff --git a/.github/instructions/framework-rules.instructions.md b/.github/instructions/framework-rules.instructions.md
-index 03054b7..355268c 100644
+index 2f1c9bb..d16f8c9 100644
 --- a/.github/instructions/framework-rules.instructions.md
 +++ b/.github/instructions/framework-rules.instructions.md
 @@ -7,19 +7,14 @@ applyTo: "**"
@@ -90,12 +90,8 @@ index 03054b7..355268c 100644
  - **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful tests when a harness exists; never add one incidentally → implement in evidenced dependency order → apply Verification command discovery for each technology → Boy Scout touched files → self-review → report delivery and validation. Preserve a project-evidenced service seam; otherwise add no interface/abstraction without a second consumer or correctness need, and place new feature logic per Leanness #1.
  - **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: state root cause → with an applicable harness, first write a regression test that fails correctly; otherwise use the strongest evidenced validation, report tests **not available**, and add no foreign harness → make an outcome-bound fix → apply Verification command discovery → report cause, fix, validation, and radius.
  - **Refactor** — *cleanup / extract / rename / simplify / restructure*: establish an evidenced green baseline; add characterization coverage only to an existing applicable harness, otherwise report tests **not available** → refactor incrementally with verification → Boy Scout touched files → prove unchanged behavior → report before/after and net LOC.
-@@ -103,16 +76,10 @@ For any non-trivial task, STOP before writing code and post a short plan:
- - If the request leaves a material gap, **ask first and plan after**: post at most five questions, each with the assumption you would otherwise make, and post the plan only once they are answered. Draw them from the tech-lead list — who consumes this and what breaks for them; what fails and how the developer would know in production; reversibility and rollback; data that moves or changes shape, including migration; blast radius against `FRAMEWORK-CONTEXT.md > Known Hazard Areas`. Do not guess past a material ambiguity to seem helpful — ask.
- - For larger features, persist the plan as a spec to `specs/<slug>.md` (see `/design`) and implement against it
- 
--Then **wait for the developer's explicit go-ahead before editing code.** This catches wrong assumptions before wrong diffs and keeps the developer engaged rather than rubber-stamping. Skip only a trivial, unambiguous change (typo, one-liner), and say why.
-+Then **wait for the developer's explicit go-ahead before editing code.** Skip only a trivial, unambiguous change (typo, one-liner), and say why.
+@@ -107,13 +80,7 @@ For any non-trivial task, STOP before writing code and post a short plan:
+ Then **wait for the developer's explicit go-ahead before editing code.** This catches wrong assumptions before wrong diffs and keeps the developer engaged rather than rubber-stamping. Skip only a trivial, unambiguous change (typo, one-liner), and say why.
  
  ### 3. Execute in verified subtasks
 -For features and complex changes, decompose into ordered subtasks:
@@ -109,7 +105,7 @@ index 03054b7..355268c 100644
  
  ### 4. Bug-fix scope
  Every bug-fix edit must be necessary for requested behaviour, existing caller/extension compatibility, or meaningful verification. Requested cleanup/refactoring is allowed; a touched file alone authorizes neither unrelated cleanup/logging nor a TODO. Necessary fixes may cross hunks. For changed public/protected signatures or virtual/override behaviour, identify any unrequested incompatibility; explicitly requested additions or breaks remain valid.
-@@ -125,7 +92,6 @@ Before presenting work as complete:
+@@ -126,7 +93,6 @@ Before presenting work as complete:
  - Check if the change resolves a TECH_DEBT.md item → flag for removal
  - Check if the change contradicts any convention → ask whether to update the convention or change the implementation
  - If the session surfaced a team-worthy gotcha, recipe, or failed approach, offer `remember-for-team`

@@ -188,7 +188,7 @@ gets a plan (D3, C gated 2/3) saw T design FULL 0/3, so the bullet's scoping hol
 ### B-411 · Trim the always-loaded carrier: measure P1 (no-behaviour cuts) and P1+P2 (likely-default cuts) on Claude Code and Copilot CLI before anything ships
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P3 · **Effort:** M (about 84 Claude Code runs, up to 60 premium requests) · **Invariants:** none (#1 and #7 if it ships)
-**Status:** Pre-registered 2026-10-18 (`meta/eval-results.md`, "B-411 pre-registration"); patches `meta/eval-fixtures/target-patches/trim-p1-<stack>.patch` and `trim-p12-<stack>.patch` (dotnet -3,390 and -5,934 carrier bytes), scenarios `route-fix-nl` and `contract-trace-ci-cap` added; amended before any run after a fresh-session attack (per-cell C-first instrument rule, tool-bearing Copilot dry run, DISPLACEMENT reading); no probe or run yet.
+**Status:** Pre-registered 2026-10-18 (`meta/eval-results.md`, "B-411 pre-registration"); patches `meta/eval-fixtures/target-patches/trim-p1-<stack>.patch` and `trim-p12-<stack>.patch` (dotnet -3,279 and -5,823 carrier bytes, recut at eb4290ce), scenarios `route-fix-nl` and `contract-trace-ci-cap` added; amended before any run after a fresh-session attack (per-cell C-first instrument rule, tool-bearing Copilot dry run, DISPLACEMENT reading); no probe or run yet.
 Shipping the trim is a separate, later decision; plan in the gitignored `.claude/plans/inbox/2026-10-18-carrier-trim-plan.md`.
 
 
