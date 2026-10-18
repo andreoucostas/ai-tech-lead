@@ -30,6 +30,12 @@
   treated it as a new request: it repeated the rails (about 4,400 characters each time) and sometimes re-classified the
   turn as a different workflow. The router now ignores that notification; a prompt you type is routed as before.
 
+- **A risky change now gets a design before code, not just a file list.** When a request touches a `Known Hazard Areas`
+  row, a security-sensitive surface, a data shape (schema, migration, event or message contract) or a contract other
+  systems consume (route, status code, package API), the agent's plan shows `Option A:` and `Option B:`, each with its
+  cost or what it breaks, then `Recommend:` one with the reason and the file list, and waits for your go-ahead. Pick an
+  option or accept the recommendation. Every other change keeps the short plan. The always-loaded
+  `framework-rules.instructions.md` grows by about 530 characters.
 ## 0.97.2 — 2026-10-15
 
 - **The installer's closing message for an installing agent is back to 0.96.1's wording**, without its offer of

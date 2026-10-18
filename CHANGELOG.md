@@ -22,6 +22,11 @@ auditor directly, agents sent it a raw diff it refuses (first call CANNOT EXAMIN
 `route-prompt` is a no-op on a Claude Code `<task-notification>` continuation prompt, which re-injected the rails 11 times in 16
 re-fires and re-routed two turns. The eval runner accepts an `— Unreleased` root head above the stamped version.
 
+Carrier §2 gains the risk-scaled design bullet (`Option A:` / `Option B:` / `Recommend:` for a hazard row, a
+security-sensitive surface, a data shape or a consumed contract; +533 chars dotnet): B-410 read R1 LANDS, the design in turn 1
+in 6/6 T against 0/6 C on prompt K (two-turn runs, `b409-orders-ci`), and B-410b's ordinary decoy D3 drew no design in 0/3 T
+(thin: one T run reached a plan). Shipped by maintainer decision, 2026-10-18.
+
 ## 0.97.2 — 2026-10-15
 
 Revert under the consumer-docs arm A2 reading: v0.97.1 scored `url-install-brownfield` 1/3 and `url-install-greenfield`
