@@ -176,18 +176,24 @@ scenario variant), and decide whether the gate should count "asked before commit
 ### B-408 · The security-pass check counts a `security-auditor` call that examined nothing, and the rail sends the agent to such a call
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P2 · **Effort:** S · **Invariants:** none
-**Status:** Open; the rail's "or its security-auditor agent" invites a raw `git diff` request. Its first call returned CANNOT EXAMINE (no scope bundle) in 10 of 10 B-406 S2 runs and 3 of 10 B-407 runs (6 examined "without a
-`-ScopePath` bundle", 2 not read); The 0.98.0 wording sends the agent to `security-gate` only; on the CI fixture with a 1.00 USD cap (B-409), C examined 3/6 and two of the three skips cited the budget. Re-measure at a cap that does not bind before relying on it.
+**Status:** Open; the rail's "or its security-auditor agent" invites a raw `git diff` request. Its first call returned CANNOT EXAMINE (no scope bundle) in 10 of 10 B-406 S2 runs and 3 of 10 B-407 runs (6 examined "without a `-ScopePath` bundle", 2 not read); the 0.98.0 wording sends the agent to `security-gate` only. Re-measured at a cap that does not bind (B-411, 2.50 USD, same fixture): C examined 5/6, T1 6/6, T2 6/6, against B-409's C 3/6 at 1.00 USD, so the cap was the confound and the maintainer's B-409 ruling stands.
+Not examined there: whether an examined run's first call was a refusal, and the empty-examination count the title names; B-411 counted the final report only.
 
 ### B-411 · Trim the always-loaded carrier: measure P1 (no-behaviour cuts) and P1+P2 (likely-default cuts) on Claude Code and Copilot CLI before anything ships
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P3 · **Effort:** M (about 84 Claude Code runs, up to 60 premium requests) · **Invariants:** none (#1 and #7 if it ships)
-**Status:** Pre-registered 2026-10-18 (`meta/eval-results.md`, "B-411 pre-registration"); patches `meta/eval-fixtures/target-patches/trim-p1-<stack>.patch` and `trim-p12-<stack>.patch` (dotnet -3,279 and -5,823 carrier bytes, recut at eb4290ce), scenarios `route-fix-nl` and `contract-trace-ci-cap` added; amended before any run after a fresh-session attack (per-cell C-first instrument rule, tool-bearing Copilot dry run, DISPLACEMENT reading); no probe or run yet.
-Shipping the trim is a separate, later decision; plan in the gitignored `.claude/plans/inbox/2026-10-18-carrier-trim-plan.md`.
+**Status:** Measured 2026-10-18 (`meta/eval-results.md`, "B-411 results"): no knockout. Claude Code, P1 and P1+P2 HOLD on `route-fix` (T1 5/6, T2 6/6, N 0/6), `route-fix-nl` (6/6, 6/6, N 0/6), `angular-feature-placement` (6/6, 6/6) and `contract-trace-ci-cap` (side examined 6/6, 6/6 against C 5/6); Copilot CLI `route-fix` and `route-fix-nl` stopped NOT DISCRIMINATING at C 1/3 and 0/3 (B-414), placement HOLDS 6/6, 6/6 with no bare arm.
+Shipping P1+P2 (dotnet static 39,196 -> 33,373; the dangling-citation checklist is in the pre-registration), P1 alone, or neither awaits the maintainer; the monorepo patches were cut, not run.
 
 ### B-413 · Two reported eval-runner fields misread on two-turn runs
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P3 · **Effort:** S · **Invariants:** none
 **Status:** Open (found in B-412, reported-only, never gating): `code=` matches status names in test text but misses controller helpers `Accepted()`/`NotFound()`/`Conflict()`; `testRun` takes the first summary of the last `dotnet test` call, which is usually a break-the-code red check. Fix with a red-first self-test before the next study that reports them.
+
+### B-414 · Copilot CLI agents fix first and run the test after: red-first is 1 of 3 and 0 of 3 with the full carrier
+**Filed against:** v0.97.2 (2026-10-18)
+**Priority:** P2 · **Effort:** M to measure · **Invariants:** #5
+**Status:** Open; found in B-411 (`meta/eval-results.md`, "B-411 results"): Copilot CLI 1.0.98, `claude-sonnet-5`, the full carrier, 3 runs each: `route-fix` (router fired) red test first 1/3, `route-fix-nl` (router silent) 0/3, every run fixing the bug and running the test after the edit; the dry run 0/1, a pre-freeze accident 3/12; Claude Code, same text: 6/6 and 6/6 (bare 0/6).
+Still needed: whether the host's own `-p` instructions ("proceed autonomously", B-348 RAIL) or the carrier's text is the lever, a bare arm on Copilot, and whether a Bug-fix rail the model reads last (hook output, order) moves it.
 
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
