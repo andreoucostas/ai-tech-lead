@@ -188,8 +188,8 @@ Shipping the trim is a separate, later decision; plan in the gitignored `.claude
 ### B-412 · Measure a plan that opens with the requirement restated as criteria, with the B-410 design beside it
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P2 · **Effort:** S to ship if it lands (one carrier bullet, ordinary) · **Invariants:** none
-**Status:** Pre-registered 2026-10-18 (`meta/eval-results.md`, "B-412 pre-registration"); T is HEAD plus `meta/eval-fixtures/target-patches/b412-done-when.patch` (360 characters; dotnet 39,196 -> 39,556 of 40,000). Plan v2 §3.1's
-restatement reached 9/12 against 0/6 in B-406 S1 and was never shipped, because the reading tied it to the closing block, which B-407 and B-409 closed. Phase 1 (about 8 USD, stop 13) awaits the maintainer's go-ahead.
+**Status:** Measured 2026-10-18 (`meta/eval-results.md`, "B-412 results"): R1 LANDS, T 5/6 against C 0/6 (p = 0.0152), the B-410 design kept (T 5/6, C 6/6), no downstream difference; the one T miss followed the ask-first rule. Shipping
+`b412-done-when.patch`'s bullet (dotnet 39,196 -> 39,556 of 40,000) awaits the maintainer, and no release until B-411 is read. Two reported runner fields (`code=`, `testRun`) misread; filed here, not fixed.
 
 
 ## Archived

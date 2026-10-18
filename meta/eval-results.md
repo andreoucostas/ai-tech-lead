@@ -5205,3 +5205,45 @@ with a boundary example (B-406's CONTRACT, over the first reply only), without c
   CLI, VS Code, Angular, monorepo, other fixtures and models; K trips four risk triggers at once and states its three outcomes, so the lines it restates are largely in the prompt (the B-406 looseness), the easy case for the restatement.
 - Amended 2026-10-18, before any run, at the orchestrator's request to cut against the shipped HEAD: `b412-done-when.patch` was first cut from an install of `git archive` of HEAD 0818df10 (tag `a50bd1077167`); it is now cut from eb4290ce.
   The carrier the two produce is byte-identical (checked by applying each to a fresh install of eb4290ce and comparing the bytes); the files differ only in the diff's `index` lines, hence the new tag `3236f89cf9d9`. Same size (1,526 bytes), one hunk, LF, no BOM.
+
+## B-412 results — 2026-10-18 (pre-registered at 43a244d9, amended at ce14d390 before any run)
+
+Claude Code 2.1.300, model sonnet (`claude-sonnet-5-5` in every `system/init`); fixture `b409-orders-ci` (overlay sha256 `0408a76b9a14…`); HEAD eb4290ce's `dist/dotnet` (the B-410 bullet shipped; unchanged under `dist/`, `src/` and `scripts/` since, which the
+driver checks before it starts); scenario `done-when-k` (two legs of one session, 1.00 USD for leg 1 and 1.50 USD plus leg 1's cost for leg 2); T patch `meta/eval-fixtures/target-patches/b412-done-when.patch` (`patch=b412-done-when.patch@3236f89cf9d9` on every T row and
+on no C row); one run per invocation, T and C alternating, driven by a resumable script that checked the 13 USD stop before each run. Launched from a Claude Code desktop session's shell, while B-411's runs went on in a separate worktree. All 12
+counted runs were valid on the first attempt (succeeded SessionStart and UserPromptSubmit hook, `rails1=plan-gate`, `legs=2`, `rails2=overlay`, `session2=same`): no CANNOT-EXAMINE, no repeat, no WROTE-T1. Evidence (`ledger.tsv`, `probes.tsv`,
+`runner-rows.md`, one output file per run) in `%TEMP%\b412-phase1\` at writing, with the twelve retained scratch directories (both legs and the final tree of every run); none of it is in the repository.
+
+Probes (0.11 USD, no counted slot): P1 passed in both arms (T quoted the Done-when bullet, C answered NOT LOADED).
+
+| cell | valid | Done-when CONTRACT (leg 1) | design landed (FULL, no write in leg 1) | dwOrder | tests (names 202, 404, 409) | final tree `dotnet test` (independent) | median cost USD | median wall s | median output tokens |
+|---|---|---|---|---|---|---|---|---|---|
+| T-K | 6 | **5/6** (slots 1, 2, 4, 5, 6; slot 3 NONE) | **5/6** (slot 3 NONE) | dw-first 5/5 | ALL 6/6 | passed 6/6 | 0.551 | 173.5 | 13,610 |
+| C-K | 6 | **0/6** (NONE 6) | **6/6** | opt-only 6/6 | ALL 6/6 | passed 6/6 | 0.536 | 164.5 | 13,592 |
+
+- Fisher exact, two-sided, reported (counts decide): CONTRACT 5/6 against 0/6, p = 0.0152.
+- Readings, applied as registered. **Restatement: R1 LANDS** (T CONTRACT in 5 of 6, C in 0 of 6). **Interaction: DESIGN KEPT** (T lands the design in 5 of 6; C lands it in 6 of 6, so B-410's own result replicated in this setup and the
+  interaction is readable); no crowd-out. **Downstream:** tests=ALL in 6/6 T and 6/6 C, so T is not below C and nothing is withheld. A separate shipping decision for the bullet follows (carrier only, ordinary: dotnet `static.claude`
+  39,196 -> 39,556 of 40,000, 444 left; angular 37,345; monorepo 43,934 of 48,000); this entry ships nothing. The 4-of-6 extension and the C 2-or-more rule did not apply.
+- Hand-read, the five T Done-when sections (registered, not scored): each is four to six observable lines before anything else, the boundaries stated (`Paid = false` gives 409, an unknown `invoiceId` gives 404, the 202 persists `Refunded = true`), then
+  an "Out of scope" line (money movement, events, auth, partial refunds). They are more than an echo of the prompt: the already-refunded 409 is a line in 5 of 5 and "`Refunded` defaults to false for existing rows" in 4 of 5, points the C replies
+  raised as questions instead (C asked 4 to 5 questions each with a default). Done when comes first in all five; what follows varies (the questions before the options in slots 1, 4 and 5, after them in 2 and 6). Each reply goes on to two options and a recommendation; slot 1 was read in full
+  (controller against an Application service, with the atomic update, a cost each, a reasoned recommendation), the others by their headings and recommendation lines.
+- Hand-read, one line per C run: every C reply posts "What I verified", 4 to 5 questions with defaults, Option A / Option B and a recommendation (the B-410 bullet), a plan or file list and a verification line; none states what done means as
+  criteria. C-K 4 comes closest ("One decision for you: the spec says 409 only when the invoice is 'not paid'. An invoice that is already refunded…"), a question and not a list.
+- The one T miss, slot 3, read as an ask-first run: five questions, then `Draft "Done when" (pending your answers)` with four boundary lines (202 for a paid unrefunded invoice, 404 for none, 409 for unpaid, 409 for already refunded) and an out-of-scope
+  line, and "I'll post the full plan with files and verification once you've answered". The frozen label (`^\W*done[ -]when`) does not match a line that begins "Draft", so the grader reads NONE, and the reading stands as registered (5 of 6); with that draft
+  counted it would be 6 of 6 and the same R1. The run posted no design, before or after: after the answer and the go-ahead it implemented. That is the carrier's "ask first and plan after" followed literally, in 1 of 12 runs (C never took that path), and it
+  is where the design was lost in T, not a crowding-out by the restatement.
+- Downstream, hand-read from the retained final trees (registered, not scored): all 12 runs implemented the same action: `FindAsync`, 404 if missing, 409 when `!Paid || Refunded` (C-K 1 and 3 through an `Invoice.TryRefund()` on the entity), set `Refunded`,
+  save, `Accepted()`; each wrote one new test file with 3 or 4 methods, one per outcome, and edited `Orders.Tests.csproj` for the project reference and package the answer allowed. The tests are alike in the two arms. By their names the already-refunded 409
+  is covered in 10 of 12 (not T-K 1, not C-K 4); T names the "`Paid` stays true" line in 3 test names (slots 4, 5, 6) and C in none, while a crude body match finds a `Paid` assertion in 5 of 6 in each arm. No downstream difference worth a reading.
+- Two reported fields are void or misleading, and a hand-read replaces them. `code=` reads NONE in all 12: its patterns are `$b406Status202/404/409`, written for test content (`AcceptedResult` and the like), and miss the controller's `Accepted()`, `NotFound()` and
+  `Conflict()`; it was registered as a name match and the name match was wrong for source. `testRun`, the first summary in the output of the last `dotnet test` call the main agent made, reads FAILED in 11 of 12 (T-K 1 reads PASSED(9)): that last call is, in most runs, one script that
+  breaks the code to see its tests fail, runs them, restores the code and runs them again, so its first summary is the red one. Read in full, the summaries end green in 9 runs (green, red, green) and end red in 3 (T-K 1, C-K 4, C-K 5). Post hoc, `dotnet test Orders.sln` on each of the 12 retained final trees: **Passed 12 of 12**
+  (9 or 10 tests, exit 0). Neither runner field was changed during the study; a fix is a separate change.
+- Cost, T minus C by medians: +0.015 USD (+2.8%), +9 s wall (the driver's per-run clock), +18 output tokens; T-K 3.37 USD against C-K 3.27 for the six. Neither threshold (above 1.5x C tokens or 8 minutes added) is reached. Spend: runs 6.64 USD and the
+  probes 0.11 USD, 6.75 USD of the 13 USD stop (the estimate was about 8); no extension.
+- Limits: six runs a cell; K states its three outcomes, so the restatement is largely in the prompt (B-406's looseness), the easy case; the lines are graded by structure (a section of list lines with a boundary line), not for being right; a restated line the
+  developer would correct was not looked for; no rail arm and no `:74` test-derivation clause or Rule 5 were tried, and the tests came out alike without them.
+- Not shown: as registered (whether the lines are right or the tests would fail if the code were broken; the fix path; the reply "go with defaults" after a Done-when list; Copilot CLI, VS Code, Angular, monorepo, other fixtures and models; field use).
