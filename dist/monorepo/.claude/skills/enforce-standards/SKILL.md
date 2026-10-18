@@ -41,7 +41,8 @@ The write-time guard hook blocks floor violations — .NET: `#pragma warning dis
      ```
 3. **CI**: update `AGENTS.md > Conventions > Verification Commands` with the exact evidenced build
    and test invocations that exercise these settings, and put those commands in the required build
-   (`docs/ci-integration.md`). Do not infer a solution-level `dotnet build` / `dotnet test`. Run the
+   (`docs/ci-integration.md`). Do not infer a solution-level `dotnet build` / `dotnet test` yourself; a recorded row, even
+   one recorded from a manifest, is evidence and may be used. Run the
    recorded command locally and show the result.
 4. **Don't weaken to go green** — a pre-existing warning wall is normal in brownfield: keep
    `TreatWarningsAsErrors` scoped (e.g. per-project opt-in or `<WarningsAsErrors>` for specific

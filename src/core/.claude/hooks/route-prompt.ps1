@@ -98,7 +98,7 @@ $railsSecurity = @'
 ## Security-sensitive surface detected
 
 # @stack:sec-intro
-1. Run this repository's security-gate skill (.claude/commands/security-gate.md; on Copilot CLI, not the CLI's built-in security agent) or its security-auditor agent on the diff before presenting it as complete — do not self-certify.
+1. Run this repository's security-gate skill (.claude/commands/security-gate.md; on Copilot CLI, not the CLI's built-in security agent) on the diff before presenting it as complete — it captures the scope bundle and runs the security-auditor on it; the auditor refuses a bare diff request. Do not self-certify.
 # @stack:sec-items
 If this prompt does NOT actually touch a sensitive surface, say so and skip this overlay.
 '@
@@ -128,6 +128,13 @@ try {
     }
 }
 if ([string]::IsNullOrEmpty($prompt) -and $isClaude) { exit 0 }
+
+# A finished background task (a subagent, a build) makes Claude Code start a continuation turn whose
+# prompt is one <task-notification>...</task-notification> block, not text the developer typed (observed
+# on Claude Code 2.1.300). Routing it re-injects the rails and can re-route the turn, so it is a no-op;
+# a request typed after the block is not a notification and routes.
+$noteText = $prompt.Trim([char[]]@(0xFEFF, 32, 9, 10, 13))
+if ($isClaude -and $noteText.StartsWith('<task-notification>', [StringComparison]::Ordinal) -and $noteText.EndsWith('</task-notification>', [StringComparison]::Ordinal)) { exit 0 }
 
 # Skip if the user already chose a workflow.
 if ($prompt.StartsWith('/') -and $isClaude) { exit 0 }

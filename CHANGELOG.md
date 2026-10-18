@@ -11,6 +11,17 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.98.0 — Unreleased
+
+Fixes from the B-406/B-407 transcripts (Claude Code 2.1.300). `/bootstrap` (dotnet, monorepo; `bootstrap.md` step 4 and
+`docs/defaults.md`) now records `dotnet build` from a committed `*.csproj` and `dotnet test` from a committed test project as
+manifest evidence, per the standing rule that a `*.csproj` is .NET application evidence: the B-406 fixture's solution passed
+`dotnet test` 6/6, yet every Verification Commands row read `not available`, so no agent ran tests. The security overlay and the
+carrier's `security-pass` name only the `security-gate` skill, which captures the scope bundle for `security-auditor`: offered the
+auditor directly, agents sent it a raw diff it refuses (first call CANNOT EXAMINE in 10/10 B-406 runs, 3/10 in B-407; B-408).
+`route-prompt` is a no-op on a Claude Code `<task-notification>` continuation prompt, which re-injected the rails 11 times in 16
+re-fires and re-routed two turns. The eval runner accepts an `— Unreleased` root head above the stamped version.
+
 ## 0.97.2 — 2026-10-15
 
 Revert under the consumer-docs arm A2 reading: v0.97.1 scored `url-install-brownfield` 1/3 and `url-install-greenfield`

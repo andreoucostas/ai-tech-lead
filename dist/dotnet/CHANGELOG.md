@@ -4,6 +4,31 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.98.0 — Unreleased
+
+- **`/bootstrap` now records `build` and `test` commands from your .NET project files.** A committed C# project
+  (`*.csproj`) is evidence for `dotnet build`, and a test project (one that references `Microsoft.NET.Test.Sdk`, or an
+  xunit, NUnit or MSTest package) is evidence for `dotnet test`. The command targets the solution only when every
+  project in that `.sln` is an SDK-style C# project (a `*.sqlproj` or legacy-style project makes the solution-level
+  command fail); otherwise it is recorded once per `*.csproj`. The Verification Commands row names the project file as
+  its evidence. Before this, a repository with a solution and a test project but no CI file or build script got
+  `not available (no evidenced command)` for every row, and agents never ran the tests. A `.sln` with no C# project, or
+  a `*.sqlproj`, still evidences neither, and format, lint, migration/deploy and data-validation still need explicit
+  evidence. A solution-wide `dotnet test` runs every test project, including any that need a configured database, so
+  check the recorded row before letting an agent run it. The skills that run these commands (`add-tests`,
+  `enforce-standards`, `dependency-audit`, `enforce-architecture`) now accept a recorded row as evidence instead of
+  forbidding a solution-level command outright. To pick this up on an existing repo, run `/rebootstrap full` (or edit the
+  rows by hand); a plain `/rebootstrap` stops when only the framework changed.
+- **The security reminder now sends the agent to the `security-gate` skill, never to the `security-auditor` agent on a raw diff.**
+  The auditor examines only the scope bundle that the skill captures, so asked to review a diff directly it answered
+  `CANNOT EXAMINE` and the change could finish with no security pass. The per-prompt security reminder and the
+  always-loaded security rule now name the skill and say the auditor runs inside it. The always-loaded
+  `framework-rules.instructions.md` grows by about 70 characters.
+- **A finished background task no longer re-injects the workflow rails.** When a background command or subagent
+  finishes, Claude Code starts a continuation turn whose prompt is a `<task-notification>`, and the prompt router
+  treated it as a new request: it repeated the rails (about 4,400 characters each time) and sometimes re-classified the
+  turn as a different workflow. The router now ignores that notification; a prompt you type is routed as before.
+
 ## 0.97.2 — 2026-10-15
 
 - **The installer's closing message for an installing agent is back to 0.96.1's wording**, without its offer of

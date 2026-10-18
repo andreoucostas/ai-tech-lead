@@ -4,6 +4,21 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.98.0 — Unreleased
+
+- **No change to `/bootstrap` for Angular repositories in this release.** Its changes in this version are to the .NET and
+  .NET + Angular distributions; `/bootstrap` on an Angular repository records commands exactly as before
+  (from `package.json` scripts and other committed evidence).
+- **The security reminder now sends the agent to the `security-gate` skill, never to the `security-auditor` agent on a raw diff.**
+  The auditor examines only the scope bundle that the skill captures, so asked to review a diff directly it answered
+  `CANNOT EXAMINE` and the change could finish with no security pass. The per-prompt security reminder and the
+  always-loaded security rule now name the skill and say the auditor runs inside it. The always-loaded
+  `framework-rules.instructions.md` grows by about 70 characters.
+- **A finished background task no longer re-injects the workflow rails.** When a background command or subagent
+  finishes, Claude Code starts a continuation turn whose prompt is a `<task-notification>`, and the prompt router
+  treated it as a new request: it repeated the rails (about 4,400 characters each time) and sometimes re-classified the
+  turn as a different workflow. The router now ignores that notification; a prompt you type is routed as before.
+
 ## 0.97.2 — 2026-10-15
 
 - **The installer's closing message for an installing agent is back to 0.96.1's wording**, without its offer of

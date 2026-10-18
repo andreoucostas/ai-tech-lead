@@ -99,7 +99,7 @@ $railsSecurity = @'
 ## Security-sensitive surface detected
 
 This prompt touches a security-sensitive area (auth, tokens, session, PII, output sanitisation). DORA's evidence is that AI amplifies existing weaknesses fastest here, so this overlay applies ON TOP OF any workflow rails above. Before presenting the change as complete:
-1. Run this repository's security-gate skill (.claude/commands/security-gate.md; on Copilot CLI, not the CLI's built-in security agent) or its security-auditor agent on the diff before presenting it as complete — do not self-certify.
+1. Run this repository's security-gate skill (.claude/commands/security-gate.md; on Copilot CLI, not the CLI's built-in security agent) on the diff before presenting it as complete — it captures the scope bundle and runs the security-auditor on it; the auditor refuses a bare diff request. Do not self-certify.
 2. Never bypass Angular's sanitisation (bypassSecurityTrust*, direct innerHTML) without an explicit, reviewed reason; rely on the framework's escaping.
 3. Keep tokens/secrets out of localStorage where an httpOnly cookie is viable; never log credentials or PII.
 4. Validate and encode at trust boundaries (route params, HTTP responses, user input); guard against XSS/CSRF.
@@ -132,6 +132,13 @@ try {
     }
 }
 if ([string]::IsNullOrEmpty($prompt) -and $isClaude) { exit 0 }
+
+# A finished background task (a subagent, a build) makes Claude Code start a continuation turn whose
+# prompt is one <task-notification>...</task-notification> block, not text the developer typed (observed
+# on Claude Code 2.1.300). Routing it re-injects the rails and can re-route the turn, so it is a no-op;
+# a request typed after the block is not a notification and routes.
+$noteText = $prompt.Trim([char[]]@(0xFEFF, 32, 9, 10, 13))
+if ($isClaude -and $noteText.StartsWith('<task-notification>', [StringComparison]::Ordinal) -and $noteText.EndsWith('</task-notification>', [StringComparison]::Ordinal)) { exit 0 }
 
 # Skip if the user already chose a workflow.
 if ($prompt.StartsWith('/') -and $isClaude) { exit 0 }

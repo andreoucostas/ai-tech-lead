@@ -25,5 +25,5 @@ creating a .NET architecture-test project in a warehouse-only repository.
 3. **CI**: derive the exact scoped command that runs the new architecture project in this repo
    (for example a targeted `dotnet test` when that is the established runner), record it under
    `AGENTS.md > Conventions > Verification Commands`, and put that exact command in the required
-   build. Do not assume a solution-level invocation or add the project to a nonexistent solution.
+   build. Do not assume a solution-level invocation yourself (a recorded row, even one recorded from a manifest, is evidence and may be used) or add the project to a nonexistent solution.
 4. **Don't weaken rules to go green** — record current violations in `TECH_DEBT.md` (Category: Architecture) and burn them down via the Trojan Horse.

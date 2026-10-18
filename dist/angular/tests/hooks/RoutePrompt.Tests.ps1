@@ -78,6 +78,38 @@ It 'route-prompt.ps1 Copilot event -> security overlay for payment prompt' {
     Assert ($o.additionalContext -match 'Security-sensitive surface detected') 'security overlay missing'
 }
 
+# --- The security pass is the skill, which captures the scope bundle; the auditor refuses a bare diff request ---
+It 'route-prompt.ps1 and the carrier -> security pass names the security-gate skill and offers the auditor only as what it runs' {
+    $r = Invoke-Hook $rpPs (New-ClaudePrompt 'implement payment processing')
+    $item = @($r.Out -split "`n" | Where-Object { $_ -match '^1\. Run this repository' })
+    Assert ($item.Count -eq 1) "expected one overlay item 1, found $($item.Count)"
+    Assert ($item[0] -match 'security-gate skill' -and $item[0] -match 'not the CLI''s built-in security agent') 'overlay item 1 lost the skill name or the Copilot CLI clause'
+    Assert ($item[0] -match 'refuses a bare diff request' -and $item[0] -notmatch 'cannot examine a raw diff') 'overlay item 1 overclaims or omits what the auditor does with a bare diff'
+    Assert ($item[0] -match 'runs the security-auditor' -and $item[0] -notmatch '\bor (its|the) `?security-auditor') 'overlay item 1 offers the auditor as an alternative to the skill'
+    $carrier = [IO.File]::ReadAllText((Join-Path $hooks '..\..\.github\instructions\framework-rules.instructions.md'))
+    $pass = @($carrier -split "`n" | Where-Object { $_ -match '^\*\*Security-sensitive surfaces always get a security pass' })
+    Assert ($pass.Count -eq 1) "expected one carrier security-pass paragraph, found $($pass.Count)"
+    Assert ($pass[0] -match '`security-gate` skill' -and $pass[0] -match 'not the CLI''s built-in security agent') 'carrier security pass lost the skill name or the Copilot CLI clause'
+    Assert ($pass[0] -match 'refuses a bare diff request' -and $pass[0] -notmatch 'cannot examine a raw diff') 'carrier security pass overclaims or omits what the auditor does with a bare diff'
+    Assert ($pass[0] -match 'runs `security-auditor`' -and $pass[0] -notmatch '\bor (its|the) `?security-auditor') 'carrier security pass offers the auditor as an alternative to the skill'
+}
+
+# --- A background-task notification re-fires UserPromptSubmit with the notification as the prompt (Claude Code 2.1.300) ---
+It 'route-prompt.ps1 Claude background-task notification -> no rails, no routing; a real prompt that mentions the tag still routes' {
+    $note = "<task-notification>`n<task-id>by1n9tdjr</task-id>`n<status>completed</status>`n<summary>Background command `"Fix the failing payment build`" completed (exit code 0)</summary>`n</task-notification>"
+    foreach ($p in $note, " `n$note", ($note + "`n")) {
+        $r = Invoke-Hook $rpPs (New-ClaudePrompt $p)
+        Assert ($r.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($r.Out)) "a task notification must be a no-op, got exit $($r.Exit) output: $($r.Out)"
+    }
+    $real = Invoke-Hook $rpPs (New-ClaudePrompt 'implement a parser for the <task-notification> wrapper')
+    Assert ($real.Exit -eq 0 -and $real.Out -match '## Routed intent: `feature`') 'a developer prompt that mentions the tag stopped routing'
+    $typed = Invoke-Hook $rpPs (New-ClaudePrompt ($note + "`nimplement a new export button"))
+    Assert ($typed.Exit -eq 0 -and $typed.Out -match '## Routed intent: `') 'a typed request pasted after a notification was swallowed'
+    $copilot = Invoke-Hook $rpPs (New-CopilotPrompt $note)
+    Assert ($copilot.Exit -eq 0 -and -not [string]::IsNullOrWhiteSpace($copilot.Out)) 'the Copilot shape must not take the Claude task-notification exit'
+    Assert (($copilot.Out | ConvertFrom-Json).additionalContext -match 'Routed intent: `fix`') 'Copilot shape: a keyword-bearing notification stopped routing'
+}
+
 # --- Authentication changes named by their mechanism or status code, never by "auth", still get the overlay ---
 It 'route-prompt.ps1 both surfaces -> security overlay for authentication changes that never say auth' {
     $p = 'Only the shipping service may call the ship endpoint: make POST api/checkout/{orderId}/ship return 401 unless the X-Shipping-Key request header equals the configured Shipping:ApiKey value.'

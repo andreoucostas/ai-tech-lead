@@ -35,7 +35,7 @@ Read the output. For each **vulnerable** or **deprecated** package, note the pac
 
 Before recommending the bump, run the exact dependency, build, and test commands evidenced by
 `AGENTS.md > Conventions > Verification Commands`, committed CI, scripts, manifests, and
-configuration. Report unavailable categories; do not infer a solution-level command.
+configuration. Report unavailable categories; do not infer a command yourself. A recorded Verification Commands row, even one recorded from a manifest, is evidence and may be run.
 
 ## 3. Automate (pick one, once per repo)
 

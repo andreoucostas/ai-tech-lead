@@ -12,7 +12,14 @@ warehouse-only repository.
 For each durable category — **build**, **test**, **format**, **lint**, **migration/deploy**, and
 **data-validation** — use an exact command only when committed repository evidence names it:
 AGENTS.md conventions, CI definitions, scripts/task runners, manifests, or tool configuration.
-Record that exact evidence path with the command. If a category has no applicable selected profile
+Record that exact evidence path with the command. For the .NET profile, a committed C# project
+(`*.csproj`) evidences `dotnet build`, and a committed test project (a `*.csproj` that references
+`Microsoft.NET.Test.Sdk`, or an xunit, NUnit or MSTest package) evidences `dotnet test`. The target is the
+`.sln` that contains the project only when every project that `.sln` contains is an SDK-style C# project (a
+`*.sqlproj` or legacy-style project in it makes the solution-level command fail); otherwise record one
+command per `*.csproj` (each test `*.csproj` for `dotnet test`). Record that manifest path as the evidence.
+A `.sln` with no C# project, or a `*.sqlproj`, evidences neither; format, lint, migration/deploy and
+data-validation still need explicit evidence. If a category has no applicable selected profile
 or evidenced command, report `not available (no evidenced command)`; never invent a .NET or Angular
 command from this distribution's name.
 

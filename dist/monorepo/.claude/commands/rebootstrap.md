@@ -30,7 +30,8 @@ Before doing anything else:
    do not run or retain it; report framework checks separately. Replace every stale Verification Commands
    row; outside this remediation, flag `/rebootstrap`. Partial-stack and warehouse-only repositories
    are valid. Refresh the six-row inventory only from current eligible evidence, preserving explicit
-   `not available` rows.
+   `not available` rows, except that a `not available` build or test row is replaced when the
+   .NET manifest rule in `/bootstrap` step 4 now evidences it.
 
 4. **Establish ownership and dismissal boundaries** — require a valid root `framework-ownership.json` `paths` inventory and exclude every `framework-owned/overwritten` path, and every path root `framework-retirements.json` lists, from shared A8 evidence. A `mixed` path may contribute only consumer-authored evidence corroborated outside framework-owned paths. Read and freeze every row under `TECH_DEBT.md > ## Dismissed proposals` before analysis.
 
