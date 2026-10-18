@@ -1,5 +1,5 @@
 diff --git a/.github/instructions/framework-rules.instructions.md b/.github/instructions/framework-rules.instructions.md
-index 4db1a82..d37242f 100644
+index 3773901..31eb7ec 100644
 --- a/.github/instructions/framework-rules.instructions.md
 +++ b/.github/instructions/framework-rules.instructions.md
 @@ -96,6 +96,7 @@ When a task matches a skill in `AGENTS.md > Common Tasks`, invoke that skill wit

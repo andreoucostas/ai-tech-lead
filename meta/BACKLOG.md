@@ -179,12 +179,6 @@ scenario variant), and decide whether the gate should count "asked before commit
 **Status:** Open; the rail's "or its security-auditor agent" invites a raw `git diff` request. Its first call returned CANNOT EXAMINE (no scope bundle) in 10 of 10 B-406 S2 runs and 3 of 10 B-407 runs (6 examined "without a
 `-ScopePath` bundle", 2 not read); The 0.98.0 wording sends the agent to `security-gate` only; on the CI fixture with a 1.00 USD cap (B-409), C examined 3/6 and two of the three skips cited the budget. Re-measure at a cap that does not bind before relying on it.
 
-### B-410 · A risk change gets a file list, not a design: ship a two-option design before code on the natural-language path, if the maintainer decides
-**Filed against:** v0.97.2 (2026-10-18)
-**Priority:** P2 · **Effort:** S to ship (one carrier bullet, ordinary) · **Invariants:** none
-**Status:** Measured 2026-10-18 (`meta/eval-results.md`, "B-410 results"): R1 LANDS, T 6/6 against C 0/6 on prompt K, the design in turn 1; after the answer both arms write 12/12. The rename decoy was read as trivial 6/6; B-410b's decoy that
-gets a plan (D3, C gated 2/3) saw T design FULL 0/3, so the bullet's scoping holds (thin: one T run stopped at a plan). Shipping `b410-risk-design.patch`'s bullet (dotnet 38,663 -> 39,196 of 40,000) awaits the maintainer; a rail arm only after an R2, which did not occur.
-
 ### B-411 · Trim the always-loaded carrier: measure P1 (no-behaviour cuts) and P1+P2 (likely-default cuts) on Claude Code and Copilot CLI before anything ships
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P3 · **Effort:** M (about 84 Claude Code runs, up to 60 premium requests) · **Invariants:** none (#1 and #7 if it ships)
