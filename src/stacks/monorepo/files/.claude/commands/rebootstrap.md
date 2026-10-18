@@ -203,7 +203,7 @@ Apply accepted changes section by section:
   against a known target
 - **Architecture Decisions**: add new decisions; mark old decisions as superseded if applicable
 - **Common Tasks**: update patterns to reflect current codebase reality. This existing-content change is proposed through the **same diff-and-confirm gate** as every other Phase-3 change — show the before/after and wait for the user, do not apply silently:
-  - **Project-pattern re-pinning**: for `add-warehouse-load`, recheck its consumer-owned `references/project-pattern.md` against the decisive source/predicate. A new absent reference is the narrow automatic exception above; changing an existing reference or framework skill remains a confirmed diff. Confirm any cited path resolves (Verification Rule #1) and cite it from the correct stack.
+  - **Project-pattern re-pinning**: for `add-warehouse-load`, recheck its consumer-owned `references/project-pattern.md` against the decisive source/predicate. A new absent reference is the narrow automatic exception above; changing an existing reference or framework skill remains a confirmed diff. Confirm any cited path resolves and cite it from the correct stack.
   - **Resurrection guard** (bookkeeping side-effect, not a diff chunk): if any skill with `origin: discovered` in its frontmatter has been deleted from `.claude/skills/` since the last run, append a declined-recipe block to `LEARNINGS.md` so the discovery pass stops re-proposing it. This append is automatic but **must be listed in the Phase-4 report** (see "Declined recipes recorded"). Use this exact form:
 
     ```

@@ -1,2 +1,1 @@
-Choose only evidenced boundaries. An Angular application may flow model/service → state → component
-→ integration; another repository follows its documented structure. Omit absent layers and tests.
+For features and complex changes, decompose into ordered subtasks along evidenced boundaries only (omit absent layers and tests); after each, apply Verification command discovery and fix failures before continuing; never add a foreign harness to manufacture a check.

@@ -1,1 +1,0 @@
-**Deterministic backstops**: `solid-check` is advisory. NetArchTest and `dependency-cruiser` are scaffoldable and enforce direction only after the consumer wires them into CI with `enforce-architecture`.

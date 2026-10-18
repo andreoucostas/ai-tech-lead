@@ -73,7 +73,7 @@ Developer types: "add export button to dashboard"
 
 ## The rules the instruction files encode
 
-- **Verification Rules:** verify before referencing; never invent APIs; honour version pinning;
+- **Verification Rules:** never invent APIs, checking the version this repo pins;
   failures are signals, never silenced.
 - **Leanness:** the counterweight to Boy Scout cleanups; no abstraction over data or for speculation.
 - **SOLID:** single responsibility and the rest, with any injected-service boundary derived from

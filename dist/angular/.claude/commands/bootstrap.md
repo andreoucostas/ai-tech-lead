@@ -374,7 +374,7 @@ The five context sections — Production Architecture, Shared Libraries, Multi-T
 
 **Ground rules:**
 1. **Only fill a section that still carries its `*_PENDING` marker** (or the original template placeholder text). If a maintainer has written anything there, leave that section untouched.
-2. **Single-repo evidence only** (Verification Rule #1). Every statement must trace to something you Read/Grep'd: a config file, a package reference, an interceptor or provider. Never assert facts this repo cannot show — what the backend does with a header, why an org-wide convention exists, a shared library's full public surface.
+2. **Single-repo evidence only**. Every statement must trace to something you Read/Grep'd: a config file, a package reference, an interceptor or provider. Never assert facts this repo cannot show — what the backend does with a header, why an org-wide convention exists, a shared library's full public surface.
 3. **Open each drafted section** with: `<!-- Auto-drafted by /bootstrap on <date> from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->` — and delete that section's `*_PENDING` marker.
 4. **Verified negatives beat placeholders.** If a section has no signals, replace the placeholder with one line stating what was checked, e.g. `_No multi-tenancy signals found in this repo (no tenant resolution, tenant headers, or tenant-scoped config as of <date>). If the system is multi-tenant at another layer, a maintainer should document it here._` — and still delete the marker.
 5. **Keep it scannable** — a short paragraph or a few bullets per section. These are context anchors, not documentation dumps.

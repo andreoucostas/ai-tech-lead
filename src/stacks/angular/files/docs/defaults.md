@@ -34,6 +34,7 @@ angular.dev/reference/releases); a rule that differs between them names the majo
 - New components, directives and pipes are standalone (the default since v19). Mirror NgModule declarations only where a file or feature already uses them.
 - New code injects with `inject()`. Mirror constructor injection only in a file that already uses it; do not mix the two styles in one file.
 - **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID))**: derive a service seam and registration from first-party project evidence and correctness needs. Do not introduce an abstraction, token, or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (models, DTOs, enums) are not services and get no abstraction.
+- **Mechanism**: when project evidence selects an Angular DI seam, follow its established token/registration mechanism; this framework does not select `abstract class`, `InjectionToken<T>`, or a provider shape.
 - Follow the project’s evidenced route-loading mechanism. A genuinely new lazy/eager choice needs an explicit design decision; this default does not select one.
 - Barrel files (`index.ts`) only at feature boundaries — not inside feature folders (causes circular deps).
 

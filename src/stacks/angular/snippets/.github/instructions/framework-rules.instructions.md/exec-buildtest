@@ -1,1 +1,0 @@
-Apply Verification command discovery after each subtask; run only exact recorded invocations and fix their failures before continuing.

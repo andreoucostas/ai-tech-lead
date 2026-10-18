@@ -31,6 +31,22 @@ Carrier §2 opens the plan with the `Done when:` restatement (+360 chars): B-412
 (two-turn runs on `b409-orders-ci`, on top of the B-410 bullet), the design kept (T 5/6, C 6/6), no downstream difference in
 tests or code. Shipped by maintainer decision, 2026-10-18.
 
+Carrier trim P1+P2 (B-411), shipped by maintainer decision, 2026-10-18: `framework-rules.instructions.md` loses the rationale
+sentences, the rules the model follows by default and the restatements, about 15% of `static.claude` (carrier dotnet -5,823
+chars, angular -5,840, monorepo -6,556; `static.claude` dotnet 39,556 -> 33,733, angular 37,345 -> 31,505, monorepo 43,934 ->
+37,378). Cut: the §5 "Close with a Verification & confidence line" bullet; Verification Rules 1, 3, 4, 6, 8; Leanness 3, 4, 6,
+7, 9, 10 and "When you must add structure"; Test leanness 11, 16; SOLID 3, 4, the intro, Mechanism and backstop paragraphs; the
+three *Why:* sentences; "canonical and binding"; SRP, OCP, DIP and §3 shortened. Rule numbers are kept, so the gaps stay and
+Verification Rule 9 and Leanness 1 still mean what the measurements named. The reasons went to each stack's
+`docs/REVIEW-GUIDE.md`, the DI mechanism to `docs/defaults.md`, the binding note and a dependency-direction row to
+`docs/enforcement-surfaces.md`; citations of a removed rule in add-tests, bootstrap, rebootstrap, test, test-critic, the eval
+cases and the playbook were repointed or dropped. B-411 read no knockout (Claude Code, n=6 per arm; Copilot noted below):
+`route-fix` C 6, T1 5, T2 6 against bare 0; `route-fix-nl` 6, 6, 6 against 0; `angular-feature-placement` 6, 6, 6 (own service
+6, 6, 6); `contract-trace-ci-cap` SIDE EXAMINED C 5, T1 6, T2 6. On Copilot CLI 1.0.98 red-first did not discriminate (C 1/3 and
+0/3, so no trim arm ran; B-414) and placement held 6/6/6; the monorepo patch was only `--check`ed. Byte identity: the built
+carrier in all three stacks equals eb4290ce's carrier with `trim-p12-<stack>.patch` applied and the Done-when bullet inserted
+where HEAD has it (`cmp` clean; sha256 prefixes dotnet a8b119a49223, angular 37d51db0521b, monorepo c43ace39a24c).
+
 ## 0.97.2 — 2026-10-15
 
 Revert under the consumer-docs arm A2 reading: v0.97.1 scored `url-install-brownfield` 1/3 and `url-install-greenfield`

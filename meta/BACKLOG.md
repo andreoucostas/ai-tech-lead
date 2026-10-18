@@ -179,12 +179,6 @@ scenario variant), and decide whether the gate should count "asked before commit
 **Status:** Open; the rail's "or its security-auditor agent" invites a raw `git diff` request. Its first call returned CANNOT EXAMINE (no scope bundle) in 10 of 10 B-406 S2 runs and 3 of 10 B-407 runs (6 examined "without a `-ScopePath` bundle", 2 not read); the 0.98.0 wording sends the agent to `security-gate` only. Re-measured at a cap that does not bind (B-411, 2.50 USD, same fixture): C examined 5/6, T1 6/6, T2 6/6, against B-409's C 3/6 at 1.00 USD, so the cap was the confound and the maintainer's B-409 ruling stands.
 Not examined there: whether an examined run's first call was a refusal, and the empty-examination count the title names; B-411 counted the final report only.
 
-### B-411 · Trim the always-loaded carrier: measure P1 (no-behaviour cuts) and P1+P2 (likely-default cuts) on Claude Code and Copilot CLI before anything ships
-**Filed against:** v0.97.2 (2026-10-18)
-**Priority:** P3 · **Effort:** M (about 84 Claude Code runs, up to 60 premium requests) · **Invariants:** none (#1 and #7 if it ships)
-**Status:** Measured 2026-10-18 (`meta/eval-results.md`, "B-411 results"): no knockout. Claude Code, P1 and P1+P2 HOLD on `route-fix` (T1 5/6, T2 6/6, N 0/6), `route-fix-nl` (6/6, 6/6, N 0/6), `angular-feature-placement` (6/6, 6/6) and `contract-trace-ci-cap` (side examined 6/6, 6/6 against C 5/6); Copilot CLI `route-fix` and `route-fix-nl` stopped NOT DISCRIMINATING at C 1/3 and 0/3 (B-414), placement HOLDS 6/6, 6/6 with no bare arm.
-Shipping P1+P2 (dotnet static 39,196 -> 33,373; the dangling-citation checklist is in the pre-registration), P1 alone, or neither awaits the maintainer; the monorepo patches were cut, not run.
-
 ### B-413 · Two reported eval-runner fields misread on two-turn runs
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P3 · **Effort:** S · **Invariants:** none
@@ -197,3 +191,8 @@ Shipping P1+P2 (dotnet static 39,196 -> 33,373; the dangling-citation checklist 
 Still needed: whether the host's own `-p` instructions ("proceed autonomously", B-348 RAIL) or the carrier's text is the lever, a bare arm on Copilot, and whether a Bug-fix rail the model reads last (hook output, order) moves it.
 
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
+
+### B-415 · The shipped briefing deck still quotes rules the 0.98.0 trim removed
+**Filed against:** v0.97.2 (2026-10-18)
+**Priority:** P3 · **Effort:** S · **Invariants:** #7
+**Status:** Open (found in the B-411 ship attack): `src/core/presentation/framework-briefing.html` (about lines 218-220: "Verify before you reference", "no future-proofing. Deletion is a contribution", "Mandatory principles") and `TALKING-POINTS.md:64` ("SOLID is literal and mandatory") ship in `dist/*/presentation` and describe the pre-trim carrier; ClaimTruth lists them but pins no such claim.

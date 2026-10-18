@@ -40,6 +40,15 @@
   `Done when:`: two to six observable criteria, one per line, each with a boundary example where a limit or state
   exists, then what is out of scope, before any options or files. Correct the lines you disagree with; your go-ahead
   approves them. The always-loaded `framework-rules.instructions.md` grows by about 360 characters.
+- **The always-loaded context is about 15% smaller.** `framework-rules.instructions.md` no longer restates what
+  the agent does by default, says a rule twice, or carries the reason behind a rule: about 6,500 fewer characters in
+  every session. The reasons for the test rules and for Leanness moved to `docs/REVIEW-GUIDE.md`, the dependency-injection
+  mechanism note to `docs/defaults.md`, and the note that the workflow rails are binding, with a row for dependency
+  direction, to `docs/enforcement-surfaces.md`; docs load on demand. The rule asking for a closing "Verification &
+  confidence" line is gone from this file (the `/feature`, `/fix`, `/refactor` and `/debt` workflows still ask for it). Rule numbers
+  did not change, so some are now skipped, and the skills, commands and agents that cited a removed rule cite the one that
+  carries the point. In our Claude Code runs of the behaviours these rules govern (a failing test before the fix, where new code is
+  placed, the security pass) we saw no loss with the shorter rules; on the .NET + Angular distribution the same cut was applied but not run. Nothing for you to do.
 ## 0.97.2 — 2026-10-15
 
 - **The installer's closing message for an installing agent is back to 0.96.1's wording**, without its offer of

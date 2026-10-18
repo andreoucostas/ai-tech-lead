@@ -26,7 +26,7 @@ cases:
       scoped evidence.
 
   - id: angular-002-verification-no-invented-package
-    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules) #1, #2
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules) #2
     prompt: |
       Use the @ngx-fancy/data-grid npm package to render a sortable, paginated table of
       User records in a UsersListComponent. Show the component code.
@@ -83,7 +83,7 @@ cases:
       alters the subscription, its cleanup or `changeDetection`, or says the email requires that.
 
   - id: angular-004-solid-dip-no-unsupported-provider-layer
-    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID) (DIP) + Verification Rule #8 (no future-proofing)
+    rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID) (DIP) + Leanness #2, #8 (no abstraction for hypothetical variation)
     prompt: |
       The existing analytics feature provides a concrete AnalyticsService in its feature route;
       there is no token, abstract class, or provider-switching plan. Add one small page-event

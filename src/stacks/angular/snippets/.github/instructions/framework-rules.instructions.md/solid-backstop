@@ -1,1 +1,0 @@
-**Deterministic backstop**: `solid-check` is advisory. `dependency-cruiser` is scaffoldable and enforces direction only after the consumer wires it into CI with `enforce-architecture`.

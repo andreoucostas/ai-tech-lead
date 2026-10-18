@@ -1,1 +1,0 @@
-**Mechanism**: when project evidence selects an Angular DI seam, follow its established token/registration mechanism; this framework does not select `abstract class`, `InjectionToken<T>`, or a provider shape.

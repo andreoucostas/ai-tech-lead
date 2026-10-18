@@ -83,7 +83,6 @@ It 'active authority carriers do not restore a framework-selected service seam' 
         'files/tests/evals/cases.yaml',
         'snippets/.github/instructions/framework-rules.instructions.md/lean-1-2',
         'snippets/.github/instructions/framework-rules.instructions.md/solid-1-5',
-        'snippets/.github/instructions/framework-rules.instructions.md/solid-mechanism',
         'snippets/.github/instructions/framework-rules.instructions.md/workflow-bullets',
         'snippets/.claude/agents/solid-check.md/principles',
         'snippets/.claude/agents/solid-check.md/counterweight',

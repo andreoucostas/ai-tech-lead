@@ -1,3 +1,1 @@
-Choose only evidenced technologies and order work by their dependency flow. Application examples are
-model → service → API or state → component → integration; a warehouse may flow schema → migration
-→ procedure/query → validation. Omit absent stacks, layers, and tests.
+For features and complex changes, decompose into ordered subtasks along evidenced technologies and boundaries only (omit absent stacks, layers, and tests); after each, apply Verification command discovery for the changed technologies and fix failures before continuing; never add a foreign harness to manufacture a check.

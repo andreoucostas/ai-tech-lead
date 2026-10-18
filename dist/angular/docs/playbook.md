@@ -73,8 +73,8 @@ Developer types: "add export button to dashboard"
 
 ## The rules the instruction files encode
 
-- **Verification Rules:** verify before referencing; never invent APIs or selectors; honour version
-  pinning (Signal Forms, `resource`, `Eager` and `@Service()` are version-gated); failures are signals,
+- **Verification Rules:** never invent APIs or selectors, checking the version this repo
+  pins (Signal Forms, `resource`, `Eager` and `@Service()` are version-gated); failures are signals,
   never silenced with `@ts-ignore` or `as any`.
 - **Leanness:** the counterweight to Boy Scout cleanups; no abstraction over data or for speculation.
 - **SOLID:** single responsibility and the rest, with any injected-service boundary derived from

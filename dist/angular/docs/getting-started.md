@@ -64,13 +64,16 @@ What happens next:
 1. The agent says in one line which workflow it is following (here, a bug fix).
 2. If something material is unclear, it asks up to five questions first, each with the assumption it
    would otherwise make.
-3. It posts a plan: the files it will change, how it will verify the change, and its assumptions,
-   each with the evidence behind it. Nothing has changed yet.
-4. You reply with a go-ahead, or correct the plan.
+3. It posts a plan that opens with `Done when:`, the request restated as a few checkable criteria
+   with their edge cases, then the files it will change, how it will verify the change, and its
+   assumptions, each with the evidence behind it. For a risky change (a known hazard, security, a
+   data shape or a contract others use) it lays out `Option A:` and `Option B:` and recommends one.
+   Nothing has changed yet.
+4. You reply with a go-ahead, or correct the plan; your go-ahead approves the `Done when:` lines.
 5. For a bug, where your repository has a test harness, it writes a test that fails first, then
    fixes the code and runs your repository's own build and test commands.
-6. It ends with a **Verification & confidence** line: what it ran, with the result, and what it only
-   asserts.
+6. It ends with a report: what changed, the checks it ran with their results, and anything it could
+   not verify.
 
 Where hooks run, writing a `.ts` file triggers `tsc --noEmit` and a component template triggers
 `ngc --noEmit`, and the agent sees any errors.

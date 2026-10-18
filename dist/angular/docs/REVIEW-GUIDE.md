@@ -48,8 +48,23 @@ give it the two branches.
 - Can the author explain why this design, in their own words? The plan the agent posted before
   coding, and its assumptions with their evidence, are a good place to start.
 - Did a new test fail before the fix? The agent reports it; the diff should show it.
-- Does the closing **Verification & confidence** line separate what was run from what is only
-  asserted?
+- Does the agent's closing report separate what was run, with its result, from what is only
+  asserted? Do the plan's `Done when:` lines each have a check in the change?
+
+## Why some of the framework rules read as they do
+
+The always-loaded framework rules state each rule without its reason, to keep them short. The reasons,
+for a reviewer who wants them:
+
+- **A new spec is seen to fail before it is trusted** (Verification Rule 9). AI-generated specs are the
+  highest-risk for tautological or over-mocked assertions that pass even against broken code; a spec you
+  have watched fail cannot be vacuous.
+- **No over-mocking** (Test leanness 14). AI assistants frequently produce specs that assert on mock
+  interactions and would still pass if the real code were broken.
+- **No tautological assertions** (Test leanness 15). A large share of LLM-generated assertions are weak
+  or vacuous: they bank coverage without catching regressions.
+- **Leanness** counterweights the Boy Scout Rule. Bloat is not style: it is AI-assisted development's
+  highest-cost long-term failure mode.
 
 ## What review does not cover
 

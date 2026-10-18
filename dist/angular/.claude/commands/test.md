@@ -36,7 +36,7 @@ For each target:
 - Write the smallest risk-relevant set: the principal behavior plus only consequential error, edge,
   or boundary cases. Do not create one case for every category or public member.
 - Do not test framework behavior (for example, don't test that DI works)
-- Mock only true external boundaries; every spec needs a real oracle — rendered output, an emitted value, or state, never just "the spy was called" or `expect(true).toBe(true)` (Test leanness #14–16)
+- Mock only true external boundaries; every spec needs a real oracle — rendered output, an emitted value, or state, never just "the spy was called" or `expect(true).toBe(true)` (Test leanness #14–15)
 
 ### Step 4 — Verify
 - Derive exact applicable build, test, format, lint, migration/deploy, and data-validation commands

@@ -38,6 +38,7 @@ evidenced command, report `not available (no evidenced command)`; never invent `
 
 ### Dependency Injection
 - **DIP (see the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID))**: derive a service seam, registration, and lifetime from first-party project evidence and correctness needs. Do not introduce an interface or DI container solely from this default; preserve an evidenced dependency boundary. Data carriers (DTOs, entities, value objects, `Options`) are not services and get no interface.
+- **Mechanism**: when project evidence selects a .NET service seam, follow its established composition root, lifetime, and interface/concrete shape; this framework selects none of them.
 - Where the project already evidences DI, follow its established lifetime and composition-root conventions; this default does not choose scoped, transient, or singleton.
 - Follow the project’s evidenced composition-root location and registration mechanism; do not select extension methods or `Program.cs` from this default.
 - Use an options/configuration mechanism only where the project evidences it; do not select `IOptions<T>`, `IOptionsMonitor<T>`, or `IOptionsSnapshot<T>` solely from this default.
