@@ -156,6 +156,17 @@
       "assertion": "riskDesignDecoy"
     },
     {
+      "id": "done-when-k",
+      "measures": "B-412: whether the plan the developer sees before code opens with Done-when lines that carry a boundary example, beside the B-410 Option A / Option B design, on prompt K stated without approval. Two invocations of one session: K (B-406 S1's prompt), then B-410's fixed answer followed by a go-ahead that asks for one test per outcome. Gates on B-406's CONTRACT over the first leg only (a Done-when section of at least two list lines, one naming a boundary, nothing written in that leg); the design, its order against the Done-when lines, the turn-1 question and plan fields, and what leg 2 left (tests and code naming 202, 404 and 409, the last dotnet test summary) are reported. It does not show whether the Done-when lines are right, whether the tests would fail if the code were broken, Copilot CLI, VS Code, Angular or monorepo.",
+      "fixture": "b409-orders-ci",
+      "stack": "dotnet",
+      "budgetUsd": 1.00,
+      "followUpBudgetUsd": 1.50,
+      "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid.",
+      "followUp": "A second refund on an invoice that is already refunded is a 409 too. Paid stays true; Refunded is an extra flag on top. This only marks the invoice: no event, no payment-provider call, no money moves. I apply the new Refunded column to the database myself, so no script is needed. Two simultaneous refunds are out of scope for now. Go ahead, with one test for each of the three outcomes; the project reference and test package they need are fine.",
+      "assertion": "doneWhen"
+    },
+    {
       "id": "docs-tier-ondemand",
       "budgetUsd": 0.75,
       "prompt": "Add a class under `src/` that orchestrates validating an order and then reserving stock. Follow this repository's conventions. Do not add tests or a project reference; one source file is enough.",

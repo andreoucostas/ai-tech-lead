@@ -2000,6 +2000,44 @@ function Get-RiskHooks($Transcript, [int]$Boundary) {
     [pscustomobject]@{ Loaded = $first.Loaded; Rails = $first.Rails; Rails2 = $rails2; Session2 = $session2 }
 }
 
+# B-412 (meta/eval-results.md, "B-412 pre-registration"): B-406's CONTRACT over the first leg only. The best Done-when section of the
+# first leg's main-agent text (B-406's label, section and boundary-line definitions, unchanged) with at least two list lines and one
+# boundary line, and nothing written in that leg, is CONTRACT; two list lines alone are PARTIAL. Order: which of the Done-when label and
+# the first Option line comes first in that text.
+function Get-DoneWhenLegOne($Evidence, [int]$Boundary) {
+    $joined = (@($Evidence.Texts | Where-Object { -not $_.Sidechain -and ($Boundary -eq 0 -or $_.Index -le $Boundary) } | ForEach-Object { $_.Text })) -join "`n"
+    $section = Get-B406BestSection $joined
+    $wrote = @($Evidence.Tools | Where-Object { (Test-B406Write $_) -and ($Boundary -eq 0 -or $_.Index -le $Boundary) }).Count -gt 0
+    $class = if ($section.ListLines -ge 2 -and $section.BoundaryLines -ge 1 -and -not $wrote) { 'CONTRACT' } elseif ($section.ListLines -ge 2) { 'PARTIAL' } else { 'NONE' }
+    $label = [regex]::Match($joined, $b406Label)
+    $option = [regex]::Match($joined, $designOpt)
+    $order = if ($label.Success -and $option.Success) { if ($label.Index -lt $option.Index) { 'dw-first' } else { 'opt-first' } } elseif ($label.Success) { 'dw-only' } elseif ($option.Success) { 'opt-only' } else { 'neither' }
+    [pscustomobject]@{ Class = $class; Lines = $section.ListLines; Boundary = $section.BoundaryLines; Order = $order }
+}
+
+# Of the changed or new files matching a pattern, which of the 202, 404 and 409 outcomes their content names (B-406's name match, which
+# does not check that anything asserts it): ALL, SOME(which), NONE, and n/a when no such file changed.
+function Get-B406StatusNaming([string[]]$Files, [string]$Target) {
+    if (-not $Files.Count) { return 'n/a' }
+    $text = ($Files | ForEach-Object { Get-Content -Raw -LiteralPath (Join-Path $Target $_) }) -join "`n"
+    $named = [ordered]@{ '202' = [bool]($text -match $b406Status202); '404' = [bool]($text -match $b406Status404); '409' = [bool]($text -match $b406Status409) }
+    $hit = @($named.Keys | Where-Object { $named[$_] })
+    if ($hit.Count -eq $named.Count) { 'ALL' } elseif ($hit.Count -gt 0) { "SOME($($hit -join ','))" } else { 'NONE' }
+}
+
+# The last `dotnet test` summary the main agent saw: PASSED(n), FAILED(f of n), or none.
+function Get-RiskTestRun($Evidence) {
+    $last = $null
+    foreach ($tool in @($Evidence.Tools | Where-Object { -not $_.Sidechain -and $_.Name -in @('Bash', 'PowerShell') -and [string]$_.Input.command -match '(?i)\bdotnet\s+test\b' })) {
+        if (-not $Evidence.ToolResults.ContainsKey($tool.Id)) { continue }
+        $m = [regex]::Match((Get-B406ContentText $Evidence.ToolResults[$tool.Id].content), '(?i)(?:Passed|Failed)!\s+-\s+Failed:\s+(\d+),\s+Passed:\s+(\d+),\s+Skipped:\s+(\d+),\s+Total:\s+(\d+)')
+        if ($m.Success) { $last = $m }
+    }
+    if (-not $last) { return 'none' }
+    if ([int]$last.Groups[1].Value -gt 0) { return "FAILED($($last.Groups[1].Value) of $($last.Groups[4].Value))" }
+    return "PASSED($($last.Groups[2].Value))"
+}
+
 function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$BeforeCommits) {
     $e = Get-TranscriptEvidence $Transcript
     $finalText = [string]$e.Final.result
@@ -3159,7 +3197,8 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         # B-410: does the developer see a design (options A and B, each with its cost, and a recommendation) before any write? K is
         # two legs of one session (the prompt, then a fixed answer); the decoy is one. Landing is graded on labelled lines in main-agent
         # text before the first main-agent write, across both legs; the cost-per-option and the quality are hand-read, not scored.
-        { $_ -eq 'risk-design-k' -or $_ -match '^risk-design-d\d*$' } {
+        { $_ -in @('risk-design-k', 'done-when-k') -or $_ -match '^risk-design-d\d*$' } {
+            $twoLeg = $Id -in @('risk-design-k', 'done-when-k')
             $boundary = if ($Transcript.LegEnds) { [int]@($Transcript.LegEnds)[0] } else { 0 }
             $legs = if ($boundary -gt 0) { 2 } else { 1 }
             $hooks = Get-RiskHooks $Transcript $boundary
@@ -3178,13 +3217,22 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             }
             $waited = $design.Class -eq 'FULL' -and -not $wroteT1 -and ($design.Locus -eq 'leg1' -or $t2action -eq 'WAITED')
             $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) session2=$($hooks.Session2) legs=$legs design=$($design.Class) locus=$($design.Locus) designT2=$($design.T2) t1q=$($turnOne.Questions) t1assume=$($turnOne.Assumed) t1plan=$($turnOne.Plan) t1order=$($turnOne.Order) wroteT1=$wroteT1 waited=$waited t2action=$t2action firstWrite=$($contract.FirstWrite) firstShell=$($contract.FirstShell) subagents=$($contract.Subagents) durationMs=$(Get-B406Duration $e)"
-            if ($Id -eq 'risk-design-k' -and $legs -eq 2 -and $hooks.Rails2 -notin @('overlay', 'none')) {
+            if ($twoLeg -and $legs -eq 2 -and $hooks.Rails2 -notin @('overlay', 'none')) {
                 return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: the second leg's UserPromptSubmit response is $($hooks.Rails2), not a successful answer-turn hook without the plan gate" }
             }
-            if ($Id -eq 'risk-design-k' -and $legs -eq 1 -and -not $wroteT1) {
+            if ($twoLeg -and $legs -eq 1 -and -not $wroteT1) {
                 return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: the first leg wrote nothing and the second leg did not run" }
             }
-            $pass = if ($Id -eq 'risk-design-k') { $design.Class -eq 'FULL' -and -not $wroteT1 } else { $design.Class -ne 'FULL' }
+            $pass = if ($Id -eq 'risk-design-k') { $design.Class -eq 'FULL' -and -not $wroteT1 } elseif ($twoLeg) { $true } else { $design.Class -ne 'FULL' }
+            # B-412: the Done-when restatement is the gate; the B-410 design is scored beside it (fields above), then what the second leg left.
+            if ($Id -eq 'done-when-k') {
+                $dw = Get-DoneWhenLegOne $e $boundary
+                $changed = @(Get-B406Changes $Target | Where-Object { Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf })
+                $testNaming = Get-B406StatusNaming @($changed | Where-Object { $_ -match '^tests/.*\.cs$' }) $Target
+                $codeNaming = Get-B406StatusNaming @($changed | Where-Object { $_ -match '^src/.*\.cs$' }) $Target
+                $fields += " dw=$($dw.Class) dwLines=$($dw.Lines) dwBoundary=$($dw.Boundary) dwOrder=$($dw.Order) tests=$testNaming code=$codeNaming testRun=$(Get-RiskTestRun $e)"
+                $pass = $dw.Class -eq 'CONTRACT'
+            }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $pass; Detail = $fields }
         }
         default { throw "Unknown scenario '$Id'." }
@@ -3416,6 +3464,49 @@ function Invoke-RiskDesignSelfTest([string]$Temp) {
         $routed = & $route ([string]$extra[0].prompt)
         if ($routed -notmatch 'Routed intent: `(?:feature|refactor|test)`[\s\S]*Plan gate' -or $routed -match 'Security-sensitive surface detected') { throw "B-410b the $decoyId prompt does not route with the plan gate and no security overlay: $routed" }
     }
+    # B-412: the Done-when restatement. done-when-k is the two-leg K case graded on B-406's CONTRACT definitions over leg 1 (Done-when lines
+    # with a boundary line, nothing written), the B-410 design scored beside it, and what leg 2 wrote: tests and code naming the three
+    # outcomes, and the last `dotnet test` result.
+    $dwId = 'done-when-k'
+    $dwDone = "Done when:`n- 202 when a paid invoice is refunded and Refunded is set`n- 404 when the invoice does not exist`n- 409 when the invoice is not paid (the boundary: Paid is false)`n`nOut of scope: events and money movement."
+    $dwNoBoundary = "Done when:`n- The endpoint exists`n- The Refunded flag is stored"
+    $tool = { param([string]$Id, [string]$Name, [string]$Command) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = $Id; name = $Name; input = [pscustomobject]@{ command = $Command } }) } } }
+    $toolOut = { param([string]$Id, [string]$Text) [pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = $Id; content = $Text }) } } }
+    & $check 'done-when before the design: both land' $dwId (& $twoLegs @(& $say "$dwDone`n`n$design") @(& $say $answered)) 'PASS' $true 'legs=2 design=FULL locus=leg1 .*dw=CONTRACT dwLines=3 dwBoundary=3 dwOrder=dw-first'
+    & $check 'the design before done-when is still a contract, in the other order' $dwId (& $twoLegs @(& $say "$design`n`n$dwDone") @(& $say $answered)) 'PASS' $true 'design=FULL .*dw=CONTRACT .*dwOrder=opt-first'
+    & $check 'a design with no done-when (the control shape) is NONE and does not pass' $dwId (& $twoLegs @(& $say $design) @(& $say $answered)) 'FAIL' $false 'design=FULL .*dw=NONE dwLines=0 .*dwOrder=opt-only'
+    & $check 'done-when with no design is the crowd-out shape: it passes, the design reads NONE' $dwId (& $twoLegs @(& $say $dwDone) @(& $say $answered)) 'PASS' $true 'design=NONE .*dw=CONTRACT .*dwOrder=dw-only'
+    & $check 'done-when lines with no boundary are PARTIAL' $dwId (& $twoLegs @(& $say "$dwNoBoundary`n`n$design") @(& $say $answered)) 'FAIL' $false 'dw=PARTIAL dwLines=2 dwBoundary=0'
+    & $check 'a done-when posted only in leg 2 is not leg 1''s' $dwId (& $twoLegs @(& $say $design) @(& $say $dwDone)) 'FAIL' $false 'dw=NONE'
+    & $check 'a done-when block after a write in leg 1 does not count' $dwId (& $oneLeg @((& $use 'w1' 'Edit'), (& $say $dwDone))) 'FAIL' $false 'legs=1 .*wroteT1=True .*dw=PARTIAL'
+    $checkWrites = { param([string]$Name, $Transcript, [string]$Detail, [string[]]$Tests, [string[]]$Source)
+        git -C $repoDir checkout -q -- .
+        git -C $repoDir clean -fdq
+        $script:B406Snapshot = Get-TreeHashes $repoDir
+        foreach ($t in $Tests) { New-Item -ItemType Directory -Path (Join-Path $repoDir 'tests/Orders.Tests') -Force | Out-Null; Set-Content (Join-Path $repoDir 'tests/Orders.Tests/RefundTests.cs') -Value $t -Encoding utf8NoBOM }
+        foreach ($s in $Source) { Set-Content (Join-Path $repoDir 'src/CheckoutController.cs') -Value $s -Encoding utf8NoBOM }
+        $result = Test-ScenarioEvidence $dwId $repoDir $Transcript 1
+        git -C $repoDir checkout -q -- .
+        git -C $repoDir clean -fdq
+        if ($null -eq $result -or $result.Detail -notmatch $Detail) { throw "B-412 $Name misjudged: $(if ($result) { $result.Detail } else { 'no result' })" }
+    }
+    $passed = "Passed!  - Failed:     0, Passed:     9, Skipped:     0, Total:     9, Duration: 3 s - Orders.Tests.dll (net8.0)"
+    $failedRun = "Failed!  - Failed:     2, Passed:     7, Skipped:     0, Total:     9, Duration: 3 s - Orders.Tests.dll (net8.0)"
+    $leg2Run = { param([string]$Output) @((& $say 'Implementing.'), (& $use 'e9' 'Edit'), (& $tool 'd1' 'Bash' 'dotnet test Orders.sln'), (& $toolOut 'd1' $Output)) }
+    $allThree = 'Assert.Equal(StatusCodes.Status202Accepted, a); Assert.Equal(404, b); Assert.Equal(409, c);'
+    & $checkWrites 'tests and code naming all three outcomes, tests passing' (& $twoLegs @(& $say "$dwDone`n`n$design") (& $leg2Run $passed)) 'tests=ALL code=ALL testRun=PASSED\(9\)' @($allThree) @('return Accepted(); return NotFound(); return Conflict(); // 202 404 409')
+    & $checkWrites 'one outcome tested, none of the code named: SOME and NONE' (& $twoLegs @(& $say "$dwDone`n`n$design") (& $leg2Run $failedRun)) 'tests=SOME\(404\) code=NONE testRun=FAILED\(2 of 9\)' @('Assert.Equal(404, b);') @('public class CheckoutController { int refunded; }')
+    & $checkWrites 'no test file and no dotnet test: n/a and none' (& $twoLegs @(& $say "$dwDone`n`n$design") @(& $say $answered)) 'tests=n/a code=n/a testRun=none' @() @()
+    $dwCase = @($scenarios | Where-Object { $_.id -eq $dwId })
+    if ($dwCase.Count -ne 1) { throw "B-412 scenarios.json has $($dwCase.Count) $dwId entries, expected 1" }
+    if (-not ([string]$dwCase[0].fixture).Equals('b409-orders-ci') -or $dwCase[0].stack -ne 'dotnet' -or [string]$dwCase[0].measures -notmatch 'B-412') { throw "B-412 $dwId is not a b409-orders-ci dotnet case that names B-412" }
+    if ($dwCase[0].prompt -cne $restate.prompt) { throw 'B-412 done-when-k does not use B-406 S1''s prompt K, exactly' }
+    if (-not [string]$dwCase[0].followUp -or [decimal]$dwCase[0].followUpBudgetUsd -le 0) { throw 'B-412 done-when-k carries no follow-up or budget' }
+    # The answer is B-410's plus a go-ahead and a request for the tests; it must still route no intent and carry no plan gate.
+    $dwFollow = [string]$dwCase[0].followUp
+    if (-not $dwFollow.StartsWith([string]$kCase[0].followUp) -or $dwFollow -notmatch 'Go ahead' -or $dwFollow -notmatch 'test') { throw 'B-412 the follow-up is not B-410''s answer followed by a go-ahead that asks for the tests' }
+    $dwFollowOut = & $route $dwFollow
+    if ($dwFollowOut -match 'Routed intent' -or $dwFollowOut -match 'Plan gate') { throw "B-412 the follow-up routes an intent or carries the plan gate through the dist router: $dwFollowOut" }
 }
 
 # Carrier trim: route-fix-nl is route-fix on a bug report the router does not match, so the carrier holds the only copy of the red-first rule
