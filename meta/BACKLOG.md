@@ -177,13 +177,7 @@ scenario variant), and decide whether the gate should count "asked before commit
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P2 · **Effort:** S · **Invariants:** none
 **Status:** Open; the rail's "or its security-auditor agent" invites a raw `git diff` request. Its first call returned CANNOT EXAMINE (no scope bundle) in 10 of 10 B-406 S2 runs and 3 of 10 B-407 runs (6 examined "without a
-`-ScopePath` bundle", 2 not read); T3 of B-406 never re-ran it and still scored PROJECT on SIDE CHECK. Fix candidates: name the skill (it captures the scope) in the rail, and count only a pass that examined; measure first.
-
-### B-409 · Re-test the closing block (B-407 part C) on a fixture whose tests run, with the 0.98.0 fixes installed
-**Filed against:** v0.97.2 (2026-10-18)
-**Priority:** P2 · **Effort:** M · **Invariants:** none
-**Status:** Open; B-407 read R2 at TRACE FULL 1/6 with all five misses `missing=pair`, on a fixture where `/bootstrap` had recorded no test command. Maintainer ruling 2026-10-18: fix the instrument
-and the product issues first (3926a88f, 296c6ce9), then re-test once; pre-registered in `meta/eval-results.md` (B-409 pre-registration).
+`-ScopePath` bundle", 2 not read); The 0.98.0 wording sends the agent to `security-gate` only; on the CI fixture with a 1.00 USD cap (B-409), C examined 3/6 and two of the three skips cited the budget. Re-measure at a cap that does not bind before relying on it.
 
 
 

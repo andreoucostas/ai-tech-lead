@@ -4848,3 +4848,32 @@ product issues (296c6ce9) first and re-test once.
 - Stop. 10 USD for the runs: per-run cap the scenario's `budgetUsd` (1.00 USD); a run is not started if spend so far plus that cap would pass 10 USD; spend counts each row's `costUsd` (a row
   without one is charged its transcript's last `total_cost_usd`, else the cap). A cell the stop leaves short is "not settled", never read as R1 or R2. Claude Code only; no premium requests.
 - Not shown: Copilot CLI; VS Code; Angular; monorepo; other fixtures and models; a real second turn; whether the block's content is true; field use.
+
+## B-409 results — 2026-10-18 (pre-registered at 17decaad)
+
+Claude Code 2.1.300, model sonnet (`claude-sonnet-5-5` in every `system/init`); fixture `b409-orders-ci` (overlay sha256 `0408a76b9a14…`); scenario `contract-trace-ci` at 1.00 USD a run; HEAD 296c6ce9's
+`dist/dotnet`; T patch `meta/eval-fixtures/target-patches/b407-block.patch` (sha256 prefix `1072c9df7a21`, the `patch=` tag on all six T rows and on no C row); one run per invocation, alternating T and C.
+All 12 rows were valid on the first attempt (succeeded SessionStart and UserPromptSubmit hook, `rails=plan-gate`): no CANNOT-EXAMINE, no repeat. Evidence (`ledger.tsv`, `runner-rows.md`, one output file per
+run) in `%TEMP%\b409-runs\` at writing, not in the repository.
+
+| cell | valid runs | TRACE-ANY | TRACE-LAST | LABELS (beyond, blast, depth) | SIDE CHECK | TESTS-RAN (hand-read) | median cost USD | median wall s | median output tokens |
+|---|---|---|---|---|---|---|---|---|---|
+| T | 6 | FULL 2/6 (slots 5, 6); PARTIAL 4, each `missing=pair` | FULL 1 (slot 6), PARTIAL 1, NONE 4 | all three in 6/6 | EXAMINED 4/6 (slots 1, 2, 3, 6); none 2 | `dotnet test` 6/6 | 0.426 | 107.5 | 9,209 |
+| C | 6 | FULL 0/6 (NONE 6) | NONE 6 | none in 6/6 | EXAMINED 3/6 (slots 1, 4, 5); none 3 | `dotnet test` 5/6 (not slot 6) | 0.287 | 73.5 | 5,713 |
+
+- Fisher exact, two-sided, reported (counts decide): TRACE-ANY FULL 2/6 against 0/6 p = 0.45; LABELS 6/6 against 0/6 p = 0.0022; SIDE EXAMINED 4/6 against 3/6 p = 1.0.
+- Reading, applied as registered: T TRACE-ANY FULL 2 of 6 is 3 or fewer, so **R2: part C is closed; no further wording.** The 4-of-6 extension did not apply, and C's 0 of 6 is below the 2-of-6 that would have made
+  the grader non-discriminating.
+- SECURITY (read on C, the shipped arm): SIDE EXAMINED 3 of 6, and the other three (slots 2, 3, 6) made no security call. The registered rule (4 or fewer reverts the security-pass and overlay wording) fires.
+  Hand-read by the orchestrator: two of the three no-call C runs said they skipped `security-gate` "because of the session budget" (the per-run cap is 1.00 USD, lowered from 2.50 by B-407's Phase 0, and the agent sees
+  it); the third named the review as not done and to run before merge. **Maintainer ruling 2026-10-18: keep the 0.98.0 security wording**, overriding the registered revert, because the budget cap confounds the reading.
+  On T, SIDE EXAMINED was 4 of 6.
+- TESTS-RAN, hand-read from each transcript's shell calls by the orchestrator (the ledger does not carry it): `dotnet test` ran in 11 of 12 runs (T 6/6, C 5/6) and `dotnet build` in 12 of 12. In B-406's and B-407's S2 on the
+  CI-less fixture tests were never run. TESTS-AT-BOUNDARY is n/a in all 12: no run added a test file.
+- Product check generation (fixture v2, no CI file, HEAD 296c6ce9's `dist/dotnet`, headless `/bootstrap`, two calls, 1.20 USD): `AGENTS.md` records build `dotnet build Orders.sln` (evidence `README.md`; every project
+  SDK-style) and test `dotnet test Orders.sln` (evidence `README.md`; `tests/Orders.Tests/Orders.Tests.csproj`), where B-406's generation on the same fixture and README at 0.97.2 recorded both `not available`. One
+  generation each: a confirmation, not a measurement.
+- Cost, T minus C by medians: +0.139 USD (+48%), +34 s wall (the driver's per-run clock), +3,496 output tokens (T is 1.61× C). Reported, not a reading in this entry; B-407's 1.5× C output tokens threshold would have been
+  exceeded. In the ledger, cost follows whether the security pass ran: T runs with a security call cost 0.37 to 0.50 USD and the two without 0.19; C runs with one 0.39 to 0.46 and the three without 0.18 to 0.19.
+  `tokensIn` is the last turn's only and is not reported. Spend: runs 4.03 USD of the 10 USD stop; generations 1.16 USD (`b409-orders-ci`) and 1.20 USD (product check).
+- Not shown: as registered (Copilot CLI; VS Code; Angular; monorepo; other fixtures and models; a real second turn; whether the block's content is true; field use).
