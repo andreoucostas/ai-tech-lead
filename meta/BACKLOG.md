@@ -182,8 +182,8 @@ scenario variant), and decide whether the gate should count "asked before commit
 ### B-410 · A risk change gets a file list, not a design: ship a two-option design before code on the natural-language path, if the maintainer decides
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P2 · **Effort:** S to ship (one carrier bullet, ordinary) · **Invariants:** none
-**Status:** Measured 2026-10-18 (`meta/eval-results.md`, "B-410 results"): R1 LANDS, T 6/6 against C 0/6 on prompt K, the design in turn 1; after the answer both arms write 12/12. The decoy was read as trivial and skipped its plan 6/6, so the
-false-positive side is not exercised (needs a decoy that gets a plan). Shipping `b410-risk-design.patch`'s bullet (dotnet 38,663 -> 39,196 of 40,000) awaits the maintainer; a rail arm only after an R2, which did not occur.
+**Status:** Measured 2026-10-18 (`meta/eval-results.md`, "B-410 results"): R1 LANDS, T 6/6 against C 0/6 on prompt K, the design in turn 1; after the answer both arms write 12/12. The rename decoy was read as trivial 6/6; B-410b's decoy that
+gets a plan (D3, C gated 2/3) saw T design FULL 0/3, so the bullet's scoping holds (thin: one T run stopped at a plan). Shipping `b410-risk-design.patch`'s bullet (dotnet 38,663 -> 39,196 of 40,000) awaits the maintainer; a rail arm only after an R2, which did not occur.
 
 
 ## Archived

@@ -5031,3 +5031,30 @@ Maintainer go-ahead 2026-10-18 for one more small check before any shipping deci
   charged the highest `total_cost_usd` in its transcript, else 1.00 USD). A run that wrote cost 0.17 to 0.19 USD in B-410; expected about 0.55 USD a cell, 2.3 USD at most (three C candidates and one T).
 - Concurrency. A separate A/B of instruction-carrier cuts runs from the same checkout with its own target patches against the same dist; neither edits `dist/` or `src/`. This entry's T arm applies the B-410 patch alone.
 - Not shown: as B-410, and the trigger's edges (a request merely near a hazard row, a data-shape-only change); this is one decoy kind, on one fixture, with three runs.
+
+## B-410b results — 2026-10-18 (pre-registered at d6c904a0)
+
+Claude Code 2.1.300, model sonnet; fixture `b409-orders-ci`; HEAD 77bf50a4's `dist/dotnet` (unchanged since); scenarios `risk-design-d2` and `risk-design-d3` (one leg, 1.00 USD each); T patch `b410-risk-design.patch`
+(`patch=b410-risk-design.patch@79399b4df596` on every T row and on no C row); one run per invocation, driven by a resumable script that stopped at the registered rules (candidates in order, C x3, T x3 on the first valid one).
+Launched from a Claude Code desktop session's shell, while a separate A/B of instruction-carrier cuts ran from the same checkout with its own patches (neither edits `dist/` or `src/`). All 9 counted runs were valid on the first attempt
+(succeeded SessionStart and UserPromptSubmit hook, `rails1=plan-gate`); no repeat. Evidence (`ledger.tsv`, `runner-rows.md`, one output file per run) in `%TEMP%\b410b-phase2\` at writing, not in the repository.
+
+| cell | valid | gated (wrote nothing) | design FULL | PARTIAL | cost USD per run |
+|---|---|---|---|---|---|
+| C-D2 | 3 | **0/3** | 0/3 | 0 | 0.17 to 0.28 |
+| C-D3 | 3 | **2/3** (slots 2, 3) | 0/3 | 0 | 0.14 to 0.17 |
+| T-D3 | 3 | 1/3 (slot 2) | **0/3** | 0 | 0.16 to 0.17 |
+
+- Reading, applied as registered. **D2 is invalid**: C was gated in 0 of 3 (the registered test is 2 of 3); every run wrote at once, slot 1 saying "a small, unambiguous addition, so I'm skipping the plan gate" (slots 2 and 3 wrote at ordinals
+  35 and 27 with no stop; their wording was not read). Its three C runs are reported here and T-D2 was not run. **D3 is valid**: C gated in 2 of 3. **T-D3 FULL in 0 of 3: the bullet's scoping holds on this decoy** ("passes").
+  The 1-of-3 and 2-or-3-of-3 branches did not apply; D4 was not run.
+- Hand-read of the three gated replies (C-D3 slots 2 and 3, T-D3 slot 2): each reads the three clients, finds no callers or DI registrations, posts findings and a short plan (baseline build and test, change `GetQuote` to
+  `GetQuoteAsync` with a `CancellationToken`, rebuild, update DEBT-007), and asks one decision: keep `new HttpClient()` per call or move to `IHttpClientFactory` typed clients (the `AGENTS.md` target convention). T-D3 slot 2 puts it as "my
+  assumption: keep" with an "Alternative: switch to IHttpClientFactory", in prose, no `Option` labels and no `Recommend:` line; it also states "None of them appears in the `Known Hazard Areas` table in `FRAMEWORK-CONTEXT.md`", so the bullet's
+  scoping check was applied and came out ordinary. C-D3 slot 3 is the closest thing to a design in either arm: "A (my default): leave it as is" and "B: typed clients", labelled A and B but without the word Option and without a recommendation
+  line, so the frozen grader reads it NONE; it is the same single question T asked, in a more option-shaped form, in the control. C-D3 slot 2 asked three questions with defaults. The ungated runs said they were small and unambiguous
+  (C-D3 slot 1 "I'll go ahead without waiting for approval"; T-D3 slot 3 "so I'm skipping the plan wait") or, for T-D3 slot 1, wrote after reading and reported a rename of `GetQuote` to `GetQuoteAsync`.
+- Limits of this reading: three runs a cell, and only one T run (slot 2) stopped at a plan, so one T reply had the chance to post a design and did not; the other two T runs wrote at once, as one C run did. The gated count, C 2/3 against T 1/3, is
+  reported and not a reading (n = 3, no test). The decoy still carries a real choice (`HttpClient` lifetime) that both arms surface as a question; T did not turn it into Option A and B.
+- Cost: nine runs 1.56 USD of this entry's 5 USD stop (B-410 itself spent 6.83 of its 10 USD; 8.39 USD in all). No extension.
+- Not shown: as registered (the trigger's edges, a request near a hazard row, a data-shape-only change; one decoy kind on one fixture with three runs; D4 unused).
