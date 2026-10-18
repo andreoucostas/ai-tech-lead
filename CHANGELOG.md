@@ -27,6 +27,10 @@ security-sensitive surface, a data shape or a consumed contract; +533 chars dotn
 in 6/6 T against 0/6 C on prompt K (two-turn runs, `b409-orders-ci`), and B-410b's ordinary decoy D3 drew no design in 0/3 T
 (thin: one T run reached a plan). Shipped by maintainer decision, 2026-10-18.
 
+Carrier §2 opens the plan with the `Done when:` restatement (+360 chars): B-412 read R1 LANDS, CONTRACT in T 5/6 against C 0/6
+(two-turn runs on `b409-orders-ci`, on top of the B-410 bullet), the design kept (T 5/6, C 6/6), no downstream difference in
+tests or code. Shipped by maintainer decision, 2026-10-18.
+
 ## 0.97.2 — 2026-10-15
 
 Revert under the consumer-docs arm A2 reading: v0.97.1 scored `url-install-brownfield` 1/3 and `url-install-greenfield`

@@ -185,14 +185,9 @@ scenario variant), and decide whether the gate should count "asked before commit
 **Status:** Pre-registered 2026-10-18 (`meta/eval-results.md`, "B-411 pre-registration"); patches `meta/eval-fixtures/target-patches/trim-p1-<stack>.patch` and `trim-p12-<stack>.patch` (dotnet -3,279 and -5,823 carrier bytes, recut at eb4290ce), scenarios `route-fix-nl` and `contract-trace-ci-cap` added; amended before any run after a fresh-session attack (per-cell C-first instrument rule, tool-bearing Copilot dry run, DISPLACEMENT reading); no probe or run yet.
 Shipping the trim is a separate, later decision; plan in the gitignored `.claude/plans/inbox/2026-10-18-carrier-trim-plan.md`.
 
-### B-412 · Measure a plan that opens with the requirement restated as criteria, with the B-410 design beside it
+### B-413 · Two reported eval-runner fields misread on two-turn runs
 **Filed against:** v0.97.2 (2026-10-18)
-**Priority:** P2 · **Effort:** S to ship if it lands (one carrier bullet, ordinary) · **Invariants:** none
-**Status:** Measured 2026-10-18 (`meta/eval-results.md`, "B-412 results"): R1 LANDS, T 5/6 against C 0/6 (p = 0.0152), the B-410 design kept (T 5/6, C 6/6), no downstream difference; the one T miss followed the ask-first rule. Shipping
-`b412-done-when.patch`'s bullet (dotnet 39,196 -> 39,556 of 40,000) awaits the maintainer, and no release until B-411 is read. Two reported runner fields (`code=`, `testRun`) misread; filed here, not fixed.
+**Priority:** P3 · **Effort:** S · **Invariants:** none
+**Status:** Open (found in B-412, reported-only, never gating): `code=` matches status names in test text but misses controller helpers `Accepted()`/`NotFound()`/`Conflict()`; `testRun` takes the first summary of the last `dotnet test` call, which is usually a break-the-code red check. Fix with a red-first self-test before the next study that reports them.
 
-
-## Archived
-
-B-219 and B-221 — see `meta/BACKLOG-DONE.md`.
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`.

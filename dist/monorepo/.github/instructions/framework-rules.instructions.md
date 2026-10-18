@@ -96,6 +96,7 @@ When a task matches a skill in `AGENTS.md > Common Tasks`, invoke that skill wit
 
 ### 2. Plan before coding — present, clarify, then get the go-ahead
 For any non-trivial task, STOP before writing code and post a short plan:
+- **Open the plan with `Done when:`**, the requirement restated as two to six observable criteria, one per line, each with a boundary example where a threshold, limit or state exists (the case that passes and the one that does not), then what is out of scope. Put it before any options or files. The developer corrects these lines; the go-ahead approves them.
 - The files you'll create or modify, and the order of operations
 - Evidenced validation; include tests only when a harness exists
 - If the change adds an extension point or a third instance of an operation, and adding the next instance has a step that is easy to miss, name the one record you will add for that step unless one exists: a test over this repository's own instances that fails when one skips it (never a test of the framework, Test leanness #12), else one `AGENTS.md > Conventions` line, else, once this change makes three or more instances, a project skill draft under 3a-bis of `.claude/commands/bootstrap.md`; otherwise add none.

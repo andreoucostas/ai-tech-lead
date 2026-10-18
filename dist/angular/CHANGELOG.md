@@ -25,6 +25,10 @@
   cost or what it breaks, then `Recommend:` one with the reason and the file list, and waits for your go-ahead. Pick an
   option or accept the recommendation. Every other change keeps the short plan. The always-loaded
   `framework-rules.instructions.md` grows by about 530 characters.
+- **Before code, the agent now writes down what "done" means.** For any non-trivial request, its plan opens with
+  `Done when:`: two to six observable criteria, one per line, each with a boundary example where a limit or state
+  exists, then what is out of scope, before any options or files. Correct the lines you disagree with; your go-ahead
+  approves them. The always-loaded `framework-rules.instructions.md` grows by about 360 characters.
 ## 0.97.2 — 2026-10-15
 
 - **The installer's closing message for an installing agent is back to 0.96.1's wording**, without its offer of
