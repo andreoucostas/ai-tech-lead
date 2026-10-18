@@ -4686,3 +4686,40 @@ $b406RailsPlanGate = 'Plan gate'
     the 8 void attempts (none carries beyond, blast or depth in any source).
   - Spend accounting: a row without `costUsd` is charged the transcript's last `total_cost_usd`, the cap only when there is no transcript. Spend at the
     restart: 6.88 USD (fixture and probes 1.42 as the driver counts them, S1 1.79, void S2 3.67).
+
+## B-406 results — 2026-10-18 (pre-registered at 0615a7ed, amended at 8893b682 before any counted S2 run)
+
+Claude Code 2.1.300, model sonnet (`claude-sonnet-5-5` in every `system/init`); fixture `b406-orders` (overlay sha256 14dbf2aec55e…); T patch
+`meta/eval-fixtures/target-patches/b406-contract.patch` (sha256 de4c4be24d48…); one run per invocation, driven by a script that alternated the cells and checked
+the 25 USD stop before each run. Evidence (`ledger.tsv`, `ledger-void-s2-parser.tsv`, one output file per run) in `%TEMP%\b406-phase1\` at writing, not in the
+repository. Every counted run had a succeeded SessionStart and UserPromptSubmit hook, and `rails=` as registered (T `contract`, C `plan-gate`).
+
+| cell | valid runs | classes | median cost USD | median wall s | subagents (median) |
+|---|---|---|---|---|---|
+| S1-T | 12 (slots 1-6, extension 7-12) | CONTRACT 4/6, then 5/6; pooled 9/12; NONE 3; STOPPED 12/12 | 0.152 | 29 | 0 |
+| S1-C | 6 | CONTRACT 0/6; NONE 6; STOPPED 6/6 | 0.142 | 24 | 0 |
+| S2-T | 6 | TRACE FULL 0/6 (NONE 6); SIDE CHECK PROJECT 6/6; tests n/a 6; contract NONE 6 | 0.458 | 104.5 | 2 |
+| S2-C | 6 | TRACE FULL 0/6 (NONE 6); SIDE CHECK PROJECT 4/6; tests n/a 6; contract NONE 6 | 0.442 | 106 | 2 |
+
+- Fisher exact, two-sided, reported (counts decide): S1-T 4/6 against S1-C 0/6 p = 0.061; pooled 9/12 against 0/6 p = 0.009. The registered extension rule
+  applied once: 4 of 6 gave six more runs of S1-T (5 of 6), and S1-C needed none.
+- TESTS-AT-BOUNDARY is n/a in all 12 S2 runs: no run changed or added a test file. The S2 `contract` class is NONE in all 12.
+- Cost, T minus C by medians (input tokens are not reported, per the amendment: `tokensIn` is the last turn's only). S1: +0.010 USD (+6.8%; +0.010 with only
+  slots 1-6), +5 s wall, output tokens 2448 against 2199. S2: +0.016 USD (+3.6%), -1.5 s wall (`wallS`), output tokens 10014 against 10212. The registered
+  threshold (above 1.5× C tokens or 8 minutes added) is not reached on output tokens or wall time.
+- Spend: 13.47 USD of the 25 USD stop (fixture and probes 1.42, S1 including the extension 2.70, void S2 3.67, counted S2 attempts 5.69, the two
+  CANNOT-EXAMINE ones included).
+- CANNOT-EXAMINE: two S2-C first attempts (slots 3 and 5) ended ERROR `Stream JSON must end with exactly one terminal result event.`, a further multi-turn
+  stream shape the reader rejects; not investigated. Each was repeated once under the rule, and both repeats were valid. No other row was invalid.
+- Hand-read by the orchestrator, not scored by the grader: the S1 NONE runs (T slots 1, 5, 8; C slot 1) took the carrier's unchanged ask-first branch,
+  naming material gaps (no migrations, `Paid` after refund, open API) as questions with assumptions and no Done-when list; every one of the 18 S1 runs asked
+  questions before any plan. In all 12 counted S2 runs, neither arm's main-agent text nor results contains "Done when", "Beyond the request", "Blast
+  radius" or "Review depth"; with the approval clause the agent implements and closes with its own "what changed / verification" summary, and the security
+  pass ran as a background task that continued the run in further turns.
+- Reading, applied as registered: S1-T pooled 9/12 is below R1's 10 of 12, and S2-T TRACE FULL 0/6 is 3 or fewer, so **R2 ABANDON**: nothing from plan v2
+  §3.1 to §3.7 ships, and Phase 2 does not run. SIDE CHECK passed (S2-T 6/6, above the 5/6 floor). TESTS-AT-BOUNDARY is not gating (n/a in both arms).
+- Observed, not a reading: on the plan-gate path (S1, no approval clause) the patched carrier and rail moved the restatement from 0/6 to 9/12, so part A
+  (restate) lands where the agent stops; part C (the closing Verification & confidence block) did not land at all on the pre-approved path (S2, 0/12 across
+  both arms).
+- Not shown: the fix path; a real second turn after a go-ahead; Copilot CLI (access ended 2026-10-14, B-399); VS Code; Angular and monorepo; the `review`
+  skill's own behaviour; whether the tests would fail if the code were broken; field use. Filed as B-407.

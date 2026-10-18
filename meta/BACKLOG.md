@@ -173,11 +173,11 @@ Needs a grader scoring the first assistant message on an underspecified feature 
 commit-only-when-asked rule, and pushing wording read as injection. The README now suggests a prompt that asks for the commit; measure that prompt (a
 scenario variant), and decide whether the gate should count "asked before committing" as a pass.
 
-### B-406 · Measure whether the contract loop lands on the natural-language path
-**Filed against:** v0.97.2 (2026-10-17)
+### B-407 · The contract patch's closing block does not reach the report on the pre-approved path (B-406 R2)
+**Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P2 · **Effort:** M · **Invariants:** none
-**Status:** Open; plan `.claude/plans/2026-10-17-delivery-architecture.md` (v2) Phases 0-2, pre-registered in `meta/eval-results.md` (B-406 pre-registration). Phase 1 runs S1/S2 × T/C on Claude Code only
-(Copilot access ended 2026-10-14, B-399); Phase 2 (the contract patch, guarded) ships only on R1 and a passing side check.
+**Status:** Open; B-406 read R2 (S2-T TRACE FULL 0/6; restatement at the plan gate 9/12 against 0/6, `meta/eval-results.md`) and nothing from plan v2 §3.1-3.7 ships. The closing report is
+the agent's own summary, displaced across turns by the background security pass and the Stop hook's Boy Scout note; a revised design needs its own pre-registration.
 
 
 
