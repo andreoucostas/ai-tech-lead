@@ -185,6 +185,12 @@ scenario variant), and decide whether the gate should count "asked before commit
 **Status:** Measured 2026-10-18 (`meta/eval-results.md`, "B-410 results"): R1 LANDS, T 6/6 against C 0/6 on prompt K, the design in turn 1; after the answer both arms write 12/12. The rename decoy was read as trivial 6/6; B-410b's decoy that
 gets a plan (D3, C gated 2/3) saw T design FULL 0/3, so the bullet's scoping holds (thin: one T run stopped at a plan). Shipping `b410-risk-design.patch`'s bullet (dotnet 38,663 -> 39,196 of 40,000) awaits the maintainer; a rail arm only after an R2, which did not occur.
 
+### B-411 · Trim the always-loaded carrier: measure P1 (no-behaviour cuts) and P1+P2 (likely-default cuts) on Claude Code and Copilot CLI before anything ships
+**Filed against:** v0.97.2 (2026-10-18)
+**Priority:** P3 · **Effort:** M (about 84 Claude Code runs, up to 60 premium requests) · **Invariants:** none (#1 and #7 if it ships)
+**Status:** Pre-registered 2026-10-18 (`meta/eval-results.md`, "B-411 pre-registration"); patches `meta/eval-fixtures/target-patches/trim-p1-<stack>.patch` and `trim-p12-<stack>.patch` (dotnet -3,390 and -5,934 carrier bytes), scenarios `route-fix-nl` and `contract-trace-ci-cap` added; no probe or run yet.
+Shipping the trim is a separate, later decision; plan in the gitignored `.claude/plans/inbox/2026-10-18-carrier-trim-plan.md`.
+
 
 ## Archived
 

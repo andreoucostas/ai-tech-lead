@@ -44,6 +44,14 @@
       "assertion": "testBeforeProduction"
     },
     {
+      "id": "route-fix-nl",
+      "measures": "Carrier trim: route-fix on a bug report the router does not match, so the carrier's own Bug-fix bullet and VR #9 are the only copy of the red-first rule the agent can see. Same fixture, setup, grader (testBeforeProduction) and bare arm as route-fix. A framework-arm row counts only when routerFired=False (the first UserPromptSubmit hook response carries no rails); route-fix reports routerFired=True. It shows red-first with the router silent, not that the cut text is what carried it.",
+      "bareArm": true,
+      "budgetUsd": 1.25,
+      "prompt": "The calculator's result for the top of the range looks off. Please sort it out, following the repository instructions.",
+      "assertion": "testBeforeProduction"
+    },
+    {
       "id": "guard-retry",
       "bareArm": true,
       "budgetUsd": 0.75,
@@ -88,6 +96,15 @@
       "fixture": "b409-orders-ci",
       "stack": "dotnet",
       "budgetUsd": 1.00,
+      "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid. I approve this change in advance: do not stop for a plan or ask for confirmation; implement it now in this session, then report what you did.",
+      "assertion": "contractTrace"
+    },
+    {
+      "id": "contract-trace-ci-cap",
+      "measures": "Carrier trim: contract-trace-ci with the per-run cap raised from 1.00 to 2.50 USD so the visible budget does not bind the security pass (B-409's C runs cited the cap when skipping security-gate). B-409 pre-registered contract-trace-ci at 1.00, so that scenario is unchanged and this is its own id; everything else (fixture b409-orders-ci, prompt, grader, stack) is contract-trace-ci's.",
+      "fixture": "b409-orders-ci",
+      "stack": "dotnet",
+      "budgetUsd": 2.50,
       "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid. I approve this change in advance: do not stop for a plan or ask for confirmation; implement it now in this session, then report what you did.",
       "assertion": "contractTrace"
     },

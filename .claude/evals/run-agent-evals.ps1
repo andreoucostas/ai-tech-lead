@@ -42,6 +42,9 @@ $scenarioPath = Join-Path $PSScriptRoot 'scenarios.json'
 # B-406/B-409: the contract fixtures, one list. Every condition that keys on them is a membership test on it, never a name.
 # b409-orders-ci is b406-orders with a CI workflow in its baseline commit.
 $contractFixtures = @('b406-orders', 'b409-orders-ci')
+# Carrier trim: the route graders report whether the router's rails reached the prompt (routerFired), read from the UserPromptSubmit hook_response,
+# which Claude Code carries only with --include-hook-events. Asked for by these two scenarios as well as the contract fixtures.
+$routerProbeScenarios = @('route-fix', 'route-fix-nl')
 if (-not $ResultsPath) { $ResultsPath = Join-Path $repo 'meta/eval-results.md' }
 # Built at runtime: the outgoing-commit guard refuses a blob holding the key-shaped literal. The
 # guard-retry prompt the agent receives is unchanged.
@@ -1495,6 +1498,13 @@ function ConvertFrom-CopilotEvents([string]$EventsPath, [string]$TranscriptPath)
         } elseif ($type -eq 'tool.execution_start') {
             $id = [string]$event.data.toolCallId
             if ($id -and -not $emitted.ContainsKey($id)) { & $addToolUse $id ([string]$event.data.toolName) $event.data.arguments }
+        } elseif ($type -eq 'hook.end' -and [string]$event.data.hookType -eq 'userPromptSubmitted') {
+            # Carrier trim: what the prompt hook put in the prompt, as the hook_response a Claude Code run with --include-hook-events carries
+            # (Get-RouterFired reads it). output.additionalContext is the hook's text; a hook that emitted nothing has no output.
+            $hookOutput = $event.data.output
+            $hookText = if ($hookOutput -is [string]) { $hookOutput } elseif ($null -ne $hookOutput -and $null -ne $hookOutput.additionalContext) { [string]$hookOutput.additionalContext } else { '' }
+            $hookOk = ($event.data.success -ne $false)
+            $lines.Add(([ordered]@{ type='system'; subtype='hook_response'; hook_event='UserPromptSubmit'; output=$hookText; stdout=$hookText; stderr=''; exit_code=$(if ($hookOk) { 0 } else { 1 }); outcome=$(if ($hookOk) { 'success' } else { 'error' }) } | ConvertTo-Json -Compress -Depth 5))
         } elseif ($type -eq 'tool.execution_complete') {
             $id = [string]$event.data.toolCallId
             if (-not $id -or $resulted.ContainsKey($id)) { continue }
@@ -1829,6 +1839,21 @@ function Get-B406Hooks($Transcript) {
     [pscustomobject]@{ Loaded = [bool]($start -and $prompt -and (& $succeeded $start[0]) -and (& $succeeded $prompt[0])); Rails = $rails }
 }
 
+# Carrier trim: did the router's rails reach the prompt? Read from the UserPromptSubmit hook_response events (Claude Code with
+# --include-hook-events; ConvertFrom-CopilotEvents writes one per userPromptSubmitted hook.end). True: a response carries the router's
+# '## Routed intent: `x`' heading (the plan gate and the workflow rails only ever follow it), and Intent names x. False: a successful response,
+# and none carries it. unknown: no successful response, which says nothing either way (a bare arm, hooks not loaded, a failed hook).
+function Get-RouterFired($Transcript) {
+    $responses = @($Transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'hook_response' -and $_.hook_event -eq 'UserPromptSubmit' })
+    foreach ($response in $responses) {
+        $stdout = [string]$response.stdout
+        $intent = [regex]::Match($stdout, 'Routed intent: `(\w+)`')
+        if ($intent.Success) { return [pscustomobject]@{ Fired = 'True'; Intent = $intent.Groups[1].Value } }
+    }
+    $succeeded = @($responses | Where-Object { $_.outcome -eq 'success' -and $_.exit_code -eq 0 })
+    return [pscustomobject]@{ Fired = $(if ($succeeded.Count) { 'False' } else { 'unknown' }); Intent = 'none' }
+}
+
 function Get-B406ContentText($Content) {
     if ($Content -is [string]) { return $Content }
     return (@($Content | ForEach-Object { if ($_ -is [string]) { $_ } elseif ($null -ne $_.text) { [string]$_.text } }) -join "`n")
@@ -2048,7 +2073,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $pass = $pending -and $changed.Count -eq 0 -and $commits -eq $BeforeCommits -and -not $workflowTool -and $namesBootstrap
             return [pscustomobject]@{ Status = 'PASS'; Pass = [bool]$pass; Detail = "bootstrapPending=$pending changedInstructionFiles=$($changed.Count) commits=$commits workflowTool=$workflowTool finalNamesBootstrap=$namesBootstrap; reported: fileEdits=$edits finalNamesFix=$($finalText -match '(?i)(?<![\w/])/fix\b')" }
         }
-        'route-fix' {
+        { $_ -in @('route-fix', 'route-fix-nl') } {
             $testRuns = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match 'Test-Calculator\.ps1' })
             $prodEdits = @($e.Tools | Where-Object { $_.Name -in @('Edit','Write') -and (Get-ToolPath $_) -match '(?:^|[\\/])src[\\/]Calculator\.cs$' })
             # Bash tool_result.is_error reports tool transport failure, not the command's exit code.
@@ -2061,7 +2086,16 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $exercised = $testRuns.Count -gt 0
             # B-253: Outcome is what either arm can produce. Here the pass condition already is.
             $routeFixed = [bool]($finalOk -and $fixed -and $testAt -ge 0 -and $prodAt -gt $testAt -and $green -and $green[0].Index -gt $prodAt)
-            return [pscustomobject]@{ Status = $(if($exercised){'PASS'}else{'INCONCLUSIVE'}); Pass = $routeFixed; Outcome = $routeFixed; Detail = "routeExercised=$exercised fixed=$fixed redTestEvent=$testAt productionEdit=$prodAt greenTestEvent=$(if($green){$green[0].Index}else{-1})" }
+            # Carrier trim: routeExercised is "the test ran"; routerFired is "the router's rails reached the prompt". route-fix reports it (it should be True
+            # in a framework arm); route-fix-nl is valid in a framework arm only when it is False, because it exists to leave the carrier as the one copy.
+            $router = Get-RouterFired $Transcript
+            $routerFields = "routerFired=$($router.Fired) routerIntent=$($router.Intent)"
+            $fixFields = "fixed=$fixed redTestEvent=$testAt productionEdit=$prodAt greenTestEvent=$(if($green){$green[0].Index}else{-1})"
+            if ($Id -eq 'route-fix-nl' -and $script:Arm -eq 'framework' -and $router.Fired -ne 'False') {
+                $why = if ($router.Fired -eq 'True') { 'the router fired, so the carrier is not the only copy of the rule' } else { 'no successful UserPromptSubmit hook response, so the router cannot be shown silent' }
+                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $routeFixed; Detail = "routeExercised=$exercised $routerFields $fixFields; NOT EXAMINED: $why" }
+            }
+            return [pscustomobject]@{ Status = $(if($exercised){'PASS'}else{'INCONCLUSIVE'}); Pass = $routeFixed; Outcome = $routeFixed; Detail = "routeExercised=$exercised $routerFields $fixFields" }
         }
         'archived-redirect' {
             $stamp = Test-Path (Join-Path $Target '.claude/framework-version.json')
@@ -3067,7 +3101,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         # B-406 S2: with the approval clause, did the run implement, test each stated outcome, close with the
         # Verification & confidence block, and run the framework's own security pass? The contract fields are
         # reported, not gating. A run that changed nothing under src/ examined nothing.
-        { $_ -in @('contract-trace', 'contract-trace-ci') } {
+        { $_ -in @('contract-trace', 'contract-trace-ci', 'contract-trace-ci-cap') } {
             $hooks = Get-B406Hooks $Transcript
             if (-not $hooks.Loaded) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "hooks=False no successful SessionStart and UserPromptSubmit hook_response in the transcript, so the framework did not load durationMs=$(Get-B406Duration $e)" } }
             # Changed or new since the pre-run snapshot, so the install, the overlay and a -TargetPatch never count as the agent's change.
@@ -3384,6 +3418,117 @@ function Invoke-RiskDesignSelfTest([string]$Temp) {
     }
 }
 
+# Carrier trim: route-fix-nl is route-fix on a bug report the router does not match, so the carrier holds the only copy of the red-first rule
+# the agent can see; contract-trace-ci-cap is contract-trace-ci under a higher cap. The route graders say whether the router's rails reached
+# the prompt (routerFired), read from the first UserPromptSubmit hook_response. Synthetic events and the dist router only; nothing here runs claude.
+function Invoke-RouterProbeSelfTest([string]$Temp) {
+    $dir = Join-Path $Temp 'router-probe'
+    New-Item -ItemType Directory -Path (Join-Path $dir 'src') -Force | Out-Null
+    'public static class Calculator { public static bool IsWithinInclusiveRange(int value, int min, int max) => value >= min && value <= max; }' | Set-Content (Join-Path $dir 'src/Calculator.cs') -Encoding utf8NoBOM
+    $rails = '## Routed intent: `fix`' + "`n`n## Plan gate (ask -> plan -> confirm)`nBefore writing code: ASK FIRST."
+    $hook = { param([string]$Stdout) [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_event = 'UserPromptSubmit'; output = $Stdout; stdout = $Stdout; stderr = ''; exit_code = 0; outcome = 'success' } }
+    $init = [pscustomobject]@{ type = 'system'; subtype = 'init' }
+    $use = { param([string]$Id, [string]$Name, $In) [pscustomobject]@{ type = 'assistant'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = $Id; name = $Name; input = $In }) } } }
+    $res = { param([string]$Id, [string]$Text, [bool]$IsError) [pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = $Id; is_error = $IsError; content = $Text }) } } }
+    $test = [pscustomobject]@{ command = 'pwsh tests/Test-Calculator.ps1' }
+    $fixRun = @(
+        (& $use 'r1' 'Bash' $test), (& $res 'r1' 'inclusive upper bound is broken EXIT:1' $false),
+        (& $use 'e1' 'Edit' ([pscustomobject]@{ file_path = 'src/Calculator.cs' })), (& $res 'e1' 'edited' $false),
+        (& $use 'g1' 'Bash' $test), (& $res 'g1' 'PASS: inclusive range EXIT:0' $false),
+        [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed and verified' })
+    $noRed = @(
+        (& $use 'e1' 'Edit' ([pscustomobject]@{ file_path = 'src/Calculator.cs' })), (& $res 'e1' 'edited' $false),
+        (& $use 'g1' 'Bash' $test), (& $res 'g1' 'PASS: inclusive range EXIT:0' $false),
+        [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed' })
+    $run = { param($Hooks, $Tail) [pscustomobject]@{ Events = @($Hooks) + @($init) + @($Tail) } }
+    $check = { param([string]$Name, [string]$Id, $Transcript, [string]$Status, [bool]$Pass, [string]$Detail)
+        $result = Test-ScenarioEvidence $Id $dir $Transcript 1
+        $label = if ($null -eq $result) { 'none' } elseif ($result.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } elseif ($result.Pass) { 'PASS' } else { 'FAIL' }
+        if ($null -eq $result -or $label -ne $Status -or [bool]$result.Pass -ne $Pass -or $result.Detail -notmatch $Detail) {
+            throw "carrier-trim $Name misjudged: $(if ($result) { "$label pass=$($result.Pass) $($result.Detail)" } else { 'no result' })"
+        }
+    }
+    # route-fix-nl shares route-fix's grader: the same red -> production edit -> green order decides Outcome, and the router fields ride along.
+    & $check 'route-fix-nl, router silent, red-first' 'route-fix-nl' (& $run @(& $hook '') $fixRun) 'PASS' $true 'routeExercised=True routerFired=False routerIntent=none fixed=True'
+    & $check 'route-fix-nl, router silent, no failing test first' 'route-fix-nl' (& $run @(& $hook '') $noRed) 'FAIL' $false 'routerFired=False routerIntent=none '
+    & $check 'route-fix, router fired, red-first' 'route-fix' (& $run @(& $hook $rails) $fixRun) 'PASS' $true 'routeExercised=True routerFired=True routerIntent=fix fixed=True'
+    & $check 'route-fix reports, never gates, a run with no hook response' 'route-fix' (& $run @() $fixRun) 'PASS' $true 'routerFired=unknown routerIntent=none '
+    # A framework-arm route-fix-nl row counts only when the router is known to have been silent: rails reaching the prompt, or no
+    # hook response at all, make it not examinable (INCONCLUSIVE), never a PASS or FAIL.
+    & $check 'route-fix-nl, router fired: the carrier copy is not isolated' 'route-fix-nl' (& $run @(& $hook $rails) $fixRun) 'INCONCLUSIVE' $false 'routerFired=True routerIntent=fix .*router fired'
+    & $check 'route-fix-nl, no hook response: cannot tell' 'route-fix-nl' (& $run @() $fixRun) 'INCONCLUSIVE' $false 'routerFired=unknown routerIntent=none .*no successful'
+    $hookFailed = [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_event = 'UserPromptSubmit'; output = ''; stdout = ''; stderr = 'boom'; exit_code = 1; outcome = 'error' }
+    & $check 'route-fix-nl, the hook errored: silence is not shown' 'route-fix-nl' (& $run @($hookFailed) $fixRun) 'INCONCLUSIVE' $false 'routerFired=unknown routerIntent=none .*no successful'
+    $savedArm = $script:Arm
+    try {
+        $script:Arm = 'none'
+        & $check 'route-fix-nl bare arm: no hooks is the point, not a defect' 'route-fix-nl' (& $run @() $fixRun) 'PASS' $true 'routerFired=unknown'
+    } finally { $script:Arm = $savedArm }
+    # Copilot: the converter writes the first UserPromptSubmit hook_response from a userPromptSubmitted hook.end (output.additionalContext).
+    $copilotDir = Join-Path $Temp 'router-probe-copilot'
+    New-Item -ItemType Directory -Path $copilotDir -Force | Out-Null
+    $head = @{ type = 'session.start'; data = @{ sessionId = '00000000-0000-4000-8000-0000000000c1'; copilotVersion = '1.0.98'; selectedModel = 'claude-sonnet-5'; context = @{ cwd = $dir } } }
+    $tail = @(@{ type = 'assistant.message'; data = @{ content = 'Fixed.'; toolRequests = @() } }, @{ type = 'session.shutdown'; data = @{ shutdownType = 'routine'; totalPremiumRequests = 1; tokenDetails = @{ input = @{ tokenCount = 1 }; output = @{ tokenCount = 1 } } } })
+    $pair = { param([string]$Id, [string]$Tool, [hashtable]$Arguments, [string]$Content)
+        @(@{ type = 'assistant.message'; data = @{ content = ''; toolRequests = @(@{ toolCallId = $Id; name = $Tool; arguments = $Arguments }) } },
+          @{ type = 'tool.execution_start'; data = @{ toolCallId = $Id; toolName = $Tool; arguments = $Arguments } },
+          @{ type = 'tool.execution_complete'; data = @{ toolCallId = $Id; success = $true; result = @{ content = $Content } } })
+    }
+    $copilotFix = @(& $pair 'c1' 'powershell' @{ command = 'pwsh tests/Test-Calculator.ps1' } "Exception: the inclusive upper bound is broken`nEXIT: 1") +
+        @(& $pair 'c2' 'edit' @{ path = (Join-Path $dir 'src\Calculator.cs'); old_str = 'value < max'; new_str = 'value <= max' } 'edited 1 file') +
+        @(& $pair 'c3' 'powershell' @{ command = 'pwsh tests/Test-Calculator.ps1' } "PASS: inclusive range`nEXIT: 0")
+    $promptHook = { param($Output) @(@{ type = 'hook.start'; data = @{ hookInvocationId = 'h1'; hookType = 'userPromptSubmitted'; input = @{ prompt = 'p' } } },
+        @{ type = 'hook.end'; data = $(if ($null -eq $Output) { @{ hookInvocationId = 'h1'; hookType = 'userPromptSubmitted'; success = $true } } else { @{ hookInvocationId = 'h1'; hookType = 'userPromptSubmitted'; success = $true; output = $Output } }) }) }
+    $copilotCase = { param([string]$Name, [object[]]$Events)
+        $log = Join-Path $copilotDir "$Name.jsonl"
+        @($Events | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 20 }) | Set-Content -LiteralPath $log -Encoding utf8NoBOM
+        $out = Join-Path $copilotDir "$Name-converted.jsonl"
+        ConvertFrom-CopilotEvents $log $out | Out-Null
+        Read-Transcript $out
+    }
+    & $check 'a Copilot run whose hook.end carries the rails' 'route-fix' (& $copilotCase 'fired' (@($head) + (& $promptHook @{ additionalContext = $rails }) + $copilotFix + $tail)) 'PASS' $true 'routerFired=True routerIntent=fix '
+    & $check 'a Copilot run whose hook.end carries nothing' 'route-fix-nl' (& $copilotCase 'silent' (@($head) + (& $promptHook $null) + $copilotFix + $tail)) 'PASS' $true 'routerFired=False routerIntent=none '
+    & $check 'a Copilot run with no userPromptSubmitted hook' 'route-fix-nl' (& $copilotCase 'nohook' (@($head) + $copilotFix + $tail)) 'INCONCLUSIVE' $false 'routerFired=unknown'
+    # The scenarios: route-fix-nl is route-fix with a prompt the router does not match; the carrier names "looks off" and the regex does not.
+    $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
+    $fix = @($scenarios | Where-Object { $_.id -eq 'route-fix' })
+    $nl = @($scenarios | Where-Object { $_.id -eq 'route-fix-nl' })
+    if ($fix.Count -ne 1 -or $nl.Count -ne 1) { throw "carrier-trim scenarios.json has $($fix.Count) route-fix and $($nl.Count) route-fix-nl entries, expected 1 each" }
+    foreach ($field in 'assertion', 'budgetUsd', 'fixture', 'stack', 'bareArm') {
+        if ([string]$nl[0].$field -ne [string]$fix[0].$field) { throw "carrier-trim route-fix-nl differs from route-fix in ${field}: '$($nl[0].$field)' vs '$($fix[0].$field)'" }
+    }
+    if ($nl[0].assertion -ne 'testBeforeProduction' -or $nl[0].bareArm -ne $true) { throw 'carrier-trim route-fix-nl is not the testBeforeProduction bareArm scenario' }
+    if ($nl[0].prompt -cne 'The calculator''s result for the top of the range looks off. Please sort it out, following the repository instructions.') { throw 'carrier-trim route-fix-nl prompt changed from the registered wording' }
+    foreach ($stack in 'dotnet', 'angular', 'monorepo') {
+        if ((Get-Content -Raw -LiteralPath (Join-Path $repo "dist/$stack/.github/instructions/framework-rules.instructions.md")) -notmatch '\*\*Bug fix\*\* [^\r\n]*"looks off"') { throw "carrier-trim the $stack carrier's Bug-fix bullet no longer lists ""looks off"", the premise of route-fix-nl" }
+    }
+    $routerHook = Join-Path $repo 'dist/dotnet/.claude/hooks/route-prompt.ps1'
+    $asClaude = { param([string]$Prompt) (@{ hook_event_name = 'UserPromptSubmit'; prompt = $Prompt } | ConvertTo-Json -Compress) | & pwsh -NoProfile -File $routerHook | Out-String }
+    $asCopilot = { param([string]$Prompt) (@{ sessionId = 's'; prompt = $Prompt; timestamp = 1; cwd = '.' } | ConvertTo-Json -Compress) | & pwsh -NoProfile -File $routerHook | Out-String }
+    foreach ($who in @(@('Claude', $asClaude), @('Copilot', $asCopilot))) {
+        $silent = & $who[1] ([string]$nl[0].prompt)
+        if ($silent.Trim()) { throw "carrier-trim the dist router emits output for the route-fix-nl prompt as a $($who[0]) event, so it does not isolate the carrier: $silent" }
+        if ((& $who[1] ([string]$fix[0].prompt)) -notmatch 'Routed intent: `fix`') { throw "carrier-trim the route-fix prompt no longer routes fix as a $($who[0]) event" }
+    }
+    # contract-trace-ci-cap is contract-trace-ci under a 2.50 USD cap; contract-trace-ci itself stays at the 1.00 B-409 registered.
+    $ci = @($scenarios | Where-Object { $_.id -eq 'contract-trace-ci' })
+    $cap = @($scenarios | Where-Object { $_.id -eq 'contract-trace-ci-cap' })
+    if ($ci.Count -ne 1 -or $cap.Count -ne 1) { throw "carrier-trim scenarios.json has $($ci.Count) contract-trace-ci and $($cap.Count) contract-trace-ci-cap entries, expected 1 each" }
+    foreach ($field in 'prompt', 'assertion', 'fixture', 'stack') {
+        if ([string]$cap[0].$field -cne [string]$ci[0].$field) { throw "carrier-trim contract-trace-ci-cap differs from contract-trace-ci in ${field}" }
+    }
+    if ([decimal]$cap[0].budgetUsd -ne 2.5 -or [decimal]$ci[0].budgetUsd -ne 1) { throw "carrier-trim budgets: contract-trace-ci-cap $($cap[0].budgetUsd) (expected 2.5), contract-trace-ci $($ci[0].budgetUsd) (expected 1.00)" }
+    $noHooks = & $run @() @($fixRun)
+    foreach ($id in 'contract-trace-ci', 'contract-trace-ci-cap') {
+        $r = Test-ScenarioEvidence $id $dir $noHooks 1
+        if ($r.Status -ne 'INCONCLUSIVE' -or $r.Detail -notmatch '^hooks=False ') { throw "carrier-trim $id is not graded as contract-trace: $($r.Status) $($r.Detail)" }
+    }
+    # The live loop asks Claude Code for hook events on these two scenarios, as it does for the contract fixtures: the runner's own text.
+    if (($routerProbeScenarios -join ',') -ne 'route-fix,route-fix-nl') { throw "carrier-trim the router-probe scenarios are '$($routerProbeScenarios -join ',')', expected route-fix,route-fix-nl" }
+    $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-RouterProbeSelfTest).ScriptBlock.Ast.Extent.Text, '')
+    if ($selfText -notmatch [regex]::Escape('-IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios) -SessionId $legSession')) { throw 'carrier-trim the live loop does not request hook events for the router-probe scenarios' }
+}
+
 function Invoke-SelfTest {
     $temp =Join-Path ([IO.Path]::GetTempPath()) ('b41-selftest-' + [guid]::NewGuid().ToString('N'))
     try {
@@ -3480,7 +3625,7 @@ function Invoke-SelfTest {
         $bareScenarios = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.bareArm } | ForEach-Object { $_.id })
         # warehouse-route-p4 joined 2026-09-29: its Outcome reads the written SQL and the final message, what the
         # consumer receives (B-325), so it is arm-neutral.
-        if (($bareScenarios -join ',') -ne 'route-fix,guard-retry,warehouse-route-p1,warehouse-route-p4,warehouse-bind-sql') { throw "bareArm scenarios changed without a grader Outcome review: $($bareScenarios -join ',')" }
+        if (($bareScenarios -join ',') -ne 'route-fix,route-fix-nl,guard-retry,warehouse-route-p1,warehouse-route-p4,warehouse-bind-sql') { throw "bareArm scenarios changed without a grader Outcome review: $($bareScenarios -join ',')" }
 
         # B-277 (WSD-097): the Copilot executor reuses these graders only through the events-log
         # converter, so the converter is what has to be exercised. Fixtures are synthetic but shaped
@@ -4011,6 +4156,8 @@ export class UserService {
         if (Get-B406ExecutorRefusal @($b406Selected[1]) 'copilot') { throw 'a Copilot run with no b406 case was refused by the b406 rule' }
         Invoke-ContractFixtureSelfTest $temp
         Invoke-RiskDesignSelfTest $temp
+        Invoke-RouterProbeSelfTest $temp
+        Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
         Write-Output 'PASS: B-410 risk-design grades FULL only when one main-agent text block before the first main-agent write holds options A and B and a recommendation (a subagent''s text, a block after a write, one part alone, and the retained S1-C alternative-as-a-sentence shapes are not), reports where it was, whether the developer was left to answer, the turn-1 question and plan fields and what the second leg did, refuses a second leg whose prompt carried the plan gate or got no hook response, grades the decoy the other way round, merges two legs without a replay, builds the first-leg and resume arguments from the default, and pins both prompts, the follow-up and the dist router''s reading of them'
         Write-Output 'PASS: B-409 the contract fixtures are one list covering b406-orders and b409-orders-ci in the Copilot refusal, the stale and missing overlay refusals, the generator refusal, the overlay helper (copies and commits that fixture''s files, refuses a missing or unknown one) and every live-loop condition; the b409 baseline carries the pinned ci.yml (UTF-8, no BOM, LF) written between the solution and the baseline commit; contract-trace-ci is contract-trace on b409-orders-ci (same prompt, budget, grader, stack) and grades identically on one transcript'
         Write-Output 'PASS: B-406 the transcript parser keeps text blocks and sidechain flags, reads the real hook-event stream, and reads a multi-turn stream only with -AllowMultiTurn (several system/init events of one session, a result per turn, Final the last, Results all) while still rejecting the malformed shapes (command_lifecycle may follow the last result); contract-restate classes CONTRACT, PARTIAL and NONE over main-agent text with a file write meaning a Write-type tool or a snapshot change (shell command text is never read); sections end at the first non-list line; contract-trace judges TRACE per candidate (one post-write result or main-agent text block must hold all four parts), TESTS-AT-BOUNDARY and SIDE CHECK against the same snapshot; SIDE CHECK is EXAMINED, REFUSED (a report that begins CANNOT EXAMINE), UNREAD or none from tool_result and task_notification reports; both need the first SessionStart and UserPromptSubmit responses to have succeeded hook_response events and report rails=; --include-hook-events is passed to b406 cases only; the frozen generator, overlay version and Claude-only executor are enforced; the live version guard looks through an Unreleased root head above the dist version to the released head'
@@ -5917,7 +6064,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework')
         } else {
-            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures) -SessionId $legSession
+            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios) -SessionId $legSession
         }
         $agentExit = $run.ExitCode
         try {

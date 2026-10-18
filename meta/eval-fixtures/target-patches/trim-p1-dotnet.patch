@@ -1,0 +1,104 @@
+diff --git a/.github/instructions/framework-rules.instructions.md b/.github/instructions/framework-rules.instructions.md
+index 4db1a82..81c56d7 100644
+--- a/.github/instructions/framework-rules.instructions.md
++++ b/.github/instructions/framework-rules.instructions.md
+@@ -7,19 +7,16 @@ applyTo: "**"
+ 
+ ## Verification Rules
+ 
+-These apply to every workflow, before any convention-level rule. The difference between confident output and hallucinated output.
++These apply to every workflow, before any convention-level rule.
+ 
+ 1. **Verify before you reference.** Before naming a class, method, file, route, NuGet package, namespace, or DI registration extension, confirm it exists in this codebase via `Read` / `Grep`. If you cannot confirm, say so explicitly rather than guessing.
+ 2. **Never invent APIs.** Do not fabricate method signatures, type names, attributes, package exports, or framework features. Read the source. If a referenced shared-library API is not in `FRAMEWORK-CONTEXT.md > Detected Framework Packages` at the version this repo pins, treat it as unverified.
+-3. **Honour version pinning.** Before suggesting a feature from a shared library, framework, or `Microsoft.*` package, confirm the version in `FRAMEWORK-CONTEXT.md > Detected Framework Packages` actually has it. The latest API surface in `Shared Libraries` may not exist in older versions.
+ 4. **State uncertainty.** When a question depends on context you do not have (a file you have not read, runtime behaviour you cannot observe, a database state you cannot query), say so. Do not guess to seem helpful.
+ 5. **Tests are immutable safety nets during fixes and refactors.** When an existing test fails, production is wrong (or the test is wrong for a documented reason). Do not edit assertions to make them pass without flagging it explicitly.
+-6. **No invented fixtures.** When sample data, builders, factories, or mocks already exist, reuse them. Do not fabricate parallel ones.
+-7. **Failures are signals.** Build, test, or analyser failures are diagnostic. Read the message and fix the cause; never wrap in try/catch or `#pragma warning disable` to silence. (A PreToolUse hook hard-blocks **editor/file writes** that add `#pragma warning disable`; writes routed through a terminal tool are not intercepted — see `docs/enforcement-surfaces.md`.)
++7. **Failures are signals.** Build, test, or analyser failures are diagnostic. Read the message and fix the cause; never wrap in try/catch or `#pragma warning disable` to silence.
+ 
+ **Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable repository-evidenced commands (`AGENTS.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. `framework-owned/overwritten` paths in `framework-ownership.json` and paths in `framework-retirements.json` are framework, not application-command, evidence. Run them only when named by an explicit framework workflow or requested for framework diagnosis; report separately from application verification. Do not run a saved Verification Commands row naming one — flag `/rebootstrap`. Migration/deploy is **manual/CI-only** unless its exact command is an evidenced non-mutating validation/dry-run or developer-authorized known target; otherwise do not run it.
+-8. **No future-proofing.** Do not add code for hypothetical requirements. Three similar lines is better than a premature abstraction.
+-9. **A new test must be seen to fail before it is trusted.** Before relying on a new behavioral test as green, confirm it actually goes red when the behavior is broken — write it before the fix (bug fixes), or briefly break the code under test and watch it fail for the right reason. Where running the red is impractical, state the specific defect the test would catch. *Why: AI-generated tests are the highest-risk for tautological or over-mocked assertions that pass even against broken code; a test you have watched fail cannot be vacuous.*
++9. **A new test must be seen to fail before it is trusted.** Before relying on a new behavioral test as green, confirm it actually goes red when the behavior is broken — write it before the fix (bug fixes), or briefly break the code under test and watch it fail for the right reason. Where running the red is impractical, state the specific defect the test would catch.
+ 10. **Derive, don't assume.** Before applying or recommending any technology-specific rule or recipe (ORM/data access, validation, HTTP client, test framework, state management), verify that technology is present in this repo via a package reference, import, or config. If a default or skill assumes an absent technology, say so explicitly and derive the convention from what the codebase actually uses instead.
+ 11. **Read the repository's own description of a subsystem before writing against it.** Before writing code that depends on a database schema, warehouse, integration, or shared library, check `docs/` for a file describing it and read that file first. What the repository records about its own structure outranks what you infer from names. If it is absent, stale, or silent on the objects you need, say so instead of inferring; in a data warehouse, run the `map-warehouse` skill's scoped pass on those objects before writing SQL against them.
+ 
+@@ -27,7 +24,7 @@ These apply to every workflow, before any convention-level rule. The difference
+ 
+ ## Leanness
+ 
+-The Boy Scout Rule biases toward improvements. This counterweight requires every change also consider what to remove or not introduce. Bloat is not style — it is AI-assisted development's highest-cost long-term failure mode.
++The Boy Scout Rule biases toward improvements. This counterweight requires every change also consider what to remove or not introduce.
+ 
+ ### Defaults
+ 
+@@ -47,29 +44,19 @@ The Boy Scout Rule biases toward improvements. This counterweight requires every
+ 11. **Do not test getters, setters, or trivial constructors.** Test behavior, not assignment.
+ 12. **Do not test the framework.** No tests that DI resolves, that EF Core can read its own writes, that ASP.NET model-binding parses an int.
+ 13. **Reuse existing builders / fixtures.** Do not introduce parallel test data unless the existing builders cannot represent the case.
+-14. **No over-mocking.** Mock only true external boundaries — network, clock, filesystem, third-party SDKs, the database when an in-memory substitute won't do. Never mock the type under test or its owned collaborators when a real or in-memory instance is cheap; prefer a fake/in-memory over an interaction mock for code you own. *Why: AI assistants frequently produce tests that assert on mock interactions and would still pass if the real code were broken — see [Verification Rules](#verification-rules) #9.*
+-15. **No tautological assertions.** A test whose only assertion is `Assert.True(true)`, a not-null check on a freshly-constructed object, or "the mock was called" verifies nothing. Assert the observable return value, state change, or emitted effect. *Why: a large share of LLM-generated assertions are weak or vacuous — they bank coverage without catching regressions.*
++14. **No over-mocking.** Mock only true external boundaries — network, clock, filesystem, third-party SDKs, the database when an in-memory substitute won't do. Never mock the type under test or its owned collaborators when a real or in-memory instance is cheap; prefer a fake/in-memory over an interaction mock for code you own.
++15. **No tautological assertions.** A test whose only assertion is `Assert.True(true)`, a not-null check on a freshly-constructed object, or "the mock was called" verifies nothing. Assert the observable return value, state change, or emitted effect.
+ 16. **Assert behavior, not implementation.** Do not assert private state, internal call order that isn't part of the contract, or exact log strings. A refactor that preserves behavior must not break the test.
+ 
+-### When you must add structure
+-
+-If a change genuinely requires a new abstraction, helper, or wrapper, state the second consumer (existing or imminent) in the design or PR description. "Imminent" means within the same change-set. Otherwise: defer the abstraction until the second case appears.
+-
+ ---
+ 
+ ## SOLID
+ 
+-SOLID is **mandatory** in this codebase. It governs structure; [Leanness](#leanness) governs ceremony *beyond* that structure — the two are reconciled here and in Leanness #2.
+-
+ 1. **Single Responsibility** — one reason to change per class. No god classes; keep controllers thin and delegate at an evidenced project boundary. Split a class that mixes orchestration, data access, and presentation. Heuristic: more than ~5 injected collaborators, or a name needing "And"/"Manager", means split.
+ 2. **Open/Closed** — extend by adding a type behind a seam, not by editing a stable class or subclassing a concrete service. When a `switch`/`if` over a type/enum code reaches its **third** arm, replace it with polymorphism. (Do not build the seam speculatively before then — that is future-proofing.)
+ 3. **Liskov Substitution** — every implementation fulfils its interface's contract completely: no `NotImplementedException`/`NotSupportedException`, no strengthened preconditions, no weakened postconditions. If a type can't honour the contract, it must not implement it.
+ 4. **Interface Segregation** — small, role-based interfaces over one fat `I*Service`. No implementation is forced to implement members it does not use.
+-5. **Dependency Inversion** — derive an injected service's seam and registration from the project's evidenced architecture and correctness needs; do not require an interface or DI container solely from this framework. Preserve an evidenced dependency boundary; data carriers (DTOs, entities, value objects, `Options` records, enums) get no interface.
+-
+-**Mechanism**: when project evidence selects a .NET service seam, follow its established composition root, lifetime, and interface/concrete shape; this framework selects none of them.
+-
+-**Deterministic backstop**: `solid-check` is advisory. NetArchTest is scaffoldable and enforces direction only after the consumer wires it into CI with `enforce-architecture`.
++5. **Dependency Inversion** — as Leanness #2: a seam only where project evidence or a correctness need requires one; data carriers get none.
+ 
+ ---
+ 
+@@ -81,8 +68,6 @@ When given any task, follow this execution model:
+ Natural-language requests trigger a workflow: classify silently, announce it in one line, and apply its rails. Ask if two fit; answer pure questions directly. Compound requests retain non-negotiables.
+ When a task matches a skill in `AGENTS.md > Common Tasks`, invoke that skill with your skill tool before planning or editing.
+ 
+-> These rails are canonical and binding. Commands and `route-prompt` may elaborate, not contradict.
+-
+ - **Feature** — *add / implement / create / build new …*: design affected boundaries, failure modes, and the smallest useful tests when a harness exists; never add one incidentally → implement in evidenced subtasks → apply Verification command discovery → Boy Scout touched files → self-review → report delivery and validation. Preserve a project-evidenced service seam; otherwise add no interface/abstraction without a second consumer or correctness need.
+ - **Bug fix** — *broken / bug / crash / failing / "not working" / "looks off"*: state root cause → with an applicable harness, first write a regression test that fails correctly; otherwise use the strongest evidenced validation, report tests **not available**, and add no foreign harness → make an outcome-bound fix → apply Verification command discovery → report cause, fix, validation, and radius.
+ - **Refactor** — *cleanup / extract / rename / simplify / restructure*: establish an evidenced green baseline; add characterization coverage only to an existing applicable harness, otherwise report tests **not available** → refactor incrementally with verification → Boy Scout touched files → prove unchanged behavior → report before/after and net LOC.
+@@ -103,15 +88,10 @@ For any non-trivial task, STOP before writing code and post a short plan:
+ - If the request leaves a material gap, **ask first and plan after**: post at most five questions, each with the assumption you would otherwise make, and post the plan only once they are answered. Draw them from the tech-lead list — who consumes this and what breaks for them; what fails and how the developer would know in production; reversibility and rollback; data that moves or changes shape, including migration; blast radius against `FRAMEWORK-CONTEXT.md > Known Hazard Areas`. Do not guess past a material ambiguity to seem helpful — ask.
+ - For larger features, persist the plan as a spec to `specs/<slug>.md` (see `/design`) and implement against it
+ 
+-Then **wait for the developer's explicit go-ahead before editing code.** This catches wrong assumptions before wrong diffs and keeps the developer engaged rather than rubber-stamping. Skip only a trivial, unambiguous change (typo, one-liner), and say why.
++Then **wait for the developer's explicit go-ahead before editing code.** Skip only a trivial, unambiguous change (typo, one-liner), and say why.
+ 
+ ### 3. Execute in verified subtasks
+-For features and complex changes, decompose into ordered subtasks:
+-Choose only evidenced boundaries. An application may flow model → service → API → integration;
+-a warehouse may flow schema → migration → procedure/query → validation. Omit absent layers and tests.
+-
+-Each subtask leaves applicable evidenced verification green; never add a foreign harness to manufacture a check.
+-Apply Verification command discovery after each subtask; run only exact recorded invocations and fix their failures before continuing.
++For features and complex changes, decompose into ordered subtasks along evidenced boundaries only (omit absent layers and tests); after each, apply Verification command discovery and fix failures before continuing; never add a foreign harness to manufacture a check.
+ 
+ ### 4. Bug-fix scope
+ Every bug-fix edit must be necessary for requested behaviour, existing caller/extension compatibility, or meaningful verification. Requested cleanup/refactoring is allowed; a touched file alone authorizes neither unrelated cleanup/logging nor a TODO. Necessary fixes may cross hunks. For changed public/protected signatures or virtual/override behaviour, identify any unrequested incompatibility; explicitly requested additions or breaks remain valid.
+@@ -124,7 +104,6 @@ Before presenting work as complete:
+ - Check if the change resolves a TECH_DEBT.md item → flag for removal
+ - Check if the change contradicts any convention → ask whether to update the convention or change the implementation
+ - If the session surfaced a team-worthy gotcha, recipe, or failed approach, offer `remember-for-team`
+-- **Close with a Verification & confidence line**: separate what you actually verified by running it (build / tests / lint — name which you ran) from what you assert without having run it, and flag anything you could not verify. Show the evidence — the command you ran and its observed result (e.g. `dotnet test` → 142 passed, 0 failed), not the bare claim "tests pass." This calibration is deliberate — it counters the well-documented tendency to feel more done than the work is.
+ 
+ ### 6. Reconcile affected artifacts
+ Before finishing, inspect task effects on repository truth. Update affected writable canonical artifacts; regenerate derivatives from source. Follow their ownership, evidence, history, and security rules; never infer human intent. An affected artifact unreadable or unsafe to update is a blocker, not `none`. End with `Affected artifacts: none`, reconciled artifacts, or unresolved blockers.
