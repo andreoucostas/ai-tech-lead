@@ -1318,9 +1318,12 @@ function Get-ToolResultText($Evidence, $Tool) {
 # B-330: the target's own CLAUDE.md, .claude/settings*.json, hooks, skills and agents (the framework arm's surface) are
 # the project and local sources; ~/.claude's settings, CLAUDE.md, rules, skills, agents and commands are the user source,
 # which reached both arms. The launching shell's environment still passes through (DEVELOPING.md).
-function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent, [switch]$IncludeHookEvents) {
-    $arguments = @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions',
-        '--no-session-persistence', '--max-budget-usd', ([string]$Budget), '--setting-sources', 'project,local')
+function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent, [switch]$IncludeHookEvents, [string]$SessionId, [string]$ResumeId) {
+    # B-410: a case with a follow-up is two invocations of one session. The first persists it under a session id the runner
+    # chose, the second resumes it with the developer's answer; every other case keeps --no-session-persistence, unchanged.
+    $session = if ($ResumeId) { @('--resume', $ResumeId) } elseif ($SessionId) { @('--session-id', $SessionId) } else { @('--no-session-persistence') }
+    $arguments = @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions') + $session +
+        @('--max-budget-usd', ([string]$Budget), '--setting-sources', 'project,local')
     if ($Agent) { $arguments += @('--agent', $Agent) }
     # B-406: the b406 graders read the SessionStart and UserPromptSubmit hook_response events, which the stream
     # carries only with this flag. Asked for by those cases alone, so every other scenario's arguments are unchanged.
@@ -1328,14 +1331,14 @@ function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget
     return $arguments
 }
 
-function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [switch]$LiveSourceCheck, [switch]$IncludeHookEvents) {
+function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [switch]$LiveSourceCheck, [switch]$IncludeHookEvents, [string]$SessionId, [string]$ResumeId) {
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command claude).Source
     $psi.WorkingDirectory = $WorkingDirectory
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
-    $claudeArgs = @(Get-ClaudeArguments -Prompt $Prompt -ModelId $ModelId -Budget $Budget -Agent $Agent -IncludeHookEvents:$IncludeHookEvents)
+    $claudeArgs = @(Get-ClaudeArguments -Prompt $Prompt -ModelId $ModelId -Budget $Budget -Agent $Agent -IncludeHookEvents:$IncludeHookEvents -SessionId $SessionId -ResumeId $ResumeId)
     # An install from GitHub is the consumer's journey, the installer's own clone check included.
     if ($LiveSourceCheck) { [void]$psi.Environment.Remove('ATL_SOURCE_CHECK') }
     if ($null -ne $psi.ArgumentList) {
@@ -1872,6 +1875,104 @@ function Get-B406Side($Evidence) {
 function Get-B406Duration($Evidence) {
     if ($null -ne $Evidence.Final.duration_ms) { return [string]$Evidence.Final.duration_ms }
     return 'n/a'
+}
+
+# B-410 (meta/eval-results.md, "B-410 pre-registration"): a K run is two invocations of one session, the developer's prompt and then
+# a fixed answer. Their events are merged into one Transcript whose LegEnds[0] is the first leg's event count, so the one ordinal
+# counter of Get-TranscriptEvidence puts "before the first write" across both legs. A resumed stream that repeated the first leg's
+# events would make the legs indistinguishable, so it is refused rather than merged.
+function Merge-ClaudeLegs($First, $Second) {
+    $firstIds = @{}
+    $firstTexts = @{}
+    foreach ($event in @($First.Events)) {
+        if ($event.type -ne 'assistant') { continue }
+        foreach ($content in @($event.message.content)) {
+            if ($content.type -eq 'tool_use') { $firstIds[[string]$content.id] = $true }
+            elseif ($content.type -eq 'text' -and ([string]$content.text).Trim()) { $firstTexts[[string]$content.text] = $true }
+        }
+    }
+    foreach ($event in @($Second.Events)) {
+        if ($event.type -ne 'assistant') { continue }
+        foreach ($content in @($event.message.content)) {
+            if (($content.type -eq 'tool_use' -and $firstIds.ContainsKey([string]$content.id)) -or ($content.type -eq 'text' -and $firstTexts.ContainsKey([string]$content.text))) {
+                throw 'The second leg replays an event of the first (--resume echoed earlier events), so the two legs cannot be told apart.'
+            }
+        }
+    }
+    $events = [Collections.Generic.List[object]]::new()
+    foreach ($event in @($First.Events)) { $events.Add($event) }
+    foreach ($event in @($Second.Events)) { $events.Add($event) }
+    [pscustomobject]@{ Events = $events; LegEnds = @(@($First.Events).Count) }
+}
+
+# The frozen risk-design definitions (PowerShell -match, case-insensitive). The design is labelled lines, not the agent's own words:
+# a regex over its prose matches the retained S1-C alternatives-as-a-sentence and could not tell the arms apart (B-407's lesson).
+$designOpt = '(?im)^\W*(?:\d+[.)]\s*)?\W*(?:option|approach)\s+([ab])\b'
+$designRec = '(?im)^\W*(?:\d+[.)]\s*)?\W*recommend(?:ed|ation)?\b'
+# Reported only, never gating (B-403's turn-1 fields): approximate by construction, hand-checked on the retained S1-C replies.
+$designQuestionsLabel = '(?i)^\W*(?:\d+[.)]\s*)?\W*(?:open\s+)?questions?\b'
+$designPlanLabel = '(?i)^\W*(?:\d+[.)]\s*)?\W*(?:the\s+)?plan\b'
+$designNumbered = '^\s*\d+[.)]\s+\S'
+$designAssumption = "(?i)\bassum|\bdefault|\bI'?d\b|\bI would\b|\bI'?ll\b"
+
+# FULL: one main-agent text block before the first main-agent write holds options A and B and a recommendation line. PARTIAL: one of
+# the two. T2 is the best class among the blocks after the first leg, when there is one.
+function Get-RiskDesign($Evidence, [int]$Boundary) {
+    $firstWrite = @($Evidence.Tools | Where-Object { -not $_.Sidechain -and (Test-B406Write $_) } | Select-Object -First 1)
+    $cutoff = if ($firstWrite) { [int]$firstWrite[0].Index } else { [int]::MaxValue }
+    $rank = @{ NONE = 0; PARTIAL = 1; FULL = 2 }
+    $best = 'NONE'; $bestAt = 0
+    $second = if ($Boundary -gt 0) { 'NONE' } else { 'n/a' }
+    foreach ($text in @($Evidence.Texts | Where-Object { -not $_.Sidechain -and $_.Index -lt $cutoff })) {
+        $letters = @([regex]::Matches($text.Text, $designOpt) | ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() } | Select-Object -Unique)
+        $options = ($letters -contains 'a') -and ($letters -contains 'b')
+        $recommended = [bool]($text.Text -match $designRec)
+        $class = if ($options -and $recommended) { 'FULL' } elseif ($options -or $recommended) { 'PARTIAL' } else { 'NONE' }
+        if ($rank[$class] -gt $rank[$best]) { $best = $class; $bestAt = $text.Index }
+        if ($Boundary -gt 0 -and $text.Index -gt $Boundary -and $rank[$class] -gt $rank[$second]) { $second = $class }
+    }
+    $locus = if ($best -eq 'NONE') { 'none' } elseif ($Boundary -gt 0 -and $bestAt -gt $Boundary) { 'leg2' } else { 'leg1' }
+    [pscustomobject]@{ Class = $best; Locus = $locus; T2 = $second }
+}
+
+# The first reply: how many numbered questions, how many say what the agent would otherwise assume, whether a plan sits in the
+# same text and which comes first.
+function Get-RiskTurnOne([string]$Text) {
+    $lines = $Text -split '\r?\n'
+    $questionsAt = -1; $planAt = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($questionsAt -lt 0 -and $lines[$i] -match $designQuestionsLabel) { $questionsAt = $i }
+        if ($planAt -lt 0 -and $lines[$i] -match $designPlanLabel) { $planAt = $i }
+    }
+    $count = 0; $assumed = 0
+    if ($questionsAt -ge 0) {
+        for ($j = $questionsAt + 1; $j -lt $lines.Count; $j++) {
+            $line = $lines[$j]
+            if ($line -match $b406Heading -or $line -match $b406BoldLabel) { break }
+            if ($line -match $designNumbered) { $count++; if ($line -match $designAssumption) { $assumed++ }; continue }
+            if ($count -gt 0 -and $line -match '\S' -and $line -notmatch $b406Continuation) { break }
+        }
+    }
+    $order = if ($questionsAt -ge 0 -and $planAt -ge 0) { if ($questionsAt -lt $planAt) { 'qp' } else { 'pq' } } elseif ($questionsAt -ge 0) { 'q' } elseif ($planAt -ge 0) { 'p' } else { 'none' }
+    [pscustomobject]@{ Questions = $count; Assumed = $assumed; Plan = ($planAt -ge 0); Order = $order }
+}
+
+# Leg 1's first SessionStart and UserPromptSubmit responses are Get-B406Hooks'. For a second leg: the first UserPromptSubmit response
+# after the boundary (the developer's answer), whether it succeeded and what it put in the prompt, and whether `--resume` kept the session.
+function Get-RiskHooks($Transcript, [int]$Boundary) {
+    $first = Get-B406Hooks $Transcript
+    $rails2 = 'n/a'; $session2 = 'n/a'
+    if ($Boundary -gt 0) {
+        $events = @($Transcript.Events)
+        $inFirst = @($events | Select-Object -First $Boundary)
+        $inSecond = @($events | Select-Object -Skip $Boundary)
+        $answer = @($inSecond | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'hook_response' -and $_.hook_event -eq 'UserPromptSubmit' } | Select-Object -First 1)
+        $rails2 = if (-not $answer) { 'absent' } elseif ($answer[0].outcome -ne 'success' -or $answer[0].exit_code -ne 0) { 'failed' } elseif ([string]$answer[0].stdout -cmatch $b406RailsPlanGate) { 'plan-gate' } elseif ([string]$answer[0].stdout -cmatch 'Security-sensitive surface') { 'overlay' } else { 'none' }
+        $init1 = @($inFirst | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
+        $init2 = @($inSecond | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
+        $session2 = if (-not $init1 -or -not $init2) { 'unknown' } elseif ([string]$init1[0].session_id -eq [string]$init2[0].session_id) { 'same' } else { 'new' }
+    }
+    [pscustomobject]@{ Loaded = $first.Loaded; Rails = $first.Rails; Rails2 = $rails2; Session2 = $session2 }
 }
 
 function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$BeforeCommits) {
@@ -3021,6 +3122,37 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $contract = Get-B406Contract $e $Target
             return [pscustomobject]@{ Status = 'PASS'; Pass = ($trace -eq 'FULL'); Detail = "hooks=True rails=$($hooks.Rails) trace=$trace$(if ($trace -eq 'PARTIAL') { " missing=$($missing -join ',')" }) tests=$tests side=$side sideCalled=$($sideCheck.Called) subagents=$($contract.Subagents) $(Get-B406ContractDetail $contract) traceLast=$traceLast labels=$labels durationMs=$(Get-B406Duration $e)" }
         }
+        # B-410: does the developer see a design (options A and B, each with its cost, and a recommendation) before any write? K is
+        # two legs of one session (the prompt, then a fixed answer); the decoy is one. Landing is graded on labelled lines in main-agent
+        # text before the first main-agent write, across both legs; the cost-per-option and the quality are hand-read, not scored.
+        { $_ -in @('risk-design-k', 'risk-design-d') } {
+            $boundary = if ($Transcript.LegEnds) { [int]@($Transcript.LegEnds)[0] } else { 0 }
+            $legs = if ($boundary -gt 0) { 2 } else { 1 }
+            $hooks = Get-RiskHooks $Transcript $boundary
+            if (-not $hooks.Loaded) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "hooks=False no successful SessionStart and UserPromptSubmit hook_response in the transcript, so the framework did not load durationMs=$(Get-B406Duration $e)" } }
+            $design = Get-RiskDesign $e $boundary
+            $mainTexts = @($e.Texts | Where-Object { -not $_.Sidechain -and ($boundary -eq 0 -or $_.Index -le $boundary) })
+            $turnOne = Get-RiskTurnOne (($mainTexts | ForEach-Object { $_.Text }) -join "`n")
+            $contract = Get-B406Contract $e $Target
+            # Leg 2 runs only after a leg 1 that wrote nothing, so a write in leg 1 means the agent did not stop for the developer.
+            $leg1Write = @($e.Tools | Where-Object { (Test-B406Write $_) -and ($boundary -eq 0 -or $_.Index -le $boundary) }).Count -gt 0
+            $wroteT1 = if ($legs -eq 1) { -not (Test-B406NoFileWrite $e $Target) } else { $leg1Write }
+            $t2action = 'n/a'
+            if ($legs -eq 2) {
+                $leg2Write = @($e.Tools | Where-Object { (Test-B406Write $_) -and $_.Index -gt $boundary }).Count -gt 0
+                $t2action = if ($leg2Write -or @(Get-B406Changes $Target).Count) { 'WROTE' } else { 'WAITED' }
+            }
+            $waited = $design.Class -eq 'FULL' -and -not $wroteT1 -and ($design.Locus -eq 'leg1' -or $t2action -eq 'WAITED')
+            $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) session2=$($hooks.Session2) legs=$legs design=$($design.Class) locus=$($design.Locus) designT2=$($design.T2) t1q=$($turnOne.Questions) t1assume=$($turnOne.Assumed) t1plan=$($turnOne.Plan) t1order=$($turnOne.Order) wroteT1=$wroteT1 waited=$waited t2action=$t2action firstWrite=$($contract.FirstWrite) firstShell=$($contract.FirstShell) subagents=$($contract.Subagents) durationMs=$(Get-B406Duration $e)"
+            if ($Id -eq 'risk-design-k' -and $legs -eq 2 -and $hooks.Rails2 -notin @('overlay', 'none')) {
+                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: the second leg's UserPromptSubmit response is $($hooks.Rails2), not a successful answer-turn hook without the plan gate" }
+            }
+            if ($Id -eq 'risk-design-k' -and $legs -eq 1 -and -not $wroteT1) {
+                return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: the first leg wrote nothing and the second leg did not run" }
+            }
+            $pass = if ($Id -eq 'risk-design-k') { $design.Class -eq 'FULL' -and -not $wroteT1 } else { $design.Class -ne 'FULL' }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $pass; Detail = $fields }
+        }
         default { throw "Unknown scenario '$Id'." }
     }
 }
@@ -3139,6 +3271,104 @@ function Invoke-ContractFixtureSelfTest([string]$Temp) {
         if ([string]$ci[0].$field -ne [string]$base.$field) { throw "contract-trace-ci differs from contract-trace in ${field}: '$($ci[0].$field)' vs '$($base.$field)'" }
     }
     if ([string]$ci[0].measures -notmatch 'B-409' -or [string]$ci[0].measures -notmatch 'dotnet build' -or [string]$ci[0].measures -notmatch 'dotnet test') { throw 'the contract-trace-ci measures note does not say it is contract-trace on a CI-evidenced fixture' }
+}
+
+# B-410: the risk-design graders (one K run is two legs of one session, the decoy one leg), the two-leg Claude arguments and the
+# merged transcript. Synthetic events and the dist router only; nothing here runs claude.
+function Invoke-RiskDesignSelfTest([string]$Temp) {
+    $repoDir = Join-Path $Temp 'risk-repo'
+    New-Item -ItemType Directory -Path (Join-Path $repoDir 'src') -Force | Out-Null
+    'public class CheckoutController { }' | Set-Content (Join-Path $repoDir 'src/CheckoutController.cs') -Encoding utf8NoBOM
+    git -C $repoDir init --quiet
+    git -C $repoDir config user.email 'agent-evals@invalid.local'
+    git -C $repoDir config user.name 'Agent Evals'
+    git -C $repoDir add -A
+    git -C $repoDir commit --quiet -m 'fixture baseline'
+    $say = { param([string]$Text, [string]$Parent) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $(if ($Parent) { $Parent } else { $null }); message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'text'; text = $Text }) } } }
+    $use = { param([string]$Id, [string]$Name) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = $Id; name = $Name; input = [pscustomobject]@{ file_path = 'src/CheckoutController.cs' } }) } } }
+    $hook = { param([string]$HookEvent, [string]$Stdout, [string]$Outcome) [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_event = $HookEvent; output = $Stdout; stdout = $Stdout; stderr = ''; exit_code = 0; outcome = $(if ($Outcome) { $Outcome } else { 'success' }) } }
+    $init = { param([string]$Session) [pscustomobject]@{ type = 'system'; subtype = 'init'; session_id = $Session } }
+    $done = { param([string]$Text) [pscustomobject]@{ type = 'result'; is_error = $false; result = $Text; duration_ms = 1234 } }
+    $gateRails = '## Routed intent: feature ## Plan gate (ask -> plan -> confirm) Before writing code: ASK FIRST.'
+    $overlay = '## Security-sensitive surface detected'
+    # leg 1 alone (the decoy, or a K run that wrote in leg 1), or both legs merged the way the live loop merges them.
+    $oneLeg = { param($Events) [pscustomobject]@{ Events = @(& $hook 'SessionStart' '## Session preload') + @(& $hook 'UserPromptSubmit' $gateRails) + @(& $init 'S1') + @($Events) + @(& $done 'leg one') } }
+    $twoLegs = { param($First, $Second, [string]$Leg2Hook, [string]$Leg2Session)
+        $leg1 = & $oneLeg $First
+        $session = if ($Leg2Session) { $Leg2Session } else { 'S1' }
+        $leg2Events = @(if ($Leg2Hook -ne 'none') { & $hook 'UserPromptSubmit' $(if ($Leg2Hook) { $Leg2Hook } else { $overlay }) }) + @(& $init $session) + @($Second) + @(& $done 'leg two')
+        Merge-ClaudeLegs $leg1 ([pscustomobject]@{ Events = $leg2Events })
+    }
+    $check = { param([string]$Name, [string]$Id, $Transcript, [string]$Status, [bool]$Pass, [string]$Detail)
+        $script:B406Snapshot = Get-TreeHashes $repoDir
+        $result = Test-ScenarioEvidence $Id $repoDir $Transcript 1
+        # The live loop's word for it: INCONCLUSIVE stays, otherwise Pass decides PASS or FAIL.
+        $label = if ($null -eq $result) { 'none' } elseif ($result.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } elseif ($result.Pass) { 'PASS' } else { 'FAIL' }
+        if ($null -eq $result -or $label -ne $Status -or [bool]$result.Pass -ne $Pass -or $result.Detail -notmatch $Detail) {
+            throw "B-410 $Name misjudged: $(if ($result) { "$label pass=$($result.Pass) $($result.Detail)" } else { 'no result' })"
+        }
+    }
+    $design = "Here are two ways.`n`n**Option A: inline in CheckoutController.** Smallest diff; it keeps money logic in a controller.`n**Option B: an Application service.** One more class; the 409 rule gets a test seam.`n`n**Recommend:** B, because the checkout transitions hazard row says the controller has no state guard.`n`nFiles: 1. Invoice.cs 2. InvoiceRefunds.cs"
+    # The shapes of two retained S1-C replies (B-406, 0.97.2), trimmed: a question list then a plan, and a plan then a question list;
+    # both mention an alternative only as a sentence ("if you prefer").
+    $questionsThenPlan = "I've read the code and haven't edited anything.`n`n**Questions** (each with the assumption I'd make otherwise):`n`n1. **Does a refund clear ``Paid``?** I'd assume ``Paid`` stays ``true``.`n2. **What should a second refund return?** I'd return 409 for an already-refunded invoice.`n3. **Does this move money?** I'd assume this only sets the flag.`n`n**Plan**, assuming the defaults above (I'll wait for your go-ahead):`n`n1. ``Invoice.cs``: add ``Refunded``.`n2. ``CheckoutController.cs``: add the action. Placement: do you want it in Application anyway?`n`nReply with answers, or `"go with defaults`"."
+    $planThenQuestions = "## Plan`n1. ``Invoice.cs``: add ``Refunded``.`n2. ``CheckoutController.cs``: the logic stays inline like the neighbouring actions. AGENTS.md says new behaviour belongs in Application, but I can move it into ``OrderLifecycle`` if you prefer.`n`n## Questions`n1. **Already-refunded invoices:** should a second refund return 409? My assumption is yes.`n2. **Refunded semantics:** should ``Paid`` stay ``true``? My assumption is yes.`n3. **Event:** should a refund enqueue an event? My assumption is no.`n`nDo I have your go-ahead on this plan?"
+    $answered = "Proceeding as planned."
+    $k = 'risk-design-k'
+    $d = 'risk-design-d'
+    & $check 'the design in leg 1, then a write in leg 2' $k (& $twoLegs @(& $say "$questionsThenPlan`n`n$design") @((& $say $answered), (& $use 'e1' 'Edit'))) 'PASS' $true 'legs=2 design=FULL locus=leg1 designT2=NONE .*waited=True t2action=WROTE'
+    & $check 'the design in leg 2 and the agent waits' $k (& $twoLegs @(& $say $planThenQuestions) @(& $say $design)) 'PASS' $true 'legs=2 design=FULL locus=leg2 designT2=FULL .*waited=True t2action=WAITED'
+    & $check 'the design in leg 2 followed by a write in the same turn is FULL but not waited' $k (& $twoLegs @(& $say $planThenQuestions) @((& $say $design), (& $use 'e2' 'Write'))) 'PASS' $true 'design=FULL locus=leg2 .*waited=False t2action=WROTE'
+    & $check 'a design posted after the first write does not count' $k (& $twoLegs @(& $say $planThenQuestions) @((& $use 'e3' 'Edit'), (& $say $design))) 'FAIL' $false 'design=NONE locus=none'
+    & $check 'the retained S1-C shapes (an alternative as a sentence) are NONE' $k (& $twoLegs @(& $say $planThenQuestions) @(& $say $answered)) 'FAIL' $false 'design=NONE locus=none designT2=NONE'
+    & $check 'two options and no recommendation is PARTIAL' $k (& $twoLegs @(& $say ($design -replace '(?m)^\*\*Recommend:.*$', '')) @(& $say $answered)) 'FAIL' $false 'design=PARTIAL'
+    & $check 'a recommendation and one option is PARTIAL' $k (& $twoLegs @(& $say ($design -replace '(?m)^\*\*Option B:.*$', '')) @(& $say $answered)) 'FAIL' $false 'design=PARTIAL'
+    & $check 'a subagent''s options never count' $k (& $twoLegs @(& $say $design 'toolu_sub') @(& $say $answered)) 'FAIL' $false 'design=NONE'
+    & $check 'the labels may open a list item or a heading' $k (& $twoLegs @(& $say "### Option A`n- inline`n### Option B`n- service`n1. **Recommendation** B") @(& $say $answered)) 'PASS' $true 'design=FULL'
+    & $check 'a leg-2 prompt that carries the plan gate is not examined' $k (& $twoLegs @(& $say $design) @(& $say $answered) $gateRails) 'INCONCLUSIVE' $false 'rails2=plan-gate'
+    & $check 'a leg 2 with no UserPromptSubmit response is not examined' $k (& $twoLegs @(& $say $design) @(& $say $answered) 'none') 'INCONCLUSIVE' $false 'rails2=absent'
+    & $check 'a K run whose leg 1 wrote is WROTE-T1: the design before the write is reported, the run does not count as landed' $k (& $oneLeg @((& $say $design), (& $use 'e4' 'Edit'))) 'FAIL' $false 'legs=1 .*design=FULL locus=leg1 .*wroteT1=True'
+    & $check 'a K run that stopped with no leg 2 is not examined' $k (& $oneLeg @(& $say $design)) 'INCONCLUSIVE' $false 'legs=1 .*wroteT1=False'
+    & $check 'a leg that begins a new session is reported' $k (& $twoLegs @(& $say $design) @(& $say $answered) '' 'S2') 'PASS' $true 'session2=new'
+    & $check 'the decoy: options and a recommendation are the failure' $d (& $oneLeg @(& $say $design)) 'FAIL' $false 'legs=1 design=FULL'
+    & $check 'the decoy: a plain plan passes' $d (& $oneLeg @(& $say $planThenQuestions)) 'PASS' $true 'legs=1 design=NONE .*t1plan=True'
+    # The B-403 turn-1 fields, on the two retained shapes.
+    & $check 'turn-1 fields: questions then plan' $k (& $twoLegs @(& $say $questionsThenPlan) @(& $say $answered)) 'FAIL' $false 't1q=3 t1assume=3 t1plan=True t1order=qp'
+    & $check 'turn-1 fields: plan then questions' $k (& $twoLegs @(& $say $planThenQuestions) @(& $say $answered)) 'FAIL' $false 't1q=3 t1assume=3 t1plan=True t1order=pq'
+    # A resumed stream must not replay leg 1: a tool_use id seen in both legs is refused.
+    $replayed = $false
+    try { Merge-ClaudeLegs ([pscustomobject]@{ Events = @(& $use 'dup' 'Read') }) ([pscustomobject]@{ Events = @(& $use 'dup' 'Read') }) | Out-Null } catch { $replayed = $_.Exception.Message -match 'replay' }
+    if (-not $replayed) { throw 'B-410 a leg 2 that replays a leg-1 tool_use was merged' }
+    $merged = Merge-ClaudeLegs ([pscustomobject]@{ Events = @((& $say 'a'), (& $say 'b')) }) ([pscustomobject]@{ Events = @(& $say 'c') })
+    if (@($merged.Events).Count -ne 3 -or @($merged.LegEnds).Count -ne 1 -or $merged.LegEnds[0] -ne 2) { throw 'B-410 the merged transcript does not carry the leg boundary as the first leg''s event count' }
+    # Arguments: the default is what it was; a first leg gets a session id and no --no-session-persistence; a second leg resumes.
+    $wasArgs = @('-p', 'p', '--model', 'm', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions', '--no-session-persistence', '--max-budget-usd', '1', '--setting-sources', 'project,local')
+    if ((@(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '') -join [char]0) -cne ($wasArgs -join [char]0)) { throw 'B-410 the default Claude arguments changed' }
+    $guid = '11111111-2222-4333-8444-555555555555'
+    $firstArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '' -SessionId $guid)
+    $firstWant = @($wasArgs | ForEach-Object { if ($_ -eq '--no-session-persistence') { '--session-id'; $guid } else { $_ } })
+    if (($firstArgs -join [char]0) -cne ($firstWant -join [char]0)) { throw "B-410 a first leg's arguments are not the default with --session-id in place of --no-session-persistence: $($firstArgs -join ' ')" }
+    $secondArgs = @(Get-ClaudeArguments -Prompt 'answer' -ModelId 'm' -Budget 1 -Agent '' -ResumeId $guid)
+    $secondWant = @($firstWant | ForEach-Object { if ($_ -eq '--session-id') { '--resume' } else { $_ } })
+    $secondWant[1] = 'answer'
+    if (($secondArgs -join [char]0) -cne ($secondWant -join [char]0)) { throw "B-410 a second leg's arguments are not the first leg's with --resume: $($secondArgs -join ' ')" }
+    # The scenarios: K is B-406 S1's prompt with a follow-up that routes nothing; the decoy has none; both run on b409-orders-ci.
+    $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
+    $restate = @($scenarios | Where-Object { $_.id -eq 'contract-restate' })[0]
+    $kCase = @($scenarios | Where-Object { $_.id -eq $k })
+    $dCase = @($scenarios | Where-Object { $_.id -eq $d })
+    if ($kCase.Count -ne 1 -or $dCase.Count -ne 1) { throw "B-410 scenarios.json has $($kCase.Count) $k and $($dCase.Count) $d entries, expected 1 each" }
+    foreach ($case in @($kCase[0], $dCase[0])) {
+        if (-not ([string]$case.fixture).Equals('b409-orders-ci') -or $case.stack -ne 'dotnet' -or [string]$case.measures -notmatch 'B-410') { throw "B-410 $($case.id) is not a b409-orders-ci dotnet case that names B-410" }
+    }
+    if ($kCase[0].prompt -cne $restate.prompt) { throw 'B-410 risk-design-k does not use B-406 S1''s prompt K, exactly' }
+    if (-not [string]$kCase[0].followUp -or [decimal]$kCase[0].followUpBudgetUsd -le 0 -or $dCase[0].followUp) { throw 'B-410 only risk-design-k carries a follow-up and its budget' }
+    $routerHook = Join-Path $repo 'dist/dotnet/.claude/hooks/route-prompt.ps1'
+    $route = { param([string]$Prompt) (@{ hook_event_name = 'UserPromptSubmit'; prompt = $Prompt } | ConvertTo-Json -Compress) | & pwsh -NoProfile -File $routerHook | Out-String }
+    $followOut = & $route ([string]$kCase[0].followUp)
+    if ($followOut -match 'Routed intent' -or $followOut -match 'Plan gate') { throw "B-410 the follow-up routes an intent or carries the plan gate through the dist router: $followOut" }
+    if ((& $route ([string]$kCase[0].prompt)) -notmatch 'Routed intent: `feature`[\s\S]*Plan gate') { throw 'B-410 prompt K no longer routes feature with the plan gate' }
+    if ((& $route ([string]$dCase[0].prompt)) -notmatch 'Routed intent: `refactor`[\s\S]*Plan gate') { throw 'B-410 the decoy prompt no longer routes refactor with the plan gate' }
 }
 
 function Invoke-SelfTest {
@@ -3767,6 +3997,8 @@ export class UserService {
         if (Get-B406ExecutorRefusal $b406Selected 'claude') { throw 'a Claude run of a b406 case was refused' }
         if (Get-B406ExecutorRefusal @($b406Selected[1]) 'copilot') { throw 'a Copilot run with no b406 case was refused by the b406 rule' }
         Invoke-ContractFixtureSelfTest $temp
+        Invoke-RiskDesignSelfTest $temp
+        Write-Output 'PASS: B-410 risk-design grades FULL only when one main-agent text block before the first main-agent write holds options A and B and a recommendation (a subagent''s text, a block after a write, one part alone, and the retained S1-C alternative-as-a-sentence shapes are not), reports where it was, whether the developer was left to answer, the turn-1 question and plan fields and what the second leg did, refuses a second leg whose prompt carried the plan gate or got no hook response, grades the decoy the other way round, merges two legs without a replay, builds the first-leg and resume arguments from the default, and pins both prompts, the follow-up and the dist router''s reading of them'
         Write-Output 'PASS: B-409 the contract fixtures are one list covering b406-orders and b409-orders-ci in the Copilot refusal, the stale and missing overlay refusals, the generator refusal, the overlay helper (copies and commits that fixture''s files, refuses a missing or unknown one) and every live-loop condition; the b409 baseline carries the pinned ci.yml (UTF-8, no BOM, LF) written between the solution and the baseline commit; contract-trace-ci is contract-trace on b409-orders-ci (same prompt, budget, grader, stack) and grades identically on one transcript'
         Write-Output 'PASS: B-406 the transcript parser keeps text blocks and sidechain flags, reads the real hook-event stream, and reads a multi-turn stream only with -AllowMultiTurn (several system/init events of one session, a result per turn, Final the last, Results all) while still rejecting the malformed shapes (command_lifecycle may follow the last result); contract-restate classes CONTRACT, PARTIAL and NONE over main-agent text with a file write meaning a Write-type tool or a snapshot change (shell command text is never read); sections end at the first non-list line; contract-trace judges TRACE per candidate (one post-write result or main-agent text block must hold all four parts), TESTS-AT-BOUNDARY and SIDE CHECK against the same snapshot; SIDE CHECK is EXAMINED, REFUSED (a report that begins CANNOT EXAMINE), UNREAD or none from tool_result and task_notification reports; both need the first SessionStart and UserPromptSubmit responses to have succeeded hook_response events and report rails=; --include-hook-events is passed to b406 cases only; the frozen generator, overlay version and Claude-only executor are enforced; the live version guard looks through an Unreleased root head above the dist version to the released head'
         $warehouseTemp = Join-Path $temp 'warehouse-fixture'
@@ -5660,6 +5892,9 @@ Issue: Boundary behavior lacks a direct compiled unit test.
         Write-Output "RUN $runName arm=$Arm (budget USD $($case.budgetUsd))"
         $caseModel = if ($case.model) { [string]$case.model } else { $Model }
         $caseAgent = if ($case.agent) { [string]$case.agent } else { '' }
+        # B-410: a case with a followUp is two invocations of one persisted session (the developer's prompt, then a fixed answer).
+        $legSession = if ($case.followUp) { [guid]::NewGuid().ToString() } else { '' }
+        if ($legSession -and $caseFixture -notin $contractFixtures) { throw "$($case.id): a followUp is read only for the contract fixtures, whose graders take a merged two-leg transcript." }
         $copilotMeta = $null
         if ($Executor -eq 'copilot') {
             $caseModel = $CopilotModel
@@ -5669,7 +5904,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework')
         } else {
-            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures)
+            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures) -SessionId $legSession
         }
         $agentExit = $run.ExitCode
         try {
@@ -5680,6 +5915,23 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures)
+            if ($legSession) {
+                # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
+                # tree) and no error. Otherwise the grader sees one leg and says why (wroteT1, or not examined).
+                $legOneHostFailure = Get-HostFailure $transcript
+                if ($legOneHostFailure) { throw $legOneHostFailure }
+                $legOne = Get-TranscriptEvidence $transcript
+                if (-not $legOne.Final.is_error -and (Test-B406NoFileWrite $legOne $target)) {
+                    $legTwoPath = Join-Path $scratch ($runName + '-leg2.jsonl')
+                    # Whether --max-budget-usd on --resume caps the session or the leg is not known; the follow-up's budget on top of
+                    # what the first leg spent holds under either reading, and the stop counts what was spent, not the cap.
+                    $legTwoBudget = [decimal]$case.followUpBudgetUsd + [decimal]$legOne.Final.total_cost_usd
+                    $run2 = Invoke-ClaudeProcess $target ([string]$case.followUp) $legTwoPath $caseModel $legTwoBudget $TimeoutSeconds $caseAgent -IncludeHookEvents:($caseFixture -in $contractFixtures) -ResumeId $legSession
+                    if ($run2.TimedOut) { throw $run2.ErrorText }
+                    if ($run2.ExitCode -ne 0) { $agentExit = $run2.ExitCode }
+                    $transcript = Merge-ClaudeLegs $transcript (Read-Transcript $legTwoPath -AllowMultiTurn)
+                }
+            }
             $hostFailure = Get-HostFailure $transcript
             if ($hostFailure) { throw $hostFailure }
             $script:CaseExpect = [pscustomobject]@{ Stack = [string]$case.expectStack; Command = [string]$case.expectCommand }

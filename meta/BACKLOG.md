@@ -162,9 +162,9 @@ harness at 15,000 characters (`chat.copilot.skillCharBudget`, experimental; seen
 ### B-403 · Measure whether the plan gate asks its tech-lead questions before it plans
 **Filed against:** v0.96.0 (2026-10-14)
 **Priority:** P3 · **Effort:** M · **Invariants:** #5
-**Status:** Open; shipped unmeasured (WSD-111 precedent, plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`). The runner has no "proceed autonomously" string (`Get-ClaudeArguments` passes `--dangerously-skip-permissions`) and its scenario prompts carry the approval clause; on Copilot CLI
-the host's own `-p` system prompt says to proceed autonomously (B-348's RAIL result, `meta/host-certification.md`); whether Claude Code `-p` without the clause stops before the plan is first measured by B-406 S1.
-Needs a grader scoring the first assistant message on an underspecified feature prompt, on both surfaces.
+**Status:** Open; shipped unmeasured (WSD-111 precedent, plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`). B-406 S1 shows Claude Code `-p` without the approval clause stops
+before writing (12/12 T, 6/6 C); hand-read, the S1-C replies ask 3-5 questions with an assumption each 6/6 and post the plan in the same message 6/6. B-410's C-K leg 1 is the graded repeat on prompt K.
+Still needed: an underspecified prompt and a no-gap prompt, and the Copilot CLI arm, where the host's own `-p` prompt says to proceed autonomously (B-348's RAIL result, `meta/host-certification.md`).
 
 ### B-404 · An installing agent given "install this" sometimes asks before committing
 **Filed against:** v0.97.2 (2026-10-15)
@@ -179,7 +179,11 @@ scenario variant), and decide whether the gate should count "asked before commit
 **Status:** Open; the rail's "or its security-auditor agent" invites a raw `git diff` request. Its first call returned CANNOT EXAMINE (no scope bundle) in 10 of 10 B-406 S2 runs and 3 of 10 B-407 runs (6 examined "without a
 `-ScopePath` bundle", 2 not read); The 0.98.0 wording sends the agent to `security-gate` only; on the CI fixture with a 1.00 USD cap (B-409), C examined 3/6 and two of the three skips cited the budget. Re-measure at a cap that does not bind before relying on it.
 
-
+### B-410 · A risk change gets a file list, not a design: measure a two-option design before code on the natural-language path
+**Filed against:** v0.97.2 (2026-10-18)
+**Priority:** P2 · **Effort:** S to ship if it lands (one carrier bullet, ordinary) · **Invariants:** none (#5 if a rail arm follows)
+**Status:** Open; maintainer question 2026-10-18 (does the agent walk the developer through a technical design?). Pre-registered in `meta/eval-results.md` ("B-410 pre-registration"): prompt K, then a fixed
+answer, 6 runs per arm, plus a rename decoy; T is `meta/eval-fixtures/target-patches/b410-risk-design.patch`. Shipping the bullet needs its own go-ahead; a rail arm only after an R2 reading, as its own decision.
 
 
 ## Archived

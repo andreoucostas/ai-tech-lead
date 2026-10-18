@@ -4877,3 +4877,79 @@ run) in `%TEMP%\b409-runs\` at writing, not in the repository.
   exceeded. In the ledger, cost follows whether the security pass ran: T runs with a security call cost 0.37 to 0.50 USD and the two without 0.19; C runs with one 0.39 to 0.46 and the three without 0.18 to 0.19.
   `tokensIn` is the last turn's only and is not reported. Spend: runs 4.03 USD of the 10 USD stop; generations 1.16 USD (`b409-orders-ci`) and 1.20 USD (product check).
 - Not shown: as registered (Copilot CLI; VS Code; Angular; monorepo; other fixtures and models; a real second turn; whether the block's content is true; field use).
+
+## B-410 pre-registration — a design walkthrough that scales with risk, a two-turn test, Claude Code (2026-10-18, frozen before any run)
+
+Q. On prompt K stated without approval, does the developer see a design before any file is written: one main-agent text block with options A and B and a recommendation, across the
+first reply and the reply to a fixed developer answer, with the carrier's §2 carrying one added bullet (T) against HEAD's `dist/dotnet` as installed (C)? And does an ordinary change
+(the decoy D) stay free of it? Design: `.claude/plans/inbox/2026-10-18-design-walkthrough-by-risk.md` (gitignored; this entry is self-contained). The maintainer asked whether the agent walks
+the developer through a technical design the way a tech lead would; today that is `/design` or a design-phrased prompt (`route-prompt.ps1` design regex), and the plan an everyday "add X"
+gets is a file list. Maintainer go-ahead 2026-10-18 for Phase 0 and Phase 1; carrier first, a rail arm only as its own later decision.
+
+- What is known before any run (hand-read, not graded, from the six retained B-406 S1-C transcripts, prompt K without approval, 0.97.2 as installed; §2 and `$railsPlanGate` are byte-identical
+  at HEAD): 3-5 numbered questions each with an assumption 6/6; the file-list plan posted in the same message as the questions 6/6 (the carrier says "only once they are answered"); no file written
+  6/6 (STOPPED); a labelled two-option design 0/6; an alternative named as one sentence ("or the separate class if you prefer") 4/6; every reply invites "go" on the defaults. No retained
+  transcript has a second developer turn. So the design is missing from turn 1, and the grader reads both replies. Cost of such a leg: 0.136-0.147 USD, 21-28 s.
+- T and C. T: HEAD's `dist/dotnet` plus one bullet inserted in the installed carrier before "For larger features, persist the plan as a spec", 533 characters:
+  `- **A risk change gets a design, not a file list.** Risk means it touches a `Known Hazard Areas` row, a security-sensitive surface (section 1), a data shape (schema, migration, event or message contract) or a public contract others consume (route, status code, package API). Post `Option A:` and `Option B:`, real alternatives each with its cost or what it breaks, then `Recommend:` one with the reason and the file list beneath it. No real alternative: say so in one line. Every other non-trivial change keeps the short plan above.`
+  Delivered as `-TargetPatch meta/eval-fixtures/target-patches/b410-risk-design.patch` (2,474 bytes, one hunk, LF, no BOM), cut 2026-10-18 per DEVELOPING.md from a clean install of HEAD 77bf50a4's `dist/dotnet`
+  (stamp 0.97.2, scratch repository with `core.autocrlf=false`); its SHA-256 prefix `79399b4df596` is the `patch=` tag every T row carries. Rails, hooks, commands and docs are untouched. C: no patch.
+  Static cost of the bullet: dotnet `static.claude` 38,663 -> 39,196 of 40,000 (804 left), angular 36,452 -> 36,985, monorepo 43,041 -> 43,574 of 48,000, to be confirmed by `context-footprint -Check`
+  only if it ships.
+- Fixture and host. `b409-orders-ci` (overlay sha256 `0408a76b9a14…`; `git diff --stat 296c6ce9..HEAD -- dist src scripts` is empty at 77bf50a4, so the overlay matches HEAD's dist), Claude Code
+  2.1.300, `claude -p --model sonnet` (a different `system/init` version in any row is a new baseline), `--include-hook-events` on every leg, one run per invocation from a fresh fixture build.
+- Prompts, exact (scenarios `risk-design-k` and `risk-design-d`, `.claude/evals/scenarios.json`).
+  K, leg 1: B-406 S1's prompt, byte-identical to `contract-restate`'s (the self-test compares them): "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a
+  paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid."
+  K, leg 2, the developer's answer, with no go-ahead in it on purpose: "A second refund on an invoice that is already refunded is a 409 too. Paid stays true; Refunded is an extra flag on top. This
+  only marks the invoice: no event, no payment-provider call, no money moves. I apply the new Refunded column to the database myself, so no script is needed. Two simultaneous refunds are out of scope
+  for now." It answers the themes the six S1-C replies repeat (already-refunded 6/6, `Paid` 5/6, event or money 6/6, schema script 5/6, concurrency 6/6) and leaves placement (inline in the controller
+  or an Application class) open, the choice a design would put to the developer. All six S1-C replies invite "go" on the defaults; that reply is not tested (a design not already shown is then never shown).
+  D, leg 1 only: "Rename ReportCatalog.Visible to ReportCatalog.Enabled and update its callers and tests." (`ReportCatalog.cs`, `ReportsController.cs`, `ReportCatalogTests.cs`; mechanical, no hazard row,
+  money, data shape or consumed contract, one approach).
+  Pre-flight, run 2026-10-18 through HEAD's `dist/dotnet/.claude/hooks/route-prompt.ps1` as a Claude event (the self-test re-runs it): K routes `feature` with the plan gate and the security overlay; the leg-2
+  answer routes no intent and carries the overlay only (no plan gate), as a real answer would; D routes `refactor` with the plan gate and no overlay.
+- Cells. C-K, T-K: 6 valid runs each; C-D, T-D: 3 valid each, leg 1 only. Order: T-K and C-K alternating until 6 valid each, then C-D and T-D alternating. `pwsh -NoProfile -File
+  .claude/evals/run-agent-evals.ps1 -Live -Executor claude -Model sonnet -Scenario <risk-design-k|risk-design-d> -Trials 1 -TimeoutSeconds 1200` (T adds `-TargetPatch` and the path above). A K run is two
+  invocations of one session: leg 1 `--session-id <guid>`, and only if it wrote nothing and ended without error, leg 2 `--resume <guid>` with the answer, its budget the scenario's `followUpBudgetUsd`
+  (1.00 USD) plus leg 1's cost (whether `--max-budget-usd` caps the session or the leg is unrecorded; this holds under either). Per-leg timeout 1200 s. Streams are read per leg with the multi-turn
+  reader, then merged into one transcript whose leg boundary is leg 1's event count, so "before the first write" spans both legs; a leg 2 that repeats a leg-1 event is refused, not merged.
+- Validity. Leg 1: the first SessionStart and the first UserPromptSubmit `hook_response` succeeded, a terminal result, `rails1=plan-gate` (a run with another value is repeated: the patch leaves the rails alone, so
+  `rails1` says nothing about T). T's proof that the bullet reached the agent: the runner applied the patch (`patch=` tag) and a probe (below). Leg 2: its first UserPromptSubmit response exists, succeeded and
+  carries no `Plan gate` (`rails2` is `overlay` or `none`). A K run with a single leg and no write is not examined. **WROTE-T1**: a Write-type tool_use or a changed tree in leg 1: leg 2 is not run, the row
+  counts, `design` is graded on the text before the write, and the run does not count as landed. Otherwise CANNOT-EXAMINE (INCONCLUSIVE or ERROR row), repeated once; a second counts as not reaching the class
+  (not landed) and is reported by its reason, open to the maintainer's ruling.
+- Probes, before any counted run, cap 0.25 USD per call, no counted slot: P1, one call per arm in an installed scratch repository (T patched), "Quote verbatim, and say nothing else, the bullet in your loaded
+  framework rules that begins with '- **A risk change'. If you cannot see it, answer NOT LOADED." (T must quote it, C must not). P2, two legs on a trivial prompt in an installed repository
+  (`ALPHA`, then `BETA` with `--resume`): the second stream must be accepted by the reader, replay nothing of the first, and the probe records whether `session_id` is kept, whether `result_index` restarts
+  and whether the second result's `total_cost_usd` is cumulative. A failed probe stops the study here.
+- Grader (`Test-ScenarioEvidence` cases `risk-design-k` and `risk-design-d`, `.claude/evals/run-agent-evals.ps1`; synthetic cases in `-SelfTest`, five mutants of the runner (grader, merge, arguments) each seen to turn one case red). Main agent only.
+  Definitions, frozen with this entry (PowerShell `-match`, case-insensitive):
+
+```
+$designOpt = '(?im)^\W*(?:\d+[.)]\s*)?\W*(?:option|approach)\s+([ab])\b'
+$designRec = '(?im)^\W*(?:\d+[.)]\s*)?\W*recommend(?:ed|ation)?\b'
+```
+
+  FULL: one main-agent text block, with an ordinal before the first main-agent Write, Edit, MultiEdit or NotebookEdit tool_use (one ordinal counter over both legs), in which `$designOpt` matches both letters
+  A and B and `$designRec` matches a line. PARTIAL: exactly one of the two parts. NONE otherwise. A subagent's text never counts; a shell command's writes are seen only by the tree snapshot, not by position.
+  **Landed (K):** FULL and not WROTE-T1. **Decoy D:** passes when design is not FULL. Reported per row, never gating: `locus` (leg1 or leg2: where the first FULL block is), `designT2` (best class among the
+  leg-2 blocks), `waited` (FULL, no write in leg 1, and the design stood in leg 1 or leg 2 ended without a write), `t2action` (WROTE or WAITED), `t1q`, `t1assume`, `t1plan`, `t1order` (B-403's turn-1 fields:
+  numbered questions under a "Questions" label, those saying what the agent would assume, whether a "Plan" line is in the same text, which comes first; approximate regexes, hand-checked on the S1-C
+  shapes), `rails1`, `rails2`, `session2`, `firstWrite`, `firstShell`, `subagents`, `costUsd`, `durationMs`.
+  Hand-read, not scored: every FULL (two different approaches rather than one with a flag, a cost named for each option, a reasoned recommendation), and one prose line per C-K run on what the developer sees before
+  code (the label grader reads C as 0 whatever it presents; that line answers the maintainer's question as asked).
+- Readings, fixed now. **R1 LANDS:** T-K landed in 5 or 6 of 6, C-K at most 1 of 6, and (when D is exercised) T-D FULL at most 1 of 3; a separate shipping decision for the bullet follows (carrier only, ordinary).
+  **R2 DOES NOT LAND:** T-K landed in 3 or fewer of 6: nothing ships; a rail arm is its own decision and its own pre-registration. **4 of 6:** six more T-K runs, pooled (10 or more of 12 is R1). **C-K FULL in 2 or
+  more of 6:** the grader is not discriminating or the agent already designs: INCONCLUSIVE, the C hand-read decides, the maintainer rules. **D is exercised only if C-D posted a plan (`t1plan=True`) in 2 or 3 of
+  3**; otherwise R1 is reported "false-positive side not exercised". **T-D FULL in 2 or 3 of 3:** the bullet fires on an ordinary change: R1 withheld, the maintainer decides. **A third or more of the T-K FULLs fail
+  the hand-read:** reported "LANDS BY LABEL ONLY", the maintainer decides. Cost above 1.5x C tokens or 8 minutes added is recorded in `meta/host-certification.md`, not a reading. A reading is applied as written;
+  the maintainer decides anything it does not cover.
+- Cost and stop. 10 USD in all: the probes, the runs and the repeats (a K run is expected at 0.3 to 0.6 USD, a D run at 0.15; about 5.5 USD expected, 7.4 high; a T extension about 3 more). Spend counts each row's
+  `costUsd` (a row without one is charged the highest `total_cost_usd` in its transcripts, else its caps) and each probe's. Before each run: not started if spend so far plus 1.50 USD (K) or 1.00 USD (D) would
+  pass 10 USD. A cell the stop leaves short is "not settled", never read as R1 or R2. Claude Code only; no premium requests. The driver is resumable and outside the repository (as B-407's).
+- Not shown: whether the design is good (labels are graded, content is sampled); the trigger's edges (a data-shape-only change, a request merely near a hazard row, a risky change with one obvious approach);
+  a trivial change; the reply "go with defaults"; a rail arm; Copilot CLI (B-399; the runner refuses `-Executor copilot` for these cases); VS Code; Angular; monorepo; other fixtures and models; whether developers
+  use the options. K trips four triggers at once (a hazard row for `CheckoutController`, money, a new column, a new route), so it is the easy case for the trigger.
+- Changes from the plan draft, made while building the runner: `t2action` has two values (WROTE, WAITED), because the four-way split needed a regex over free text; `waited` is added; the leg-2 budget is the
+  follow-up's plus leg 1's cost instead of a probe-dependent form; a WROTE-T1 run is graded on its pre-write text but never counts as landed.

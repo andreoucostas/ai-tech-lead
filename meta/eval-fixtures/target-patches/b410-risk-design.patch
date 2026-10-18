@@ -1,0 +1,12 @@
+diff --git a/.github/instructions/framework-rules.instructions.md b/.github/instructions/framework-rules.instructions.md
+index 4db1a82..3773901 100644
+--- a/.github/instructions/framework-rules.instructions.md
++++ b/.github/instructions/framework-rules.instructions.md
+@@ -101,6 +101,7 @@ For any non-trivial task, STOP before writing code and post a short plan:
+ - If the change adds an extension point or a third instance of an operation, and adding the next instance has a step that is easy to miss, name the one record you will add for that step unless one exists: a test over this repository's own instances that fails when one skips it (never a test of the framework, Test leanness #12), else one `AGENTS.md > Conventions` line, else, once this change makes three or more instances, a project skill draft under 3a-bis of `.claude/commands/bootstrap.md`; otherwise add none.
+ - Your assumptions, each with the evidence that verified it (a file, command or query), or marked *unverified — developer confirms*.
+ - If the request leaves a material gap, **ask first and plan after**: post at most five questions, each with the assumption you would otherwise make, and post the plan only once they are answered. Draw them from the tech-lead list — who consumes this and what breaks for them; what fails and how the developer would know in production; reversibility and rollback; data that moves or changes shape, including migration; blast radius against `FRAMEWORK-CONTEXT.md > Known Hazard Areas`. Do not guess past a material ambiguity to seem helpful — ask.
++- **A risk change gets a design, not a file list.** Risk means it touches a `Known Hazard Areas` row, a security-sensitive surface (section 1), a data shape (schema, migration, event or message contract) or a public contract others consume (route, status code, package API). Post `Option A:` and `Option B:`, real alternatives each with its cost or what it breaks, then `Recommend:` one with the reason and the file list beneath it. No real alternative: say so in one line. Every other non-trivial change keeps the short plan above.
+ - For larger features, persist the plan as a spec to `specs/<slug>.md` (see `/design`) and implement against it
+ 
+ Then **wait for the developer's explicit go-ahead before editing code.** This catches wrong assumptions before wrong diffs and keeps the developer engaged rather than rubber-stamping. Skip only a trivial, unambiguous change (typo, one-liner), and say why.

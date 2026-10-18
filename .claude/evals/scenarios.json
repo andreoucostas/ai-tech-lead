@@ -92,6 +92,26 @@
       "assertion": "contractTrace"
     },
     {
+      "id": "risk-design-k",
+      "measures": "B-410: whether a developer sees a design (options A and B, each with its cost, and a recommendation) before any file is written, on prompt K stated without approval. Two invocations of one session: K (B-406 S1's prompt), then a fixed developer answer that carries no go-ahead. Gates on risk-design FULL (labelled Option A, Option B and Recommend lines in one main-agent text block before the first main-agent write, across both legs) with no write in the first leg; where it was, whether the developer was left to answer, B-403's turn-1 question and plan fields and the second leg's action are reported. It does not show whether the design is good, a trivial change, Copilot CLI, VS Code, Angular or monorepo.",
+      "fixture": "b409-orders-ci",
+      "stack": "dotnet",
+      "budgetUsd": 1.00,
+      "followUpBudgetUsd": 1.00,
+      "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid.",
+      "followUp": "A second refund on an invoice that is already refunded is a 409 too. Paid stays true; Refunded is an extra flag on top. This only marks the invoice: no event, no payment-provider call, no money moves. I apply the new Refunded column to the database myself, so no script is needed. Two simultaneous refunds are out of scope for now.",
+      "assertion": "riskDesign"
+    },
+    {
+      "id": "risk-design-d",
+      "measures": "B-410 decoy: an ordinary mechanical rename (three files, no hazard row, money, data shape or consumed contract, one approach), one invocation. Gates the other way round from risk-design-k: PASS when no FULL design is posted, FAIL when one is. Informative only if the plan gate posted a plan (t1plan=True).",
+      "fixture": "b409-orders-ci",
+      "stack": "dotnet",
+      "budgetUsd": 1.00,
+      "prompt": "Rename ReportCatalog.Visible to ReportCatalog.Enabled and update its callers and tests.",
+      "assertion": "riskDesignDecoy"
+    },
+    {
       "id": "docs-tier-ondemand",
       "budgetUsd": 0.75,
       "prompt": "Add a class under `src/` that orchestrates validating an order and then reserving stock. Follow this repository's conventions. Do not add tests or a project reference; one source file is enough.",
