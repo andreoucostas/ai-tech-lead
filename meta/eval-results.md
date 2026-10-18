@@ -4783,3 +4783,35 @@ this path with the block spread over the carrier bullet and the Feature rail (S2
   1.00 USD would pass 10 USD; a cell the stop leaves short is "not settled", never read as R1 or R2. Claude Code only; no premium requests.
 - Not shown: whether the block's content is true (a literal template can yield a boilerplate `none`); the fix path; a real second turn; Copilot CLI (B-399); VS Code; Angular and
   monorepo; other fixtures and models; whether a reviewer uses the block.
+
+## B-407 results — 2026-10-18 (pre-registered at c7423592)
+
+Claude Code 2.1.300, model sonnet (`claude-sonnet-5-5` in every `system/init`); fixture `b406-orders` (overlay sha256 `14dbf2aec55e…`); scenario `contract-trace` at 1.00 USD a run; T patch
+`meta/eval-fixtures/target-patches/b407-block.patch` (sha256 prefix `1072c9df7a21`, the `patch=` tag on every T row and on no C row); one run per invocation, alternating T and C, driven by
+a script that checked the stop before each run. Probes (before any run): T quoted the new bullet and C the old one, 0.11 USD. Every row had a succeeded SessionStart and UserPromptSubmit
+hook, `rails=plan-gate`, and passed first time: no CANNOT-EXAMINE, no repeat. Evidence (`ledger.tsv`, `probes.tsv`, one output file per run, `runner-rows.md`) in `%TEMP%\b407-phase1\`
+at writing, not in the repository.
+
+| cell | valid runs | TRACE-ANY | LABELS (beyond, blast, depth) | TRACE-LAST | SIDE CHECK | tests | median cost USD | median wall s | median output tokens |
+|---|---|---|---|---|---|---|---|---|---|
+| S2-T | 6 | FULL 1/6; PARTIAL 5, each `missing=pair` | all three in 6/6 | FULL 0, PARTIAL 4, NONE 2 | PROJECT 6/6 | n/a 6 | 0.337 | 69.5 | 6,522 |
+| S2-C | 6 | FULL 0/6; NONE 6 | none in 6/6 | NONE 6 | PROJECT 5/6 | n/a 6 | 0.390 | 91.5 | 7,689 |
+
+- Fisher exact, two-sided, reported (counts decide): TRACE-ANY FULL 1/6 against 0/6 p = 1.0; LABELS 6/6 against 0/6 p = 0.0022.
+- Reading, applied as registered: S2-T TRACE-ANY FULL 1 of 6 is 3 or fewer, so **R2 DOES NOT LAND**: part C is closed, nothing ships, no further wording is tried. The 4-of-6 extension
+  did not apply, and C's 0 of 6 is below the 2-of-6 that would have made the grader non-discriminating. A later attempt must be its own pre-registration (position, or a Stop-hook delivery).
+- Cost, T minus C by medians: -0.053 USD (-14%), -1,167 output tokens, -22 s wall (the driver's per-run clock); the registered threshold (1.5× C output tokens or 8 minutes added) is not reached.
+  Spend 4.53 USD of the 10 USD stop (probes 0.11, twelve runs 4.42). `tokensIn` is the last turn's only, as in B-406, and is not reported.
+- Observed, and not covered by the reading (the maintainer decides what it means): the four labels were written in every T run and in no C run. In T the lines `Verified:`, `Beyond the request:`,
+  `Blast radius:` and `Review depth:` appear as the carrier asked, in the turn-1 report in slots 1-4 and 6 and in the report after the security result came back in slots 1, 3, 5 and 6
+  (slot 5's only copy).
+  The five TRACE misses are all `missing=pair`: the fixture has no build or test command and no test harness (no run changed a test file), so `Verified:` says nothing was run. T5's line contains
+  "asserted, not run" but no arrow or bar, T2's reads "asserted but unproven", T1, T4 and T6 say nothing was run; only T3, whose `dotnet build` ran, wrote an arrow line ("build → passed but
+  unreliable …; endpoint behaviour → asserted, not run"). The registered pair definition (an arrow or bar, then passed, failed, asserted, not run or not run) is why they score PARTIAL.
+- TRACE-LAST: the block is in the last result in 4 of 6 T runs; in T2 the last result is the security report and in T4 the Boy Scout reply, the block sitting in the turn-1 report. So
+  displacement cost the block its last place in 2 of 6 runs, not its presence.
+- Hand-read, not scored: every T `Blast radius:` line names a consumer the fixture documents (`InvoicesController` or `rpt.vwOverdueInvoices`); T2 says "Nothing there reads the new field", which
+  its own over-posting bullet contradicts, and T1's and T3's last copies say "unchanged from my earlier report". `Beyond the request:` names the 409 on an already-refunded invoice in 6/6.
+  A label being present is not the line being true.
+- Not shown: as registered, and in particular whether the block lands where tests run (this fixture has no harness), whether its content is true, and whether the 6/6 label result
+  holds on another fixture or model.

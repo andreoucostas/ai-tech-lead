@@ -173,18 +173,11 @@ Needs a grader scoring the first assistant message on an underspecified feature 
 commit-only-when-asked rule, and pushing wording read as injection. The README now suggests a prompt that asks for the commit; measure that prompt (a
 scenario variant), and decide whether the gate should count "asked before committing" as a pass.
 
-### B-407 · The contract patch's closing block does not reach the report on the pre-approved path (B-406 R2)
-**Filed against:** v0.97.2 (2026-10-18)
-**Priority:** P2 · **Effort:** M · **Invariants:** none
-**Status:** Open; B-406 read R2 (S2-T TRACE FULL 0/6, `meta/eval-results.md`) and nothing from plan v2 §3.1-3.7 ships. The twelve S2 transcripts show the labels were never written (the agent closes with its
-own template; the one literal "End with `Affected artifacts:`" line landed 12/12), so displacement is secondary. Pre-registered in `meta/eval-results.md` (carrier-only literal four-line block, S2, 6 against 6, 10 USD cap); runs pending.
-
 ### B-408 · The security-pass check counts a `security-auditor` call that examined nothing, and the rail sends the agent to such a call
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P2 · **Effort:** S · **Invariants:** none
-**Status:** Open; B-406's 12 S2 runs: the first `security-auditor` call (a raw `git diff` request, which the security rail's "or its security-auditor agent" invites) returned CANNOT EXAMINE in 10 of 10, 9 re-ran it on a
-captured bundle and T3 never did, yet SIDE CHECK scored it PROJECT. Fix candidates: name the skill (which captures the scope) in the rail, and have the check count only a pass that examined; measure on Claude Code first.
-
+**Status:** Open; the rail's "or its security-auditor agent" invites a raw `git diff` request. Its first call returned CANNOT EXAMINE (no scope bundle) in 10 of 10 B-406 S2 runs and 3 of 10 B-407 runs (6 examined "without a
+`-ScopePath` bundle", 2 not read); T3 of B-406 never re-ran it and still scored PROJECT on SIDE CHECK. Fix candidates: name the skill (it captures the scope) in the rail, and count only a pass that examined; measure first.
 
 
 
