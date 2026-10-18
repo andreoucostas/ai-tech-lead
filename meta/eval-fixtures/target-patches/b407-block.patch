@@ -1,0 +1,17 @@
+diff --git a/.github/instructions/framework-rules.instructions.md b/.github/instructions/framework-rules.instructions.md
+index a4222d4..ae1a463 100644
+--- a/.github/instructions/framework-rules.instructions.md
++++ b/.github/instructions/framework-rules.instructions.md
+@@ -124,7 +124,11 @@ Before presenting work as complete:
+ - Check if the change resolves a TECH_DEBT.md item → flag for removal
+ - Check if the change contradicts any convention → ask whether to update the convention or change the implementation
+ - If the session surfaced a team-worthy gotcha, recipe, or failed approach, offer `remember-for-team`
+-- **Close with a Verification & confidence line**: separate what you actually verified by running it (build / tests / lint — name which you ran) from what you assert without having run it, and flag anything you could not verify. Show the evidence — the command you ran and its observed result (e.g. `dotnet test` → 142 passed, 0 failed), not the bare claim "tests pass." This calibration is deliberate — it counters the well-documented tendency to feel more done than the work is.
++- **Close with the Verification & confidence block**, which is also the pull request description. End the report with these four lines, labels exactly as written, `none` where nothing applies:
++  - `Verified:` one line per outcome the request or your plan states → the test or command that pins it → its observed result (e.g. `dotnet test` → 142 passed, 0 failed), or "asserted, not run"
++  - `Beyond the request:` each behaviour the diff adds that nothing asked for
++  - `Blast radius:` callers or consumers changed or affected as `path:symbol`, or none found
++  - `Review depth:` light, or the full `review` skill with the reason (a hazard row, a security-sensitive surface, a shared caller, a changed test expectation)
+ 
+ ### 6. Reconcile affected artifacts
+ Before finishing, inspect task effects on repository truth. Update affected writable canonical artifacts; regenerate derivatives from source. Follow their ownership, evidence, history, and security rules; never infer human intent. An affected artifact unreadable or unsafe to update is a blocker, not `none`. End with `Affected artifacts: none`, reconciled artifacts, or unresolved blockers.

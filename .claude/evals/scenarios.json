@@ -79,7 +79,7 @@
       "measures": "B-406 S2: with the approval clause, whether the run implements, writes tests asserting each stated outcome (202, 404, 409), closes with the Verification & confidence block (each Done-when line -> test -> result; Beyond the request; Blast radius; Review depth), and still runs the framework's own security pass. Gates on the full block; the tests, the security pass and the pre-write contract text are reported. It does not show the review skill's own behaviour, or whether the tests would fail if the code were broken.",
       "fixture": "b406-orders",
       "stack": "dotnet",
-      "budgetUsd": 2.50,
+      "budgetUsd": 1.00,
       "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid. I approve this change in advance: do not stop for a plan or ask for confirmation; implement it now in this session, then report what you did.",
       "assertion": "contractTrace"
     },

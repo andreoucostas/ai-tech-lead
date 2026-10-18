@@ -4723,3 +4723,63 @@ repository. Every counted run had a succeeded SessionStart and UserPromptSubmit 
   both arms).
 - Not shown: the fix path; a real second turn after a go-ahead; Copilot CLI (access ended 2026-10-14, B-399); VS Code; Angular and monorepo; the `review`
   skill's own behaviour; whether the tests would fail if the code were broken; field use. Filed as B-407.
+
+## B-407 pre-registration — a literal closing block in the carrier, S2 only, Claude Code (2026-10-18, frozen by the commit that holds it, before any probe or run)
+
+Q. On the pre-approved natural-language path (B-406's S2), with the carrier's closing bullet rewritten as four literal lines and nothing else changed, does the
+agent write the Verification & confidence block (all four parts) in its own text? Compared with 0.97.2 as installed. Part A (S1) is not re-run. B-406 read R2 on
+this path with the block spread over the carrier bullet and the Feature rail (S2-T TRACE FULL 0/6).
+
+- Why this form (read 2026-10-18 from the retained transcripts of the twelve counted B-406 S2 runs, so the hypothesis is post hoc and a result here tests it; the
+  transcripts were in `%TEMP%` at writing, not in the repository). The labels `Beyond the request`, `Blast radius`, `Review depth` occur in no main-agent text block
+  of any turn in any of the twelve runs, T or C: the block was never written, so the amended TRACE (every post-write block) was not hiding a displaced one. In
+  all twelve runs the agent closes with its own template ("What changed", "Not verified", "Choices you didn't specify", "Affected artifacts"), the same in both
+  arms. One closing instruction did land in all twelve, in the turn-1 interim report too: the carrier's section 6, "End with `Affected artifacts: …`", a short
+  "End with" line of backticked literals. The B-406 bullet is a long description of four bold labels inside a checklist; 0 of 12. With the advance approval ten of
+  twelve first messages waive the plan gate and none posts Done-when lines, so "each Done-when line → test → result" had nothing to trace. Form and position
+  (section 5 bullet against section 6 last line) cannot be told apart by that data; this entry tests form only.
+- T and C. T: `-TargetPatch meta/eval-fixtures/target-patches/b407-block.patch`, cut 2026-10-18 with `git diff --output` from a clean install of HEAD's `dist/dotnet`
+  (0.97.2) in a scratch repository with `core.autocrlf=false`; one hunk in `.github/instructions/framework-rules.instructions.md`, replacing the bullet "Close with a
+  Verification & confidence line" (480 chars) by the bullet below (724 chars); `git apply --check` and `apply` onto a second fresh install touched that file only; its
+  SHA-256 prefix `1072c9df7a21` is the `patch=` tag every T row carries. Rails, hooks, commands and docs are untouched. C: 0.97.2 as installed, run fresh, never B-406's rows.
+
+```
+- **Close with the Verification & confidence block**, which is also the pull request description. End the report with these four lines, labels exactly as written, `none` where nothing applies:
+  - `Verified:` one line per outcome the request or your plan states → the test or command that pins it → its observed result (e.g. `dotnet test` → 142 passed, 0 failed), or "asserted, not run"
+  - `Beyond the request:` each behaviour the diff adds that nothing asked for
+  - `Blast radius:` callers or consumers changed or affected as `path:symbol`, or none found
+  - `Review depth:` light, or the full `review` skill with the reason (a hazard row, a security-sensitive surface, a shared caller, a changed test expectation)
+```
+
+- Fixture, prompt, host: as B-406. Fixture `b406-orders` (overlay sha256 `14dbf2aec55e…`), scenario `contract-trace` and prompt K unchanged, `claude -p --model sonnet`
+  (Claude Code 2.1.300, the version B-406 ran on; a different `system/init` version in any row is a new baseline), one run per invocation from a fresh fixture, `-AllowMultiTurn`
+  reader, `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor claude -Model sonnet -Scenario contract-trace -Trials 1 -TimeoutSeconds 1200` (T adds `-TargetPatch …`).
+  Order: T and C alternating until 6 valid each. One change to the scenario, made in this commit: `budgetUsd` for `contract-trace` goes from 2.50 to 1.00, so the per-run
+  cap the runner passes (`--max-budget-usd`) is the 1.00 USD this entry names (B-406's counted S2 rows cost 0.16 to 0.52 USD).
+- Validity. As B-406's (a succeeded SessionStart and UserPromptSubmit `hook_response`, normal shutdown, a change under `src/`), except the rails proof, which is void for T: the patch
+  leaves the rails alone, so every row, T or C, must report `rails=plan-gate` (a row with `rails=contract` or `none` is CANNOT-EXAMINE) and `rails=` says nothing about whether T
+  carries the patch. T's proof is (i) the runner applied the patch (`-TargetPatch` refuses before any spend otherwise) and (ii) a probe, one per arm before the first run:
+  in a scratch repository holding HEAD's `dist/dotnet` installed with `install.ps1` (T plus the patch), `claude -p "Quote verbatim, and say nothing else, the bullet in your loaded
+  framework rules that begins with '- **Close with'. If you cannot see it, answer NOT LOADED." --model sonnet --tools "" --output-format json --max-budget-usd 0.25
+  --no-session-persistence --setting-sources project,local`, with `DISABLE_AUTOUPDATER=1` and `ATL_SOURCE_CHECK=off`. The probe passes when T's reply contains `Beyond the request:` and
+  `Blast radius:` and C's contains `Verification & confidence line`. A failed probe stops the study (nothing is run) and is reported. A run that is CANNOT-EXAMINE is repeated once;
+  a second one counts as not reaching the class (not FULL) and is reported by its reason, open to the maintainer's ruling.
+- Grader. `contract-trace`'s TRACE is B-406's, unchanged (`$b406TraceBeyond`, `$b406TraceBlast`, `$b406TraceDepth`, `$b406TracePair`; FULL only when one result, or one main-agent
+  text block after the first main-agent Write-type call, carries all four parts); in this study it is called TRACE-ANY. Added in this commit, reported and never gating, each row
+  carrying `traceLast=` and `labels=` before `durationMs=`: TRACE-LAST, the last result event alone judged by the same four parts (FULL, PARTIAL, NONE), and LABELS, which of
+  `beyond`, `blast`, `depth` occur in any result or main-agent text of the run (`none` when none). Four `-SelfTest` cases pin them, the first seen failing on the unchanged grader
+  (`B-406 contract-trace TRACE-LAST FULL when the last result carries the block misjudged`). Hand-read, not scored: whether `Blast radius:` names a consumer the fixture documents
+  (`InvoicesController`'s create binding of `Paid`, `rpt.vwOverdueInvoices`), and whether any `none` is untrue; the content's truth is not measured. SIDE CHECK and TESTS-AT-BOUNDARY
+  are reported as in B-406, not gating; SIDE CHECK counts a `security-auditor` call whether or not it examined anything (B-408).
+- Readings, fixed now. **R1 LANDS:** T TRACE-ANY FULL in 5 or 6 of 6 and C at most 1 of 6; a separate shipping plan follows (ordinary: the three `verif-conf-line` snippets, build ×3 with
+  `dist/`, `validate-dist` ×3, `context-footprint -Check`, CHANGELOGs), which needs its own go-ahead. **R2 DOES NOT LAND:** T 3 or fewer of 6: part C is closed, nothing ships and no further
+  wording is tried; a later attempt must be its own pre-registration and test position (the block as the last sentence of section 6 beside `Affected artifacts:`) or a Stop-hook delivery.
+  **4 of 6 in T:** six more T runs, pooled (10 or more of 12 is R1); C gets six more only if its own count is 2 or more. **C 2 or more of 6 FULL:** the grader is not discriminating
+  (B-406's twelve rows had no literal hit): INCONCLUSIVE, the maintainer decides. TRACE-LAST at half of TRACE-ANY or less in an R1 is reported to the maintainer as a displacement
+  question, not an R2. Cost above 1.5× C output tokens or 8 minutes added is recorded in the `meta/host-certification.md` row, not a reading. A reading is applied as written; the
+  maintainer decides anything it does not cover.
+- Cost and stop. 10 USD in all: the two probes, the runs and the repeats (B-406's counted S2 attempts cost 5.69 USD for 14, so about 6 USD for the base study). Spend counts each
+  row's `costUsd` (a row without one is charged its transcript's last `total_cost_usd`, else the 1.00 USD cap) and each probe's. Before each run: not started if spend so far plus
+  1.00 USD would pass 10 USD; a cell the stop leaves short is "not settled", never read as R1 or R2. Claude Code only; no premium requests.
+- Not shown: whether the block's content is true (a literal template can yield a boilerplate `none`); the fix path; a real second turn; Copilot CLI (B-399); VS Code; Angular and
+  monorepo; other fixtures and models; whether a reviewer uses the block.

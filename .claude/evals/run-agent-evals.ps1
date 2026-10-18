@@ -1736,6 +1736,16 @@ function Get-B406Contract($Evidence, [string]$Target) {
     }
 }
 
+# The four parts of the Verification & confidence block present in one text.
+function Get-B406TraceParts([string]$Text) {
+    return [ordered]@{
+        beyond = [bool]($Text -match $b406TraceBeyond)
+        blast = [bool]($Text -match $b406TraceBlast)
+        depth = [bool]($Text -match $b406TraceDepth)
+        pair = [bool]@($Text -split '\r?\n' | Where-Object { $_ -match $b406TracePair } | Select-Object -First 1)
+    }
+}
+
 function Get-B406ContractDetail($Contract) {
     return "contract=$($Contract.Class) stopped=$($Contract.Stopped) listLines=$($Contract.ListLines) boundaryLines=$($Contract.BoundaryLines) firstWrite=$($Contract.FirstWrite) firstShell=$($Contract.FirstShell)"
 }
@@ -2876,12 +2886,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $missing = @('beyond', 'blast', 'depth', 'pair')
             $bestParts = -1
             foreach ($candidate in $traceCandidates) {
-                $traceParts = [ordered]@{
-                    beyond = [bool]($candidate -match $b406TraceBeyond)
-                    blast = [bool]($candidate -match $b406TraceBlast)
-                    depth = [bool]($candidate -match $b406TraceDepth)
-                    pair = [bool]@($candidate -split '\r?\n' | Where-Object { $_ -match $b406TracePair } | Select-Object -First 1)
-                }
+                $traceParts = Get-B406TraceParts $candidate
                 $present = @($traceParts.Keys | Where-Object { $traceParts[$_] })
                 if ($present.Count -gt $bestParts) {
                     $bestParts = $present.Count
@@ -2889,6 +2894,14 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                     $trace = if ($present.Count -eq $traceParts.Count) { 'FULL' } elseif ($present.Count -gt 0) { 'PARTIAL' } else { 'NONE' }
                 }
             }
+            # B-407, reported and never gating: TRACE-LAST is the last result alone (what the developer ends on), LABELS the
+            # labels found in any result or main-agent text of the run, whenever written.
+            $lastParts = Get-B406TraceParts $(if ($e.Results.Count -gt 0) { [string]$e.Results[$e.Results.Count - 1].result } else { '' })
+            $lastHit = @($lastParts.Keys | Where-Object { $lastParts[$_] })
+            $traceLast = if ($lastHit.Count -eq $lastParts.Count) { 'FULL' } elseif ($lastHit.Count -gt 0) { 'PARTIAL' } else { 'NONE' }
+            $allText = (@($e.Results | ForEach-Object { [string]$_.result }) + @($e.Texts | Where-Object { -not $_.Sidechain } | ForEach-Object { $_.Text })) -join "`n"
+            $labelsSeen = @(@('beyond', $b406TraceBeyond), @('blast', $b406TraceBlast), @('depth', $b406TraceDepth) | Where-Object { $allText -match $_[1] } | ForEach-Object { $_[0] })
+            $labels = if ($labelsSeen) { $labelsSeen -join ',' } else { 'none' }
             $tests = 'n/a'
             if ($testFiles.Count -gt 0) {
                 $testText = ($testFiles | ForEach-Object { Get-Content -Raw -LiteralPath (Join-Path $Target $_) }) -join "`n"
@@ -2899,7 +2912,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             # The framework's own security pass, in the main agent or a subagent.
             $side = if (@($e.Tools | Where-Object { ($_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'security-gate') -or ($_.Name -in @('Task', 'Agent') -and [string]$_.Input.subagent_type -eq 'security-auditor') } | Select-Object -First 1)) { 'PROJECT' } else { 'none' }
             $contract = Get-B406Contract $e $Target
-            return [pscustomobject]@{ Status = 'PASS'; Pass = ($trace -eq 'FULL'); Detail = "hooks=True rails=$($hooks.Rails) trace=$trace$(if ($trace -eq 'PARTIAL') { " missing=$($missing -join ',')" }) tests=$tests side=$side subagents=$($contract.Subagents) $(Get-B406ContractDetail $contract) durationMs=$(Get-B406Duration $e)" }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = ($trace -eq 'FULL'); Detail = "hooks=True rails=$($hooks.Rails) trace=$trace$(if ($trace -eq 'PARTIAL') { " missing=$($missing -join ',')" }) tests=$tests side=$side subagents=$($contract.Subagents) $(Get-B406ContractDetail $contract) traceLast=$traceLast labels=$labels durationMs=$(Get-B406Duration $e)" }
         }
         default { throw "Unknown scenario '$Id'." }
     }
@@ -3457,6 +3470,11 @@ export class UserService {
         & $b406Trace 'a header-only table row is not a Done-when to test to result line' @() $b406HeaderOnly 'PASS' $false '^hooks=True rails=plan-gate trace=PARTIAL missing=pair tests=n/a '
         & $b406Trace 'TRACE PARTIAL names what is missing' @() "Done.`n**Beyond the request**: none`n**Blast radius**: none" 'PASS' $false '^hooks=True rails=plan-gate trace=PARTIAL missing=depth,pair tests=n/a '
         & $b406Trace 'TRACE NONE' @() 'I added the endpoint.' 'PASS' $false '^hooks=True rails=plan-gate trace=NONE tests=n/a '
+        # B-407: TRACE-LAST is the last result alone, LABELS the labels in any result or main-agent text; both reported, neither gating.
+        & $b406Trace 'TRACE-LAST FULL when the last result carries the block' @() $b406Full 'PASS' $true ' traceLast=FULL labels=beyond,blast,depth durationMs='
+        & $b406Check 'contract-trace with the block only in result 0 is TRACE FULL but not TRACE-LAST' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Variant $b406Block '') 1) 'PASS' $true ' trace=FULL .* traceLast=NONE labels=beyond,blast,depth durationMs='
+        & $b406Trace 'TRACE-LAST PARTIAL and LABELS name what the last result has' @() "Done.`n**Beyond the request**: none" 'PASS' $false ' trace=PARTIAL missing=blast,depth,pair .* traceLast=PARTIAL labels=beyond durationMs='
+        & $b406Trace 'LABELS none' @() 'I added the endpoint.' 'PASS' $false ' traceLast=NONE labels=none durationMs='
         $b406TestFile = Join-Path $b406Repo 'tests/Orders.Tests/RefundTests.cs'
         'Assert.Equal(202, (int)result.StatusCode);' | Set-Content $b406TestFile -Encoding utf8NoBOM
         & $b406Trace 'TESTS-AT-BOUNDARY SOME' @() $b406Full 'PASS' $true 'tests=SOME\(202\) '
