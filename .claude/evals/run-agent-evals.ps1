@@ -868,6 +868,32 @@ function Get-GeneratedFixtureRefusal([string]$ProvenancePath, [string]$DistVersi
     return $null
 }
 
+# The live-eval version guard. The dist version must match the root CHANGELOG's head. When that head is
+# `## X.Y.Z -- Unreleased` (the shape release.ps1's Get-ReleaseChangelogHead accepts) with X.Y.Z strictly above the dist
+# version, the dist version is compared with the first RELEASED head below it instead, so a fix can be measured before
+# release. Refused if that released head differs, if the Unreleased version is not above the dist version, or if there is
+# no released head. RootHead names the Unreleased head so the results header can say rows are not a release's.
+function Get-ChangelogGuardDecision([string]$ChangelogText, [string]$DistVersion) {
+    $dash = [string][char]0x2014
+    $heads = @($ChangelogText -split '\r?\n' | Where-Object { $_ -match '^## (\d+\.\d+\.\d+)' })
+    $first = if ($heads) { [string]$heads[0] } else { '' }
+    $firstVersion = ($first -replace '^## (\d+\.\d+\.\d+).*', '$1')
+    $unreleased = [regex]::Match($first, "^## (\d+\.\d+\.\d+) $dash Unreleased$")
+    if (-not $unreleased.Success) {
+        if ($DistVersion -ne $firstVersion) { return [pscustomobject]@{ Allowed = $false; Message = "dist version $DistVersion does not match root CHANGELOG head ${firstVersion}."; RootHead = '' } }
+        return [pscustomobject]@{ Allowed = $true; Message = $null; RootHead = '' }
+    }
+    $rootHead = "$($unreleased.Groups[1].Value) $dash Unreleased"
+    if ([version]$unreleased.Groups[1].Value -le [version]$DistVersion) {
+        return [pscustomobject]@{ Allowed = $false; Message = "root CHANGELOG head $rootHead is not above the dist version $DistVersion."; RootHead = $rootHead }
+    }
+    $released = @($heads | Select-Object -Skip 1 | Where-Object { $_ -match "^## (\d+\.\d+\.\d+) $dash \d{4}-\d{2}-\d{2}$" } | Select-Object -First 1)
+    if (-not $released) { return [pscustomobject]@{ Allowed = $false; Message = "root CHANGELOG head $rootHead has no released head below it to compare with dist version $DistVersion."; RootHead = $rootHead } }
+    $releasedVersion = ([string]$released[0] -replace '^## (\d+\.\d+\.\d+).*', '$1')
+    if ($releasedVersion -ne $DistVersion) { return [pscustomobject]@{ Allowed = $false; Message = "dist version $DistVersion does not match the released head $releasedVersion under root CHANGELOG head $rootHead."; RootHead = $rootHead } }
+    return [pscustomobject]@{ Allowed = $true; Message = $null; RootHead = $rootHead }
+}
+
 # B-406: the fixture v2 generator is the B-345 one, frozen. The overlay and every b406 result are bound to
 # its bytes, so a changed generator is refused rather than silently measured as a new fixture.
 function Get-B406GeneratorRefusal([string]$GeneratorPath) {
@@ -1145,7 +1171,9 @@ function Read-Transcript([string]$Path, [switch]$AllowMultiTurn) {
     # Claude Code 2.1.x appends system bookkeeping (post_turn_summary, task_summary) after the
     # result. Agent activity after the last result is still a malformed stream.
     $afterResult = @(if ($terminal.Count -eq $inits.Count -and $terminal.Count -gt 0) { $events | Select-Object -Skip ($events.LastIndexOf($terminal[-1]) + 1) })
-    if ($terminal.Count -ne $inits.Count -or $terminal.Count -eq 0 -or @($afterResult | Where-Object { $_.type -ne 'system' }).Count) { throw 'Stream JSON must end with exactly one terminal result event.' }
+    # B-406 (-AllowMultiTurn): Claude Code 2.1.300 also closes a multi-turn stream with command_lifecycle events (state
+    # started / completed, no agent content); those may follow the last result, nothing else may.
+    if ($terminal.Count -ne $inits.Count -or $terminal.Count -eq 0 -or @($afterResult | Where-Object { $_.type -ne 'system' -and -not ($AllowMultiTurn -and $_.type -eq 'command_lifecycle') }).Count) { throw 'Stream JSON must end with exactly one terminal result event.' }
     $toolIds = @{}
     $resultIds = @{}
     foreach ($event in $events) {
@@ -1181,6 +1209,8 @@ function Get-TranscriptEvidence($Transcript) {
     # B-406: every result event in order, one per turn. Final stays the last; its total_cost_usd is cumulative.
     $allResults = [Collections.Generic.List[object]]::new()
     $resultOrdinals = [Collections.Generic.List[int]]::new()
+    # B-406: a background Agent call delivers its report as a system/task_notification matched by tool_use_id.
+    $notifications = [Collections.Generic.List[object]]::new()
     $final = $null
     $ordinal = 0
     foreach ($event in $Transcript.Events) {
@@ -1197,11 +1227,12 @@ function Get-TranscriptEvidence($Transcript) {
             foreach ($content in @($event.message.content)) {
                 if ($content.type -eq 'tool_result') { $results[[string]$content.tool_use_id] = $content }
             }
-        } elseif ($event.type -eq 'result') { $final = $event; $allResults.Add($event); $resultOrdinals.Add($ordinal) }
+        } elseif ($event.type -eq 'result') { $final = $event; $allResults.Add($event); $resultOrdinals.Add($ordinal)
+        } elseif ($event.type -eq 'system' -and $event.subtype -eq 'task_notification') { $notifications.Add($event) }
     }
     if (-not $final) { throw 'Stream JSON has no terminal result event.' }
     # ResultOrdinals[i] is Results[i]'s event ordinal, the same counter Tools[].Index and Texts[].Index use.
-    [pscustomobject]@{ Tools = $tools; Texts = $texts; ToolResults = $results; Results = $allResults; ResultOrdinals = $resultOrdinals; Final = $final }
+    [pscustomobject]@{ Tools = $tools; Texts = $texts; ToolResults = $results; Results = $allResults; ResultOrdinals = $resultOrdinals; Notifications = $notifications; Final = $final }
 }
 
 # B-283: a host that failed before the agent took a single action (an expired login, say) is an
@@ -1648,6 +1679,9 @@ $b406TracePair = '(?i)(→|->|=>|\|).*\b(passed|failed|asserted, not run|not run
 $b406Status202 = '\b202\b|Status202Accepted|HttpStatusCode\.Accepted\b|\bAccepted\w*Result\b'
 $b406Status404 = '\b404\b|Status404NotFound|HttpStatusCode\.NotFound\b|\bNotFound\w*Result\b'
 $b406Status409 = '\b409\b|Status409Conflict|HttpStatusCode\.Conflict\b|\bConflict\w*Result\b'
+# A security-auditor report that is a refusal: it BEGINS with this, once a leading [Subagent hand-back] wrapper line,
+# whitespace and markdown heading markers are stripped (Get-B406Refusal). The phrase elsewhere in a report is not one.
+$b406SideRefused = '(?i)^(?:Security audit:\s*)?CANNOT EXAMINE'
 # Which rails the UserPromptSubmit hook put in the prompt, read from that hook_response's stdout (case-sensitive).
 $b406RailsContract = 'DONE WHEN'
 $b406RailsPlanGate = 'Plan gate'
@@ -1762,6 +1796,49 @@ function Get-B406Hooks($Transcript) {
     $stdout = if ($prompt) { [string]$prompt[0].stdout } else { '' }
     $rails = if ($stdout -cmatch $b406RailsContract) { 'contract' } elseif ($stdout -cmatch $b406RailsPlanGate) { 'plan-gate' } else { 'none' }
     [pscustomobject]@{ Loaded = [bool]($start -and $prompt -and (& $succeeded $start[0]) -and (& $succeeded $prompt[0])); Rails = $rails }
+}
+
+function Get-B406ContentText($Content) {
+    if ($Content -is [string]) { return $Content }
+    return (@($Content | ForEach-Object { if ($_ -is [string]) { $_ } elseif ($null -ne $_.text) { [string]$_.text } }) -join "`n")
+}
+
+function Test-B406Refusal([string]$Report) {
+    $text = $Report
+    if ($text -match '^\s*\[Subagent hand-back\]') { $text = $text -replace '^[^\r\n]*(\r?\n|$)', '' }
+    return (($text -replace '^[\s#]+', '') -match $b406SideRefused)
+}
+
+# SIDE CHECK. The framework's security pass counts only if it examined the change: a security-auditor Agent/Task call
+# (main agent or subagent, which includes those the security-gate skill's flow makes) whose returned report is not a
+# refusal. A report is the call's tool_result (unless it is the stub a background call returns at once, or errored)
+# or a completed system/task_notification carrying its tool_use_id (the summary is the report). EXAMINED means "a report
+# that is not a refusal", never proof of a thorough audit.
+#   EXAMINED  at least one call has a report that is not a refusal
+#   UNREAD    no call examined, and at least one has no report
+#   REFUSED   no call examined, every call has a report and each one is a refusal (begins CANNOT EXAMINE)
+#   none      no security-auditor call
+# Called: the older count, a security-gate Skill or a security-auditor call at all (PROJECT / none).
+function Get-B406Side($Evidence) {
+    $audits = @($Evidence.Tools | Where-Object { $_.Name -in @('Task', 'Agent') -and [string]$_.Input.subagent_type -eq 'security-auditor' })
+    $skill = @($Evidence.Tools | Where-Object { $_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'security-gate' })
+    $examined = 0; $refused = 0; $unread = 0
+    foreach ($audit in $audits) {
+        $reports = [Collections.Generic.List[string]]::new()
+        if ($Evidence.ToolResults.ContainsKey($audit.Id)) {
+            $result = $Evidence.ToolResults[$audit.Id]
+            $text = Get-B406ContentText $result.content
+            if (-not $result.is_error -and $text.Trim() -and $text -notmatch '^\s*Async agent launched successfully') { $reports.Add($text) }
+        }
+        foreach ($note in @($Evidence.Notifications | Where-Object { [string]$_.tool_use_id -eq $audit.Id -and ($null -eq $_.status -or $_.status -eq 'completed') })) {
+            if (([string]$note.summary).Trim()) { $reports.Add([string]$note.summary) }
+        }
+        if ($reports.Count -eq 0) { $unread++ }
+        elseif (@($reports | Where-Object { Test-B406Refusal $_ }).Count) { $refused++ }
+        else { $examined++ }
+    }
+    $class = if ($examined) { 'EXAMINED' } elseif ($unread) { 'UNREAD' } elseif ($refused) { 'REFUSED' } else { 'none' }
+    [pscustomobject]@{ Class = $class; Called = $(if ($audits.Count -or $skill.Count) { 'PROJECT' } else { 'none' }) }
 }
 
 function Get-B406Duration($Evidence) {
@@ -2909,10 +2986,12 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 $hit = @($named.Keys | Where-Object { $named[$_] })
                 $tests = if ($hit.Count -eq $named.Count) { 'ALL' } elseif ($hit.Count -gt 0) { "SOME($($hit -join ','))" } else { 'NONE' }
             }
-            # The framework's own security pass, in the main agent or a subagent.
-            $side = if (@($e.Tools | Where-Object { ($_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'security-gate') -or ($_.Name -in @('Task', 'Agent') -and [string]$_.Input.subagent_type -eq 'security-auditor') } | Select-Object -First 1)) { 'PROJECT' } else { 'none' }
+            # The framework's own security pass, in the main agent or a subagent: side= is whether it examined the change,
+            # sideCalled= the older was-it-called count.
+            $sideCheck = Get-B406Side $e
+            $side = $sideCheck.Class
             $contract = Get-B406Contract $e $Target
-            return [pscustomobject]@{ Status = 'PASS'; Pass = ($trace -eq 'FULL'); Detail = "hooks=True rails=$($hooks.Rails) trace=$trace$(if ($trace -eq 'PARTIAL') { " missing=$($missing -join ',')" }) tests=$tests side=$side subagents=$($contract.Subagents) $(Get-B406ContractDetail $contract) traceLast=$traceLast labels=$labels durationMs=$(Get-B406Duration $e)" }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = ($trace -eq 'FULL'); Detail = "hooks=True rails=$($hooks.Rails) trace=$trace$(if ($trace -eq 'PARTIAL') { " missing=$($missing -join ',')" }) tests=$tests side=$side sideCalled=$($sideCheck.Called) subagents=$($contract.Subagents) $(Get-B406ContractDetail $contract) traceLast=$traceLast labels=$labels durationMs=$(Get-B406Duration $e)" }
         }
         default { throw "Unknown scenario '$Id'." }
     }
@@ -3350,7 +3429,18 @@ export class UserService {
         try { & $b406ReadLines @($b406T3[6]) -Plain | Out-Null } catch { $b406NoInitMessage = $_.Exception.Message }
         if ($b406NoInitMessage -cne 'Stream JSON has no system/init event.') { throw "B-406 a stream with no system/init was rejected with '$b406NoInitMessage'" }
         & $b406Rejects 'an init after the last result' (@($b406T3[0..6]) + @($b406T3[15], $b406T3[9]))
-        & $b406Rejects 'a result_index that is missing' (@($b406T3[0..10]) + @($b406T3[15].Replace(',"result_index":1', '')))
+        # The host brackets a turn with command_lifecycle events (state started / completed), one of which can follow the last result:
+        # host bookkeeping, not agent activity. Narrowest rule: tolerated after the last result under -AllowMultiTurn only.
+        $b406Life = { param([string]$State) '{"type":"command_lifecycle","command_uuid":"00000000-0000-4000-8000-0000000c0001","state":"' + $State + '","session_id":"00000000-0000-4000-8000-0000000b406a"}' }
+        $b406LifeThree = @($b406T3[0..6]) + @(& $b406Life 'started') + @($b406T3[7..16]) + @(& $b406Life 'completed')
+        $b406LifeRead = & $b406ReadLines $b406LifeThree
+        if ((Get-TranscriptEvidence $b406LifeRead).Final.result -ne 'turn three' -or $b406LifeRead.Events.Count -ne 19) { throw 'B-406 the 3-turn stream with command_lifecycle events was not accepted with its last result as Final' }
+        & $b406Rejects 'the 3-turn stream with a trailing command_lifecycle without -AllowMultiTurn' $b406LifeThree -Plain
+        $b406LifeOne = @($b406T3[0..6]) + @(& $b406Life 'completed')
+        & $b406ReadLines $b406LifeOne | Out-Null
+        & $b406Rejects 'a single-turn stream with a trailing command_lifecycle without -AllowMultiTurn' $b406LifeOne -Plain
+        & $b406Rejects 'agent activity after a trailing command_lifecycle' (@($b406LifeOne) + @($b406T3[5]))
+        & $b406Rejects 'a result_index that is missing'(@($b406T3[0..10]) + @($b406T3[15].Replace(',"result_index":1', '')))
         & $b406Rejects 'a result_index that is a string' (@($b406T3[0..10]) + @($b406T3[15].Replace('"result_index":1', '"result_index":"1"')))
         & $b406Rejects 'a result_index that is not an integer' (@($b406T3[0..10]) + @($b406T3[15].Replace('"result_index":1', '"result_index":1.5')))
         & $b406Rejects 'a result from another session' (@($b406T3[0..10]) + @($b406T3[15].Replace('0000000b406a', '0000000b406b')))
@@ -3440,7 +3530,7 @@ export class UserService {
         & $b406Snap
         & $b406Trace 'INCONCLUSIVE when the src/ change predates the snapshot' @() $b406Full 'INCONCLUSIVE' $false 'src/'
         'public class CheckoutController { public void Refund() { } public bool Refunded; }' | Set-Content (Join-Path $b406Repo 'src/Orders.Api/CheckoutController.cs') -Encoding utf8NoBOM
-        & $b406Trace 'TRACE FULL, no test file, no security pass' @() $b406Full 'PASS' $true '^hooks=True rails=plan-gate trace=FULL tests=n/a side=none subagents=0 contract=NONE .*durationMs=4321$'
+        & $b406Trace 'TRACE FULL, no test file, no security pass' @() $b406Full 'PASS' $true '^hooks=True rails=plan-gate trace=FULL tests=n/a side=none sideCalled=none subagents=0 contract=NONE .*durationMs=4321$'
         & $b406Trace 'TRACE FULL from an arrow line ending in passed' @() $b406ArrowPassed 'PASS' $true '^hooks=True rails=plan-gate trace=FULL '
         # The closing report is main-agent text after the code: a Stop hook's Boy Scout note can make the agent's reply to it the result.
         & $b406Trace 'TRACE FULL from main-agent text after the first write, not in any result' @((& $b406Use 'tw1' 'Edit' ([pscustomobject]@{ file_path = 'src/Orders.Api/CheckoutController.cs' })), (& $b406Say $b406Full)) 'The Boy Scout note is advisory; I left it.' 'PASS' $true '^hooks=True rails=plan-gate trace=FULL '
@@ -3483,9 +3573,35 @@ export class UserService {
         'Assert.True(true);' | Set-Content $b406TestFile -Encoding utf8NoBOM
         & $b406Trace 'TESTS-AT-BOUNDARY NONE' @() $b406Full 'PASS' $true 'tests=NONE '
         Remove-Item -LiteralPath $b406TestFile
-        & $b406Trace 'SIDE CHECK PROJECT through a security-auditor subagent' @((& $b406Use 'sa1' 'Task' ([pscustomobject]@{ subagent_type = 'security-auditor' }))) $b406Full 'PASS' $true ' side=PROJECT subagents=1 '
-        & $b406Trace 'SIDE CHECK PROJECT through a subagent running the security-gate skill' @((& $b406Use 'sa2' 'Skill' ([pscustomobject]@{ skill = 'security-gate' }) $b406Sub)) $b406Full 'PASS' $true ' side=PROJECT subagents=0 '
-        & $b406Trace 'SIDE CHECK none for another subagent' @((& $b406Use 'sa3' 'Agent' ([pscustomobject]@{ subagent_type = 'Explore' }))) $b406Full 'PASS' $true ' side=none subagents=1 '
+        # SIDE CHECK counts a security pass only if it examined the change. Trimmed, path-free copies of what the host emits: a
+        # background Agent call returns a stub tool_result at once and delivers its report in a system/task_notification matched
+        # by tool_use_id (summary = the report); a foreground one returns the report as a hand-back tool_result.
+        $b406Auditor = [pscustomobject]@{ subagent_type = 'security-auditor' }
+        $b406Stub = "Async agent launched successfully. (This tool result is internal metadata - never quote or paste any part of it.)`nagentId: a0000 (internal ID)`nThe agent is working in the background. You will be notified automatically when it completes."
+        $b406Refused = "CANNOT EXAMINE`n`nI didn't audit anything. My process requires a parent-supplied -ScopePath <bundle> and its manifest.json SHA-256."
+        $b406Audited = "## Security audit - 2 file(s) scanned`n`n### Findings (4)`n| File:line | Risk | Severity |"
+        $b406Res = { param([string]$Id, [string]$Text, [switch]$IsError) [pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = $Id; is_error = [bool]$IsError; content = @([pscustomobject]@{ type = 'text'; text = $Text }) }) } } }
+        $b406Note = { param([string]$Id, [string]$Summary, [string]$Status) [pscustomobject]@{ type = 'system'; subtype = 'task_notification'; tool_use_id = $Id; status = $(if ($Status) { $Status } else { 'completed' }); summary = $Summary } }
+        & $b406Trace 'SIDE EXAMINED: a background auditor whose notification is a report' @((& $b406Use 'au1' 'Agent' $b406Auditor), (& $b406Res 'au1' $b406Stub), (& $b406Note 'au1' $b406Audited)) $b406Full 'PASS' $true ' side=EXAMINED sideCalled=PROJECT subagents=1 '
+        & $b406Trace 'SIDE REFUSED: a background auditor that says CANNOT EXAMINE' @((& $b406Use 'au2' 'Agent' $b406Auditor), (& $b406Res 'au2' $b406Stub), (& $b406Note 'au2' $b406Refused)) $b406Full 'PASS' $true ' side=REFUSED sideCalled=PROJECT subagents=1 '
+        & $b406Trace 'SIDE EXAMINED: a refusal followed by a second call that audited' @((& $b406Use 'au3' 'Agent' $b406Auditor), (& $b406Res 'au3' $b406Stub), (& $b406Note 'au3' $b406Refused), (& $b406Use 'au4' 'Skill' ([pscustomobject]@{ skill = 'security-gate' })), (& $b406Res 'au4' 'Launching skill: security-gate'), (& $b406Use 'au5' 'Agent' $b406Auditor), (& $b406Res 'au5' $b406Stub), (& $b406Note 'au5' $b406Audited)) $b406Full 'PASS' $true ' side=EXAMINED sideCalled=PROJECT subagents=2 '
+        & $b406Trace 'SIDE UNREAD: a background auditor with only its stub' @((& $b406Use 'au6' 'Agent' $b406Auditor), (& $b406Res 'au6' $b406Stub)) $b406Full 'PASS' $true ' side=UNREAD sideCalled=PROJECT subagents=1 '
+        & $b406Trace 'SIDE UNREAD: the only notification belongs to another task' @((& $b406Use 'au7' 'Agent' $b406Auditor), (& $b406Res 'au7' $b406Stub), (& $b406Note 'bash9' $b406Audited)) $b406Full 'PASS' $true ' side=UNREAD '
+        & $b406Trace 'SIDE UNREAD: the notification is not a completed one' @((& $b406Use 'au8' 'Agent' $b406Auditor), (& $b406Res 'au8' $b406Stub), (& $b406Note 'au8' $b406Audited 'failed')) $b406Full 'PASS' $true ' side=UNREAD '
+        & $b406Trace 'SIDE UNREAD: the call errored' @((& $b406Use 'au9' 'Agent' $b406Auditor), (& $b406Res 'au9' 'Agent type security-auditor not found' -IsError)) $b406Full 'PASS' $true ' side=UNREAD '
+        & $b406Trace 'SIDE UNREAD: a refusal beside a call with no report is not a clean refusal' @((& $b406Use 'au10' 'Agent' $b406Auditor), (& $b406Res 'au10' $b406Stub), (& $b406Note 'au10' $b406Refused), (& $b406Use 'au11' 'Agent' $b406Auditor), (& $b406Res 'au11' $b406Stub)) $b406Full 'PASS' $true ' side=UNREAD sideCalled=PROJECT subagents=2 '
+        & $b406Trace 'SIDE EXAMINED: one call audited and another has no report' @((& $b406Use 'au15' 'Agent' $b406Auditor), (& $b406Res 'au15' $b406Stub), (& $b406Use 'au16' 'Agent' $b406Auditor), (& $b406Res 'au16' $b406Stub), (& $b406Note 'au16' $b406Audited)) $b406Full 'PASS' $true ' side=EXAMINED sideCalled=PROJECT subagents=2 '
+        & $b406Trace 'SIDE EXAMINED: a foreground auditor whose tool_result is the report' @((& $b406Use 'au12' 'Task' $b406Auditor), (& $b406Res 'au12' "[Subagent hand-back] The text below is the final report of a subagent this session delegated to.`n    $($b406Audited.Replace("`n", "`n    "))")) $b406Full 'PASS' $true ' side=EXAMINED sideCalled=PROJECT subagents=1 '
+        & $b406Trace 'SIDE REFUSED: a foreground refusal, whatever its case' @((& $b406Use 'au13' 'Task' $b406Auditor), (& $b406Res 'au13' "[Subagent hand-back] The text below is the final report.`n    Cannot examine: no scope bundle.")) $b406Full 'PASS' $true ' side=REFUSED sideCalled=PROJECT '
+        # A refusal is how the report BEGINS, after any hand-back wrapper line, whitespace and heading markers; the phrase elsewhere is not one.
+        & $b406Trace 'SIDE EXAMINED: an audit that says it cannot examine some files, mid-text' @((& $b406Use 'au17' 'Agent' $b406Auditor), (& $b406Res 'au17' $b406Stub), (& $b406Note 'au17' "## Security audit - 2 file(s) scanned`n`nI cannot examine the DB migration scripts: they are outside the bundle. CANNOT EXAMINE applies to them only.")) $b406Full 'PASS' $true ' side=EXAMINED sideCalled=PROJECT '
+        & $b406Trace 'SIDE EXAMINED: a mid-text mention inside a hand-back' @((& $b406Use 'au18' 'Task' $b406Auditor), (& $b406Res 'au18' "[Subagent hand-back] The text below is the final report. The report follows:`n  ## Security audit: 2 file(s) scanned`n  `n  Cannot examine the generated files.")) $b406Full 'PASS' $true ' side=EXAMINED sideCalled=PROJECT '
+        & $b406Trace 'SIDE REFUSED: a heading-form refusal in a notification' @((& $b406Use 'au19' 'Agent' $b406Auditor), (& $b406Res 'au19' $b406Stub), (& $b406Note 'au19' "## Security audit: CANNOT EXAMINE`n`nI did not audit anything.")) $b406Full 'PASS' $true ' side=REFUSED sideCalled=PROJECT '
+        & $b406Trace 'SIDE REFUSED: a plain Security audit: CANNOT EXAMINE refusal' @((& $b406Use 'au20' 'Agent' $b406Auditor), (& $b406Res 'au20' $b406Stub), (& $b406Note 'au20' "Security audit: CANNOT EXAMINE - no scope bundle.")) $b406Full 'PASS' $true ' side=REFUSED sideCalled=PROJECT '
+        & $b406Trace 'SIDE REFUSED: a refusal in an indented hand-back after its wrapper line' @((& $b406Use 'au21' 'Task' $b406Auditor), (& $b406Res 'au21' "[Subagent hand-back] The text below is the final report. The report follows:`n  CANNOT EXAMINE`n  `n  No bundle.")) $b406Full 'PASS' $true ' side=REFUSED sideCalled=PROJECT '
+        & $b406Trace 'SIDE EXAMINED: an auditor called inside a subagent, report in a notification' @((& $b406Use 'au14' 'Agent' $b406Auditor $b406Sub), (& $b406Note 'au14' $b406Audited)) $b406Full 'PASS' $true ' side=EXAMINED sideCalled=PROJECT subagents=0 '
+        & $b406Trace 'SIDE none, sideCalled PROJECT: the security-gate skill alone, with no auditor call' @((& $b406Use 'sk1' 'Skill' ([pscustomobject]@{ skill = 'security-gate' }) $b406Sub)) $b406Full 'PASS' $true ' side=none sideCalled=PROJECT subagents=0 '
+        & $b406Trace 'SIDE none for another subagent' @((& $b406Use 'sa3' 'Agent' ([pscustomobject]@{ subagent_type = 'Explore' }))) $b406Full 'PASS' $true ' side=none sideCalled=none subagents=1 '
         $script:B406Snapshot = $null
         git -C $b406Repo checkout --quiet -- .
         $b406Provenance = Join-Path $temp 'b406-provenance.json'
@@ -3496,12 +3612,28 @@ export class UserService {
         $b406Altered = Join-Path $temp 'altered-generate.py'
         'print("not the frozen generator")' | Set-Content $b406Altered -Encoding utf8NoBOM
         if ((Get-B406GeneratorRefusal $b406Altered) -notmatch 'is not the frozen fixture v2 generator') { throw 'an altered generator was not refused' }
+        # The live-eval version guard: the dist version must match the root CHANGELOG's head; an Unreleased head above it is
+        # looked through to the first released head, so a fix can be measured before it is released.
+        $b406Log = { param([string[]]$Heads) (@('# Changelog', '', 'Intro text.', '') + @($Heads | ForEach-Object { @($_, '', '- entry', '') })) -join "`n" }
+        $b406Dash = [char]0x2014
+        $b406Guard = { param([string]$Name, [string[]]$Heads, [string]$Dist, [bool]$Allowed, [string]$Message, [string]$RootHead)
+            $decision = Get-ChangelogGuardDecision (& $b406Log $Heads) $Dist
+            if ($decision.Allowed -ne $Allowed -or ($Message -and [string]$decision.Message -notmatch $Message) -or [string]$decision.RootHead -ne $RootHead) { throw "B-406 changelog guard misjudged ${Name}: allowed=$($decision.Allowed) rootHead='$($decision.RootHead)' message='$($decision.Message)'" }
+        }
+        & $b406Guard 'a released head that matches' @("## 0.97.2 $b406Dash 2026-10-15") '0.97.2' $true '' ''
+        & $b406Guard 'a released head that differs' @("## 0.97.3 $b406Dash 2026-10-15") '0.97.2' $false 'dist version 0.97.2 does not match root CHANGELOG head 0.97.3' ''
+        & $b406Guard 'an Unreleased head above a matching released head' @("## 0.98.0 $b406Dash Unreleased", "## 0.97.2 $b406Dash 2026-10-15", "## 0.97.1 $b406Dash 2026-10-14") '0.97.2' $true '' "0.98.0 $b406Dash Unreleased"
+        & $b406Guard 'an Unreleased head compared as numbers, not text' @("## 0.100.0 $b406Dash Unreleased", "## 0.99.0 $b406Dash 2026-10-15") '0.99.0' $true '' "0.100.0 $b406Dash Unreleased"
+        & $b406Guard 'an Unreleased head equal to the dist version' @("## 0.97.2 $b406Dash Unreleased", "## 0.97.1 $b406Dash 2026-10-14") '0.97.2' $false 'not above the dist version' "0.97.2 $b406Dash Unreleased"
+        & $b406Guard 'an Unreleased head below the dist version' @("## 0.97.1 $b406Dash Unreleased", "## 0.97.0 $b406Dash 2026-10-14") '0.97.2' $false 'not above the dist version' "0.97.1 $b406Dash Unreleased"
+        & $b406Guard 'an Unreleased head above a mismatched released head' @("## 0.98.0 $b406Dash Unreleased", "## 0.97.1 $b406Dash 2026-10-14") '0.97.2' $false 'released head 0.97.1' "0.98.0 $b406Dash Unreleased"
+        & $b406Guard 'an Unreleased head with no released head below it' @("## 0.98.0 $b406Dash Unreleased") '0.97.2' $false 'no released head' "0.98.0 $b406Dash Unreleased"
         # The b406 graders read Claude Code transcripts, so a Copilot run of them is refused before any spend.
         $b406Selected = @([pscustomobject]@{ id = 'contract-restate'; fixture = 'b406-orders' }, [pscustomobject]@{ id = 'route-fix' })
         if ((Get-B406ExecutorRefusal $b406Selected 'copilot') -notmatch 'contract-restate') { throw 'a Copilot run of a b406 case was not refused' }
         if (Get-B406ExecutorRefusal $b406Selected 'claude') { throw 'a Claude run of a b406 case was refused' }
         if (Get-B406ExecutorRefusal @($b406Selected[1]) 'copilot') { throw 'a Copilot run with no b406 case was refused by the b406 rule' }
-        Write-Output 'PASS: B-406 the transcript parser keeps text blocks and sidechain flags, reads the real hook-event stream, and reads a multi-turn stream only with -AllowMultiTurn (several system/init events of one session, a result per turn, Final the last, Results all) while still rejecting the malformed shapes; contract-restate classes CONTRACT, PARTIAL and NONE over main-agent text with a file write meaning a Write-type tool or a snapshot change (shell command text is never read); sections end at the first non-list line; contract-trace judges TRACE per candidate (one post-write result or main-agent text block must hold all four parts), TESTS-AT-BOUNDARY and SIDE CHECK against the same snapshot; both need the first SessionStart and UserPromptSubmit responses to have succeeded hook_response events and report rails=; --include-hook-events is passed to b406 cases only; the frozen generator, overlay version and Claude-only executor are enforced'
+        Write-Output 'PASS: B-406 the transcript parser keeps text blocks and sidechain flags, reads the real hook-event stream, and reads a multi-turn stream only with -AllowMultiTurn (several system/init events of one session, a result per turn, Final the last, Results all) while still rejecting the malformed shapes (command_lifecycle may follow the last result); contract-restate classes CONTRACT, PARTIAL and NONE over main-agent text with a file write meaning a Write-type tool or a snapshot change (shell command text is never read); sections end at the first non-list line; contract-trace judges TRACE per candidate (one post-write result or main-agent text block must hold all four parts), TESTS-AT-BOUNDARY and SIDE CHECK against the same snapshot; SIDE CHECK is EXAMINED, REFUSED (a report that begins CANNOT EXAMINE), UNREAD or none from tool_result and task_notification reports; both need the first SessionStart and UserPromptSubmit responses to have succeeded hook_response events and report rails=; --include-hook-events is passed to b406 cases only; the frozen generator, overlay version and Claude-only executor are enforced; the live version guard looks through an Unreleased root head above the dist version to the released head'
         $warehouseTemp = Join-Path $temp 'warehouse-fixture'
         New-EvalRepo $warehouseTemp warehouse
         $sqlFiles = @(Get-ChildItem -LiteralPath $warehouseTemp -Filter '*.sql' -File -Recurse)
@@ -5182,8 +5314,8 @@ $trialOf = @{}
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-agent-evals-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory $scratch | Out-Null
 $version = (Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version
-$changelogVersion = ((Get-Content (Join-Path $repo 'CHANGELOG.md') | Where-Object { $_ -match '^## (\d+\.\d+\.\d+)' } | Select-Object -First 1) -replace '^## (\d+\.\d+\.\d+).*','$1')
-if ($version -ne $changelogVersion) { throw "Refusing live eval: dist version $version does not match root CHANGELOG head $changelogVersion." }
+$changelogDecision = Get-ChangelogGuardDecision (Get-Content -Raw (Join-Path $repo 'CHANGELOG.md')) $version
+if (-not $changelogDecision.Allowed) { throw "Refusing live eval: $($changelogDecision.Message)" }
 if ($WarehouseMap -in @('generated','partial')) {
     $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo 'meta/eval-fixtures/warehouse-generated/provenance.json') $version
     if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
@@ -5444,7 +5576,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
     # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
     # the host and the model actually used, and every Copilot row carries executor=copilot.
     $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($results | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })" } else { "Claude Code $hostVersion" }
-    $lines = @('', "## $date — framework v$version ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" }) · scratch: retained=$KeepScratch", '')
+    $lines = @('', "## $date — framework v$version$(if ($changelogDecision.RootHead) { " (root head $($changelogDecision.RootHead))" }) ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" }) · scratch: retained=$KeepScratch", '')
     foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})$(if($r.Patch){"; patch=$($r.Patch)"})) — $(Protect-ResultText $r.Detail)" }
     $lines += @(Get-OutcomeSummary $results)
     $lines += ''
