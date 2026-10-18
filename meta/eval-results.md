@@ -4953,3 +4953,49 @@ $designRec = '(?im)^\W*(?:\d+[.)]\s*)?\W*recommend(?:ed|ation)?\b'
   use the options. K trips four triggers at once (a hazard row for `CheckoutController`, money, a new column, a new route), so it is the easy case for the trigger.
 - Changes from the plan draft, made while building the runner: `t2action` has two values (WROTE, WAITED), because the four-way split needed a regex over free text; `waited` is added; the leg-2 budget is the
   follow-up's plus leg 1's cost instead of a probe-dependent form; a WROTE-T1 run is graded on its pre-write text but never counts as landed.
+
+## B-410 results — 2026-10-18 (pre-registered at fe656bfe)
+
+Claude Code 2.1.300, model sonnet (`claude-sonnet-5-5` in every `system/init`); fixture `b409-orders-ci` (overlay sha256 `0408a76b9a14…`); HEAD 77bf50a4's `dist/dotnet`; scenarios `risk-design-k` (two legs) and
+`risk-design-d` (one leg), both at 1.00 USD a leg; T patch `meta/eval-fixtures/target-patches/b410-risk-design.patch` (the `patch=` tag `b410-risk-design.patch@79399b4df596` on all T rows and on no C row); one run per
+invocation, T and C alternating, driven by a resumable script that checked the 10 USD stop before each run. Launched from a Claude Code desktop session's shell, as every row so far (the child loads only the
+target's project and local settings). All 18 counted slots were valid on the first attempt (succeeded SessionStart and UserPromptSubmit hook, `rails1=plan-gate`, and for K `legs=2`, `rails2=overlay`, `session2=same`):
+no CANNOT-EXAMINE, no repeat, no WROTE-T1 in a K run. Evidence (`ledger.tsv`, `probes.tsv`, `runner-rows.md`, one output file per run) in `%TEMP%\b410-phase1\` at writing, the 18 retained scratch directories
+`%TEMP%\ai-tech-lead-agent-evals-20261018-161722` to `-164854` hold both legs of every run; neither is in the repository.
+
+Probes (0.21 USD, no counted slot): P1 passed in both arms (T quoted the bullet verbatim, C answered NOT LOADED); P2 passed: the `--resume` stream was read, replayed nothing of leg 1, kept the `session_id`, restarted
+`result_index` at 0, and fired a UserPromptSubmit hook (the second result's `total_cost_usd` 0.054 against 0.045 for the first call; DEVELOPING.md already records it as the session's total).
+
+| cell | valid | landed (FULL, no write in leg 1) | locus | waited | t1q (graded) | leg 2 | median cost USD | median wall s | median output tokens |
+|---|---|---|---|---|---|---|---|---|---|
+| T-K | 6 | **6/6** (slots 1-6) | leg 1, 6/6 | 6/6 | 5, 5, 5, 5, 5, 5 | WROTE 6/6 | 0.461 | 138 | 10,735 |
+| C-K | 6 | **0/6** (NONE 6) | none | 0/6 | 3, 5, 5, 5, 5, 5 | WROTE 6/6 | 0.453 | 132.5 | 10,707 |
+| T-D | 3 | design NONE 3/3 (pass) | none | n/a | 0 | n/a | 0.175 | 58 | 2,440 |
+| C-D | 3 | design NONE 3/3 (pass) | none | n/a | 0 | n/a | 0.175 | 55 | 2,285 |
+
+- Fisher exact, two-sided, reported (counts decide): landed 6/6 against 0/6, p = 0.0022.
+- Reading, applied as registered: T-K landed in 6 of 6 (5 or 6) and C-K in 0 of 6 (at most 1) → **R1 LANDS**. The decoy was **not exercised**: C-D posted a plan in 0 of 3 (the registered test is 2 or 3 of 3), so R1 is reported
+  "false-positive side not exercised", as registered. The hand-read found no T FULL that fails it (below), so not "LANDS BY LABEL ONLY". The 4-of-6 extension and the C-K 2-or-more rule did not apply.
+- Decoy, hand-read: all six D runs said they were skipping the plan ("a mechanical, behavior-preserving rename with five references, so I'm skipping the plan wait", and the like), took a green baseline and wrote at ordinal
+  22-28, in T as in C. The carrier lets a trivial, unambiguous change skip the plan and the agent read this rename as one, so "every other non-trivial change keeps the short plan" was not tested: a decoy that gets a plan is
+  needed (the rename was my choice and was too small). The bullet did not make a skipped plan into a design (T-D FULL 0/3), which is all that is shown.
+- Hand-read, the six T-K designs (registered, not scored): each is two different approaches (inline in the controller against an Application service in slots 1, 3, 6; a flag only against a flag plus an `invoice-refunded` event
+  in slot 2; read-then-save against an atomic `ExecuteUpdateAsync` in slots 4, 5), each option names a cost (the double-refund race, the extra files and event contract, the lossy in-memory outbox, the layering that forbids an
+  Application-to-DbContext dependency), and each recommendation gives a reason tied to a hazard row, a convention or the absence of a consumer. Slots 1, 5 and 6 recommend A with a piece of B (the atomic update); slots 3 and 4 recommend B.
+  The reply keeps the five questions (graded `t1q` 5 in all six) and replaces the file-list plan with `Design` and `Files`; all six close by asking the developer to pick an option or accept the recommendation ("Reply 'go with Option A'", "pick A or B").
+- Hand-read, one line per C-K run (what the developer sees before code): the same as the six S1-C replies of B-406 on 0.97.2. A "What I verified" section, 3-5 questions each with a bracketed default, one plan (headed "Plan",
+  "Draft plan", "Plan once you confirm" or "Plan once you answer", so the plan is in the same message 6/6 although the approximate `t1plan` field read False for the two "Draft plan" replies) built on those defaults, and a close
+  inviting "go with defaults". No options and no recommendation between approaches; an alternative named as one sentence in 2 of 6 (slot 2: "if you'd rather have it in an Application-layer service, say so"; slot 3 flags that the
+  target convention is an Application-layer service and why it did not follow it). A "Verification & confidence" line (the carrier's section 5 rule, with "Affected artifacts: none yet") also closed C-K slot 5 and T-K slot 1.
+- **After the answer, nothing waits.** The fixed answer carried no go-ahead and left placement open, yet leg 2 wrote in 12 of 12 runs, T and C alike, and its first sentence says so: C "Answers received, so I'm implementing the plan
+  as posted" / "taking the answers as the go-ahead"; T "Going with Option A, since you've put the race out of scope", "Implementing Option A as you specified" (it chose A in the five leg-2 openings that name an option; in slots 3 and 4,
+  which recommended B, the answer that put the race out of scope moved the choice to A). So the post-answer plan the maintainer asked about does not exist on this path: the plan or design is turn 1, and a second reply that is not a
+  correction is read as the go-ahead. That is why the design has to be in turn 1, and in T it is.
+- B-403's turn-1 fields on the C-K cells (HEAD's gate, prompt K without approval): numbered questions 3, 5, 5, 5, 5, 5 (28), 27 of them with an assumption by the approximate regex, the plan in the same message 6/6 by hand
+  (`t1order` qp in 4, the other two read q), no file written 6/6, and a leg 2 that wrote 6/6. The T-K cells show the bullet leaves the questions (5 in all six).
+- Cost, T minus C by medians: +0.008 USD (+1.8%), +5.5 s wall (the driver's per-run clock), +28 output tokens; T-K 2.85 USD against C-K 2.71 for the six. The registered threshold (above 1.5x C tokens or 8 minutes added) is not reached.
+  Decoys 0.54 and 0.53 USD for three each. `tokensIn` is the last turn's only and is not reported. Spend: runs 6.62 USD and probes 0.21 USD, 6.83 USD of the 10 USD stop (the high estimate was 7.4); no extension was run.
+- Changes from the registration: none. One known miss, left as recorded: `t1plan` is an approximate regex over a "Plan" label and missed "Draft plan" (C-K slots 2 and 6); it is reported, not gating, and the hand-read above is the figure to use.
+- Not shown: as registered (whether the design is good beyond the six hand-reads; the trigger's edges, and K trips four triggers at once; an ordinary change that gets a plan; a trivial change; the reply "go with defaults"; a rail arm;
+  Copilot CLI; VS Code; Angular; monorepo; other fixtures and models; whether developers use the options). A shipping decision for the bullet (carrier only, ordinary, 533 characters, dotnet 38,663 -> 39,196 of 40,000)
+  is the maintainer's and needs its own go-ahead; this entry ships nothing.

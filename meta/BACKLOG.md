@@ -163,7 +163,7 @@ harness at 15,000 characters (`chat.copilot.skillCharBudget`, experimental; seen
 **Filed against:** v0.96.0 (2026-10-14)
 **Priority:** P3 · **Effort:** M · **Invariants:** #5
 **Status:** Open; shipped unmeasured (WSD-111 precedent, plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`). B-406 S1 shows Claude Code `-p` without the approval clause stops
-before writing (12/12 T, 6/6 C); hand-read, the S1-C replies ask 3-5 questions with an assumption each 6/6 and post the plan in the same message 6/6. B-410's C-K leg 1 is the graded repeat on prompt K.
+before writing (12/12 T, 6/6 C); hand-read, the S1-C replies ask 3-5 questions with an assumption each 6/6 and post the plan in the same message 6/6. B-410's C-K leg 1 repeated it on HEAD: 28 questions, 27 with an assumption, the plan in the same message 6/6.
 Still needed: an underspecified prompt and a no-gap prompt, and the Copilot CLI arm, where the host's own `-p` prompt says to proceed autonomously (B-348's RAIL result, `meta/host-certification.md`).
 
 ### B-404 · An installing agent given "install this" sometimes asks before committing
@@ -179,11 +179,11 @@ scenario variant), and decide whether the gate should count "asked before commit
 **Status:** Open; the rail's "or its security-auditor agent" invites a raw `git diff` request. Its first call returned CANNOT EXAMINE (no scope bundle) in 10 of 10 B-406 S2 runs and 3 of 10 B-407 runs (6 examined "without a
 `-ScopePath` bundle", 2 not read); The 0.98.0 wording sends the agent to `security-gate` only; on the CI fixture with a 1.00 USD cap (B-409), C examined 3/6 and two of the three skips cited the budget. Re-measure at a cap that does not bind before relying on it.
 
-### B-410 · A risk change gets a file list, not a design: measure a two-option design before code on the natural-language path
+### B-410 · A risk change gets a file list, not a design: ship a two-option design before code on the natural-language path, if the maintainer decides
 **Filed against:** v0.97.2 (2026-10-18)
-**Priority:** P2 · **Effort:** S to ship if it lands (one carrier bullet, ordinary) · **Invariants:** none (#5 if a rail arm follows)
-**Status:** Open; maintainer question 2026-10-18 (does the agent walk the developer through a technical design?). Pre-registered in `meta/eval-results.md` ("B-410 pre-registration"): prompt K, then a fixed
-answer, 6 runs per arm, plus a rename decoy; T is `meta/eval-fixtures/target-patches/b410-risk-design.patch`. Shipping the bullet needs its own go-ahead; a rail arm only after an R2 reading, as its own decision.
+**Priority:** P2 · **Effort:** S to ship (one carrier bullet, ordinary) · **Invariants:** none
+**Status:** Measured 2026-10-18 (`meta/eval-results.md`, "B-410 results"): R1 LANDS, T 6/6 against C 0/6 on prompt K, the design in turn 1; after the answer both arms write 12/12. The decoy was read as trivial and skipped its plan 6/6, so the
+false-positive side is not exercised (needs a decoy that gets a plan). Shipping `b410-risk-design.patch`'s bullet (dotnet 38,663 -> 39,196 of 40,000) awaits the maintainer; a rail arm only after an R2, which did not occur.
 
 
 ## Archived
