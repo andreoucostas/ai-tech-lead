@@ -1,0 +1,87 @@
+diff --git a/.claude/hooks/route-prompt.ps1 b/.claude/hooks/route-prompt.ps1
+index db69057..01a5b2d 100644
+--- a/.claude/hooks/route-prompt.ps1
++++ b/.claude/hooks/route-prompt.ps1
+@@ -23,19 +23,19 @@ if ([Console]::IsOutputRedirected) {
+ 
+ $railsFix = @'
+ 1. Diagnose root cause first; state it before writing any code.
+-2. When the repository evidences an applicable test harness, write a failing regression test BEFORE touching production code; otherwise reproduce with the strongest evidenced validation and report tests as not available — never introduce a foreign harness solely for this fix.
++2. When the repository evidences an applicable test harness, write the regression test that pins the Done-when line (the expected behaviour at the boundary, asserted at the point of effect) and see it fail BEFORE touching production code; otherwise reproduce with the strongest evidenced validation and report tests as not available — never introduce a foreign harness solely for this fix.
+ 3. Scope edits to requested behavior, existing caller/extension compatibility, or meaningful verification; requested cleanup/refactoring is allowed. A touched file authorizes no other cleanup/TODO. Check changed public/protected and virtual/override contracts for unrequested breaks.
+ 4. Derive exact regression and suite commands plus applicable build, test, format, lint, migration/deploy, and data-validation commands from repository evidence; run only safely executable applicable commands under the execution boundary above and report each unsupported category as not available.
+ 5. Apply only Boy Scout work allowed by step 3.
+-6. Report root cause, fix, regression-test coverage, blast radius.
++6. Report root cause and fix, then the Verification & confidence block: each Done-when line → its test → the observed result; beyond the request; blast radius seen; review depth.
+ '@
+ 
+ $railsFeature = @'
+-1. Design check first — list affected layers, files to create/modify, failure modes, and the smallest useful tests when an applicable harness exists; never add a harness incidentally.
++1. Design check first — list affected layers, files to create/modify, failure modes, and, for each Done-when line, the test that pins it (boundary examples become cases; assert at the point of effect) when an applicable harness exists; never add a harness incidentally.
+ 2. Decompose into ordered subtasks; derive exact build, test, format, lint, migration/deploy, and data-validation commands from repository evidence, then run only safely executable applicable commands under the execution boundary above after each before continuing (report unsupported categories as not available).
+ 3. Apply Boy Scout to every file you touch.
+ 4. Self-review against AGENTS.md > Conventions; flag new patterns or resolved tech debt.
+-5. Present what was implemented and tested.
++5. Present the Verification & confidence block: each Done-when line → its test → the observed result; beyond the request; blast radius seen; review depth.
+ 
+ Leanness constraints (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness)):
+ - Place code by responsibility (Leanness #1): a new responsibility gets its own service or class even with one consumer; never bolt it onto the nearest service or subclass one.
+@@ -92,6 +92,7 @@ This is a quality gate, not a rubber stamp.
+ 2. Check test quality — behavior coverage, descriptive names, regression detection.
+ 3. Derive and run only safely executable build, test, format, lint, migration/deploy, and data-validation commands supported by repository evidence yourself, subject to the execution boundary above; do not trust they pass, and report unsupported categories as not available.
+ 4. Check architecture/debt and task scope. For fixes, reject touch-only cleanup and unrequested public/protected or virtual/override breaks.
++5. Check the trace: every Done-when line (from the spec, else the approved plan, else the stated request; say which) has a test in scope and an observed result; anything in the diff beyond those lines is listed, never approved silently; a changed expected value in an existing test is a requirement change.
+ Output: APPROVE or REQUEST CHANGES with a severity-tagged issues table.
+ '@
+ 
+@@ -107,8 +108,8 @@ If this prompt does NOT actually touch a sensitive surface, say so and skip this
+ '@
+ 
+ $railsPlanGate = @'
+-## Plan gate (ask -> plan -> confirm)
+-Before writing code: if the request leaves a material gap, ASK FIRST — at most five tech-lead questions (who consumes this and what breaks for them; what fails and how you'd know in production; rollback; data that moves or changes shape; blast radius against the hazard list), each with the assumption you'd otherwise make — and post the plan only after the answers. Otherwise post the plan now (files to change, order of operations, how you'll verify), each assumption with the file, command or query that verified it or marked unverified. Do not guess past a material ambiguity to seem helpful. Then WAIT for the developer's explicit go-ahead before editing code. Skip the wait only for a trivial, unambiguous change (typo, one-liner), and say that you're skipping it and why.
++## Plan gate (ask -> restate -> plan -> confirm)
++Before writing code: if the request leaves a material gap, ASK FIRST — at most five tech-lead questions (who consumes this and what breaks for them; what fails and how you'd know in production; rollback; data that moves or changes shape; blast radius against the hazard list), each with the assumption you'd otherwise make — and post the plan only after the answers. Otherwise post the plan now, in this order: DONE WHEN (two to six observable criteria, each with a boundary example where a threshold, limit or state exists; what is out of scope); files to change and order of operations; for each criterion the test that will pin it, asserting at the point of effect (boundary examples become cases); each assumption with the file, command or query that verified it or marked unverified. Do not guess past a material ambiguity to seem helpful. Then WAIT for the developer's explicit go-ahead before editing code; it approves the Done-when lines. Skip the wait only for a trivial, unambiguous change (typo, one-liner), and say that you're skipping it and why.
+ '@
+ 
+ $railsExecutionSafety = @'
+diff --git a/.github/instructions/framework-rules.instructions.md b/.github/instructions/framework-rules.instructions.md
+index a4222d4..da89aee 100644
+--- a/.github/instructions/framework-rules.instructions.md
++++ b/.github/instructions/framework-rules.instructions.md
+@@ -13,7 +13,7 @@ These apply to every workflow, before any convention-level rule. The difference
+ 2. **Never invent APIs.** Do not fabricate method signatures, type names, attributes, package exports, or framework features. Read the source. If a referenced shared-library API is not in `FRAMEWORK-CONTEXT.md > Detected Framework Packages` at the version this repo pins, treat it as unverified.
+ 3. **Honour version pinning.** Before suggesting a feature from a shared library, framework, or `Microsoft.*` package, confirm the version in `FRAMEWORK-CONTEXT.md > Detected Framework Packages` actually has it. The latest API surface in `Shared Libraries` may not exist in older versions.
+ 4. **State uncertainty.** When a question depends on context you do not have (a file you have not read, runtime behaviour you cannot observe, a database state you cannot query), say so. Do not guess to seem helpful.
+-5. **Tests are immutable safety nets during fixes and refactors.** When an existing test fails, production is wrong (or the test is wrong for a documented reason). Do not edit assertions to make them pass without flagging it explicitly.
++5. **Tests are immutable safety nets during fixes and refactors.** When an existing test fails, production is wrong (or the test is wrong for a documented reason). Do not edit assertions to make them pass without flagging it explicitly. A changed expected value in an existing test, or an edited Done-when line or acceptance criterion, is a requirement change: confirm it with the developer; it is never a green.
+ 6. **No invented fixtures.** When sample data, builders, factories, or mocks already exist, reuse them. Do not fabricate parallel ones.
+ 7. **Failures are signals.** Build, test, or analyser failures are diagnostic. Read the message and fix the cause; never wrap in try/catch or `#pragma warning disable` to silence. (A PreToolUse hook hard-blocks **editor/file writes** that add `#pragma warning disable`; writes routed through a terminal tool are not intercepted — see `docs/enforcement-surfaces.md`.)
+ 
+@@ -95,13 +95,14 @@ When a task matches a skill in `AGENTS.md > Common Tasks`, invoke that skill wit
+ **Security-sensitive surfaces always get a security pass.** If the work touches authentication/authorization, payments, balances, ledgers, transactions, idempotency, or secrets, run this repository's `security-gate` skill (`.claude/commands/security-gate.md`; on Copilot CLI, not the CLI's built-in security agent) or its `security-auditor` agent on the diff before presenting it as complete — regardless of which workflow above applies. The rule holds whether or not a hook reminder appears.
+ 
+ ### 2. Plan before coding — present, clarify, then get the go-ahead
+-For any non-trivial task, STOP before writing code and post a short plan:
++For any non-trivial task, STOP before writing code and post a short plan, in this order:
++- **Done when**: the requirement restated as two to six observable criteria, each with a boundary example where a threshold, limit or state exists (the case that passes and the one that does not), plus what is out of scope. The developer corrects these lines rather than answering questions; the go-ahead approves them.
+ - The files you'll create or modify, and the order of operations
+-- Evidenced validation; include tests only when a harness exists
++- Evidenced validation: for each Done-when line, the test that will pin it, asserting at the point of effect (what leaves the service or is persisted, not a proxy such as a call having been made); boundary examples become cases. Include tests only when a harness exists; otherwise name the strongest evidenced check and report tests as not available.
+ - If the change adds an extension point or a third instance of an operation, and adding the next instance has a step that is easy to miss, name the one record you will add for that step unless one exists: a test over this repository's own instances that fails when one skips it (never a test of the framework, Test leanness #12), else one `AGENTS.md > Conventions` line, else, once this change makes three or more instances, a project skill draft under 3a-bis of `.claude/commands/bootstrap.md`; otherwise add none.
+ - Your assumptions, each with the evidence that verified it (a file, command or query), or marked *unverified — developer confirms*.
+ - If the request leaves a material gap, **ask first and plan after**: post at most five questions, each with the assumption you would otherwise make, and post the plan only once they are answered. Draw them from the tech-lead list — who consumes this and what breaks for them; what fails and how the developer would know in production; reversibility and rollback; data that moves or changes shape, including migration; blast radius against `FRAMEWORK-CONTEXT.md > Known Hazard Areas`. Do not guess past a material ambiguity to seem helpful — ask.
+-- For larger features, persist the plan as a spec to `specs/<slug>.md` (see `/design`) and implement against it
++- When the Done-when lines outgrow one message, or the work will span sessions, write them to `specs/<slug>.md` yourself (template: `specs/README.md`) and implement against it.
+ 
+ Then **wait for the developer's explicit go-ahead before editing code.** This catches wrong assumptions before wrong diffs and keeps the developer engaged rather than rubber-stamping. Skip only a trivial, unambiguous change (typo, one-liner), and say why.
+ 
+@@ -124,7 +125,7 @@ Before presenting work as complete:
+ - Check if the change resolves a TECH_DEBT.md item → flag for removal
+ - Check if the change contradicts any convention → ask whether to update the convention or change the implementation
+ - If the session surfaced a team-worthy gotcha, recipe, or failed approach, offer `remember-for-team`
+-- **Close with a Verification & confidence line**: separate what you actually verified by running it (build / tests / lint — name which you ran) from what you assert without having run it, and flag anything you could not verify. Show the evidence — the command you ran and its observed result (e.g. `dotnet test` → 142 passed, 0 failed), not the bare claim "tests pass." This calibration is deliberate — it counters the well-documented tendency to feel more done than the work is.
++- **Close with the Verification & confidence block**, which is also the pull request description: each Done-when line → the test that pins it → the command you ran and its observed result (e.g. `dotnet test` → 142 passed, 0 failed), or "asserted, not run"; **Beyond the request**: none, or each behaviour the diff adds that no line asked for; **Blast radius seen**: callers changed or affected as `path:symbol`, or none found; **Review depth**: light, or the full `review` skill with the reason (a hazard row, a security-sensitive surface, a shared caller, a changed test expectation); **Baseline**: spec, plan approved this session, or stated request only. Show the evidence, never the bare claim "tests pass".
+ 
+ ### 6. Reconcile affected artifacts
+ Before finishing, inspect task effects on repository truth. Update affected writable canonical artifacts; regenerate derivatives from source. Follow their ownership, evidence, history, and security rules; never infer human intent. An affected artifact unreadable or unsafe to update is a blocker, not `none`. End with `Affected artifacts: none`, reconciled artifacts, or unresolved blockers.

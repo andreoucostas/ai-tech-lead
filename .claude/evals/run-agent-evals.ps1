@@ -1111,25 +1111,41 @@ function Test-DeadFactColumnWrite([string]$Sql) {
     return $insertWritesDeadColumn -or $updateWritesDeadColumn -or $mergeWritesDeadColumn
 }
 
-function Read-Transcript([string]$Path) {
+function Read-Transcript([string]$Path, [switch]$AllowMultiTurn) {
     $events = [Collections.Generic.List[object]]::new()
     foreach ($line in Get-Content -LiteralPath $Path) {
         if (-not $line.Trim()) { continue }
         try { $events.Add(($line | ConvertFrom-Json -Depth 100)) } catch { throw "Invalid stream JSON: $($_.Exception.Message)" }
     }
     if ($events.Count -eq 0) { throw 'Transcript contained no JSON events.' }
-    if (@($events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' }).Count -ne 1) { throw 'Stream JSON must contain exactly one system/init event.' }
-    $initIndex = -1
-    for ($i = 0; $i -lt $events.Count; $i++) { if ($events[$i].type -eq 'system' -and $events[$i].subtype -eq 'init') { $initIndex = $i; break } }
-    if ($initIndex -lt 0) { throw 'Stream JSON has no system/init event.' }
+    $inits = @($events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' })
+    $terminal = @($events | Where-Object { $_.type -eq 'result' })
+    if ($inits.Count -eq 0) { throw 'Stream JSON has no system/init event.' }
+    if ($inits.Count -gt 1 -and -not $AllowMultiTurn) { throw 'Stream JSON must contain exactly one system/init event.' }
+    if ($inits.Count -gt 1) {
+        # B-406 (-AllowMultiTurn, passed for b406 cases only): when the agent's work outlives its first turn (a background
+        # security pass), `claude -p` goes on in further turns of the same session: another system/init and a result per
+        # turn (result_index 0, 1, ...). Observed on Claude Code 2.1.300: the last result can follow the last two inits, so
+        # the rule is one session, one result per init with the k-th result after the k-th init, and each result's
+        # result_index an integer equal to its ordinal -- not "every later init follows a result".
+        $sessions = @($inits | ForEach-Object { [string]$_.session_id } | Select-Object -Unique)
+        if ($sessions.Count -ne 1 -or -not $sessions[0]) { throw 'Several system/init events must all carry the same session_id.' }
+        if ($terminal.Count -ne $inits.Count) { throw "Several system/init events need one result per turn: $($inits.Count) inits, $($terminal.Count) results." }
+        for ($r = 0; $r -lt $terminal.Count; $r++) {
+            $resultIndex = $terminal[$r].result_index
+            if (-not ($resultIndex -is [int] -or $resultIndex -is [long]) -or [long]$resultIndex -ne $r) { throw "Result $r must carry the integer result_index $r, not '$resultIndex'." }
+            if ($terminal[$r].session_id -and [string]$terminal[$r].session_id -ne $sessions[0]) { throw "Result $r carries another session_id than the system/init events." }
+            if ($events.IndexOf($terminal[$r]) -lt $events.IndexOf($inits[$r])) { throw "Result $r comes before system/init $r." }
+        }
+    }
+    $initIndex = $events.IndexOf($inits[0])
     foreach ($preInit in @($events | Select-Object -First $initIndex)) {
         if ($preInit.type -ne 'system' -and $preInit.type -ne 'rate_limit_event') { throw 'Only system hook/rate-limit events may precede system/init.' }
     }
-    $terminal = @($events | Where-Object { $_.type -eq 'result' })
     # Claude Code 2.1.x appends system bookkeeping (post_turn_summary, task_summary) after the
-    # result. Agent activity after the result is still a malformed stream.
-    $afterResult = @(if ($terminal.Count -eq 1) { $events | Select-Object -Skip ($events.IndexOf($terminal[0]) + 1) })
-    if ($terminal.Count -ne 1 -or @($afterResult | Where-Object { $_.type -ne 'system' }).Count) { throw 'Stream JSON must end with exactly one terminal result event.' }
+    # result. Agent activity after the last result is still a malformed stream.
+    $afterResult = @(if ($terminal.Count -eq $inits.Count -and $terminal.Count -gt 0) { $events | Select-Object -Skip ($events.LastIndexOf($terminal[-1]) + 1) })
+    if ($terminal.Count -ne $inits.Count -or $terminal.Count -eq 0 -or @($afterResult | Where-Object { $_.type -ne 'system' }).Count) { throw 'Stream JSON must end with exactly one terminal result event.' }
     $toolIds = @{}
     $resultIds = @{}
     foreach ($event in $events) {
@@ -1162,6 +1178,9 @@ function Get-TranscriptEvidence($Transcript) {
     # parent_tool_use_id; Sidechain marks it so a grader can read the main agent alone.
     $texts = [Collections.Generic.List[object]]::new()
     $results = @{}
+    # B-406: every result event in order, one per turn. Final stays the last; its total_cost_usd is cumulative.
+    $allResults = [Collections.Generic.List[object]]::new()
+    $resultOrdinals = [Collections.Generic.List[int]]::new()
     $final = $null
     $ordinal = 0
     foreach ($event in $Transcript.Events) {
@@ -1178,10 +1197,11 @@ function Get-TranscriptEvidence($Transcript) {
             foreach ($content in @($event.message.content)) {
                 if ($content.type -eq 'tool_result') { $results[[string]$content.tool_use_id] = $content }
             }
-        } elseif ($event.type -eq 'result') { $final = $event }
+        } elseif ($event.type -eq 'result') { $final = $event; $allResults.Add($event); $resultOrdinals.Add($ordinal) }
     }
     if (-not $final) { throw 'Stream JSON has no terminal result event.' }
-    [pscustomobject]@{ Tools = $tools; Texts = $texts; ToolResults = $results; Final = $final }
+    # ResultOrdinals[i] is Results[i]'s event ordinal, the same counter Tools[].Index and Texts[].Index use.
+    [pscustomobject]@{ Tools = $tools; Texts = $texts; ToolResults = $results; Results = $allResults; ResultOrdinals = $resultOrdinals; Final = $final }
 }
 
 # B-283: a host that failed before the agent took a single action (an expired login, say) is an
@@ -1618,7 +1638,8 @@ $b406ListLine = '^\s*(?:[-*+]|\d+[.)])\s+\S'
 $b406Continuation = '^\s+\S'
 $b406OutcomeTokens = @('\b202\b', '\b404\b', '\b409\b', '(?<!not\s)\bpaid\b', '\bnot paid\b', 'does not exist')
 $b406Boundary = '(?i)\bboundary\b'
-# S2: the closing Verification & confidence block, read from the final result text.
+# S2: the closing Verification & confidence block. Judged per candidate (a result event, or a main-agent text block,
+# after the first main-agent Write-type call): one candidate must hold all four parts.
 $b406TraceBeyond = '(?i)beyond the request'
 $b406TraceBlast = '(?i)blast radius'
 $b406TraceDepth = '(?i)review depth'
@@ -1719,16 +1740,18 @@ function Get-B406ContractDetail($Contract) {
     return "contract=$($Contract.Class) stopped=$($Contract.Stopped) listLines=$($Contract.ListLines) boundaryLines=$($Contract.BoundaryLines) firstWrite=$($Contract.FirstWrite) firstShell=$($Contract.FirstShell)"
 }
 
-# Claude Code run with --include-hook-events emits a hook_response per hook. A run is valid only when the
-# framework's SessionStart and UserPromptSubmit hooks both ran and succeeded; one without shows nothing about the
-# framework. Read straight from the parsed events. Rails: what the UserPromptSubmit hook put in the prompt.
+# Claude Code run with --include-hook-events emits a hook_response per hook. A run is valid only when the FIRST
+# SessionStart response and the FIRST UserPromptSubmit response in the stream both exist and succeeded (outcome
+# success, exit_code 0); a later success does not redeem a first failure, and one without shows nothing about the
+# framework. Read straight from the parsed events. Rails: what that first UserPromptSubmit hook put in the prompt.
 function Get-B406Hooks($Transcript) {
-    $ok = @($Transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'hook_response' -and $_.outcome -eq 'success' -and $_.exit_code -eq 0 })
-    $start = @($ok | Where-Object { $_.hook_event -eq 'SessionStart' } | Select-Object -First 1)
-    $prompt = @($ok | Where-Object { $_.hook_event -eq 'UserPromptSubmit' } | Select-Object -First 1)
+    $responses = @($Transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'hook_response' })
+    $start = @($responses | Where-Object { $_.hook_event -eq 'SessionStart' } | Select-Object -First 1)
+    $prompt = @($responses | Where-Object { $_.hook_event -eq 'UserPromptSubmit' } | Select-Object -First 1)
+    $succeeded = { param($Response) $Response.outcome -eq 'success' -and $Response.exit_code -eq 0 }
     $stdout = if ($prompt) { [string]$prompt[0].stdout } else { '' }
     $rails = if ($stdout -cmatch $b406RailsContract) { 'contract' } elseif ($stdout -cmatch $b406RailsPlanGate) { 'plan-gate' } else { 'none' }
-    [pscustomobject]@{ Loaded = [bool]($start -and $prompt); Rails = $rails }
+    [pscustomobject]@{ Loaded = [bool]($start -and $prompt -and (& $succeeded $start[0]) -and (& $succeeded $prompt[0])); Rails = $rails }
 }
 
 function Get-B406Duration($Evidence) {
@@ -2838,15 +2861,34 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             if ($srcChanged.Count -eq 0) {
                 return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "hooks=True rails=$($hooks.Rails) nothing changed under src/ since the pre-run snapshot (build output ignored), so the run implemented nothing to trace durationMs=$(Get-B406Duration $e)" }
             }
-            $traceParts = [ordered]@{
-                beyond = [bool]($finalText -match $b406TraceBeyond)
-                blast = [bool]($finalText -match $b406TraceBlast)
-                depth = [bool]($finalText -match $b406TraceDepth)
-                pair = [bool]@($finalText -split '\r?\n' | Where-Object { $_ -match $b406TracePair } | Select-Object -First 1)
+            # Candidates for the closing block: each result event, and each main-agent text block, that comes after the
+            # first main-agent Write-type call (all of them if there is none). A run whose security pass ran in the
+            # background continues in further turns, and the Stop hook's Boy Scout note can make the agent's reply to it
+            # a turn's result, displacing the report; so the block may sit in any one of them. It must sit whole in ONE:
+            # four parts scattered over several blocks or turns is not a report. Results first, then text, in order.
+            $traceWrite = @($e.Tools | Where-Object { -not $_.Sidechain -and (Test-B406Write $_) } | Select-Object -First 1)
+            $traceFrom = if ($traceWrite) { $traceWrite[0].Index } else { 0 }
+            $traceCandidates = @(
+                for ($r = 0; $r -lt $e.Results.Count; $r++) { if ($e.ResultOrdinals[$r] -gt $traceFrom) { [string]$e.Results[$r].result } }
+                $e.Texts | Where-Object { -not $_.Sidechain -and $_.Index -gt $traceFrom } | ForEach-Object { $_.Text }
+            )
+            $trace = 'NONE'
+            $missing = @('beyond', 'blast', 'depth', 'pair')
+            $bestParts = -1
+            foreach ($candidate in $traceCandidates) {
+                $traceParts = [ordered]@{
+                    beyond = [bool]($candidate -match $b406TraceBeyond)
+                    blast = [bool]($candidate -match $b406TraceBlast)
+                    depth = [bool]($candidate -match $b406TraceDepth)
+                    pair = [bool]@($candidate -split '\r?\n' | Where-Object { $_ -match $b406TracePair } | Select-Object -First 1)
+                }
+                $present = @($traceParts.Keys | Where-Object { $traceParts[$_] })
+                if ($present.Count -gt $bestParts) {
+                    $bestParts = $present.Count
+                    $missing = @($traceParts.Keys | Where-Object { -not $traceParts[$_] })
+                    $trace = if ($present.Count -eq $traceParts.Count) { 'FULL' } elseif ($present.Count -gt 0) { 'PARTIAL' } else { 'NONE' }
+                }
             }
-            $present = @($traceParts.Keys | Where-Object { $traceParts[$_] })
-            $missing = @($traceParts.Keys | Where-Object { -not $traceParts[$_] })
-            $trace = if ($present.Count -eq $traceParts.Count) { 'FULL' } elseif ($present.Count -gt 0) { 'PARTIAL' } else { 'NONE' }
             $tests = 'n/a'
             if ($testFiles.Count -gt 0) {
                 $testText = ($testFiles | ForEach-Object { Get-Content -Raw -LiteralPath (Join-Path $Target $_) }) -join "`n"
@@ -3240,6 +3282,65 @@ export class UserService {
         if (($b406PlainArgs -join [char]0) -cne ($b406WasArgs -join [char]0)) { throw "B-406 the Claude arguments changed for a case that does not ask for hook events: $($b406PlainArgs -join ' ')" }
         $b406HookArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '' -IncludeHookEvents)
         if ($b406HookArgs.Count -ne $b406WasArgs.Count + 1 -or $b406HookArgs[-1] -cne '--include-hook-events' -or (@($b406HookArgs | Select-Object -First $b406WasArgs.Count) -join [char]0) -cne ($b406WasArgs -join [char]0)) { throw "B-406 -IncludeHookEvents did not append exactly --include-hook-events: $($b406HookArgs -join ' ')" }
+        # B-406: a security pass that runs as a background task makes `claude -p` go on in further turns of one session: several
+        # system/init events and a result per turn. This is a trimmed, order-preserving, path-free copy of an observed 3-turn
+        # stream (Claude Code 2.1.300, --include-hook-events): the second turn ends with no result of its own, and the last two
+        # results arrive together at the end.
+        $b406T3 = @(
+            '{"type":"system","subtype":"hook_started","hook_event":"SessionStart","hook_name":"SessionStart:startup","session_id":"SID"}',
+            '{"type":"system","subtype":"hook_response","hook_event":"SessionStart","hook_name":"SessionStart:startup","output":"## Session preload","stdout":"## Session preload","stderr":"","exit_code":0,"outcome":"success","session_id":"SID"}',
+            '{"type":"system","subtype":"hook_started","hook_event":"UserPromptSubmit","hook_name":"UserPromptSubmit","session_id":"SID"}',
+            '{"type":"system","subtype":"hook_response","hook_event":"UserPromptSubmit","hook_name":"UserPromptSubmit","output":"## Routed intent: `feature`\n\n## Plan gate (ask -> plan -> confirm)","stdout":"## Routed intent: `feature`\n\n## Plan gate (ask -> plan -> confirm)","stderr":"","exit_code":0,"outcome":"success","session_id":"SID"}',
+            '{"type":"system","subtype":"init","session_id":"SID","model":"model-a","claude_code_version":"2.1.300"}',
+            '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Implementing."}]},"parent_tool_use_id":null,"session_id":"SID"}',
+            '{"type":"result","subtype":"success","is_error":false,"duration_ms":29530,"result":"turn one","result_index":0,"total_cost_usd":0.2256609,"usage":{"input_tokens":14,"output_tokens":3479},"modelUsage":{"model-a":{"inputTokens":14,"outputTokens":4299}},"session_id":"SID"}',
+            '{"type":"system","subtype":"hook_started","hook_event":"UserPromptSubmit","hook_name":"UserPromptSubmit","session_id":"SID"}',
+            '{"type":"system","subtype":"hook_response","hook_event":"UserPromptSubmit","hook_name":"UserPromptSubmit","output":"","stdout":"","stderr":"","exit_code":0,"outcome":"success","session_id":"SID"}',
+            '{"type":"system","subtype":"init","session_id":"SID","model":"model-a","claude_code_version":"2.1.300"}',
+            '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"The security pass is running."}]},"parent_tool_use_id":null,"session_id":"SID"}',
+            '{"type":"system","subtype":"hook_started","hook_event":"UserPromptSubmit","hook_name":"UserPromptSubmit","session_id":"SID"}',
+            '{"type":"system","subtype":"hook_response","hook_event":"UserPromptSubmit","hook_name":"UserPromptSubmit","output":"","stdout":"","stderr":"","exit_code":0,"outcome":"success","session_id":"SID"}',
+            '{"type":"system","subtype":"init","session_id":"SID","model":"model-a","claude_code_version":"2.1.300"}',
+            '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"The security pass is done."}]},"parent_tool_use_id":null,"session_id":"SID"}',
+            '{"type":"result","subtype":"success","is_error":false,"duration_ms":21431,"result":"turn two","result_index":1,"total_cost_usd":0.4743342,"usage":{"input_tokens":14,"output_tokens":1818},"modelUsage":{"model-a":{"inputTokens":14,"outputTokens":11496}},"session_id":"SID"}',
+            '{"type":"result","subtype":"success","is_error":false,"duration_ms":24717,"result":"turn three","result_index":2,"total_cost_usd":0.4743342,"usage":{"input_tokens":6,"output_tokens":2792},"modelUsage":{"model-a":{"inputTokens":14,"outputTokens":11496}},"session_id":"SID"}'
+        ) | ForEach-Object { $_.Replace('SID', '00000000-0000-4000-8000-0000000b406a') }
+        # Several inits are read only with -AllowMultiTurn, which the live loop passes for b406 cases alone.
+        $b406ReadLines = { param([string[]]$Lines, [switch]$Plain) $path = Join-Path $temp ('b406-turns-' + [guid]::NewGuid().ToString('N') + '.jsonl'); $Lines | Set-Content $path -Encoding utf8NoBOM; if ($Plain) { Read-Transcript $path } else { Read-Transcript $path -AllowMultiTurn } }
+        $b406Rejects = { param([string]$Name, [string[]]$Lines, [switch]$Plain) $threw = $false; try { & $b406ReadLines $Lines -Plain:$Plain | Out-Null } catch { $threw = $true }; if (-not $threw) { throw "B-406 Read-Transcript accepted $Name" } }
+        $b406Three = & $b406ReadLines $b406T3
+        $b406ThreeEvidence = Get-TranscriptEvidence $b406Three
+        if ($b406Three.Events.Count -ne 17 -or $b406ThreeEvidence.Results.Count -ne 3 -or (@($b406ThreeEvidence.Results | ForEach-Object { $_.result_index }) -join ',') -ne '0,1,2') { throw 'B-406 the 3-turn stream was not read as 3 inits and 3 results in order' }
+        if ($b406ThreeEvidence.Final.result -ne 'turn three' -or $b406ThreeEvidence.Final.result_index -ne 2) { throw 'B-406 Final is not the last result event of a multi-turn stream' }
+        # total_cost_usd is cumulative across turns: the run's cost is the last result's (the live loop reads the last result).
+        $b406LastResult = @($b406Three.Events | Where-Object { $_.type -eq 'result' } | Select-Object -Last 1)
+        if ([string]$b406LastResult[0].total_cost_usd -ne '0.4743342' -or (Get-OutputTokens $b406ThreeEvidence.Final) -ne '11496') { throw 'B-406 the last result of a multi-turn stream did not carry the run''s cost and output tokens' }
+        if (Get-HostFailure $b406Three) { throw 'B-406 a multi-turn stream that ended well was reported as a host failure' }
+        $b406Two = & $b406ReadLines (@($b406T3[0..10]) + @($b406T3[15]))
+        if ((Get-TranscriptEvidence $b406Two).Final.result -ne 'turn two' -or @((Get-TranscriptEvidence $b406Two).Results).Count -ne 2) { throw 'B-406 the 2-turn stream (init, result, init, result) was not accepted with its last result as Final' }
+        & $b406Rejects 'two inits and one result' (@($b406T3[0..5]) + @($b406T3[9], $b406T3[10], $b406T3[15]))
+        & $b406Rejects 'two inits and no result' (@($b406T3[0..5]) + @($b406T3[9], $b406T3[10]))
+        & $b406Rejects 'inits from different sessions' (@($b406T3[0..8]) + @($b406T3[9].Replace('0000000b406a', '0000000b406b')) + @($b406T3[10], $b406T3[15]))
+        & $b406Rejects 'inits with no session_id' (@($b406T3[0..3]) + @($b406T3[4].Replace('"session_id":"00000000-0000-4000-8000-0000000b406a",', ''), $b406T3[5], $b406T3[6], $b406T3[7], $b406T3[8], $b406T3[9].Replace('"session_id":"00000000-0000-4000-8000-0000000b406a",', ''), $b406T3[10], $b406T3[15]))
+        & $b406Rejects 'a result before any init' (@($b406T3[6]) + @($b406T3[4], $b406T3[5], $b406T3[13], $b406T3[14], $b406T3[15]))
+        & $b406Rejects 'results out of result_index order' (@($b406T3[0..10]) + @($b406T3[15].Replace('"result_index":1', '"result_index":0')))
+        & $b406Rejects 'agent activity after the last result' (@($b406T3[0..10]) + @($b406T3[15], $b406T3[14]))
+        & $b406Rejects 'several inits and no result at all' @($b406T3[0..10])
+        & $b406Rejects 'one init and two results' (@($b406T3[0..6]) + @($b406T3[15]))
+        # Without -AllowMultiTurn a stream with several inits is rejected exactly as it always was, shapes the switch accepts included.
+        & $b406Rejects 'the 3-turn stream without -AllowMultiTurn' $b406T3 -Plain
+        & $b406Rejects 'the 2-turn stream without -AllowMultiTurn' (@($b406T3[0..10]) + @($b406T3[15])) -Plain
+        $b406PlainMessage = ''
+        try { & $b406ReadLines $b406T3 -Plain | Out-Null } catch { $b406PlainMessage = $_.Exception.Message }
+        if ($b406PlainMessage -cne 'Stream JSON must contain exactly one system/init event.') { throw "B-406 a multi-turn stream without -AllowMultiTurn was rejected with '$b406PlainMessage'" }
+        $b406NoInitMessage = ''
+        try { & $b406ReadLines @($b406T3[6]) -Plain | Out-Null } catch { $b406NoInitMessage = $_.Exception.Message }
+        if ($b406NoInitMessage -cne 'Stream JSON has no system/init event.') { throw "B-406 a stream with no system/init was rejected with '$b406NoInitMessage'" }
+        & $b406Rejects 'an init after the last result' (@($b406T3[0..6]) + @($b406T3[15], $b406T3[9]))
+        & $b406Rejects 'a result_index that is missing' (@($b406T3[0..10]) + @($b406T3[15].Replace(',"result_index":1', '')))
+        & $b406Rejects 'a result_index that is a string' (@($b406T3[0..10]) + @($b406T3[15].Replace('"result_index":1', '"result_index":"1"')))
+        & $b406Rejects 'a result_index that is not an integer' (@($b406T3[0..10]) + @($b406T3[15].Replace('"result_index":1', '"result_index":1.5')))
+        & $b406Rejects 'a result from another session' (@($b406T3[0..10]) + @($b406T3[15].Replace('0000000b406a', '0000000b406b')))
         & $b406Restate 'CONTRACT' @(& $b406Say $b406Good) 'PASS' $true '^hooks=True rails=plan-gate contract=CONTRACT stopped=True listLines=3 boundaryLines=3 firstWrite=none firstShell=none subagents=0 durationMs=4321$'
         # A shell command is a write only if the tree shows it: grep patterns, git stash list and null-device redirects are not.
         & $b406Restate 'CONTRACT after read-only shell commands' @(
@@ -3292,6 +3393,14 @@ export class UserService {
         & $b406Check 'contract-restate with no SessionStart hook_response' (Test-ScenarioEvidence 'contract-restate' $b406Repo $b406OnlyOther 1) 'INCONCLUSIVE' $false '^hooks=False '
         & $b406Check 'contract-trace without the UserPromptSubmit hook_response' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Run @() 'done' -NoPrompt) 1) 'INCONCLUSIVE' $false '^hooks=False '
         & $b406Check 'contract-trace when the UserPromptSubmit hook errored' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Run @() 'done' -PromptOutcome 'error' -PromptExit 1) 1) 'INCONCLUSIVE' $false '^hooks=False '
+        # The FIRST UserPromptSubmit and the first SessionStart response are the ones that count, and rails= comes from that same response.
+        $b406LateOk = & $b406Run $b406Good1 'stopped' -PromptOutcome 'error' -PromptExit 1
+        $b406LateOk.Events = @($b406LateOk.Events[0..2]) + @((& $b406Hook 'UserPromptSubmit' $b406ContractRails 'success' 0)) + @($b406LateOk.Events[3..($b406LateOk.Events.Count - 1)])
+        & $b406Check 'contract-restate when the first UserPromptSubmit failed and a later one succeeded' (Test-ScenarioEvidence 'contract-restate' $b406Repo $b406LateOk 1) 'INCONCLUSIVE' $false '^hooks=False '
+        & $b406Check 'contract-trace when the first UserPromptSubmit failed and a later one succeeded' (Test-ScenarioEvidence 'contract-trace' $b406Repo $b406LateOk 1) 'INCONCLUSIVE' $false '^hooks=False '
+        $b406LateBad = & $b406Run $b406Good1 'stopped'
+        $b406LateBad.Events = @($b406LateBad.Events[0..2]) + @((& $b406Hook 'UserPromptSubmit' $b406ContractRails 'error' 1)) + @($b406LateBad.Events[3..($b406LateBad.Events.Count - 1)])
+        & $b406Check 'contract-restate reads rails= from the first UserPromptSubmit, not a later failed one' (Test-ScenarioEvidence 'contract-restate' $b406Repo $b406LateBad 1) 'PASS' $true '^hooks=True rails=plan-gate '
         # rails= is read from what the UserPromptSubmit hook put in the prompt.
         & $b406Check 'rails=contract' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $b406Good1 'stopped' -Rails $b406ContractRails) 1) 'PASS' $true '^hooks=True rails=contract '
         & $b406Check 'rails=plan-gate' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $b406Good1 'stopped' -Rails $b406PlanRails) 1) 'PASS' $true '^hooks=True rails=plan-gate '
@@ -3320,6 +3429,31 @@ export class UserService {
         'public class CheckoutController { public void Refund() { } public bool Refunded; }' | Set-Content (Join-Path $b406Repo 'src/Orders.Api/CheckoutController.cs') -Encoding utf8NoBOM
         & $b406Trace 'TRACE FULL, no test file, no security pass' @() $b406Full 'PASS' $true '^hooks=True rails=plan-gate trace=FULL tests=n/a side=none subagents=0 contract=NONE .*durationMs=4321$'
         & $b406Trace 'TRACE FULL from an arrow line ending in passed' @() $b406ArrowPassed 'PASS' $true '^hooks=True rails=plan-gate trace=FULL '
+        # The closing report is main-agent text after the code: a Stop hook's Boy Scout note can make the agent's reply to it the result.
+        & $b406Trace 'TRACE FULL from main-agent text after the first write, not in any result' @((& $b406Use 'tw1' 'Edit' ([pscustomobject]@{ file_path = 'src/Orders.Api/CheckoutController.cs' })), (& $b406Say $b406Full)) 'The Boy Scout note is advisory; I left it.' 'PASS' $true '^hooks=True rails=plan-gate trace=FULL '
+        & $b406Trace 'TRACE ignores the block in text before the first write' @((& $b406Say $b406Full), (& $b406Use 'tw2' 'Edit' ([pscustomobject]@{ file_path = 'src/Orders.Api/CheckoutController.cs' }))) 'Done.' 'PASS' $false '^hooks=True rails=plan-gate trace=NONE '
+        & $b406Trace 'TRACE ignores the block in a subagent''s text' @((& $b406Use 'tw3' 'Edit' ([pscustomobject]@{ file_path = 'src/Orders.Api/CheckoutController.cs' })), (& $b406Say $b406Full $b406Sub)) 'Done.' 'PASS' $false '^hooks=True rails=plan-gate trace=NONE '
+        # TRACE is judged per candidate, never over joined text: one post-write result or main-agent text block must hold all four parts.
+        $b406Edit = 'src/Orders.Api/CheckoutController.cs'
+        $b406EditLine = '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_w1","name":"Edit","input":{"file_path":"src/Orders.Api/CheckoutController.cs"}}]},"parent_tool_use_id":null,"session_id":"00000000-0000-4000-8000-0000000b406a"}'
+        $b406Variant = { param([string]$First, [string]$Last, [int]$WriteAfter = -1)
+            $lines = [Collections.Generic.List[string]]::new([string[]]$b406T3)
+            if ($First) { $lines[6] = $lines[6].Replace('"result":"turn one"', '"result":' + (ConvertTo-Json $First)) }
+            if ($Last) { $lines[16] = $lines[16].Replace('"result":"turn three"', '"result":' + (ConvertTo-Json $Last)) }
+            if ($WriteAfter -ge 0) { $lines.Insert($WriteAfter + 1, $b406EditLine) }
+            & $b406ReadLines $lines.ToArray()
+        }
+        $b406Block = "Done.`n## Verification & confidence`n- 202 $b406Arrow RefundTests.Paid $b406Arrow passed`n**Beyond the request**: none`n**Blast radius**: none`n**Review depth**: ran it"
+        & $b406Check 'contract-trace with the TRACE block only in result 0' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Variant $b406Block '') 1) 'PASS' $true '^hooks=True rails=plan-gate trace=FULL tests=n/a '
+        $b406Split = @("Done.`n**Beyond the request**: none`n**Blast radius**: none", "**Review depth**: ran it`n- 202 $b406Arrow RefundTests.Paid $b406Arrow passed")
+        & $b406Check 'contract-trace with the TRACE block split across result 0 and the last result is PARTIAL' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Variant $b406Split[0] $b406Split[1]) 1) 'PASS' $false '^hooks=True rails=plan-gate trace=PARTIAL missing=depth,pair '
+        & $b406Check 'contract-trace with the whole block in result 0, which follows the first write' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Variant $b406Block '' 5) 1) 'PASS' $true '^hooks=True rails=plan-gate trace=FULL '
+        & $b406Check 'contract-trace with the block in result 0 and the first write only in turn 2' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Variant $b406Block '' 10) 1) 'PASS' $false '^hooks=True rails=plan-gate trace=NONE '
+        & $b406Check 'contract-trace with the split block, both results after the first write, is still PARTIAL' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Variant $b406Split[0] $b406Split[1] 5) 1) 'PASS' $false '^hooks=True rails=plan-gate trace=PARTIAL missing=depth,pair '
+        & $b406Trace 'TRACE FULL from one post-write main-agent text block among others' @((& $b406Use 'tw4' 'Edit' ([pscustomobject]@{ file_path = $b406Edit })), (& $b406Say 'Working on it.'), (& $b406Say $b406Full)) 'Done.' 'PASS' $true '^hooks=True rails=plan-gate trace=FULL '
+        & $b406Trace 'TRACE PARTIAL when the four parts are scattered over four post-write narration blocks' @((& $b406Use 'tw5' 'Edit' ([pscustomobject]@{ file_path = $b406Edit })), (& $b406Say '**Beyond the request**: none'), (& $b406Say '**Blast radius**: none'), (& $b406Say '**Review depth**: ran it'), (& $b406Say "- 202 $b406Arrow RefundTests.Paid $b406Arrow passed")) 'Done.' 'PASS' $false '^hooks=True rails=plan-gate trace=PARTIAL missing=blast,depth,pair '
+        & $b406Check 'contract-trace with no TRACE block in any turn' (Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Variant '' '') 1) 'PASS' $false '^hooks=True rails=plan-gate trace=NONE '
+        & $b406Check 'contract-restate on a multi-turn stream' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Variant '' '') 1) 'PASS' $false '^hooks=True rails=plan-gate contract=NONE '
         & $b406Trace 'a header-only table row is not a Done-when to test to result line' @() $b406HeaderOnly 'PASS' $false '^hooks=True rails=plan-gate trace=PARTIAL missing=pair tests=n/a '
         & $b406Trace 'TRACE PARTIAL names what is missing' @() "Done.`n**Beyond the request**: none`n**Blast radius**: none" 'PASS' $false '^hooks=True rails=plan-gate trace=PARTIAL missing=depth,pair tests=n/a '
         & $b406Trace 'TRACE NONE' @() 'I added the endpoint.' 'PASS' $false '^hooks=True rails=plan-gate trace=NONE tests=n/a '
@@ -3349,7 +3483,7 @@ export class UserService {
         if ((Get-B406ExecutorRefusal $b406Selected 'copilot') -notmatch 'contract-restate') { throw 'a Copilot run of a b406 case was not refused' }
         if (Get-B406ExecutorRefusal $b406Selected 'claude') { throw 'a Claude run of a b406 case was refused' }
         if (Get-B406ExecutorRefusal @($b406Selected[1]) 'copilot') { throw 'a Copilot run with no b406 case was refused by the b406 rule' }
-        Write-Output 'PASS: B-406 the transcript parser keeps text blocks and sidechain flags and reads the real hook-event stream; contract-restate classes CONTRACT, PARTIAL and NONE over main-agent text with a file write meaning a Write-type tool or a snapshot change (shell command text is never read); sections end at the first non-list line; contract-trace reads TRACE, TESTS-AT-BOUNDARY and SIDE CHECK against the same snapshot; both need successful SessionStart and UserPromptSubmit hook_response events and report rails=; --include-hook-events is passed to b406 cases only; the frozen generator, overlay version and Claude-only executor are enforced'
+        Write-Output 'PASS: B-406 the transcript parser keeps text blocks and sidechain flags, reads the real hook-event stream, and reads a multi-turn stream only with -AllowMultiTurn (several system/init events of one session, a result per turn, Final the last, Results all) while still rejecting the malformed shapes; contract-restate classes CONTRACT, PARTIAL and NONE over main-agent text with a file write meaning a Write-type tool or a snapshot change (shell command text is never read); sections end at the first non-list line; contract-trace judges TRACE per candidate (one post-write result or main-agent text block must hold all four parts), TESTS-AT-BOUNDARY and SIDE CHECK against the same snapshot; both need the first SessionStart and UserPromptSubmit responses to have succeeded hook_response events and report rails=; --include-hook-events is passed to b406 cases only; the frozen generator, overlay version and Claude-only executor are enforced'
         $warehouseTemp = Join-Path $temp 'warehouse-fixture'
         New-EvalRepo $warehouseTemp warehouse
         $sqlFiles = @(Get-ChildItem -LiteralPath $warehouseTemp -Filter '*.sql' -File -Recurse)
@@ -5257,7 +5391,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                 $copilotMeta = ConvertFrom-CopilotEvents $eventsPath $transcriptPath
                 if ($copilotMeta.Model) { $caseModel = $copilotMeta.Model }
             }
-            $transcript = Read-Transcript $transcriptPath
+            # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -eq 'b406-orders')
             $hostFailure = Get-HostFailure $transcript
             if ($hostFailure) { throw $hostFailure }
             $script:CaseExpect = [pscustomobject]@{ Stack = [string]$case.expectStack; Command = [string]$case.expectCommand }

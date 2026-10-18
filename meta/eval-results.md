@@ -4663,3 +4663,26 @@ $b406RailsPlanGate = 'Plan gate'
   12 for an extension) is "not settled", never read as R1 or R2. Premium requests: not applicable (no Copilot arm).
 - Not shown: the fix path (plan Phase 4); the resume across a real second turn (S1 shows the stop, not what follows a go-ahead); Copilot CLI until access
   returns (B-399); VS Code; Angular and monorepo; the `review` skill's own behaviour; whether the tests would fail if the code were broken; field use.
+- Amended 2026-10-18, after S1 ran and before any counted S2 run, by maintainer ruling; revised after a second fresh-session attack: the first S2 invocations
+  (8 attempts, 4 per cell, 2026-10-18 06:35-06:49) all ended ERROR `Stream JSON must contain exactly one system/init event.` On Claude Code 2.1.300 a run whose
+  security pass runs as a background task continues in further turns, so one stream holds 2-3 `system/init` events of one session and one `result` per turn
+  (`result_index` 0, 1, 2), which the reader rejected before grading. Instrument defect, not agent behaviour; by maintainer ruling none of the 8 counts, and S2
+  restarts from slot 1 with the fixed reader. Their transcripts are retained; cost 3.67 USD (0.43-0.50 a run, read from each transcript's last cumulative
+  `total_cost_usd`; the driver had charged them at the 2.50 cap). Observed, not counted: in the three hand-read, the closing report had no Beyond the request,
+  Blast radius or Review depth line.
+  - Reader: multi-turn acceptance applies only to the b406 cases (`Read-Transcript -AllowMultiTurn`); every other scenario still rejects more than one
+    `system/init`. With it, several `system/init` events are accepted iff they share one non-empty `session_id`, there is one result per init with the k-th
+    result after the k-th init (no init after the last result), and every result carries an integer `result_index` equal to its ordinal. Single-init behaviour
+    is unchanged (a differential fuzz of 470 mutants found no single-init stream whose verdict changed). `Final` is the last result; cost and output tokens
+    are the last result's (cumulative); `durationMs` is the last turn's only (per turn), so wall time is taken from the driver's per-run clock (`wallS`).
+  - Row fields: `tokensIn` is the last turn's only (per turn), `tokensOut` and cost are cumulative; median T minus median C for input tokens is therefore not
+    reported for S2.
+  - Hooks: validity is read from the first UserPromptSubmit and the first SessionStart `hook_response`; each must have succeeded; `rails=` is read from that
+    first UserPromptSubmit.
+  - TRACE: candidates are each result after the first main-agent Write-type call and each main-agent text block after it (all results and all main-agent text
+    if there is none); FULL only when one candidate carries all four parts; PARTIAL names the best single candidate's missing parts. Cause: the closing report
+    is displaced from the last result both by the security pass's own report (the last result in 5 of the 8 void attempts) and by the agent's reply to the Stop
+    hook's Boy Scout note (result 0 in 4 of 8). This is a superset of the registered "final result text", so it can only raise TRACE; it changes nothing on
+    the 8 void attempts (none carries beyond, blast or depth in any source).
+  - Spend accounting: a row without `costUsd` is charged the transcript's last `total_cost_usd`, the cap only when there is no transcript. Spend at the
+    restart: 6.88 USD (fixture and probes 1.42 as the driver counts them, S1 1.79, void S2 3.67).
