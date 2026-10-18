@@ -3488,6 +3488,9 @@ function Invoke-RouterProbeSelfTest([string]$Temp) {
     }
     & $check 'a Copilot run whose hook.end carries the rails' 'route-fix' (& $copilotCase 'fired' (@($head) + (& $promptHook @{ additionalContext = $rails }) + $copilotFix + $tail)) 'PASS' $true 'routerFired=True routerIntent=fix '
     & $check 'a Copilot run whose hook.end carries nothing' 'route-fix-nl' (& $copilotCase 'silent' (@($head) + (& $promptHook $null) + $copilotFix + $tail)) 'PASS' $true 'routerFired=False routerIntent=none '
+    # A hook.end with success:false is a failed hook, not a silent router: the converter writes outcome=error, and routerFired stays unknown.
+    $failedHook = @(@{ type = 'hook.start'; data = @{ hookInvocationId = 'h2'; hookType = 'userPromptSubmitted'; input = @{ prompt = 'p' } } }, @{ type = 'hook.end'; data = @{ hookInvocationId = 'h2'; hookType = 'userPromptSubmitted'; success = $false } })
+    & $check 'a Copilot run whose prompt hook failed: silence is not shown' 'route-fix-nl' (& $copilotCase 'hookfailed' (@($head) + $failedHook + $copilotFix + $tail)) 'INCONCLUSIVE' $false 'routerFired=unknown routerIntent=none .*no successful'
     & $check 'a Copilot run with no userPromptSubmitted hook' 'route-fix-nl' (& $copilotCase 'nohook' (@($head) + $copilotFix + $tail)) 'INCONCLUSIVE' $false 'routerFired=unknown'
     # The scenarios: route-fix-nl is route-fix with a prompt the router does not match; the carrier names "looks off" and the regex does not.
     $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
