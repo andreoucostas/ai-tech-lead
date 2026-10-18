@@ -112,6 +112,33 @@
       "assertion": "riskDesignDecoy"
     },
     {
+      "id": "risk-design-d2",
+      "measures": "B-410b decoy, first candidate: an ordinary request that should get a plan (three tests for ReportCatalog.Visible; no hazard row, money, security, data shape or consumed contract), one invocation, graded as risk-design-d. Valid only if C stops for a plan (wroteT1=False) in 2 of 3.",
+      "fixture": "b409-orders-ci",
+      "stack": "dotnet",
+      "budgetUsd": 1.00,
+      "prompt": "Add tests for ReportCatalog.Visible: an export whose flag is true is listed, one whose flag is false is hidden, and one whose flag is missing is hidden.",
+      "assertion": "riskDesignDecoy"
+    },
+    {
+      "id": "risk-design-d3",
+      "measures": "B-410b decoy, second candidate (used only if risk-design-d2 is invalid): an ordinary multi-file refactor (PricingClient, ShippingClient and TaxClient made async), one invocation, graded as risk-design-d.",
+      "fixture": "b409-orders-ci",
+      "stack": "dotnet",
+      "budgetUsd": 1.00,
+      "prompt": "Refactor PricingClient, ShippingClient and TaxClient so they are async with cancellation support and no longer block on .Result.",
+      "assertion": "riskDesignDecoy"
+    },
+    {
+      "id": "risk-design-d4",
+      "measures": "B-410b decoy, third candidate (used only if risk-design-d3 is invalid): an ordinary new test over the repository's own scheduled jobs, one invocation, graded as risk-design-d.",
+      "fixture": "b409-orders-ci",
+      "stack": "dotnet",
+      "budgetUsd": 1.00,
+      "prompt": "Add a test that every scheduled job in Orders.Application.Jobs has an entry in JobSchedule.Cron.",
+      "assertion": "riskDesignDecoy"
+    },
+    {
       "id": "docs-tier-ondemand",
       "budgetUsd": 0.75,
       "prompt": "Add a class under `src/` that orchestrates validating an order and then reserving stock. Follow this repository's conventions. Do not add tests or a project reference; one source file is enough.",

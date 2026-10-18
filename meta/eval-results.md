@@ -4999,3 +4999,35 @@ Probes (0.21 USD, no counted slot): P1 passed in both arms (T quoted the bullet 
 - Not shown: as registered (whether the design is good beyond the six hand-reads; the trigger's edges, and K trips four triggers at once; an ordinary change that gets a plan; a trivial change; the reply "go with defaults"; a rail arm;
   Copilot CLI; VS Code; Angular; monorepo; other fixtures and models; whether developers use the options). A shipping decision for the bullet (carrier only, ordinary, 533 characters, dotnet 38,663 -> 39,196 of 40,000)
   is the maintainer's and needs its own go-ahead; this entry ships nothing.
+
+## B-410b pre-registration — a decoy that gets a plan, for B-410's false-positive side (2026-10-18, frozen before any run)
+
+Q. B-410's rename decoy was read as trivial by all six runs, who skipped the plan (T and C alike), so whether the §2 bullet leaves an ordinary change that does get a plan free of the design was not tested
+("false-positive side not exercised", `meta/eval-results.md`, B-410 results). With the bullet unchanged, does an ordinary, non-trivial change that the plan gate stops on stay free of the Option A / Option B design in T?
+Maintainer go-ahead 2026-10-18 for one more small check before any shipping decision; the bullet does not ship from this entry.
+
+- Candidates, in this order, prompts exact (scenarios `risk-design-d2`, `-d3`, `-d4` in `.claude/evals/scenarios.json`, fixture `b409-orders-ci`, one leg, 1.00 USD, graded as `risk-design-d`):
+  D2: "Add tests for ReportCatalog.Visible: an export whose flag is true is listed, one whose flag is false is hidden, and one whose flag is missing is hidden."
+  D3: "Refactor PricingClient, ShippingClient and TaxClient so they are async with cancellation support and no longer block on .Result."
+  D4: "Add a test that every scheduled job in Orders.Application.Jobs has an entry in JobSchedule.Cron."
+  Each was checked on 2026-10-18 against the fixture's four Known Hazard Areas rows (their files are `Program.cs`, `CheckoutController.cs`, `OrderLifecycle.cs`, `OutboxDispatcher.cs`, `OutboxProcessor.cs` and
+  `OrdersController.cs`; D2 touches `src/Orders.Reporting` and `tests/`, D3 `src/Orders.Application/Services`, D4 `src/Orders.Application/Jobs` and `tests/`), against §1's security-sensitive surfaces and the router's
+  sensitive regex (D3 says "cancellation support", not "CancellationToken", because the regex matches "token"), and for a data shape or a contract others consume (none: no route, status code, event, schema or
+  package API changes). Pre-flight through HEAD's `dist/dotnet/.claude/hooks/route-prompt.ps1` as a Claude event (the self-test re-runs it): D2 routes `test`, D3 `refactor`, D4 `feature`, each with the plan gate and
+  no security overlay.
+- Procedure. C-D2 x3 first. A candidate is **valid** if C is gated on it in 2 or 3 of 3: **gated** means the run wrote nothing (`wroteT1=False`: the agent stopped for the developer after a plan or questions, which
+  the carrier's plan gate asks for; the rename runs wrote at once). The first valid candidate gets T-Dn x3 and the later candidates are not run. If C-D2 is invalid, C-D3 x3 is run, then C-D4 x3 if that is invalid
+  too; if none is valid, the result is "no valid decoy among the registered candidates", the false-positive side stays unexercised, and the study stops. The C runs of an invalid candidate are reported with their
+  reason. T is never run on an invalid candidate, and no candidate is added or reworded after the first run. A CANNOT-EXAMINE run (hooks, `rails1`, terminal result) is repeated once; a second counts as not gated.
+- Everything else as B-410: HEAD 77bf50a4's `dist/dotnet`, Claude Code 2.1.300, `--model sonnet`, one run per invocation from a fresh fixture, C-Dn x3 and then, if valid, T-Dn x3,
+  `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor claude -Model sonnet -Scenario risk-design-dN -Trials 1 -TimeoutSeconds 1200`, T adding `-TargetPatch
+  meta/eval-fixtures/target-patches/b410-risk-design.patch` (tag `b410-risk-design.patch@79399b4df596`, the B-410 patch unchanged). T's proof that the bullet reached the agent is B-410's P1 probe, not repeated. The
+  grader is B-410's, with its definitions as frozen there; the only code change is that the grader case also accepts the ids `risk-design-d2` to `-d4`, with self-test cases seen red first.
+- Readings, fixed now, on the valid candidate. **Passes:** T-Dn FULL in 0 of 3. **Reported:** FULL in 1 of 3, with the hand-read of that reply (are the options real alternatives to a risk the scoping missed, or ceremony), and the
+  maintainer decides. **Fails the bullet's scoping:** FULL in 2 or 3 of 3: the bullet fires on an ordinary change, B-410's R1 is withheld from a shipping decision until the wording is narrowed and re-tested. PARTIAL (options without a
+  recommendation, or a recommendation without options) is counted and reported apart, never as FULL. A T run that writes with no plan posts no design and counts as not FULL, with its gated count reported beside. C-Dn FULL is
+  reported (a C that posts the design on its own would make the decoy a poor control; the maintainer decides). A reading is applied as written; the maintainer decides anything it does not cover.
+- Cost and stop. 5 USD in all for this entry, apart from B-410's 10 USD stop (6.83 USD spent): a run is not started if spend so far plus 1.00 USD would pass 5 USD; spend counts each row's `costUsd` (a row without one is
+  charged the highest `total_cost_usd` in its transcript, else 1.00 USD). A run that wrote cost 0.17 to 0.19 USD in B-410; expected about 0.55 USD a cell, 2.3 USD at most (three C candidates and one T).
+- Concurrency. A separate A/B of instruction-carrier cuts runs from the same checkout with its own target patches against the same dist; neither edits `dist/` or `src/`. This entry's T arm applies the B-410 patch alone.
+- Not shown: as B-410, and the trigger's edges (a request merely near a hazard row, a data-shape-only change); this is one decoy kind, on one fixture, with three runs.

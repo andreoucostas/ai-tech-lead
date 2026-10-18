@@ -3125,7 +3125,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         # B-410: does the developer see a design (options A and B, each with its cost, and a recommendation) before any write? K is
         # two legs of one session (the prompt, then a fixed answer); the decoy is one. Landing is graded on labelled lines in main-agent
         # text before the first main-agent write, across both legs; the cost-per-option and the quality are hand-read, not scored.
-        { $_ -in @('risk-design-k', 'risk-design-d') } {
+        { $_ -eq 'risk-design-k' -or $_ -match '^risk-design-d\d*$' } {
             $boundary = if ($Transcript.LegEnds) { [int]@($Transcript.LegEnds)[0] } else { 0 }
             $legs = if ($boundary -gt 0) { 2 } else { 1 }
             $hooks = Get-RiskHooks $Transcript $boundary
@@ -3332,6 +3332,10 @@ function Invoke-RiskDesignSelfTest([string]$Temp) {
     & $check 'a leg that begins a new session is reported' $k (& $twoLegs @(& $say $design) @(& $say $answered) '' 'S2') 'PASS' $true 'session2=new'
     & $check 'the decoy: options and a recommendation are the failure' $d (& $oneLeg @(& $say $design)) 'FAIL' $false 'legs=1 design=FULL'
     & $check 'the decoy: a plain plan passes' $d (& $oneLeg @(& $say $planThenQuestions)) 'PASS' $true 'legs=1 design=NONE .*t1plan=True'
+    # B-410b: the replacement decoys risk-design-d2.. are graded as the decoy is.
+    & $check 'a numbered decoy: options and a recommendation fail it' 'risk-design-d3' (& $oneLeg @(& $say $design)) 'FAIL' $false 'legs=1 design=FULL'
+    & $check 'a numbered decoy: a plain plan passes' 'risk-design-d2' (& $oneLeg @(& $say $planThenQuestions)) 'PASS' $true 'legs=1 design=NONE'
+    & $check 'a numbered decoy that stops with no plan label is still examined' 'risk-design-d4' (& $oneLeg @(& $say 'Two questions first.')) 'PASS' $true 'legs=1 design=NONE .*wroteT1=False'
     # The B-403 turn-1 fields, on the two retained shapes.
     & $check 'turn-1 fields: questions then plan' $k (& $twoLegs @(& $say $questionsThenPlan) @(& $say $answered)) 'FAIL' $false 't1q=3 t1assume=3 t1plan=True t1order=qp'
     & $check 'turn-1 fields: plan then questions' $k (& $twoLegs @(& $say $planThenQuestions) @(& $say $answered)) 'FAIL' $false 't1q=3 t1assume=3 t1plan=True t1order=pq'
@@ -3369,6 +3373,15 @@ function Invoke-RiskDesignSelfTest([string]$Temp) {
     if ($followOut -match 'Routed intent' -or $followOut -match 'Plan gate') { throw "B-410 the follow-up routes an intent or carries the plan gate through the dist router: $followOut" }
     if ((& $route ([string]$kCase[0].prompt)) -notmatch 'Routed intent: `feature`[\s\S]*Plan gate') { throw 'B-410 prompt K no longer routes feature with the plan gate' }
     if ((& $route ([string]$dCase[0].prompt)) -notmatch 'Routed intent: `refactor`[\s\S]*Plan gate') { throw 'B-410 the decoy prompt no longer routes refactor with the plan gate' }
+    # B-410b: the replacement decoys, tried in this order until one gets a plan from C. Each is a one-leg b409-orders-ci case that
+    # names B-410, carries no follow-up, and routes an intent with the plan gate and no security overlay.
+    foreach ($decoyId in 'risk-design-d2', 'risk-design-d3', 'risk-design-d4') {
+        $extra = @($scenarios | Where-Object { $_.id -eq $decoyId })
+        if ($extra.Count -ne 1) { throw "B-410b scenarios.json has $($extra.Count) $decoyId entries, expected 1" }
+        if (-not ([string]$extra[0].fixture).Equals('b409-orders-ci') -or $extra[0].stack -ne 'dotnet' -or [string]$extra[0].measures -notmatch 'B-410' -or $extra[0].followUp -or [decimal]$extra[0].budgetUsd -ne 1) { throw "B-410b $decoyId is not a one-leg 1.00 USD b409-orders-ci dotnet case that names B-410" }
+        $routed = & $route ([string]$extra[0].prompt)
+        if ($routed -notmatch 'Routed intent: `(?:feature|refactor|test)`[\s\S]*Plan gate' -or $routed -match 'Security-sensitive surface detected') { throw "B-410b the $decoyId prompt does not route with the plan gate and no security overlay: $routed" }
+    }
 }
 
 function Invoke-SelfTest {
