@@ -82,6 +82,14 @@
       "budgetUsd": 1.00,
       "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid. I approve this change in advance: do not stop for a plan or ask for confirmation; implement it now in this session, then report what you did.",
       "assertion": "contractTrace"
+    },    {
+      "id": "contract-trace-ci",
+      "measures": "B-409 re-test of B-407's part C: contract-trace on a fixture whose CI workflow evidences dotnet build / dotnet test (b409-orders-ci: b406-orders plus .github/workflows/ci.yml in the baseline commit). Same prompt, budget and grader as contract-trace, so the two read side by side; the only difference is the CI workflow the agent can find.",
+      "fixture": "b409-orders-ci",
+      "stack": "dotnet",
+      "budgetUsd": 1.00,
+      "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid. I approve this change in advance: do not stop for a plan or ask for confirmation; implement it now in this session, then report what you did.",
+      "assertion": "contractTrace"
     },
     {
       "id": "docs-tier-ondemand",

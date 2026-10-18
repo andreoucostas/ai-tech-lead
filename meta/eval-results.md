@@ -4815,3 +4815,36 @@ at writing, not in the repository.
   A label being present is not the line being true.
 - Not shown: as registered, and in particular whether the block lands where tests run (this fixture has no harness), whether its content is true, and whether the 6/6 label result
   holds on another fixture or model.
+
+## B-409 pre-registration — the closing block on a fixture whose tests run, 0.98.0 fixes installed (2026-10-18, frozen before any run)
+
+Q. On the pre-approved natural-language path (prompt K, scenario `contract-trace-ci`), with HEAD 296c6ce9's `dist/dotnet` (manifest-evidenced build and test commands,
+security-gate-only wording, the task-notification no-op in `route-prompt`) and a fixture whose `AGENTS.md` records `dotnet build Orders.sln` and `dotnet test Orders.sln`, does
+B-407's four-line closing block land? Also: does the shipped security wording get a pass that examined the change, and do the runs execute the tests? B-407 read R2 at TRACE FULL
+1/6 with all five misses `missing=pair`, on a fixture where `/bootstrap` had recorded no test command; the maintainer ruled on 2026-10-18 to fix the instrument (3926a88f) and the
+product issues (296c6ce9) first and re-test once.
+
+- T and C. T: `-TargetPatch meta/eval-fixtures/target-patches/b407-block.patch`, unchanged (SHA-256 prefix `1072c9df7a21`, the `patch=` tag every T row carries). Checked 2026-10-18:
+  `git apply --check` of the file against a fresh install of HEAD 296c6ce9's `dist/dotnet` (`install.ps1` exit 0, scratch repository with `core.autocrlf=false`) exits 0. C: HEAD's
+  `dist/dotnet` as installed, no patch.
+- Fixture `b409-orders-ci`, provenance as committed (`meta/eval-fixtures/b409-orders-ci/provenance.json`): fixture v2 plus `.github/workflows/ci.yml` (`dotnet build Orders.sln`; `dotnet test
+  Orders.sln --no-build`), committed, HEAD 296c6ce9's `dist/dotnet` installed, then one headless `/bootstrap` (`claude -p /bootstrap`, paused at Phase 2b, `--resume` with "proceed"; sonnet,
+  Claude Code 2.1.300, 1.16 USD). Its overlay is 8 files, 58,553 bytes, sha256 `0408a76b9a14…`; `AGENTS.md` Verification Commands record build `dotnet build Orders.sln` and test `dotnet test
+  Orders.sln`, and nothing under `src/` or `tests/` changed. The generation spend (1.16 USD) is reported separately from the runs; the product check generation (fixture v2 without CI) is
+  reported in the results.
+- Host and run. Claude Code 2.1.300, `claude -p --model sonnet` (a different `system/init` version in any row is a new baseline), one run per invocation from a fresh fixture build,
+  alternating T and C until 6 valid each, `-AllowMultiTurn` reader, `--include-hook-events`: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor claude -Model sonnet
+  -Scenario contract-trace-ci -Trials 1 -TimeoutSeconds 1200` (T adds `-TargetPatch …`). Prompt K and the grader are `contract-trace`'s; the scenario's `budgetUsd` is 1.00 USD.
+- Validity, as B-406's amended rules: the first SessionStart and the first UserPromptSubmit `hook_response` succeeded; normal shutdown; a change under `src/` since the snapshot. Rails are
+  `plan-gate` in both arms (the patch leaves the rails alone, so `rails=` says nothing about T); T's proof is that the runner applied the patch (`patch=` tag). A CANNOT-EXAMINE run is repeated
+  once; a second counts as not reaching the class (not FULL) and is reported by its reason, open to the maintainer's ruling.
+- Grader, as committed, no change. TRACE-ANY is B-406's amended TRACE (FULL only when one post-write main-agent text block or one result carries all four parts); TRACE-LAST and LABELS are
+  reported. SIDE CHECK classes: EXAMINED (a report that is not a refusal; not proof of a thorough audit), REFUSED (the report begins CANNOT EXAMINE), UNREAD, none, with `sideCalled=`.
+  TESTS-AT-BOUNDARY is reported. Added, by hand from the transcript and reported: TESTS-RAN, a main-agent or subagent shell call running `dotnet test` in the run.
+- Readings, fixed now. **R1 LANDS:** T TRACE-ANY FULL in 5 or 6 of 6 and C at most 1 of 6; a separate shipping decision for the four-line block follows. **R2:** T 3 or fewer of 6: part C is
+  closed and no further wording is tried. **4 of 6 in T:** six more T runs, pooled (10 or more of 12 is R1). **C 2 or more of 6 FULL:** INCONCLUSIVE, the maintainer decides. **SECURITY** (gates
+  the 0.98.0 security wording, read on C, the shipped arm): SIDE EXAMINED in 5 or 6 of 6 C runs keeps it; 4 or fewer reverts the security-pass and overlay wording before any release and files
+  the finding. TESTS-RAN and cost are reported, not readings. A reading is applied as written; the maintainer decides anything it does not cover.
+- Stop. 10 USD for the runs: per-run cap the scenario's `budgetUsd` (1.00 USD); a run is not started if spend so far plus that cap would pass 10 USD; spend counts each row's `costUsd` (a row
+  without one is charged its transcript's last `total_cost_usd`, else the cap). A cell the stop leaves short is "not settled", never read as R1 or R2. Claude Code only; no premium requests.
+- Not shown: Copilot CLI; VS Code; Angular; monorepo; other fixtures and models; a real second turn; whether the block's content is true; field use.

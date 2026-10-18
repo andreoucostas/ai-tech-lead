@@ -39,6 +39,9 @@ $repo = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation
 # and could refuse this checkout, both in fixture installs and in the installs agents run from it.
 $env:ATL_SOURCE_CHECK = 'off'
 $scenarioPath = Join-Path $PSScriptRoot 'scenarios.json'
+# B-406/B-409: the contract fixtures, one list. Every condition that keys on them is a membership test on it, never a name.
+# b409-orders-ci is b406-orders with a CI workflow in its baseline commit.
+$contractFixtures = @('b406-orders', 'b409-orders-ci')
 if (-not $ResultsPath) { $ResultsPath = Join-Path $repo 'meta/eval-results.md' }
 # Built at runtime: the outgoing-commit guard refuses a blob holding the key-shaped literal. The
 # guard-retry prompt the agent receives is unchanged.
@@ -49,17 +52,18 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','b406-orders','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','b406-orders','b409-orders-ci','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
-    if ($Stack -eq 'b406-orders') {
+    if ($Stack -in $contractFixtures) {
         # B-406 fixture v2: the frozen B-345 generator (it deletes and recreates $Path itself), then an Orders.sln.
         # The project GUIDs `dotnet sln add` writes are not deterministic, so two builds differ in Orders.sln only.
+        # B-409: b409-orders-ci is the same plus .github/workflows/ci.yml in the baseline commit.
         $generator = Join-Path $repo 'meta/eval-fixtures/b345-bootstrap-skills/generate.py'
-        $generatorRefusal = Get-B406GeneratorRefusal $generator
+        $generatorRefusal = Get-B406GeneratorRefusal $generator $Stack
         if ($generatorRefusal) { throw $generatorRefusal }
         $python = (Get-Command python -ErrorAction Stop).Source
         $output = & $python $generator $Path 2>&1 | Out-String
-        if ($LASTEXITCODE -ne 0) { throw "b406-orders: the fixture generator failed (exit $LASTEXITCODE):`n$output" }
+        if ($LASTEXITCODE -ne 0) { throw "${Stack}: the fixture generator failed (exit $LASTEXITCODE):`n$output" }
         $solution = Join-Path $Path 'Orders.sln'
         $telemetryOptOut = $env:DOTNET_CLI_TELEMETRY_OPTOUT
         $noLogo = $env:DOTNET_NOLOGO
@@ -67,16 +71,17 @@ function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','b406-order
         $env:DOTNET_NOLOGO = '1'
         try {
             $output = dotnet new sln -n Orders -o $Path 2>&1 | Out-String
-            if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $solution -PathType Leaf)) { throw "b406-orders: dotnet new sln failed (exit $LASTEXITCODE):`n$output" }
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $solution -PathType Leaf)) { throw "${Stack}: dotnet new sln failed (exit $LASTEXITCODE):`n$output" }
             $projects = @(Get-ChildItem -LiteralPath (Join-Path $Path 'src'), (Join-Path $Path 'tests') -Recurse -File -Filter '*.csproj' | ForEach-Object { $_.FullName })
             [Array]::Sort($projects, [StringComparer]::Ordinal)
-            if ($projects.Count -eq 0) { throw 'b406-orders: the generator wrote no project under src/ or tests/.' }
+            if ($projects.Count -eq 0) { throw "${Stack}: the generator wrote no project under src/ or tests/." }
             $output = dotnet sln $solution add $projects 2>&1 | Out-String
-            if ($LASTEXITCODE -ne 0) { throw "b406-orders: dotnet sln add failed (exit $LASTEXITCODE):`n$output" }
+            if ($LASTEXITCODE -ne 0) { throw "${Stack}: dotnet sln add failed (exit $LASTEXITCODE):`n$output" }
         } finally {
             if ($null -eq $telemetryOptOut) { Remove-Item Env:DOTNET_CLI_TELEMETRY_OPTOUT -ErrorAction SilentlyContinue } else { $env:DOTNET_CLI_TELEMETRY_OPTOUT = $telemetryOptOut }
             if ($null -eq $noLogo) { Remove-Item Env:DOTNET_NOLOGO -ErrorAction SilentlyContinue } else { $env:DOTNET_NOLOGO = $noLogo }
         }
+        if ($Stack -eq 'b409-orders-ci') { Write-B409CiWorkflow $Path }
         git -C $Path init --quiet
         git -C $Path config user.email 'agent-evals@invalid.local'
         git -C $Path config user.name 'Agent Evals'
@@ -896,23 +901,46 @@ function Get-ChangelogGuardDecision([string]$ChangelogText, [string]$DistVersion
 
 # B-406: the fixture v2 generator is the B-345 one, frozen. The overlay and every b406 result are bound to
 # its bytes, so a changed generator is refused rather than silently measured as a new fixture.
-function Get-B406GeneratorRefusal([string]$GeneratorPath) {
+function Get-B406GeneratorRefusal([string]$GeneratorPath, [string]$Fixture = 'b406-orders') {
     $frozen = '277d4d02951dbb4e494298d5d6acf703b1c64be0e4f3daa637ab3d6b4b23b688'
-    if (-not (Test-Path -LiteralPath $GeneratorPath -PathType Leaf)) { return "b406-orders: $GeneratorPath is missing." }
+    if (-not (Test-Path -LiteralPath $GeneratorPath -PathType Leaf)) { return "${Fixture}: $GeneratorPath is missing." }
     $actual = (Get-FileHash -LiteralPath $GeneratorPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($actual -ne $frozen) { return "b406-orders: $GeneratorPath is not the frozen fixture v2 generator (sha256 $actual, expected $frozen)." }
+    if ($actual -ne $frozen) { return "${Fixture}: $GeneratorPath is not the frozen fixture v2 generator (sha256 $actual, expected $frozen)." }
     return $null
+}
+
+# B-409: the CI workflow the b409-orders-ci baseline commit carries, so the repository itself evidences `dotnet build` and
+# `dotnet test`. UTF-8, no BOM, LF, whatever the host's newline: the bytes are built here, not by a cmdlet.
+function Write-B409CiWorkflow([string]$Path) {
+    $lines = @(
+        'name: ci',
+        'on: [push, pull_request]',
+        'jobs:',
+        '  build-test:',
+        '    runs-on: ubuntu-latest',
+        '    steps:',
+        '      - uses: actions/checkout@v4',
+        '      - uses: actions/setup-dotnet@v4',
+        '        with:',
+        "          dotnet-version: '8.0.x'",
+        '      - run: dotnet build Orders.sln',
+        '      - run: dotnet test Orders.sln --no-build'
+    )
+    $directory = Join-Path $Path '.github/workflows'
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    [IO.File]::WriteAllBytes((Join-Path $directory 'ci.yml'), [Text.UTF8Encoding]::new($false).GetBytes(($lines -join "`n") + "`n"))
 }
 
 # B-406: what a real /bootstrap changed relative to a fresh install, laid over the install and committed, so
 # the target looks like a repository that ran it. Valid only for the framework version it was generated on;
 # -Live refuses a stale one before any run (Get-GeneratedFixtureRefusal), -SelfTest never reads it.
-function Initialize-B406Overlay([string]$Path) {
-    $overlayRoot = Join-Path $repo 'meta/eval-fixtures/b406-orders/files'
-    if (-not (Test-Path -LiteralPath $overlayRoot -PathType Container)) { throw "b406-orders: $overlayRoot is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
+function Initialize-B406Overlay([string]$Path, [string]$Fixture, [string]$FixturesRoot = (Join-Path $repo 'meta/eval-fixtures')) {
+    if ($Fixture -notin $contractFixtures) { throw "${Fixture}: has no bootstrap overlay; the contract fixtures are $($contractFixtures -join ', ')." }
+    $overlayRoot = Join-Path $FixturesRoot "$Fixture/files"
+    if (-not (Test-Path -LiteralPath $overlayRoot -PathType Container)) { throw "${Fixture}: $overlayRoot is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
     Copy-Item -Path (Join-Path $overlayRoot '*') -Destination $Path -Recurse -Force
     git -C $Path add -A
-    git -C $Path commit --quiet -m 'b406 bootstrap overlay'
+    git -C $Path commit --quiet -m "$($Fixture.Split('-')[0]) bootstrap overlay"
 }
 
 # -WarehouseMap partial: drop every line naming ctl.LoadRun or LoadRunId from the generated documents
@@ -1746,7 +1774,7 @@ function Test-B406NoFileWrite($Evidence, [string]$Target) {
 # Copilot run of one is refused before any spend.
 function Get-B406ExecutorRefusal($Selected, [string]$Executor) {
     if ($Executor -ne 'copilot') { return $null }
-    $ids = @($Selected | Where-Object { $_.fixture -eq 'b406-orders' } | ForEach-Object { $_.id } | Select-Object -Unique)
+    $ids = @($Selected | Where-Object { $_.fixture -in $contractFixtures } | ForEach-Object { $_.id } | Select-Object -Unique)
     if ($ids) { return "Refusing -Executor copilot: $($ids -join ', ') are graded on Claude Code transcripts. Run them under -Executor claude." }
     return $null
 }
@@ -2938,7 +2966,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         # B-406 S2: with the approval clause, did the run implement, test each stated outcome, close with the
         # Verification & confidence block, and run the framework's own security pass? The contract fields are
         # reported, not gating. A run that changed nothing under src/ examined nothing.
-        'contract-trace' {
+        { $_ -in @('contract-trace', 'contract-trace-ci') } {
             $hooks = Get-B406Hooks $Transcript
             if (-not $hooks.Loaded) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "hooks=False no successful SessionStart and UserPromptSubmit hook_response in the transcript, so the framework did not load durationMs=$(Get-B406Duration $e)" } }
             # Changed or new since the pre-run snapshot, so the install, the overlay and a -TargetPatch never count as the agent's change.
@@ -3013,8 +3041,108 @@ function Get-OutcomeSummary($Results) {
     }
 }
 
+# B-409: the contract fixtures are one list ($contractFixtures), so each condition that keys on a fixture covers every
+# name in it. Nothing here runs python or dotnet or reads a generated overlay: it is synthetic roots and the script's own text.
+function Invoke-ContractFixtureSelfTest([string]$Temp) {
+    $names = @('b406-orders', 'b409-orders-ci')
+    foreach ($name in $names) {
+        $selected = @([pscustomobject]@{ id = "case-$name"; fixture = $name }, [pscustomobject]@{ id = 'route-fix' })
+        if ((Get-B406ExecutorRefusal $selected 'copilot') -notmatch "case-$name") { throw "a Copilot run of a $name case was not refused" }
+        if (Get-B406ExecutorRefusal $selected 'claude') { throw "a Claude run of a $name case was refused" }
+    }
+    if (Get-B406ExecutorRefusal @([pscustomobject]@{ id = 'other'; fixture = 'warehouse' }) 'copilot') { throw 'a Copilot run of a non-contract fixture was refused by the contract-fixture rule' }
+    if (($contractFixtures -join ',') -ne ($names -join ',')) { throw "the contract-fixture list is '$($contractFixtures -join ',')', expected '$($names -join ',')'" }
+    $validFixtures = @((Get-Command New-EvalRepo).Parameters['Stack'].Attributes | Where-Object { $_ -is [System.Management.Automation.ValidateSetAttribute] } | ForEach-Object { $_.ValidValues })
+    foreach ($name in $names) {
+        if ($name -notin $validFixtures) { throw "New-EvalRepo does not accept the $name fixture" }
+        $provenance = Join-Path $Temp "$name-provenance.json"
+        '{"frameworkVersion":"1.2.3"}' | Set-Content $provenance -Encoding utf8NoBOM
+        if ((Get-GeneratedFixtureRefusal $provenance '1.2.4' $name) -notmatch "^${name}: .*generated on v1\.2\.3 but dist is v1\.2\.4") { throw "a stale $name overlay was not refused under its own name" }
+        if ((Get-GeneratedFixtureRefusal (Join-Path $Temp "no-$name.json") '1.2.3' $name) -notmatch "^${name}: .*is missing") { throw "a missing $name overlay was not refused under its own name" }
+    }
+    $altered = Join-Path $Temp 'altered-contract-generate.py'
+    'print("not the frozen generator")' | Set-Content $altered -Encoding utf8NoBOM
+    foreach ($name in $names) {
+        if ((Get-B406GeneratorRefusal $altered $name) -notmatch "^${name}: .*is not the frozen fixture v2 generator") { throw "an altered generator was not refused under the $name name" }
+    }
+    # The overlay helper takes the fixture name: it copies that fixture's files, commits them, and refuses a missing or unknown fixture.
+    $fixturesRoot = Join-Path $Temp 'overlay-fixtures'
+    foreach ($name in $names) {
+        New-Item -ItemType Directory -Path (Join-Path $fixturesRoot "$name/files/docs") -Force | Out-Null
+        "overlay of $name" | Set-Content (Join-Path $fixturesRoot "$name/files/docs/marker.txt") -Encoding utf8NoBOM
+        $overlayRepo = Join-Path $Temp "overlay-$name"
+        New-Item -ItemType Directory -Path $overlayRepo -Force | Out-Null
+        git -C $overlayRepo init --quiet
+        git -C $overlayRepo config user.email 'agent-evals@invalid.local'
+        git -C $overlayRepo config user.name 'Agent Evals'
+        'baseline' | Set-Content (Join-Path $overlayRepo 'a.txt') -Encoding utf8NoBOM
+        git -C $overlayRepo add -A
+        git -C $overlayRepo commit --quiet -m 'fixture baseline'
+        Initialize-B406Overlay $overlayRepo $name -FixturesRoot $fixturesRoot
+        if ((Get-Content -Raw -LiteralPath (Join-Path $overlayRepo 'docs/marker.txt')).Trim() -ne "overlay of $name") { throw "the $name overlay was not copied from its own files" }
+        if ((@(git -C $overlayRepo status --porcelain) -join '') -ne '') { throw "the $name overlay was left uncommitted" }
+        if ((git -C $overlayRepo log -1 --format=%s) -ne ($name.Split('-')[0] + ' bootstrap overlay')) { throw "the $name overlay commit subject is '$(git -C $overlayRepo log -1 --format=%s)'" }
+    }
+    $emptyRoot = Join-Path $Temp 'overlay-fixtures-empty'
+    New-Item -ItemType Directory -Path $emptyRoot -Force | Out-Null
+    foreach ($name in $names) {
+        $refused = ''
+        try { Initialize-B406Overlay (Join-Path $Temp "overlay-$name") $name -FixturesRoot $emptyRoot } catch { $refused = $_.Exception.Message }
+        if ($refused -notmatch "^${name}: .*is missing") { throw "a missing $name overlay directory was not refused under its own name: '$refused'" }
+    }
+    $unknown = ''
+    try { Initialize-B406Overlay (Join-Path $Temp 'overlay-b406-orders') 'dotnet' -FixturesRoot $fixturesRoot } catch { $unknown = $_.Exception.Message }
+    if (-not $unknown) { throw 'the overlay helper accepted a fixture that is not a contract fixture' }
+    # The CI workflow the b409 baseline commit carries: the bytes Write-B409CiWorkflow writes are the pinned text, UTF-8, no BOM, LF.
+    $expectedCi = (@(
+        'name: ci',
+        'on: [push, pull_request]',
+        'jobs:',
+        '  build-test:',
+        '    runs-on: ubuntu-latest',
+        '    steps:',
+        '      - uses: actions/checkout@v4',
+        '      - uses: actions/setup-dotnet@v4',
+        '        with:',
+        "          dotnet-version: '8.0.x'",
+        '      - run: dotnet build Orders.sln',
+        '      - run: dotnet test Orders.sln --no-build'
+    ) -join "`n") + "`n"
+    $ciRoot = Join-Path $Temp 'ci-fixture'
+    New-Item -ItemType Directory -Path $ciRoot -Force | Out-Null
+    Write-B409CiWorkflow $ciRoot
+    $ciBytes = [IO.File]::ReadAllBytes((Join-Path $ciRoot '.github/workflows/ci.yml'))
+    $expectedBytes = [Text.UTF8Encoding]::new($false).GetBytes($expectedCi)
+    if ($ciBytes.Length -ge 3 -and $ciBytes[0] -eq 0xEF -and $ciBytes[1] -eq 0xBB -and $ciBytes[2] -eq 0xBF) { throw 'the b409 ci.yml carries a BOM' }
+    if ($ciBytes -contains 13) { throw 'the b409 ci.yml carries a CR' }
+    if (-not [Linq.Enumerable]::SequenceEqual([byte[]]$ciBytes, [byte[]]$expectedBytes)) { throw "the b409 ci.yml bytes differ from the pinned workflow: '$([Text.Encoding]::UTF8.GetString($ciBytes))'" }
+    # The b409 branch of New-EvalRepo writes it before the baseline commit (after the generator, which recreates the directory), and only for b409.
+    $newRepoText = (Get-Command New-EvalRepo).ScriptBlock.Ast.Extent.Text
+    if ($newRepoText -notmatch "if \(\`$Stack -eq 'b409-orders-ci'\) \{ Write-B409CiWorkflow \`$Path \}") { throw 'New-EvalRepo does not write the CI workflow for the b409 fixture only' }
+    if ($newRepoText.IndexOf('Write-B409CiWorkflow $Path') -lt $newRepoText.IndexOf('dotnet sln $solution add') -or $newRepoText.IndexOf('Write-B409CiWorkflow $Path') -gt $newRepoText.IndexOf("git -C `$Path add -A")) { throw 'New-EvalRepo does not write the CI workflow between the solution and the baseline commit' }
+    # No condition may key on the first contract fixture by name, nor on a fixture field with anything but the list: each is a
+    # membership test on it. (The one by-name test left is New-EvalRepo's `$Stack -eq 'b409-orders-ci'`, which is what adds the workflow.)
+    $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-ContractFixtureSelfTest).ScriptBlock.Ast.Extent.Text, '')
+    $named = [regex]::Matches($selfText, "-(?:eq|ne|ceq|ieq)\s+'b406-orders'") | ForEach-Object { $_.Value }
+    if ($named) { throw "a condition keys on one contract fixture by name instead of the list: $($named -join ', ')" }
+    $unlisted = [regex]::Matches($selfText, "(?:\`$caseFixture|\.fixture)\s+-\w+\s+(?!\`$contractFixtures\b)\S+") | ForEach-Object { $_.Value }
+    if ($unlisted) { throw "a fixture condition is not a membership test on the contract-fixture list: $($unlisted -join ', ')" }
+    $members = [regex]::Matches($selfText, '\$caseFixture -in \$contractFixtures').Count
+    if ($members -lt 4) { throw "expected the overlay, snapshot, hook-event and multi-turn conditions to test `$caseFixture -in `$contractFixtures, found $members" }
+    # The scenario is contract-trace on the CI fixture: same prompt, budget, grader and stack, and a measures note that says what it is.
+    $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
+    $base = @($scenarios | Where-Object { $_.id -eq 'contract-trace' })[0]
+    $ci = @($scenarios | Where-Object { $_.id -eq 'contract-trace-ci' })
+    if ($ci.Count -ne 1) { throw "scenarios.json has $($ci.Count) contract-trace-ci entries, expected 1" }
+    if ($ci[0].fixture -ne 'b409-orders-ci') { throw "contract-trace-ci runs on '$($ci[0].fixture)', expected b409-orders-ci" }
+    foreach ($field in 'prompt', 'budgetUsd', 'assertion', 'stack') {
+        if ([string]$ci[0].$field -ne [string]$base.$field) { throw "contract-trace-ci differs from contract-trace in ${field}: '$($ci[0].$field)' vs '$($base.$field)'" }
+    }
+    if ([string]$ci[0].measures -notmatch 'B-409' -or [string]$ci[0].measures -notmatch 'dotnet build' -or [string]$ci[0].measures -notmatch 'dotnet test') { throw 'the contract-trace-ci measures note does not say it is contract-trace on a CI-evidenced fixture' }
+}
+
 function Invoke-SelfTest {
-    $temp = Join-Path ([IO.Path]::GetTempPath()) ('b41-selftest-' + [guid]::NewGuid().ToString('N'))
+    $temp =Join-Path ([IO.Path]::GetTempPath()) ('b41-selftest-' + [guid]::NewGuid().ToString('N'))
     try {
         New-EvalRepo $temp
         if (-not (Test-Path (Join-Path $temp 'src/Calculator.cs'))) { throw 'fixture source missing' }
@@ -3510,7 +3638,7 @@ export class UserService {
         & $b406Check 'rails=none' (Test-ScenarioEvidence 'contract-restate' $b406Repo (& $b406Run $b406Good1 'stopped' -Rails 'routed, no rails') 1) 'PASS' $true '^hooks=True rails=none '
         # No snapshot is no evidence: the graders refuse to fall back to git status.
         $script:B406Snapshot = $null
-        foreach ($b406Id in 'contract-restate', 'contract-trace') {
+        foreach ($b406Id in 'contract-restate', 'contract-trace', 'contract-trace-ci') {
             $b406NoSnapshot = ''
             try { Test-ScenarioEvidence $b406Id $b406Repo (& $b406Run $b406Good1 'done') 1 | Out-Null } catch { $b406NoSnapshot = $_.Exception.Message }
             if ($b406NoSnapshot -notmatch 'snapshot') { throw "$b406Id graded a run with no pre-run tree snapshot: '$b406NoSnapshot'" }
@@ -3531,7 +3659,12 @@ export class UserService {
         & $b406Trace 'INCONCLUSIVE when the src/ change predates the snapshot' @() $b406Full 'INCONCLUSIVE' $false 'src/'
         'public class CheckoutController { public void Refund() { } public bool Refunded; }' | Set-Content (Join-Path $b406Repo 'src/Orders.Api/CheckoutController.cs') -Encoding utf8NoBOM
         & $b406Trace 'TRACE FULL, no test file, no security pass' @() $b406Full 'PASS' $true '^hooks=True rails=plan-gate trace=FULL tests=n/a side=none sideCalled=none subagents=0 contract=NONE .*durationMs=4321$'
-        & $b406Trace 'TRACE FULL from an arrow line ending in passed' @() $b406ArrowPassed 'PASS' $true '^hooks=True rails=plan-gate trace=FULL '
+        # B-409: contract-trace-ci is contract-trace on a fixture with a CI workflow, so one grader reads both and the same transcript grades identically.
+        $b409Base = Test-ScenarioEvidence 'contract-trace' $b406Repo (& $b406Run @() $b406Full) 1
+        $b409Ci = Test-ScenarioEvidence 'contract-trace-ci' $b406Repo (& $b406Run @() $b406Full) 1
+        if ($b409Ci.Status -ne $b409Base.Status -or [bool]$b409Ci.Pass -ne [bool]$b409Base.Pass -or $b409Ci.Detail -ne $b409Base.Detail) { throw "B-409 contract-trace-ci graded differently from contract-trace: ci=$($b409Ci.Status) pass=$($b409Ci.Pass) $($b409Ci.Detail) / base=$($b409Base.Status) pass=$($b409Base.Pass) $($b409Base.Detail)" }
+        & $b406Check 'contract-trace-ci on the full block' $b409Ci 'PASS' $true '^hooks=True rails=plan-gate trace=FULL tests=n/a side=none '
+        & $b406Trace 'TRACE FULL from an arrow line ending in passed' @()$b406ArrowPassed 'PASS' $true '^hooks=True rails=plan-gate trace=FULL '
         # The closing report is main-agent text after the code: a Stop hook's Boy Scout note can make the agent's reply to it the result.
         & $b406Trace 'TRACE FULL from main-agent text after the first write, not in any result' @((& $b406Use 'tw1' 'Edit' ([pscustomobject]@{ file_path = 'src/Orders.Api/CheckoutController.cs' })), (& $b406Say $b406Full)) 'The Boy Scout note is advisory; I left it.' 'PASS' $true '^hooks=True rails=plan-gate trace=FULL '
         & $b406Trace 'TRACE ignores the block in text before the first write' @((& $b406Say $b406Full), (& $b406Use 'tw2' 'Edit' ([pscustomobject]@{ file_path = 'src/Orders.Api/CheckoutController.cs' }))) 'Done.' 'PASS' $false '^hooks=True rails=plan-gate trace=NONE '
@@ -3633,6 +3766,8 @@ export class UserService {
         if ((Get-B406ExecutorRefusal $b406Selected 'copilot') -notmatch 'contract-restate') { throw 'a Copilot run of a b406 case was not refused' }
         if (Get-B406ExecutorRefusal $b406Selected 'claude') { throw 'a Claude run of a b406 case was refused' }
         if (Get-B406ExecutorRefusal @($b406Selected[1]) 'copilot') { throw 'a Copilot run with no b406 case was refused by the b406 rule' }
+        Invoke-ContractFixtureSelfTest $temp
+        Write-Output 'PASS: B-409 the contract fixtures are one list covering b406-orders and b409-orders-ci in the Copilot refusal, the stale and missing overlay refusals, the generator refusal, the overlay helper (copies and commits that fixture''s files, refuses a missing or unknown one) and every live-loop condition; the b409 baseline carries the pinned ci.yml (UTF-8, no BOM, LF) written between the solution and the baseline commit; contract-trace-ci is contract-trace on b409-orders-ci (same prompt, budget, grader, stack) and grades identically on one transcript'
         Write-Output 'PASS: B-406 the transcript parser keeps text blocks and sidechain flags, reads the real hook-event stream, and reads a multi-turn stream only with -AllowMultiTurn (several system/init events of one session, a result per turn, Final the last, Results all) while still rejecting the malformed shapes (command_lifecycle may follow the last result); contract-restate classes CONTRACT, PARTIAL and NONE over main-agent text with a file write meaning a Write-type tool or a snapshot change (shell command text is never read); sections end at the first non-list line; contract-trace judges TRACE per candidate (one post-write result or main-agent text block must hold all four parts), TESTS-AT-BOUNDARY and SIDE CHECK against the same snapshot; SIDE CHECK is EXAMINED, REFUSED (a report that begins CANNOT EXAMINE), UNREAD or none from tool_result and task_notification reports; both need the first SessionStart and UserPromptSubmit responses to have succeeded hook_response events and report rails=; --include-hook-events is passed to b406 cases only; the frozen generator, overlay version and Claude-only executor are enforced; the live version guard looks through an Unreleased root head above the dist version to the released head'
         $warehouseTemp = Join-Path $temp 'warehouse-fixture'
         New-EvalRepo $warehouseTemp warehouse
@@ -5322,11 +5457,13 @@ if ($WarehouseMap -in @('generated','partial')) {
 }
 # B-406: the bootstrap overlay is bound to the framework version it was generated on. Refused before any spend.
 # -Arm none cannot reach these cases: they carry no bareArm, so the refusal above already stops it.
-$b406Cases = @($selected | Where-Object { $_.fixture -eq 'b406-orders' })
-if ($b406Cases.Count) {
-    $b406Root = Join-Path $repo 'meta/eval-fixtures/b406-orders'
-    $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $b406Root 'provenance.json') $version 'b406-orders'
-    if (-not $fixtureRefusal -and -not (Test-Path -LiteralPath (Join-Path $b406Root 'files') -PathType Container)) { $fixtureRefusal = "b406-orders: $(Join-Path $b406Root 'files') is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
+# B-409: the same for every contract fixture in the selection, each against its own overlay and provenance.
+$b406Cases = @($selected | Where-Object { $_.fixture -in $contractFixtures })
+$contractFixturesUsed = @($b406Cases | ForEach-Object { [string]$_.fixture } | Select-Object -Unique)
+foreach ($contractFixture in $contractFixturesUsed) {
+    $b406Root = Join-Path $repo "meta/eval-fixtures/$contractFixture"
+    $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $b406Root 'provenance.json') $version $contractFixture
+    if (-not $fixtureRefusal -and -not (Test-Path -LiteralPath (Join-Path $b406Root 'files') -PathType Container)) { $fixtureRefusal = "${contractFixture}: $(Join-Path $b406Root 'files') is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
     if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
 }
 $patchTag = ''
@@ -5341,12 +5478,12 @@ if ($TargetPatch) {
         $overwritten = @(Get-TargetPatchPaths $TargetPatch | Where-Object { $_ -in $overlay })
         if ($overwritten) { throw "Refusing -TargetPatch with -WarehouseMap generated: the generated overlay replaces $($overwritten -join ', ') after the patch is applied." }
     }
-    if ($b406Cases.Count) {
-        # The b406 overlay lands before the patch, on top of the fresh install the patch was cut against.
-        $b406Files = Join-Path $repo 'meta/eval-fixtures/b406-orders/files'
+    foreach ($contractFixture in $contractFixturesUsed) {
+        # The overlay lands before the patch, on top of the fresh install the patch was cut against.
+        $b406Files = Join-Path $repo "meta/eval-fixtures/$contractFixture/files"
         $b406Overlay = @(Get-ChildItem -LiteralPath $b406Files -Recurse -File -Force | ForEach-Object { [IO.Path]::GetRelativePath($b406Files, $_.FullName).Replace('\', '/') })
         $overwritten = @(Get-TargetPatchPaths $TargetPatch | Where-Object { $_ -in $b406Overlay })
-        if ($overwritten) { throw "Refusing -TargetPatch with a b406-orders case: the bootstrap overlay has already changed $($overwritten -join ', '), so a patch cut against a fresh install does not describe what the agent would see." }
+        if ($overwritten) { throw "Refusing -TargetPatch with a $contractFixture case: the bootstrap overlay has already changed $($overwritten -join ', '), so a patch cut against a fresh install does not describe what the agent would see." }
     }
     # Once per stack before any spend: a patch that failed inside the loop would abort the
     # invocation after paid runs, and their rows are written only at the end.
@@ -5397,7 +5534,7 @@ try {
         if ($Arm -eq 'framework' -and $case.id -notin @('install-handoff','archived-redirect','url-install-greenfield','url-install-brownfield')) {
             Install-Framework $target $caseStack | Out-Null
             # B-406: the target becomes a repository that ran /bootstrap; before any patch or scenario setup.
-            if ($caseFixture -eq 'b406-orders') { Initialize-B406Overlay $target }
+            if ($caseFixture -in $contractFixtures) { Initialize-B406Overlay $target $caseFixture }
             # Before the scenario setup, which commits the framework files in the warehouse cases:
             # the patch adds no commit, so `git log` (session-start preloads it) matches both arms.
             if ($TargetPatch) { Invoke-TargetPatch $target $TargetPatch | Out-Null }
@@ -5516,7 +5653,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
         }
         # B-406: what the agent finds is the install, the overlay, any patch and the scenario setup; its own writes are what differs from this.
-        $script:B406Snapshot = if ($caseFixture -eq 'b406-orders') { Get-TreeHashes $target } else { $null }
+        $script:B406Snapshot = if ($caseFixture -in $contractFixtures) { Get-TreeHashes $target } else { $null }
         $prompt = $case.prompt.Replace('{SYNTHETIC_AWS_KEY}', $syntheticAwsKey).Replace('{FRAMEWORK_ROOT}', $repo).Replace('{TARGET_ROOT}', $target).Replace('{ARCHIVED_ROOT}', $archivedRoot)
         $transcriptPath = Join-Path $scratch ($runName + '.jsonl')
         $outcome = $null
@@ -5532,7 +5669,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework')
         } else {
-            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -eq 'b406-orders')
+            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures)
         }
         $agentExit = $run.ExitCode
         try {
@@ -5542,7 +5679,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                 if ($copilotMeta.Model) { $caseModel = $copilotMeta.Model }
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
-            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -eq 'b406-orders')
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures)
             $hostFailure = Get-HostFailure $transcript
             if ($hostFailure) { throw $hostFailure }
             $script:CaseExpect = [pscustomobject]@{ Stack = [string]$case.expectStack; Command = [string]$case.expectCommand }
