@@ -4253,6 +4253,26 @@ from which selection source? Q2: does a `task` call with no `model` argument to 
   counted; a second such refusal in a row ends the study), and 3 premium requests from the usage files, no run started at 3. An Opus session joins Not shown.
   Prompts, arms, counted items and readings unchanged, read on 1.0.98.
 
+## B-399 results — 2026-10-19 (pre-registered at 8e0048c9, amended at fb1aff29)
+
+- Arm R, one run, valid (session `b3990000-0000-4000-8000-000000000201`, 73 s): `session.start` 1.0.98 with `claude-sonnet-5.5`, all 6 main assistant messages on it,
+  no auth, quota or model error, repository hooks loaded (every `hook.end` succeeded: `sessionStart` 1, `userPromptSubmitted` 5, `preToolUse` 15, `postToolUse` 26).
+  Fixture v0.98.1 `dist/dotnet`, installed greenfield (exit 0); SHA-256 prefixes `.claude/agents` convention-check 48c58f0c3374, debt-radar 92dcf7f64389,
+  bloat-radar 92207e04adaf, solid-check af9c22130907; wrappers e6a62609d91e, 1a4dc90f3689, b5c48f7a2e82, 798939e636b4; `review.md` 78925df2793b.
+- Counted: the session captured the bundle, then made four `task` calls in one turn, each with **no `model` argument**. Each one started (`subagent.started`, then
+  completed) on `claude-sonnet-5.5` with `modelSelectionSource: session_inheritance` and `taskModelSource: unset`. Each `agentDescription` was the
+  `.github/agents` wrapper's description, word for word, and `subagent.selected` gave `tools: ["*"]`. The `.claude` files' `Read, Grep, Glob, PowerShell` would list
+  four tools, as B-398's `bootstrap-pass`, which has no wrapper, did. So the CLI ran the model-less wrapper for all four, and never read the `.claude` file's
+  `model: haiku`. `solid-check` behaved the same way. The session did none of the scans itself: its own tools were 2 `powershell` (capture), 1 `view` (`review.md`) and 4 `read_agent`.
+- Reading, as registered: every no-argument call started, on the model it inherited from the session, so there was **no refusal on CLI 1.0.98: B-399 closes by
+  measurement**. Arm D was not run, because its condition failed: all three haiku calls lacked a `model` argument. One counted run of 3; 1 premium request of 3
+  (56.36 AI credits). `~\.copilot\config.json` and `settings.json` unchanged.
+- Recorded, not scored: returned lines were convention-check 1 (the unbootstrapped abort line), debt-radar 9, bloat-radar 8 and solid-check 7. The bundle was empty,
+  because `git clone` copies commits only, so the fixture's untracked `src/Legacy.cs` never reached the clone. This flaw was in 8e0048c9's design too. Dispatch and
+  model selection come before the bundle's content, so the counted items stand, but they say nothing about findings. Only convention-check read its `.claude` file
+  (first at `%TEMP%\.claude\agents\…`, which failed, then in the clone). On Copilot CLI the three run on the session's model, not Haiku (`docs/reference.md`; WSD-106 line).
+- Not shown: as registered, an Opus session (amended), and a non-empty bundle.
+
 ## Consumer-docs pre-registration — a fresh agent installing from the GitHub URL alone, and a developer's first set-up prompt (2026-10-15, frozen before any run)
 
 Does the consumer documentation, with the installer's output, let (1) a fresh Claude Code agent given only the GitHub URL install
