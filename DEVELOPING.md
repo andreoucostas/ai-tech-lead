@@ -16,7 +16,7 @@ number and never restates them. Paths assume cwd = the repo root.
 | `install.ps1` | root installer | detect stack, auto-detect mixed → monorepo, delegate to dist installer |
 | `.claude/hooks/` | meta-dev `bom-fix.ps1` hook | auto-adds the UTF-8 BOM to written `.ps1`; does not ship |
 | `.claude/hooks/_fixtures/` | JSON event fixtures for testing the hooks | see below |
-| `.claude/scripts/release.ps1` | release automation [#7] | maintainer-only; requires PowerShell 7 |
+| `.claude/scripts/release.ps1` | release automation [#7] | run by the maintainer, or by an agent the maintainer asks in chat to release a named version (with `-NoEvals`; AGENTS.md › Ship); requires PowerShell 7 |
 | `.claude/scripts/watch-ci.ps1` | watches GitHub Actions for a commit; 0 green / 1 red / 3 cannot-verify | used by `release.ps1` step 5c, runnable by hand |
 | `.claude/scripts/_ci-decision.ps1` | the publish decision table (tag / exit code) as a callable function | dot-sourced by `release.ps1` and by its tests |
 | `.claude/plans/` | plans [Conventions] | includes the locked B-21/B-22/B-27 design specs |
