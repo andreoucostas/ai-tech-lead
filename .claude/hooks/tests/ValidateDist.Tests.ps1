@@ -330,6 +330,18 @@ try {
             [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
         } "command hook shell must be exactly 'powershell'" 'hook-registration'
     }
+    # B-381: a Copilot host that starts a hook outside the repository root (CLI before 1.0.88, VS Code
+    # 1.139.1's bundled runtime from a subfolder) fails the relative -File path, and preToolUse then
+    # denies every tool. Each hooks.json entry pins "cwd": ".", which those hosts resolve to the root.
+    It 'case 8e: a Copilot entry without a repo-root cwd fails check 8' {
+        Assert-Case 'copilot-missing-cwd' {
+            param($d)
+            $path = Join-Path $d '.github\hooks\hooks.json'
+            $doc = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            @($doc.hooks.preToolUse)[0].PSObject.Properties.Remove('cwd')
+            [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
+        } 'Copilot entry must set "cwd": "."' 'hook-registration'
+    }
     It 'case 9: a dead documented command fails check 7' { Assert-Case 'dead-doc' { param($d) Replace-Text (Join-Path $d 'README.md') 'scripts/install.ps1' 'scripts/definitely-missing.ps1' } 'dead instructions in shipped docs' 'no-dead-instruction' }
     # -Force is load-bearing: most shipped Markdown lives below dot-directories.
     It 'case 10: no markdown files fails check 7' { Assert-Case 'no-docs' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Filter *.md -Force | Remove-Item -Force } 'no-dead-instruction scanned zero documentation files' 'no-dead-instruction' }

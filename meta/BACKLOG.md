@@ -22,7 +22,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 7 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half needs a maintainer-driven VS Code session, since nothing here drives VS Code's Copilot harness headlessly |
 | 8 | B-378 | The guard's deny on VS Code's Copilot harness, which 1.141 is making the default for enterprise users, is documented but not observed; it needs a maintainer-driven VS Code session |
 | 9 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 10 | B-381 | Stall class: a host that starts hooks outside the repository root denies every tool; fixed upstream in CLI 1.0.88, no field report |
+| 10 | B-437 | Stall class, B-381's remainder: on VS Code's Copilot harness with a subfolder workspace the `.claude/settings.json` copies still fail; no field report |
 | 11 | B-427 | Cost, not a harm: on Copilot the three `haiku` reviewers run on the session's model, Opus included; the same wrappers as B-382 |
 | 12 | B-402 | Improvement: the warehouse scoped pass gave the right answer when it ran, but Rule 11 sent the agent there in 1 of 3 runs |
 | 13 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
@@ -126,12 +126,12 @@ canary write 2 of 2. Left: a guard deny in a maintainer-driven Copilot-harness s
 `{"decision":"block","reason":...}` on `agentStop` (at most 8 in a row, `stop_hook_active` on re-entry); VS Code's Local harness maps `agentStop` to `Stop` and needs the `hookSpecificOutput` form or exit 2. copilot-cli
 issue #3894 (open, not primary) reports `agentStop` firing on subagent turns and stalling `/review`, so run `meta/canaries/agent-stop-delivery/` with the review fan-out before changing `boy-scout-check.ps1`.
 
-### B-381 · `hooks.json` entries carry no `cwd`, so every hook depends on the host starting it in the repository root
-**Filed against:** v0.94.0 (2026-10-11)
+### B-437 · The `.claude/settings.json` hook copies still start in a subfolder on VS Code's Copilot harness
+**Filed against:** v0.98.1 (2026-10-20)
 **Priority:** P3 · **Effort:** S · **Invariants:** #3 #5
-**Status:** Open; maintainer request 2026-10-11, stall class, no field report. Copilot CLI 1.0.88's changelog says hooks without `cwd` "again run in the project root", so an earlier version
-ran them elsewhere, where the relative `.claude\hooks\*.ps1` paths fail and `preToolUse` denies every tool. Add `"cwd": "."` (repo-root-relative per GitHub's hooks reference) to
-`src/core/.github/hooks/hooks.json` once VS Code's Local harness is seen to accept it; raise the change to guarded.
+**Status:** Open; found by B-381's probes (`meta/eval-results.md` "B-381 check"). The runtime VS Code 1.139.1 bundles also runs the Claude-format entries; from a subfolder workspace one without `cwd`
+started there and its relative `-File` failed, one with `"cwd": "."` started in the root. So the `PreToolUse` `Write|Edit` copy would still error and refuse writes there (inferred with B-378's fail-closed run).
+Candidate: `"cwd": "."` on those entries once Claude Code is seen to accept the key; else tell teams to open the repository root.
 
 ### B-383 · Skill descriptions share a 15,000-character cap in VS Code's Copilot harness; measure the shipped and consumer load against it
 **Filed against:** v0.94.0 (2026-10-11)

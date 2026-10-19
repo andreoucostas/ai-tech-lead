@@ -37,6 +37,15 @@
   supported" hint, not an error. `convention-check` and `solid-check` read the files they need themselves and are
   unchanged.
 
+- **Copilot hooks now start in your repository root even when Copilot starts in a subfolder.** Each entry in
+  `.github/hooks/hooks.json` now sets `"cwd": "."`, which Copilot resolves to the repository root. Before, a Copilot
+  host that started hooks in the session's folder instead (Copilot CLI before 1.0.88 started in a subfolder, and the
+  runtime behind VS Code 1.139.1's Copilot harness with a subfolder of the repository open as the workspace) could not
+  find `.claude\hooks\*.ps1`, so the write guard's hook failed and Copilot refused every tool call. Copilot CLI 1.0.88
+  and later and VS Code's Local harness already start them in the root. That VS Code runtime also runs the copies in
+  `.claude/settings.json`, which still start in the subfolder, so writes there may still be refused: open the
+  repository root as your workspace folder.
+
 ## 0.98.1 — 2026-10-19
 
 - **The briefing deck's "Four pillars" slide and its talking points now describe the current rules.** After 0.98.0

@@ -5808,3 +5808,45 @@ Q. A custom agent that Copilot CLI runs as a subagent gets no repository instruc
   against 31,251 and 29,464 for the unkeyed two in the same run and 29,970 and 29,920 for the same reviewers in B-399, so about 15,000 tokens more a keyed reviewer a run; 12.01 and 12.08 AI
   credits in 2 requests each, against 8.62 and 9.03 in 3 in B-399. Spend: 1 premium request of the 1-plus-repeat stop, 60.38 AI credits; `~\.copilot\config.json` and `settings.json` unchanged.
 - Not shown: `test-critic` and `security-auditor` dispatched with the key; a non-empty bundle; whether findings change; VS Code; other models.
+
+## B-381 check — does each host accept `"cwd": "."` on a `hooks.json` entry, and resolve it to the repository root (2026-10-20, source read and free probes, not pre-registered)
+
+Q. `hooks.json` entries carry no `cwd`, so a host that starts a hook elsewhere fails the relative `-File` and denies every tool on `preToolUse`. Is `"cwd": "."` accepted, and relative to what?
+- **VS Code 1.139.1, Local harness** (`<vscode>` = `%LOCALAPPDATA%\Programs\Microsoft VS Code\04c0d99f4f\resources\app`; minified, so line and byte offset). `out/vs/workbench/workbench.desktop.main.js`
+  line 675: the entry schema for a file with `version` (`O8n`, offset 4215727) lists `cwd` (`type: "string"`) with `additionalProperties: !0`, so an unknown key is no error; `H8n` (4217807) copies
+  a string `cwd`; `xKo` (4218454) resolves it: `~` expanded (`JB`, line 570), absolute (`Dl` = `path.isAbsolute`, line 30) kept, else `Be(o, cwd)` (`extUri.joinPath`, line 31); no `cwd` gives `o`
+  itself. Line 677 (4297258): the PromptsService passes `o` = the workspace folder holding the hook file, else the first folder. So `"."` is that folder, as an absent `cwd` is.
+  `extensions/copilot/dist/extension.js` (Copilot Chat 0.67.0) line 6023 (19080772): `HookExecutor._spawn` starts the process in that `cwd`, `os.homedir()` only when none came; line 6694
+  (19260085): `ChatHookService` also puts it in the hook's input as `cwd`. Read, not run.
+- **VS Code 1.139.1, Copilot harness** (the Agent Host's `node_modules.asar.unpacked/@github/copilot-sdk-win32-x64` 1.0.15-unstable.35393089353, `cliVersion.d.ts` 1.0.84-5) and **Copilot CLI
+  1.0.98** (`%LOCALAPPDATA%\copilot\pkg\win32-x64\1.0.98`): `prebuilds\win32-x64\runtime.node` is compiled Rust in both; it holds the `HookConfig` field names (offsets 69676112 and 96559424),
+  `hooks\declarative.rs` trace fields `repo_root` and `host_cwd`, and "hook spawn cwd fell back to the system temp dir" (1.0.98, 97524960), not the resolution. 1.0.98's `changelog.json` line 1835
+  (1.0.88): hook commands "without an explicit `cwd` again run in the project root"; line 6215 (1.0.72): they "run in the current session directory after /cd". `copilot help config` line 252: repo
+  `settings.json` hooks share the `.github/hooks/*.json` schema, not described. `copilot-sdk/generated/rpc.d.ts` line 7104: hook actions are `JsonValue[]`. So both were probed.
+- Probes, free: a scratch Git repository with `sub\`, `.claude\hooks\probe.ps1` (writes `Get-Location`, the process directory and the event's `cwd` to a log outside the tree) and a `hooks.json`
+  (459b54b68825) of four entries per event: relative or absolute `-File`, without `cwd` or with `"cwd": "."`; last on `userPromptSubmitted`, an absolute handler returning `handled` with a
+  `responseContent` (CLI 1.0.44+), so no model is called. CLI runs: B-396's runner flags with `claude-haiku-5.5`, sessions `b3810000-0000-4000-8000-00000000010{1,2,3}`; VS Code runtime: B-378's
+  `drive.mjs`. Every run printed the handler's reply and recorded no `assistant.usage` and no turn (the CLI's `totalPremiumRequestCost` 0); `~\.copilot\config.json` and `settings.json` unchanged.
+
+| run | host | session directory | relative, no `cwd` | relative, `"."` | absolute, no `cwd`, started in | absolute, `"."`, started in |
+|---|---|---|---|---|---|---|
+| cli98-root | CLI 1.0.98 | root | root | root | root | root |
+| cli98-sub | CLI 1.0.98 | `sub` | root | root | root | root |
+| cli86-sub | CLI 1.0.86 (`--prefer-version`) | `sub` | failed: "The argument '.claude\hooks\probe.ps1' is not recognized", code 1 | root | `sub` | root |
+| vsc-root | VS Code 1.139.1 runtime | root | root | root | root | root |
+| vsc-sub | VS Code 1.139.1 runtime | `sub` | failed, code 1 | root | `sub` | root |
+
+- Both CLIs logged `loaded repo hooks (hookCount=17)`, every entry; the event's `cwd` was the session directory in every run. A second fixture adding the shipped `.claude/settings.json` shape
+  (`shell: powershell`, 6cde4cbaf162) on the VS Code runtime from `sub` (vsc2-sub): the Claude-format copy without `cwd` failed, with `"cwd": "."` started in the root, absolute without it in `sub`.
+- Reading: both hosts accept `cwd` and resolve `"."` to the repository root; the CLI and the bundled runtime resolve it against the root even when the session is in a subdirectory, which an
+  absent `cwd` does not on 1.0.86 or that runtime. Made: `"cwd": "."` on the six `src/core/.github/hooks/hooks.json` entries (no stack snippet carries one) and `validate-dist` check 8 refusing a
+  Copilot entry without it; `dist/*` rebuilt. Filed: B-437 (the `.claude/settings.json` copies on that runtime).
+- Dist copy: `dist/dotnet`'s `preToolUse` command run by `powershell.exe -Command` on a Copilot `create` event: from a directory outside the repository, EXIT=1 with the same "is not recognized"
+  for a key-shaped and a plain file; started in the entry's `cwd` resolved against the root, the key-shaped file got `permissionDecision: deny` ("Blocked write to tmp-canary.txt") and the plain one
+  EXIT=0 with no output.
+- Confirmation, one run: the rebuilt `dist/dotnet` installed greenfield (B-378's fixture recipe, variant F; `hooks.json` 77538decad79), Copilot CLI 1.0.98, `claude-sonnet-5.5`, B-396's prompt N,
+  session `b3810000-0000-4000-8000-000000000201`: `hookCount=12`, every `hook.end` succeeded (`sessionStart`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, `agentStop` once each),
+  `notes.txt` written, `.claude/.state` and an audit line for it. Spend: 1 premium request, 12.72 AI credits.
+- Not shown: VS Code's UI and either harness driven through it (the Local harness is read from source, its executor not run); CLIs 1.0.72 to 1.0.85 and 1.0.87; `/cd` within a session; the
+  sandbox; macOS and Linux; whether Claude Code accepts `cwd` in `.claude/settings.json`; a hook file outside every workspace folder, for which the Local harness's base is the first workspace
+  folder with or without `cwd` (source).

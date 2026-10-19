@@ -710,6 +710,7 @@ foreach ($rf in $regFiles) {
                 $interp = ($cmd -split '\s+')[0]
                 if ($interp -cne 'pwsh') { $regProblems += "$rf : Copilot command must explicitly invoke 'pwsh', found '$interp' in: $cmd" }
                 if ($cmd -cnotmatch '(?:^|\s)-NoProfile(?:\s|$)') { $regProblems += "$rf : command omits exact -NoProfile: $cmd" }
+                if ([string]$entry.cwd -cne '.') { $regProblems += "$rf : Copilot entry must set ""cwd"": ""."" (repository root), or a host starting it elsewhere fails its relative -File: $cmd" }
                 $script = Get-FileArgument $cmd
                 if (-not $script) { $regProblems += "$rf : no -File argument in: $cmd" }
                 elseif ($script -notmatch '\.ps1$') { $regProblems += "$rf : non-PowerShell hook target '$script'" }

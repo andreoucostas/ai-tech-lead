@@ -43,6 +43,14 @@ unknown field, with a warning; VS Code 1.139.1's prompt-file validator gives the
 A rerun of B-399's arm R on CLI 1.0.98 then showed the keyed `bloat-radar` and `debt-radar` prompts carrying those blocks (45,354 more chars, about
 15,000 more tokens a reviewer run) and the unkeyed two without them. `convention-check` and `solid-check`, which read their files themselves, are unchanged.
 
+`.github/hooks/hooks.json` (guarded, B-381): every entry sets `"cwd": "."`, and `validate-dist` check 8 refuses a Copilot entry without it
+(`ValidateDist.Tests.ps1` case 8e). Probes whose `userPromptSubmitted` hook answered the prompt (no model call, 0 premium requests;
+`meta/eval-results.md` "B-381 check"): started in a subdirectory of the repository, Copilot CLI 1.0.86 and the runtime VS Code 1.139.1
+bundles for its Copilot harness ran an entry without `cwd` in that subdirectory, where the relative `-File` failed, and one with `"cwd": "."`
+in the repository root; CLI 1.0.98 ran both in the root (its 1.0.88 fix) and loaded all 17 entries. VS Code's Local harness resolves a
+relative `cwd` against the hook file's workspace folder, its default without one (read from source). Left as B-437: that runtime also runs
+the `.claude/settings.json` copies, which still start in the subdirectory.
+
 ## 0.98.1 — 2026-10-19
 
 The briefing deck (`presentation/framework-briefing.html` slide 6) and `TALKING-POINTS.md` quoted three carrier rules the 0.98.0
