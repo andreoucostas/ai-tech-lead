@@ -1720,6 +1720,11 @@ $b406TracePair = '(?i)(→|->|=>|\|).*\b(passed|failed|asserted, not run|not run
 $b406Status202 = '\b202\b|Status202Accepted|HttpStatusCode\.Accepted\b|\bAccepted\w*Result\b'
 $b406Status404 = '\b404\b|Status404NotFound|HttpStatusCode\.NotFound\b|\bNotFound\w*Result\b'
 $b406Status409 = '\b409\b|Status409Conflict|HttpStatusCode\.Conflict\b|\bConflict\w*Result\b'
+# B-413: source names an outcome through the controller helpers (`Accepted()`, `AcceptedAtAction(...)`, `NotFound()`, `Conflict()`, and
+# the `Results.`/`TypedResults.` forms), which the test-content patterns above miss. Source files only.
+$b406Helper202 = '\bAccepted(?:AtAction|AtRoute)?\s*\('
+$b406Helper404 = '\bNotFound\s*\('
+$b406Helper409 = '\bConflict\s*\('
 # A security-auditor report that is a refusal: it BEGINS with this, once a leading [Subagent hand-back] wrapper line,
 # whitespace and markdown heading markers are stripped (Get-B406Refusal). The phrase elsewhere in a report is not one.
 $b406SideRefused = '(?i)^(?:Security audit:\s*)?CANNOT EXAMINE'
@@ -2016,22 +2021,24 @@ function Get-DoneWhenLegOne($Evidence, [int]$Boundary) {
 }
 
 # Of the changed or new files matching a pattern, which of the 202, 404 and 409 outcomes their content names (B-406's name match, which
-# does not check that anything asserts it): ALL, SOME(which), NONE, and n/a when no such file changed.
-function Get-B406StatusNaming([string[]]$Files, [string]$Target) {
+# does not check that anything asserts it): ALL, SOME(which), NONE, and n/a when no such file changed. -Source adds the controller helpers.
+function Get-B406StatusNaming([string[]]$Files, [string]$Target, [switch]$Source) {
     if (-not $Files.Count) { return 'n/a' }
     $text = ($Files | ForEach-Object { Get-Content -Raw -LiteralPath (Join-Path $Target $_) }) -join "`n"
-    $named = [ordered]@{ '202' = [bool]($text -match $b406Status202); '404' = [bool]($text -match $b406Status404); '409' = [bool]($text -match $b406Status409) }
+    $p = if ($Source) { @("$b406Status202|$b406Helper202", "$b406Status404|$b406Helper404", "$b406Status409|$b406Helper409") } else { @($b406Status202, $b406Status404, $b406Status409) }
+    $named = [ordered]@{ '202' = [bool]($text -match $p[0]); '404' = [bool]($text -match $p[1]); '409' = [bool]($text -match $p[2]) }
     $hit = @($named.Keys | Where-Object { $named[$_] })
     if ($hit.Count -eq $named.Count) { 'ALL' } elseif ($hit.Count -gt 0) { "SOME($($hit -join ','))" } else { 'NONE' }
 }
 
-# The last `dotnet test` summary the main agent saw: PASSED(n), FAILED(f of n), or none.
+# The last `dotnet test` summary the main agent saw: PASSED(n), FAILED(f of n), or none. B-413: the last in a call's output, not the first,
+# since one call that breaks the code, runs the tests, restores it and runs them again prints red and then green.
 function Get-RiskTestRun($Evidence) {
     $last = $null
     foreach ($tool in @($Evidence.Tools | Where-Object { -not $_.Sidechain -and $_.Name -in @('Bash', 'PowerShell') -and [string]$_.Input.command -match '(?i)\bdotnet\s+test\b' })) {
         if (-not $Evidence.ToolResults.ContainsKey($tool.Id)) { continue }
-        $m = [regex]::Match((Get-B406ContentText $Evidence.ToolResults[$tool.Id].content), '(?i)(?:Passed|Failed)!\s+-\s+Failed:\s+(\d+),\s+Passed:\s+(\d+),\s+Skipped:\s+(\d+),\s+Total:\s+(\d+)')
-        if ($m.Success) { $last = $m }
+        $all = [regex]::Matches((Get-B406ContentText $Evidence.ToolResults[$tool.Id].content), '(?i)(?:Passed|Failed)!\s+-\s+Failed:\s+(\d+),\s+Passed:\s+(\d+),\s+Skipped:\s+(\d+),\s+Total:\s+(\d+)')
+        if ($all.Count) { $last = $all[$all.Count - 1] }
     }
     if (-not $last) { return 'none' }
     if ([int]$last.Groups[1].Value -gt 0) { return "FAILED($($last.Groups[1].Value) of $($last.Groups[4].Value))" }
@@ -3229,7 +3236,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 $dw = Get-DoneWhenLegOne $e $boundary
                 $changed = @(Get-B406Changes $Target | Where-Object { Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf })
                 $testNaming = Get-B406StatusNaming @($changed | Where-Object { $_ -match '^tests/.*\.cs$' }) $Target
-                $codeNaming = Get-B406StatusNaming @($changed | Where-Object { $_ -match '^src/.*\.cs$' }) $Target
+                $codeNaming = Get-B406StatusNaming @($changed | Where-Object { $_ -match '^src/.*\.cs$' }) $Target -Source
                 $fields += " dw=$($dw.Class) dwLines=$($dw.Lines) dwBoundary=$($dw.Boundary) dwOrder=$($dw.Order) tests=$testNaming code=$codeNaming testRun=$(Get-RiskTestRun $e)"
                 $pass = $dw.Class -eq 'CONTRACT'
             }
@@ -3494,8 +3501,11 @@ function Invoke-RiskDesignSelfTest([string]$Temp) {
     $failedRun = "Failed!  - Failed:     2, Passed:     7, Skipped:     0, Total:     9, Duration: 3 s - Orders.Tests.dll (net8.0)"
     $leg2Run = { param([string]$Output) @((& $say 'Implementing.'), (& $use 'e9' 'Edit'), (& $tool 'd1' 'Bash' 'dotnet test Orders.sln'), (& $toolOut 'd1' $Output)) }
     $allThree = 'Assert.Equal(StatusCodes.Status202Accepted, a); Assert.Equal(404, b); Assert.Equal(409, c);'
-    & $checkWrites 'tests and code naming all three outcomes, tests passing' (& $twoLegs @(& $say "$dwDone`n`n$design") (& $leg2Run $passed)) 'tests=ALL code=ALL testRun=PASSED\(9\)' @($allThree) @('return Accepted(); return NotFound(); return Conflict(); // 202 404 409')
-    & $checkWrites 'one outcome tested, none of the code named: SOME and NONE' (& $twoLegs @(& $say "$dwDone`n`n$design") (& $leg2Run $failedRun)) 'tests=SOME\(404\) code=NONE testRun=FAILED\(2 of 9\)' @('Assert.Equal(404, b);') @('public class CheckoutController { int refunded; }')
+    # B-413: the code names its outcomes by the controller helpers alone, no status number anywhere in it.
+    & $checkWrites 'tests and code naming all three outcomes, tests passing' (& $twoLegs @(& $say "$dwDone`n`n$design") (& $leg2Run $passed)) 'tests=ALL code=ALL testRun=PASSED\(9\)' @($allThree) @('if (i is null) return NotFound(); if (!i.Paid) return TypedResults.Conflict(); return Accepted();')
+    # B-413: one call that breaks the code, sees red, restores it and sees green reads by its last summary; green then red reads red.
+    & $checkWrites 'a break-and-restore call that ends green reads its last summary' (& $twoLegs @(& $say "$dwDone`n`n$design") (& $leg2Run "$failedRun`nRestored.`n$passed")) 'testRun=PASSED\(9\)' @($allThree) @()
+    & $checkWrites 'one outcome tested, none of the code named: SOME and NONE' (& $twoLegs @(& $say "$dwDone`n`n$design") (& $leg2Run "$passed`n$failedRun")) 'tests=SOME\(404\) code=NONE testRun=FAILED\(2 of 9\)' @('Assert.Equal(404, b);') @('public class CheckoutController { int refunded; }')
     & $checkWrites 'no test file and no dotnet test: n/a and none' (& $twoLegs @(& $say "$dwDone`n`n$design") @(& $say $answered)) 'tests=n/a code=n/a testRun=none' @() @()
     $dwCase = @($scenarios | Where-Object { $_.id -eq $dwId })
     if ($dwCase.Count -ne 1) { throw "B-412 scenarios.json has $($dwCase.Count) $dwId entries, expected 1" }

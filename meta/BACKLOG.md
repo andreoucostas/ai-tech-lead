@@ -179,11 +179,6 @@ scenario variant), and decide whether the gate should count "asked before commit
 **Status:** Open; the rail's "or its security-auditor agent" invites a raw `git diff` request. Its first call returned CANNOT EXAMINE (no scope bundle) in 10 of 10 B-406 S2 runs and 3 of 10 B-407 runs (6 examined "without a `-ScopePath` bundle", 2 not read); the 0.98.0 wording sends the agent to `security-gate` only. Re-measured at a cap that does not bind (B-411, 2.50 USD, same fixture): C examined 5/6, T1 6/6, T2 6/6, against B-409's C 3/6 at 1.00 USD, so the cap was the confound and the maintainer's B-409 ruling stands.
 Not examined there: whether an examined run's first call was a refusal, and the empty-examination count the title names; B-411 counted the final report only.
 
-### B-413 · Two reported eval-runner fields misread on two-turn runs
-**Filed against:** v0.97.2 (2026-10-18)
-**Priority:** P3 · **Effort:** S · **Invariants:** none
-**Status:** Open (found in B-412, reported-only, never gating): `code=` matches status names in test text but misses controller helpers `Accepted()`/`NotFound()`/`Conflict()`; `testRun` takes the first summary of the last `dotnet test` call, which is usually a break-the-code red check. Fix with a red-first self-test before the next study that reports them.
-
 ### B-414 · Copilot CLI agents fix first and run the test after: red-first is 1 of 3 and 0 of 3 with the full carrier
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P2 · **Effort:** M to measure · **Invariants:** #5
@@ -205,7 +200,7 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 ### B-417 · Measure tests derived from the restated criteria on a prompt that hides a boundary
 **Filed against:** v0.98.0 (2026-10-19)
 **Priority:** P2 · **Effort:** M · **Invariants:** #7 if it ships
-**Status:** Open (maintainer, 2026-10-19). B-412 found no downstream difference because prompt K states every outcome. Pre-register an under-specified prompt on `b409-orders-ci` omitting a boundary the fixture documents, with plan v2 §3.1's `:74` test-per-line clause, §3.2's Rule 5 append and test-critic's "unpinned" question as the target patch; grade line → test → post-hoc mutant; include a "go with defaults" leg 2. Fix B-413 first. About 10 USD. Review T1+T7.
+**Status:** Open (maintainer, 2026-10-19). B-412 found no downstream difference because prompt K states every outcome. Pre-register an under-specified prompt on `b409-orders-ci` omitting a boundary the fixture documents, with plan v2 §3.1's `:74` test-per-line clause, §3.2's Rule 5 append and test-critic's "unpinned" question as the target patch; grade line → test → post-hoc mutant; include a "go with defaults" leg 2 (B-413's `code=`/`testRun` fixed). About 10 USD. Review T1+T7.
 
 ### B-418 · Give the reviewer something to act on without the closing block
 **Filed against:** v0.98.0 (2026-10-19)
