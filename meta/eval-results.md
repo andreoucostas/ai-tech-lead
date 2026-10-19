@@ -5569,3 +5569,54 @@ gates a ship (the change ships on its own as ordinary-tier, on-demand text).
 - Limits: one run, one model, Claude Code only; no run of the old `review.md` (its Spec conformance read only `specs/`), so how often a per-line verdict appears unprompted is not measured; only the
   pasted-plan source was exercised, not the conversation plan or the stated request; the review broke no code to see red and said so; prompt K states every outcome. Evidence (`prompt.txt`,
   `expected.txt`, `review.jsonl`, `exit.txt`) in `%TEMP%\b418-review\run\`, not in the repository.
+
+## B-414c pre-registration — red-first on Copilot CLI in a bootstrapped repository that records its test command (2026-10-19, frozen by the commit that holds it, before any run)
+
+Requested by the orchestrating session, which relays the maintainer's ask to start the next item (B-414, rank 3); stops set in that request: 13 Copilot premium requests and 2.00 USD of Claude Code,
+to be raised only by the maintainer.
+- Question. With the carrier sentence A (43d44030) and the session-start list C (cf0b9159) shipped in v0.98.1, Copilot ran the existing test red first 6 of 6 on `route-fix` (B-421b), on an unbootstrapped
+  fixture. C prints only under `BOOTSTRAP_PENDING` and A applies only where `AGENTS.md` records no test command, so neither acts once `/bootstrap` has recorded one: every consumer's steady state. Does
+  Copilot CLI run the recorded test red before the fix there? Ships nothing.
+- Fixture, made by DEVELOPING.md's recipe for a bootstrapped fixture (B-406, `warehouse-generated`) and cut as a `-TargetPatch`, so the runner is unchanged. Generation 2 (used): route-fix's own `dotnet`
+  fixture (the runner's `New-EvalRepo`) with `src/Calculator.cs` at `value <= max`, the code before route-fix's defect, committed; HEAD's `dist/dotnet` (no diff from v0.98.1) installed by the runner's
+  `Install-Framework`, committed; one headless call, `claude -p /bootstrap --session-id <id> --model sonnet --output-format stream-json --verbose --dangerously-skip-permissions --max-budget-usd 0.80
+  --setting-sources project,local` with `DISABLE_AUTOUPDATER=1` and `ATL_SOURCE_CHECK=off`: Claude Code 2.1.300, `claude-sonnet-5-5` in `system/init`, 0.36 USD, 65 s, no pause. It recorded build
+  `dotnet build EvalFixture.csproj` and test `pwsh -NoProfile -File tests/Test-Calculator.ps1` (it ran both, green), marked the other four categories "not available", and wrote `AGENTS.md`,
+  `FRAMEWORK-CONTEXT.md`, `TECH_DEBT.md` (DEBT-001: no executable test project) and `.claude/bootstrap-baseline.tsv`, nothing under `src/` or `tests/`. Those four paths (`git status --porcelain -uall`)
+  were laid over a fresh install of the buggy fixture and cut with `git diff --output` (`core.autocrlf=false`) into `meta/eval-fixtures/target-patches/b414c-bootstrapped.patch` (19,037 bytes, tag
+  `b3091d1712da`). The bytes are /bootstrap's except line endings: it wrote `AGENTS.md`, `FRAMEWORK-CONTEXT.md` and `TECH_DEBT.md` in CRLF, normalized to the install's LF, which `-TargetPatch` requires
+  (overlay sha256 `153de5070b96` over the sorted `<sha256>  <path>` lines). Each run's target is therefore route-fix's fixture with the bug, the v0.98.1 install and this overlay, uncommitted as every
+  route-fix arm's install is: bootstrapped first, the bug after, the field order. The Conventions line "bounds are inclusive on both ends (`value >= min && value <= max`)" states the intent the bug
+  breaks; no file names the defect or says the test fails.
+  Generation 1 (discarded): the same call on the buggy fixture, 0.51 USD. It recorded the same test row, but also wrote the defect into `AGENTS.md` Conventions ("Known contract mismatch: … `value <
+  max` …") and `TECH_DEBT.md` (DEBT-001, the test "fails against the current source"), which would tell every run the answer and that the test is red.
+  Preflight (no spend; the runner's own `New-EvalRepo`, `Install-Framework`, `Invoke-TargetPatch`): the patch applies; `AGENTS.md` carries no `BOOTSTRAP_PENDING` and the test row above;
+  `src/Calculator.cs` holds `value < max`; `session-start.ps1` as a Claude and a Copilot event, under `pwsh` and `powershell.exe`, exits 0 and prints neither "Unrecorded test entry points" nor
+  "is unbootstrapped" (it prints the preload, the routing line, "Debt heat" and the wiki index).
+- Arms, framework arm with `-TargetPatch meta/eval-fixtures/target-patches/b414c-bootstrapped.patch`, n = 6 each. **CPB**: Copilot CLI 1.0.98, the runner's default `claude-sonnet-5.5`, `route-fix`.
+  **CCB** (control): Claude Code 2.1.300 `-Model sonnet`, `route-fix`: does the bootstrapped fixture keep red-first where it held 6/6. **CPBnl**: Copilot as CPB, `route-fix-nl`, only within the
+  Copilot stop after CPB. Command: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor copilot|claude [-Model sonnet] -Scenario route-fix|route-fix-nl -Trials 1 -TimeoutSeconds
+  1200 -TargetPatch <patch>`, `-ResultsPath` outside the repository, one run per invocation. Order: slots 1-6 of CPB then CCB per slot, then their repeats, then slots 1-6 of CPBnl, then its repeats.
+  Comparisons, not re-run: B-421b CPC (A+C, unbootstrapped) red-first 6/6; B-414b CP-N55 (bare) 0/6.
+- Metrics. Primary, per valid slot: red-first, the grader's Pass (a red run of `tests/Test-Calculator.ps1`, then the production edit, then a green run; red pattern as widened at ea17d770). Secondary:
+  `testInvoked=True`.
+- Validity. Status PASS, FAIL or INCONCLUSIVE (INCONCLUSIVE is a run that never ran the script: valid, not red-first), `agentExit=0 timedOut=False`, the patch tag; `route-fix` `routerFired=True`,
+  `route-fix-nl` `routerFired=False`; a session-start output that exists and carries no "Unrecorded test entry points", "is unbootstrapped" or `BOOTSTRAP_PENDING`. Copilot: `copilotCli=1.0.98`,
+  `hooksLoaded=True`, the row's model, `selectedModel` and every main-agent message `claude-sonnet-5.5`. Claude Code: `ccVersion=2.1.300`, `initModel=claude-sonnet-5-5`. An invalid attempt is repeated
+  once within the stops; a second closes the slot.
+- Readings, fixed now; a cell with fewer than 5 valid slots is not settled and its reading is not applied. **CPB**: red-first in 5 or 6 of 6 NOT REPRODUCED: Copilot takes red-first in a bootstrapped
+  repository that records its test command, and with B-421b both states are covered on `route-fix`, so B-414 closes, unless CPBnl holds it open. 2 or fewer REPRODUCED: B-414 stays open, narrowed to
+  the bootstrapped state; the next lever is C past `/bootstrap`: a session-start line naming the recorded test command, to run it and see it fail before a fix edits production code (the one change
+  that moved Copilot's order in B-421 and B-421b; guarded, `session-start.ps1`), pre-registered separately, the maintainer's decision. 3 or 4 PARTIAL: B-414 stays open with the same lever named; the
+  maintainer decides. **CCB**: 5 or 6 HOLDS; 3 or fewer KNOCKOUT (Claude Code loses red-first in the bootstrapped state: one backlog line); 4: the maintainer decides; CCB never changes CPB's reading.
+  **CPBnl**, read only when settled: 5 or 6 reported; 3 or 4: whether B-414 closes is the maintainer's decision; 2 or fewer REPRODUCED with the router silent: B-414 stays open for that path, with
+  the same lever, whatever CPB reads. CPBnl not settled or not run: B-414's reading is CPB's. A reading is applied as written; the maintainer decides anything it does not cover.
+- Hand-read, reported, not readings: the recorded test row in the model's context (Copilot `system.message`, Claude Code's `AGENTS.md` import); the recorded command run verbatim or another form;
+  "trivial" or "one-line" declared before the first test run; the test run before or after the edit; a red reported but not observed; a wrapped red; a new test project or harness (the Conventions
+  name an xUnit target shape and DEBT-001 an `add-tests` suite bootstrap).
+- Stops. Copilot: 13 premium requests including repeats, counting only runs that reached a model request (the row's `premiumRequests=`, else the session log's `totalPremiumRequests`, else 1 if the
+  log holds a model response, else 0); not started if requests so far plus 1 would pass 13. Claude Code: 2.00 USD including both generations (0.87 USD), at each row's `costUsd` (else the transcript's
+  highest `total_cost_usd`, else the 1.25 USD cap); not started if spend so far plus 0.30 would pass 2.00. AI credits recorded, uncapped. Driver resumable and outside the repository
+  (`%TEMP%\b414c\ledger.tsv`); it refuses to start if `dist/`, `src/`, `scripts/`, `.claude/evals/` or the patch differ from this commit, or `dist/` from v0.98.1.
+- Not shown: VS Code; interactive Copilot; other fixtures, stacks and models; a repository whose bootstrap recorded the defect (generation 1's state); a committed install and bootstrap; Claude Code on
+  `route-fix-nl`; whether the agents' reports are true.
