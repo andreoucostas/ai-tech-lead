@@ -5442,3 +5442,31 @@ Approved by the maintainer in the session that runs it, 2026-10-19 ("Do all 3", 
   row's `costUsd`; not started if spend so far plus 0.30 would pass 3.00. AI credits recorded, uncapped. Driver resumable, outside the repository (`%TEMP%\b421\ledger.tsv`); it refuses to start if
   `dist/`, `src/`, `scripts/`, `.claude/evals/` or the two patches differ from this commit.
 - Not shown: route-fix-nl; a bootstrapped repository; interactive Copilot; VS Code; angular and monorepo dists; a test script with side effects; whether the agents' reports are true.
+
+## B-421 results — 2026-10-19 (pre-registered at 8a049c61)
+
+Copilot CLI 1.0.98 on `claude-sonnet-5.5` (every run `selectedModel=claude-sonnet-5.5`, every main-agent message on it) and Claude Code 2.1.300 on `sonnet` (`initModel=claude-sonnet-5-5`); HEAD 8a049c61's
+`dist/dotnet`; patches A `b421-find-test-carrier.patch@adec23455b05` and C `b421-find-test-preload.patch@01b04548e196` on every T row and on no CP-C row; one run per invocation by a resumable driver
+outside the repository that refused to start unless the frozen paths and patch hashes matched 8a049c61. All 36 runs were valid on the first attempt (no repeat). Evidence in `%TEMP%\b421\` at writing.
+
+| cell | valid | ran the existing test (`testInvoked`) | red-first (grader Pass) | reading |
+|---|---|---|---|---|
+| CP-C (Copilot, no patch) | 6 | **0/6** | 0/6 | INSTRUMENT reproduces B-414b |
+| CP-T1 (Copilot, A) | 6 | **6/6** | 0/6 | **FIXED** |
+| CP-T2 (Copilot, C) | 6 | **6/6** | 3/6 | **FIXED** |
+| CC-T1 (Claude Code, A) | 6 | 6/6 | **6/6** | **HOLDS** |
+| CC-T2 (Claude Code, C) | 6 | 6/6 | **6/6** | **HOLDS** |
+| D-T1 / D-T2 (decoy, no test) | 3 / 3 | n/a | n/a | **CLEAN** 3/3 and 3/3 (fixed, no harness invented) |
+
+- Readings, applied as registered: both A and C are FIXED, HOLD and CLEAN, so both are candidates to ship; the registered preference is A (ordinary, smaller), and C is the maintainer's call. Fisher
+  exact, two-sided, reported: CP-T1 and CP-T2 each 6/6 against CP-C 0/6, p = 0.0022. A separate shipping decision follows; this entry ships nothing.
+- Outside the readings: C is the first change in B-411, B-414, B-414b and B-421 that moved red-first on Copilot (3 of 6 against 0 of 6 for CP-C, CP-T1 and every earlier Copilot cell on this
+  fixture), a deterministic preload where carrier text (A) moved discovery but not the order.
+- Hand-read, registered, not readings: a whole-tree listing (`git ls-files` or a recursive listing) before any test claim: CP-T1 6/6, CP-T2 1/6 (C hands the agent the list), CC-T1 6/6, CC-T2 1/6, CP-C
+  0/6. "No test harness" or tests "not available" claimed: CP-C 5/6, every T route run 0, decoy 4 of 6 (correctly). A failing run seen before the production edit: CP-T2 3/6, CP-T1 0/6, CC-T1 and CC-T2
+  6/6; two CP-T2 runs issued the edit and the test in one turn, then checked red by `git stash` after the fix (VR #9's break-and-see, not red-first). A run of `tests/evals/*` or
+  `scripts/test-weakening-scan.ps1`: 0 of 36. The test called unrecorded or `/rebootstrap` flagged: CC-T1 4/6, CP-T1 0/6 (A's last clause did not land on Copilot), C arms 0. A red reported but not observed: not found.
+- Spend: Copilot 24 of 27 premium requests (239.5 AI credits); Claude Code 1.86 USD of 3.00 (0.12 to 0.26 a run).
+- Limits: one fixture, six runs a route cell and three a decoy cell, `-p` only; C's pathspecs and ownership filter were exercised on this fixture only; Claude Code C stands in for B-411's T2 baseline
+  (same carrier bytes plus the patch).
+- Not shown: as registered (route-fix-nl, a bootstrapped repository, interactive Copilot, VS Code, angular and monorepo dists, a test script with side effects, whether the reports are true).
