@@ -2127,7 +2127,8 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $prodEdits = @($e.Tools | Where-Object { $_.Name -in @('Edit','Write') -and (Get-ToolPath $_) -match '(?:^|[\\/])src[\\/]Calculator\.cs$' })
             # Bash tool_result.is_error reports tool transport failure, not the command's exit code.
             # Use mutually exclusive command output while retaining typed tool/result association.
-            $red = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)EXIT:\s*1|Exception:[\s\S]*inclusive upper bound is broken' -and $text -notmatch '(?i)PASS: inclusive range' } | Select-Object -First 1)
+            # B-421b: PowerShell's error view ends with the thrown message on its own `|` line, which survives an output filter (`| tail -3`) that cuts `Exception:`.
+            $red = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)EXIT:\s*1|Exception:[\s\S]*inclusive upper bound is broken|(?m)^\s*\|\s+inclusive upper bound is broken\s*$' -and $text -notmatch '(?i)PASS: inclusive range' } | Select-Object -First 1)
             $green = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)EXIT:\s*0|PASS: inclusive range' -and $text -notmatch '(?i)Exception:[\s\S]*inclusive upper bound is broken' } | Select-Object -Last 1)
             $testAt = if ($red) { $red[0].Index } else { -1 }
             $prodAt = if ($prodEdits) { $prodEdits[0].Index } else { -1 }
@@ -3580,6 +3581,13 @@ function Invoke-RouterProbeSelfTest([string]$Temp) {
         [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed' })
     & $check 'route-fix, a read of the script is exercised but never invoked' 'route-fix' (& $run @(& $hook $rails) $readOnly) 'FAIL' $false 'routeExercised=True .*testInvoked=False'
     & $check 'route-fix, a red then a green run of the script is invoked' 'route-fix' (& $run @(& $hook $rails) $fixRun) 'PASS' $true 'testInvoked=True'
+    # B-421b: a red run piped through `| tail -3` keeps only the error view's last lines; its `| inclusive upper bound is broken` line is still a red run.
+    $tailRed = @(
+        (& $use 'r1' 'Bash' ([pscustomobject]@{ command = 'pwsh -File tests/Test-Calculator.ps1 2>&1 | tail -3' })), (& $res 'r1' "   2 |  . -notmatch 'value <= max') { throw 'inclusive upper bound is broken' }`n     |                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`n     | inclusive upper bound is broken" $false),
+        (& $use 'e1' 'Edit' ([pscustomobject]@{ file_path = 'src/Calculator.cs' })), (& $res 'e1' 'edited' $false),
+        (& $use 'g1' 'Bash' $test), (& $res 'g1' 'PASS: inclusive range EXIT:0' $false),
+        [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed and verified' })
+    & $check 'route-fix, a tail-truncated red run before the edit is red-first' 'route-fix' (& $run @(& $hook $rails) $tailRed) 'PASS' $true 'redTestEvent=\d+ .*testInvoked=True'
     # A framework-arm route-fix-nl row counts only when the router is known to have been silent: rails reaching the prompt, or no
     # hook response at all, make it not examinable (INCONCLUSIVE), never a PASS or FAIL.
     & $check 'route-fix-nl, router fired: the carrier copy is not isolated' 'route-fix-nl' (& $run @(& $hook $rails) $fixRun) 'INCONCLUSIVE' $false 'routerFired=True routerIntent=fix .*router fired'
