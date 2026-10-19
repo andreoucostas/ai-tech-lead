@@ -83,6 +83,32 @@ if (Test-Path .claude/adoption-pending.json) {
         $text = Get-Content $instructionFile -Raw
         if ($text -and $text -match 'BOOTSTRAP_PENDING') {
             Write-Output "- ⚠ **$instructionFile is unbootstrapped** (BOOTSTRAP_PENDING marker present). ``/bootstrap`` must run before non-trivial work — conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type ``/bootstrap``."
+            # Before /bootstrap records a test command, name up to eight test entry points the repository tracks, leaving out every
+            # framework-owned or retired framework path; when the ownership manifest lists no path, list nothing rather than a framework file.
+            if ((Test-Path .git) -and (Test-Path framework-ownership.json)) {
+                $framework = @{}; $ownedCount = 0
+                try {
+                    foreach ($entry in @((Get-Content framework-ownership.json -Raw -Encoding UTF8 | ConvertFrom-Json).paths | Where-Object { $_.path })) { $framework[[string]$entry.path] = $true }
+                    $ownedCount = $framework.Count
+                    if ($ownedCount -and (Test-Path framework-retirements.json)) { foreach ($entry in @((Get-Content framework-retirements.json -Raw -Encoding UTF8 | ConvertFrom-Json).retirements | Where-Object { $_.path })) { $framework[[string]$entry.path] = $true } }
+                } catch { $ownedCount = 0 }
+                if ($ownedCount) {
+                    # Entry points first (test projects, *.Tests.ps1 scripts, package.json), then files under test folders. Git filters and orders
+                    # the paths; at most 500 candidates are examined and the first nine that qualify stop the listing, so a large tree costs little.
+                    $exclude = @(':(exclude,glob,icase)**/node_modules/**', ':(exclude,glob,icase)**/bower_components/**', ':(exclude,glob,icase)**/bin/**', ':(exclude,glob,icase)**/obj/**', ':(exclude,glob,icase)**/dist/**')
+                    $seen = @{}
+                    $found = @(& {
+                        git -c core.quotepath=off ls-files -- ':(glob,icase)**/*tests.csproj' ':(glob,icase)**/*test.csproj' ':(glob,icase)**/*.tests.ps1' ':(glob)**/package.json' $exclude 2>$null
+                        git -c core.quotepath=off ls-files -- ':(glob,icase)**/tests/**' ':(glob,icase)**/test/**' ':(glob,icase)**/spec/**' ':(glob,icase)**/__tests__/**' $exclude 2>$null
+                    } | Select-Object -First 500 | Where-Object {
+                        $_ -and -not $seen.ContainsKey($_) -and -not $framework.ContainsKey($_) -and (Test-Path -LiteralPath $_ -PathType Leaf) -and ($_ -notmatch '(^|/)package\.json$' -or $(try { @((Get-Content -LiteralPath $_ -Raw -Encoding UTF8 | ConvertFrom-Json).scripts.PSObject.Properties.Name | Where-Object { $_ -cmatch '^test(:|$)' }).Count -gt 0 } catch { $false })) -and ($seen[$_] = $true)
+                    } | Select-Object -First 9)
+                    if ($found.Count) {
+                        $shown = (@($found | Select-Object -First 8) -join ', ') + $(if ($found.Count -gt 8) { ' (and more)' } else { '' })
+                        Write-Output "- **Unrecorded test entry points** (no Verification Commands recorded yet): $shown. Files, not recorded commands: before reporting tests **not available**, read the applicable one and run it with its evidenced interpreter; add no harness; migration/deploy stays manual/CI-only."
+                    }
+                }
+            }
             break
         }
     }

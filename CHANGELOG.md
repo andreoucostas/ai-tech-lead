@@ -25,6 +25,16 @@ fixture's own test script (0/7, "no test harness exists"); B-421 (pre-registered
 against 0/6), Claude Code red-first HOLDS (6/6) and the no-test decoy CLEAN (3/3). The built carriers carry the measured patch's line byte
 for byte. Its combination with the session-start list (C) is measured separately before C ships.
 
+`session-start` (guarded) lists up to eight consumer-owned test entry points (`git ls-files` test-shaped paths minus `framework-ownership.json`)
+in the BOOTSTRAP_PENDING branch only, as "Unrecorded test entry points" (B-421 option C). B-421 read it FIXED on Copilot (the existing test run
+6/6 against 0/6; red-first 3/6) and HOLDS on Claude Code; B-421b, on top of the shipped carrier sentence, read Copilot 6/6 test run and red-first,
+and Claude Code red-first 4/6 as registered (6/6 once the grader read `| tail -3` red runs); shipped by maintainer decision. Hardened after a
+fresh-session attack on the measured patch and a second on the fix: git glob pathspecs (no `*` across folders, so no `Deploy-Database.ps1`
+under `IntegrationTests/`), entry points first (`*Tests.csproj`, `*.Tests.ps1`, `package.json`), `core.quotepath=off`, case-insensitive
+`node_modules`/`bin`/`obj`/`dist` exclusion, retired framework paths excluded, nothing listed unless the ownership manifest lists paths,
+`package.json` parsed for a `test` script, deleted files skipped, at most 500 candidates examined (400k tracked paths: about 1-3 s, against
+7-16 s before). On the measured fixture the emitted line is byte-identical to the measured patch's. New `SessionStartTestEntryPoints.Tests.ps1` (18 cases).
+
 ## 0.98.0 — 2026-10-19
 
 Fixes from the B-406/B-407 transcripts (Claude Code 2.1.300). `/bootstrap` (dotnet, monorepo; `bootstrap.md` step 4 and

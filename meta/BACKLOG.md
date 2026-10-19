@@ -206,9 +206,3 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 **Filed against:** v0.98.0 (2026-10-19)
 **Priority:** P3 · **Effort:** M · **Invariants:** none
 **Status:** Open (maintainer, 2026-10-19). Plant one defect in a copy of `b409-orders-ci`, pre-register S3 (the fix opens with a Done-when line; the regression test pins the boundary and fails first), T vs C. `$railsFix` and `fix.md:21` are unchanged since 0.97. About 8 USD. Review T4.
-
-### B-421 · Before `/bootstrap` records a test command, an agent can skip an existing test and report tests "not available"
-**Filed against:** v0.98.0 (2026-10-19)
-**Priority:** P1 · **Effort:** M · **Invariants:** #7
-**Status:** Open (found by B-414b; maintainer 2026-10-19: "definitely needs to be addressed", the how defined by Fable): Copilot `claude-sonnet-5.5` with the carrier never ran the fixture's `tests/Test-Calculator.ps1` 0 of 7 (globbed source extensions only, "no test harness exists"), bare 6 of 6; Claude Code 7 of 90 in B-411. Close to a false green: a fix verified by build alone while a real test sat unrun.
-Measured 2026-10-19 (pre-registered at 8a049c61, `meta/eval-results.md` "B-421 results"): Copilot ran the test 0/6 without a patch, 6/6 with carrier sentence A and 6/6 with session-start list C (C also red-first 3/6); Claude Code 6/6 red-first with either; decoy clean. A shipped 2026-10-19 (43d44030, 0.98.1 Unreleased). B-421b (C on top of A, `meta/eval-results.md`): Copilot 6/6 test run, HOLDS, and red-first 6/6 (after a quota-refused repeat); Claude Code red-first 4/6 registered, 6/6 post hoc once the grader read `| tail -3` red runs (ea17d770). C's ship is the maintainer's call.

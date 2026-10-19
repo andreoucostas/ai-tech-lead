@@ -45,6 +45,7 @@ $expectedTestFiles = @(
     'SecurityReviewContract.Tests.ps1',
     'SessionStartFrameworkRules.Tests.ps1',
     'SessionStartHazard.Tests.ps1',
+    'SessionStartTestEntryPoints.Tests.ps1',
     'SessionStartVersionAwareness.Tests.ps1',
     'SessionStartWiki.Tests.ps1',
     'TestWeakeningScan.Tests.ps1',

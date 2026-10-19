@@ -17,6 +17,10 @@
   `/rebootstrap` can pick it up. Framework-owned files never count as your tests, and when there is no test the agent
   still adds no test framework. Previously an agent could search only source files, conclude there were no tests, and
   verify a fix by build alone while a real test sat unrun.
+- **Until `/bootstrap` has run, the session preload names the test files your repository already has.** It lists up to
+  eight tracked test entry points (a script under `tests/`, `test/` or `spec/`, a test project, a `package.json` with a
+  `test` script), leaving out the framework's own files, so the agent finds and runs your tests before it can say there
+  are none. The hook only lists files; it runs nothing, and nothing changes once `/bootstrap` has recorded your commands.
 ## 0.98.0 — 2026-10-19
 
 - **`/bootstrap` now records `build` and `test` commands from your .NET project files.** A committed C# project
