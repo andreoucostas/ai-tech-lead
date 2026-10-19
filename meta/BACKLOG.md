@@ -196,3 +196,28 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P3 · **Effort:** S · **Invariants:** #7
 **Status:** Open (found in the B-411 ship attack): `src/core/presentation/framework-briefing.html` (about lines 218-220: "Verify before you reference", "no future-proofing. Deletion is a contribution", "Mandatory principles") and `TALKING-POINTS.md:64` ("SOLID is literal and mandatory") ship in `dist/*/presentation` and describe the pre-trim carrier; ClaimTruth lists them but pins no such claim.
+
+### B-416 · Observe 0.98.0 at the first consumer: do the restated criteria and Option A/B designs help, and are they right
+**Filed against:** v0.98.0 (2026-10-19)
+**Priority:** P1 · **Effort:** S · **Invariants:** none
+**Status:** Open (maintainer, 2026-10-19). Give the first consumer team a five-question observation card (plan opened with `Done when:`; did you correct a line; Option A/B on a risky change and was it real; did the PR carry the lines; did tests run; host and model) and record answers as field reports. The only route to whether the lines are correct and used; gates any reviewer-side or auto-review change. Review: `.claude/plans/inbox/2026-10-19-open-threads-review.md` T5.
+
+### B-417 · Measure tests derived from the restated criteria on a prompt that hides a boundary
+**Filed against:** v0.98.0 (2026-10-19)
+**Priority:** P2 · **Effort:** M · **Invariants:** #7 if it ships
+**Status:** Open (maintainer, 2026-10-19). B-412 found no downstream difference because prompt K states every outcome. Pre-register an under-specified prompt on `b409-orders-ci` omitting a boundary the fixture documents, with plan v2 §3.1's `:74` test-per-line clause, §3.2's Rule 5 append and test-critic's "unpinned" question as the target patch; grade line → test → post-hoc mutant; include a "go with defaults" leg 2. Fix B-413 first. About 10 USD. Review T1+T7.
+
+### B-418 · Give the reviewer something to act on without the closing block
+**Filed against:** v0.98.0 (2026-10-19)
+**Priority:** P2 · **Effort:** S · **Invariants:** #7
+**Status:** Open (maintainer, 2026-10-19). `docs/playbook.md` (~159/171/227) still calls `/design` the gatekeeper, asks "Did you run /design first?" and counts raw prompts as not following the method; `/review`'s conformance (`review.md:86`) reads only `specs/<slug>.md`, so chat-only Done-when lines reach no reviewer or test-critic. Align the playbook and add a contract conformance step (spec, else the pasted plan, else the stated request; lines pinned N of M), then one typed `/review` on a retained B-412 tree (~3 USD). Review T2.
+
+### B-419 · Review depth scales with blast radius (plan v2 Phase 3, never run)
+**Filed against:** v0.98.0 (2026-10-19)
+**Priority:** P3 · **Effort:** M · **Invariants:** none
+**Status:** Open (maintainer, 2026-10-19). `review-scope.ps1`'s manifest gains the hazard rows whose paths intersect the captured paths (reuse `hazard-check.ps1`'s parsing by AST), and `review.md` hands them to the auditors. First a hand-read: did any retained security pass read the hazard rows. Plan `.claude/plans/2026-10-17-delivery-architecture.md` §5 item 3. Review T3.
+
+### B-420 · Measure the fix path's restated criterion and regression test on a planted defect (plan v2 Phase 4)
+**Filed against:** v0.98.0 (2026-10-19)
+**Priority:** P3 · **Effort:** M · **Invariants:** none
+**Status:** Open (maintainer, 2026-10-19). Plant one defect in a copy of `b409-orders-ci`, pre-register S3 (the fix opens with a Done-when line; the regression test pins the boundary and fails first), T vs C. `$railsFix` and `fix.md:21` are unchanged since 0.97. About 8 USD. Review T4.
