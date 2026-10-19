@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.98.0 — Unreleased
+## 0.98.0 — 2026-10-19
 
 Fixes from the B-406/B-407 transcripts (Claude Code 2.1.300). `/bootstrap` (dotnet, monorepo; `bootstrap.md` step 4 and
 `docs/defaults.md`) now records `dotnet build` from a committed `*.csproj` and `dotnet test` from a committed test project as

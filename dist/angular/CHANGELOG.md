@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.98.0 — Unreleased
+## 0.98.0 — 2026-10-19
 
 - **No change to `/bootstrap` for Angular repositories in this release.** Its changes in this version are to the .NET and
   .NET + Angular distributions; `/bootstrap` on an Angular repository records commands exactly as before
