@@ -9,9 +9,10 @@ param(
     [Parameter(ParameterSetName = 'Live')][string[]]$Scenario,
     [Parameter(ParameterSetName = 'Live')][string]$Model = 'sonnet',
     # B-277 (WSD-097): one runner, two executors. Omitting -Executor keeps the Claude Code launch,
-    # graders, transcript and results rows exactly as they were. -CopilotModel is never 'auto'.
+    # graders, transcript and results rows exactly as they were. -CopilotModel is never 'auto'; its default is the
+    # model the Claude Code arm's `sonnet` resolves to, so the two executors differ by host only.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('claude','copilot')][string]$Executor = 'claude',
-    [Parameter(ParameterSetName = 'Live')][string]$CopilotModel = 'claude-sonnet-5',
+    [Parameter(ParameterSetName = 'Live')][string]$CopilotModel = 'claude-sonnet-5.5',
     # B-305: 0 runs uncapped. Copilot shows the model its remaining credits each turn, so a cap reads as
     # a budget to economise against; the results header records any cap a run used.
     [Parameter(ParameterSetName = 'Live')][ValidateScript({ $_ -eq 0 -or ($_ -ge 30 -and $_ -le 500) })][int]$CopilotMaxAiCredits = 0,
@@ -5892,6 +5893,15 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         $capAt = [Array]::IndexOf($cappedArgs, '--max-ai-credits')
         if ($capAt -lt 0 -or $cappedArgs[$capAt + 1] -ne '300') { throw 'B-305: an explicit -CopilotMaxAiCredits cap was not passed through' }
         Write-Output 'PASS: B-305 an uncapped Copilot run passes no --max-ai-credits, and an explicit cap passes through'
+        # B-414: the Copilot executor's default model is Sonnet 5.5, which the Claude Code arm's `sonnet` resolves to; B-411 and B-414 ran
+        # Copilot on claude-sonnet-5, so model and host were confounded. The default is read from this script's own param block.
+        $selfAst = [System.Management.Automation.Language.Parser]::ParseFile($PSCommandPath, [ref]$null, [ref]$null)
+        $copilotDefault = [string]@($selfAst.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'CopilotModel' })[0].DefaultValue.Value
+        if ($copilotDefault -cne 'claude-sonnet-5.5') { throw "B-414: -CopilotModel defaults to '$copilotDefault', not claude-sonnet-5.5, the model the Claude Code arm's sonnet resolves to" }
+        $defaultArgs = @(Get-CopilotArguments -WorkingDirectory 'w' -Prompt 'p' -ModelId $copilotDefault -MaxAiCredits 0 -SessionId 's' -UsagePath 'u')
+        $modelAt = [Array]::IndexOf($defaultArgs, '--model')
+        if ($modelAt -lt 0 -or $defaultArgs[$modelAt + 1] -cne 'claude-sonnet-5.5') { throw 'B-414: the default Copilot model does not reach --model' }
+        Write-Output 'PASS: B-414 the Copilot executor defaults to claude-sonnet-5.5 and passes it as --model'
         # B-330: the Claude child loads only the target's project and local settings, and tokensOut counts every model
         # in modelUsage (the shape below is a retained 2.1.281 opus run whose haiku subagent result.usage left out).
         $sourceArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '')

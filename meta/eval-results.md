@@ -5293,6 +5293,8 @@ matcher now strips `**` and backticks before matching, was checked against the r
 - Limits: six runs a cell and, on Copilot, three; N exists only for the two small cells; a knockout, not a degradation, is what n = 6 can show (T1 5/6 and the all-6/6 arms say nothing about 5/6 against 3/6); the placement and contract cells would pass whatever the carrier said if the bare agent also passes, and no N was run; the leanness cuts of P2 (comments, helpers, barrel files, abstract bases) have no grader here, and the T2 hand-read line per run
   was not done (the retained tree diffs include the fixture's own files, so they do not isolate the agent's change; the `route-fix` edits are one line, placement is graded by `newInjectable`). The 7 INCONCLUSIVE attempts are a rate of the agent not running the test script on this prompt (7 of 90), not a carrier effect: C 2, T1 4, T2 1 of them.
 - Not shown: as registered (degradation below a knockout; what P2 removes on the behaviour it governs; VS Code; interactive Copilot; the monorepo dist; other fixtures and models; field use; whether closing text is true; the plan gate under `-p`); and, new, whether the 5/6 of `route-fix` T1 is the one-in-six it looks like (it is a CANNOT-EXAMINE twice, not a failure).
+- Note added 2026-10-19 (maintainer: "we should have been using 5.5"): the Copilot arms here ran `claude-sonnet-5` while every Claude Code arm ran `claude-sonnet-5-5`, so each Copilot-against-Claude Code comparison
+  in this entry (red-first above all) confounds model with host. The runner's `-CopilotModel` default is `claude-sonnet-5.5` since then (B-414).
 
 ## B-414 pre-registration — red-first on Copilot CLI: model, host or carrier (2026-10-19, frozen by the commit that holds it, before any run)
 
@@ -5356,3 +5358,5 @@ session log and tree diff per run) in `%TEMP%\b414\` at writing; none of it is i
 - Limits: six runs a Copilot cell, three valid CC-5 slots; one fixture whose failing test is a source-text check the agent can read; `-p` only (Copilot's non-interactive prompt).
 - Not shown: as registered (route-fix-nl, `claude-sonnet-5-5` on Copilot, interactive Copilot, VS Code, other fixtures, why the host prompt has the effect, the phase-2 patch). The registered
   phase 2 needs NOT THE MODEL ALONE, which is not settled; with the carrier at no effect on Copilot, whether any carrier text can move it is the maintainer's question, not this entry's.
+- Note added 2026-10-19 (maintainer: "we should have been using 5.5"): the Copilot arms ran `claude-sonnet-5`, the default then; the Claude Code studies run `sonnet`, which resolves to `claude-sonnet-5-5`,
+  so CP-C and CP-N compare with B-411's Claude Code 6/6 across both model and host. CC-5 matched Copilot's model on purpose. The runner's `-CopilotModel` default is now `claude-sonnet-5.5`.
