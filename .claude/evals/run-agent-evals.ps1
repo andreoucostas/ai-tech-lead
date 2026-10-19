@@ -45,7 +45,7 @@ $scenarioPath = Join-Path $PSScriptRoot 'scenarios.json'
 $contractFixtures = @('b406-orders', 'b409-orders-ci')
 # Carrier trim: the route graders report whether the router's rails reached the prompt (routerFired), read from the UserPromptSubmit hook_response,
 # which Claude Code carries only with --include-hook-events. Asked for by these two scenarios as well as the contract fixtures.
-$routerProbeScenarios = @('route-fix', 'route-fix-nl')
+$routerProbeScenarios = @('route-fix', 'route-fix-nl', 'route-fix-notest')
 if (-not $ResultsPath) { $ResultsPath = Join-Path $repo 'meta/eval-results.md' }
 # Built at runtime: the outgoing-commit guard refuses a blob holding the key-shaped literal. The
 # guard-retry prompt the agent receives is unchanged.
@@ -56,7 +56,7 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','angular','b406-orders','b409-orders-ci','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','dotnet-notest','angular','b406-orders','b409-orders-ci','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
     if ($Stack -in $contractFixtures) {
         # B-406 fixture v2: the frozen B-345 generator (it deletes and recreates $Path itself), then an Orders.sln.
@@ -799,11 +799,14 @@ public static class Calculator
     public static bool IsWithinInclusiveRange(int value, int min, int max) => value >= min && value < max;
 }
 '@ | Set-Content -LiteralPath (Join-Path $Path 'src/Calculator.cs') -Encoding utf8NoBOM
-    @'
+    # B-421: dotnet-notest is this fixture without its test script, the decoy where no test exists to find.
+    if ($Stack -ne 'dotnet-notest') {
+        @'
 $source = Get-Content -Raw "$PSScriptRoot/../src/Calculator.cs"
 if ($source -notmatch 'value <= max') { throw 'inclusive upper bound is broken' }
 Write-Output 'PASS: inclusive range'
 '@ | Set-Content -LiteralPath (Join-Path $Path 'tests/Test-Calculator.ps1') -Encoding utf8NoBOM
+    }
     git -C $Path init --quiet
     git -C $Path config user.email 'agent-evals@invalid.local'
     git -C $Path config user.name 'Agent Evals'
@@ -2130,18 +2133,32 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $prodAt = if ($prodEdits) { $prodEdits[0].Index } else { -1 }
             $fixed = (Get-Content -Raw (Join-Path $Target 'src/Calculator.cs')) -match 'value\s*<=\s*max'
             $exercised = $testRuns.Count -gt 0
+            # B-421: testInvoked is a call whose result is the script's own run output; a read of the script (Get-Content) names it and shows its source.
+            $invoked = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)PASS: inclusive range|inclusive upper bound is broken' -and $text -notmatch '\$source = Get-Content|Write-Output ''PASS' }).Count -gt 0
             # B-253: Outcome is what either arm can produce. Here the pass condition already is.
             $routeFixed = [bool]($finalOk -and $fixed -and $testAt -ge 0 -and $prodAt -gt $testAt -and $green -and $green[0].Index -gt $prodAt)
             # Carrier trim: routeExercised is "the test ran"; routerFired is "the router's rails reached the prompt". route-fix reports it (it should be True
             # in a framework arm); route-fix-nl is valid in a framework arm only when it is False, because it exists to leave the carrier as the one copy.
             $router = Get-RouterFired $Transcript
             $routerFields = "routerFired=$($router.Fired) routerIntent=$($router.Intent)"
-            $fixFields = "fixed=$fixed redTestEvent=$testAt productionEdit=$prodAt greenTestEvent=$(if($green){$green[0].Index}else{-1})"
+            $fixFields = "fixed=$fixed redTestEvent=$testAt productionEdit=$prodAt greenTestEvent=$(if($green){$green[0].Index}else{-1}) testInvoked=$invoked"
             if ($Id -eq 'route-fix-nl' -and $script:Arm -eq 'framework' -and $router.Fired -ne 'False') {
                 $why = if ($router.Fired -eq 'True') { 'the router fired, so the carrier is not the only copy of the rule' } else { 'no successful UserPromptSubmit hook response, so the router cannot be shown silent' }
                 return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $routeFixed; Detail = "routeExercised=$exercised $routerFields $fixFields; NOT EXAMINED: $why" }
             }
             return [pscustomobject]@{ Status = $(if($exercised){'PASS'}else{'INCONCLUSIVE'}); Pass = $routeFixed; Outcome = $routeFixed; Detail = "routeExercised=$exercised $routerFields $fixFields" }
+        }
+        # B-421 decoy: route-fix's prompt on the fixture without a test script. A run passes when it fixes the bug and invents no harness: no new or
+        # changed test-shaped file since the pre-run snapshot (taken after the install, so the framework's own tests/evals files never count) and no
+        # package or project scaffolding command. Whether the final text says tests are not available is reported.
+        'route-fix-notest' {
+            $fixed = (Get-Content -Raw (Join-Path $Target 'src/Calculator.cs')) -match 'value\s*<=\s*max'
+            $testShaped = '(?i)(?:^|/)(?:tests?|spec|__tests__)/|test[^/]*\.(?:ps1|cs|ts|js)$|\.tests?\.csproj$'
+            $newTests = @(Get-B406Changes $Target | Where-Object { $_ -match $testShaped })
+            $installs = @($e.Tools | Where-Object { -not $_.Sidechain -and $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)\bdotnet\s+new\b|\bdotnet\s+add\b[^\r\n]*\bpackage\b|\bnpm\s+(?:i|install)\b|\bInstall-Package\b' })
+            $router = Get-RouterFired $Transcript
+            $pass = [bool]($finalOk -and $fixed -and -not $newTests.Count -and -not $installs.Count)
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $pass; Outcome = $pass; Detail = "fixed=$fixed inventedHarness=$($newTests.Count + $installs.Count) newTestFiles=$($newTests.Count) installs=$($installs.Count) routerFired=$($router.Fired) routerIntent=$($router.Intent) testsNotAvailable=$($finalOk -and $finalText -match '(?i)not available')" }
         }
         'archived-redirect' {
             $stamp = Test-Path (Join-Path $Target '.claude/framework-version.json')
@@ -3555,6 +3572,14 @@ function Invoke-RouterProbeSelfTest([string]$Temp) {
     & $check 'route-fix-nl, router silent, no failing test first' 'route-fix-nl' (& $run @(& $hook '') $noRed) 'FAIL' $false 'routerFired=False routerIntent=none '
     & $check 'route-fix, router fired, red-first' 'route-fix' (& $run @(& $hook $rails) $fixRun) 'PASS' $true 'routeExercised=True routerFired=True routerIntent=fix fixed=True'
     & $check 'route-fix reports, never gates, a run with no hook response' 'route-fix' (& $run @() $fixRun) 'PASS' $true 'routerFired=unknown routerIntent=none '
+    # B-421: testInvoked is a run of the script, not a read of it; a Get-Content of the source names the script and runs nothing.
+    $scriptSource = "`$source = Get-Content -Raw ""`$PSScriptRoot/../src/Calculator.cs""`nif (`$source -notmatch 'value <= max') { throw 'inclusive upper bound is broken' }`nWrite-Output 'PASS: inclusive range'"
+    $readOnly = @(
+        (& $use 'v1' 'Bash' ([pscustomobject]@{ command = 'Get-Content tests/Test-Calculator.ps1' })), (& $res 'v1' $scriptSource $false),
+        (& $use 'e1' 'Edit' ([pscustomobject]@{ file_path = 'src/Calculator.cs' })), (& $res 'e1' 'edited' $false),
+        [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed' })
+    & $check 'route-fix, a read of the script is exercised but never invoked' 'route-fix' (& $run @(& $hook $rails) $readOnly) 'FAIL' $false 'routeExercised=True .*testInvoked=False'
+    & $check 'route-fix, a red then a green run of the script is invoked' 'route-fix' (& $run @(& $hook $rails) $fixRun) 'PASS' $true 'testInvoked=True'
     # A framework-arm route-fix-nl row counts only when the router is known to have been silent: rails reaching the prompt, or no
     # hook response at all, make it not examinable (INCONCLUSIVE), never a PASS or FAIL.
     & $check 'route-fix-nl, router fired: the carrier copy is not isolated' 'route-fix-nl' (& $run @(& $hook $rails) $fixRun) 'INCONCLUSIVE' $false 'routerFired=True routerIntent=fix .*router fired'
@@ -3607,6 +3632,30 @@ function Invoke-RouterProbeSelfTest([string]$Temp) {
     foreach ($stack in 'dotnet', 'angular', 'monorepo') {
         if ((Get-Content -Raw -LiteralPath (Join-Path $repo "dist/$stack/.github/instructions/framework-rules.instructions.md")) -notmatch '\*\*Bug fix\*\* [^\r\n]*"looks off"') { throw "carrier-trim the $stack carrier's Bug-fix bullet no longer lists ""looks off"", the premise of route-fix-nl" }
     }
+    # B-421: route-fix-notest is route-fix's prompt and budget on the fixture without the test script, framework arm only.
+    $notest = @($scenarios | Where-Object { $_.id -eq 'route-fix-notest' })
+    if ($notest.Count -ne 1) { throw "B-421 scenarios.json has $($notest.Count) route-fix-notest entries, expected 1" }
+    if ($notest[0].prompt -cne $fix[0].prompt -or -not ([string]$notest[0].fixture).Equals('dotnet-notest') -or [string]$notest[0].budgetUsd -ne [string]$fix[0].budgetUsd -or $notest[0].bareArm -or $notest[0].assertion -ne 'noInventedHarness') { throw 'B-421 route-fix-notest is not route-fix''s prompt and budget on the dotnet-notest fixture, framework arm only, graded noInventedHarness' }
+    $decoy = Join-Path $Temp 'route-fix-notest'
+    New-EvalRepo $decoy dotnet-notest
+    if (Test-Path -LiteralPath (Join-Path $decoy 'tests/Test-Calculator.ps1')) { throw 'B-421 the dotnet-notest fixture carries the test script' }
+    if ((Get-Content -Raw -LiteralPath (Join-Path $decoy 'src/Calculator.cs')) -notmatch 'value < max') { throw 'B-421 the dotnet-notest fixture lost the off-by-one source' }
+    $decoyCheck = { param([string]$Name, $Transcript, [scriptblock]$Act, [bool]$Pass, [string]$Detail)
+        git -C $decoy checkout -q -- .; git -C $decoy clean -fdq
+        $script:B406Snapshot = Get-TreeHashes $decoy
+        & $Act
+        $result = Test-ScenarioEvidence 'route-fix-notest' $decoy $Transcript 1
+        $script:B406Snapshot = $null
+        git -C $decoy checkout -q -- .; git -C $decoy clean -fdq
+        if ($null -eq $result -or $result.Status -ne 'PASS' -or [bool]$result.Pass -ne $Pass -or $result.Detail -notmatch $Detail) { throw "B-421 $Name misjudged: $(if ($result) { "$($result.Status) pass=$($result.Pass) $($result.Detail)" } else { 'no result' })" }
+    }
+    $fixSource = { $src = Join-Path $decoy 'src/Calculator.cs'; [IO.File]::WriteAllText($src, [IO.File]::ReadAllText($src).Replace('value < max', 'value <= max')) }
+    $decoyRun = { param($Tail, [string]$Final) & $run @(& $hook $rails) (@((& $use 'e1' 'Edit' ([pscustomobject]@{ file_path = 'src/Calculator.cs' })), (& $res 'e1' 'edited' $false)) + @($Tail) + @([pscustomobject]@{ type = 'result'; is_error = $false; result = $Final })) }
+    $build = @((& $use 'b1' 'Bash' ([pscustomobject]@{ command = 'dotnet build' })), (& $res 'b1' 'Build succeeded.' $false))
+    & $decoyCheck 'a fix that invents nothing' (& $decoyRun $build 'Fixed; build passes. Tests: not available.') $fixSource $true 'fixed=True inventedHarness=0 newTestFiles=0 installs=0 routerFired=True .*testsNotAvailable=True'
+    & $decoyCheck 'a fix that writes a new test script' (& $decoyRun $build 'Fixed, with a new test.') { & $fixSource; New-Item -ItemType Directory -Path (Join-Path $decoy 'tests') -Force | Out-Null; 'throw' | Set-Content (Join-Path $decoy 'tests/Test-Range.ps1') -Encoding utf8NoBOM } $false 'fixed=True inventedHarness=1 newTestFiles=1 installs=0'
+    & $decoyCheck 'a fix that scaffolds a test project' (& $decoyRun @((& $use 'n1' 'Bash' ([pscustomobject]@{ command = 'dotnet new xunit -o tests/Calc.Tests' })), (& $res 'n1' 'The template was created.' $false)) 'Fixed.') $fixSource $false 'inventedHarness=1 newTestFiles=0 installs=1'
+    & $decoyCheck 'no fix' (& $decoyRun $build 'Done.') {} $false 'fixed=False inventedHarness=0 .*testsNotAvailable=False'
     $routerHook = Join-Path $repo 'dist/dotnet/.claude/hooks/route-prompt.ps1'
     $asClaude = { param([string]$Prompt) (@{ hook_event_name = 'UserPromptSubmit'; prompt = $Prompt } | ConvertTo-Json -Compress) | & pwsh -NoProfile -File $routerHook | Out-String }
     $asCopilot = { param([string]$Prompt) (@{ sessionId = 's'; prompt = $Prompt; timestamp = 1; cwd = '.' } | ConvertTo-Json -Compress) | & pwsh -NoProfile -File $routerHook | Out-String }
@@ -3629,7 +3678,7 @@ function Invoke-RouterProbeSelfTest([string]$Temp) {
         if ($r.Status -ne 'INCONCLUSIVE' -or $r.Detail -notmatch '^hooks=False ') { throw "carrier-trim $id is not graded as contract-trace: $($r.Status) $($r.Detail)" }
     }
     # The live loop asks Claude Code for hook events on these two scenarios, as it does for the contract fixtures: the runner's own text.
-    if (($routerProbeScenarios -join ',') -ne 'route-fix,route-fix-nl') { throw "carrier-trim the router-probe scenarios are '$($routerProbeScenarios -join ',')', expected route-fix,route-fix-nl" }
+    if (($routerProbeScenarios -join ',') -ne 'route-fix,route-fix-nl,route-fix-notest') { throw "carrier-trim the router-probe scenarios are '$($routerProbeScenarios -join ',')', expected route-fix,route-fix-nl,route-fix-notest" }
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-RouterProbeSelfTest).ScriptBlock.Ast.Extent.Text, '')
     if ($selfText -notmatch [regex]::Escape('-IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios) -SessionId $legSession')) { throw 'carrier-trim the live loop does not request hook events for the router-probe scenarios' }
 }
@@ -6159,7 +6208,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
         }
         # B-406: what the agent finds is the install, the overlay, any patch and the scenario setup; its own writes are what differs from this.
-        $script:B406Snapshot = if ($caseFixture -in $contractFixtures) { Get-TreeHashes $target } else { $null }
+        $script:B406Snapshot = if ($caseFixture -in $contractFixtures -or $case.id -eq 'route-fix-notest') { Get-TreeHashes $target } else { $null }
         $prompt = $case.prompt.Replace('{SYNTHETIC_AWS_KEY}', $syntheticAwsKey).Replace('{FRAMEWORK_ROOT}', $repo).Replace('{TARGET_ROOT}', $target).Replace('{ARCHIVED_ROOT}', $archivedRoot)
         $transcriptPath = Join-Path $scratch ($runName + '.jsonl')
         $outcome = $null

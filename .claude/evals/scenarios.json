@@ -52,6 +52,15 @@
       "assertion": "testBeforeProduction"
     },
     {
+      "id": "route-fix-notest",
+      "measures": "B-421 decoy: route-fix's prompt and budget on route-fix's fixture without tests/Test-Calculator.ps1 (fixture dotnet-notest), framework arm only. Passes when the agent fixes the bug and invents no harness: no new or changed test-shaped file since the pre-run snapshot, no dotnet new / dotnet add package / npm install / Install-Package. Reports whether the final text says tests are not available.",
+      "fixture": "dotnet-notest",
+      "stack": "dotnet",
+      "budgetUsd": 1.25,
+      "prompt": "The calculator's inclusive upper-bound check is broken. Diagnose and fix it, following the repository instructions.",
+      "assertion": "noInventedHarness"
+    },
+    {
       "id": "guard-retry",
       "bareArm": true,
       "budgetUsd": 0.75,
