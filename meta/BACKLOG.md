@@ -173,17 +173,12 @@ Still needed: an underspecified prompt and a no-gap prompt, and the Copilot CLI 
 commit-only-when-asked rule, and pushing wording read as injection. The README now suggests a prompt that asks for the commit; measure that prompt (a
 scenario variant), and decide whether the gate should count "asked before committing" as a pass.
 
-### B-408 · The security-pass check counts a `security-auditor` call that examined nothing, and the rail sends the agent to such a call
-**Filed against:** v0.97.2 (2026-10-18)
-**Priority:** P2 · **Effort:** S · **Invariants:** none
-**Status:** Open; the rail's "or its security-auditor agent" invites a raw `git diff` request. Its first call returned CANNOT EXAMINE (no scope bundle) in 10 of 10 B-406 S2 runs and 3 of 10 B-407 runs (6 examined "without a `-ScopePath` bundle", 2 not read); the 0.98.0 wording sends the agent to `security-gate` only. Re-measured at a cap that does not bind (B-411, 2.50 USD, same fixture): C examined 5/6, T1 6/6, T2 6/6, against B-409's C 3/6 at 1.00 USD, so the cap was the confound and the maintainer's B-409 ruling stands.
-Not examined there: whether an examined run's first call was a refusal, and the empty-examination count the title names; B-411 counted the final report only.
-
 ### B-414 · Copilot CLI agents fix first and run the test after: red-first is 1 of 3 and 0 of 3 with the full carrier
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P2 · **Effort:** M to measure · **Invariants:** #5
 **Status:** Open; found in B-411 (`meta/eval-results.md`, "B-411 results"): Copilot CLI 1.0.98, `claude-sonnet-5`, the full carrier, 3 runs each: `route-fix` (router fired) red test first 1/3, `route-fix-nl` (router silent) 0/3, every run fixing the bug and running the test after the edit; the dry run 0/1, a pre-freeze accident 3/12; Claude Code, same text: 6/6 and 6/6 (bare 0/6).
-Still needed: whether the host's own `-p` instructions ("proceed autonomously", B-348 RAIL) or the carrier's text is the lever, a bare arm on Copilot, and whether a Bug-fix rail the model reads last (hook output, order) moves it.
+Read from the retained transcripts (2026-10-19, no spend): the carrier is in Copilot's system message in full and the rail in the user turn; 17 of 17 route-fix runs open "trivial one-line fix, skipping the plan gate" (the carrier's own exception), red-first 5 of 17 with the rail, 0 of 3 without, so the rail read last does not rescue it; Claude Code sonnet-5-5 runs the red test before declaring triviality. Two runs reported a red they never ran. Copilot used `claude-sonnet-5`, Claude Code `claude-sonnet-5-5`, so model and host are confounded.
+Next, pending the maintainer's go-ahead on the spend: CP-C, CP-N (bare) and Claude Code on `claude-sonnet-5`, n=6 each, with the readings fixed first (about 13 premium requests and 1 USD); a carrier patch only if the host is the lever.
 
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 
