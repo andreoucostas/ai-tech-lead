@@ -18,6 +18,13 @@ trim removed ("Verify before you reference", "Deletion is a contribution", "SOLI
 SOLID backstop; they now restate the current Verification, Leanness and SOLID rules, and ClaimTruth refuses the retired titles on
 its active surfaces (B-415).
 
+Carrier Verification command discovery (all three dists, +353 always-loaded chars; dotnet static.claude 34,086 / 40,000): where `AGENTS.md`
+records no test command, the agent lists the whole tree before marking tests not available and runs an existing non-framework-owned test
+entry point, reporting it as unrecorded (B-421). B-414b found Copilot CLI 1.0.98 on `claude-sonnet-5.5` with the carrier never running the
+fixture's own test script (0/7, "no test harness exists"); B-421 (pre-registered at 8a049c61) read the sentence FIXED (Copilot ran it 6/6
+against 0/6), Claude Code red-first HOLDS (6/6) and the no-test decoy CLEAN (3/3). The built carriers carry the measured patch's line byte
+for byte. Its combination with the session-start list (C) is measured separately before C ships.
+
 ## 0.98.0 — 2026-10-19
 
 Fixes from the B-406/B-407 transcripts (Claude Code 2.1.300). `/bootstrap` (dotnet, monorepo; `bootstrap.md` step 4 and

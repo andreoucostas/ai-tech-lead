@@ -153,8 +153,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 14777,
-          "tok": 3694
+          "chars": 15130,
+          "tok": 3782
         },
         {
           "path": "AGENTS.md",
@@ -170,8 +170,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 14777,
-          "tok": 3694
+          "chars": 15130,
+          "tok": 3782
         },
         {
           "path": "AGENTS.md",
@@ -577,8 +577,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 14316,
-          "tok": 3579
+          "chars": 14669,
+          "tok": 3667
         },
         {
           "path": "AGENTS.md",
@@ -594,8 +594,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 14316,
-          "tok": 3579
+          "chars": 14669,
+          "tok": 3667
         },
         {
           "path": "AGENTS.md",
@@ -1001,8 +1001,8 @@
         },
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 15518,
-          "tok": 3880
+          "chars": 15871,
+          "tok": 3968
         },
         {
           "path": "AGENTS.md",
@@ -1018,8 +1018,8 @@
       "static.copilot": [
         {
           "path": ".github/instructions/framework-rules.instructions.md",
-          "chars": 15518,
-          "tok": 3880
+          "chars": 15871,
+          "tok": 3968
         },
         {
           "path": "AGENTS.md",
@@ -1299,30 +1299,30 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 33733,
-      "static.claude.tok": 8433,
-      "static.copilot.chars": 22120,
-      "static.copilot.tok": 5530,
+      "static.claude.chars": 34086,
+      "static.claude.tok": 8522,
+      "static.copilot.chars": 22473,
+      "static.copilot.tok": 5618,
       "prompt.max.chars": 3993,
       "prompt.max.tok": 998
     },
     "angular": {
-      "static.claude.chars": 31505,
-      "static.claude.tok": 7876,
-      "static.copilot.chars": 22415,
-      "static.copilot.tok": 5604,
+      "static.claude.chars": 31858,
+      "static.claude.tok": 7964,
+      "static.copilot.chars": 22768,
+      "static.copilot.tok": 5692,
       "prompt.max.chars": 3796,
       "prompt.max.tok": 949
     },
     "monorepo": {
-      "static.claude.chars": 37378,
-      "static.claude.tok": 9344,
-      "static.copilot.chars": 24907,
-      "static.copilot.tok": 6227,
+      "static.claude.chars": 37731,
+      "static.claude.tok": 9433,
+      "static.copilot.chars": 25260,
+      "static.copilot.tok": 6315,
       "prompt.max.chars": 4408,
       "prompt.max.tok": 1102
     },
-    "monorepo-claude-ratio-permille": 1108
+    "monorepo-claude-ratio-permille": 1107
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",

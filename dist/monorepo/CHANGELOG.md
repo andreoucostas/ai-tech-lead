@@ -11,6 +11,12 @@
   shortened the always-loaded rules, `presentation/framework-briefing.html` and `presentation/TALKING-POINTS.md` still
   quoted three rules that no longer exist, and the talking points called the SOLID direction check a CI backstop, which it
   is only once your team wires NetArchTest or dependency-cruiser into blocking CI. Nothing changes in how the agent works.
+- **Before `/bootstrap` has recorded your test command, the agent looks for the tests you already have.** It lists the
+  repository and runs an existing test entry point (a test project, a `package.json` test script, or a script under
+  `tests/`, `test/` or `spec/`) before it may report tests as not available, and tells you the command is unrecorded so
+  `/rebootstrap` can pick it up. Framework-owned files never count as your tests, and when there is no test the agent
+  still adds no test framework. Previously an agent could search only source files, conclude there were no tests, and
+  verify a fix by build alone while a real test sat unrun.
 ## 0.98.0 — 2026-10-19
 
 - **`/bootstrap` now records `build` and `test` commands from your .NET project files.** A committed C# project
