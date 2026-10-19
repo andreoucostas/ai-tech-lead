@@ -1,12 +1,14 @@
 ## Summary
 <!-- What changed and why, 1-2 sentences -->
 
+## Done when
+<!-- The plan's `Done when:` lines as approved -->
+
 ## Design rationale
 - What approach did you take and why?
 - What alternatives did you consider?
 - What existing patterns from AGENTS.md did you follow?
 - What would break if implemented differently?
-- Did you run `/design` first? If not, why not?
 
 ## Boy Scout
 - [ ] Touched files were boy-scouted (or skip reason noted in code)

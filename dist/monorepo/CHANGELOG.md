@@ -29,6 +29,12 @@
   reached no reviewer. `docs/playbook.md` now describes the same method: the plan's `Done when:` lines are the gate for
   any non-trivial request, typed in plain words or through a command. The PR template carries those lines in place of
   "Did you run /design first?", and the progress metric counts them in PR descriptions instead of counting commands.
+- **The pull request template now asks for your `Done when:` lines instead of whether you ran `/design`.**
+  `.github/PULL_REQUEST_TEMPLATE.md` gains a `## Done when` section for the plan's `Done when:` lines as approved,
+  matching the template in `docs/playbook.md`, and drops "Did you run `/design` first? If not, why not?". `/feature` no
+  longer recommends `/design` first for a non-trivial feature without a spec: the `Done when:` lines that open its plan
+  are the contract, and it writes `specs/<slug>.md` itself from `specs/README.md` when they outgrow the message or the
+  work spans sessions.
 ## 0.98.0 — 2026-10-19
 
 - **`/bootstrap` now records `build` and `test` commands from your .NET project files.** A committed C# project

@@ -368,8 +368,8 @@
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 3812,
-          "tok": 953
+          "chars": 3944,
+          "tok": 986
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -792,8 +792,8 @@
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 3268,
-          "tok": 817
+          "chars": 3400,
+          "tok": 850
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -1216,8 +1216,8 @@
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 4409,
-          "tok": 1102
+          "chars": 4541,
+          "tok": 1135
         },
         {
           "path": ".claude/commands/fix.md#body",

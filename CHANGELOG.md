@@ -42,6 +42,11 @@ Spec conformance becomes Contract conformance and the output gains `Contract lin
 them in PR descriptions instead of calling plain-words prompts off-method. One typed `/review` on B-412 T-K 1's retained tree with the leg-1 plan pasted (Claude Code 2.1.300, sonnet, 0.78 USD):
 "Contract lines pinned: 4 of 5", the untested already-refunded 409 named unpinned and raised High; test-critic, unchanged, answered per line. Its own "unpinned" checklist item stays with B-417.
 
+Shipped PR template and `/feature` (B-422; on demand only, `feature.md#body` +132 chars per dist, `static.claude` unchanged): `.github/PULL_REQUEST_TEMPLATE.md` gains `## Done when` with "The plan's
+`Done when:` lines as approved", B-418's playbook wording, and drops "Did you run `/design` first? If not, why not?"; `feature.md:15`'s "recommend `/design` first (it writes one)" becomes: the `Done when:`
+lines that open the plan are the contract, and the agent writes `specs/<slug>.md` from `specs/README.md` when they outgrow the message or the work spans sessions (plan v2 §3.5's wording). Text only,
+nothing measured. The technical deck's plan-gate card and `specs/README.md:3` still send non-trivial work to `/design` first, and the system-map deck's plan stage names no `Done when:` lines (B-423).
+
 ## 0.98.0 — 2026-10-19
 
 Fixes from the B-406/B-407 transcripts (Claude Code 2.1.300). `/bootstrap` (dotnet, monorepo; `bootstrap.md` step 4 and
