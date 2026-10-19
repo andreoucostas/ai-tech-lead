@@ -5470,3 +5470,25 @@ outside the repository that refused to start unless the frozen paths and patch h
 - Limits: one fixture, six runs a route cell and three a decoy cell, `-p` only; C's pathspecs and ownership filter were exercised on this fixture only; Claude Code C stands in for B-411's T2 baseline
   (same carrier bytes plus the patch).
 - Not shown: as registered (route-fix-nl, a bootstrapped repository, interactive Copilot, VS Code, angular and monorepo dists, a test script with side effects, whether the reports are true).
+
+## B-421b pre-registration — the session-start list (C) on top of the shipped carrier sentence (A) (2026-10-19, frozen by the commit that holds it, before any run)
+
+Approved by the maintainer in the session that runs it, 2026-10-19 ("ok let's go", to: ship A, run B-421b at 6 premium requests and up to 1.50 USD, then C if it holds). Fable's recommendation
+(read-only subagent): ship both, A first, and measure C on the A-bearing dist before it lands, because A+C together was never run.
+- Question. With A shipped (this commit's `dist/*` carry B-421's measured carrier line byte for byte), does adding C keep what A does on Copilot (the existing test run) and keep Claude Code's
+  red-first? Ships nothing; C's guarded shipping change follows only on HOLDS.
+- Arms, `route-fix`, n = 6 each, framework arm with `-TargetPatch meta/eval-fixtures/target-patches/b421-find-test-preload.patch` (tag `01b04548e196`, unchanged since 8a049c61; `session-start.ps1`
+  is unchanged since then): **CPC** Copilot CLI 1.0.98, the runner's default `claude-sonnet-5.5`; **CCC** Claude Code 2.1.300 `-Model sonnet`. Controls stand in from B-421's A arms (CP-T1:
+  test run 6/6, red-first 0/6; CC-T1: 6/6, 6/6): the same carrier bytes (dist differs from 8a049c61 plus patch A only in the consumer `CHANGELOG.md`). No decoy: B-421's D-T2 logs show the
+  preload carries no "Unrecorded test entry points" line on the no-test fixture (3/3, read), so A+C there is A alone, which read CLEAN (D-T1 3/3). Order per slot CPC, CCC; one run per invocation;
+  `-ResultsPath` outside the repository.
+- Metrics and validity: as B-421 (primary `testInvoked`, secondary red-first Pass; INCONCLUSIVE route rows are valid with `testInvoked=False`; Copilot `copilotCli=1.0.98`, `selectedModel` and
+  every main-agent message `claude-sonnet-5.5`, `hooksLoaded=True`, `routerFired=True`; Claude Code `initModel=claude-sonnet-5-5`, `routerFired=True`; the patch tag on every row; the SessionStart
+  output names `tests/Test-Calculator.ps1`, else CANNOT-EXAMINE). An invalid attempt is repeated once within the stops; a second closes the slot.
+- Readings, fixed now; a cell with fewer than 5 valid slots is not settled. **CPC**: `testInvoked` in 5 or 6 of 6 HOLDS; 3 or fewer KNOCKOUT (C does not ship; a backlog line); 4: the maintainer
+  decides. **CCC**: red-first in 5 or 6 of 6 HOLDS; 3 or fewer KNOCKOUT; 4: the maintainer decides. C ships (guarded) only if both HOLD. Copilot red-first is reported (A alone 0/6, C alone 3/6), not read.
+- Hand-read, reported: as B-421.
+- Stops: Copilot 6 premium requests, no reserve (an invalid attempt with no budget left leaves its slot not settled); Claude Code 1.50 USD, not started if spend so far plus 0.30 would pass it. AI
+  credits recorded, uncapped. Driver resumable, outside the repository (`%TEMP%\b421b\ledger.tsv`); it refuses to start if `dist/`, `src/`, `scripts/`, `.claude/evals/` or the patch differ from this
+  commit, or if `dist/dotnet`'s carrier lacks A.
+- Not shown: as B-421, plus a no-test decoy run with A+C (read from B-421's logs instead).
