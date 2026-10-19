@@ -1,6 +1,6 @@
 # Specs — spec-driven development
 
-This directory holds **persistent feature specs**. For non-trivial features, `/design` writes a spec here *before any code is written*; `/feature` implements against it; `/review` verifies the change against it. The spec is the contract for one feature. `AGENTS.md` (with the framework rules it points to) is the **constitution** every spec must comply with (Conventions, Leanness, Architecture Decisions).
+This directory holds **persistent feature specs**, written by `/design` or by the agent from the `Done when:` lines of an approved plan; `/feature` implements against one; `/review` verifies the change against it. The spec is the contract for one feature. `AGENTS.md` (with the framework rules it points to) is the **constitution** every spec must comply with (Conventions, Leanness, Architecture Decisions).
 
 Why persist it: an in-chat design is lost when the session ends. A spec on disk survives across sessions, tools (Claude Code *and* Copilot read it), and reviewers — closing the "the agent subtly missed the intent" gap that pure prompt-driven work suffers.
 
@@ -17,7 +17,7 @@ Why persist it: an in-chat design is lost when the session ends. A spec on disk 
 
 ## When to write one
 
-A spec is for work that spans multiple files/layers or carries real design risk. **Small, obvious changes don't need a spec** — just use `/feature`. Leanness applies to docs too: don't write a spec longer than the change deserves.
+Most non-trivial changes need no spec: the `Done when:` lines that open the agent's plan are the contract, and your go-ahead approves them. Write one when those lines outgrow the message or the work spans sessions, or run `/design` for deliberate design work: it thinks a larger change through, with alternatives and trade-offs, into `specs/<slug>.md`. A risk change (a known hazard, a security surface, a data shape or a contract others use) gets `Option A:` and `Option B:` in the plan itself. Leanness applies to docs too: don't write a spec longer than the change deserves.
 
 ## Template
 

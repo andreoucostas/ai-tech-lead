@@ -47,6 +47,12 @@ Shipped PR template and `/feature` (B-422; on demand only, `feature.md#body` +13
 lines that open the plan are the contract, and the agent writes `specs/<slug>.md` from `specs/README.md` when they outgrow the message or the work spans sessions (plan v2 §3.5's wording). Text only,
 nothing measured. The technical deck's plan-gate card and `specs/README.md:3` still send non-trivial work to `/design` first, and the system-map deck's plan stage names no `Done when:` lines (B-423).
 
+Decks and `specs/README.md` (B-423; footprint unchanged, neither is measured): `presentation/framework-technical.html` slide 06's plan opens with `Done when:` (the 403 and the `=SUM(A1)` cell as
+boundaries, then out of scope) and, the admin-only export being a security surface, `Option A:`/`Option B:`/`Recommend:` above the steps (the old `Risk:` line's two concerns); "Design first when needed"
+becomes "Options before files" (carrier §2's risk bullet, B-418's `/design` sentence) and the developer card corrects the `Done when:` lines. `framework-system-map.html`'s 04 · PLAN opens with `Done when:`
+and adds the risk options in place of "Non-trivial unresolved design moves to `/design`". `specs/README.md:3` names `/design` or the approved plan's `Done when:` lines as a spec's author, and "When to
+write one" takes B-422's `/feature` terms (most non-trivial changes need none). Text only, nothing measured; slide 06 fits at 1280x720 and 1600x900, the 04 · PLAN card adds no row height at 1024 wide.
+
 ## 0.98.0 — 2026-10-19
 
 Fixes from the B-406/B-407 transcripts (Claude Code 2.1.300). `/bootstrap` (dotnet, monorepo; `bootstrap.md` step 4 and

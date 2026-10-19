@@ -34,6 +34,13 @@
   longer recommends `/design` first for a non-trivial feature without a spec: the `Done when:` lines that open its plan
   are the contract, and it writes `specs/<slug>.md` itself from `specs/README.md` when they outgrow the message or the
   work spans sessions.
+- **`specs/README.md` and the briefing decks no longer send non-trivial work to `/design` first.** `specs/README.md`
+  said `/design` writes a spec for every non-trivial feature before any code. It now says most non-trivial changes need
+  no spec: the `Done when:` lines that open the agent's plan are the contract, and your go-ahead approves them. A spec
+  is written when those lines outgrow the message or the work spans sessions, or by `/design` for deliberate design
+  work. The plan-gate slide in `presentation/framework-technical.html` and the plan stage in
+  `presentation/framework-system-map.html` now show the plan opening with `Done when:`, with a risky change laying out
+  `Option A:` and `Option B:`, in place of "Design first when needed". The always-loaded rules are unchanged; these files now agree with them.
 ## 0.98.0 — 2026-10-19
 
 - **No change to `/bootstrap` for Angular repositories in this release.** Its changes in this version are to the .NET and
