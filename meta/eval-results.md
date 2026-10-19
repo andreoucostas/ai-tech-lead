@@ -5380,3 +5380,29 @@ Approved by the maintainer in the session that runs it, 2026-10-19 ("yes to both
 - Stop: 13 premium requests including repeats (12 slots, one reserve), from each row's `premiumRequests=` (1 for an errored run); not started if requests so far plus 1 would pass 13. AI credits recorded,
   uncapped. Driver resumable, outside the repository (`%TEMP%\b414b\ledger.tsv`); it refuses to start if `dist/`, `src/`, `scripts/` or `.claude/evals/` differ from this commit.
 - Not shown: Claude Code on this commit (B-411's rows stand in), `route-fix-nl`, interactive Copilot, VS Code, other fixtures and models, why the host has the effect.
+
+## B-414b results — 2026-10-19 (pre-registered at fdcb4635)
+
+Copilot CLI 1.0.98, the runner's default `claude-sonnet-5.5` (every run: `session.start` `selectedModel=claude-sonnet-5.5`, every main-agent message from `claude-sonnet-5.5`, no fallback; the search
+subagent ran `copilot-search-a`); HEAD fdcb4635's `dist/dotnet`, scenario `route-fix`, one run per invocation, CP-C55 then CP-N55 per slot, by a resumable driver outside the repository that refused to
+start unless the frozen paths matched fdcb4635. Evidence in `%TEMP%\b414b\` at writing; none of it is in the repository.
+
+| cell | attempts | valid | red-first | what the runs did |
+|---|---|---|---|---|
+| CP-C55 (carrier) | 7 (slots 1-6, slot 1 repeated) | **0** | not settled | 7 of 7 never ran `tests/Test-Calculator.ps1` (INCONCLUSIVE, `routeExercised=False`): "no test harness exists", fix, `dotnet build`, tests "not available" |
+| CP-N55 (bare) | 6 | 6 | **0/6** | 6 of 6 read the files with one shell call, edited, then ran the test once, green |
+
+- Readings, applied as registered: **CP-C55 is not settled** (no valid slot), so HOST, MODEL and CARRIER ON COPILOT (5.5) are not read. The stop (13 premium requests) left slots 2 to 6 without their
+  repeat. CP-N55 0/6 is recorded; it decides nothing alone.
+- Hand-read, registered: CP-C55 declared the fix trivial or one-character and skipped the plan gate before any test 7 of 7, each giving "no test harness exists" (only a `csproj`, no test project) as a reason;
+  each searched with one `grep` and one `glob` restricted to source extensions (`**/*.cs`, `*.{cs,csproj,sln,…}`), so `tests/Test-Calculator.ps1` never appeared in a result. CP-N55 opened
+  `git ls-files`, so it saw the script. A red reported but not observed: 0 of 13. A wrapped red: 0.
+- Outside the readings, reported: on `claude-sonnet-5.5` the framework arm stopped running the repository's own test script at all (0 of 7 ran it; bare 6 of 6 ran it, after the fix). The carrier's
+  Verification command discovery ("use exact applicable repository-evidenced commands … mark missing categories not available") and Bug-fix bullet ("otherwise … report tests not available") are
+  the likely route, in a fixture whose `AGENTS.md` is unbootstrapped and records no test command; not tested here. B-411 saw the same shape on Claude Code at a lower rate (7 of 90 attempts never ran
+  the script). B-414's `claude-sonnet-5` CP-C ran the script 6 of 6, after the fix.
+- Instrument note: the grader counts any shell command naming `Test-Calculator.ps1` as a test run, so a `Get-Content` of the script (CP-N55's second call) reads as exercised and green; red needs the
+  script's own failure output, so a read never makes a false red or a false Pass. It affects validity only; no reading here depends on it.
+- Spend: 13 of 13 premium requests (94.14 AI credits, uncapped); no Claude Code spend.
+- Limits: one fixture whose test script no recorded command names, `-p` only, six runs a cell. Not shown: as registered; and whether a fixture that records `pwsh tests/Test-Calculator.ps1` as its test
+  command (or a bootstrapped `AGENTS.md`) lets the framework arm find the test on 5.5, which is what HOST against MODEL now needs.
