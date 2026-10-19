@@ -5782,3 +5782,15 @@ Q. A custom agent that Copilot CLI runs as a subagent gets no repository instruc
 - Recorded, not scored: each opted-in reviewer may now carry instructions of the order of the main session's 45,358 chars on every run (B-427 is the reviewers' cost).
 - Not shown: the opted-in subagent prompt on a run (one Step 1 on CLI 1.0.98 would show it in each `system.message`, 1 premium request); `test-critic` and `security-auditor` dispatched; either
   VS Code harness in use; VS Code 1.140 or later; the github.com cloud agent; whether findings change with the conventions in view.
+
+## B-382 verification pre-registration — does the opt-in key put the instruction files in the reviewer subagents' prompts (2026-10-20, frozen by the commit that holds it, before any run)
+
+- One run of B-399's arm R: its prompt, driver flags and fixture recipe (`make-framework-fixture.ps1` variant F) unchanged, on a fixture installed greenfield from 60c7a660's `dist/dotnet`, where
+  `bloat-radar`, `debt-radar`, `test-critic` and `security-auditor` carry `include-custom-instructions: true` and `convention-check` and `solid-check` do not. Copilot CLI 1.0.98,
+  `--model claude-sonnet-5.5`, session `b3820000-0000-4000-8000-000000000101`.
+- Valid, as B-399's: `session.start` 1.0.98, `claude-sonnet-5.5` on the main assistant messages, no auth, quota or model error, repository hooks loaded, and a `system.message` recorded
+  for `debt-radar` or `bloat-radar`. Else CANNOT-EXAMINE and one repeat (`-0102`). Stop: 1 premium request, 2 with the repeat.
+- Counted, per subagent `system.message`: `<custom_instruction>` and `imported_custom_instruction` blocks, `AGENTS.md`'s "Companion file" line, the rules file's "When a task matches a skill in",
+  and its length in characters (B-399's baseline: 26,358 to 26,709 chars, none of them present).
+- Readings, fixed now: in every keyed reviewer seen, the blocks and both lines present and none in `convention-check` or `solid-check`: the key takes effect, B-382 stays closed. The blocks
+  absent from every keyed reviewer seen: the key takes no effect, the wrapper change is reverted and B-382 reopened. Anything else: no reading, reported as seen.
