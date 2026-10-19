@@ -866,7 +866,8 @@ if ($legacyGitHookInspection.Kind -eq 'LEGACY') {
 # wrapper and is replaced, but saved first when the previous manifest did not own the path. A kept
 # path stays out of the manifest this run writes, so an owned path is one the framework wrote.
 $teamSkillPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-$agentsSkillBackups = New-Object System.Collections.Generic.List[object]
+# Every file this update saves before replacing it: wrappers below, other files the framework did not write further down.
+$updateBackups = New-Object System.Collections.Generic.List[object]
 $priorManifest = if (Test-Path -LiteralPath 'variable:previous') { $previous } else { $null }
 $runName = if ($updateMode) { 'update' } else { 'install' }
 # A link at the backup path, symbolic or hard, may be the file itself, so it never counts as a save.
@@ -877,6 +878,26 @@ function Test-HeldBytes {
     if ($null -eq $heldItem -or ($heldItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -or [string]$heldItem.LinkType -eq 'HardLink') { return $false }
     try { $held = [IO.File]::ReadAllBytes($heldItem.FullName) } catch { return $false }
     return [string]::Equals([Convert]::ToBase64String($held), [Convert]::ToBase64String($Bytes), [StringComparison]::Ordinal)
+}
+# Where an update saves a file before replacing it. An earlier run's copy (a re-run after a failed save) counts as
+# saved. A different file at $Preferred is never overwritten: this copy goes beside it, named by its own SHA-256, and
+# State 'taken' means that name holds other content too. A link on the save path is refused, never read through.
+function Find-UpdateBackup {
+    param([string]$Preferred, [byte[]]$Bytes)
+    if (Get-ReparsePointAncestor -Path (Get-ContainedTargetPath -Relative $Preferred)) { [void](Assert-SafeTargetMutation -Relative $Preferred) }
+    $relative = $Preferred
+    if ($null -ne (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $relative) -ErrorAction SilentlyContinue) -and
+        -not (Test-HeldBytes -Relative $relative -Bytes $Bytes)) {
+        $folder = $relative.Substring(0, $relative.LastIndexOf('/') + 1)
+        $leaf = $relative.Substring($folder.Length)
+        $digest = (Get-Sha256Hex -Bytes $Bytes).Substring(0, 16)
+        $dot = $leaf.LastIndexOf('.')
+        $relative = $folder + $(if ($dot -gt 0) { $leaf.Substring(0, $dot) + ".$digest" + $leaf.Substring($dot) } else { "$leaf.$digest" })
+    }
+    $state = 'taken'
+    if ($null -eq (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $relative) -ErrorAction SilentlyContinue)) { $state = 'free' }
+    elseif (Test-HeldBytes -Relative $relative -Bytes $Bytes) { $state = 'saved' }
+    return [pscustomobject]@{ Relative = $relative; State = $state }
 }
 foreach ($relative in $incomingPaths) {
     $agentsSkill = [regex]::Match($relative, '^\.agents/skills/([a-z0-9-]+)/SKILL\.md$')
@@ -916,25 +937,18 @@ foreach ($relative in $incomingPaths) {
     $incomingText = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $src $relative)))
     if ([string]::Equals($existingText.Replace("`r`n", "`n"), $incomingText.Replace("`r`n", "`n"), [StringComparison]::Ordinal)) { continue }
     if ($null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative)) { continue }
-    # An earlier run's copy (a re-run after a failed save) counts as saved. A different file at the
-    # backup path is never overwritten: this copy goes beside it, named by its own SHA-256.
-    $backupRelative = ".claude/framework-update-backup/agents-skills/$workflow/SKILL.md"
-    if ($null -ne (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $backupRelative) -ErrorAction SilentlyContinue) -and
-        -not (Test-HeldBytes -Relative $backupRelative -Bytes $existingBytes)) {
-        $backupRelative = ".claude/framework-update-backup/agents-skills/$workflow/SKILL.$((Get-Sha256Hex -Bytes $existingBytes).Substring(0, 16)).md"
-    }
-    $backupItem = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $backupRelative) -ErrorAction SilentlyContinue
-    if ($null -ne $backupItem -and (Test-HeldBytes -Relative $backupRelative -Bytes $existingBytes)) {
-        $reconciliationMessages.Add("NOTICE: '$relative' is already saved at $backupRelative, so the update installs the framework's /$workflow wrapper there. Keep any change you need in AGENTS.md or a project skill.")
+    $backup = Find-UpdateBackup -Preferred ".claude/framework-update-backup/agents-skills/$workflow/SKILL.md" -Bytes $existingBytes
+    if ($backup.State -eq 'saved') {
+        $reconciliationMessages.Add("NOTICE: '$relative' is already saved at $($backup.Relative), so the update installs the framework's /$workflow wrapper there. Keep any change you need in AGENTS.md or a project skill.")
         continue
     }
-    if ($null -ne $backupItem) {
-        [Console]::Error.WriteLine("ERROR: Refusing update: '$relative' must be saved before the framework's /$workflow wrapper replaces it, and both $(".claude/framework-update-backup/agents-skills/$workflow/SKILL.md") and $backupRelative already hold other content. Move them out of .claude/framework-update-backup/agents-skills/$workflow/, then re-run the update. Nothing was changed.")
+    if ($backup.State -eq 'taken') {
+        [Console]::Error.WriteLine("ERROR: Refusing update: '$relative' must be saved before the framework's /$workflow wrapper replaces it, and both $(".claude/framework-update-backup/agents-skills/$workflow/SKILL.md") and $($backup.Relative) already hold other content. Move them out of .claude/framework-update-backup/agents-skills/$workflow/, then re-run the update. Nothing was changed.")
         exit 3
     }
-    $agentsSkillBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backupRelative; SourceRelative = $relative })
+    $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative; KeptOutBy = '.claude/framework-update-backup/agents-skills/.gitignore' })
     $unowned = if ($null -eq $priorManifest) { 'there is no usable previous framework-ownership.json' } else { 'the previous framework-ownership.json does not list it' }
-    $reconciliationMessages.Add("NOTICE: '$relative' holds the framework's /$workflow text, but $unowned, so the update saves it to $backupRelative, then installs the wrapper. Keep any change you need in AGENTS.md or a project skill.")
+    $reconciliationMessages.Add("NOTICE: '$relative' holds the framework's /$workflow text, but $unowned, so the update saves it to $($backup.Relative), then installs the wrapper. Keep any change you need in AGENTS.md or a project skill.")
 }
 
 # A retirement can delete only where the immediately previous manifest grants authority. That
@@ -1338,7 +1352,7 @@ if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Contain
     }
 }
 
-foreach ($entry in $agentsSkillBackups) { [void](Add-PlannedWrite -Relative $entry.Relative -ForceCreate) }
+foreach ($entry in $updateBackups) { [void](Add-PlannedWrite -Relative $entry.Relative -ForceCreate) }
 
 # Preserve every existing leaf of a disabled skill in its inactive location, then overlay the
 # incoming framework version. Active copies are removed as explicit tree operations.
@@ -1378,6 +1392,58 @@ foreach ($relative in $incomingPaths) {
     $ordinaryApplyPaths.Add($relative)
 }
 foreach ($relative in $retirementPreserve) { [void]$preservePlan.Add($relative) }
+
+# The same save, as for the wrappers above, for every other file this update replaces that the previous
+# framework-ownership.json does not list: a team's own file at a path a release ships for the first time, as
+# 0.95.0's .claude/commands/security-gate.md was, is otherwise lost. With no usable previous manifest no path can be
+# called new, so every file that differs from this release is saved, summed up in one line instead of one each.
+# Settings and the skills this run backs up already have their own save.
+# A saved copy must never load as a live skill, command, agent, instruction or ignore file: agents read a .claude,
+# .agents or .github folder nested anywhere. So below files/ a name starting with '.' gains a leading '_', and so does
+# one already starting with '_', which keeps two paths from ever saving to one name.
+$saveMessages = New-Object System.Collections.Generic.List[string]
+$savesRelative = '.claude/framework-update-backup/files'
+if ($updateMode) {
+    $savedElsewhere = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    [void]$savedElsewhere.Add('.claude/settings.json')
+    foreach ($entry in $skillBackupPlan) { [void]$savedElsewhere.Add('.claude/skills/' + $entry.Relative.Substring('.claude/framework-update-backup/skills/'.Length)) }
+    $additiveSaves = 0; $additiveAlready = 0
+    foreach ($relative in $ordinaryApplyPaths) {
+        if ($savedElsewhere.Contains($relative) -or $relative -match '^\.agents/skills/[a-z0-9-]+/SKILL\.md$' -or
+            ($null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative))) { continue }
+        # Add-PlannedWrite above has already refused a link on this path and a folder at it.
+        $destination = Get-ContainedTargetPath -Relative $relative
+        if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) { continue }
+        try { $existingBytes = [IO.File]::ReadAllBytes($destination) }
+        catch {
+            [Console]::Error.WriteLine("CANT-VERIFY: '$relative' could not be read to decide whether this update must save it before replacing it. Make it readable or move it aside, then re-run. Nothing was changed.")
+            exit 4
+        }
+        if ((Get-LfSha256 -Bytes $existingBytes) -ceq (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Join-Path $src $relative))))) { continue }
+        $preferred = "$savesRelative/" + (@($relative.Split('/') | ForEach-Object { if ($_ -match '^[._]') { "_$_" } else { $_ } }) -join '/')
+        $backup = Find-UpdateBackup -Preferred $preferred -Bytes $existingBytes
+        if ($backup.State -eq 'taken') {
+            [Console]::Error.WriteLine("ERROR: Refusing update: '$relative' must be saved before the framework's file replaces it, and both $preferred and $($backup.Relative) already hold other content. Move them out of $savesRelative/, then re-run the update. Nothing was changed.")
+            exit 3
+        }
+        if ($null -eq $priorManifest) {
+            if ($backup.State -eq 'saved') { $additiveAlready++ } else { $additiveSaves++ }
+        } elseif ($backup.State -eq 'saved') {
+            $saveMessages.Add("NOTICE: '$relative' is already saved at $($backup.Relative), so the update installs the framework's file there. Keep what you need from the saved copy under another path.")
+        } else {
+            $saveMessages.Add("NOTICE: '$relative' is not a file the framework wrote (the previous framework-ownership.json does not list it), so the update saves it to $($backup.Relative), then installs the framework's file there. Keep what you need from the saved copy under another path.")
+        }
+        if ($backup.State -eq 'saved') { continue }
+        [void](Add-PlannedWrite -Relative $backup.Relative -ForceCreate)
+        $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative; KeptOutBy = "$savesRelative/.gitignore" })
+    }
+    $additiveTotal = $additiveSaves + $additiveAlready
+    if ($additiveTotal -gt 0) {
+        $differ = if ($additiveTotal -eq 1) { '1 file that differs' } else { "$additiveTotal files that differ" }
+        $already = if ($additiveAlready -gt 0) { " $additiveAlready of them $(if ($additiveAlready -eq 1) { 'was' } else { 'were' }) already saved there by an earlier run." } else { '' }
+        $saveMessages.Add("NOTICE: there is no usable previous framework-ownership.json, so the update cannot tell which files the framework wrote: it saves the $differ from this release under $savesRelative/, each at its own path (a name starting with '.' or '_' gains a leading '_', and a SHA-256 suffix where an older save holds that name), then replaces them.$already Keep what you need from the saved copies under other paths, then delete them.")
+    }
+}
 
 # One-time instruction-layout move. The older layout kept the project instructions in
 # CLAUDE.md and a generated mirror in AGENTS.md; now AGENTS.md holds them and CLAUDE.md is a stub
@@ -1522,15 +1588,16 @@ if ($adoptMode -and $null -ne $ignoredShippedPaths) {
 }
 $archiveIgnoreRelative = 'docs/pre-adoption/.gitignore'
 if ($keptOutEntries.Count -gt 0) { [void](Add-PlannedWrite -Relative $archiveIgnoreRelative) }
-# The same holds for a file saved from .agents/skills; when Git cannot say, its copy stays out too.
-$agentsSkillsKeptOut = @($agentsSkillBackups | Where-Object { $null -eq $ignoredShippedPaths -or $_.SourceRelative -cin $ignoredShippedPaths })
-$agentsSkillsIgnoreRelative = '.claude/framework-update-backup/agents-skills/.gitignore'
-if ($agentsSkillsKeptOut.Count -gt 0) { [void](Add-PlannedWrite -Relative $agentsSkillsIgnoreRelative) }
+# The same holds for a file an update saves before replacing it; when Git cannot say, its copy stays out too.
+$backupsKeptOut = @($updateBackups | Where-Object { $null -eq $ignoredShippedPaths -or $_.SourceRelative -cin $ignoredShippedPaths })
+$backupIgnoreFiles = @($backupsKeptOut | ForEach-Object { $_.KeptOutBy } | Select-Object -Unique)
+foreach ($ignoreRelative in $backupIgnoreFiles) { [void](Add-PlannedWrite -Relative $ignoreRelative) }
 
 $adoptionMarkerRelative = $null
 if ($adoptMode) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
 $modeName = if ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
 if ($layoutMessage) { Write-Output "  $layoutMessage" }
+foreach ($message in $saveMessages) { Write-Output "  $message" }
 Write-Output "OPERATION-PLAN schema=1 mode=$modeName"
 foreach ($category in @(
     [pscustomobject]@{ Name = 'create'; Values = $createPlan },
@@ -1722,25 +1789,29 @@ if ($skillBackupPlan.Count -gt 0) {
         exit 3
     }
 }
-if ($agentsSkillsKeptOut.Count -gt 0) {
+foreach ($ignoreRelative in $backupIgnoreFiles) {
+    $keptOut = @($backupsKeptOut | Where-Object { $_.KeptOutBy -ceq $ignoreRelative })
+    $ignoreRoot = $ignoreRelative.Substring(0, $ignoreRelative.Length - '/.gitignore'.Length)
     try {
-        $agentsSkillsIgnorePath = Get-ContainedTargetPath -Relative $agentsSkillsIgnoreRelative
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $agentsSkillsIgnorePath) | Out-Null
-        $agentsSkillsIgnoreText = if (Test-Path -LiteralPath $agentsSkillsIgnorePath -PathType Leaf) { [IO.File]::ReadAllText($agentsSkillsIgnorePath) } else { '' }
-        $agentsSkillsIgnoreLines = @($agentsSkillsIgnoreText -split '\r?\n')
-        $agentsSkillsIgnoreNew = @($agentsSkillsKeptOut | ForEach-Object { $_.Relative.Substring('.claude/framework-update-backup/agents-skills'.Length) } | Where-Object { $_ -cnotin $agentsSkillsIgnoreLines })
-        if ($agentsSkillsIgnoreNew.Count -gt 0) {
-            $separator = if ($agentsSkillsIgnoreText.Length -gt 0 -and -not $agentsSkillsIgnoreText.EndsWith("`n")) { "`n" } else { '' }
-            [IO.File]::AppendAllText($agentsSkillsIgnorePath, $separator + ($agentsSkillsIgnoreNew -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
+        $ignorePath = Get-ContainedTargetPath -Relative $ignoreRelative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ignorePath) | Out-Null
+        $ignoreText = if (Test-Path -LiteralPath $ignorePath -PathType Leaf) { [IO.File]::ReadAllText($ignorePath) } else { '' }
+        $ignoreLines = @($ignoreText -split '\r?\n')
+        $ignoreNew = @($keptOut | ForEach-Object { $_.Relative.Substring($ignoreRoot.Length) } | Where-Object { $_ -cnotin $ignoreLines })
+        if ($ignoreNew.Count -gt 0) {
+            $separator = if ($ignoreText.Length -gt 0 -and -not $ignoreText.EndsWith("`n")) { "`n" } else { '' }
+            [IO.File]::AppendAllText($ignorePath, $separator + ($ignoreNew -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
         }
     } catch {
-        [Console]::Error.WriteLine("ERROR: Could not write $agentsSkillsIgnoreRelative before saving gitignored skills: $($_.Exception.Message)")
-        [Console]::Error.WriteLine('  No file under .agents/skills was saved or overwritten. Resolve the cause above, then re-run the installer; in a Git target add -AllowDirtyTree, since the changes Git now shows are this run''s own.')
+        [Console]::Error.WriteLine("ERROR: Could not write $ignoreRelative before saving gitignored files: $($_.Exception.Message)")
+        [Console]::Error.WriteLine('  No file this update saves first was saved or overwritten. Resolve the cause above, then re-run the installer; in a Git target add -AllowDirtyTree, since the changes Git now shows are this run''s own.')
         exit 3
     }
-    Write-Output "  kept out of Git by ${agentsSkillsIgnoreRelative}: $(@($agentsSkillsKeptOut | ForEach-Object { $_.Relative }) -join ', '). You had gitignored the originals, or Git could not say, and they may hold secrets."
+    # Without a previous manifest every differing file is saved, so the files are counted, as in their summary line.
+    $named = if ($null -eq $priorManifest -and $ignoreRelative -ceq "$savesRelative/.gitignore") { "the $($keptOut.Count) file$(if ($keptOut.Count -ne 1) { 's' }) it lists" } else { @($keptOut | ForEach-Object { $_.Relative }) -join ', ' }
+    Write-Output "  kept out of Git by ${ignoreRelative}: $named. You had gitignored the originals, or Git could not say, and they may hold secrets."
 }
-foreach ($entry in $agentsSkillBackups) {
+foreach ($entry in $updateBackups) {
     try {
         $destination = Get-ContainedTargetPath -Relative $entry.Relative
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null

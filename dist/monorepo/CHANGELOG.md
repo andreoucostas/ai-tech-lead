@@ -5,6 +5,20 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.98.2 — Unreleased
+
+- **An update now saves a file of yours before a new framework file replaces it.** When a release ships a file at a
+  path where your repository already holds a different file, and your previous `framework-ownership.json` does not list
+  that path, the update first copies your file under `.claude/framework-update-backup/files/` at the same path, with a
+  `_` added before each folder or file name that starts with `.` or `_` (so a saved copy never loads as a live skill,
+  command, agent or instruction), and names the copy in a `NOTICE`. A copy an earlier run already made is not made
+  again; a different older copy keeps its place and yours goes beside it under a name ending in its SHA-256; if both
+  names hold other files, the update stops before changing anything. Copies of files your ignore rules hide stay out of
+  Git. Before, only `.agents/skills` was handled this way, so a file of your own at `.claude/commands/security-gate.md`
+  (new in 0.95.0) was overwritten without a copy. Without a readable `framework-ownership.json` the update cannot tell
+  which files are new, so it saves every file that differs from the release and reports them in one line. Keep what you
+  need from the copies under other paths, then delete them.
+
 ## 0.98.1 — 2026-10-19
 
 - **The briefing deck's "Four pillars" slide and its talking points now describe the current rules.** After 0.98.0

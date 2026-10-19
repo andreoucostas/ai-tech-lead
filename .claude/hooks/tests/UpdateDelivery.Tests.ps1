@@ -1966,6 +1966,193 @@ It 'a linked .agents/skills is kept by an install and by an update, which leave 
     }
 }
 
+function Get-B393Sha16 {
+    param([byte[]]$Bytes)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash($Bytes))).Replace('-', '').ToLowerInvariant().Substring(0, 16) }
+    finally { $sha.Dispose() }
+}
+
+# 0.95.0 first shipped .claude/commands/security-gate.md, docs/reference.md and docs/getting-started.md.
+function New-B393Target {
+    param([Parameter(Mandatory)][string]$Target, [switch]$NoManifest)
+    New-Item -ItemType Directory -Force -Path (Join-Path $Target '.claude/commands'), (Join-Path $Target 'docs') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $Target '.claude/framework-version.json'), '{"version":"0.94.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
+    if (-not $NoManifest) { [IO.File]::WriteAllBytes((Join-Path $Target 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/framework-ownership.json')) }
+    $gateBytes = [Text.UTF8Encoding]::new($false).GetBytes("# Team security gate`nOur own release checklist.`n")
+    [IO.File]::WriteAllBytes((Join-Path $Target '.claude/commands/security-gate.md'), $gateBytes)
+    return $gateBytes
+}
+
+It 'B-393 an update saves a team''s own file at a path the previous manifest does not own before the framework''s new file replaces it, beside an older save, once across re-runs, and out of Git when ignored' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b393-' + [guid]::NewGuid())
+    try {
+        $t = New-B309GitTarget -Root $root -Name 'target' -Ignore "/.claude/commands/security-gate.md`n"
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        $backups = '.claude/framework-update-backup/files'
+        $gateBytes = New-B393Target -Target $t
+        $referenceBytes = $utf8.GetBytes("# Team reference`nService endpoints and owners.`n")
+        $startedBytes = $utf8.GetBytes("# Team onboarding`nClone, build, run.`n")
+        [IO.File]::WriteAllBytes((Join-Path $t 'docs/reference.md'), $referenceBytes)
+        [IO.File]::WriteAllBytes((Join-Path $t 'docs/getting-started.md'), $startedBytes)
+        # A file the previous manifest owns is the framework's: replaced as before, never saved.
+        [IO.File]::WriteAllBytes((Join-Path $t 'docs/defaults.md'), (Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/docs/defaults.md') + $utf8.GetBytes("edited`n"))
+        # reference.md's save path holds an older, different save; getting-started.md's holds this very file, as after a re-run.
+        New-Item -ItemType Directory -Force -Path (Join-Path $t "$backups/docs") | Out-Null
+        $olderReference = $utf8.GetBytes("OLDER SAVE of docs/reference.md`n")
+        [IO.File]::WriteAllBytes((Join-Path $t "$backups/docs/reference.md"), $olderReference)
+        [IO.File]::WriteAllBytes((Join-Path $t "$backups/docs/getting-started.md"), $startedBytes)
+        $referenceSave = "$backups/docs/reference.$(Get-B393Sha16 $referenceBytes).md"
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        foreach ($relative in '.claude/commands/security-gate.md', 'docs/reference.md', 'docs/getting-started.md') {
+            Assert (Test-B194BytesEqual ([IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/dotnet/$relative"))) ([IO.File]::ReadAllBytes((Join-Path $t $relative)))) "the update did not install the framework's $relative`: $out"
+        }
+        $gateSave = Join-Path $t "$backups/_.claude/commands/security-gate.md"
+        Assert ((Test-Path -LiteralPath $gateSave -PathType Leaf) -and (Test-B194BytesEqual $gateBytes ([IO.File]::ReadAllBytes($gateSave)))) "the team's .claude/commands/security-gate.md was replaced without being saved byte-identical at $backups/_.claude/commands/security-gate.md: $out"
+        Assert ($flat -match "NOTICE: '\.claude/commands/security-gate\.md' is not a file the framework wrote \(the previous framework-ownership\.json does not list it\), so the update saves it to \.claude/framework-update-backup/files/_\.claude/commands/security-gate\.md") "the save was not reported: $out"
+        Assert ((Test-Path -LiteralPath (Join-Path $t $referenceSave) -PathType Leaf) -and (Test-B194BytesEqual $referenceBytes ([IO.File]::ReadAllBytes((Join-Path $t $referenceSave))))) "the team's docs/reference.md was not saved beside the older save at $referenceSave`: $out"
+        Assert (Test-B194BytesEqual $olderReference ([IO.File]::ReadAllBytes((Join-Path $t "$backups/docs/reference.md")))) "the older save at docs/reference.md's save path was overwritten: $out"
+        Assert ($flat -match "so the update saves it to $([regex]::Escape($referenceSave))") "the save beside the older one was not reported: $out"
+        Assert ($flat -match "NOTICE: 'docs/getting-started\.md' is already saved at \.claude/framework-update-backup/files/docs/getting-started\.md") "the earlier run's save was not recognised: $out"
+        Assert (@(Get-ChildItem -LiteralPath (Join-Path $t "$backups/docs") -File -Filter 'getting-started*').Count -eq 1) "an earlier run's identical save was copied again: $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t "$backups/docs/defaults.md"))) "a file the previous manifest owns was saved: $out"
+        # The team had gitignored security-gate.md, so its saved copy must not become committable.
+        $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
+        Assert ($status -notmatch 'framework-update-backup/files/_\.claude/commands/security-gate\.md') "the gitignored file's saved copy is committable: $status"
+        Assert ($status -match [regex]::Escape($referenceSave)) "the tracked-eligible reference save is not committable: $status"
+        Assert ($out -match 'kept out of Git by \.claude/framework-update-backup/files/\.gitignore: \.claude/framework-update-backup/files/_\.claude/commands/security-gate\.md\.') "the handoff does not name the kept-out save: $out"
+        # The update's manifest now owns those paths, so the next update replaces them as framework files and saves nothing.
+        $again = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        Assert ($LASTEXITCODE -eq 0) "the second update failed (exit $LASTEXITCODE): $again"
+        Assert (($again -replace '\s+', ' ') -notmatch 'is not a file the framework wrote|is already saved at \.claude/framework-update-backup/') "the second update saved a file the first one installed: $again"
+        Assert (Test-B194BytesEqual $gateBytes ([IO.File]::ReadAllBytes($gateSave))) "the second update changed the saved copy: $again"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-393 an update refuses before any change when both save names for a team''s file at a new framework path hold other content' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b393-refuse-' + [guid]::NewGuid())
+    try {
+        $gateBytes = New-B393Target -Target $t
+        $saves = Join-Path $t '.claude/framework-update-backup/files/_.claude/commands'
+        New-Item -ItemType Directory -Force -Path $saves | Out-Null
+        [IO.File]::WriteAllText((Join-Path $saves 'security-gate.md'), "OLDER SAVE ONE`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $saves "security-gate.$(Get-B393Sha16 $gateBytes).md"), "OLDER SAVE TWO`n", [Text.UTF8Encoding]::new($false))
+        $before = Get-B194Fingerprint -Root $t
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 3) "the update did not refuse with exit 3 (exit $exit): $out"
+        Assert (($out -replace '\s+', ' ') -match "ERROR: Refusing update: '\.claude/commands/security-gate\.md' must be saved before the framework's file replaces it, and both \.claude/framework-update-backup/files/_\.claude/commands/security-gate\.md and \.claude/framework-update-backup/files/_\.claude/commands/security-gate\.[0-9a-f]{16}\.md already hold other content\. .*Nothing was changed\.") "the refusal did not name both save paths: $out"
+        Assert ((Get-B194Fingerprint -Root $t) -ceq $before) "the refused update changed the target: $out"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-393 a link never carries a save: a linked folder on a new framework path refuses the update unchanged, and a hard link at the save path is no save' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b393-link-' + [guid]::NewGuid())
+    try {
+        # A junction needs no privilege on Windows; elsewhere, where New-Item makes no junction, a symbolic link stands in.
+        $linkType = if ($env:OS -eq 'Windows_NT') { 'Junction' } else { 'SymbolicLink' }
+        $linked = Join-Path $root 'linked'
+        [void](New-B393Target -Target $linked)
+        $shared = Join-Path $root 'shared-docs'
+        New-Item -ItemType Directory -Force -Path $shared | Out-Null
+        $sharedBytes = [Text.UTF8Encoding]::new($false).GetBytes("# Shared team reference`n")
+        [IO.File]::WriteAllBytes((Join-Path $shared 'reference.md'), $sharedBytes)
+        Remove-Item -LiteralPath (Join-Path $linked 'docs') -Recurse -Force
+        New-Item -ItemType $linkType -Path (Join-Path $linked 'docs') -Target $shared -ErrorAction Stop | Out-Null
+        $out = Invoke-Installer -Dist 'dotnet' -Target $linked
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 3 -and $out -match 'reparse/symlink') "the update over a linked docs folder did not refuse at the link (exit $exit): $out"
+        Assert (Test-B194BytesEqual $sharedBytes ([IO.File]::ReadAllBytes((Join-Path $shared 'reference.md')))) "the update changed the file behind the link: $out"
+        Assert (@(Get-ChildItem -LiteralPath $shared -Force).Count -eq 1) "the update wrote through the link: $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $linked '.claude/framework-update-backup'))) "the refused update saved a file: $out"
+        # A hard link at the save path is the file itself, so it is no save: the replacement in place would reach it.
+        $hard = Join-Path $root 'hard'
+        $gateBytes = New-B393Target -Target $hard
+        $saves = Join-Path $hard '.claude/framework-update-backup/files/_.claude/commands'
+        New-Item -ItemType Directory -Force -Path $saves | Out-Null
+        New-Item -ItemType HardLink -Path (Join-Path $saves 'security-gate.md') -Target (Join-Path $hard '.claude/commands/security-gate.md') | Out-Null
+        Assert ([string](Get-Item -LiteralPath (Join-Path $hard '.claude/commands/security-gate.md')).LinkType -eq 'HardLink') 'calibration: the team file is not reported as a hard link'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $hard
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $beside = Join-Path $saves "security-gate.$(Get-B393Sha16 $gateBytes).md"
+        Assert ((Test-Path -LiteralPath $beside -PathType Leaf) -and (Test-B194BytesEqual $gateBytes ([IO.File]::ReadAllBytes($beside)))) "the team file was not saved beside the hard link at its save path: $out"
+        Assert (($out -replace '\s+', ' ') -notmatch "is already saved at") "a hard link at the save path counted as a save: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-393 without a usable previous manifest an update saves every file that differs from the release before replacing it, in one summary line' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b393-additive-' + [guid]::NewGuid())
+    try {
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        $gateBytes = New-B393Target -Target $t -NoManifest
+        $versionBytes = [IO.File]::ReadAllBytes((Join-Path $t '.claude/framework-version.json'))
+        $defaultsBytes = (Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/docs/defaults.md') + $utf8.GetBytes("edited`n")
+        [IO.File]::WriteAllBytes((Join-Path $t 'docs/defaults.md'), $defaultsBytes)
+        # The release's own bytes with CRLF line endings, as a core.autocrlf checkout holds them: nothing to save.
+        $latin1 = [Text.Encoding]::GetEncoding(28591)
+        $shipped = $latin1.GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/docs/reference.md'))).Replace("`r`n", "`n")
+        [IO.File]::WriteAllBytes((Join-Path $t 'docs/reference.md'), $latin1.GetBytes($shipped.Replace("`n", "`r`n")))
+        [IO.File]::WriteAllText((Join-Path $t '.claude/settings.json'), "{`"consumerEdit`":`"recover me`"}`n", $utf8)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $backups = Join-Path $t '.claude/framework-update-backup/files'
+        foreach ($case in @(@('_.claude/commands/security-gate.md', $gateBytes), @('docs/defaults.md', $defaultsBytes), @('_.claude/framework-version.json', $versionBytes))) {
+            $saved = Join-Path $backups $case[0]
+            Assert ((Test-Path -LiteralPath $saved -PathType Leaf) -and (Test-B194BytesEqual ([byte[]]$case[1]) ([IO.File]::ReadAllBytes($saved)))) "$($case[0]) differed from the release and was not saved byte-identical: $out"
+        }
+        Assert (-not (Test-Path -LiteralPath (Join-Path $backups 'docs/reference.md'))) "a file differing only in line endings was saved: $out"
+        Assert (@(Get-ChildItem -LiteralPath (Split-Path -Parent $backups) -Recurse -File -Filter 'settings.json').Count -eq 0) "settings.json, which has its own pre-update save, was saved twice: $out"
+        Assert (@([regex]::Matches($flat, "there is no usable previous framework-ownership\.json, so the update cannot tell which files the framework wrote")).Count -eq 1) "the saves were not summed up in exactly one line: $out"
+        Assert ($flat -match 'saves the 3 files that differ from this release under \.claude/framework-update-backup/files/') "the summary does not count the three saves: $out"
+        Assert ($flat -notmatch 'is not a file the framework wrote') "the saves were reported one line each: $out"
+        # Git could not say what the team ignores here, so every saved copy stays out of Git, counted rather than listed.
+        Assert ($out -match 'kept out of Git by \.claude/framework-update-backup/files/\.gitignore: the 3 files it lists\.') "the kept-out saves were not counted: $out"
+        [string[]]$ignored = @([IO.File]::ReadAllLines((Join-Path $backups '.gitignore')) | Where-Object { $_ })
+        [Array]::Sort($ignored, [StringComparer]::Ordinal)
+        Assert (($ignored -join '|') -ceq '/_.claude/commands/security-gate.md|/_.claude/framework-version.json|/docs/defaults.md') "the keep-out file does not list exactly the three saves: $($ignored -join '|')"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-393 no saved file can load as a live skill, command, agent or instruction: no path below the save root has a .claude, .agents or .github folder' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b393-layout-' + [guid]::NewGuid())
+    try {
+        # Claude Code loads a .claude/skills folder nested anywhere it reads files; Copilot and other agents read .agents and .github.
+        # Without a manifest every differing file is saved, so one update covers each shipped root. The skill backup folder
+        # already exists, so the one-time skill backup does not take the edited skill instead.
+        [void](New-B393Target -Target $t -NoManifest)
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/framework-update-backup/skills'), (Join-Path $t '.claude/agents'),
+            (Join-Path $t '.claude/skills/create-adr'), (Join-Path $t '.github') | Out-Null
+        foreach ($relative in '.claude/agents/test-critic.md', '.claude/skills/create-adr/SKILL.md', '.github/PULL_REQUEST_TEMPLATE.md') {
+            [IO.File]::WriteAllBytes((Join-Path $t $relative), [IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/dotnet/$relative")) + $utf8.GetBytes("TEAM EDIT`n"))
+        }
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $saveRoot = Join-Path $t '.claude/framework-update-backup'
+        $saved = @(Get-ChildItem -LiteralPath $saveRoot -Recurse -File -Force | ForEach-Object { $_.FullName.Substring($saveRoot.Length + 1).Replace('\', '/') })
+        Assert ($saved.Count -ge 4) "calibration: the update saved fewer than the four edited files: $($saved -join ', ')"
+        $live = @($saved | Where-Object { @($_.Split('/') | Where-Object { $_ -in '.claude', '.agents', '.github' }).Count -gt 0 })
+        Assert ($live.Count -eq 0) "saved paths recreate a folder an agent loads: $($live -join ', ')"
+        foreach ($expected in 'files/_.claude/agents/test-critic.md', 'files/_.claude/skills/create-adr/SKILL.md', 'files/_.github/PULL_REQUEST_TEMPLATE.md', 'files/_.claude/commands/security-gate.md') {
+            Assert ($saved -ccontains $expected) "the edited file was not saved at .claude/framework-update-backup/$expected`: $($saved -join ', ')"
+        }
+        Assert (($out -replace '\s+', ' ') -match 'saves the \d+ files that differ from this release under \.claude/framework-update-backup/files/') "the summary does not name where the files were saved: $out"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'a disabled retired recipe skill: the update finishes, carries the folder''s consumer files and removes the active copy' {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('recipe-disabled-' + [guid]::NewGuid())
     try {

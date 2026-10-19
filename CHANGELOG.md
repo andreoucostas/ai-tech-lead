@@ -11,6 +11,19 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.98.2 — Unreleased
+
+`install.ps1` update mode (guarded, B-393): every file at an incoming framework path that the update replaces, that the previous `framework-ownership.json` does not list
+and whose bytes differ from the release (CRLF read as LF) is saved first to `.claude/framework-update-backup/files/<path>`, where every
+segment starting with `.` or `_` gains a leading `_` (injective, and no saved copy sits in a `.claude`, `.agents` or `.github` folder an
+agent would load, nor is a live `.gitignore`), beside an older save under a SHA-256-suffixed name, refused with exit 3 before any change
+when both names hold other content, recognised as saved on a re-run, one `NOTICE` each, and kept out of Git by
+`.claude/framework-update-backup/files/.gitignore` when the original was ignored or Git could not say. Before, only the `.agents/skills`
+wrappers were saved, so a team's own file at a path a release ships for the first time (0.95.0's `.claude/commands/security-gate.md`) was
+replaced unsaved. The wrappers' save (layout unchanged, `agents-skills/<workflow>/SKILL.md`) now shares the same helper and apply step.
+With no usable previous manifest no path can be called new, so every differing file is saved and summed up in one `NOTICE` line; settings
+and skills already saved elsewhere this run are not saved twice. Five new `UpdateDelivery.Tests.ps1` cases.
+
 ## 0.98.1 — 2026-10-19
 
 The briefing deck (`presentation/framework-briefing.html` slide 6) and `TALKING-POINTS.md` quoted three carrier rules the 0.98.0
