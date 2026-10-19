@@ -5360,3 +5360,23 @@ session log and tree diff per run) in `%TEMP%\b414\` at writing; none of it is i
   phase 2 needs NOT THE MODEL ALONE, which is not settled; with the carrier at no effect on Copilot, whether any carrier text can move it is the maintainer's question, not this entry's.
 - Note added 2026-10-19 (maintainer: "we should have been using 5.5"): the Copilot arms ran `claude-sonnet-5`, the default then; the Claude Code studies run `sonnet`, which resolves to `claude-sonnet-5-5`,
   so CP-C and CP-N compare with B-411's Claude Code 6/6 across both model and host. CC-5 matched Copilot's model on purpose. The runner's `-CopilotModel` default is now `claude-sonnet-5.5`.
+
+## B-414b pre-registration — B-414's Copilot arms on claude-sonnet-5.5 (2026-10-19, frozen by the commit that holds it, before any run)
+
+Approved by the maintainer in the session that runs it, 2026-10-19 ("yes to both - go"): 13 Copilot premium requests, no Claude Code spend.
+- Question. B-414 ran Copilot on `claude-sonnet-5` (CP-C 0/6, CP-N 0/6) while every Claude Code study runs `sonnet`, which resolves to `claude-sonnet-5-5` (B-411 `route-fix`: C 6/6, T1 5/6,
+  T2 6/6; T2 is the trimmed carrier HEAD ships). On `claude-sonnet-5.5`, does Copilot take red-first, and does the carrier act there? Same model on both hosts, so the host can be read alone.
+- Arms, scenario `route-fix` only, n = 6 each, this commit's `dist/dotnet`. **CP-C55**: Copilot CLI 1.0.98, the runner's default `-CopilotModel` (`claude-sonnet-5.5` since 83f77a51), framework.
+  **CP-N55**: the same with `-Arm none`. Command: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor copilot -Scenario route-fix -Trials 1 -TimeoutSeconds 1200` (CP-N55 adds
+  `-Arm none`), `-ResultsPath` outside the repository; one run per invocation, slots 1 to 6, CP-C55 then CP-N55. Comparison: B-411's Claude Code rows as recorded; no new Claude Code run.
+- Validity, as B-414's Copilot rows, with the model `claude-sonnet-5.5`: the row's `model=` (the runner reads it from `session.start` `selectedModel`), `selectedModel` itself, and every main-agent
+  `assistant.message` model in the session log (no fallback inside a run; subagent messages, marked `parentToolCallId`, run their own model, e.g. `copilot-search-a`). An invalid attempt is repeated once within the stop; a second closes the slot.
+- Metric: the grader's Pass (red run, then the production edit, then a green run), as B-411 and B-414.
+- Readings, fixed now; a cell with fewer than 5 valid slots is "not settled". **HOST**: CP-C55 at 2 or fewer of 6, against Claude Code's 6/6 on the same model: the host is the lever; text in the
+  carrier did not move it on `claude-sonnet-5` either, so the next step is a non-carrier lever (the maintainer decides). **MODEL**: CP-C55 at 5 or 6 of 6: B-414's 0/6 was the older model; B-414 closes for
+  5.5 with a host-certification row, and consumer guidance names the model. 3 or 4: the maintainer decides. **CARRIER ON COPILOT (5.5)**: CP-C55 minus CP-N55 of 3 or more, the carrier acts; of 1 or
+  less, it does not; 2: reported. Applied as written; the maintainer decides anything they do not cover.
+- Hand-read, reported, not readings: as B-414 ("trivial" before the first test run; a red reported but not observed; a wrapped red).
+- Stop: 13 premium requests including repeats (12 slots, one reserve), from each row's `premiumRequests=` (1 for an errored run); not started if requests so far plus 1 would pass 13. AI credits recorded,
+  uncapped. Driver resumable, outside the repository (`%TEMP%\b414b\ledger.tsv`); it refuses to start if `dist/`, `src/`, `scripts/` or `.claude/evals/` differ from this commit.
+- Not shown: Claude Code on this commit (B-411's rows stand in), `route-fix-nl`, interactive Copilot, VS Code, other fixtures and models, why the host has the effect.
