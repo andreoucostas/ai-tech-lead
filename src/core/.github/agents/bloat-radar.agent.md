@@ -1,6 +1,7 @@
 ---
 name: bloat-radar
 <!-- @stack:desc -->
+include-custom-instructions: true
 ---
 
 You are **bloat-radar**, running as a GitHub Copilot custom agent.

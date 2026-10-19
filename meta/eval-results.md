@@ -5755,3 +5755,30 @@ and the drive root had no `.claude` before or after any run.
 - Spend: 3 of 5 premium requests (1 a run), 30.71 AI credits (13.38, 8.87, 8.46), 89 seconds of runs.
 - Not shown: as registered and amended (another Windows build, macOS and Linux, a repository outside the user temp directory, the documented workaround, the named fix, a managed or
   customised policy, VS Code, interactive sessions, other models); a hook process on a host without PSE 1.1 enumeration.
+
+## B-382 measurement — whether Copilot CLI gives the reviewer subagents `AGENTS.md`, and whether VS Code accepts the opt-in key (2026-10-20, retained and bundled evidence, no run, not pre-registered)
+
+Q. A custom agent that Copilot CLI runs as a subagent gets no repository instruction files unless its frontmatter sets `include-custom-instructions: true` (GitHub's CLI command reference);
+`test-critic`, `security-auditor`, `bloat-radar` and `debt-radar` never read `AGENTS.md` themselves. Do they judge without it, and does VS Code accept the key in an `.agent.md`?
+
+- B-399's retained session (`~\.copilot\session-state\b3990000-0000-4000-8000-000000000201\events.jsonl`: CLI 1.0.98, `claude-sonnet-5.5`, v0.98.1's `dist/dotnet`, unbootstrapped `AGENTS.md`) holds one
+  `system.message` per agent. The main session's (81,606 chars) carries 45,358 chars of instructions: a `<custom_instruction>` block of `AGENTS.md`, one of `CLAUDE.md` with
+  `<imported_custom_instruction>` copies of `AGENTS.md` and `framework-rules.instructions.md`, and the rules file again. Each of the four subagents' (`convention-check`, `debt-radar`, `bloat-radar`,
+  `solid-check`; 26,358 to 26,709 chars) has none: 0 `<custom_instruction>`, 0 `imported_custom_instruction`, 0 of `AGENTS.md`'s "Companion file" and "Per-developer working preferences" lines,
+  0 of the rules file's "When a task matches a skill in"; `AGENTS.md` appears only in skill descriptions and the directory listing. Their user messages hold the task prompt and `route-prompt`'s
+  `review` reminder, which names `AGENTS.md > Conventions` without its content. Neither `bloat-radar` (2 `powershell`) nor `debt-radar` (2 `view`, 2 `powershell`) opened `AGENTS.md`;
+  `convention-check` grepped it itself, as its wrapper says.
+- CLI 1.0.98's bundled `changelog.json` (`%LOCALAPPDATA%\copilot\pkg\win32-x64\1.0.98`), 1.0.86 "added": custom agents "can opt into repository instruction files" with the key. The string sits in
+  `prebuilds\win32-x64\runtime.node` beside the agent frontmatter fields `user-invocable`, `disable-model-invocation`, `reasoning-effort` and `strict-tools-list`; `copilot help` does not name it.
+  GitHub's command reference, "Repository custom instructions for subagents" (read 2026-10-20): default `false`; `--no-custom-instructions` overrides it. Older CLIs: the same changelog's 0.0.402,
+  "Custom agents with unknown fields load with warnings instead of errors" (read, not run; it covers VS Code's bundled `@github/copilot` 1.0.73).
+- VS Code 1.139.1 (the installed build, `04c0d99f4f`): the key appears nowhere in its install. `workbench.desktop.main.js`'s prompt-file validator lists the agent-file attributes (`name`, `description`,
+  `model`, `reasoning-effort`, `tools`, `advancedOptions`, `handoffs`, `argument-hint`, `target`, `infer`, `agents`, `hooks`, `user-invocable`, `disable-model-invocation`, `github`), and
+  `checkForInvalidArguments` gives any other key severity 1 (`MarkerSeverity.Hint`) with the Unnecessary tag: "Attribute '{0}' is not supported in VS Code agent files" (nls 14664). The header
+  parser reads named attributes only, so the agent still loads. Read from source; VS Code was not driven.
+- Reading: on CLI 1.0.98 the reviewer subagents judge without `AGENTS.md` (seen for `bloat-radar` and `debt-radar`; `test-critic` and `security-auditor` start through the same `task` path and were
+  not dispatched in B-399), and VS Code accepts the key with a hint. No measurement was registered and no premium request spent. Made: `include-custom-instructions: true` in the four
+  `src/core/.github/agents` wrappers (no stack snippet holds their frontmatter beyond `desc`), `dist/*` rebuilt; `convention-check` and `solid-check` unchanged.
+- Recorded, not scored: each opted-in reviewer may now carry instructions of the order of the main session's 45,358 chars on every run (B-427 is the reviewers' cost).
+- Not shown: the opted-in subagent prompt on a run (one Step 1 on CLI 1.0.98 would show it in each `system.message`, 1 premium request); `test-critic` and `security-auditor` dispatched; either
+  VS Code harness in use; VS Code 1.140 or later; the github.com cloud agent; whether findings change with the conventions in view.

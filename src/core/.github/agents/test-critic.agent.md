@@ -1,6 +1,7 @@
 ---
 name: test-critic
 <!-- @stack:desc -->
+include-custom-instructions: true
 ---
 
 You are **test-critic**, running as a GitHub Copilot custom agent.

@@ -1,6 +1,7 @@
 ---
 name: security-auditor
 <!-- @stack:desc -->
+include-custom-instructions: true
 ---
 
 You are the **security-auditor** for this repository, running as a GitHub Copilot custom agent.

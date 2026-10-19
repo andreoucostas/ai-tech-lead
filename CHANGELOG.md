@@ -35,6 +35,13 @@ hosts, the other an empty path the hook never reaches). The shipped hook tests n
 dist tree); one new case each in `AuditTrail.Tests.ps1` and `SessionStartWiki.Tests.ps1` runs the hook from a location outside its
 repository. `docs/enforcement-surfaces.md`'s sandbox paragraph now gives the attributed cause and the fix.
 
+`.github/agents` wrappers (B-382): `bloat-radar`, `debt-radar`, `test-critic` and `security-auditor` set
+`include-custom-instructions: true`. B-399's retained Copilot CLI 1.0.98 session shows each reviewer subagent's system prompt without
+the `<custom_instruction>` blocks the main session's carries (`AGENTS.md`, `CLAUDE.md` and its imports); the CLI's 1.0.86 changelog and
+GitHub's CLI command reference make those files opt-in for a custom agent run as a subagent. CLIs from 0.0.402 load an agent with an
+unknown field, with a warning; VS Code 1.139.1's prompt-file validator gives the key a Hint ("not supported in VS Code agent files").
+The opted-in prompt is not yet observed on a run. `convention-check` and `solid-check`, which read their files themselves, are unchanged.
+
 ## 0.98.1 — 2026-10-19
 
 The briefing deck (`presentation/framework-briefing.html` slide 6) and `TALKING-POINTS.md` quoted three carrier rules the 0.98.0

@@ -27,6 +27,16 @@
   support, where the CLI warns that the location may be the drive root. Where the location is your repository, nothing
   changes. The shipped hook tests now run each hook as a copy placed in their own temporary repository.
 
+- **On Copilot CLI, four reviewers now receive your `AGENTS.md`.** Copilot CLI gives a custom agent that runs as a
+  subagent none of your repository's instruction files (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`)
+  unless its frontmatter opts in, and a `/review` on Copilot CLI 1.0.98 ran `bloat-radar` and `debt-radar` without
+  them. The `.github/agents` wrappers of `bloat-radar`, `debt-radar`, `test-critic` and `security-auditor` now set
+  `include-custom-instructions: true`, which GitHub documents for Copilot CLI 1.0.86 and later, so they judge your
+  change with your conventions in view; each run of them now also reads those files, which costs tokens. Older Copilot
+  CLIs load the wrappers as before and warn about the field; VS Code 1.139 marks it with an "attribute is not
+  supported" hint, not an error. `convention-check` and `solid-check` read the files they need themselves and are
+  unchanged.
+
 ## 0.98.1 — 2026-10-19
 
 - **The briefing deck's "Four pillars" slide and its talking points now describe the current rules.** After 0.98.0
