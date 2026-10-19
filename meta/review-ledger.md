@@ -98,3 +98,4 @@ non-review.
 | v0.97.1 | 2026-10-15 | guarded; reviewer fresh session; 6066c616..7db19ed4 |
 | v0.97.2 | 2026-10-15 | guarded; reviewer fresh session; ee5df016..3d0bb01b |
 | v0.98.0 | 2026-10-19 | guarded; reviewer fresh session (attacks: 0.98.0 product fixes 296c6ce9, carrier trim e47ab5d3, Ship rule 00308e09); v0.97.2..00308e09 |
+| v0.98.1 | 2026-10-19 | guarded; reviewer fresh session (cf0b9159 session-start.ps1: two fresh-session attacks recorded in its commit and the 0.98.1 changelog, one on the measured patch, which offered Deploy-Database.ps1 and retired framework tests, failed open and took 7-16 s at 400k paths, and a second on the fix; the rest is ordinary carrier, documentation and records); v0.98.0..e1980337 |

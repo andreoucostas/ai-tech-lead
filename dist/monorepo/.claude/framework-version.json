@@ -1,6 +1,6 @@
 {
   "template": "monorepo",
-  "version": "0.98.0",
+  "version": "0.98.1",
   "applied": "2026-10-19",
   "_comment": "Machine-readable framework version stamp; the installer overwrites it on every install and update. The protected AGENTS.md header repeats version and applied: copy them there after an update (docs/upgrade-checklist.md, step: Copy the version into AGENTS.md), or scripts/template-checks.ps1 reports version-stamp drift."
 }
