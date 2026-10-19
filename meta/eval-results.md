@@ -5705,3 +5705,18 @@ Requested by the orchestrating session (B-396, rank 7); stop set in that request
 - Not shown: another Windows build (one whose PSE reports 1.1 enumeration), the macOS and Linux backends; a repository outside the user temp directory (the default policy grants temp too, so a
   write landing here may come from either grant); the CLI's documented workaround (the drive root in `readonlyPaths`), which changes the user's settings and is not run; the named fix; a managed
   or customised sandbox policy; VS Code; interactive sessions; other models.
+
+### B-396 amendment — arm S95, CLI 1.0.95 on today's host (2026-10-19, frozen by the commit that holds it, after S and U, before S95)
+
+S and U ran as registered (2 premium requests; results in the next section). S read NOT REPRODUCED, with two changes since B-379 confounded: the CLI (1.0.95 to 1.0.98) and the host
+(`Get-HotFix`: KB5127647 installed 2026-10-14, KB5127648, KB5121794 and KB5127694 on 2026-10-15). Free since: S's sandbox spawn policy carries `processContainer.filesystem.enumeratePaths`
+`["C:\\"]` and its `system.message` no location warning; B-379 S-1's one policy file, still in its session state (written 2026-10-12), carries no `processContainer` key; and 1.0.95's and
+1.0.98's `runtime.node` hold the same enumeration-support check and warning text. The CLI's loader selects a cached package with `--prefer-version` (`copilot --prefer-version 1.0.95
+--version` prints 1.0.95; no download).
+- Arm **S95**, one run: S's runner, fixture, prompt and flags, with `--prefer-version 1.0.95` added (`claude-sonnet-5` instead, B-379's model, only if 1.0.95 refuses `claude-sonnet-5.5`
+  before any request). Validity as S, with 1.0.95 in `session.start`.
+- Readings, fixed now: **CAUSE SEEN (H)**, as registered, plus its policy without `enumeratePaths`: the cause is the CLI's launch on this host, which 1.0.98 no longer makes, and B-396
+  closes by measurement as fixed in the CLI. **NOT REPRODUCED**, as registered (and the policy carries `enumeratePaths`): the CLI version is ruled out on this host, the change is the host's,
+  and B-396 closes by measurement with H as the attributed 1.0.95-day cause (the CLI's own warning in that session and a policy without enumeration), not seen for a hook process. Otherwise:
+  recorded as seen, B-396 stays open.
+- Stop: unchanged, 5 premium requests (S95 is the third).
