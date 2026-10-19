@@ -61,7 +61,9 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 ### 6 · Four pillars
 - Verification, Leanness, SOLID, Boy Scout — the standards a good lead enforces in review, now
   enforced continuously.
-- SOLID is **literal and mandatory**, with a **deterministic** CI backstop (not just an LLM opinion).
+- SOLID is three concrete rules, not a slogan: one reason to change, polymorphism at the third arm,
+  a seam only where project evidence needs one. `solid-check` reviews it on request; a deterministic
+  direction check (NetArchTest, dependency-cruiser) exists only once the team wires it into blocking CI.
 - If challenged on "leanness vs SOLID": SOLID governs *structure*, leanness governs *ceremony beyond
   that structure* — they're reconciled, not in conflict.
 

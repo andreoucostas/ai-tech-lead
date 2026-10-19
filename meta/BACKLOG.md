@@ -187,11 +187,6 @@ Still needed: whether the host's own `-p` instructions ("proceed autonomously", 
 
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 
-### B-415 · The shipped briefing deck still quotes rules the 0.98.0 trim removed
-**Filed against:** v0.97.2 (2026-10-18)
-**Priority:** P3 · **Effort:** S · **Invariants:** #7
-**Status:** Open (found in the B-411 ship attack): `src/core/presentation/framework-briefing.html` (about lines 218-220: "Verify before you reference", "no future-proofing. Deletion is a contribution", "Mandatory principles") and `TALKING-POINTS.md:64` ("SOLID is literal and mandatory") ship in `dist/*/presentation` and describe the pre-trim carrier; ClaimTruth lists them but pins no such claim.
-
 ### B-416 · Observe 0.98.0 at the first consumer: do the restated criteria and Option A/B designs help, and are they right
 **Filed against:** v0.98.0 (2026-10-19)
 **Priority:** P1 · **Effort:** S · **Invariants:** none

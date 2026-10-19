@@ -1,5 +1,5 @@
 ﻿[CmdletBinding()]
-param([ValidateSet('', 'absolute', 'regulatory', 'backstop')][string]$RedTest = '')
+param([ValidateSet('', 'absolute', 'regulatory', 'backstop', 'retired')][string]$RedTest = '')
 
 # Curated live claims only. This is intentionally not a prose linter: history, changelogs, plans,
 # meta evidence, and generated dists are excluded because they may accurately quote retired claims.
@@ -30,7 +30,9 @@ $activePaths = @(
 $rules = @(
     [pscustomobject]@{ Name = 'absolute write guarantee'; Pattern = '(?i)literally cannot(?:\s+write)?|hard-blocks\s+any\s+write|every\s+AI-assisted(?:\s+file)?\s+(?:change|write)|audit[- ]trail.{0,120}\bappends?\s+AI\s+file[- ]changes' },
     [pscustomobject]@{ Name = 'regulatory audit assurance'; Pattern = '(?i)satisfies\s+SR\s*11-7|SR\s*11-7\s*/\s*DORA|DORA\s+audit[- ]?(?:trail|log|line)' },
-    [pscustomobject]@{ Name = 'unwired architecture enforcement'; Pattern = '(?is)(?:(?:NetArchTest|dependency-cruiser).{0,120}\b(?:is|are)\s+enforced\s+in\s+CI\b|dependency\s+\*?direction\*?\s+is\s+enforced\s+in\s+CI\b|deterministic\s+(?:dependency-direction\s+|DIP\s+)?backstop\s+is.{0,100}\bin\s+CI\b)' }
+    [pscustomobject]@{ Name = 'unwired architecture enforcement'; Pattern = '(?is)(?:(?:NetArchTest|dependency-cruiser).{0,120}\b(?:is|are)\s+enforced\s+in\s+CI\b|dependency\s+\*?direction\*?\s+is\s+enforced\s+in\s+CI\b|deterministic\s+(?:dependency-direction\s+|DIP\s+)?backstop\s+is.{0,100}\bin\s+CI\b)' },
+    # B-415: rules the 0.98.0 carrier trim removed, which the briefing deck quoted as live after it.
+    [pscustomobject]@{ Name = 'retired carrier rule'; Pattern = '(?i)verify\s+before\s+you\s+reference|deletion\s+is\s+a\s+contribution|SOLID\s+is\s+(?:\*\*)?(?:literal\s+and\s+)?mandatory|mandatory\s+principles' }
 )
 
 function Get-ClaimViolations([string]$Text) {
@@ -68,7 +70,7 @@ function Get-ActiveClaimOffenders([string]$InjectedPath = '', [string]$InjectedT
 Reset-Tests
 It 'claim gate has a non-empty curated active surface and high-risk rule set' {
     Assert ($activePaths.Count -ge 20) 'active claim allowlist became too small or empty'
-    Assert ($rules.Count -eq 3) 'high-risk rule families changed; update their red fixtures deliberately'
+    Assert ($rules.Count -eq 4) 'high-risk rule families changed; update their red fixtures deliberately'
     foreach ($path in $activePaths) { Assert (Test-Path (Join-Path $repo $path)) "active claim carrier is missing: $path" }
 }
 
@@ -78,10 +80,11 @@ It 'each deny family catches its synthetic bad claim and preserves qualified can
         'The audit-trail appends AI file-changes.',
         'This satisfies SR 11-7.', 'An SR 11-7 / DORA audit line is appended.',
         'NetArchTest is enforced in CI.', 'Dependency direction is enforced in CI by dependency-cruiser.',
-        'The deterministic backstop is NetArchTest in CI.', 'Dependency *direction* is enforced in CI by architecture tests (NetArchTest).'
+        'The deterministic backstop is NetArchTest in CI.', 'Dependency *direction* is enforced in CI by architecture tests (NetArchTest).',
+        'Verify before you reference.', 'Deletion is a contribution.', 'SOLID is **literal and mandatory**.', 'Mandatory principles — derive service boundaries.'
     )
     foreach ($sample in $bad) { Assert ((Get-ClaimViolations $sample).Count -eq 1) "synthetic bad fixture was not caught exactly once: $sample" }
-    $qualified = 'The editor/file-write guard is hook-dependent; shell writes are blind spots. NetArchTest is scaffoldable and enforces only after the consumer wires it into CI.'
+    $qualified = 'The editor/file-write guard is hook-dependent; shell writes are blind spots. NetArchTest is scaffoldable and enforces only after the consumer wires it into CI. Never invent APIs; no future-proofing.'
     Assert ((Get-ClaimViolations $qualified).Count -eq 0) 'qualified scope wording was falsely rejected'
 }
 
@@ -90,6 +93,7 @@ if ($RedTest) {
         'absolute' { 'The audit-trail appends AI file-changes as a Guaranteed side-effect.' }
         'regulatory' { 'The audit log satisfies SR 11-7.' }
         'backstop' { 'dependency-cruiser is enforced in CI.' }
+        'retired' { 'SOLID is mandatory in this codebase.' }
     }
     It "red fixture $RedTest is rejected through active-carrier traversal" {
         $offenders = @(Get-ActiveClaimOffenders -InjectedPath 'src/core/docs/enforcement-surfaces.md' -InjectedText $sample)

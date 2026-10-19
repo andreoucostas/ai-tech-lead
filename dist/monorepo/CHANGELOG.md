@@ -5,6 +5,12 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.98.1 — Unreleased
+
+- **The briefing deck's "Four pillars" slide and its talking points now describe the current rules.** After 0.98.0
+  shortened the always-loaded rules, `presentation/framework-briefing.html` and `presentation/TALKING-POINTS.md` still
+  quoted three rules that no longer exist, and the talking points called the SOLID direction check a CI backstop, which it
+  is only once your team wires NetArchTest or dependency-cruiser into blocking CI. Nothing changes in how the agent works.
 ## 0.98.0 — 2026-10-19
 
 - **`/bootstrap` now records `build` and `test` commands from your .NET project files.** A committed C# project

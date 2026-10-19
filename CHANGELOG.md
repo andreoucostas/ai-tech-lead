@@ -11,6 +11,13 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.98.1 — Unreleased
+
+The briefing deck (`presentation/framework-briefing.html` slide 6) and `TALKING-POINTS.md` quoted three carrier rules the 0.98.0
+trim removed ("Verify before you reference", "Deletion is a contribution", "SOLID is mandatory") and an unconditional deterministic
+SOLID backstop; they now restate the current Verification, Leanness and SOLID rules, and ClaimTruth refuses the retired titles on
+its active surfaces (B-415).
+
 ## 0.98.0 — 2026-10-19
 
 Fixes from the B-406/B-407 transcripts (Claude Code 2.1.300). `/bootstrap` (dotnet, monorepo; `bootstrap.md` step 4 and
