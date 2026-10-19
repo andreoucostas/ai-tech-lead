@@ -19,6 +19,14 @@
   which files are new, so it saves every file that differs from the release and reports them in one line. Keep what you
   need from the copies under other paths, then delete them.
 
+- **The session preload and the audit log no longer depend on where PowerShell starts.** The `session-start` and
+  `audit-trail` hooks now find your repository from their own place under `.claude/hooks/` instead of from PowerShell's
+  current location. Before, wherever that location was not your repository, the preload arrived as its heading alone,
+  nothing was written to `.claude/.state` or `.claude/ai-audit.log`, and both hooks still reported success. One place
+  this was seen is a sandboxed Copilot CLI session on a Windows host without the sandbox's filesystem-enumeration
+  support, where the CLI warns that the location may be the drive root. Where the location is your repository, nothing
+  changes. The shipped hook tests now run each hook as a copy placed in their own temporary repository.
+
 ## 0.98.1 — 2026-10-19
 
 - **The briefing deck's "Four pillars" slide and its talking points now describe the current rules.** After 0.98.0

@@ -130,7 +130,10 @@ function Invoke-HookFixture(
         )
     }
     $psOutput = Join-Path $work 'ps.out'
-    $psHook = Join-Path $repo "dist/$Dist/.claude/hooks/$Hook.ps1"
+    # A hook finds its repository from its own path, so the fixture runs a copy installed in it.
+    $psHook = Join-Path $work ".claude/hooks/$Hook.ps1"
+    New-Item -ItemType Directory -Force (Split-Path -Parent $psHook) | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repo "dist/$Dist/.claude/hooks/$Hook.ps1") -Destination $psHook -Force
     $psi = New-Object Diagnostics.ProcessStartInfo
     $psi.FileName = $psHost
     $psi.Arguments = '-NoProfile -File "' + $psHook.Replace('"', '\"') + '"'

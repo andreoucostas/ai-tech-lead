@@ -2,7 +2,7 @@
 $hooks=(Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path;$sessionStart=Join-Path $hooks 'session-start.ps1'
 function Put($p,$s){$d=Split-Path $p -Parent;if($d){New-Item -ItemType Directory -Force $d|Out-Null};[IO.File]::WriteAllText($p,$s,[Text.UTF8Encoding]::new($false))}
 function Root{$r=Join-Path([IO.Path]::GetTempPath())('session-version-'+[guid]::NewGuid());New-Item -ItemType Directory -Force (Join-Path $r '.claude')|Out-Null;Put (Join-Path $r '.claude/framework-version.json') '{"template":"dotnet","version":"0.56.0"}';$r}
-function RunAt($root){Push-Location $root;try{Invoke-Hook $sessionStart '{"hook_event_name":"SessionStart"}'}finally{Pop-Location}}
+function RunAt($root){Push-Location $root;try{Invoke-Hook (Copy-HookInto $sessionStart $root) '{"hook_event_name":"SessionStart"}'}finally{Pop-Location}}
 $line='- **Framework version:** v0.56.0 installed; to update, re-run the installer from a newer framework release.';$stamp='.claude/.state/last-version-awareness';Reset-Tests
 It 'version awareness fires when no throttle exists' {$r=Root;try{$o=RunAt $r;Assert($o.Exit-eq0)'hook crashed';Assert($o.Out.Contains($line))"nudge missing: $($o.Out)";$path=Join-Path $r $stamp;Assert(Test-Path $path)'throttle record missing';Assert(([IO.File]::ReadAllText($path)-match'^\d+$'))'throttle record is not an integer epoch'}finally{Remove-Item -Recurse -Force $r}}
 It 'version awareness is throttled within seven days' {$r=Root;try{Put (Join-Path $r $stamp) ([DateTimeOffset]::UtcNow.ToUnixTimeSeconds().ToString());$o=RunAt $r;Assert($o.Exit-eq0)'hook crashed';Assert(-not$o.Out.Contains($line))'nudge was not throttled'}finally{Remove-Item -Recurse -Force $r}}

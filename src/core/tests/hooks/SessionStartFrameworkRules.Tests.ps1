@@ -9,7 +9,7 @@ function Root([bool]$Claude=$true,[bool]$Carrier=$true,[bool]$Import=$false){
     if($Carrier){New-Item -ItemType Directory -Force (Join-Path $r '.github/instructions')|Out-Null;[IO.File]::WriteAllText((Join-Path $r '.github/instructions/framework-rules.instructions.md'),'# Verification Rules',[Text.UTF8Encoding]::new($false))}
     $r
 }
-function RunAt($root,$json){Push-Location $root;try{Invoke-Hook $sessionStart $json}finally{Pop-Location}}
+function RunAt($root,$json){Push-Location $root;try{Invoke-Hook (Copy-HookInto $sessionStart $root) $json}finally{Pop-Location}}
 $claude='{"hook_event_name":"SessionStart"}';$copilot='{"timestamp":1}';Reset-Tests
 It 'import absent emits migration pointer' {$r=Root $true $true $false;try{$o=RunAt $r $claude;Assert($o.Exit-eq0)"hook failed: $($o.Err)";Assert($o.Out-match[regex]::Escape($pointer))"pointer absent: $($o.Out)"}finally{Remove-Item -Recurse -Force $r}}
 It 'import present is silent' {$r=Root $true $true $true;try{$o=RunAt $r $claude;Assert($o.Out-notmatch[regex]::Escape($pointer))"unexpected pointer: $($o.Out)"}finally{Remove-Item -Recurse -Force $r}}

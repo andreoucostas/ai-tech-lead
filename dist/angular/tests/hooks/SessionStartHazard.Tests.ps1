@@ -1,6 +1,6 @@
 ﻿if (-not (Get-Command Invoke-Hook -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $hooks=(Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path;$sessionStart=Join-Path $hooks 'session-start.ps1'
-function RunAt($root,$json){Push-Location $root;try{Invoke-Hook $sessionStart $json}finally{Pop-Location}}
+function RunAt($root,$json){Push-Location $root;try{Invoke-Hook (Copy-HookInto $sessionStart $root) $json}finally{Pop-Location}}
 function Root($status,$reviewed,[switch]$Pending,[switch]$Placeholder,[ValidateSet('LF','CRLF')][string]$Eol='LF',[string]$HeadingSuffix='',[switch]$FinalRow,[switch]$Malformed){
     $r=Join-Path([IO.Path]::GetTempPath())('session-hazard-'+[guid]::NewGuid());New-Item -ItemType Directory -Force $r|Out-Null
     $marker=$(if($Pending){'<!-- KNOWN_HAZARD_AREAS_PENDING -->'}else{''})

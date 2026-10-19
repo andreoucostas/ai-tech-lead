@@ -24,8 +24,8 @@ function New-BoyScoutFixture([string]$PowerShellHook) {
 
 Reset-Tests
 
-# Every shipped PowerShell hook must degrade safely on empty and malformed input. Running from a
-# throwaway directory also proves incidental relative writes do not depend on the framework source tree.
+# Every shipped PowerShell hook must degrade safely on empty and malformed input. Each runs as a copy in
+# a throwaway directory, so no write it makes lands in the framework source tree.
 $subjects = @(Get-ChildItem -LiteralPath $hooks -Filter *.ps1 -File | Sort-Object Name)
 if ($subjects.Count -eq 0) { throw 'PowerShell hook discovery returned zero subjects' }
 $cwd = Join-Path ([IO.Path]::GetTempPath()) ('pshookcwd-' + [guid]::NewGuid().ToString('N'))
@@ -35,7 +35,7 @@ try {
     foreach ($subject in $subjects) {
         It "$($subject.Name) degrades safely on empty and malformed stdin" {
             foreach ($inputText in @('', 'not json {')) {
-                $result = Invoke-Hook $subject.FullName $inputText
+                $result = Invoke-Hook (Copy-HookInto $subject.FullName $cwd) $inputText
                 Assert ($result.Exit -eq 0) "input '$inputText': $($subject.Name) exited $($result.Exit): $($result.Err)"
             }
         }
@@ -146,7 +146,7 @@ foreach ($case in $securityCases) {
             $suffix = if ($case.Eof) { '' } else { "`n" }
             [IO.File]::WriteAllText($securityPath, ($securityHeader + $case.Rows + $suffix), [Text.UTF8Encoding]::new($false))
             $bytes = [IO.File]::ReadAllBytes($securityPath)
-            $result = Invoke-Hook $sessionStart '{"hook_event_name":"SessionStart"}'
+            $result = Invoke-Hook (Copy-HookInto $sessionStart $dir) '{"hook_event_name":"SessionStart"}'
             if ($case.Eof) { Assert ($bytes.Length -gt 0 -and $bytes[-1] -eq 124) 'overdue fixture did not end exactly at byte 0x7C' }
             Assert ($result.Exit -eq 0) "session-start exited $($result.Exit)"
             Assert ([string]::IsNullOrWhiteSpace($result.Err)) "stderr not clean: '$($result.Err)'"

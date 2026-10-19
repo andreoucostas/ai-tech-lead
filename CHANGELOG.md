@@ -24,6 +24,17 @@ replaced unsaved. The wrappers' save (layout unchanged, `agents-skills/<workflow
 With no usable previous manifest no path can be called new, so every differing file is saved and summed up in one `NOTICE` line; settings
 and skills already saved elsewhere this run are not saved twice. Five new `UpdateDelivery.Tests.ps1` cases.
 
+`session-start.ps1` and `audit-trail.ps1` (guarded, B-433): both find the repository from their own path (the folder holding
+`.claude\hooks\`), as `route-prompt.ps1` does, and build every path from it, with `git -C`. Before, they read and wrote relative to
+PowerShell's location and swallowed the errors, so wherever that was not the repository they printed the preload heading alone, wrote no
+`.claude/.state` and no audit line, and exited 0: B-379's sandboxed Copilot CLI 1.0.95 run, which B-396 attributes to a host without the
+sandbox's filesystem-enumeration support, where the CLI warns the location may be the drive root. The audit line's path is still what
+`Resolve-Path -Relative` writes from the root (the same `NormalizeRelativePath`, against the root; 35 of 36 probe inputs identical on both
+hosts, the other an empty path the hook never reaches). The shipped hook tests now run a copy installed in each fixture (`Copy-HookInto`,
+`_HookHarness.ps1`), as `scripts/context-footprint.ps1`'s session-start fixture now does (run in place, the fixed hook read and wrote the
+dist tree); one new case each in `AuditTrail.Tests.ps1` and `SessionStartWiki.Tests.ps1` runs the hook from a location outside its
+repository. `docs/enforcement-surfaces.md`'s sandbox paragraph now gives the attributed cause and the fix.
+
 ## 0.98.1 — 2026-10-19
 
 The briefing deck (`presentation/framework-briefing.html` slide 6) and `TALKING-POINTS.md` quoted three carrier rules the 0.98.0

@@ -10,8 +10,8 @@
 # the moment the skip expression or the append call disappears from the source file.
 if (-not (Get-Command Reset-Tests -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 . (Join-Path $PSScriptRoot 'fixtures\guard-patch-cases.ps1')
-$hookPs = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks\audit-trail.ps1')).Path
-$srcPs  = [System.IO.File]::ReadAllText($hookPs)
+$hookSrc = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks\audit-trail.ps1')).Path
+$srcPs  = [System.IO.File]::ReadAllText($hookSrc)
 
 Reset-Tests
 
@@ -29,12 +29,18 @@ It 'the PowerShell hook uses only the constant path-normalisation failure sentin
     Assert ($srcPs -notmatch 'catch\s*\{\s*\$rel\s*=\s*\$filePath') '.ps1 still falls back to the failed path'
 }
 
-# --- Behavioral tests run from a throwaway CWD; [IO.File] always uses absolute $logPath.
+# --- Behavioral tests run a copy of the hook (and the guard its patch split loads) installed in a
+# throwaway Git repository; [IO.File] always uses absolute $logPath.
 # NOTE: PowerShell unrolls single-element arrays on assignment ($x = @('a') -> $x is scalar),
 # so $x[0] returns the first CHARACTER, not the first element. Use @($x)[0] to re-wrap before
 # indexing whenever the count is expected to be exactly 1. ---
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("audit-cwd-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path (Join-Path $tmp '.claude') -Force | Out-Null
+$hookPs = Copy-HookInto $hookSrc $tmp
+$null = Copy-HookInto (Join-Path (Split-Path -Parent $hookSrc) 'guard.ps1') $tmp
+git -C $tmp init -q 2>$null
+git -C $tmp -c user.name=fixture -c user.email=fixture@example.invalid commit --allow-empty -q -m fixture 2>$null
+$branch = [string](git -C $tmp rev-parse --abbrev-ref HEAD 2>$null)
 $logPath = Join-Path $tmp '.claude\ai-audit.log'
 [System.IO.File]::WriteAllText($logPath, '')
 
@@ -131,6 +137,34 @@ try {
         Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
         $lines = Get-AuditLines
         Assert ($lines.Count -eq 1 -and (@($lines)[0] -split "`t")[2] -match 'notes[\\/]a\.txt$') "expected one line for notes\a.txt, got: $($lines -join ' | ')"
+    }
+
+    # PowerShell's location need not be the repository: in a sandbox on a host without filesystem enumeration it
+    # may start at the drive root. The hook finds the repository from its own path, so with the location elsewhere
+    # each surface's write still appends its line, with the branch and the repository-relative path, to the
+    # repository's log; a relative path is the repository's.
+    It 'location outside the repository: a Claude Write and a Copilot create each append their line to the repository''s log' {
+        Assert ($branch -and $branch -ne 'HEAD') "fixture has no branch: '$branch'"
+        foreach ($name in 'x.txt', 'main.ts') { $null = New-Item -ItemType File -Force -Path (Join-Path $tmp "src\$name") }
+        $elsewhere = Join-Path ([IO.Path]::GetTempPath()) ('audit-elsewhere-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $elsewhere -Force | Out-Null
+        Push-Location $elsewhere
+        try {
+            foreach ($case in @(@{ Event = (New-ClaudeEvent (Join-Path $tmp 'src\x.txt') 'hello world'); Path = '.\src\x.txt' },
+                                @{ Event = (New-CopilotEvent 'src/main.ts' 'console.log("hi");'); Path = '.\src\main.ts' })) {
+                [System.IO.File]::WriteAllText($logPath, '')
+                $r = Invoke-Hook $hookPs $case.Event
+                Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
+                $lines = Get-AuditLines
+                Assert ($lines.Count -eq 1) "expected 1 line in the repository's log for $($case.Path), got $($lines.Count)"
+                $fields = @($lines)[0] -split "`t"
+                Assert ($fields.Count -eq 3 -and $fields[1] -ceq $branch -and $fields[2] -ceq $case.Path) "expected branch '$branch' and path '$($case.Path)', got '$(@($lines)[0])'"
+            }
+            Assert (-not (Test-Path -LiteralPath (Join-Path $elsewhere '.claude'))) "the hook wrote under PowerShell's location"
+        } finally {
+            Pop-Location
+            Remove-Item -LiteralPath $elsewhere -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 
 } finally {

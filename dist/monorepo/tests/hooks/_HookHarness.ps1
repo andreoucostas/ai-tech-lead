@@ -61,6 +61,17 @@ function Invoke-Hook {
     }
 }
 
+# A hook finds its repository from its own path (<root>\.claude\hooks\<hook>.ps1), not from PowerShell's
+# location, so a test runs a copy placed in its fixture; the original would read and write the tree it ships in.
+function Copy-HookInto {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Root)
+    $dir = Join-Path $Root '.claude\hooks'
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    $copy = Join-Path $dir (Split-Path -Leaf $Path)
+    Copy-Item -LiteralPath $Path -Destination $copy -Force
+    $copy
+}
+
 function RunArg {
     param([Parameter(Mandatory)][string]$Path, [string[]]$Arguments = @())
     Assert-PowerShellSubject $Path

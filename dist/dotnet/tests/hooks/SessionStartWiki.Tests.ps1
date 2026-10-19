@@ -25,7 +25,7 @@ function Get-OrdinaryKnowledgeRoutingOmissions([string]$Text) {
 
 function Invoke-SessionStartAt($root, $json) {
     Push-Location $root
-    try { Invoke-Hook $subject $json } finally { Pop-Location }
+    try { Invoke-Hook (Copy-HookInto $subject $root) $json } finally { Pop-Location }
 }
 
 function New-WikiRoot([int]$count) {
@@ -123,6 +123,62 @@ It 'Copilot JSON contains a small wiki in both additionalContext shapes' {
         Assert ($json.additionalContext -match 'entry-2') 'top-level missing'
         Assert ($json.hookSpecificOutput.additionalContext -match 'entry-2') 'wrapped missing'
     } finally { Remove-Item -Recurse -Force $root }
+}
+
+# PowerShell's location need not be the repository: in a sandbox on a host without filesystem enumeration it may
+# start at the drive root. The hook finds the repository from its own path, so with the location elsewhere it
+# writes both records into the repository and emits, on each surface, the preload it emits from the repository.
+function New-FullRoot {
+    $root = New-WikiRoot 2
+    $files = [ordered]@{
+        'AGENTS.md' = "# Fixture`nBOOTSTRAP_PENDING`n"
+        'CLAUDE.md' = "@AGENTS.md`n@.github/instructions/framework-rules.instructions.md`n"
+        'framework-ownership.json' = '{"paths":[{"path":"scripts/x.ps1","ownership":"framework-owned/overwritten"}]}'
+        'tests/run.ps1' = "'x'`n"
+        '.claude/framework-version.json' = '{"version":"9.9.9"}'
+        'TECH_DEBT.md' = "- tests/run.ps1 is slow`n"
+        'SECURITY_FINDINGS.md' = "| ID | Severity | Status | Found | Due | Issue |`n|---|---|---|---|---|---|`n| SF-1 | High | Open | 2026-01-01 | 2099-01-01 | x |`n"
+    }
+    foreach ($name in $files.Keys) {
+        $path = Join-Path $root $name
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
+        [IO.File]::WriteAllText($path, $files[$name], [Text.UTF8Encoding]::new($false))
+    }
+    git -C $root init -q 2>$null
+    git -C $root add -A 2>$null
+    git -C $root -c user.name=fixture -c user.email=fixture@example.invalid commit -q -m 'fixture commit' 2>$null
+    $root
+}
+
+It 'location outside the repository: the full preload and both state records, on both surfaces' {
+    $markers = @('## Session preload', '- **Framework version:** v9.9.9 installed', '- **Branch:** `', '- **Recent commits:**', 'fixture commit',
+        'AGENTS.md is unbootstrapped', '**Unrecorded test entry points** (no Verification Commands recorded yet): tests/run.ps1.',
+        '- **Workflow routing:**', '- **Debt heat:** 1 TECH_DEBT entry', '- **Security:** 1 open finding(s)', 'entry-2')
+    foreach ($json in @($claude, $copilot)) {
+        $root = New-FullRoot
+        $elsewhere = Join-Path ([IO.Path]::GetTempPath()) ('session-elsewhere-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Force -Path $elsewhere | Out-Null
+        try {
+            $hook = Copy-HookInto $subject $root
+            Push-Location $elsewhere
+            try { $away = Invoke-Hook $hook $json } finally { Pop-Location }
+            Assert ($away.Exit -eq 0) "hook exited $($away.Exit): $($away.Err)"
+            foreach ($record in 'last-session-start', 'last-version-awareness') {
+                Assert (Test-Path -LiteralPath (Join-Path $root ".claude/.state/$record")) "$record was not written to the repository ($json); output: $($away.Out)"
+            }
+            Assert (-not (Test-Path -LiteralPath (Join-Path $elsewhere '.claude'))) "the hook wrote under PowerShell's location ($json)"
+            Remove-Item -LiteralPath (Join-Path $root '.claude/.state') -Recurse -Force
+            $inRepo = Invoke-SessionStartAt $root $json
+            # PowerShell 7 orders a hashtable's JSON keys differently per process, so Copilot output is compared parsed.
+            $contexts = foreach ($result in $away, $inRepo) {
+                if ($json -eq $copilot) { $o = $result.Out | ConvertFrom-Json; "$($o.additionalContext)|$($o.hookSpecificOutput.hookEventName)|$($o.hookSpecificOutput.additionalContext)" } else { $result.Out }
+            }
+            Assert ($contexts[0] -ceq $contexts[1]) "the preload with the location elsewhere differs from the repository's ($json):`n$($contexts[0])`n--- from the repository ---`n$($contexts[1])"
+            foreach ($marker in $markers) { Assert ($contexts[1].Contains($marker)) "the preload lacks '$marker' ($json): $($contexts[1])" }
+        } finally {
+            Remove-Item -LiteralPath $root, $elsewhere -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 It 'Copilot JSON contains a large summary in both additionalContext shapes' {

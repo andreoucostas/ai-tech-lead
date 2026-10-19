@@ -21,27 +21,26 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 6 | B-414 | Copilot red-first in a bootstrapped repository, every consumer's steady state, is 0/6 on both prompts (B-414c); its next lever, C past `/bootstrap`, is guarded and the maintainer's decision |
 | 7 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half needs a maintainer-driven VS Code session, since nothing here drives VS Code's Copilot harness headlessly |
 | 8 | B-378 | The guard's deny on VS Code's Copilot harness, which 1.141 is making the default for enterprise users, is documented but not observed; it needs a maintainer-driven VS Code session |
-| 9 | B-433 | False-green class: where PowerShell's location is not the repository (B-396's attributed sandbox cause), `session-start` and `audit-trail` write nothing and report success; guarded, no field report |
-| 10 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 11 | B-381 | Stall class: a host that starts hooks outside the repository root denies every tool; fixed upstream in CLI 1.0.88, no field report |
-| 12 | B-382 | Possible false green: four reviewers may judge without the project's conventions on Copilot; measure before changing the wrappers |
-| 13 | B-427 | Cost, not a harm: on Copilot the three `haiku` reviewers run on the session's model, Opus included; the same wrappers as B-382 |
-| 14 | B-402 | Improvement: the warehouse scoped pass gave the right answer when it ran, but Rule 11 sent the agent there in 1 of 3 runs |
-| 15 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
-| 16 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
-| 17 | B-404 | Consumer-docs polish: every miss asked before committing, under Claude Code's own commit rule; decide the gate's scoring first |
-| 18 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
-| 19 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
-| 20 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
-| 21 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 22 | B-359 | Latent false green: no shipped command carries such a value today |
-| 23 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
-| 24 | B-373 | Stall class, but only on a degenerate C# file; no field report |
-| 25 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
-| 26 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
-| 27 | B-391 | False-green class, but only under a Turkish culture; no field report |
-| 28 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
-| 29 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
+| 9 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
+| 10 | B-381 | Stall class: a host that starts hooks outside the repository root denies every tool; fixed upstream in CLI 1.0.88, no field report |
+| 11 | B-382 | Possible false green: four reviewers may judge without the project's conventions on Copilot; measure before changing the wrappers |
+| 12 | B-427 | Cost, not a harm: on Copilot the three `haiku` reviewers run on the session's model, Opus included; the same wrappers as B-382 |
+| 13 | B-402 | Improvement: the warehouse scoped pass gave the right answer when it ran, but Rule 11 sent the agent there in 1 of 3 runs |
+| 14 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
+| 15 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
+| 16 | B-404 | Consumer-docs polish: every miss asked before committing, under Claude Code's own commit rule; decide the gate's scoring first |
+| 17 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
+| 18 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
+| 19 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
+| 20 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 21 | B-359 | Latent false green: no shipped command carries such a value today |
+| 22 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
+| 23 | B-373 | Stall class, but only on a degenerate C# file; no field report |
+| 24 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
+| 25 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
+| 26 | B-391 | False-green class, but only under a Turkish culture; no field report |
+| 27 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
+| 28 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
 
 ## Open entries
 
@@ -231,9 +230,3 @@ B-393's save does not apply, since the previous manifest lists the path. Candida
 **Priority:** P3 · **Effort:** S · **Invariants:** #3
 **Status:** Open; reasoned by B-393's fresh-session attack, not run (this host has LongPathsEnabled=1). Save paths are at least 39 characters longer than their originals, so on a 5.1 host without long paths a deep framework path may throw an uncaught `PathTooLongException` at planning time: a stall, before any change.
 Candidate: catch it and refuse with a line naming the path and the setting; red case on a synthetic deep path. Guarded.
-
-### B-433 · `session-start` and `audit-trail` resolve the repository from PowerShell's location, so where that is not the repository they write nothing and report success
-**Filed against:** v0.98.1 (2026-10-19)
-**Priority:** P3 · **Effort:** S · **Invariants:** #3 #5
-**Status:** Open; named by B-396 (`meta/eval-results.md`, pre-registered at aeb06a6e). A free check with the location set outside the clone printed B-379's output, the preload heading alone, because both hooks use `Get-Location` with relative paths and swallow errors; B-379's sandboxed 1.0.95 run warned that the location may be the drive root on hosts without the filesystem-enumeration support.
-Candidate: find the repository root from the hook's own path, as `route-prompt.ps1` does; red case: each hook run with the location outside the repository. Guarded (`src/core/.claude/hooks/**`). The same change updates `docs/enforcement-surfaces.md`'s "Why is not established" for the sandbox row.

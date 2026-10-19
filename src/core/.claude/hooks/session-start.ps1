@@ -8,10 +8,17 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
+# The repository is the folder that holds this hook's .claude\hooks folder, found from the hook's own
+# path as route-prompt.ps1 finds it. PowerShell's location need not be the repository (in a sandbox on a
+# host without filesystem enumeration it may be the drive root), so every path below is built from
+# $repoRoot and every git call names it with -C.
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+function Get-RepoPath([string]$Relative) { Join-Path $repoRoot $Relative }
+
 # Best-effort proof that hook wiring actually invoked this script. Telemetry must never affect
 # the preload: an unwritable or otherwise unavailable state path is deliberately ignored.
 try {
-    $stateDir = Join-Path (Get-Location) '.claude/.state'
+    $stateDir = Get-RepoPath '.claude/.state'
     New-Item -ItemType Directory -Force -Path $stateDir -ErrorAction Stop | Out-Null
     [IO.File]::WriteAllText(
         (Join-Path $stateDir 'last-session-start'),
@@ -36,7 +43,7 @@ if ([Console]::IsInputRedirected) { $stdinJson = [Console]::In.ReadToEnd() }
 # emitting so an unwritable state directory cannot turn a low-noise nudge into every-session noise.
 $versionNudge = $null
 try {
-    $versionFile = Join-Path (Get-Location) '.claude/framework-version.json'
+    $versionFile = Get-RepoPath '.claude/framework-version.json'
     $installedVersion = (Get-Content -LiteralPath $versionFile -Raw -ErrorAction Stop | ConvertFrom-Json).version
     if ($installedVersion) {
         $nowEpoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
@@ -58,15 +65,15 @@ Write-Output "## Session preload"
 if ($versionNudge) { Write-Output $versionNudge }
 
 # 1. Git branch + last 3 commits
-if (Test-Path .git) {
-    $branch = git rev-parse --abbrev-ref HEAD
+if (Test-Path -LiteralPath (Get-RepoPath '.git')) {
+    $branch = git -C $repoRoot rev-parse --abbrev-ref HEAD
     if ($LASTEXITCODE -eq 0 -and $branch) {
         Write-Output "- **Branch:** ``$branch``"
     } else {
         Write-Output "- **Branch:** ``(unknown)``"
     }
 
-    $recent = git log -3 --format='  - `%h` %s'
+    $recent = git -C $repoRoot log -3 --format='  - `%h` %s'
     if ($LASTEXITCODE -eq 0 -and $recent) {
         Write-Output "- **Recent commits:**"
         foreach ($line in $recent) { Write-Output $line }
@@ -74,23 +81,23 @@ if (Test-Path .git) {
 }
 
 # 2. Adoption / bootstrap state warning
-if (Test-Path .claude/adoption-pending.json) {
+if (Test-Path -LiteralPath (Get-RepoPath '.claude/adoption-pending.json')) {
     Write-Output "- 🔴 **ADOPTION PENDING — this repo is not consolidated yet.** The installer detected pre-existing AI tooling and inventoried it in ``.claude/adoption-pending.json``; any originals it moved are under ``docs/pre-adoption/``. The required next step is ``/adopt`` — NOT ``/bootstrap``, which would skip the archive/merge/provenance flow. ``/adopt`` is developer-initiated and cannot be invoked by the model: if you are an agent, stop and tell the developer to type ``/adopt``."
 } else {
     # AGENTS.md is the project instruction file; a repo still on the older layout keeps it in CLAUDE.md.
     foreach ($instructionFile in @('AGENTS.md', 'CLAUDE.md')) {
-        if (-not (Test-Path $instructionFile)) { continue }
-        $text = Get-Content $instructionFile -Raw
+        if (-not (Test-Path -LiteralPath (Get-RepoPath $instructionFile))) { continue }
+        $text = Get-Content -LiteralPath (Get-RepoPath $instructionFile) -Raw
         if ($text -and $text -match 'BOOTSTRAP_PENDING') {
             Write-Output "- ⚠ **$instructionFile is unbootstrapped** (BOOTSTRAP_PENDING marker present). ``/bootstrap`` must run before non-trivial work — conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type ``/bootstrap``."
             # Before /bootstrap records a test command, name up to eight test entry points the repository tracks, leaving out every
             # framework-owned or retired framework path; when the ownership manifest lists no path, list nothing rather than a framework file.
-            if ((Test-Path .git) -and (Test-Path framework-ownership.json)) {
+            if ((Test-Path -LiteralPath (Get-RepoPath '.git')) -and (Test-Path -LiteralPath (Get-RepoPath 'framework-ownership.json'))) {
                 $framework = @{}; $ownedCount = 0
                 try {
-                    foreach ($entry in @((Get-Content framework-ownership.json -Raw -Encoding UTF8 | ConvertFrom-Json).paths | Where-Object { $_.path })) { $framework[[string]$entry.path] = $true }
+                    foreach ($entry in @((Get-Content -LiteralPath (Get-RepoPath 'framework-ownership.json') -Raw -Encoding UTF8 | ConvertFrom-Json).paths | Where-Object { $_.path })) { $framework[[string]$entry.path] = $true }
                     $ownedCount = $framework.Count
-                    if ($ownedCount -and (Test-Path framework-retirements.json)) { foreach ($entry in @((Get-Content framework-retirements.json -Raw -Encoding UTF8 | ConvertFrom-Json).retirements | Where-Object { $_.path })) { $framework[[string]$entry.path] = $true } }
+                    if ($ownedCount -and (Test-Path -LiteralPath (Get-RepoPath 'framework-retirements.json'))) { foreach ($entry in @((Get-Content -LiteralPath (Get-RepoPath 'framework-retirements.json') -Raw -Encoding UTF8 | ConvertFrom-Json).retirements | Where-Object { $_.path })) { $framework[[string]$entry.path] = $true } }
                 } catch { $ownedCount = 0 }
                 if ($ownedCount) {
                     # Entry points first (test projects, *.Tests.ps1 scripts, package.json), then files under test folders. Git filters and orders
@@ -98,10 +105,10 @@ if (Test-Path .claude/adoption-pending.json) {
                     $exclude = @(':(exclude,glob,icase)**/node_modules/**', ':(exclude,glob,icase)**/bower_components/**', ':(exclude,glob,icase)**/bin/**', ':(exclude,glob,icase)**/obj/**', ':(exclude,glob,icase)**/dist/**')
                     $seen = @{}
                     $found = @(& {
-                        git -c core.quotepath=off ls-files -- ':(glob,icase)**/*tests.csproj' ':(glob,icase)**/*test.csproj' ':(glob,icase)**/*.tests.ps1' ':(glob)**/package.json' $exclude 2>$null
-                        git -c core.quotepath=off ls-files -- ':(glob,icase)**/tests/**' ':(glob,icase)**/test/**' ':(glob,icase)**/spec/**' ':(glob,icase)**/__tests__/**' $exclude 2>$null
+                        git -C $repoRoot -c core.quotepath=off ls-files -- ':(glob,icase)**/*tests.csproj' ':(glob,icase)**/*test.csproj' ':(glob,icase)**/*.tests.ps1' ':(glob)**/package.json' $exclude 2>$null
+                        git -C $repoRoot -c core.quotepath=off ls-files -- ':(glob,icase)**/tests/**' ':(glob,icase)**/test/**' ':(glob,icase)**/spec/**' ':(glob,icase)**/__tests__/**' $exclude 2>$null
                     } | Select-Object -First 500 | Where-Object {
-                        $_ -and -not $seen.ContainsKey($_) -and -not $framework.ContainsKey($_) -and (Test-Path -LiteralPath $_ -PathType Leaf) -and ($_ -notmatch '(^|/)package\.json$' -or $(try { @((Get-Content -LiteralPath $_ -Raw -Encoding UTF8 | ConvertFrom-Json).scripts.PSObject.Properties.Name | Where-Object { $_ -cmatch '^test(:|$)' }).Count -gt 0 } catch { $false })) -and ($seen[$_] = $true)
+                        $_ -and -not $seen.ContainsKey($_) -and -not $framework.ContainsKey($_) -and (Test-Path -LiteralPath (Get-RepoPath $_) -PathType Leaf) -and ($_ -notmatch '(^|/)package\.json$' -or $(try { @((Get-Content -LiteralPath (Get-RepoPath $_) -Raw -Encoding UTF8 | ConvertFrom-Json).scripts.PSObject.Properties.Name | Where-Object { $_ -cmatch '^test(:|$)' }).Count -gt 0 } catch { $false })) -and ($seen[$_] = $true)
                     } | Select-Object -First 9)
                     if ($found.Count) {
                         $shown = (@($found | Select-Object -First 8) -join ', ') + $(if ($found.Count -gt 8) { ' (and more)' } else { '' })
@@ -118,13 +125,13 @@ if (Test-Path .claude/adoption-pending.json) {
 # update; the installer moves the older layout (instructions in CLAUDE.md) only when AGENTS.md is
 # the retired generated mirror, and the newly delivered carrier needs its import. This is
 # discovery, not delivery: do not duplicate the rules into hook output.
-if (Test-Path CLAUDE.md) {
-    $claude = Get-Content CLAUDE.md -Raw
+if (Test-Path -LiteralPath (Get-RepoPath 'CLAUDE.md')) {
+    $claude = Get-Content -LiteralPath (Get-RepoPath 'CLAUDE.md') -Raw
     # Any @AGENTS.md mention counts, as in the installer: Claude Code honours inline imports too.
     if ($claude -and $claude -cnotmatch '(?<![\w/.@-])@(\./)?AGENTS\.md(?![\w-])') {
         Write-Output '- ⚠ **Instruction layout migration:** this repository''s instructions are still in `CLAUDE.md`; the framework now reads and writes them in `AGENTS.md`. Read `CLAUDE.md` for project conventions until this is fixed. To fix it, merge `CLAUDE.md`''s content into `AGENTS.md`, then reduce `CLAUDE.md` to the two lines `@AGENTS.md` and `@.github/instructions/framework-rules.instructions.md` (see `docs/upgrade-checklist.md`).'
     }
-    if ((Test-Path .github/instructions/framework-rules.instructions.md) -and
+    if ((Test-Path -LiteralPath (Get-RepoPath '.github/instructions/framework-rules.instructions.md')) -and
         $claude -and -not $claude.Contains('@.github/instructions/framework-rules.instructions.md')) {
         Write-Output '- ⚠ **Framework rules migration:** `.github/instructions/framework-rules.instructions.md` is the current framework ruleset and supersedes any identically-titled sections in `CLAUDE.md`. Read it now. To make this permanent, add `@.github/instructions/framework-rules.instructions.md` to `CLAUDE.md` where those sections are, and delete them.'
     }
@@ -135,19 +142,19 @@ if (Test-Path CLAUDE.md) {
 # › Agentic Workflow) remain the canonical
 # file-based routing definition. Hook firing and consumption are capability-specific; current VS Code
 # session-hook lifecycles are unverified. The full intent->workflow vocabulary lives in section 1.
-if (Test-Path CLAUDE.md) {
+if (Test-Path -LiteralPath (Get-RepoPath 'CLAUDE.md')) {
     Write-Output '- **Workflow routing:** when a prompt clearly matches a workflow and the developer did not type a `/command`, self-classify and apply that workflow''s rails from the framework rules (`.github/instructions/framework-rules.instructions.md` › Agentic Workflow), section 1. State which workflow you concluded.'
 }
 
 # 5. TECH_DEBT items touching recently changed files
-if ((Test-Path TECH_DEBT.md) -and (Test-Path .git)) {
-    $recentFiles = git log --since="14 days ago" --name-only --format="" |
+if ((Test-Path -LiteralPath (Get-RepoPath 'TECH_DEBT.md')) -and (Test-Path -LiteralPath (Get-RepoPath '.git'))) {
+    $recentFiles = git -C $repoRoot log --since="14 days ago" --name-only --format="" |
         Where-Object { $_ -and $_.Trim() } |
         Sort-Object -Unique |
         Select-Object -First 30
 
     if ($recentFiles) {
-        $debt = Get-Content TECH_DEBT.md -Raw
+        $debt = Get-Content -LiteralPath (Get-RepoPath 'TECH_DEBT.md') -Raw
         $hot = 0
         if ($debt) {
             foreach ($f in $recentFiles) {
@@ -162,13 +169,13 @@ if ((Test-Path TECH_DEBT.md) -and (Test-Path .git)) {
 }
 
 # 6. Overdue security findings
-if (Test-Path SECURITY_FINDINGS.md) {
-    $secContent = Get-Content SECURITY_FINDINGS.md -Raw
+if (Test-Path -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md')) {
+    $secContent = Get-Content -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md') -Raw
     $openCount = ([regex]::Matches($secContent, '\| Open ')).Count
     if ($openCount -gt 0) {
         $today = (Get-Date).ToString('yyyy-MM-dd')
         $overdue = 0
-        foreach ($line in (Get-Content SECURITY_FINDINGS.md)) {
+        foreach ($line in (Get-Content -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md'))) {
             if ($line -match '\| Open ') {
                 $dates = [regex]::Matches($line, '\d{4}-\d{2}-\d{2}')
                 if ($dates.Count -ge 2) {
@@ -186,22 +193,22 @@ if (Test-Path SECURITY_FINDINGS.md) {
 }
 
 # 7. Team wiki index (cheap capped preload; staleness belongs to wiki-check)
-if (Test-Path docs/wiki/INDEX.md) {
-    $wikiIndex = Get-Content docs/wiki/INDEX.md -Raw
+if (Test-Path -LiteralPath (Get-RepoPath 'docs/wiki/INDEX.md')) {
+    $wikiIndex = Get-Content -LiteralPath (Get-RepoPath 'docs/wiki/INDEX.md') -Raw
     $wikiCount = ([regex]::Matches($wikiIndex, '(?m)^- \[')).Count
     if ($wikiCount -le 30) { Write-Output $wikiIndex.TrimEnd() }
     else { Write-Output "$wikiCount wiki entries — read docs/wiki/INDEX.md" }
 }
 
 # 8. Hazard-area staleness
-if (Test-Path FRAMEWORK-CONTEXT.md) {
-    $frameworkContext = Get-Content FRAMEWORK-CONTEXT.md -Raw
+if (Test-Path -LiteralPath (Get-RepoPath 'FRAMEWORK-CONTEXT.md')) {
+    $frameworkContext = Get-Content -LiteralPath (Get-RepoPath 'FRAMEWORK-CONTEXT.md') -Raw
     if ($frameworkContext -and $frameworkContext -notmatch 'KNOWN_HAZARD_AREAS_PENDING') {
         $inHazards = $false
         $openStale = 0
         $confirmedStale = 0
         $cutoff = (Get-Date).AddDays(-90)
-        foreach ($line in (Get-Content FRAMEWORK-CONTEXT.md)) {
+        foreach ($line in (Get-Content -LiteralPath (Get-RepoPath 'FRAMEWORK-CONTEXT.md'))) {
             if ($line -match '^## Known Hazard Areas\s*$') { $inHazards = $true; continue }
             if ($inHazards -and $line -match '^## ') { break }
             if (-not $inHazards -or $line -notmatch '^\|') { continue }

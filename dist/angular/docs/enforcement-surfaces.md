@@ -90,8 +90,13 @@ CLI 1.0.95 install; "not established" means none of these settles it and it was 
   Observed once, on Copilot CLI 1.0.95 with its own `--sandbox` and default policy (2026-10-12): every hook that
   fired ended successfully, and the guard still blocked a key-shaped write, taking up to 3.9 seconds a call against
   up to 1.9 outside the sandbox; but the session preload arrived as its heading alone, and no audit line or hook
-  state was written to the repository, all of which the same hooks produce outside the sandbox. Why is not
-  established, nor whether VS Code's Copilot harness runs hooks inside its sandbox.
+  state was written to the repository, all of which the same hooks produce outside the sandbox. The cause is
+  attributed, not seen for a hook process: that host then lacked the sandbox's filesystem-enumeration support, the
+  CLI warned that sandboxed PowerShell's location may be the drive root, and the session-start and audit-trail hooks
+  looked for the repository at that location. On 2026-10-19 the same host, then reporting the support, gave the full
+  preload, the hook state and the audit line in sandboxed sessions on Copilot CLI 1.0.98 and 1.0.95. From 0.98.2 both
+  hooks find the repository from their own path, so PowerShell's location no longer decides what they read and
+  write. Whether VS Code's Copilot harness runs hooks inside its sandbox is not established.
 
 To see which apply on a machine: in VS Code, **Developer: Policy Diagnostics** lists the policies applied there and
 their sources, including enterprise-managed settings that map to a VS Code policy. `/sandbox` in Copilot CLI, and

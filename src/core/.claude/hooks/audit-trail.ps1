@@ -68,7 +68,13 @@ if ([string]::IsNullOrEmpty($filePath) -and $patchPaths.Count -eq 0 -and $env:CL
 $filePaths = @(@($filePath) + $patchPaths | Where-Object { $_ })
 if ($filePaths.Count -eq 0) { exit 0 }
 
-$branch = git rev-parse --abbrev-ref HEAD 2>$null
+# The repository is the folder that holds this hook's .claude\hooks folder, found from the hook's own
+# path as route-prompt.ps1 finds it. PowerShell's location need not be the repository (in a sandbox on a
+# host without filesystem enumeration it may be the drive root), so the log, the branch and each
+# repository-relative path are taken from $repoRoot, and a relative written path is read as the repository's.
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+
+$branch = git -C $repoRoot rev-parse --abbrev-ref HEAD 2>$null
 if (-not $branch) { $branch = 'unknown' }
 
 $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
@@ -78,13 +84,17 @@ foreach ($filePath in $filePaths) {
     # @stack:skip
 
     # Normalise to a repo-relative path so the local log stays portable and does not leak
-    # local absolute paths (usernames, drive layout). The hook's cwd is the repo root.
+    # local absolute paths (usernames, drive layout). It is what Resolve-Path -Relative writes from
+    # the repository root: the same normalisation against $repoRoot, then its .\ prefix.
     # Note: $ErrorActionPreference is SilentlyContinue, under which Resolve-Path on a missing
     # path returns $null *without throwing* — force a terminating error and guard the result
     # so a non-existent/cross-drive path records a constant sentinel rather than leaking the original.
     $rel = '[path-normalisation-failed]'
     try {
-        $r = Resolve-Path -LiteralPath $filePath -Relative -ErrorAction Stop
+        $full = $filePath
+        if (-not [IO.Path]::IsPathRooted($full)) { $full = Join-Path $repoRoot $full }
+        $r = $ExecutionContext.SessionState.Path.NormalizeRelativePath((Resolve-Path -LiteralPath $full -ErrorAction Stop).Path, $repoRoot)
+        if (-not $r.StartsWith('.') -and -not [IO.Path]::IsPathRooted($r)) { $r = '.\' + $r }
         if ($r) {
             $candidate = [string]$r
             $portable = $candidate.Replace('\', '/')
@@ -94,7 +104,7 @@ foreach ($filePath in $filePaths) {
         }
     } catch { $rel = '[path-normalisation-failed]' }
 
-    "$timestamp`t$branch`t$rel" | Out-File -FilePath '.claude\ai-audit.log' -Append -Encoding utf8
+    "$timestamp`t$branch`t$rel" | Out-File -FilePath (Join-Path $repoRoot '.claude\ai-audit.log') -Append -Encoding utf8
 }
 
 exit 0

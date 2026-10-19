@@ -11,7 +11,7 @@ function Root([bool]$Pending=$true,[string[]]$Files=@('tests/Test-Calculator.ps1
     if($null -ne $Retirements){Put (Join-Path $r 'framework-retirements.json') $Retirements}
     foreach($f in $Files){Put (Join-Path $r $f) $(if($Content.ContainsKey($f)){$Content[$f]}else{'x'})}
     if($Git){git -C $r init -q 2>$null;git -C $r add -A 2>$null};$r}
-function RunAt($root,$event){Push-Location $root;try{Invoke-Hook $sessionStart $event}finally{Pop-Location}}
+function RunAt($root,$event){Push-Location $root;try{Invoke-Hook (Copy-HookInto $sessionStart $root) $event}finally{Pop-Location}}
 function Listed($o){$m=[regex]::Match($o.Out,[regex]::Escape($label)+'(.+?)\. Files, not recorded commands');if($m.Success){$m.Groups[1].Value}else{'none'}}
 $claude='{"hook_event_name":"SessionStart","source":"startup"}';$copilot='{"source":"new","sessionId":"s","timestamp":1,"cwd":"."}'
 Reset-Tests
