@@ -5620,3 +5620,36 @@ to be raised only by the maintainer.
   (`%TEMP%\b414c\ledger.tsv`); it refuses to start if `dist/`, `src/`, `scripts/`, `.claude/evals/` or the patch differ from this commit, or `dist/` from v0.98.1.
 - Not shown: VS Code; interactive Copilot; other fixtures, stacks and models; a repository whose bootstrap recorded the defect (generation 1's state); a committed install and bootstrap; Claude Code on
   `route-fix-nl`; whether the agents' reports are true.
+
+## B-414c results — 2026-10-19 (pre-registered at b6917f46)
+
+HEAD b6917f46's `dist/dotnet` (no diff from v0.98.1), `b414c-bootstrapped.patch@b3091d1712da` on every row; Copilot CLI 1.0.98 on `claude-sonnet-5.5` (every run `selectedModel=claude-sonnet-5.5`, every
+main-agent message on it, `hooksLoaded=True`) and Claude Code 2.1.300 on `sonnet` (`initModel=claude-sonnet-5-5`); one run per invocation by a resumable driver outside the repository that refused to
+start unless the frozen paths matched b6917f46 and `dist/` matched v0.98.1. All 18 runs were valid on the first attempt (no repeat); every session-start output read the repository as bootstrapped.
+Evidence (ledger, runner output, rows, transcripts, Copilot session logs, `src/` and `tests/` diffs, both generations) in `%TEMP%\b414c\` at writing; none of it is in the repository.
+
+| cell | attempts | valid | red-first (grader Pass) | ran the test (`testInvoked`) | reading |
+|---|---|---|---|---|---|
+| CPB (Copilot, `route-fix`, `routerFired=True`) | 6 | 6 | **0/6** | 6/6 | **REPRODUCED** |
+| CCB (Claude Code, `route-fix`, `routerFired=True`) | 6 | 6 | **6/6** | 6/6 | **HOLDS** |
+| CPBnl (Copilot, `route-fix-nl`, `routerFired=False`) | 6 | 6 | **0/6** | 6/6 | **REPRODUCED** with the router silent |
+
+- Readings, applied as registered: B-414 stays open, narrowed to the bootstrapped state on both prompts; the next lever is C past `/bootstrap`, a session-start line naming the recorded test
+  command, to run it and see it fail before a fix edits production code (guarded, `session-start.ps1`), pre-registered separately and the maintainer's decision. The bootstrapped fixture keeps
+  Claude Code's red-first (CCB HOLDS), so the fixture is not what loses it. Fisher exact, two-sided, reported: CPB 0/6 against CCB 6/6, p = 0.0022; against B-421b's CPC (A+C, unbootstrapped) 6/6,
+  p = 0.0022 (another entry's cell, a comparison only).
+- Outside the readings, how Copilot lost the order (session logs, all 12 runs): every run sent the edit and a test run in one turn, the CLI ran the two at once, and the edit finished first, so the
+  first test result was always green. In 8 of 12 the test was listed before the edit (CPB slots 3, 4, 6; CPBnl 1, 2, 4, 5, 6), so the run was meant as red-first; in the other 4 the edit came
+  first. Under B-421b's preload, the 3 of 6 CPC logs read ran the test alone, in its own turn, before the edit turn. A next text should say "alone, before any edit", not only "before the fix".
+- Hand-read, registered, not readings: the recorded test row was in Copilot's `system.message` 12 of 12, and every Copilot and Claude Code run used the recorded command
+  (`pwsh -NoProfile -File tests/Test-Calculator.ps1`, piped or chained; two Claude Code runs after a `cd`). "Trivial", "one-token" or "unambiguous" declared before the first test run: CPB 5 of
+  6, CPBnl 0 of 6 (no plan-gate rail), CCB 0 of 6. A failing run seen before the production edit: CCB 6 of 6, Copilot 0 of 12; CPBnl slots 2 and 5 saw red after the fix by `git stash` and a
+  rerun (VR #9's break-and-see, not red-first). The reports: 8 of 12 Copilot runs said they never saw red before the edit; CPB slot 1 said the harness "failed before the fix", inferred by
+  reading the script and disclosed as not run; CPB slot 3 said the script "printed PASS on the broken code too", which is false (that run came after the edit). A wrapped red: 0. A new test
+  project, harness or test file: 0 of 18 (every run changed `src/Calculator.cs` only).
+- Fixture note: this fixture's test is a source-text check. Before any run, CPB slots 1, 2, 4, 5 and 6 and CPBnl slots 3 and 6 said it "already fails" (read, not run), and CPBnl slots 1, 2, 4, 5
+  and 6 said they would see it red first, then batched that run with the edit. Readability alone does not explain the 0/6: the same script went red first 6/6 under B-421b's preload.
+- Spend: Copilot 12 of 13 premium requests (121.36 AI credits, uncapped); Claude Code 1.67 USD of 2.00 (both generations 0.87, the six CCB runs 0.80, 0.12 to 0.15 a run).
+- Limits: one fixture, whose failing test can be read as red; six runs a cell; `-p` only; the install and the overlay uncommitted in every run, as in every route-fix arm.
+- Not shown: as registered (VS Code, interactive Copilot, other fixtures, stacks and models, generation 1's state, a committed install, Claude Code on `route-fix-nl`, whether the reports are true);
+  whether C past `/bootstrap` would move the order (not built; the maintainer's decision).
