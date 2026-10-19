@@ -5518,3 +5518,25 @@ HEAD 2b8a6f6c's `dist/dotnet` (A shipped at 43d44030), patch C `b421-find-test-p
   A alone 0/6, C alone 3/6). CCC is unchanged: red-first 4 of 6 as registered, so C's ship stays the maintainer's decision. Spend now: Copilot 8 of 8 premium requests (73.84 AI credits).
 - Post hoc, not a reading: with the route grader's red pattern widened at ea17d770 to accept the error view's `| inclusive upper bound is broken` line, CCC re-grades 6/6 red-first and CPC
   stays 6/6; B-421's cells re-grade unchanged (CP-C 0, CP-T1 0, CP-T2 3, CC-T1 6, CC-T2 6 of 6).
+
+## B-418 measurement — contract conformance in one typed `/review` (2026-10-19, one run, not pre-registered)
+
+Q (open-threads review T2). With the plan's `Done when:` lines pasted after the scope, does `/review` carry a per-line verdict, and does it name the line no test pins? One run, hand-read; no reading
+gates a ship (the change ships on its own as ordinary-tier, on-demand text).
+
+- Tree. B-412 T-K slot 1's retained final tree (`%TEMP%\ai-tech-lead-agent-evals-20261018-201733\done-when-k\target`: 0.97.2 with `b412-done-when.patch`, the refund action and three tests), copied to a fresh
+  `%TEMP%\b418-review\target`; only `.claude/commands/review.md` replaced by this commit's built `dist/dotnet` copy (sha256 prefix `78925df2793b`; `review.md` is unchanged from 0.97.2 to HEAD before this commit).
+  Chosen because B-412's hand-read found its tests miss the already-refunded 409. Claude Code 2.1.300, `claude -p --model sonnet` (parent `claude-sonnet-5-5`, three auditors `claude-haiku-5-5`),
+  `--setting-sources project,local --include-hook-events --dangerously-skip-permissions --no-session-persistence --max-budget-usd 4`.
+- Prompt. `/review` with the five changed paths (controller, entity, test csproj, the new test file, `SECURITY_FINDINGS.md`), then "The approved plan:" and T-K 1's leg-1 `Done when:` section verbatim (five lines and
+  the out-of-scope line).
+- Expected, written to `expected.txt` before the result was read: lines 1-3 pinned by the three tests; line 4 (already refunded gives 409) unpinned, since deleting `|| invoice.Refunded` turns no test red;
+  line 5's "`Paid` stays true" half pinned by `Assert.True(saved.Paid)`, its "defaults to false for existing rows" half a database default no test reaches. Landed: the per-line block present and line 4 named unpinned.
+- Result: **landed.** The parent stated the source ("the plan pasted in this request (5 `Done when` lines plus an out-of-scope line)"), dispatched test-critic with the five numbered lines and the per-line
+  question, and reported "Contract lines pinned: 4 of 5 (pasted plan)" with the test for each line; line 4 **unpinned**, raised as Issue 1 (High) with the missing test named; line 5 counted on its `Paid` half,
+  the default half called unverifiable without migrations (Issue 4). test-critic, its definition unchanged, answered with a "Contract line coverage" table naming line 4 unpinned. The lines also changed one
+  judgement: the parent rejected bloat-radar's "trivial assertion" finding on `Assert.True(saved.Paid)` because it pins line 5. Verdict REQUEST CHANGES; beyond the contract, a concurrent double refund (High).
+  `dotnet build` and `dotnet test Orders.sln` ran (9 passed); the second capture was byte-identical. Cost 0.78 USD (estimate about 3), 17 turns, 118 s.
+- Limits: one run, one model, Claude Code only; no run of the old `review.md` (its Spec conformance read only `specs/`), so how often a per-line verdict appears unprompted is not measured; only the
+  pasted-plan source was exercised, not the conversation plan or the stated request; the review broke no code to see red and said so; prompt K states every outcome. Evidence (`prompt.txt`,
+  `expected.txt`, `review.jsonl`, `exit.txt`) in `%TEMP%\b418-review\run\`, not in the repository.

@@ -23,6 +23,12 @@ The parent owns one review selection and captures it before anyone reviews it:
   `whole-files: src/Orders.cs tests/OrdersTests.cs`; serialize exactly those paths in the same one
   UTF-8 JSON-array `paths.json` and invoke `-Mode WholeFile -PathFile <paths.json>`.
 
+Take the change's **contract** before dispatch, from the first of these that exists, and say which:
+its `specs/<slug>.md` (acceptance criteria and scope); else the plan pasted into this request or
+approved earlier in this conversation (its `Done when:` lines); else the request as stated; else
+none. Number its criteria 1 to M and keep its out-of-scope line. A pasted plan is contract, never
+scope: no path in it joins the selection.
+
 Choose a fresh private temporary bundle path outside the repository that is **absent**; do not
 create the directory before capture. Invoke
 `scripts/review-scope.ps1` with its matching `-Mode`, mandatory `-OutputPath`, and (when selected)
@@ -48,7 +54,7 @@ When the host supports concurrent `Task` dispatch, spawn the applicable auditors
 otherwise invoke every applicable participant sequentially against the same bundle. A missing
 parallel capability is not a reason to omit a reviewer.
 
-- Give every applicable reviewer the requested behaviour, explicitly requested cleanup/refactoring, and known compatibility constraints as scope context. The captured bundle remains the subject bytes; this context cannot enlarge it.
+- Give every applicable reviewer the numbered contract lines and their source, the requested behaviour, explicitly requested cleanup/refactoring, and known compatibility constraints as scope context; ask `test-critic` also, for each contract line, which captured test would go red if that line broke, else `unpinned`. The captured bundle remains the subject bytes; this context cannot enlarge it.
 - `convention-check` — verifies the diff against AGENTS.md > Conventions and the outcome-bound Boy Scout rule; do not demand excluded cleanup.
 - `solid-check` — audits the diff against the framework rules and first-party project evidence for the five SOLID principles; it does not impose a framework interface/token/container shape.
 - `debt-radar` — surfaces TECH_DEBT.md entries touching the changed files (debt-trajectory signal).
@@ -83,7 +89,7 @@ The auditors handle pattern-level checks. You handle:
 <!-- @stack:security-testq -->
 - **Architecture trajectory**: does this move toward or away from the target architecture in AGENTS.md > Architecture Decisions?
 - **Bug-fix scope and compatibility**: for a fix, every edit must serve requested behaviour, caller/extension compatibility, or meaningful verification. Do not demand unrelated cleanup because a file was touched. When public/protected signatures or virtual/override behaviour changed, identify an unrequested incompatibility; explicitly requested additions/breaks remain valid.
-- **Spec conformance**: if a `specs/<slug>.md` exists for this change, verify the implementation satisfies its acceptance criteria, that **every Task in its checklist is checked off** (flag any still `- [ ]` as incomplete work), and stays within its declared scope. Flag unmet criteria or scope creep as issues.
+- **Contract conformance**: for each contract line, check test-critic's pinning test against the captured bytes and take its Step 2 result, and judge whether the implementation meets the line. An unmet or unpinned line, or scope creep past the out-of-scope line, is an issue. From a spec, also flag any Task still `- [ ]` as incomplete work.
 
 ### Step 4 — Confirm the scope did not drift, then synthesise
 
@@ -110,6 +116,7 @@ verified, return `CANNOT EXAMINE` with the reason and no approval/request-change
 
 ### Test Quality & Coverage
 - Would-fail-if-broken: <from test-critic — N would catch a regression, N would pass against broken code>
+- Contract lines pinned: <N of M, from spec | pasted plan | conversation plan | stated request; or no criteria supplied> — each line: <test file:line and result, or unpinned / unmet>
 - Covered: ...
 - Missing: ...
 

@@ -20,6 +20,14 @@
   eight tracked test entry points (a script under `tests/`, `test/` or `spec/`, a test project, a `package.json` with a
   `test` script), leaving out the framework's own files, so the agent finds and runs your tests before it can say there
   are none. The hook only lists files; it runs nothing, and nothing changes once `/bootstrap` has recorded your commands.
+- **`/review` now checks the change against the `Done when:` lines you approved, not only against a spec.** It takes
+  the contract from the change's `specs/<slug>.md`, else from the plan's `Done when:` lines (pasted after the scope, or
+  approved earlier in the same conversation), else from your request, and says which. It asks the test reviewer which
+  test would go red if each line broke, and reports `Contract lines pinned: N of M` with the test for each line, or
+  `unpinned`. An unpinned or unmet line is an issue. Previously `/review` read only a spec, so lines approved in chat
+  reached no reviewer. `docs/playbook.md` now describes the same method: the plan's `Done when:` lines are the gate for
+  any non-trivial request, typed in plain words or through a command. The PR template carries those lines in place of
+  "Did you run /design first?", and the progress metric counts them in PR descriptions instead of counting commands.
 ## 0.98.0 — 2026-10-19
 
 - **`/bootstrap` now records `build` and `test` commands from your .NET project files.** A committed C# project

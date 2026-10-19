@@ -35,6 +35,13 @@ under `IntegrationTests/`), entry points first (`*Tests.csproj`, `*.Tests.ps1`, 
 `package.json` parsed for a `test` script, deleted files skipped, at most 500 candidates examined (400k tracked paths: about 1-3 s, against
 7-16 s before). On the measured fixture the emitted line is byte-identical to the measured patch's. New `SessionStartTestEntryPoints.Tests.ps1` (18 cases).
 
+`/review` contract conformance (B-418; on demand only, `review.md#body` +814 chars per dist, `static.claude` unchanged): the parent takes the contract from `specs/<slug>.md`, else the plan pasted
+into the request or approved in the conversation, else the stated request, says which, gives the numbered lines to every reviewer and asks test-critic which test would go red per line; Step 3's
+Spec conformance becomes Contract conformance and the output gains `Contract lines pinned: N of M`. Before, `review.md` read only a spec, so 0.98.0's chat-only `Done when:` lines reached no reviewer.
+`docs/playbook.md` (+502 chars per dist): the plan's `Done when:` lines are the gate, not `/design`; the PR template carries them in place of "Did you run /design first?"; the progress metric counts
+them in PR descriptions instead of calling plain-words prompts off-method. One typed `/review` on B-412 T-K 1's retained tree with the leg-1 plan pasted (Claude Code 2.1.300, sonnet, 0.78 USD):
+"Contract lines pinned: 4 of 5", the untested already-refunded 409 named unpinned and raised High; test-critic, unchanged, answered per line. Its own "unpinned" checklist item stays with B-417.
+
 ## 0.98.0 — 2026-10-19
 
 Fixes from the B-406/B-407 transcripts (Claude Code 2.1.300). `/bootstrap` (dotnet, monorepo; `bootstrap.md` step 4 and

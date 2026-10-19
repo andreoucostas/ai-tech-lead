@@ -156,20 +156,24 @@ cloud coding agent runs no hooks, and Linux, WSL and macOS are not supported.
 ### The risk
 This framework makes it easy to produce working code without understanding it. A developer can type `/feature add export button` and get a complete, tested implementation without understanding any of it. That's dangerous if left unchecked.
 
-### The /design command is the gatekeeper
-For non-trivial features, run `/design` first. It produces a design document the developer must review — recommended approach, alternatives, trade-offs, open questions. If they can't engage with the design document, they don't understand the problem.
+### The plan's `Done when:` lines are the gate
+For any non-trivial request, typed in plain words or through a command, the agent opens its plan with `Done when:`: the request restated as a few observable criteria, each with its boundary case, then what is out of scope. It edits nothing until the developer's go-ahead, and that go-ahead approves those lines. The developer's job is to correct them; if they can't, they don't understand the problem. `/design` is for deliberate design work: it thinks a larger change through, with alternatives and trade-offs, into `specs/<slug>.md`.
 
 ### PR reviews test understanding, not output
 The `/review` command checks the code. You check the developer. Use this PR template:
 
 ```markdown
+## Done when
+<the plan's `Done when:` lines as approved>
+
 ## Design Rationale
 - What approach did you take and why?
 - What alternatives did you consider?
 - What existing patterns did you follow? (reference Architecture Decisions in AGENTS.md)
 - What would break if this was implemented differently?
-- Did you run /design first? If not, why not?
 ```
+
+Paste the same lines after the scope when you run `/review` in a new session; it reports how many of them a test pins.
 
 If a developer consistently can't explain their own code, that's a performance signal. The framework amplifies whatever the developer already is.
 
@@ -224,5 +228,5 @@ For tools built on the Anthropic SDK, place the explicit `cache_control` breakpo
 - **Tech debt register length**: should trend down over time
 - **Build/test pass rate**: hooks should catch type errors early
 - **Boy Scout compliance**: are touched files improving?
-- **Command usage**: if developers bypass commands and paste raw prompts, the methodology isn't being followed
+- **Done-when lines in PR descriptions**: does each non-trivial PR carry its approved `Done when:` lines, each pinned by a test? A plain-words request follows the method as fully as a command.
 - **LEARNINGS.md entries**: is the team recording what works?

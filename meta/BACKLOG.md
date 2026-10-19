@@ -192,11 +192,6 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 **Priority:** P2 · **Effort:** M · **Invariants:** #7 if it ships
 **Status:** Open (maintainer, 2026-10-19). B-412 found no downstream difference because prompt K states every outcome. Pre-register an under-specified prompt on `b409-orders-ci` omitting a boundary the fixture documents, with plan v2 §3.1's `:74` test-per-line clause, §3.2's Rule 5 append and test-critic's "unpinned" question as the target patch; grade line → test → post-hoc mutant; include a "go with defaults" leg 2 (B-413's `code=`/`testRun` fixed). About 10 USD. Review T1+T7.
 
-### B-418 · Give the reviewer something to act on without the closing block
-**Filed against:** v0.98.0 (2026-10-19)
-**Priority:** P2 · **Effort:** S · **Invariants:** #7
-**Status:** Open (maintainer, 2026-10-19). `docs/playbook.md` (~159/171/227) still calls `/design` the gatekeeper, asks "Did you run /design first?" and counts raw prompts as not following the method; `/review`'s conformance (`review.md:86`) reads only `specs/<slug>.md`, so chat-only Done-when lines reach no reviewer or test-critic. Align the playbook and add a contract conformance step (spec, else the pasted plan, else the stated request; lines pinned N of M), then one typed `/review` on a retained B-412 tree (~3 USD). Review T2.
-
 ### B-419 · Review depth scales with blast radius (plan v2 Phase 3, never run)
 **Filed against:** v0.98.0 (2026-10-19)
 **Priority:** P3 · **Effort:** M · **Invariants:** none
@@ -206,3 +201,8 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 **Filed against:** v0.98.0 (2026-10-19)
 **Priority:** P3 · **Effort:** M · **Invariants:** none
 **Status:** Open (maintainer, 2026-10-19). Plant one defect in a copy of `b409-orders-ci`, pre-register S3 (the fix opens with a Done-when line; the regression test pins the boundary and fails first), T vs C. `$railsFix` and `fix.md:21` are unchanged since 0.97. About 8 USD. Review T4.
+
+### B-422 · The shipped PR template and `/feature` still teach `/design` first
+**Filed against:** v0.98.0 (2026-10-19)
+**Priority:** P2 · **Effort:** S · **Invariants:** #7
+**Status:** Open (found in B-418, 2026-10-19). `src/core/.github/PULL_REQUEST_TEMPLATE.md:9` asks "Did you run `/design` first?" and `feature.md:15` says "recommend `/design` first"; the playbook's template now carries the `Done when:` lines instead (plan v2 §3.5/§3.7).
