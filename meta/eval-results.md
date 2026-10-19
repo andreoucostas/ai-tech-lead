@@ -5794,3 +5794,17 @@ Q. A custom agent that Copilot CLI runs as a subagent gets no repository instruc
   and its length in characters (B-399's baseline: 26,358 to 26,709 chars, none of them present).
 - Readings, fixed now: in every keyed reviewer seen, the blocks and both lines present and none in `convention-check` or `solid-check`: the key takes effect, B-382 stays closed. The blocks
   absent from every keyed reviewer seen: the key takes no effect, the wrapper change is reverted and B-382 reopened. Anything else: no reading, reported as seen.
+
+## B-382 verification — 2026-10-20 (pre-registered at e2646b08)
+
+- One run, valid on its first attempt (session `b3820000-0000-4000-8000-000000000101`, 60 s): `session.start` 1.0.98 with `claude-sonnet-5.5`, every main assistant message on it, no auth,
+  quota or model error, every `hook.end` succeeded (`sessionStart` 1, `userPromptSubmitted` 5, `preToolUse` 11, `postToolUse` 18, `agentStop` 5). Fixture: 60c7a660's `dist/dotnet`, greenfield
+  (exit 0); wrapper SHA-256 prefixes `debt-radar` 0054a7bf66d9, `bloat-radar` 6d8bf834e49a (keyed), `convention-check` e6a62609d91e, `solid-check` 798939e636b4 (B-399's bytes); `review.md`
+  78925df2793b. Four `task` calls, none with a `model` argument; each started on `claude-sonnet-5.5` (`session_inheritance`) with `tools: ["*"]`. The bundle was empty again (`git clone`).
+- Counted, per subagent `system.message` (chars; B-399's figure for the same reviewer): `bloat-radar` 72,019 (26,709) and `debt-radar` 71,670 (26,358), each with 2 `<custom_instruction>` and
+  4 `imported_custom_instruction` blocks, both canary lines twice, and a 45,354-char instruction region (`AGENTS.md`, `CLAUDE.md` with its `AGENTS.md` and rules-file imports, the rules file),
+  the main session's 45,358 within 4 chars. `convention-check` 26,336 and `solid-check` 26,493: none. The main session's prompt was 81,604 chars.
+- Reading, as registered: **the key takes effect**; B-382 stays closed. On cost (B-427): a keyed reviewer's first request wrote 44,935 (`bloat-radar`) and 44,797 (`debt-radar`) cache tokens,
+  against 31,251 and 29,464 for the unkeyed two in the same run and 29,970 and 29,920 for the same reviewers in B-399, so about 15,000 tokens more a keyed reviewer a run; 12.01 and 12.08 AI
+  credits in 2 requests each, against 8.62 and 9.03 in 3 in B-399. Spend: 1 premium request of the 1-plus-repeat stop, 60.38 AI credits; `~\.copilot\config.json` and `settings.json` unchanged.
+- Not shown: `test-critic` and `security-auditor` dispatched with the key; a non-empty bundle; whether findings change; VS Code; other models.

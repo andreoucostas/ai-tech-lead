@@ -40,7 +40,8 @@ repository. `docs/enforcement-surfaces.md`'s sandbox paragraph now gives the att
 the `<custom_instruction>` blocks the main session's carries (`AGENTS.md`, `CLAUDE.md` and its imports); the CLI's 1.0.86 changelog and
 GitHub's CLI command reference make those files opt-in for a custom agent run as a subagent. CLIs from 0.0.402 load an agent with an
 unknown field, with a warning; VS Code 1.139.1's prompt-file validator gives the key a Hint ("not supported in VS Code agent files").
-The opted-in prompt is not yet observed on a run. `convention-check` and `solid-check`, which read their files themselves, are unchanged.
+A rerun of B-399's arm R on CLI 1.0.98 then showed the keyed `bloat-radar` and `debt-radar` prompts carrying those blocks (45,354 more chars, about
+15,000 more tokens a reviewer run) and the unkeyed two without them. `convention-check` and `solid-check`, which read their files themselves, are unchanged.
 
 ## 0.98.1 — 2026-10-19
 

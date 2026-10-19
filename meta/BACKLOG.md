@@ -196,7 +196,7 @@ Measure T vs C on both CLIs on the retained B-412 tree, graded by a reviewer `Ta
 **Priority:** P3 · **Effort:** S · **Invariants:** #1 #7
 **Status:** Open (maintainer request 2026-10-19, reopening B-424's question). B-399 (`meta/eval-results.md`): Copilot CLI 1.0.98 runs the model-less `.github/agents` wrappers, so `convention-check`, `debt-radar` and `bloat-radar` start on the session's model (`session_inheritance`) and never read `model: haiku`, which the CLI would refuse as it refused `sonnet` (B-398).
 Candidate, WSD-115's shape: the three `model: inherit`, and `/review` Step 1 passes Haiku in each call from a session on another Claude model (`haiku` in Claude Code, the newest `claude-haiku-*` on Copilot CLI if it lists one, unverified), none otherwise; `docs/reference.md`'s model column (B-424) then holds.
-Before shipping, one `/review` per CLI showing the call's `model` argument and `modelSelectionSource: explicit_override`: about 1 USD and 1-2 premium requests.
+Before shipping, one `/review` per CLI showing the call's `model` argument and `modelSelectionSource: explicit_override`: about 1 USD and 1-2 premium requests. Since B-382 (0.98.2) a keyed reviewer's prompt on CLI 1.0.98 is about 72,000 chars (`bloat-radar` 72,019, `debt-radar` 71,670) against an unkeyed one's 26,336-26,709, about 15,000 more cache-written tokens a run.
 
 ### B-429 · An update's skill backup copies a team's gitignored skill files, secrets included, to a path Git can commit
 **Filed against:** v0.98.1 (2026-10-19)
