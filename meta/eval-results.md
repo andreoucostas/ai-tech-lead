@@ -5492,3 +5492,23 @@ Approved by the maintainer in the session that runs it, 2026-10-19 ("ok let's go
   credits recorded, uncapped. Driver resumable, outside the repository (`%TEMP%\b421b\ledger.tsv`); it refuses to start if `dist/`, `src/`, `scripts/`, `.claude/evals/` or the patch differ from this
   commit, or if `dist/dotnet`'s carrier lacks A.
 - Not shown: as B-421, plus a no-test decoy run with A+C (read from B-421's logs instead).
+
+## B-421b results — 2026-10-19 (pre-registered at 2b8a6f6c)
+
+HEAD 2b8a6f6c's `dist/dotnet` (A shipped at 43d44030), patch C `b421-find-test-preload.patch@01b04548e196` on every row; Copilot CLI 1.0.98 `claude-sonnet-5.5` (CPC) and Claude Code 2.1.300 `sonnet`
+(CCC, `initModel=claude-sonnet-5-5`); one run per invocation, CPC then CCC per slot, by a resumable driver outside the repository. Evidence in `%TEMP%\b421b\` at writing.
+
+| cell | attempts | valid | ran the existing test (`testInvoked`) | red-first (grader Pass) | reading |
+|---|---|---|---|---|---|
+| CPC (Copilot, A+C) | 6 | 4 | 4/4 | 4/4 | **not settled** (fewer than 5 valid) |
+| CCC (Claude Code, A+C) | 6 | 6 | 6/6 | **4/6** | **the maintainer decides** (the registered 4-of-6 band) |
+
+- Readings, applied as registered: C ships only if both cells HOLD, and neither does as registered, so nothing ships from this entry; the decision is the maintainer's.
+- Why CPC is short: slots 5 and 6 ended `session.error` `quota_exceeded` (HTTP 402, "You have exceeded your monthly quota"): the maintainer's Copilot monthly quota ran out after slot 4, so the
+  6-request stop left no repeat and no further Copilot run is possible until it resets or is raised. Every valid CPC run ran the test red before the fix (4/4; A alone 0/6, C alone 3/6 in B-421).
+- Hand-read of CCC's two misses (slots 2 and 3): each ran `pwsh -File tests/Test-Calculator.ps1 2>&1 | tail -3` before its edit, and the output ends `| inclusive upper bound is broken`: a red run.
+  `tail -3` cut the `Exception:` line, and the route grader's red pattern needs `Exception:…inclusive upper bound is broken` or `EXIT: 1`, so it scores them not red-first. By behaviour CCC is
+  red-first 6 of 6; by the registered metric 4 of 6. The reading stands as registered (an instrument limit, not a carrier effect); the grader's red pattern accepting the throw's own output line is
+  a separate runner change.
+- Spend: Copilot 6 of 6 premium requests (50.01 AI credits; slot 6 was refused before any model call); Claude Code 0.90 USD of 1.50.
+- Not shown: as registered; and a settled Copilot cell, which needs Copilot quota.
