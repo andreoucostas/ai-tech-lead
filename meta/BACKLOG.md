@@ -206,3 +206,9 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 **Filed against:** v0.98.0 (2026-10-19)
 **Priority:** P3 · **Effort:** M · **Invariants:** none
 **Status:** Open (maintainer, 2026-10-19). Plant one defect in a copy of `b409-orders-ci`, pre-register S3 (the fix opens with a Done-when line; the regression test pins the boundary and fails first), T vs C. `$railsFix` and `fix.md:21` are unchanged since 0.97. About 8 USD. Review T4.
+
+### B-421 · Before `/bootstrap` records a test command, an agent can skip an existing test and report tests "not available"
+**Filed against:** v0.98.0 (2026-10-19)
+**Priority:** P1 · **Effort:** M · **Invariants:** #7
+**Status:** Open (found by B-414b; maintainer 2026-10-19: "definitely needs to be addressed", the how defined by Fable): Copilot `claude-sonnet-5.5` with the carrier never ran the fixture's `tests/Test-Calculator.ps1` 0 of 7 (globbed source extensions only, "no test harness exists"), bare 6 of 6; Claude Code 7 of 90 in B-411. Close to a false green: a fix verified by build alone while a real test sat unrun.
+Definition `.claude/plans/2026-10-19-find-existing-test.md`: tighten the route grader (`testInvoked`) and add a no-test decoy first, then measure carrier Option A and session-start Option C (guarded) against one C arm before shipping either; about 27 premium requests and 3 USD, or 15 and 1.50 for A alone.
