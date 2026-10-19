@@ -5720,3 +5720,38 @@ S and U ran as registered (2 premium requests; results in the next section). S r
   and B-396 closes by measurement with H as the attributed 1.0.95-day cause (the CLI's own warning in that session and a policy without enumeration), not seen for a hook process. Otherwise:
   recorded as seen, B-396 stays open.
 - Stop: unchanged, 5 premium requests (S95 is the third).
+
+## B-396 results — 2026-10-19 (pre-registered at aeb06a6e, amended at 1be43ddc (first committed in its worktree as 0138b9ea and 7782418c, before the runs))
+
+Fixture as frozen (HEAD dc18106a's `dist/dotnet`, B-393 before its amend, `dist/` byte-identical to f643ba3f's, the diag at ff5046bd37db, `hooks.json` 839fb7a7afe2); sessions `b3960000-0000-4000-8000-000000001001` (S), `-2001` (U) and `-3001` (S95);
+events, CLI logs, sandbox policy files, diag records and run records under `%TEMP%` at writing, none of it in the repository. Every run was valid on its first attempt: `session.start` with the
+arm's version, `claude-sonnet-5.5` on every assistant message, `loadDeferredRepoHooks ... hookCount=16`, a `userPromptSubmitted` `hook.end`, the diag's record in the `sessionStart` `hook.end`;
+S and S95 sandboxed (the sandbox section in `system.message`, `"sandboxed":true` on the `create` result). `~\.copilot\config.json` and `settings.json` were byte-identical before and after each run,
+and the drive root had no `.claude` before or after any run.
+
+| run | CLI | sandbox | hook token | `Get-Location` = `$PWD` = process cwd | diag writes that landed | shipped `sessionStart` output | `.claude/.state`, audit line | spawn policy `enumeratePaths` | location warning |
+|---|---|---|---|---|---|---|---|---|---|
+| S-1 | 1.0.98 | yes | Low (S-1-16-4096) | the clone | all five (via `Get-Location`, script root, event `cwd`, relative `Out-File`, `%TEMP%`) | full preload | `last-session-start`, `last-version-awareness`; `.\notes.txt` | `["C:\\"]` | none |
+| U-1 | 1.0.98 | no | Medium (S-1-16-8192) | the clone | all five | full preload | as S-1 | (no sandbox) | none |
+| S95-1 | 1.0.95 | yes | Low (S-1-16-4096) | the clone | the four in the clone; `%TEMP%` was the sandbox's own `...\Packages\github.copilot.cli_<id>\AC\#!sandbox.{<guid>}\Temp` | full preload | as S-1 | `["C:\\"]` | none |
+| B-379 S-1 (2026-10-12, read) | 1.0.95 | yes | not recorded | not recorded | none of the hooks' | "## Session preload" alone | none | absent (its one policy has no `processContainer` key) | present |
+
+- Reading, S: **NOT REPRODUCED**. On CLI 1.0.98 the sandboxed hooks ran at Low integrity in the clone, read and wrote it through `Get-Location` and relative paths, and produced the full preload,
+  both state files and the audit line; `git` without `-C` and `Set-Location` worked. **U** reads as the free check did, so the instrument holds. **S95** (amendment): **NOT REPRODUCED** on CLI
+  1.0.95 too, with `enumeratePaths` `["C:\\"]` in its spawn policy: the CLI version is ruled out on this host; the change is the host's.
+- B-396 closes by measurement, as registered. Cause, attributed and not seen for a hook process (CANNOT-EXAMINE: this host no longer lacks the support): on 2026-10-12 this host did not report
+  Process Security Environment 1.1 filesystem enumeration (by the CLI's own warning in that session), so CLI 1.0.95 wrote a sandbox policy without `enumeratePaths` and warned in
+  `system.message` that sandboxed PowerShell's location may be the drive root. `session-start.ps1` and `audit-trail.ps1` then resolve `.claude/.state`, the version stamp, `.git`, `AGENTS.md` and `.claude\ai-audit.log` against `C:\`, which the policy
+  does not grant, and swallow the errors; the free check's location-elsewhere leg printed exactly B-379 S-1's output. The only host change seen between the two dates is the Windows updates of
+  2026-10-14 and 15 (KB5127647, KB5127648, KB5121794, KB5127694); that they added the support is inferred, not shown.
+- Ruled out: file access to the clone (every sandboxed write into it landed, on both CLIs); B-381's missing `cwd` (every run's hook process started in the clone, as 1.0.95's relative `-File`
+  paths resolving in B-379 also show, so a `cwd` would name the directory the process already had); the CLI version (S95).
+- Named, not made (product changes): on a Windows host without PSE 1.1 enumeration, which the CLI still detects and warns about, the two hooks would lose the preload and the audit line again;
+  resolving the root from the script's own path as `route-prompt.ps1` does, with absolute paths and `git -C`, would remove the dependence (guarded, `src/core/.claude/hooks/**`; this diag's
+  absolute legs are its evidence, and a host without the support its only check). `docs/enforcement-surfaces.md`'s sandbox paragraph still says "Why is not established".
+- Recorded, not scored: hook durations (`hook.start` to `hook.end`) S-1 / U-1 / S95-1: `userPromptSubmitted` 4.81 / 2.76 / 5.09 s, `sessionStart` 5.02 / 2.92 / 5.62, `preToolUse` 3.24 / 1.33
+  / 2.96 (limit 10), `postToolUse` 7.21 / 3.53 / 7.75, `agentStop` 4.83 / 2.75 / 5.24. 1.0.98's sandbox launch directory is the clone in its on-disk case (`C--temp-...`) where `-C` gave
+  `C--TEMP-...`. Every run created `notes.txt` with `create`, said it skipped the plan gate for a trivial file, and ran no shell command.
+- Spend: 3 of 5 premium requests (1 a run), 30.71 AI credits (13.38, 8.87, 8.46), 89 seconds of runs.
+- Not shown: as registered and amended (another Windows build, macOS and Linux, a repository outside the user temp directory, the documented workaround, the named fix, a managed or
+  customised policy, VS Code, interactive sessions, other models); a hook process on a host without PSE 1.1 enumeration.
