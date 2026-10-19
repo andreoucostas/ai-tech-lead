@@ -4243,6 +4243,15 @@ from which selection source? Q2: does a `task` call with no `model` argument to 
   access)` and `Error loading models: 403 "unauthorized: not authorized to use this Copilot feature"`. The maintainer's Copilot subscription was cancelled
   2026-10-14. Arm D was not run. 2 of 3 runs used; no AI credits or premium requests; `~\.copilot\config.json` and `settings.json` unchanged.
 - No reading. Before a rerun, the stop is amended to count only runs that reached a model request.
+- Amended 2026-10-19 before the rerun (maintainer's choice, "Sonnet 5.5 (Recommended)", relayed by the orchestrating session). Host: Copilot CLI 1.0.98 in place of
+  1.0.95. Fixture: v0.98.1's `dist/dotnet` (`git archive v0.98.1`) in place of 0938ae77's, the release consumers install; there the three reviewers still say
+  `model: haiku`, `solid-check` says `inherit`, the four wrappers carry no `model`, and `review.md` Step 1 passes none. Session model `claude-sonnet-5.5`
+  (`--model`, and on the main assistant messages for validity) in place of `claude-opus-5.5`: Copilot bills Opus 15 premium requests a prompt (B-398's
+  `session.shutdown`: `totalPremiumRequestCost` 15 for 1 user request) and Sonnet 1. The question survives the switch: B-398's refusal was the alias missing from
+  the CLI's model list ("Model 'sonnet' is not available. Available models: claude-sonnet-5.5, …"), which no session model changes; `claude-sonnet-5.5` is the
+  runner's Copilot default (83f77a51). Stop: 3 counted runs, a run counted only once it reached a model request (one refused earlier is CANNOT-EXAMINE, not
+  counted; a second such refusal in a row ends the study), and 3 premium requests from the usage files, no run started at 3. An Opus session joins Not shown.
+  Prompts, arms, counted items and readings unchanged, read on 1.0.98.
 
 ## Consumer-docs pre-registration — a fresh agent installing from the GitHub URL alone, and a developer's first set-up prompt (2026-10-15, frozen before any run)
 
