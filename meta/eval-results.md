@@ -5512,3 +5512,5 @@ HEAD 2b8a6f6c's `dist/dotnet` (A shipped at 43d44030), patch C `b421-find-test-p
   a separate runner change.
 - Spend: Copilot 6 of 6 premium requests (50.01 AI credits; slot 6 was refused before any model call); Claude Code 0.90 USD of 1.50.
 - Not shown: as registered; and a settled Copilot cell, which needs Copilot quota.
+- Amended 2026-10-19 after the first pass, before the repeats: CPC slots 5 and 6 were refused by Copilot's monthly quota (HTTP 402 `quota_exceeded`), not by the agent; the maintainer bought
+  more Copilot usage, so the Copilot stop rises from 6 to 8 premium requests to give each refused slot its one registered repeat. Instrument (frozen at 2b8a6f6c), arms and readings unchanged.
