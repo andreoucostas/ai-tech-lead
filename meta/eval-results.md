@@ -5514,3 +5514,7 @@ HEAD 2b8a6f6c's `dist/dotnet` (A shipped at 43d44030), patch C `b421-find-test-p
 - Not shown: as registered; and a settled Copilot cell, which needs Copilot quota.
 - Amended 2026-10-19 after the first pass, before the repeats: CPC slots 5 and 6 were refused by Copilot's monthly quota (HTTP 402 `quota_exceeded`), not by the agent; the maintainer bought
   more Copilot usage, so the Copilot stop rises from 6 to 8 premium requests to give each refused slot its one registered repeat. Instrument (frozen at 2b8a6f6c), arms and readings unchanged.
+- Repeats, after the amendment (c26e8f92), on the frozen instrument: CPC slots 5 and 6 valid, both PASS. **CPC settles at 6 of 6 valid: the existing test run 6/6, HOLDS**; red-first 6/6 (reported:
+  A alone 0/6, C alone 3/6). CCC is unchanged: red-first 4 of 6 as registered, so C's ship stays the maintainer's decision. Spend now: Copilot 8 of 8 premium requests (73.84 AI credits).
+- Post hoc, not a reading: with the route grader's red pattern widened at ea17d770 to accept the error view's `| inclusive upper bound is broken` line, CCC re-grades 6/6 red-first and CPC
+  stays 6/6; B-421's cells re-grade unchanged (CP-C 0, CP-T1 0, CP-T2 3, CC-T1 6, CC-T2 6 of 6).
