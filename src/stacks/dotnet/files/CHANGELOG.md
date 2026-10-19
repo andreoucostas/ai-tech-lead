@@ -12,11 +12,37 @@
   `_` added before each folder or file name that starts with `.` or `_` (so a saved copy never loads as a live skill,
   command, agent or instruction), and names the copy in a `NOTICE`. A copy an earlier run already made is not made
   again; a different older copy keeps its place and yours goes beside it under a name ending in its SHA-256; if both
-  names hold other files, the update stops before changing anything. Copies of files your ignore rules hide stay out of
-  Git. Before, only `.agents/skills` was handled this way, so a file of your own at `.claude/commands/security-gate.md`
-  (new in 0.95.0) was overwritten without a copy. Without a readable `framework-ownership.json` the update cannot tell
+  names hold other files, the update stops before changing anything. Like every copy an update saves, these stay out
+  of Git (see the next entry). Before, only `.agents/skills` was handled this way, so a file of your own at
+  `.claude/commands/security-gate.md` (new in 0.95.0) was overwritten without a copy. Without a readable `framework-ownership.json` the update cannot tell
   which files are new, so it saves every file that differs from the release and reports them in one line. Keep what you
   need from the copies under other paths, then delete them.
+- **An update's copies of your files can no longer be committed by accident.** Every copy an update saves, of your
+  skills before framework skills are replaced and of your own files at paths a release ships for the first time, goes
+  under `.claude/framework-update-backup/`. Before, the first update after an install, and the next one after you
+  deleted that folder, copied everything under `.claude/skills/`, files Git ignores included, such as a personal skill
+  with a token beside it, to untracked files that `git status` offered to commit, with no warning. Now that folder's
+  `.gitignore` ends with a `*` line, written before the first copy, so Git ignores the whole folder, whatever ignore
+  rules, attribute filters or settings the copies came from. Lines you had in that `.gitignore` stay before the `*`, so
+  none of them can bring a copy back (one saved as UTF-16 is rewritten as UTF-8). After its last copy the update asks
+  Git whether anything there could still be committed and says so in one `kept out of Git` line, or in a `CANT-VERIFY`
+  line with the number of files Git could still commit; a `.gitignore` there that is a link is never written through
+  and gets that line too, a read-only one stops the update before it changes anything (naming the attribute), and a
+  hidden one is written in place and stays hidden. In the copy, a file or
+  folder name starting with `.` or `_` gains a `_` in front, so a copied skill never loads as a live skill and a skill
+  that is its own Git clone is copied as plain files. Copies an earlier update left there no longer make the update
+  refuse your repository as having uncommitted changes, also when the framework is installed in a subfolder of it.
+  When another change of yours still makes it refuse, the update first adds the `*` (its only change) and says so, so
+  committing your changes as it asks no longer commits those copies; if Git tracks that `.gitignore`, the refusal also
+  tells you to commit it with them. Keep what you need from the folder under other paths, then delete it.
+- **If you committed that folder after an earlier update, the update now says so, and writes no copy onto those
+  files.** On every update, a `NOTICE` gives the number of files Git tracks under `.claude/framework-update-backup/`.
+  The `*` cannot hide a tracked file, and these may hold copies of files you had gitignored, such as a token beside a
+  personal skill. So a copy is never written onto a file Git tracks there, even one you deleted from disk or one in the
+  folder renamed in case (such as `.claude/Framework-Update-Backup/`): it goes
+  beside it, under a name ending in its SHA-256, which the `*` hides. Review the tracked files, then run
+  `git rm -r --cached .claude/framework-update-backup` and commit. A secret committed there stays in your Git history:
+  rotate it, or rewrite that history.
 
 - **The session preload and the audit log no longer depend on where PowerShell starts.** The `session-start` and
   `audit-trail` hooks now find your repository from their own place under `.claude/hooks/` instead of from PowerShell's

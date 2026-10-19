@@ -4664,3 +4664,13 @@ on a maintainer review: a step-4 change gets a fresh session that did not implem
 other change ships once its gates pass, with no draft-approval checkpoint. Releases follow as soon as work lands (consumers onboard from the newest tag).
 The maintainer still decides a context-footprint ceiling breach and anything needing their accounts. **Reopen** if an escaped defect shows a fresh-session
 attack missing what a maintainer read would have caught.
+
+## WSD-117: a framework update's backup copies are never committable; `.claude/framework-update-backup/.gitignore` ends with `*` (2026-10-20)
+
+**Context.** B-393 and B-429 decided per copy which saved files Git may see (ignored originals, skip-worktree, copied `!` rules, console-code-page
+decoding), and three fresh-session attacks each beat that with another Git feature, the last a redacting clean filter in a copied `.gitattributes`
+that the `_` mapping had disabled, a regression against 0.98.1. **Decision (the coordinating session under the maintainer's standing goal, WSD-116;
+not yet read by the maintainer, 2026-10-20).** Every copy an update saves goes below `.claude/framework-update-backup/`, whose `.gitignore` ends with
+`*`, written before the first copy and before any dirty-tree refusal, and checked against Git afterwards: a tracked original is already in history and an ignored one must not leak, so no copy needs committing. A team's own
+lines stay before the `*`, so none re-includes; files a team already tracks there stay tracked. Rejected: per-copy keep-out lists (beaten three times), and committable copies
+for review (the leak class). **Reopen** if a team needs a backup copy in a commit, or a Git feature re-includes a file below an excluded folder.

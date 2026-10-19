@@ -17,8 +17,8 @@
 and whose bytes differ from the release (CRLF read as LF) is saved first to `.claude/framework-update-backup/files/<path>`, where every
 segment starting with `.` or `_` gains a leading `_` (injective, and no saved copy sits in a `.claude`, `.agents` or `.github` folder an
 agent would load, nor is a live `.gitignore`), beside an older save under a SHA-256-suffixed name, refused with exit 3 before any change
-when both names hold other content, recognised as saved on a re-run, one `NOTICE` each, and kept out of Git by
-`.claude/framework-update-backup/files/.gitignore` when the original was ignored or Git could not say. Before, only the `.agents/skills`
+when both names hold other content, recognised as saved on a re-run, one `NOTICE` each, and kept out of Git with every copy below
+`.claude/framework-update-backup/` (B-429). Before, only the `.agents/skills`
 wrappers were saved, so a team's own file at a path a release ships for the first time (0.95.0's `.claude/commands/security-gate.md`) was
 replaced unsaved. The wrappers' save (layout unchanged, `agents-skills/<workflow>/SKILL.md`) now shares the same helper and apply step.
 With no usable previous manifest no path can be called new, so every differing file is saved and summed up in one `NOTICE` line; settings
@@ -70,6 +70,34 @@ check"). Pre-registered at f47b8e40, one Sonnet-session Step 1 per CLI: the thre
 both; on Copilot each of the three cost 0.56 to 1.07 AI credits, against 12.01 and 12.08 for B-382's keyed pair on Sonnet. `DocClaims` pins
 `model: inherit` and the rule's text; `docs/reference.md`'s model column now reads Haiku in a Claude session on another model, else the
 session's model. Rejected: keeping `model: haiku` for Claude Code, an alias a host reading the `.claude` file refuses (B-398).
+
+`install.ps1` update mode (guarded, B-429, an escaped secret leak): every copy an update saves goes below
+`.claude/framework-update-backup/`, whose `.gitignore` now ends with a `*` line written before the first copy (a team's own lines
+kept before it, so no `!` line can re-include a copy; a UTF-16 file rewritten as UTF-8), so Git excludes the whole folder and reads no
+`.gitignore` or `.gitattributes` below it; a read-only list refuses with exit 3 at planning, before any change, naming a ReadOnly,
+Hidden or System attribute, and a Hidden one is opened and truncated in place, as the planning probe opens it (`File.WriteAllBytes`
+uses FileMode.Create, which Windows refuses for a Hidden file). No copy is ever written onto a path Git tracks there (`ls-files -z` with
+an `:(icase)` pathspec, so a folder renamed in case is found, compared ignoring case), which `*` cannot hide: it goes beside it under the SHA-256 name
+`Find-UpdateBackup` already used, refused before any change if that name is tracked too. After the last copy one `git status -z` read
+asks Git: no untracked unignored file there and no status record at all for a path this run wrote, and one `kept out of Git` line says
+so and counts what earlier updates left there; anything else, or a list that is a symbolic or hard link (never read or written through;
+Git ignores a symlinked `.gitignore`), and a `CANT-VERIFY` line gives the count instead. On every update, saving or not, a `NOTICE`
+counts the files Git already tracks there and says to untrack them and rotate any committed secret. When another change still makes the
+dirty-tree check refuse, the refusal first writes the `*`, its one change, and says so (and, for a list Git tracks, to commit it), so
+following its "Commit" no longer commits the leftovers. Before, every first update, and the next after a team deleted the folder, copied a gitignored personal
+skill, a token included, to a path `git status` offered to commit, with no notice. Three rounds of per-copy decisions (B-393's
+per-folder lists extended to skills, then skip-worktree, live copied `!` rules and console-code-page decoding) were each beaten by a
+fresh-session attack using another Git feature, the last a redacting clean filter set in a copied or a root path-anchored
+`.gitattributes`; a copy never needs committing, since a tracked original is in history already, so the blanket rule replaced them.
+Kept: the skill backup maps each copied path as `files/` does (`ConvertTo-SavedRelative`: a `_` before each segment starting with `.`
+or `_`), so no copy loads as a live skill or is an embedded repository; and untracked files that earlier updates left under the folder
+no longer make the dirty-tree check refuse (which steered teams to commit them), in a target at the repository root or in a subfolder
+of it (status paths are from the root, so the `rev-parse --show-prefix` prefix is stripped), read from one `git status -z` set as raw
+UTF-8 bytes (`Invoke-GitRecords`), never through the console code page. A fourth fresh-session attack found the refusal's "Commit", the
+subfolder target, the silent tracked copies and a `!files/**` after the `*`; a fifth, a rotated token written onto the tracked copy a
+team had committed (under `-AllowDirtyTree`, claimed kept out) and a read-only list refused only after deleting retired files; a sixth,
+the same token under a tracked folder renamed in case (case-sensitive pathspecs and prefix checks) and a Hidden list. Twenty-two new
+`UpdateDelivery.Tests.ps1` cases.
 
 ## 0.98.1 — 2026-10-19
 

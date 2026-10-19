@@ -566,6 +566,176 @@ function Invoke-GitText {
     }
 }
 
+# Git prints a path's bytes as UTF-8, but PowerShell decodes a captured native command with the console's code page, so
+# at chcp 850 'zugänge.env' reads 'zug├ñnge.env', and Git quotes non-ASCII unless core.quotePath is false. Every path a
+# leftover decision is built from is therefore read here: -z records, raw bytes decoded as UTF-8,
+# stderr kept apart. Stdin is never redirected: Windows PowerShell's .NET writes the console's UTF-8 preamble into it.
+# $null: Git did not start or exited outside SuccessCodes.
+function ConvertTo-NativeArgument {
+    param([string]$Value)
+    if ($Value.Length -gt 0 -and $Value -notmatch '[\s"]') { return $Value }
+    return '"' + [regex]::Replace($Value, '(\\*)("|$)', [Text.RegularExpressions.MatchEvaluator]{ param($m) $m.Groups[1].Value * 2 + $(if ($m.Groups[2].Value) { '\"' } else { '' }) }) + '"'
+}
+function Invoke-GitRecords {
+    param([Parameter(Mandatory = $true)][string]$GitPath, [Parameter(Mandatory = $true)][string[]]$Arguments, [int[]]$SuccessCodes = @(0))
+    $start = New-Object Diagnostics.ProcessStartInfo
+    $start.FileName = $GitPath
+    $start.Arguments = @($Arguments | ForEach-Object { ConvertTo-NativeArgument -Value $_ }) -join ' '
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    try {
+        $process = [Diagnostics.Process]::Start($start)
+        $stderr = $process.StandardError.ReadToEndAsync()
+        $bytes = New-Object IO.MemoryStream
+        $process.StandardOutput.BaseStream.CopyTo($bytes)
+        $process.WaitForExit()
+        [void]$stderr.Result
+        if ($SuccessCodes -notcontains $process.ExitCode) { return $null }
+    } catch { return $null }
+    return , @([Text.UTF8Encoding]::new($false).GetString($bytes.ToArray()).Split([char]0) | Where-Object { $_.Length -gt 0 })
+}
+
+# Every copy an update saves goes below .claude/framework-update-backup/, kept out of Git by a '*' line
+# that ENDS that folder's .gitignore: the last matching line wins, so no team line before it can re-include a copy, and
+# Git reads no .gitignore or .gitattributes below an excluded folder. Copies an earlier update left there where Git
+# could commit them are untracked status records below the target's folder; Git prints status paths from the
+# repository root, so a target in a subfolder strips its prefix first. The lists earlier updates wrote are not copies.
+$script:BackupLists = @('.claude/framework-update-backup/.gitignore', '.claude/framework-update-backup/files/.gitignore', '.claude/framework-update-backup/agents-skills/.gitignore')
+function Get-TargetStatus {
+    param([Parameter(Mandatory = $true)][string]$GitPath)
+    $prefix = Invoke-GitRecords -GitPath $GitPath -Arguments @('-C', $tgt, 'rev-parse', '--show-prefix')
+    $records = Invoke-GitRecords -GitPath $GitPath -Arguments @('--no-optional-locks', '-C', $tgt, 'status', '--porcelain=v1', '-z', '--untracked-files=all')
+    if ($null -eq $prefix -or $null -eq $records) { return $null }
+    return [pscustomobject]@{ Records = @($records); Prefix = (@($prefix) -join '').TrimEnd([char]13, [char]10) }
+}
+function ConvertFrom-BackupRecord {
+    param([string]$Record, [string]$Prefix)
+    if (-not $Record.StartsWith('?? ', [StringComparison]::Ordinal)) { return $null }
+    $path = $Record.Substring(3)
+    if (-not $path.StartsWith($Prefix, [StringComparison]::OrdinalIgnoreCase)) { return $null }
+    $path = $path.Substring($Prefix.Length)
+    # Ignoring case: on Windows Git (core.ignorecase) a folder renamed in case is the same folder.
+    if (-not $path.StartsWith('.claude/framework-update-backup/', [StringComparison]::OrdinalIgnoreCase)) { return $null }
+    return $path
+}
+function Get-BackupResidue {
+    param([Parameter(Mandatory = $true)]$Status)
+    return , @($Status.Records | ForEach-Object { ConvertFrom-BackupRecord -Record $_ -Prefix $Status.Prefix } | Where-Object { $null -ne $_ -and $_ -notin $script:BackupLists })
+}
+# Git matches a plain pathspec by exact case, so a backup folder Git tracks as .claude/Framework-Update-Backup/ would
+# slip past one; ':(icase)' matches it whatever its case.
+$script:BackupPathspec = ':(icase).claude/framework-update-backup'
+# The paths Git tracks below the backup folder, target-relative. '*' hides only what Git does not track, so no copy is
+# ever written onto one of them: git add -A would take its new bytes. Compared ignoring case, since Windows writes either
+# spelling to one file. Read once, as -z records decoded as UTF-8; empty without Git.
+$script:BackupTrackedSet = $null
+function Get-BackupTracked {
+    if ($null -eq $script:BackupTrackedSet) {
+        $script:BackupTrackedSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        $git = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+        $routed = @(@('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE') | Where-Object { [Environment]::GetEnvironmentVariable($_, 'Process') }).Count -gt 0
+        if ($git.Count -gt 0 -and -not $routed) {
+            $records = Invoke-GitRecords -GitPath ([string]$git[0].Source) -Arguments @('-C', $tgt, 'ls-files', '-z', '--', $script:BackupPathspec)
+            if ($null -ne $records) { foreach ($record in $records) { [void]$script:BackupTrackedSet.Add($record) } }
+        }
+    }
+    return , $script:BackupTrackedSet
+}
+# The list as Git must read it. 'kept': it already ends with '*'. 'write': Bytes is it with '*' appended, one saved as
+# UTF-16 rewritten as UTF-8, which Git reads. 'blocked': a link, or not a readable file, is never read or written
+# through (Git ignores a .gitignore that is a symbolic link, and a hard link's other names would change too).
+# 'unwritable': it needs the '*' but cannot be opened for writing (read-only, say), found before any change.
+function Get-BackupKeepOut {
+    $path = Get-ContainedTargetPath -Relative '.claude/framework-update-backup/.gitignore'
+    $item = Get-Item -Force -LiteralPath $path -ErrorAction SilentlyContinue
+    $reason = $null
+    if (Get-ReparsePointAncestor -Path $path) { $reason = 'is a symbolic link or junction, or lies below one' }
+    elseif ($item -and $item.PSIsContainer) { $reason = 'is not a regular file' }
+    elseif ($item -and [string]$item.LinkType -eq 'HardLink') { $reason = 'is a hard link' }
+    $body = [byte[]]@()
+    if (-not $reason -and $item) { try { $body = [IO.File]::ReadAllBytes($path) } catch { $reason = 'could not be read' } }
+    if ($reason) { return [pscustomobject]@{ State = 'blocked'; Reason = $reason; Bytes = $null } }
+    $wide = $body.Length -ge 2 -and (($body[0] -eq 0xFF -and $body[1] -eq 0xFE) -or ($body[0] -eq 0xFE -and $body[1] -eq 0xFF))
+    $text = if ($wide) { [IO.File]::ReadAllText($path) } else { [Text.UTF8Encoding]::new($false).GetString($body).TrimStart([char]0xFEFF) }
+    if ($wide) { $body = [Text.UTF8Encoding]::new($false).GetBytes($text) }
+    $lines = @($text -split "`n" | ForEach-Object { $_.TrimEnd([char]13) } | Where-Object { $_.Trim().Length -gt 0 })
+    if (-not $wide -and $lines.Count -gt 0 -and $lines[-1] -ceq '*') { return [pscustomobject]@{ State = 'kept'; Reason = $null; Bytes = $null } }
+    if ($item) {
+        # Opened for writing as Write-BackupKeepOut opens it, never written: FileMode.Open neither truncates nor changes the file.
+        try { $probe = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::Read); $probe.Dispose() }
+        catch {
+            $marks = @(@('ReadOnly', 'Hidden', 'System') | Where-Object { ($item.Attributes -band [IO.FileAttributes]::$_) -ne 0 })
+            $message = if ($_.Exception.InnerException) { $_.Exception.InnerException.Message } else { $_.Exception.Message }
+            $reason = if ($marks.Count -gt 0) { "it is marked $($marks -join ' and '): $message" } else { $message }
+            return [pscustomobject]@{ State = 'unwritable'; Reason = $reason; Bytes = $null }
+        }
+    }
+    $star = [Text.Encoding]::ASCII.GetBytes($(if ($body.Length -gt 0 -and $body[-1] -ne 0x0A) { "`n*`n" } else { "*`n" }))
+    $bytes = New-Object byte[] ($body.Length + $star.Length)
+    [Array]::Copy($body, 0, $bytes, 0, $body.Length)
+    [Array]::Copy($star, 0, $bytes, $body.Length, $star.Length)
+    return [pscustomobject]@{ State = 'write'; Reason = $null; Bytes = $bytes }
+}
+# Writes the list in place, opened as the planning probe opened it and truncated, so one checked out Hidden
+# (core.hideDotFiles) is written and keeps its attributes: File.WriteAllBytes opens with FileMode.Create, which Windows
+# refuses for an existing Hidden file.
+function Write-BackupKeepOut {
+    param([Parameter(Mandatory = $true)][byte[]]$Bytes)
+    $path = Get-ContainedTargetPath -Relative '.claude/framework-update-backup/.gitignore'
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
+    $stream = [IO.File]::Open($path, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+    try { $stream.SetLength(0); $stream.Write($Bytes, 0, $Bytes.Length) } finally { $stream.Dispose() }
+}
+# How many files below the backup folder Git could still commit: each untracked one Git does not ignore, and each path
+# this run wrote ($Written, target-relative) that Git shows at all, modified, added or otherwise. A rename or copy
+# record is followed by its source path, which is skipped. $null: Git could not say.
+function Get-BackupVisibleCount {
+    param([Parameter(Mandatory = $true)][string]$GitPath, [string]$Prefix = '', $Written = $null)
+    $records = Invoke-GitRecords -GitPath $GitPath -Arguments @('--no-optional-locks', '-C', $tgt, 'status', '--porcelain=v1', '-z', '--untracked-files=all', '--', $script:BackupPathspec)
+    if ($null -eq $records) { return $null }
+    $records = @($records)
+    $count = 0
+    for ($i = 0; $i -lt $records.Count; $i++) {
+        $record = [string]$records[$i]
+        if ($record.Length -lt 4) { continue }
+        $code = $record.Substring(0, 2)
+        $path = $record.Substring(3)
+        if ($code.IndexOfAny([char[]]'RC') -ge 0) { $i++ }
+        if ($path.StartsWith($Prefix, [StringComparison]::OrdinalIgnoreCase)) { $path = $path.Substring($Prefix.Length) }
+        if ($code -ceq '??' -or ($null -ne $Written -and $Written.Contains($path))) { $count++ }
+    }
+    return $count
+}
+# The dirty-tree refusal says "Commit", which would take an earlier update's leftovers too, so before it they are kept
+# out of Git: the list's '*' is that refusal's one write, to the framework's own file. Returns the line it adds.
+function Protect-BackupResidue {
+    param([Parameter(Mandatory = $true)][string]$GitPath, [Parameter(Mandatory = $true)][int]$Count)
+    $list = '.claude/framework-update-backup/.gitignore'
+    $files = if ($Count -eq 1) { '1 file' } else { "$Count files" }
+    $keepOut = Get-BackupKeepOut
+    $why = $null; $wrote = $false; $visible = $Count
+    if ($keepOut.State -eq 'blocked') { $why = "$list $($keepOut.Reason), which this update never writes through" }
+    elseif ($keepOut.State -eq 'unwritable') { $why = "this update could not write $list ($($keepOut.Reason))" }
+    elseif ($keepOut.State -eq 'write') {
+        try { Write-BackupKeepOut -Bytes $keepOut.Bytes; $wrote = $true }
+        catch { $why = "this update could not write $list ($($_.Exception.Message))" }
+    }
+    if (-not $why) { $visible = Get-BackupVisibleCount -GitPath $GitPath }
+    if ($null -ne $visible -and $visible -eq 0) {
+        $change = if ($wrote) { "Before refusing, this update made its one change: '*' is now the last line of $list, so Git ignores" } else { 'Git ignores' }
+        # A list Git tracks now shows as changed, and the next run would refuse over it without this line.
+        $listed = if ($wrote -and (Get-BackupTracked).Contains($list)) { " Git tracks $list, so that change shows in git status: commit it with your own changes; it only adds a line that keeps files out of Git." } else { '' }
+        return "  $change the $files an earlier update left under that folder, which may hold copies of files you had gitignored; committing your own changes cannot take them.$listed Keep what you need from them under other paths, then delete the folder."
+    }
+    $done = if ($wrote) { "this update wrote '*' as the last line of $list, its one change, yet " } else { '' }
+    $seen = "Git can still commit $(if ($visible -eq 1) { '1 file' } else { "$visible files" }) under .claude/framework-update-backup/"
+    if ($null -eq $visible) { $seen = "Git could not say whether it ignores the $files an earlier update left under .claude/framework-update-backup/" }
+    $because = if ($why) { " ($why)" } else { '' }
+    return "  CANT-VERIFY: $done$seen$because, which may hold copies of files you had gitignored. Do not commit that folder: commit or stash only your own changes.$(if (-not $wrote) { ' Nothing was changed.' })"
+}
+
 function Stop-UnverifiableGitPreflight {
     [Console]::Error.WriteLine('CANT-VERIFY: Git state for this update/brownfield target could not be verified safely. Unset Git routing variables, install or repair Git, or repair/remove corrupt repository metadata, then re-run the installer.')
     exit 4
@@ -879,25 +1049,54 @@ function Test-HeldBytes {
     try { $held = [IO.File]::ReadAllBytes($heldItem.FullName) } catch { return $false }
     return [string]::Equals([Convert]::ToBase64String($held), [Convert]::ToBase64String($Bytes), [StringComparison]::Ordinal)
 }
+# A saved copy must never load as a live skill, command, agent, instruction, ignore or attribute file, nor be a live
+# repository: agents read a .claude, .agents or .github folder nested anywhere, and Git a nested .gitignore,
+# .gitattributes or .git. So below a save root a name starting with '.' gains a leading '_', and so does one already
+# starting with '_', which keeps two paths from ever saving to one name.
+function ConvertTo-SavedRelative {
+    param([string]$Relative)
+    return (@($Relative.Split('/') | ForEach-Object { if ($_ -match '^[._]') { "_$_" } else { $_ } }) -join '/')
+}
+# The name beside $Relative for content $Bytes: its SHA-256 (16 hex digits) before the extension.
+function ConvertTo-DigestRelative {
+    param([string]$Relative, [byte[]]$Bytes)
+    $folder = $Relative.Substring(0, $Relative.LastIndexOf('/') + 1)
+    $leaf = $Relative.Substring($folder.Length)
+    $digest = (Get-Sha256Hex -Bytes $Bytes).Substring(0, 16)
+    $dot = $leaf.LastIndexOf('.')
+    return $folder + $(if ($dot -gt 0) { $leaf.Substring(0, $dot) + ".$digest" + $leaf.Substring($dot) } else { "$leaf.$digest" })
+}
 # Where an update saves a file before replacing it. An earlier run's copy (a re-run after a failed save) counts as
-# saved. A different file at $Preferred is never overwritten: this copy goes beside it, named by its own SHA-256, and
-# State 'taken' means that name holds other content too. A link on the save path is refused, never read through.
+# saved. A different file at $Preferred, or a path Git tracks there, is never written: this copy goes beside it, named
+# by its own SHA-256, and State 'taken' means that name holds other content or is tracked too. A link on the save path
+# is refused, never read through.
 function Find-UpdateBackup {
     param([string]$Preferred, [byte[]]$Bytes)
     if (Get-ReparsePointAncestor -Path (Get-ContainedTargetPath -Relative $Preferred)) { [void](Assert-SafeTargetMutation -Relative $Preferred) }
+    $tracked = Get-BackupTracked
     $relative = $Preferred
-    if ($null -ne (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $relative) -ErrorAction SilentlyContinue) -and
-        -not (Test-HeldBytes -Relative $relative -Bytes $Bytes)) {
-        $folder = $relative.Substring(0, $relative.LastIndexOf('/') + 1)
-        $leaf = $relative.Substring($folder.Length)
-        $digest = (Get-Sha256Hex -Bytes $Bytes).Substring(0, 16)
-        $dot = $leaf.LastIndexOf('.')
-        $relative = $folder + $(if ($dot -gt 0) { $leaf.Substring(0, $dot) + ".$digest" + $leaf.Substring($dot) } else { "$leaf.$digest" })
+    if (-not (Test-HeldBytes -Relative $relative -Bytes $Bytes) -and
+        ($tracked.Contains($relative) -or $null -ne (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $relative) -ErrorAction SilentlyContinue))) {
+        $relative = ConvertTo-DigestRelative -Relative $relative -Bytes $Bytes
     }
     $state = 'taken'
-    if ($null -eq (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $relative) -ErrorAction SilentlyContinue)) { $state = 'free' }
-    elseif (Test-HeldBytes -Relative $relative -Bytes $Bytes) { $state = 'saved' }
+    if (Test-HeldBytes -Relative $relative -Bytes $Bytes) { $state = 'saved' }
+    elseif (-not $tracked.Contains($relative) -and $null -eq (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $relative) -ErrorAction SilentlyContinue)) { $state = 'free' }
     return [pscustomobject]@{ Relative = $relative; State = $state }
+}
+# A copy the skill backup or the layout move saves never goes onto a path Git tracks: it goes beside it under its
+# SHA-256 name, untracked and so kept out by '*'. Refuses before any change when that name is tracked too.
+function Get-UntrackedSaveRelative {
+    param([string]$Relative, [string]$Source)
+    $tracked = Get-BackupTracked
+    if (-not $tracked.Contains($Relative)) { return $Relative }
+    $beside = $null
+    try { $beside = ConvertTo-DigestRelative -Relative $Relative -Bytes ([IO.File]::ReadAllBytes($Source)) } catch { $beside = $null }
+    if ($null -eq $beside -or $tracked.Contains($beside)) {
+        [Console]::Error.WriteLine("ERROR: Refusing update: Git tracks $Relative, where this update must save a copy of a file of yours, and its name beside it is tracked too or the file could not be read; '*' hides only what Git does not track. Untrack the folder (git rm -r --cached .claude/framework-update-backup, then commit), then re-run the update. Nothing was changed.")
+        exit 3
+    }
+    return $beside
 }
 foreach ($relative in $incomingPaths) {
     $agentsSkill = [regex]::Match($relative, '^\.agents/skills/([a-z0-9-]+)/SKILL\.md$')
@@ -946,7 +1145,7 @@ foreach ($relative in $incomingPaths) {
         [Console]::Error.WriteLine("ERROR: Refusing update: '$relative' must be saved before the framework's /$workflow wrapper replaces it, and both $(".claude/framework-update-backup/agents-skills/$workflow/SKILL.md") and $($backup.Relative) already hold other content. Move them out of .claude/framework-update-backup/agents-skills/$workflow/, then re-run the update. Nothing was changed.")
         exit 3
     }
-    $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative; KeptOutBy = '.claude/framework-update-backup/agents-skills/.gitignore' })
+    $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative })
     $unowned = if ($null -eq $priorManifest) { 'there is no usable previous framework-ownership.json' } else { 'the previous framework-ownership.json does not list it' }
     $reconciliationMessages.Add("NOTICE: '$relative' holds the framework's /$workflow text, but $unowned, so the update saves it to $($backup.Relative), then installs the wrapper. Keep any change you need in AGENTS.md or a project skill.")
 }
@@ -1160,6 +1359,7 @@ foreach ($relative in @($protectedReferenceCandidates | Sort-Object)) {
 # Git is optional for a plain target, but repository evidence or redirected Git state must never be
 # reinterpreted as non-Git. Refuse before mutation unless Git authoritatively identifies the target
 # and its porcelain status can be read through the selected target path.
+$script:TargetStatus = $null
 if (-not $WhatIf -and ($adoptMode -or $updateMode)) {
     foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE')) {
         $value = [Environment]::GetEnvironmentVariable($name, 'Process')
@@ -1177,14 +1377,20 @@ if (-not $WhatIf -and ($adoptMode -or $updateMode)) {
         $probe = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-inside-work-tree')
         if ($probe.Started -and $probe.ExitCode -eq 0) {
             if ($probe.Output -cne 'true') { Stop-UnverifiableGitPreflight }
-            $status = Invoke-GitText -GitPath $gitPath -Arguments @('--no-optional-locks', '-C', $tgt, 'status', '--porcelain=v1', '--untracked-files=all')
-            if (-not $status.Started -or $status.ExitCode -ne 0) {
+            $status = Get-TargetStatus -GitPath $gitPath
+            if ($null -eq $status) {
                 [Console]::Error.WriteLine('CANT-VERIFY: Git identified this target as a worktree, but its status could not be read. Commit, stash, or copy local changes, then repair Git and re-run the installer.')
                 exit 4
             }
-            if ($status.RecordCount -gt 0) {
+            # An untracked file below the target's .claude/framework-update-backup/ is an earlier update's own copy, not the
+            # team's change; refusing for it would steer the team to commit it. The same records are counted in the keep-out line.
+            $script:TargetStatus = $status
+            $dirt = @($status.Records | Where-Object { -not ($updateMode -and $null -ne (ConvertFrom-BackupRecord -Record $_ -Prefix $status.Prefix)) })
+            if ($dirt.Count -gt 0) {
                 if (-not $AllowDirtyTree) {
                     [Console]::Error.WriteLine('ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use -AllowDirtyTree only after doing so deliberately.')
+                    $residue = if ($updateMode) { Get-BackupResidue -Status $status } else { @() }
+                    if ($residue.Count -gt 0) { [Console]::Error.WriteLine((Protect-BackupResidue -GitPath $gitPath -Count $residue.Count)) }
                     exit 4
                 }
                 Write-Output '  override: -AllowDirtyTree accepted for this dirty Git target.'
@@ -1339,6 +1545,8 @@ if ($updateMode) {
 # backup that later runs mistake for the whole one.
 $backupSkillsRoot = Join-Path $tgt '.claude/framework-update-backup/skills'
 $backupIncompleteRelative = '.claude/framework-update-backup/skills-backup-incomplete'
+# Each copy's path is mapped by ConvertTo-SavedRelative, so no copy loads as a live skill or is a live repository, and
+# moved beside a path Git tracks (Get-UntrackedSaveRelative).
 if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) -and
     (-not (Test-Path -LiteralPath $backupSkillsRoot) -or (Test-Path -LiteralPath (Join-Path $tgt $backupIncompleteRelative) -PathType Leaf))) {
     [void](Assert-SafeTargetMutation -Relative $backupIncompleteRelative)
@@ -1346,9 +1554,9 @@ if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Contain
         $underSkills = $file.FullName.Substring($activeSkillsRoot.Length).TrimStart('\', '/') -replace '\\', '/'
         # A retired skill file is known framework content that the retirement loop deletes first.
         if ($deletePlan -contains ".claude/skills/$underSkills") { continue }
-        $relative = ".claude/framework-update-backup/skills/$underSkills"
+        $relative = Get-UntrackedSaveRelative -Relative ('.claude/framework-update-backup/skills/' + (ConvertTo-SavedRelative -Relative $underSkills)) -Source $file.FullName
         [void](Add-PlannedWrite -Relative $relative -ForceCreate)
-        $skillBackupPlan.Add([pscustomobject]@{ Source = $file.FullName; Relative = $relative })
+        $skillBackupPlan.Add([pscustomobject]@{ Source = $file.FullName; Relative = $relative; SourceRelative = ".claude/skills/$underSkills" })
     }
 }
 
@@ -1397,16 +1605,14 @@ foreach ($relative in $retirementPreserve) { [void]$preservePlan.Add($relative) 
 # framework-ownership.json does not list: a team's own file at a path a release ships for the first time, as
 # 0.95.0's .claude/commands/security-gate.md was, is otherwise lost. With no usable previous manifest no path can be
 # called new, so every file that differs from this release is saved, summed up in one line instead of one each.
-# Settings and the skills this run backs up already have their own save.
-# A saved copy must never load as a live skill, command, agent, instruction or ignore file: agents read a .claude,
-# .agents or .github folder nested anywhere. So below files/ a name starting with '.' gains a leading '_', and so does
-# one already starting with '_', which keeps two paths from ever saving to one name.
+# Settings and the skills this run backs up already have their own save. Below files/ each path is mapped by
+# ConvertTo-SavedRelative, so no saved copy is live.
 $saveMessages = New-Object System.Collections.Generic.List[string]
 $savesRelative = '.claude/framework-update-backup/files'
 if ($updateMode) {
     $savedElsewhere = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
     [void]$savedElsewhere.Add('.claude/settings.json')
-    foreach ($entry in $skillBackupPlan) { [void]$savedElsewhere.Add('.claude/skills/' + $entry.Relative.Substring('.claude/framework-update-backup/skills/'.Length)) }
+    foreach ($entry in $skillBackupPlan) { [void]$savedElsewhere.Add($entry.SourceRelative) }
     $additiveSaves = 0; $additiveAlready = 0
     foreach ($relative in $ordinaryApplyPaths) {
         if ($savedElsewhere.Contains($relative) -or $relative -match '^\.agents/skills/[a-z0-9-]+/SKILL\.md$' -or
@@ -1420,7 +1626,7 @@ if ($updateMode) {
             exit 4
         }
         if ((Get-LfSha256 -Bytes $existingBytes) -ceq (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Join-Path $src $relative))))) { continue }
-        $preferred = "$savesRelative/" + (@($relative.Split('/') | ForEach-Object { if ($_ -match '^[._]') { "_$_" } else { $_ } }) -join '/')
+        $preferred = "$savesRelative/" + (ConvertTo-SavedRelative -Relative $relative)
         $backup = Find-UpdateBackup -Preferred $preferred -Bytes $existingBytes
         if ($backup.State -eq 'taken') {
             [Console]::Error.WriteLine("ERROR: Refusing update: '$relative' must be saved before the framework's file replaces it, and both $preferred and $($backup.Relative) already hold other content. Move them out of $savesRelative/, then re-run the update. Nothing was changed.")
@@ -1435,7 +1641,7 @@ if ($updateMode) {
         }
         if ($backup.State -eq 'saved') { continue }
         [void](Add-PlannedWrite -Relative $backup.Relative -ForceCreate)
-        $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative; KeptOutBy = "$savesRelative/.gitignore" })
+        $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative })
     }
     $additiveTotal = $additiveSaves + $additiveAlready
     if ($additiveTotal -gt 0) {
@@ -1527,9 +1733,11 @@ if ($updateMode) {
                     AgentsText = ConvertTo-AgentsInstructionText -Text $claudeText
                     HasBom = $claudeHasBom
                     BackupAgents = [bool]$agentsEntry
+                    ClaudeBackup = Get-UntrackedSaveRelative -Relative '.claude/framework-update-backup/instruction-files/CLAUDE.md' -Source $claudeTarget
+                    AgentsBackup = $(if ($agentsEntry) { Get-UntrackedSaveRelative -Relative '.claude/framework-update-backup/instruction-files/AGENTS.md' -Source $agentsTarget } else { $null })
                 }
-                foreach ($relative in @('.claude/framework-update-backup/instruction-files/CLAUDE.md', 'CLAUDE.md', 'AGENTS.md')) { [void](Add-PlannedWrite -Relative $relative) }
-                if ($layoutMove.BackupAgents) { [void](Add-PlannedWrite -Relative '.claude/framework-update-backup/instruction-files/AGENTS.md') }
+                foreach ($relative in @($layoutMove.ClaudeBackup, 'CLAUDE.md', 'AGENTS.md')) { [void](Add-PlannedWrite -Relative $relative) }
+                if ($layoutMove.BackupAgents) { [void](Add-PlannedWrite -Relative $layoutMove.AgentsBackup) }
                 $layoutMessage = 'LAYOUT: moving the project instructions from CLAUDE.md into AGENTS.md (replacing the generated mirror) and writing the CLAUDE.md import stub; both originals, including any hand edits to the mirror, go to .claude/framework-update-backup/instruction-files/. Review AGENTS.md before committing.'
             } else {
                 $layoutMessage = 'LAYOUT: AGENTS.md is not the retired generated mirror, so CLAUDE.md and AGENTS.md were left as they are. Merge CLAUDE.md into AGENTS.md by hand and make CLAUDE.md the two-import stub (docs/upgrade-checklist.md).'
@@ -1588,10 +1796,35 @@ if ($adoptMode -and $null -ne $ignoredShippedPaths) {
 }
 $archiveIgnoreRelative = 'docs/pre-adoption/.gitignore'
 if ($keptOutEntries.Count -gt 0) { [void](Add-PlannedWrite -Relative $archiveIgnoreRelative) }
-# The same holds for a file an update saves before replacing it; when Git cannot say, its copy stays out too.
-$backupsKeptOut = @($updateBackups | Where-Object { $null -eq $ignoredShippedPaths -or $_.SourceRelative -cin $ignoredShippedPaths })
-$backupIgnoreFiles = @($backupsKeptOut | ForEach-Object { $_.KeptOutBy } | Select-Object -Unique)
-foreach ($ignoreRelative in $backupIgnoreFiles) { [void](Add-PlannedWrite -Relative $ignoreRelative) }
+# Every copy an update saves goes below .claude/framework-update-backup/, and none needs committing: a tracked original
+# is in history already, and an ignored one must not leak. Deciding per copy what Git may see lost three times (a
+# copied '!' rule, the console's code page, an attribute filter), so the folder's .gitignore ends with '*' (Get-BackupKeepOut),
+# and Git is asked after the last copy whether anything there is still committable. A file Git already tracks there stays
+# tracked, so it is counted on every update. The copies an earlier update left where Git could commit them are the
+# status records the dirty-tree check passed over, which -WhatIf reads here instead.
+$backupRelative = '.claude/framework-update-backup'
+$backupIgnoreRelative = "$backupRelative/.gitignore"
+$backupResidue = @(); $backupTracked = 0; $backupKeepOut = $null; $savesIntoBackup = $false; $statusGitPath = $null
+if ($updateMode) {
+    $statusGit = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($statusGit.Count -gt 0) { $statusGitPath = [string]$statusGit[0].Source }
+    $statusRouted = @(@('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE') | Where-Object { [Environment]::GetEnvironmentVariable($_, 'Process') }).Count -gt 0
+    if ($WhatIf -and $statusGitPath -and -not $statusRouted) { $script:TargetStatus = Get-TargetStatus -GitPath $statusGitPath }
+    if ($null -ne $script:TargetStatus) { $backupResidue = Get-BackupResidue -Status $script:TargetStatus }
+    # The list is the keep-out, not a copy.
+    $trackedSet = Get-BackupTracked
+    $backupTracked = @($trackedSet | Where-Object { $_ -ine $backupIgnoreRelative }).Count
+    $savesIntoBackup = ($updateBackups.Count + $skillBackupPlan.Count + $backupResidue.Count) -gt 0 -or $null -ne $layoutMove
+    if ($savesIntoBackup) {
+        $backupKeepOut = Get-BackupKeepOut
+        # Found here, before any change, so this refusal's "Nothing was changed" is true.
+        if ($backupKeepOut.State -eq 'unwritable') {
+            [Console]::Error.WriteLine("ERROR: Refusing update: $backupIgnoreRelative cannot be written ($($backupKeepOut.Reason)), and this update must end it with '*' before saving any copy below it. Make it writable (clear its read-only attribute, for one), then re-run the update. Nothing was changed.")
+            exit 3
+        }
+        if ($backupKeepOut.State -eq 'write') { [void](Add-PlannedWrite -Relative $backupIgnoreRelative) }
+    }
+}
 
 $adoptionMarkerRelative = $null
 if ($adoptMode) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
@@ -1769,6 +2002,14 @@ if ($settingsBackupRelative) {
 } elseif ($settingsBackupKept) {
     Write-Output '  kept the earlier pre-update settings backup: .claude/.state/settings.json.pre-update (.claude/settings.json is already this framework''s own).'
 }
+# The folder's '*' is written before the first copy into it, the skill backup's included; a linked list never is.
+if ($savesIntoBackup -and $backupKeepOut.State -eq 'write') {
+    try { Write-BackupKeepOut -Bytes $backupKeepOut.Bytes } catch {
+        [Console]::Error.WriteLine("ERROR: Could not write $backupIgnoreRelative before saving any copy below it: $($_.Exception.Message)")
+        [Console]::Error.WriteLine('  No file this update saves first was saved or overwritten. Resolve the cause above, then re-run the installer; in a Git target add -AllowDirtyTree, since the changes Git now shows are this run''s own.')
+        exit 3
+    }
+}
 if ($skillBackupPlan.Count -gt 0) {
     $backupIncomplete = Get-ContainedTargetPath -Relative $backupIncompleteRelative
     $backupAt = $backupIncompleteRelative
@@ -1776,7 +2017,7 @@ if ($skillBackupPlan.Count -gt 0) {
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupIncomplete) | Out-Null
         [IO.File]::WriteAllText($backupIncomplete, "This skill backup is unfinished; the next framework update takes it again.`n")
         foreach ($entry in $skillBackupPlan) {
-            $backupAt = '.claude/skills/' + $entry.Relative.Substring('.claude/framework-update-backup/skills/'.Length)
+            $backupAt = $entry.SourceRelative
             $destination = Get-ContainedTargetPath -Relative $entry.Relative
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
             Copy-Item -Force -LiteralPath $entry.Source -Destination $destination -ErrorAction Stop
@@ -1788,28 +2029,6 @@ if ($skillBackupPlan.Count -gt 0) {
         [Console]::Error.WriteLine('  No skill was overwritten, and the next run takes the backup again. Resolve the cause above (usually a program holding a file open), then re-run the installer; in a Git target add -AllowDirtyTree, since the changes Git now shows are this run''s own.')
         exit 3
     }
-}
-foreach ($ignoreRelative in $backupIgnoreFiles) {
-    $keptOut = @($backupsKeptOut | Where-Object { $_.KeptOutBy -ceq $ignoreRelative })
-    $ignoreRoot = $ignoreRelative.Substring(0, $ignoreRelative.Length - '/.gitignore'.Length)
-    try {
-        $ignorePath = Get-ContainedTargetPath -Relative $ignoreRelative
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ignorePath) | Out-Null
-        $ignoreText = if (Test-Path -LiteralPath $ignorePath -PathType Leaf) { [IO.File]::ReadAllText($ignorePath) } else { '' }
-        $ignoreLines = @($ignoreText -split '\r?\n')
-        $ignoreNew = @($keptOut | ForEach-Object { $_.Relative.Substring($ignoreRoot.Length) } | Where-Object { $_ -cnotin $ignoreLines })
-        if ($ignoreNew.Count -gt 0) {
-            $separator = if ($ignoreText.Length -gt 0 -and -not $ignoreText.EndsWith("`n")) { "`n" } else { '' }
-            [IO.File]::AppendAllText($ignorePath, $separator + ($ignoreNew -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
-        }
-    } catch {
-        [Console]::Error.WriteLine("ERROR: Could not write $ignoreRelative before saving gitignored files: $($_.Exception.Message)")
-        [Console]::Error.WriteLine('  No file this update saves first was saved or overwritten. Resolve the cause above, then re-run the installer; in a Git target add -AllowDirtyTree, since the changes Git now shows are this run''s own.')
-        exit 3
-    }
-    # Without a previous manifest every differing file is saved, so the files are counted, as in their summary line.
-    $named = if ($null -eq $priorManifest -and $ignoreRelative -ceq "$savesRelative/.gitignore") { "the $($keptOut.Count) file$(if ($keptOut.Count -ne 1) { 's' }) it lists" } else { @($keptOut | ForEach-Object { $_.Relative }) -join ', ' }
-    Write-Output "  kept out of Git by ${ignoreRelative}: $named. You had gitignored the originals, or Git could not say, and they may hold secrets."
 }
 foreach ($entry in $updateBackups) {
     try {
@@ -1878,15 +2097,37 @@ if ($layoutMove) {
     # Backups first, byte-for-byte; then AGENTS.md; the stub last, so an interrupted run leaves
     # CLAUDE.md un-migrated and a re-run finds AGENTS.md no longer a mirror and stops.
     $backupRoot = '.claude/framework-update-backup/instruction-files'
-    $backupDestination = Get-ContainedTargetPath -Relative "$backupRoot/CLAUDE.md"
+    $backupDestination = Get-ContainedTargetPath -Relative $layoutMove.ClaudeBackup
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupDestination) | Out-Null
     Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'CLAUDE.md') -Destination $backupDestination
     if ($layoutMove.BackupAgents) {
-        Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'AGENTS.md') -Destination (Get-ContainedTargetPath -Relative "$backupRoot/AGENTS.md")
+        Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'AGENTS.md') -Destination (Get-ContainedTargetPath -Relative $layoutMove.AgentsBackup)
     }
     [IO.File]::WriteAllText((Get-ContainedTargetPath -Relative 'AGENTS.md'), $layoutMove.AgentsText, [Text.UTF8Encoding]::new($layoutMove.HasBom))
     Copy-Item -Force -LiteralPath (Join-Path $src 'CLAUDE.md') -Destination (Get-ContainedTargetPath -Relative 'CLAUDE.md')
     Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in $backupRoot/)."
+}
+# Asked after the last copy: only Git can say none is committable. A target without Git has no commit to keep them from.
+if ($savesIntoBackup) {
+    # Every path this run wrote a copy to: Git must show none of them, whatever their status code.
+    $backupWritten = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in $updateBackups) { [void]$backupWritten.Add([string]$entry.Relative) }
+    foreach ($entry in $skillBackupPlan) { [void]$backupWritten.Add([string]$entry.Relative) }
+    if ($layoutMove) { foreach ($relative in @($layoutMove.ClaudeBackup, $layoutMove.AgentsBackup)) { if ($relative) { [void]$backupWritten.Add($relative) } } }
+    $visible = 0
+    if ($null -ne $script:TargetStatus) { $visible = Get-BackupVisibleCount -GitPath $statusGitPath -Prefix $script:TargetStatus.Prefix -Written $backupWritten }
+    elseif ($backupKeepOut.State -eq 'blocked') { $visible = $null }
+    if ($backupKeepOut.State -ne 'blocked' -and $null -ne $visible -and $visible -eq 0) {
+        $left = if ($backupResidue.Count -gt 0) { " That covers the $(if ($backupResidue.Count -eq 1) { '1 file' } else { "$($backupResidue.Count) files" }) an earlier update left there where Git could commit $(if ($backupResidue.Count -eq 1) { 'it' } else { 'them' }), which may hold copies of files you had gitignored." } else { '' }
+        Write-Output "  kept out of Git: every copy this update saves goes under $backupRelative/, whose .gitignore ends with '*', so Git ignores the whole folder.$left Keep what you need under other paths, then delete the folder."
+    } else {
+        $why = if ($backupKeepOut.State -eq 'blocked') { "but its .gitignore $($backupKeepOut.Reason), which this update never writes through, so it could not end that list with '*'." } else { "whose .gitignore ends with '*', but" }
+        $seen = if ($null -eq $visible) { 'Git could not say what it would commit there.' } else { "Git can still commit $(if ($visible -eq 1) { '1 file' } else { "$visible files" }) there." }
+        Write-Output "  CANT-VERIFY: every copy this update saves goes under $backupRelative/, $why $seen Copies there may hold files you had gitignored: do not commit that folder. Keep what you need under other paths, then delete it."
+    }
+}
+if ($backupTracked -gt 0) {
+    Write-Output "  NOTICE: Git tracks $(if ($backupTracked -eq 1) { '1 file' } else { "$backupTracked files" }) under $backupRelative/, which may hold copies of files you had gitignored; '*' hides only what Git does not track yet. Review them, then untrack them with  git rm -r --cached $backupRelative  and commit that. A secret once committed there stays in your Git history: rotate it, or rewrite that history."
 }
 if ($updateMode) {
     $untouchedContent = @($protected | Where-Object { -not ($layoutMove -and $_ -in @('CLAUDE.md', 'AGENTS.md')) })
