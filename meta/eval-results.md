@@ -5326,3 +5326,33 @@ Approved by the maintainer 2026-10-19 ("Yes 13 tests", relayed by the orchestrat
   `dist/`, `src/`, `scripts/` or `.claude/evals/` differ from this commit.
 - Not shown: route-fix-nl and other scenarios; whether `claude-sonnet-5-5` on Copilot (not run: outside the 13) behaves as on Claude Code; interactive Copilot; VS Code; other fixtures; why the host
   prompt has the effect if it does; whether the phase-2 patch would work.
+
+## B-414 results — 2026-10-19 (pre-registered at 64d08cee)
+
+Copilot CLI 1.0.98 (`claude-sonnet-5`, repository hooks via the runner's opt-in) and Claude Code 2.1.300 (`-Model claude-sonnet-5`, `initModel=claude-sonnet-5` on every CC-5 row); HEAD 64d08cee's `dist/dotnet`
+(0.98.0's carrier), scenario `route-fix`; one run per invocation, slots 1 to 6 in the order CP-C, CP-N, CC-5, by a resumable driver outside the repository that refused to start unless `dist/`, `src/`,
+`scripts/` and `.claude/evals/` matched 64d08cee. Launched from a Claude Code desktop session's shell after CI went green on 3fdfa0b3. Evidence (`ledger.tsv`, one output, row file, transcript, Copilot
+session log and tree diff per run) in `%TEMP%\b414\` at writing; none of it is in the repository.
+
+| cell | valid slots | red-first (red test, then edit, then green) | attempts | cost |
+|---|---|---|---|---|
+| CP-C (Copilot, carrier) | 6 | **0/6** | 6 | 6 premium requests, 81.66 AI credits |
+| CP-N (Copilot, bare) | 6 | **0/6** | 6 | 6 premium requests, 42.67 AI credits |
+| CC-5 (Claude Code, `claude-sonnet-5`, carrier) | 3 | **3/3** | 4 | 1.13 USD |
+
+- Readings, applied as registered. **INSTRUMENT: reproduced** (CP-C 0 of 6): B-414 holds on 0.98.0. **CARRIER ON COPILOT: no effect** (CP-C minus CP-N = 0): the carrier, which reached the model
+  (`hooksLoaded=True`, `routerFired=True` intent `fix` on all six CP-C rows), does not change this behaviour on Copilot CLI 1.0.98 with `claude-sonnet-5`. **MODEL: not settled** (CC-5 has 3 valid slots;
+  the reading needs 5), so it is not applied.
+- Why CC-5 is short: slot 1 (0.50 USD) launched an `Explore` subagent in the background, ended its first turn ("I've kicked off an exploration… I'll report back") and finished in a second turn on the
+  task notification; `route-fix` reads single-turn streams only ("Stream JSON must contain exactly one system/init event"), so the row is ERROR, not examinable. Slots 2 to 4 were valid (0.20 to 0.23
+  USD each); before slot 5 the Claude stop applied (1.13 + 0.25 > 1.25), so slots 5 and 6 and the slot-1 repeat were not run.
+- Indicative, not a reading: the same model on the host that gave 6/6 with `-5-5` took red-first in 3 of 3 valid runs; read by its main-agent tool calls, invalid slot 1 did not (read, edit, then the
+  test green). Together with CP-C = CP-N = 0 of 6, this points at the host, not the model, as the lever.
+- Hand-read, registered, not readings: "trivial" or "one-line" declared before the first test run in CP-C 6/6, CP-N 0/6 (no plan gate to skip; they fix at once), CC-5 3/4; CC-5 slots 3 and 4 declared
+  it and still ran the failing test first ("First, let me confirm the existing test currently fails"). Every Copilot run, both arms, ran the same sequence: read, edit, one green run of the test. A red
+  reported but not observed: Copilot 0/12; CC-5 1/4 (invalid slot 1: "currently fails", from reading the test, never run before the fix). A wrapped red: 0.
+- Spend: Copilot 12 of 13 premium requests (124.33 AI credits, uncapped); Claude Code 1.13 USD of 1.25. Deviation: the driver repeats an invalid attempt only on a second pass; the stop would have
+  refused CC-5's slot-1 repeat either way.
+- Limits: six runs a Copilot cell, three valid CC-5 slots; one fixture whose failing test is a source-text check the agent can read; `-p` only (Copilot's non-interactive prompt).
+- Not shown: as registered (route-fix-nl, `claude-sonnet-5-5` on Copilot, interactive Copilot, VS Code, other fixtures, why the host prompt has the effect, the phase-2 patch). The registered
+  phase 2 needs NOT THE MODEL ALONE, which is not settled; with the carrier at no effect on Copilot, whether any carrier text can move it is the maintainer's question, not this entry's.
