@@ -5293,3 +5293,36 @@ matcher now strips `**` and backticks before matching, was checked against the r
 - Limits: six runs a cell and, on Copilot, three; N exists only for the two small cells; a knockout, not a degradation, is what n = 6 can show (T1 5/6 and the all-6/6 arms say nothing about 5/6 against 3/6); the placement and contract cells would pass whatever the carrier said if the bare agent also passes, and no N was run; the leanness cuts of P2 (comments, helpers, barrel files, abstract bases) have no grader here, and the T2 hand-read line per run
   was not done (the retained tree diffs include the fixture's own files, so they do not isolate the agent's change; the `route-fix` edits are one line, placement is graded by `newInjectable`). The 7 INCONCLUSIVE attempts are a rate of the agent not running the test script on this prompt (7 of 90), not a carrier effect: C 2, T1 4, T2 1 of them.
 - Not shown: as registered (degradation below a knockout; what P2 removes on the behaviour it governs; VS Code; interactive Copilot; the monorepo dist; other fixtures and models; field use; whether closing text is true; the plan gate under `-p`); and, new, whether the 5/6 of `route-fix` T1 is the one-in-six it looks like (it is a CANNOT-EXAMINE twice, not a failure).
+
+## B-414 pre-registration — red-first on Copilot CLI: model, host or carrier (2026-10-19, frozen by the commit that holds it, before any run)
+
+Approved by the maintainer 2026-10-19 ("Yes 13 tests", relayed by the orchestrating session): 13 Copilot premium requests and about 1 USD of Claude Code.
+- Question. B-411 read red-first on `route-fix` at 1 of 3 on Copilot CLI 1.0.98 (`claude-sonnet-5`, full carrier) against 6 of 6 on Claude Code 2.1.300 (`claude-sonnet-5-5`), so model and host
+  are confounded, and no bare Copilot arm says whether the carrier acts there at all. This study separates them; it ships nothing.
+- Background, read post hoc from retained evidence at no cost (not a reading): the carrier is in Copilot's `system.message` in full (twice) and the rail in the user turn; 17 of 17 retained Copilot
+  `route-fix` transcripts (B-411's four, the 13 out-of-procedure smoke runs) open "trivial one-line fix, skipping the plan gate" before any test run, and the grader reads 5 of 17 red-first; with the rail
+  silent (`route-fix-nl`) 0 of 3. Claude Code `claude-sonnet-5-5` also skips the plan gate as one-line in 11 of 42 B-411 framework runs but runs the red test first in every counted one. Copilot's
+  `-p` system prompt says "proceed autonomously", "CRITICAL: Maximize tool efficiency" and "Run the smallest command covering the change".
+- Arms, scenario `route-fix` only (fixture, prompt, grader `testBeforeProduction` and the 1.25 USD per-run cap unchanged), n = 6 each. Framework arm = this commit's `dist/dotnet` (0.98.0's carrier;
+  `dist/` differs from the v0.98.0 tag only in `presentation/` and `CHANGELOG.md`). **CP-C**: Copilot CLI 1.0.98, `-CopilotModel claude-sonnet-5`, framework. **CP-N**: the same with `-Arm none`.
+  **CC-5**: Claude Code 2.1.300, `-Model claude-sonnet-5`, framework. Commands: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor copilot -CopilotModel claude-sonnet-5
+  -Scenario route-fix -Trials 1 -TimeoutSeconds 1200` (CP-N adds `-Arm none`); `... -Live -Executor claude -Model claude-sonnet-5 -Scenario route-fix -Trials 1 -TimeoutSeconds 1200`; every run with
+  `-ResultsPath` outside the repository. One run per invocation; order per slot CP-C, CP-N, CC-5, slots 1 to 6. No dry run: the runner's Copilot path produced 26 valid 1.0.98 rows in B-411.
+- Validity. All rows: status PASS or FAIL (the grader's INCONCLUSIVE is `routeExercised=False`: the agent never ran the test), `agentExit=0 timedOut=False`. Copilot rows: `executor=copilot`,
+  `copilotCli=1.0.98`, model `claude-sonnet-5`; CP-C `arm=framework hooksLoaded=True routerFired=True`; CP-N `arm=none`. CC-5: `initModel=claude-sonnet-5` exactly (not `-5-5`), `arm=framework`,
+  `routerFired=True`. An invalid attempt is repeated once within the stops; a second closes the slot as not reaching the class. If Claude Code refuses the model, CC-5 is CANNOT-EXAMINE and stops.
+- Metric, per valid slot: the grader's Pass (a red run of `tests/Test-Calculator.ps1`, then the production edit, then a green run), as B-411.
+- Readings, fixed now; a cell with fewer than 5 valid slots is "not settled" and its reading is not applied. **INSTRUMENT**: CP-C at 2 or fewer of 6 reproduces B-414 on 0.98.0; CP-C at 5 or 6 of 6:
+  not reproduced, B-414 closes; 3 or 4: the maintainer decides. **CARRIER ON COPILOT** (read only when INSTRUMENT reproduces or is 3-4): CP-C minus CP-N of 3 or more, the carrier acts on Copilot;
+  of 1 or less, the carrier does not change this behaviour there; 2: reported, the maintainer decides. **MODEL**: CC-5 at 2 or fewer of 6 reads MODEL (`claude-sonnet-5` does not take red-first on the
+  host that gives 6/6 with `-5-5`): no carrier change follows, a `meta/host-certification.md` row and consumer guidance name the model; CC-5 at 5 or 6 of 6 reads NOT THE MODEL ALONE: the host is the
+  lever, and a phase-2 carrier patch (Bug-fix bullet "run the failing test, an existing one or one you write, and see it fail before editing"; plan-gate exception "trivial skips the plan wait, never
+  the red test") is pre-registered separately; CC-5 at 3 or 4: partial, the maintainer decides. A reading is applied as written; the maintainer decides anything it does not cover.
+- Hand-read, reported, not readings: per run, whether "trivial" or "one-line" is declared before the first test run; a red reported but not observed in the run; a wrapped red (the test run
+  inside the agent's own try/catch, red by its output but not by the grader's pattern).
+- Stops. Copilot: 13 premium requests including every repeat (12 counted slots, one reserve), read from each row's `premiumRequests=` (1 for an errored run); before each Copilot attempt, not started
+  if requests so far plus 1 would pass 13. Claude Code: 1.25 USD at each row's `costUsd` (else the transcript's highest `total_cost_usd`, else the cap); not started if spend so far plus 0.25 would pass
+  1.25. A cell the stops leave short is "not settled". AI credits are recorded, uncapped. The driver is resumable and outside the repository (`%TEMP%\b414\ledger.tsv`), and refuses to start if
+  `dist/`, `src/`, `scripts/` or `.claude/evals/` differ from this commit.
+- Not shown: route-fix-nl and other scenarios; whether `claude-sonnet-5-5` on Copilot (not run: outside the 13) behaves as on Claude Code; interactive Copilot; VS Code; other fixtures; why the host
+  prompt has the effect if it does; whether the phase-2 patch would work.
