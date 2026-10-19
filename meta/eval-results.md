@@ -5406,3 +5406,39 @@ start unless the frozen paths matched fdcb4635. Evidence in `%TEMP%\b414b\` at w
 - Spend: 13 of 13 premium requests (94.14 AI credits, uncapped); no Claude Code spend.
 - Limits: one fixture whose test script no recorded command names, `-p` only, six runs a cell. Not shown: as registered; and whether a fixture that records `pwsh tests/Test-Calculator.ps1` as its test
   command (or a bootstrapped `AGENTS.md`) lets the framework arm find the test on 5.5, which is what HOST against MODEL now needs.
+
+## B-421 pre-registration — finding an existing test before reporting tests "not available": carrier sentence (A) and session-start list (C) (2026-10-19, frozen by the commit that holds it, before any run)
+
+Approved by the maintainer in the session that runs it, 2026-10-19 ("Do all 3", then "Full: A and C"): about 27 Copilot premium requests and up to 3.00 USD of Claude Code. Design:
+`.claude/plans/2026-10-19-find-existing-test.md` (Fable 5.1, read-only).
+- Question. B-414b: Copilot CLI 1.0.98 on `claude-sonnet-5.5` with the carrier never ran the fixture's `tests/Test-Calculator.ps1` (0 of 7; "no test harness exists"), bare 6 of 6. Does a carrier
+  sentence (A) or a session-start list of the repository's test entry points (C) make the agent run the existing test, without inventing a harness where none exists and without costing Claude Code its
+  red-first? Ships nothing; a separate shipping decision follows (A ordinary, C guarded).
+- Patches (framework arm, `-TargetPatch`, cut from a fresh install of this commit's `dist/dotnet`): **A** `meta/eval-fixtures/target-patches/b421-find-test-carrier.patch` (tag `adec23455b05`): after
+  "mark missing categories **not available**." in the carrier: "Where `AGENTS.md` records no test command, list the whole tree (`git ls-files`) before marking **test** not available: a committed
+  test project, a manifest test script, or a non-framework-owned script under `tests/`, `test/` or `spec/` is the existing harness — run it with its evidenced interpreter and report it as unrecorded
+  (flag `/rebootstrap`)." **C** `…/b421-find-test-preload.patch` (tag `01b04548e196`): `session-start.ps1`, in the BOOTSTRAP_PENDING branch only, lists `git ls-files` test-shaped paths minus
+  `framework-ownership.json` paths, at most 8, as "- **Unrecorded test entry points** (no Verification Commands recorded yet): … before reporting tests **not available**, read the applicable one and
+  run it with its evidenced interpreter; add no harness; migration/deploy stays manual/CI-only." Preflight (no spend): A applies; C names `tests/Test-Calculator.ps1` and not `tests/evals` on
+  `route-fix` under `pwsh` and `powershell.exe`, as plain output and Copilot JSON, and prints no line on `dotnet-notest`.
+- Arms. `route-fix`, n = 6 each: **CP-C** Copilot 1.0.98, the runner's default `claude-sonnet-5.5`, framework, no patch; **CP-T1** patch A; **CP-T2** patch C; **CC-T1**, **CC-T2** Claude Code
+  2.1.300 `-Model sonnet` with patch A, C (non-regression; B-411's Claude Code `route-fix` T2 6/6 stands in for C). Decoy `route-fix-notest` (fixture `dotnet-notest`), n = 3 each: **D-T1**, **D-T2**
+  on Copilot. Commands: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor copilot|claude [-Model sonnet] -Scenario route-fix|route-fix-notest -Trials 1 -TimeoutSeconds 1200
+  [-TargetPatch <patch>]`, `-ResultsPath` outside the repository. Order: slots 1-6 of CP-C, CP-T1, CP-T2, CC-T1, CC-T2, then slots 1-3 of D-T1, D-T2.
+- Metrics. Primary, per run: `testInvoked=True` (the route grader, 44d98147: a call naming the script whose result is the script's run output, not its source). Secondary: the grader's red-first Pass
+  (read for CC arms). Decoy: the grader's Pass (`noInventedHarness`: fixed, no new or changed test-shaped file since the pre-run snapshot, no scaffolding or install command).
+- Validity. Every row: normal exit; T rows carry their patch tag, CP-C none. Route rows are valid whether the grader says PASS, FAIL or INCONCLUSIVE (`routeExercised=False` is a run that never
+  touched the script: `testInvoked=False`, examinable). Copilot: `copilotCli=1.0.98`, `selectedModel` and every main-agent message `claude-sonnet-5.5`, `hooksLoaded=True`, `routerFired=True`.
+  Claude Code: `initModel=claude-sonnet-5-5`, `routerFired=True`. CP-T2 and CC-T2: the SessionStart output names `tests/Test-Calculator.ps1` (else CANNOT-EXAMINE). An invalid attempt is repeated
+  once within the stops; a second closes the slot.
+- Readings, fixed now; a cell with fewer than 5 valid slots (decoy: 3) is not settled. **INSTRUMENT**: CP-C `testInvoked` in 1 or fewer of 6 reproduces B-414b; 4 or more: not reproduced, no T arm is
+  read; 2-3: the maintainer decides. **Per Copilot T arm against CP-C**: `testInvoked` in 5 or 6 of 6 FIXED; 3-4 PARTIAL (the maintainer decides); 2 or fewer NO EFFECT. **Per CC arm**: red-first Pass
+  in 5 or 6 of 6 HOLDS; 3 or fewer KNOCKOUT (that option does not ship); 4: the maintainer decides. **Decoy**: 3 of 3 Pass CLEAN; any invented harness STOP (that option is reworded before any
+  shipping). An option is a candidate to ship only if FIXED, HOLDS and CLEAN; if both are, A (ordinary, smaller) is preferred and C is the maintainer's call. A reading is applied as written; the
+  maintainer decides anything it does not cover.
+- Hand-read, reported, not readings: a whole-tree listing before any "no harness" claim; "no test harness exists" in any message; the test run before or after the edit; a run of `tests/evals/*` or
+  `scripts/test-weakening-scan.ps1`; whether the report calls the script unrecorded or flags `/rebootstrap`; a red reported but not observed.
+- Stops. Copilot: 27 premium requests including repeats (24 slots, 3 reserve), from each row's `premiumRequests=`; not started if requests so far plus 1 would pass 27. Claude Code: 3.00 USD at each
+  row's `costUsd`; not started if spend so far plus 0.30 would pass 3.00. AI credits recorded, uncapped. Driver resumable, outside the repository (`%TEMP%\b421\ledger.tsv`); it refuses to start if
+  `dist/`, `src/`, `scripts/`, `.claude/evals/` or the two patches differ from this commit.
+- Not shown: route-fix-nl; a bootstrapped repository; interactive Copilot; VS Code; angular and monorepo dists; a test script with side effects; whether the agents' reports are true.

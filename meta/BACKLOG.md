@@ -211,4 +211,4 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 **Filed against:** v0.98.0 (2026-10-19)
 **Priority:** P1 · **Effort:** M · **Invariants:** #7
 **Status:** Open (found by B-414b; maintainer 2026-10-19: "definitely needs to be addressed", the how defined by Fable): Copilot `claude-sonnet-5.5` with the carrier never ran the fixture's `tests/Test-Calculator.ps1` 0 of 7 (globbed source extensions only, "no test harness exists"), bare 6 of 6; Claude Code 7 of 90 in B-411. Close to a false green: a fix verified by build alone while a real test sat unrun.
-Definition `.claude/plans/2026-10-19-find-existing-test.md`: tighten the route grader (`testInvoked`) and add a no-test decoy first, then measure carrier Option A and session-start Option C (guarded) against one C arm before shipping either; about 27 premium requests and 3 USD, or 15 and 1.50 for A alone.
+Definition `.claude/plans/2026-10-19-find-existing-test.md`. Grader `testInvoked` and the no-test decoy done (44d98147); A and C pre-registered as target patches (`meta/eval-results.md` "B-421 pre-registration"; 27 premium requests, 3.00 USD, approved in session).

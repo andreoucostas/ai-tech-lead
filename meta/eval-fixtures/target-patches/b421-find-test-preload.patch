@@ -1,0 +1,25 @@
+diff --git a/.claude/hooks/session-start.ps1 b/.claude/hooks/session-start.ps1
+index 9bc0c4e..ab54c58 100644
+--- a/.claude/hooks/session-start.ps1
++++ b/.claude/hooks/session-start.ps1
+@@ -83,6 +83,20 @@ if (Test-Path .claude/adoption-pending.json) {
+         $text = Get-Content $instructionFile -Raw
+         if ($text -and $text -match 'BOOTSTRAP_PENDING') {
+             Write-Output "- ⚠ **$instructionFile is unbootstrapped** (BOOTSTRAP_PENDING marker present). ``/bootstrap`` must run before non-trivial work — conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type ``/bootstrap``."
++            # Before /bootstrap records a test command, name the test entry points the repository already holds (consumer-owned files only).
++            if (Test-Path .git) {
++                $owned = @{}
++                if (Test-Path framework-ownership.json) {
++                    try { foreach ($entry in (Get-Content framework-ownership.json -Raw | ConvertFrom-Json).paths) { $owned[[string]$entry.path] = $true } } catch { }
++                }
++                $found = @(git ls-files -- 'tests/*' '*/tests/*' 'test/*' 'spec/*' '*/__tests__/*' '*Test*.ps1' '*.Tests.csproj' '*.Test.csproj' 'package.json' 2>$null | Where-Object {
++                    $_ -and -not $owned.ContainsKey($_) -and $_ -notmatch '(^|/)(node_modules|bin|obj|dist)/' -and ($_ -ne 'package.json' -or ((Get-Content package.json -Raw) -match '"test"\s*:'))
++                } | Sort-Object -Unique)
++                if ($found.Count) {
++                    $shown = (@($found | Select-Object -First 8) -join ', ') + $(if ($found.Count -gt 8) { " (+$($found.Count - 8) more)" } else { '' })
++                    Write-Output "- **Unrecorded test entry points** (no Verification Commands recorded yet): $shown. Files, not recorded commands: before reporting tests **not available**, read the applicable one and run it with its evidenced interpreter; add no harness; migration/deploy stays manual/CI-only."
++                }
++            }
+             break
+         }
+     }
