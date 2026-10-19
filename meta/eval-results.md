@@ -5653,3 +5653,55 @@ Evidence (ledger, runner output, rows, transcripts, Copilot session logs, `src/`
 - Limits: one fixture, whose failing test can be read as red; six runs a cell; `-p` only; the install and the overlay uncommitted in every run, as in every route-fix arm.
 - Not shown: as registered (VS Code, interactive Copilot, other fixtures, stacks and models, generation 1's state, a committed install, Claude Code on `route-fix-nl`, whether the reports are true);
   whether C past `/bootstrap` would move the order (not built; the maintainer's decision).
+
+## B-396 pre-registration — where this framework's hooks run, and what they reach, in Copilot CLI's local sandbox (2026-10-19, frozen by the commit that holds it, before any run)
+
+Requested by the orchestrating session (B-396, rank 7); stop set in that request: 5 premium requests including repeats. Ships nothing: a fix is named, not made.
+- Question. In B-379's arm S (CLI 1.0.95, `--sandbox`, the seeded default policy granting the clone and the user temp directory read and write), every hook ended successfully and the guard
+  blocked the key, but `sessionStart` emitted "## Session preload" alone and the clone got no `.claude/.state` and no `.claude/ai-audit.log`. Why?
+- Lead, read before this freeze (no spend). S-1's `system.message` carried a CLI warning that C-S-1's (unsandboxed) did not: on this Windows version sandboxed PowerShell cannot resolve its
+  current location, so `Get-Location` and `$PWD` may report the drive root and relative paths resolve against it. 1.0.98's `runtime.node` holds the same text and its condition: a host whose
+  Process Security Environment does not report 1.1 filesystem-enumeration support (1.0.91's changelog: a warning "that PowerShell's current location may be wrong"). In master's hooks,
+  `session-start.ps1` resolves `.claude/.state` and `.claude/framework-version.json` through `Get-Location` and tests `.git`, `AGENTS.md`, `CLAUDE.md` and `docs/wiki/INDEX.md` relative, and
+  `audit-trail.ps1` runs `git rev-parse` and `Out-File .claude\ai-audit.log` relative; both swallow errors. `route-prompt.ps1` and `boy-scout-check.ps1` resolve the root from their own path
+  through `git -C`; `guard.ps1` takes absolute paths from the event. Hypothesis H: a sandboxed hook's PowerShell location is the drive root. Not yet seen for a hook process.
+- Host: Copilot CLI 1.0.98 (`copilot --version`; it still accepts the unlisted `--sandbox`), Windows 11 Pro 10.0.26300.9711 (26H2), PowerShell 7.6.6; `~\.copilot\settings.json` holds no
+  `sandbox` key, so `--sandbox` seeds the default policy.
+- Fixture, free, done. HEAD dc18106a's `dist/dotnet` (stamp 0.98.1; SHA-256 prefixes `hooks.json` 490608433dcb, `session-start.ps1` 201858371c7b, `audit-trail.ps1` 7ed30aff97e5, `guard.ps1`
+  314d8be18777, `route-prompt.ps1` d0f5c6e180e4) installed greenfield by B-378's `make-framework-fixture.ps1` (variant F) into a scratch Git repository holding `Smoke.csproj`, committed; then, in
+  that scratch base only, a diagnostic hook `b396-diag.ps1` (ff5046bd37db) in `.claude/hooks/`, appended after the shipped entry on `sessionStart`, `userPromptSubmitted`, `postToolUse` and
+  `agentStop` in `.github/hooks/hooks.json` (then 839fb7a7afe2; shipped entries and scripts unchanged), committed. Each run clones it under the user temp directory, as B-379's runs did.
+- The instrument. Per event, `b396-diag.ps1` records `Get-Location`, `$PWD`, `[Environment]::CurrentDirectory`, `$PSScriptRoot`, the root two levels above it and the event's `cwd`; `Test-Path
+  .git` relative and absolute; the version stamp read relative and absolute; a listing of the root; a write to `.claude/.state` through `Join-Path (Get-Location)` (as `session-start.ps1`), through
+  the script's root and through the event's `cwd`; an `Out-File` to a relative `.claude\` path (as `audit-trail.ps1`); `git rev-parse` without and with `-C`; `Set-Location` to the root; the
+  token's mandatory label and AppContainer SID count; the environment's variable count, `TEMP`, PATH entry count and the names (not values) of `COPILOT_`, `GITHUB_`, `GH_` and `GIT_` variables.
+  On `sessionStart` it prints the record as `additionalContext`, which reaches `events.jsonl` even if no write lands; on every event it also saves it, with every variable name, under
+  `%TEMP%\b396-diag`. Free check outside any sandbox, done: a Copilot `sessionStart` event piped from the clone as `hooks.json` starts it named the clone in every location field, every read
+  and write succeeded and `git` exited 0, and the shipped `session-start.ps1` printed the full preload (18 lines) and wrote `last-session-start` and `last-version-awareness`; started with
+  PowerShell's location set to an empty scratch directory, the shipped `session-start.ps1` printed "## Session preload" alone, S-1's output, and wrote `last-session-start` there, not in the clone.
+- Flags as B-379 (`b396-run.ps1`, B-379's runner adapted): `copilot -p <prompt> -C <clone> --model claude-sonnet-5.5 --allow-all-tools --allow-all-paths --no-ask-user --no-remote
+  --no-remote-export --no-color --no-auto-update --session-id <id> --log-dir <ev> --log-level all --usage-output-file <ev>`; trust variables as B-379. Prompt N: "Create notes.txt containing
+  the single line hello, then stop. It is a one-line file, so no plan is needed; do not run shell commands."
+- Arms, in order, one run each: **S**, with `--sandbox`; **U**, without it (the control: the instrument under the CLI's unsandboxed launch).
+- Validity per run, else CANNOT-EXAMINE and one repeat within the stop: `session.start` with 1.0.98; `claude-sonnet-5.5` on the assistant messages; no auth, quota or model error; repository
+  hooks loaded (a `userPromptSubmitted` `hook.end`); the diag's record in the `sessionStart` `hook.end` output. In S, the session sandboxed (`"sandboxed":true` on a tool result, or the sandbox
+  section in `system.message`); if the CLI says this host cannot sandbox, S is NO-SANDBOX, not repeated.
+- Observed per run: the diag's record from each event that fired; the shipped `sessionStart` output (heading alone or more); after the run, the clone's `.claude/.state` listing,
+  `.claude/ai-audit.log`, `notes.txt` and `%TEMP%\b396-diag`; the drive root's `.claude` (absent before; recorded and removed if a run creates it); the CLI log's sandbox and policy lines;
+  `~\.copilot\config.json` and `settings.json` hashes before and after.
+- Readings, fixed now (arm S unless named):
+  - **CAUSE SEEN (H)**: the diag reports `Get-Location` or `$PWD` as the drive root while `$PSScriptRoot` and the event's `cwd` name the clone, the write through `Get-Location` fails and the
+    write through the script's root lands in the clone. Then the cause is the sandboxed PowerShell location: `session-start.ps1` and `audit-trail.ps1` read and write against the drive root,
+    which the policy does not grant, and swallow the failure. If `[Environment]::CurrentDirectory` names the clone, B-381's `cwd` does not bear on it (the process already starts in the root,
+    as the relative `-File` path resolving shows); if it names the drive root, B-381's `cwd` may bear, recorded as seen. The next step named: those hooks resolve the root from their own
+    path as `route-prompt.ps1` does, with absolute paths and `git -C` (guarded, `src/core/.claude/hooks/**`), this diag's absolute legs as its evidence and a sandboxed run as its check.
+  - **ACCESS**: `Get-Location` names the clone but writes into the clone fail: the cause is file access, not location; which writes failed is recorded and B-396 stays open with that.
+  - **NOT REPRODUCED**: `Get-Location` names the clone, the writes land, and the shipped hooks wrote `last-session-start` and an audit line: the 1.0.95 symptom does not recur on 1.0.98 on
+    this host, and B-396 closes by measurement, its 1.0.95 cause unseen.
+  - Otherwise: recorded as seen; B-396 stays open with what was ruled out.
+  - **U**: the diag names the clone in every location field, its writes land, and the shipped hooks write their state and an audit line: the instrument reads the CLI's unsandboxed launch as
+    the free check did. Otherwise S's reading is withheld as an instrument fault, recorded as seen.
+- Stop: 5 premium requests in all, repeats included (2 planned).
+- Not shown: another Windows build (one whose PSE reports 1.1 enumeration), the macOS and Linux backends; a repository outside the user temp directory (the default policy grants temp too, so a
+  write landing here may come from either grant); the CLI's documented workaround (the drive root in `readonlyPaths`), which changes the user's settings and is not run; the named fix; a managed
+  or customised sandbox policy; VS Code; interactive sessions; other models.
