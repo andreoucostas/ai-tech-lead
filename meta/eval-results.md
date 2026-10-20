@@ -6262,3 +6262,37 @@ Approved by the maintainer ("C past /bootstrap"), relayed by the orchestrating s
   `dist/`, `src/`, `scripts/`, `.claude/evals/` or the two patches differ from this commit.
 - Not shown: `route-fix-nl`; VS Code; interactive Copilot; other fixtures, stacks and models; the multi-command forms; a recorded command that does not cover the defect; a committed install and
   bootstrap; whether the agents' reports are true.
+
+## B-414d results — 2026-10-20 (pre-registered at 4720d0e1)
+
+HEAD 4720d0e1's `dist/dotnet` (stamp 0.98.1; root head 0.98.2 — Unreleased); patch T `b414d-test-command.patch@5b21a8d121c3` on every CPT and CCT row, patch C `b414c-bootstrapped.patch@b3091d1712da`
+on every CPC row; Copilot CLI 1.0.98 on `claude-sonnet-5.5` (every run `selectedModel=claude-sonnet-5.5`, every main-agent message on it, `hooksLoaded=True`) and Claude Code 2.1.300 on `sonnet`
+(`initModel=claude-sonnet-5-5`); one run per invocation, CPT, CPC, CCT per slot, by a resumable driver outside the repository that refused to start unless the frozen paths matched 4720d0e1. All
+18 runs were valid on the first attempt (no repeat): every session-start output read the repository as bootstrapped, every T row's carried the line, no C row's did. Evidence (ledger, runner
+output, rows, transcripts, Copilot session logs, `src/` and `tests/` diffs) in `%TEMP%\b414d\` at writing; none of it is in the repository.
+
+| cell | attempts | valid | red-first (grader Pass) | ran the test (`testInvoked`) | first test run in a turn of its own, red, before the edit (hand-read) | reading |
+|---|---|---|---|---|---|---|
+| CPT (Copilot, T) | 6 | 6 | **1/6** | 6/6 | 6/6 | **NOT FIXED** |
+| CPC (Copilot, C) | 6 | 6 | **0/6** | 6/6 | 0/6 | reproduces B-414c |
+| CCT (Claude Code, T) | 6 | 6 | **6/6** | 6/6 | not read | **HOLDS** |
+
+- Readings, applied as registered: CPT 1 of 6 is NOT FIXED and CCT HOLDS, so the line does not ship; CPC 0 of 6 reproduces B-414c at this commit, so the contrast stands. Fisher exact,
+  two-sided, reported: CPT 1/6 against CPC 0/6, p = 1.0. B-414 stays open with its status rewritten and the next lever named.
+- Outside the readings, why CPT scored 1 of 6 (session logs, all six): every CPT run issued its first test run in a turn with no other tool call (slots 1, 2, 3, 5 and 6 in turn 1, slot 4 in
+  turn 2), its output showed the throw, and the edit came in a later turn; by behaviour CPT went red first 6 of 6 and CPC 0 of 6 (every CPC run sent the first test run in the same turn as the
+  edit, test listed first in slots 2, 5 and 6, as B-414c). In five CPT runs that one call was a chained command, `Get-Content` of `src/Calculator.cs` and `tests/Test-Calculator.ps1` then
+  `pwsh -NoProfile -File tests/Test-Calculator.ps1`, so its result also printed the script's source, whose line `Write-Output 'PASS: inclusive range'` matches the route grader's green-veto
+  (`-notmatch 'PASS: inclusive range'`) and so is not scored red. Slot 4 read the files in turn 1 and ran the test alone in turn 2 ("Running the existing harness alone first to see it fail"),
+  the one PASS. An instrument limit, as B-421b's `tail -3`; the reading stands as registered.
+- Post hoc, not a reading: re-graded with the runner's own evidence functions and that one change (the source line `Write-Output 'PASS: inclusive range'` removed from a result before the
+  veto), CPT 6/6, CPC 0/6 and CCT 6/6 red-first; CPT against CPC p = 0.0022.
+- Hand-read, registered, not readings: "trivial", "one-line" or "one-character" declared before the first test run: CPC 4 of 6 (slots 1 to 4, in the edit's turn), CPT 0 of 6 (all six declared
+  it after the red, in the next turn: "Red confirmed. … one-character fix"). The line quoted in the model's text: CPT slot 4 ("alone"), the others acted on it without quoting it. A red reported but
+  not observed: none in CPT (each "failed before the edit" follows an observed red); every CPC final said no red was seen before the fix, slot 3 saying the old code "failed" while
+  disclosing it was not run, slots 5 and 6 that the first run "raced with" or ran "at the same time as" the edit. A new test file or harness: 0 of 18 (every run changed `src/Calculator.cs`
+  only; the `tests/evals/` files in the diffs are the install's, byte-identical to `dist/dotnet`'s).
+- Spend: Copilot 12 of 14 premium requests (119.71 AI credits, uncapped); Claude Code 0.80 USD of 2.00 (0.13 to 0.14 a run).
+- Limits: one fixture, whose failing test can be read as red and whose script, printed beside its run, carries the grader's green token; six runs a cell; `-p` only; the multi-command forms not run.
+- Not shown: as registered (`route-fix-nl`, VS Code, interactive Copilot, other fixtures, stacks and models, the multi-command forms, a recorded command that does not cover the defect, a
+  committed install and bootstrap, whether the reports are true).

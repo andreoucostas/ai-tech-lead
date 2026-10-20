@@ -17,7 +17,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 2 | B-430 | Data-loss and secret-leak class, executed twice: disabling a framework skill deletes a team skill at its path (left only in Git HEAD) and moves an ignored local file to a committable path; guarded |
 | 3 | B-441 | Secret-leak class, executed: a brownfield install archives and replaces a team's own `.claude/.gitignore`, so the local files it ignored show as committable; guarded |
 | 4 | B-425 | A plain-words review may dispatch no reviewer, and so skip B-418's contract step; blocked on B-416's review answer; guarded, about 3 USD and 3 premium requests to measure |
-| 5 | B-414 | Copilot red-first in a bootstrapped repository, every consumer's steady state, is 0/6 on both prompts (B-414c); its next lever, C past `/bootstrap`, is guarded and the maintainer's decision |
+| 5 | B-414 | Copilot red-first in a bootstrapped repository, every consumer's steady state: C past `/bootstrap` moved the order 6/6 by behaviour but read 1/6 under a grader veto (B-414d); the grader fix and re-run, or the ship, is the maintainer's decision |
 | 6 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half needs a maintainer-driven VS Code session, since nothing here drives VS Code's Copilot harness headlessly |
 | 7 | B-378 | The guard's deny on VS Code's Copilot harness, which 1.141 is making the default for enterprise users, is documented but not observed; it needs a maintainer-driven VS Code session |
 | 8 | B-435 | Secret-leak class, reasoned only: the brownfield archive still asks only `check-ignore`, so a skip-worktree original lands committable; guarded |
@@ -103,9 +103,9 @@ Still needed: an underspecified prompt and a no-gap prompt, and the Copilot CLI 
 ### B-414 · Copilot CLI agents fix first and run the test after: red-first is 1 of 3 and 0 of 3 with the full carrier
 **Filed against:** v0.97.2 (2026-10-18)
 **Priority:** P2 · **Effort:** M to measure · **Invariants:** #5
-**Status:** Open; found in B-411 (Copilot red-first 1/3). B-421 and B-421b: with A (43d44030) and the unbootstrapped session-start list C (cf0b9159), Copilot went red first 6/6 on `route-fix`. B-414c (`meta/eval-results.md`), the steady state (bootstrapped, `AGENTS.md` records the test command, C silent): Copilot CLI 1.0.98 `claude-sonnet-5.5` red-first 0/6 on `route-fix` and 0/6 on `route-fix-nl`, Claude Code 6/6.
-Every Copilot run sent its first test run in one turn with the edit; the CLI ran both at once and the edit finished first (12 of 12).
-Next lever, the maintainer's decision (guarded, pre-register first): C past `/bootstrap`, a session-start line naming the recorded test command, to run it alone and see it fail before any edit.
+**Status:** Open; found in B-411. Unbootstrapped, C took Copilot to red-first 6/6 (B-421b); bootstrapped, 0/6 (B-414c). B-414d (`meta/eval-results.md`, pre-registered at 4720d0e1): C past `/bootstrap` (`b414d-test-command.patch`) read NOT FIXED, CPT 1/6 against CPC 0/6, Claude Code 6/6 HOLDS; nothing shipped.
+By behaviour CPT ran the test alone, red, before the edit 6 of 6 (CPC 0 of 6), but five runs chained a `Get-Content` of the script, whose printed `Write-Output 'PASS: inclusive range'` vetoes the route grader's red; post hoc, that line stripped, 6/6.
+Next lever, the maintainer's decision: fix that veto in the route grader (ordinary, red first) and re-run CPT pre-registered (about 6 premium requests), or ship the measured line on the post-hoc reading (guarded).
 
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 
