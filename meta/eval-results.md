@@ -5897,3 +5897,40 @@ does the shipped `PreToolUse` copy then refuse writes? A fix must keep Claude Co
   Spend: 10 runs, no premium request, no Claude model call.
 - Not shown: VS Code's window, and its Local harness, which reads `.claude/settings.json` only with `chat.useClaudeHooks`; CLIs before 1.0.98 on these copies; a real model's tool choices (the
   calls were scripted); `settings.windows.json` on any host; whether Claude Code acts on `cwd`; macOS and Linux.
+
+## B-427 check — does Copilot CLI 1.0.98 offer this account a `claude-haiku-*` model (2026-10-20, retained logs, no run, not pre-registered)
+
+- `copilot help` (1.0.98) lists no models (`--model <model>`, "use 'auto' to let Copilot pick automatically"); `copilot help config` names `subagents.agents.<agent-name>` model selection, no list.
+- B-382 verification's retained CLI 1.0.98 log (`--log-level all`, 2026-10-20; `<scratch>\b382v\evidence\R1\logs`, SHA-256 prefix 7b8079e108b3), line 263, `[rust:capi_models] fetched model catalog
+  from CAPI`, 50 models, among them `claude-haiku-5.5` ("Claude Haiku 5.5": `policy.state` enabled, `model_picker_enabled` true, `model_picker_category` lightweight, price category low,
+  `restricted_to` pro, pro_plus, business, enterprise, max) and `claude-haiku-4.5` (enabled, no restriction). Default input token price in the catalog's units: `claude-haiku-5.5` 10,
+  `claude-sonnet-5.5` 200, `claude-opus-5.5` 400.
+- Also seen: B-398's refusal on CLI 1.0.95 (2026-10-14) listed both among its "Available models"; B-381's CLI 1.0.98 sessions started on `--model claude-haiku-5.5` (`session.start`
+  `selectedModel`, no model call); B-378's runtime (1.0.85) answered two arms on it.
+- Reading: Copilot CLI 1.0.98 offers this account `claude-haiku-5.5`, its newest Haiku, so WSD-115's Copilot half has an id to pass. Not shown: another plan's catalog.
+
+## B-427 pre-registration — do `/review`'s three Haiku reviewers start on Haiku through the call's argument, on each CLI (2026-10-20, frozen by the commit that holds it, before any run)
+
+The working tree on 324abe9d, uncommitted when this was frozen, makes `convention-check`, `debt-radar` and `bloat-radar` `model: inherit` and adds Step 1's "Reviewer model." paragraph to `review.md`: a
+session on a Claude model other than Haiku passes Haiku in each of the three calls (`haiku` in Claude Code, the newest `claude-haiku-*` id in Copilot CLI), none otherwise and none to the
+other reviewers. Q: from a Sonnet session, does each of the three start on Haiku through its call's `model` argument, on Copilot CLI 1.0.98 and on Claude Code 2.1.300?
+
+- Fixture: that tree's rebuilt `dist/dotnet` (SHA-256 prefixes `review.md` c682965e58ff; `.claude/agents` convention-check 2744e77493bc, debt-radar d61bf39403ca, bloat-radar b78872e28334,
+  solid-check af9c22130907; wrappers as at 60c7a660, e6a62609d91e, 0054a7bf66d9, 6d8bf834e49a, 798939e636b4), installed greenfield by `make-framework-fixture.ps1` variant F. Each run clones
+  it and copies the base's untracked `src/Legacy.cs` into the clone, so the bundle is not empty, as B-399's and B-382's were.
+- Prompt: B-399's prompt R, unchanged.
+- Arm C: Copilot CLI 1.0.98, B-399's runner flags, `--model claude-sonnet-5.5`, session `b4270000-0000-4000-8000-000000000101`. Valid as B-399's: `session.start` 1.0.98, `claude-sonnet-5.5`
+  on the main assistant messages, no auth, quota or model error on a main-session request, repository hooks loaded, a `task` call naming one of the three.
+- Arm K: Claude Code 2.1.300 from the clone, `claude -p <R> --model sonnet --output-format stream-json --verbose --dangerously-skip-permissions --no-session-persistence --max-budget-usd 1.00
+  --setting-sources project,local` (the eval runner's flags), inherited `CLAUDE*` variables removed (the stored claude.ai login). Valid: `system/init` naming 2.1.300 and `claude-sonnet-5-5`, no
+  auth or budget error before the first reviewer call, an `Agent` or `Task` call naming one of the three.
+- Else CANNOT-EXAMINE and one repeat for that arm (C `-0102`, K-2).
+- Counted, per call to each of the three and to `solid-check`: its `model` argument (absent or a value); C: `subagent.started` `model`, `modelSelectionSource` and `taskModelSource`, and the
+  models on that subagent's `assistant.usage`; K: the models on the assistant messages whose `parent_tool_use_id` is that call, and the result's `modelUsage` keys.
+- Readings, fixed now, per arm: all three calls carry a Haiku argument and run on Haiku (C: `explicit_override`, `task_argument`): the rule took effect in that run, and it ships. A call refused
+  as not available: the id is wrong, and the wording is fixed before shipping. Any of the three on the session's model for want of an argument: the rule did not take effect in that run; after
+  K, the three `.claude/agents` files go back to `model: haiku` (Copilot runs the wrappers and never reads that line); after C, the Copilot half does not ship until explained. `solid-check`
+  given Haiku: the wording is tightened before shipping. Anything else: no reading, reported as seen. One run per arm shows the mechanism, not a rate.
+- Recorded, not scored: each reviewer's returned line count; AI credits, premium requests, `total_cost_usd`, wall time; `~\.copilot\config.json` and `settings.json` hashes before and after.
+- Stop: 2 Copilot premium requests (the usage files) and 1.00 USD of Claude Code (`total_cost_usd`; a repeat capped at what remains).
+- Not shown: VS Code (either harness), an Opus session (15 premium requests a prompt on Copilot), a GPT session (the rule passes none), the reviewers' findings on Haiku.
