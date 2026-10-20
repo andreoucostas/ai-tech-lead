@@ -2106,10 +2106,13 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $commits = [int](git -C $Target rev-list --count HEAD)
             $leftOver = @(git -C $Target status --porcelain=v1 --untracked-files=all)
             $committed = $commits -gt $BeforeCommits -and $leftOver.Count -eq 0
-            # B-404, reported: an ask before committing with nothing else wrong. No commit was made, no Git repository is
-            # left inside the target but its own (git status lists one as a directory entry), and the final asks about the commit.
+            # B-404: an ask before committing with nothing else wrong. No commit was made, no Git repository is left inside
+            # the target but its own (git status lists one as a directory entry), and the final asks about the commit. Under
+            # the bare prompt it passes (decision pre-registered at 9c010ad1: the README's prompt, which asks for the commit,
+            # committed 6 of 6); url-install-readme-* asked for the commit, so they still need one.
             $innerRepo = @($leftOver | Where-Object { $_ -match '^\?\? (.+)/$' -and (Test-Path -LiteralPath (Join-Path (Join-Path $Target $Matches[1]) '.git')) }).Count -gt 0
             $commitAsked = [bool]($finalOk -and $commits -eq $BeforeCommits -and -not $innerRepo -and $finalText -match '(?i)[^.!?\r\n]*\bcommit[^.!?\r\n]*\?|\blet me know\b[^.!?\r\n]*\bcommit')
+            $commitStep = $committed -or ($commitAsked -and $Id -notlike 'url-install-readme-*')
             $agentsPath = Join-Path $Target 'AGENTS.md'
             $pending = if ($expect.Command -eq '/adopt') { Test-Path -LiteralPath (Join-Path $Target '.claude/adoption-pending.json') }
                 else { (Test-Path -LiteralPath $agentsPath) -and ((Get-Content -Raw -LiteralPath $agentsPath) -match 'BOOTSTRAP_PENDING') }
@@ -2121,8 +2124,8 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $namesOther = $finalText -match "(?i)(?<![\w/])$([regex]::Escape($other))\b"
             $tagChosen = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)\bgit\b[^\r\n]*\b(?:checkout|switch|clone)\b[^\r\n]*(?:\bv\d+\.\d+\.\d+|describe\s+--tags|--branch\s+v)' }).Count -gt 0
             $webFetches = @($e.Tools | Where-Object Name -eq 'WebFetch').Count
-            $pass = $finalOk -and $installerTool -and $rightStack -and $newest -and $committed -and $pending -and -not $workflowTool -and -not $headlessBranch -and $namesCommand
-            return [pscustomobject]@{ Status = 'PASS'; Pass = [bool]$pass; Detail = "newestTag=$($reference.Tag) installed=$(if ($stamp) { "$($stamp.template)@$($stamp.version)" } else { 'none' }) rightStack=$rightStack newestReleaseFiles=$newest commits=$commits leftInTree=$($leftOver.Count) committed=$committed handoffPending=$pending workflowTool=$workflowTool headlessBranch=$headlessBranch installerTool=$installerTool finalNames$($expect.Command)=$namesCommand; reported: commitAsked=$commitAsked finalNames$other=$namesOther tagChosen=$tagChosen webFetches=$webFetches" }
+            $pass = $finalOk -and $installerTool -and $rightStack -and $newest -and $commitStep -and $pending -and -not $workflowTool -and -not $headlessBranch -and $namesCommand
+            return [pscustomobject]@{ Status = 'PASS'; Pass = [bool]$pass; Detail = "newestTag=$($reference.Tag) installed=$(if ($stamp) { "$($stamp.template)@$($stamp.version)" } else { 'none' }) rightStack=$rightStack newestReleaseFiles=$newest commits=$commits leftInTree=$($leftOver.Count) committed=$committed handoffPending=$pending workflowTool=$workflowTool headlessBranch=$headlessBranch installerTool=$installerTool finalNames$($expect.Command)=$namesCommand commitAsked=$commitAsked; reported: finalNames$other=$namesOther tagChosen=$tagChosen webFetches=$webFetches" }
         }
         # A developer's first prompt after the install, in plain words. /bootstrap is the developer's to type: the agent
         # names it and changes nothing.
@@ -5889,21 +5892,25 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         $readmePrompt = if ($readmeText -match '\*"(Install https://github\.com/andreoucostas/ai-tech-lead [^"]*)"\*') { $Matches[1] } else { '' }
         $readmeCases = @($urlScenarios | Where-Object { $_.id -like 'url-install-readme-*' })
         if (-not $readmePrompt -or $readmeCases.Count -ne 2 -or @($readmeCases | Where-Object prompt -CNE $readmePrompt).Count) { throw "B-404: the url-install-readme scenarios do not carry the root README's suggested prompt '$readmePrompt'" }
-        # B-404: commitAsked (reported) is an ask before committing with nothing else wrong: no commit, no Git repository
-        # inside the target but its own, and a question naming the commit; each consumer-docs miss ended with one.
+        # B-404: commitAsked is an ask before committing with nothing else wrong: no commit, no Git repository inside the
+        # target but its own, and a question naming the commit; each consumer-docs miss ended with one. Under the bare
+        # prompt it passes (B-404's decision); the README's prompt asked for the commit, so its variant still needs one.
         git -C $urlTarget reset --quiet --soft HEAD~1
         $urlAsked = [pscustomobject]@{ Events = @($urlInstalled.Events[0..4]) + @([pscustomobject]@{ type='result'; is_error=$false; result='Installed v0.98.1 (dotnet). Want me to go ahead and commit the installed files now? Then start a Claude Code session in this repository and type /bootstrap.' }) }
         $askedResult = Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlAsked $urlBefore
-        if ($askedResult.Pass -or $askedResult.Detail -notmatch 'committed=False' -or $askedResult.Detail -notmatch 'commitAsked=True') { throw "B-404: an uncommitted install whose final asks about the commit was not a FAIL reported as commitAsked=True: $($askedResult.Detail)" }
+        if (-not $askedResult.Pass -or $askedResult.Detail -notmatch 'committed=False' -or $askedResult.Detail -notmatch 'commitAsked=True') { throw "B-404: url-install failed an uncommitted install whose final asks about the commit, with nothing else wrong: $($askedResult.Detail)" }
+        if ((Test-ScenarioEvidence 'url-install-readme-greenfield' $urlTarget $urlAsked $urlBefore).Pass) { throw 'B-404: url-install-readme accepted an ask before committing from a developer who had asked for the commit' }
         $urlSilent = [pscustomobject]@{ Events = @($urlInstalled.Events[0..4]) + @([pscustomobject]@{ type='result'; is_error=$false; result='Installed v0.98.1 (dotnet); the files are not committed. Start a Claude Code session in this repository and type /bootstrap.' }) }
-        if ((Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlSilent $urlBefore).Detail -notmatch 'commitAsked=False') { throw 'B-404: an uncommitted install whose final never asks was reported as commitAsked' }
+        $silentResult = Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlSilent $urlBefore
+        if ($silentResult.Pass -or $silentResult.Detail -notmatch 'commitAsked=False') { throw "B-404: url-install accepted an uncommitted install whose final never asks: $($silentResult.Detail)" }
         $nestedRepo = Join-Path $urlTarget 'ai-tech-lead'
         git init --quiet $nestedRepo
         'clone' | Set-Content -LiteralPath (Join-Path $nestedRepo 'install.ps1') -Encoding utf8NoBOM
-        if ((Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlAsked $urlBefore).Detail -notmatch 'commitAsked=False') { throw 'B-404: an ask with a framework clone left inside the target was reported as commitAsked' }
+        $nestedResult = Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlAsked $urlBefore
+        if ($nestedResult.Pass -or $nestedResult.Detail -notmatch 'commitAsked=False') { throw "B-404: url-install accepted an ask with a framework clone left inside the target: $($nestedResult.Detail)" }
         Remove-Item -LiteralPath $nestedRepo -Recurse -Force
         git -C $urlTarget commit --quiet -m 'install AI Tech Lead'
-        Write-Output 'PASS: B-404 the url-install-readme scenarios carry the README''s suggested prompt and are graded, set up and left uninstalled as url-install; commitAsked reports an ask with nothing else wrong'
+        Write-Output 'PASS: B-404 the url-install-readme scenarios carry the README''s suggested prompt and are graded, set up and left uninstalled as url-install; url-install passes an ask before committing with nothing else wrong, url-install-readme does not'
         $setupHandoff = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='result'; is_error=$false; result='Setting it up is one command you type yourself: /bootstrap. It reads the code and writes AGENTS.md; I cannot start it for you.' })

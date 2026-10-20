@@ -6156,3 +6156,70 @@ prompt get the commit on today's host and model, and should the URL-install gate
 - Stop: 4.00 USD of the rows' `costUsd` (a row without one counts 1.00); a run is not started if spend so far plus 1.00 would pass 4.00.
 - Not shown: the bare prompt on this host and model (the four arms ran Claude Code 2.1.281 and `claude-sonnet-5`), so the readings are absolute, not a difference; Copilot; other models and phrasings;
   what a developer answers after an ask.
+
+## 2026-10-20 11:29:27 +01:00 — framework v0.98.1 (root head 0.98.2 — Unreleased) (9c010ad1cc428305c8b1024fdfab12eb9f126184)
+
+Host: Claude Code 2.1.300 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-readme-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.217321 tokensIn=12 tokensOut=2703; ccVersion=2.1.300 initModel=claude-sonnet-5-5 newestTag=v0.98.1 installed=angular@0.98.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: commitAsked=False finalNames/adopt=False tagChosen=True webFetches=1
+
+
+## 2026-10-20 11:30:14 +01:00 — framework v0.98.1 (root head 0.98.2 — Unreleased) (9c010ad1cc428305c8b1024fdfab12eb9f126184)
+
+Host: Claude Code 2.1.300 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-readme-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1135603 tokensIn=10 tokensOut=1275; ccVersion=2.1.300 initModel=claude-sonnet-5-5 newestTag=v0.98.1 installed=dotnet@0.98.1 rightStack=True newestReleaseFiles=True commits=3 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: commitAsked=False finalNames/bootstrap=False tagChosen=True webFetches=0
+
+
+## 2026-10-20 11:31:24 +01:00 — framework v0.98.1 (root head 0.98.2 — Unreleased) (9c010ad1cc428305c8b1024fdfab12eb9f126184)
+
+Host: Claude Code 2.1.300 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-readme-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1295919 tokensIn=16 tokensOut=1825; ccVersion=2.1.300 initModel=claude-sonnet-5-5 newestTag=v0.98.1 installed=angular@0.98.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: commitAsked=False finalNames/adopt=False tagChosen=True webFetches=0
+
+
+## 2026-10-20 11:32:19 +01:00 — framework v0.98.1 (root head 0.98.2 — Unreleased) (9c010ad1cc428305c8b1024fdfab12eb9f126184)
+
+Host: Claude Code 2.1.300 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-readme-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1204787 tokensIn=12 tokensOut=1750; ccVersion=2.1.300 initModel=claude-sonnet-5-5 newestTag=v0.98.1 installed=dotnet@0.98.1 rightStack=True newestReleaseFiles=True commits=3 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: commitAsked=False finalNames/bootstrap=False tagChosen=True webFetches=0
+
+
+## 2026-10-20 11:33:11 +01:00 — framework v0.98.1 (root head 0.98.2 — Unreleased) (9c010ad1cc428305c8b1024fdfab12eb9f126184)
+
+Host: Claude Code 2.1.300 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-readme-greenfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1022952 tokensIn=10 tokensOut=2840; ccVersion=2.1.300 initModel=claude-sonnet-5-5 newestTag=v0.98.1 installed=angular@0.98.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/bootstrap=True; reported: commitAsked=False finalNames/adopt=False tagChosen=True webFetches=1
+
+
+## 2026-10-20 11:34:40 +01:00 — framework v0.98.1 (root head 0.98.2 — Unreleased) (9c010ad1cc428305c8b1024fdfab12eb9f126184)
+
+Host: Claude Code 2.1.300 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS url-install-readme-brownfield** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1137046 tokensIn=10 tokensOut=1621; ccVersion=2.1.300 initModel=claude-sonnet-5-5 newestTag=v0.98.1 installed=dotnet@0.98.1 rightStack=True newestReleaseFiles=True commits=3 leftInTree=0 committed=True handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True; reported: commitAsked=False finalNames/bootstrap=True tagChosen=True webFetches=0
+
+## B-404 results — 2026-10-20 (pre-registered at 9c010ad1)
+
+Claude Code 2.1.300, model sonnet (`claude-sonnet-5-5` in every `system/init`), `newestTag=v0.98.1` in every row; the six runner blocks above, one trial per invocation, alternating, greenfield first,
+launched by a driver outside the repository from a Claude Code desktop subagent session's PowerShell. All six valid on the first attempt (no ERROR, no repeat). Scratch: `%TEMP%\ai-tech-lead-agent-evals-20261020-112840`
+to `-113400`; none in the repository.
+
+| Case | Scored | `committed` | gate PASS | ASKED | final calls the README or installer output injection or untrusted | cost USD |
+|---|---|---|---|---|---|---|
+| `url-install-readme-greenfield` | 3 | 3/3 | 3/3 | 0 | 0 | 0.217, 0.130, 0.102 |
+| `url-install-readme-brownfield` | 3 | 3/3 | 3/3 | 0 | 0 | 0.114, 0.120, 0.114 |
+
+- Reading, applied as registered: `committed` 6 of 6, so **COMMITS**: on this host and model the README's prompt gets the commit. There was no miss, so none is OTHER.
+- Decision, applied as registered: the bare-prompt gate (`url-install-greenfield`, `url-install-brownfield`) now counts ASKED as a pass, its row showing `commitAsked=True` beside `committed=False`;
+  `commitAsked` moved from the reported fields to the gated ones, and `url-install-readme-*` still need the commit. Changed red first: the self-test case "B-404: url-install failed an uncommitted
+  install whose final asks about the commit, with nothing else wrong" failed on the unchanged grader (exit 1), and `-SelfTest` exits 0 after. Under it the six misses of arms A, A2 and A3 would each
+  have passed (all six ASKED, as checked at freeze); those rows stay as scored then. An arm that measures the commit step reads `committed`, not PASS.
+- Reported: every run checked out the newest tag itself (`tagChosen=True` 6/6); WebFetch in greenfield t1 and t3 only; every final named the expected command, and brownfield t3's also named
+  `/bootstrap`; every brownfield final said the team `CLAUDE.md` was moved to `docs/pre-adoption/`. Five runs installed from `C:\src\ai-tech-lead`, the README's path; brownfield t2 from
+  `%TEMP%\atl\src`. Each brownfield run also cloned, or tried to, somewhere else first (a depth-1 clone under `%TEMP%`, or the agent's own scratchpad).
+- Deviation: the driver's clone check read only a new folder's own `.git`, so `%TEMP%\atl-clone` (brownfield t1's clone, at `atl-clone\repo`) was present during the next three trials and
+  `%TEMP%\atl` (brownfield t2's, at `atl\src`) during greenfield t3; fixed, and both removed, before brownfield t3. No transcript names an earlier trial's clone, and every install came from a
+  clone made in its own trial, so the rule's purpose held. The nested sessions' scratchpads under `%TEMP%\claude\` (present at freeze, so outside the rule) are unique to each trial. After the
+  runs the last clones and `C:\src` (created by greenfield t1) were removed; `C:\ai-tech-lead-src` stays.
+- Cost: **0.80 USD of the 4.00 stop** (0.102 to 0.217 a run). No premium request.
+- Not shown: as registered (the bare prompt on this host and model; Copilot; other models and phrasings; what a developer answers after an ask).
