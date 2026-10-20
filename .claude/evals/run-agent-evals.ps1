@@ -2146,8 +2146,10 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             # Bash tool_result.is_error reports tool transport failure, not the command's exit code.
             # Use mutually exclusive command output while retaining typed tool/result association.
             # B-421b: PowerShell's error view ends with the thrown message on its own `|` line, which survives an output filter (`| tail -3`) that cuts `Exception:`.
-            $red = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)EXIT:\s*1|Exception:[\s\S]*inclusive upper bound is broken|(?m)^\s*\|\s+inclusive upper bound is broken\s*$' -and $text -notmatch '(?i)PASS: inclusive range' } | Select-Object -First 1)
-            $green = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)EXIT:\s*0|PASS: inclusive range' -and $text -notmatch '(?i)Exception:[\s\S]*inclusive upper bound is broken' } | Select-Object -Last 1)
+            # B-414d: only a PASS the script emitted counts; its source, printed in the same command (Get-Content), quotes it as Write-Output 'PASS: ...'.
+            $passRun = "(?i)(?<!')PASS: inclusive range"
+            $red = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)EXIT:\s*1|Exception:[\s\S]*inclusive upper bound is broken|(?m)^\s*\|\s+inclusive upper bound is broken\s*$' -and $text -notmatch $passRun } | Select-Object -First 1)
+            $green = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; ($text -match '(?i)EXIT:\s*0' -or $text -match $passRun) -and $text -notmatch '(?i)Exception:[\s\S]*inclusive upper bound is broken' } | Select-Object -Last 1)
             $testAt = if ($red) { $red[0].Index } else { -1 }
             $prodAt = if ($prodEdits) { $prodEdits[0].Index } else { -1 }
             $fixed = (Get-Content -Raw (Join-Path $Target 'src/Calculator.cs')) -match 'value\s*<=\s*max'
@@ -3620,6 +3622,22 @@ function Invoke-RouterProbeSelfTest([string]$Temp) {
         (& $use 'g1' 'Bash' $test), (& $res 'g1' 'PASS: inclusive range EXIT:0' $false),
         [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed and verified' })
     & $check 'route-fix, a tail-truncated red run before the edit is red-first' 'route-fix' (& $run @(& $hook $rails) $tailRed) 'PASS' $true 'redTestEvent=\d+ .*testInvoked=True'
+    # B-414d: one command that prints the script (Get-Content) and then runs it shows the source line Write-Output 'PASS: inclusive range' beside
+    # the run's output. That printed source is neither a green run nor a veto on the red one; only a PASS line the run itself emitted is.
+    $sourceAndRun = [pscustomobject]@{ command = 'Get-Content tests/Test-Calculator.ps1; pwsh -NoProfile -File tests/Test-Calculator.ps1' }
+    $sourceRed = "$scriptSource`nException: C:\fixture\tests\Test-Calculator.ps1:2`nLine |`n   2 |  . -notmatch 'value <= max') { throw 'inclusive upper bound is broken' }`n     |                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`n     | inclusive upper bound is broken"
+    $sourceBesideRed = @(
+        (& $use 'r1' 'Bash' $sourceAndRun), (& $res 'r1' $sourceRed $false),
+        (& $use 'e1' 'Edit' ([pscustomobject]@{ file_path = 'src/Calculator.cs' })), (& $res 'e1' 'edited' $false),
+        (& $use 'g1' 'Bash' $test), (& $res 'g1' 'PASS: inclusive range EXIT:0' $false),
+        [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed and verified' })
+    & $check 'route-fix, a red run that also prints the script source is red-first' 'route-fix' (& $run @(& $hook $rails) $sourceBesideRed) 'PASS' $true 'redTestEvent=\d+ productionEdit=\d+ greenTestEvent=\d+ '
+    $sourceAfterEdit = @(
+        (& $use 'r1' 'Bash' $test), (& $res 'r1' 'inclusive upper bound is broken EXIT:1' $false),
+        (& $use 'e1' 'Edit' ([pscustomobject]@{ file_path = 'src/Calculator.cs' })), (& $res 'e1' 'edited' $false),
+        (& $use 'v1' 'Bash' ([pscustomobject]@{ command = 'Get-Content tests/Test-Calculator.ps1' })), (& $res 'v1' $scriptSource $false),
+        [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed' })
+    & $check 'route-fix, the script source printed after the edit is not a green run' 'route-fix' (& $run @(& $hook $rails) $sourceAfterEdit) 'FAIL' $false 'redTestEvent=\d+ productionEdit=\d+ greenTestEvent=-1 '
     # A framework-arm route-fix-nl row counts only when the router is known to have been silent: rails reaching the prompt, or no
     # hook response at all, make it not examinable (INCONCLUSIVE), never a PASS or FAIL.
     & $check 'route-fix-nl, router fired: the carrier copy is not isolated' 'route-fix-nl' (& $run @(& $hook $rails) $fixRun) 'INCONCLUSIVE' $false 'routerFired=True routerIntent=fix .*router fired'
