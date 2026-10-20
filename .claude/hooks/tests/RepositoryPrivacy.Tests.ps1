@@ -53,6 +53,54 @@ function Get-RepositoryPrivacyFindings {
     return @($findings)
 }
 
+# B-360: a path Git for Windows will not check out stops every Windows CI job at checkout. Rules
+# follow its checkout (probed 2026-10-20): a backslash is refused too, and a device name followed by
+# spaces, an extension or a stream. Git paths carry no drive prefix, so a colon is always refused.
+$script:DeviceName = [regex]::new('^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]|CONIN\$|CONOUT\$) *(\.|\z)', 'IgnoreCase, CultureInvariant')
+
+function Find-WindowsCheckoutBlocker {
+    param([string[]]$Paths)
+    $findings = @()
+    foreach ($path in $Paths) {
+        foreach ($segment in ($path -split '/')) {
+            $why = $null
+            $device = $script:DeviceName.Match($segment)
+            if ($segment -match '[*?"<>|:\\]') { $why = "reserved character '$($Matches[0])'" }
+            elseif ($segment -match '[\x00-\x1F]') { $why = ('control character 0x{0:X2}' -f [int][char]$Matches[0]) }
+            elseif ($segment -match '[ .]\z') { $why = 'ends in a space or a dot' }
+            elseif ($device.Success) { $why = "reserved device name '$($device.Groups[1].Value)'" }
+            if ($why) { $findings += "${path}: $why in segment '$segment'"; break }
+        }
+    }
+    return @($findings)
+}
+
+function Get-GitPathsAsUtf8 {
+    param([string]$Root)
+    # -z output read as bytes and decoded as UTF-8: PowerShell's native pipe would decode it with
+    # the console code page and split it at newlines.
+    $psi = New-Object Diagnostics.ProcessStartInfo 'git', ('-C "' + $Root + '" ls-files -z --cached --others --exclude-standard')
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $process = [Diagnostics.Process]::Start($psi)
+    $stderr = $process.StandardError.ReadToEndAsync()
+    $buffer = New-Object IO.MemoryStream
+    $process.StandardOutput.BaseStream.CopyTo($buffer)
+    $process.WaitForExit()
+    $null = $stderr.Result
+    if ($process.ExitCode -ne 0) { throw "git enumeration failed with exit $($process.ExitCode)" }
+    $text = (New-Object Text.UTF8Encoding $false).GetString($buffer.ToArray())
+    return @($text.Split([char]0) | Where-Object { $_ -ne '' })
+}
+
+function Get-WindowsCheckoutFindings {
+    param([string]$Root)
+    try { $paths = @(Get-GitPathsAsUtf8 -Root $Root) } catch { return @($_.Exception.Message) }
+    if ($paths.Count -eq 0) { return @('git enumeration yielded zero files') }
+    return @(Find-WindowsCheckoutBlocker -Paths $paths)
+}
+
 $script:MaintainerPwsh = Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue |
     Select-Object -First 1 -ExpandProperty Source
 
@@ -106,6 +154,43 @@ DENY /Users/[^/ \t]+/
 It 'the current non-ignored working tree has no concrete private home paths' {
     $findings = @(Get-RepositoryPrivacyFindings -Root $repoRoot)
     if ($findings) { Assert $false ("private home paths found:`n  " + ($findings -join "`n  ")) }
+    Assert $true 'clean'
+}
+
+It 'Windows checkout rule refuses reserved characters, control characters, a trailing space or dot and device names' {
+    $bad = @('*.bodydiff', 'docs/aux.md', 'x./y', 'tail.', 'end /x', 'a\b.md', 'a?b', 'q"q', 'l<t', 'g>t', 'p|p', 'ads:x',
+        'Con', 'aux .md', 'nul.tar.gz', 'COM1.txt', 'src/lpt9', 'conin$', ('tab' + [char]9), ('bell' + [char]7 + '/x'))
+    foreach ($path in $bad) {
+        Assert (@(Find-WindowsCheckoutBlocker -Paths @($path)).Count -eq 1) "not refused: $path"
+    }
+    $good = @('.gitignore', 'docs/console.md', 'com0.txt', 'com10', 'lpt/readme', 'auxiliary/x.md', 'dir.d/file', ('caf' + [char]0xE9 + '.md'))
+    $found = @(Find-WindowsCheckoutBlocker -Paths $good)
+    Assert ($found.Count -eq 0) ('refused a path Windows checks out: ' + ($found -join '; '))
+}
+
+It 'the Windows checkout scan reads a fixture index as UTF-8 and names each blocked path' {
+    $temp = Join-Path ([IO.Path]::GetTempPath()) ('b360-' + [guid]::NewGuid().ToString('N'))
+    try {
+        & git init -q $temp 2>$null
+        $blob = '' | & git -C $temp hash-object -w --stdin
+        $cafe = 'docs/caf' + [char]0xE9 + '.md'
+        foreach ($path in '*.bodydiff', 'docs/aux.md', 'x./y', $cafe) {
+            & git -C $temp -c core.protectNTFS=false update-index --add --cacheinfo "100644,$blob,$path"
+            Assert ($LASTEXITCODE -eq 0) "calibration: could not index $path"
+        }
+        $paths = @(Get-GitPathsAsUtf8 -Root $temp)
+        Assert ($paths -ccontains $cafe) ('the non-ASCII path was not decoded as UTF-8: ' + ($paths -join '; '))
+        $findings = @(Get-WindowsCheckoutFindings -Root $temp)
+        Assert ($findings.Count -eq 3) ('expected three findings: ' + ($findings -join '; '))
+        foreach ($path in '*.bodydiff', 'docs/aux.md', 'x./y') {
+            Assert (@($findings | Where-Object { $_.StartsWith("${path}: ") }).Count -eq 1) "not named: $path"
+        }
+    } finally { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'every tracked or unignored path in the repository can be checked out on Windows' {
+    $findings = @(Get-WindowsCheckoutFindings -Root $repoRoot)
+    if ($findings) { Assert $false ("paths Windows cannot check out:`n  " + ($findings -join "`n  ")) }
     Assert $true 'clean'
 }
 
