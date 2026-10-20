@@ -22,31 +22,23 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 7 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half needs a maintainer-driven VS Code session, since nothing here drives VS Code's Copilot harness headlessly |
 | 8 | B-378 | The guard's deny on VS Code's Copilot harness, which 1.141 is making the default for enterprise users, is documented but not observed; it needs a maintainer-driven VS Code session |
 | 9 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 10 | B-402 | Improvement: the warehouse scoped pass gave the right answer when it ran, but Rule 11 sent the agent there in 1 of 3 runs |
-| 11 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
-| 12 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
-| 13 | B-404 | Consumer-docs polish: every miss asked before committing, under Claude Code's own commit rule; decide the gate's scoring first |
-| 14 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
-| 15 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
-| 16 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
-| 17 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 18 | B-359 | Latent false green: no shipped command carries such a value today |
-| 19 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
-| 20 | B-373 | Stall class, but only on a degenerate C# file; no field report |
-| 21 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
-| 22 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
-| 23 | B-391 | False-green class, but only under a Turkish culture; no field report |
-| 24 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
-| 25 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
+| 10 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
+| 11 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
+| 12 | B-404 | Consumer-docs polish: every miss asked before committing, under Claude Code's own commit rule; decide the gate's scoring first |
+| 13 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
+| 14 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
+| 15 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
+| 16 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 17 | B-359 | Latent false green: no shipped command carries such a value today |
+| 18 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
+| 19 | B-373 | Stall class, but only on a degenerate C# file; no field report |
+| 20 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
+| 21 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
+| 22 | B-391 | False-green class, but only under a Turkish culture; no field report |
+| 23 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
+| 24 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
 
 ## Open entries
-
-### B-402 · Rule 11 sends the agent to `map-warehouse`s scoped pass in only 1 of 3 runs
-**Filed against:** v0.95.0 (2026-10-14)
-**Priority:** P2 · **Effort:** S · **Invariants:** #7
-**Status:** Open; found by B-401 (`meta/eval-results.md`): on `warehouse-route-p4 -WarehouseMap partial` the one run that called the skill ran the scoped pass and
-got it right; the other two never called it. Try the `AGENTS.md > Common Tasks` line for `map-warehouse` (the channel B-341 measured on Copilot) naming
-"a table the map does not cover"; that line reaches consumers only through `/bootstrap`, so the fixture needs regenerating. Pre-register first.
 
 ### B-373 · The write guard's C# `[Ignore]` pattern scans quadratically on a long run of blank lines
 **Filed against:** v0.94.0 (2026-10-09)

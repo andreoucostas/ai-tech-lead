@@ -6095,3 +6095,29 @@ the line as shipped? Ships nothing (B-402; B-341 measured this channel on Copilo
   1.25). Before each run: not started if spend so far plus 1.25 would pass 6.00. Expected 0.3 to 0.6 a run (B-401: 1.33 and 0.86 USD for three each).
 - Not shown: whether `/bootstrap` keeps the longer line verbatim (the patch assumes it); Copilot CLI or VS Code; other models, prompts or tables; a stale rather than silent map; `add-warehouse-load`'s
   handoff; field use.
+
+## B-402 results — 2026-10-20 (pre-registered at 13c93405)
+
+Claude Code 2.1.300, model sonnet (`claude-sonnet-5-5` in every `system/init`); fixture `warehouse-generated` as regenerated at 13c93405 (overlay sha256 `0884027148e6…`); 13c93405's `dist/dotnet`
+(unchanged from 4cb6e599); `patch=b402-common-tasks-line.patch@42646b49ddf3` on every T row and on no C row, and the setup commit's `AGENTS.md` held the clause in 4 of 4 T and 0 of 4 C. All 8 runs valid on
+the first attempt (no ERROR, no repeat), T and C alternating, launched by a driver outside the repository. Evidence (`ledger.tsv`, `grades.txt`, `runner-rows.md`, per-run output) in `%TEMP%\b402\`, the
+8 scratch directories `%TEMP%\ai-tech-lead-agent-evals-20261020-033413` to `-033819`; none in the repository.
+
+| cell | valid | C1 (`map-warehouse` called) | MAPPED | **SCOPED** | read the `ctl.LoadRun` DDL and `usp_LoadFactSales` before writing (hand) | named the map's silence | B-325 category, runner | B-325 category, hand | median cost USD | median output tokens |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T | 4 | 0/4 | 0/4 | **0/4** | 4/4 | 2 (T2, T4) | CAVEATED-JOIN 3, MISLEADING 1 (T3) | CAVEATED-JOIN 4 | 0.158 | 1,850 |
+| C | 4 | 0/4 | 0/4 | **0/4** | 4/4 | 1 (C2) | CAVEATED-JOIN 3, MISLEADING 1 (C3) | CAVEATED-JOIN 4 | 0.163 | 2,097 |
+
+- Reading, applied as registered: SCOPED T 0 of 4, C 0 of 4, T at most C, so **NO EFFECT**: B-402 closes by measurement and nothing ships. `src/` untouched.
+- What the runs did instead, hand-read: every run made 2 or 3 main-agent tool calls (Bash `cat` and `grep`, one `Grep`, one `Write`), read `docs/warehouse-map.md`, `Tables/ctl.LoadRun.sql` and
+  `usp_LoadFactSales.sql` in its first two, and wrote revenue per `LoadRunId` with `ctl.LoadRun` outer-joined (a LEFT JOIN from the fact in 6; a FULL OUTER JOIN from `ctl.LoadRun` to the aggregated fact,
+  `COALESCE` of the two ids, in T3 and C3), saying that nothing in the repository writes `ctl.LoadRun`, so `StartedAt` may be NULL. That is the scoped pass's reading done inline, without the skill and
+  without a map row; T2, T4 and C2 also said the map does not cover `ctl.LoadRun` and pointed at `/map-warehouse`. B-401's failure (2 of 3 W and 3 of 3 C MISLEADING without the skill, on Claude Code
+  2.1.281 and the 0.96.0 generation) did not recur, so on this host and fixture the case no longer separates the skill from its absence: with the 13 SQL files two `cat` calls away, the agent had no need
+  to route. A case that needs the scoped pass would need a warehouse too large to read whole; that is the maintainer's call, not filed.
+- Grader disagreement, 2 of 8: the runner scored T3 and C3 MISLEADING (`shapes=drops`). `Get-LoadRunShape` counts a statement driven `FROM ctl.LoadRun` as dropping fact rows unless `FactSales` itself is
+  RIGHT or FULL joined; here the FULL OUTER JOIN is to a derived table over `FactSales`, and every fact row is kept. B-439, closed by decision (WSD-106): an eval grader's false red, no guarded harm.
+- Fixture note: `partial` removes only lines naming `ctl.LoadRun` or `LoadRunId`, and the regenerated `TECH_DEBT.md` keeps DEBT-002's heading "No rerun or double-load protection; control table unused";
+  C1 cited DEBT-002 for "nothing in the repo populates `ctl.LoadRun`" after reading the SQL. Both arms saw it.
+- Cost: runs 1.27 USD (0.149 to 0.165 a run), fixture generation 0.91: **2.17 USD of the 6.00 stop**. T minus C by medians: -0.005 USD, -247 output tokens. No premium request.
+- Not shown: as registered (whether `/bootstrap` keeps the longer line; Copilot CLI or VS Code; other models, prompts or tables; a stale rather than silent map; `add-warehouse-load`'s handoff; field use).
