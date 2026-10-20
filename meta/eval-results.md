@@ -6058,3 +6058,40 @@ Probe P1 (0.17 USD, no counted slot): passed in both arms (T quoted the patched 
   defaults" stopped 4 runs before any code. Part B's `:74` text remains unshipped and unmeasured downstream.
 - Not shown: as registered (Rule 5 and the test-critic item in use; whether the lines are right beyond the hand-read; another boundary or fixture; a developer who corrects a line; the fix path; Copilot CLI,
   VS Code, Angular, monorepo, other models; field use).
+
+## B-402 pre-registration — a `map-warehouse` Common Tasks line naming a table the map does not cover, on `warehouse-route-p4 -WarehouseMap partial`, Claude Code (2026-10-20, frozen by the commit that holds it, before any run)
+
+Q. On B-401's case the scoped pass gave the right answer in the one run of three that called `map-warehouse`; the other two never called it. With the bootstrapped `AGENTS.md > Common Tasks`
+line for `map-warehouse` naming the case ("before writing SQL against a table the map does not cover, run its scoped pass"), does the agent call the skill and run its scoped pass more often than with
+the line as shipped? Ships nothing (B-402; B-341 measured this channel on Copilot CLI).
+
+- Where the line comes from. `src/stacks/dotnet/snippets/AGENTS.md/skills-list` (and its `src/stacks/monorepo/` sibling) is the installed `AGENTS.md > Common Tasks` list; `/bootstrap` Phase 3a
+  (`bootstrap.md`, the "Common Tasks" and "Warehouse skills" bullets) keeps the two warehouse lines when the warehouse profile is selected, "one terse line per skill", and drops the rest. `AGENTS.md` is
+  `consumer-owned/protected`, so an update never rewrites it: a changed line reaches a bootstrapped repository only through `/bootstrap` or `/rebootstrap`. Both generations on record (0.96.0 and the one
+  below) kept the shipped `map-warehouse` line verbatim.
+- Fixture. `warehouse-generated`, regenerated for this entry because the runner refuses its 0.96.0 overlay against dist 0.98.1: the runner's `New-EvalRepo warehouse` and `Install-Framework` from
+  4cb6e599, committed; session 1 `claude -p /bootstrap` (paused at Phase 2b and 3d-bis in one message; `--resume` "proceed"), session 2 `claude -p /map-warehouse` (offered the map; `--resume` "Yes, write
+  it."); sonnet, Claude Code 2.1.300, 0.91 USD in all. Overlay 6 files, 39,440 bytes, sha256 `0884027148e6…` (`provenance.json`); `AGENTS.md` (9,264 bytes, written CRLF, normalized to LF) names
+  `ctl.LoadRun` or `LoadRunId` on three lines and the map on five, all removed by `partial`, which leaves no generated document naming either (checked on the built tree).
+- Runner change (`run-agent-evals.ps1`, ordinary): it refused any `-TargetPatch` path the generated overlay replaces, `AGENTS.md` included. Under `-WarehouseMap generated|partial` the patch now lands
+  after the overlay and partial's edit, inside the setup commit (no extra commit; the preflight builds the same tree); a path the overlay leaves alone gets the same bytes either way, so B-401's arm-C patch
+  would build the same tree. Self-test case seen red on the unfixed runner ("-WarehouseMap partial: a -TargetPatch on the overlay AGENTS.md did not reach the committed tree", exit 1), green after.
+- T and C. C: HEAD (dist unchanged from 4cb6e599, stamp 0.98.1) with the fixture above, as installed. T: C plus `-TargetPatch meta/eval-fixtures/target-patches/b402-common-tasks-line.patch` (1,222 bytes,
+  LF, tag `42646b49ddf3`), cut from the built `partial` tree (`git apply --check` exit 0), which appends one clause to the `map-warehouse` line: `; before writing SQL against a table the map
+  (`docs/warehouse-map.md`) does not cover, run its scoped pass on that table`. Nothing else differs; Verification Rule 11, the skill and `add-warehouse-load` are 0.98.1's in both.
+- Runs. n = 4 a cell, one run per invocation, T first then alternating: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor claude -Model sonnet -Scenario warehouse-route-p4
+  -WarehouseMap partial -Trials 1 -TimeoutSeconds 900 -ResultsPath <outside the repository>` (T adds `-TargetPatch` and the path above); the scenario's own cap, 1.25 USD; scratch retained. No Copilot arm.
+- Validity, per run, else CANNOT-EXAMINE and one repeat (a second closes the slot): a row that is not ERROR; `ccVersion=2.1.300` and `initModel=claude-sonnet-5-5`; T rows carry
+  `patch=b402-common-tasks-line.patch@42646b49ddf3` and C rows no patch; the setup commit's `AGENTS.md` holds the clause in T and not in C.
+- Metric, per run, from the retained transcript and tree (post hoc, beside the runner's fields, as B-401 read them). **C1**: a successful main-agent `Skill` call with `skill: map-warehouse`.
+  **MAPPED**: after it, the scoped pass's product: the final `docs/warehouse-map.md` has a line naming `ctl.LoadRun` or `LoadRunId` (the fixture has none), or, by hand, the final message offers to add
+  them. **SCOPED**, the primary metric: C1 and MAPPED. Reported, not scored: reads after C1 of `Tables/ctl.LoadRun.sql`, `usp_LoadFactSales.sql` or a LoadRun/BatchId search; a Coverage line added;
+  B-325's category (ESTABLISHED-PARTIAL, CAVEATED-JOIN, ASKED good; MISLEADING, OTHER bad); the runner's `investigated` and `documentedOrOffered`; cost and output tokens.
+- Readings, fixed now, on SCOPED. **HELPS**: T in 3 or more of 4 and at least 2 more than C: the line sends the agent to the scoped pass on this case; recorded as a recommendation (the clause in both
+  `skills-list` snippets, CHANGELOG x4 with the line to paste, since `AGENTS.md` is consumer-owned); the shipping change is the maintainer's; `src/` untouched. **NO EFFECT**: T at most C: B-402 closes by
+  measurement and nothing ships. **INCONCLUSIVE**: anything else; B-402's status records it and the maintainer decides. If the stop leaves a cell at 3 valid runs, the same readings on the first 3 of each
+  cell with HELPS at T 2 or more of 3 and at least 2 more than C; below 3, not settled. n = 4 shows only large effects (4/4 against 0/4 is two-sided Fisher about 0.03). A reading is applied as written.
+- Stop. 6.00 USD in all: the fixture generation (0.91, spent), the runs and the repeats. Spend counts each row's `costUsd` (a row without one: the highest `total_cost_usd` in its transcript, else
+  1.25). Before each run: not started if spend so far plus 1.25 would pass 6.00. Expected 0.3 to 0.6 a run (B-401: 1.33 and 0.86 USD for three each).
+- Not shown: whether `/bootstrap` keeps the longer line verbatim (the patch assumes it); Copilot CLI or VS Code; other models, prompts or tables; a stale rather than silent map; `add-warehouse-load`'s
+  handoff; field use.

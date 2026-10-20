@@ -1,28 +1,28 @@
 # ai-tech-lead rebootstrap baseline. Written by scripts/bootstrap-baseline.ps1 -Mode Record; do not edit by hand.
 schema	1
-recorded	2026-10-14
+recorded	2026-10-20
 profile	warehouse
 line	0012ec0cc0c9
 line	00b558a82d2e
+line	03e943dd9210
 line	0414fc3f32cc
-line	07999391dda3
-line	09742a8f9b2d
+line	0d675e1d9a45
 line	0f0cbea24538
 line	0f835bbfe6ee
-line	14a9c7f79a6b
 line	1a6045758ddd
-line	1e2a6d279750
+line	1bd372b90fcb
 line	1f2ee7c2e67b
+line	208509c919b4
 line	20e0d037b6f0
 line	22b661b78fbf
+line	2567c42b9e73
 line	25a20b1e013d
-line	25a61b8b2b46
 line	2aadc4b0e771
+line	31f5f52a8edc
 line	3259964d9f34
 line	327910687c42
 line	3285d3834c17
-line	386afdb40cf1
-line	41756ff57eff
+line	3999d1cc727f
 line	44a64f2d40b5
 line	44f872326c43
 line	4636c4fdefd6
@@ -30,58 +30,58 @@ line	4923f61a439a
 line	4a83d7114783
 line	4aee9830c965
 line	4b73eb9e9b05
-line	4e2f1b6fafcc
+line	4d05cdeb421d
 line	502fe1b1f630
-line	569af0fe2a02
-line	5bf024184a13
-line	5d735cc775bf
+line	55be17beac0b
 line	60c0ee992f38
+line	618554ad66f0
 line	62b67e1f685b
-line	63c356adef8b
+line	635633dcd3cf
 line	65994624c64c
 line	65d91626f0c2
-line	6670bf58caed
-line	6755e5781c15
+line	66d39e9692f5
 line	6a8c5ed94005
+line	6b233eb1a3f9
 line	6c53d84de3a4
 line	6d506adea9f9
+line	6d8b0a991bbb
 line	71ab5bb65349
-line	735d5488dd2d
-line	73c416db731c
-line	75d35ef47a26
 line	767a1ed3662f
 line	7bd42b77dc37
-line	863e2a384265
+line	8713e8311338
 line	8892c869582c
-line	91d9537b9aaa
+line	8e929e7c714d
+line	93c56768bf58
 line	94112d1eefd0
 line	9435ac9839ac
 line	94bc863e797c
-line	97490dfe2bb9
+line	9bf9fb691b4b
 line	9d400c4c5c50
+line	9e4dce1327a7
 line	a25b4f227992
-line	a4c081abdbd9
-line	a7b29d2d1066
-line	a9644ec5147c
+line	a273b125cb8b
+line	ac768bc8acc1
 line	b13b4103d22d
-line	b5aed82db035
-line	b6589f2e81e9
+line	bce7fbfdec11
+line	bf9537e925e7
+line	c2097568abf8
 line	c2a98d8a775b
 line	cb3f91d54eee
 line	cb9213101ddb
 line	cbd85c7ea471
+line	cd6496ffa60b
 line	d46264113d45
-line	dc2ce3a2bca2
+line	dad0c8dc44f5
+line	dc1ad5d0041d
+line	df29c526c5db
 line	e18992ce9cc5
 line	e580ce34717e
-line	eaa6f5ff65dd
-line	ed04bd60ce78
+line	e9c40377473f
+line	eb6d1866a3ff
 line	f1b901847390
-line	f1f6a343c027
-line	f3b69f522397
-line	f3c41f677f58
+line	f4344013697b
 line	f4a1ddfd8688
-line	fcc77a9209f3
+line	f66aff3cb255
 area	.	666e2b6f9f53d7fb
 area	StoredProcedures	729c2219d071b914
 area	Tables	bfce029a944f40bb
@@ -91,46 +91,40 @@ hazard	StoredProcedures/usp_LoadDimCustomer.sql	e9c91aba2a425d6eb0dd0fcdc1f29f51
 hazard	StoredProcedures/usp_LoadDimRegion.sql	720d391c7ede81483abcd82eeff1e696fdf1b9a2
 hazard	StoredProcedures/usp_LoadFactSales.sql	fe8c3f62723157e37adf9a102552a925a8114b7a
 hazard	Tables/ctl.LoadRun.sql	3a2bb3048f92dce41bf8f6ccf2acf5c22a120269
-hazard	Tables/dim.DimCustomer.sql	adbc24ed609389b61a71c3b6fc138d1faada140e
-hazard	Tables/dim.DimProduct.sql	13a10b6fda8049611780cd0e98ddab58e7187a02
-hazard	Tables/dim.DimRegion.sql	bf70f14225c8c0675851d77b7c9ffd1567f0eca5
-claim	571e23ea08d5	warehouse	W1	scoped	Objects are organized by schema-per-layer — `stg` (staging), `dim` (dimensions), `fact` (facts), `ctl` (load control), `rpt` (reporting views) — follow this schema prefix for any new table or view.
-evidence	571e23ea08d5	Tables/	Tables/ctl.LoadRun.sql	3a2bb3048f92dce41bf8f6ccf2acf5c22a120269
-evidence	571e23ea08d5	Tables/	Tables/dim.DimCustomer.sql	adbc24ed609389b61a71c3b6fc138d1faada140e
-evidence	571e23ea08d5	Tables/	Tables/dim.DimDate.sql	02045da8b208fb772b2125c2e74bf93651c9ab7c
-evidence	571e23ea08d5	Tables/	Tables/dim.DimProduct.sql	13a10b6fda8049611780cd0e98ddab58e7187a02
-evidence	571e23ea08d5	Tables/	Tables/dim.DimRegion.sql	bf70f14225c8c0675851d77b7c9ffd1567f0eca5
-evidence	571e23ea08d5	Tables/	Tables/fact.FactSales.sql	a4dae7214a980c2da634ce36860c892d7ad159bc
-evidence	571e23ea08d5	Tables/	Tables/stg.StgSalesOrder.sql	d3eccfecdae907eeda2fae82b05fc939eeccc786
-evidence	571e23ea08d5	Views/	Views/rpt.vwExecutiveSummary.sql	d7b191647712ba27796e227a352c3d047c116745
-evidence	571e23ea08d5	Views/	Views/rpt.vwFinanceExtract.sql	f7d0183abf4d69e4999847274d407fa5b5482b12
-evidence	571e23ea08d5	Views/	Views/rpt.vwOrderDetail.sql	deca40fda7c1714ed718f81432a012f0c8256d7c
-claim	661374412c66	warehouse	W2	scoped	`fact.FactSales` grain is one row per staged sales-order line, carrying `CustomerKey`, `ProductKey`, and `OrderDateKey` as surrogate foreign keys resolved from `dim.DimCustomer` (current row only), `dim.DimProduct`, and `dim.DimDate`.
-evidence	661374412c66	Tables/fact.FactSales.sql	Tables/fact.FactSales.sql	a4dae7214a980c2da634ce36860c892d7ad159bc
-evidence	661374412c66	StoredProcedures/usp_LoadFactSales.sql	StoredProcedures/usp_LoadFactSales.sql	fe8c3f62723157e37adf9a102552a925a8114b7a
-claim	477fb9588de2	warehouse	W2	scoped	`dim.DimCustomer` is modeled as a slowly-changing dimension (`EffectiveFrom`, `EffectiveTo`, `IsCurrent`); fact loads join only the current row (`IsCurrent = 1`).
-evidence	477fb9588de2	Tables/dim.DimCustomer.sql	Tables/dim.DimCustomer.sql	adbc24ed609389b61a71c3b6fc138d1faada140e
-evidence	477fb9588de2	StoredProcedures/usp_LoadFactSales.sql	StoredProcedures/usp_LoadFactSales.sql	fe8c3f62723157e37adf9a102552a925a8114b7a
-claim	d1a3d9538de1	warehouse	W2	scoped	Dimension loads run before the fact load that depends on them — `usp_LoadDimCustomer` and `usp_LoadDimRegion` before `usp_LoadFactSales` — since the fact load inner-joins current dimension rows and silently drops any staging row with no match.
-evidence	d1a3d9538de1	StoredProcedures/usp_LoadFactSales.sql	StoredProcedures/usp_LoadFactSales.sql	fe8c3f62723157e37adf9a102552a925a8114b7a
-claim	a7cbda24941d	warehouse	W1	scoped	Schema changes go through the one deployment vehicle — the `warehouse.sqlproj` SQL Server Database Project (`Microsoft.Build.Sql` SDK) — adding new objects as `.sql` files under `Tables/`, `StoredProcedures/`, or `Views/`, never as ad-hoc scripts.
-evidence	a7cbda24941d	warehouse.sqlproj	warehouse.sqlproj	d345ba2c1af2895300893aca630ecbac4b13191e
-evidence	a7cbda24941d	Tables/	Tables/ctl.LoadRun.sql	3a2bb3048f92dce41bf8f6ccf2acf5c22a120269
-evidence	a7cbda24941d	Tables/	Tables/dim.DimCustomer.sql	adbc24ed609389b61a71c3b6fc138d1faada140e
-evidence	a7cbda24941d	Tables/	Tables/dim.DimDate.sql	02045da8b208fb772b2125c2e74bf93651c9ab7c
-evidence	a7cbda24941d	Tables/	Tables/dim.DimProduct.sql	13a10b6fda8049611780cd0e98ddab58e7187a02
-evidence	a7cbda24941d	Tables/	Tables/dim.DimRegion.sql	bf70f14225c8c0675851d77b7c9ffd1567f0eca5
-evidence	a7cbda24941d	Tables/	Tables/fact.FactSales.sql	a4dae7214a980c2da634ce36860c892d7ad159bc
-evidence	a7cbda24941d	Tables/	Tables/stg.StgSalesOrder.sql	d3eccfecdae907eeda2fae82b05fc939eeccc786
-evidence	a7cbda24941d	StoredProcedures/	StoredProcedures/usp_LoadDimCustomer.sql	e9c91aba2a425d6eb0dd0fcdc1f29f515fa8bb66
-evidence	a7cbda24941d	StoredProcedures/	StoredProcedures/usp_LoadDimRegion.sql	720d391c7ede81483abcd82eeff1e696fdf1b9a2
-evidence	a7cbda24941d	StoredProcedures/	StoredProcedures/usp_LoadFactSales.sql	fe8c3f62723157e37adf9a102552a925a8114b7a
-evidence	a7cbda24941d	Views/	Views/rpt.vwExecutiveSummary.sql	d7b191647712ba27796e227a352c3d047c116745
-evidence	a7cbda24941d	Views/	Views/rpt.vwFinanceExtract.sql	f7d0183abf4d69e4999847274d407fa5b5482b12
-evidence	a7cbda24941d	Views/	Views/rpt.vwOrderDetail.sql	deca40fda7c1714ed718f81432a012f0c8256d7c
-claim	c21deeb66adf	warehouse	W3	absence	No warehouse test or validation assets exist in this repository today (no tSQLt, dbt tests, or data-quality scripts) — see `TECH_DEBT.md` DEBT-005. Target shape: a referential-integrity check that every fact row resolves to a current dimension row, plus a row-count reconciliation between `stg` and `fact` per load run.
-evidence	c21deeb66adf	**/tSQLt*	-	-
-evidence	c21deeb66adf	**/*.dacpac	-	-
-evidence	c21deeb66adf	Scripts/**	-	-
-claim	aecf35ef4967	warehouse	W1	scoped	**ADR-001** — Warehouse schema is deployed via a SQL Server Database Project (`warehouse.sqlproj`, `Microsoft.Build.Sql` SDK) rather than migration scripts — see [docs/architecture-decisions.md](./docs/architecture-decisions.md).
-evidence	aecf35ef4967	warehouse.sqlproj	warehouse.sqlproj	d345ba2c1af2895300893aca630ecbac4b13191e
+hazard	Views/rpt.vwFinanceExtract.sql	f7d0183abf4d69e4999847274d407fa5b5482b12
+claim	e4be50a6c013	warehouse	W2	scoped	**Schema layering**: `stg` → `dim`/`fact` → `rpt`, plus `ctl` for control. Evidence: `Tables/`. Procs sit in `dbo`, not a layer schema.
+evidence	e4be50a6c013	Tables/*.sql	Tables/ctl.LoadRun.sql	3a2bb3048f92dce41bf8f6ccf2acf5c22a120269
+evidence	e4be50a6c013	Tables/*.sql	Tables/dim.DimCustomer.sql	adbc24ed609389b61a71c3b6fc138d1faada140e
+evidence	e4be50a6c013	Tables/*.sql	Tables/dim.DimDate.sql	02045da8b208fb772b2125c2e74bf93651c9ab7c
+evidence	e4be50a6c013	Tables/*.sql	Tables/dim.DimProduct.sql	13a10b6fda8049611780cd0e98ddab58e7187a02
+evidence	e4be50a6c013	Tables/*.sql	Tables/dim.DimRegion.sql	bf70f14225c8c0675851d77b7c9ffd1567f0eca5
+evidence	e4be50a6c013	Tables/*.sql	Tables/fact.FactSales.sql	a4dae7214a980c2da634ce36860c892d7ad159bc
+evidence	e4be50a6c013	Tables/*.sql	Tables/stg.StgSalesOrder.sql	d3eccfecdae907eeda2fae82b05fc939eeccc786
+claim	88e24ebc695a	warehouse	W2	scoped	**Surrogate keys**: `INT`/`BIGINT` `*Key` primary keys, no `IDENTITY`, no foreign keys declared. `FactSales` stores dimension surrogate keys; business keys (`CustomerId`, `ProductId`) join staging to dims (`StoredProcedures/usp_LoadFactSales.sql:5-6`).
+evidence	88e24ebc695a	Tables/*.sql	Tables/ctl.LoadRun.sql	3a2bb3048f92dce41bf8f6ccf2acf5c22a120269
+evidence	88e24ebc695a	Tables/*.sql	Tables/dim.DimCustomer.sql	adbc24ed609389b61a71c3b6fc138d1faada140e
+evidence	88e24ebc695a	Tables/*.sql	Tables/dim.DimDate.sql	02045da8b208fb772b2125c2e74bf93651c9ab7c
+evidence	88e24ebc695a	Tables/*.sql	Tables/dim.DimProduct.sql	13a10b6fda8049611780cd0e98ddab58e7187a02
+evidence	88e24ebc695a	Tables/*.sql	Tables/dim.DimRegion.sql	bf70f14225c8c0675851d77b7c9ffd1567f0eca5
+evidence	88e24ebc695a	Tables/*.sql	Tables/fact.FactSales.sql	a4dae7214a980c2da634ce36860c892d7ad159bc
+evidence	88e24ebc695a	Tables/*.sql	Tables/stg.StgSalesOrder.sql	d3eccfecdae907eeda2fae82b05fc939eeccc786
+evidence	88e24ebc695a	StoredProcedures/usp_LoadFactSales.sql	StoredProcedures/usp_LoadFactSales.sql	fe8c3f62723157e37adf9a102552a925a8114b7a
+claim	e62d5dabf4ea	warehouse	W2	scoped	**SCD**: `DimCustomer` is SCD2-shaped (`EffectiveFrom/EffectiveTo/IsCurrent`) and facts join `IsCurrent = 1`. The loader does not yet close old rows (`usp_LoadDimCustomer.sql:1`). Other dims carry no history columns.
+evidence	e62d5dabf4ea	Tables/dim.DimCustomer.sql	Tables/dim.DimCustomer.sql	adbc24ed609389b61a71c3b6fc138d1faada140e
+evidence	e62d5dabf4ea	StoredProcedures/usp_LoadDimCustomer.sql	StoredProcedures/usp_LoadDimCustomer.sql	e9c91aba2a425d6eb0dd0fcdc1f29f515fa8bb66
+claim	2d1e1ae5efeb	warehouse	W2	absence	**Idempotency/rerun**: no mechanism is implemented. `BatchId`/`LoadRunId`/`Watermark` columns exist but are unread, so the loads are not re-runnable (see DEBT-001..003, Known Hazard Areas).
+evidence	2d1e1ae5efeb	**/*Watermark*.sql	-	-
+evidence	2d1e1ae5efeb	**/*Orchestrat*	-	-
+claim	85ac5eb51b18	warehouse	W2	scoped	**Loader state**: the Region and Customer loads insert constant `-1`/`'Unknown'` rows. Treat them as incomplete, not as a pattern to copy.
+evidence	85ac5eb51b18	StoredProcedures/usp_LoadDimCustomer.sql	StoredProcedures/usp_LoadDimCustomer.sql	e9c91aba2a425d6eb0dd0fcdc1f29f515fa8bb66
+evidence	85ac5eb51b18	StoredProcedures/usp_LoadDimRegion.sql	StoredProcedures/usp_LoadDimRegion.sql	720d391c7ede81483abcd82eeff1e696fdf1b9a2
+claim	608f7d8a91ff	warehouse	W2	scoped	**Money**: `DECIMAL(18,2)` for `NetAmount` (`Tables/fact.FactSales.sql:6`).
+evidence	608f7d8a91ff	Tables/fact.FactSales.sql	Tables/fact.FactSales.sql	a4dae7214a980c2da634ce36860c892d7ad159bc
+claim	cd75829c567f	warehouse	W1	scoped	ADR-001 — Star schema with SCD2 customer dimension and surrogate-key facts — accidental/observed — [docs/architecture-decisions.md](./docs/architecture-decisions.md)
+evidence	cd75829c567f	Tables/*.sql	Tables/ctl.LoadRun.sql	3a2bb3048f92dce41bf8f6ccf2acf5c22a120269
+evidence	cd75829c567f	Tables/*.sql	Tables/dim.DimCustomer.sql	adbc24ed609389b61a71c3b6fc138d1faada140e
+evidence	cd75829c567f	Tables/*.sql	Tables/dim.DimDate.sql	02045da8b208fb772b2125c2e74bf93651c9ab7c
+evidence	cd75829c567f	Tables/*.sql	Tables/dim.DimProduct.sql	13a10b6fda8049611780cd0e98ddab58e7187a02
+evidence	cd75829c567f	Tables/*.sql	Tables/dim.DimRegion.sql	bf70f14225c8c0675851d77b7c9ffd1567f0eca5
+evidence	cd75829c567f	Tables/*.sql	Tables/fact.FactSales.sql	a4dae7214a980c2da634ce36860c892d7ad159bc
+evidence	cd75829c567f	Tables/*.sql	Tables/stg.StgSalesOrder.sql	d3eccfecdae907eeda2fae82b05fc939eeccc786

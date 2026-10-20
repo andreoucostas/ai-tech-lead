@@ -28,6 +28,7 @@ param(
     # B-253: a unified diff applied to the installed framework right after Install-Framework, so a
     # text variant (a B-255 candidate, a knockout, a probe) runs through the same fixture path as
     # the unpatched framework. Framework arm only; the header, every row and the SUMMARY name it.
+    # B-402: under -WarehouseMap generated|partial it lands after the bootstrap overlay instead.
     [Parameter(ParameterSetName = 'Live')][string]$TargetPatch,
     [Parameter(ParameterSetName = 'Live')][ValidateRange(1, 20)][int]$Trials = 1,
     [Parameter(ParameterSetName = 'Live')][ValidateRange(30, 1800)][int]$TimeoutSeconds = 300,
@@ -870,7 +871,11 @@ function Invoke-TargetPatch([string]$Target, [string]$PatchPath) {
             try { [Text.Json.JsonDocument]::Parse([IO.File]::ReadAllText($full)).Dispose() } catch { throw "-TargetPatch $name left $path as invalid JSON" }
         }
     }
-    return "$name@$((Get-FileHash -LiteralPath $PatchPath -Algorithm SHA256).Hash.ToLowerInvariant().Substring(0, 12))"
+    return Get-TargetPatchTag $PatchPath
+}
+
+function Get-TargetPatchTag([string]$PatchPath) {
+    return "$(Split-Path -Leaf $PatchPath)@$((Get-FileHash -LiteralPath $PatchPath -Algorithm SHA256).Hash.ToLowerInvariant().Substring(0, 12))"
 }
 
 function Get-GeneratedFixtureRefusal([string]$ProvenancePath, [string]$DistVersion, [string]$Label = '-WarehouseMap generated') {
@@ -968,7 +973,7 @@ function Remove-LoadRunMentions([string]$Root, [string[]]$Documents) {
     if ($removed -eq 0) { throw "-WarehouseMap partial: no generated document under $Root names ctl.LoadRun or LoadRunId" }
 }
 
-function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$GeneratedMap, [switch]$PartialMap, [switch]$Bare) {
+function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$GeneratedMap, [switch]$PartialMap, [switch]$Bare, [string]$TargetPatch) {
     New-Item -ItemType Directory -Path (Join-Path $Path 'docs') -Force | Out-Null
     if ($GeneratedMap) {
         # B-280: the generators' real output, not a simulation. The overlay is what /bootstrap and
@@ -981,6 +986,9 @@ function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$
         if (-not $Bare) {
             Copy-Item -Path (Join-Path $generatedRoot 'files/*') -Destination $Path -Recurse -Force
             if ($PartialMap) { Remove-LoadRunMentions $Path (@(Get-ChildItem -LiteralPath (Join-Path $generatedRoot 'files') -Recurse -File -Filter '*.md' | ForEach-Object { [IO.Path]::GetRelativePath((Join-Path $generatedRoot 'files'), $_.FullName) })) }
+            # B-402: the overlay replaces AGENTS.md and the documents /bootstrap wrote, so the patch lands after it and the
+            # partial edit, cut against that bootstrapped tree; a path the overlay leaves alone gets the same bytes either way.
+            if ($TargetPatch) { Invoke-TargetPatch $Path $TargetPatch | Out-Null }
             git -C $Path add -A
             git -C $Path commit --quiet -m 'warehouse scenario setup'
             return [int](git -C $Path rev-list --count HEAD)
@@ -4670,6 +4678,24 @@ GROUP BY r.RegionName;
         $generatedMap = Get-Content -LiteralPath (Join-Path $generatedTemp 'docs/warehouse-map.md')
         if (@($generatedMap | Where-Object { $_ -match '^\s*\|' -and $_ -match 'ctl\.LoadRun|LoadRunId' }).Count -eq 0) { throw '-WarehouseMap generated has no ctl.LoadRun or LoadRunId row, so partial removes nothing' }
         if (@($partialMap | Where-Object { $_ -match '^\s*\|' }).Count -lt 10) { throw '-WarehouseMap partial removed more than the LoadRun rows' }
+        # B-402: the overlay replaces AGENTS.md, so a -TargetPatch cut against the bootstrapped tree (overlay and partial edit
+        # included) must land after them, inside the setup commit, with no extra commit.
+        $overlayPatchPath = Join-Path $temp 'b402-overlay-agents.patch'
+        $partialAgentsPath = Join-Path $partialTemp 'AGENTS.md'
+        $partialAgents = [IO.File]::ReadAllText($partialAgentsPath)
+        $overlayProbe = '- B402 overlay probe line'
+        $probedAgents = ([regex]'(?m)^## Common Tasks\n').Replace($partialAgents, "## Common Tasks`n`n$overlayProbe`n", 1)
+        if ($probedAgents -eq $partialAgents) { throw 'the generated overlay AGENTS.md has no ## Common Tasks heading to patch' }
+        [IO.File]::WriteAllText($partialAgentsPath, $probedAgents, [Text.UTF8Encoding]::new($false))
+        git -C $partialTemp -c core.autocrlf=false diff --output=$overlayPatchPath -- AGENTS.md
+        git -C $partialTemp checkout --quiet -- AGENTS.md
+        $overlayPatchedTemp = Join-Path $temp 'warehouse-partial-patched'
+        New-EvalRepo $overlayPatchedTemp warehouse
+        Install-Framework $overlayPatchedTemp dotnet | Out-Null
+        $overlayPatchedCount = Initialize-WarehouseScenario $overlayPatchedTemp @partialSwitch -TargetPatch $overlayPatchPath
+        if (((git -C $overlayPatchedTemp show HEAD:AGENTS.md) -join "`n") -notmatch [regex]::Escape($overlayProbe)) { throw '-WarehouseMap partial: a -TargetPatch on the overlay AGENTS.md did not reach the committed tree' }
+        if (git -C $overlayPatchedTemp status --porcelain) { throw '-WarehouseMap partial: a -TargetPatch on the overlay left the tree uncommitted' }
+        if ($overlayPatchedCount -ne [int](git -C $partialTemp rev-list --count HEAD)) { throw '-WarehouseMap partial: a -TargetPatch on the overlay added a commit' }
 
         $generatedBareTemp = Join-Path $temp 'warehouse-generated-bare'
         New-EvalRepo $generatedBareTemp warehouse
@@ -6049,12 +6075,6 @@ if ($TargetPatch) {
     $TargetPatch = (Resolve-Path -LiteralPath $TargetPatch).Path
     $neverInstalled = @($selected | Where-Object { $_.id -in @('install-handoff','archived-redirect','url-install-greenfield','url-install-brownfield') } | ForEach-Object { $_.id } | Select-Object -Unique)
     if ($neverInstalled) { throw "Refusing -TargetPatch: $($neverInstalled -join ', ') never install the framework before the agent runs." }
-    if ($WarehouseMap -in @('generated','partial')) {
-        $overlayRoot = Join-Path $repo 'meta/eval-fixtures/warehouse-generated/files'
-        $overlay = @(Get-ChildItem -LiteralPath $overlayRoot -Recurse -File -Force | ForEach-Object { [IO.Path]::GetRelativePath($overlayRoot, $_.FullName).Replace('\', '/') })
-        $overwritten = @(Get-TargetPatchPaths $TargetPatch | Where-Object { $_ -in $overlay })
-        if ($overwritten) { throw "Refusing -TargetPatch with -WarehouseMap generated: the generated overlay replaces $($overwritten -join ', ') after the patch is applied." }
-    }
     foreach ($contractFixture in $contractFixturesUsed) {
         # The overlay lands before the patch, on top of the fresh install the patch was cut against.
         $b406Files = Join-Path $repo "meta/eval-fixtures/$contractFixture/files"
@@ -6067,9 +6087,18 @@ if ($TargetPatch) {
     foreach ($patchStack in @($selected | ForEach-Object { if ($_.stack) { [string]$_.stack } else { 'dotnet' } } | Select-Object -Unique)) {
         $preflight = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-patch-preflight-' + [guid]::NewGuid().ToString('N'))
         try {
-            New-EvalRepo $preflight $patchStack
-            Install-Framework $preflight $patchStack | Out-Null
-            $patchTag = Invoke-TargetPatch $preflight $TargetPatch
+            if ($WarehouseMap -in @('generated','partial')) {
+                # B-402: as in the run, the patch lands on the bootstrapped warehouse tree (Initialize-WarehouseScenario).
+                New-EvalRepo $preflight warehouse
+                Install-Framework $preflight $patchStack | Out-Null
+                $preflightMap = Get-WarehouseMapSwitch $WarehouseMap
+                Initialize-WarehouseScenario $preflight @preflightMap -TargetPatch $TargetPatch | Out-Null
+                $patchTag = Get-TargetPatchTag $TargetPatch
+            } else {
+                New-EvalRepo $preflight $patchStack
+                Install-Framework $preflight $patchStack | Out-Null
+                $patchTag = Invoke-TargetPatch $preflight $TargetPatch
+            }
         } finally { if (Test-Path $preflight) { Remove-Item -LiteralPath $preflight -Recurse -Force } }
     }
 }
@@ -6114,7 +6143,8 @@ try {
             if ($caseFixture -in $contractFixtures) { Initialize-B406Overlay $target $caseFixture }
             # Before the scenario setup, which commits the framework files in the warehouse cases:
             # the patch adds no commit, so `git log` (session-start preloads it) matches both arms.
-            if ($TargetPatch) { Invoke-TargetPatch $target $TargetPatch | Out-Null }
+            # B-402: under -WarehouseMap generated|partial it lands inside that setup, after the bootstrap overlay.
+            if ($TargetPatch -and $WarehouseMap -notin @('generated','partial')) { Invoke-TargetPatch $target $TargetPatch | Out-Null }
             $before = [int](git -C $target rev-list --count HEAD)
         }
         $archivedRoot = ''
@@ -6176,7 +6206,8 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
             }
             { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3','warehouse-route-p4') } {
                 $mapSwitch = Get-WarehouseMapSwitch $WarehouseMap
-                $before = Initialize-WarehouseScenario $target -Bare:($Arm -eq 'none') @mapSwitch
+                $overlayPatch = if ($WarehouseMap -in @('generated','partial')) { $TargetPatch } else { '' }
+                $before = Initialize-WarehouseScenario $target -Bare:($Arm -eq 'none') @mapSwitch -TargetPatch $overlayPatch
             }
             { $_ -in @('warehouse-bind-sql','warehouse-bind-mixed') } {
                 # -EnrichedMap: the binding decision needs business keys and the fact -> dimension

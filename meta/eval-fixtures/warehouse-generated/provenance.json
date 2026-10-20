@@ -1,12 +1,13 @@
 {
-  "frameworkVersion": "0.96.0",
-  "generatedOn": "2026-10-14",
-  "host": "Claude Code 2.1.281, DISABLE_AUTOUPDATER=1, ATL_SOURCE_CHECK=off",
-  "model": "sonnet, as launched with `claude --model sonnet`; headless, not typed",
-  "fixture": "New-EvalRepo 'warehouse' baseline, then Install-Framework dotnet from a local eval branch at b30adcf2 + 06c7ab75 with the version stamped 0.96.0 (42d8bf27, never pushed), committed",
-  "steps": "One session, headless from PowerShell, three calls: `claude -p /bootstrap`, which paused at Phase 2b; `--resume` with 'proceed', which finished /bootstrap without a Phase 3d-bis pause; `--resume` with `/map-warehouse`, which wrote docs/warehouse-map.md without offering first and ended asking whether to add two findings to TECH_DEBT.md (not answered). Every call: --dangerously-skip-permissions --max-budget-usd 8 --output-format stream-json --verbose",
-  "attempts": "1 generation (B-400 Q1, pre-registered at 06c7ab75). AGENTS.md 9,846 bytes, 142 lines; Codebase Context + Repository Structure + Conventions + Architecture Decisions 4,501 bytes. AGENTS.md does not name ctl.LoadRun or LoadRunId; TECH_DEBT.md, FRAMEWORK-CONTEXT.md and docs/warehouse-map.md do.",
-  "files": "every path `git status --porcelain -uall` listed afterwards, copied unedited",
-  "cost": "3.43 USD for the session (total_cost_usd is cumulative across --resume; 1.66 at the Phase 2b pause)",
-  "backlog": "B-400 Q1; the fixture for B-401 Q2 (-WarehouseMap partial)"
+  "frameworkVersion": "0.98.1",
+  "frameworkCommit": "4cb6e599 (dist/dotnet stamp 0.98.1; root CHANGELOG head 0.98.2 Unreleased)",
+  "generatedOn": "2026-10-20",
+  "host": "Claude Code 2.1.300 (system/init), DISABLE_AUTOUPDATER=1, ATL_SOURCE_CHECK=off, --setting-sources project,local",
+  "model": "sonnet as launched with `claude --model sonnet` (claude-sonnet-5-5 in system/init); headless, not typed",
+  "fixture": "New-EvalRepo 'warehouse' baseline (the runner's own function), then Install-Framework dotnet from 4cb6e599, committed",
+  "steps": "Two sessions, headless from PowerShell, run for B-402. Session 1: `claude -p /bootstrap --session-id <id>`, which paused at Phase 2b and Phase 3d-bis in one message; `--resume` with 'proceed', which wrote the artifacts, ran the completion gate and finished (hazards [UNVERIFIED]). Session 2 (fresh, as a developer runs it after /bootstrap): `claude -p /map-warehouse`, which read the 15 SQL files and offered the map without writing it; `--resume` with 'Yes, write it.', which wrote docs/warehouse-map.md. Every call: --model sonnet --output-format stream-json --verbose --dangerously-skip-permissions --max-budget-usd 3 (bootstrap) or 2 (map) --setting-sources project,local",
+  "attempts": "1 generation (B-402; the B-400 generation at 0.96.0 is replaced, see git history). AGENTS.md 9,264 bytes; it keeps the shipped map-warehouse Common Tasks line verbatim and names ctl.LoadRun or LoadRunId on one line each of Codebase Context, Repository Structure and Conventions, which -WarehouseMap partial removes with every other generated line naming them",
+  "files": "every path `git status --porcelain -uall` listed afterwards (6 files, 39,440 bytes), copied unedited except line endings: /bootstrap wrote AGENTS.md in CRLF, normalized to LF as the repository's .gitattributes would; overlay sha256 0884027148e6ccd54e4a39dc260fa9de91c6ce59d459d0d55481808725194068 over the lines `<file sha256>  <path>`, sorted by path (ordinal), joined with LF plus a trailing LF",
+  "cost": "0.91 USD: session 1 0.59 (cumulative across --resume; 0.26 at the pause), session 2 0.31 (0.21 at the offer)",
+  "backlog": "B-402 (warehouse-route-p4 -WarehouseMap partial); B-401 Q2 ran on the 0.96.0 generation"
 }

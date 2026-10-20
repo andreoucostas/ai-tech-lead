@@ -312,10 +312,11 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor copilot 
 # B-253 -TargetPatch <file> (framework arm only) applies a unified diff to the installed framework
 # before scenario setup, with no extra commit, so a text variant (a B-255 candidate, a knockout, a
 # probe) runs the unpatched arm's fixture path. It is refused before any spend if it does not apply,
-# changes a file it does not name, a BOM or a line ending, leaves invalid JSON, or is overwritten by
-# -WarehouseMap generated. Rows and SUMMARY carry patch=<file>@<sha256 prefix>: never pool them with
-# unpatched rows. Cut a patch from a fresh install of the dist under test: git init with
-# core.autocrlf=false, install, commit, edit, then `git diff --output=<file>` (5.1's `>` writes UTF-16).
+# changes a file it does not name, a BOM or a line ending, or leaves invalid JSON. Rows and SUMMARY
+# carry patch=<file>@<sha256 prefix>: never pool them with unpatched rows. Cut a patch from a fresh
+# install of the dist under test: git init with core.autocrlf=false, install, commit, edit, then
+# `git diff --output=<file>` (5.1's `>` writes UTF-16). Under -WarehouseMap generated|partial it lands
+# after the bootstrap overlay (and partial's edit), so cut it from that tree (B-402).
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Scenario route-fix -TargetPatch meta/eval-fixtures/target-patches/route-prompt-probe.patch
 
 # B-277 (WSD-097) Copilot CLI executor — same runner, fixtures and graders; one premium request per

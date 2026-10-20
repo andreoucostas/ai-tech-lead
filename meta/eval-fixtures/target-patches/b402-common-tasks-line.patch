@@ -1,0 +1,13 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index a1b796a..3b2a698 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -91,7 +91,7 @@ When a task matches a skill below, invoke that skill with your skill tool before
+ Skills are a delivery-profile superset, not evidence that they apply. Use only when repository
+ evidence satisfies the gate:
+ 
+-- `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), tables, keys and fact → dimension relationships, grain, load orchestration, SCD strategy, partitioning
++- `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), tables, keys and fact → dimension relationships, grain, load orchestration, SCD strategy, partitioning; before writing SQL against a table the map (`docs/warehouse-map.md`) does not cover, run its scoped pass on that table
+ - `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns: idempotent re-runnable loads, no double-loading, SCD handling, partition alignment
+ - `create-adr` — record a significant architecture decision in Architecture Decisions
+ - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review
