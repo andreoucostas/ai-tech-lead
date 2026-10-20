@@ -1,21 +1,13 @@
-# Project pattern: integration events (DRAFT, pending PR review)
+# Integration event: instances (draft, pending PR review)
 
-Evidence status: `observed`. Last semantic recheck 2026-10-18: reread each path below.
+Exemplar (cleanest): `order-placed`.
 
-Instances (3, consumer-authored, whole constellation each):
+| Event | Record | Schema | Handler | Registry |
+|---|---|---|---|---|
+| order-placed v1 | `src/Orders.Domain/Events/OrderPlacedEvent.cs` | `contracts/events/order-placed.v1.schema.json` | `src/Orders.Application/EventHandlers/OrderPlacedHandler.cs` | `src/Orders.Infrastructure/Messaging/EventRegistry.cs:12` |
+| order-shipped v2 | `src/Orders.Domain/Events/OrderShippedEvent.cs` | `contracts/events/order-shipped.v2.schema.json` | `src/Orders.Application/EventHandlers/OrderShippedHandler.cs` | `EventRegistry.cs:13` |
+| invoice-issued v1 | `src/Orders.Domain/Events/InvoiceIssuedEvent.cs` | `contracts/events/invoice-issued.v1.schema.json` | `src/Orders.Application/EventHandlers/InvoiceIssuedHandler.cs` | `EventRegistry.cs:14` |
 
-| Event | Event record | Schema | Handler | Registry |
-|-------|--------------|--------|---------|----------|
-| order-placed | `src/Orders.Domain/Events/OrderPlacedEvent.cs` (v1) | `contracts/events/order-placed.v1.schema.json` | `src/Orders.Application/EventHandlers/OrderPlacedHandler.cs` | `src/Orders.Infrastructure/Messaging/EventRegistry.cs` |
-| order-shipped | `src/Orders.Domain/Events/OrderShippedEvent.cs` (v2) | `contracts/events/order-shipped.v2.schema.json` | `src/Orders.Application/EventHandlers/OrderShippedHandler.cs` | same |
-| invoice-issued | `src/Orders.Domain/Events/InvoiceIssuedEvent.cs` (v1) | `contracts/events/invoice-issued.v1.schema.json` | `src/Orders.Application/EventHandlers/InvoiceIssuedHandler.cs` | same |
+Shared files: `src/Orders.Api/Program.cs:17-19` (handler DI), `src/Orders.Application/Orders/OrderLifecycle.cs` (enqueue), `tests/Orders.Tests/EventRegistryTests.cs`.
 
-Shared: DI lines in `src/Orders.Api/Program.cs:16-18`, emit methods in `src/Orders.Application/Orders/OrderLifecycle.cs`, hand-listed test in `tests/Orders.Tests/EventRegistryTests.cs`.
-
-**Cleanest exemplar:** `OrderPlaced` (v1). Reproduce structure, not contents.
-
-**Divergence:** `OrderShipped` is v2 and has no v1 schema; how a v1 to v2 bump is meant to be handled (parallel schemas, consumers) is unresolved. Schemas were not diffed against the records here.
-
-**Counterevidence/limits:** handlers only log; the publisher (`ServiceBusPublisher`) only logs; so the real publish/consume contract is unobserved.
-
-**Semantic refresh trigger:** any change to `OutboxDispatcher.cs`, `EventRegistry.cs`, or a new event. Result at creation: sources reread, no contradictions.
+Counterevidence: `OrderShippedEvent` is v2 while the others are v1, and no v1 shipped schema remains, so version-bump practice is unresolved. No test validates a schema against its record.

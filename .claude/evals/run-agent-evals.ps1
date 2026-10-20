@@ -3223,8 +3223,8 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         # B-410: does the developer see a design (options A and B, each with its cost, and a recommendation) before any write? K is
         # two legs of one session (the prompt, then a fixed answer); the decoy is one. Landing is graded on labelled lines in main-agent
         # text before the first main-agent write, across both legs; the cost-per-option and the quality are hand-read, not scored.
-        { $_ -in @('risk-design-k', 'done-when-k') -or $_ -match '^risk-design-d\d*$' } {
-            $twoLeg = $Id -in @('risk-design-k', 'done-when-k')
+        { $_ -in @('risk-design-k', 'done-when-k', 'done-when-h') -or $_ -match '^risk-design-d\d*$' } {
+            $twoLeg = $Id -in @('risk-design-k', 'done-when-k', 'done-when-h')
             $boundary = if ($Transcript.LegEnds) { [int]@($Transcript.LegEnds)[0] } else { 0 }
             $legs = if ($boundary -gt 0) { 2 } else { 1 }
             $hooks = Get-RiskHooks $Transcript $boundary
@@ -3251,7 +3251,8 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             }
             $pass = if ($Id -eq 'risk-design-k') { $design.Class -eq 'FULL' -and -not $wroteT1 } elseif ($twoLeg) { $true } else { $design.Class -ne 'FULL' }
             # B-412: the Done-when restatement is the gate; the B-410 design is scored beside it (fields above), then what the second leg left.
-            if ($Id -eq 'done-when-k') {
+            # B-417: done-when-h reports the same fields; its line, test and mutant grades are post hoc.
+            if ($Id -in @('done-when-k', 'done-when-h')) {
                 $dw = Get-DoneWhenLegOne $e $boundary
                 $changed = @(Get-B406Changes $Target | Where-Object { Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf })
                 $testNaming = Get-B406StatusNaming @($changed | Where-Object { $_ -match '^tests/.*\.cs$' }) $Target
@@ -3536,6 +3537,19 @@ function Invoke-RiskDesignSelfTest([string]$Temp) {
     if (-not $dwFollow.StartsWith([string]$kCase[0].followUp) -or $dwFollow -notmatch 'Go ahead' -or $dwFollow -notmatch 'test') { throw 'B-412 the follow-up is not B-410''s answer followed by a go-ahead that asks for the tests' }
     $dwFollowOut = & $route $dwFollow
     if ($dwFollowOut -match 'Routed intent' -or $dwFollowOut -match 'Plan gate') { throw "B-412 the follow-up routes an intent or carries the plan gate through the dist router: $dwFollowOut" }
+    # B-417: done-when-h is done-when-k's two legs on a prompt that leaves "open" undefined (rpt.vwOpenOrders defines it), answered
+    # "go with your defaults"; graded by done-when-k's fields. Its line, test and mutant grades are post hoc, outside the runner.
+    $hId = 'done-when-h'
+    & $check 'done-when-h is graded as done-when-k' $hId (& $twoLegs @(& $say "$dwDone`n`n$design") @(& $say $answered)) 'PASS' $true 'legs=2 design=FULL locus=leg1 .*dw=CONTRACT .*testRun=none'
+    $hCase = @($scenarios | Where-Object { $_.id -eq $hId })
+    if ($hCase.Count -ne 1) { throw "B-417 scenarios.json has $($hCase.Count) $hId entries, expected 1" }
+    if (-not ([string]$hCase[0].fixture).Equals('b409-orders-ci') -or $hCase[0].stack -ne 'dotnet' -or [string]$hCase[0].measures -notmatch 'B-417' -or [decimal]$hCase[0].followUpBudgetUsd -le 0) { throw "B-417 $hId is not a two-leg b409-orders-ci dotnet case that names B-417" }
+    if ([string]$hCase[0].prompt -notmatch 'open orders' -or [string]$hCase[0].prompt -match '(?i)picking|placed|shipped|\b[245]\d\d\b') { throw 'B-417 the prompt must ask for open orders and name no status or status code' }
+    if ((& $route ([string]$hCase[0].prompt)) -notmatch 'Routed intent: `feature`[\s\S]*Plan gate') { throw 'B-417 the prompt no longer routes feature with the plan gate' }
+    $hFollow = [string]$hCase[0].followUp
+    if ($hFollow -notmatch 'defaults' -or $hFollow -match '(?i)picking|placed|shipped') { throw 'B-417 the follow-up is not a go-with-defaults answer that names no status' }
+    $hFollowOut = & $route $hFollow
+    if ($hFollowOut -match 'Routed intent' -or $hFollowOut -match 'Plan gate') { throw "B-417 the follow-up routes an intent or carries the plan gate through the dist router: $hFollowOut" }
 }
 
 # Carrier trim: route-fix-nl is route-fix on a bug report the router does not match, so the carrier holds the only copy of the red-first rule

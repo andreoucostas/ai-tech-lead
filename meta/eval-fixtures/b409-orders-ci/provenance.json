@@ -1,13 +1,13 @@
 {
-  "frameworkVersion": "0.97.2",
-  "frameworkCommit": "296c6ce9 (dist/dotnet with the 0.98.0-Unreleased fixes: manifest-evidenced build/test, security-gate-only wording, task-notification no-op)",
-  "generatedOn": "2026-10-18",
+  "frameworkVersion": "0.98.1",
+  "frameworkCommit": "634c93d1 (dist/dotnet stamp 0.98.1; root CHANGELOG head 0.98.2 Unreleased)",
+  "generatedOn": "2026-10-20",
   "host": "Claude Code 2.1.300 (system/init), DISABLE_AUTOUPDATER=1, ATL_SOURCE_CHECK=off, --setting-sources project,local",
   "model": "sonnet as launched with `claude --model sonnet` (claude-sonnet-5-5 in system/init); headless",
-  "fixture": "fixture v2: meta/eval-fixtures/b345-bootstrap-skills/generate.py (sha256 277d4d02951dbb4e494298d5d6acf703b1c64be0e4f3daa637ab3d6b4b23b688), dotnet new sln -n Orders and dotnet sln add per csproj, plus .github/workflows/ci.yml (dotnet build Orders.sln; dotnet test Orders.sln --no-build; the generation's copy ended in CR LF, 297 bytes, the runner's Write-B409CiWorkflow writes the same text ending in LF, 296 bytes; ci.yml is a baseline file, not in the overlay), committed; then install.ps1 -Stack dotnet from HEAD 296c6ce9, committed",
-  "steps": "One session, headless from PowerShell, run by the orchestrator: `claude -p /bootstrap`, which paused at Phase 2b; `--resume` with 'proceed', which wrote the artifacts and finished. Every call: --model sonnet --output-format stream-json --verbose --dangerously-skip-permissions --max-budget-usd 8",
-  "attempts": "1 generation (B-409). BOOTSTRAP_PENDING removed; AGENTS.md Verification Commands: build `dotnet build Orders.sln`, test `dotnet test Orders.sln` (evidence .github/workflows/ci.yml, README.md; run freely); two project skill drafts; nothing under src/ or tests/ changed",
-  "files": "every path `git status --porcelain -uall` listed afterwards, copied unedited (8 files, 58,553 bytes, LF only); overlay sha256 0408a76b9a144c08439f279c62109e0ca5d5a88cbc3dc8de513acc9ab6d51efa over the sorted lines `<file sha256>  <path>` joined with LF plus a trailing LF",
-  "cost": "1.16 USD for the session (cumulative across --resume; 0.47 at the Phase 2b pause)",
-  "backlog": "B-409 contract-trace-ci (re-test of B-407 part C)"
+  "fixture": "fixture v2: meta/eval-fixtures/b345-bootstrap-skills/generate.py (sha256 277d4d02951dbb4e494298d5d6acf703b1c64be0e4f3daa637ab3d6b4b23b688), dotnet new sln -n Orders and dotnet sln add per csproj (sorted ordinal), plus .github/workflows/ci.yml (the runner's Write-B409CiWorkflow text, LF, 296 bytes; a baseline file, not in the overlay), committed; then install.ps1 -Stack dotnet from 634c93d1, committed",
+  "steps": "One session, headless from PowerShell, run by the orchestrator for B-417: `claude -p /bootstrap --session-id <id>`, which paused at Phase 2b and Phase 3d-bis in one message; `--resume` with 'proceed', which wrote the artifacts and finished. Every call: --model sonnet --output-format stream-json --verbose --dangerously-skip-permissions --max-budget-usd 8 --setting-sources project,local",
+  "attempts": "1 generation (B-417; the B-409 generation at 0.97.2 is replaced, see git history). BOOTSTRAP_PENDING removed; AGENTS.md Verification Commands: build `dotnet build Orders.sln`, test `dotnet test Orders.sln --no-build` (evidence .github/workflows/ci.yml; run freely, build first); two project skill drafts and one wiki entry; nothing under src/, tests/ or db/ changed",
+  "files": "every path `git status --porcelain -uall` listed afterwards, copied unedited (11 files, 57,139 bytes, LF only); overlay sha256 2a8da7e3baf05244a962505055944f9186f198add330660061ede83f2da1cc05 over the lines `<file sha256>  <path>`, sorted by path (ordinal), joined with LF plus a trailing LF",
+  "cost": "1.10 USD for the session (cumulative across --resume; 0.53 at the pause)",
+  "backlog": "B-417 done-when-h (B-409's contract-trace-ci and B-412's done-when-k ran on the 0.97.2 generation)"
 }

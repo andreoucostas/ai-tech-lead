@@ -176,6 +176,17 @@
       "assertion": "doneWhen"
     },
     {
+      "id": "done-when-h",
+      "measures": "B-417: done-when-k's two legs on a prompt that hides a boundary. It asks for a customer's open orders and leaves 'open' undefined; the fixture defines it in db/views/rpt.vwOpenOrders.sql (Status Placed or Picking), and the code sets only Placed and Shipped. Leg 2 is 'go with your defaults' with tests allowed, naming no outcome. Graded by done-when-k's fields; whether a Done-when line and a test name the boundary, and whether a planted mutant (Picking no longer open) turns one of the run's own tests red, are graded post hoc on the retained tree. It does not show Rule 5, the test critic, Copilot CLI, VS Code, Angular or monorepo.",
+      "fixture": "b409-orders-ci",
+      "stack": "dotnet",
+      "budgetUsd": 1.00,
+      "followUpBudgetUsd": 1.50,
+      "prompt": "Add an endpoint that returns a customer's open orders: GET api/customers/{customerId}/orders/open.",
+      "followUp": "Go with your defaults, with tests; the project reference and test package they need are fine.",
+      "assertion": "doneWhen"
+    },
+    {
       "id": "docs-tier-ondemand",
       "budgetUsd": 0.75,
       "prompt": "Add a class under `src/` that orchestrates validating an order and then reserving stock. Follow this repository's conventions. Do not add tests or a project reference; one source file is enough.",

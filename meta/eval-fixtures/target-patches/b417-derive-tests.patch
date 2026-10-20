@@ -1,0 +1,34 @@
+diff --git a/.claude/agents/test-critic.md b/.claude/agents/test-critic.md
+index 00a5fcc..239830c 100644
+--- a/.claude/agents/test-critic.md
++++ b/.claude/agents/test-critic.md
+@@ -25,6 +25,7 @@ You audit **tests** in a diff. Apply the .NET-specific test guidance only when r
+ - **Implementation-coupled** — `medium`: assertions on private state (reflection), on internal call *order* that isn't part of the contract, or on exact log strings. A behavior-preserving refactor would break it.
+ - **Nondeterministic / non-hermetic** — `high` if it will flake, else `medium`: real clock (`DateTime.Now`/`UtcNow`), `Thread.Sleep`/`Task.Delay`, unseeded `Guid.NewGuid()`/`Random`, real HTTP/filesystem/DB, or reliance on test-execution order / shared mutable state. Point at the input to pin (`TimeProvider`, seed, in-memory substitute).
+ - **Financial-domain gap** — `high` only when an applicable invariant, tolerance, and preconditions are evidenced by policy, implementation, tests, or executable behavior and the suite omits consequential demonstrated behavior. For money/balances/ledgers/idempotency, investigate negative amounts, duplicate effects, precision/rounding, and temporal behavior where applicable. A numeric type or mechanism name alone neither proves a gap nor determines severity; retain unavailable evidence as uncertainty.
++- **Untraced or unpinned** — `medium`: a new test that pins no Done-when line or spec acceptance criterion in scope (name the test), or a line in scope with no test (name the line); a stated boundary with no case on each side of it; an assertion on a proxy (a request was created, a method was called) where the point of effect (what left the service, what was persisted or rendered) is observable. Take the lines from the spec, else the approved plan the parent supplies, else report `no criteria supplied`.
+ 
+ ## Output format
+ 
+diff --git a/.github/instructions/framework-rules.instructions.md b/.github/instructions/framework-rules.instructions.md
+index 6677888..cb6591f 100644
+--- a/.github/instructions/framework-rules.instructions.md
++++ b/.github/instructions/framework-rules.instructions.md
+@@ -10,7 +10,7 @@ applyTo: "**"
+ These apply to every workflow, before any convention-level rule.
+ 
+ 2. **Never invent APIs.** Do not fabricate method signatures, type names, attributes, package exports, or framework features. Read the source. If a referenced shared-library API is not in `FRAMEWORK-CONTEXT.md > Detected Framework Packages` at the version this repo pins, treat it as unverified.
+-5. **Tests are immutable safety nets during fixes and refactors.** When an existing test fails, production is wrong (or the test is wrong for a documented reason). Do not edit assertions to make them pass without flagging it explicitly.
++5. **Tests are immutable safety nets during fixes and refactors.** When an existing test fails, production is wrong (or the test is wrong for a documented reason). Do not edit assertions to make them pass without flagging it explicitly. A changed expected value in an existing test, or an edited Done-when line or acceptance criterion, is a requirement change: confirm it with the developer; it is never a green.
+ 7. **Failures are signals.** Build, test, or analyser failures are diagnostic. Read the message and fix the cause; never wrap in try/catch or `#pragma warning disable` to silence.
+ 
+ **Verification command discovery.** For **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation**, use exact applicable repository-evidenced commands (`AGENTS.md`, CI, scripts, manifests, or configuration); mark missing categories **not available**. Where `AGENTS.md` records no test command, list the whole tree (`git ls-files`) before marking **test** not available: a committed test project, a manifest test script, or a non-framework-owned script under `tests/`, `test/` or `spec/` is the existing harness — run it with its evidenced interpreter and report it as unrecorded (flag `/rebootstrap`). `framework-owned/overwritten` paths in `framework-ownership.json` and paths in `framework-retirements.json` are framework, not application-command, evidence. Run them only when named by an explicit framework workflow or requested for framework diagnosis; report separately from application verification. Do not run a saved Verification Commands row naming one — flag `/rebootstrap`. Migration/deploy is **manual/CI-only** unless its exact command is an evidenced non-mutating validation/dry-run or developer-authorized known target; otherwise do not run it.
+@@ -71,7 +71,7 @@ When a task matches a skill in `AGENTS.md > Common Tasks`, invoke that skill wit
+ For any non-trivial task, STOP before writing code and post a short plan:
+ - **Open the plan with `Done when:`**, the requirement restated as two to six observable criteria, one per line, each with a boundary example where a threshold, limit or state exists (the case that passes and the one that does not), then what is out of scope. Put it before any options or files. The developer corrects these lines; the go-ahead approves them.
+ - The files you'll create or modify, and the order of operations
+-- Evidenced validation; include tests only when a harness exists
++- Evidenced validation: for each Done-when line, the test that will pin it, asserting at the point of effect (what leaves the service or is persisted, not a proxy such as a call having been made); boundary examples become cases. Include tests only when a harness exists; otherwise name the strongest evidenced check and report tests as not available.
+ - If the change adds an extension point or a third instance of an operation, and adding the next instance has a step that is easy to miss, name the one record you will add for that step unless one exists: a test over this repository's own instances that fails when one skips it (never a test of the framework, Test leanness #12), else one `AGENTS.md > Conventions` line, else, once this change makes three or more instances, a project skill draft under 3a-bis of `.claude/commands/bootstrap.md`; otherwise add none.
+ - Your assumptions, each with the evidence that verified it (a file, command or query), or marked *unverified — developer confirms*.
+ - If the request leaves a material gap, **ask first and plan after**: post at most five questions, each with the assumption you would otherwise make, and post the plan only once they are answered. Draw them from the tech-lead list — who consumes this and what breaks for them; what fails and how the developer would know in production; reversibility and rollback; data that moves or changes shape, including migration; blast radius against `FRAMEWORK-CONTEXT.md > Known Hazard Areas`. Do not guess past a material ambiguity to seem helpful — ask.

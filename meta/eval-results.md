@@ -5951,3 +5951,69 @@ other reviewers. Q: from a Sonnet session, does each of the three start on Haiku
 - Recorded, not scored: in both runs `convention-check` stopped on `BOOTSTRAP_PENDING`, `debt-radar` found the template `TECH_DEBT.md` empty, `bloat-radar` returned 2 (C) and 3 (K) findings
   on the `Legacy` wrapper, `solid-check` 0. Spend: 1 premium request of 2 (31.64 AI credits), 0.28 USD of 1.00; `~\.copilot\config.json` and `settings.json` unchanged.
 - Not shown: as registered; and a rate (one run per arm).
+
+## B-417 pre-registration — tests derived from the restated criteria on a prompt that hides a boundary, Claude Code (2026-10-20, frozen by the commit that holds it, before any run)
+
+Q. B-412 saw no downstream difference (tests and code alike in T and C), expected because prompt K states its three outcomes. On a prompt that leaves a boundary to the fixture, does plan v2's Part B
+(§3.1's `:74` test-per-line clause, §3.2's Rule 5 append, §3.6's test-critic "unpinned" item) on top of HEAD's carrier make the run's own tests pin that boundary, against HEAD as installed? Filed by the
+maintainer 2026-10-19 (B-417; open-threads review T1 and T7, `.claude/plans/inbox/2026-10-19-open-threads-review.md`, gitignored; this entry is self-contained). Ships nothing.
+
+- Prompt and the hidden boundary (scenario `done-when-h`, `.claude/evals/scenarios.json`). Leg 1: "Add an endpoint that returns a customer's open orders: GET api/customers/{customerId}/orders/open." It
+  leaves "open" undefined and states no outcome. The fixture defines open in `db/views/rpt.vwOpenOrders.sql` (`WHERE o.Status IN ('Placed', 'Picking')`, the `open-orders` export's view); the C# sets only
+  `Placed` (`CheckoutController.Place`) and `Shipped` (`Ship`), and `Order.Status` is a free string. The hidden boundary: an order in `Picking` is open, one in `Shipped` is not. The overlay names the
+  view's path (the `add-report-export` reference table) but not its condition. Leg 2: "Go with your defaults, with tests; the project reference and test package they need are fine." It is the "go with
+  defaults" reply (T7), names no outcome or status, and lifts the harness block under which no B-410 K run wrote a test unasked. Pre-flight through HEAD's `dist/dotnet/.claude/hooks/route-prompt.ps1` as a
+  Claude event (the self-test re-runs it): leg 1 routes `feature` with the plan gate and no security overlay; leg 2 routes nothing (an empty response, `rails2=none`).
+- T and C. C: HEAD 634c93d1's `dist/dotnet` (stamp 0.98.1) as installed, no patch: the shipped Done-when bullet (B-412), the design bullet (B-410), and B-418's `/review`, which already asks test-critic,
+  per contract line, for the test that would go red, else `unpinned`. T: C plus `-TargetPatch meta/eval-fixtures/target-patches/b417-derive-tests.patch` (6,798 bytes, two files, LF, no BOM; SHA-256 prefix
+  `15dca95fda17`, the `patch=` tag every T row carries), cut per DEVELOPING.md from a fresh install of 634c93d1's `dist/dotnet` and checked with `git apply --check` against the regenerated bootstrapped
+  tree (exit 0). Its three changes, plan v2's text verbatim: (1) §3.1 `:74`, the carrier's `- Evidenced validation; include tests only when a harness exists` becomes `- Evidenced validation: for each
+  Done-when line, the test that will pin it, asserting at the point of effect (what leaves the service or is persisted, not a proxy such as a call having been made); boundary examples become cases. Include
+  tests only when a harness exists; otherwise name the strongest evidenced check and report tests as not available.`; (2) §3.2, Rule 5 ends ` A changed expected value in an existing test, or an edited
+  Done-when line or acceptance criterion, is a requirement change: confirm it with the developer; it is never a green.`; (3) §3.6, `.claude/agents/test-critic.md` gains the `**Untraced or unpinned**`
+  checklist item after `Financial-domain gap`. Not patched: §3.6's output line, because B-418's `review.md` already asks per line and prints "Contract lines pinned: N of M"; and §3.1's `:72` and `:78`
+  edits and §3.3 to §3.5, outside B-417. Carrier +462 bytes. Rule 5 acts only on a changed expectation in an existing test and the test-critic item only when a review dispatches test-critic; neither is
+  expected here, so in practice this measures the `:74` clause (both reported).
+- Fixture. `b409-orders-ci`, regenerated for this entry on 634c93d1's dist, because the runner refuses its 0.97.2 overlay against dist 0.98.1: fixture v2 plus `ci.yml`, installed, then one headless
+  `/bootstrap` (paused once, at Phase 2b and 3d-bis together; `--resume` with "proceed"; sonnet, Claude Code 2.1.300, 1.10 USD). Overlay 11 files, 57,139 bytes, sha256 `2a8da7e3baf0…`
+  (`meta/eval-fixtures/b409-orders-ci/provenance.json`); `AGENTS.md` Verification Commands record build `dotnet build Orders.sln` and test `dotnet test Orders.sln --no-build` ("build first"); nothing under
+  `src/`, `tests/` or `db/` changed. The patch's two paths are outside the overlay.
+- Host and runs. Claude Code 2.1.300, `--model sonnet` (another `system/init` version or model in any row is a new baseline), one run per invocation from a fresh fixture build, T first, then alternating
+  until 6 valid each: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor claude -Model sonnet -Scenario done-when-h -Trials 1 -TimeoutSeconds 1200 -ResultsPath <outside the
+  repository>` (T adds `-TargetPatch` and the path above); two legs of one session as `done-when-k` (leg 1 cap 1.00 USD; leg 2 only if leg 1 wrote nothing, cap 1.50 USD plus leg 1's cost); scratch
+  retained. No Copilot arm: the runner refuses `-Executor copilot` on the contract fixtures and has no two-leg Copilot path, and the plan gate is unreadable under the CLI's `-p` (B-348); no premium request.
+- Validity, as B-412. Leg 1: succeeded SessionStart and UserPromptSubmit `hook_response`, a terminal result, `rails1=plan-gate`. Leg 2: a successful UserPromptSubmit response without the plan gate
+  (`rails2` none or overlay), `session2=same`. WROTE-T1 (a write in leg 1): leg 2 not run; the run counts and is graded on its final tree. T: the `patch=` tag, and probe P1. Otherwise CANNOT-EXAMINE,
+  repeated once; a second closes the slot, reported by its reason.
+- Probe P1, before any counted run, cap 0.25 USD a call, no counted slot: one `claude -p --model sonnet` call per arm in a fresh install of 634c93d1's dist (T patched): "Quote verbatim, and say nothing else,
+  the line in your loaded framework rules that begins with '- Evidenced validation'." T passes if the reply holds "for each Done-when line, the test that will pin it"; C if it holds "include tests only when
+  a harness exists" and not that phrase. A failed probe stops the study.
+- Grading, post hoc on each valid run's retained final tree and merged transcript; the runner's fields are reported as recorded. The agent's change is every path of the final tree that differs from the
+  runner's last fixture commit ("b409 bootstrap overlay"), tracked or untracked, minus the patch's two paths and `bin/` and `obj/`; production files are its `src/**/*.cs`, test files its `tests/**/*.cs`.
+  - **LINE**: a main-agent text block before the first main-agent Write, Edit, MultiEdit or NotebookEdit (one ordinal over both legs) holds a line matching `(?i)\bdone[ -]when\b` and, within its next 15
+    lines and before any heading line (`^\s*#`) or label line (`(?i)^\W*(?:option\s+[ab]\b|recommend|files?\b|plan\b|questions?\b|out of scope)`), a line matching `(?i)\bpicking\b`. **ASKED**: any
+    pre-write main-agent text matches `(?i)\bpicking\b`.
+  - **TEST**: a test file matches `(?i)\bpicking\b`.
+  - **BASE**: `dotnet test Orders.sln` on a copy of the final tree without `bin/` and `obj/`; exit 0 is GREEN, else BASE-RED.
+  - **M-hidden, the planted boundary mutant**: Picking is no longer open, all else equal. Automatic: every C# string literal `"Picking"` in the production files becomes `"Picking-M"`; valid when there is
+    at least one and no test file reaches Picking through a member access (`\.\s*Picking\b`). Otherwise by hand: the open predicate excludes `Picking` (for example `&& o.Status != "Picking"`), the diff
+    recorded. A production predicate that already treats Picking as not open is CODE-MISS. A mutant that does not build is re-planted by hand once.
+  - **PINNED**, the primary metric: BASE is GREEN, and `dotnet test Orders.sln` on the M-hidden copy exits non-zero with a failed test (`Failed:\s+[1-9]`). Not pinned: BASE-RED, CODE-MISS, no test file,
+    or the mutant passes; each reported by its reason.
+  - **M-stated**, a reported control: the customer restriction dropped (the one production match of `\b\w+\.CustomerId\s*==\s*\w+\b`, or its mirror, becomes `true`; by hand otherwise); killed as above.
+  - Reported, not gating: the runner's `dw`, `design`, `dwOrder`, `t2action` and `testRun`; **restate2**, a leg-2 main-agent text before leg 2's first write holding a Done-when label (does "go with
+    defaults" bring a restatement before writing, T7); the test-file count; whether an existing test file changed; `tcCalls`, Task or Agent calls naming test-critic; cost, wall time, output tokens.
+    Hand-read, not scored: per run, the Done-when lines against the tests (which line each test pins, the Picking case), the open definition the code uses and where it came from (the view, a question's
+    default, the code's two states), and one line on what a developer would correct.
+- Readings, fixed now, on 6 valid runs a cell (fewer is "not settled"). **NOT EXERCISED**: T's LINE in 2 or fewer of 6: the boundary seldom reached T's Done-when lines, so tests derived from them are not
+  tested; no PINNED reading; B-417 stays open with a status that says so, and the maintainer chooses the next prompt. Otherwise, on PINNED: **R1 DIFFERS**: T in 4 or more of 6 and at least 3 more than
+  C: Part B's `:74` clause changes which boundary the tests pin; B-417's status records it, and the shipping decision (carrier and the three stack snippets, ordinary; Rule 5 and the test-critic item
+  unexercised here) is the maintainer's, gated on B-416 as its entry says. **R2 NO DIFFERENCE**: T at most 1 more than C (C at 5 or 6 of 6 included: the agent already pins it): Part B's carrier text is
+  not shown to change the tests; B-417 closes by measurement and nothing ships from it. **INCONCLUSIVE**: anything else; B-417's status records it and the maintainer decides. Cost above 1.5x C output
+  tokens or 8 minutes added is reported, not a reading. A reading is applied as written; the maintainer decides anything it does not cover.
+- Stop. 12.00 USD in all: the fixture generation (1.10, spent), the probes, the runs and the repeats. Spend counts each row's `costUsd` (a row without one is charged the highest `total_cost_usd` in its
+  transcripts, else its caps) and each probe's. Before each run: not started if spend so far plus 2.50 USD (its caps) would pass 12.00. Expected about 0.55 to 0.70 USD a run (B-412's median with tests
+  asked was 0.55), about 9 USD in all. A cell the stop leaves short is "not settled". The driver is resumable and outside the repository (`%TEMP%\b417\ledger.tsv`); it refuses to start unless `dist/`,
+  `src/`, `scripts/`, `.claude/evals/`, `meta/eval-fixtures/b409-orders-ci/` and the patch match this commit, and the patch's SHA-256 prefix is `15dca95fda17`.
+- Not shown: Rule 5 and the test-critic item in use; whether the lines are right beyond the hand-read; another hidden boundary or fixture; a threshold boundary, and the view's other side (a status in
+  neither set) is not mutated; a developer who corrects a line; the fix path; Copilot CLI; VS Code; Angular; monorepo; other models; field use.

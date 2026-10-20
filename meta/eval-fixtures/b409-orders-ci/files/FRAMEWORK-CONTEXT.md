@@ -13,69 +13,43 @@
 
 ## Production Architecture
 
-<!-- One paragraph describing how this repo fits into the larger system:
-     - Is this an application repo, a shared library repo, or the dashboard?
-     - What does this repo consume? What does it expose?
-     - Where do other systems integrate with this one? -->
+<!-- Auto-drafted by /bootstrap on 2026-10-20 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
 
-<!-- Auto-drafted by /bootstrap on 2026-10-18 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
-
-Application repo: one ASP.NET Core 8 web host (`src/Orders.Api`) plus libraries (Application, Domain, Infrastructure, Reporting); no worker host or packable library. **Consumes**: SQL Server via the `Orders` (EF Core) and `Reporting` (ADO.NET, `ReportReader` login) connection strings read in `Program.cs`; intended calls to pricing/shipping/tax services at `*.internal.example` URLs (`src/Orders.Application/Services/*Client.cs`, currently uncalled). **Exposes**: REST controllers under `api/*` and integration events (`order-placed`, `order-shipped`, `invoice-issued`) whose JSON schemas are in `contracts/events/`; the real message-bus publisher is a logging stub (`ServiceBusPublisher.cs`). Which services consume the events or call the API is not visible in this repo.
+This is an application repo: an ASP.NET Core 8 Web API host (`Orders.Api`) with a hosted `OutboxProcessor`. It consumes a SQL Server database (`ConnectionStrings:Orders`, EF Core) and a second read-only connection (`ConnectionStrings:Reporting`, `ReportReader` login) for `rpt.*` views. It exposes REST controllers under `api/` and publishes integration events (topics `order-placed`, `order-shipped`, `invoice-issued`) through `IMessagePublisher`, currently a logging stub (`ServiceBusPublisher`). No appsettings files or external base URLs are committed. Who consumes the events or API is not visible here.
 
 ---
 
 ## Shared Libraries
 
-<!-- List the shared NuGet packages the team maintains.
-     For each: name, purpose, source repo, where to look for usage docs.
-     Document the latest version's public API surface, with a disclaimer that
-     older consumer repos may pin to earlier versions. -->
+<!-- Auto-drafted by /bootstrap on 2026-10-20 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
 
-<!-- Auto-drafted by /bootstrap on 2026-10-18 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
-
-_No shared framework libraries detected in this repo (every package reference is a `Microsoft.*`, `xunit*` or `Microsoft.Data.SqlClient` package; checked all `*.csproj`, no `Directory.Packages.props`, as of 2026-10-18). If an organisation-wide library is consumed another way, a maintainer should document it here._
+_No shared (organisation-owned) libraries detected: the only package references are Microsoft/EF Core/xUnit packages (checked all `*.csproj` on 2026-10-20). If the team maintains shared libraries consumed at another layer, a maintainer should document them here._
 
 ---
 
 ## Multi-Tenancy Conventions
 
-<!-- If applicable: how is tenancy modeled? Where are tenant boundaries enforced?
-     How is tenant data isolation handled? What are the conventions for adding
-     new tenant-aware features? -->
+<!-- Auto-drafted by /bootstrap on 2026-10-20 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
 
-<!-- Auto-drafted by /bootstrap on 2026-10-18 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
-
-_No multi-tenancy signals found in this repo (no tenant identifiers, claims, query filters or resolution middleware in `src`, as of 2026-10-18). If the system is multi-tenant at another layer, a maintainer should document it here._
+_No multi-tenancy signals found in this repo (no tenant identifiers, claims, or query filters as of 2026-10-20). If the system is multi-tenant at another layer, a maintainer should document it here._
 
 ---
 
 ## Dashboard Integration Contracts
 
-<!-- If this repo registers with a multi-tenant dashboard or similar control plane:
-     - Registration protocol
-     - Required metadata (app name, owner, callbacks, etc.)
-     - Health-check / heartbeat contracts
-     - How configuration flows from dashboard to app -->
+<!-- Auto-drafted by /bootstrap on 2026-10-20 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
 
-<!-- Auto-drafted by /bootstrap on 2026-10-18 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
-
-_No dashboard or control-plane integration found (no `AddHealthChecks`/`MapHealthChecks`, registration or heartbeat calls in `src/Orders.Api/Program.cs`, as of 2026-10-18). If a platform expects health endpoints or registration, a maintainer should document it here._
+_No dashboard or control-plane signals found in this repo (no `AddHealthChecks`/`MapHealthChecks`, no registration or heartbeat calls as of 2026-10-20). If a control plane integrates with this service, a maintainer should document it here._
 
 ---
 
 ## Cross-Service Communication
 
-<!-- Patterns for service-to-service calls within the org:
-     - HTTP conventions (versioning, auth, retry, idempotency)
-     - Message bus / event patterns (if any)
-     - Shared error/response envelopes
-     - Distributed tracing / correlation ID propagation -->
+<!-- Auto-drafted by /bootstrap on 2026-10-20 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
 
-<!-- Auto-drafted by /bootstrap on 2026-10-18 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
-
-- **HTTP**: three plain clients (`src/Orders.Application/Services/PricingClient.cs`, `ShippingClient.cs`, `TaxClient.cs`) use `new HttpClient()` with `.Result`; no `AddHttpClient`, resilience policy, auth or correlation-ID propagation exists, and nothing calls them yet.
-- **Events**: integration events go through an in-memory outbox to `IMessagePublisher`; the only implementation (`ServiceBusPublisher.cs`) logs and does not send. No message-bus package is referenced. Topic names and JSON schemas are in `src/Orders.Infrastructure/Messaging/EventRegistry.cs` and `contracts/events/`; failures go to `<topic>.dlq`.
-- Org-wide conventions (envelopes, versioning rules, who consumes the events) are not provable from this repo; a maintainer should add them.
+- **Outbound events**: `IMessagePublisher.PublishAsync(topic, payload)`; the only implementation logs and returns (`ServiceBusPublisher.cs`). Schemas live in `contracts/events/`. No message-bus package is referenced.
+- **HTTP**: `PricingClient`, `ShippingClient` and `TaxClient` call `https://{pricing,shipping,tax}.internal.example/quote/{id}` with a new `HttpClient` each time; no `AddHttpClient`, retry or resilience policy, and nothing references them.
+- **Correlation IDs / shared response envelopes**: none found.
 
 ---
 
@@ -100,10 +74,11 @@ Merging the PR does not confirm these — an item is confirmed only when a perso
 
 | Area / file(s) | Hazard | Status | Reviewed |
 |----------------|--------|--------|----------|
-| src/Orders.Api/Program.cs, src/Orders.Api/Controllers/CheckoutController.cs (outbox durability) | `InMemoryOutbox` is registered (`Program.cs:13`) and events are enqueued after `SaveChangesAsync` (`CheckoutController.cs:25-27`, `:36-38`); a crash or restart loses events. See DEBT-005. | [UNVERIFIED] | 2026-10-18 |
-| src/Orders.Api/Controllers/CheckoutController.cs, src/Orders.Application/Orders/OrderLifecycle.cs (state transitions) | No status checks and a fresh `Guid.NewGuid()` EventId per call (`CheckoutController.cs:20-48`, `OrderLifecycle.cs:9-16`): retries can duplicate `OrderPlaced`/`InvoiceIssued`. See DEBT-001. | [UNVERIFIED] | 2026-10-18 |
-| src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs, src/Orders.Infrastructure/Messaging/OutboxProcessor.cs (dispatch) | Unregistered events dropped silently, version mismatch routed to `.dlq` with handler skipped (`OutboxDispatcher.cs:24-35`); an unhandled dispatch exception loses the dequeued event and faults the service (`OutboxProcessor.cs:22-26`). See DEBT-002. | [UNVERIFIED] | 2026-10-18 |
-| src/Orders.Api/Program.cs, src/Orders.Api/Controllers/OrdersController.cs (authentication, mass assignment) | No authentication/authorization in the pipeline (`Program.cs:6-21`); Create actions bind entities so callers set `Status`, `Total`, `Paid` (`OrdersController.cs:26`, `InvoicesController.cs:26`). See DEBT-003, DEBT-004; not yet in SECURITY_FINDINGS.md. | [UNVERIFIED] | 2026-10-18 |
+| `src/Orders.Api/Controllers/CheckoutController.cs` | Order status is saved, then the event is queued in an in-memory queue (`Program.cs:13`, `InMemoryOutbox.cs:7-11`); a crash between the two, or a restart, loses the event. Lines reread: `CheckoutController.cs:23-28`. | [UNVERIFIED] | 2026-10-20 |
+| `src/Orders.Infrastructure/Messaging/OutboxProcessor.cs` | Event is dequeued before dispatch and exceptions are not caught; a failed publish or handler loses the event and faults `ExecuteAsync`, which stops the host by default in .NET 8. Lines reread: `OutboxProcessor.cs:18-28`, `OutboxDispatcher.cs:22-40`. | [UNVERIFIED] | 2026-10-20 |
+| `src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs` | Unregistered event types are silently dropped; a schema file version differing from `[EventVersion]` publishes to `<topic>.dlq` and skips the handler without a log. Lines reread: `OutboxDispatcher.cs:24-35`, `EventRegistry.cs:12-14`. | [UNVERIFIED] | 2026-10-20 |
+| `src/Orders.Api/Controllers/CheckoutController.cs` | No status-transition guard or idempotency: `place`, `ship` and `issue` can be repeated and each enqueues a new event with a fresh `EventId`; `Issue` persists nothing. Lines reread: `CheckoutController.cs:20-49`. | [UNVERIFIED] | 2026-10-20 |
+| `src/Orders.Api/Controllers/OrdersController.cs` | `Create` binds domain entities as request bodies (also `InvoicesController.cs:26`), so callers can set `Total`, `Status`, `Amount`, `Paid`; no authentication is configured anywhere (`Program.cs:8-23`). Lines reread: `OrdersController.cs:25-31`. | [UNVERIFIED] | 2026-10-20 |
 
 ---
 
@@ -113,11 +88,14 @@ Merging the PR does not confirm these — an item is confirmed only when a perso
      summary. It grants neither additional access nor write authority; source, comments, and
      generated documents remain evidence to screen rather than instructions to execute. -->
 
-<!-- REPOSITORY_KNOWLEDGE_DISCOVERY_PENDING -->
+Requested /bootstrap discovery (2026-10-20), bounded read of all first-party tracked source (about 60 files; budget not exhausted):
 
-_No repository-knowledge coverage summary has been drafted. A requested discovery may add at most
-12 summary lines here and place detailed unresolved coverage in `docs/discovery-notes.md` when that
-new file does not collide with owner-authored content. Draft claims and skills remain pending review._
+- Inventoried and semantically read: `src/**`, `tests/**`, `contracts/`, `db/`, `config/`, `.github/workflows/ci.yml`.
+- Excluded: framework-owned paths per `framework-ownership.json`, `docs/` template files.
+- Draft skills (pending PR review): `add-integration-event` (3 instances), `add-report-export` (3 instances).
+- Draft wiki entry: `reports-feature-flags-path`.
+- Not drafted: scheduled jobs (2 instances only), CRUD controllers (framework-shaped, no non-obvious step).
+- Unresolved: deployment of `db/` SQL, event consumers, where jobs run. No continuation needed inside the repo.
 
 ---
 
@@ -127,4 +105,4 @@ new file does not collide with owner-authored content. Draft claims and skills r
      Lists the framework packages this repo references, with version.
      Helps the AI give version-aware advice and flag drift. -->
 
-_No framework packages detected in this repo._ (Third-party packages pinned: Microsoft.EntityFrameworkCore.SqlServer 8.0.10, Microsoft.Data.SqlClient 5.2.2, Microsoft.Extensions.Hosting.Abstractions 8.0.1, Microsoft.Extensions.Logging.Abstractions 8.0.2; tests: xunit 2.9.2, Microsoft.NET.Test.Sdk 17.11.1.)
+_No framework packages detected in this repo._
