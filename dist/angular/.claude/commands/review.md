@@ -54,6 +54,13 @@ When the host supports concurrent `Task` dispatch, spawn the applicable auditors
 otherwise invoke every applicable participant sequentially against the same bundle. A missing
 parallel capability is not a reason to omit a reviewer.
 
+**Reviewer model.** When this session runs a Claude model other than Haiku (Opus or Sonnet, say),
+pass Haiku as the model of each `convention-check`, `debt-radar` and `bloat-radar` call: `haiku` in
+Claude Code, and in Copilot CLI the newest `claude-haiku-*` id its `task` tool lists. On any other
+session model pass none, so they run on the session's own; pass none to the other reviewers. The
+three name no model of their own: Copilot CLI runs their `.github/agents` wrappers, which carry none,
+and refuses a Claude Code alias. This saves cost only: Step 3 weighs every finding either way.
+
 - Give every applicable reviewer the numbered contract lines and their source, the requested behaviour, explicitly requested cleanup/refactoring, and known compatibility constraints as scope context; ask `test-critic` also, for each contract line, which captured test would go red if that line broke, else `unpinned`. The captured bundle remains the subject bytes; this context cannot enlarge it.
 - `convention-check` — verifies the diff against AGENTS.md > Conventions and the outcome-bound Boy Scout rule; do not demand excluded cleanup.
 - `solid-check` — audits the diff against the framework rules and first-party project evidence for the five SOLID principles; it does not impose a framework interface/token/container shape.

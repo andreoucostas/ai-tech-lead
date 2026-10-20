@@ -22,23 +22,22 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 7 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half needs a maintainer-driven VS Code session, since nothing here drives VS Code's Copilot harness headlessly |
 | 8 | B-378 | The guard's deny on VS Code's Copilot harness, which 1.141 is making the default for enterprise users, is documented but not observed; it needs a maintainer-driven VS Code session |
 | 9 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 10 | B-427 | Cost, not a harm: on Copilot the three `haiku` reviewers run on the session's model, Opus included; the same wrappers as B-382 |
-| 11 | B-402 | Improvement: the warehouse scoped pass gave the right answer when it ran, but Rule 11 sent the agent there in 1 of 3 runs |
-| 12 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
-| 13 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
-| 14 | B-404 | Consumer-docs polish: every miss asked before committing, under Claude Code's own commit rule; decide the gate's scoring first |
-| 15 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
-| 16 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
-| 17 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
-| 18 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 19 | B-359 | Latent false green: no shipped command carries such a value today |
-| 20 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
-| 21 | B-373 | Stall class, but only on a degenerate C# file; no field report |
-| 22 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
-| 23 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
-| 24 | B-391 | False-green class, but only under a Turkish culture; no field report |
-| 25 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
-| 26 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
+| 10 | B-402 | Improvement: the warehouse scoped pass gave the right answer when it ran, but Rule 11 sent the agent there in 1 of 3 runs |
+| 11 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
+| 12 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
+| 13 | B-404 | Consumer-docs polish: every miss asked before committing, under Claude Code's own commit rule; decide the gate's scoring first |
+| 14 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
+| 15 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
+| 16 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
+| 17 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 18 | B-359 | Latent false green: no shipped command carries such a value today |
+| 19 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
+| 20 | B-373 | Stall class, but only on a degenerate C# file; no field report |
+| 21 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
+| 22 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
+| 23 | B-391 | False-green class, but only under a Turkish culture; no field report |
+| 24 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
+| 25 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
 
 ## Open entries
 
@@ -182,13 +181,6 @@ The only route to whether the lines are correct and used; gates any reviewer-sid
 **Status:** Blocked on B-416's review answer (maintainer, 2026-10-19, on Fable's advice). `$railsReview` (`src/core/.claude/hooks/route-prompt.ps1:88`) is an inline checklist naming neither `/review` nor a reviewer, and carrier §1 has no Review bullet, so the reviewers and B-418's contract step run only when `/review` is typed or chosen; the field's VS Code Local harness (`meta/field-reports.md:174`) may run no hooks, so only the carrier reaches it.
 Candidate: a §1 Review bullet plus `$railsReview` in `$railsSecurity`'s shape (run this repository's `review` skill, by name on Copilot CLI; a verdict given without reviewers says so); guarded (`hooks/**`), with the `rail-sync` pair in `scripts/validate-dist.ps1` re-recorded.
 Measure T vs C on both CLIs on the retained B-412 tree, graded by a reviewer `Task` or `Skill review` plus `review-scope.ps1`: about 3 USD and 3 premium requests.
-
-### B-427 · On Copilot the `haiku` reviewers run on the session's model: `/review` passes the reviewer model per call, as WSD-115
-**Filed against:** v0.98.1 (2026-10-19)
-**Priority:** P3 · **Effort:** S · **Invariants:** #1 #7
-**Status:** Open (maintainer request 2026-10-19, reopening B-424's question). B-399 (`meta/eval-results.md`): Copilot CLI 1.0.98 runs the model-less `.github/agents` wrappers, so `convention-check`, `debt-radar` and `bloat-radar` start on the session's model (`session_inheritance`) and never read `model: haiku`, which the CLI would refuse as it refused `sonnet` (B-398).
-Candidate, WSD-115's shape: the three `model: inherit`, and `/review` Step 1 passes Haiku in each call from a session on another Claude model (`haiku` in Claude Code, the newest `claude-haiku-*` on Copilot CLI if it lists one, unverified), none otherwise; `docs/reference.md`'s model column (B-424) then holds.
-Before shipping, one `/review` per CLI showing the call's `model` argument and `modelSelectionSource: explicit_override`: about 1 USD and 1-2 premium requests. Since B-382 (0.98.2) a keyed reviewer's prompt on CLI 1.0.98 is about 72,000 chars (`bloat-radar` 72,019, `debt-radar` 71,670) against an unkeyed one's 26,336-26,709, about 15,000 more cache-written tokens a run.
 
 ### B-429 · An update's skill backup copies a team's gitignored skill files, secrets included, to a path Git can commit
 **Filed against:** v0.98.1 (2026-10-19)

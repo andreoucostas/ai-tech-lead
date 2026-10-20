@@ -36,11 +36,11 @@ and returns a findings table.
 
 | Reviewer | Checks | Model |
 |---|---|---|
-| `convention-check` | The diff against `AGENTS.md > Conventions` | Haiku |
+| `convention-check` | The diff against `AGENTS.md > Conventions` | Haiku in a Claude session on another model, else your session's model |
 | `solid-check` | The diff against SOLID, judged against your project evidence rather than a framework-imposed shape | your session's model |
-| `bloat-radar` | Needless abstraction, the counterweight to Boy Scout cleanups | Haiku |
+| `bloat-radar` | Needless abstraction, the counterweight to Boy Scout cleanups | Haiku in a Claude session on another model, else your session's model |
 | `test-critic` | Whether each test would fail if the code under test broke | your session's model |
-| `debt-radar` | Which `TECH_DEBT.md` entries the change touches | Haiku |
+| `debt-radar` | Which `TECH_DEBT.md` entries the change touches | Haiku in a Claude session on another model, else your session's model |
 | `security-auditor` | An OWASP-style scan; feeds `/security-gate` | your session's model |
 | `bootstrap-pass` | One analysis pass during `/bootstrap` | Sonnet in a Claude session on another model, else your session's model |
 

@@ -51,6 +51,14 @@
   sets `"cwd": "."` too, which both Copilot hosts resolve to the repository root; Claude Code accepts the key and runs
   the hooks as before. If you copied `settings.windows.json` to `.claude/settings.local.json` yourself, copy it again.
 
+- **On Copilot CLI, `/review`'s three pattern reviewers now run on Haiku as well.** `convention-check`, `debt-radar`
+  and `bloat-radar` named Haiku in their `.claude/agents` files, which Claude Code honours but Copilot CLI never reads:
+  it runs their `.github/agents` wrappers, so there they ran on your session's model, Opus included. The three files
+  now say `model: inherit`, and `/review` asks for Haiku in each of their calls when your session runs another Claude
+  model: `haiku` in Claude Code, and in Copilot CLI the newest `claude-haiku-*` model it offers (`claude-haiku-5.5` on
+  Copilot CLI 1.0.98). On a model from another vendor they run on your session's model. In Claude Code they run on
+  Haiku as before.
+
 ## 0.98.1 — 2026-10-19
 
 - **The briefing deck's "Four pillars" slide and its talking points now describe the current rules.** After 0.98.0

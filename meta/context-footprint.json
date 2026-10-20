@@ -13,7 +13,7 @@
       "static.claude": [
         {
           "path": ".claude/agents/bloat-radar.md#frontmatter",
-          "chars": 368,
+          "chars": 370,
           "tok": 92
         },
         {
@@ -23,12 +23,12 @@
         },
         {
           "path": ".claude/agents/convention-check.md#frontmatter",
-          "chars": 292,
-          "tok": 73
+          "chars": 294,
+          "tok": 74
         },
         {
           "path": ".claude/agents/debt-radar.md#frontmatter",
-          "chars": 307,
+          "chars": 309,
           "tok": 77
         },
         {
@@ -232,8 +232,8 @@
         },
         {
           "path": "docs/reference.md",
-          "chars": 9795,
-          "tok": 2449
+          "chars": 9987,
+          "tok": 2497
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -388,8 +388,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 10223,
-          "tok": 2556
+          "chars": 10815,
+          "tok": 2704
         },
         {
           "path": ".claude/commands/security-gate.md#body",
@@ -452,8 +452,8 @@
       "static.claude": [
         {
           "path": ".claude/agents/bloat-radar.md#frontmatter",
-          "chars": 377,
-          "tok": 94
+          "chars": 379,
+          "tok": 95
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
@@ -462,12 +462,12 @@
         },
         {
           "path": ".claude/agents/convention-check.md#frontmatter",
-          "chars": 292,
-          "tok": 73
+          "chars": 294,
+          "tok": 74
         },
         {
           "path": ".claude/agents/debt-radar.md#frontmatter",
-          "chars": 307,
+          "chars": 309,
           "tok": 77
         },
         {
@@ -656,8 +656,8 @@
         },
         {
           "path": "docs/reference.md",
-          "chars": 9689,
-          "tok": 2422
+          "chars": 9881,
+          "tok": 2470
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -812,8 +812,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 10227,
-          "tok": 2557
+          "chars": 10819,
+          "tok": 2705
         },
         {
           "path": ".claude/commands/security-gate.md#body",
@@ -861,8 +861,8 @@
       "static.claude": [
         {
           "path": ".claude/agents/bloat-radar.md#frontmatter",
-          "chars": 393,
-          "tok": 98
+          "chars": 395,
+          "tok": 99
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
@@ -871,12 +871,12 @@
         },
         {
           "path": ".claude/agents/convention-check.md#frontmatter",
-          "chars": 292,
-          "tok": 73
+          "chars": 294,
+          "tok": 74
         },
         {
           "path": ".claude/agents/debt-radar.md#frontmatter",
-          "chars": 307,
+          "chars": 309,
           "tok": 77
         },
         {
@@ -1080,8 +1080,8 @@
         },
         {
           "path": "docs/reference.md",
-          "chars": 9814,
-          "tok": 2454
+          "chars": 10006,
+          "tok": 2502
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -1236,8 +1236,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 10292,
-          "tok": 2573
+          "chars": 10884,
+          "tok": 2721
         },
         {
           "path": ".claude/commands/security-gate.md#body",
@@ -1299,24 +1299,24 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 34086,
-      "static.claude.tok": 8522,
+      "static.claude.chars": 34092,
+      "static.claude.tok": 8523,
       "static.copilot.chars": 22473,
       "static.copilot.tok": 5618,
       "prompt.max.chars": 3993,
       "prompt.max.tok": 998
     },
     "angular": {
-      "static.claude.chars": 31858,
-      "static.claude.tok": 7964,
+      "static.claude.chars": 31864,
+      "static.claude.tok": 7966,
       "static.copilot.chars": 22768,
       "static.copilot.tok": 5692,
       "prompt.max.chars": 3796,
       "prompt.max.tok": 949
     },
     "monorepo": {
-      "static.claude.chars": 37731,
-      "static.claude.tok": 9433,
+      "static.claude.chars": 37737,
+      "static.claude.tok": 9434,
       "static.copilot.chars": 25260,
       "static.copilot.tok": 6315,
       "prompt.max.chars": 4408,

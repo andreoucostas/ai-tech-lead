@@ -5934,3 +5934,20 @@ other reviewers. Q: from a Sonnet session, does each of the three start on Haiku
 - Recorded, not scored: each reviewer's returned line count; AI credits, premium requests, `total_cost_usd`, wall time; `~\.copilot\config.json` and `settings.json` hashes before and after.
 - Stop: 2 Copilot premium requests (the usage files) and 1.00 USD of Claude Code (`total_cost_usd`; a repeat capped at what remains).
 - Not shown: VS Code (either harness), an Opus session (15 premium requests a prompt on Copilot), a GPT session (the rule passes none), the reviewers' findings on Haiku.
+
+## B-427 results — 2026-10-20 (pre-registered at f47b8e40)
+
+- Fixture as frozen: `make-framework-fixture.ps1` variant F (install exit 0, greenfield), every prefix registered matched; each clone held the untracked `src/Legacy.cs`, so each bundle had
+  one file (manifest `86CEC5BC…` in both runs). Both clones ended with only `?? src/Legacy.cs`.
+- Arm C, valid on its first run (session `b4270000-0000-4000-8000-000000000101`, 93 s): `session.start` 1.0.98 with `claude-sonnet-5.5`, all 5 main assistant messages on it, no auth, quota or
+  model error, every `hook.end` succeeded (`sessionStart` 1, `userPromptSubmitted` 5, `preToolUse` 16, `postToolUse` 29, `agentStop` 5). Four `task` calls in one turn: `convention-check`,
+  `debt-radar` and `bloat-radar` each with `model: "claude-haiku-5.5"`, each started on `claude-haiku-5.5` with `modelSelectionSource: explicit_override` and `taskModelSource: task_argument`;
+  `solid-check` with no argument, on `claude-sonnet-5.5` (`session_inheritance`, `unset`). Per agent: the three Haiku subagents 3, 3 and 6 requests, all on `claude-haiku-5.5`, 0.56 to 1.07 AI
+  credits each; `solid-check` 4 Sonnet requests, 9.96. Against B-382's keyed `bloat-radar` and `debt-radar` on Sonnet, 12.01 and 12.08.
+- Arm K, valid on its first run (66 s): `system/init` 2.1.300 with `claude-sonnet-5-5`, the `SessionStart` hook succeeded, no auth or budget error (`result` success). Four `Agent` calls: the three
+  with `model: "haiku"`, their messages all on `claude-haiku-5-5` (`convention-check` 7, `debt-radar` 5, `bloat-radar` 22); `solid-check` with none, its 4 on `claude-sonnet-5-5`. `modelUsage`:
+  `claude-sonnet-5-5` 0.267 USD, `claude-haiku-5-5` 0.013 USD.
+- Reading, as registered, both arms: **the rule took effect in that run** (each of the three on Haiku through its call's argument, `solid-check` on the session's model), so it ships.
+- Recorded, not scored: in both runs `convention-check` stopped on `BOOTSTRAP_PENDING`, `debt-radar` found the template `TECH_DEBT.md` empty, `bloat-radar` returned 2 (C) and 3 (K) findings
+  on the `Legacy` wrapper, `solid-check` 0. Spend: 1 premium request of 2 (31.64 AI credits), 0.28 USD of 1.00; `~\.copilot\config.json` and `settings.json` unchanged.
+- Not shown: as registered; and a rate (one run per arm).

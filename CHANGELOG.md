@@ -61,6 +61,16 @@ both kinds in the root. Claude Code 2.1.300 ran entries carrying the key and log
 "Invalid setting skipped ... entry ignored". Rejected: `"${CLAUDE_PROJECT_DIR}"` in the command, which Claude Code resolves but both
 Copilot hosts leave to PowerShell as an empty variable, so that entry failed from the root as well.
 
+`/review`'s reviewer model (guarded, B-427): `convention-check`, `debt-radar` and `bloat-radar` are `model: inherit`, and `review.md` Step 1's
+new "Reviewer model." paragraph has a session on a Claude model other than Haiku pass Haiku in each of their calls (`haiku` in Claude Code,
+the newest `claude-haiku-*` id in Copilot CLI), none otherwise, as `/bootstrap` does for its workers (WSD-115). Copilot CLI 1.0.98 ran their
+model-less wrappers on the session's model (B-399), and its retained catalog offers `claude-haiku-5.5` (`meta/eval-results.md` "B-427
+check"). Pre-registered at f47b8e40, one Sonnet-session Step 1 per CLI: the three started on `claude-haiku-5.5` (`explicit_override`,
+`task_argument`) on Copilot CLI 1.0.98 and on `claude-haiku-5-5` through `model: "haiku"` on Claude Code 2.1.300, `solid-check` on Sonnet in
+both; on Copilot each of the three cost 0.56 to 1.07 AI credits, against 12.01 and 12.08 for B-382's keyed pair on Sonnet. `DocClaims` pins
+`model: inherit` and the rule's text; `docs/reference.md`'s model column now reads Haiku in a Claude session on another model, else the
+session's model. Rejected: keeping `model: haiku` for Claude Code, an alias a host reading the `.claude` file refuses (B-398).
+
 ## 0.98.1 — 2026-10-19
 
 The briefing deck (`presentation/framework-briefing.html` slide 6) and `TALKING-POINTS.md` quoted three carrier rules the 0.98.0

@@ -382,6 +382,34 @@ function Assert-RepositoryKnowledgeDiscoveryContracts {
     }
 }
 
+# B-427: Copilot CLI 1.0.98 runs these reviewers' model-less wrappers, so their 'model: haiku' never applied there
+# (B-399), and it refuses a Claude Code alias (B-398). /review passes Haiku per call instead, as /bootstrap does (WSD-115).
+function Assert-ReviewerModelContracts {
+    param([object[]]$DistEntries)
+    $rule = @(
+        '**Reviewer model.**',
+        'pass Haiku as the model of each `convention-check`, `debt-radar` and `bloat-radar` call',
+        '`haiku` in Claude Code, and in Copilot CLI the newest `claude-haiku-*` id its `task` tool lists.',
+        'On any other session model pass none'
+    )
+    foreach ($dist in $DistEntries) {
+        foreach ($agent in 'convention-check', 'debt-radar', 'bloat-radar') {
+            $path = Join-Path $dist.Root ".claude/agents/$agent.md"
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "reviewer is missing in $($dist.Name): .claude/agents/$agent.md" }
+            if ((Read-Utf8Text $path) -notmatch '(?m)\A---\r?\n(?:(?!---).*\r?\n)*?model: inherit\r?\n') {
+                throw "reviewer $($dist.Name)/.claude/agents/$agent.md does not say 'model: inherit' in its frontmatter"
+            }
+        }
+        $review = Join-Path $dist.Root '.claude/commands/review.md'
+        $normalized = [regex]::Replace((Read-Utf8Text $review), '\s+', ' ')
+        foreach ($required in $rule) {
+            if ($normalized.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+                throw "$($dist.Name)/.claude/commands/review.md omits the reviewer-model rule text '$required'"
+            }
+        }
+    }
+}
+
 function Assert-RepositoryKnowledgeCaptureContracts {
     param([object[]]$DistEntries)
 
@@ -585,6 +613,10 @@ It 'onboarding and mirror workflows bind completion to deterministic docs sync' 
 
 It 'repository-knowledge discovery carriers preserve bounded read-only parity' {
     Assert-RepositoryKnowledgeDiscoveryContracts -DistEntries $distEntries
+}
+
+It 'review passes the three Haiku reviewers their model per call, and their files name none' {
+    Assert-ReviewerModelContracts -DistEntries $distEntries
 }
 
 It 'repository-knowledge capture carriers preserve draft and refresh boundaries' {
