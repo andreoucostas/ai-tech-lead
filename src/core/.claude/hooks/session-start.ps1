@@ -119,6 +119,24 @@ if (Test-Path -LiteralPath (Get-RepoPath '.claude/adoption-pending.json')) {
             break
         }
     }
+    # Once /bootstrap has recorded a test command, name it, so a bug fix runs it on its own and sees it fail before the edit: a first test
+    # run sent in the same turn as the edit can start after the edit lands and show no red.
+    $agentsText = if (Test-Path -LiteralPath (Get-RepoPath 'AGENTS.md')) { Get-Content -LiteralPath (Get-RepoPath 'AGENTS.md') -Raw -Encoding UTF8 } else { '' }
+    if ($agentsText -and $agentsText -notmatch 'BOOTSTRAP_PENDING') {
+        $inCommands = $false
+        $testCommands = @(@(foreach ($line in ($agentsText -split '\r?\n')) {
+            if ($line -match '^#{1,6}\s') { $inCommands = $line -match '^#{2,6}\s+Verification Commands\s*$'; continue }
+            if ($inCommands -and $line -match '^\|\s*\**test\**\s*\|([^|]*)\|') {
+                $cell = $Matches[1]
+                if ($cell -notmatch '^\s*not available') { foreach ($span in [regex]::Matches($cell, '`([^`]+)`')) { $span.Groups[1].Value } }
+            }
+        }) | Select-Object -Unique)
+        if ($testCommands.Count) {
+            $one = $testCommands.Count -eq 1
+            $shown = (@($testCommands | Select-Object -First 3 | ForEach-Object { "``$_``" }) -join ', ') + $(if ($testCommands.Count -gt 3) { ' (and more)' } else { '' })
+            Write-Output "- **Recorded test command$(if (-not $one) { 's' }):** $shown (``AGENTS.md`` › Verification Commands). For a bug fix, before any production edit, run $(if ($one) { 'it' } else { 'the applicable one' }) alone, with no other tool call in the same turn, and see the failing case fail: an edit sent in that turn can land first and hide the red."
+        }
+    }
 }
 
 # 3. Migration pointers. Existing consumers keep their protected CLAUDE.md and AGENTS.md on

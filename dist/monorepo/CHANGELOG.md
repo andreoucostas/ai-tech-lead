@@ -7,6 +7,13 @@
 
 ## 0.98.2 — Unreleased
 
+- **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
+  When `AGENTS.md > Conventions > Verification Commands` records a `test` command, the session preload names it in one
+  line and tells the agent, for a bug fix, to run it alone, with no other tool call in the same turn, and see the
+  failing case fail before it edits production code. In our measurements GitHub Copilot CLI otherwise sent its first
+  test run in the same turn as the fix, the fix landed first, and the test never showed red; with the line it ran the
+  test red first in every run, and Claude Code kept doing so. Up to three recorded test commands are named; nothing is
+  printed when none is recorded, or before `/bootstrap` (which keeps listing the test files your repository tracks).
 - **An update now saves a file of yours before a new framework file replaces it.** When a release ships a file at a
   path where your repository already holds a different file, and your previous `framework-ownership.json` does not list
   that path, the update first copies your file under `.claude/framework-update-backup/files/` at the same path, with a

@@ -13,6 +13,14 @@
 
 ## 0.98.2 — Unreleased
 
+`session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload
+names the code spans of the `test` rows in `AGENTS.md`'s Verification Commands table in one line, "Recorded test command" (up to three, then "(and more)";
+nothing when no command is recorded), and says to run it alone, with no other tool call in the same turn, and see the failing case fail before any
+production edit. B-414c: there Copilot CLI 1.0.98 `claude-sonnet-5.5` sent its first test run in the edit's turn, the edit landed first, and red-first was
+0/6 (Claude Code 6/6). With the line (pre-registered at 4720d0e1 and 0986260c, `b414d-test-command.patch`, shipped byte for byte): Copilot 6/6 (B-414e),
+Claude Code 6/6 (B-414d), against 0/6 without it at the same commit. B-414d first read Copilot 1/6 because the route grader took the script's source,
+printed beside its red run, as a PASS; ca006597 counts only a PASS the script emitted. Two `SessionStartTestEntryPoints.Tests.ps1` cases.
+
 `install.ps1` update mode (guarded, B-393): every file at an incoming framework path that the update replaces, that the previous `framework-ownership.json` does not list
 and whose bytes differ from the release (CRLF read as LF) is saved first to `.claude/framework-update-backup/files/<path>`, where every
 segment starting with `.` or `_` gains a leading `_` (injective, and no saved copy sits in a `.claude`, `.agents` or `.github` folder an

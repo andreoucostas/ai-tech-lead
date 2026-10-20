@@ -17,23 +17,21 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 2 | B-430 | Data-loss and secret-leak class, executed twice: disabling a framework skill deletes a team skill at its path (left only in Git HEAD) and moves an ignored local file to a committable path; guarded |
 | 3 | B-441 | Secret-leak class, executed: a brownfield install archives and replaces a team's own `.claude/.gitignore`, so the local files it ignored show as committable; guarded |
 | 4 | B-425 | A plain-words review may dispatch no reviewer, and so skip B-418's contract step; blocked on B-416's review answer; guarded, about 3 USD and 3 premium requests to measure |
-| 5 | B-414 | Copilot red-first in a bootstrapped repository, every consumer's steady state: C past `/bootstrap` moved the order 6/6 by behaviour but read 1/6 under a grader veto (B-414d); the grader fix and re-run, or the ship, is the maintainer's decision |
-| 6 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half needs a maintainer-driven VS Code session, since nothing here drives VS Code's Copilot harness headlessly |
-| 7 | B-378 | The guard's deny on VS Code's Copilot harness, which 1.141 is making the default for enterprise users, is documented but not observed; it needs a maintainer-driven VS Code session |
-| 8 | B-435 | Secret-leak class, reasoned only: the brownfield archive still asks only `check-ignore`, so a skip-worktree original lands committable; guarded |
-| 9 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 10 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
-| 11 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
-| 12 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
-| 13 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
-| 14 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
-| 15 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 16 | B-373 | Stall class, but only on a degenerate C# file; no field report |
-| 17 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
-| 18 | B-440 | Data-loss class, contrived: an ignored backup copy can be overwritten by a checkout of a branch that tracks the same backup path; guarded |
-| 19 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
-| 20 | B-445 | Secret-leak class, but only under a Turkish culture: the guard's `(?i)` credential check lets `API_KEY = "..."` through under tr-TR on both hosts; guarded, step 4 |
-| 21 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
+| 5 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half needs a maintainer-driven VS Code session, since nothing here drives VS Code's Copilot harness headlessly |
+| 6 | B-435 | Secret-leak class, reasoned only: the brownfield archive still asks only `check-ignore`, so a skip-worktree original lands committable; guarded |
+| 7 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
+| 8 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
+| 9 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
+| 10 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
+| 11 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
+| 12 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
+| 13 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 14 | B-373 | Stall class, but only on a degenerate C# file; no field report |
+| 15 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
+| 16 | B-440 | Data-loss class, contrived: an ignored backup copy can be overwritten by a checkout of a branch that tracks the same backup path; guarded |
+| 17 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
+| 18 | B-445 | Secret-leak class, but only under a Turkish culture: the guard's `(?i)` credential check lets `API_KEY = "..."` through under tr-TR on both hosts; guarded, step 4 |
+| 19 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
 
 ## Open entries
 
@@ -72,13 +70,6 @@ Measure one PR on an installed fixture before changing the wrapper's model invoc
 Measure it (B-346 method): an extension-point feature, a third instance and a plain CRUD decoy whose false-offer rate decides whether it stays;
 design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B.
 
-### B-378 · Observe the write guard's deny in VS Code's Copilot harness itself
-**Filed against:** v0.94.0 (2026-10-11)
-**Priority:** P2 · **Effort:** S to measure · **Invariants:** #5 #7
-**Status:** Open for its canary only; maintainer request 2026-10-11. The matrix's VS Code column became Copilot and Local harness columns and the `chat.useClaudeHooks` advice was dropped on 2026-10-12;
-the runtime VS Code 1.139.1 bundles, driven headlessly (pre-registered at 93844fb8), ran both hook files and denied every tool on an erroring `preToolUse`, but claude-sonnet-5 declined the key-shaped
-canary write 2 of 2. Left: a guard deny in a maintainer-driven Copilot-harness session on an installed fixture, with VS Code's own hook callbacks and client tools, and a prompt the model attempts.
-
 ### B-380 · Measure an `agentStop` `decision: block` for the Boy Scout nudge on Copilot, replacing the next-prompt queue
 **Filed against:** v0.94.0 (2026-10-11)
 **Priority:** P3 · **Effort:** M · **Invariants:** #5 #7
@@ -99,13 +90,6 @@ harness at 15,000 characters (`chat.copilot.skillCharBudget`, experimental; seen
 **Status:** Open; shipped unmeasured (WSD-111 precedent, plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`). B-406 S1 shows Claude Code `-p` without the approval clause stops
 before writing (12/12 T, 6/6 C); hand-read, the S1-C replies ask 3-5 questions with an assumption each 6/6 and post the plan in the same message 6/6. B-410's C-K leg 1 repeated it on HEAD: 28 questions, 27 with an assumption, the plan in the same message 6/6.
 Still needed: an underspecified prompt and a no-gap prompt, and the Copilot CLI arm, where the host's own `-p` prompt says to proceed autonomously (B-348's RAIL result, `meta/host-certification.md`).
-
-### B-414 · Copilot CLI agents fix first and run the test after: red-first is 1 of 3 and 0 of 3 with the full carrier
-**Filed against:** v0.97.2 (2026-10-18)
-**Priority:** P2 · **Effort:** M to measure · **Invariants:** #5
-**Status:** Open; found in B-411. Unbootstrapped, C took Copilot to red-first 6/6 (B-421b); bootstrapped, 0/6 (B-414c). B-414d (`meta/eval-results.md`, pre-registered at 4720d0e1): C past `/bootstrap` (`b414d-test-command.patch`) read NOT FIXED, CPT 1/6 against CPC 0/6, Claude Code 6/6 HOLDS; nothing shipped.
-By behaviour CPT ran the test alone, red, before the edit 6 of 6 (CPC 0 of 6), but five runs chained a `Get-Content` of the script, whose printed `Write-Output 'PASS: inclusive range'` vetoes the route grader's red; post hoc, that line stripped, 6/6.
-Next lever, the maintainer's decision: fix that veto in the route grader (ordinary, red first) and re-run CPT pre-registered (about 6 premium requests), or ship the measured line on the post-hoc reading (guarded).
 
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 

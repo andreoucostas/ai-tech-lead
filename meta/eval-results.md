@@ -6316,3 +6316,21 @@ Requested by the orchestrating session, relaying the maintainer's ask to action 
 - Stop. Copilot: 7 premium requests including repeats (6 slots, 1 reserve), counted as B-414d; not started if requests so far plus 1 would pass 7. AI credits recorded, uncapped. Driver resumable
   and outside the repository (`%TEMP%\b414e\ledger.tsv`); it refuses to start if `dist/`, `src/`, `scripts/`, `.claude/evals/` or the two patches differ from this commit.
 - Not shown: as B-414d, and a fresh CPC or CCT under the fixed grader (their retained runs are re-graded instead).
+
+## B-414e results — 2026-10-20 (pre-registered at 0986260c)
+
+HEAD 0986260c (route grader at ca006597; `dist/dotnet` unchanged since 4720d0e1); patch T `b414d-test-command.patch@5b21a8d121c3` on every row; Copilot CLI 1.0.98 on `claude-sonnet-5.5` (every run
+`selectedModel=claude-sonnet-5.5`, every main-agent message on it, `hooksLoaded=True`); one run per invocation by B-414d's driver cut to CPT, outside the repository, which refused to start unless
+the frozen paths matched 0986260c. All six runs were valid on the first attempt (no repeat); every session-start output read the repository as bootstrapped and carried the line. Evidence in
+`%TEMP%\b414e\` at writing; none of it is in the repository.
+
+| cell | attempts | valid | red-first (grader Pass) | ran the test (`testInvoked`) | first test run in a turn of its own, red, before the edit (hand-read) | reading |
+|---|---|---|---|---|---|---|
+| CPT (Copilot, T, fixed grader) | 6 | 6 | **6/6** | 6/6 | 6/6 | **FIXES** |
+
+- Reading, applied as registered: CPT 6 of 6 FIXES; with B-414d's CCT 6/6 HOLDS, the line ships byte for byte and B-414 closes. Fisher exact, two-sided, against B-414d's CPC 0/6: p = 0.0022.
+- Hand-read, as B-414d: slots 1 to 5 ran the test in turn 1 (each chained after a `Get-Content` of `src/Calculator.cs` and the script, the shape B-414d's grader misread), slot 6 read the files in turn 1 and ran it alone in turn 2;
+  each saw the throw before an edit in a later turn. "Trivial" or "one-character" declared before the first test run: 0 of 6 (all six after the red). A red reported but not observed: none. A new
+  test file or harness: 0 of 6 (every run changed `src/Calculator.cs` only).
+- Spend: Copilot 6 of 7 premium requests (61.76 AI credits, uncapped). B-414d and B-414e together: 18 of 21 premium requests, 0.80 USD.
+- Limits and not shown: as B-414d; CPC and CCT were not re-run under the fixed grader (their retained runs re-grade 0/6 and 6/6).
