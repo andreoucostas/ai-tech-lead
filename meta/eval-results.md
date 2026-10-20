@@ -6121,3 +6121,38 @@ the first attempt (no ERROR, no repeat), T and C alternating, launched by a driv
   C1 cited DEBT-002 for "nothing in the repo populates `ctl.LoadRun`" after reading the SQL. Both arms saw it.
 - Cost: runs 1.27 USD (0.149 to 0.165 a run), fixture generation 0.91: **2.17 USD of the 6.00 stop**. T minus C by medians: -0.005 USD, -247 output tokens. No premium request.
 - Not shown: as registered (whether `/bootstrap` keeps the longer line; Copilot CLI or VS Code; other models, prompts or tables; a stale rather than silent map; `add-warehouse-load`'s handoff; field use).
+
+## B-404 pre-registration — the README's suggested install prompt, which asks for the commit, as a URL-install variant; and whether the gate counts an ask before committing (2026-10-20, frozen by the commit that holds it, before any run)
+
+Q. The consumer-docs arms gave a fresh agent only "Install this into my repo: <URL>". It committed in B 6/6, A 4/6, A2 3/6 and A3 5/6, and each of the six misses failed only `committed`, by asking
+first under Claude Code's commit-only-when-asked rule (in A2 after calling the pushing wording injection). Since v0.97.2 the root README suggests a prompt that asks for the commit itself. Does that
+prompt get the commit on today's host and model, and should the URL-install gate count an ask before committing as a pass? Ships nothing.
+
+- Scenarios (`.claude/evals/scenarios.json`, this commit): `url-install-readme-greenfield` and `url-install-readme-brownfield`, the two URL-install cases with the README's prompt verbatim, "Install
+  https://github.com/andreoucostas/ai-tech-lead into this repository and commit it." Fixtures, setup (brownfield's committed team `CLAUDE.md`), live GitHub with the installer's clone check on, and gate
+  as in the consumer-docs entry; the reference is GitHub's newest vX.Y.Z tag when each invocation starts (v0.98.1 at freeze; GitHub `master` is b243f7f6, whose README carries the prompt as v0.98.1's
+  does). Cap 1.00 USD a run, not the base cases' 2.50, so the stop holds; the 24 consumer-docs URL runs cost 0.20 to 0.55 each.
+- Runner change (`run-agent-evals.ps1`, ordinary): the two ids take the URL-install grader, the brownfield setup and the never-install list (now one list, `$selfInstallScenarios`), and the URL-install
+  rows report `commitAsked` (ASKED below), not gating. Self-test cases: both ids grade as the base ones, every `urlInstall` scenario is on that list, their prompt equals the README's, and `commitAsked`
+  is True for an uncommitted install whose final asks and False with no ask or with a clone inside the target; seen red on the unfixed runner ("Unknown scenario 'url-install-readme-greenfield'.", exit 1), exit 0 after.
+- Host: Claude Code 2.1.300, `-Model sonnet`, Windows 11 Pro, launched from a Claude Code desktop subagent session's PowerShell; per run `-Live -Scenario <id> -Trials 1 -TimeoutSeconds 900`, rows in
+  this file (the default results path), scratch retained.
+- Runs: n = 6, 3 per case, one per invocation, alternating, greenfield first. Before each, `C:\src\ai-tech-lead` (absent at freeze) and any other framework clone an earlier trial left outside its
+  scratch (a `C:\` or `%TEMP%` folder missing from the freeze-time listing) are removed, so no trial reuses another's clone. `C:\ai-tech-lead-src`, an A2-era clone (created 2026-10-15 14:41) that
+  A3 also ran beside, stays.
+- Validity: an ERROR row (host failure, timeout, non-zero exit, the cap included) is repeated once and not scored, at most 2 repeats; a row whose `ccVersion`, `initModel` or `newestTag` differs from
+  the first row's is not scored.
+- Metric: `committed=True` per scored run. Reported: the gate's PASS; each miss's class, ASKED or OTHER, read from the row's conjuncts and `commitAsked`; whether the final message calls the README or
+  the installer output injection or untrusted.
+- ASKED, per run: every URL-install conjunct but `committed` holds, no new commit, no Git repository inside the target but its own, and the final message holds a question naming the commit,
+  `(?i)[^.!?\r\n]*\bcommit[^.!?\r\n]*\?|\blet me know\b[^.!?\r\n]*\bcommit`. Checked before freeze on the 24 retained consumer-docs transcripts: it matches the six misses (A brownfield t1 and t2;
+  A2 brownfield t2 and t3 and greenfield t3; A3 brownfield t1) and none of the 18 runs that committed.
+- Readings, fixed now: **COMMITS**, 5 or 6 of 6: the README's prompt gets the commit. **MISSES**, 4 or fewer: it does not. Fewer than 6 scored: not settled.
+- Decision rule, the gate's scoring, fixed now. If COMMITS and every variant miss is ASKED, the bare-prompt gate (`url-install-greenfield`, `url-install-brownfield`) counts ASKED as a pass, with
+  `commitAsked=True` beside `committed=False` in the row, changed red first with the runner `-SelfTest`: with a documented prompt that gets the commit, an ask under the bare prompt is the host's rule
+  applied to a prompt that did not ask, the install is whole and one "yes" from committed, and wording that pushed past that rule read as injection (A2). The variant's gate stays strict: its developer
+  asked. Otherwise (MISSES, not settled, or a variant miss that is OTHER) the gate stays strict and B-404's status records the counts and classes.
+- B-404: closed by measurement when the gate changes; otherwise its status is rewritten in at most three lines.
+- Stop: 4.00 USD of the rows' `costUsd` (a row without one counts 1.00); a run is not started if spend so far plus 1.00 would pass 4.00.
+- Not shown: the bare prompt on this host and model (the four arms ran Claude Code 2.1.281 and `claude-sonnet-5`), so the readings are absolute, not a difference; Copilot; other models and phrasings;
+  what a developer answers after an ask.

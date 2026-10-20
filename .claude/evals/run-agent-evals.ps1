@@ -47,6 +47,9 @@ $contractFixtures = @('b406-orders', 'b409-orders-ci')
 # Carrier trim: the route graders report whether the router's rails reached the prompt (routerFired), read from the UserPromptSubmit hook_response,
 # which Claude Code carries only with --include-hook-events. Asked for by these two scenarios as well as the contract fixtures.
 $routerProbeScenarios = @('route-fix', 'route-fix-nl', 'route-fix-notest')
+# The install cases: the agent installs the framework itself, so the runner installs nothing first and -TargetPatch has nothing to patch.
+# B-404: url-install-readme-* are the URL-install cases on the prompt the root README suggests, which asks for the commit.
+$selfInstallScenarios = @('install-handoff', 'archived-redirect', 'url-install-greenfield', 'url-install-brownfield', 'url-install-readme-greenfield', 'url-install-readme-brownfield')
 if (-not $ResultsPath) { $ResultsPath = Join-Path $repo 'meta/eval-results.md' }
 # Built at runtime: the outgoing-commit guard refuses a blob holding the key-shaped literal. The
 # guard-retry prompt the agent receives is unchanged.
@@ -2084,7 +2087,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         # left with: the newest release's files for the right stack, committed with nothing else left in the tree, and
         # the hand-off still pending and named. Whether the agent chose the tag itself is reported: when master is the
         # tagged commit, the installed bytes cannot tell the two apart.
-        { $_ -in @('url-install-greenfield','url-install-brownfield') } {
+        { $_ -in @('url-install-greenfield','url-install-brownfield','url-install-readme-greenfield','url-install-readme-brownfield') } {
             $expect = $script:CaseExpect
             $reference = $script:UrlInstallReference
             $stampPath = Join-Path $Target '.claude/framework-version.json'
@@ -2103,6 +2106,10 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $commits = [int](git -C $Target rev-list --count HEAD)
             $leftOver = @(git -C $Target status --porcelain=v1 --untracked-files=all)
             $committed = $commits -gt $BeforeCommits -and $leftOver.Count -eq 0
+            # B-404, reported: an ask before committing with nothing else wrong. No commit was made, no Git repository is
+            # left inside the target but its own (git status lists one as a directory entry), and the final asks about the commit.
+            $innerRepo = @($leftOver | Where-Object { $_ -match '^\?\? (.+)/$' -and (Test-Path -LiteralPath (Join-Path (Join-Path $Target $Matches[1]) '.git')) }).Count -gt 0
+            $commitAsked = [bool]($finalOk -and $commits -eq $BeforeCommits -and -not $innerRepo -and $finalText -match '(?i)[^.!?\r\n]*\bcommit[^.!?\r\n]*\?|\blet me know\b[^.!?\r\n]*\bcommit')
             $agentsPath = Join-Path $Target 'AGENTS.md'
             $pending = if ($expect.Command -eq '/adopt') { Test-Path -LiteralPath (Join-Path $Target '.claude/adoption-pending.json') }
                 else { (Test-Path -LiteralPath $agentsPath) -and ((Get-Content -Raw -LiteralPath $agentsPath) -match 'BOOTSTRAP_PENDING') }
@@ -2115,7 +2122,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $tagChosen = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and [string]$_.Input.command -match '(?i)\bgit\b[^\r\n]*\b(?:checkout|switch|clone)\b[^\r\n]*(?:\bv\d+\.\d+\.\d+|describe\s+--tags|--branch\s+v)' }).Count -gt 0
             $webFetches = @($e.Tools | Where-Object Name -eq 'WebFetch').Count
             $pass = $finalOk -and $installerTool -and $rightStack -and $newest -and $committed -and $pending -and -not $workflowTool -and -not $headlessBranch -and $namesCommand
-            return [pscustomobject]@{ Status = 'PASS'; Pass = [bool]$pass; Detail = "newestTag=$($reference.Tag) installed=$(if ($stamp) { "$($stamp.template)@$($stamp.version)" } else { 'none' }) rightStack=$rightStack newestReleaseFiles=$newest commits=$commits leftInTree=$($leftOver.Count) committed=$committed handoffPending=$pending workflowTool=$workflowTool headlessBranch=$headlessBranch installerTool=$installerTool finalNames$($expect.Command)=$namesCommand; reported: finalNames$other=$namesOther tagChosen=$tagChosen webFetches=$webFetches" }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = [bool]$pass; Detail = "newestTag=$($reference.Tag) installed=$(if ($stamp) { "$($stamp.template)@$($stamp.version)" } else { 'none' }) rightStack=$rightStack newestReleaseFiles=$newest commits=$commits leftInTree=$($leftOver.Count) committed=$committed handoffPending=$pending workflowTool=$workflowTool headlessBranch=$headlessBranch installerTool=$installerTool finalNames$($expect.Command)=$namesCommand; reported: commitAsked=$commitAsked finalNames$other=$namesOther tagChosen=$tagChosen webFetches=$webFetches" }
         }
         # A developer's first prompt after the install, in plain words. /bootstrap is the developer's to type: the agent
         # names it and changes nothing.
@@ -5868,6 +5875,35 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         'clone' | Set-Content -LiteralPath (Join-Path $nestedClone 'install.ps1') -Encoding utf8NoBOM
         if ((Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlInstalled $urlBefore).Pass) { throw 'url-install accepted a framework clone left inside the target' }
         Remove-Item -LiteralPath $nestedClone -Recurse -Force
+        # B-404: the root README's suggested prompt ("... and commit it") as a variant of both URL-install cases, with
+        # their grader, setup and never-install list; the two scenarios carry that prompt verbatim.
+        $readmeResult = Test-ScenarioEvidence 'url-install-readme-greenfield' $urlTarget $urlInstalled $urlBefore
+        if (-not $readmeResult.Pass) { throw "B-404: url-install-readme-greenfield failed a committed newest-release install that stopped at /bootstrap: $($readmeResult.Detail)" }
+        $script:CaseExpect = [pscustomobject]@{ Stack = 'dotnet'; Command = '/adopt' }
+        if ((Test-ScenarioEvidence 'url-install-readme-brownfield' $urlTarget $urlInstalled $urlBefore).Pass) { throw 'B-404: url-install-readme-brownfield accepted /bootstrap where /adopt is the hand-off' }
+        $script:CaseExpect = [pscustomobject]@{ Stack = 'dotnet'; Command = '/bootstrap' }
+        $urlScenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios | Where-Object assertion -eq 'urlInstall')
+        $runnerInstalls = @($urlScenarios | Where-Object { $_.id -notin $selfInstallScenarios } | ForEach-Object id)
+        if ($runnerInstalls) { throw "B-404: the runner would install the framework before the agent runs in $($runnerInstalls -join ', ')" }
+        $readmeText = (Get-Content -Raw -LiteralPath (Join-Path $repo 'README.md')) -replace '\s+', ' '
+        $readmePrompt = if ($readmeText -match '\*"(Install https://github\.com/andreoucostas/ai-tech-lead [^"]*)"\*') { $Matches[1] } else { '' }
+        $readmeCases = @($urlScenarios | Where-Object { $_.id -like 'url-install-readme-*' })
+        if (-not $readmePrompt -or $readmeCases.Count -ne 2 -or @($readmeCases | Where-Object prompt -CNE $readmePrompt).Count) { throw "B-404: the url-install-readme scenarios do not carry the root README's suggested prompt '$readmePrompt'" }
+        # B-404: commitAsked (reported) is an ask before committing with nothing else wrong: no commit, no Git repository
+        # inside the target but its own, and a question naming the commit; each consumer-docs miss ended with one.
+        git -C $urlTarget reset --quiet --soft HEAD~1
+        $urlAsked = [pscustomobject]@{ Events = @($urlInstalled.Events[0..4]) + @([pscustomobject]@{ type='result'; is_error=$false; result='Installed v0.98.1 (dotnet). Want me to go ahead and commit the installed files now? Then start a Claude Code session in this repository and type /bootstrap.' }) }
+        $askedResult = Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlAsked $urlBefore
+        if ($askedResult.Pass -or $askedResult.Detail -notmatch 'committed=False' -or $askedResult.Detail -notmatch 'commitAsked=True') { throw "B-404: an uncommitted install whose final asks about the commit was not a FAIL reported as commitAsked=True: $($askedResult.Detail)" }
+        $urlSilent = [pscustomobject]@{ Events = @($urlInstalled.Events[0..4]) + @([pscustomobject]@{ type='result'; is_error=$false; result='Installed v0.98.1 (dotnet); the files are not committed. Start a Claude Code session in this repository and type /bootstrap.' }) }
+        if ((Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlSilent $urlBefore).Detail -notmatch 'commitAsked=False') { throw 'B-404: an uncommitted install whose final never asks was reported as commitAsked' }
+        $nestedRepo = Join-Path $urlTarget 'ai-tech-lead'
+        git init --quiet $nestedRepo
+        'clone' | Set-Content -LiteralPath (Join-Path $nestedRepo 'install.ps1') -Encoding utf8NoBOM
+        if ((Test-ScenarioEvidence 'url-install-greenfield' $urlTarget $urlAsked $urlBefore).Detail -notmatch 'commitAsked=False') { throw 'B-404: an ask with a framework clone left inside the target was reported as commitAsked' }
+        Remove-Item -LiteralPath $nestedRepo -Recurse -Force
+        git -C $urlTarget commit --quiet -m 'install AI Tech Lead'
+        Write-Output 'PASS: B-404 the url-install-readme scenarios carry the README''s suggested prompt and are graded, set up and left uninstalled as url-install; commitAsked reports an ask with nothing else wrong'
         $setupHandoff = [pscustomobject]@{ Events = @(
             ([pscustomobject]@{ type='system'; subtype='init' }),
             ([pscustomobject]@{ type='result'; is_error=$false; result='Setting it up is one command you type yourself: /bootstrap. It reads the code and writes AGENTS.md; I cannot start it for you.' })
@@ -6073,7 +6109,7 @@ $patchTag = ''
 if ($TargetPatch) {
     if ($Arm -ne 'framework') { throw 'Refusing -TargetPatch with -Arm none: there is no installed framework to patch.' }
     $TargetPatch = (Resolve-Path -LiteralPath $TargetPatch).Path
-    $neverInstalled = @($selected | Where-Object { $_.id -in @('install-handoff','archived-redirect','url-install-greenfield','url-install-brownfield') } | ForEach-Object { $_.id } | Select-Object -Unique)
+    $neverInstalled = @($selected | Where-Object { $_.id -in $selfInstallScenarios } | ForEach-Object { $_.id } | Select-Object -Unique)
     if ($neverInstalled) { throw "Refusing -TargetPatch: $($neverInstalled -join ', ') never install the framework before the agent runs." }
     foreach ($contractFixture in $contractFixturesUsed) {
         # The overlay lands before the patch, on top of the fresh install the patch was cut against.
@@ -6137,7 +6173,7 @@ try {
         $caseFixture = if ($case.fixture) { [string]$case.fixture } else { $caseStack }
         New-EvalRepo $target $caseFixture
         $before = [int](git -C $target rev-list --count HEAD)
-        if ($Arm -eq 'framework' -and $case.id -notin @('install-handoff','archived-redirect','url-install-greenfield','url-install-brownfield')) {
+        if ($Arm -eq 'framework' -and $case.id -notin $selfInstallScenarios) {
             Install-Framework $target $caseStack | Out-Null
             # B-406: the target becomes a repository that ran /bootstrap; before any patch or scenario setup.
             if ($caseFixture -in $contractFixtures) { Initialize-B406Overlay $target $caseFixture }
@@ -6161,7 +6197,7 @@ handoff. The archived copy is frozen and is not equivalent.
 "@ | Set-Content (Join-Path $archivedRoot 'README.md') -Encoding utf8NoBOM
                 "New-Item -ItemType File -Path '$target\FROZEN_INSTALL_RAN' -Force" | Set-Content (Join-Path $archivedRoot 'install.ps1') -Encoding utf8NoBOM
             }
-            'url-install-brownfield' {
+            { $_ -in @('url-install-brownfield', 'url-install-readme-brownfield') } {
                 "# Team notes`n`n- Tests use xUnit; name them Method_State_Result.`n" | Set-Content (Join-Path $target 'CLAUDE.md') -Encoding utf8NoBOM
                 git -C $target add CLAUDE.md
                 git -C $target commit --quiet -m 'team AI notes'

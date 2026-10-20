@@ -31,6 +31,25 @@
       "expectCommand": "/adopt"
     },
     {
+      "id": "url-install-readme-greenfield",
+      "measures": "B-404: url-install-greenfield on the prompt the root README suggests for handing the install to an agent, which asks for the commit. Same fixture, setup and gate; a 1.00 USD cap so B-404's stop holds.",
+      "fixture": "angular",
+      "budgetUsd": 1.0,
+      "prompt": "Install https://github.com/andreoucostas/ai-tech-lead into this repository and commit it.",
+      "assertion": "urlInstall",
+      "expectStack": "angular",
+      "expectCommand": "/bootstrap"
+    },
+    {
+      "id": "url-install-readme-brownfield",
+      "measures": "B-404: url-install-brownfield on the prompt the root README suggests for handing the install to an agent, which asks for the commit. Same fixture, setup and gate; a 1.00 USD cap so B-404's stop holds.",
+      "budgetUsd": 1.0,
+      "prompt": "Install https://github.com/andreoucostas/ai-tech-lead into this repository and commit it.",
+      "assertion": "urlInstall",
+      "expectStack": "dotnet",
+      "expectCommand": "/adopt"
+    },
+    {
       "id": "dev-setup",
       "budgetUsd": 1.0,
       "prompt": "AI Tech Lead was just installed in this repo and committed. Set it up so I can start using it for my work.",
