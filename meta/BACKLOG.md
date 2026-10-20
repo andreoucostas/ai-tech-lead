@@ -35,9 +35,10 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 20 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
 | 21 | B-440 | Data-loss class, contrived: an ignored backup copy can be overwritten by a checkout of a branch that tracks the same backup path; guarded |
 | 22 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
-| 23 | B-391 | False-green class, but only under a Turkish culture; no field report |
-| 24 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
-| 25 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
+| 23 | B-445 | Secret-leak class, but only under a Turkish culture: the guard's `(?i)` credential check lets `API_KEY = "..."` through under tr-TR on both hosts; guarded, step 4 |
+| 24 | B-446 | False-green class, but only under a non-Gregorian culture: under ar-SA `ToString('yyyy-MM-dd')` gives year 1448, so session-start never reports overdue security findings; guarded |
+| 25 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
+| 26 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
 
 ## Open entries
 
@@ -55,12 +56,6 @@ here needs its own red case and a step-4 review.
 under code page 437 (and 850 and 1252, per the reviewing session) a `fit` indented with a no-break space (UTF-8 C2 A0) arrives mis-decoded and passes, on both
 hosts, before B-372 and after it alike. Fix verified by that session: a UTF-8 `StreamReader` over `[Console]::OpenStandardInput()`, not `[Console]::InputEncoding` (it changes the user's console); red case: that row on the CP437 leg.
 
-### B-391 · `route-prompt` lowercases prompts with the current culture, so under tr-TR an uppercase-I keyword never matches
-**Filed against:** v0.94.0 (2026-10-11)
-**Priority:** P3 · **Effort:** S · **Invariants:** #1
-**Status:** Open; found by B-389's fresh-session attack, predating it. `$prompt.ToLower()` follows the current culture, where "I" lowers to dotless "ı", so on both
-hosts "Add LOGIN throttling" gets the security overlay under en-US but not under tr-TR (re-checked on d73b395d's hook), and an uppercase "API" or "ID" misses the
-same way; intent routing shares the lowered text. Fix: `ToLowerInvariant()`; red case: those prompts with the hook run under tr-TR.
 ### B-348 · Measure whether the agent's own security pass on Copilot CLI and VS Code runs the project's skill or the host's built-in agent
 **Filed against:** v0.92.0 (2026-10-04)
 **Priority:** P2 · **Effort:** S to M to measure · **Invariants:** #1 #7
@@ -206,3 +201,13 @@ Candidate: the same `-OrSkipped` check on the archive's keep-out; red case first
 **Filed against:** v0.98.1 (2026-10-20)
 **Priority:** P3 · **Effort:** S · **Invariants:** #7
 **Status:** Open; found by B-429's fourth fresh-session attack (`N5checkout`, executed on pwsh), caused by WSD-117's blanket keep-out. Git treats an ignored file as expendable, so `git checkout` of a branch that tracks the same backup path overwrote the saved copy silently (exit 0), where an untracked, unignored file would have stopped the checkout. Contrived: it needs a branch that commits that backup path. Candidate: name such copies in the update's NOTICE so the team moves them out first. Guarded (`install.ps1`).
+
+### B-445 · Under tr-TR the guard's case-insensitive credential check lets `API_KEY = "..."` through
+**Filed against:** v0.98.1 (2026-10-20)
+**Priority:** P3 · **Effort:** S · **Invariants:** #3
+**Status:** Open; found by B-391's hook audit, executed on both hosts: `guard.ps1`'s `(?i)` credential pattern follows the current culture, where `I` folds to dotless `ı`, so `API_KEY = "..."` passes under tr-TR. Not a one-call fix: the patterns need culture-invariant matching (`RegexOptions.CultureInvariant`, or an invariant-culture scope around the checks); red case under tr-TR first. Guarded, `guard.ps1` on step 4's list.
+
+### B-446 · Under a non-Gregorian culture session-start never reports overdue security findings
+**Filed against:** v0.98.1 (2026-10-20)
+**Priority:** P3 · **Effort:** S · **Invariants:** #3
+**Status:** Open; found by B-391's hook audit: `ToString('yyyy-MM-dd')` uses the current culture's calendar, so under ar-SA the year is 1448 and `session-start`'s overdue check never fires; `audit-trail`'s timestamp has the same flaw. Candidate: format and parse with `CultureInfo.InvariantCulture`; red case under ar-SA. Guarded (`src/core/.claude/hooks/**`).

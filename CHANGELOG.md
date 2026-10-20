@@ -99,6 +99,12 @@ team had committed (under `-AllowDirtyTree`, claimed kept out) and a read-only l
 the same token under a tracked folder renamed in case (case-sensitive pathspecs and prefix checks) and a Hidden list. Twenty-two new
 `UpdateDelivery.Tests.ps1` cases.
 
+`route-prompt.ps1` (guarded, B-391): the prompt is lowered with `ToLowerInvariant()`, not the current culture's `ToLower()`. Under tr-TR
+"I" lowered to a dotless i (U+0131), so on PowerShell 7 and 5.1 and on both event shapes "Add LOGIN throttling", "Require an API key on the
+orders endpoint" and "Add OpenID Connect to the portal" got no security overlay and "FIX the date formatting" no fix rails, all four of which
+route under en-US. One new `RoutePrompt.Tests.ps1` case runs the hook under tr-TR through a wrapper that exits 3 when that culture's casing
+did not take, so on a host without it the case fails instead of passing unexamined.
+
 ## 0.98.1 — 2026-10-19
 
 The briefing deck (`presentation/framework-briefing.html` slide 6) and `TALKING-POINTS.md` quoted three carrier rules the 0.98.0

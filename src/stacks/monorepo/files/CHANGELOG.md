@@ -86,6 +86,12 @@
   Copilot CLI 1.0.98). On a model from another vendor they run on your session's model. In Claude Code they run on
   Haiku as before.
 
+- **The security reminder and workflow routing now work the same on a Windows machine set to Turkish.** The prompt
+  hook (`route-prompt`) lowercased your prompt with the machine's language rules, and in Turkish an uppercase "I"
+  lowercases to a dotless i, so there "Add LOGIN throttling" got no security reminder and "FIX the date formatting" no
+  fix workflow, and an uppercase "API" or "OpenID" missed the same way, in Claude Code and in Copilot alike. It now
+  lowercases the same way whatever the machine's language.
+
 ## 0.98.1 — 2026-10-19
 
 - **The briefing deck's "Four pillars" slide and its talking points now describe the current rules.** After 0.98.0

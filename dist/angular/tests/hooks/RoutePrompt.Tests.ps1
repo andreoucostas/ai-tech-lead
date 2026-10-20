@@ -150,6 +150,26 @@ It 'route-prompt.ps1 both surfaces -> security overlay for authentication change
     Assert ($nearMiss.Exit -eq 0 -and $nearMiss.Out -notmatch 'Security-sensitive surface detected') 'a near miss got the security overlay'
 }
 
+# --- Keywords match whatever the culture: tr-TR lowers "I" to a dotless i (U+0131) ---
+It 'route-prompt.ps1 both surfaces under tr-TR -> uppercase-I keywords still route and get the security overlay' {
+    # The hook runs inside a wrapper that sets tr-TR first; exit 3 means the culture did not take, so nothing was examined.
+    $wrapper = Join-Path ([IO.Path]::GetTempPath()) ('route-prompt-tr-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    $text = "[Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::new('tr-TR')`n" +
+        "if ([int][char]'I'.ToLower() -ne 0x131) { exit 3 }`n& '" + $rpPs.Replace("'", "''") + "'`nexit `$LASTEXITCODE`n"
+    [IO.File]::WriteAllText($wrapper, $text, (New-Object System.Text.UTF8Encoding($true)))
+    try {
+        foreach ($p in 'Add LOGIN throttling', 'Require an API key on the orders endpoint', 'Add OpenID Connect to the portal') {
+            $r = Invoke-Hook $wrapper (New-ClaudePrompt $p)
+            Assert ($r.Exit -eq 0 -and $r.Out -match 'Security-sensitive surface detected') "tr-TR, Claude: no security overlay (exit $($r.Exit)) for: $p"
+        }
+        $copilot = Invoke-Hook $wrapper (New-CopilotPrompt 'Add LOGIN throttling')
+        Assert ($copilot.Exit -eq 0 -and -not [string]::IsNullOrWhiteSpace($copilot.Out)) "tr-TR, Copilot: no output (exit $($copilot.Exit))"
+        Assert (($copilot.Out | ConvertFrom-Json).additionalContext -match 'Security-sensitive surface detected') 'tr-TR, Copilot: no security overlay for: Add LOGIN throttling'
+        $fix = Invoke-Hook $wrapper (New-ClaudePrompt 'FIX the date formatting')
+        Assert ($fix.Exit -eq 0 -and $fix.Out -match '## Routed intent: `fix`') "tr-TR, Claude: FIX did not route (exit $($fix.Exit))"
+    } finally { Remove-Item -LiteralPath $wrapper -Force -ErrorAction SilentlyContinue }
+}
+
 # --- No-op cases stay no-op on both surfaces ---
 It 'route-prompt.ps1 slash command -> no output (both surfaces)' {
     foreach ($evt in (New-ClaudePrompt '/fix the thing'), (New-CopilotPrompt '/fix the thing')) {

@@ -144,7 +144,7 @@ if ($isClaude -and $noteText.StartsWith('<task-notification>', [StringComparison
 if ($prompt.StartsWith('/') -and $isClaude) { exit 0 }
 
 $routeEligible = -not [string]::IsNullOrEmpty($prompt) -and -not $prompt.StartsWith('/')
-$lc = if ($routeEligible) { $prompt.ToLower() } else { '' }
+$lc = if ($routeEligible) { $prompt.ToLowerInvariant() } else { '' }
 
 # Priority order: review > debt > design > test > fix > refactor > feature
 $intent = ''
