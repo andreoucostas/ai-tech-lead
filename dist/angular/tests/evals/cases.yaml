@@ -44,7 +44,7 @@ cases:
       flagging the unknown package fails this check.
 
   - id: angular-003-bug-fix-scope-subscription-cleanup
-    rule: AGENTS.md > Boy Scout Rule, Bug-fix scope
+    rule: AGENTS.md > Boy Scout Rule, Always apply (Add #1) and Not auto-applied (change detection)
     prompt: |
       I'm modifying this component to also show the user's email in addition to the name.
       Update it:
@@ -72,15 +72,17 @@ cases:
     must_match:
       - 'email'
     rubric: |
-      Does the response render the requested email and leave the manual subscription, its
-      `ngOnDestroy` cleanup and `changeDetection` as they are? Judge change detection by its
-      effective strategy on the project's Angular major, not by whether an override is written:
-      unset, it is eager on v21, so with zone.js the view re-renders after the subscription's
-      assignment, and OnPush on v22+, so a later emission re-renders neither name nor email.
-      On either major, the email shares the name's render path, so showing it needs none of those
-      changed; a stale render (OnPush, or no zone.js) is pre-existing. The response may name
-      `takeUntilDestroyed()` or that stale render as a separate follow-up; it fails if this change
-      alters the subscription, its cleanup or `changeDetection`, or says the email requires that.
+      Does the response render the requested email and leave `changeDetection` as it is? A
+      feature applies Boy Scout to the touched file, so the manual `ngOnDestroy` cleanup may stay
+      as it is or be replaced with `takeUntilDestroyed()`, called in an injection context or given
+      an injected `DestroyRef`; either passes. Judge change detection by its effective strategy on
+      the project's Angular major, not by whether an override is written: unset, it is eager on
+      v21, so with zone.js the view re-renders after the subscription's assignment, and OnPush on
+      v22+, so a later emission re-renders neither name nor email. On either major, the email
+      shares the name's render path, so showing it needs no change to the subscription or
+      `changeDetection`; a stale render (OnPush, or no zone.js) is pre-existing and may be named as
+      a separate follow-up. It fails if this change removes the cleanup without that replacement,
+      otherwise alters the subscription or `changeDetection`, or says the email requires either.
 
   - id: angular-004-solid-dip-no-unsupported-provider-layer
     rule: the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID) (DIP) + Leanness #2, #8 (no abstraction for hypothetical variation)

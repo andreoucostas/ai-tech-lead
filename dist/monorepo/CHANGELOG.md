@@ -114,6 +114,13 @@
   alike, and each `.claude/ai-audit.log` line was stamped 1448. Both now use the Gregorian date whatever the machine's
   language.
 
+- **The subscription eval case now passes the `takeUntilDestroyed()` cleanup your rules ask for.** The case in
+  `tests/evals/cases.yaml` that adds the user's email to a component failed an answer that replaced the component's
+  manual `ngOnDestroy` cleanup with `takeUntilDestroyed()`, though the Boy Scout rule in `AGENTS.md` applies that
+  replacement to every file a feature touches. It now passes that replacement, called in an injection context or given
+  a `DestroyRef`, as well as the cleanup left as it was, and still fails an answer that drops the cleanup without one
+  or changes the change detection. An update refreshes the file; you do not need to do anything.
+
 ## 0.98.1 — 2026-10-19
 
 - **The briefing deck's "Four pillars" slide and its talking points now describe the current rules.** After 0.98.0

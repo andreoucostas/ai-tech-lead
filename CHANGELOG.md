@@ -133,6 +133,12 @@ the copy loop, so the re-run saw the release's rules as the "before" and left th
 which leaves the file committable. A brownfield install still archives and replaces a team's `.claude/.gitignore`, with the same effect
 (B-441). `docs/reference.md` and `README.md` name the exception in the ownership table. Nine new `UpdateDelivery.Tests.ps1` cases.
 
+Eval case angular-003 (B-392, maintainer decision 2026-10-11: the shipped rule wins): its rubric failed an answer that replaced the
+component's `ngOnDestroy` cleanup with `takeUntilDestroyed()`, which the Feature rail's Boy Scout step and Boy Scout always-apply Add #1
+(#5 in the monorepo) ask for on a touched file (since 663ae91a). It now passes that swap (in an injection context or with a `DestroyRef`)
+and the untouched cleanup, and still fails a cleanup removed without a replacement, a `changeDetection` change, or a claim that the email
+needs either; its `rule:` line names those two Boy Scout clauses instead of Bug-fix scope, which a feature prompt does not invoke.
+
 ## 0.98.1 — 2026-10-19
 
 The briefing deck (`presentation/framework-briefing.html` slide 6) and `TALKING-POINTS.md` quoted three carrier rules the 0.98.0
