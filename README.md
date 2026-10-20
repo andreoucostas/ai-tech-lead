@@ -111,7 +111,7 @@ of three ownership classes:
 
 | Class | What it means for you |
 |---|---|
-| `framework-owned/overwritten` | Replaced on every update. Do not edit; your changes would be lost. |
+| `framework-owned/overwritten` | Replaced on every update. Do not edit; your changes would be lost. For `.claude/.gitignore`, an update also keeps out of Git each existing file your own lines there ignored, with one line per file below the framework's; put your own rules in the root `.gitignore`. |
 | `consumer-owned/protected` | Yours. Created once if absent, never touched again. |
 | `mixed` | Shared: `.claude/settings.json` holds the framework's hook registrations next to your own settings, and is backed up before each update. |
 

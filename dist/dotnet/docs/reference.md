@@ -97,7 +97,7 @@ three classes.
 
 | Class | Meaning |
 |---|---|
-| `framework-owned/overwritten` | Replaced on every update. Do not edit; your changes would be lost. |
+| `framework-owned/overwritten` | Replaced on every update. Do not edit; your changes would be lost. For `.claude/.gitignore`, an update also keeps out of Git each existing file your own lines there ignored, with one line per file below the framework's; put your own rules in the root `.gitignore`. |
 | `consumer-owned/protected` | Yours: created once if absent, never touched again. `CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, `SECURITY_FINDINGS.md`, `LEARNINGS.md`, `FRAMEWORK-CONTEXT.md`, `docs/ARCHITECTURE.md`, `docs/architecture-decisions.md` and `docs/wiki/INDEX.md`. |
 | `mixed` | `.claude/settings.json`: the framework's hook registrations next to your own settings, saved to `.claude/.state/settings.json.pre-update` before each update. |
 

@@ -14,8 +14,8 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team |
-| 2 | B-431 | Secret-leak class, executed: an update drops a team's own lines from the framework-owned `.claude/.gitignore`, so their ignored local files show as committable; guarded |
-| 3 | B-430 | Data-loss and secret-leak class, executed twice: disabling a framework skill deletes a team skill at its path (left only in Git HEAD) and moves an ignored local file to a committable path; guarded |
+| 2 | B-430 | Data-loss and secret-leak class, executed twice: disabling a framework skill deletes a team skill at its path (left only in Git HEAD) and moves an ignored local file to a committable path; guarded |
+| 3 | B-441 | Secret-leak class, executed: a brownfield install archives and replaces a team's own `.claude/.gitignore`, so the local files it ignored show as committable; guarded |
 | 4 | B-425 | A plain-words review may dispatch no reviewer, and so skip B-418's contract step; blocked on B-416's review answer; guarded, about 3 USD and 3 premium requests to measure |
 | 5 | B-414 | Copilot red-first in a bootstrapped repository, every consumer's steady state, is 0/6 on both prompts (B-414c); its next lever, C past `/bootstrap`, is guarded and the maintainer's decision |
 | 6 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half needs a maintainer-driven VS Code session, since nothing here drives VS Code's Copilot harness headlessly |
@@ -179,12 +179,6 @@ Measure T vs C on both CLIs on the retained B-412 tree, graded by a reviewer `Ta
 Afterwards the team's text existed only in Git HEAD; gone if it had been ignored (reasoned). `.claude/disabled-skills/**` paths are never in a manifest, yet are replaced without B-393's save. Candidate: B-393's save before that delete and that write; red case: that fixture. Guarded.
 Also executed by B-429's attack (secret-leak class): disabling `create-adr` moved a developer's ignored `.claude/skills/create-adr/local.env` to `.claude/disabled-skills/create-adr/local.env`, which Git then showed as `??`; the original was gone, and the kept-out line counted only the backup copy.
 
-### B-431 · An update drops a team's own lines from the framework-owned `.claude/.gitignore`, so their ignored local files become committable
-**Filed against:** v0.98.1 (2026-10-19)
-**Priority:** P2 · **Effort:** S · **Invariants:** #7
-**Status:** Open; found by B-393's fresh-session attack, executed, predating it. A team line `mcp.local.json` in `.claude/.gitignore`, a path the manifest lists as framework-owned, was dropped without a notice, and the team's token-holding `.claude/mcp.local.json` then showed as `??`.
-B-393's save does not apply, since the previous manifest lists the path. Candidate: keep team lines when replacing a framework-owned ignore file, or warn when a file it ignored becomes visible; red case first. Guarded.
-
 ### B-432 · B-393's save paths may pass Windows PowerShell 5.1's 260-character limit without long-path support
 **Filed against:** v0.98.1 (2026-10-19)
 **Priority:** P3 · **Effort:** S · **Invariants:** #3
@@ -211,3 +205,9 @@ Candidate: the same `-OrSkipped` check on the archive's keep-out; red case first
 **Filed against:** v0.98.1 (2026-10-20)
 **Priority:** P3 · **Effort:** S · **Invariants:** #3
 **Status:** Open; found by B-391's hook audit: `ToString('yyyy-MM-dd')` uses the current culture's calendar, so under ar-SA the year is 1448 and `session-start`'s overdue check never fires; `audit-trail`'s timestamp has the same flaw. Candidate: format and parse with `CultureInfo.InvariantCulture`; red case under ar-SA. Guarded (`src/core/.claude/hooks/**`).
+
+### B-441 · A brownfield install archives and replaces a team's own `.claude/.gitignore`, so the local files it ignored become committable
+**Filed against:** v0.98.1 (2026-10-20)
+**Priority:** P2 · **Effort:** S · **Invariants:** #7
+**Status:** Open; found by B-431's implementation, executed on pwsh, predating it. A repository whose committed `.claude/.gitignore` holds `mcp.local.json`, with an ignored `.claude/mcp.local.json`, installs brownfield: the file moves to `docs/pre-adoption/.claude/.gitignore`, the framework's replaces it, and Git shows `?? .claude/mcp.local.json` while the handoff says to commit the copied files.
+B-431 keeps such files ignored on update only: brownfield archives the file for `/adopt` to merge, and B-313's case pins the replaced rule. Candidate: B-431's anchored lines for files Git ignored before, on a brownfield install too; red case: that fixture. Guarded (`install.ps1`; step 4).

@@ -2779,6 +2779,233 @@ It 'B-429 blanket keep-out: a Hidden list is written in place with its attribute
     }
 }
 
+# A team's own lines in the framework-owned .claude/.gitignore: an update replaced the file and dropped them without a word,
+# so a local file they ignored, a token in .claude/mcp.local.json say, showed as committable. Carrying the old lines forward
+# was beaten: a line an earlier release shipped looks like a team's, so a line a release drops never went. So the update
+# writes the release's file and keeps each file Git ignored before, and would now show, ignored by one anchored line.
+$b431Marker = '# Kept ignored by framework updates: files Git ignored before an update replaced this file. Each update rewrites the lines below; put your own rules in the root .gitignore.'
+$b431Save = '.claude/framework-update-backup/files/_.claude/_.gitignore'
+$b431Notice = "NOTICE: this update writes the framework's \.claude/\.gitignore as released\."
+function New-B431Target {
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][byte[]]$Ignore, [Parameter(Mandatory)][Collections.IDictionary]$Local)
+    $t = New-B429GitTarget -Root $Root -Ignore "/scratch/`n"
+    [IO.File]::WriteAllBytes((Join-Path $t '.claude/.gitignore'), $Ignore)
+    & git -C $t add -A
+    & git -C $t commit -qm 'framework state and team ignore lines'
+    Write-B429Files -Folder $t -Files $Local
+    return $t
+}
+# The 0.94.0 release's .claude/.gitignore lines, the file a team edited.
+function Get-B431ReleaseLines { return @([Text.UTF8Encoding]::new($false).GetString((Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/.claude/.gitignore')).Split([char]10) | Where-Object { $_ }) }
+function Get-B431Committable { param([string]$Target) return @(& git -C $Target status --porcelain --untracked-files=all | Where-Object { $_.StartsWith('?? ') } | ForEach-Object { $_.Substring(3) }) }
+# The release's bytes, then, when any file needs it, the marker and one anchored line per file.
+function Get-B431Expected {
+    param([string[]]$Anchors = @(), [string]$Release = (Join-Path $repoRoot 'dist/dotnet'))
+    $bytes = [IO.File]::ReadAllBytes((Join-Path $Release '.claude/.gitignore'))
+    if ($Anchors.Count -eq 0) { return , $bytes }
+    return [byte[]]($bytes + [Text.UTF8Encoding]::new($false).GetBytes($b431Marker + "`n" + ($Anchors -join "`n") + "`n"))
+}
+function Get-B431Text { param([string]$Target) return [IO.File]::ReadAllText((Join-Path $Target '.claude/.gitignore')) }
+
+It 'B-431 status: a file a team''s own line in .claude/.gitignore ignored stays ignored by one anchored line after the release''s bytes, the update says so and saves the team''s version out of Git, and a re-run changes nothing' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-' + [guid]::NewGuid())
+    try {
+        # The first attacking session's fixture: one line for a local MCP config holding a token.
+        $team = [Text.UTF8Encoding]::new($false).GetBytes(((Get-B431ReleaseLines) + 'mcp.local.json' -join "`n") + "`n")
+        $t = New-B431Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/mcp.local.json' = "{`"token`":`"sk-live-FX-SECRET`"}`n" })
+        Assert ((Get-B431Committable $t).Count -eq 0) 'calibration: the token file is committable before the update'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $committable = Get-B431Committable $t
+        Assert ($committable -notcontains '.claude/mcp.local.json') "the team's ignore line was dropped, so its token file is committable: $($committable -join ', ')"
+        Assert (Test-B194BytesEqual (Get-B431Expected @('/mcp.local.json')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the update did not write the release's bytes, the marker, then one anchored line for the token file: $(Get-B431Text $t)"
+        Assert ($flat -match ($b431Notice + " Your version had lines this release's version lacks \('mcp\.local\.json'\), which no longer apply there; it is saved at " + [regex]::Escape($b431Save) + "\. Git ignored 1 file below \.claude/ before this update that the release's version does not ignore, so the update keeps it ignored with one line below the line '" + [regex]::Escape($b431Marker) + "': /mcp\.local\.json\. Such a line names one file: a folder or wildcard rule of yours no longer covers a file created later\. Put rules of your own in the root \.gitignore: \.claude/\.gitignore is the framework's file, and every update rewrites it\.")) "the dropped line, the save and the anchored file were not reported in one NOTICE: $out"
+        Assert ((Test-Path -LiteralPath (Join-Path $t $b431Save) -PathType Leaf) -and (Test-B194BytesEqual $team ([IO.File]::ReadAllBytes((Join-Path $t $b431Save))))) "the team's version was not saved byte-identical at $b431Save`: $out"
+        Assert (@($committable | Where-Object { $_ -match 'framework-update-backup/' }).Count -eq 0) "the saved version is committable: $($committable -join ', ')"
+        Assert ($flat -notmatch 'CANT-VERIFY') "the update reported CANT-VERIFY: $out"
+        $kept = [IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore'))
+        $again = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        Assert ($LASTEXITCODE -eq 0) "the second update failed (exit $LASTEXITCODE): $again"
+        Assert (Test-B194BytesEqual $kept ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "a re-run changed the anchored section: $(Get-B431Text $t)"
+        Assert (($again -replace '\s+', ' ') -notmatch "NOTICE: [^.]*\.claude/\.gitignore") "a re-run reported the section again: $again"
+        Assert ((Get-B431Committable $t) -notcontains '.claude/mcp.local.json') "after a re-run the token file is committable: $again"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-431 status: no team line is copied, so a line identical to a framework line appears once, and each file another line ignored gets one anchored line with the glob characters in its name escaped' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-same-' + [guid]::NewGuid())
+    try {
+        $team = [Text.UTF8Encoding]::new($false).GetBytes(((Get-B431ReleaseLines) + 'settings.local.json', '*.pem' -join "`n") + "`n")
+        $t = New-B431Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/deploy.pem' = "-----FIXTURE KEY-----`n"; '.claude/keys[prod] #1 !.pem' = "-----FIXTURE KEY-----`n" })
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $committable = Get-B431Committable $t
+        Assert (@($committable | Where-Object { $_ -like '.claude/*.pem' }).Count -eq 0) "the team's *.pem line was dropped, so a key file is committable: $($committable -join ', ')"
+        $text = Get-B431Text $t
+        Assert (@($text.Split([char]10) | Where-Object { $_ -ceq 'settings.local.json' }).Count -eq 1) "a team line identical to a framework line is written twice or not at all: $text"
+        Assert (Test-B194BytesEqual (Get-B431Expected @('/deploy.pem', '/keys\[prod\]\ \#1\ \!.pem')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the update did not write the release's bytes and one escaped anchored line per key file: $text"
+        Assert (($out -replace '\s+', ' ') -notmatch 'CANT-VERIFY') "the update reported CANT-VERIFY: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-431 status: with a team''s ! lines in the old file, a file one re-included stays committable and each file the old lines ignored stays ignored' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-negation-' + [guid]::NewGuid())
+    try {
+        # Inserted after the framework's .state/ line: in this order Git ignores mcp.local.json and settings.local.json, the
+        # framework's own line after the team's !settings.local.json winning, and shows shared.local.json.
+        $release = Get-B431ReleaseLines
+        $ownLines = @('*.local.json', '!shared.local.json', '!settings.local.json')
+        $team = [Text.UTF8Encoding]::new($false).GetBytes((@($release[0..1]) + $ownLines + @($release[2..($release.Count - 1)]) -join "`n") + "`n")
+        $t = New-B431Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/mcp.local.json' = "{`"token`":`"sk-live-FX-SECRET`"}`n"; '.claude/settings.local.json' = "{`"env`":{`"API_KEY`":`"sk-FIXTURE`"}}`n"; '.claude/shared.local.json' = "{`"shared`":true}`n" })
+        Assert (((Get-B431Committable $t) -join ',') -ceq '.claude/shared.local.json') "calibration: before the update Git does not show only shared.local.json: $((Get-B431Committable $t) -join ', ')"
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $committable = Get-B431Committable $t
+        Assert ($committable -notcontains '.claude/mcp.local.json') "the team's *.local.json line was dropped, so its token file is committable: $($committable -join ', ')"
+        Assert ($committable -notcontains '.claude/settings.local.json') "the local settings the old lines ignored are committable: $($committable -join ', ')"
+        Assert ($committable -contains '.claude/shared.local.json') "a file the old lines showed is now ignored: $($committable -join ', ')"
+        Assert (Test-B194BytesEqual (Get-B431Expected @('/mcp.local.json')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the update did not write the release's bytes and one anchored line for the token file alone: $(Get-B431Text $t)"
+        Assert (($out -replace '\s+', ' ') -notmatch 'CANT-VERIFY') "the update reported CANT-VERIFY: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-431 status: a team''s .claude/.gitignore saved with CRLF line endings and a byte-order mark: no framework line is called the team''s, and its file stays ignored by one anchored line' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-crlf-' + [guid]::NewGuid())
+    try {
+        # What Windows PowerShell 5.1's Set-Content -Encoding UTF8 writes, and Git reads as the same lines.
+        $team = [Text.UTF8Encoding]::new($true).GetPreamble() + [Text.UTF8Encoding]::new($false).GetBytes(((Get-B431ReleaseLines) + 'mcp.local.json' -join "`r`n") + "`r`n")
+        $t = New-B431Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/mcp.local.json' = "{`"token`":`"sk-live-FX-SECRET`"}`n" })
+        Assert ((Get-B431Committable $t).Count -eq 0) 'calibration: Git does not read the CRLF file with a byte-order mark as ignoring the token file'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        Assert ((Get-B431Committable $t) -notcontains '.claude/mcp.local.json') "the team's CRLF line was dropped, so its token file is committable: $out"
+        Assert (Test-B194BytesEqual (Get-B431Expected @('/mcp.local.json')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the update did not write the release's bytes and one anchored line: $(Get-B431Text $t)"
+        Assert (($out -replace '\s+', ' ') -match "lacks \('mcp\.local\.json'\), which") "the NOTICE names a framework line differing only in its CR or the byte-order mark as the team's: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-431 status: when a release''s .claude/.gitignore no longer ignores an existing file the old one ignored, that file stays ignored by one anchored line' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-check-' + [guid]::NewGuid())
+    try {
+        # A release whose .claude/.gitignore re-includes local settings the 0.94.0 lines ignored.
+        $framework = Join-Path $root 'framework'
+        New-Item -ItemType Directory -Force -Path $root | Out-Null
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $framework -Recurse
+        [IO.File]::AppendAllText((Join-Path $framework '.claude/.gitignore'), "!settings.local.json`n", [Text.UTF8Encoding]::new($false))
+        $team = [Text.UTF8Encoding]::new($false).GetBytes(((Get-B431ReleaseLines) + 'mcp.local.json' -join "`n") + "`n")
+        $t = New-B431Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/mcp.local.json' = "{`"token`":`"sk-live-FX-SECRET`"}`n"; '.claude/settings.local.json' = "{`"env`":{`"API_KEY`":`"sk-FIXTURE`"}}`n" })
+        $out = & (Get-PsExe) -NoProfile -File (Join-Path $framework 'scripts/install.ps1') -Target $t 2>&1 | Out-String
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $committable = Get-B431Committable $t
+        Assert ($committable -notcontains '.claude/settings.local.json' -and $committable -notcontains '.claude/mcp.local.json') "a file the old lines ignored is committable: $($committable -join ', ')"
+        Assert (Test-B194BytesEqual (Get-B431Expected @('/mcp.local.json', '/settings.local.json') -Release $framework) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the update did not write the release's bytes and one anchored line per file: $(Get-B431Text $t)"
+        Assert (($out -replace '\s+', ' ') -match 'Git ignored 2 files below \.claude/ before this update that the release''s version does not ignore, so the update keeps them ignored with one line each below the line') "the NOTICE does not count the two anchored files: $out"
+        Assert (($out -replace '\s+', ' ') -notmatch 'CANT-VERIFY') "the update reported CANT-VERIFY: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-431 status: a release that drops its own ! line and rewords a comment takes effect, so the file the ! line showed is ignored, the file is the release''s byte for byte, and the old lines are not called the team''s own' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-release-' + [guid]::NewGuid())
+    try {
+        # The second attacking session's fixture: release A's file is the shipped one plus '*.local.json' and '!shared.local.json';
+        # release B rewords the first comment and drops the '!' line, so shared.local.json, a token, should be ignored after it.
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        $base = [IO.File]::ReadAllText((Join-Path $repoRoot 'dist/dotnet/.claude/.gitignore'), $utf8)
+        $releaseA = $base + "*.local.json`n!shared.local.json`n"
+        $lines = $base.Split([char]10)
+        $lines[0] = '# Hook state: runtime stamps for throttling and dedup.'
+        $releaseB = ($lines -join "`n") + "*.local.json`n"
+        $framework = Join-Path $root 'releaseB'
+        New-Item -ItemType Directory -Force -Path $root | Out-Null
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $framework -Recurse
+        [IO.File]::WriteAllText((Join-Path $framework '.claude/.gitignore'), $releaseB, $utf8)
+        $t = New-B431Target -Root $root -Ignore ($utf8.GetBytes($releaseA)) -Local ([ordered]@{ '.claude/shared.local.json' = "{`"token`":`"sk-FIXTURE1`"}`n" })
+        Assert ((Get-B431Committable $t) -contains '.claude/shared.local.json') 'calibration: release A does not show shared.local.json'
+        $out = & (Get-PsExe) -NoProfile -File (Join-Path $framework 'scripts/install.ps1') -Target $t -AllowDirtyTree 2>&1 | Out-String
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        Assert ((Get-B431Committable $t) -notcontains '.claude/shared.local.json') "the ! line release B dropped still shows the token file: $(Get-B431Text $t)"
+        Assert ((Get-B431Text $t) -ceq $releaseB) "the file is not release B's byte for byte: $(Get-B431Text $t)"
+        Assert ($flat -notmatch 'lines of your own' -and -not $flat.Contains('runtime stamps used for throttling')) "the update called release A's lines the team's own: $out"
+        Assert ($flat -notmatch 'CANT-VERIFY') "the update reported CANT-VERIFY: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-431 status: a .claude/.gitignore an earlier update wrote, saved again with a byte-order mark, is rewritten with the same section and no NOTICE or second save' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-bom-' + [guid]::NewGuid())
+    try {
+        $team = [Text.UTF8Encoding]::new($false).GetBytes(((Get-B431ReleaseLines) + 'mcp.local.json' -join "`n") + "`n")
+        $t = New-B431Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/mcp.local.json' = "{`"token`":`"sk-live-FX-SECRET`"}`n" })
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the first update failed (exit $LASTEXITCODE): $first"
+        & git -C $t add -A
+        & git -C $t commit -qm 'first update'
+        # An editor that writes a byte-order mark saves the file again, otherwise unchanged.
+        $written = [IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore'))
+        [IO.File]::WriteAllBytes((Join-Path $t '.claude/.gitignore'), [byte[]]([Text.UTF8Encoding]::new($true).GetPreamble() + $written))
+        $again = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        $flat = $again -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the second update failed (exit $LASTEXITCODE): $again"
+        Assert ($flat -notmatch "NOTICE: [^.]*\.claude/\.gitignore") "the second update repeated a NOTICE for a file it had already handled: $again"
+        Assert (@(Get-ChildItem -LiteralPath (Join-Path $t '.claude/framework-update-backup/files/_.claude') -File -Force -ErrorAction SilentlyContinue).Count -le 1) "the second update saved the file again: $again"
+        Assert (Test-B194BytesEqual (Get-B431Expected @('/mcp.local.json')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the section repeated, grew or kept the byte-order mark: $(Get-B431Text $t)"
+        Assert ((Get-B431Committable $t) -notcontains '.claude/mcp.local.json') "after the second update the token file is committable: $again"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-431 write last: an update that stops at a file another program holds leaves the team''s .claude/.gitignore as it was, and the re-run keeps the token file it ignored out of Git' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-locked-' + [guid]::NewGuid())
+    try {
+        # The second attacking session's fixture: the release's lines plus the team's 'token.txt', and a script the update
+        # replaces held open by another program, so the update stops at it.
+        $team = [Text.UTF8Encoding]::new($false).GetBytes(((Get-B431ReleaseLines) + 'token.txt' -join "`n") + "`n")
+        $t = New-B431Target -Root $root -Ignore $team -Local ([ordered]@{ 'scripts/wiki-check.ps1' = "# the team's older copy`n" })
+        & git -C $t add -A
+        & git -C $t commit -qm 'older script'
+        Write-B429Files -Folder $t -Files ([ordered]@{ '.claude/token.txt' = "sk-FIXTURE2`n" })
+        Assert ((Get-B431Committable $t).Count -eq 0) 'calibration: the token file is committable before the update'
+        $held = [IO.File]::Open((Join-Path $t 'scripts/wiki-check.ps1'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        try { $out = Invoke-Installer -Dist 'dotnet' -Target $t; $code = $LASTEXITCODE } finally { $held.Dispose() }
+        Assert ($code -ne 0) "calibration: the update did not stop at the held file (exit $code): $out"
+        Assert (Test-B194BytesEqual $team ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the stopped update had already replaced the team's .claude/.gitignore: $(Get-B431Text $t)"
+        Assert ((Get-B431Committable $t) -notcontains '.claude/token.txt') "after the stopped update the token file is committable: $out"
+        $again = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        Assert ($LASTEXITCODE -eq 0) "the re-run failed (exit $LASTEXITCODE): $again"
+        Assert ((Get-B431Committable $t) -notcontains '.claude/token.txt') "after the re-run the token file is committable: $again"
+        Assert (Test-B194BytesEqual (Get-B431Expected @('/token.txt')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the re-run did not write the release's bytes and one anchored line for the token file: $(Get-B431Text $t)"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-431 write last: a .claude/.gitignore that ends with the marker and no line below it, as an update stopped between its last two writes leaves it, is named in a CANT-VERIFY line' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-stopped-' + [guid]::NewGuid())
+    try {
+        $stopped = [byte[]]([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.claude/.gitignore')) + [Text.UTF8Encoding]::new($false).GetBytes($b431Marker + "`n"))
+        $t = New-B431Target -Root $root -Ignore $stopped -Local ([ordered]@{ '.claude/token.txt' = "sk-FIXTURE2`n" })
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        Assert (($out -replace '\s+', ' ') -match ("CANT-VERIFY: '\.claude/\.gitignore' ends with the line '" + [regex]::Escape($b431Marker) + "' and no line below it, as an update that stopped between its last two writes leaves it")) "the update did not name a file an update stopped between its last two writes: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'a disabled retired recipe skill: the update finishes, carries the folder''s consumer files and removes the active copy' {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('recipe-disabled-' + [guid]::NewGuid())
     try {

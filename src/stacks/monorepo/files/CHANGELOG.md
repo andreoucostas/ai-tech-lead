@@ -44,6 +44,23 @@
   beside it, under a name ending in its SHA-256, which the `*` hides. Review the tracked files, then run
   `git rm -r --cached .claude/framework-update-backup` and commit. A secret committed there stays in your Git history:
   rotate it, or rewrite that history.
+- **An update now keeps out of Git the files your own lines in `.claude/.gitignore` ignored.** That file is the
+  framework's, and an update replaced it whole, so a line of your own there, such as one keeping a local
+  `.claude/mcp.local.json` with a token out of Git, was dropped without a word, and `git status` then offered that file
+  to commit. The update still writes the framework's `.claude/.gitignore` as released, but first asks Git which files
+  below `.claude/` it ignores, and afterwards keeps each one it would now show ignored with one line naming exactly that
+  file (such as `/mcp.local.json`, any `[`, `]`, `!`, `#` or space in the name escaped), below the comment line
+  `# Kept ignored by framework updates: ...` after the framework's lines. Each update rewrites that section from what
+  Git ignores, so it does not grow, and a file you delete, or whose rule you move to the root `.gitignore`, leaves it.
+  A folder or wildcard rule of yours thus becomes one line per file that exists at the update, so it no longer covers
+  a file created later; the `NOTICE` says so. A rule the framework removes from its own lines takes effect for every
+  file except one Git ignored before that still exists. The update writes this file last, so an update that stops
+  earlier, at a file another program holds say, leaves your version in place for the next run; if one stops between
+  its last two writes, the next run names that in a `CANT-VERIFY` line. When your version had rule lines the
+  framework's lacks, it is saved first under `.claude/framework-update-backup/files/`, which Git ignores, and a `NOTICE`
+  names those lines, where the copy is, and the files kept ignored; comments, blank lines, line endings and a
+  byte-order mark do not count. Put rules of your own in your repository's root `.gitignore`. If Git still shows such
+  a file afterwards, a `CANT-VERIFY` line names it and how many there are.
 
 - **The session preload and the audit log no longer depend on where PowerShell starts.** The `session-start` and
   `audit-trail` hooks now find your repository from their own place under `.claude/hooks/` instead of from PowerShell's

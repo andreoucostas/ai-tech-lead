@@ -105,6 +105,27 @@ orders endpoint" and "Add OpenID Connect to the portal" got no security overlay 
 route under en-US. One new `RoutePrompt.Tests.ps1` case runs the hook under tr-TR through a wrapper that exits 3 when that culture's casing
 did not take, so on a host without it the case fails instead of passing unexamined.
 
+`install.ps1` update mode (guarded, B-431, an escaped secret leak): a framework-owned `.gitignore` the update replaces
+(`.claude/.gitignore`, the only one any dist ships; the root `.gitignore` is a meta file never installed) is written as released, and
+the ignore status of the files below its folder is kept instead of the old lines: `git status -z --ignored` (through `Invoke-GitRecords`)
+before the first change, and again with the release's bytes in place, gives each file Git ignored before and would now show, and each gets
+one anchored literal line (`/` plus its path from the folder, `[ ] * ? \ ! #` and spaces escaped) below a marker comment after the release's
+bytes, a section every update rewrites from Git's answer, so it never repeats or grows; a folder or wildcard rule thus shrinks to a per-file
+snapshot, which the `NOTICE` says. The file is written last, after every other write and deletion, so an update that stops earlier leaves the
+team's rules for the next run to ask about; Git is asked with the release's bytes and the marker alone in place, then the lines are written,
+a failed read puts the team's version back, and a file left ending in the marker alone is named on the next run in a `CANT-VERIFY` line.
+Git is asked once more after the lines; a file still shown gets a `CANT-VERIFY` line with the count (seen red on a scratch copy with the
+escaping removed, on a `keys[prod].pem`). When the old version had pattern lines the release's lacks (comments, blank lines, a byte-order
+mark, line endings and the marker section not counted), it is saved first to `.claude/framework-update-backup/files/_.claude/_.gitignore`;
+one `NOTICE` names those lines, the save and the anchored files, and says to move rules to the root `.gitignore`. Before, a team line such as
+`mcp.local.json` was dropped without a notice and the token file it ignored showed as `??`; B-393's save did not apply, since the previous
+manifest lists the path. Two fresh-session attacks shaped it: the first beat a design that carried the team's lines below a marker (a line an
+earlier release shipped looks like a team's, so a `!` line a release drops kept re-including a token file, and a reworded framework comment
+drew a false "your own lines" `NOTICE`); the second stopped an update at a script another program held, after the file had been replaced in
+the copy loop, so the re-run saw the release's rules as the "before" and left the token file committable. Rejected also: a warning alone,
+which leaves the file committable. A brownfield install still archives and replaces a team's `.claude/.gitignore`, with the same effect
+(B-441). `docs/reference.md` and `README.md` name the exception in the ownership table. Nine new `UpdateDelivery.Tests.ps1` cases.
+
 ## 0.98.1 — 2026-10-19
 
 The briefing deck (`presentation/framework-briefing.html` slide 6) and `TALKING-POINTS.md` quoted three carrier rules the 0.98.0
