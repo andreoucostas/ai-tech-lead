@@ -88,6 +88,30 @@ try {
         Assert ($fields[2] -ne '[path-normalisation-failed]') 'successful resolution unexpectedly hit the failure sentinel'
     }
 
+    # Under ar-SA the calendar is Umm al-Qura, where 2026 is 1448. The hook runs inside a wrapper that sets
+    # ar-SA first; exit 3 means the culture did not take.
+    It 'under ar-SA (Umm al-Qura calendar) the timestamp is the Gregorian UTC time' {
+        [System.IO.File]::WriteAllText($logPath, '')
+        $null = New-Item -ItemType File -Force -Path 'src/x.txt'
+        $wrapper = Join-Path ([IO.Path]::GetTempPath()) ('audit-ar-' + [guid]::NewGuid().ToString('N') + '.ps1')
+        $text = "[Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::new('ar-SA')`n" +
+            "if ([Globalization.CultureInfo]::CurrentCulture.Calendar -is [Globalization.GregorianCalendar]) { exit 3 }`n& '" + $hookPs.Replace("'", "''") + "'`nexit `$LASTEXITCODE`n"
+        [IO.File]::WriteAllText($wrapper, $text, (New-Object System.Text.UTF8Encoding($true)))
+        try {
+            $before = [DateTime]::UtcNow
+            $r = Invoke-Hook $wrapper (New-ClaudeEvent 'src/x.txt' 'hello world')
+            Assert ($r.Exit -ne 3) 'ar-SA did not take in the hook''s process (its calendar is Gregorian), so nothing was examined'
+            Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
+            $lines = Get-AuditLines
+            Assert ($lines.Count -eq 1) "expected 1 line, got $($lines.Count)"
+            $stamp = (@($lines)[0] -split "`t")[0]
+            $parsed = [DateTime]::MinValue
+            $ok = [DateTime]::TryParseExact($stamp, "yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture,
+                [Globalization.DateTimeStyles]'AssumeUniversal, AdjustToUniversal', [ref]$parsed)
+            Assert ($ok -and [Math]::Abs(($parsed - $before).TotalMinutes) -lt 10) "timestamp '$stamp' is not the Gregorian UTC time $($before.ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture))"
+        } finally { Remove-Item -LiteralPath $wrapper -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'path-normalisation failure retains a sentinel audit line without the failed path (.ps1)' {
         [System.IO.File]::WriteAllText($logPath, '')
         $unsafe = 'C:\SENTINEL-FAKE-HOME\SENTINEL-SECRET-LOCATION\missing.txt'

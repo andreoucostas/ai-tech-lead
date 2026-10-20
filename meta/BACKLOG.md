@@ -36,9 +36,8 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 21 | B-440 | Data-loss class, contrived: an ignored backup copy can be overwritten by a checkout of a branch that tracks the same backup path; guarded |
 | 22 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
 | 23 | B-445 | Secret-leak class, but only under a Turkish culture: the guard's `(?i)` credential check lets `API_KEY = "..."` through under tr-TR on both hosts; guarded, step 4 |
-| 24 | B-446 | False-green class, but only under a non-Gregorian culture: under ar-SA `ToString('yyyy-MM-dd')` gives year 1448, so session-start never reports overdue security findings; guarded |
-| 25 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
-| 26 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
+| 24 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
+| 25 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
 
 ## Open entries
 
@@ -200,11 +199,6 @@ Candidate: the same `-OrSkipped` check on the archive's keep-out; red case first
 **Filed against:** v0.98.1 (2026-10-20)
 **Priority:** P3 · **Effort:** S · **Invariants:** #3
 **Status:** Open; found by B-391's hook audit, executed on both hosts: `guard.ps1`'s `(?i)` credential pattern follows the current culture, where `I` folds to dotless `ı`, so `API_KEY = "..."` passes under tr-TR. Not a one-call fix: the patterns need culture-invariant matching (`RegexOptions.CultureInvariant`, or an invariant-culture scope around the checks); red case under tr-TR first. Guarded, `guard.ps1` on step 4's list.
-
-### B-446 · Under a non-Gregorian culture session-start never reports overdue security findings
-**Filed against:** v0.98.1 (2026-10-20)
-**Priority:** P3 · **Effort:** S · **Invariants:** #3
-**Status:** Open; found by B-391's hook audit: `ToString('yyyy-MM-dd')` uses the current culture's calendar, so under ar-SA the year is 1448 and `session-start`'s overdue check never fires; `audit-trail`'s timestamp has the same flaw. Candidate: format and parse with `CultureInfo.InvariantCulture`; red case under ar-SA. Guarded (`src/core/.claude/hooks/**`).
 
 ### B-441 · A brownfield install archives and replaces a team's own `.claude/.gitignore`, so the local files it ignored become committable
 **Filed against:** v0.98.1 (2026-10-20)

@@ -105,6 +105,13 @@ orders endpoint" and "Add OpenID Connect to the portal" got no security overlay 
 route under en-US. One new `RoutePrompt.Tests.ps1` case runs the hook under tr-TR through a wrapper that exits 3 when that culture's casing
 did not take, so on a host without it the case fails instead of passing unexamined.
 
+`session-start.ps1` and `audit-trail.ps1` (guarded, B-446): the overdue-finding check's "today" and the audit line's timestamp are
+formatted with `CultureInfo.InvariantCulture`. `ToString('yyyy-MM-dd')` used the current culture's calendar, so under ar-SA (Umm al-Qura)
+"today" was 1448-05-09 on 2026-10-20, every Gregorian due date sorted after it, and an overdue `SECURITY_FINDINGS.md` entry was reported as
+merely open, on PowerShell 7 and 5.1 and both event shapes; the audit line was stamped 1448. One new case each in
+`PowerShellSemantics.Tests.ps1` and `AuditTrail.Tests.ps1` runs the hook under ar-SA through a wrapper that exits 3 when the calendar is
+still Gregorian. No other shipped hook formats or parses a date with the current culture.
+
 `install.ps1` update mode (guarded, B-431, an escaped secret leak): a framework-owned `.gitignore` the update replaces
 (`.claude/.gitignore`, the only one any dist ships; the root `.gitignore` is a meta file never installed) is written as released, and
 the ignore status of the files below its folder is kept instead of the old lines: `git status -z --ignored` (through `Invoke-GitRecords`)

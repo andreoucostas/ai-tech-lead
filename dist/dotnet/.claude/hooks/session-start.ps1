@@ -173,7 +173,7 @@ if (Test-Path -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md')) {
     $secContent = Get-Content -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md') -Raw
     $openCount = ([regex]::Matches($secContent, '\| Open ')).Count
     if ($openCount -gt 0) {
-        $today = (Get-Date).ToString('yyyy-MM-dd')
+        $today = (Get-Date).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
         $overdue = 0
         foreach ($line in (Get-Content -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md'))) {
             if ($line -match '\| Open ') {

@@ -158,4 +158,30 @@ foreach ($case in $securityCases) {
     }
 }
 
+# Under ar-SA the calendar is Umm al-Qura, where 2026 is 1448, so a "today" formatted in it sorts before every
+# Gregorian due date. The hook runs inside a wrapper that sets ar-SA first; exit 3 means the culture did not take.
+It 'session-start under ar-SA (Umm al-Qura calendar) still reports an overdue finding on both surfaces' {
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('ssfix-ar-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    try {
+        [IO.File]::WriteAllText((Join-Path $dir 'SECURITY_FINDINGS.md'), ($securityHeader + "`n| SF-1 | High | Open | 2000-01-01 | 2000-01-02 | x |`n"), [Text.UTF8Encoding]::new($false))
+        $hook = Copy-HookInto $sessionStart $dir
+        $wrapper = Join-Path $dir 'ar-sa.ps1'
+        $text = "[Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::new('ar-SA')`n" +
+            "if ([Globalization.CultureInfo]::CurrentCulture.Calendar -is [Globalization.GregorianCalendar]) { exit 3 }`n& '" + $hook.Replace("'", "''") + "'`nexit `$LASTEXITCODE`n"
+        [IO.File]::WriteAllText($wrapper, $text, (New-Object System.Text.UTF8Encoding($true)))
+        $claude = Invoke-Hook $wrapper '{"hook_event_name":"SessionStart"}'
+        Assert ($claude.Exit -ne 3) 'ar-SA did not take in the hook''s process (its calendar is Gregorian), so nothing was examined'
+        Assert ($claude.Exit -eq 0) "session-start exited $($claude.Exit): $($claude.Err)"
+        $lines = @(($claude.Out -split "`n") | Where-Object { $_ -match '^- (?:🔴 )?\*\*Security:\*\*' })
+        Assert ($lines.Count -eq 1 -and $lines[0] -eq $securityOverdueLine) "ar-SA, Claude: expected the overdue line, got: $($lines -join ' | ')"
+        $copilot = Invoke-Hook $wrapper '{"timestamp":1}'
+        Assert ($copilot.Exit -eq 0) "Copilot: session-start exited $($copilot.Exit): $($copilot.Err)"
+        $json = $copilot.Out | ConvertFrom-Json
+        foreach ($context in $json.additionalContext, $json.hookSpecificOutput.additionalContext) {
+            Assert ("$context".Contains($securityOverdueLine)) 'ar-SA, Copilot: an additionalContext shape lacks the overdue line'
+        }
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 exit (Write-TestSummary 'PowerShellSemantics.Tests')

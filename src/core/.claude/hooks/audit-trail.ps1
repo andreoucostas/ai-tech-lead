@@ -77,7 +77,7 @@ $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $branch = git -C $repoRoot rev-parse --abbrev-ref HEAD 2>$null
 if (-not $branch) { $branch = 'unknown' }
 
-$timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+$timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
 
 # One line per path; a skipped path (the stack's skip line, which ends in `continue`) drops only its own.
 foreach ($filePath in $filePaths) {

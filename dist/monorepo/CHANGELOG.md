@@ -108,6 +108,11 @@
   lowercases to a dotless i, so there "Add LOGIN throttling" got no security reminder and "FIX the date formatting" no
   fix workflow, and an uppercase "API" or "OpenID" missed the same way, in Claude Code and in Copilot alike. It now
   lowercases the same way whatever the machine's language.
+- **Overdue security findings are reported again on a Windows machine set to a non-Gregorian calendar.** Under
+  Arabic (Saudi Arabia), for one, the session-start hook read today's date in the machine's calendar, where 2026 is
+  1448, so a `SECURITY_FINDINGS.md` entry past its due date was reported only as open, in Claude Code and in Copilot
+  alike, and each `.claude/ai-audit.log` line was stamped 1448. Both now use the Gregorian date whatever the machine's
+  language.
 
 ## 0.98.1 — 2026-10-19
 
