@@ -3034,8 +3034,8 @@ It 'B-441 a brownfield install over a team''s own .claude/.gitignore writes the 
         $committable = Get-B431Committable $t
         Assert ($committable -notcontains '.claude/mcp.local.json') "the install replaced the team's .claude/.gitignore, so its token file is committable: $($committable -join ', ')"
         Assert (Test-B194BytesEqual (Get-B431Expected @('/mcp.local.json')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the install did not write the release's bytes, the marker, then one anchored line for the token file: $(Get-B431Text $t)"
-        Assert (Test-B194BytesEqual $team ([IO.File]::ReadAllBytes((Join-Path $t 'docs/pre-adoption/.claude/.gitignore')))) "the team's version was not archived byte-identical: $out"
-        Assert ($flat -match ("NOTICE: this install writes the framework's \.claude/\.gitignore as released\. Your version had lines this release's version lacks \('mcp\.local\.json'\), which no longer apply there; it is saved at docs/pre-adoption/\.claude/\.gitignore\. Git ignored 1 file below \.claude/ before this install that the release's version does not ignore, so the install keeps it ignored with one line below the line '" + [regex]::Escape($b431Marker) + "': /mcp\.local\.json\.")) "the archived version and the anchored file were not named in one NOTICE: $out"
+        Assert (Test-B194BytesEqual $team ([IO.File]::ReadAllBytes((Join-Path $t 'docs/pre-adoption/.claude/_.gitignore')))) "the team's version was not archived byte-identical: $out"
+        Assert ($flat -match ("NOTICE: this install writes the framework's \.claude/\.gitignore as released\. Your version had lines this release's version lacks \('mcp\.local\.json'\), which no longer apply there; it is saved at docs/pre-adoption/\.claude/_\.gitignore\. Git ignored 1 file below \.claude/ before this install that the release's version does not ignore, so the install keeps it ignored with one line below the line '" + [regex]::Escape($b431Marker) + "': /mcp\.local\.json\.")) "the archived version and the anchored file were not named in one NOTICE: $out"
         Assert ($flat -notmatch 'CANT-VERIFY') "the install reported CANT-VERIFY: $out"
         Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-update-backup'))) "a brownfield install saved a copy below the update backup folder: $out"
     } finally {
@@ -3083,6 +3083,29 @@ It 'B-435 a brownfield install keeps out of Git the archive of a tracked origina
         $lines = @([IO.File]::ReadAllLines((Join-Path $t 'docs/pre-adoption/.gitignore')) | Where-Object { $_ })
         Assert (($lines -join '|') -ceq '/.claude/settings.json|/CLAUDE.md') "docs/pre-adoption/.gitignore does not hold exactly the two anchored lines: $($lines -join '|')"
         Assert ($out -match 'Kept out of Git[^\r\n]*\.claude/settings\.json' -and $out -match 'Kept out of Git[^\r\n]*CLAUDE\.md') "the handoff does not name the kept-out files: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-435 attack: a team''s own .claude/.gitignore is archived as _.gitignore, so its ! rule cannot re-include the kept-out archive of a skip-worktree settings file, and Git confirms the keep-out' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b435-live-' + [guid]::NewGuid())
+    try {
+        # The fresh-session attack: archived live at docs/pre-adoption/.claude/.gitignore, '!settings.json' beat the keep-out
+        # line, so the archive holding the key was ?? and git add -A staged it while the handoff said "Kept out of Git".
+        $team = [Text.UTF8Encoding]::new($false).GetBytes("*.local.json`n!settings.json`n")
+        $t = New-B441Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/mcp.local.json' = "{`"token`":`"sk-FIXMCP`"}`n" }) -Tracked ([ordered]@{ '.claude/settings.json' = "{}`n" })
+        & git -C $t update-index --skip-worktree .claude/settings.json
+        Write-B429Files -Folder $t -Files ([ordered]@{ '.claude/settings.json' = "{`"env`":{`"API_KEY`":`"sk-FIX9`"}}`n" })
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: brownfield') "the brownfield install failed (exit $LASTEXITCODE): $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t 'docs/pre-adoption/.claude/.gitignore'))) "the team's .gitignore was archived where Git reads it: $out"
+        Assert (Test-B194BytesEqual $team ([IO.File]::ReadAllBytes((Join-Path $t 'docs/pre-adoption/.claude/_.gitignore')))) "the team's .gitignore was not archived byte-identical as _.gitignore: $out"
+        & git -C $t check-ignore -q --no-index -- docs/pre-adoption/.claude/settings.json
+        Assert ($LASTEXITCODE -eq 0) "Git does not ignore the archive of the skip-worktree settings file: $out"
+        $added = @(& git -C $t add -A --dry-run | Where-Object { $_ -match 'pre-adoption/\.claude/settings\.json|mcp\.local' })
+        Assert ($added.Count -eq 0) "git add -A would stage a kept-out file: $($added -join ' | ')"
+        Assert ($out -match 'Kept out of Git[^\r\n]*\.claude/settings\.json' -and ($out -replace '\s+', ' ') -notmatch 'CANT-VERIFY') "the handoff does not name the kept-out archive, or reports CANT-VERIFY: $out"
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -3196,6 +3219,30 @@ It 'B-430 a file in a disabled skill''s active copy that Git keeps out of commit
             $notice = "NOTICE: Git keeps 2 files in the active copy of a disabled skill out of commits \(ignored, or tracked with local changes Git is told not to see\), so the update does not move them to \.claude/disabled-skills/, where Git could commit them: \.claude/skills/create-adr/config\.json is saved at $([regex]::Escape("$saveRoot/config.json")), \.claude/skills/create-adr/local\.env at $([regex]::Escape("$saveRoot/local.env"))\."
             Assert (@([regex]::Matches($flat, $notice)).Count -eq 1) "${label}: the kept-out files were not named in exactly one NOTICE: $out"
         }
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-430 attack: a disabled skill whose folder is spelt in another letter case still keeps the file Git ignores there out of .claude/disabled-skills' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b430-case-' + [guid]::NewGuid())
+    try {
+        # The fresh-session attack: .claude/skills/Perf on disk and in the index, LEARNINGS.md disabling 'perf'; the
+        # case-sensitive :(literal) pathspec missed Perf/local.env, which moved to a committable .claude/disabled-skills path.
+        $t = New-B430Target -Root $root -Skill 'perf' -Ignore ".claude/skills/Perf/local.env`n"
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/Perf') | Out-Null
+        [IO.File]::WriteAllBytes((Join-Path $t '.claude/skills/Perf/SKILL.md'), [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.claude/skills/perf/SKILL.md')))
+        & git -C $t add -A
+        & git -C $t commit -qm 'perf skill'
+        Write-B429Files -Folder $t -Files ([ordered]@{ '.claude/skills/Perf/local.env' = "TOKEN=sk-FIX10`n" })
+        Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String).Trim() -eq '') 'calibration: Git does not ignore Perf/local.env'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/disabled-skills/perf/local.env'))) "local.env, which Git ignored, was moved to .claude/disabled-skills/perf/: $out"
+        $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
+        Assert ($status -notmatch 'local\.env') "the ignored file, or a copy of it, is committable: $status"
+        $copy = Join-Path $t '.claude/framework-update-backup/files/_.claude/skills/perf/local.env'
+        Assert ((Test-Path -LiteralPath $copy -PathType Leaf) -and [IO.File]::ReadAllText($copy) -ceq "TOKEN=sk-FIX10`n") "local.env was not saved below the backup folder: $out"
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }

@@ -17,17 +17,17 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 2 | B-441 | Secret-leak class, executed: a brownfield install archives and replaces a team's own `.claude/.gitignore`, so the local files it ignored show as committable; guarded |
 | 3 | B-425 | A plain-words review may dispatch no reviewer, and so skip B-418's contract step; blocked on B-416's review answer; guarded, about 3 USD and 3 premium requests to measure |
 | 4 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half needs a maintainer-driven VS Code session, since nothing here drives VS Code's Copilot harness headlessly |
-| 5 | B-435 | Secret-leak class, reasoned only: the brownfield archive still asks only `check-ignore`, so a skip-worktree original lands committable; guarded |
-| 6 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 7 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
-| 8 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
-| 9 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
-| 10 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
-| 11 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
-| 12 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 13 | B-373 | Stall class, but only on a degenerate C# file; no field report |
-| 14 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
-| 15 | B-440 | Data-loss class, contrived: an ignored backup copy can be overwritten by a checkout of a branch that tracks the same backup path; guarded |
+| 5 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
+| 6 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
+| 7 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
+| 8 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
+| 9 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
+| 10 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
+| 11 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 12 | B-373 | Stall class, but only on a degenerate C# file; no field report |
+| 13 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
+| 14 | B-440 | Data-loss class, contrived: an ignored backup copy can be overwritten by a checkout of a branch that tracks the same backup path; guarded |
+| 15 | B-449 | Possible false green: a framework file written at a skip-worktree path never shows in `git status`, so committing the install leaves it out; guarded |
 | 16 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
 | 17 | B-448 | Secret-leak class, tr-TR only: the Turkish-cased `APİ_KEY` passes the guard since B-445; guarded, step 4 |
 | 18 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
@@ -143,7 +143,7 @@ B-431 keeps such files ignored on update only: brownfield archives the file for 
 **Filed against:** v0.98.1 (2026-10-20)
 **Priority:** P3 · **Effort:** S · **Invariants:** #3
 **Status:** Open; found by B-445's fresh-session attack (executed, both hosts and surfaces). B-445 made the guard's patterns culture-invariant, so `APİ_KEY` (U+0130, what tr-TR uppercasing of `api_key` gives) no longer matches `I`; the old culture-sensitive match blocked it under tr-TR. Candidate: accept U+0130 where a pattern has `i` (`[iİ]`); red case under tr-TR. Guarded, `guard.ps1` on step 4's list.
-### B-445 · Under tr-TR the guard's case-insensitive credential check lets `API_KEY = "..."` through
+### B-449 · A framework file an install writes at a skip-worktree path never shows in git status, so its commit leaves it out
 **Filed against:** v0.98.1 (2026-10-20)
-**Priority:** P3 · **Effort:** S · **Invariants:** #3
-**Status:** Open; found by B-391's hook audit, executed on both hosts: `guard.ps1`'s `(?i)` credential pattern follows the current culture, where `I` folds to dotless `ı`, so `API_KEY = "..."` passes under tr-TR. Not a one-call fix: the patterns need culture-invariant matching (`RegexOptions.CultureInvariant`, or an invariant-culture scope around the checks); red case under tr-TR first. Guarded, `guard.ps1` on step 4's list.
+**Priority:** P3 · **Effort:** S · **Invariants:** #7
+**Status:** Open; found by B-435's implementation, reasoned, not run. A brownfield install archives a tracked original marked skip-worktree or assume-unchanged and writes the framework's file at its path, but Git does not look there, so "commit the copied files" keeps the team's committed version and teammates never get the framework's. Candidate: name such paths in the handoff, as B-313 names ignored ones; red case first. Guarded (`install.ps1`).

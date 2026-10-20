@@ -714,7 +714,7 @@ function Get-UntrackedStatusPaths {
     param([Parameter(Mandatory = $true)][string]$GitPath, [string]$Prefix = '', [Parameter(Mandatory = $true)][string]$Folder, [Parameter(Mandatory = $true)][string]$Code)
     $arguments = @('--no-optional-locks', '-C', $tgt, 'status', '--porcelain=v1', '-z', '--untracked-files=all')
     if ($Code -ceq '!!') { $arguments += '--ignored' }
-    $records = Invoke-GitRecords -GitPath $GitPath -Arguments ($arguments + @('--', $(if ($Folder -eq '.') { '.' } else { ":(literal)$Folder" })))
+    $records = Invoke-GitRecords -GitPath $GitPath -Arguments ($arguments + @('--', $(if ($Folder -eq '.') { '.' } else { ":(icase,literal)$Folder" })))
     if ($null -eq $records) { return $null }
     $records = @($records)
     $paths = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
@@ -1489,6 +1489,13 @@ if ($updateMode) {
     Write-Output "  Review the resulting diff before committing."
 }
 
+# An archived ignore, attribute or repository file would still be live where it lands, so Git would read it there: a team's
+# '!' rule re-included the kept-out archive beside it. Such a name gains a leading '_', as an update's saved copies do, and so
+# does one already in that form, which keeps two names from ever archiving to one.
+function ConvertTo-ArchiveRelative {
+    param([string]$Relative)
+    return (@($Relative.Split('/') | ForEach-Object { if ($_ -match '^_*\.(gitignore|gitattributes|git)$') { "_$_" } else { $_ } }) -join '/')
+}
 $archived = @()
 $archivePlan = New-Object System.Collections.Generic.List[object]
 if ($adoptMode) {
@@ -1520,7 +1527,7 @@ if ($adoptMode) {
             [Console]::Error.WriteLine("ERROR: Refusing brownfield collision '$f': the target path is not a file and cannot be archived safely.")
             exit 3
         }
-        $rel = 'docs/pre-adoption/' + $f
+        $rel = 'docs/pre-adoption/' + (ConvertTo-ArchiveRelative -Relative $f)
         $dest = Join-Path $tgt $rel
         $destinationReparse = Get-ReparsePointAncestor -Path $dest
         if ($destinationReparse) {
@@ -1556,7 +1563,7 @@ $skillBackupPlan = New-Object System.Collections.Generic.List[object]
 $disabledCarryPlan = New-Object System.Collections.Generic.List[object]
 $disabledIncomingPlan = New-Object System.Collections.Generic.List[object]
 $skillDeletePlan = New-Object System.Collections.Generic.List[string]
-foreach ($entry in $archivePlan) { [void]$archiveSources.Add($entry.Relative.Substring('docs/pre-adoption/'.Length)) }
+foreach ($entry in $archivePlan) { [void]$archiveSources.Add($entry.OriginalRelative) }
 
 function Add-PlannedWrite {
     param([string]$Relative, [switch]$ForceCreate)
@@ -1825,7 +1832,7 @@ if ($updateMode -or $adoptMode) {
         # Git reads a line empty once its trailing spaces are trimmed as blank, and one starting with '#' as a comment.
         $dropped = @($body | Where-Object { $_.TrimEnd([char]32).Length -gt 0 -and -not $_.StartsWith('#', [StringComparison]::Ordinal) -and $releaseLines -cnotcontains $_ })
         $savedAt = $null
-        if ($adoptMode -and $archiveSources.Contains($relative)) { $savedAt = @("docs/pre-adoption/$relative") }
+        if ($adoptMode -and $archiveSources.Contains($relative)) { $savedAt = @(@($archivePlan | Where-Object { $_.OriginalRelative -ceq $relative })[0].Relative) }
         elseif ($updateMode -and $dropped.Count -gt 0) {
             # The save above for files the previous manifest does not list may already have taken it.
             $savedAt = @($updateBackups | Where-Object { $_.SourceRelative -ceq $relative } | ForEach-Object { $_.Relative } | Select-Object -First 1)
@@ -2134,7 +2141,7 @@ if ($keptOutEntries.Count -gt 0) {
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archiveIgnorePath) | Out-Null
         $archiveIgnoreText = if (Test-Path -LiteralPath $archiveIgnorePath -PathType Leaf) { [IO.File]::ReadAllText($archiveIgnorePath) } else { '' }
         $archiveIgnoreLines = @($archiveIgnoreText -split '\r?\n')
-        $archiveIgnoreNew = @($keptOutEntries | ForEach-Object { '/' + $_.OriginalRelative } | Where-Object { $_ -cnotin $archiveIgnoreLines })
+        $archiveIgnoreNew = @($keptOutEntries | ForEach-Object { '/' + $_.Relative.Substring('docs/pre-adoption/'.Length) } | Where-Object { $_ -cnotin $archiveIgnoreLines })
         if ($archiveIgnoreNew.Count -gt 0) {
             $separator = if ($archiveIgnoreText.Length -gt 0 -and -not $archiveIgnoreText.EndsWith("`n")) { "`n" } else { '' }
             [IO.File]::AppendAllText($archiveIgnorePath, $separator + ($archiveIgnoreNew -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
@@ -2182,6 +2189,13 @@ foreach ($entry in $archivePlan) {
         [Console]::Error.WriteLine('  Nothing was rolled back, re-hashed, or overwritten; originals not yet moved are untouched. Recover the archives manually, then re-run.')
         exit 3
     }
+}
+# Asked of Git after the moves: a rule beside an archive, or one of the team's, could still re-include a kept-out archive.
+$keptOutLeaks = @()
+if ($keptOutEntries.Count -gt 0 -and $statusGitPath -and $null -ne $script:TargetStatus) {
+    $keptOutLeaks = @($keptOutEntries | Where-Object {
+        $probe = Invoke-GitText -GitPath $statusGitPath -Arguments @('-C', $tgt, 'check-ignore', '-q', '--no-index', '--', $_.Relative)
+        -not ($probe.Started -and $probe.ExitCode -eq 0) })
 }
 # Stop at the first failed delete, before any copy, and put back what this run already deleted: the
 # tree is then unchanged (a Git target stays clean) and the old ownership manifest, the deletion
@@ -2496,7 +2510,9 @@ if ($updateMode) {
     Write-Output "tooling that must be consolidated with /adopt; .claude/adoption-pending.json records the inventory."
     if ($moved.Count -gt 0) { Write-Output "Moved to docs/pre-adoption/ (this install would have overwritten them): $($moved -join ', ')" }
     if ($leftInPlace.Count -gt 0) { Write-Output "Left where they were: $($leftInPlace -join ', ')" }
-    if ($keptOutEntries.Count -gt 0) { Write-Output "Kept out of Git - you had gitignored these, or told Git not to see your changes to them, and they may hold secrets: $(@($keptOutEntries | ForEach-Object { $_.OriginalRelative }) -join ', '). $archiveIgnoreRelative lists their archives; keep per-developer settings in files Git ignores, such as .claude/settings.local.json." }
+    $keptOutHeld = @($keptOutEntries | Where-Object { $keptOutLeaks -notcontains $_ })
+    if ($keptOutLeaks.Count -gt 0) { Write-Output "CANT-VERIFY: Git does not ignore the archives of these files, which you had gitignored or told Git not to see your changes to, and they may hold secrets: $(@($keptOutLeaks | ForEach-Object { $_.OriginalRelative }) -join ', '). Do not commit them: move them out of the repository, or give each an ignore line in the root .gitignore." }
+    if ($keptOutHeld.Count -gt 0) { Write-Output "Kept out of Git - you had gitignored these, or told Git not to see your changes to them, and they may hold secrets: $(@($keptOutHeld | ForEach-Object { $_.OriginalRelative }) -join ', '). $archiveIgnoreRelative lists their archives; keep per-developer settings in files Git ignores, such as .claude/settings.local.json." }
     # Without Git's answer an archived original may still be one you had gitignored.
     if ($moved.Count -gt 0 -and ($null -eq $ignoredShippedPaths -or $null -eq $archiveSkipped)) { Write-Output "Some may be files you had gitignored: check docs/pre-adoption/ for secrets before committing." }
     Write-Output ""

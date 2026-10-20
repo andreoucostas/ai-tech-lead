@@ -83,7 +83,7 @@
   before changing anything. Keep what you need from the copies under other paths.
 
 - **A first install no longer makes the files your own `.claude/.gitignore` ignored committable.** When the install
-  finds a `.claude/.gitignore` of yours, it still keeps your version under `docs/pre-adoption/` for `/adopt` and
+  finds a `.claude/.gitignore` of yours, it still keeps your version under `docs/pre-adoption/` (as `.claude/_.gitignore`, so its rules do not apply there) for `/adopt` and
   installs the framework's, but now, as an update does, it keeps each file your lines ignored ignored with one line
   naming exactly that file, below the comment line `# Kept ignored by framework updates: ...`, and says so in a
   `NOTICE`. Before, a file such as `.claude/mcp.local.json` holding a token showed in `git status` as ready to commit

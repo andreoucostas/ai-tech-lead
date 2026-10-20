@@ -155,7 +155,7 @@ to `.claude/disabled-skills/<name>/` and deleted, with the release's copy of the
 file at a `.claude/disabled-skills/` path that the carry or the release's copy would change (CRLF read as LF), an active file the release's
 copy replaces with other bytes, and an active file Git keeps out of commits, which is no longer carried. That last set comes from a new
 `Get-GitKeptOutFiles`: `git status -z --ignored` below the folder and `git ls-files -v -z` (an `S` or lower-case tag: skip-worktree or
-assume-unchanged), through `Invoke-GitRecords`, matched ignoring case; one `NOTICE` names those files with each copy's path, the one-time
+assume-unchanged), through `Invoke-GitRecords`, matched ignoring case, the status read through a `:(icase,literal)` pathspec (the attack's `.claude/skills/Perf/` slipped past `:(literal)`); one `NOTICE` names those files with each copy's path, the one-time
 skill backup's when it took the file this run, and Git failing to answer refuses the update before any change (exit 4). No manifest decides
 here: none lists a `.claude/disabled-skills/` path, and an update never writes a disabled skill's active folder, so a team's own skill there
 sits at a path the manifest lists; a disabled framework file a later release changes is therefore saved too. Before, B-393's attack saw a
@@ -164,14 +164,14 @@ an ignored `.claude/skills/create-adr/local.env` moved to a path Git showed as `
 
 `install.ps1` brownfield mode and `adoption-archive.ps1 -Freeze` (guarded, B-441 executed and B-435 reasoned, both secret-leak class): a
 brownfield install applies B-431's rule to a team's own `.claude/.gitignore`. The block that plans `$ignoreRewrites` runs for brownfield
-too; the original is archived by `Copy-Item` instead of `Move-Item`, so the team's rules stay in place until the last write; that write
+too; the original is archived by `Copy-Item` instead of `Move-Item`, as `.claude/_.gitignore` (a `.gitignore`, `.gitattributes` or `.git` segment gains a `_`, so no archived file is live; the attack's archived `!settings.json` re-included a kept-out archive), so the team's rules stay in place until the last write; that write
 puts the release's bytes, the marker and one anchored line per file Git ignored before and would now show, with the same `NOTICE` ("this
 install" for "this update", its "saved at" naming the `docs/pre-adoption/` archive). Its failure remedies, which tell an update to re-run,
 tell a brownfield install, which a re-run refuses over its own archive, to copy the framework's file by hand. Before, Git showed
 `?? .claude/mcp.local.json` right after the install while the handoff said to commit the copied files. The `docs/pre-adoption/.gitignore`
 keep-out now also covers an archived original Git tracks with skip-worktree or assume-unchanged, which `check-ignore` never reports
 (`Get-GitSkippedFiles`: `ls-files -v -z` through `Invoke-GitRecords`, an `S` or lower-case tag, matched ignoring case), and the handoff's
-kept-out line says so; `-Freeze` refuses such a source with exit 4 and an `IGNORED:` line (`ls-files -v -- :(icase,literal)<path>`), and
+kept-out line says so once `git check-ignore --no-index` confirms each such archive is ignored (else a `CANT-VERIFY` line names it); `-Freeze` refuses such a source with exit 4 and an `IGNORED:` line (`ls-files -v -- :(icase,literal)<path>`), and
 `adopt.md` (x3) names the case. A blanket keep-out of `docs/pre-adoption/`, as WSD-117 keeps the backup folder, was rejected: B-309's case
 pins a tracked team file's archive as committable, which `/adopt`'s reviewed branch needs. Three new `UpdateDelivery.Tests.ps1` cases and
 one `AdoptionArchiveIntegrity.Tests.ps1` case.
