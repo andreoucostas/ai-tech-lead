@@ -163,7 +163,9 @@ The only route to whether the lines are correct and used; gates any reviewer-sid
 ### B-417 · Measure tests derived from the restated criteria on a prompt that hides a boundary
 **Filed against:** v0.98.0 (2026-10-19)
 **Priority:** P2 · **Effort:** M · **Invariants:** #7 if it ships
-**Status:** Open (maintainer, 2026-10-19). B-412 found no downstream difference because prompt K states every outcome. Pre-register an under-specified prompt on `b409-orders-ci` omitting a boundary the fixture documents, with plan v2 §3.1's `:74` test-per-line clause, §3.2's Rule 5 append and test-critic's "unpinned" question as the target patch; grade line → test → post-hoc mutant; include a "go with defaults" leg 2 (B-413's `code=`/`testRun` fixed). About 10 USD. Review T1+T7.
+**Status:** Open; measured 2026-10-20 as NOT EXERCISED (pre-registered at e91d132c, `meta/eval-results.md`; 4.23 USD). On `done-when-h` ("open" orders, defined only by `rpt.vwOpenOrders`: Placed or Picking) Picking reached a Done-when line in 1 of 6 T and 1 of 6 C runs, and both then waited for a "go" after "go with your defaults".
+The other 10 assumed "open" from the code's two states, so no test had a Picking case (PINNED 0/6 each) while every written suite killed the customer-scope mutant (8 of 8). Part B's `:74` text stays unshipped.
+Next, the maintainer's choice: a boundary the agent meets in the code it reads, with a leg 2 that says go; `done-when-h`, the patch and the 0.98.1 fixture are reusable.
 
 ### B-419 · Review depth scales with blast radius (plan v2 Phase 3, never run)
 **Filed against:** v0.98.0 (2026-10-19)

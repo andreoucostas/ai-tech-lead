@@ -6017,3 +6017,44 @@ maintainer 2026-10-19 (B-417; open-threads review T1 and T7, `.claude/plans/inbo
   `src/`, `scripts/`, `.claude/evals/`, `meta/eval-fixtures/b409-orders-ci/` and the patch match this commit, and the patch's SHA-256 prefix is `15dca95fda17`.
 - Not shown: Rule 5 and the test-critic item in use; whether the lines are right beyond the hand-read; another hidden boundary or fixture; a threshold boundary, and the view's other side (a status in
   neither set) is not mutated; a developer who corrects a line; the fix path; Copilot CLI; VS Code; Angular; monorepo; other models; field use.
+
+## B-417 results — 2026-10-20 (pre-registered at e91d132c)
+
+Claude Code 2.1.300, model sonnet (`claude-sonnet-5-5` in every `system/init`); fixture `b409-orders-ci` as regenerated at e91d132c (overlay sha256 `2a8da7e3baf0…`); HEAD 634c93d1's `dist/dotnet` (unchanged
+under the frozen paths, which the driver checked before it started); scenario `done-when-h`; T patch `b417-derive-tests.patch` (`patch=b417-derive-tests.patch@15dca95fda17` on every T row and on no C row);
+one run per invocation, T and C alternating, launched from a Claude Code desktop session's shell by a resumable driver outside the repository. All 12 counted runs were valid on the first attempt (succeeded
+SessionStart and UserPromptSubmit hook, `rails1=plan-gate`, `legs=2`, `rails2=none`, `session2=same`): no CANNOT-EXAMINE, no repeat, no WROTE-T1. Evidence (`ledger.tsv`, `grades.tsv`, `hand-mutants.tsv`,
+`runner-rows.md`, the mutant trees and their `dotnet test` output) in `%TEMP%\b417\`, the 12 scratch directories `%TEMP%\ai-tech-lead-agent-evals-20261020-023948` to `-025551`; none in the repository.
+
+Probe P1 (0.17 USD, no counted slot): passed in both arms (T quoted the patched `:74` line verbatim; C quoted `- Evidenced validation; include tests only when a harness exists`).
+
+| cell | valid | LINE (Picking in a pre-write Done-when line) | TEST (a test names Picking) | PINNED (Picking mutant killed) | not pinned, by reason | M-stated killed | leg 2 wrote / waited | median cost USD | median wall s (both legs) | median output tokens |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T | 6 | **1/6** (T5) | 0/6 | **0/6** | no test file 3 (T2, T4, T5: waited), CODE-MISS 2 (T3, T6), mutant passes 1 (T1) | 3/6 (3 of 3 suites) | 3 / 3 | 0.233 | 64.7 | 4,580 |
+| C | 6 | **1/6** (C6) | 0/6 | **0/6** | no test file 1 (C6: waited), CODE-MISS 3 (C1, C4, C5), mutant passes 2 (C2, C3) | 5/6 (5 of 5 suites) | 5 / 1 | 0.270 | 85.0 | 6,079 |
+
+- Reading, applied as registered: T's LINE is 1 of 6, 2 or fewer, so **NOT EXERCISED**: the boundary seldom reached T's Done-when lines, tests derived from them are not tested, and no PINNED reading is
+  made. B-417 stays open with a status that says so; the maintainer chooses the next prompt. Nothing ships. (PINNED was 0 of 6 in both arms; under the registered rules it would have read R2, but NOT EXERCISED
+  comes first.)
+- Where the open definition came from, hand-read: only T5 and C6 read the view (a `Bash` search whose result held `Picking`), and both asked "Placed or Picking, per `rpt.vwOpenOrders`?" in leg 1. The other
+  10 runs said the code writes only `Placed` and `Shipped`, had no tool result naming `Picking`, and assumed a definition: `Placed` only in 6 (C1, T2, T4, C4, C5, T6), anything but `Shipped` in 3 (T1, C2, C3), and
+  `Placed` or `Shipped` in 1 (T3). "Go with your defaults" approved each assumption as asked; a developer who knew the view would have corrected all ten, T3's most plainly.
+- What the tests pinned: every run that wrote (8 of 12) added one test file with three tests (the filter, the empty list, the 404) on EF InMemory and ended green (`dotnet test` post hoc: 9 passed in
+  all 8; 6 in the 4 that wrote nothing); T1, C1, C2 and C3 report breaking the filter to see red (the others were not read for it). Each suite killed the customer-scope mutant (8 of 8), so the tests pinned the lines the agent wrote. None had a `Picking`
+  case, because none of the 8 knew of it: of the three whose code treats Picking as open by accident (`!= "Shipped"`), the hand-planted mutant (`&& o.Status != "Picking"`) passed 3 of 3; the five that
+  match `Placed` (or `Placed` or `Shipped`) exclude Picking already (CODE-MISS).
+- The two runs that found the boundary did not implement. After "go with your defaults", T5 and C6 posted `Done when:` lines with the boundary as pass and fail cases ("a `Placed` order and a `Picking` order
+  are both returned"; "a `Shipped` order and a `""` order are not") and a test plan per line (T5 also Option A and B and a red check by dropping `Picking`), then asked for "go" and stopped. T2 and T4 did the
+  same on `Placed` only. So the answer was read as answers, not a go-ahead, in 4 of 12 (T 3, C 1); the other 8 wrote. Of those 8, three restated `Done when:` before writing (T6, C1, C2); T3, C3, C4 and C5
+  had posted theirs in leg 1 (T3 and C3 as drafts). B-410's "after the answer, nothing waits" held for 8 of 12 here.
+- Reported fields: the runner's leg-1 `dw` is NONE in 6/6 T and NONE 3, PARTIAL 3 in C (C3, C4, C5); by hand T3 also posted a "Draft Done-when" section, which the frozen label (`^\W*done[ -]when`) does not
+  match. The approximate `t1q` is 5 in all six T runs and 5, 2, 5, 5, 0, 5 in C (C5 asked which definition of open, unnumbered). `design` FULL 1/12 (T5, in leg 2); `testRun` PASSED(9) in the 8 that wrote. `restate2` T 4/6, C 3/6 (it counts the waiting
+  runs' plans). `tcCalls` 0/12 and no existing test file changed in any run, so Rule 5 and the test-critic item were not reached, as expected. The T-C differences in waiting (3 against 1) and in leg-1
+  Done-when sections (1 against 3, by hand) are n = 6 a cell and are not readings.
+- Cost: runs 2.95 USD (0.18 to 0.30 a run; the waiting runs are the cheap ones), probes 0.17, fixture generation 1.10: **4.23 USD of the 12.00 stop**. T minus C by medians: -0.037 USD, -20 s, -1,499 output
+  tokens, from T's three waits. No premium request.
+- What the readings imply (the maintainer decides): on this fixture the restatement step, not test derivation, is where the documented boundary was lost; 10 of 12 runs never met it, and the two that did would
+  have tested it by their plans. A next prompt that exercises Part B needs a boundary the agent reads on its way (in the C# it opens, or named in the overlay), and a leg 2 that says go, since "go with your
+  defaults" stopped 4 runs before any code. Part B's `:74` text remains unshipped and unmeasured downstream.
+- Not shown: as registered (Rule 5 and the test-critic item in use; whether the lines are right beyond the hand-read; another boundary or fixture; a developer who corrects a line; the fix path; Copilot CLI,
+  VS Code, Angular, monorepo, other models; field use).
