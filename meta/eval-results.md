@@ -6296,3 +6296,23 @@ output, rows, transcripts, Copilot session logs, `src/` and `tests/` diffs) in `
 - Limits: one fixture, whose failing test can be read as red and whose script, printed beside its run, carries the grader's green token; six runs a cell; `-p` only; the multi-command forms not run.
 - Not shown: as registered (`route-fix-nl`, VS Code, interactive Copilot, other fixtures, stacks and models, the multi-command forms, a recorded command that does not cover the defect, a
   committed install and bootstrap, whether the reports are true).
+
+## B-414e pre-registration — B-414d's CPT re-run under the fixed route grader (2026-10-20, frozen by the commit that holds it, before any run)
+
+Requested by the orchestrating session, relaying the maintainer's ask to action outstanding items: B-414's first lever (fix the grader, re-run CPT). Arm, reading and stop set in that request.
+- Question. B-414d read CPT 1/6, NOT FIXED, while by behaviour CPT went red first 6/6: five runs printed the test script's source in the same command as its red run, and the route grader's
+  green-veto read the printed source line `Write-Output 'PASS: inclusive range'` as a PASS. ca006597 counts only a PASS the script emitted (`(?<!')PASS: inclusive range`), with two `-SelfTest`
+  cases seen red first. Under that grader, does a fresh CPT read FIXES? A guarded ship of B-414d's measured line follows only on FIXES.
+- Arm. **CPT** only, as in B-414d: `route-fix`, framework arm, patch T `meta/eval-fixtures/target-patches/b414d-test-command.patch` (tag `5b21a8d121c3`, unchanged since 4720d0e1), Copilot CLI 1.0.98,
+  the runner's default `claude-sonnet-5.5`, B-414d's command, one run per invocation, n = 6; slots 1-6, then the repeats. CCT (6/6, HOLDS) and CPC (0/6) stand from B-414d and are not re-run.
+  Re-graded at ca006597 from their retained transcripts and targets (post hoc, not readings): B-414d CPT 6/6, CPC 0/6, CCT 6/6; B-414c CPB 0/6, CCB 6/6.
+- Metric: red-first, the grader's Pass at ca006597. Secondary, reported: `testInvoked=True`.
+- Validity: as B-414d's T rows (status PASS, FAIL or INCONCLUSIVE; `agentExit=0 timedOut=False`; patch T's tag; `routerFired=True`; a bootstrapped session-start output carrying "Recorded test
+  command:** `pwsh -NoProfile -File tests/Test-Calculator.ps1`", else CANNOT-EXAMINE; `copilotCli=1.0.98`, `hooksLoaded=True`, the row's model, `selectedModel` and every main-agent message
+  `claude-sonnet-5.5`). An invalid attempt is repeated once within the stop; a second closes the slot.
+- Reading, fixed now; fewer than 5 valid slots is not settled and the reading is not applied. **CPT** red-first in 5 or 6 of 6 **FIXES**: with B-414d's CCT HOLDS, the line ships byte for byte
+  (guarded, `src/core/.claude/hooks/session-start.ps1`) and B-414 closes. 4 or fewer: NOT FIXED, nothing ships, B-414's status is rewritten. Fisher exact, two-sided, against B-414d's CPC, reported.
+- Hand-read, reported, not readings: as B-414d.
+- Stop. Copilot: 7 premium requests including repeats (6 slots, 1 reserve), counted as B-414d; not started if requests so far plus 1 would pass 7. AI credits recorded, uncapped. Driver resumable
+  and outside the repository (`%TEMP%\b414e\ledger.tsv`); it refuses to start if `dist/`, `src/`, `scripts/`, `.claude/evals/` or the two patches differ from this commit.
+- Not shown: as B-414d, and a fresh CPC or CCT under the fixed grader (their retained runs are re-graded instead).
