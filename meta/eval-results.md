@@ -6223,3 +6223,42 @@ to `-113400`; none in the repository.
   runs the last clones and `C:\src` (created by greenfield t1) were removed; `C:\ai-tech-lead-src` stays.
 - Cost: **0.80 USD of the 4.00 stop** (0.102 to 0.217 a run). No premium request.
 - Not shown: as registered (the bare prompt on this host and model; Copilot; other models and phrasings; what a developer answers after an ask).
+
+## B-414d pre-registration — C past `/bootstrap`: a session-start line naming the recorded test command, on Copilot CLI (2026-10-20, frozen by the commit that holds it, before any run)
+
+Approved by the maintainer ("C past /bootstrap"), relayed by the orchestrating session, which set the arms, metric, readings and stops below; stops raised only by the maintainer.
+- Question. B-414c: in a bootstrapped repository whose `AGENTS.md` records the test command, Copilot CLI 1.0.98 `claude-sonnet-5.5` went red first 0/6 on `route-fix` (Claude Code 6/6); every Copilot
+  run sent its first test run in the same turn as the edit, and the edit finished first. Does a session-start line naming the recorded test command, telling the agent to run it alone and see it
+  fail before any production edit, take Copilot to red-first without costing Claude Code its red-first? A guarded ship (`src/core/.claude/hooks/session-start.ps1`) follows only on the readings below.
+- The line (patch T). In `session-start.ps1`'s bootstrapped branch (no `.claude/adoption-pending.json`; `AGENTS.md` present without `BOOTSTRAP_PENDING`) the hook reads the `test` rows of
+  `AGENTS.md`'s `Verification Commands` table (under a `##` to `######` heading of that name), takes the code spans of each row's command cell unless the cell begins "not available", and prints
+  one line; nothing when none is recorded. On this fixture, verbatim: "- **Recorded test command:** `pwsh -NoProfile -File tests/Test-Calculator.ps1` (`AGENTS.md` › Verification Commands). For a
+  bug fix, before any production edit, run it alone, with no other tool call in the same turn, and see the failing case fail: an edit sent in that turn can land first and hide the red." With two or
+  three commands it names them ("Recorded test commands", "run the applicable one"); past three it ends "(and more)". Neither form is run here beyond the one above.
+- Patches, cut against a fresh install of this commit's `dist/dotnet` (`core.autocrlf=false`): **C** `meta/eval-fixtures/target-patches/b414c-bootstrapped.patch` (tag `b3091d1712da`, unchanged since
+  b6917f46); **T** `…/b414d-test-command.patch` (21,111 bytes, tag `5b21a8d121c3`): C's four overlay sections byte for byte plus one hunk adding 18 lines to the installed
+  `.claude/hooks/session-start.ps1` after section 2's instruction-file loop. Preflight (no spend; the runner's own `New-EvalRepo`, `Install-Framework`, `Invoke-TargetPatch`): both apply;
+  `src/Calculator.cs` holds `value < max`; under `pwsh` and `powershell.exe`, as a Claude and a Copilot event, the hook exits 0 and prints neither "Unrecorded test entry points" nor "is
+  unbootstrapped"; T prints the line above once (both Copilot JSON shapes carry it), C prints no "Recorded test command".
+- Arms, `route-fix`, framework arm, n = 6 each. **CPT**: Copilot CLI 1.0.98, the runner's default `claude-sonnet-5.5`, patch T. **CPC**: the same with patch C (the control at this commit; HEAD's
+  `dist/` differs from v0.98.1, B-414c's). **CCT**: Claude Code 2.1.300 `-Model sonnet`, patch T (red-first non-regression). Command: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live
+  -Executor copilot|claude [-Model sonnet] -Scenario route-fix -Trials 1 -TimeoutSeconds 1200 -TargetPatch <patch>`, `-ResultsPath` outside the repository, one run per invocation. Order: slots
+  1-6, CPT, CPC, CCT per slot, then the repeats.
+- Metric, per valid slot: red-first, the grader's Pass (`testBeforeProduction`: a red run of `tests/Test-Calculator.ps1`, then the production edit, then a green run; red pattern as widened at
+  ea17d770). Secondary, reported: `testInvoked=True`.
+- Validity: as B-414c's `route-fix` cells (status PASS, FAIL or INCONCLUSIVE; `agentExit=0 timedOut=False`; the arm's patch tag; `routerFired=True`; a session-start output that exists and carries no
+  "Unrecorded test entry points", "is unbootstrapped" or `BOOTSTRAP_PENDING`; Copilot `copilotCli=1.0.98`, `hooksLoaded=True`, the row's model, `selectedModel` and every main-agent message
+  `claude-sonnet-5.5`; Claude Code `ccVersion=2.1.300`, `initModel=claude-sonnet-5-5`), plus: a T row's session-start output carries "Recorded test command:** `pwsh -NoProfile -File
+  tests/Test-Calculator.ps1`" (else CANNOT-EXAMINE), and a C row's carries no "Recorded test command". An invalid attempt is repeated once within the stops; a second closes the slot.
+- Readings, fixed now; a cell with fewer than 5 valid slots is not settled and its reading is not applied. **CPT**: red-first in 5 or 6 of 6 **FIXES**; 4 or fewer NOT FIXED. **CCT**: 5 or 6
+  **HOLDS**; 4 or fewer does not hold. The line ships, byte for byte, only if CPT FIXES and CCT HOLDS. **CPC** is reported with a two-sided Fisher exact test against CPT: at 2 or fewer it reproduces
+  B-414c; at 3 or 4 the readings apply and the entry says so; at 5 or 6 B-414c is not reproduced at this commit, the T-against-C contrast is void, nothing ships from this entry and the maintainer
+  decides. If nothing ships, B-414 stays open with its status rewritten and the next lever named. A reading is applied as written; the maintainer decides anything it does not cover.
+- Hand-read, reported, not readings: the first test run alone in its turn or beside the edit; the line quoted or acted on in the model's text; "trivial" or "one-line" declared before the first test
+  run; a red reported but not observed; a new test file or harness.
+- Stops. Copilot: 14 premium requests including repeats (12 slots, 2 reserve), counted as B-414c (the row's `premiumRequests=`, else the session log's `totalPremiumRequests`, else 1 if the log
+  holds a model response, else 0); not started if requests so far plus 1 would pass 14. Claude Code: 2.00 USD at each row's `costUsd` (else the transcript's highest `total_cost_usd`, else the 1.25
+  USD cap); not started if spend so far plus 0.30 would pass 2.00. AI credits recorded, uncapped. Driver resumable and outside the repository (`%TEMP%\b414d\ledger.tsv`); it refuses to start if
+  `dist/`, `src/`, `scripts/`, `.claude/evals/` or the two patches differ from this commit.
+- Not shown: `route-fix-nl`; VS Code; interactive Copilot; other fixtures, stacks and models; the multi-command forms; a recorded command that does not cover the defect; a committed install and
+  bootstrap; whether the agents' reports are true.
