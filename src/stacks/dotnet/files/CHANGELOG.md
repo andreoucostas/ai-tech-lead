@@ -68,6 +68,20 @@
   byte-order mark do not count. Put rules of your own in your repository's root `.gitignore`. If Git still shows such
   a file afterwards, a `CANT-VERIFY` line names it and how many there are.
 
+- **An update no longer loses a skill of yours at a disabled framework skill's path, nor moves a gitignored file
+  where Git can commit it.** When `LEARNINGS.md` disables a framework skill, an update moves `.claude/skills/<name>/`
+  to `.claude/disabled-skills/<name>/`, puts the release's copy of the skill there and deletes the active folder.
+  Before, a skill of your own at that path, such as your own `perf`, was overwritten there by the release's copy and
+  was left only in your Git history (or nowhere, if Git never had it), and a file there that Git ignores, such as a
+  `local.env` holding a token, was moved to `.claude/disabled-skills/`, where `git status` offered it to commit. Now
+  the update first saves, under `.claude/framework-update-backup/files/`, which Git ignores, each file the release's
+  copy would replace with other content and each file already under `.claude/disabled-skills/` that the move or the
+  release's copy would change, and names each copy in a `NOTICE`; a framework file there that a later release changes
+  is saved too, since nothing tells it from your edit. A file Git ignores, or a tracked one whose local changes Git is
+  told not to see (skip-worktree or assume-unchanged), is never moved: it is saved there as well, the copies named in
+  one `NOTICE`, and removed with the active folder. If Git cannot say which files it ignores there, the update stops
+  before changing anything. Keep what you need from the copies under other paths.
+
 - **The session preload and the audit log no longer depend on where PowerShell starts.** The `session-start` and
   `audit-trail` hooks now find your repository from their own place under `.claude/hooks/` instead of from PowerShell's
   current location. Before, wherever that location was not your repository, the preload arrived as its heading alone,

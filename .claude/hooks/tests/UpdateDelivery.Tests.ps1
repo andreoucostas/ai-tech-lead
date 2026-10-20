@@ -3030,6 +3030,95 @@ It 'a disabled retired recipe skill: the update finishes, carries the folder''s 
     }
 }
 
+# A disabled skill's active folder is carried to .claude/disabled-skills/ and deleted; the release's copy then goes over the
+# carried files (B-430). Those paths are in no manifest, so what the carry and that copy would overwrite is saved first.
+function New-B430Target {
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Skill, [string]$Ignore = '', [switch]$NoSkillBackup)
+    $t = New-B429GitTarget -Root $Root -Ignore "/scratch/`n$Ignore"
+    [IO.File]::WriteAllText((Join-Path $t 'LEARNINGS.md'), "# Learnings`n`n## Disabled framework skill: $Skill`n`nNot used here.`n", [Text.UTF8Encoding]::new($false))
+    # The one-time skill backup an earlier update took: present, so this update does not copy the skills again.
+    if (-not $NoSkillBackup) { New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/framework-update-backup/skills') | Out-Null }
+    return $t
+}
+
+It 'B-430 a team''s own skill at a disabled framework skill''s path, and a team file at its .claude/disabled-skills path, are saved out of Git before the update writes over them, once across re-runs' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b430-' + [guid]::NewGuid())
+    try {
+        # B-393's attack: the team's own perf skill was carried to .claude/disabled-skills/perf/, the release's copy went over it,
+        # and the active folder was deleted, so its text was left only in Git HEAD.
+        $t = New-B430Target -Root $root -Skill 'perf'
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        $teamSkill = $utf8.GetBytes("---`nname: perf`ndescription: our own load-test checklist`n---`nTEAM PERF RECIPE`n")
+        $olderNotes = $utf8.GetBytes("team notes v1`n")
+        Write-B429Files -Folder $t -Files ([ordered]@{ '.claude/skills/perf/notes.md' = "team notes v2`n"; '.claude/disabled-skills/perf/notes.md' = "team notes v1`n" })
+        [IO.File]::WriteAllBytes((Join-Path $t '.claude/skills/perf/SKILL.md'), $teamSkill)
+        & git -C $t add -A
+        & git -C $t commit -qm 'team perf skill'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/skills/perf'))) "the disabled skill's active copy was left in place: $out"
+        Assert (Test-B194BytesEqual ([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.claude/skills/perf/SKILL.md'))) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/disabled-skills/perf/SKILL.md')))) "the release's perf skill is not at its disabled path: $out"
+        Assert ([IO.File]::ReadAllText((Join-Path $t '.claude/disabled-skills/perf/notes.md')) -ceq "team notes v2`n") "the active folder's notes.md was not carried: $out"
+        $skillSave = '.claude/framework-update-backup/files/_.claude/skills/perf/SKILL.md'
+        $notesSave = '.claude/framework-update-backup/files/_.claude/disabled-skills/perf/notes.md'
+        Assert ((Test-Path -LiteralPath (Join-Path $t $skillSave) -PathType Leaf) -and (Test-B194BytesEqual $teamSkill ([IO.File]::ReadAllBytes((Join-Path $t $skillSave))))) "the team's own .claude/skills/perf/SKILL.md was not saved byte-identical at $skillSave before the release's copy went over it: $out"
+        Assert ((Test-Path -LiteralPath (Join-Path $t $notesSave) -PathType Leaf) -and (Test-B194BytesEqual $olderNotes ([IO.File]::ReadAllBytes((Join-Path $t $notesSave))))) "the team's .claude/disabled-skills/perf/notes.md was not saved byte-identical at $notesSave before the carry went over it: $out"
+        Assert ($flat -match "NOTICE: LEARNINGS\.md disables the framework skill 'perf', so the update moves \.claude/skills/perf/ to \.claude/disabled-skills/perf/, where this release's copy replaces '\.claude/skills/perf/SKILL\.md', which differs from it: the update first saves it to $([regex]::Escape($skillSave))\.") "the save of the team's skill was not reported: $out"
+        Assert ($flat -match "NOTICE: '\.claude/disabled-skills/perf/notes\.md' differs from the file this update writes there, so the update first saves it to $([regex]::Escape($notesSave))\.") "the save of the team's disabled-skills file was not reported: $out"
+        $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
+        Assert ($status -notmatch 'framework-update-backup/') "a saved copy is committable: $status"
+        Assert (($out -replace '\s+', ' ') -match $b429BlanketLine) "the handoff does not say the backup folder is kept out of Git: $out"
+        $again = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        Assert ($LASTEXITCODE -eq 0) "the second update failed (exit $LASTEXITCODE): $again"
+        Assert (($again -replace '\s+', ' ') -notmatch 'first saves it to') "the second update saved again a file the first one handled: $again"
+        Assert (@(Get-ChildItem -LiteralPath (Join-Path $t '.claude/framework-update-backup/files') -Recurse -File -Force).Count -eq 2) "the second update added a save: $again"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-430 a file in a disabled skill''s active copy that Git keeps out of commits is never moved to .claude/disabled-skills, where Git could commit it: it is saved out of Git, named in one NOTICE' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b430-hidden-' + [guid]::NewGuid())
+    try {
+        # B-429's attack: disabling create-adr moved a developer's ignored local.env to .claude/disabled-skills/create-adr/, where
+        # Git showed it as ??; a tracked file whose local changes Git is told not to see leaks the same way. Once with the one-time
+        # skill backup already taken (the copies go below files/), once with this update taking it (they are its copies).
+        foreach ($withBackup in $true, $false) {
+            $label = if ($withBackup) { 'skill backup present' } else { 'skill backup taken now' }
+            $t = New-B430Target -Root (Join-Path $root "$withBackup") -Skill 'create-adr' -Ignore "/.claude/skills/create-adr/local.env`n" -NoSkillBackup:(-not $withBackup)
+            New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/create-adr') | Out-Null
+            [IO.File]::WriteAllBytes((Join-Path $t '.claude/skills/create-adr/SKILL.md'), [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.claude/skills/create-adr/SKILL.md')))
+            Write-B429Files -Folder $t -Files ([ordered]@{ '.claude/skills/create-adr/config.json' = "{}`n" })
+            & git -C $t add -A
+            & git -C $t commit -qm 'create-adr with a shared config'
+            & git -C $t update-index --skip-worktree .claude/skills/create-adr/config.json
+            $local = [ordered]@{ '.claude/skills/create-adr/local.env' = "TOKEN=sk-FIXTURE3`n"; '.claude/skills/create-adr/config.json' = "{`"key`":`"LOCAL-FIXTURE`"}`n" }
+            Write-B429Files -Folder $t -Files $local
+            Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String).Trim() -eq '') "${label}: calibration: Git sees a file it should keep out"
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $flat = $out -replace '\s+', ' '
+            Assert ($LASTEXITCODE -eq 0) "${label}: the update failed (exit $LASTEXITCODE): $out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/skills/create-adr'))) "${label}: the disabled skill's active copy was left in place: $out"
+            Assert (Test-Path -LiteralPath (Join-Path $t '.claude/disabled-skills/create-adr/SKILL.md') -PathType Leaf) "${label}: the release's create-adr is not at its disabled path: $out"
+            foreach ($name in 'local.env', 'config.json') {
+                Assert (-not (Test-Path -LiteralPath (Join-Path $t ".claude/disabled-skills/create-adr/$name"))) "${label}: $name, which Git kept out of commits, was moved to .claude/disabled-skills/create-adr/: $out"
+            }
+            $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
+            Assert ($status -notmatch 'local\.env|config\.json|framework-update-backup/') "${label}: a file Git kept out of commits, or a copy of it, is committable: $status"
+            $saveRoot = if ($withBackup) { '.claude/framework-update-backup/files/_.claude/skills/create-adr' } else { '.claude/framework-update-backup/skills/create-adr' }
+            foreach ($name in 'config.json', 'local.env') {
+                $copy = Join-Path $t "$saveRoot/$name"
+                Assert ((Test-Path -LiteralPath $copy -PathType Leaf) -and [IO.File]::ReadAllText($copy) -ceq $local[".claude/skills/create-adr/$name"]) "${label}: $name was not saved byte-identical at $saveRoot/$name`: $out"
+            }
+            $notice = "NOTICE: Git keeps 2 files in the active copy of a disabled skill out of commits \(ignored, or tracked with local changes Git is told not to see\), so the update does not move them to \.claude/disabled-skills/, where Git could commit them: \.claude/skills/create-adr/config\.json is saved at $([regex]::Escape("$saveRoot/config.json")), \.claude/skills/create-adr/local\.env at $([regex]::Escape("$saveRoot/local.env"))\."
+            Assert (@([regex]::Matches($flat, $notice)).Count -eq 1) "${label}: the kept-out files were not named in exactly one NOTICE: $out"
+        }
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'B-322 a re-run of a finished update keeps the consumer''s pre-update settings backup' {
     # Every update run saved .claude/settings.json over the last backup, so re-running a finished update
     # replaced the consumer's settings in it with the framework's own; a non-Git target has no other copy.

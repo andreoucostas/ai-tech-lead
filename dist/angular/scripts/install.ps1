@@ -729,6 +729,38 @@ function Get-UntrackedStatusPaths {
     }
     return , $paths
 }
+# The files below $Folder, target-relative, whose bytes on disk Git never commits from there: untracked ones it ignores,
+# and tracked ones marked skip-worktree or assume-unchanged (an 'S' or a lower-case tag in ls-files -v), whose local
+# changes Git does not see. A copy of one at a path Git does not ignore would be committable. Matched ignoring case, as
+# Windows Git (core.ignorecase) matches a path. Empty without Git or outside a work tree, where nothing is committed;
+# $null when Git could not say.
+$script:GitSkippedSet = $null
+function Get-GitKeptOutFiles {
+    param([Parameter(Mandatory = $true)][string]$Folder)
+    $kept = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $gitPath = Resolve-AdoptionGit
+    if (-not $gitPath) { return , $kept }
+    $inside = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-inside-work-tree')
+    if (-not ($inside.Started -and $inside.ExitCode -eq 0 -and $inside.Output -ceq 'true')) { return , $kept }
+    $prefix = Invoke-GitRecords -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--show-prefix')
+    if ($null -eq $prefix) { return $null }
+    $prefix = (@($prefix) -join '').TrimEnd([char]13, [char]10)
+    $ignored = Get-UntrackedStatusPaths -GitPath $gitPath -Prefix $prefix -Folder $Folder -Code '!!'
+    if ($null -eq $ignored) { return $null }
+    foreach ($path in $ignored) { [void]$kept.Add($path) }
+    if ($null -eq $script:GitSkippedSet) {
+        $records = Invoke-GitRecords -GitPath $gitPath -Arguments @('-C', $tgt, 'ls-files', '-v', '-z')
+        if ($null -eq $records) { return $null }
+        $skipped = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        foreach ($record in @($records)) {
+            if ($record.Length -gt 2 -and ($record[0] -ceq 'S' -or [char]::IsLower($record[0]))) { [void]$skipped.Add($record.Substring(2)) }
+        }
+        $script:GitSkippedSet = $skipped
+    }
+    $under = if ($Folder -eq '.') { '' } else { $Folder.TrimEnd('/') + '/' }
+    foreach ($path in $script:GitSkippedSet) { if ($path.StartsWith($under, [StringComparison]::OrdinalIgnoreCase)) { [void]$kept.Add($path) } }
+    return , $kept
+}
 # The dirty-tree refusal says "Commit", which would take an earlier update's leftovers too, so before it they are kept
 # out of Git: the list's '*' is that refusal's one write, to the framework's own file. Returns the line it adds.
 function Protect-BackupResidue {
@@ -1584,15 +1616,26 @@ if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Contain
 foreach ($entry in $updateBackups) { [void](Add-PlannedWrite -Relative $entry.Relative -ForceCreate) }
 
 # Preserve every existing leaf of a disabled skill in its inactive location, then overlay the
-# incoming framework version. Active copies are removed as explicit tree operations.
+# incoming framework version. Active copies are removed as explicit tree operations. A file Git keeps
+# out of commits is never carried: .claude/disabled-skills/ is committable, so it is saved below the
+# backup folder instead, as is anything the carry or the overlay would lose.
+$disabledActiveFiles = New-Object System.Collections.Generic.List[object]
 foreach ($name in $disabledSkillNames) {
     $activeRoot = Join-Path $activeSkillsRoot $name
     if (Test-Path -LiteralPath $activeRoot -PathType Container) {
+        $keptOut = Get-GitKeptOutFiles -Folder ".claude/skills/$name"
+        if ($null -eq $keptOut) {
+            [Console]::Error.WriteLine("CANT-VERIFY: Git could not say which files in .claude/skills/$name/ it keeps out of commits, so this update cannot move that disabled skill to .claude/disabled-skills/$name/, where a file you had gitignored would become committable. Repair Git, then re-run the update. Nothing was changed.")
+            exit 4
+        }
         foreach ($file in Get-ChildItem -LiteralPath $activeRoot -Recurse -File -Force) {
             $underSkill = $file.FullName.Substring($activeRoot.Length).TrimStart('\', '/') -replace '\\', '/'
             # A retired skill file is known framework content that the retirement loop deletes first.
             if ($deletePlan -contains ".claude/skills/$name/$underSkill") { continue }
             $relative = ".claude/disabled-skills/$name/$underSkill"
+            $hidden = $keptOut.Contains(".claude/skills/$name/$underSkill")
+            $disabledActiveFiles.Add([pscustomobject]@{ Name = $name; Source = $file.FullName; SourceRelative = ".claude/skills/$name/$underSkill"; Relative = $relative; Hidden = $hidden })
+            if ($hidden) { continue }
             [void](Add-PlannedWrite -Relative $relative)
             $disabledCarryPlan.Add([pscustomobject]@{ Source = $file.FullName; Relative = $relative })
         }
@@ -1663,6 +1706,66 @@ if ($updateMode) {
         if ($backup.State -eq 'saved') { continue }
         [void](Add-PlannedWrite -Relative $backup.Relative -ForceCreate)
         $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative })
+    }
+    # The same save for a disabled skill: its active folder is carried to .claude/disabled-skills/<name>/ and deleted,
+    # and the release's copy then goes over what was carried. No manifest lists a .claude/disabled-skills/ path, and an
+    # update never writes a disabled skill's active folder, so a manifest says nothing about who wrote either. Saved first:
+    # a file at a .claude/disabled-skills/ path that the carry or the release's copy would change, an active file the
+    # release's copy would replace, and an active file Git keeps out of commits, which is never carried.
+    # Each .claude/disabled-skills/ path this update writes, and the file whose bytes it will hold: the release's where both write it.
+    $disabledFinal = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in $disabledCarryPlan) { $disabledFinal[$entry.Relative] = $entry.Source }
+    $releaseWrites = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in $disabledIncomingPlan) { $disabledFinal[$entry.Relative] = Join-Path $src $entry.Source; [void]$releaseWrites.Add($entry.Relative) }
+    # The one-time skill backup, when this update takes it, has already copied every active file.
+    $skillBackupCopies = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in $skillBackupPlan) { $skillBackupCopies[$entry.SourceRelative] = $entry.Relative }
+    $disabledSaves = New-Object System.Collections.Generic.List[object]
+    foreach ($relative in @($disabledFinal.Keys | Sort-Object)) {
+        $destination = Get-ContainedTargetPath -Relative $relative
+        if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) { continue }
+        $disabledSaves.Add([pscustomobject]@{ Kind = 'overwritten'; Path = $destination; Relative = $relative; Final = $disabledFinal[$relative]; Name = $null })
+    }
+    foreach ($entry in @($disabledActiveFiles | Sort-Object -Property SourceRelative)) {
+        if (-not $entry.Hidden -and -not $releaseWrites.Contains($entry.Relative)) { continue }
+        $disabledSaves.Add([pscustomobject]@{ Kind = $(if ($entry.Hidden) { 'hidden' } else { 'replaced' }); Path = $entry.Source; Relative = $entry.SourceRelative
+            Final = $(if ($entry.Hidden) { $null } else { $disabledFinal[$entry.Relative] }); Name = $entry.Name })
+    }
+    $hiddenSaved = New-Object System.Collections.Generic.List[object]
+    foreach ($save in $disabledSaves) {
+        if ($skillBackupCopies.ContainsKey($save.Relative)) {
+            if ($save.Kind -eq 'hidden') { $hiddenSaved.Add([pscustomobject]@{ Relative = $save.Relative; At = $skillBackupCopies[$save.Relative] }) }
+            continue
+        }
+        try { $existingBytes = [IO.File]::ReadAllBytes($save.Path) }
+        catch {
+            [Console]::Error.WriteLine("CANT-VERIFY: '$($save.Relative)' could not be read to decide whether this update must save it before writing over or removing it. Make it readable or move it aside, then re-run. Nothing was changed.")
+            exit 4
+        }
+        if ($save.Final -and (Get-LfSha256 -Bytes $existingBytes) -ceq (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes($save.Final)))) { continue }
+        $preferred = "$savesRelative/" + (ConvertTo-SavedRelative -Relative $save.Relative)
+        $backup = Find-UpdateBackup -Preferred $preferred -Bytes $existingBytes
+        if ($backup.State -eq 'taken') {
+            [Console]::Error.WriteLine("ERROR: Refusing update: '$($save.Relative)' must be saved before this update writes over or removes it, and both $preferred and $($backup.Relative) already hold other content. Move them out of $savesRelative/, then re-run the update. Nothing was changed.")
+            exit 3
+        }
+        $saving = if ($backup.State -eq 'saved') { "it is already saved at $($backup.Relative)" } else { "the update first saves it to $($backup.Relative)" }
+        if ($save.Kind -eq 'hidden') { $hiddenSaved.Add([pscustomobject]@{ Relative = $save.Relative; At = $backup.Relative }) }
+        elseif ($save.Kind -eq 'replaced') {
+            $saveMessages.Add("NOTICE: LEARNINGS.md disables the framework skill '$($save.Name)', so the update moves .claude/skills/$($save.Name)/ to .claude/disabled-skills/$($save.Name)/, where this release's copy replaces '$($save.Relative)', which differs from it: $saving. Keep what you need from the saved copy under another path.")
+        } else {
+            $saveMessages.Add("NOTICE: '$($save.Relative)' differs from the file this update writes there, so $saving. Keep what you need from the saved copy under another path.")
+        }
+        if ($backup.State -eq 'saved') { continue }
+        [void](Add-PlannedWrite -Relative $backup.Relative -ForceCreate)
+        $updateBackups.Add([pscustomobject]@{ Source = $save.Path; Relative = $backup.Relative; SourceRelative = $save.Relative })
+    }
+    if ($hiddenSaved.Count -gt 0) {
+        $one = $hiddenSaved.Count -eq 1
+        $named = for ($i = 0; $i -lt $hiddenSaved.Count; $i++) {
+            "$($hiddenSaved[$i].Relative)$(if ($i -eq 0) { ' is saved' }) at $($hiddenSaved[$i].At)"
+        }
+        $saveMessages.Add("NOTICE: Git keeps $(if ($one) { '1 file' } else { "$($hiddenSaved.Count) files" }) in the active copy of a disabled skill out of commits (ignored, or tracked with local changes Git is told not to see), so the update does not move $(if ($one) { 'it' } else { 'them' }) to .claude/disabled-skills/, where Git could commit $(if ($one) { 'it' } else { 'them' }): $($named -join ', '). $(if ($one) { 'That copy is' } else { 'Those copies are' }) below .claude/framework-update-backup/, which Git ignores, and the active copy is removed; keep what you need under a path Git ignores.")
     }
     $additiveTotal = $additiveSaves + $additiveAlready
     if ($additiveTotal -gt 0) {

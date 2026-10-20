@@ -149,6 +149,19 @@ the copy loop, so the re-run saw the release's rules as the "before" and left th
 which leaves the file committable. A brownfield install still archives and replaces a team's `.claude/.gitignore`, with the same effect
 (B-441). `docs/reference.md` and `README.md` name the exception in the ownership table. Nine new `UpdateDelivery.Tests.ps1` cases.
 
+`install.ps1` update mode (guarded, B-430, data loss and a secret leak, both executed): a disabled skill's active folder is still carried
+to `.claude/disabled-skills/<name>/` and deleted, with the release's copy of the skill over the carried files, but B-393's save
+(`Find-UpdateBackup`, into `.claude/framework-update-backup/files/`, one `NOTICE` each) first takes every file that would not survive: a
+file at a `.claude/disabled-skills/` path that the carry or the release's copy would change (CRLF read as LF), an active file the release's
+copy replaces with other bytes, and an active file Git keeps out of commits, which is no longer carried. That last set comes from a new
+`Get-GitKeptOutFiles`: `git status -z --ignored` below the folder and `git ls-files -v -z` (an `S` or lower-case tag: skip-worktree or
+assume-unchanged), through `Invoke-GitRecords`, matched ignoring case; one `NOTICE` names those files with each copy's path, the one-time
+skill backup's when it took the file this run, and Git failing to answer refuses the update before any change (exit 4). No manifest decides
+here: none lists a `.claude/disabled-skills/` path, and an update never writes a disabled skill's active folder, so a team's own skill there
+sits at a path the manifest lists; a disabled framework file a later release changes is therefore saved too. Before, B-393's attack saw a
+team's own `.claude/skills/perf/SKILL.md` overwritten in `.claude/disabled-skills/perf/` and left only in Git HEAD, and B-429's attack saw
+an ignored `.claude/skills/create-adr/local.env` moved to a path Git showed as `??`. Two new `UpdateDelivery.Tests.ps1` cases.
+
 Eval case angular-003 (B-392, maintainer decision 2026-10-11: the shipped rule wins): its rubric failed an answer that replaced the
 component's `ngOnDestroy` cleanup with `takeUntilDestroyed()`, which the Feature rail's Boy Scout step and Boy Scout always-apply Add #1
 (#5 in the monorepo) ask for on a touched file (since 663ae91a). It now passes that swap (in an injection context or with a `DestroyRef`)
