@@ -1,5 +1,5 @@
 {
-  "_comment": "Windows PowerShell 5.1 fallback settings. Copy to settings.json (team-wide) or settings.local.json (per-developer) only when PowerShell 7 is unavailable. Windows is the supported execution platform.",
+  "_comment": "Windows PowerShell 5.1 fallback settings. Copy to settings.json (team-wide) or settings.local.json (per-developer) only when PowerShell 7 is unavailable. Windows is the supported execution platform. Each hook sets cwd \".\" (the repository root) because Copilot CLI and VS Code's Copilot harness also run this file, and could otherwise start a hook in a subfolder workspace, where its relative script path fails.",
   "env": {
     "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
   },
@@ -8,14 +8,14 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1", "shell": "powershell" }
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1", "shell": "powershell", "cwd": "." }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1", "shell": "powershell" }
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1", "shell": "powershell", "cwd": "." }
         ]
       }
     ],
@@ -23,7 +23,7 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1 ; exit $LASTEXITCODE", "shell": "powershell" }
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1 ; exit $LASTEXITCODE", "shell": "powershell", "cwd": "." }
         ]
       }
     ],
@@ -31,15 +31,15 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1 ; exit $LASTEXITCODE", "shell": "powershell", "timeout": 90 },
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1", "shell": "powershell" }
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1 ; exit $LASTEXITCODE", "shell": "powershell", "timeout": 90, "cwd": "." },
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1", "shell": "powershell", "cwd": "." }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1", "shell": "powershell" }
+          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1", "shell": "powershell", "cwd": "." }
         ]
       }
     ]

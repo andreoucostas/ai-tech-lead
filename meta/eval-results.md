@@ -5850,3 +5850,50 @@ Q. `hooks.json` entries carry no `cwd`, so a host that starts a hook elsewhere f
 - Not shown: VS Code's UI and either harness driven through it (the Local harness is read from source, its executor not run); CLIs 1.0.72 to 1.0.85 and 1.0.87; `/cd` within a session; the
   sandbox; macOS and Linux; whether Claude Code accepts `cwd` in `.claude/settings.json`; a hook file outside every workspace folder, for which the Local harness's base is the first workspace
   folder with or without `cwd` (source).
+
+## B-437 check — do Copilot CLI and the runtime VS Code 1.139.1 bundles run `.claude/settings.json` from a subfolder workspace, and from where (2026-10-20, free runs, not pre-registered)
+
+Q. B-381's vsc2-sub saw that runtime start a Claude-format `UserPromptSubmit` entry without `cwd` in `sub`. Does each host load `.claude/settings.json` on its own, from which directory, and
+does the shipped `PreToolUse` copy then refuse writes? A fix must keep Claude Code working.
+- Instrument, free (`<scratch>\b437\tools`): `fake-model.mjs`, a chat-completions endpoint on 127.0.0.1 playing a scripted model (one tool call per turn, then text), reached over BYOK. The
+  runtime: B-378's `drive.mjs` plus the SDK session's `provider` (`type: openai`, which bypasses Copilot API auth), `useLoggedInUser` off and `COPILOT_OFFLINE=true` (`auth: isAuthenticated=false`
+  every run). CLI 1.0.98 (`copilot --version`): B-381's runner flags and trust variables plus `COPILOT_OFFLINE=true` and `COPILOT_PROVIDER_BASE_URL` (its `copilot help environment`). Every
+  Copilot run sent 2 or 3 requests to that endpoint and none elsewhere; `totalPremiumRequestCost` 0 (CLI), `assistant.usage` cost 0 (runtime); `~\.copilot\config.json` and `settings.json`
+  unchanged. Claude Code 2.1.300: `claude -p` with a `--settings` file whose only hook refuses the prompt (`UserPromptSubmit` `decision: block`), `ANTHROPIC_BASE_URL` a closed local port,
+  inherited `CLAUDE*` variables removed (`run-cc.ps1`): `num_turns` 0 and `total_cost_usd` 0 every run.
+- Probe fixture (`make-probe-fixture.ps1`; `.claude/settings.json` 22700b5477b0, no `.github/hooks`): a Git repository with `sub\` and the shipped Claude-format shape (`shell: powershell`,
+  `Write|Edit` matchers) registering on all five events, in this order: rel-none (the shipped form), rel-dot (`"cwd": "."`), ph (`-File "${CLAUDE_PROJECT_DIR}/.claude/hooks/probe.ps1"`,
+  Claude Code's documented placeholder), abs-none (absolute path). The probe logs its location, the payload's event and tool names and `CLAUDE_PROJECT_DIR`. Scripted: one `create`.
+
+| run | host | session directory | rel-none | rel-dot | ph | abs-none started in | `CLAUDE_PROJECT_DIR` | the `create` |
+|---|---|---|---|---|---|---|---|---|
+| vsc-probe-sub | runtime | `sub` | failed, code 1: "The argument '.claude/hooks/probe.ps1' is not recognized" | root | failed: "'/.claude/hooks/probe.ps1'" | `sub` | root | denied: rel-none errored |
+| vsc-probe-root | runtime | root | root | root | failed, the same | root | root | denied: ph errored |
+| cli98-probe-sub | CLI 1.0.98 | `sub` | root | root | failed, the same | root | root | denied: ph errored |
+| cc-probe-root | Claude Code 2.1.300 | root | root | root | root | root | root | no tool call (`SessionStart`, `UserPromptSubmit` ran) |
+| cc-probe-sub | Claude Code 2.1.300 | `sub` | did not run | did not run | did not run | did not run | | the root's `.claude/settings.json` was not loaded |
+
+- Both Copilot hosts ran `.claude/settings.json` alone (the error source "repo settings"; the CLI `loaded repo hooks (hookCount=20)`), gave its copies `hook_event_name` payloads (`tool_name`
+  `Write` for the `create`), and set `CLAUDE_PROJECT_DIR` to the repository root, which PowerShell does not read as `${CLAUDE_PROJECT_DIR}`. A denial read "Denied by preToolUse hook from "repo
+  settings" (hook errored)" (CLI log: "Error in preToolUse hook from "repo settings" (fail-closed)"), and the entries after the erroring one did not run.
+- Claude Code ran every entry, the one with the key included, and its debug log held no settings error. Control cc-control-badtype (a string `timeout` on each entry): six "Invalid setting
+  skipped without dialog (automated session)" lines, four per-entry ones ending "entry ignored.", the `PreToolUse` one "a PreToolUse/PermissionRequest hook that cannot be loaded may be what
+  guards the permissions declared beside it, so nothing it sits in is applied until the entry is fixed or removed", one for the field; no entry ran. The schemastore
+  schema (f26f028ad94a) lists no `cwd` on a command hook and sets `additionalProperties: false`; Claude Code's hooks page names no `cwd` field and says handlers run in the current directory.
+- Shipped dist from `sub` (B-378's fixture recipe, variant F, plus a committed `sub\`; scripted `create` of `sub\notes.txt`, then of `tmp-canary.txt` holding `AKIA` and 16 of [A-Z0-9]):
+  - vsc-dist-before-sub, 6ef6a0e8's `dist/dotnet` (`hooks.json` 77538decad79, `.claude/settings.json` 19ff56f4b8ae): `notes.txt` denied, "(hook errored)", stderr "The argument
+    '.claude/hooks/guard.ps1' is not recognized", code 64; the canary "Denied by preToolUse hook: Blocked write to"; `userPromptSubmitted`, `sessionStart` and `agentStop` failed the same way.
+    Neither file written.
+  - vsc-dist-after-sub, the rebuilt `dist/dotnet` (`.claude/settings.json` 10754a4f2154): all 6 `hook.end` succeeded, `sub\notes.txt` written with one audit line, the canary blocked as before.
+  - cli98-dist-after-sub, that fixture cloned, CLI 1.0.98: `hookCount=12`, all 6 `hook.end` succeeded, `notes.txt` written, the canary blocked.
+  - cc-dist-after-root, Claude Code on that fixture: no "Invalid setting"; `session-start.ps1` "finished with status 0" and wrote `.claude/.state/last-session-start`; `route-prompt.ps1`
+    "cancelled" when the refusal ended the prompt. The rebuilt `PreToolUse` command run by `pwsh -Command` from the root (`shell: powershell`) on Claude `Write` events: the key-shaped one
+    EXIT=2, stderr "Blocked write to ...tmp-canary.txt"; a plain one EXIT=0, no output.
+- Reading: the failure is real: with a subfolder workspace that runtime starts the shipped `.claude/settings.json` copies there, and the `PreToolUse` copy's error refuses every `Write|Edit`
+  call. Made: `"cwd": "."` on every entry of the three stack `settings.json` files and `src/core/.claude/settings.windows.json`, and `validate-dist` check 8 refusing a Claude-format entry
+  without it (case 8f, red on the unfixed tree); `dist/*` rebuilt. Rejected: `${CLAUDE_PROJECT_DIR}`, which failed from the root on both Copilot hosts; `$env:CLAUDE_PROJECT_DIR`, which all three
+  set, but which fails from the root too on any host that does not.
+- Recorded, not scored: the `hooks.json` guard's deny honoured on the runtime in both dist runs (B-378 asks it of VS Code's window); Claude Code started in `sub` loaded no project hooks.
+  Spend: 10 runs, no premium request, no Claude model call.
+- Not shown: VS Code's window, and its Local harness, which reads `.claude/settings.json` only with `chat.useClaudeHooks`; CLIs before 1.0.98 on these copies; a real model's tool choices (the
+  calls were scripted); `settings.windows.json` on any host; whether Claude Code acts on `cwd`; macOS and Linux.

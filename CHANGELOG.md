@@ -51,6 +51,16 @@ in the repository root; CLI 1.0.98 ran both in the root (its 1.0.88 fix) and loa
 relative `cwd` against the hook file's workspace folder, its default without one (read from source). Left as B-437: that runtime also runs
 the `.claude/settings.json` copies, which still start in the subdirectory.
 
+`.claude/settings.json` and `.claude/settings.windows.json` (guarded, B-437): every entry sets `"cwd": "."` as well, and `validate-dist`
+check 8 refuses a Claude-format entry without it (`ValidateDist.Tests.ps1` case 8f). Free runs (`meta/eval-results.md` "B-437 check": a
+scripted local model over BYOK, so no Copilot model request; Claude Code's prompt refused by a `UserPromptSubmit` hook): with a subfolder as
+the workspace, the runtime VS Code 1.139.1 bundles ran `.claude/settings.json` alone, started a cwd-less entry there and denied the `create`
+("Denied by preToolUse hook from "repo settings" (hook errored)"), and started a `"cwd": "."` entry in the root; on 6ef6a0e8's installed
+`dist/dotnet` the same refusal, on the rebuilt one the write landed and the key-shaped one was still blocked. Copilot CLI 1.0.98 started
+both kinds in the root. Claude Code 2.1.300 ran entries carrying the key and logged no settings error, where a string `timeout` gave
+"Invalid setting skipped ... entry ignored". Rejected: `"${CLAUDE_PROJECT_DIR}"` in the command, which Claude Code resolves but both
+Copilot hosts leave to PowerShell as an empty variable, so that entry failed from the root as well.
+
 ## 0.98.1 — 2026-10-19
 
 The briefing deck (`presentation/framework-briefing.html` slide 6) and `TALKING-POINTS.md` quoted three carrier rules the 0.98.0

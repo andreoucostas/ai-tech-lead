@@ -42,9 +42,15 @@
   host that started hooks in the session's folder instead (Copilot CLI before 1.0.88 started in a subfolder, and the
   runtime behind VS Code 1.139.1's Copilot harness with a subfolder of the repository open as the workspace) could not
   find `.claude\hooks\*.ps1`, so the write guard's hook failed and Copilot refused every tool call. Copilot CLI 1.0.88
-  and later and VS Code's Local harness already start them in the root. That VS Code runtime also runs the copies in
-  `.claude/settings.json`, which still start in the subfolder, so writes there may still be refused: open the
-  repository root as your workspace folder.
+  and later and VS Code's Local harness already start them in the root.
+
+- **Writes are no longer refused when VS Code's Copilot harness has a subfolder of your repository open.** Copilot CLI
+  and the runtime behind VS Code 1.139.1's Copilot harness also run the hooks in `.claude/settings.json`, and with a
+  subfolder open as the workspace that runtime started them in the subfolder, where `.claude\hooks\*.ps1` cannot be
+  found: the write guard's hook failed, so every file create or edit was refused ("Denied by preToolUse hook from
+  "repo settings" (hook errored)"). Each entry in `.claude/settings.json` and `.claude/settings.windows.json` now
+  sets `"cwd": "."` too, which both Copilot hosts resolve to the repository root; Claude Code accepts the key and runs
+  the hooks as before. If you copied `settings.windows.json` to `.claude/settings.local.json` yourself, copy it again.
 
 ## 0.98.1 — 2026-10-19
 

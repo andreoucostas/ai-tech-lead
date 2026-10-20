@@ -342,6 +342,17 @@ try {
             [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
         } 'Copilot entry must set "cwd": "."' 'hook-registration'
     }
+    # B-437: Copilot CLI and VS Code 1.139.1's bundled runtime also run .claude/settings.json; from a
+    # subfolder workspace that runtime started a cwd-less entry there and denied every Write/Edit.
+    It 'case 8f: a Claude-format entry without a repo-root cwd fails check 8' {
+        Assert-Case 'claude-missing-cwd' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.json'
+            $doc = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            @($doc.hooks.PreToolUse)[0].hooks[0].PSObject.Properties.Remove('cwd')
+            [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
+        } 'Claude-format entry must set "cwd": "."' 'hook-registration'
+    }
     It 'case 9: a dead documented command fails check 7' { Assert-Case 'dead-doc' { param($d) Replace-Text (Join-Path $d 'README.md') 'scripts/install.ps1' 'scripts/definitely-missing.ps1' } 'dead instructions in shipped docs' 'no-dead-instruction' }
     # -Force is load-bearing: most shipped Markdown lives below dot-directories.
     It 'case 10: no markdown files fails check 7' { Assert-Case 'no-docs' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Filter *.md -Force | Remove-Item -Force } 'no-dead-instruction scanned zero documentation files' 'no-dead-instruction' }

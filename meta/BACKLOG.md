@@ -22,24 +22,23 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 7 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half needs a maintainer-driven VS Code session, since nothing here drives VS Code's Copilot harness headlessly |
 | 8 | B-378 | The guard's deny on VS Code's Copilot harness, which 1.141 is making the default for enterprise users, is documented but not observed; it needs a maintainer-driven VS Code session |
 | 9 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 10 | B-437 | Stall class, B-381's remainder: on VS Code's Copilot harness with a subfolder workspace the `.claude/settings.json` copies still fail; no field report |
-| 11 | B-427 | Cost, not a harm: on Copilot the three `haiku` reviewers run on the session's model, Opus included; the same wrappers as B-382 |
-| 12 | B-402 | Improvement: the warehouse scoped pass gave the right answer when it ran, but Rule 11 sent the agent there in 1 of 3 runs |
-| 13 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
-| 14 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
-| 15 | B-404 | Consumer-docs polish: every miss asked before committing, under Claude Code's own commit rule; decide the gate's scoring first |
-| 16 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
-| 17 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
-| 18 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
-| 19 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 20 | B-359 | Latent false green: no shipped command carries such a value today |
-| 21 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
-| 22 | B-373 | Stall class, but only on a degenerate C# file; no field report |
-| 23 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
-| 24 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
-| 25 | B-391 | False-green class, but only under a Turkish culture; no field report |
-| 26 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
-| 27 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
+| 10 | B-427 | Cost, not a harm: on Copilot the three `haiku` reviewers run on the session's model, Opus included; the same wrappers as B-382 |
+| 11 | B-402 | Improvement: the warehouse scoped pass gave the right answer when it ran, but Rule 11 sent the agent there in 1 of 3 runs |
+| 12 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
+| 13 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
+| 14 | B-404 | Consumer-docs polish: every miss asked before committing, under Claude Code's own commit rule; decide the gate's scoring first |
+| 15 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
+| 16 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
+| 17 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
+| 18 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 19 | B-359 | Latent false green: no shipped command carries such a value today |
+| 20 | B-360 | CI already stops it at checkout; a local check only moves the stop earlier |
+| 21 | B-373 | Stall class, but only on a degenerate C# file; no field report |
+| 22 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
+| 23 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
+| 24 | B-391 | False-green class, but only under a Turkish culture; no field report |
+| 25 | B-392 | Maintainer report, decided 2026-10-11 (the shipped rule wins); a shipped eval case fails a rule-compliant answer, no runtime harm |
+| 26 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
 
 ## Open entries
 
@@ -125,13 +124,6 @@ canary write 2 of 2. Left: a guard deny in a maintainer-driven Copilot-harness s
 **Status:** Open; maintainer request 2026-10-11; unblocked the same day by B-377, which saw the next-prompt queue still delivered on CLI 1.0.95 and `agentStop` fire in a `-p` run. The Copilot runtime documents
 `{"decision":"block","reason":...}` on `agentStop` (at most 8 in a row, `stop_hook_active` on re-entry); VS Code's Local harness maps `agentStop` to `Stop` and needs the `hookSpecificOutput` form or exit 2. copilot-cli
 issue #3894 (open, not primary) reports `agentStop` firing on subagent turns and stalling `/review`, so run `meta/canaries/agent-stop-delivery/` with the review fan-out before changing `boy-scout-check.ps1`.
-
-### B-437 · The `.claude/settings.json` hook copies still start in a subfolder on VS Code's Copilot harness
-**Filed against:** v0.98.1 (2026-10-20)
-**Priority:** P3 · **Effort:** S · **Invariants:** #3 #5
-**Status:** Open; found by B-381's probes (`meta/eval-results.md` "B-381 check"). The runtime VS Code 1.139.1 bundles also runs the Claude-format entries; from a subfolder workspace one without `cwd`
-started there and its relative `-File` failed, one with `"cwd": "."` started in the root. So the `PreToolUse` `Write|Edit` copy would still error and refuse writes there (inferred with B-378's fail-closed run).
-Candidate: `"cwd": "."` on those entries once Claude Code is seen to accept the key; else tell teams to open the repository root.
 
 ### B-383 · Skill descriptions share a 15,000-character cap in VS Code's Copilot harness; measure the shipped and consumer load against it
 **Filed against:** v0.94.0 (2026-10-11)

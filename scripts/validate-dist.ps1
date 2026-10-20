@@ -689,6 +689,7 @@ foreach ($rf in $regFiles) {
                     if ($interp -cne $expectedInterpreter) { $regProblems += "$rf : expected interpreter '$expectedInterpreter', found '$interp' in: $cmd" }
                     if ($cmd -cnotmatch '(?:^|\s)-NoProfile(?:\s|$)') { $regProblems += "$rf : command omits exact -NoProfile: $cmd" }
                     if ([string]$entry.shell -cne 'powershell') { $regProblems += "$rf : command hook shell must be exactly 'powershell': $cmd" }
+                    if ([string]$entry.cwd -cne '.') { $regProblems += "$rf : Claude-format entry must set ""cwd"": ""."" (repository root); Copilot runtimes read this file too, and one starting it in a subfolder workspace fails its relative -File: $cmd" }
                     $script = Get-FileArgument $cmd
                     if (-not $script) { $regProblems += "$rf : no -File argument in: $cmd" }
                     elseif ($script -notmatch '\.ps1$') { $regProblems += "$rf : non-PowerShell hook target '$script'" }
