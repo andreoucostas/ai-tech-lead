@@ -30,7 +30,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 15 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
 | 16 | B-440 | Data-loss class, contrived: an ignored backup copy can be overwritten by a checkout of a branch that tracks the same backup path; guarded |
 | 17 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
-| 18 | B-445 | Secret-leak class, but only under a Turkish culture: the guard's `(?i)` credential check lets `API_KEY = "..."` through under tr-TR on both hosts; guarded, step 4 |
+| 18 | B-448 | Secret-leak class, tr-TR only: the Turkish-cased `APİ_KEY` passes the guard since B-445; guarded, step 4 |
 | 19 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
 
 ## Open entries
@@ -147,13 +147,13 @@ Candidate: the same `-OrSkipped` check on the archive's keep-out; red case first
 **Priority:** P3 · **Effort:** S · **Invariants:** #7
 **Status:** Open; found by B-429's fourth fresh-session attack (`N5checkout`, executed on pwsh), caused by WSD-117's blanket keep-out. Git treats an ignored file as expendable, so `git checkout` of a branch that tracks the same backup path overwrote the saved copy silently (exit 0), where an untracked, unignored file would have stopped the checkout. Contrived: it needs a branch that commits that backup path. Candidate: name such copies in the update's NOTICE so the team moves them out first. Guarded (`install.ps1`).
 
-### B-445 · Under tr-TR the guard's case-insensitive credential check lets `API_KEY = "..."` through
-**Filed against:** v0.98.1 (2026-10-20)
-**Priority:** P3 · **Effort:** S · **Invariants:** #3
-**Status:** Open; found by B-391's hook audit, executed on both hosts: `guard.ps1`'s `(?i)` credential pattern follows the current culture, where `I` folds to dotless `ı`, so `API_KEY = "..."` passes under tr-TR. Not a one-call fix: the patterns need culture-invariant matching (`RegexOptions.CultureInvariant`, or an invariant-culture scope around the checks); red case under tr-TR first. Guarded, `guard.ps1` on step 4's list.
-
 ### B-441 · A brownfield install archives and replaces a team's own `.claude/.gitignore`, so the local files it ignored become committable
 **Filed against:** v0.98.1 (2026-10-20)
 **Priority:** P2 · **Effort:** S · **Invariants:** #7
 **Status:** Open; found by B-431's implementation, executed on pwsh, predating it. A repository whose committed `.claude/.gitignore` holds `mcp.local.json`, with an ignored `.claude/mcp.local.json`, installs brownfield: the file moves to `docs/pre-adoption/.claude/.gitignore`, the framework's replaces it, and Git shows `?? .claude/mcp.local.json` while the handoff says to commit the copied files.
 B-431 keeps such files ignored on update only: brownfield archives the file for `/adopt` to merge, and B-313's case pins the replaced rule. Candidate: B-431's anchored lines for files Git ignored before, on a brownfield install too; red case: that fixture. Guarded (`install.ps1`; step 4).
+
+### B-448 · Under tr-TR the guard now passes the Turkish-cased `APİ_KEY` it used to block
+**Filed against:** v0.98.1 (2026-10-20)
+**Priority:** P3 · **Effort:** S · **Invariants:** #3
+**Status:** Open; found by B-445's fresh-session attack (executed, both hosts and surfaces). B-445 made the guard's patterns culture-invariant, so `APİ_KEY` (U+0130, what tr-TR uppercasing of `api_key` gives) no longer matches `I`; the old culture-sensitive match blocked it under tr-TR. Candidate: accept U+0130 where a pattern has `i` (`[iİ]`); red case under tr-TR. Guarded, `guard.ps1` on step 4's list.

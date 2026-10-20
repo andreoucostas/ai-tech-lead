@@ -119,6 +119,11 @@
   1448, so a `SECURITY_FINDINGS.md` entry past its due date was reported only as open, in Claude Code and in Copilot
   alike, and each `.claude/ai-audit.log` line was stamped 1448. Both now use the Gregorian date whatever the machine's
   language.
+- **The write guard now blocks a hardcoded secret under an uppercase name on a Windows machine set to Turkish.** The
+  guard matched credential names with the machine's language rules, and in Turkish an uppercase "I" does not match a
+  lowercase "i", so there a write such as `API_KEY = "..."` with a literal value, a `CONNECTIONSTRING` holding a password
+  or an uppercase `CONNECTIONSTRINGS` section went through unblocked, in Claude Code and in Copilot alike. It now matches
+  the same way whatever the machine's language.
 
 - **The subscription eval case now passes the `takeUntilDestroyed()` cleanup your rules ask for.** The case in
   `tests/evals/cases.yaml` that adds the user's email to a component failed an answer that replaced the component's

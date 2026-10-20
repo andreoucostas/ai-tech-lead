@@ -66,6 +66,33 @@ It 'guard DENY (Copilot): a create whose text carries a patch is checked as that
     Assert-Decision (Invoke-Hook $guardPs $evt) 'DENY' 'create carrying patch text'
 }
 
+# --- Credential names match whatever the culture: tr-TR folds "I" to a dotless i (U+0131) ---
+It 'guard BLOCK (Claude) and DENY (Copilot) under tr-TR: credential literals under API_KEY, CONNECTIONSTRING and CONNECTIONSTRINGS' {
+    # The guard runs inside a wrapper that sets tr-TR first; exit 3 means that culture's regex casing did not take, so nothing was examined.
+    $wrapper = Join-Path ([IO.Path]::GetTempPath()) ('guard-tr-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    $text = "[Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::new('tr-TR')`n" +
+        "if ([regex]::IsMatch('I', 'i', 'IgnoreCase')) { exit 3 }`n& '" + $guardPs.Replace("'", "''") + "'`nexit `$LASTEXITCODE`n"
+    [IO.File]::WriteAllText($wrapper, $text, (New-Object System.Text.UTF8Encoding($true)))
+    $value = 'Zq8v' + 'R2mK4tW7xN'   # assembled at run time, as the outgoing-commit guard asks
+    $writes = @(
+        @{ f = 'src/Client.cs'; c = "const string API_KEY = `"$value`";" }
+        @{ f = 'src/Db.cs'; c = "const string CONNECTIONSTRING = `"Server=db;User Id=app;Password=$value;`";" }
+        @{ f = 'src/Api/appsettings.json'; c = "{ `"CONNECTIONSTRINGS`": { `"Main`": `"Server=db;User Id=app;Password=$value;`" } }" }
+    )
+    try {
+        foreach ($write in $writes) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $write.f $write.c } else { New-CopilotEvent $write.f $write.c }
+                $r = Invoke-Hook $wrapper $evt
+                Assert ($r.Exit -ne 3) 'tr-TR did not take in the wrapper (exit 3), so nothing was examined'
+                Assert-Decision $r $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "tr-TR, $surface, $($write.f)"
+                $reason = if ($r.Exit -eq 2) { [string]$r.Err } else { [string]($r.Out | ConvertFrom-Json).permissionDecisionReason }
+                Assert ($reason.Contains('hardcoded credential literal')) "tr-TR, $surface, $($write.f): blocked for another reason -- $reason"
+            }
+        }
+    } finally { Remove-Item -LiteralPath $wrapper -Force -ErrorAction SilentlyContinue }
+}
+
 # Every case above pipes stdin straight into guard.ps1. The agent host does not: the registration
 # carries "shell": "powershell", so the whole command STRING runs inside an outer PowerShell, and
 # `-Command` collapses a failing native command's exit code to 1. The host then reads a non-blocking

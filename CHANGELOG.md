@@ -120,6 +120,14 @@ merely open, on PowerShell 7 and 5.1 and both event shapes; the audit line was s
 `PowerShellSemantics.Tests.ps1` and `AuditTrail.Tests.ps1` runs the hook under ar-SA through a wrapper that exits 3 when the calendar is
 still Gregorian. No other shipped hook formats or parses a date with the current culture.
 
+`guard.ps1` (guarded, B-445): every case-insensitive pattern is matched with `IgnoreCase | CultureInvariant` instead of through `-match`
+or an inline `(?i)`, both of which fold case with the current culture, `Test-GuardPattern` matches with `CultureInvariant`, and the
+guard's string comparisons are ordinal. Under tr-TR "I" folded to a dotless i (U+0131), so on PowerShell 7 and 5.1 and on both surfaces
+`const string API_KEY = "<literal>"`, a `CONNECTIONSTRING` holding `Password=<literal>` and an upper-case `"CONNECTIONSTRINGS"` section
+were written unblocked, where en-US blocks all three. Measured over the BMP, en-US matching changes only where U+0130 stood for `i` and,
+on 5.1, U+212A for `k`. One new `Guard.Tests.ps1` case runs the guard under tr-TR through a wrapper that exits 3 when that culture's regex
+casing did not take, so on a host without it the case fails instead of passing unexamined.
+
 `install.ps1` update mode (guarded, B-431, an escaped secret leak): a framework-owned `.gitignore` the update replaces
 (`.claude/.gitignore`, the only one any dist ships; the root `.gitignore` is a meta file never installed) is written as released, and
 the ignore status of the files below its folder is kept instead of the old lines: `git status -z --ignored` (through `Invoke-GitRecords`)

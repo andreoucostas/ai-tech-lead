@@ -13,12 +13,19 @@
 # post-edit file needs edit semantics this hook cannot know for the file-write tools it accepts by
 # shape alone.
 $ErrorActionPreference = 'SilentlyContinue'
+# Case-insensitive patterns fold case culture-invariantly ($ci) and string comparisons are ordinal:
+# under tr-TR the current culture folds 'I' to a dotless i (U+0131), so a culture-following (?i)
+# api[_-]?key missed API_KEY and let its literal through. -match and inline (?i) follow the culture.
+$ci = [Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [Text.RegularExpressions.RegexOptions]::CultureInvariant
+$ordinal = [StringComparison]::Ordinal
+$ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
 
 $raw = [Console]::In.ReadToEnd()
 if (-not $raw) { exit 0 }
 try { $d = $raw | ConvertFrom-Json } catch { exit 0 }
 
 $tool = $d.tool_name; if (-not $tool) { $tool = $d.toolName }
+$emptyTool = $tool -is [string] -and $tool.Length -eq 0   # a missing ($null) tool name is not the empty one
 $ti = $d.tool_input
 $ta = $d.toolArgs
 $taText = $ta
@@ -40,7 +47,7 @@ $content = ($parts -join "`n")
 # hook or honored the denial; client behavior is capability-specific. See
 # docs/enforcement-surfaces.md.
 function Exit-Blocked([string]$Message) {
-    if ($tool -ceq 'Edit' -or $tool -ceq 'Write' -or $tool -eq '') {
+    if ([string]::Equals($tool, 'Edit', $ordinal) -or [string]::Equals($tool, 'Write', $ordinal) -or $emptyTool) {
         [Console]::Error.WriteLine($Message)
         exit 2
     }
@@ -65,8 +72,8 @@ $maxPatchSections = 200
 $patchText = $null
 foreach ($v in @($ta.input, $ti.input, $ta, $ti)) { if ($v -is [string]) { $patchText = $v; break } }
 if ($null -eq $patchText -and $taText -is [string] -and $null -eq $ta) { $patchText = $taText }
-$namedPatch = $tool -eq 'apply_patch'
-$isPatch = $namedPatch -or (-not ($fp -or $content) -and $patchText -match '\*\*\* (?:Add|Update|Delete) File:')
+$namedPatch = [string]::Equals($tool, 'apply_patch', $ordinalIgnoreCase)
+$isPatch = $namedPatch -or (-not ($fp -or $content) -and [regex]::IsMatch([string]$patchText, '\*\*\* (?:Add|Update|Delete) File:', $ci))
 
 # Read line by line and never more strictly than the hosts' parsers: a '+' line, and any line that
 # is not patch syntax at all (a host rejects such a patch, or may read it as added, so checking it
@@ -75,25 +82,28 @@ $isPatch = $namedPatch -or (-not ($fp -or $content) -and $patchText -match '\*\*
 # context line to both hosts. Comparisons are ordinal: a culture-aware StartsWith skips ignorable
 # characters such as a soft hyphen. Returns $null past $Max sections.
 function Get-PatchSections([string]$Patch, [int]$Max) {
+    # Self-contained: audit-trail.ps1 and post-write.ps1 load this function alone from this file.
     $ordinal = [StringComparison]::Ordinal
+    $ci = [Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [Text.RegularExpressions.RegexOptions]::CultureInvariant
     $sections = New-Object System.Collections.Generic.List[object]
     $current = [pscustomobject]@{ Kind = ''; Paths = New-Object System.Collections.Generic.List[string]; Moved = $false; Lines = New-Object System.Collections.Generic.List[string] }
     $sections.Add($current)
     # Lines end at LF only, as both hosts split them; a lone CR stays inside its line.
     foreach ($line in ($Patch -split '\r?\n')) {
         $marker = $line.Trim()
-        if ($marker -match '^\*\*\* (Add|Update|Delete) File:\s*(.+)$' -and -not ($current.Kind -eq 'update' -and [char]::IsWhiteSpace($line, 0))) {
+        if (($header = [regex]::Match($marker, '^\*\*\* (Add|Update|Delete) File:\s*(.+)$', $ci)).Success -and
+            -not ([string]::Equals($current.Kind, 'update', $ordinal) -and [char]::IsWhiteSpace($line, 0))) {
             if ($sections.Count -gt $Max) { return $null }
-            $current = [pscustomobject]@{ Kind = $Matches[1].ToLowerInvariant(); Paths = New-Object System.Collections.Generic.List[string]; Moved = $false; Lines = New-Object System.Collections.Generic.List[string] }
-            $current.Paths.Add($Matches[2].Trim())
+            $current = [pscustomobject]@{ Kind = $header.Groups[1].Value.ToLowerInvariant(); Paths = New-Object System.Collections.Generic.List[string]; Moved = $false; Lines = New-Object System.Collections.Generic.List[string] }
+            $current.Paths.Add($header.Groups[2].Value.Trim())
             $sections.Add($current)
-        } elseif ($marker -match '^\*\*\* Move to:\s*(.+)$' -and $current.Paths.Count -gt 0 -and -not $current.Moved) {
-            $current.Paths.Add($Matches[1].Trim())
+        } elseif (($move = [regex]::Match($marker, '^\*\*\* Move to:\s*(.+)$', $ci)).Success -and $current.Paths.Count -gt 0 -and -not $current.Moved) {
+            $current.Paths.Add($move.Groups[1].Value.Trim())
             $current.Moved = $true
         } elseif ($line.StartsWith('+', $ordinal)) {
             $current.Lines.Add($line.Substring(1))
         } elseif ($line.Length -gt 0 -and -not $line.StartsWith('-', $ordinal) -and -not $line.StartsWith(' ', $ordinal) -and
-                  -not $line.StartsWith('@@', $ordinal) -and $marker -notmatch '^\*\*\* (?:Begin Patch|End Patch|End of File)$') {
+                  -not $line.StartsWith('@@', $ordinal) -and -not [regex]::IsMatch($marker, '^\*\*\* (?:Begin Patch|End Patch|End of File)$', $ci)) {
             $current.Lines.Add($line)
         }
     }
@@ -120,7 +130,8 @@ if ($isPatch) {
     # Write/Edit (PascalCase), Copilot CLI sends edit/create (lowercase), VS Code agent mode
     # sends camelCase tool names we can't fully enumerate -- so also accept any tool that
     # carries a file path + content (the real signal). $fp/$content were extracted above.
-    $knownWrite = (@('Write','Edit','edit','create') -contains $tool) -or ($tool -eq '')
+    $knownWrite = [string]::Equals($tool, 'Write', $ordinalIgnoreCase) -or [string]::Equals($tool, 'Edit', $ordinalIgnoreCase) -or
+                  [string]::Equals($tool, 'create', $ordinalIgnoreCase) -or $emptyTool
     if (-not ($knownWrite -or ($fp -and $content))) { exit 0 }
     if (-not $content) { exit 0 }
     $writes = @([pscustomobject]@{ Path = $fp; Content = $content })
@@ -128,10 +139,11 @@ if ($isPatch) {
 
 function Test-GuardPattern {
     param([string]$Pattern, [ValidateSet('secret','test-defeat/suppression')][string]$Category)
-    try { return ($content -cmatch $Pattern) }
+    # Case-sensitive, as -cmatch was; CultureInvariant also folds any inline (?i) the invariant way.
+    try { return [regex]::IsMatch([string]$content, $Pattern, [Text.RegularExpressions.RegexOptions]::CultureInvariant) }
     catch {
         [Console]::Error.WriteLine("guard: regex error in $Category pattern '$Pattern'")
-        if ($Category -eq 'secret') {
+        if ([string]::Equals($Category, 'secret', $ordinal)) {
             $script:reasons += "cannot evaluate secret pattern '$Pattern' — blocking because the high-confidence secret floor is unavailable"
         }
         return $false
@@ -144,13 +156,13 @@ foreach ($write in $writes) {
     $content = $write.Content
     $reasons = @()
 
-    if ($fp -cmatch '(?i)\.cs$') {
+    if ([regex]::IsMatch([string]$fp, '\.cs$', $ci)) {
         if (Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
         if (Test-GuardPattern '\[(Fact|Theory)\([^)]*Skip\s*=' 'test-defeat/suppression') { $reasons += "skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
         if (Test-GuardPattern '(?m)^\s*\[([^]]*[,\s])?(Ignore)(Attribute)?\s*[\](,=]' 'test-defeat/suppression') { $reasons += "skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
         if ((Test-GuardPattern 'Assert\.True\(\s*true\s*[),]' 'test-defeat/suppression') -or (Test-GuardPattern 'Assert\.False\(\s*false\s*[),]' 'test-defeat/suppression')) { $reasons += "adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)" }
     }
-    if ($fp -cmatch '(?i)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$') {
+    if ([regex]::IsMatch([string]$fp, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) {
         if (Test-GuardPattern 'eslint-disable' 'test-defeat/suppression') { $reasons += "adds an 'eslint-disable' directive — fix the lint cause, don't silence it" }
         if (Test-GuardPattern '@ts-(ignore|nocheck)' 'test-defeat/suppression') { $reasons += "adds '@ts-ignore'/'@ts-nocheck' — fix the type error, don't suppress it" }
     }
@@ -163,7 +175,7 @@ foreach ($write in $writes) {
     # which makes the scan quadratic on a long run of blank lines and stalls the hook. For the same reason a
     # modifier chain is bounded at three ({0,3}), never *: an open chain rescans a long run of chained names
     # from every name in it.
-    if ($fp -cmatch '(?i)\.(spec|test|cy)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$') {
+    if ([regex]::IsMatch([string]$fp, '\.(spec|test|cy)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) {
         if ((Test-GuardPattern '(?m)^[^\S\r\n]*f(it|describe)\s*(\(|\.each\b)' 'test-defeat/suppression') -or (Test-GuardPattern '\b(it|test|describe|suite|context|specify)(\.(concurrent|sequential|fails|shuffle|fail|describe(\.(serial|parallel))?)){0,3}\.only\s*[(.`]' 'test-defeat/suppression')) { $reasons += "adds a focused test (fit/fdescribe/.only) — it silently skips the rest of the suite; remove it before committing" }
         # On test.skip, test.fixme and Vitest's context.skip only declaration forms count: a title (string,
         # template or X.name) followed by the body, a literal true, or a chained form such as test.skip.each.
@@ -203,7 +215,7 @@ foreach ($write in $writes) {
         for ($i = 0; $i -lt $segments.Count; $i++) {
             $segment = $segments[$i]
             $stem = if ($i -eq $segments.Count - 1) { $segment -replace '\.[^.]*$', '' } else { $segment }
-            if ($segment -match '(?i)(^|[._-])(tests?|specs?|mocks?|fixtures?|examples?|samples?|development)([._-]|$)' -or
+            if ([regex]::IsMatch($segment, '(^|[._-])(tests?|specs?|mocks?|fixtures?|examples?|samples?|development)([._-]|$)', $ci) -or
                 $stem -cmatch '(^|[a-z0-9])(Tests?|Specs?|Mocks?|Fixtures?)$|^(Tests?|Specs?|Mocks?|Fixtures?)[A-Z]') {
                 $credentialExempt = $true; break
             }
@@ -211,22 +223,22 @@ foreach ($write in $writes) {
     }
     if (-not $credentialExempt) {
         # A placeholder word anywhere in the matched text exempts it, as it always has.
-        $placeholder = '(?i)(changeme|placeholder|your[_-]|example|dummy|<[^>]+>|\$\{|process\.env|%[A-Z_]+%)'
+        $placeholder = '(changeme|placeholder|your[_-]|example|dummy|<[^>]+>|\$\{|process\.env|%[A-Z_]+%)'
         # A release-pipeline token (#{X}#, __X__, $(X), {{X}}) is replaced at deploy time, so it exempts the
         # credential value it stands in for, and only that value: a token elsewhere must not hide a literal.
-        $token = '(?i)^\s*(?:#\{[^}]{1,200}\}#|__[A-Za-z0-9_.:-]{1,200}__|\$\([A-Za-z0-9_.:-]{1,200}\)|\{\{[^}]{1,200}\}\}|replace[_-]?me|\*{6,200})\s*$'
+        $token = '^\s*(?:#\{[^}]{1,200}\}#|__[A-Za-z0-9_.:-]{1,200}__|\$\([A-Za-z0-9_.:-]{1,200}\)|\{\{[^}]{1,200}\}\}|replace[_-]?me|\*{6,200})\s*$'
         # A connection string can carry several passwords (CertificatePassword=, SSL Password=, Proxy
         # Password=), so every password and userinfo value in the match must be a token to exempt it.
         function Test-CredentialMatch($Match) {
-            if ($Match.Value -match $placeholder) { return $false }
+            if ([regex]::IsMatch($Match.Value, $placeholder, $ci)) { return $false }
             $values = @($Match.Groups['v'].Value)
-            foreach ($inner in [regex]::Matches($Match.Value, '(?i)(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))|://[^/\s:@"'']+:(?<v>[^/\s@"'']+)@')) { $values += $inner.Groups['v'].Value }
-            foreach ($value in $values) { if ($value -and $value -notmatch $token) { return $true } }
+            foreach ($inner in [regex]::Matches($Match.Value, '(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))|://[^/\s:@"'']+:(?<v>[^/\s@"'']+)@', $ci)) { $values += $inner.Groups['v'].Value }
+            foreach ($value in $values) { if ($value -and -not [regex]::IsMatch($value, $token, $ci)) { return $true } }
             return $false
         }
         # Every credential-shaped match is checked, so an earlier placeholder cannot hide a later literal.
         $credentialHit = $false
-        foreach ($m in [regex]::Matches($content, '(?i)(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|client[_-]?secret)["'' ]*[:=]\s*["''](?<v>[^"'']{8,})["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']')) {
+        foreach ($m in [regex]::Matches($content, '(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|client[_-]?secret)["'' ]*[:=]\s*["''](?<v>[^"'']{8,})["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']', $ci)) {
             if (Test-CredentialMatch $m) { $credentialHit = $true; break }
         }
         # appsettings.json's standard layout names each connection string inside a ConnectionStrings
@@ -234,8 +246,8 @@ foreach ($write in $writes) {
         # The section capture skips whole strings, so a brace inside a value (ODBC Driver={...}) does not
         # end it; atomic groups keep both patterns linear on Windows PowerShell 5.1.
         if (-not $credentialHit) {
-            foreach ($section in [regex]::Matches($content, '(?i)"connectionstrings"\s*:\s*\{((?:(?>"(?:[^"\\]|\\.)*")|[^{}"])*)')) {
-                foreach ($entry in [regex]::Matches($section.Groups[1].Value, '(?i)"[^"]*"\s*:\s*"[^"]*(?:(?:password|pwd)\s*=\s*(?<v>(?>[^;"]{4,}))|://[^/\s:@"]+:(?<v>[^/\s@"]+)@)[^"]*"')) {
+            foreach ($section in [regex]::Matches($content, '"connectionstrings"\s*:\s*\{((?:(?>"(?:[^"\\]|\\.)*")|[^{}"])*)', $ci)) {
+                foreach ($entry in [regex]::Matches($section.Groups[1].Value, '"[^"]*"\s*:\s*"[^"]*(?:(?:password|pwd)\s*=\s*(?<v>(?>[^;"]{4,}))|://[^/\s:@"]+:(?<v>[^/\s@"]+)@)[^"]*"', $ci)) {
                     if (Test-CredentialMatch $entry) { $credentialHit = $true; break }
                 }
                 if ($credentialHit) { break }
