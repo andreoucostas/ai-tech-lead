@@ -729,36 +729,51 @@ function Get-UntrackedStatusPaths {
     }
     return , $paths
 }
-# The files below $Folder, target-relative, whose bytes on disk Git never commits from there: untracked ones it ignores,
-# and tracked ones marked skip-worktree or assume-unchanged (an 'S' or a lower-case tag in ls-files -v), whose local
-# changes Git does not see. A copy of one at a path Git does not ignore would be committable. Matched ignoring case, as
-# Windows Git (core.ignorecase) matches a path. Empty without Git or outside a work tree, where nothing is committed;
-# $null when Git could not say.
+# Git's path when the target is inside a Git work tree, where a file can be committed; otherwise $null.
+function Get-WorkTreeGit {
+    $gitPath = Resolve-AdoptionGit
+    if (-not $gitPath) { return $null }
+    $inside = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-inside-work-tree')
+    if ($inside.Started -and $inside.ExitCode -eq 0 -and $inside.Output -ceq 'true') { return $gitPath }
+    return $null
+}
+# The tracked files, target-relative, marked skip-worktree or assume-unchanged (an 'S' or a lower-case tag in ls-files -v):
+# Git does not see their local changes, and check-ignore never reports a tracked path, so a copy of one at a path Git does
+# not ignore commits those changes. Read once, as -z records decoded as UTF-8, and matched ignoring case, as Windows Git
+# (core.ignorecase) matches a path. Empty without Git or outside a work tree, where nothing is committed; $null when Git
+# could not say.
 $script:GitSkippedSet = $null
+function Get-GitSkippedFiles {
+    if ($null -ne $script:GitSkippedSet) { return , $script:GitSkippedSet }
+    $skipped = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $gitPath = Get-WorkTreeGit
+    if ($gitPath) {
+        $records = Invoke-GitRecords -GitPath $gitPath -Arguments @('-C', $tgt, 'ls-files', '-v', '-z')
+        if ($null -eq $records) { return $null }
+        foreach ($record in @($records)) {
+            if ($record.Length -gt 2 -and ($record[0] -ceq 'S' -or [char]::IsLower($record[0]))) { [void]$skipped.Add($record.Substring(2)) }
+        }
+    }
+    $script:GitSkippedSet = $skipped
+    return , $skipped
+}
+# The files below $Folder, target-relative, whose bytes on disk Git never commits from there: untracked ones it ignores,
+# and the skipped tracked ones above. A copy of one at a path Git does not ignore would be committable. Matched ignoring
+# case. Empty without Git or outside a work tree; $null when Git could not say.
 function Get-GitKeptOutFiles {
     param([Parameter(Mandatory = $true)][string]$Folder)
     $kept = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-    $gitPath = Resolve-AdoptionGit
+    $gitPath = Get-WorkTreeGit
     if (-not $gitPath) { return , $kept }
-    $inside = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-inside-work-tree')
-    if (-not ($inside.Started -and $inside.ExitCode -eq 0 -and $inside.Output -ceq 'true')) { return , $kept }
     $prefix = Invoke-GitRecords -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--show-prefix')
-    if ($null -eq $prefix) { return $null }
+    $skipped = Get-GitSkippedFiles
+    if ($null -eq $prefix -or $null -eq $skipped) { return $null }
     $prefix = (@($prefix) -join '').TrimEnd([char]13, [char]10)
     $ignored = Get-UntrackedStatusPaths -GitPath $gitPath -Prefix $prefix -Folder $Folder -Code '!!'
     if ($null -eq $ignored) { return $null }
     foreach ($path in $ignored) { [void]$kept.Add($path) }
-    if ($null -eq $script:GitSkippedSet) {
-        $records = Invoke-GitRecords -GitPath $gitPath -Arguments @('-C', $tgt, 'ls-files', '-v', '-z')
-        if ($null -eq $records) { return $null }
-        $skipped = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-        foreach ($record in @($records)) {
-            if ($record.Length -gt 2 -and ($record[0] -ceq 'S' -or [char]::IsLower($record[0]))) { [void]$skipped.Add($record.Substring(2)) }
-        }
-        $script:GitSkippedSet = $skipped
-    }
     $under = if ($Folder -eq '.') { '' } else { $Folder.TrimEnd('/') + '/' }
-    foreach ($path in $script:GitSkippedSet) { if ($path.StartsWith($under, [StringComparison]::OrdinalIgnoreCase)) { [void]$kept.Add($path) } }
+    foreach ($path in $skipped) { if ($path.StartsWith($under, [StringComparison]::OrdinalIgnoreCase)) { [void]$kept.Add($path) } }
     return , $kept
 }
 # The dirty-tree refusal says "Commit", which would take an earlier update's leftovers too, so before it they are kept
@@ -1781,7 +1796,8 @@ if ($updateMode) {
 # after the last write each file below its folder that Git ignored before and would now show is kept ignored by one
 # anchored literal line below a marker, a section every update rewrites from Git's answer. When the old version had
 # pattern lines the release's lacks it is saved first; comments, blank lines, a byte-order mark, line endings and that
-# section do not count, so a reworded framework comment saves nothing.
+# section do not count, so a reworded framework comment saves nothing. A brownfield install applies the same rule to a team's own
+# file there, which its archive under docs/pre-adoption/ holds: archived by copy, so the team's rules stay until that last write.
 $ignoreMarker = '# Kept ignored by framework updates: files Git ignored before an update replaced this file. Each update rewrites the lines below; put your own rules in the root .gitignore.'
 $ignoreRewrites = New-Object System.Collections.Generic.List[object]
 # A file's lines as UTF-8 text, without a byte-order mark or a line's final CR, as Git reads them.
@@ -1790,13 +1806,13 @@ function Get-IgnoreFileLines {
     $text = [Text.UTF8Encoding]::new($false).GetString($Bytes).TrimStart([char]0xFEFF)
     return , @($text.Split([char]10) | ForEach-Object { if ($_.EndsWith([string][char]13)) { $_.Substring(0, $_.Length - 1) } else { $_ } })
 }
-if ($updateMode) {
+if ($updateMode -or $adoptMode) {
     foreach ($relative in @($ordinaryApplyPaths | Where-Object { $_ -match '(^|/)\.gitignore$' })) {
         $destination = Get-ContainedTargetPath -Relative $relative
         if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) { continue }
         try { $teamBytes = [IO.File]::ReadAllBytes($destination) }
         catch {
-            [Console]::Error.WriteLine("CANT-VERIFY: '$relative' could not be read to keep the files it ignores ignored before this update replaces it. Make it readable or move it aside, then re-run. Nothing was changed.")
+            [Console]::Error.WriteLine("CANT-VERIFY: '$relative' could not be read to keep the files it ignores ignored before this $runName replaces it. Make it readable or move it aside, then re-run. Nothing was changed.")
             exit 4
         }
         $releaseLines = Get-IgnoreFileLines -Bytes ([IO.File]::ReadAllBytes((Join-Path $src $relative)))
@@ -1809,7 +1825,8 @@ if ($updateMode) {
         # Git reads a line empty once its trailing spaces are trimmed as blank, and one starting with '#' as a comment.
         $dropped = @($body | Where-Object { $_.TrimEnd([char]32).Length -gt 0 -and -not $_.StartsWith('#', [StringComparison]::Ordinal) -and $releaseLines -cnotcontains $_ })
         $savedAt = $null
-        if ($dropped.Count -gt 0) {
+        if ($adoptMode -and $archiveSources.Contains($relative)) { $savedAt = @("docs/pre-adoption/$relative") }
+        elseif ($updateMode -and $dropped.Count -gt 0) {
             # The save above for files the previous manifest does not list may already have taken it.
             $savedAt = @($updateBackups | Where-Object { $_.SourceRelative -ceq $relative } | ForEach-Object { $_.Relative } | Select-Object -First 1)
             if ($savedAt.Count -eq 0) {
@@ -1829,7 +1846,7 @@ if ($updateMode) {
         # The marker with nothing below it is what an update leaves when it stops between its last two writes: the rules
         # Git reads now are the release's, so which files the version before it ignored cannot be asked.
         if ($at -ge 0 -and @($section | Where-Object { $_.TrimEnd([char]32).Length -gt 0 }).Count -eq 0) {
-            $saveMessages.Add("CANT-VERIFY: '$relative' ends with the line '$ignoreMarker' and no line below it, as an update that stopped between its last two writes leaves it, so a file your version before that update ignored may now be committable, and this update cannot tell which. Compare git status with that version (in your Git history, or saved under $savesRelative/) before you commit.")
+            $saveMessages.Add("CANT-VERIFY: '$relative' ends with the line '$ignoreMarker' and no line below it, as an update that stopped between its last two writes leaves it, so a file your version before that update ignored may now be committable, and this $runName cannot tell which. Compare git status with that version (in your Git history, or saved under $savesRelative/) before you commit.")
         }
         $folder = if ($relative.Contains('/')) { $relative.Substring(0, $relative.LastIndexOf('/')) } else { '.' }
         $ignoreRewrites.Add([pscustomobject]@{ Relative = $relative; Folder = $folder; Dropped = $dropped; Section = $section; SavedAt = $(if ($savedAt) { $savedAt[0] } else { $null }); TeamBytes = $teamBytes })
@@ -1973,11 +1990,15 @@ function Get-IgnoredShippedPaths {
     return , @($query.Output -split "`n" | Where-Object { $_ -cin $incomingPaths })
 }
 $ignoredShippedPaths = Get-IgnoredShippedPaths
-# A colliding original the consumer had gitignored is one developer's file and may hold a key. Its
-# archive stays out of Git through docs/pre-adoption/.gitignore, written before the first move.
+# A colliding original the consumer had gitignored, or a tracked one whose local changes Git is told not to see
+# (skip-worktree or assume-unchanged, which check-ignore never reports), is one developer's content and may hold a key.
+# Its archive stays out of Git through docs/pre-adoption/.gitignore, written before the first move.
 $keptOutEntries = @()
-if ($adoptMode -and $null -ne $ignoredShippedPaths) {
-    $keptOutEntries = @($archivePlan | Where-Object { $_.OriginalRelative -cin $ignoredShippedPaths })
+$archiveSkipped = $null
+if ($adoptMode) {
+    $archiveSkipped = Get-GitSkippedFiles
+    $keptOutEntries = @($archivePlan | Where-Object { ($null -ne $ignoredShippedPaths -and $_.OriginalRelative -cin $ignoredShippedPaths) -or
+        ($null -ne $archiveSkipped -and $archiveSkipped.Contains($_.OriginalRelative)) })
 }
 $archiveIgnoreRelative = 'docs/pre-adoption/.gitignore'
 if ($keptOutEntries.Count -gt 0) { [void](Add-PlannedWrite -Relative $archiveIgnoreRelative) }
@@ -1990,9 +2011,10 @@ if ($keptOutEntries.Count -gt 0) { [void](Add-PlannedWrite -Relative $archiveIgn
 $backupRelative = '.claude/framework-update-backup'
 $backupIgnoreRelative = "$backupRelative/.gitignore"
 $backupResidue = @(); $backupTracked = 0; $backupKeepOut = $null; $savesIntoBackup = $false; $statusGitPath = $null
+# Git as the status reads below use it, an install's ignore-file rewrite included.
+$statusGit = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+if ($statusGit.Count -gt 0) { $statusGitPath = [string]$statusGit[0].Source }
 if ($updateMode) {
-    $statusGit = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
-    if ($statusGit.Count -gt 0) { $statusGitPath = [string]$statusGit[0].Source }
     $statusRouted = @(@('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE') | Where-Object { [Environment]::GetEnvironmentVariable($_, 'Process') }).Count -gt 0
     if ($WhatIf -and $statusGitPath -and -not $statusRouted) { $script:TargetStatus = Get-TargetStatus -GitPath $statusGitPath }
     if ($null -ne $script:TargetStatus) { $backupResidue = Get-BackupResidue -Status $script:TargetStatus }
@@ -2122,10 +2144,13 @@ if ($keptOutEntries.Count -gt 0) {
         exit 3
     }
 }
+# An ignore file this install rewrites last is archived by copy, so the team's rules stay in place until that write.
+$archiveByCopy = @($ignoreRewrites | ForEach-Object { $_.Relative })
 foreach ($entry in $archivePlan) {
     try {
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $entry.Destination) | Out-Null
-        Move-Item -LiteralPath $entry.Original -Destination $entry.Destination
+        if ($archiveByCopy -ccontains $entry.OriginalRelative) { Copy-Item -LiteralPath $entry.Original -Destination $entry.Destination }
+        else { Move-Item -LiteralPath $entry.Original -Destination $entry.Destination }
     } catch {
         $archiveInventoryComplete = $false
         try { if ($adoptMode) { Write-AdoptionMarker -InventoryComplete $false } } catch { [Console]::Error.WriteLine("ERROR: Could not update the frozen archive inventory after move failure: $($_.Exception.Message)") }
@@ -2348,7 +2373,7 @@ if (-not $pwshAvailable) {
         Write-Output "  pwsh not found - activated Windows PowerShell 5.1 hooks (settings.windows.json -> settings.json)."
     }
 }
-# The last write: each ignore file this update rewrites. Each file Git ignored below its folder before this update and
+# The last write: each ignore file this update or install rewrites. Each file Git ignored below its folder before it and
 # would now show stays ignored by one anchored literal line below the marker, after the release's bytes: a '/', its path
 # from that folder, and a '\' before each character Git would read as a pattern, escape or comment, or trim. Git can only
 # be asked with the release's rules in place, so they go first with the marker and no line below it, which a re-run
@@ -2371,6 +2396,9 @@ foreach ($rewrite in $ignoreRewrites) {
     $where = if ($rewrite.Folder -eq '.') { 'in this repository' } else { "below $($rewrite.Folder)/" }
     $release = [IO.File]::ReadAllBytes((Join-Path $src $rewrite.Relative))
     $separator = if ($release.Length -gt 0 -and $release[-1] -ne 0x0A) { "`n" } else { '' }
+    # A brownfield install cannot be re-run over its own archive, so its remedy is that write by hand.
+    $finish = if ($updateMode) { 're-run the update with -AllowDirtyTree' } else { "copy the framework's file ($(Join-Path $src $rewrite.Relative)) over it by hand, then give each file git status shows $where that you had kept out of Git a line in the root .gitignore before you commit" }
+    $again = if ($updateMode) { 'Re-run the update with -AllowDirtyTree once Git answers.' } else { "Once Git answers, $finish." }
     $yours = if ($rewrite.SavedAt) { "your version is saved at $($rewrite.SavedAt) and in your Git history" } else { 'your version is in your Git history' }
     $anchors = @(); $warning = $null
     # Not asked without Git, where there is no commit to keep a file out of.
@@ -2378,21 +2406,21 @@ foreach ($rewrite in $ignoreRewrites) {
     $hidden = $null; if ($asked) { $hidden = $ignoredBefore[$rewrite.Relative] }
     if (-not $asked -or $null -eq $hidden -or $hidden.Count -eq 0) {
         if ($asked -and $null -eq $hidden) {
-            $warning = "CANT-VERIFY: Git could not list the files it ignored $where before this update replaced $($rewrite.Relative), so the update cannot keep them ignored. Run git status before you commit: a file you kept out of Git there, one holding a token say, may now be committable."
+            $warning = "CANT-VERIFY: Git could not list the files it ignored $where before this $runName replaced $($rewrite.Relative), so the $runName cannot keep them ignored. Run git status before you commit: a file you kept out of Git there, one holding a token say, may now be committable."
         }
         if (-not (Write-IgnoreFile -Relative $rewrite.Relative -Bytes $release)) {
-            [Console]::Error.WriteLine("ERROR: Could not write the framework's $($rewrite.Relative), the update's last step; every other step is done and $yours. Resolve the cause (usually a program holding the file open), then re-run the update with -AllowDirtyTree.")
+            [Console]::Error.WriteLine("ERROR: Could not write the framework's $($rewrite.Relative), the $runName's last step; every other step is done and $yours. Resolve the cause (usually a program holding the file open), then $finish.")
             exit 3
         }
     } else {
         if (-not (Write-IgnoreFile -Relative $rewrite.Relative -Bytes ([byte[]]($release + [Text.UTF8Encoding]::new($false).GetBytes($separator + $ignoreMarker + "`n"))))) {
-            [Console]::Error.WriteLine("ERROR: Could not write the framework's $($rewrite.Relative), the update's last step; every other step is done and $yours. Resolve the cause (usually a program holding the file open), then re-run the update with -AllowDirtyTree.")
+            [Console]::Error.WriteLine("ERROR: Could not write the framework's $($rewrite.Relative), the $runName's last step; every other step is done and $yours. Resolve the cause (usually a program holding the file open), then $finish.")
             exit 3
         }
         $shown = Get-UntrackedStatusPaths -GitPath $statusGitPath -Prefix $script:TargetStatus.Prefix -Folder $rewrite.Folder -Code '??'
         if ($null -eq $shown) {
             $back = Write-IgnoreFile -Relative $rewrite.Relative -Bytes $rewrite.TeamBytes
-            [Console]::Error.WriteLine("CANT-VERIFY: Git could not say which of the files it ignored $where before this update the framework's $($rewrite.Relative) would show, so $(if ($back) { 'the update put your version back' } else { "the update could not put your version back ($yours)" }); every other step is done. Re-run the update with -AllowDirtyTree once Git answers.")
+            [Console]::Error.WriteLine("CANT-VERIFY: Git could not say which of the files it ignored $where before this $runName the framework's $($rewrite.Relative) would show, so $(if ($back) { "the $runName put your version back" } else { "the $runName could not put your version back ($yours)" }); every other step is done. $again")
             exit 4
         }
         $exposed = [string[]]@($shown | Where-Object { $hidden.Contains($_) })
@@ -2403,7 +2431,7 @@ foreach ($rewrite in $ignoreRewrites) {
         if ($anchorLines.Count -gt 0) { $final = [byte[]]($release + [Text.UTF8Encoding]::new($false).GetBytes($separator + $ignoreMarker + "`n" + (@($anchorLines | ForEach-Object { $_.Line }) -join "`n") + "`n")) }
         if (-not (Write-IgnoreFile -Relative $rewrite.Relative -Bytes $final)) {
             $back = Write-IgnoreFile -Relative $rewrite.Relative -Bytes $rewrite.TeamBytes
-            [Console]::Error.WriteLine("CANT-VERIFY: Could not write the lines that keep $($exposed.Count) file(s) $where ignored to $($rewrite.Relative), so $(if ($back) { 'the update put your version back' } else { "Git can now commit them ($yours)" }); every other step is done. Resolve the cause, then re-run the update with -AllowDirtyTree.")
+            [Console]::Error.WriteLine("CANT-VERIFY: Could not write the lines that keep $($exposed.Count) file(s) $where ignored to $($rewrite.Relative), so $(if ($back) { "the $runName put your version back" } else { "Git can now commit them ($yours)" }); every other step is done. Resolve the cause, then $finish.")
             exit 4
         }
         if ($exposed.Count -gt 0) {
@@ -2413,10 +2441,10 @@ foreach ($rewrite in $ignoreRewrites) {
             $anchors = @($anchorLines | Where-Object { $null -ne $exposed -and $exposed -cnotcontains $_.Path } | ForEach-Object { $_.Line })
             $files = if ($hidden.Count -eq 1) { '1 file' } else { "$($hidden.Count) files" }
             if ($null -eq $exposed) {
-                $warning = "CANT-VERIFY: Git could not say whether the $files it ignored $where before this update replaced $($rewrite.Relative) are still ignored. Run git status before you commit: one of them, one holding a token say, may now be committable."
+                $warning = "CANT-VERIFY: Git could not say whether the $files it ignored $where before this $runName replaced $($rewrite.Relative) are still ignored. Run git status before you commit: one of them, one holding a token say, may now be committable."
             } elseif ($exposed.Count -gt 0) {
                 $one = $exposed.Count -eq 1
-                $warning = "CANT-VERIFY: Git ignored $(if ($one) { '1 file' } else { "$($exposed.Count) files" }) $where before this update replaced $($rewrite.Relative), and can now commit $(if ($one) { 'it' } else { 'them' }): $($exposed -join ', '). Add an ignore line for $(if ($one) { 'it' } else { 'each' }) to the root .gitignore before you commit, or commit only your own changes."
+                $warning = "CANT-VERIFY: Git ignored $(if ($one) { '1 file' } else { "$($exposed.Count) files" }) $where before this $runName replaced $($rewrite.Relative), and can now commit $(if ($one) { 'it' } else { 'them' }): $($exposed -join ', '). Add an ignore line for $(if ($one) { 'it' } else { 'each' }) to the root .gitignore before you commit, or commit only your own changes."
             }
         }
     }
@@ -2428,10 +2456,10 @@ foreach ($rewrite in $ignoreRewrites) {
     }
     if ($added.Count -gt 0) {
         $many = $anchors.Count -gt 1
-        $parts += "Git ignored $(if ($many) { "$($anchors.Count) files" } else { '1 file' }) $where before this update that the release's version does not ignore, so the update keeps $(if ($many) { 'them' } else { 'it' }) ignored with one line$(if ($many) { ' each' }) below the line '$ignoreMarker': $($anchors -join ', '). Such a line names one file: a folder or wildcard rule of yours no longer covers a file created later."
+        $parts += "Git ignored $(if ($many) { "$($anchors.Count) files" } else { '1 file' }) $where before this $runName that the release's version does not ignore, so the $runName keeps $(if ($many) { 'them' } else { 'it' }) ignored with one line$(if ($many) { ' each' }) below the line '$ignoreMarker': $($anchors -join ', '). Such a line names one file: a folder or wildcard rule of yours no longer covers a file created later."
     }
     if ($parts.Count -gt 0) {
-        Write-Output "  NOTICE: this update writes the framework's $($rewrite.Relative) as released. $($parts -join ' ') Put rules of your own in the root .gitignore: $($rewrite.Relative) is the framework's file, and every update rewrites it."
+        Write-Output "  NOTICE: this $runName writes the framework's $($rewrite.Relative) as released. $($parts -join ' ') Put rules of your own in the root .gitignore: $($rewrite.Relative) is the framework's file, and every update rewrites it."
     }
     if ($warning) { Write-Output "  $warning" }
 }
@@ -2468,9 +2496,9 @@ if ($updateMode) {
     Write-Output "tooling that must be consolidated with /adopt; .claude/adoption-pending.json records the inventory."
     if ($moved.Count -gt 0) { Write-Output "Moved to docs/pre-adoption/ (this install would have overwritten them): $($moved -join ', ')" }
     if ($leftInPlace.Count -gt 0) { Write-Output "Left where they were: $($leftInPlace -join ', ')" }
-    if ($keptOutEntries.Count -gt 0) { Write-Output "Kept out of Git - you had gitignored these, and they may hold secrets: $(@($keptOutEntries | ForEach-Object { $_.OriginalRelative }) -join ', '). $archiveIgnoreRelative lists their archives; keep per-developer settings in files Git ignores, such as .claude/settings.local.json." }
+    if ($keptOutEntries.Count -gt 0) { Write-Output "Kept out of Git - you had gitignored these, or told Git not to see your changes to them, and they may hold secrets: $(@($keptOutEntries | ForEach-Object { $_.OriginalRelative }) -join ', '). $archiveIgnoreRelative lists their archives; keep per-developer settings in files Git ignores, such as .claude/settings.local.json." }
     # Without Git's answer an archived original may still be one you had gitignored.
-    if ($moved.Count -gt 0 -and $null -eq $ignoredShippedPaths) { Write-Output "Some may be files you had gitignored: check docs/pre-adoption/ for secrets before committing." }
+    if ($moved.Count -gt 0 -and ($null -eq $ignoredShippedPaths -or $null -eq $archiveSkipped)) { Write-Output "Some may be files you had gitignored: check docs/pre-adoption/ for secrets before committing." }
     Write-Output ""
     Write-Output "Next steps in the target repo:"
     Write-Output "  1. Review and commit the copied files (they are team-shared config, not local settings)."

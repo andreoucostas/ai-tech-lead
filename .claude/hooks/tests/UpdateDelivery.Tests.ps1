@@ -3006,6 +3006,88 @@ It 'B-431 write last: a .claude/.gitignore that ends with the marker and no line
     }
 }
 
+# A brownfield install archives a team's own .claude/.gitignore for /adopt and installs the framework's (B-441): B-431's rule
+# then keeps each file the team's lines ignored ignored, as an update does, and the team's file stays until the last write.
+function New-B441Target {
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][byte[]]$Ignore, [Parameter(Mandatory)][Collections.IDictionary]$Local, [Collections.IDictionary]$Tracked = @{})
+    $t = New-B309GitTarget -Root $Root -Name 'target' -Ignore "bin/`n"
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+    [IO.File]::WriteAllBytes((Join-Path $t '.claude/.gitignore'), $Ignore)
+    Write-B429Files -Folder $t -Files $Tracked
+    & git -C $t add -A
+    & git -C $t commit -qm 'team claude ignore'
+    Write-B429Files -Folder $t -Files $Local
+    return $t
+}
+
+It 'B-441 a brownfield install over a team''s own .claude/.gitignore writes the release''s bytes, keeps the file its lines ignored ignored by one anchored line, and names the archived version in one NOTICE' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b441-' + [guid]::NewGuid())
+    try {
+        # B-431's implementation saw it: the team's file moved to docs/pre-adoption/, the framework's replaced it, and Git showed
+        # ?? .claude/mcp.local.json while the handoff said to commit the copied files.
+        $team = [Text.UTF8Encoding]::new($false).GetBytes("mcp.local.json`n")
+        $t = New-B441Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/mcp.local.json' = "{`"token`":`"sk-live-FX-SECRET`"}`n" })
+        Assert ((Get-B431Committable $t).Count -eq 0) 'calibration: the token file is committable before the install'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: brownfield') "the brownfield install failed (exit $LASTEXITCODE): $out"
+        $committable = Get-B431Committable $t
+        Assert ($committable -notcontains '.claude/mcp.local.json') "the install replaced the team's .claude/.gitignore, so its token file is committable: $($committable -join ', ')"
+        Assert (Test-B194BytesEqual (Get-B431Expected @('/mcp.local.json')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the install did not write the release's bytes, the marker, then one anchored line for the token file: $(Get-B431Text $t)"
+        Assert (Test-B194BytesEqual $team ([IO.File]::ReadAllBytes((Join-Path $t 'docs/pre-adoption/.claude/.gitignore')))) "the team's version was not archived byte-identical: $out"
+        Assert ($flat -match ("NOTICE: this install writes the framework's \.claude/\.gitignore as released\. Your version had lines this release's version lacks \('mcp\.local\.json'\), which no longer apply there; it is saved at docs/pre-adoption/\.claude/\.gitignore\. Git ignored 1 file below \.claude/ before this install that the release's version does not ignore, so the install keeps it ignored with one line below the line '" + [regex]::Escape($b431Marker) + "': /mcp\.local\.json\.")) "the archived version and the anchored file were not named in one NOTICE: $out"
+        Assert ($flat -notmatch 'CANT-VERIFY') "the install reported CANT-VERIFY: $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-update-backup'))) "a brownfield install saved a copy below the update backup folder: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-441 write last: a brownfield install that stops at a file another program holds leaves the team''s .claude/.gitignore in place, so the token file it ignored stays out of Git' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b441-held-' + [guid]::NewGuid())
+    try {
+        # The install archives in manifest order: .claude/.gitignore goes first, and a team script it archives later is held open.
+        $team = [Text.UTF8Encoding]::new($false).GetBytes("token.txt`n")
+        $t = New-B441Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/token.txt' = "sk-FIXTURE2`n" }) -Tracked ([ordered]@{ 'scripts/wiki-check.ps1' = "# the team's own script`n" })
+        Assert ((Get-B431Committable $t).Count -eq 0) 'calibration: the token file is committable before the install'
+        $held = [IO.File]::Open((Join-Path $t 'scripts/wiki-check.ps1'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        try { $out = Invoke-Installer -Dist 'dotnet' -Target $t; $code = $LASTEXITCODE } finally { $held.Dispose() }
+        Assert ($code -ne 0 -and ($out -replace '\s+', ' ') -match "Brownfield archive move failed for 'scripts/wiki-check\.ps1'") "calibration: the install did not stop at the held file (exit $code): $out"
+        Assert ((Test-Path -LiteralPath (Join-Path $t '.claude/.gitignore') -PathType Leaf) -and (Test-B194BytesEqual $team ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore'))))) "the stopped install had already taken the team's .claude/.gitignore away: $out"
+        Assert ((Get-B431Committable $t) -notcontains '.claude/token.txt') "after the stopped install the token file is committable: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-435 a brownfield install keeps out of Git the archive of a tracked original whose local changes Git is told not to see: skip-worktree, and assume-unchanged under another letter case' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b435-' + [guid]::NewGuid())
+    try {
+        # check-ignore never reports a tracked path, so the archive of a file whose local key Git does not see was committable.
+        $t = New-B309GitTarget -Root $root -Name 'target' -Ignore "bin/`n"
+        Write-B429Files -Folder $t -Files ([ordered]@{ '.claude/settings.json' = "{}`n"; 'claude.md' = "# team rules`n"; 'TECH_DEBT.md' = "# team debt`n" })
+        & git -C $t add -A
+        & git -C $t commit -qm 'team files'
+        & git -C $t update-index --skip-worktree .claude/settings.json
+        & git -C $t update-index --assume-unchanged claude.md
+        $local = [ordered]@{ '.claude/settings.json' = "{`"env`":{`"API_KEY`":`"sk-FIXTURE4`"}}`n"; 'claude.md' = "# team rules`nLOCAL-ONLY-FIXTURE-NOTE`n" }
+        Write-B429Files -Folder $t -Files $local
+        Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String).Trim() -eq '') 'calibration: Git sees the local changes it was told not to see'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: brownfield') "the brownfield install failed (exit $LASTEXITCODE): $out"
+        $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
+        Assert ($status -notmatch 'docs/pre-adoption/\.claude/settings\.json') "the archive of a skip-worktree original is committable: $status"
+        Assert ($status -notmatch '(?i)docs/pre-adoption/claude\.md') "the archive of an assume-unchanged original is committable: $status"
+        Assert ($status -match 'docs/pre-adoption/TECH_DEBT\.md') "calibration: the tracked team file's archive is not committable: $status"
+        Assert ([IO.File]::ReadAllText((Join-Path $t 'docs/pre-adoption/.claude/settings.json')) -ceq $local['.claude/settings.json'] -and [IO.File]::ReadAllText((Join-Path $t 'docs/pre-adoption/CLAUDE.md')) -ceq $local['claude.md']) "the archives do not hold the local content: $out"
+        $lines = @([IO.File]::ReadAllLines((Join-Path $t 'docs/pre-adoption/.gitignore')) | Where-Object { $_ })
+        Assert (($lines -join '|') -ceq '/.claude/settings.json|/CLAUDE.md') "docs/pre-adoption/.gitignore does not hold exactly the two anchored lines: $($lines -join '|')"
+        Assert ($out -match 'Kept out of Git[^\r\n]*\.claude/settings\.json' -and $out -match 'Kept out of Git[^\r\n]*CLAUDE\.md') "the handoff does not name the kept-out files: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'a disabled retired recipe skill: the update finishes, carries the folder''s consumer files and removes the active copy' {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('recipe-disabled-' + [guid]::NewGuid())
     try {

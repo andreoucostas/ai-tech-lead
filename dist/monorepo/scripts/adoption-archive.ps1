@@ -22,8 +22,8 @@ Exit codes:
   2  usage error
   3  refused before mutation (path escape, reparse-point ancestor, destination collision,
      unreadable source)
-  4  -Freeze refused: a plan entry's source or destination is ignored by Git; one IGNORED line names
-     each such entry, and nothing was frozen
+  4  -Freeze refused: a plan entry's source or destination is ignored by Git, or its source is tracked with
+     local changes Git is told not to see; one IGNORED line names each such entry, and nothing was frozen
   5  CANT-VERIFY — the artifact could not be examined, legacy evidence carries no pre-move digest, or
      Git could not say whether a -Freeze path is ignored
   6  FAIL — an archived candidate's bytes differ from the frozen digest, or a required frozen entry
@@ -207,6 +207,20 @@ function Test-AaGitIgnored {
     $tracked = Invoke-AaGit -Root $Root -GitArgs @('ls-files', '--error-unmatch', '--', ":(literal)$Relative")
     if (-not $tracked.Started -or $tracked.ExitCode -notin @(0, 1)) { return $null }
     return ($tracked.ExitCode -eq 1)
+}
+
+# $true when Git tracks the path but is told not to see its local changes (skip-worktree or assume-unchanged: an 'S' or a
+# lower-case tag in ls-files -v), so its bytes on disk are one developer's and check-ignore never reports it; $false when
+# not; $null when Git could not answer. Matched ignoring case, as Windows Git matches a path whose letter case changed on disk.
+function Test-AaGitSkipped {
+    param([Parameter(Mandatory = $true)][string]$Root, [Parameter(Mandatory = $true)][string]$Relative)
+    # Only each line's tag is read; without -z Git quotes a name holding a line break, so one entry is one line.
+    $listed = Invoke-AaGit -Root $Root -GitArgs @('ls-files', '-v', '--', ":(icase,literal)$Relative")
+    if (-not $listed.Started -or $listed.ExitCode -ne 0) { return $null }
+    foreach ($record in @(([string]$listed.Output).Split([char]10))) {
+        if ($record.Length -gt 2 -and ($record[0] -ceq 'S' -or [char]::IsLower($record[0]))) { return $true }
+    }
+    return $false
 }
 
 # Windows opens a path whose spelling differs from the file's name (letter case, a trailing dot or
@@ -536,12 +550,15 @@ function Invoke-AaFreeze {
             }
             $sourceIgnored = Test-AaGitIgnored -Root $Root -Relative $pair.Original
             $destinationIgnored = Test-AaGitIgnored -Root $Root -Relative $pair.Destination
-            if ($null -eq $sourceIgnored -or $null -eq $destinationIgnored) {
+            # A tracked source marked skip-worktree or assume-unchanged holds local bytes Git does not see, as an ignored one does.
+            $sourceSkipped = if ($null -ne $sourceIgnored -and $null -ne $destinationIgnored) { Test-AaGitSkipped -Root $Root -Relative $pair.Original } else { $false }
+            if ($null -eq $sourceIgnored -or $null -eq $destinationIgnored -or $null -eq $sourceSkipped) {
                 Write-AaError "CANT-VERIFY: Git could not say whether '$($pair.Original)' or '$($pair.Destination)' is ignored; nothing was frozen. Run inside the repository's work tree (not a submodule path) with Git available and no GIT_DIR/GIT_WORK_TREE routing."
                 exit 5
             }
             $which = @(@('source', 'destination') | Where-Object { ($_ -eq 'source' -and $sourceIgnored) -or ($_ -eq 'destination' -and $destinationIgnored) })
             if ($which.Count -gt 0) { $ignoredLines += "IGNORED: $($pair.Original) -> $($pair.Destination) ($($which -join ' and ') ignored by Git)" }
+            elseif ($sourceSkipped) { $ignoredLines += "IGNORED: $($pair.Original) -> $($pair.Destination) (source tracked, but Git is told not to see its local changes: skip-worktree or assume-unchanged)" }
         }
         if ($ignoredLines.Count -gt 0) {
             foreach ($line in $ignoredLines) { Write-AaError $line }

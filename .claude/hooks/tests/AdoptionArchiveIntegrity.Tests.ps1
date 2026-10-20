@@ -466,6 +466,42 @@ It 'B-307 Freeze refuses a tracked file whose archive path Git ignores, leaving 
     } finally { Remove-Fixture $fx }
 }
 
+It 'B-435 Freeze refuses a plan entry whose tracked source Git is told not to see the local changes of, skip-worktree or assume-unchanged under another letter case, before any capture' {
+    $fx = New-FixtureRepo
+    try {
+        # check-ignore never reports a tracked path, so a local key in a file Git skips was frozen and moved where the adopt PR
+        # would commit it.
+        [IO.File]::WriteAllText((Join-Path $fx '.cursorrules'), 'team rules')
+        [IO.File]::WriteAllText((Join-Path $fx 'mcp.json'), '{}')
+        [IO.File]::WriteAllText((Join-Path $fx 'Notes.md'), 'team notes')
+        Add-Commit -Repo $fx
+        & git -C $fx update-index --skip-worktree mcp.json
+        & git -C $fx update-index --assume-unchanged Notes.md
+        # A case-only rename on disk, as Windows leaves one: Git keeps the index spelling Notes.md.
+        Rename-Item -LiteralPath (Join-Path $fx 'Notes.md') -NewName 'notes.tmp'
+        Rename-Item -LiteralPath (Join-Path $fx 'notes.tmp') -NewName 'notes.md'
+        [IO.File]::WriteAllText((Join-Path $fx 'mcp.json'), '{"token":"sk-FIXTURE6"}')
+        [IO.File]::WriteAllText((Join-Path $fx 'notes.md'), 'local notes: LOCAL-ONLY-FIXTURE-KEY')
+        Assert ((& git -C $fx status --porcelain --untracked-files=all | Out-String).Trim() -eq '') 'calibration: Git sees the local changes it was told not to see'
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx '.claude') | Out-Null
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($marker))
+        $plan = New-ArchivePlanFile -Path (Join-Path $fx 'plan.json') -Entries @(
+            [ordered]@{ originalPath = 'mcp.json'; destination = 'docs/pre-adoption/mcp.json' },
+            [ordered]@{ originalPath = '.cursorrules'; destination = 'docs/pre-adoption/.cursorrules' },
+            [ordered]@{ originalPath = 'notes.md'; destination = 'docs/pre-adoption/notes.md' }
+        )
+        $freeze = Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)
+        Assert ($freeze.Exit -eq 4) "Freeze did not refuse sources whose local changes Git does not see with exit 4 (exit $($freeze.Exit)): $($freeze.Output)"
+        foreach ($name in 'mcp.json', 'notes.md') {
+            Assert ($freeze.Output -match ('(?m)^IGNORED: ' + [regex]::Escape($name) + ' -> docs/pre-adoption/' + [regex]::Escape($name) + ' \(source tracked, but Git is told not to see its local changes: skip-worktree or assume-unchanged\)')) "the refusal did not name source '$name': $($freeze.Output)"
+        }
+        Assert ($freeze.Output -notmatch 'IGNORED: \.cursorrules') "a tracked entry Git sees was refused: $($freeze.Output)"
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($marker)) -ceq $before) 'the refused Freeze changed the marker'
+        Assert (-not (Test-Path -LiteralPath (Join-Path $fx 'docs/pre-adoption'))) 'the refused Freeze created an archive path'
+    } finally { Remove-Fixture $fx }
+}
+
 It 'B-307 Freeze judges the file on disk: misspelt, bracketed, ignore-rule and missing entries cannot slip past' {
     $fx = New-FixtureRepo
     try {

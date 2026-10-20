@@ -128,12 +128,6 @@ Measure T vs C on both CLIs on the retained B-412 tree, graded by a reviewer `Ta
 **Status:** Open; reasoned by B-393's fresh-session attack, not run (this host has LongPathsEnabled=1). Save paths are at least 39 characters longer than their originals, so on a 5.1 host without long paths a deep framework path may throw an uncaught `PathTooLongException` at planning time: a stall, before any change.
 Candidate: catch it and refuse with a line naming the path and the setting; red case on a synthetic deep path. Guarded.
 
-### B-435 · `docs/pre-adoption` archives ask only `git check-ignore`, so a skip-worktree original archived there stays committable
-**Filed against:** v0.98.1 (2026-10-19)
-**Priority:** P3 · **Effort:** S · **Invariants:** #7
-**Status:** Open; reasoned by B-429's implementation, not run. B-429 keeps a saved copy out of Git when the original is tracked but marked skip-worktree or assume-unchanged (`ls-files -v`); the brownfield archive path still decides by `check-ignore` alone, which never reports tracked files, so such an original's local content lands in a committable archive.
-Candidate: the same `-OrSkipped` check on the archive's keep-out; red case first. Guarded (`install.ps1` / `adoption-archive.ps1`; step 4).
-
 ### B-440 · An ignored backup copy, the only copy of a skip-worktree file's local content, can be overwritten by a checkout
 **Filed against:** v0.98.1 (2026-10-20)
 **Priority:** P3 · **Effort:** S · **Invariants:** #7
@@ -149,3 +143,7 @@ B-431 keeps such files ignored on update only: brownfield archives the file for 
 **Filed against:** v0.98.1 (2026-10-20)
 **Priority:** P3 · **Effort:** S · **Invariants:** #3
 **Status:** Open; found by B-445's fresh-session attack (executed, both hosts and surfaces). B-445 made the guard's patterns culture-invariant, so `APİ_KEY` (U+0130, what tr-TR uppercasing of `api_key` gives) no longer matches `I`; the old culture-sensitive match blocked it under tr-TR. Candidate: accept U+0130 where a pattern has `i` (`[iİ]`); red case under tr-TR. Guarded, `guard.ps1` on step 4's list.
+### B-445 · Under tr-TR the guard's case-insensitive credential check lets `API_KEY = "..."` through
+**Filed against:** v0.98.1 (2026-10-20)
+**Priority:** P3 · **Effort:** S · **Invariants:** #3
+**Status:** Open; found by B-391's hook audit, executed on both hosts: `guard.ps1`'s `(?i)` credential pattern follows the current culture, where `I` folds to dotless `ı`, so `API_KEY = "..."` passes under tr-TR. Not a one-call fix: the patterns need culture-invariant matching (`RegexOptions.CultureInvariant`, or an invariant-culture scope around the checks); red case under tr-TR first. Guarded, `guard.ps1` on step 4's list.

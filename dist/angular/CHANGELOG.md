@@ -82,6 +82,19 @@
   one `NOTICE`, and removed with the active folder. If Git cannot say which files it ignores there, the update stops
   before changing anything. Keep what you need from the copies under other paths.
 
+- **A first install no longer makes the files your own `.claude/.gitignore` ignored committable.** When the install
+  finds a `.claude/.gitignore` of yours, it still keeps your version under `docs/pre-adoption/` for `/adopt` and
+  installs the framework's, but now, as an update does, it keeps each file your lines ignored ignored with one line
+  naming exactly that file, below the comment line `# Kept ignored by framework updates: ...`, and says so in a
+  `NOTICE`. Before, a file such as `.claude/mcp.local.json` holding a token showed in `git status` as ready to commit
+  right after the install. Your version stays in place until the install's last write, so an install that stops
+  earlier leaves your rules as they were.
+- **A file whose local changes you told Git not to see is no longer archived where Git can commit it.** When the
+  install or `/adopt` archives a tracked file marked skip-worktree or assume-unchanged, such as a settings file holding
+  a local key, the copy under `docs/pre-adoption/` would hold your local content as a new file `git status` offers to
+  commit. The install now keeps such an archive out of Git through `docs/pre-adoption/.gitignore`, as it already did
+  for a file you had gitignored, and names it; `/adopt` leaves such a file where it is and lists it in its report.
+
 - **The session preload and the audit log no longer depend on where PowerShell starts.** The `session-start` and
   `audit-trail` hooks now find your repository from their own place under `.claude/hooks/` instead of from PowerShell's
   current location. Before, wherever that location was not your repository, the preload arrived as its heading alone,
