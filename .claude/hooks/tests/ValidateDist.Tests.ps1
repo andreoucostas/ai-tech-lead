@@ -810,5 +810,36 @@ try {
         Assert-Case 'skill-wrappers-match-commands' { param($d) } '12 workflow wrapper(s) carry their command''s frontmatter' 'skill-frontmatter' -Green
     }
 
+    # B-359: Copilot CLI 1.0.92 refuses these values, and a wrapper copies its command's, so the
+    # planted value goes into both and /name loads nowhere. Each case was green before the fix.
+    It 'case 42: an unquoted argument-hint list fails the skill check' {
+        Assert-Case 'frontmatter-unquoted-argument-hint' {
+            param($d)
+            foreach ($path in (Join-Path $d '.claude\commands\fix.md'), (Join-Path $d '.agents\skills\fix\SKILL.md')) {
+                Assert ([IO.File]::ReadAllText($path).Contains('argument-hint: "[bug description or failing test]"')) 'fixture fix no longer quotes its argument-hint'
+                Replace-Text $path 'argument-hint: "[bug description or failing test]"' 'argument-hint: [bug description or failing test]'
+            }
+        } 'shipped frontmatter values Copilot CLI refuses' 'skill-frontmatter' -AlsoPattern @('\.claude/commands/fix\.md : argument-hint is an unquoted', '\.agents/skills/fix/SKILL\.md : argument-hint is an unquoted')
+    }
+    It 'case 43: a non-boolean disable-model-invocation fails the skill check' {
+        Assert-Case 'frontmatter-string-disable-model-invocation' {
+            param($d)
+            foreach ($path in (Join-Path $d '.claude\commands\adopt.md'), (Join-Path $d '.agents\skills\adopt\SKILL.md')) {
+                Assert ([IO.File]::ReadAllText($path).Contains("`ndisable-model-invocation: true`n")) 'fixture adopt no longer disables model invocation'
+                Replace-Text $path "`ndisable-model-invocation: true`n" "`ndisable-model-invocation: `"true`"`n"
+            }
+        } 'shipped frontmatter values Copilot CLI refuses' 'skill-frontmatter' -AlsoPattern @('\.claude/commands/adopt\.md : disable-model-invocation is', '\.agents/skills/adopt/SKILL\.md : disable-model-invocation is')
+    }
+    It 'case 44: an unquoted value holding a colon and a space fails the skill check' {
+        Assert-Case 'frontmatter-unquoted-colon-value' {
+            param($d)
+            foreach ($path in (Join-Path $d '.claude\commands\fix.md'), (Join-Path $d '.agents\skills\fix\SKILL.md')) {
+                $text = [IO.File]::ReadAllText($path)
+                Assert ($text -cmatch '(?m)^description: "Bug-fix workflow: [^"]*"$') 'fixture fix no longer quotes a description holding ": "'
+                [IO.File]::WriteAllText($path, [regex]::Replace($text, '(?m)^description: "(Bug-fix workflow: [^"]*)"$', 'description: $1'))
+            }
+        } 'shipped frontmatter values Copilot CLI refuses' 'skill-frontmatter' -AlsoPattern @("\.claude/commands/fix\.md : description has an unquoted value holding ': '", "\.agents/skills/fix/SKILL\.md : description has an unquoted value holding ': '")
+    }
+
 } finally { foreach($p in $scratch) { if(Test-Path $p){ Remove-Item -LiteralPath $p -Recurse -Force } } }
 exit (Write-TestSummary 'ValidateDist.Tests (B-92)')

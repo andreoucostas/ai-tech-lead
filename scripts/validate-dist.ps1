@@ -1031,8 +1031,33 @@ function Get-FrontmatterLines([string[]]$Lines) {
     if ($close -lt 0) { return $null }
     return , @(if ($close -gt 1) { $Lines[1..($close - 1)] })
 }
+# B-359: Copilot CLI 1.0.92 refuses a frontmatter holding an unquoted argument-hint list ("must be a
+# string"), a disable-model-invocation other than true or false, or an unquoted value holding ': ', and
+# a wrapper copies its command's frontmatter, so /<name> then loads nowhere. Indented lines are block
+# content and are not read here; a plain value's ' #' comment is dropped first, as YAML drops it.
+function Get-FrontmatterValueProblems([string]$Relative, [string[]]$Lines) {
+    foreach ($line in $Lines) {
+        $pair = [regex]::Match($line, '^([^\s"''#?{\[-][^:]*?):(?:\s+(.*?))?\s*$')
+        if (-not $pair.Success) { continue }
+        $key = $pair.Groups[1].Value
+        $value = $pair.Groups[2].Value
+        $plain = $value -notmatch '^["''|>\[{]'
+        $scalar = if ($plain) { [regex]::Replace($value, '\s+#.*$', '') } else { $value }
+        if ($key -ceq 'argument-hint' -and $value -match '^[\[{]') {
+            "$Relative : argument-hint is an unquoted YAML list or map, not a string"
+        }
+        if ($key -ceq 'disable-model-invocation' -and $scalar -cnotmatch '^(?:true|false)$') {
+            "$Relative : disable-model-invocation is '$value', not true or false"
+        }
+        if ($plain -and $scalar -match ':(?:\s|$)') {
+            "$Relative : $key has an unquoted value holding ': '"
+        }
+    }
+}
 $skillProblems = @()
 $wrapperProblems = @()
+$valueProblems = @()
+$valueScanCount = 0
 $claudeSkillCount = 0
 $wrapperCount = 0
 $commandCount = 0
@@ -1043,6 +1068,8 @@ foreach ($skillPath in $skillFiles) {
     if ($relative.StartsWith('.claude/skills/', [StringComparison]::Ordinal)) { $claudeSkillCount++ }
     $end = Get-FrontmatterEnd $lines
     if ($end -lt 0) { $skillProblems += "$relative : no terminated YAML frontmatter"; continue }
+    $valueScanCount++
+    $valueProblems += @(Get-FrontmatterValueProblems $relative @(if ($end -gt 1) { $lines[1..($end - 1)] }))
     $description = $null
     for ($i = 1; $i -lt $end; $i++) {
         $match = [regex]::Match($lines[$i], '^description:\s*(.*)$')
@@ -1108,6 +1135,11 @@ if (Test-Path -LiteralPath $commandsRoot -PathType Container) {
     foreach ($command in @(Get-ChildItem -LiteralPath $commandsRoot -File -Filter '*.md' -Force)) {
         $commandCount++
         $workflow = [IO.Path]::GetFileNameWithoutExtension($command.Name)
+        $commandLines = Get-FrontmatterLines @([IO.File]::ReadAllLines($command.FullName, [Text.Encoding]::UTF8))
+        if ($null -ne $commandLines) {
+            $valueScanCount++
+            $valueProblems += @(Get-FrontmatterValueProblems ".claude/commands/$($command.Name)" $commandLines)
+        }
         if (-not (Test-Path -LiteralPath (Join-Path $DistAbs ".agents/skills/$workflow/SKILL.md") -PathType Leaf)) {
             $wrapperProblems += ".claude/commands/$($command.Name) : no .agents/skills/$workflow/SKILL.md wrapper, so VS Code has no /$workflow"
         }
@@ -1117,7 +1149,7 @@ if ($claudeSkillCount -eq 0) {
     Fail "skill frontmatter scan found no .claude/skills/*/SKILL.md in $Dist -- the scan is blind."
 } elseif ($commandCount -eq 0) {
     Fail "workflow wrapper scan found no .claude/commands/*.md in $Dist -- the scan is blind."
-} elseif ($skillProblems.Count -gt 0 -or $wrapperProblems.Count -gt 0) {
+} elseif ($skillProblems.Count -gt 0 -or $wrapperProblems.Count -gt 0 -or $valueProblems.Count -gt 0) {
     if ($skillProblems.Count -gt 0) {
         Fail "shipped skills Copilot CLI cannot load, or that have no description -- $($skillProblems.Count) finding(s). Copilot CLI 1.0.89 refuses to load a skill whose description exceeds 1024 characters, and 1.0.92 one whose frontmatter it cannot find; one with no description loads, described by its body."
         $skillProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [skill-frontmatter] $_" }
@@ -1126,8 +1158,12 @@ if ($claudeSkillCount -eq 0) {
         Fail "workflow skill wrappers drift from their commands -- $($wrapperProblems.Count) finding(s). Copilot CLI 1.0.92 lists .agents/skills/<name>/SKILL.md in place of .claude/commands/<name>.md, so each command needs a wrapper carrying its frontmatter plus its name."
         $wrapperProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [skill-frontmatter] $_" }
     }
+    if ($valueProblems.Count -gt 0) {
+        Fail "shipped frontmatter values Copilot CLI refuses -- $($valueProblems.Count) finding(s). Copilot CLI 1.0.92 refuses an unquoted argument-hint list (`"must be a string`"), a disable-model-invocation other than true or false, and an unquoted value holding ': '; quote the value, and a wrapper carries its command's."
+        $valueProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [skill-frontmatter] $_" }
+    }
 } else {
-    OK "every shipped skill description loads on Copilot CLI ($($skillFiles.Count) SKILL.md files; longest description $longestDescription of 1024 characters; $wrapperCount workflow wrapper(s) carry their command's frontmatter)."
+    OK "every shipped skill description loads on Copilot CLI ($($skillFiles.Count) SKILL.md files; longest description $longestDescription of 1024 characters; $wrapperCount workflow wrapper(s) carry their command's frontmatter; $valueScanCount frontmatter(s) hold no value Copilot CLI refuses)."
 }
 }
 
