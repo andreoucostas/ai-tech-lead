@@ -159,39 +159,39 @@ B-431 keeps such files ignored on update only: brownfield archives the file for 
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
 **Status:** Open; field report 2026-10-21 (item 1): the team could not tell what a finding was or where to find it. `security-gate.md` lets an ordinary finding carry a repository-relative
 `file:line` only when locator and target are safe for every reader, and Step 6 appends a minimised row whose `Affected area` is redacted when sensitive, so a repository-safe finding can still arrive with neither.
-Decide the minimum an ordinary safe row and verdict must name (area or `file:line`, category, summary, where the row went); credential findings stay redacted. Stacks ×3 plus the Copilot `security-auditor` agent.
+Decide the minimum an ordinary safe row and verdict must name (area or `file:line`, category, summary, where the row went); credential findings stay redacted. Stacks ×3 plus the Copilot `security-auditor` agent. Direction: `.claude/plans/2026-10-21-field-report-10-b450-b455.md` (field report #10).
 
 ### B-451 · The committed rebootstrap baseline repeats one evidence row per matched file per claim, so it runs to thousands of lines
 **Filed against:** v0.98.2 (2026-10-21)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #7
 **Status:** Open; field report 2026-10-21 (item 2): a 3,856-line `.claude/bootstrap-baseline.tsv` where dozens of claims each list the same full file-and-hash set, noisy to review and prone to merge conflicts.
 `bootstrap-baseline.ps1` writes `evidence <id> <pattern> <path> <blob>` per matched file at Record and compares per path at Impact. Candidates: one row per pattern with a hash of its matched set (as `Get-Areas`
-already does per area; schema bump, Impact must still name the changed path), and shipped `.gitattributes` lines (`-diff`, `linguist-generated`) so review tooling collapses it. `BootstrapBaseline.Tests.ps1` red case first; B-452 decides whether it stays committed.
+already does per area; schema bump, Impact must still name the changed path), and shipped `.gitattributes` lines (`-diff`, `linguist-generated`) so review tooling collapses it. `BootstrapBaseline.Tests.ps1` red case first; B-452 decides whether it stays committed. Direction: `.claude/plans/2026-10-21-field-report-10-b450-b455.md` (field report #10).
 
 ### B-452 · Decide whether the rebootstrap baseline stays committed, and say that drift on any source change is by design
 **Filed against:** v0.98.2 (2026-10-21)
 **Priority:** P2 · **Effort:** S · **Invariants:** #7
 **Status:** Open; field question 2026-10-21 (item 3): the baseline pins blob hashes of about 1,000 files, so almost any unrelated PR makes `/rebootstrap` report drift, and the team asks whether it is meant to be
 committed rather than generated locally or in CI. It is committed on purpose (0.90.0 CHANGELOG: "commit it with the other artifacts"): it records the last run's state for every clone, and drift is the signal, not a defect; an ignored
-local file makes each teammate's first run full. Record that as a WSD, state it in `rebootstrap.md` and the CHANGELOG in the consumer's voice, and check the line-ending half: `git hash-object --stdin-paths` applies the clean filter, so `core.autocrlf` should not move a hash; one test case over a CRLF checkout.
+local file makes each teammate's first run full. Record that as a WSD, state it in `rebootstrap.md` and the CHANGELOG in the consumer's voice, and check the line-ending half: `git hash-object --stdin-paths` applies the clean filter, so `core.autocrlf` should not move a hash; one test case over a CRLF checkout. Direction: `.claude/plans/2026-10-21-field-report-10-b450-b455.md` (field report #10).
 
 ### B-453 · The baseline records a zero-byte source file as evidence without saying so
 **Filed against:** v0.98.2 (2026-10-21)
 **Priority:** P3 · **Effort:** S · **Invariants:** #1
 **Status:** Open; field report 2026-10-21 (item 4): a `.cs` carrying the empty-blob hash (`e69de29b…`) sat in a claim's evidence list, a stray 0-byte file the team noticed only through the baseline, beside files
 already in `TECH_DEBT.md`. Record resolves a glob to every matched file, so an empty one supports a claim it cannot evidence. Candidate: `-Mode Record` prints one `EMPTY <path>` line per zero-byte match and
-`/bootstrap` 3f routes it to `TECH_DEBT.md` rather than the baseline; `BootstrapBaseline.Tests.ps1` red case first.
+`/bootstrap` 3f routes it to `TECH_DEBT.md` rather than the baseline; `BootstrapBaseline.Tests.ps1` red case first. Direction: `.claude/plans/2026-10-21-field-report-10-b450-b455.md` (field report #10).
 
 ### B-454 · An update that starts ignoring `.claude/ai-audit.log` leaves a team's tracked copy tracked and says nothing in its handoff
 **Filed against:** v0.98.2 (2026-10-21)
 **Priority:** P2 · **Effort:** S · **Invariants:** #7
 **Status:** Open; field report 2026-10-21 (item 5): the shipped `.claude/.gitignore` now ignores the log, but a copy tracked under an older release stays tracked, and the team had to confirm by hand that their PR
 untracks it and that dropping it from Git is acceptable, since an earlier shipped `CLAUDE.md` called it an auditing mechanism. `docs/upgrade-checklist.md` has the `git rm --cached` recipe, but `install.ps1` only copies the file if
-absent and its handoff never names a tracked copy. Candidate: the handoff names it with that one command and the sentence that it is local telemetry, not compliance evidence (`reference.md`, `enforcement-surfaces.md`); guarded, red case in `UpdateDelivery.Tests.ps1`.
+absent and its handoff never names a tracked copy. Candidate: the handoff names it with that one command and the sentence that it is local telemetry, not compliance evidence (`reference.md`, `enforcement-surfaces.md`); guarded, red case in `UpdateDelivery.Tests.ps1`. Direction: `.claude/plans/2026-10-21-field-report-10-b450-b455.md` (field report #10).
 
 ### B-455 · Decide whether the framework needs a semantic repository index beyond the wiki index and Repository Structure
 **Filed against:** v0.98.2 (2026-10-21)
 **Priority:** P3 · **Effort:** S to decide, M to build · **Invariants:** #7
 **Status:** Open; field question 2026-10-21 (item 6). Shipped today: `AGENTS.md > Repository Structure` (directories, entry points, where each change goes), `docs/wiki/INDEX.md` (scoped claims),
 `docs/architecture-decisions.md`, and `docs/warehouse-map.md` on demand; no symbol or module index, and each host brings its own search (Claude Code's tools, Copilot's workspace index). Answer by WSD: what one
-consumer task in a bootstrapped repository fails to find with those, measured before anything is built; if nothing, close by decision and answer the team in the CHANGELOG or `docs/reference.md`.
+consumer task in a bootstrapped repository fails to find with those, measured before anything is built; if nothing, close by decision and answer the team in the CHANGELOG or `docs/reference.md`. Direction: `.claude/plans/2026-10-21-field-report-10-b450-b455.md` (field report #10).

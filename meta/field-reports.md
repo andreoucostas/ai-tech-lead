@@ -272,6 +272,31 @@ the hooks' runtime state is ignored).
 
 ---
 
+## Report #10 — .NET, after an update: a finding without a location, the baseline's size and drift, a tracked audit log
+
+| | |
+|---|---|
+| **Date received** | 2026-10-21 |
+| **Stack / repo shape** | .NET or monorepo distribution (a `.cs` file is named); consumer repository, shape not captured beyond "about 1,000 source files" |
+| **Framework installed** | yes; version not captured. The update crossed 0.86.6's `.claude/ai-audit.log` ignore, and a baseline exists, so the install is at or past 0.90.0 |
+| **Host / IDE** | not captured |
+| **What misfired** | Six items, relayed by the maintainer: (1) a security finding "with nothing to say what it is and where to find it"; (2) a 3,856-line committed `.claude/bootstrap-baseline.tsv` repeating the same file-and-hash list for dozens of claims, noisy and conflict-prone; (3) the baseline pins about 1,000 blob hashes, so any unrelated PR reports drift, and the team asks whether it is meant to be committed; (4) a zero-byte `.cs` (empty-blob hash) listed as evidence, beside files already in the debt register; (5) the shipped `.claude/.gitignore` now ignores `ai-audit.log`, but the tracked copy stayed tracked, and the team had to confirm the untracking and whether dropping it is acceptable given that an earlier `CLAUDE.md` called it an auditing mechanism; (6) "do we need the equivalent of a semantic repository index?" |
+| **What fired** | `/security-gate` (a finding was produced); `/bootstrap` 3f's baseline record; the installer's `.claude/.gitignore` rewrite. |
+| **What got ignored** | `docs/upgrade-checklist.md`'s migration step for a tracked audit log (the team did not find it); the gate's `file:line` opt-in (a finding reached the team without one). |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | a consumer team, relayed by the maintainer |
+
+**Epistemic status.** The finding's text, the distribution, the host and the baseline rows were not captured; the
+line counts are the reporter's. Whether item 1 was a redacted register row or an Angular chat-only verdict (that
+distribution appends nothing) is unknown, and item 3's line-ending claim is the reporter's reasoning, not an observed
+hash difference. Item 6 is a question, not a defect.
+
+**Outcome:** B-450 to B-455 filed 2026-10-21 (rank 3 to 6, 19 and 20); the technical direction for each is
+`.claude/plans/2026-10-21-field-report-10-b450-b455.md`.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.
