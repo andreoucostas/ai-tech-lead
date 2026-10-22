@@ -11,6 +11,27 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.98.3 — Unreleased
+
+`security-gate.md` x3, the Angular `security-gate` Copilot wrapper and the `security-auditor` Copilot agent's `findings-note` (guarded by path, `src/stacks/*/files/.claude/**`, no step 4; B-450, field report #10): a
+team ran `/security-gate` and could not tell what a finding was or where it was. Step 5's opt-in locator ("`file:line` only when both the locator and target
+are safe for every repository reader") is now a floor: the verdict table names the repository-relative `file:line`, and a path, or the register summary, is
+redacted only when it would itself name something in the existing list, as `redacted (<class>)` with the full detail left in the chat. Step 6 now says what a
+row holds (`Affected area` is the path without a line, plus the symbol, route or type when the path alone is ambiguous; `Repository-safe summary` is one
+sentence with the defect class and the fix class), how its ID is assigned (`SF-<n>`, one above the highest anywhere in the register or `docs/security-archive.md`, since a
+resolved or archived row keeps its ID, `SF-1` for a fresh register; the template row shows `_`), and every verdict now ends with `Recorded: SF-12, SF-13 in SECURITY_FINDINGS.md` or `Recorded: none (<reason>)`, the reason one of
+APPROVE, severity below high, credential finding, duplicate of SF-n, legacy schema, and a mixed verdict adds `; not recorded (<reason>)` per
+critical or high finding left without a row. No register column moved: `session-start.ps1` still counts `| Open ` cells and
+reads the second date as the due date (`PowerShellSemantics.Tests.ps1` fixtures unchanged and green). Credential findings are untouched.
+Angular now appends (maintainer decision): B-135 (WSD-038) made its "appends findings" description true by saying it did not, so as not to add persistence
+to a confidentiality fix, and gave no other reason; the register ships in every distribution. The Angular command gains dotnet's Step 6 (the example in the
+summary rule is Angular's), its description and Copilot wrapper description match dotnet's, and its `security-auditor.agent.md` gains dotnet's `findings-note`.
+Monorepo gains an explicit `findings-note` snippet, byte for byte dotnet's: it had none, and took dotnet's through the build's union fallback (dotnet's snippet,
+then Angular's); with Angular's added, that fallback would print the note twice (checked: 2 occurrences without the snippet, 1 with). `SecurityReviewContract.Tests.ps1`:
+the `$isAngular` branch is gone, so all three stacks take the appending case, which also asserts that no surface says it "does not append findings"; five cases
+are new (the floor sentence, the row content, the `SF-<n>` rule over the register and its archive, the `Recorded:` line with its mixed form, the Copilot note exactly once), 6 to 11 in all; the credential
+no-mutation assertion lost its now-dead `Do not append findings` alternative.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

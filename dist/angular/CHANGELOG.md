@@ -4,6 +4,27 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.98.3 — Unreleased
+
+- **A security finding now always says where it is and what it is.** The `/security-gate` verdict names the file and
+  line of each finding. The row it adds to `SECURITY_FINDINGS.md` names the file (no line, since lines move) and, when
+  the file alone is ambiguous, the symbol, route or type, with one sentence giving the kind of defect and the kind of
+  fix; its ID is `SF-` and the next number after the highest anywhere in the register or `docs/security-archive.md`,
+  so a resolved finding's ID is never reused (`SF-1` in a new register). The verdict ends with `Recorded:` and the
+  IDs it wrote, or `none` and the reason: `APPROVE`, `severity below high`, `credential finding`, `duplicate of SF-n`
+  or `legacy schema`; when it wrote some rows but not others, it adds `not recorded` and the reason for each other one. Only a path or sentence that would itself disclose a
+  tenant, customer, host, user or home path, vault or key, secret path, transcript or disclosure channel is redacted;
+  the row then reads `redacted (<what>)` and the full detail stays in the chat with whoever ran the gate. Before, the
+  file and line were given only when the gate judged both safe for every reader of the repository, no rule said what a
+  row holds or how its ID is chosen, and nothing said whether a row had been written. A credential finding is handled
+  as before: nothing is echoed or written to Git, and a human with incident authority takes over. Your register's
+  columns and existing rows are not changed.
+- **Findings rated critical or high are now recorded in `SECURITY_FINDINGS.md`, as on the other distributions.**
+  `/security-gate` used to say it did not append findings, so an Angular team's findings lived only in the chat
+  transcript. It now adds a minimised row for each ordinary critical or high finding, due 7 days after the review for
+  critical and 30 for high, and never one for a credential finding. The Copilot `security-gate` skill and the
+  `security-auditor` agent say the same. `SECURITY_FINDINGS.md` is yours: an update leaves it as it is.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

@@ -393,8 +393,8 @@
         },
         {
           "path": ".claude/commands/security-gate.md#body",
-          "chars": 8850,
-          "tok": 2212
+          "chars": 10590,
+          "tok": 2648
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -537,8 +537,8 @@
         },
         {
           "path": ".claude/commands/security-gate.md#frontmatter",
-          "chars": 390,
-          "tok": 98
+          "chars": 439,
+          "tok": 110
         },
         {
           "path": ".claude/commands/test.md#frontmatter",
@@ -817,8 +817,8 @@
         },
         {
           "path": ".claude/commands/security-gate.md#body",
-          "chars": 7766,
-          "tok": 1942
+          "chars": 10694,
+          "tok": 2674
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -1241,8 +1241,8 @@
         },
         {
           "path": ".claude/commands/security-gate.md#body",
-          "chars": 10026,
-          "tok": 2506
+          "chars": 11766,
+          "tok": 2942
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -1307,8 +1307,8 @@
       "prompt.max.tok": 998
     },
     "angular": {
-      "static.claude.chars": 31864,
-      "static.claude.tok": 7966,
+      "static.claude.chars": 31913,
+      "static.claude.tok": 7978,
       "static.copilot.chars": 22768,
       "static.copilot.tok": 5692,
       "prompt.max.chars": 3796,

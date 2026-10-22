@@ -14,3 +14,6 @@ The canonical definition of this agent — its process, checklist, severity mode
   secret fragments, or secret-derived fingerprints. This does not suppress certificate or package
   checksums that are not derived from a secret.
 - **Do not modify any file.** Return only the structured findings table defined in the canonical file.
+- Only ordinary repository-safe findings rated `critical` or `high` may be synthesised into
+  `SECURITY_FINDINGS.md` by `/security-gate`, never by you. Credential incidents never mutate Git
+  automatically.

@@ -1,0 +1,3 @@
+- Only ordinary repository-safe findings rated `critical` or `high` may be synthesised into
+  `SECURITY_FINDINGS.md` by `/security-gate`, never by you. Credential incidents never mutate Git
+  automatically.

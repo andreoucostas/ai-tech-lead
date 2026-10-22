@@ -61,10 +61,13 @@ Before synthesis, create a second private **absent** bundle using the identical 
 identical manifest and captured bytes. On any difference or inability to compare, report `CANNOT
 EXAMINE` and stop. Dispose only private capture paths after the review completes.
 
-Classify each finding before writing the response. For an ordinary code finding, include a
-repository-relative `file:line` only when both the locator and target are safe for every repository
-reader. For an active or suspected credential finding, do not echo protected incident detail. State
-only that restricted human handling is required and the minimum immediate action class (for example,
+Classify each finding before writing the response. For an ordinary code finding, the verdict table
+names the repository-relative `file:line`. Redact only when that path, or the one-sentence summary
+Step 6 writes, would itself name something in the list below: write `redacted (<class>)` in its
+place, using the list's own word for the class, and say in the verdict that the full detail stayed
+in this chat with the person who ran the gate. For an active or suspected credential finding,
+do not echo protected incident detail.
+State only that restricted human handling is required and the minimum immediate action class (for example,
 revoke/rotate the credential and stop further disclosure). Do not name identities, infrastructure,
 tenants, environments, customers, hosts/IPs, users/home paths, vaults/keys, concrete secret paths or
 lines, transcript/session/log/CI artifacts, disclosure channels, secret material, partial or masked
@@ -96,6 +99,8 @@ fragments, secret-derived fingerprints, or unapproved references/URLs.
 ### Recommended next actions
 1. ...
 2. ...
+
+Recorded: <SF-12, SF-13 in SECURITY_FINDINGS.md | none (<reason>)>
 ```
 
 **Verdict thresholds**:
@@ -111,6 +116,17 @@ Be direct. Do not praise code for not being insecure — that is the baseline.
 
 For every ordinary repository-safe finding rated `critical` or `high`, synthesise and append a
 minimised row to `SECURITY_FINDINGS.md`. Never paste auditor/chat/tool output into the register.
+
+Write each row so a reader can find the defect without this chat. Read `SECURITY_FINDINGS.md`
+before appending. `ID` is `SF-<n>`: n is one above the highest `SF-` number anywhere in that file
+or in `docs/security-archive.md`, since a resolved or archived row keeps its ID, and `SF-1` when
+neither holds one. `Affected area` is the repository-relative path with no
+line number (lines move), plus the symbol, route or type when the path alone is ambiguous.
+`Repository-safe summary` is one sentence saying the defect class and the fix class, for example
+"SQL built by string concatenation in the order search; parameterise". `Discovered` is today, `Due`
+is calculated below, `Status` is `Open`, and the optional columns stay empty. Apply Step 5's
+redaction rule to the path and to the sentence: a cell that would itself name something in that
+list reads `redacted (<class>)`.
 
 For an active or suspected credential finding, make no automatic Git mutation and create no
 placeholder row or invented reference. Ask a human to establish restricted incident handling. Only
@@ -133,6 +149,13 @@ an open row (same safe affected area, same category), update neither row and not
 in a repository-safe response.
 
 If the verdict is `APPROVE` (no critical or high findings), note this in the output but do not modify `SECURITY_FINDINGS.md`.
+
+Every verdict, including one that wrote nothing, ends with one last line, written after the append:
+`Recorded: SF-12, SF-13 in SECURITY_FINDINGS.md` naming every row you wrote, or
+`Recorded: none (<reason>)` where `<reason>` is exactly one of `APPROVE`, `severity below high`,
+`credential finding`, `duplicate of SF-<n>`, `legacy schema`. When some critical or high findings got
+a row and others did not, add one `; not recorded (<reason>)` per finding without one, for example
+`Recorded: SF-12 in SECURITY_FINDINGS.md; not recorded (duplicate of SF-4)`.
 
 ---
 

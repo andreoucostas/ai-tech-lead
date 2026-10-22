@@ -1,6 +1,6 @@
 ---
 name: security-gate
-description: "Security gate on changed code: spawns the security-auditor subagent and cross-checks tenant isolation and shared-library auth patterns. It does not append findings; credential incidents require restricted human handling and never mutate Git automatically."
+description: "Security gate on changed code: spawns the security-auditor subagent, cross-checks tenant isolation and shared-library auth patterns, and records only repository-safe critical/high findings in SECURITY_FINDINGS.md. Credential incidents require restricted human handling and never mutate Git automatically."
 argument-hint: "[files (uncommitted filter) | whole-files: files | A..B | A...B; empty = uncommitted changes]"
 ---
 
