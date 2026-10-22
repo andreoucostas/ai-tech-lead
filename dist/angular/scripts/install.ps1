@@ -2497,31 +2497,44 @@ if ($hiddenShipped.Count -gt 0) {
 # This release ignores the audit log, so a copy a team tracked under an older one stays tracked and nothing else would say so.
 # Asked once, for an update or brownfield install (greenfield has nothing tracked), and only answered with a command: the installer
 # never changes the index. The preflight has already refused routed Git state and a repository Git cannot read, so $null is Git
-# failing this one question inside a work tree; @() is not tracked, or no work tree. Each record is the path as Git records it,
-# which a checkout that ignores case can hold as .CLAUDE/AI-AUDIT.LOG (git rm matches case-sensitively, so the shipped spelling
-# would untrack nothing), and whether the entry is skip-worktree (an 'S' or 's' tag in ls-files -v), which git rm --cached refuses
-# until the flag is cleared.
+# failing this one question inside a work tree; @() is not tracked, or no work tree. Git folds case only below the folder it runs
+# in, and takes that folder's spelling from the disk, which a checkout on a case-insensitive disk keeps after Git recorded another
+# (MY APP/ for My App/), so a pathspec run from the target cannot find the log. The target's prefix is read instead and the log
+# asked for anywhere in the repository (an icase glob), then matched here to the prefix and name ignoring case. Each record is the
+# path from the repository root as Git records it, and whether the entry is skip-worktree (an 'S' or 's' tag in ls-files -v),
+# which git rm --cached refuses until the flag is cleared.
 $auditLogRelative = '.claude/ai-audit.log'
 function Get-TrackedAuditLog {
     $gitPath = Get-WorkTreeGit
     if (-not $gitPath) { return , @() }
-    $records = Invoke-GitRecords -GitPath $gitPath -Arguments @('--no-optional-locks', '-C', $tgt, 'ls-files', '-v', '-z', '--cached', '--', ":(icase,literal)$auditLogRelative")
+    $prefix = Invoke-GitRecords -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--show-prefix')
+    if ($null -eq $prefix) { return $null }
+    $prefix = (@($prefix) -join '').TrimEnd([char]13, [char]10)
+    $records = Invoke-GitRecords -GitPath $gitPath -Arguments @('--no-optional-locks', '-C', $tgt, 'ls-files', '-v', '-z', '--cached', '--full-name', '--', ":(top,icase,glob)**/$auditLogRelative")
     if ($null -eq $records) { return $null }
-    # The file itself: a pathspec also matches a path below a directory of that name.
-    return , @(@($records) | Where-Object { $_.Length -gt 2 -and [string]::Equals($_.Substring(2), $auditLogRelative, [StringComparison]::OrdinalIgnoreCase) } |
+    # This target's log: the glob also finds the logs of other installs in the repository.
+    return , @(@($records) | Where-Object { $_.Length -gt 2 -and [string]::Equals($_.Substring(2), $prefix + $auditLogRelative, [StringComparison]::OrdinalIgnoreCase) } |
         ForEach-Object { [pscustomobject]@{ Path = $_.Substring(2); Skipped = ($_[0] -ceq 'S' -or $_[0] -ceq 's') } })
+}
+# A path as a developer pastes it into PowerShell: bare when it holds only characters no shell reads specially, else in single
+# quotes with each quote doubled. git rm reads its argument as a pathspec, so a name with a glob character is given as :(literal).
+function Format-PastedGitPath {
+    param([Parameter(Mandatory = $true)][string]$Path, [switch]$Pathspec)
+    if ($Pathspec -and $Path -match '[\[\]*?\\]') { $Path = ":(literal)$Path" }
+    if ($Path -cmatch '^[A-Za-z0-9_./-]+$') { return $Path }
+    return "'" + $Path.Replace("'", "''") + "'"
 }
 if ($updateMode -or $adoptMode) {
     $trackedLog = Get-TrackedAuditLog
     if ($null -eq $trackedLog) {
-        Write-Output "CANT-VERIFY: Git could not say whether it tracks $auditLogRelative, which this release ignores (.claude/.gitignore), so this $runName cannot tell you whether to untrack it. In the folder you installed into, run  git ls-files -- `":(icase,literal)$auditLogRelative`"  and, if it prints a path, untrack that path with  git rm --cached -- <path>  as docs/upgrade-checklist.md describes, and commit that with the copied files."
+        Write-Output "CANT-VERIFY: Git could not say whether it tracks $auditLogRelative, which this release ignores (.claude/.gitignore), so this $runName cannot tell you whether to untrack it. From the repository root, run  git ls-files -- `":(icase,glob)**/$auditLogRelative`"  and, if it prints this folder's path, untrack that path with  git rm --cached -- <path>  as docs/upgrade-checklist.md describes, and commit that with the copied files."
     } elseif ($trackedLog.Count -gt 0) {
         # One name per spelling: an unmerged entry has a record for each stage.
         $logPaths = @($trackedLog | ForEach-Object { $_.Path } | Select-Object -Unique)
-        $untrack = "git rm --cached -- $($logPaths -join ' ')"
-        $how = "From the folder you installed into, untrack it with  $untrack"
+        $untrack = "git rm --cached -- $(@($logPaths | ForEach-Object { Format-PastedGitPath -Path $_ -Pathspec }) -join ' ')"
+        $how = "From the repository root, untrack it with  $untrack"
         if (@($trackedLog | Where-Object { $_.Skipped }).Count -gt 0) {
-            $how = "Git marks it skip-worktree, which git rm refuses. From the folder you installed into, untrack it with  git update-index --no-skip-worktree -- $($logPaths -join ' ')  and then  $untrack"
+            $how = "Git marks it skip-worktree, which git rm refuses. From the repository root, untrack it with  git update-index --no-skip-worktree -- $(@($logPaths | ForEach-Object { Format-PastedGitPath -Path $_ }) -join ' ')  and then  $untrack"
         }
         Write-Output "NOTICE: Git tracks $($logPaths -join ', '), which this release ignores (.claude/.gitignore). It is local hook telemetry, not compliance evidence, and every developer's copy differs. $how  and commit that with the copied files; your local file stays. An older CLAUDE.md that said to keep it in version control is superseded; docs/upgrade-checklist.md has the step and says what to check if Git refuses."
     }

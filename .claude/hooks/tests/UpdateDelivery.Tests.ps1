@@ -1321,17 +1321,19 @@ function New-B454Target {
     return $t
 }
 
-# The commands a NOTICE prints between "untrack it with  " and "  and commit that", run in $Target as a developer pastes them.
+# The commands a NOTICE prints between "untrack it with  " and "  and commit that", run from $Root, the repository root the NOTICE
+# names, by the shell they are printed for: PowerShell reads each one as a developer's paste would.
 function Invoke-B454PrintedCommands {
-    param([Parameter(Mandatory)][string]$Output, [Parameter(Mandatory)][string]$Target)
-    $m = [regex]::Match($Output, 'untrack it with  (git [^\r\n]*?)  and commit that')
-    Assert $m.Success "no untrack command in the handoff: $Output"
-    foreach ($command in ($m.Groups[1].Value -split '  and then  ')) {
-        $words = @($command -split ' ')
-        Assert ($words[0] -ceq 'git') "the printed command does not start with git: $command"
-        $result = (& git -C $Target @($words[1..($words.Count - 1)]) 2>&1 | Out-String)
-        Assert ($LASTEXITCODE -eq 0) "the printed command '$command' failed (exit $LASTEXITCODE): $result"
-    }
+    param([Parameter(Mandatory)][string]$Output, [Parameter(Mandatory)][string]$Root)
+    $m = [regex]::Match($Output, 'From the repository root, untrack it with  (git [^\r\n]*?)  and commit that')
+    Assert $m.Success "no untrack command run from the repository root in the handoff: $Output"
+    Push-Location -LiteralPath $Root
+    try {
+        foreach ($command in ($m.Groups[1].Value -split '  and then  ')) {
+            $result = (Invoke-Expression "$command 2>&1" | Out-String)
+            Assert ($LASTEXITCODE -eq 0) "the printed command '$command' failed in $Root (exit $LASTEXITCODE): $result"
+        }
+    } finally { Pop-Location }
     return $m.Groups[1].Value
 }
 
@@ -1347,7 +1349,7 @@ It 'B-454 an update that finds .claude/ai-audit.log tracked prints one NOTICE wi
         Assert (@(& git -C $t ls-files -- .claude/ai-audit.log).Count -eq 1) 'the installer untracked the log itself'
         Assert (Test-B194BytesEqual $logBytes ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log')))) 'the installer changed the local log'
 
-        $command = Invoke-B454PrintedCommands -Output $out -Target $t
+        $command = Invoke-B454PrintedCommands -Output $out -Root $t
         Assert ($command -ceq 'git rm --cached -- .claude/ai-audit.log') "unexpected command: $command"
         Assert (@(& git -C $t ls-files -- ':(icase,literal).claude/ai-audit.log').Count -eq 0) 'the printed command left the log tracked'
         Assert (Test-B194BytesEqual $logBytes ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log')))) 'the printed command changed the local log'
@@ -1372,7 +1374,7 @@ It 'B-454 a brownfield install that finds .claude/ai-audit.log tracked prints th
         $out = Invoke-Installer -Dist 'dotnet' -Target $t
         Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: brownfield') "the brownfield install failed (exit $LASTEXITCODE): $out"
         Assert ($out -cmatch '(?m)^NOTICE: Git tracks \.claude/ai-audit\.log, which this release ignores [^\r\n]*untrack it with  git rm --cached -- \.claude/ai-audit\.log  and commit that') "the brownfield handoff does not name the tracked log: $out"
-        [void](Invoke-B454PrintedCommands -Output $out -Target $t)
+        [void](Invoke-B454PrintedCommands -Output $out -Root $t)
         Assert (@(& git -C $t ls-files -- .claude/ai-audit.log).Count -eq 0) 'the printed command left the log tracked'
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
@@ -1387,7 +1389,7 @@ It 'B-454 a log Git tracks in another letter case is named as Git records it, so
         $out = Invoke-Installer -Dist 'dotnet' -Target $t
         Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: update') "the update failed (exit $LASTEXITCODE): $out"
         Assert ($out -cmatch '(?m)^NOTICE: Git tracks \.CLAUDE/AI-AUDIT\.LOG, which this release ignores [^\r\n]*untrack it with  git rm --cached -- \.CLAUDE/AI-AUDIT\.LOG  and commit that') "the handoff does not name the log as Git records it: $out"
-        [void](Invoke-B454PrintedCommands -Output $out -Target $t)
+        [void](Invoke-B454PrintedCommands -Output $out -Root $t)
         Assert (@(& git -C $t ls-files -- ':(icase,literal).claude/ai-audit.log').Count -eq 0) 'the printed command left the log tracked'
         Assert (Test-Path -LiteralPath (Join-Path $t '.claude/ai-audit.log') -PathType Leaf) 'the printed command removed the local log'
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
@@ -1401,7 +1403,7 @@ It 'B-454 a tracked log marked skip-worktree gets the command pair that untracks
         $out = Invoke-Installer -Dist 'dotnet' -Target $t
         Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: update') "the update failed (exit $LASTEXITCODE): $out"
         Assert ($out -cmatch '(?m)^NOTICE: Git tracks \.claude/ai-audit\.log, which this release ignores [^\r\n]*untrack it with  git update-index --no-skip-worktree -- \.claude/ai-audit\.log  and then  git rm --cached -- \.claude/ai-audit\.log  and commit that') "the handoff does not give the skip-worktree command pair: $out"
-        $command = Invoke-B454PrintedCommands -Output $out -Target $t
+        $command = Invoke-B454PrintedCommands -Output $out -Root $t
         Assert ($command -match 'no-skip-worktree') "unexpected command: $command"
         Assert (@(& git -C $t ls-files -- ':(icase,literal).claude/ai-audit.log').Count -eq 0) 'the printed commands left the log tracked'
         Assert (Test-B194BytesEqual $logBytes ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log')))) 'the printed commands changed the local log'
@@ -1432,6 +1434,97 @@ It 'B-454 when Git cannot say whether it tracks the log inside a work tree, the 
         $plainCapture = Invoke-B194Installer -Target $plain -PowerShellExe (Get-PsExe) -Environment $environment
         Assert ($plainCapture.Started -and $plainCapture.Exit -eq 0 -and $plainCapture.Out -match 'Done \(update\)') "the plain update did not finish (exit $($plainCapture.Exit)): stdout=[$($plainCapture.Out)] stderr=[$($plainCapture.Err)]"
         Assert ($plainCapture.Out -notmatch '(?m)^(NOTICE: Git tracks|CANT-VERIFY: Git could not say whether it tracks)') "a target outside a work tree got an audit-log line: $($plainCapture.Out)"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# The fresh-session attack's fixture: a target one folder below the repository root, 'My App' on disk, whose files Git records
+# below 'MY APP/' (two git mv and a commit) while the disk folder is set back to 'My App' by two renames, as a checkout on a
+# case-insensitive disk keeps the old spelling. Git takes the prefix from the disk, so a pathspec run from the folder does not
+# fold its case: status is clean and the log is tracked, yet 'ls-files :(icase,literal).claude/ai-audit.log' finds nothing there.
+function New-B454DriftTarget {
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Name, [switch]$SkipWorktree)
+    $repo = New-B309GitTarget -Root $Root -Name $Name -Ignore "bin/`n"
+    $t = Join-Path $repo 'My App'
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    $first = Invoke-Installer -Dist 'dotnet' -Target $t
+    Assert ($LASTEXITCODE -eq 0 -and $first -match 'mode: greenfield') "calibration: the first install failed (exit $LASTEXITCODE): $first"
+    [IO.File]::WriteAllText((Join-Path $t '.claude/ai-audit.log'), "2026-05-01T09:00:00Z main src/Orders.cs`n", [Text.UTF8Encoding]::new($false))
+    & git -C $repo add -A
+    & git -C $repo add -f -- 'My App/.claude/ai-audit.log'
+    & git -C $repo commit -qm 'framework install'
+    & git -C $repo mv 'My App' 'b454-tmp'
+    & git -C $repo mv 'b454-tmp' 'MY APP'
+    & git -C $repo commit -qm 'folder case'
+    Rename-Item -LiteralPath (Join-Path $repo 'MY APP') -NewName 'b454-tmp'
+    Rename-Item -LiteralPath (Join-Path $repo 'b454-tmp') -NewName 'My App'
+    if ($SkipWorktree) { & git -C $repo update-index --skip-worktree -- 'MY APP/.claude/ai-audit.log' }
+    Assert (@(Get-ChildItem -LiteralPath $repo -Directory -Force | Where-Object { $_.Name -ceq 'My App' }).Count -eq 1) 'calibration: the disk folder is not My App'
+    Assert (@(& git -C $repo ls-files | Where-Object { $_ -ceq 'MY APP/.claude/ai-audit.log' }).Count -eq 1) 'calibration: Git does not record the log below MY APP/'
+    Assert (@(& git -C $t ls-files -- ':(icase,literal).claude/ai-audit.log').Count -eq 0) 'calibration: the pathspec run from the folder finds the log'
+    Assert ((& git -C $repo status --porcelain --untracked-files=all | Out-String).Trim() -eq '') 'calibration: the drift fixture is not clean before the update'
+    return [pscustomobject]@{ Repo = $repo; Target = $t }
+}
+
+It 'B-454 attack: a subfolder install whose folder Git records in another letter case than the disk holds is still found, and the printed commands, run from the repository root, untrack the log, skip-worktree or not' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b454-drift-' + [guid]::NewGuid())
+    try {
+        foreach ($skip in $false, $true) {
+            $label = if ($skip) { 'skip-worktree' } else { 'plain' }
+            $fixture = New-B454DriftTarget -Root $root -Name "drift-$label" -SkipWorktree:$skip
+            $logBytes = [IO.File]::ReadAllBytes((Join-Path $fixture.Target '.claude/ai-audit.log'))
+            $out = Invoke-Installer -Dist 'dotnet' -Target $fixture.Target
+            Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: update') "${label}: the update failed (exit $LASTEXITCODE): $out"
+            Assert (@([regex]::Matches($out, '(?m)^NOTICE: Git tracks MY APP/\.claude/ai-audit\.log, which this release ignores \(\.claude/\.gitignore\)\. ')).Count -eq 1) "${label}: the handoff has not exactly one NOTICE naming the log as Git records it: $out"
+            Assert ($out -notmatch '(?m)^CANT-VERIFY: Git could not say whether it tracks') "${label}: the handoff also says Git could not answer: $out"
+            $expected = if ($skip) { "git update-index --no-skip-worktree -- 'MY APP/.claude/ai-audit.log'  and then  git rm --cached -- 'MY APP/.claude/ai-audit.log'" } else { "git rm --cached -- 'MY APP/.claude/ai-audit.log'" }
+            $command = Invoke-B454PrintedCommands -Output $out -Root $fixture.Repo
+            Assert ($command -ceq $expected) "${label}: unexpected command: $command"
+            Assert (@(& git -C $fixture.Repo ls-files -- ':(top,icase,glob)**/.claude/ai-audit.log').Count -eq 0) "${label}: the printed commands left the log tracked"
+            Assert (Test-B194BytesEqual $logBytes ([IO.File]::ReadAllBytes((Join-Path $fixture.Target '.claude/ai-audit.log')))) "${label}: the printed commands changed the local log"
+        }
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-454 attack: a target folder named with spaces, brackets, a quote and a dollar sign gets a printed command that works when pasted into PowerShell, and the CANT-VERIFY query is run from the repository root' {
+    $gitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $gitCommand) { Skip 'B-454 attack: special folder name' 'git is unavailable'; return }
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b454-name-' + [guid]::NewGuid())
+    try {
+        # Windows allows each of these in a folder name; git rm reads its argument as a pathspec, so [App] needs ':(literal)'.
+        $folder = "Dev [App] it's `$x"
+        $repo = New-B309GitTarget -Root $root -Name 'repo' -Ignore "bin/`n"
+        $t = Join-Path $repo $folder
+        New-Item -ItemType Directory -Force -Path $t | Out-Null
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $first -match 'mode: greenfield') "calibration: the first install failed (exit $LASTEXITCODE): $first"
+        [IO.File]::WriteAllText((Join-Path $t '.claude/ai-audit.log'), "2026-05-01T09:00:00Z main src/Orders.cs`n", [Text.UTF8Encoding]::new($false))
+        & git -C $repo add -A
+        & git -C $repo --literal-pathspecs add -f -- "$folder/.claude/ai-audit.log"
+        & git -C $repo commit -qm 'framework install'
+        Assert (@(& git -C $repo ls-files | Where-Object { $_ -ceq "$folder/.claude/ai-audit.log" }).Count -eq 1) 'calibration: Git does not track the log below the odd folder'
+        Assert ((& git -C $repo status --porcelain --untracked-files=all | Out-String).Trim() -eq '') 'calibration: the fixture is not clean before the update'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: update') "the update failed (exit $LASTEXITCODE): $out"
+        $expected = "git rm --cached -- '" + ":(literal)$folder/.claude/ai-audit.log".Replace("'", "''") + "'"
+        $command = Invoke-B454PrintedCommands -Output $out -Root $repo
+        Assert ($command -ceq $expected) "unexpected command: $command"
+        Assert (@(& git -C $repo ls-files -- ':(top,icase,glob)**/.claude/ai-audit.log').Count -eq 0) 'the printed command left the log tracked'
+
+        # The CANT-VERIFY line's query must find a case-drifted log from the repository root, whatever folder the update ran in.
+        $gitConfig = Join-Path $root 'empty.gitconfig'
+        [IO.File]::WriteAllText($gitConfig, '', [Text.UTF8Encoding]::new($false))
+        $stubBin = Join-Path $root 'ls-files-fails-bin'
+        New-Item -ItemType Directory -Force -Path $stubBin | Out-Null
+        [IO.File]::WriteAllText((Join-Path $stubBin 'git.cmd'), "@echo off`r`necho %*| findstr /C:`"ls-files`" >nul`r`nif not errorlevel 1 exit /b 86`r`n`"%B454_REAL_GIT%`" %*`r`nexit /b %ERRORLEVEL%`r`n", [Text.ASCIIEncoding]::new())
+        $hostPath = (@($stubBin, (Split-Path -Parent (Get-PsExe)), (Join-Path $env:SystemRoot 'System32'), $env:SystemRoot) | Select-Object -Unique) -join [IO.Path]::PathSeparator
+        $drift = New-B454DriftTarget -Root $root -Name 'drift-cv'
+        $capture = Invoke-B194Installer -Target $drift.Target -PowerShellExe (Get-PsExe) -Environment @{ PATH = $hostPath; B194_PS_PATH = $hostPath; B454_REAL_GIT = $gitCommand.Source; GIT_CONFIG_GLOBAL = $gitConfig }
+        $line = [regex]::Match($capture.Out, '(?m)^CANT-VERIFY: Git could not say whether it tracks \.claude/ai-audit\.log[^\r\n]*$')
+        Assert $line.Success "no CANT-VERIFY line names the log: stdout=[$($capture.Out)] stderr=[$($capture.Err)]"
+        Assert ($line.Value -match 'From the repository root, run  git ls-files -- "([^"]+)"') "the CANT-VERIFY query is not run from the repository root: $($line.Value)"
+        Push-Location -LiteralPath $drift.Repo
+        try { $found = @(& git ls-files -- $Matches[1]) } finally { Pop-Location }
+        Assert ($found.Count -eq 1 -and $found[0] -ceq 'MY APP/.claude/ai-audit.log') "the printed query does not find the case-drifted log from the repository root: [$($found -join ',')]"
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
