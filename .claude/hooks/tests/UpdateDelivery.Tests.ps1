@@ -1295,6 +1295,146 @@ It 'B-313 the handoff names framework files the consumer''s ignore rules hide, a
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# B-454: this release ignores .claude/ai-audit.log, so a copy a team tracked under an older release stays tracked. The fixture
+# is a greenfield install committed as a team would have, with the log tracked as $Log says; a developer's log differs, so
+# the committed bytes are not the shipped (empty) file. 'case' tracks it as .CLAUDE/AI-AUDIT.LOG, which a checkout that
+# ignores case can; 'skip-worktree' is the flag that makes a team's local log writes invisible to git status.
+function New-B454Target {
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][ValidateSet('untracked', 'tracked', 'case', 'skip-worktree')][string]$Log)
+    $t = New-B309GitTarget -Root $Root -Name $Name -Ignore "bin/`n"
+    $first = Invoke-Installer -Dist 'dotnet' -Target $t
+    Assert ($LASTEXITCODE -eq 0 -and $first -match 'mode: greenfield') "calibration: the first install failed (exit $LASTEXITCODE): $first"
+    $logPath = Join-Path $t '.claude/ai-audit.log'
+    Assert (Test-Path -LiteralPath $logPath -PathType Leaf) "calibration: the install wrote no .claude/ai-audit.log: $first"
+    [IO.File]::WriteAllText($logPath, "2026-05-01T09:00:00Z main src/Orders.cs`n", [Text.UTF8Encoding]::new($false))
+    & git -C $t add -A
+    if ($Log -in 'tracked', 'skip-worktree') { & git -C $t add -f -- .claude/ai-audit.log }
+    if ($Log -eq 'case') {
+        $blob = (& git -C $t hash-object -w -- $logPath | Out-String).Trim()
+        & git -C $t update-index --add --cacheinfo "100644,$blob,.CLAUDE/AI-AUDIT.LOG"
+    }
+    & git -C $t commit -qm 'framework install'
+    if ($Log -eq 'skip-worktree') { & git -C $t update-index --skip-worktree -- .claude/ai-audit.log }
+    $tracked = @(& git -C $t ls-files -- ':(icase,literal).claude/ai-audit.log')
+    Assert (($Log -eq 'untracked') -eq ($tracked.Count -eq 0)) "calibration: the $Log fixture tracks [$($tracked -join ',')]"
+    Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String).Trim() -eq '') "calibration: the $Log fixture is not clean before the update"
+    return $t
+}
+
+# The commands a NOTICE prints between "untrack it with  " and "  and commit that", run in $Target as a developer pastes them.
+function Invoke-B454PrintedCommands {
+    param([Parameter(Mandatory)][string]$Output, [Parameter(Mandatory)][string]$Target)
+    $m = [regex]::Match($Output, 'untrack it with  (git [^\r\n]*?)  and commit that')
+    Assert $m.Success "no untrack command in the handoff: $Output"
+    foreach ($command in ($m.Groups[1].Value -split '  and then  ')) {
+        $words = @($command -split ' ')
+        Assert ($words[0] -ceq 'git') "the printed command does not start with git: $command"
+        $result = (& git -C $Target @($words[1..($words.Count - 1)]) 2>&1 | Out-String)
+        Assert ($LASTEXITCODE -eq 0) "the printed command '$command' failed (exit $LASTEXITCODE): $result"
+    }
+    return $m.Groups[1].Value
+}
+
+It 'B-454 an update that finds .claude/ai-audit.log tracked prints one NOTICE with the command that untracks it and changes nothing itself, and prints none when the log is untracked' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b454-' + [guid]::NewGuid())
+    try {
+        $t = New-B454Target -Root $root -Name 'tracked' -Log 'tracked'
+        $logBytes = [IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: update') "the update failed (exit $LASTEXITCODE): $out"
+        $notice = '(?m)^NOTICE: Git tracks \.claude/ai-audit\.log, which this release ignores \(\.claude/\.gitignore\)\. It is local hook telemetry, not compliance evidence, and every developer''s copy differs\. [^\r\n]*untrack it with  git rm --cached -- \.claude/ai-audit\.log  and commit that with the copied files; your local file stays\. [^\r\n]*docs/upgrade-checklist\.md'
+        Assert (@([regex]::Matches($out, $notice)).Count -eq 1) "the handoff has not exactly one NOTICE naming the tracked log and its untrack command: $out"
+        Assert (@(& git -C $t ls-files -- .claude/ai-audit.log).Count -eq 1) 'the installer untracked the log itself'
+        Assert (Test-B194BytesEqual $logBytes ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log')))) 'the installer changed the local log'
+
+        $command = Invoke-B454PrintedCommands -Output $out -Target $t
+        Assert ($command -ceq 'git rm --cached -- .claude/ai-audit.log') "unexpected command: $command"
+        Assert (@(& git -C $t ls-files -- ':(icase,literal).claude/ai-audit.log').Count -eq 0) 'the printed command left the log tracked'
+        Assert (Test-B194BytesEqual $logBytes ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log')))) 'the printed command changed the local log'
+
+        $untracked = New-B454Target -Root $root -Name 'untracked' -Log 'untracked'
+        $quiet = Invoke-Installer -Dist 'dotnet' -Target $untracked
+        Assert ($LASTEXITCODE -eq 0 -and $quiet -match 'mode: update') "the update over an untracked log failed (exit $LASTEXITCODE): $quiet"
+        Assert ($quiet -notmatch '(?m)^(NOTICE: Git tracks|CANT-VERIFY: Git could not say whether it tracks)') "an untracked log produced an audit-log line: $quiet"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-454 a brownfield install that finds .claude/ai-audit.log tracked prints the same NOTICE' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b454-brown-' + [guid]::NewGuid())
+    try {
+        $t = New-B309GitTarget -Root $root -Name 'target' -Ignore "bin/`n"
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+        [IO.File]::WriteAllText((Join-Path $t '.claude/ai-audit.log'), "2026-05-01T09:00:00Z main src/Orders.cs`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $t 'TECH_DEBT.md'), "# team debt`n", [Text.UTF8Encoding]::new($false))
+        & git -C $t add TECH_DEBT.md
+        & git -C $t add -f -- .claude/ai-audit.log
+        & git -C $t commit -qm 'team debt and a tracked log'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: brownfield') "the brownfield install failed (exit $LASTEXITCODE): $out"
+        Assert ($out -cmatch '(?m)^NOTICE: Git tracks \.claude/ai-audit\.log, which this release ignores [^\r\n]*untrack it with  git rm --cached -- \.claude/ai-audit\.log  and commit that') "the brownfield handoff does not name the tracked log: $out"
+        [void](Invoke-B454PrintedCommands -Output $out -Target $t)
+        Assert (@(& git -C $t ls-files -- .claude/ai-audit.log).Count -eq 0) 'the printed command left the log tracked'
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-454 a log Git tracks in another letter case is named as Git records it, so the printed command untracks it' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b454-case-' + [guid]::NewGuid())
+    try {
+        $t = New-B454Target -Root $root -Name 'case' -Log 'case'
+        # Calibration: the shipped spelling does not untrack the variant, so a command that used it would fail on this checkout.
+        & git -C $t rm --cached --dry-run -q -- .claude/ai-audit.log 2>&1 | Out-Null
+        Assert ($LASTEXITCODE -ne 0) 'calibration: git rm accepts the shipped spelling for a log tracked as .CLAUDE/AI-AUDIT.LOG'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: update') "the update failed (exit $LASTEXITCODE): $out"
+        Assert ($out -cmatch '(?m)^NOTICE: Git tracks \.CLAUDE/AI-AUDIT\.LOG, which this release ignores [^\r\n]*untrack it with  git rm --cached -- \.CLAUDE/AI-AUDIT\.LOG  and commit that') "the handoff does not name the log as Git records it: $out"
+        [void](Invoke-B454PrintedCommands -Output $out -Target $t)
+        Assert (@(& git -C $t ls-files -- ':(icase,literal).claude/ai-audit.log').Count -eq 0) 'the printed command left the log tracked'
+        Assert (Test-Path -LiteralPath (Join-Path $t '.claude/ai-audit.log') -PathType Leaf) 'the printed command removed the local log'
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-454 a tracked log marked skip-worktree gets the command pair that untracks it, since git rm --cached alone is refused there' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b454-skip-' + [guid]::NewGuid())
+    try {
+        $t = New-B454Target -Root $root -Name 'skip' -Log 'skip-worktree'
+        $logBytes = [IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log'))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: update') "the update failed (exit $LASTEXITCODE): $out"
+        Assert ($out -cmatch '(?m)^NOTICE: Git tracks \.claude/ai-audit\.log, which this release ignores [^\r\n]*untrack it with  git update-index --no-skip-worktree -- \.claude/ai-audit\.log  and then  git rm --cached -- \.claude/ai-audit\.log  and commit that') "the handoff does not give the skip-worktree command pair: $out"
+        $command = Invoke-B454PrintedCommands -Output $out -Target $t
+        Assert ($command -match 'no-skip-worktree') "unexpected command: $command"
+        Assert (@(& git -C $t ls-files -- ':(icase,literal).claude/ai-audit.log').Count -eq 0) 'the printed commands left the log tracked'
+        Assert (Test-B194BytesEqual $logBytes ([IO.File]::ReadAllBytes((Join-Path $t '.claude/ai-audit.log')))) 'the printed commands changed the local log'
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-454 when Git cannot say whether it tracks the log inside a work tree, the handoff has a CANT-VERIFY line naming it; outside one it says nothing' {
+    $gitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $gitCommand) { Skip 'B-454 Git cannot answer' 'git is unavailable'; return }
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b454-cv-' + [guid]::NewGuid())
+    try {
+        $t = New-B454Target -Root $root -Name 'target' -Log 'tracked'
+        $gitConfig = Join-Path $root 'empty.gitconfig'
+        [IO.File]::WriteAllText($gitConfig, '', [Text.UTF8Encoding]::new($false))
+        # Git that answers every question except ls-files, which this update asks only about the log: the work tree is confirmed, then the question fails.
+        $stubBin = Join-Path $root 'ls-files-fails-bin'
+        New-Item -ItemType Directory -Force -Path $stubBin | Out-Null
+        [IO.File]::WriteAllText((Join-Path $stubBin 'git.cmd'), "@echo off`r`necho %*| findstr /C:`"ls-files`" >nul`r`nif not errorlevel 1 exit /b 86`r`n`"%B454_REAL_GIT%`" %*`r`nexit /b %ERRORLEVEL%`r`n", [Text.ASCIIEncoding]::new())
+        $hostPath = (@($stubBin, (Split-Path -Parent (Get-PsExe)), (Join-Path $env:SystemRoot 'System32'), $env:SystemRoot) | Select-Object -Unique) -join [IO.Path]::PathSeparator
+        $environment = @{ PATH = $hostPath; B194_PS_PATH = $hostPath; B454_REAL_GIT = $gitCommand.Source; GIT_CONFIG_GLOBAL = $gitConfig }
+        $capture = Invoke-B194Installer -Target $t -PowerShellExe (Get-PsExe) -Environment $environment
+        Assert ($capture.Started -and $capture.Exit -eq 0 -and $capture.Out -match 'mode: update' -and $capture.Out -match 'Done \(update\)') "the update did not finish (exit $($capture.Exit)): stdout=[$($capture.Out)] stderr=[$($capture.Err)]"
+        Assert (@([regex]::Matches($capture.Out, '(?m)^CANT-VERIFY: Git could not say whether it tracks \.claude/ai-audit\.log[^\r\n]*docs/upgrade-checklist\.md')).Count -eq 1) "no single CANT-VERIFY line names the log: $($capture.Out)"
+        Assert ($capture.Out -notmatch '(?m)^NOTICE: Git tracks') "a NOTICE was printed although Git could not answer: $($capture.Out)"
+
+        # No work tree: nothing is tracked, so a Git that fails on everything is silent, as it is for the ignore rules.
+        $plain = New-B194UpdateTarget -Parent $root -Name 'plain'
+        $plainCapture = Invoke-B194Installer -Target $plain -PowerShellExe (Get-PsExe) -Environment $environment
+        Assert ($plainCapture.Started -and $plainCapture.Exit -eq 0 -and $plainCapture.Out -match 'Done \(update\)') "the plain update did not finish (exit $($plainCapture.Exit)): stdout=[$($plainCapture.Out)] stderr=[$($plainCapture.Err)]"
+        Assert ($plainCapture.Out -notmatch '(?m)^(NOTICE: Git tracks|CANT-VERIFY: Git could not say whether it tracks)') "a target outside a work tree got an audit-log line: $($plainCapture.Out)"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 It 'B-309 when Git answers that nothing is ignored, the handoff does not guess' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b309-none-' + [guid]::NewGuid())
     try {

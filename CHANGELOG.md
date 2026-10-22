@@ -32,6 +32,17 @@ the `$isAngular` branch is gone, so all three stacks take the appending case, wh
 are new (the floor sentence, the row content, the `SF-<n>` rule over the register and its archive, the `Recorded:` line with its mixed form, the Copilot note exactly once), 6 to 11 in all; the credential
 no-mutation assertion lost its now-dead `Do not append findings` alternative.
 
+`src/core/scripts/install.ps1` (guarded, step 4 pending; B-454, field report #10): the shipped `.claude/.gitignore` has ignored `.claude/ai-audit.log` since 0.86.6, but an update copies the
+log only when absent and its handoff said nothing about a copy a team had tracked under an older release, so the team had to work out that `git rm --cached` was right and that dropping the log from
+Git is acceptable. An update or brownfield install (greenfield has nothing tracked) now asks Git once, after the hidden-files check and through `Get-WorkTreeGit` and `Invoke-GitRecords`
+(`ls-files -v -z --cached` with an `:(icase,literal)` pathspec), and prints one `NOTICE` when it tracks the log: local hook telemetry, not compliance evidence (`docs/reference.md`,
+`docs/enforcement-surfaces.md`), every developer's copy differs, the untrack command to commit with the copied files, the local file stays, an older `CLAUDE.md`'s "keep it in version control" is superseded,
+`docs/upgrade-checklist.md` has the step. Two attacks were executed rather than reasoned: on Git 2.52.0 a log recorded as `.CLAUDE/AI-AUDIT.LOG` is not matched by
+`git rm --cached -- .claude/ai-audit.log` (exit 128, even with `core.ignorecase=true`), so the command names the path as Git records it; and a skip-worktree entry is refused by `git rm --cached` (exit 1, "outside of your
+sparse-checkout definition"), so its NOTICE prints `git update-index --no-skip-worktree -- <path>` and then the `git rm`, both run in a temp repository by the test. Inside a work tree where `ls-files` fails the handoff
+has one `CANT-VERIFY` line naming the path; outside one it is silent, as the ignore-rules read is. The installer still never changes the index or history, copy-if-absent is unchanged and the doctor gets no row (the install
+is the one moment a team is reading). `UpdateDelivery.Tests.ps1`: five cases (tracked and untracked, brownfield, another letter case, skip-worktree, Git failing the question).
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

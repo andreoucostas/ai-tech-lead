@@ -2494,6 +2494,38 @@ if ($hiddenShipped.Count -gt 0) {
 } elseif ($script:IgnoreUnanswered) {
     Write-Output "NOTE: Git could not say whether your ignore rules hide any of the framework's files; check git status --ignored before committing."
 }
+# This release ignores the audit log, so a copy a team tracked under an older one stays tracked and nothing else would say so.
+# Asked once, for an update or brownfield install (greenfield has nothing tracked), and only answered with a command: the installer
+# never changes the index. The preflight has already refused routed Git state and a repository Git cannot read, so $null is Git
+# failing this one question inside a work tree; @() is not tracked, or no work tree. Each record is the path as Git records it,
+# which a checkout that ignores case can hold as .CLAUDE/AI-AUDIT.LOG (git rm matches case-sensitively, so the shipped spelling
+# would untrack nothing), and whether the entry is skip-worktree (an 'S' or 's' tag in ls-files -v), which git rm --cached refuses
+# until the flag is cleared.
+$auditLogRelative = '.claude/ai-audit.log'
+function Get-TrackedAuditLog {
+    $gitPath = Get-WorkTreeGit
+    if (-not $gitPath) { return , @() }
+    $records = Invoke-GitRecords -GitPath $gitPath -Arguments @('--no-optional-locks', '-C', $tgt, 'ls-files', '-v', '-z', '--cached', '--', ":(icase,literal)$auditLogRelative")
+    if ($null -eq $records) { return $null }
+    # The file itself: a pathspec also matches a path below a directory of that name.
+    return , @(@($records) | Where-Object { $_.Length -gt 2 -and [string]::Equals($_.Substring(2), $auditLogRelative, [StringComparison]::OrdinalIgnoreCase) } |
+        ForEach-Object { [pscustomobject]@{ Path = $_.Substring(2); Skipped = ($_[0] -ceq 'S' -or $_[0] -ceq 's') } })
+}
+if ($updateMode -or $adoptMode) {
+    $trackedLog = Get-TrackedAuditLog
+    if ($null -eq $trackedLog) {
+        Write-Output "CANT-VERIFY: Git could not say whether it tracks $auditLogRelative, which this release ignores (.claude/.gitignore), so this $runName cannot tell you whether to untrack it. In the folder you installed into, run  git ls-files -- `":(icase,literal)$auditLogRelative`"  and, if it prints a path, untrack that path with  git rm --cached -- <path>  as docs/upgrade-checklist.md describes, and commit that with the copied files."
+    } elseif ($trackedLog.Count -gt 0) {
+        # One name per spelling: an unmerged entry has a record for each stage.
+        $logPaths = @($trackedLog | ForEach-Object { $_.Path } | Select-Object -Unique)
+        $untrack = "git rm --cached -- $($logPaths -join ' ')"
+        $how = "From the folder you installed into, untrack it with  $untrack"
+        if (@($trackedLog | Where-Object { $_.Skipped }).Count -gt 0) {
+            $how = "Git marks it skip-worktree, which git rm refuses. From the folder you installed into, untrack it with  git update-index --no-skip-worktree -- $($logPaths -join ' ')  and then  $untrack"
+        }
+        Write-Output "NOTICE: Git tracks $($logPaths -join ', '), which this release ignores (.claude/.gitignore). It is local hook telemetry, not compliance evidence, and every developer's copy differs. $how  and commit that with the copied files; your local file stays. An older CLAUDE.md that said to keep it in version control is superseded; docs/upgrade-checklist.md has the step and says what to check if Git refuses."
+    }
+}
 if ($skillsLeftActive.Count -gt 0) {
     [Console]::Error.WriteLine('  Every other step of this update is done. After deleting what is named above, continue with docs/upgrade-checklist.md.')
     exit 3

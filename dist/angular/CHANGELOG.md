@@ -24,6 +24,18 @@
   transcript. It now adds a minimised row for each ordinary critical or high finding, due 7 days after the review for
   critical and 30 for high, and never one for a credential finding. The Copilot `security-gate` skill and the
   `security-auditor` agent say the same. `SECURITY_FINDINGS.md` is yours: an update leaves it as it is.
+- **An update now tells you when Git still tracks `.claude/ai-audit.log`.** The shipped `.claude/.gitignore` has ignored
+  the log since 0.86.6, but a copy your team tracked under an older release stays tracked, and the update said nothing.
+  When Git tracks it, an update or a brownfield install now prints one `NOTICE` (a first install has nothing tracked)
+  that gives the one command that untracks it, `git rm --cached -- .claude/ai-audit.log`, run in the folder you
+  installed into and committed with the copied files; your local file stays. If the log is tracked under another
+  letter case (`.CLAUDE/AI-AUDIT.LOG`), the command names it as Git records it, since `git rm` would not match the
+  shipped spelling; if it is also marked skip-worktree, `git update-index --no-skip-worktree` comes first, since `git rm`
+  refuses such a path. Dropping it from Git is safe: the log is per-developer hook telemetry that was never a complete
+  or tamper-evident record, so it cannot serve as audit evidence; your Git history and the findings register are the
+  records. An older `CLAUDE.md` that said to keep it in version control is superseded, and `docs/upgrade-checklist.md`
+  has the step. When Git cannot say whether it tracks the log, the handoff says so in a `CANT-VERIFY` line naming the
+  path. The update never changes your Git index or history, and it still copies the log only when it is absent.
 
 ## 0.98.2 — 2026-10-20
 
