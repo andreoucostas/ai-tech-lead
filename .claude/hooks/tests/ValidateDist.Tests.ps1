@@ -406,6 +406,29 @@ try {
         Assert ($text.Contains('dotnet : .github/instructions/framework-rules.instructions.md @stack:lean-test resolves to an empty expansion')) "missing-marker-expansion did not name relpath, marker and stack: $text"
     }
 
+    It 'case 20b: a core marker no stack supplies fails single-stack marker expansion; one only another stack supplies passes' {
+        $isolated = New-ValidatorRepoCopy
+        $agents = Join-Path $isolated 'src\core\AGENTS.md'
+        [IO.File]::AppendAllText($agents, "`n<!-- @stack:zz-supplied-by-angular-only -->`n")
+        $angularSnippet = Join-Path $isolated 'src\stacks\angular\snippets\AGENTS.md\zz-supplied-by-angular-only'
+        [IO.File]::WriteAllText($angularSnippet, "angular only`n")
+        $hostExe = (Get-Process -Id $PID).Path
+        $validator = Join-Path $isolated 'scripts\validate-dist.ps1'
+        $dist = Join-Path $isolated 'dist'
+        $out = & $hostExe -NoProfile -ExecutionPolicy Bypass -File $validator dotnet $dist -Check marker-expansion 2>&1
+        $code = $LASTEXITCODE
+        Write-Host "[ValidateDist powershell angular-only-marker] EXIT=$code"
+        Assert ($code -eq 0) "a marker supplied by angular only should pass dotnet: $($out -join "`n")"
+        [IO.File]::AppendAllText($agents, "`n<!-- @stack:zz-typo-no-supplier -->`n")
+        $out = & $hostExe -NoProfile -ExecutionPolicy Bypass -File $validator dotnet $dist -Check marker-expansion 2>&1
+        $code = $LASTEXITCODE
+        $text = $out -join "`n"
+        Write-Host "[ValidateDist powershell unsupplied-marker] EXIT=$code"; Write-Host $text
+        Assert ($code -ne 0) 'an unsupplied core marker should be red in single-stack mode'
+        Assert ($text.Contains('dotnet : AGENTS.md @stack:zz-typo-no-supplier is supplied by no stack')) "unsupplied marker not named with file, marker and dist: $text"
+        Assert (-not $text.Contains('zz-supplied-by-angular-only')) "the angular-only marker was wrongly reported: $text"
+    }
+
     It 'case 22: an empty dist fails the marker scan instead of reporting a vacuous pass' { Assert-Case 'zero-marker-files' { param($d) Get-ChildItem -LiteralPath $d -Force | Remove-Item -Recurse -Force } 'marker scan found zero files' 'markers' }
     It 'case 23: a dist with zero JSON files fails the JSON check' { Assert-Case 'zero-json' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Force -File -Filter *.json | Remove-Item -Force } 'JSON scan found zero files' 'json' }
     It 'case 24: a dist with zero files fails the PowerShell topology scan' { Assert-Case 'zero-topology-files' { param($d) Get-ChildItem -LiteralPath $d -Force | Remove-Item -Recurse -Force } 'PowerShell topology scan found zero files' 'powershell-topology' }

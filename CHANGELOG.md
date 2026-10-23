@@ -65,6 +65,11 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+`validate-dist` single-stack `marker-expansion` now fails a core `@stack:NAME` marker that no `src/stacks/*/snippets/` supplies anywhere. It skipped any marker fewer than
+two sibling stacks supplied, so a typo such as `<!-- @stack:skils-list -->` in `src/core/AGENTS.md` made `build` drop the line and `validate-dist dotnet` pass. The
+message names the source file, the marker and the dist; a marker supplied by one other stack only still passes. `ValidateDist.Tests.ps1` case 20b was red on the unfixed
+script; the build is unchanged.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload
