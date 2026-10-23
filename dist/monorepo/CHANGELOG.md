@@ -47,6 +47,12 @@
   When an agent host started the hook outside the repository, its throttle records were written there or nowhere, so
   every write ran a full build or type-check. Both hooks now find the repository from their own location and keep
   their records in its `.claude/.state` folder.
+- **The framework doctor's exit code now tells "could not check" from "all fine".** When `framework-doctor.ps1` could not
+  examine something it can normally check (an unreadable `framework-version.json`, `settings.json` or `hooks.json`,
+  `template-checks` that would not run, Git hook state it could not inspect), it printed `[CANT-VERIFY]` and still exited
+  0, so a script reading the exit code saw success. It now exits 1 when a check is `MISSING`, 2 when none is missing but
+  at least one check could not be examined (and prints how many), and 0 otherwise. The checks the doctor can never run
+  itself, the agent-host canaries listed at the end, still do not change the exit code.
 
 ## 0.98.2 — 2026-10-20
 
