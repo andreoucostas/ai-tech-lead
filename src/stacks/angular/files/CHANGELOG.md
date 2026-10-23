@@ -63,6 +63,11 @@
   `framework-ownership.json` lists. If that file is missing, the full scan stays; if it cannot be read, the check
   exits 2 and says so instead of passing.
 
+- **The review-scope capture no longer drops a changed file whose name differs from another only by letter case.**
+  When two changed or untracked paths differed only in case (possible with `core.ignorecase=false` or content from a
+  case-sensitive system), one was missing from the captured file list and the test-weakening scan then rejected the
+  capture as invalid. Both are now kept.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
