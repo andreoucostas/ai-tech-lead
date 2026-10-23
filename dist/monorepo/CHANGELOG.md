@@ -48,6 +48,9 @@
   every write ran a full build or type-check. Both hooks now find the repository from their own location and keep
   their records in its `.claude/.state` folder.
 
+- **An update no longer fails when `LEARNINGS.md` is empty.** If your team emptied that file, the update used to stop with a
+  raw error before showing its plan. It now treats an empty file as disabling no skills and leaves the file alone.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

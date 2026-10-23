@@ -65,6 +65,8 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+**An update no longer crashes on an empty `LEARNINGS.md`.** `install.ps1` read the file with `Get-Content -Raw` and handed the result to `[regex]::Matches`; a 0-byte file yields no output, so the call threw a raw .NET error under `$ErrorActionPreference = 'Stop'` and the update (and `-WhatIf`) exited 1 before printing its plan. An empty file now means no disabled-skill headings. `UpdateDelivery.Tests.ps1` gains the case (install, empty the file, update: exit 0, `mode: update`, file still empty), red on the unfixed installer with `Exception calling "Matches" ... Value cannot be null`.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload
