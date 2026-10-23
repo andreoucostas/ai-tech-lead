@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 
 # Anchor to the repo this script lives in (scripts/..), not the caller's cwd — running from
 # elsewhere must never silently audit the wrong directory.
-Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+Set-Location -LiteralPath (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 
 # In the framework template repo the consumer-state checks (bootstrap markers, adoption pending)
 # don't apply — but the deterministic framework checks DO. Skipping everything here is how

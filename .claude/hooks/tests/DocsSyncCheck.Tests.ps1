@@ -3,7 +3,7 @@
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $psExe = (Get-Process -Id $PID).Path
-$cases = @('PowerShell docs sync', 'AGENTS.md byte budget')
+$cases = @('PowerShell docs sync', 'AGENTS.md byte budget', 'bracketed repository path')
 $failed = 0
 
 function Invoke-DocsSyncCandidate {
@@ -15,6 +15,27 @@ function Invoke-DocsSyncCandidate {
 
 foreach ($case in $cases) {
     $scratch = Join-Path ([IO.Path]::GetTempPath()) ('docs-sync-b217-' + [guid]::NewGuid().ToString('N'))
+    if ($case -eq 'bracketed repository path') {
+        # Set-Location without -LiteralPath read the repository path as a wildcard and died with "does not exist" before any check ran.
+        $plain = $scratch; $bracketed = $scratch + '-[1]'
+        try {
+            foreach ($root in @($plain, $bracketed)) {
+                Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $root -Recurse -Force
+                [IO.File]::Delete((Join-Path $root '.template-repo'))
+            }
+            $expected = Invoke-DocsSyncCandidate -Root $plain
+            $actual = Invoke-DocsSyncCandidate -Root $bracketed
+            if ($actual.Output -match 'does not exist') { throw "the bracketed path was read as a wildcard: $($actual.Output)" }
+            if ($actual.Exit -ne $expected.Exit) { throw "bracketed path exited $($actual.Exit), the same tree at a plain path $($expected.Exit): $($actual.Output)" }
+            Write-Host "[ok] ${case}: the same checks run at a path with [ ] as at a plain one (exit $($actual.Exit))"
+        } catch {
+            $failed++
+            [Console]::Error.WriteLine("[FAIL] ${case}: $($_.Exception.Message)")
+        } finally {
+            foreach ($root in @($plain, $bracketed)) { if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force } }
+        }
+        continue
+    }
     if ($case -eq 'AGENTS.md byte budget') {
         try {
             Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $scratch -Recurse -Force

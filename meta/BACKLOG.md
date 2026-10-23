@@ -195,12 +195,12 @@ The third still holds, so decide first whether a consumer's expectation clears B
 `GIT_NOGLOB_PATHSPECS` and `GIT_ICASE_PATHSPECS` for its own git calls. `src/core/scripts/install.ps1` (its `:(literal)` calls; its GIT_DIR-family refusal at ~243, ~638, ~871)
 and `review-scope.ps1` (~142, ~193-195, ~233-235, ~264) do not, so with `GIT_LITERAL_PATHSPECS=1` set a `:(literal)` path matches nothing. Red case: that variable set around one update.
 
-### B-463 · Bug-hunt batch 2: 26 findings over the eleven scripts B-460 left untouched, captured and not fixed
+### B-463 · Bug-hunt batch 2: 26 findings over the eleven scripts B-460 left untouched; G3 fixed, G1 and G2 open
 **Filed against:** v0.98.2 (2026-10-23)
 **Priority:** P2 · **Effort:** M (three sessions) · **Invariants:** #1 #3 #5 #7
-**Status:** Open; maintainer-requested hunt 2026-10-23 by three audit sessions, every finding executed on pwsh and 5.1 unless the plan says PLAUSIBLE; the maintainer asked for capture only, so nothing was changed.
-Plan `.claude/plans/2026-10-23-bug-hunt-2-b463.md` holds every finding with its `path:line`, repro, fix and red case, in three groups: G1 `guard.ps1` (step 4; the credential exemption reads the absolute path, so `C:\Projects\test\repo` or `D:\Development\repo` disables it), G2 `audit-trail.ps1` and `session-start.ps1` (guarded), G3 the seven ordinary scripts.
-Adjacent, outside the batch: `src/core/scripts/template-checks.ps1` has the same `Set-Location` without `-LiteralPath` as G3 item 2 (B-460 touched that file today) and dies at a repository path containing `[`; `test-weakening-scan.ps1` (:25, :32, :77) and `warehouse-map-check.ps1` (:20) still test the bare `ReparsePoint` attribute, which B-464 C4 replaced in the other four scripts, so a OneDrive folder reads as a link there.
+**Status:** Open; G3 done 2026-10-23 on a session branch that was never merged, landed on master 2026-10-31 (items 1 to 12 and 14 to 16 fixed red first, item 13 closed by decision in `meta/BACKLOG-DONE.md`); G1 and G2 remain open. Hunt: three audit sessions, every finding executed on pwsh and 5.1 unless the plan says PLAUSIBLE.
+Plan `.claude/plans/2026-10-23-bug-hunt-2-b463.md` holds every finding with its `path:line`, repro, fix and red case, in three groups: G1 `guard.ps1` (step 4; the credential exemption reads the absolute path, so `C:\Projects\test\repo` or `D:\Development\repo` disables it), G2 `audit-trail.ps1` and `session-start.ps1` (guarded), G3 the seven ordinary scripts (done).
+Adjacent, outside the batch: `src/core/scripts/template-checks.ps1` has the same `Set-Location` without `-LiteralPath` as G3 item 2 and dies at a repository path containing `[`; `test-weakening-scan.ps1` (:25, :32, :77) still tests the bare `ReparsePoint` attribute, which B-464 C4 replaced in four other scripts and G3 in `warehouse-map-check.ps1`, so a OneDrive folder reads as a link there.
 
 ### B-464 · Bug-hunt batch 3: three leftovers of the 2026-10-24 batch
 **Filed against:** v0.98.2 (2026-10-24)

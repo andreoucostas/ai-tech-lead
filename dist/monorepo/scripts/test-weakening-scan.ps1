@@ -194,7 +194,9 @@ try {
                 if ($normalized -cnotin @($layer.paths)) {
                     throw "INVALID: patch path '$normalized' is absent from the '$($layer.name)' manifest inventory."
                 }
-                $isTest = $normalized -match '(?i)(Tests\.cs$|\.spec\.ts$|\.Tests\.ps1$|(^|/)tests/)'
+                # xUnit/NUnit FooTests.cs and MSTest FooTest.cs; Jasmine, Vitest and Jest *.spec.* and *.test.* in TS or JS;
+                # tests/, test/, spec/ and __tests__/ folders. The old list missed *.test.ts, FooTest.cs and __tests__/.
+                $isTest = $normalized -match '(?i)(Tests?\.cs$|\.(spec|test)\.[cm]?[jt]sx?$|\.Tests\.ps1$|(^|/)(tests?|spec|__tests__)/)'
                 $net = $added - $removed
                 if ($isTest -and $net -lt 0) {
                     $signals.Add([pscustomobject]@{ Layer = [string]$layer.name; Path = $normalized; Removed = $removed; Added = $added; Net = $net }) | Out-Null

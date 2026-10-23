@@ -36,6 +36,17 @@
   or checked-in fixture files as non-hermetic, and `docs/defaults.md` says the same. Nothing to do: no test harness is
   added for you.
 
+- **The framework's own checks and counters no longer give a wrong answer for an unusual path, folder, locale or file name.** `warehouse-map-check` no longer
+  reports "not applicable" for a repository under a OneDrive folder (it skipped synced folders as if they were links); `docs-sync-check` runs in a repository
+  whose path contains `[` or `]`; `wiki-check` rejects an entry file whose letter case differs from its INDEX slug (it passes on Windows and breaks on a
+  case-sensitive checkout); `hazard-check` no longer fails a row for a dotted word in the Area column such as `ASP.NET`, `Node.js` or `v2.0` next to a real path,
+  works under the Thai locale, and says "not valid UTF-8" for a Windows-1252 `FRAMEWORK-CONTEXT.md`; `test-weakening-scan` now reads `*.test.ts`,
+  `FooTest.cs`, `spec/` and `__tests__/` files as tests. `bootstrap-baseline` works under the Thai locale, with a root path ending in `\`, and writes
+  the `recorded` date in the Gregorian calendar; it prints a copied statement with its em dash intact on a legacy console code page (so recording it back is accepted), and when git
+  refuses to open one file in a large tree it reports git's message rather than "the pipe has been ended". `scripts/metrics.ps1` reads a repository path with `[`
+  or `]`, counts the scope you pass relative to where you ran it, exits non-zero for a scope that does not exist, counts `TODO`, `HACK` and `FIXME` only as written in
+  capitals (not the word "todo" in a name), counts an `async Task` whose `CancellationToken` sits on a later line, and counts `[Fact(...)]`,
+  `[Theory, ...]`, `[Test, ...]` and `[TestCase(...)]` as tests. No action needed.
 - **A security finding now always says where it is and what it is.** The `/security-gate` verdict names the file and
   line of each finding. The row it adds to `SECURITY_FINDINGS.md` names the file (no line, since lines move) and, when
   the file alone is ambiguous, the symbol, route or type, with one sentence giving the kind of defect and the kind of

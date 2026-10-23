@@ -21,12 +21,12 @@ function NormPath($Path) { ([IO.Path]::GetFullPath($Path).TrimEnd('\','/') -repl
 function InitSafe($Path) {
     git -C $Path init --quiet
     Assert ($LASTEXITCODE -eq 0) "git init failed: $Path"
-    Push-Location $Path
+    Push-Location -LiteralPath $Path
     try { Assert ((NormPath (git rev-parse --show-toplevel)) -eq (NormPath $Path)) "unsafe git root for $Path" }
     finally { Pop-Location }
 }
 function RunHere($Path, $Cwd, [string[]]$Arguments = @()) {
-    Push-Location $Cwd
+    Push-Location -LiteralPath $Cwd
     try { RunArg $Path $Arguments } finally { Pop-Location }
 }
 function Records($Text) {
@@ -373,6 +373,90 @@ describe('user', () => {
                 }
             } finally { Remove-Item -Recurse -Force $root }
         }
+    }
+}
+
+function MetricKey($Json, [string]$Key) { @($Json.metrics.psobject.Properties.Name) -contains $Key }
+
+It 'metrics gives the same JSON, coverage included, at a path with [ ] as at a plain one' {
+    foreach ($subject in @(MetricsSubjects)) {
+        $roots = @((Temp metrics-plain), (Temp 'metrics-[1]'))
+        try {
+            $jsons = @()
+            foreach ($root in $roots) {
+                InitSafe $root
+                Put (Join-Path $root 'A.cs') "Console.WriteLine(1);`n[Fact] void T() { }`n"
+                Put (Join-Path $root 'a.ts') "console.log(1);`nit('x', () => {});`n"
+                Put (Join-Path $root 'coverage.cobertura.xml') '<coverage line-rate="0.5"></coverage>'
+                $result = RunHere $subject $root
+                Assert ($result.Exit -eq 0) "metrics failed for $subject at $root`: $($result.Err)"
+                $jsons += ,($result.Out | ConvertFrom-Json)
+            }
+            Assert ($jsons[0].readiness.coverage_pct -eq 50) "the plain path did not read the coverage file: $($jsons[0].readiness.coverage_pct)"
+            Assert ($jsons[1].readiness.coverage_pct -eq 50) "the bracketed path lost the coverage file: $($jsons[1].readiness.coverage_pct)"
+            $plain = $jsons[0].metrics | ConvertTo-Json -Compress; $bracketed = $jsons[1].metrics | ConvertTo-Json -Compress
+            Assert ($plain -eq $bracketed) "the bracketed path counted differently for $subject`: $bracketed, plain $plain"
+            Assert (($jsons[1].metrics.psobject.Properties.Value | Measure-Object -Sum).Sum -gt 0) 'nothing was counted at the bracketed path'
+        } finally { foreach ($root in $roots) { Remove-Item -Recurse -Force -LiteralPath $root -ErrorAction SilentlyContinue } }
+    }
+}
+
+It 'metrics resolves a relative scope against the caller, not the repository root' {
+    foreach ($subject in @(MetricsSubjects)) {
+        $root = Temp metrics-scope
+        try {
+            InitSafe $root
+            Put (Join-Path $root 'web/src/app/A.cs') "Console.WriteLine(1);`n"
+            Put (Join-Path $root 'web/src/app/a.ts') "console.log(1);`n"
+            Put (Join-Path $root 'other/B.cs') "Console.WriteLine(2);`nConsole.WriteLine(3);`n"
+            Put (Join-Path $root 'other/b.ts') "console.log(2);`nconsole.log(3);`n"
+            $web = Join-Path $root web
+            foreach ($scope in @('src/app', '.')) {
+                $result = RunHere $subject $web @($scope)
+                Assert ($result.Exit -eq 0) "metrics failed for $subject from web with '$scope': $($result.Err)"
+                $json = $result.Out | ConvertFrom-Json
+                foreach ($key in @('console_writeline', 'console_log')) {
+                    if (MetricKey $json $key) { Assert ([int]$json.metrics.$key -eq 1) "$subject from web with '$scope': $key expected 1 (web only), got $($json.metrics.$key)" }
+                }
+            }
+            $missing = RunHere $subject $web @('src/nowhere')
+            Assert ($missing.Exit -ne 0) "a scope that does not resolve must not report a clean run, got exit $($missing.Exit): $($missing.Out)"
+        } finally { Remove-Item -Recurse -Force -LiteralPath $root }
+    }
+}
+
+It 'metrics counts TODO case-sensitively, a wrapped async signature and the NUnit and xUnit attribute forms' {
+    foreach ($subject in @(MetricsSubjects)) {
+        $root = Temp metrics-exact
+        try {
+            InitSafe $root
+            Put (Join-Path $root 'TodoController.cs') @'
+class TodoController { }
+// TODO: real
+public async Task Wrapped(
+    int x,
+    CancellationToken ct)
+{ }
+public async Task Bare() { }
+[Fact(DisplayName = "a")] void A() { }
+[Theory, InlineData(1)] void B() { }
+[Test, Category("c")] void C() { }
+[TestCase(1)] void D() { }
+[TestMethod] void E() { }
+'@
+            Put (Join-Path $root 'todo.service.ts') "import { x } from './todo.service';`n// FIXME: real`n"
+            $result = RunHere $subject $root
+            Assert ($result.Exit -eq 0) "metrics failed for $subject`: $($result.Err)"
+            $json = $result.Out | ConvertFrom-Json
+            $cs = MetricKey $json 'raw_sql'; $ng = MetricKey $json 'any_type'
+            $expectedTodo = ([int]$cs) + ([int]$ng)
+            Assert ([int]$json.metrics.todo_hack_fixme -eq $expectedTodo) "$subject`: todo_hack_fixme expected $expectedTodo (the TODO and FIXME comments, not the word todo in a name), got $($json.metrics.todo_hack_fixme)"
+            if ($cs) {
+                Assert ([int]$json.metrics.async_missing_cancellationtoken -eq 1) "$subject`: async_missing_cancellationtoken expected 1 (Bare), got $($json.metrics.async_missing_cancellationtoken)"
+                Assert ([int]$json.metrics.test_attributes -eq 5) "$subject`: test_attributes expected 5, got $($json.metrics.test_attributes)"
+                Assert ($json.readiness.has_tests -eq $true) "$subject`: has_tests expected true"
+            }
+        } finally { Remove-Item -Recurse -Force -LiteralPath $root }
     }
 }
 

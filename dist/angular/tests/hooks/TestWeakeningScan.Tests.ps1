@@ -167,4 +167,19 @@ It 'requires pathFilter to be a string array and accepts an explicit empty array
     } finally { Remove-Item -LiteralPath $repo,$bundle -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+It 'Vitest *.test.ts, MSTest FooTest.cs and __tests__/ files are test files too' {
+    $repo = New-ScanRepo
+    try {
+        $files = @{ 'src/app/todo.test.ts' = "expect(1).toBe(1);`nexpect(2).toBe(2);`nexpect(3).toBe(3);`n"; 'src/FooTest.cs' = "Assert.Equal(1,1);`nAssert.True(true);`nAssert.NotNull(this);`n"; 'src/__tests__/baz.spec.js' = "expect(1).toBe(1);`nexpect(2).toBe(2);`n" }
+        foreach ($name in $files.Keys) { $p = Join-Path $repo $name; New-Item -ItemType Directory -Force (Split-Path $p -Parent) | Out-Null; [IO.File]::WriteAllText($p, $files[$name]) }
+        & git -C $repo add -A 2>&1 | Out-Null
+        & git -C $repo commit -qm tests 2>&1 | Out-Null
+        foreach ($name in $files.Keys) { [IO.File]::WriteAllText((Join-Path $repo $name), "// emptied`n") }
+        & git -C $repo add -A 2>&1 | Out-Null
+        $r = Invoke-Scan $repo
+        Assert ($r.Exit -eq 0) "an advisory must never fail a run, got exit $($r.Exit)"
+        foreach ($name in $files.Keys) { Assert ($r.Text -match [regex]::Escape($name)) "$name lost its assertions and was not named: $($r.Text)" }
+    } finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 exit (Write-TestSummary 'TestWeakeningScan.Tests (advisory contract)')

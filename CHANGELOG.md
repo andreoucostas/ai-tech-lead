@@ -50,6 +50,7 @@ shape and Test determinism match, which matters because most consumers never run
 `/bootstrap`, `/test` and `/fix` edits and a golden-file scope for `test-critic`. The `route-prompt` fix rail is
 unchanged; revisit if an in-memory regression test for a SQL defect is reported.
 
+Ordinary-tier scripts, B-463 group G3 (`src/core/scripts/{warehouse-map-check,docs-sync-check,wiki-check,hazard-check,test-weakening-scan,bootstrap-baseline}.ps1`, `src/stacks/*/files/scripts/metrics.ps1`; items 1 to 12 and 14 to 16 of `.claude/plans/2026-10-23-bug-hunt-2-b463.md`, each fixed with its case seen red first; item 13, the deleted-convention `REMOVED` line, closed by decision in `meta/BACKLOG-DONE.md`). The consumer entry in the three stack changelogs lists the behaviour changes. `template-checks.ps1`, which has item 2's `Set-Location` defect, stays in B-463's entry. G1 and G2 are open.
 `security-gate.md` x3, the Angular `security-gate` Copilot wrapper and the `security-auditor` Copilot agent's `findings-note` (guarded by path, `src/stacks/*/files/.claude/**`, no step 4; B-450, field report #10): a
 team ran `/security-gate` and could not tell what a finding was or where it was. Step 5's opt-in locator ("`file:line` only when both the locator and target
 are safe for every repository reader") is now a floor: the verdict table names the repository-relative `file:line`, and a path, or the register summary, is

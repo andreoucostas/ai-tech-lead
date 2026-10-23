@@ -37,7 +37,22 @@ $script:LocalOnly = [regex]'^(?:dist|tmp|out-tsc|bazel-out|coverage)/|(?:^|/)(?:
 
 # Output goes straight to stdout: a message written inside a function whose result a caller is
 # capturing would otherwise vanish into that capture.
-function Say([string]$Line) { [Console]::Out.WriteLine($Line) }
+# Written as UTF-8 through the raw stdout stream: [Console]::Out follows the console code page, and on Windows PowerShell 5.1
+# under chcp 437 an em dash in a copied statement became '-', which the next Record then refused as not found in AGENTS.md.
+# [Console]::OutputEncoding is left alone; it belongs to the user's console.
+$script:StdOut = $null
+function Say([string]$Line) {
+    if (-not $script:StdOut) {
+        $script:StdOut = New-Object IO.StreamWriter ([Console]::OpenStandardOutput()), (New-Object Text.UTF8Encoding($false))
+        $script:StdOut.AutoFlush = $true
+    }
+    $script:StdOut.WriteLine($Line)
+}
+
+# MSVCRT quoting: backslashes before a quote or the closing quote are doubled, so a root ending in '\' cannot escape it.
+function ConvertTo-ProcessArgument([string]$Value) {
+    return '"' + [regex]::Replace($Value, '(\*)("|$)', { param($m) $m.Groups[1].Value + $m.Groups[1].Value + $(if ($m.Groups[2].Value) { '\"' } else { '' }) }) + '"'
+}
 
 function Stop-With([int]$Code, [string]$Message) {
     Say $Message
@@ -52,7 +67,7 @@ function Invoke-Git([string[]]$Arguments, [byte[]]$Stdin) {
     $all = @('-C', $script:RootFull, '-c', 'core.quotePath=false') + $Arguments
     $startInfo = New-Object Diagnostics.ProcessStartInfo
     $startInfo.FileName = $git[0].Source
-    $startInfo.Arguments = (($all | ForEach-Object { '"' + $_ + '"' }) -join ' ')
+    $startInfo.Arguments = (($all | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join ' ')
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
     $startInfo.RedirectStandardInput = $true
@@ -74,8 +89,9 @@ function Invoke-Git([string[]]$Arguments, [byte[]]$Stdin) {
         $stdoutTask = $process.StandardOutput.BaseStream.CopyToAsync($stdout)
         $stderrTask = $process.StandardError.ReadToEndAsync()
         # Raw UTF-8 bytes: Windows PowerShell 5.1 cannot set a stdin encoding for a child process.
-        if ($Stdin) { $process.StandardInput.BaseStream.Write($Stdin, 0, $Stdin.Length) }
-        $process.StandardInput.Close()
+        # git can exit before it has read every path (one unreadable file); its stderr, not the broken pipe, says why.
+        try { if ($Stdin) { $process.StandardInput.BaseStream.Write($Stdin, 0, $Stdin.Length) } } catch [IO.IOException] { }
+        try { $process.StandardInput.Close() } catch [IO.IOException] { }
         $process.WaitForExit()
         $stdoutTask.GetAwaiter().GetResult()
         $stderr = $stderrTask.GetAwaiter().GetResult()
@@ -203,7 +219,7 @@ function Get-ManifestRows($Snapshot, [string[]]$Selected) {
         $project = New-LeafRegex $script:Manifests[$profile].Project
         $workspace = New-LeafRegex $script:Manifests[$profile].Workspace
         foreach ($path in $Snapshot.Sorted) {
-            $leaf = $path.Substring($path.LastIndexOf('/') + 1)
+            $leaf = $path.Substring($path.LastIndexOf([char]'/') + 1)
             if ($project.IsMatch($leaf)) { $rows.Add("project`t$profile`t$path") }
             if ($workspace.IsMatch($leaf)) { $rows.Add("workspace`t$profile`t$path`t$($Snapshot.Blobs[$path])") }
         }
@@ -484,7 +500,7 @@ function Invoke-Record {
     $out = New-Object 'System.Collections.Generic.List[string]'
     $out.Add('# ai-tech-lead rebootstrap baseline. Written by scripts/bootstrap-baseline.ps1 -Mode Record; do not edit by hand.')
     $out.Add("schema`t1")
-    $out.Add("recorded`t$([DateTime]::UtcNow.ToString('yyyy-MM-dd'))")
+    $out.Add("recorded`t$([DateTime]::UtcNow.ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture))")
     foreach ($profile in $selected) { $out.Add("profile`t$profile") }
     $lineKeys = [string[]]@($agents.Lines.Keys)
     [Array]::Sort($lineKeys, [StringComparer]::Ordinal)
@@ -619,7 +635,9 @@ function Invoke-Impact {
 }
 
 if (-not (Test-Path -LiteralPath $Root -PathType Container)) { Stop-With 2 "CANNOT EXAMINE: root '$Root' is not a directory." }
-$script:RootFull = (Resolve-Path -LiteralPath $Root).Path
+# ProviderPath drops the provider prefix a UNC root carries; a trailing separator is trimmed (a drive root keeps its one).
+$script:RootFull = (Resolve-Path -LiteralPath $Root).ProviderPath
+if ($script:RootFull.Length -gt 3) { $script:RootFull = $script:RootFull.TrimEnd('\', '/') }
 $script:StateProblem = ''
 # exit is not an exception, so this catch sees only failures; they must not read as INVALID (1).
 try {

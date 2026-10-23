@@ -519,4 +519,78 @@ It 'an unknown mode is refused as invalid' {
         Assert ($res.Out -match 'INVALID: ') "no invalid message: $($res.Out)"
     } finally { Drop $r }
 }
+function CultureRecord([string]$Root, [string]$Culture, [string]$Probe, [switch]$CoreOnly) {
+    # Runs Record on this thread under a culture whose ICU rules differ from invariant. Exit 3 from the wrapper means
+    # the probe did not behave as that culture should, so nothing was examined.
+    $claims = ClaimsFile (AllClaims)
+    $wrapper = Join-Path ([IO.Path]::GetTempPath()) ('baseline-culture-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    try {
+        Put $wrapper ("[Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::new('$Culture')`n" +
+            "if (-not ($Probe)) { exit 3 }`n".Replace("if (-not", $(if ($CoreOnly) { "if (`$PSVersionTable.PSEdition -eq 'Core' -and -not" } else { "if (-not" })) +
+            "& '" + $baselinePs.Replace("'", "''") + "' -Mode Record -Root '" + $Root.Replace("'", "''") + "' -ClaimsPath '" + $claims.Replace("'", "''") + "'`n" +
+            "exit `$LASTEXITCODE`n")
+        RunArg $wrapper @()
+    } finally { Remove-Item -LiteralPath $wrapper, $claims -Force -ErrorAction SilentlyContinue }
+}
+It 'record works under th-TH, where the culture-sensitive LastIndexOf of a slash is the string length' {
+    $r = Fixture
+    try {
+        $res = CultureRecord $r 'th-TH' "'a/b/c'.LastIndexOf('/') -eq 5" -CoreOnly
+        Assert ($res.Exit -ne 3) 'th-TH did not take in the wrapper, so nothing was examined'
+        ExitIs $res 0
+    } finally { Drop $r }
+}
+It 'record writes the recorded date in the Gregorian calendar whatever the culture' {
+    $r = Fixture
+    try {
+        $res = CultureRecord $r 'ar-SA' "[DateTime]::new(2026,10,23).ToString('yyyy') -ne '2026'"
+        Assert ($res.Exit -ne 3) 'ar-SA did not take in the wrapper, so nothing was examined'
+        ExitIs $res 0
+        $line = @([IO.File]::ReadAllLines((Join-Path $r $stateRel)) | Where-Object { $_ -like "recorded`t*" })[0]
+        Assert ($line -match "^recorded`t20\d\d-\d\d-\d\d$") "recorded line is not a Gregorian date: $line"
+    } finally { Drop $r }
+}
+It 'a root with a trailing backslash is the same root' {
+    $r = Fixture
+    try {
+        $file = ClaimsFile (AllClaims)
+        try { $res = RunArg $baselinePs @('-Mode', 'Record', '-Root', ($r + '\'), '-ClaimsPath', $file) } finally { Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue }
+        ExitIs $res 0
+        $after = RunArg $baselinePs @('-Mode', 'Impact', '-Root', ($r + '\'))
+        ExitIs $after 0; Has $after 'RESULT stop'
+    } finally { Drop $r }
+}
+It 'git refusing to open one file of a large tree is reported with git''s own message' {
+    $r = Fixture
+    $held = $null
+    try {
+        $dir = Join-Path $r 'many'
+        [IO.Directory]::CreateDirectory($dir) | Out-Null
+        $pad = 'x' * 120
+        for ($i = 0; $i -lt 1200; $i++) { [IO.File]::WriteAllText((Join-Path $dir ('b{0:D5}-{1}.txt' -f $i, $pad)), 'x') }
+        $first = Join-Path $dir ('a-held-' + $pad + '.txt')
+        [IO.File]::WriteAllText($first, 'held')
+        $held = [IO.File]::Open($first, 'Open', 'ReadWrite', 'None')
+        $res = Record $r
+        ExitIs $res 2
+        Assert ($res.Out -match 'a-held-') "the message does not name the held file: $($res.Out)"
+        Assert ($res.Out -notmatch 'pipe') "git's error was replaced by a pipe failure: $($res.Out)"
+    } finally { if ($held) { $held.Dispose() }; Drop $r }
+}
+It 'a copied UNCLAIMED statement keeps its em dash on a legacy code page console' {
+    $r = Fixture
+    try {
+        $adr = 'ADR-001 — Orders keep one aggregate per request — 2026-09-27'
+        Put (Join-Path $r 'AGENTS.md') ((Agents @($claimRepo, $claimDi, $claimCtl, $claimNoSql)) + "`n## Architecture Decisions`n`n- $adr`n")
+        $file = ClaimsFile (AllClaims)
+        $out = Join-Path ([IO.Path]::GetTempPath()) ('baseline-bytes-' + [guid]::NewGuid().ToString('N') + '.bin')
+        try {
+            $q = '"'
+            $cmd = "set PSModulePath=&& chcp 437 >nul && $q$(Get-PsExe)$q -NoProfile -ExecutionPolicy Bypass -File $q$baselinePs$q -Mode Record -Root $q$r$q -ClaimsPath $q$file$q > $q$out$q"
+            $null = & cmd.exe /d /c $cmd
+            $text = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($out))
+            Assert ($text.Contains("UNCLAIMED $adr")) "the console wrote the statement through the code page, not UTF-8: $text"
+        } finally { Remove-Item -LiteralPath $file, $out -Force -ErrorAction SilentlyContinue }
+    } finally { Drop $r }
+}
 exit (Write-TestSummary 'BootstrapBaseline.Tests')

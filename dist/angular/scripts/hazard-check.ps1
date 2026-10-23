@@ -19,6 +19,8 @@ function Get-CandidateForms($value){
 }
 if(-not(Test-Path -LiteralPath $context)){Fail 'FRAMEWORK-CONTEXT.md is missing; Known Hazard Areas cannot be validated.';Write-Output "$fails hazard-check failure(s).";exit 1}
 $raw=[IO.File]::ReadAllText($context).TrimStart([char]0xFEFF)-replace"`r",''
+# A Windows-1252 file decodes its em dashes to U+FFFD, so the sentinels and REVIEWED statuses below would fail for the wrong reason.
+if($raw.IndexOf([char]0xFFFD)-ge0){Fail 'FRAMEWORK-CONTEXT.md is not valid UTF-8 (a byte sequence decoded to the replacement character); re-save it as UTF-8.';Write-Output "$fails hazard-check failure(s).";exit 1}
 if($raw.Contains('KNOWN_HAZARD_AREAS_PENDING')){Fail 'Known Hazard Areas are still pending; complete /bootstrap and remove KNOWN_HAZARD_AREAS_PENDING.';Write-Output "$fails hazard-check failure(s).";exit 1}
 $lines=@($raw-split"`n");$headingCount=0
 foreach($candidateLine in $lines){if(($candidateLine-replace'[ \t]+$','')-ceq'## Known Hazard Areas'){$headingCount++}}
@@ -50,13 +52,14 @@ foreach($line in $lines){
  if(-not$dateOK){Fail "hazard row has an invalid Reviewed date '$reviewed' (expected YYYY-MM-DD): $area"}
  if($null-ne$statusDate-and$dateOK-and$statusDate-cne$reviewed){Fail "hazard row reviewed Status date '$statusDate' does not match Reviewed column '$reviewed': $area"}
  $candidates=@();$without=$area
- foreach($m in [regex]::Matches($area,'`([^`]*)`')){$candidates+=$m.Groups[1].Value}
- $without=[regex]::Replace($without,'`[^`]*`',' ');$candidates+=@($without-split'[\s,]+'|Where-Object{$_})
+ foreach($m in [regex]::Matches($area,'`([^`]*)`')){$candidates+=@{t=$m.Groups[1].Value;ticked=$true}}
+ $without=[regex]::Replace($without,'`[^`]*`',' ');foreach($token in @($without-split'[\s,]+'|Where-Object{$_})){$candidates+=@{t=$token;ticked=$false}}
  $literalCandidates=0;$invalidPath=$false
- foreach($rawCandidate in $candidates){
-  $forms=Get-CandidateForms $rawCandidate;$safetyCandidate=$forms.Safety;$candidate=$forms.Display
+ foreach($entry in $candidates){
+  $forms=Get-CandidateForms $entry.t;$safetyCandidate=$forms.Safety;$candidate=$forms.Display
   if($candidate-match'^[A-Za-z][A-Za-z0-9+.-]*://'-or$candidate.StartsWith('www.')){continue}
-  $openBracket=$candidate.IndexOf('[');$balancedBracket=$openBracket-ge0-and$candidate.IndexOf(']',$openBracket+1)-ge0
+  # [char] overloads: the string overloads are culture-sensitive, and under th-TH IndexOf('[') is 0 for every string.
+  $openBracket=$candidate.IndexOf([char]'[');$balancedBracket=$openBracket-ge0-and$candidate.IndexOf([char]']',$openBracket+1)-ge0
   if($candidate-match'[?*]'-or$balancedBracket){continue}
   $safetyCandidate=$safetyCandidate-replace'\\','/';$candidate=$candidate-replace'\\','/'
   $unsafe=$false
@@ -64,8 +67,9 @@ foreach($line in $lines){
   if($unsafe){Fail "hazard row names a path that is not a safe repository-root-relative path: $safetyCandidate (row: $area)";$invalidPath=$true;continue}
   if(-not$candidate){continue}
   if(-not($candidate-match'/'-or$candidate-match'\.[A-Za-z0-9]{1,10}$')){continue}
-  $literalCandidates++
-  if(-not(Test-Path -LiteralPath (Join-Path $Root $candidate))){Fail "hazard row names a path that does not exist: $candidate (row: $area)"}
+  if(Test-Path -LiteralPath (Join-Path $Root $candidate)){$literalCandidates++;continue}
+  # A missing path the author backticked or wrote with a separator was meant as one; a bare dotted word in prose (ASP.NET, Node.js, v2.0, e.g.) was not, and the row's resolving path still counts.
+  if($entry.ticked-or$candidate-match'/'){$literalCandidates++;Fail "hazard row names a path that does not exist: $candidate (row: $area)"}
  }
  if($literalCandidates-eq0-and-not$invalidPath){Fail "hazard row must include at least one exact resolving repository-root-relative path: $area"}
 }

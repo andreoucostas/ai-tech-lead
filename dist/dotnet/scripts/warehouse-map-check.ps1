@@ -17,7 +17,9 @@ try {
     while ($directories.Count -gt 0) {
         $directory = $directories.Dequeue()
         foreach ($item in Get-ChildItem -LiteralPath $directory.FullName -Force -ErrorAction Stop) {
-            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { continue }
+            # Only links are skipped. A OneDrive (cloud files) folder carries the ReparsePoint attribute too and has no
+            # LinkType; skipping it hid every warehouse artifact under a synced folder as "not-applicable".
+            if ($item.LinkType -in @('SymbolicLink', 'Junction')) { continue }
             if ($item.PSIsContainer) {
                 if ($item.Name -notin $excluded) { $directories.Enqueue($item) }
             } elseif ($item.Extension -in @('.sql','.sqlproj') -or $item.Name -eq 'dbt_project.yml' -or
