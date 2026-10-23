@@ -595,6 +595,18 @@ try {
         } 'dead instructions in shipped docs' 'no-dead-instruction' -AlsoPattern @('README\.md:\d+:','missing-b34a\.ps1')
     }
 
+    It 'case 34b: a backslash script path is checked after normalisation, missing fails and existing stays green' {
+        Assert-Case 'backslash-dead-command' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`npowershell.exe -NoProfile -File .\scripts\missing-b34b.ps1`n")
+        } 'dead instructions in shipped docs' 'no-dead-instruction' -AlsoPattern @('README\.md:\d+:','missing-b34b\.ps1')
+
+        Assert-Case 'backslash-live-command' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`npowershell.exe -NoProfile -File .\scripts\docs-sync-check.ps1`n")
+        } 'resolvable documented script references resolve' 'no-dead-instruction' -Green
+    }
+
     It 'case 35: step-reference grammar, vacuity guards and allowances remain intact' {
         $fixtures = @(
             @{ Name='zero-files'; Text=$null; Green=$false; Finding='step-reference scan found zero Markdown files' },
