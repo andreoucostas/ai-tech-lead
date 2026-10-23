@@ -1621,7 +1621,8 @@ if ($updateMode) {
             # line changes its bytes despite the framework having no ownership of that path.
             if (-not $incomingFrameworkSkillNames.Contains($skillDir.Name)) { continue }
             $exemplar = [regex]::Match($oldText, '(?m)^For a concrete current instance in this repo, see .+$')
-            if ($exemplar.Success) { $skillExemplars[$skillDir.Name] = $exemplar.Value }
+            # '.+$' under (?m) keeps a CRLF file's CR; the rewritten file is LF throughout.
+            if ($exemplar.Success) { $skillExemplars[$skillDir.Name] = $exemplar.Value.TrimEnd("`r") }
         }
     }
 }

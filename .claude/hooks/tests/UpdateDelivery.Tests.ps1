@@ -3907,4 +3907,29 @@ It 'an update over a 0-byte LEARNINGS.md succeeds and disables no skill' {
     }
 }
 
+# A Windows clone with core.autocrlf=true checks SKILL.md out with CRLF; the exemplar line captured from it
+# must not carry its CR into the rewritten file, which is LF throughout and ends in exactly one LF.
+It 'a CRLF SKILL.md has its exemplar re-appended without a carriage return' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-crlfexemplar-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    try {
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the install failed (exit $LASTEXITCODE): $first"
+        $skill = Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md'
+        $exemplar = 'For a concrete current instance in this repo, see `warehouse/LoadSales.sql`.'
+        $crlf = ([IO.File]::ReadAllText($skill, [Text.UTF8Encoding]::new($false)).TrimEnd() + "`n`n" + $exemplar + "`n") -replace "`r?`n", "`r`n"
+        [IO.File]::WriteAllText($skill, $crlf, [Text.UTF8Encoding]::new($false))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0 -and $out -match '(?m)^\s*mode: update') "the update did not succeed in update mode (exit $exit): $out"
+        $bytes = [IO.File]::ReadAllBytes($skill)
+        $text = [Text.UTF8Encoding]::new($false).GetString($bytes)
+        Assert ($text.Contains($exemplar)) 'the exemplar line was not re-appended'
+        Assert (-not $text.Contains("`r")) "the rewritten SKILL.md still holds a carriage return (last bytes: $($bytes[($bytes.Length - 4)..($bytes.Length - 1)] -join ','))"
+        Assert ($text.EndsWith($exemplar + "`n", [StringComparison]::Ordinal)) 'the rewritten SKILL.md does not end in the exemplar and exactly one LF'
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 exit (Write-TestSummary 'UpdateDelivery.Tests')
