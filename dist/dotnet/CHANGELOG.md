@@ -46,7 +46,7 @@
   written there or nowhere, so every write ran a full build. Both hooks now find the repository from their own
   location and keep their records in its `.claude/.state` folder.
 
-- **The installer's usage errors exit 2, as documented.** Running `scripts/install.ps1` with a target that is not a directory, or with the framework's own folder as the target, printed a PowerShell error record and exited 1. It now prints the message alone and exits 2, so a wrapper script can tell a usage error from an install failure.
+- **The installer's usage errors exit 2, as documented.** Running `scripts/install.ps1` with a target that is not a directory, or with the framework's own folder as the target, printed a PowerShell error record and exited 1. It now prints the message alone and exits 2, so a wrapper script can tell a usage error from an install failure. This includes a target that Windows PowerShell 5.1 cannot read as a path, such as one ending in a stray quote from `-Target "C:\repo\"` typed in cmd.
 
 ## 0.98.2 — 2026-10-20
 

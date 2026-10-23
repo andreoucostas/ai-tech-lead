@@ -178,7 +178,9 @@ function Test-AngularEvidence([System.IO.FileInfo[]]$Files) {
     return $false
 }
 if (-not $Target) { Die $usage }
-if (-not (Test-Path -LiteralPath $Target -PathType Container)) { Die "Target '$Target' is not a directory." }
+# A path Test-Path cannot evaluate (cmd turns `"C:\x\"` into `C:\x"`; 5.1 throws "Illegal characters") is the same usage error.
+$targetIsDirectory = try { Test-Path -LiteralPath $Target -PathType Container } catch [System.ArgumentException] { $false }
+if (-not $targetIsDirectory) { Die "Target '$Target' is not a directory." }
 $tgt = (Resolve-Path -LiteralPath $Target).Path
 $reason = ''
 if ($Stack) {

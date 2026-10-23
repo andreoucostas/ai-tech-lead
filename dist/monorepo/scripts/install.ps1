@@ -39,7 +39,9 @@ $followUpPowerShell = if ($PSVersionTable.PSVersion.Major -ge 7) {
 $pwshAvailable = $PSVersionTable.PSVersion.Major -ge 7 -or
     $null -ne (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
 
-if (-not (Test-Path -LiteralPath $Target -PathType Container)) { [Console]::Error.WriteLine("Target '$Target' is not a directory."); exit 2 }
+# A path Test-Path cannot evaluate (cmd turns `"C:\x\"` into `C:\x"`; 5.1 throws "Illegal characters") is the same usage error.
+$targetIsDirectory = try { Test-Path -LiteralPath $Target -PathType Container } catch [System.ArgumentException] { $false }
+if (-not $targetIsDirectory) { [Console]::Error.WriteLine("Target '$Target' is not a directory."); exit 2 }
 
 # -LiteralPath: read as a wildcard, 'repo[a]' resolves a sibling 'repoa' and the install lands there.
 $src = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
