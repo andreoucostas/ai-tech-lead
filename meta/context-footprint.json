@@ -237,8 +237,8 @@
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 9619,
-          "tok": 2405
+          "chars": 11342,
+          "tok": 2836
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -393,8 +393,8 @@
         },
         {
           "path": ".claude/commands/security-gate.md#body",
-          "chars": 10590,
-          "tok": 2648
+          "chars": 10761,
+          "tok": 2690
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -661,8 +661,8 @@
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 9619,
-          "tok": 2405
+          "chars": 11342,
+          "tok": 2836
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -817,8 +817,8 @@
         },
         {
           "path": ".claude/commands/security-gate.md#body",
-          "chars": 10694,
-          "tok": 2674
+          "chars": 10865,
+          "tok": 2716
         },
         {
           "path": ".claude/commands/test.md#body",
@@ -1085,8 +1085,8 @@
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 9619,
-          "tok": 2405
+          "chars": 11342,
+          "tok": 2836
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1241,8 +1241,8 @@
         },
         {
           "path": ".claude/commands/security-gate.md#body",
-          "chars": 11766,
-          "tok": 2942
+          "chars": 11937,
+          "tok": 2984
         },
         {
           "path": ".claude/commands/test.md#body",

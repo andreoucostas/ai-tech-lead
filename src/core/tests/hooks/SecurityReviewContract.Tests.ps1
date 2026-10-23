@@ -6,6 +6,7 @@ $command = [IO.File]::ReadAllText((Join-Path $root '.claude\commands\security-ga
 $auditor = [IO.File]::ReadAllText((Join-Path $root '.claude\agents\security-auditor.md'))
 $copilotAgent = [IO.File]::ReadAllText((Join-Path $root '.github\agents\security-auditor.agent.md'))
 $copilotSkill = [IO.File]::ReadAllText((Join-Path $root '.agents\skills\security-gate\SKILL.md'))
+$checklist = [IO.File]::ReadAllText((Join-Path $root 'docs\upgrade-checklist.md'))
 # The commands wrap prose across lines; assert on the flattened text so a re-wrap cannot redden a case.
 $flat = $command -replace '\s+', ' '
 $flatAgent = $copilotAgent -replace '\s+', ' '
@@ -97,6 +98,20 @@ It 'the verdict ends with a Recorded line naming the rows written or the one rea
         Assert ($flat.Contains($reason)) "Recorded reason missing: $reason"
     }
     Assert ($flat.Contains('`; not recorded (<reason>)` per finding without one')) 'mixed-outcome Recorded form missing'
+}
+
+It 'a legacy register is refused with a pointer to a migration that gives the register''s own findings header' {
+    Assert ($flat.Contains('under "Migrations from older installs" in docs/upgrade-checklist.md')) 'legacy refusal names no migration'
+    Assert ($flat.Contains('re-run /security-gate on this change to record the finding')) 'legacy refusal does not say how to record the finding'
+    Assert ($checklist.Contains('**`SECURITY_FINDINGS.md` has a `File:line` or `Description` column.**')) 'checklist has no legacy-register migration'
+    Assert ($checklist.Contains('`Recorded: none (legacy schema)`')) 'checklist migration does not name the gate line that sends a team to it'
+    $registerLines = $register -split '\r?\n'
+    $at = [Array]::FindIndex($registerLines, [Predicate[string]]{ param($l) $l.StartsWith('| ID | Severity | Category | Affected area') })
+    Assert ($at -ge 0) 'register findings header not found'
+    $checklistLines = @($checklist -split '\r?\n' | ForEach-Object { $_.Trim() })
+    foreach ($line in $registerLines[$at], $registerLines[$at + 1]) {
+        Assert ($checklistLines -contains $line.Trim()) "checklist migration lacks the register's line: $line"
+    }
 }
 
 It 'the Copilot auditor tells the agent that only /security-gate writes the register, once' {

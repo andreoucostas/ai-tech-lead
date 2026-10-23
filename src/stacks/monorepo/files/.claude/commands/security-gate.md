@@ -139,7 +139,9 @@ using an organisation-approved opaque reference; never infer containment yoursel
 Before appending, require the current header containing `Affected area (redacted when sensitive)` and
 `Repository-safe summary`. If either heading is absent, do not modify the register. Give only this
 non-sensitive instruction: `SECURITY_FINDINGS.md uses a legacy schema; a human with incident
-authority must review/redact or remove unsafe legacy metadata, then adopt the current header.`
+authority must review/redact or remove unsafe legacy metadata, then adopt the current header as the
+SECURITY_FINDINGS.md step under "Migrations from older installs" in docs/upgrade-checklist.md shows,
+and re-run /security-gate on this change to record the finding.`
 Never ingest or restate legacy active, accepted-risk, resolved, or `docs/security-archive.md` rows.
 
 Calculate the due date from today:

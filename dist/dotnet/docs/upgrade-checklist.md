@@ -90,6 +90,27 @@ Most updates need none of these. Do each only when its condition holds.
   together with intended work. This stops future telemetry commits; it does not remove history. An old
   log header may still say to keep the file in version control: this guidance supersedes it.
 
+- **`SECURITY_FINDINGS.md` has a `File:line` or `Description` column.** A register created before
+  0.52.1 has the old layout, and `/security-gate` will not write to it: its verdict ends
+  `Recorded: none (legacy schema)` and the finding stays in the chat. Old rows may hold more than the
+  register now allows, so a person with authority over security incidents first reads every row in
+  all three tables, removes or redacts any that records a credential or names a secret's location or
+  any part of it, and handles that incident outside Git (rewriting the file does not remove it from
+  history). Then replace the findings table's two header lines with:
+
+  ```markdown
+  | ID | Severity | Category | Affected area (redacted when sensitive) | Repository-safe summary | Discovered | Due | Status | Owner role/team (optional) | Internal reference (optional) | Resolved |
+  |----|----------|----------|-----------------------------------------|-------------------------|------------|-----|--------|----------------------------|-------------------------------|----------|
+  ```
+
+  In each row, `File:line` becomes the path without its line number, `Description` one sentence
+  naming the defect and the fix, and `Assigned` an owning role or team; add an empty
+  `Internal reference (optional)` cell before `Resolved`, and keep each row's ID, dates and status.
+  Give `Accepted risks` and `Resolved findings` the headers in the new release's
+  `SECURITY_FINDINGS.md` and map their rows the same way; a resolved row's area is the path its fix
+  touched, and its `Fix PR` moves to `Internal reference (optional)` or is dropped. Commit the
+  register, then re-run `/security-gate` on the change whose finding was not recorded.
+
 - **`CLAUDE.md` lacks the framework-rules import, or `AGENTS.md` still holds old copies of the
   framework rules.** Compare only the four old framework headings: `Verification Rules`, `Leanness`,
   `SOLID` and `Agentic Workflow`. Keep deliberate project-specific additions, make sure `CLAUDE.md`

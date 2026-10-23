@@ -44,6 +44,15 @@ from the repository root, as `docs/upgrade-checklist.md` says (the target-relati
 `Dev A/...` log). Inside a work tree where `rev-parse` or `ls-files` fails the handoff has one `CANT-VERIFY` line naming the path, whose suggested query is run from the repository root with an icase glob; outside one it is silent, as the ignore-rules read is. The installer still never changes the index or history, copy-if-absent is unchanged and the doctor gets no row (the install
 is the one moment a team is reading). `UpdateDelivery.Tests.ps1`: seven cases (tracked and untracked, brownfield, another letter case, skip-worktree, Git failing the question, and two attack cases: the drifted subfolder plain and skip-worktree, and a folder named with spaces, brackets, a quote and a dollar sign whose printed command is run as PowerShell reads it).
 
+`security-gate.md` x3 and `docs/upgrade-checklist.md` (guarded by path, `src/stacks/*/files/.claude/**`, no step 4; B-458, a field report relayed by the maintainer 2026-10-23): a team's
+`SECURITY_FINDINGS.md` still had the pre-B-135 findings header (`File:line`, `Description`, `Assigned`), as every register created before 0.52.1 does, since the register is
+`consumer-owned/protected` and no update touches it. Step 6 refused it, correctly, but its instruction said only "adopt the current header", naming neither the header nor where to find it,
+and the checklist had no step for it. Escaped since 0.52.1: no test tied the refusal to a migration a consumer could follow. The refusal now names the `SECURITY_FINDINGS.md` step under
+"Migrations from older installs" and says to re-run the gate on the change; the new step gives the findings header and separator verbatim, the column mapping (path without its line,
+one-sentence summary, owning role or team, an empty reference cell), the human review of every old row first, and the other two tables by reference to the release's register. Still
+fail-closed: the gate neither rewrites nor reads legacy rows. `SecurityReviewContract.Tests.ps1`: one case (12 in all) for the pointer, the re-run, the step's heading, its
+`Recorded: none (legacy schema)` line, and the register's own header and separator lines in the checklist, so a header change without the checklist fails.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

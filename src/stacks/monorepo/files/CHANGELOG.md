@@ -20,6 +20,12 @@
   row holds or how its ID is chosen, and nothing said whether a row had been written. A credential finding is handled
   as before: nothing is echoed or written to Git, and a human with incident authority takes over. Your register's
   columns and existing rows are not changed.
+- **When `/security-gate` says your register uses a legacy schema, it now says how to fix it.** A
+  `SECURITY_FINDINGS.md` created before 0.52.1 still has `File:line` and `Description` columns, since an update never
+  changes it, and the gate adds no rows to it (`Recorded: none (legacy schema)`). The gate said to adopt the current
+  header but not what that header was. It now points to a new step in `docs/upgrade-checklist.md` under "Migrations
+  from older installs": review the old rows first, paste the header it gives, map each old column to its new one, and
+  re-run the gate on the change whose finding was not recorded. Nothing changes your register for you.
 - **An update now tells you when Git still tracks `.claude/ai-audit.log`.** The shipped `.claude/.gitignore` has ignored
   the log since 0.86.6, but a copy your team tracked under an older release stays tracked, and the update said nothing.
   When Git tracks it, an update or a brownfield install now prints one `NOTICE` (a first install has nothing tracked)
