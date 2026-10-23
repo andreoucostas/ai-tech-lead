@@ -401,7 +401,7 @@ $powerShellExtension = 'ps1'
 
     It "update refreshes framework skills while preserving consumer ownership ($powerShellExtension)" {
         $warehousePath = Join-Path $target '.claude/skills/add-warehouse-load/SKILL.md'
-        $warehouse = Get-Content $warehousePath -Raw
+        $warehouse = [IO.File]::ReadAllText($warehousePath, [Text.UTF8Encoding]::new($false))
         $shippedWarehouse = [IO.File]::ReadAllText((Join-Path $repoRoot "dist/$dist/.claude/skills/add-warehouse-load/SKILL.md"))
         $consumerExemplar = 'For a concrete current instance in this repo, see `warehouse/LoadSales.sql` — reproduce its **conventions and structure**, not its contents; CLAUDE.md > Conventions wins on any conflict.'
         $legacyHasBom = $legacySkillBefore.Length -ge 3 -and $legacySkillBefore[0] -eq 0xEF -and $legacySkillBefore[1] -eq 0xBB -and $legacySkillBefore[2] -eq 0xBF
@@ -416,6 +416,15 @@ $powerShellExtension = 'ps1'
         Assert (-not (Test-Path (Join-Path $target '.claude/skills/perf'))) 'disabled framework skill was reactivated'
         Assert (Test-Path (Join-Path $target '.claude/disabled-skills/perf/SKILL.md')) 'disabled framework skill was not refreshed in its inactive location'
         Assert (Test-Path (Join-Path $target '.claude/framework-update-backup/skills')) 'one-time pre-update skill archive was not created'
+    }
+
+    # The re-append rewrites a framework-owned file, so its bytes must not depend on the host: Windows
+    # PowerShell 5.1's Set-Content -Encoding UTF8 added a BOM and a CRLF after the text's own newline.
+    It "a skill whose exemplar is re-appended has no BOM and ends in exactly one newline ($powerShellExtension)" {
+        $bytes = [IO.File]::ReadAllBytes((Join-Path $target '.claude/skills/add-warehouse-load/SKILL.md'))
+        Assert (-not ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)) 'the rewritten SKILL.md starts with a UTF-8 BOM'
+        $n = $bytes.Length
+        Assert ($n -ge 2 -and $bytes[$n - 1] -eq 0x0A -and $bytes[$n - 2] -ne 0x0A -and $bytes[$n - 2] -ne 0x0D) "the rewritten SKILL.md does not end in exactly one LF (last bytes: $($bytes[($n - 3)..($n - 1)] -join ','))"
     }
 
     # The un-migrated consumer must be TOLD, on both surfaces (meta-invariant #5).

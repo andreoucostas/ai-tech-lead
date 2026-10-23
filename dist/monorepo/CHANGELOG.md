@@ -47,6 +47,7 @@
   When an agent host started the hook outside the repository, its throttle records were written there or nowhere, so
   every write ran a full build or type-check. Both hooks now find the repository from their own location and keep
   their records in its `.claude/.state` folder.
+- A skill that carries your repository's own "see this instance" line is rewritten by an update without a byte-order mark and ends in a single newline, the same bytes on PowerShell 7 and Windows PowerShell 5.1. Before, Windows PowerShell 5.1 put a mark before the skill's header and both hosts added a stray extra line ending.
 
 ## 0.98.2 — 2026-10-20
 

@@ -65,6 +65,8 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+An update that re-appends a team's exemplar line to a framework skill (`SKILL.md`) now writes the file the way every other installer write does, with `[IO.File]::WriteAllText` and no BOM. It used `Set-Content -Encoding UTF8`, which on Windows PowerShell 5.1 put a BOM before the `---` frontmatter, and on both hosts left a CRLF after the text's own closing LF, so one update gave different bytes per host for a framework-owned file. The file now ends in exactly one LF on pwsh 7 and 5.1 (the stray CR LF pwsh 7 wrote is gone too). `UpdateDelivery.Tests.ps1` gains the case; it was red on pwsh 7.6.6 (bytes `10,13,10` at the end) and on Windows PowerShell 5.1 (BOM) on the unfixed installer.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload
