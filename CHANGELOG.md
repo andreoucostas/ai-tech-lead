@@ -65,6 +65,8 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+A target given to the installer with a trailing backslash (`..\My Repo\`, as tab completion writes it) is now trimmed once, right after it is resolved, keeping a drive root whole. Under Windows PowerShell 5.1 the untrimmed path reached Git as `-C "C:\x\My Repo\"`, which Git reads as an escaped quote, so an update or brownfield run on a Git target ended in a CANT-VERIFY exit 4; the reparse-point walk compared `C:\repo` with `C:\repo\`, never stopped at the target and refused every write with exit 3 when a junction or mount point sat above it; and the self-install guard missed `dist\dotnet\`. `UpdateDelivery.Tests.ps1` gains two cases, a Git target named `My Repo` updated with a trailing backslash (red under Windows PowerShell 5.1, exit 4) and a target below a junction (red on both hosts, exit 3); the Git case was green on pwsh 7.6.6 unfixed.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

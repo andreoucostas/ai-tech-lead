@@ -3832,4 +3832,54 @@ It 'an edited notice stays after the update and is named as the team''s to keep,
     }
 }
 
+# Runs the installer with -Target quoted by hand so the child's own parser hands the installer
+# exactly $Target, trailing backslash and all (a tab-completed folder name ends in one).
+function Invoke-InstallerLiteralTarget {
+    param([Parameter(Mandatory)][string]$Dist, [Parameter(Mandatory)][string]$Target)
+    $start = New-Object Diagnostics.ProcessStartInfo
+    $start.FileName = (Get-PsExe)
+    $quoted = '"' + $Target + $(if ($Target.EndsWith('\')) { '\' }) + '"'
+    $start.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $repoRoot "dist/$Dist/scripts/install.ps1") + '" -Target ' + $quoted
+    $start.UseShellExecute = $false
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $process = [Diagnostics.Process]::Start($start)
+    $stderr = $process.StandardError.ReadToEndAsync()
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $process.WaitForExit()
+    $global:LASTEXITCODE = $process.ExitCode
+    return $stdout + $stderr.Result
+}
+
+It 'a Git target named with a space and passed with a trailing backslash updates to exit 0 on both hosts' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('trail-' + [guid]::NewGuid())
+    try {
+        $t = New-B309GitTarget -Root $root -Name 'My Repo' -Ignore "bin/`n"
+        $first = Invoke-InstallerLiteralTarget -Dist 'dotnet' -Target ($t + '\')
+        Assert ($LASTEXITCODE -eq 0 -and $first -match 'mode: greenfield') "the first install over '$t\' failed (exit $LASTEXITCODE): $first"
+        & git -C $t add -A
+        & git -C $t commit -qm 'framework install'
+        $out = Invoke-InstallerLiteralTarget -Dist 'dotnet' -Target ($t + '\')
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: update') "the update over '$t\' did not reach mode: update with exit 0 (exit $LASTEXITCODE): $out"
+        Assert ($out -notmatch 'CANT-VERIFY') "the update could not ask Git about '$t\': $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+It 'a target below a junction, passed with a trailing backslash, installs; the walk stops at the target, not at the drive root' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('trailj-' + [guid]::NewGuid())
+    $real = Join-Path $root 'real'
+    $link = Join-Path $root 'link'
+    try {
+        [void][IO.Directory]::CreateDirectory((Join-Path $real 'sub'))
+        & cmd /c "mklink /J `"$link`" `"$real`" >nul"
+        Assert (Test-Path -LiteralPath $link) 'calibration: the junction was not created'
+        $out = Invoke-InstallerLiteralTarget -Dist 'dotnet' -Target ((Join-Path $link 'sub') + '\')
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: greenfield') "a junction above the target refused the install (exit $LASTEXITCODE): $out"
+    } finally {
+        if (Test-Path -LiteralPath $link) { & cmd /c "rmdir `"$link`"" }
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 exit (Write-TestSummary 'UpdateDelivery.Tests')

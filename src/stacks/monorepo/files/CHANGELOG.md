@@ -48,6 +48,8 @@
   every write ran a full build or type-check. Both hooks now find the repository from their own location and keep
   their records in its `.claude/.state` folder.
 
+- **A folder passed to the installer with a trailing backslash works.** Tab completion writes `..\My Repo\`, and Windows PowerShell 5.1 then could not ask Git about the repository, so an update or an install over existing files stopped with a `CANT-VERIFY` line; a junction or mount point above the folder made the installer refuse every write. The installer now ignores the trailing backslash.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
