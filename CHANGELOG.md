@@ -65,6 +65,8 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+`adoption-archive.ps1` `Get-AaProvenance` passed the source path to `ls-files --error-unmatch`, `log -1` and `status --porcelain` as a glob pathspec, while its ignore and skip checks were already `:(literal)`. A tracked `cfg[1].yml` beside a committed `cfg1.yml` was recorded untracked with no revision, or with the sibling's commit and status, and that attribution was frozen into the adoption marker. All three now use `:(literal)` (no `icase`: `Test-AaExactSpelling` already requires the exact on-disk spelling, and `icase` would reintroduce a case-variant sibling match). `AdoptionArchiveIntegrity.Tests.ps1` gains the bracketed-with-sibling case, red on the unfixed helper.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

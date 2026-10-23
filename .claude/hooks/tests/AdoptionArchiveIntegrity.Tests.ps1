@@ -947,6 +947,22 @@ It 'modified, shallow and unavailable Git examination remain distinct provenance
     }
 }
 
+It 'provenance reads a bracketed tracked path literally, never as a glob matching a committed sibling' {
+    $fx = New-FixtureRepo
+    try {
+        [IO.File]::WriteAllText((Join-Path $fx 'cfg[1].yml'), 'bracketed bytes')
+        Add-Commit -Repo $fx -Message 'bracketed first'
+        $bracketCommit = (& git -C $fx rev-parse HEAD).Trim()
+        [IO.File]::WriteAllText((Join-Path $fx 'cfg1.yml'), 'sibling bytes')
+        Add-Commit -Repo $fx -Message 'sibling second'
+        [IO.File]::WriteAllText((Join-Path $fx 'cfg1.yml'), 'sibling modified')
+        $entry = Get-Entry @('-Capture', '-RepoRoot', $fx, '-OriginalPath', 'cfg[1].yml', '-Destination', 'docs/pre-adoption/cfg[1].yml', '-Owner', 'workflow')
+        Assert ($entry.provenance -eq 'tracked' -and $entry.provenanceRevision -eq $bracketCommit -and $entry.localModification -eq 'clean') "bracketed path took a glob sibling's provenance: $($entry | ConvertTo-Json -Compress)"
+    } finally {
+        Remove-Fixture $fx
+    }
+}
+
 It 'the brownfield installer freezes provenance at the pre-install revision and greenfield writes no archiveIntegrity' {
     $bf = New-FixtureRepo
     $gf = New-FixtureRepo

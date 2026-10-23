@@ -48,6 +48,8 @@
   every write ran a full build or type-check. Both hooks now find the repository from their own location and keep
   their records in its `.claude/.state` folder.
 
+- **Adopting a file with square brackets in its name now records the right history.** A tracked `cfg[1].yml` was read as a pattern matching a sibling such as `cfg1.yml`, so the adoption record could call it untracked, or carry the sibling's commit and modification state. The record now looks up the file by its exact path.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
