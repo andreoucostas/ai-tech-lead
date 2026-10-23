@@ -144,6 +144,32 @@ It '-GitHooks is rejected by native parameter binding before either entrypoint c
     } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
 }
 
+It 'a usage error (target not a directory, target is the template itself) exits exactly 2 with the message on stderr' {
+    $inst = Join-Path $repoRoot 'src/core/scripts/install.ps1'
+    $errFile = Join-Path ([IO.Path]::GetTempPath()) ('usage-exit-' + [guid]::NewGuid().ToString('N') + '.err')
+    $rootInst = Join-Path $repoRoot 'install.ps1'
+    # A cmd line `-Target "C:\x\dist\dotnet\"` reaches the script as `C:\x\dist\dotnet"` (the CRT reads \" as a quote).
+    # Test-Path cannot evaluate that path; under ErrorActionPreference Stop it threw before the usage exit ran on Windows PowerShell 5.1.
+    $quoteTail = '"' + (Join-Path $repoRoot 'dist') + '\"'
+    try {
+        foreach ($case in @(
+            [pscustomobject]@{ Name = 'nonexistent target'; Script = $inst; Prefix = @('-Target'); Target = ('"' + (Join-Path $repoRoot ('nope-' + [guid]::NewGuid().ToString('N'))) + '"'); Pattern = 'is not a directory' },
+            [pscustomobject]@{ Name = 'target is the template itself'; Script = $inst; Prefix = @('-Target'); Target = ('"' + (Join-Path $repoRoot 'src/core') + '"'); Pattern = 'template repo itself' },
+            [pscustomobject]@{ Name = 'inner installer, target with a quote'; Script = $inst; Prefix = @('-Target'); Target = $quoteTail; Pattern = 'is not a directory' },
+            [pscustomobject]@{ Name = 'root installer, target with a quote'; Script = $rootInst; Prefix = @(); Target = $quoteTail; Pattern = 'is not a directory' }
+        )) {
+            # Start-Process: Windows PowerShell 5.1 wraps native stderr piped through a redirection in an error record.
+            $proc = Start-Process -FilePath (Get-PsExe) -ArgumentList (@('-NoProfile', '-File', ('"' + $case.Script + '"')) + $case.Prefix + @($case.Target)) `
+                -Wait -PassThru -NoNewWindow -RedirectStandardError $errFile
+            $code = $proc.ExitCode
+            $err = [IO.File]::ReadAllText($errFile)
+            Assert ($code -eq 2) "$($case.Name) exited $code, not the documented 2: $err"
+            Assert ($err -match $case.Pattern) "$($case.Name) did not print its message on stderr: $err"
+            Assert ($err -notmatch 'CategoryInfo|FullyQualifiedErrorId|WriteErrorException|Illegal characters') "$($case.Name) leaked a PowerShell error record: $err"
+        }
+    } finally { Remove-Item -Force -LiteralPath $errFile -ErrorAction SilentlyContinue }
+}
+
 if (-not $SkipRedTest) {
     It 'a missing contract line makes this suite fail' {
         $target = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
