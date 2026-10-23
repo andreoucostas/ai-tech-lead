@@ -366,7 +366,11 @@ function Read-AaJsonDocument {
     try { $document = ($raw | ConvertFrom-Json) }
     catch { throw "evidence file '$Path' is not valid JSON: $($_.Exception.Message)" }
     if ($RequireObject -and $document -isnot [System.Management.Automation.PSCustomObject]) { throw "evidence file '$Path' is empty or not a JSON object" }
-    return ,$document
+    # A marker is returned whole. A plan read returns as it always did: Windows PowerShell 5.1 emits a
+    # top-level array as one value, and unrolling it here keeps a one-element plan array readable the way
+    # pwsh, which unrolls in ConvertFrom-Json, reads it.
+    if ($RequireObject) { return ,$document }
+    return $document
 }
 
 # Writes the complete document only after it has been fully serialized. Existing evidence is

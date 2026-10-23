@@ -268,6 +268,19 @@ foreach ($exampleStack in 'dotnet', 'angular', 'monorepo') {
     }
 }
 
+# A plan read is not a marker read: its shape is the helper's own entries check, so a plan wrapped in a
+# one-element array reads the same on both hosts, as it did before markers were required to be objects.
+It 'a plan wrapped in a one-element array freezes, moves and verifies on both hosts, as before' {
+    $docPath = Join-Path $script:RepoRoot 'dist/dotnet/.claude/commands/adopt.md'
+    $json = Read-ArchivePlanExample -Path $docPath
+    $fx = New-FixtureRepo -NoGit
+    try {
+        $wrapped = Join-Path $fx 'adopt.md'
+        [IO.File]::WriteAllText($wrapped, [IO.File]::ReadAllText($docPath).Replace($json, '[' + $json + ']'))
+        Assert-ArchivePlanExample -DocPath $wrapped -HelperPath (Join-Path $script:RepoRoot 'dist/dotnet/scripts/adoption-archive.ps1')
+    } finally { Remove-Fixture $fx }
+}
+
 It 'archive example extraction distinguishes document defects from inability to examine and ignores unrelated fences' {
     $fx = New-FixtureRepo -NoGit
     try {
