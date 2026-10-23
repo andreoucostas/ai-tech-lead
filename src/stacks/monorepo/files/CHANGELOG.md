@@ -48,6 +48,12 @@
   every write ran a full build or type-check. Both hooks now find the repository from their own location and keep
   their records in its `.claude/.state` folder.
 
+- **Your own scripts no longer fail the framework checks.** `scripts/template-checks.ps1` (run by `docs-sync-check.ps1` in
+  CI) demanded a UTF-8 BOM and a Windows PowerShell 5.1 parse of every `.ps1` under `scripts/`, so a script of yours
+  without a BOM, or using PowerShell 7 syntax such as `??`, failed your CI. It now checks only the scripts
+  `framework-ownership.json` lists. If that file is missing, the full scan stays; if it cannot be read, the check
+  exits 2 and says so instead of passing.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

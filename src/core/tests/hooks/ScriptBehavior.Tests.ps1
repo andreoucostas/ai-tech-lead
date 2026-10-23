@@ -179,6 +179,34 @@ It 'template-checks names each instruction-layout defect and accepts CRLF' {
     }
 }
 
+It 'template-checks in a consumer repository checks only the scripts the ownership manifest lists' {
+    $root = TemplateFixture
+    try {
+        Remove-Item -LiteralPath (Join-Path $root '.template-repo') -Force
+        $subject = Join-Path $root scripts/template-checks.ps1
+        $own = @('.claude/hooks/audit-trail.ps1','.claude/hooks/boy-scout-check.ps1','.claude/hooks/guard.ps1','.claude/hooks/post-write.ps1','.claude/hooks/route-prompt.ps1','.claude/hooks/session-start.ps1','scripts/template-checks.ps1')
+        $manifest = Join-Path $root framework-ownership.json
+        Put $manifest ('{"schema-version":1,"paths":[' + (($own | ForEach-Object { '{"path":"' + $_ + '","ownership":"framework-owned/overwritten"}' }) -join ',') + ']}')
+        # A consumer's own script: no BOM, pwsh-7 syntax. It is not the framework's to police.
+        Put (Join-Path $root scripts/deploy.ps1) "`$x = `$null ?? 1`n"
+        $consumer = RunArg $subject
+        Assert ($consumer.Exit -eq 0) "consumer-owned script failed the framework checks: exit=$($consumer.Exit) $($consumer.Out)"
+        # A framework-owned script that lost its BOM still fails.
+        Put (Join-Path $root .claude/hooks/guard.ps1) "# fixture`n"
+        $owned = RunArg $subject
+        Assert ($owned.Exit -eq 3 -and $owned.Out.Contains('BOM missing on:') -and $owned.Out.Contains('guard.ps1') -and -not $owned.Out.Contains('deploy.ps1')) "owned BOM-less script not reported alone: exit=$($owned.Exit) $($owned.Out)"
+        PutBom (Join-Path $root .claude/hooks/guard.ps1) "# fixture`n"
+        # An unreadable manifest is 'could not examine', not a pass.
+        Put $manifest '{ not json'
+        $bad = RunArg $subject
+        Assert ($bad.Exit -eq 2 -and $bad.Out.Contains('CANT-VERIFY:') -and $bad.Out.Contains('framework-ownership.json')) "invalid manifest: exit=$($bad.Exit) $($bad.Out)"
+        # No manifest (older install): the full scan stays.
+        Remove-Item -LiteralPath $manifest -Force
+        $absent = RunArg $subject
+        Assert ($absent.Exit -eq 3 -and $absent.Out.Contains('deploy.ps1')) "absent manifest should keep the full scan: exit=$($absent.Exit) $($absent.Out)"
+    } finally { Remove-Item -Recurse -Force $root }
+}
+
 It 'template-checks rejects an Unreleased stamped head but accepts a dated one' {
     foreach ($case in @('dated','unreleased')) {
         $root = TemplateFixture

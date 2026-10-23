@@ -65,6 +65,12 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+`template-checks.ps1` in a consumer repository now requires a BOM on, and a Windows PowerShell 5.1 parse of, only the `.ps1` files `framework-ownership.json` lists
+(entries not marked consumer-owned). `scripts/` is shared with the consumer, so their own BOM-less or pwsh-7-syntax script failed their CI with exit 3. The marked
+template repo (which is what `validate-dist.ps1` runs it as, in every dist) and an install with no manifest keep the full scan; a manifest that is present but
+unreadable or without paths exits 2 with a `CANT-VERIFY:` line. `ScriptBehavior.Tests.ps1` gains one case covering a consumer script passing, an owned script
+without its BOM failing, the invalid and absent manifests; it was red on the unfixed script.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

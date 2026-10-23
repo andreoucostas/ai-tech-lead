@@ -124,9 +124,37 @@ if (-not (Test-Path -LiteralPath 'AGENTS.md' -PathType Leaf)) {
 
 # --- 4. Framework .ps1 files carry a UTF-8 BOM (Windows PowerShell 5.1 requirement) -----------
 $scanDirs = @('.claude/hooks','scripts','tests/hooks') | Where-Object { Test-Path $_ }
+# In a consumer repository scripts/ is shared with the consumer's own scripts, which are not the
+# framework's to police: check only the .ps1 files framework-ownership.json lists. The marked
+# template repo, and an older install with no manifest, keep the full scan. A manifest that is
+# present but unreadable is "could not examine", never a pass.
+$ownedScripts = $null
+if (-not $isTemplateRepo -and (Test-Path -LiteralPath 'framework-ownership.json')) {
+    try {
+        $ownedScripts = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        $ownEntries = @((Get-Content -LiteralPath 'framework-ownership.json' -Raw -Encoding UTF8 | ConvertFrom-Json).paths)
+        if ($ownEntries.Count -eq 0) { throw 'no paths inventory' }
+        foreach ($entry in $ownEntries) {
+            if ($entry.path -isnot [string] -or -not $entry.path) { throw 'entry without a path' }
+            if ([string]$entry.ownership -notlike 'consumer-owned*') { [void]$ownedScripts.Add(($entry.path -replace '\\','/')) }
+        }
+    } catch {
+        Write-Output 'CANT-VERIFY: template-checks could not read framework-ownership.json; which scripts are framework-owned remains UNKNOWN. Fix the file (or reinstall the framework) and rerun.'
+        exit 2
+    }
+}
+$rootFull = (Resolve-Path -LiteralPath '.').ProviderPath.TrimEnd('\','/')
+function Get-FrameworkScripts {
+    foreach ($d in $scanDirs) {
+        foreach ($f in (Get-ChildItem -Recurse -Filter *.ps1 -Path $d)) {
+            if ($null -eq $ownedScripts) { $f; continue }
+            if ($ownedScripts.Contains(($f.FullName.Substring($rootFull.Length + 1) -replace '\\','/'))) { $f }
+        }
+    }
+}
 $noBom = @()
-foreach ($d in $scanDirs) {
-    foreach ($f in (Get-ChildItem -Recurse -Filter *.ps1 -Path $d)) {
+foreach ($d in @('.')) {
+    foreach ($f in @(Get-FrameworkScripts)) {
         $b = [System.IO.File]::ReadAllBytes($f.FullName)
         if (-not ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF)) { $noBom += $f.FullName }
     }
@@ -157,8 +185,8 @@ if (Test-Path '.claude/hooks') {
 
 # --- 6. PS syntax of framework scripts ---------------------------------------------------------
 $parseFails = @()
-foreach ($d in $scanDirs) {
-    foreach ($f in (Get-ChildItem -Recurse -Filter *.ps1 -Path $d)) {
+foreach ($d in @('.')) {
+    foreach ($f in @(Get-FrameworkScripts)) {
         $e = $null
         [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$e) | Out-Null
         if ($e) { $parseFails += "$($f.FullName): $($e[0].Message)" }
