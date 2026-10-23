@@ -3891,4 +3891,20 @@ It 'a target below a junction, passed with a trailing backslash, installs; the w
     }
 }
 
+It 'an update over a 0-byte LEARNINGS.md succeeds and disables no skill' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-emptylearn-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    try {
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the install failed (exit $LASTEXITCODE): $first"
+        [IO.File]::WriteAllBytes((Join-Path $t 'LEARNINGS.md'), [byte[]]@())
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0 -and $out -match '(?m)^\s*mode: update') "an update over an empty LEARNINGS.md did not succeed in update mode (exit $exit): $out"
+        Assert ((Get-Item -LiteralPath (Join-Path $t 'LEARNINGS.md')).Length -eq 0) 'the empty LEARNINGS.md was changed'
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 exit (Write-TestSummary 'UpdateDelivery.Tests')

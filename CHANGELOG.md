@@ -103,6 +103,7 @@ parameter outside any handler. `Read-AaJsonDocument` now refuses an empty or non
 `-Freeze` and `-MoveFrozen` already ended in their exit 3 handlers and now name the empty file instead of a binding error. `AdoptionArchiveIntegrity.Tests.ps1` gains the case,
 red on the unfixed helper. A top-level JSON array, empty or not, even one wrapping a valid marker, is refused the same way: the first guard tested `[pscustomobject]`, the `psobject`
 accelerator that any value passes, so `[]` and `[null]` still exited 1 on Windows PowerShell 5.1, `[[]]` on pwsh, and `[<marker>]` verified PASS; the test is now the real `PSCustomObject` type.
+**An update no longer crashes on an empty `LEARNINGS.md`.** `install.ps1` read the file with `Get-Content -Raw` and handed the result to `[regex]::Matches`; a 0-byte file yields no output, so the call threw a raw .NET error under `$ErrorActionPreference = 'Stop'` and the update (and `-WhatIf`) exited 1 before printing its plan. An empty file now means no disabled-skill headings. `UpdateDelivery.Tests.ps1` gains the case (install, empty the file, update: exit 0, `mode: update`, file still empty), red on the unfixed installer with `Exception calling "Matches" ... Value cannot be null`.
 
 ## 0.98.2 — 2026-10-20
 

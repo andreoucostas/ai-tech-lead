@@ -1602,7 +1602,8 @@ $activeSkillsRoot = Join-Path $tgt '.claude/skills'
 if ($updateMode) {
     $learnings = Join-Path $tgt 'LEARNINGS.md'
     if (Test-Path -LiteralPath $learnings -PathType Leaf) {
-        foreach ($m in [regex]::Matches((Get-Content -Raw -LiteralPath $learnings), '(?m)^## Disabled framework skill:\s*([a-z0-9-]+)\s*$')) { [void]$disabledSkillNames.Add($m.Groups[1].Value) }
+        # A 0-byte file yields no output with -Raw, and a [string] cast of that still reaches Matches as $null; an empty file disables no skill.
+        foreach ($m in [regex]::Matches((@(Get-Content -Raw -LiteralPath $learnings) -join ''), '(?m)^## Disabled framework skill:\s*([a-z0-9-]+)\s*$')) { [void]$disabledSkillNames.Add($m.Groups[1].Value) }
     }
     if (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) {
         foreach ($item in Get-ChildItem -LiteralPath $activeSkillsRoot -Recurse -Force) {

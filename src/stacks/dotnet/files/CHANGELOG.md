@@ -78,6 +78,9 @@
   exiting 1 with no result line. A file holding a JSON array instead of the marker object, empty or not, gets the same
   answer rather than a crash or a false pass.
 
+- **An update no longer fails when `LEARNINGS.md` is empty.** If your team emptied that file, the update used to stop with a
+  raw error before showing its plan. It now treats an empty file as disabling no skills and leaves the file alone.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
