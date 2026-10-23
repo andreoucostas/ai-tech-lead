@@ -813,6 +813,29 @@ It 'a -MoveFrozen refused before anything moved exits 3 and leaves the marker by
     } finally { Remove-Fixture $fx }
 }
 
+It 'a -MoveFrozen whose move throws with the source intact and no destination exits 3, leaves the marker unchanged, and succeeds on retry' {
+    $fx = New-FixtureRepo
+    $lock = $null
+    try {
+        [IO.File]::WriteAllText((Join-Path $fx 'l.txt'), 'locked frozen source')
+        Add-Commit -Repo $fx
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx '.claude') | Out-Null
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $plan = New-ArchivePlanFile -Path (Join-Path $fx '.claude/lock-plan.json') -Entries @([ordered]@{ originalPath = 'l.txt'; destination = 'docs/pre-adoption/l.txt' })
+        Assert ((Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)).Exit -eq 0) 'Freeze failed'
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($marker))
+        $lock = [IO.File]::Open((Join-Path $fx 'l.txt'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        $r = Invoke-Aa @('-MoveFrozen', '-RepoRoot', $fx, '-EvidencePath', $marker, '-OriginalPath', 'l.txt', '-Destination', 'docs/pre-adoption/l.txt')
+        Assert ($r.Exit -eq 3 -and $r.Output -match 'refused before anything moved') "locked-source move was not refused: exit $($r.Exit) $($r.Output)"
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($marker)) -ceq $before) 'a move that never started rewrote the marker'
+        $lock.Dispose(); $lock = $null
+        $retry = Invoke-Aa @('-MoveFrozen', '-RepoRoot', $fx, '-EvidencePath', $marker, '-OriginalPath', 'l.txt', '-Destination', 'docs/pre-adoption/l.txt')
+        Assert ($retry.Exit -eq 0) "retry after the lock was released failed: $($retry.Output)"
+        $v = Invoke-Aa @('-Verify', '-RepoRoot', $fx, '-EvidencePath', $marker)
+        Assert ($v.Exit -eq 0) "adoption does not verify after the retry: $($v.Output)"
+    } finally { if ($lock) { $lock.Dispose() }; Remove-Fixture $fx }
+}
+
 It 'bootstrap changing an archive after capture makes the post-gate verify against the frozen preserved copy FAIL' {
     $fx = New-FixtureRepo
     try {

@@ -608,7 +608,11 @@ function Invoke-AaMoveFrozen {
             if ($recovery -eq 'PASS') {
                 $entry.verified = $true
                 $document.archivedOriginals = @($document.archiveIntegrity.entries | Where-Object { $_.verified } | ForEach-Object { [string]$_.destination })
-                Write-AaJsonDocument -Root $Root -Path $MarkerPath -Document $document
+                try { Write-AaJsonDocument -Root $Root -Path $MarkerPath -Document $document }
+                catch {
+                    Write-AaError "ERROR: archive '$DestinationRelative' already matches its frozen digest (moved in an earlier run), but the marker could not be updated: $($_.Exception.Message) Retry the same -MoveFrozen to record it."
+                    exit 3
+                }
                 Write-Output "RECOVERED: '$OriginalRelative' -> '$DestinationRelative' already matches the pre-frozen digest."
                 return
             }
@@ -631,7 +635,23 @@ function Invoke-AaMoveFrozen {
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
         Move-Item -LiteralPath $source -Destination $destination
     } catch {
-        # The move began; the inventory can no longer be trusted until a person looks.
+        # Re-examine before deciding. Source still present at its frozen digest and no destination:
+        # nothing moved (a share lock from an editor or scanner, a file where a folder should be),
+        # so this is a refusal and the marker stays as it was. Any other state keeps failed-marking.
+        $moveError = $_.Exception.Message
+        $nothingMoved = $false
+        try {
+            $srcNow = Get-Item -Force -LiteralPath $source -ErrorAction SilentlyContinue
+            $dstNow = Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue
+            if ($srcNow -and -not $dstNow) {
+                $nowBytes = [IO.File]::ReadAllBytes($source)
+                $nothingMoved = ([int64]$nowBytes.LongLength -eq [int64]$entry.byteLength -and (Get-AaSha256Hex -Bytes $nowBytes) -ceq ([string]$entry.sha256).ToLowerInvariant())
+            }
+        } catch { $nothingMoved = $false }
+        if ($nothingMoved) {
+            Write-AaError "ERROR: frozen archive move '$OriginalRelative' -> '$DestinationRelative' refused before anything moved: $moveError The source is intact at its frozen digest and the destination is absent; the marker was not changed. Retry once the cause is cleared."
+            exit 3
+        }
         Stop-AaFrozenMove -Root $Root -MarkerPath $MarkerPath -Document $document -Message "frozen archive move '$OriginalRelative' -> '$DestinationRelative' failed: $($_.Exception.Message)" -ExitCode 3
     }
     $detail = ''
