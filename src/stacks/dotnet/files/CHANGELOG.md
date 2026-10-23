@@ -70,6 +70,8 @@
 
 - **Adopting a file with square brackets in its name now records the right history.** A tracked `cfg[1].yml` was read as a pattern matching a sibling such as `cfg1.yml`, so the adoption record could call it untracked, or carry the sibling's commit and modification state. The record now looks up the file by its exact path. It also ignores `GIT_LITERAL_PATHSPECS` and the other Git pathspec switches in your environment, which would otherwise make Git treat every file as not tracked.
 
+- Adoption archive: asking `adoption-archive.ps1 -MoveFrozen` to repeat a move that already succeeded, or giving it a path it has no entry for, a missing source or a destination that already exists, now exits 3 and leaves the adoption marker untouched. Before, any such refusal marked the whole archive inventory failed and the adoption could no longer be verified. A move that fails once it has started still marks the inventory failed, unless the source is still intact and nothing was written to the destination (for example, an editor or virus scanner holds the file open), which is also left unchanged so you can retry.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

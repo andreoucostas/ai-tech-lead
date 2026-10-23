@@ -779,6 +779,63 @@ It 'a resumed/partial run does not rebaseline: an already verified frozen entry 
     } finally { Remove-Fixture $fx }
 }
 
+It 'a -MoveFrozen refused before anything moved exits 3 and leaves the marker byte-for-byte unchanged, so the adoption still verifies' {
+    $fx = New-FixtureRepo
+    try {
+        [IO.File]::WriteAllText((Join-Path $fx 'a.txt'), 'first frozen source')
+        [IO.File]::WriteAllText((Join-Path $fx 'b.txt'), 'second frozen source')
+        Add-Commit -Repo $fx
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx '.claude') | Out-Null
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $plan = New-ArchivePlanFile -Path (Join-Path $fx '.claude/two-plan.json') -Entries @([ordered]@{ originalPath = 'a.txt'; destination = 'docs/pre-adoption/a.txt' }, [ordered]@{ originalPath = 'b.txt'; destination = 'docs/pre-adoption/b.txt' })
+        Assert ((Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)).Exit -eq 0) 'two-entry Freeze failed'
+        Assert ((Invoke-Aa @('-MoveFrozen', '-RepoRoot', $fx, '-EvidencePath', $marker, '-OriginalPath', 'a.txt', '-Destination', 'docs/pre-adoption/a.txt')).Exit -eq 0) 'first frozen move failed'
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($marker))
+        $refuse = {
+            param([string]$Label, [string]$Original, [string]$Dest, [string]$Pattern)
+            $r = Invoke-Aa @('-MoveFrozen', '-RepoRoot', $fx, '-EvidencePath', $marker, '-OriginalPath', $Original, '-Destination', $Dest)
+            Assert ($r.Exit -eq 3 -and $r.Output -match $Pattern) "$Label was not refused with exit 3: exit $($r.Exit) $($r.Output)"
+            Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($marker)) -ceq $before) "$Label rewrote the marker"
+        }
+        & $refuse 'repeat of a verified move' 'a.txt' 'docs/pre-adoption/a.txt' 'already verified'
+        & $refuse 'mistyped path' 'a.txt' 'docs/pre-adoption/typo.txt' 'no exact unique entry'
+        $stray = Join-Path $fx 'docs/pre-adoption/b.txt'
+        [IO.File]::WriteAllText($stray, 'something already here')
+        & $refuse 'existing destination' 'b.txt' 'docs/pre-adoption/b.txt' 'destination already exists'
+        Remove-Item -LiteralPath $stray -Force
+        Move-Item -LiteralPath (Join-Path $fx 'b.txt') -Destination (Join-Path $fx 'b.hold')
+        & $refuse 'missing source' 'b.txt' 'docs/pre-adoption/b.txt' 'is missing'
+        Move-Item -LiteralPath (Join-Path $fx 'b.hold') -Destination (Join-Path $fx 'b.txt')
+        $last = Invoke-Aa @('-MoveFrozen', '-RepoRoot', $fx, '-EvidencePath', $marker, '-OriginalPath', 'b.txt', '-Destination', 'docs/pre-adoption/b.txt')
+        Assert ($last.Exit -eq 0) "the move still did not complete after the refusals: $($last.Output)"
+        $v = Invoke-Aa @('-Verify', '-RepoRoot', $fx, '-EvidencePath', $marker)
+        Assert ($v.Exit -eq 0) "adoption no longer verifies after refused moves: $($v.Output)"
+    } finally { Remove-Fixture $fx }
+}
+
+It 'a -MoveFrozen whose move throws with the source intact and no destination exits 3, leaves the marker unchanged, and succeeds on retry' {
+    $fx = New-FixtureRepo
+    $lock = $null
+    try {
+        [IO.File]::WriteAllText((Join-Path $fx 'l.txt'), 'locked frozen source')
+        Add-Commit -Repo $fx
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx '.claude') | Out-Null
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $plan = New-ArchivePlanFile -Path (Join-Path $fx '.claude/lock-plan.json') -Entries @([ordered]@{ originalPath = 'l.txt'; destination = 'docs/pre-adoption/l.txt' })
+        Assert ((Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)).Exit -eq 0) 'Freeze failed'
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($marker))
+        $lock = [IO.File]::Open((Join-Path $fx 'l.txt'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+        $r = Invoke-Aa @('-MoveFrozen', '-RepoRoot', $fx, '-EvidencePath', $marker, '-OriginalPath', 'l.txt', '-Destination', 'docs/pre-adoption/l.txt')
+        Assert ($r.Exit -eq 3 -and $r.Output -match 'refused before anything moved') "locked-source move was not refused: exit $($r.Exit) $($r.Output)"
+        Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($marker)) -ceq $before) 'a move that never started rewrote the marker'
+        $lock.Dispose(); $lock = $null
+        $retry = Invoke-Aa @('-MoveFrozen', '-RepoRoot', $fx, '-EvidencePath', $marker, '-OriginalPath', 'l.txt', '-Destination', 'docs/pre-adoption/l.txt')
+        Assert ($retry.Exit -eq 0) "retry after the lock was released failed: $($retry.Output)"
+        $v = Invoke-Aa @('-Verify', '-RepoRoot', $fx, '-EvidencePath', $marker)
+        Assert ($v.Exit -eq 0) "adoption does not verify after the retry: $($v.Output)"
+    } finally { if ($lock) { $lock.Dispose() }; Remove-Fixture $fx }
+}
+
 It 'bootstrap changing an archive after capture makes the post-gate verify against the frozen preserved copy FAIL' {
     $fx = New-FixtureRepo
     try {
