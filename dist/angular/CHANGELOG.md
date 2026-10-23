@@ -73,6 +73,8 @@
 - **A folder passed to the installer with a trailing backslash works.** Tab completion writes `..\My Repo\`, and Windows PowerShell 5.1 then could not ask Git about the repository, so an update or an install over existing files stopped with a `CANT-VERIFY` line; a junction or mount point above the folder made the installer refuse every write. The installer now ignores the trailing backslash.
 - A skill that carries your repository's own "see this instance" line is rewritten by an update without a byte-order mark and ends in a single newline, the same bytes on PowerShell 7 and Windows PowerShell 5.1. Before, Windows PowerShell 5.1 put a mark before the skill's header and both hosts added a stray extra line ending.
 
+- **Adopting a file with square brackets in its name now records the right history.** A tracked `cfg[1].yml` was read as a pattern matching a sibling such as `cfg1.yml`, so the adoption record could call it untracked, or carry the sibling's commit and modification state. The record now looks up the file by its exact path. It also ignores `GIT_LITERAL_PATHSPECS` and the other Git pathspec switches in your environment, which would otherwise make Git treat every file as not tracked.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
