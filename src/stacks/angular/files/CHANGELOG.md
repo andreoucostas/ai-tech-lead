@@ -51,6 +51,11 @@
   outside the repository, its throttle record was written there or nowhere, so every write ran a full type-check. Both
   hooks now find the repository from their own location and keep their records in its `.claude/.state` folder.
 
+- **The review-scope capture no longer drops a changed file whose name differs from another only by letter case.**
+  When two changed or untracked paths differed only in case (possible with `core.ignorecase=false` or content from a
+  case-sensitive system), one was missing from the captured file list and the test-weakening scan then rejected the
+  capture as invalid. Both are now kept.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

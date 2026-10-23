@@ -65,6 +65,8 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+`review-scope.ps1` (shipped, ordinary by path) deduplicated its path, deletion, rename and untracked lists with `Sort-Object -Unique`, which folds letter case on both hosts, while `test-weakening-scan.ps1` checks manifest membership case-sensitively. With two paths that differ only by case (a repository with `core.ignorecase=false`, or content from a case-sensitive host) one vanished from the layer inventory (an untracked one was not copied) and the scanner rejected the bundle the builder had just written with `INVALID: patch path ... is absent from the 'staged' manifest inventory`. The lists now go through an ordinal `HashSet[string]` and an ordinal sort (`Get-OrdinalUniqueSorted`), the stability re-read included; list order is now ordinal, so uppercase sorts before lowercase. `ReviewScope.Tests.ps1` gains one case that builds the pair through the index (`update-index --cacheinfo` with `core.ignorecase=false`, since Windows cannot hold both names in one folder) and asserts both paths are in the manifest and the scanner accepts the bundle; seen red on the unfixed tree, green on pwsh and Windows PowerShell 5.1.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

@@ -286,4 +286,25 @@ It 'scanner rejects tampered bytes but classifies an actual read lock as CANNOT 
     }
 }
 
+It 'keeps two paths that differ only by letter case in the layer inventory and the scanner accepts the bundle' {
+    $repo = New-ReviewRepo; $bundle = New-BundlePath
+    try {
+        # A Windows folder cannot hold both names, so both entries go in through the index only.
+        & git -C $repo config core.ignorecase false 2>&1 | Out-Null
+        foreach ($name in @('tests/Case.Tests.ps1','tests/case.tests.ps1')) {
+            $blob = ("Assert '$name'`n" | & git -C $repo hash-object -w --stdin)
+            & git -C $repo update-index --add --cacheinfo "100644,$blob,$name" 2>&1 | Out-Null
+        }
+        $result = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$bundle)
+        Assert ($result.Exit -eq 0) "case-pair capture failed: $($result.Text)"
+        $staged = @((Read-Manifest $bundle).layers | Where-Object name -eq staged)[0]
+        Assert ((@($staged.paths) -ccontains 'tests/Case.Tests.ps1') -and (@($staged.paths) -ccontains 'tests/case.tests.ps1')) "a case-only twin vanished from the staged inventory: $(@($staged.paths) -join ',')"
+        $scan = Invoke-AtRepo $repo $scanner @('-ScopePath',$bundle)
+        Assert ($scan.Exit -eq 0) "scanner rejected the bundle the builder produced: $($scan.Exit) $($scan.Text)"
+    } finally {
+        Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $bundle -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 exit (Write-TestSummary 'ReviewScope.Tests')

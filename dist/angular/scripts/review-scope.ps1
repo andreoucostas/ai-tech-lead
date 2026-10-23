@@ -19,6 +19,18 @@ $script:PerFileLimit = 16MB
 $script:TotalFileLimit = 64MB
 $script:PrivateIndexPath = $null
 
+function Get-OrdinalUniqueSorted {
+    # Case-sensitive, culture-free dedupe and sort: Sort-Object -Unique folds case, which dropped one
+    # of two paths that differ only by letter case (the scanner checks membership case-sensitively).
+    param([object[]]$Values)
+    $set = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($value in @($Values)) { if ($null -ne $value) { [void]$set.Add([string]$value) } }
+    $array = New-Object 'string[]' $set.Count
+    $set.CopyTo($array)
+    [Array]::Sort($array, [StringComparer]::Ordinal)
+    return $array
+}
+
 function Invoke-GitBytes {
     param([string[]]$Arguments)
     $git = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
@@ -193,14 +205,14 @@ function Write-ReviewScopeBundle {
         if ($Name -eq 'staged') { $nameArgs = @('diff','--cached','--name-only','-z','--find-renames','--diff-filter=ACDMRTUXB','--') + $pathSpecs }
         elseif ($Name -eq 'unstaged') { $nameArgs = @('diff','--name-only','-z','--find-renames','--diff-filter=ACDMRTUXB','--') + $pathSpecs }
         else { $nameArgs = @('diff',$script:RangeExpression,'--name-only','-z','--find-renames','--diff-filter=ACDMRTUXB','--') + $pathSpecs }
-        $paths = @(& $readNames $nameArgs | Sort-Object -Unique)
+        $paths = @(Get-OrdinalUniqueSorted (& $readNames $nameArgs))
         $deletedArgs = @($nameArgs)
         $filterIndex = [Array]::IndexOf($deletedArgs, '--diff-filter=ACDMRTUXB')
         $deletedArgs[$filterIndex] = '--diff-filter=D'
         $renamedArgs = @($nameArgs)
         $renamedArgs[$filterIndex] = '--diff-filter=R'
-        $deletions = @(& $readNames $deletedArgs | Sort-Object -Unique)
-        $renames = @(& $readNames $renamedArgs | Sort-Object -Unique)
+        $deletions = @(Get-OrdinalUniqueSorted (& $readNames $deletedArgs))
+        $renames = @(Get-OrdinalUniqueSorted (& $readNames $renamedArgs))
         foreach ($capturedPath in @($paths + $deletions + $renames)) {
             if ($capturedPath -match '[\x00-\x1f"]') {
                 throw "CANNOT EXAMINE: Git path contains an unsupported control or quote character: '$capturedPath'."
@@ -208,9 +220,9 @@ function Write-ReviewScopeBundle {
         }
         $patchCheck = if ($emptySelection) { [pscustomobject]@{ Exit = 0; Bytes = [byte[]]@(); Error = '' } } else { Invoke-GitBytes $DiffArguments }
         if ($patchCheck.Exit -ne 0) { throw "CANNOT EXAMINE: git $Name stability read failed: $($patchCheck.Error.Trim())" }
-        $pathsCheck = @(& $readNames $nameArgs | Sort-Object -Unique)
-        $deletionsCheck = @(& $readNames $deletedArgs | Sort-Object -Unique)
-        $renamesCheck = @(& $readNames $renamedArgs | Sort-Object -Unique)
+        $pathsCheck = @(Get-OrdinalUniqueSorted (& $readNames $nameArgs))
+        $deletionsCheck = @(Get-OrdinalUniqueSorted (& $readNames $deletedArgs))
+        $renamesCheck = @(Get-OrdinalUniqueSorted (& $readNames $renamedArgs))
         $patch64 = [Convert]::ToBase64String([byte[]]@($patch.Bytes))
         $patchCheck64 = [Convert]::ToBase64String([byte[]]@($patchCheck.Bytes))
         if ($patch64 -cne $patchCheck64 -or ($paths -join "`0") -cne ($pathsCheck -join "`0") -or
@@ -233,7 +245,7 @@ function Write-ReviewScopeBundle {
         & $capturePatch 'staged' (@('diff','--cached','--binary','--full-index','--unified=0','--find-renames','--no-ext-diff','--no-textconv','--no-color','--src-prefix=a/','--dst-prefix=b/','--') + $pathSpecs)
         & $capturePatch 'unstaged' (@('diff','--binary','--full-index','--unified=0','--find-renames','--no-ext-diff','--no-textconv','--no-color','--src-prefix=a/','--dst-prefix=b/','--') + $pathSpecs)
         $untrackedArgs = @('ls-files','--others','--exclude-standard','-z','--') + $pathSpecs
-        $untracked = @(& $readNames $untrackedArgs | Sort-Object -Unique)
+        $untracked = @(Get-OrdinalUniqueSorted (& $readNames $untrackedArgs))
         foreach ($relative in $untracked) {
             $source = Join-Path $script:RepoRoot ($relative -replace '/', [IO.Path]::DirectorySeparatorChar)
             try { $entry = Get-Item -Force -LiteralPath $source -ErrorAction Stop }
