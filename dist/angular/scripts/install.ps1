@@ -2320,7 +2320,8 @@ foreach ($name in $skillExemplars.Keys) {
     if (Test-Path -LiteralPath $newFile -PathType Leaf) {
         $newText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($newFile))
         $newText = [regex]::Replace($newText, '(?m)^For a concrete current instance in this repo, see .+\r?\n?', '')
-        Set-Content -LiteralPath $newFile -Value ($newText.TrimEnd() + "`n`n" + $skillExemplars[$name] + "`n") -Encoding UTF8
+        # No BOM and one closing LF on every host: Set-Content -Encoding UTF8 added a BOM on 5.1 and a CRLF after this LF on both.
+        [IO.File]::WriteAllText($newFile, ($newText.TrimEnd() + "`n`n" + $skillExemplars[$name] + "`n"), [Text.UTF8Encoding]::new($false))
     }
 }
 # A disabled skill's files are already carried to .claude/disabled-skills, so a folder that cannot be
