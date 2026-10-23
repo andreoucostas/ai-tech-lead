@@ -73,6 +73,11 @@
 
 - **A retried or mistyped adoption move no longer blocks the adoption.** Asking `adoption-archive.ps1 -MoveFrozen` to repeat a move that already succeeded, or giving it a path it has no entry for, a missing source or a destination that already exists, now exits 3 and leaves the adoption marker untouched. Before, any such refusal marked the whole archive inventory failed and the adoption could no longer be verified. A move that fails once it has started still marks the inventory failed, unless the source is still intact and nothing was written to the destination (for example, an editor or virus scanner holds the file open), which is also left unchanged so you can retry.
 
+- **Verifying an empty adoption evidence file no longer crashes.** An evidence file that is empty or holds only `null`
+  (a truncated marker) now reports `RESULT: CANT-VERIFY` and exits 5, as the script's exit codes promise, instead of
+  exiting 1 with no result line. A file holding a JSON array instead of the marker object, empty or not, gets the same
+  answer rather than a crash or a false pass.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

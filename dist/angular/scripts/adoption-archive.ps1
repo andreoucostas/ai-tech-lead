@@ -355,10 +355,18 @@ function Get-AaIntegrityBlock {
 }
 
 function Read-AaJsonDocument {
-    param([Parameter(Mandatory = $true)][string]$Path)
+    param([Parameter(Mandatory = $true)][string]$Path, [switch]$RequireObject)
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "evidence file '$Path' is missing or not a regular file" }
-    try { return (Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json) }
+    $raw = Get-Content -Raw -LiteralPath $Path
+    # A marker is a JSON object. A zero-byte or literal 'null' file parses to $null without error, and
+    # pwsh unrolls a top-level array into its elements (so '[<marker>]' would pass as the marker), so the
+    # text is checked before parsing. The real type is tested afterwards: [pscustomobject] is the psobject
+    # accelerator, which every value passes.
+    if ($RequireObject -and ($null -eq $raw -or -not ([string]$raw).TrimStart([char]0xFEFF, ' ', "`t", "`r", "`n").StartsWith('{', [StringComparison]::Ordinal))) { throw "evidence file '$Path' is empty or not a JSON object" }
+    try { $document = ($raw | ConvertFrom-Json) }
     catch { throw "evidence file '$Path' is not valid JSON: $($_.Exception.Message)" }
+    if ($RequireObject -and $document -isnot [System.Management.Automation.PSCustomObject]) { throw "evidence file '$Path' is empty or not a JSON object" }
+    return ,$document
 }
 
 # Writes the complete document only after it has been fully serialized. Existing evidence is
@@ -441,7 +449,7 @@ function Test-AaIntegrityStructure {
 function Invoke-AaVerify {
     param([Parameter(Mandatory = $true)][string]$Root, [Parameter(Mandatory = $true)][string]$EvidenceFile)
     $lines = New-Object System.Collections.Generic.List[string]
-    try { $document = Read-AaJsonDocument -Path $EvidenceFile }
+    try { $document = Read-AaJsonDocument -Path $EvidenceFile -RequireObject }
     catch { $lines.Add("CANT-VERIFY: $($_.Exception.Message)."); return [pscustomobject]@{ Result = 'CANT-VERIFY'; Lines = $lines } }
     $legacyMarker = ($null -ne $document.PSObject.Properties['archivedOriginals']) -and ($null -eq $document.PSObject.Properties['archiveIntegrity'])
     $block = Get-AaIntegrityBlock -Document $document
@@ -512,7 +520,7 @@ function Stop-AaFrozenMove {
 function Invoke-AaFreeze {
     param([Parameter(Mandatory = $true)][string]$Root, [Parameter(Mandatory = $true)][string]$MarkerPath, [Parameter(Mandatory = $true)][string]$InventoryPlanPath)
     try {
-        $document = Read-AaJsonDocument -Path $MarkerPath
+        $document = Read-AaJsonDocument -Path $MarkerPath -RequireObject
         $script:AaValidationRoot = $Root
         $existing = Test-AaIntegrityStructure -Document $document
         if (-not $existing.Valid) { throw "existing marker $($existing.Detail)" }
@@ -597,7 +605,7 @@ function Invoke-AaMoveFrozen {
     param([Parameter(Mandatory = $true)][string]$Root, [Parameter(Mandatory = $true)][string]$MarkerPath, [Parameter(Mandatory = $true)][string]$OriginalRelative, [Parameter(Mandatory = $true)][string]$DestinationRelative)
     $document = $null
     try {
-        $document = Read-AaJsonDocument -Path $MarkerPath
+        $document = Read-AaJsonDocument -Path $MarkerPath -RequireObject
         $script:AaValidationRoot = $Root
         $shape = Test-AaIntegrityStructure -Document $document -AllowUnverified
         if (-not $shape.Valid) { throw "marker $($shape.Detail)" }
