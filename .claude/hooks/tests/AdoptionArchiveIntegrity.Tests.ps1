@@ -799,7 +799,14 @@ It 'Verify of a zero-byte or literal null evidence file is CANT-VERIFY with a RE
     try {
         $empty = Join-Path $fx 'empty.json'; [IO.File]::WriteAllBytes($empty, [byte[]]@())
         $null1 = Join-Path $fx 'null.json'; [IO.File]::WriteAllText($null1, 'null')
-        foreach ($p in @($empty, $null1)) {
+        $valid = New-EvidenceFile -Path (Join-Path $fx 'valid.json') -Entries @()
+        $okv = Invoke-Aa @('-Verify', '-RepoRoot', $fx, '-EvidencePath', $valid)
+        Assert ($okv.Exit -eq 0 -and $okv.Output -match 'RESULT: PASS') "a real zero-entry marker no longer verifies PASS (exit $($okv.Exit)): $($okv.Output)"
+        $inner = (Get-Content -Raw -LiteralPath $valid).Trim()
+        # A marker is a JSON object; a top-level array of any content is not one, even if it wraps a valid marker.
+        $arrays = @{ 'array-empty.json' = '[]'; 'array-null.json' = '[null]'; 'array-nested.json' = '[[]]'; 'array-marker.json' = "[$inner]" }
+        $arrayPaths = @($arrays.Keys | Sort-Object | ForEach-Object { $ap = Join-Path $fx $_; [IO.File]::WriteAllText($ap, $arrays[$_]); $ap })
+        foreach ($p in @($empty, $null1) + $arrayPaths) {
             $v = Invoke-Aa @('-Verify', '-RepoRoot', $fx, '-EvidencePath', $p)
             Assert ($v.Exit -eq 5 -and $v.Output -match 'CANT-VERIFY' -and $v.Output -match 'RESULT: CANT-VERIFY') "empty or null evidence '$(Split-Path -Leaf $p)' left the exit contract (exit $($v.Exit)): $($v.Output)"
         }

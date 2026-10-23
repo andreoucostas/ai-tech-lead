@@ -50,7 +50,8 @@
 
 - **Verifying an empty adoption evidence file no longer crashes.** An evidence file that is empty or holds only `null`
   (a truncated marker) now reports `RESULT: CANT-VERIFY` and exits 5, as the script's exit codes promise, instead of
-  exiting 1 with no result line.
+  exiting 1 with no result line. A file holding a JSON array instead of the marker object, empty or not, gets the same
+  answer rather than a crash or a false pass.
 
 ## 0.98.2 — 2026-10-20
 

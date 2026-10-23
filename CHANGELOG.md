@@ -68,7 +68,8 @@ from a bracketed location.
 `adoption-archive.ps1 -Verify` on a zero-byte evidence file or one holding only `null` died with exit 1 and no `RESULT:` line: the empty parse reached a mandatory
 parameter outside any handler. `Read-AaJsonDocument` now refuses an empty or non-object document, so `-Verify` prints `CANT-VERIFY`, the `RESULT: CANT-VERIFY` line and exits 5;
 `-Freeze` and `-MoveFrozen` already ended in their exit 3 handlers and now name the empty file instead of a binding error. `AdoptionArchiveIntegrity.Tests.ps1` gains the case,
-red on the unfixed helper.
+red on the unfixed helper. A top-level JSON array, empty or not, even one wrapping a valid marker, is refused the same way: the first guard tested `[pscustomobject]`, the `psobject`
+accelerator that any value passes, so `[]` and `[null]` still exited 1 on Windows PowerShell 5.1, `[[]]` on pwsh, and `[<marker>]` verified PASS; the test is now the real `PSCustomObject` type.
 
 ## 0.98.2 — 2026-10-20
 
