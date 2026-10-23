@@ -309,7 +309,7 @@ foreach ($kind in @('unsafe-path','still-shipped','disappeared','synchronized-di
 
 # The cumulative-retirement check decides from repository content and explicit inputs only: a stale
 # dist, a git history or a tag nobody named must not change a build's verdict (AGENTS.md: gates are hermetic).
-foreach ($caseName in @('retirement baseline ignores a stale dist', 'retirement baseline ref catches a synchronized removal', 'retirement baseline ref that does not resolve exits 2')) {
+foreach ($caseName in @('retirement baseline ignores a stale dist', 'retirement baseline ref catches a synchronized removal', 'retirement baseline ref that does not resolve exits 2', 'retirement baseline ref that names no ref exits 2')) {
     $container = Join-Path ([IO.Path]::GetTempPath()) ('composer-hermetic-' + [guid]::NewGuid())
     try {
         Initialize-ComposerSubject $container
@@ -342,6 +342,12 @@ foreach ($caseName in @('retirement baseline ignores a stale dist', 'retirement 
                 if ($exit -ne 0) { throw "without a ref the synchronized removal should build from repository content alone (exit $exit)" }
                 $exit = Invoke-Composer $container -ExtraArguments @('-RetirementBaselineRef','HEAD')
                 if ($exit -eq 0) { throw 'the named ref held a retirement the tree removed, yet the build stayed green' }
+            } elseif ($caseName -eq 'retirement baseline ref that names no ref exits 2') {
+                # '""' reaches the script as an empty argument; ',' splits into nothing.
+                foreach ($empty in @('""', ',')) {
+                    $exit = Invoke-Composer $container -ExtraArguments @('-RetirementBaselineRef',$empty)
+                    if ($exit -ne 2) { throw "-RetirementBaselineRef naming no ref ($empty) exited $exit, expected 2" }
+                }
             } else {
                 $exit = Invoke-Composer $container -ExtraArguments @('-RetirementBaselineRef','no-such-ref')
                 if ($exit -ne 2) { throw "an unresolvable ref exited $exit, expected 2" }

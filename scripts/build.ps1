@@ -228,7 +228,12 @@ try {
 # inputs only: it never reads a previous dist, HEAD, or whichever tag git happens to find. History is
 # consulted only for refs the caller names with -RetirementBaselineRef (CI and the release script do).
 # Under -File a list arrives as one comma-joined string, so refs are split on commas. A ref git cannot resolve is a result of "cannot examine" (exit 2), never a silent skip.
-foreach ($ref in @($RetirementBaselineRef | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+$baselineRefNames = @($RetirementBaselineRef | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($PSBoundParameters.ContainsKey('RetirementBaselineRef') -and $baselineRefNames.Count -eq 0) {
+    [Console]::Error.WriteLine("ERROR: -RetirementBaselineRef was given but names no ref; pass a ref such as the previous release tag, or omit the parameter")
+    exit 2
+}
+foreach ($ref in $baselineRefNames) {
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
         [Console]::Error.WriteLine("ERROR: -RetirementBaselineRef '$ref' was named but git is not on PATH; cannot examine it")
         exit 2
@@ -416,8 +421,9 @@ $jsonLines.Add('}')
 Write-TextFile -Path $manifestPath -HasBom $false -Text (($jsonLines -join "`n") + "`n")
 
 # 4. Validate the framework-authored, cumulative retirement authority. Historical authority comes
-# from the existing dist plus independent Git baselines captured before composition. A retired path
-# may never also be an incoming installed path.
+# comes from the committed maintainer baseline plus the Git refs named with -RetirementBaselineRef,
+# both read before composition; the previous dist is not consulted. A retired path may never also
+# be an incoming installed path.
 $ledgerPath = Join-Path $DIST 'framework-retirements.json'
 try {
     $ledger = (Read-TextFile $ledgerPath).Text | ConvertFrom-Json

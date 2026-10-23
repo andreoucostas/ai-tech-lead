@@ -459,6 +459,7 @@ if ($versionLine.Groups[2].Value -eq $Version) {
 # ---- 3. Rebuild all three dists (the stamp must flow src -> dist in this same commit) ----
 Measure-Stage 'compose' {
     # The append-only retirement check is anchored to the previous release, named here, not found by the composer.
+    # HEAD is the untagged commit being released (the tag is created after CI), so describing from HEAD yields the previous release; CI describes from HEAD^ because its HEAD can carry a tag.
     $previousRelease = (git -C $repo describe --tags --abbrev=0 --match 'v[0-9]*' HEAD)
     Gate ($LASTEXITCODE -eq 0 -and [bool]$previousRelease) 'a v[0-9]* release tag is reachable from HEAD (retirement baseline)'
     foreach ($d in $dists) {
