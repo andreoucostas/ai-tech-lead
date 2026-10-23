@@ -43,8 +43,12 @@ jobs:
       - name: Compose dists under the asserted host
         run: |
           $hostPath = (Get-Process -Id $PID).Path
+          # From HEAD^, not HEAD: on a commit that carries a release tag, HEAD would name its own tag and the baseline would equal the tree.
+          # A root commit has no HEAD^ (not reachable here: full-depth checkout), and describe then fails and stops the job.
+          $previousRelease = (git describe --tags --abbrev=0 --match 'v[0-9]*' 'HEAD^')
+          if ($LASTEXITCODE -ne 0 -or -not $previousRelease) { throw 'no v[0-9]* release tag reachable from HEAD^; cannot examine the retirement baseline' }
           foreach ($dist in 'dotnet', 'angular', 'monorepo') {
-            & $hostPath -NoProfile -File scripts/build.ps1 $dist
+            & $hostPath -NoProfile -File scripts/build.ps1 $dist -RetirementBaselineRef $previousRelease
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - name: Dist freshness (rebuild == committed golden dist)
@@ -137,8 +141,12 @@ jobs:
       - name: Compose dists under the asserted host
         run: |
           $hostPath = (Get-Process -Id $PID).Path
+          # From HEAD^, not HEAD: on a commit that carries a release tag, HEAD would name its own tag and the baseline would equal the tree.
+          # A root commit has no HEAD^ (not reachable here: full-depth checkout), and describe then fails and stops the job.
+          $previousRelease = (git describe --tags --abbrev=0 --match 'v[0-9]*' 'HEAD^')
+          if ($LASTEXITCODE -ne 0 -or -not $previousRelease) { throw 'no v[0-9]* release tag reachable from HEAD^; cannot examine the retirement baseline' }
           foreach ($dist in 'dotnet', 'angular', 'monorepo') {
-            & $hostPath -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1 $dist
+            & $hostPath -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1 $dist -RetirementBaselineRef $previousRelease
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - name: Dist freshness (rebuild == committed golden dist)

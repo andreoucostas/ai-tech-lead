@@ -45,6 +45,8 @@ matches the tool-call text, not child processes). If the user approves a direct 
 ```powershell
 foreach ($d in 'dotnet','angular','monorepo') { pwsh -NoProfile -File scripts/build.ps1 $d }
 git status --porcelain dist/   # MUST print nothing — otherwise commit the dist with your src change
+# A plain build checks only repository content. CI and release.ps1 add the append-only retirement check
+# against the previous release: build.ps1 <d> -RetirementBaselineRef <tag>  (unresolvable ref = exit 2)
 ```
 
 ## Validate the dists (markers, JSON, PS-AST, topology, per-dist template-checks [#2], no-meta-leak [#6], no-dead-instruction, hook-registration, step-references, rail-sync, skill-frontmatter)
