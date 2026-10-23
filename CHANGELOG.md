@@ -65,6 +65,8 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+`validate-dist` check 7 (`no-dead-instruction`) could not see a documented command written `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/x.ps1`, because its pattern needed whitespace straight after `powershell`, nor a backslash path such as `.\scripts\x.ps1`. Shipped docs use that form, so renaming a script they name would have shipped a dead instruction with the gate green. The pattern now takes `pwsh`, `pwsh.exe`, `powershell` and `powershell.exe` in any letter case and paths with `\`, normalised to `/` before the existence test; on the current dists it extracts 25 (dotnet), 23 (angular) and 25 (monorepo) script references, all of which resolve. `ValidateDist.Tests.ps1` case 34a plants a `powershell.exe -File` line naming a missing script and expects check 7 to name file:line; it was red on the unfixed gate.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

@@ -588,6 +588,13 @@ try {
         } 'dead instructions in shipped docs' 'no-dead-instruction' -AlsoPattern @('README\.md:\d+:','definitely-missing-with-line-b67\.sh')
     }
 
+    It 'case 34a: a powershell.exe -File command naming a missing script fails check 7 with file:line' {
+        Assert-Case 'powershell-exe-dead-command' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'),"`npowershell.exe -NoProfile -File scripts/missing-b34a.ps1`n")
+        } 'dead instructions in shipped docs' 'no-dead-instruction' -AlsoPattern @('README\.md:\d+:','missing-b34a\.ps1')
+    }
+
     It 'case 35: step-reference grammar, vacuity guards and allowances remain intact' {
         $fixtures = @(
             @{ Name='zero-files'; Text=$null; Green=$false; Finding='step-reference scan found zero Markdown files' },
