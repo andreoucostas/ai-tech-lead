@@ -19,7 +19,11 @@
 # through Get-Content/Set-Content (which would mangle BOMs and append trailing newlines).
 param(
     [Parameter(Position = 0)]
-    [string]$Mode
+    [string]$Mode,
+
+    # Git refs whose src/core/framework-retirements.json must stay a subset of the tree's (append-only
+    # check). Comma-separated or an array. Absent: the build checks repository content only.
+    [string[]]$RetirementBaselineRef = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -219,48 +223,38 @@ try {
     exit 1
 }
 
-$previousLedgerPath = Join-Path $DIST 'framework-retirements.json'
-if (Test-Path -LiteralPath $previousLedgerPath -PathType Leaf) {
+# The committed maintainer baseline is the in-repo authority (it provides bootstrap authority even
+# though v0.75 and earlier have no ledger). The build decides from repository content and explicit
+# inputs only: it never reads a previous dist, HEAD, or whichever tag git happens to find. History is
+# consulted only for refs the caller names with -RetirementBaselineRef (CI and the release script do).
+# Under -File a list arrives as one comma-joined string, so refs are split on commas. A ref git cannot resolve is a result of "cannot examine" (exit 2), never a silent skip.
+foreach ($ref in @($RetirementBaselineRef | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        [Console]::Error.WriteLine("ERROR: -RetirementBaselineRef '$ref' was named but git is not on PATH; cannot examine it")
+        exit 2
+    }
+    $commitQuery = Invoke-GitQuery -Arguments @('rev-parse', '--verify', '--quiet', "${ref}^{commit}")
+    if ($commitQuery.Exit -ne 0) {
+        [Console]::Error.WriteLine("ERROR: -RetirementBaselineRef '$ref' does not resolve to a commit in this repository; cannot examine it")
+        exit 2
+    }
+    $presentQuery = Invoke-GitQuery -Arguments @('cat-file', '-e', "${ref}:src/core/framework-retirements.json")
+    if ($presentQuery.Exit -ne 0) {
+        # A release before the ledger existed has no retirements to protect.
+        Write-Host "note: $ref has no src/core/framework-retirements.json; it contributes no baseline entries"
+        continue
+    }
+    $ledgerQuery = Invoke-GitQuery -Arguments @('show', "${ref}:src/core/framework-retirements.json")
+    if ($ledgerQuery.Exit -ne 0) {
+        [Console]::Error.WriteLine("ERROR: could not read src/core/framework-retirements.json at '$ref'; cannot examine it")
+        exit 2
+    }
     try {
-        $previousLedger = (Read-TextFile $previousLedgerPath).Text | ConvertFrom-Json
-        foreach ($entry in (Get-ValidatedRetirements -Document $previousLedger -Label "existing $previousLedgerPath")) { $retirementBaselines.Add($entry) }
+        $document = ((@($ledgerQuery.Output) -join "`n") + "`n") | ConvertFrom-Json
+        foreach ($entry in (Get-ValidatedRetirements -Document $document -Label "${ref}:src/core/framework-retirements.json")) { $retirementBaselines.Add($entry) }
     } catch {
         [Console]::Error.WriteLine("ERROR: $($_.Exception.Message)")
         exit 1
-    }
-}
-
-# The maintainer baseline provides bootstrap authority even though v0.75 and earlier have no ledger.
-# The generated dist remains a useful archive snapshot. In this repository's own Git worktree, add
-# HEAD and the nearest release tag so later releases retain committed history too. Merely being
-# nested beneath some unrelated worktree must not make an unpacked source archive consult that repo.
-if (Get-Command git -ErrorAction SilentlyContinue) {
-    $gitTopLevelQuery = Invoke-GitQuery -Arguments @('rev-parse', '--show-toplevel')
-    $gitTopLevel = @($gitTopLevelQuery.Output)
-    $gitTopLevelExit = $gitTopLevelQuery.Exit
-    $composerRoot = [IO.Path]::GetFullPath((Get-Location).Path).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
-    $gitRoot = if ($gitTopLevelExit -eq 0 -and $gitTopLevel.Count -eq 1 -and $gitTopLevel[0]) {
-        [IO.Path]::GetFullPath([string]$gitTopLevel[0]).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
-    } else { $null }
-    if ($gitRoot -and [StringComparer]::OrdinalIgnoreCase.Equals($gitRoot, $composerRoot)) {
-        $baselineRefs = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-        [void]$baselineRefs.Add('HEAD')
-        $nearestTagQuery = Invoke-GitQuery -Arguments @('describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*', 'HEAD')
-        $nearestTag = @($nearestTagQuery.Output)
-        $nearestTagExit = $nearestTagQuery.Exit
-        if ($nearestTagExit -eq 0 -and $nearestTag.Count -eq 1 -and $nearestTag[0]) { [void]$baselineRefs.Add([string]$nearestTag[0]) }
-        foreach ($ref in $baselineRefs) {
-            $ledgerQuery = Invoke-GitQuery -Arguments @('show', "${ref}:src/core/framework-retirements.json")
-            $ledgerLines = @($ledgerQuery.Output)
-            if ($ledgerQuery.Exit -ne 0) { continue }
-            try {
-                $document = (($ledgerLines -join "`n") + "`n") | ConvertFrom-Json
-                foreach ($entry in (Get-ValidatedRetirements -Document $document -Label "$ref`:src/core/framework-retirements.json")) { $retirementBaselines.Add($entry) }
-            } catch {
-                [Console]::Error.WriteLine("ERROR: $($_.Exception.Message)")
-                exit 1
-            }
-        }
     }
 }
 

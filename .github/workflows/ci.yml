@@ -43,8 +43,10 @@ jobs:
       - name: Compose dists under the asserted host
         run: |
           $hostPath = (Get-Process -Id $PID).Path
+          $previousRelease = (git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD)
+          if ($LASTEXITCODE -ne 0 -or -not $previousRelease) { throw 'no v[0-9]* release tag reachable from HEAD; cannot examine the retirement baseline' }
           foreach ($dist in 'dotnet', 'angular', 'monorepo') {
-            & $hostPath -NoProfile -File scripts/build.ps1 $dist
+            & $hostPath -NoProfile -File scripts/build.ps1 $dist -RetirementBaselineRef $previousRelease
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - name: Dist freshness (rebuild == committed golden dist)
@@ -137,8 +139,10 @@ jobs:
       - name: Compose dists under the asserted host
         run: |
           $hostPath = (Get-Process -Id $PID).Path
+          $previousRelease = (git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD)
+          if ($LASTEXITCODE -ne 0 -or -not $previousRelease) { throw 'no v[0-9]* release tag reachable from HEAD; cannot examine the retirement baseline' }
           foreach ($dist in 'dotnet', 'angular', 'monorepo') {
-            & $hostPath -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1 $dist
+            & $hostPath -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1 $dist -RetirementBaselineRef $previousRelease
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - name: Dist freshness (rebuild == committed golden dist)

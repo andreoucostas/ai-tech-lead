@@ -52,8 +52,8 @@ function Initialize-ComposerSubject {
 }
 
 function Invoke-Composer {
-    param([string]$SubjectRoot, [string]$Mode = 'dotnet', [string]$WorkingDirectory = $SubjectRoot)
-    $process = Start-Process -FilePath $psExe -ArgumentList @('-NoProfile','-File',(Join-Path $SubjectRoot 'scripts\build.ps1'),$Mode) `
+    param([string]$SubjectRoot, [string]$Mode = 'dotnet', [string]$WorkingDirectory = $SubjectRoot, [string[]]$ExtraArguments = @())
+    $process = Start-Process -FilePath $psExe -ArgumentList (@('-NoProfile','-File',(Join-Path $SubjectRoot 'scripts\build.ps1'),$Mode) + @($ExtraArguments | Where-Object { $_ })) `
         -WorkingDirectory $WorkingDirectory -Wait -PassThru -NoNewWindow
     return [int]$process.ExitCode
 }
@@ -294,13 +294,64 @@ foreach ($kind in @('unsafe-path','still-shipped','disappeared','synchronized-di
             [IO.File]::WriteAllText((Join-Path $subject 'dist/dotnet/framework-retirements.json'), (($remaining -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
             if ($kind -eq 'synchronized-disappearance') { [IO.File]::WriteAllText($maintainerLedgerPath, (($remaining -join "`n") + "`n"), [Text.UTF8Encoding]::new($false)) }
         }
-        $exit = Invoke-Composer $subject
+        $refArguments = if ($kind -eq 'synchronized-disappearance') { @('-RetirementBaselineRef','v0.76.0') } else { @() }
+        $exit = Invoke-Composer $subject -ExtraArguments $refArguments
         if ($exit -eq 0) { throw "$kind retirement mutation stayed green" }
         $executed++
         Write-Host "[ok] PowerShell retirement ${kind}: composer went red"
     } catch {
         $failed++
         [Console]::Error.WriteLine("[FAIL] PowerShell retirement ${kind}: $($_.Exception.Message)")
+    } finally {
+        if (Test-Path -LiteralPath $container) { Remove-Item -Recurse -Force -LiteralPath $container }
+    }
+}
+
+# The cumulative-retirement check decides from repository content and explicit inputs only: a stale
+# dist, a git history or a tag nobody named must not change a build's verdict (AGENTS.md: gates are hermetic).
+foreach ($caseName in @('retirement baseline ignores a stale dist', 'retirement baseline ref catches a synchronized removal', 'retirement baseline ref that does not resolve exits 2')) {
+    $container = Join-Path ([IO.Path]::GetTempPath()) ('composer-hermetic-' + [guid]::NewGuid())
+    try {
+        Initialize-ComposerSubject $container
+        $ledgerPath = Join-Path $container 'src/core/framework-retirements.json'
+        $maintainerLedgerPath = Join-Path $container 'meta/framework-retirements-baseline.json'
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        if ($caseName -eq 'retirement baseline ignores a stale dist') {
+            if ((Invoke-Composer $container) -ne 0) { throw 'initial build failed' }
+            $distLedger = Join-Path $container 'dist/dotnet/framework-retirements.json'
+            $before = [IO.File]::ReadAllText($distLedger)
+            $stale = [regex]::Replace($before, '\]\}\s*\]\s*\}\s*$',
+                (']},' + "`n" + '    {"path":"zzz-stale-entry.md","retired-in":"0.1.0","known-content-sha256":["' + ('a' * 64) + '"]}' + "`n  ]`n}`n"))
+            if ($stale -ceq $before) { throw 'could not plant the stale entry; case cannot examine the composer' }
+            [IO.File]::WriteAllText($distLedger, $stale, $utf8)
+            $exit = Invoke-Composer $container
+            if ($exit -ne 0) { throw "a stale dist ledger entry changed the verdict (exit $exit)" }
+        } else {
+            & git -C $container init --quiet
+            & git -C $container config user.email 'composer-test@example.invalid'
+            & git -C $container config user.name 'Composer Test'
+            if ($caseName -eq 'retirement baseline ref catches a synchronized removal') {
+                & git -C $container add --all
+                & git -C $container commit --quiet -m 'baseline'
+                if ($LASTEXITCODE -ne 0) { throw 'could not commit the baseline; case cannot examine the composer' }
+                $remaining = @(Get-Content -LiteralPath $ledgerPath | Where-Object { $_ -notmatch '"path"\s*:\s*"scripts/impact-run\.ps1"' })
+                $text = (($remaining -join "`n") + "`n")
+                [IO.File]::WriteAllText($ledgerPath, $text, $utf8)
+                [IO.File]::WriteAllText($maintainerLedgerPath, $text, $utf8)
+                $exit = Invoke-Composer $container
+                if ($exit -ne 0) { throw "without a ref the synchronized removal should build from repository content alone (exit $exit)" }
+                $exit = Invoke-Composer $container -ExtraArguments @('-RetirementBaselineRef','HEAD')
+                if ($exit -eq 0) { throw 'the named ref held a retirement the tree removed, yet the build stayed green' }
+            } else {
+                $exit = Invoke-Composer $container -ExtraArguments @('-RetirementBaselineRef','no-such-ref')
+                if ($exit -ne 2) { throw "an unresolvable ref exited $exit, expected 2" }
+            }
+        }
+        $executed++
+        Write-Host "[ok] $caseName"
+    } catch {
+        $failed++
+        [Console]::Error.WriteLine("[FAIL] $caseName -- $($_.Exception.Message)")
     } finally {
         if (Test-Path -LiteralPath $container) { Remove-Item -Recurse -Force -LiteralPath $container }
     }

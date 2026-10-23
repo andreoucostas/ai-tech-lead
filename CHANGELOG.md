@@ -65,6 +65,8 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+The composer's append-only retirement check no longer decides from ambient state. It used to seed its baseline from the previous `dist/<mode>/framework-retirements.json`, from `HEAD`, and from whichever `v*` tag `git describe` found, so a removal from both `src/core/framework-retirements.json` and `meta/framework-retirements-baseline.json` built green in a tagless clone with no dist and red in CI. A plain `scripts/build.ps1 <dist>` now checks repository content only (the committed baseline, and its equality with the shipped ledger). History is read only for refs named with the new `-RetirementBaselineRef`; a ref git cannot resolve exits 2 (cannot examine), never skips. CI (both PowerShell legs) and `release.ps1` pass the previous release tag. `Composer.Tests.ps1`: three new cases (a stale dist does not change the verdict; a named ref catches a synchronized removal; an unresolvable ref exits 2), red on the unfixed composer; the existing synchronized-disappearance case now names its ref.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload
