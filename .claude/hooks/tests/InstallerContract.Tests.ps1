@@ -144,6 +144,26 @@ It '-GitHooks is rejected by native parameter binding before either entrypoint c
     } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
 }
 
+It 'a usage error (target not a directory, target is the template itself) exits exactly 2 with the message on stderr' {
+    $inst = Join-Path $repoRoot 'src/core/scripts/install.ps1'
+    $errFile = Join-Path ([IO.Path]::GetTempPath()) ('usage-exit-' + [guid]::NewGuid().ToString('N') + '.err')
+    try {
+        foreach ($case in @(
+            [pscustomobject]@{ Name = 'nonexistent target'; Target = (Join-Path $repoRoot ('nope-' + [guid]::NewGuid().ToString('N'))); Pattern = 'is not a directory' },
+            [pscustomobject]@{ Name = 'target is the template itself'; Target = (Join-Path $repoRoot 'src/core'); Pattern = 'template repo itself' }
+        )) {
+            # Start-Process: Windows PowerShell 5.1 wraps native stderr piped through a redirection in an error record.
+            $proc = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile', '-File', ('"' + $inst + '"'), '-Target', ('"' + $case.Target + '"')) `
+                -Wait -PassThru -NoNewWindow -RedirectStandardError $errFile
+            $code = $proc.ExitCode
+            $err = [IO.File]::ReadAllText($errFile)
+            Assert ($code -eq 2) "$($case.Name) exited $code, not the documented 2: $err"
+            Assert ($err -match $case.Pattern) "$($case.Name) did not print its message on stderr: $err"
+            Assert ($err -notmatch 'CategoryInfo|FullyQualifiedErrorId|WriteErrorException') "$($case.Name) leaked a PowerShell error record: $err"
+        }
+    } finally { Remove-Item -Force -LiteralPath $errFile -ErrorAction SilentlyContinue }
+}
+
 if (-not $SkipRedTest) {
     It 'a missing contract line makes this suite fail' {
         $target = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'

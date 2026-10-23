@@ -65,6 +65,8 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+Installing a template into a missing directory, or into the framework's own source, exited 1 with a PowerShell error record instead of the documented exit 2: `src/core/scripts/install.ps1` called `Write-Error` then `exit 2` under `ErrorActionPreference = 'Stop'`, so the throw ended the run first. Both usage errors now write to stderr through `[Console]::Error.WriteLine`, as the root wrapper already does, and exit 2. `InstallerContract.Tests.ps1` gains one case covering both (red on the unfixed script under pwsh and Windows PowerShell). No other `Write-Error` followed by `exit` remains in that script.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

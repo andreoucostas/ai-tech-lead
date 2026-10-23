@@ -51,6 +51,8 @@
   outside the repository, its throttle record was written there or nowhere, so every write ran a full type-check. Both
   hooks now find the repository from their own location and keep their records in its `.claude/.state` folder.
 
+- **The installer's usage errors exit 2, as documented.** Running `scripts/install.ps1` with a target that is not a directory, or with the framework's own folder as the target, printed a PowerShell error record and exited 1. It now prints the message alone and exits 2, so a wrapper script can tell a usage error from an install failure.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
