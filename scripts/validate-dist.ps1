@@ -243,6 +243,12 @@ foreach ($coreFile in (Get-ChildItem -Recurse -File -Force -Path $coreRoot)) {
                 }
                 # A one-stack snippet is intentionally stack-only. If both sibling stacks carry the
                 # marker, this stack must too; that shape identifies an accidentally deleted file.
+                # A marker NO stack supplies is not stack-only, it is a typo: the composer would
+                # drop the line from every dist, so fail it here.
+                if ($otherCount -eq 0) {
+                    $expansionProblems += "$Mode : $coreRel @stack:$name is supplied by no stack (no src/stacks/*/snippets/$coreRel/$name exists)"
+                    continue
+                }
                 if ($otherCount -lt 2) { continue }
             }
         }
