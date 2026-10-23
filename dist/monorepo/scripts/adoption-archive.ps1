@@ -166,10 +166,16 @@ function Invoke-AaGit {
             return [pscustomobject]@{ Started = $false; ExitCode = $null; Output = $null; RecordCount = 0 }
         }
     }
+    # A caller's pathspec switches would change what every pathspec below means (GIT_LITERAL_PATHSPECS reads the
+    # ':(literal)' prefix as part of the file name), so the child runs without them and they are restored after.
+    $pathspecNames = @('GIT_LITERAL_PATHSPECS', 'GIT_GLOB_PATHSPECS', 'GIT_NOGLOB_PATHSPECS', 'GIT_ICASE_PATHSPECS')
+    $priorPathspec = @{}
+    foreach ($name in $pathspecNames) { $priorPathspec[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
     $priorPreference = $ErrorActionPreference
     $stdout = @()
     $exitCode = $null
     try {
+        foreach ($name in $pathspecNames) { [Environment]::SetEnvironmentVariable($name, $null, 'Process') }
         $ErrorActionPreference = 'Continue'
         $global:LASTEXITCODE = $null
         try {
@@ -181,6 +187,7 @@ function Invoke-AaGit {
         }
     } finally {
         $ErrorActionPreference = $priorPreference
+        foreach ($name in $pathspecNames) { [Environment]::SetEnvironmentVariable($name, $priorPathspec[$name], 'Process') }
     }
     $normalized = (@($stdout | ForEach-Object { ([string]$_).TrimEnd("`r") }) -join "`n")
     return [pscustomobject]@{
@@ -238,7 +245,7 @@ function Test-AaExactSpelling {
 }
 
 # Pathspecs here are :(literal): a bare 'cfg[1].yml' is a glob that matches a committed 'cfg1.yml', so a tracked bracketed
-# file was recorded untracked, or with the sibling's revision and status. No icase: the exact-spelling check already ran.
+# file was recorded untracked, or with the sibling's revision and status. No icase: -Capture does not check the spelling, and icase would let a case-variant sibling supply the revision and status.
 # Historical attribution, kept strictly separate from the raw-byte oracle. "unavailable" means Git
 # could not answer; it is never a trust verdict and never a corruption finding.
 function Get-AaProvenance {

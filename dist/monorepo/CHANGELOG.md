@@ -48,7 +48,7 @@
   every write ran a full build or type-check. Both hooks now find the repository from their own location and keep
   their records in its `.claude/.state` folder.
 
-- **Adopting a file with square brackets in its name now records the right history.** A tracked `cfg[1].yml` was read as a pattern matching a sibling such as `cfg1.yml`, so the adoption record could call it untracked, or carry the sibling's commit and modification state. The record now looks up the file by its exact path.
+- **Adopting a file with square brackets in its name now records the right history.** A tracked `cfg[1].yml` was read as a pattern matching a sibling such as `cfg1.yml`, so the adoption record could call it untracked, or carry the sibling's commit and modification state. The record now looks up the file by its exact path. It also ignores `GIT_LITERAL_PATHSPECS` and the other Git pathspec switches in your environment, which would otherwise make Git treat every file as not tracked.
 
 ## 0.98.2 — 2026-10-20
 
