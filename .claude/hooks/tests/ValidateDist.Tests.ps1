@@ -485,10 +485,19 @@ try {
             try { $r = Invoke-Validator -Root $root -Check $fixture.Check }
             finally { $handle.Dispose() }
             Write-Host "[ValidateDist powershell unreadable-$($fixture.Check)] EXIT=$($r.Exit)"; Write-Host $r.Out
-            Assert ($r.Exit -ne 0) "unreadable-$($fixture.Check) should be red"
+            Assert ($r.Exit -eq 2) "unreadable-$($fixture.Check) is 'could not examine' and must exit exactly 2, got EXIT=$($r.Exit)"
+            Assert ($r.Out -match '(?m)^CANT-EXAMINE:') "unreadable-$($fixture.Check) did not print a CANT-EXAMINE line: $($r.Out)"
+            Assert ($r.Out -notmatch '(?m)^FAIL:') "unreadable-$($fixture.Check) reported a wrong artifact for an input it could not read: $($r.Out)"
             Assert ($r.Out -match [regex]::Escape($fixture.Finding)) "unreadable-$($fixture.Check) did not identify a read failure: $($r.Out)"
             Assert ($r.Out -match [regex]::Escape((Split-Path $fixture.Relative -Leaf))) "unreadable-$($fixture.Check) did not name the unreadable file: $($r.Out)"
         }
+        # A planted leak is a wrong artifact and still exits exactly 1.
+        $leakRoot = New-DistCopy
+        Add-Content -LiteralPath (Join-Path (Join-Path $leakRoot 'dotnet') 'README.md') -Value "`n@stack:planted-exit-mutant`n"
+        $leak = Invoke-Validator -Root $leakRoot -Check 'markers'
+        Write-Host "[ValidateDist powershell planted-leak] EXIT=$($leak.Exit)"; Write-Host $leak.Out
+        Assert ($leak.Exit -eq 1) "a planted leak must exit exactly 1, got EXIT=$($leak.Exit)"
+        Assert ($leak.Out -notmatch '(?m)^CANT-EXAMINE:') "a planted leak was reported as could-not-examine: $($leak.Out)"
     }
 
     It 'case 27: clean checks 1 through 4 report exact independently counted populations' {
