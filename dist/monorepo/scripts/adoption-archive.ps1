@@ -620,9 +620,18 @@ function Invoke-AaMoveFrozen {
         if ([int64]$sourceBytes.LongLength -ne [int64]$entry.byteLength -or (Get-AaSha256Hex -Bytes $sourceBytes) -cne ([string]$entry.sha256).ToLowerInvariant()) {
             Stop-AaFrozenMove -Root $Root -MarkerPath $MarkerPath -Document $document -Message "frozen source '$OriginalRelative' changed before its archive move; it was not moved or re-hashed." -ExitCode 6
         }
+    } catch {
+        # Nothing has moved yet: a refusal here (unknown or already verified entry, missing source,
+        # existing destination, unreadable marker) exits 3 and leaves the marker byte-for-byte as it was,
+        # so a retried or mistyped call cannot poison an adoption that is still intact.
+        Write-AaError "ERROR: frozen archive move '$OriginalRelative' -> '$DestinationRelative' refused before anything moved: $($_.Exception.Message) The marker was not changed."
+        exit 3
+    }
+    try {
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
         Move-Item -LiteralPath $source -Destination $destination
     } catch {
+        # The move began; the inventory can no longer be trusted until a person looks.
         Stop-AaFrozenMove -Root $Root -MarkerPath $MarkerPath -Document $document -Message "frozen archive move '$OriginalRelative' -> '$DestinationRelative' failed: $($_.Exception.Message)" -ExitCode 3
     }
     $detail = ''

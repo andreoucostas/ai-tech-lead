@@ -46,6 +46,8 @@
   written there or nowhere, so every write ran a full build. Both hooks now find the repository from their own
   location and keep their records in its `.claude/.state` folder.
 
+- Adoption archive: asking `adoption-archive.ps1 -MoveFrozen` to repeat a move that already succeeded, or giving it a path it has no entry for, a missing source or a destination that already exists, now exits 3 and leaves the adoption marker untouched. Before, any such refusal marked the whole archive inventory failed and the adoption could no longer be verified. A move that fails once it has started still marks the inventory failed.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

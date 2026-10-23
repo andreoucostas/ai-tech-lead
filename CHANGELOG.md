@@ -65,6 +65,8 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+`adoption-archive.ps1 -MoveFrozen` marked the whole inventory failed on every refusal, including ones decided before anything moved (the entry already verified, no exact entry for the paths given, a missing source, an existing destination), and a failed inventory is CANT-VERIFY in every mode with nothing to reset it, so an agent that retried a move after a timeout or mistyped one path left the adoption unverifiable. A refusal decided before the move now exits 3 and leaves the marker byte-for-byte unchanged; a failure once the move began, a changed source, or a bad existing destination still marks the inventory failed. One case in `AdoptionArchiveIntegrity.Tests.ps1` repeats a move, mistypes a path, meets an existing destination and a missing source, then completes the move and verifies; it was red on the unfixed helper.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload
