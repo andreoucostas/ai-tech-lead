@@ -35,6 +35,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 20 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
 | 21 | B-448 | Secret-leak class, tr-TR only: the Turkish-cased `APİ_KEY` passes the guard since B-445; guarded, step 4 |
 | 22 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
+| 23 | B-461 | Data-loss class, environment-only: a caller's `GIT_LITERAL_PATHSPECS` or `GIT_ICASE_PATHSPECS` changes what the installer's and review-scope's pathspecs match; guarded |
 
 ## Open entries
 
@@ -180,3 +181,10 @@ consumer task in a bootstrapped repository fails to find with those, measured be
 **Status:** Open; maintainer request 2026-10-23, relaying a consumer's expectation that `/map-warehouse` would bring skills for adding facts, dimensions, reporting procedures and Power BI reports. Facts and dimensions are `add-warehouse-load`'s; reporting views and procedures have no write-side recipe, only `map-warehouse`'s read-side Querying rules.
 B-129 shipped nothing on 2026-08-31 for three reasons: 473 (dotnet) and 116 (monorepo) characters of static headroom, two paid probes voided by the spend limit, and no framework-caused publication error observed — see `meta/BACKLOG-DONE.md`. The first is gone: `scripts/context-footprint.ps1 -Check` on 2026-10-23 left 5,908 (dotnet) and 10,263 (monorepo).
 The third still holds, so decide first whether a consumer's expectation clears B-129's reopen bar; if it does, start from B-129's bounded section in the `map-warehouse` body. Power BI authoring stays out of scope (B-129's proportionality).
+
+### B-461 · The installer and review-scope let a caller's `GIT_*_PATHSPECS` change what their pathspecs match
+**Filed against:** v0.98.2 (2026-10-23)
+**Priority:** P3 · **Effort:** S · **Invariants:** #1 #3
+**Status:** Open; found by the fresh-session attack on the adoption-archive `:(literal)` fix, which now clears `GIT_LITERAL_PATHSPECS`, `GIT_GLOB_PATHSPECS`,
+`GIT_NOGLOB_PATHSPECS` and `GIT_ICASE_PATHSPECS` for its own git calls. `src/core/scripts/install.ps1` (its `:(literal)` calls; its GIT_DIR-family refusal at ~243, ~638, ~871)
+and `review-scope.ps1` (~142, ~193-195, ~233-235, ~264) do not, so with `GIT_LITERAL_PATHSPECS=1` set a `:(literal)` path matches nothing. Red case: that variable set around one update.

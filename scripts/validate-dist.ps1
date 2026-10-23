@@ -96,7 +96,7 @@ $DistAbs = (Resolve-Path $Dist).Path
 
 $failed = 0
 $cantExamine = 0
-# Per-check elapsed time. Every check ends by calling OK or Fail exactly once, so timing the
+# Per-check elapsed time. Every check ends by calling OK, Fail or Cant-Examine exactly once, so timing the
 # interval between those calls attributes cost without annotating each check by hand.
 #
 # Why this exists: this validator's runtime was governed by nothing. A check once regressed until a
