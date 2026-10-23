@@ -57,7 +57,14 @@ function Invoke-BoundedTool([string]$Name, [string[]]$Arguments, [string]$WorkDi
     return [pscustomobject]@{ Code = $proc.ExitCode; Lines = @($outLines + $errLines) }
 }
 
-$null = New-Item -ItemType Directory -Path .claude\.state -Force
+# The repository is the folder that holds this hook's .claude\hooks folder, as session-start.ps1 finds
+# it: PowerShell's location need not be the repository (a sandboxed host may start hooks at the drive
+# root), so the hook moves there and keeps its state under it. Every path it tests or writes is literal:
+# to a non-literal Test-Path a folder name such as 'Dev [App]' is a wildcard pattern.
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+Set-Location -LiteralPath $repoRoot
+$stateDir = Join-Path $repoRoot '.claude\.state'
+[void][IO.Directory]::CreateDirectory($stateDir)
 
 $inputJson = [Console]::In.ReadToEnd()
 $filePath = ''
@@ -164,14 +171,14 @@ if (-not $target) {
 if (-not $target) { exit 0 }
 
 # Throttle: skip if a build was started within the last 60 seconds.
-$stamp = '.claude\.state\last-build-ts'
+$stamp = Join-Path $stateDir 'last-build-ts'
 # UTC integer epoch. NOT Get-Date -UFormat %s: under Windows PowerShell 5.1 that returns a
 # fractional local-time string, and [double]::Parse is culture-sensitive -- in comma-decimal
 # locales (de-DE/el-GR/fr-FR) the dot is a group separator, so the value overflows Int32 and
 # throws on every write. This form is culture-free, integer, and UTC.
 $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-if (Test-Path $stamp) {
-    $lastRaw = Get-Content $stamp -Raw
+if (Test-Path -LiteralPath $stamp) {
+    $lastRaw = Get-Content -LiteralPath $stamp -Raw
     if ($lastRaw) {
         $last = 0
         if ([int]::TryParse($lastRaw.Trim(), [ref]$last) -and ($now - $last) -lt 60) {
@@ -179,14 +186,14 @@ if (Test-Path $stamp) {
         }
     }
 }
-Set-Content -Path $stamp -Value $now -Encoding ASCII
+Set-Content -LiteralPath $stamp -Value $now -Encoding ASCII
 
 # Only surface output on failure — emitting the build summary every successful write wastes context tokens.
-$run = Invoke-BoundedTool 'dotnet' @('build', $target, '--no-restore', '--verbosity', 'quiet') (Get-Location).Path
+$run = Invoke-BoundedTool 'dotnet' @('build', $target, '--no-restore', '--verbosity', 'quiet') $repoRoot
 if ($null -eq $run) {
     # Not verified (budget exceeded or no launch): back off for 300 s so a build that cannot finish
     # inside the budget does not cost the agent another full budget on the next write.
-    Set-Content -Path $stamp -Value ($now + 300 - 60) -Encoding ASCII
+    Set-Content -LiteralPath $stamp -Value ($now + 300 - 60) -Encoding ASCII
     exit 0
 }
 if ($run.Code -eq 0) { exit 0 }
@@ -194,8 +201,8 @@ if ($run.Code -eq 0) { exit 0 }
 # NETSDK1004/1005: the packages were never restored (or the target framework changed since), so this
 # build examined nothing. Say so instead of reporting a broken build, and back off like a timeout.
 if (@($run.Lines | Where-Object { $_ -match '\bNETSDK100[45]\b' }).Count -gt 0) {
-    Set-Content -Path $stamp -Value ($now + 300 - 60) -Encoding ASCII
-    $note = 'Build not verified: the NuGet packages are not restored (NETSDK1004/1005); run dotnet restore once to enable the post-write build check.'
+    Set-Content -LiteralPath $stamp -Value ($now + 300 - 60) -Encoding ASCII
+    $note ='Build not verified: the NuGet packages are not restored (NETSDK1004/1005); run dotnet restore once to enable the post-write build check.'
     if ($tn -ceq 'Edit' -or $tn -ceq 'Write' -or $tn -eq '') {
         (@{ hookSpecificOutput = @{ hookEventName = 'PostToolUse'; additionalContext = $note } } | ConvertTo-Json -Compress)
     } else {
@@ -205,7 +212,7 @@ if (@($run.Lines | Where-Object { $_ -match '\bNETSDK100[45]\b' }).Count -gt 0) 
 }
 
 # Clear the throttle stamp so the next write rebuilds instead of skipping a known-broken build.
-Remove-Item $stamp -Force
+Remove-Item -LiteralPath $stamp -Force
 
 $msg = "## dotnet build failed -- fix before continuing:`n" + ($run.Lines -join "`n")
 

@@ -46,6 +46,29 @@ try {
 }
 
 $boyScout = Join-Path $hooks 'boy-scout-check.ps1'
+# The dedup record is named literally: to a non-literal Test-Path a folder name such as 'Dev [App]' is a
+# wildcard pattern, the record is never found, and every Stop repeats the same candidates.
+It 'boy-scout repeats no unchanged finding set in a repository folder named with brackets' {
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('boybracket-' + [guid]::NewGuid().ToString('N'))
+    $repo = Join-Path $dir 'Dev [App]'
+    try {
+        $hook = Copy-HookInto $boyScout $repo
+        git -C $repo init --quiet
+        [void][IO.Directory]::CreateDirectory((Join-Path $repo 'src\app'))
+        foreach ($file in 'Commented.cs', 'src\app\commented.ts') {
+            [IO.File]::WriteAllText((Join-Path $repo $file), "// first();`n// second();`nclass Probe {}`n")
+        }
+        # Started from the folder above: Windows PowerShell 5.1's Start-Process cannot launch from a bracketed location.
+        Push-Location -LiteralPath $dir
+        try {
+            $first = Invoke-BoyScoutHook $hook '{"hook_event_name":"Stop"}'
+            $second = Invoke-BoyScoutHook $hook '{"hook_event_name":"Stop"}'
+        } finally { Pop-Location }
+        Assert ($first.Exit -eq 0 -and $first.Out -match 'commented-out code block') "the first Stop reported no candidate: exit $($first.Exit), stdout '$($first.Out)', stderr '$($first.Err)'"
+        Assert ($second.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($second.Out)) "the second Stop repeated an unchanged finding set: '$($second.Out)'"
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 if (-not (Test-Path -LiteralPath $boyScout) -or -not ((Get-Content -Raw -LiteralPath $boyScout) -match 'read-style EF Core query')) {
     Skip 'boy-scout EF evidence gate' 'distribution does not carry the .NET boy-scout heuristic'
 } else {

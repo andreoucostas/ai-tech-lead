@@ -40,6 +40,12 @@
   has the step. When Git cannot say whether it tracks the log, the handoff says so in a `CANT-VERIFY` line naming the
   path. The update never changes your Git index or history, and it still copies the log only when it is absent.
 
+- **The post-write build check works wherever your repository lives.** In a repository whose folder name holds square
+  brackets (for example `Dev [App]`), the 60-second build throttle did not hold, and the Boy Scout hook repeated the
+  same candidates at every stop. When an agent host started the hook outside the repository, its throttle record was
+  written there or nowhere, so every write ran a full build. Both hooks now find the repository from their own
+  location and keep their records in its `.claude/.state` folder.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

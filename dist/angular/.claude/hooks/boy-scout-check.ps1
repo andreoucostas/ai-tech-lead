@@ -117,18 +117,18 @@ foreach ($f in $files) {
 if ($findings.Count -eq 0) { exit 0 }
 
 # Dedup: skip output when this finding set matches the last fire's output.
-$null = New-Item -ItemType Directory -Path $stateDir -Force
+[void][IO.Directory]::CreateDirectory($stateDir)
 $hashFile = Join-Path $stateDir 'last-boy-scout-hash'
 $joined = ($findings | Sort-Object) -join "`n"
 $sha1 = [System.Security.Cryptography.SHA1]::Create()
 $bytes = [System.Text.Encoding]::UTF8.GetBytes($joined)
 $currentHash = -join ($sha1.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
-if (Test-Path $hashFile) {
-    $prev = (Get-Content $hashFile -Raw)
+if (Test-Path -LiteralPath $hashFile) {
+    $prev = (Get-Content -LiteralPath $hashFile -Raw)
     if ($prev) { $prev = $prev.Trim() }
     if ($prev -eq $currentHash) { exit 0 }
 }
-Set-Content -Path $hashFile -Value $currentHash -Encoding ASCII
+Set-Content -LiteralPath $hashFile -Value $currentHash -Encoding ASCII
 
 $outLines = @("## Boy Scout candidates ($checked file(s) scanned)", '')
 foreach ($finding in $findings) { $outLines += "- $finding" }

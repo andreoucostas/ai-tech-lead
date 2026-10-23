@@ -53,6 +53,18 @@ one-sentence summary, owning role or team, an empty reference cell), the human r
 fail-closed: the gate neither rewrites nor reads legacy rows. `SecurityReviewContract.Tests.ps1`: one case (12 in all) for the pointer, the re-run, the step's heading, its
 `Recorded: none (legacy schema)` line, and the register's own header and separator lines in the checklist, so a header change without the checklist fails.
 
+`post-write.ps1` x3 and `boy-scout-check.ps1` x3 (guarded by path, `src/stacks/*/files/.claude/**`, no step 4; found in a bug-hunt session, no backlog entry): the post-write
+hooks still read and wrote `.claude\.state` relative to PowerShell's location, which B-433 fixed for `session-start.ps1` and `audit-trail.ps1`. Started outside the
+repository (a sandboxed Copilot host may start hooks at the drive root), they kept the throttle there or nowhere, so every write paid a full build or type-check budget.
+They now find the repository from their own path, move there, and build every state path from it, the dotnet build's working directory too. All six hooks also named
+paths non-literally. In a repository folder such as `Dev [App]` the Angular branch's `Test-Path` read the brackets as a wildcard, found no tsconfig and checked nothing
+on every write (a silent pass); the build throttle never held (two builds for two writes inside the window, observed); and Boy Scout's dedup record was never found, so
+every Stop repeated the same candidates. Every test, read, write and delete of a path is now `-LiteralPath`. `PostWriteRouting.Tests.ps1`: the cases run a hook copy
+installed in their fixture (with `guard.ps1`), and two new cases, the hook started from another folder and the repository in a bracketed folder, assert one check per
+throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1` gains the bracketed-folder dedup case. All three were red on the unfixed hooks under
+pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
+from a bracketed location.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

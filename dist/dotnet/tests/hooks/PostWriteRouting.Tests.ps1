@@ -1,7 +1,6 @@
 ﻿# post-write.ps1 surface routing and self-filter behavior.
 if (-not (Get-Command Reset-Tests -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot '_HookHarness.ps1') }
 $hooks = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path
-$postWrite = Join-Path $hooks 'post-write.ps1'
 . (Join-Path $PSScriptRoot 'fixtures\guard-patch-cases.ps1')
 Reset-Tests
 
@@ -13,6 +12,10 @@ Assert ($cases.Count -gt 0) 'post-write routing case table is empty'
 
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ('pwroute-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+# The hook finds its repository from its own path, so each case runs a copy installed in its fixture
+# (with guard.ps1, whose patch split it loads for apply_patch).
+$postWrite = Copy-HookInto (Join-Path $hooks 'post-write.ps1') $tmp
+$null = Copy-HookInto (Join-Path $hooks 'guard.ps1') $tmp
 Push-Location $tmp
 try {
     foreach ($surface in 'claude','copilot') {
@@ -85,24 +88,24 @@ try {
     $templateWorld = @{ Name = 'ngc'; Shim = 'npx.cmd'; Probe = './src/app/probe.component.html' }
     if ($hookText -match 'ngc --noEmit') { $worlds += $templateWorld }
     Assert ($worlds.Count -gt 0) 'post-write carries neither a dotnet build nor a tsc --noEmit branch'
-    function Reset-BuildWorld($World, [string]$ShimBody) {
-        foreach ($artifact in 'Warehouse.sln','warehouse','bin','shim','.claude','App.csproj','Probe.cs','tsconfig.json','node_modules','src') {
-            Remove-Item -LiteralPath (Join-Path $tmp $artifact) -Recurse -Force -ErrorAction SilentlyContinue
+    function Reset-BuildWorld($World, [string]$ShimBody, [string]$Root = $tmp) {
+        foreach ($artifact in 'Warehouse.sln','warehouse','bin','shim','.claude/.state','App.csproj','Probe.cs','tsconfig.json','node_modules','src') {
+            Remove-Item -LiteralPath (Join-Path $Root $artifact) -Recurse -Force -ErrorAction SilentlyContinue
         }
-        New-Item -ItemType Directory -Path (Join-Path $tmp 'shim') -Force | Out-Null
+        [void][IO.Directory]::CreateDirectory((Join-Path $Root 'shim'))
         if ($World.Name -eq 'dotnet') {
-            [IO.File]::WriteAllText((Join-Path $tmp 'App.csproj'), '<Project Sdk="Microsoft.NET.Sdk" />')
+            [IO.File]::WriteAllText((Join-Path $Root 'App.csproj'), '<Project Sdk="Microsoft.NET.Sdk" />')
         } else {
-            New-Item -ItemType Directory -Path (Join-Path $tmp 'node_modules') -Force | Out-Null
+            [void][IO.Directory]::CreateDirectory((Join-Path $Root 'node_modules'))
         }
         if ($World.Name -eq 'ngc') {
             # An Angular workspace: a tsconfig above the template and the Angular compiler installed.
-            New-Item -ItemType Directory -Path (Join-Path $tmp 'node_modules/@angular/compiler-cli'), (Join-Path $tmp 'src/app') -Force | Out-Null
-            [IO.File]::WriteAllText((Join-Path $tmp 'node_modules/@angular/compiler-cli/package.json'), '{"name":"@angular/compiler-cli"}')
-            [IO.File]::WriteAllText((Join-Path $tmp 'tsconfig.json'), '{}')
+            foreach ($folder in 'node_modules/@angular/compiler-cli', 'src/app') { [void][IO.Directory]::CreateDirectory((Join-Path $Root $folder)) }
+            [IO.File]::WriteAllText((Join-Path $Root 'node_modules/@angular/compiler-cli/package.json'), '{"name":"@angular/compiler-cli"}')
+            [IO.File]::WriteAllText((Join-Path $Root 'tsconfig.json'), '{}')
         }
-        [IO.File]::WriteAllText((Join-Path $tmp $World.Probe), 'probe')
-        [IO.File]::WriteAllText((Join-Path $tmp "shim/$($World.Shim)"), $ShimBody)
+        [IO.File]::WriteAllText((Join-Path $Root $World.Probe), 'probe')
+        [IO.File]::WriteAllText((Join-Path $Root "shim/$($World.Shim)"), $ShimBody)
         return '{"tool_name":"Write","tool_input":{"file_path":"' + $World.Probe + '","content":"probe"}}'
     }
 
@@ -121,6 +124,46 @@ try {
                 $runs = if (Test-Path -LiteralPath $counter) { @(Get-Content -LiteralPath $counter).Count } else { 0 }
                 Assert ($runs -eq 1) "$($world.Name): expected exactly one run across two writes inside the window, got $runs"
             } finally { $env:PATH = $oldPath; $env:POSTWRITE_COUNTER = $oldCounter }
+        }
+    }
+
+    # The hook runs from the repository that holds it, wherever the host starts it (a sandboxed host may start
+    # it at the drive root), and names every path literally: a folder name such as 'Dev [App]' is a wildcard
+    # pattern to a non-literal Test-Path, which then finds no workspace and checks nothing. Either way one
+    # check runs per throttle window and its state stays in that repository.
+    foreach ($place in 'another folder', 'a folder named with brackets') {
+        It "a write runs one check per throttle window and keeps its state in its repository, started from $place" {
+            foreach ($world in $worlds) {
+                $repo = Join-Path $tmp $(if ($place -eq 'another folder') { 'placed-repo' } else { 'Dev [App]' })
+                $elsewhere = Join-Path $tmp 'elsewhere'
+                $shimDir = Join-Path $tmp 'placed-shim'
+                $counter = Join-Path $tmp 'build-count'
+                Remove-Item -LiteralPath $repo, $elsewhere, $shimDir, $counter -Recurse -Force -ErrorAction SilentlyContinue
+                foreach ($folder in $elsewhere, $shimDir) { [void][IO.Directory]::CreateDirectory($folder) }
+                $hook = Copy-HookInto (Join-Path $hooks 'post-write.ps1') $repo
+                $shimBody = "@echo run>> `"%POSTWRITE_COUNTER%`"`r`n@exit /b 0`r`n"
+                $null = Reset-BuildWorld $world $shimBody $repo
+                [IO.File]::WriteAllText((Join-Path $shimDir $world.Shim), $shimBody)
+                $writeEvent = @{ tool_name = 'Write'; tool_input = @{ file_path = [IO.Path]::GetFullPath((Join-Path $repo $world.Probe)); content = 'probe' } } | ConvertTo-Json -Compress
+                # Windows PowerShell 5.1's Start-Process cannot launch from a bracketed location, so the
+                # bracketed repository is reached from the folder above it.
+                $start = if ($place -eq 'another folder') { $elsewhere } else { $tmp }
+                $oldPath = $env:PATH; $oldCounter = $env:POSTWRITE_COUNTER
+                Push-Location -LiteralPath $start
+                try {
+                    $env:PATH = $shimDir + [IO.Path]::PathSeparator + $oldPath
+                    $env:POSTWRITE_COUNTER = $counter
+                    foreach ($attempt in 1, 2) {
+                        $result = Invoke-Hook $hook $writeEvent
+                        Assert ((Get-Decision $result) -eq 'ALLOW') "$($world.Name): write $attempt was not allowed: exit $($result.Exit), stderr $($result.Err.Trim())"
+                    }
+                    $runs = if (Test-Path -LiteralPath $counter) { @(Get-Content -LiteralPath $counter).Count } else { 0 }
+                    Assert ($runs -eq 1) "$($world.Name): expected exactly one check across two writes inside the window, got $runs"
+                    $state = @(Get-ChildItem -LiteralPath (Join-Path $repo '.claude\.state') -Filter 'last-*' -File -ErrorAction SilentlyContinue)
+                    Assert ($state.Count -gt 0) "$($world.Name): no throttle stamp in the repository's .claude\.state"
+                    Assert (-not (Test-Path -LiteralPath (Join-Path $elsewhere '.claude'))) "$($world.Name): the hook wrote .claude into the folder it was started from"
+                } finally { Pop-Location; $env:PATH = $oldPath; $env:POSTWRITE_COUNTER = $oldCounter }
+            }
         }
     }
 
@@ -294,8 +337,6 @@ try {
         Assert ((($command -split '\s+')[0]) -ceq $expectedInterpreter) "$registrationRelative registers '$((($command -split '\s+')[0]))', not '$expectedInterpreter'; this leg would relaunch the other PowerShell host"
         foreach ($world in $worlds) {
             $writeEvent = Reset-BuildWorld $world "@echo simulated build failure 1>&2`r`n@exit /b 1`r`n"
-            New-Item -ItemType Directory -Path (Join-Path $tmp '.claude/hooks') -Force | Out-Null
-            Copy-Item -LiteralPath $postWrite -Destination (Join-Path $tmp '.claude/hooks/post-write.ps1') -Force
             $oldPath = $env:PATH
             try {
                 $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath

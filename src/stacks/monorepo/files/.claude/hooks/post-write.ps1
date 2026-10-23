@@ -64,7 +64,14 @@ function Invoke-BoundedTool([string]$Name, [string[]]$Arguments, [string]$WorkDi
     return [pscustomobject]@{ Code = $proc.ExitCode; Lines = @($outLines + $errLines) }
 }
 
-$null = New-Item -ItemType Directory -Path .claude\.state -Force
+# The repository is the folder that holds this hook's .claude\hooks folder, as session-start.ps1 finds
+# it: PowerShell's location need not be the repository (a sandboxed host may start hooks at the drive
+# root), so the hook moves there and keeps its state under it. Every path it tests or writes is literal:
+# to a non-literal Test-Path a folder name such as 'Dev [App]' is a wildcard pattern.
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+Set-Location -LiteralPath $repoRoot
+$stateDir = Join-Path $repoRoot '.claude\.state'
+[void][IO.Directory]::CreateDirectory($stateDir)
 
 $inputJson = [Console]::In.ReadToEnd()
 $filePath = ''
@@ -182,14 +189,14 @@ if ($branch -eq 'dotnet') {
     if (-not $target) { exit 0 }
 
     # Throttle: skip if a build was started within the last 60 seconds.
-    $stamp = '.claude\.state\last-build-ts'
+    $stamp = Join-Path $stateDir 'last-build-ts'
     # UTC integer epoch. NOT Get-Date -UFormat %s: under Windows PowerShell 5.1 that returns a
     # fractional local-time string, and [double]::Parse is culture-sensitive -- in comma-decimal
     # locales (de-DE/el-GR/fr-FR) the dot is a group separator, so the value overflows Int32 and
     # throws on every write. This form is culture-free, integer, and UTC.
     $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-    if (Test-Path $stamp) {
-        $lastRaw = Get-Content $stamp -Raw
+    if (Test-Path -LiteralPath $stamp) {
+        $lastRaw = Get-Content -LiteralPath $stamp -Raw
         if ($lastRaw) {
             $last = 0
             if ([int]::TryParse($lastRaw.Trim(), [ref]$last) -and ($now - $last) -lt 60) {
@@ -197,14 +204,14 @@ if ($branch -eq 'dotnet') {
             }
         }
     }
-    Set-Content -Path $stamp -Value $now -Encoding ASCII
+    Set-Content -LiteralPath $stamp -Value $now -Encoding ASCII
 
     # Only surface output on failure -- emitting the build summary every successful write wastes context tokens.
-    $run = Invoke-BoundedTool 'dotnet' @('build', $target, '--no-restore', '--verbosity', 'quiet') (Get-Location).Path
+    $run = Invoke-BoundedTool 'dotnet' @('build', $target, '--no-restore', '--verbosity', 'quiet') $repoRoot
     if ($null -eq $run) {
         # Not verified (budget exceeded or no launch): back off for 300 s so a build that cannot
         # finish inside the budget does not cost the agent another full budget on the next write.
-        Set-Content -Path $stamp -Value ($now + 300 - 60) -Encoding ASCII
+        Set-Content -LiteralPath $stamp -Value ($now + 300 - 60) -Encoding ASCII
         exit 0
     }
     if ($run.Code -eq 0) { exit 0 }
@@ -212,7 +219,7 @@ if ($branch -eq 'dotnet') {
     # NETSDK1004/1005: the packages were never restored (or the target framework changed since), so
     # this build examined nothing. Say so instead of reporting a broken build, and back off like a timeout.
     if (@($run.Lines | Where-Object { $_ -match '\bNETSDK100[45]\b' }).Count -gt 0) {
-        Set-Content -Path $stamp -Value ($now + 300 - 60) -Encoding ASCII
+        Set-Content -LiteralPath $stamp -Value ($now + 300 - 60) -Encoding ASCII
         $note = 'Build not verified: the NuGet packages are not restored (NETSDK1004/1005); run dotnet restore once to enable the post-write build check.'
         if ($tn -ceq 'Edit' -or $tn -ceq 'Write' -or $tn -eq '') {
             (@{ hookSpecificOutput = @{ hookEventName = 'PostToolUse'; additionalContext = $note } } | ConvertTo-Json -Compress)
@@ -223,7 +230,7 @@ if ($branch -eq 'dotnet') {
     }
 
     # Clear the throttle stamp so the next write rebuilds instead of skipping a known-broken build.
-    Remove-Item $stamp -Force
+    Remove-Item -LiteralPath $stamp -Force
 
     $msg = "## dotnet build failed -- fix before continuing:`n" + ($run.Lines -join "`n")
 }
@@ -238,7 +245,7 @@ else {
     $workspace = $null
     $probe = $dir
     while ($probe) {
-        if ((Test-Path (Join-Path $probe 'tsconfig.app.json')) -or (Test-Path (Join-Path $probe 'tsconfig.json'))) {
+        if ((Test-Path -LiteralPath (Join-Path $probe 'tsconfig.app.json')) -or (Test-Path -LiteralPath (Join-Path $probe 'tsconfig.json'))) {
             $workspace = $probe; break
         }
         $parent = Split-Path -Parent $probe
@@ -252,13 +259,13 @@ else {
     # 0 -- a silent false pass. tsconfig.app.json carries the real files/include, so the check actually runs.
     # Without one, as in a library-only workspace, a solution-style tsconfig.json is reported as not
     # verified below, never checked.
-    $project = if (Test-Path (Join-Path $workspace 'tsconfig.app.json')) { 'tsconfig.app.json' } else { 'tsconfig.json' }
+    $project = if (Test-Path -LiteralPath (Join-Path $workspace 'tsconfig.app.json')) { 'tsconfig.app.json' } else { 'tsconfig.json' }
 
     # Resolve tsc: node_modules may sit in the workspace or be hoisted to a monorepo root above it.
     $hasModules = $false
     $mp = $workspace
     while ($mp) {
-        if (Test-Path (Join-Path $mp 'node_modules')) { $hasModules = $true; break }
+        if (Test-Path -LiteralPath (Join-Path $mp 'node_modules')) { $hasModules = $true; break }
         $parent = Split-Path -Parent $mp
         if ($parent -eq $mp) { break }
         $mp = $parent
@@ -271,8 +278,7 @@ else {
 
     # Per-workspace state (absolute, under the repo-root .state) so multiple apps in a monorepo
     # neither clobber each other's incremental tsbuildinfo nor cross-suppress each other's throttle.
-    $repoState = Join-Path (Get-Location).Path '.claude\.state'
-    $null = New-Item -ItemType Directory -Path $repoState -Force
+    $repoState = $stateDir
     $wsRel = try { [string](Resolve-Path -LiteralPath $workspace -Relative -ErrorAction Stop) } catch { $workspace }
     $key = ($wsRel -replace '[^A-Za-z0-9]', '_') -replace '_+$', ''
     if ([string]::IsNullOrEmpty($key)) { $key = 'root' }
@@ -287,8 +293,8 @@ else {
     # locales (de-DE/el-GR/fr-FR) the dot is a group separator, so the value overflows Int32 and
     # throws on every write. This form is culture-free, integer, and UTC.
     $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-    if (Test-Path $stamp) {
-        $lastRaw = Get-Content $stamp -Raw
+    if (Test-Path -LiteralPath $stamp) {
+        $lastRaw = Get-Content -LiteralPath $stamp -Raw
         if ($lastRaw) {
             $last = 0
             if ([int]::TryParse($lastRaw.Trim(), [ref]$last) -and ($now - $last) -lt 5) {
@@ -296,17 +302,17 @@ else {
             }
         }
     }
-    Set-Content -Path $stamp -Value $now -Encoding ASCII
+    Set-Content -LiteralPath $stamp -Value $now -Encoding ASCII
 
     # A solution-style config (no files or include of its own, only references) gives tsc and ngc nothing to
     # check. Say so instead of running a check that cannot fail, and back off like a timeout so the note is
     # not repeated on every write.
     $config = try { [IO.File]::ReadAllText((Join-Path $workspace $project)) } catch { '' }
     if ($config -match '"files"\s*:\s*\[\s*\]' -and $config -match '"references"\s*:\s*\[\s*\{' -and $config -notmatch '"include"\s*:\s*\[\s*"') {
-        Set-Content -Path $stamp -Value ($now + 300 - 5) -Encoding ASCII
+        Set-Content -LiteralPath $stamp -Value ($now + 300 - 5) -Encoding ASCII
         # Named from the repository root: Resolve-Path -Relative renders the current directory itself as ..\<name>.
         $shown = Join-Path $workspace $project
-        $here = (Get-Location).Path.TrimEnd('\') + '\'
+        $here = $repoRoot.TrimEnd('\') + '\'
         if ($shown.StartsWith($here, [StringComparison]::OrdinalIgnoreCase)) { $shown = $shown.Substring($here.Length) }
         $note = "Type-check not verified: $($shown -replace '\\', '/') is solution-style (`"files`": [] with `"references`"), so tsc and ngc check nothing against it. Verify this change with the project's own build or test command."
         if ($tn -ceq 'Edit' -or $tn -ceq 'Write' -or $tn -eq '') {
@@ -329,13 +335,13 @@ else {
     if ($null -eq $run) {
         # Not verified (budget exceeded or no launch): back off for 300 s so a type-check that cannot
         # finish inside the budget does not cost the agent another full budget on the next write.
-        Set-Content -Path $stamp -Value ($now + 300 - 5) -Encoding ASCII
+        Set-Content -LiteralPath $stamp -Value ($now + 300 - 5) -Encoding ASCII
         exit 0
     }
     if ($run.Code -eq 0) { exit 0 }
 
     # Clear the throttle stamp so the next write re-checks instead of skipping a known-broken type-check.
-    Remove-Item $stamp -Force
+    Remove-Item -LiteralPath $stamp -Force
 
     $header = if ($template) { '## ngc --noEmit failed' } else { '## tsc --noEmit failed' }
     $msg = "$header -- fix before continuing:`n" + ($run.Lines -join "`n")
