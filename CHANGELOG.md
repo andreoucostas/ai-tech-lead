@@ -65,6 +65,14 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+`scripts/validate-dist.ps1` now separates "the artifact is wrong" from "an input could not be examined". Its header promised exit 2 for the latter, but every such branch went
+through `Fail` and exited 1, so a dist file locked by an antivirus scan or an editor looked the same as a leak. A new `Cant-Examine` helper prints `CANT-EXAMINE:` for the
+unreadable or unenumerable inputs of the marker, JSON, topology and PowerShell-syntax scans, the no-meta-leak and no-dead-instruction read errors, and rail-sync's unreadable
+dist, unreadable or malformed `meta/rail-sync.json`, and failed write. The exit is 1 if any check found a wrong artifact, else 2 if anything could not be examined, else 0.
+Zero-population scans ("found zero files", "extractor is blind") stay `FAIL`, as does a check chain that found both problems in one check: that check reports the unreadable
+input only. `release.ps1` and both CI legs already treat any non-zero exit as red, so none needed a change. `ValidateDist.Tests.ps1` case 26 asserts exit exactly 2 and a
+`CANT-EXAMINE:` line for a locked file in each of four scans, and a planted marker leak exiting exactly 1.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

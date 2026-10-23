@@ -16,8 +16,9 @@
 #  13. Copilot userPromptSubmitted has at most one entry (only its last entry is delivered)
 #  14. each route-prompt rail was reviewed with the canonical workflow bullet it repeats (meta/rail-sync.json;
 #      --update-rail-sync records a reviewed pair for the named dist)
-# Exit 0 = all checks passed. Exit 1 = at least one check failed. Exit 2 = usage error, missing
-# dist, or an input cannot be examined — reported as FATAL or FAIL, never skipped.
+# Exit 1 = at least one check found a wrong artifact (FAIL:). Otherwise exit 2 = usage error, missing
+# dist, or an input could not be examined (FATAL: or CANT-EXAMINE:, never skipped; the artifact is
+# neither proven right nor wrong). Otherwise exit 0 = every check passed.
 #   Usage: validate-dist.ps1 {dotnet|angular|monorepo} [dist-root] [-Check name[,name...]]
 #   dist-root defaults to "dist" resolved under the repo root (scripts/..). Pass an explicit path
 #   to validate a scratch copy instead (e.g. to plant failure fixtures without touching dist/).
@@ -94,6 +95,7 @@ if (-not (Test-Path $Dist -PathType Container)) {
 $DistAbs = (Resolve-Path $Dist).Path
 
 $failed = 0
+$cantExamine = 0
 # Per-check elapsed time. Every check ends by calling OK or Fail exactly once, so timing the
 # interval between those calls attributes cost without annotating each check by hand.
 #
@@ -118,6 +120,8 @@ function Report-Timings {
     }
 }
 function Fail($m) { Record-Timing $m; Write-Output "FAIL: $m"; $script:failed++ }
+# An input the check could not read or enumerate, or a scan that is broken: no verdict on the artifact.
+function Cant-Examine($m) { Record-Timing $m; Write-Output "CANT-EXAMINE: $m"; $script:cantExamine++ }
 function OK($m)   { Record-Timing $m; Write-Output "OK:   $m" }
 
 # --content-only skips checks 1-5 (the parse/marker/template-checks group) and runs only the content
@@ -188,11 +192,11 @@ foreach ($f in $markerInputs) {
     } catch { $markerReadFails += $f.FullName }
 }
 if ($null -ne $markerEnumError) {
-    Fail "marker scan could not enumerate $Dist : $markerEnumError"
+    Cant-Examine "marker scan could not enumerate $Dist : $markerEnumError"
 } elseif ($markerInputs.Count -eq 0) {
     Fail "marker scan found zero files in $Dist."
 } elseif ($markerReadFails.Count -gt 0) {
-    Fail ("marker scan could not read:" + ($markerReadFails -join ' '))
+    Cant-Examine ("marker scan could not read:" + ($markerReadFails -join ' '))
 } elseif ($markerFiles.Count -gt 0) {
     Fail ("unresolved @stack markers in: " + ($markerFiles -join ' '))
 } else {
@@ -371,9 +375,9 @@ foreach ($f in $jsonInputs) {
     } catch { $jsonFails += $f.FullName
     }
 }
-if ($null -ne $jsonEnumError) { Fail "JSON scan could not enumerate $Dist : $jsonEnumError" }
+if ($null -ne $jsonEnumError) { Cant-Examine "JSON scan could not enumerate $Dist : $jsonEnumError" }
 elseif ($jsonInputs.Count -eq 0) { Fail "JSON scan found zero files in $Dist." }
-elseif ($jsonReadFails.Count -gt 0) { Fail ("JSON scan could not read:" + ($jsonReadFails -join ' ')) }
+elseif ($jsonReadFails.Count -gt 0) { Cant-Examine ("JSON scan could not read:" + ($jsonReadFails -join ' ')) }
 elseif ($jsonFails.Count -gt 0) { Fail ("invalid JSON (ConvertFrom-Json):" + ($jsonFails -join ' ')) }
 else { OK "all $($jsonInputs.Count) *.json files parse (ConvertFrom-Json)." }
 }
@@ -414,10 +418,10 @@ if (Test-Path -LiteralPath $workflowRoot -PathType Container) {
         }
     }
 }
-if ($null -ne $topologyEnumError) { Fail "PowerShell topology scan could not enumerate $Dist : $topologyEnumError" }
+if ($null -ne $topologyEnumError) { Cant-Examine "PowerShell topology scan could not enumerate $Dist : $topologyEnumError" }
 elseif ($topologyFiles.Count -eq 0) { Fail "PowerShell topology scan found zero files in $Dist." }
 elseif ($topologyReadFails.Count -gt 0) {
-    Fail "PowerShell topology scan could not read $($topologyReadFails.Count) file(s)."
+    Cant-Examine "PowerShell topology scan could not read $($topologyReadFails.Count) file(s)."
     $topologyReadFails | Sort-Object -Unique | ForEach-Object { Write-Output "  [powershell-topology] $_" }
 } elseif ($topologyProblems.Count -gt 0) {
     Fail "PowerShell-only topology has $($topologyProblems.Count) active shell or non-Windows CI surface(s)."
@@ -452,9 +456,9 @@ foreach ($f in $ps1Inputs) {
     catch { $ps1ReadFails += $f.FullName; continue }
     if ($e) { $ps1Fails += "$($f.FullName): $($e[0].Message)" }
 }
-if ($null -ne $ps1EnumError) { Fail "PowerShell scan could not enumerate $Dist : $ps1EnumError" }
+if ($null -ne $ps1EnumError) { Cant-Examine "PowerShell scan could not enumerate $Dist : $ps1EnumError" }
 elseif ($ps1Inputs.Count -eq 0) { Fail "PowerShell scan found zero files in $Dist." }
-elseif ($ps1ReadFails.Count -gt 0) { Fail ("PowerShell scan could not read:" + ($ps1ReadFails -join ' ')) }
+elseif ($ps1ReadFails.Count -gt 0) { Cant-Examine ("PowerShell scan could not read:" + ($ps1ReadFails -join ' ')) }
 elseif ($ps1Fails.Count -gt 0) { Fail ("PS syntax errors: " + ($ps1Fails -join '; ')) }
 else { OK "all $($ps1Inputs.Count) *.ps1 files parse cleanly." }
 }
@@ -522,7 +526,7 @@ foreach ($f in $distFiles) {
 }
 $leaks = $leaks | Sort-Object
 if (@($scanErrors).Count -gt 0) {
-    Fail ("no-meta-leak could not scan {0} file(s) in {1} -- the scan is broken, not the dist." -f @($scanErrors).Count, $Dist)
+    Cant-Examine ("no-meta-leak could not scan {0} file(s) in {1} -- the scan is broken, not the dist." -f @($scanErrors).Count, $Dist)
     $scanErrors | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-meta-leak] unreadable: $_" }
 } elseif ($filesScanned -eq 0) {
     Fail "no-meta-leak scanned zero files in $Dist -- the input tree is empty, not clean."
@@ -623,7 +627,7 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)
     }
 }
 if (@($docReadErrors).Count -gt 0) {
-    Fail ("no-dead-instruction could not read {0} doc(s) in {1} -- the scan is broken, not the dist." -f @($docReadErrors).Count, $Dist)
+    Cant-Examine ("no-dead-instruction could not read {0} doc(s) in {1} -- the scan is broken, not the dist." -f @($docReadErrors).Count, $Dist)
     $docReadErrors | Sort-Object -Unique | ForEach-Object { Write-Output "  [no-dead-instruction] unreadable: $_" }
 } elseif ($docsScanned -eq 0) {
     Fail "no-dead-instruction scanned zero documentation files in $Dist -- the input tree is empty, not clean."
@@ -927,12 +931,12 @@ if (Test-Path -LiteralPath $railSyncPath -PathType Leaf) {
 }
 $railUpdateCommand = "scripts/validate-dist.ps1 $Mode -Check rail-sync --update-rail-sync"
 if ($railBlind) {
-    Fail "rail-sync could not examine $Dist -- $railBlind."
+    Cant-Examine "rail-sync could not examine $Dist -- $railBlind."
 } elseif ($railProblems.Count -gt 0) {
     Fail "rail-sync could not pair every section-1 workflow bullet with its route-prompt rail -- $($railProblems.Count) finding(s)."
     $railProblems | ForEach-Object { Write-Output "  [rail-sync] $_" }
 } elseif ($railRecordError) {
-    Fail "rail-sync cannot examine meta/rail-sync.json -- $railRecordError. Repair it, or delete it and record every dist again with $railUpdateCommand."
+    Cant-Examine "rail-sync cannot examine meta/rail-sync.json -- $railRecordError. Repair it, or delete it and record every dist again with $railUpdateCommand."
 } elseif ($UpdateRailSync) {
     $record = [ordered]@{}
     if ($null -ne $railRecord) {
@@ -961,7 +965,7 @@ if ($railBlind) {
     $lines.Add('}')
     $railWritten = $false
     try { [IO.File]::WriteAllText($railSyncPath, (($lines -join "`n") + "`n"), (New-Object Text.UTF8Encoding($false))); $railWritten = $true }
-    catch { Fail "rail-sync could not write meta/rail-sync.json -- $($_.Exception.Message)." }
+    catch { Cant-Examine "rail-sync could not write meta/rail-sync.json -- $($_.Exception.Message)." }
     if ($railWritten) { OK "rail-sync recorded $($railCurrent.Count) reviewed bullet/rail pair(s) for $Mode in meta/rail-sync.json." }
 } elseif ($null -eq $railRecord) {
     Fail "rail-sync has no record: meta/rail-sync.json is missing. Review each route-prompt rail against its bullet, then run $railUpdateCommand."
@@ -1169,6 +1173,7 @@ if ($claudeSkillCount -eq 0) {
 
 Report-Timings
 Write-Output ''
-if ($failed -gt 0) { Write-Output "$failed dist validation check(s) FAILED for $Dist."; exit 1 }
+if ($failed -gt 0) { Write-Output "$failed dist validation check(s) FAILED for $Dist."; if ($cantExamine -gt 0) { Write-Output "$cantExamine more could not be examined (CANT-EXAMINE)." }; exit 1 }
+if ($cantExamine -gt 0) { Write-Output "$cantExamine dist validation check(s) could not examine their input for $Dist -- no verdict; exit 2."; exit 2 }
 Write-Output "All dist validation checks passed for $Dist."
 exit 0
