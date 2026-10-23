@@ -65,6 +65,11 @@ throttle window and the state in the repository. `PowerShellSemantics.Tests.ps1`
 pwsh 7.6.6 and Windows PowerShell 5.1 in every dist. The bracketed cases start the hook from the folder above: Windows PowerShell 5.1's `Start-Process` cannot launch
 from a bracketed location.
 
+`adoption-archive.ps1 -Verify` on a zero-byte evidence file or one holding only `null` died with exit 1 and no `RESULT:` line: the empty parse reached a mandatory
+parameter outside any handler. `Read-AaJsonDocument` now refuses an empty or non-object document, so `-Verify` prints `CANT-VERIFY`, the `RESULT: CANT-VERIFY` line and exits 5;
+`-Freeze` and `-MoveFrozen` already ended in their exit 3 handlers and now name the empty file instead of a binding error. `AdoptionArchiveIntegrity.Tests.ps1` gains the case,
+red on the unfixed helper.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

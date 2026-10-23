@@ -48,6 +48,10 @@
   every write ran a full build or type-check. Both hooks now find the repository from their own location and keep
   their records in its `.claude/.state` folder.
 
+- **Verifying an empty adoption evidence file no longer crashes.** An evidence file that is empty or holds only `null`
+  (a truncated marker) now reports `RESULT: CANT-VERIFY` and exits 5, as the script's exit codes promise, instead of
+  exiting 1 with no result line.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

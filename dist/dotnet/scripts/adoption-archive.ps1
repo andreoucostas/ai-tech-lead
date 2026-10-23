@@ -348,8 +348,11 @@ function Get-AaIntegrityBlock {
 function Read-AaJsonDocument {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "evidence file '$Path' is missing or not a regular file" }
-    try { return (Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json) }
+    try { $document = (Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json) }
     catch { throw "evidence file '$Path' is not valid JSON: $($_.Exception.Message)" }
+    # A zero-byte or literal 'null' file parses to $null without error: a truncated marker, not a document.
+    if ($null -eq $document -or $document -isnot [pscustomobject]) { throw "evidence file '$Path' is empty or not a JSON object" }
+    return $document
 }
 
 # Writes the complete document only after it has been fully serialized. Existing evidence is

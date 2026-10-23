@@ -794,6 +794,18 @@ It 'bootstrap changing an archive after capture makes the post-gate verify again
     } finally { Remove-Fixture $fx }
 }
 
+It 'Verify of a zero-byte or literal null evidence file is CANT-VERIFY with a RESULT line, not an unhandled exit 1' {
+    $fx = New-FixtureRepo
+    try {
+        $empty = Join-Path $fx 'empty.json'; [IO.File]::WriteAllBytes($empty, [byte[]]@())
+        $null1 = Join-Path $fx 'null.json'; [IO.File]::WriteAllText($null1, 'null')
+        foreach ($p in @($empty, $null1)) {
+            $v = Invoke-Aa @('-Verify', '-RepoRoot', $fx, '-EvidencePath', $p)
+            Assert ($v.Exit -eq 5 -and $v.Output -match 'CANT-VERIFY' -and $v.Output -match 'RESULT: CANT-VERIFY') "empty or null evidence '$(Split-Path -Leaf $p)' left the exit contract (exit $($v.Exit)): $($v.Output)"
+        }
+    } finally { Remove-Fixture $fx }
+}
+
 It 'untracked input, missing/malformed/entryless evidence and a digest-less entry are distinct diagnostics, never PASS or corruption' {
     $fx = New-FixtureRepo
     try {
