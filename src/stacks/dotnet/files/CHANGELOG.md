@@ -65,6 +65,8 @@
 
 - **The installer's usage errors exit 2, as documented.** Running `scripts/install.ps1` with a target that is not a directory, or with the framework's own folder as the target, printed a PowerShell error record and exited 1. It now prints the message alone and exits 2, so a wrapper script can tell a usage error from an install failure. This includes a target that Windows PowerShell 5.1 cannot read as a path, such as one ending in a stray quote from `-Target "C:\repo\"` typed in cmd.
 
+- **A folder passed to the installer with a trailing backslash works.** Tab completion writes `..\My Repo\`, and Windows PowerShell 5.1 then could not ask Git about the repository, so an update or an install over existing files stopped with a `CANT-VERIFY` line; a junction or mount point above the folder made the installer refuse every write. The installer now ignores the trailing backslash.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

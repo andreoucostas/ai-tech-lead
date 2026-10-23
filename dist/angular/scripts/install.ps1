@@ -46,6 +46,15 @@ if (-not $targetIsDirectory) { [Console]::Error.WriteLine("Target '$Target' is n
 # -LiteralPath: read as a wildcard, 'repo[a]' resolves a sibling 'repoa' and the install lands there.
 $src = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $tgt = (Resolve-Path -LiteralPath $Target).Path
+# A target given with a trailing separator ('..\My Repo\', as tab completion writes it) keeps it. Windows
+# PowerShell 5.1 then hands Git '-C "C:\x\My Repo\"', which Git reads as an escaped quote, so every Git
+# question fails; the reparse-point walk never meets '$tgt' and runs on to the drive root; and the
+# self-install check misses. Trim once, here. A root stays whole: 'C:\' and a UNC share root ('\\server\share\')
+# are only valid with their final separator ('C:' alone means the drive's current directory, '\\server\share'
+# is not a folder path every API accepts), and GetPathRoot says where that root ends.
+$tgtRoot = [IO.Path]::GetPathRoot($tgt)
+if ($tgt.Length -gt $tgtRoot.Length) { $tgt = $tgt.TrimEnd('\', '/'); if ($tgt.Length -lt $tgtRoot.Length) { $tgt = $tgtRoot } }
+$src = $src.TrimEnd('\', '/')
 if ($tgt -eq $src) { [Console]::Error.WriteLine("Target is the template repo itself — choose a different target."); exit 2 }
 # Brownfield archive paths must never traverse a reparse point. Resolving a target path is not
 # enough: a junction/symlink below it can redirect either the collision source or the archive
