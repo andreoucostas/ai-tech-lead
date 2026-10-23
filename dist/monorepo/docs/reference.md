@@ -81,7 +81,7 @@ Run from the repository root with `pwsh -NoProfile -File scripts/<name>.ps1`, or
 
 | Script | Use |
 |---|---|
-| `framework-doctor.ps1` | Once per developer machine: which controls are live here. |
+| `framework-doctor.ps1` | Once per developer machine: which controls are live here. Exit 1: a check is `MISSING`; exit 2: none is missing but one the script itself could not examine printed `[CANT-VERIFY]`; exit 0: neither. The agent-host canaries it always lists are not counted. |
 | `docs-sync-check.ps1` | The CI guard: `AGENTS.md` populated and within its size budget, `CLAUDE.md` imports it, project skills in `.claude/skills/`, the install complete. Exit 0 pass, 1 fail. See [ci-integration.md](ci-integration.md). |
 | `template-checks.ps1` | Framework-state checks, including the version stamp against the `AGENTS.md` header. |
 | `metrics.ps1` | A descriptive snapshot of the codebase, as JSON. Not a before-and-after measure. |

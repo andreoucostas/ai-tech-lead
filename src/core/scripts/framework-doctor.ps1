@@ -3,6 +3,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 $root = Split-Path -Parent $PSScriptRoot
 $script:missing = 0
 $script:missingRows = 0
+$script:unexamined = 0
 $script:ok = 0
 $script:stackCanary = 'through the actual agent, make and then revert a harmless deliberate compile/type error in a real build-relevant file after the post-write throttle has elapsed, in a build or type-check that finishes inside the 45-second post-write budget; pass = the hook output starts with "## dotnet build failed", "## tsc --noEmit failed" or, after an Angular template write, "## ngc --noEmit failed". Model diagnosis or a direct terminal build is not a pass.'
 
@@ -10,6 +11,13 @@ function Row($State, $Name, $Detail) {
     Write-Output ("[{0}] {1} - {2}" -f $State, $Name, $Detail)
     if ($State -eq 'OK') { $script:ok++ }
     if ($State -eq 'MISSING') { $script:missing = 1; $script:missingRows++ }
+}
+# A script-checkable row the doctor itself could not examine: printed CANT-VERIFY, counted, exit 2.
+# The standing agent-host canaries and by-design observations (bare interpreter names, no hook run yet,
+# consumer-owned paths deliberately not followed) stay plain CANT-VERIFY rows and never change the exit.
+function RowU($Name, $Detail) {
+    $script:unexamined++
+    Row CANT-VERIFY $Name $Detail
 }
 function Has($Name) { [bool](Get-Command $Name -ErrorAction SilentlyContinue) }
 # Keep every doctor JSON decision on the strict jq/Python grammar. ConvertFrom-Json alone accepts
@@ -96,8 +104,8 @@ function Get-DoctorSha256([byte[]]$Bytes) {
     try { return ([BitConverter]::ToString($sha.ComputeHash($Bytes))).Replace('-', '').ToLowerInvariant() }
     finally { $sha.Dispose() }
 }
-function New-LegacyHookDoctorResult([string]$State, [string]$Detail) {
-    [pscustomobject]@{ State = $State; Detail = $Detail }
+function New-LegacyHookDoctorResult([string]$State, [string]$Detail, [bool]$Unexamined = $false) {
+    [pscustomobject]@{ State = $State; Detail = $Detail; Unexamined = $Unexamined }
 }
 function Get-LegacyHookDoctorResult {
     $retiredHelpers = @('scripts/setup-git-hooks.ps1', 'scripts/setup-git-hooks.sh', '.claude/hooks/guard.sh')
@@ -109,10 +117,10 @@ function Get-LegacyHookDoctorResult {
     }
 
     try { $gitEntry = Get-DoctorGitChildEntry $root '.git' }
-    catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the target .git entry could not be examined; no hook path was followed.' }
+    catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the target .git entry could not be examined; no hook path was followed.' $true }
     if (-not $gitEntry) {
         try { $repositoryOutsideTarget = Test-DoctorExternalRepositoryEvidence $root }
-        catch { return New-LegacyHookDoctorResult CANT-VERIFY 'repository evidence could not be examined; no hook path was followed.' }
+        catch { return New-LegacyHookDoctorResult CANT-VERIFY 'repository evidence could not be examined; no hook path was followed.' $true }
         if ($repositoryOutsideTarget) {
             return New-LegacyHookDoctorResult CANT-VERIFY 'Git metadata is not a default .git directory contained by this target; nested, bare, or external hook state was not inspected.'
         }
@@ -123,20 +131,20 @@ function Get-LegacyHookDoctorResult {
     }
 
     try { $huskyEntry = Get-DoctorGitChildEntry $root '.husky' }
-    catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the .husky routing surface could not be examined.' }
+    catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the .husky routing surface could not be examined.' $true }
     if ($huskyEntry) {
         return New-LegacyHookDoctorResult CANT-VERIFY 'a consumer-owned .husky hook surface exists and was not traversed; inspect it manually for retired framework helper references.'
     }
 
     $gitCommands = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
     if ($gitCommands.Count -eq 0) {
-        return New-LegacyHookDoctorResult CANT-VERIFY 'Git is unavailable, so core.hooksPath cannot be checked; no hook path was followed.'
+        return New-LegacyHookDoctorResult CANT-VERIFY 'Git is unavailable, so core.hooksPath cannot be checked; no hook path was followed.' $true
     }
     $global:LASTEXITCODE = $null
     try { $hooksPathOutput = @(& ([string]$gitCommands[0].Source) -C $root config --get core.hooksPath 2>$null); $hooksPathExit = $global:LASTEXITCODE }
     catch { $hooksPathExit = $null; $hooksPathOutput = @() }
     if ($null -eq $hooksPathExit -or $hooksPathExit -notin @(0, 1)) {
-        return New-LegacyHookDoctorResult CANT-VERIFY 'core.hooksPath could not be examined; no custom hook path was followed.'
+        return New-LegacyHookDoctorResult CANT-VERIFY 'core.hooksPath could not be examined; no custom hook path was followed.' $true
     }
     if ($hooksPathExit -eq 0) {
         return New-LegacyHookDoctorResult CANT-VERIFY ("core.hooksPath is configured as '{0}'; this consumer-owned path was not followed. Inspect it manually for retired framework helper references." -f (($hooksPathOutput -join "`n").Trim()))
@@ -154,7 +162,7 @@ function Get-LegacyHookDoctorResult {
     }
     $unverifiableHelpers = @($helperStates.Keys | Where-Object { $helperStates[$_] -eq 'unverifiable' } | Sort-Object)
     if ($unverifiableHelpers.Count) {
-        return New-LegacyHookDoctorResult CANT-VERIFY ("retired hook helper state could not be examined safely: {0}." -f ($unverifiableHelpers -join ', '))
+        return New-LegacyHookDoctorResult CANT-VERIFY ("retired hook helper state could not be examined safely: {0}." -f ($unverifiableHelpers -join ', ')) $true
     }
 
     $hookPath = Join-Path $root '.git/hooks/pre-commit'
@@ -163,7 +171,7 @@ function Get-LegacyHookDoctorResult {
     }
     try { $hookEntry = Get-DoctorLiteralItem $hookPath }
     catch [Management.Automation.ItemNotFoundException] { $hookEntry = $null }
-    catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit hook could not be examined.' }
+    catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit hook could not be examined.' $true }
     $residualHelpers = @($retiredHelpers | Where-Object { $helperStates[$_] -eq 'present' })
     if (-not $hookEntry) {
         if ($residualHelpers.Count) {
@@ -178,7 +186,7 @@ function Get-LegacyHookDoctorResult {
         $hookBytes = [IO.File]::ReadAllBytes($hookPath)
         $hookText = [Text.UTF8Encoding]::new($false, $true).GetString($hookBytes)
         $hookDigest = Get-DoctorSha256 $hookBytes
-    } catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit hook could not be read as UTF-8 text.' }
+    } catch { return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit hook could not be read as UTF-8 text.' $true }
 
     $powerShellBody = $hookDigest -ceq 'd13676bfffea2c3199894f4a610b8931273e161ddbfcfcdc7628bf40e6ca9fb8'
     $bashBody = $hookDigest -ceq '25da45aa780126e4d2b0a2b1bdf759462bf3fd92be01e6414ed496253c817357'
@@ -249,7 +257,7 @@ function Get-RetiredFrameworkResidueResult {
     if ($unverifiable.Count) {
         $detail = "retired path state could not be read safely: {0}." -f ((@($unverifiable) | Sort-Object) -join ', ')
         if ($present.Count) { $detail += " Verified residue also remains: {0}." -f ((@($present) | Sort-Object) -join ', ') }
-        return New-LegacyHookDoctorResult CANT-VERIFY $detail
+        return New-LegacyHookDoctorResult CANT-VERIFY $detail $true
     }
     if ($present.Count) {
         return New-LegacyHookDoctorResult PENDING ("retired framework files remain: {0}. Do not execute them; review protected references and remove only confirmed consumer-owned residue manually." -f ((@($present) | Sort-Object) -join ', '))
@@ -265,7 +273,10 @@ function Finish {
     Write-Output ("[CANT-VERIFY] Agent-host stack toolchain - {0}" -f $script:stackCanary)
     Write-Output ("Script-verifiable checks: {0} ok / {1} missing." -f $script:ok, $script:missingRows)
     Write-Output 'Enforcement is only FULL if the canaries above also pass; a script cannot see inside your agent.'
-    exit $script:missing
+    if ($script:unexamined -gt 0) { Write-Output ("Could not examine: {0} script-verifiable check(s) above are [CANT-VERIFY] because this doctor could not inspect them (exit 2 unless something is MISSING)." -f $script:unexamined) }
+    if ($script:missing) { exit 1 }
+    if ($script:unexamined -gt 0) { exit 2 }
+    exit 0
 }
 
 Write-Output 'AI Tech Lead framework doctor'
@@ -278,7 +289,7 @@ if (-not (Test-Path -LiteralPath $stampPath)) {
 $stampReadFailed = $false
 try { $stampContent = Get-Content -Raw -LiteralPath $stampPath -ErrorAction Stop } catch { $stampReadFailed = $true }
 if ($stampReadFailed) {
-    Row CANT-VERIFY 'Install state' '.claude/framework-version.json exists but could not be read; its install state is unknown. Fix read access and rerun the doctor.'
+    RowU 'Install state' '.claude/framework-version.json exists but could not be read; its install state is unknown. Fix read access and rerun the doctor.'
     Finish
 }
 try { $stamp = ConvertFrom-StrictJson $stampContent } catch { $stamp = $null }
@@ -310,7 +321,7 @@ if (Test-Path -LiteralPath $claudePath) {
     try { $claudeContent = Get-Content -Raw -LiteralPath $claudePath -ErrorAction Stop } catch { $claudeReadFailed = $true }
 }
 if ((Test-Path -LiteralPath $carrierPath) -and $claudeReadFailed) {
-    Row CANT-VERIFY 'Framework rules delivery' 'PowerShell could not inspect CLAUDE.md; this is a host/resource problem, not evidence that the framework rules import is absent.'
+    RowU 'Framework rules delivery' 'PowerShell could not inspect CLAUDE.md; this is a host/resource problem, not evidence that the framework rules import is absent.'
 } elseif ((Test-Path -LiteralPath $carrierPath) -and $claudeContent -and $claudeContent.Contains($importLine)) {
     Row OK 'Framework rules delivery' 'CLAUDE.md imports the current framework rules carrier.'
 } elseif (Test-Path -LiteralPath $carrierPath) {
@@ -323,7 +334,7 @@ $frameworkHeadings = @('Verification Rules', 'Leanness', 'SOLID', 'Agentic Workf
 if (-not (Test-Path -LiteralPath $claudePath -PathType Leaf)) {
     Row MISSING 'Protected-file sync' 'CLAUDE.md is absent; protected-file migration state cannot be inspected.'
 } elseif ($claudeReadFailed) {
-    Row CANT-VERIFY 'Protected-file sync' 'PowerShell could not inspect CLAUDE.md; this is a host/resource problem, so protected-file migration state cannot be verified.'
+    RowU 'Protected-file sync' 'PowerShell could not inspect CLAUDE.md; this is a host/resource problem, so protected-file migration state cannot be verified.'
 } elseif (-not ((Test-Path -LiteralPath $carrierPath -PathType Leaf) -and $claudeContent -and $claudeContent.Contains($importLine))) {
     # $claudeContent is null for an EMPTY or unreadable CLAUDE.md (Get-Content -Raw returns null, not '').
     # Without the null guard this row threw and vanished from the report entirely -- an inert
@@ -364,7 +375,7 @@ foreach ($instructionPath in @((Join-Path $root 'AGENTS.md'), $claudePath)) {
 }
 $pending = $adoption -or $bootstrap
 if ($adoption) { Row PENDING 'Bootstrap/adoption state' 'adoption pending. A developer must run /adopt.' }
-elseif ($bootstrapReadFailed) { Row CANT-VERIFY 'Bootstrap/adoption state' 'PowerShell could not inspect AGENTS.md or CLAUDE.md; this is a host/resource problem, not evidence that repository setup is complete.' }
+elseif ($bootstrapReadFailed) { RowU 'Bootstrap/adoption state' 'PowerShell could not inspect AGENTS.md or CLAUDE.md; this is a host/resource problem, not evidence that repository setup is complete.' }
 elseif ($bootstrap) { Row PENDING 'Bootstrap/adoption state' 'bootstrap pending. A developer must run /bootstrap.' }
 else { Row OK 'Bootstrap/adoption state' 'repository setup is complete.' }
 
@@ -399,7 +410,7 @@ $shells = @($commands | ForEach-Object {
     elseif ($_ -match '^\s*([^\s]+)') { $matches[1] }
 } | Select-Object -Unique)
 if ($settingsReadFailed) {
-    Row CANT-VERIFY 'Wired hook shell' '.claude/settings.json exists but could not be read; the wired interpreter is unknown. Fix read access and rerun the doctor.'
+    RowU 'Wired hook shell' '.claude/settings.json exists but could not be read; the wired interpreter is unknown. Fix read access and rerun the doctor.'
 } elseif ($shells.Count -eq 0) {
     Row MISSING 'Wired hook shell' 'no hook interpreter could be read from .claude/settings.json. Fix: re-run the installer to rewire hooks.'
 } else {
@@ -428,9 +439,9 @@ if (-not [string]::IsNullOrWhiteSpace($lastSessionStart)) {
 }
 
 $legacyHookRetirement = Get-LegacyHookDoctorResult
-Row $legacyHookRetirement.State 'Legacy Git-hook retirement' $legacyHookRetirement.Detail
+if ($legacyHookRetirement.Unexamined) { RowU 'Legacy Git-hook retirement' $legacyHookRetirement.Detail } else { Row $legacyHookRetirement.State 'Legacy Git-hook retirement' $legacyHookRetirement.Detail }
 $retiredFrameworkResidue = Get-RetiredFrameworkResidueResult
-Row $retiredFrameworkResidue.State 'Retired framework residue' $retiredFrameworkResidue.Detail
+if ($retiredFrameworkResidue.Unexamined) { RowU 'Retired framework residue' $retiredFrameworkResidue.Detail } else { Row $retiredFrameworkResidue.State 'Retired framework residue' $retiredFrameworkResidue.Detail }
 
 $hookPaths = @()
 foreach ($command in $commands) {
@@ -470,7 +481,7 @@ if ($copilotInvalid) {
     $names = if ($missingHooks.Count) { $missingHooks -join ',' } else { '<no registrations>' }
     Row MISSING 'Hook files' ("registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: {0}" -f $names)
 } elseif ($settingsReadFailed -or $copilotReadFailed) {
-    Row CANT-VERIFY 'Hook files' 'hook registrations could not be completely read from .claude/settings.json and .github/hooks/hooks.json; file presence cannot be certified. Fix read access and rerun the doctor.'
+    RowU 'Hook files' 'hook registrations could not be completely read from .claude/settings.json and .github/hooks/hooks.json; file presence cannot be certified. Fix read access and rerun the doctor.'
 } elseif ($hookPaths.Count -eq 0) {
     Row MISSING 'Hook files' 'registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: <no registrations>'
 } else { Row OK 'Hook files' ("{0} registered files are present." -f $hookPaths.Count) }
@@ -484,7 +495,7 @@ if (-not $retiredBashRegistration -and $copilotValid) {
 if ($copilotInvalid) {
     Row MISSING 'Hook registration topology' '.github/hooks/hooks.json is malformed, so the supported PowerShell registration set cannot be verified. Fix: re-run the installer or correct the file.'
 } elseif ($settingsReadFailed -or $copilotReadFailed) {
-    Row CANT-VERIFY 'Hook registration topology' 'hook registrations could not be completely read, so PowerShell-only registration cannot be verified. Fix read access and rerun the doctor.'
+    RowU 'Hook registration topology' 'hook registrations could not be completely read, so PowerShell-only registration cannot be verified. Fix read access and rerun the doctor.'
 } elseif ($retiredBashRegistration) {
     Row MISSING 'Hook registration topology' 'a retired Bash hook registration remains. Preserve consumer-owned configuration, replace the obsolete entry with the supported PowerShell registration, and rerun the doctor.'
 } else { Row OK 'Hook registration topology' 'registered framework hooks use the supported PowerShell surface.' }
@@ -545,7 +556,7 @@ else {
         if (-not (Has npx)) { $missingTools += 'npx' }
     }
     if ($markerScanFailed) {
-        Row CANT-VERIFY 'Stack toolchain' 'repository application markers could not be completely enumerated or read within two directory levels; generated/dependency directories (.git, node_modules, bower_components, vendor, bin, obj, dist, build, out, .next, .angular, .nx, coverage) are intentionally excluded. No toolchain conclusion was inferred. Fix: restore read/list access and rerun framework doctor.'
+        RowU 'Stack toolchain' 'repository application markers could not be completely enumerated or read within two directory levels; generated/dependency directories (.git, node_modules, bower_components, vendor, bin, obj, dist, build, out, .next, .angular, .nx, coverage) are intentionally excluded. No toolchain conclusion was inferred. Fix: restore read/list access and rerun framework doctor.'
         $script:stackCanary = 'repository application markers could not be completely enumerated or read, so whether a compile/type-error canary applies cannot be verified. Fix the marker access issue, then use the actual agent rather than a direct terminal build.'
     } elseif ($missingTools.Count) {
         Row MISSING 'Stack toolchain' ("the required toolchain commands are absent from this doctor process environment: {0}; this does not prove the agent host's post-write environment. Fix: install them on this machine if the actual-host canary also fails." -f ($missingTools -join ','))
@@ -571,7 +582,7 @@ if ($copilotValid) {
     }
     elseif (Has copilot) { Row OK 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment.' }
     else { Row OK 'Copilot surface' 'hooks.json is valid; Copilot CLI is absent from this doctor process environment. Claude-only teams need no action; Copilot teams must use the actual-surface canaries below.' }
-} elseif ($copilotReadFailed) { Row CANT-VERIFY 'Copilot surface' '.github/hooks/hooks.json exists but could not be read; its validity and Copilot hook surface are unknown. Fix read access and rerun the doctor.' }
+} elseif ($copilotReadFailed) { RowU 'Copilot surface' '.github/hooks/hooks.json exists but could not be read; its validity and Copilot hook surface are unknown. Fix read access and rerun the doctor.' }
 elseif ($copilotExists) { Row MISSING 'Copilot surface' '.github/hooks/hooks.json exists but is not valid JSON. Fix: re-run the installer or correct the file.' }
 else { Row MISSING 'Copilot surface' '.github/hooks/hooks.json is missing. Fix: re-run the installer.' }
 
@@ -601,11 +612,11 @@ else {
         }
         catch { $checkRan = $false }
         if (-not $checkRan -or $null -eq $checkStatus) {
-            Row CANT-VERIFY 'Layout and version integrity' 'could not start a PowerShell host to run template-checks, so drift is UNKNOWN rather than found. This is a host/PATH problem, not a documentation problem. Fix: run scripts/template-checks.ps1 yourself and act on what it says.'
+            RowU 'Layout and version integrity' 'could not start a PowerShell host to run template-checks, so drift is UNKNOWN rather than found. This is a host/PATH problem, not a documentation problem. Fix: run scripts/template-checks.ps1 yourself and act on what it says.'
         }
         elseif ($checkStatus -eq 0) { Row OK 'Layout and version integrity' 'template-checks passed.' }
         elseif ($checkStatus -eq 3) { Row MISSING 'Layout and version integrity' 'template-checks reported integrity findings. Run it directly and follow its exact findings.' }
-        else { Row CANT-VERIFY 'Layout and version integrity' ("template-checks did not complete (exit {0}), so integrity is UNKNOWN rather than missing. Run template-checks directly and inspect its output before changing framework files." -f $checkStatus) }
+        else { RowU 'Layout and version integrity' ("template-checks did not complete (exit {0}), so integrity is UNKNOWN rather than missing. Run template-checks directly and inspect its output before changing framework files." -f $checkStatus) }
     } else { Row MISSING 'Layout and version integrity' 'template-checks is missing. Fix: re-run the installer.' }
 }
 

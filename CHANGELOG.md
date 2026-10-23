@@ -83,6 +83,15 @@ The composer's append-only retirement check no longer decides from ambient state
 template repo (which is what `validate-dist.ps1` runs it as, in every dist) and an install with no manifest keep the full scan; a manifest that is present but
 unreadable or without paths exits 2 with a `CANT-VERIFY:` line. `ScriptBehavior.Tests.ps1` gains one case covering a consumer script passing, an owned script
 without its BOM failing, the invalid and absent manifests; it was red on the unfixed script.
+`framework-doctor.ps1` (shipped, ordinary tier; found in an audit, no backlog entry): a row the doctor could not examine (an unreadable
+`framework-version.json`, `settings.json`, `hooks.json` or `CLAUDE.md`/`AGENTS.md`, `template-checks` that would not start or did not complete, hooksPath, `.husky` or
+pre-commit state it could not inspect, retired-path state it could not read, application markers it could not enumerate) printed `[CANT-VERIFY]` and exited 0, the
+same as all green, so automation read "could not look" as "fine". Escaped since the CANT-VERIFY rows were added: no case asserted the exit for an unexaminable row (the
+mutation case for the unreadable stamp pinned exit 0). `RowU` now counts such rows and `Finish` exits 1 for any MISSING, else 2 for any unexamined row (with a
+`Could not examine: N` line), else 0. By-design CANT-VERIFY rows keep exit 0: the five host canaries, a bare interpreter name, no hook run recorded yet, Copilot absent
+on this machine, and consumer-owned hook paths deliberately not followed (routing variable, nested or linked Git metadata, `.husky`, configured hooksPath, linked or
+oversized pre-commit). `FrameworkDoctor.Tests.ps1`: one new case (a locked stamp exits 2, the healthy fixture 0), the unreadable-stamp mutation case now expects 2, and
+the shared parser derives the expected exit from the summary.
 
 ## 0.98.2 — 2026-10-20
 
