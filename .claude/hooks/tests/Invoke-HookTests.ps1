@@ -55,6 +55,7 @@ $expectedTestFiles = @(
     'CiCaseParity.Tests.ps1',
     'ClaimTruth.Tests.ps1',
     'Composer.Tests.ps1',
+    'ContextFootprint.Tests.ps1',
     'DocClaims.Tests.ps1',
     'DocsSyncCheck.Tests.ps1',
     'DocTruth.Tests.ps1',
