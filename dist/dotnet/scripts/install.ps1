@@ -57,6 +57,15 @@ $tgtRoot = [IO.Path]::GetPathRoot($tgt)
 if ($tgt.Length -gt $tgtRoot.Length) { $tgt = $tgt.TrimEnd('\', '/'); if ($tgt.Length -lt $tgtRoot.Length) { $tgt = $tgtRoot } }
 $src = $src.TrimEnd('\', '/')
 if ($tgt -eq $src) { [Console]::Error.WriteLine("Target is the template repo itself — choose a different target."); exit 2 }
+# An entry is a link only when it is a reparse point whose LinkType is SymbolicLink or Junction, or that
+# reports a Target. Cloud-files folders (OneDrive) are reparse points with neither and are not links.
+# Never reduce this to the attribute alone, and never accept a link by anything looser than this test.
+function Test-IsLinkEntry {
+    param($Entry)
+    if (-not $Entry -or ($Entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { return $false }
+    if ([string]$Entry.LinkType -in 'SymbolicLink', 'Junction') { return $true }
+    return ([string]($Entry.Target -join '')).Length -gt 0
+}
 # Brownfield archive paths must never traverse a reparse point. Resolving a target path is not
 # enough: a junction/symlink below it can redirect either the collision source or the archive
 # destination outside the consumer repository before Move-Item gets a chance to report anything.
@@ -67,7 +76,7 @@ function Get-ReparsePointAncestor {
         # Get-Item -Force sees a dangling link where Test-Path reports false. Do not replace this
         # with a Test-Path guard: that was the route by which a broken link escaped preflight.
         $item = Get-Item -Force -LiteralPath $current -ErrorAction SilentlyContinue
-        if ($item -and (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { return $current }
+        if ($item -and (Test-IsLinkEntry $item)) { return $current }
         if ($current -eq $tgt) { return $null }
         $parent = Split-Path -Parent $current
         if (-not $parent -or $parent -eq $current) { return $null }
@@ -1156,7 +1165,7 @@ function Test-HeldBytes {
     param([string]$Relative, [byte[]]$Bytes)
     $held = $null
     $heldItem = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $Relative) -ErrorAction SilentlyContinue
-    if ($null -eq $heldItem -or ($heldItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -or [string]$heldItem.LinkType -eq 'HardLink') { return $false }
+    if ($null -eq $heldItem -or (Test-IsLinkEntry $heldItem) -or [string]$heldItem.LinkType -eq 'HardLink') { return $false }
     try { $held = [IO.File]::ReadAllBytes($heldItem.FullName) } catch { return $false }
     return [string]::Equals([Convert]::ToBase64String($held), [Convert]::ToBase64String($Bytes), [StringComparison]::Ordinal)
 }
@@ -1218,7 +1227,7 @@ foreach ($relative in $incomingPaths) {
     foreach ($onPath in '.agents', '.agents/skills', ".agents/skills/$workflow", $relative) {
         $item = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $onPath) -ErrorAction SilentlyContinue
         if ($null -eq $item) { break }
-        $blockerIsLink = ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+        $blockerIsLink = (Test-IsLinkEntry $item)
         if ($blockerIsLink -or ($onPath -cne $relative -and -not $item.PSIsContainer)) { $blocker = $onPath; break }
     }
     if ($blocker) {
@@ -1410,7 +1419,7 @@ function Add-BoundedReferenceDirectory {
     try { $rootEntry = Get-LiteralItem -Path $directory }
     catch [Management.Automation.ItemNotFoundException] { return }
     catch { $reconciliationMessages.Add("CANT-VERIFY: protected reference directory '$Relative' could not be examined; no stale-command conclusion was inferred."); return }
-    if (($rootEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or -not $rootEntry.PSIsContainer) {
+    if ((Test-IsLinkEntry $rootEntry) -or -not $rootEntry.PSIsContainer) {
         $reconciliationMessages.Add("CANT-VERIFY: protected reference directory '$Relative' is linked or not a directory; it was not traversed.")
         return
     }
@@ -1426,7 +1435,7 @@ function Add-BoundedReferenceDirectory {
         }
         foreach ($child in $children) {
             $childRelative = $child.FullName.Substring($tgt.Length).TrimStart('\', '/') -replace '\\', '/'
-            if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            if (Test-IsLinkEntry $child) {
                 $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$childRelative' is a reparse/symlink and was not followed.")
                 continue
             }
@@ -1644,7 +1653,7 @@ if ($updateMode) {
     }
     if (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) {
         foreach ($item in Get-ChildItem -LiteralPath $activeSkillsRoot -Recurse -Force) {
-            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            if (Test-IsLinkEntry $item) {
                 [Console]::Error.WriteLine("ERROR: Refusing update skill reconciliation: '$($item.FullName)' is a reparse/symlink."); exit 3
             }
         }

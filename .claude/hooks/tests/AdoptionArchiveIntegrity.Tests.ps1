@@ -1032,6 +1032,25 @@ It 'an existing archive destination and reparse-point source or destination are 
     } finally { Remove-Fixture $fx; Remove-Fixture $outside }
 }
 
+# No test can give a folder the cloud-files attribute, so the predicate is taken from the helper's own AST.
+It 'the archive helper predicate calls a reparse point with no link type a folder and a junction or symlink a link' {
+    $ast = [Management.Automation.Language.Parser]::ParseFile($script:Helper, [ref]$null, [ref]$null)
+    $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-IsLinkEntry' }, $true)
+    Assert ($null -ne $fn) 'the archive helper defines no Test-IsLinkEntry; any reparse point is treated as a link'
+    $predicate = $fn.Body.GetScriptBlock()
+    $dir = [IO.FileAttributes]'Directory, ReparsePoint'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = $null }))) 'a cloud-files folder (no LinkType, no Target) was called a link'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = ''; Target = @() }))) 'a cloud-files folder (empty LinkType, empty Target) was called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'Junction'; Target = @('C:\x') })) 'a junction was not called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'SymbolicLink'; Target = @('C:\x') })) 'a directory symlink was not called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = @('C:\x') })) 'a reparse point that reports a Target was not called a link'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = [IO.FileAttributes]'Directory'; LinkType = 'Junction'; Target = @('C:\x') }))) 'an entry without the reparse attribute was called a link'
+    Assert (-not (& $predicate $null)) 'a missing entry was called a link'
+    $bare = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.BinaryExpressionAst] -and $n.Operator -eq 'Band' -and $n.Extent.Text -match 'ReparsePoint' }, $true) |
+        Where-Object { $_.Extent.StartOffset -lt $fn.Extent.StartOffset -or $_.Extent.StartOffset -ge $fn.Extent.EndOffset })
+    Assert ($bare.Count -eq 0) "the archive helper still tests the reparse attribute alone at: $(($bare | ForEach-Object { $_.Extent.StartLineNumber }) -join ', ')"
+}
+
 It 'modified, shallow and unavailable Git examination remain distinct provenance states' {
     $fx = New-FixtureRepo
     $shallow = Join-Path ([IO.Path]::GetTempPath()) ('aa-shallow-' + [guid]::NewGuid().ToString('N'))
@@ -1176,7 +1195,7 @@ It 'a failure after archive moves retains verified complete evidence for human r
         [IO.File]::WriteAllText((Join-Path $fx 'CLAUDE.md'), 'consumer archive source')
         [IO.File]::WriteAllText((Join-Path $fx 'Smoke.csproj'), '<Project />')
         Add-Commit -Repo $fx
-        $source = New-MutatedInstallerSource -Find 'Copy-Item -Force -LiteralPath (Join-Path $src $relative) -Destination $destination' -Replacement "throw 'INJECTED-POST-ARCHIVE-FAILURE'"
+        $source = New-MutatedInstallerSource -Find 'Copy-Item -Force -LiteralPath (Join-Path $src $relative) -Destination $destination -ErrorAction Stop' -Replacement "throw 'INJECTED-POST-ARCHIVE-FAILURE'"
         $result = Invoke-InstallerFrom -InstallerPath (Join-Path $source 'scripts/install.ps1') -Target $fx
         Assert ($result.Exit -ne 0 -and $result.Output -match 'INJECTED-POST-ARCHIVE-FAILURE') "injected post-archive failure did not stop installer: $($result.Output)"
         $markerPath = Join-Path $fx '.claude/adoption-pending.json'

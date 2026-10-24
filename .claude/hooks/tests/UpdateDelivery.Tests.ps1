@@ -3891,6 +3891,43 @@ It 'a target below a junction, passed with a trailing backslash, installs; the w
     }
 }
 
+It 'a target that is itself a junction is refused with exit 3 naming the link' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('junctgt-' + [guid]::NewGuid())
+    $real = Join-Path $root 'real'
+    $link = Join-Path $root 'link'
+    try {
+        [void][IO.Directory]::CreateDirectory($real)
+        & cmd /c "mklink /J `"$link`" `"$real`" >nul"
+        Assert (Test-Path -LiteralPath $link) 'calibration: the junction was not created'
+        $out = Invoke-InstallerLiteralTarget -Dist 'dotnet' -Target $link
+        Assert ($LASTEXITCODE -eq 3 -and $out -match "traverses reparse/symlink '[^']*link'") "an install into a junction was not refused at the link (exit $LASTEXITCODE): $out"
+        Assert (@(Get-ChildItem -LiteralPath $real -Force).Count -eq 0) 'the install wrote through the junction'
+    } finally {
+        if (Test-Path -LiteralPath $link) { & cmd /c "rmdir `"$link`"" }
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# No test can give a folder the cloud-files attribute, so the predicate is taken from the installer's own AST.
+It 'the installer predicate calls a reparse point with no link type a folder and a junction or symlink a link' {
+    $script = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
+    $ast = [Management.Automation.Language.Parser]::ParseFile($script, [ref]$null, [ref]$null)
+    $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-IsLinkEntry' }, $true)
+    Assert ($null -ne $fn) 'the installer defines no Test-IsLinkEntry; any reparse point is treated as a link'
+    $predicate = $fn.Body.GetScriptBlock()
+    $dir = [IO.FileAttributes]'Directory, ReparsePoint'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = $null }))) 'a cloud-files folder (no LinkType, no Target) was called a link'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = ''; Target = @() }))) 'a cloud-files folder (empty LinkType, empty Target) was called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'Junction'; Target = @('C:\x') })) 'a junction was not called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'SymbolicLink'; Target = @('C:\x') })) 'a directory symlink was not called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = @('C:\x') })) 'a reparse point that reports a Target was not called a link'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = [IO.FileAttributes]'Directory'; LinkType = 'Junction'; Target = @('C:\x') }))) 'an entry without the reparse attribute was called a link'
+    Assert (-not (& $predicate $null)) 'a missing entry was called a link'
+    $bare = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.BinaryExpressionAst] -and $n.Operator -eq 'Band' -and $n.Extent.Text -match 'ReparsePoint' }, $true) |
+        Where-Object { $_.Extent.StartOffset -lt $fn.Extent.StartOffset -or $_.Extent.StartOffset -ge $fn.Extent.EndOffset })
+    Assert ($bare.Count -eq 0) "the installer still tests the reparse attribute alone at: $(($bare | ForEach-Object { $_.Extent.StartLineNumber }) -join ', ')"
+}
+
 It 'an update over a 0-byte LEARNINGS.md succeeds and disables no skill' {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-emptylearn-' + [guid]::NewGuid())
     New-Item -ItemType Directory -Force -Path $t | Out-Null

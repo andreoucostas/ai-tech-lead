@@ -67,6 +67,23 @@ It 'the retired architecture generator is visible as residue' {$r=Fixture;try{Pu
 It 'unreadable retired residue is CANT-VERIFY' {$r=Fixture;$stream=$null;try{$path=Join-Path $r 'scripts/wiki-check.sh';Put $path '# locked';$stream=[IO.File]::Open($path,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None);$row=(Parse-DoctorResult(Run(Join-Path $r 'scripts/framework-doctor.ps1'))).Rows['Retired framework residue'];Assert($row.State-eq'CANT-VERIFY'-and$row.Detail.Contains('scripts/wiki-check.sh'))"$($row.State): $($row.Detail)"}finally{if($stream){$stream.Dispose()};Remove-Item -Recurse -Force $r}}
 if([Environment]::OSVersion.Platform-eq[PlatformID]::Win32NT){It 'reparse retired residue is CANT-VERIFY and not followed' {$r=Fixture;$outside=Join-Path([IO.Path]::GetTempPath())('doctor-outside-'+[guid]::NewGuid());try{New-Item -ItemType Directory $outside|Out-Null;Put (Join-Path $outside 'bitbucket-pipelines.example.yml')'# outside';New-Item -ItemType Junction -Path (Join-Path $r 'scripts/ci') -Target $outside|Out-Null;$row=(Parse-DoctorResult(Run(Join-Path $r 'scripts/framework-doctor.ps1'))).Rows['Retired framework residue'];Assert($row.State-eq'CANT-VERIFY'-and$row.Detail.Contains('scripts/ci/bitbucket-pipelines.example.yml'))"$($row.State): $($row.Detail)"}finally{Remove-Item -Recurse -Force $r,$outside}}}
 
+# No test can give a folder the cloud-files attribute, so the predicate is taken from the doctor's own AST.
+It 'the doctor predicate calls a reparse point with no link type a folder and a junction or symlink a link' {
+    $ast=[Management.Automation.Language.Parser]::ParseFile($doctorPs,[ref]$null,[ref]$null)
+    $fn=$ast.Find({param($n)$n -is [Management.Automation.Language.FunctionDefinitionAst]-and$n.Name-eq'Test-IsLinkEntry'},$true)
+    Assert($null-ne$fn)'the doctor defines no Test-IsLinkEntry; any reparse point is treated as a link'
+    $predicate=$fn.Body.GetScriptBlock()
+    $dir=[IO.FileAttributes]'Directory, ReparsePoint'
+    Assert(-not(& $predicate([pscustomobject]@{Attributes=$dir;LinkType=$null;Target=$null})))'a cloud-files folder (no LinkType, no Target) was called a link'
+    Assert(-not(& $predicate([pscustomobject]@{Attributes=$dir;LinkType='';Target=@()})))'a cloud-files folder (empty LinkType, empty Target) was called a link'
+    Assert(& $predicate([pscustomobject]@{Attributes=$dir;LinkType='Junction';Target=@('C:\x')}))'a junction was not called a link'
+    Assert(& $predicate([pscustomobject]@{Attributes=$dir;LinkType='SymbolicLink';Target=@('C:\x')}))'a directory symlink was not called a link'
+    Assert(& $predicate([pscustomobject]@{Attributes=$dir;LinkType=$null;Target=@('C:\x')}))'a reparse point that reports a Target was not called a link'
+    Assert(-not(& $predicate([pscustomobject]@{Attributes=[IO.FileAttributes]'Directory';LinkType='Junction';Target=@('C:\x')})))'an entry without the reparse attribute was called a link'
+    Assert(-not(& $predicate $null))'a missing entry was called a link'
+    $bare=@($ast.FindAll({param($n)$n -is [Management.Automation.Language.BinaryExpressionAst]-and$n.Operator-eq'Band'-and$n.Extent.Text-match'ReparsePoint'},$true)|Where-Object{$_.Extent.StartOffset-lt$fn.Extent.StartOffset-or$_.Extent.StartOffset-ge$fn.Extent.EndOffset})
+    Assert($bare.Count-eq0)"the doctor still tests the reparse attribute alone at: $(($bare|ForEach-Object{$_.Extent.StartLineNumber})-join', ')"
+}
 It 'missing framework-rules import is honest' {$r=Fixture -Pending $true;try{$path=Join-Path $r CLAUDE.md;Put $path([IO.File]::ReadAllText($path)-replace'(?m)^@\.github/instructions/framework-rules\.instructions\.md\r?\n','');$p=Parse-DoctorResult(Run(Join-Path $r 'scripts/framework-doctor.ps1'));Assert($p.Rows['Framework rules delivery'].State-eq'MISSING')'delivery row'}finally{Remove-Item -Recurse -Force $r}}
 function Assert-ProtectedSync($Root,$State,$Detail,$Delivery='OK'){$p=Parse-DoctorResult(Run(Join-Path $Root 'scripts/framework-doctor.ps1'));$row=$p.Rows['Protected-file sync'];Assert($row.State-eq$State)"state=$($row.State) expected=$State";Assert($row.Detail-eq$Detail)"detail='$($row.Detail)'";Assert($p.Rows['Framework rules delivery'].State-eq$Delivery)"delivery=$($p.Rows['Framework rules delivery'].State)"}
 function Add-Headings($Root,[string[]]$Headings){$path=Join-Path $Root CLAUDE.md;Put $path([IO.File]::ReadAllText($path)+"`n"+(($Headings|ForEach-Object{"## $_"})-join"`n"))}

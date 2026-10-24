@@ -123,6 +123,10 @@
   schema before a warehouse write. `/feature`, `/fix`, `/refactor` and `/debt` also end with a line telling a host that does
   not expand `@` imports to read `.claude/workflow.md` for the self-review step.
 
+- **A repository under OneDrive can be installed.** The installer, the adoption helper, `framework-doctor.ps1` and the review-scope builder refused any folder under a OneDrive-redirected
+  location (such as `Documents`), naming a "symlink" that was not there. They now refuse only a real symbolic link or junction, so the install, update and doctor work there; a real link
+  in the path is still refused. `/review` of uncommitted work also no longer fails in a repository whose root is a drive root.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
