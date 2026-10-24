@@ -212,8 +212,8 @@ if ($inputJson -match '"hook_event_name"') {
     $repoRoot = (& git -C $candidateRoot rev-parse --show-toplevel 2>$null | Select-Object -First 1)
     $queuedText = ''
     if ($repoRoot) {
-        $repoRoot = [IO.Path]::GetFullPath($repoRoot.Trim())
-        $queueFile = Join-Path $repoRoot '.claude\.state\boy-scout-queue'
+        # The queue lives in the install (boy-scout-check.ps1 writes it there), which may sit below the git root.
+        $queueFile = Join-Path $candidateRoot '.claude\.state\boy-scout-queue'
         if (Test-Path -LiteralPath $queueFile) {
             $queuedText = [string](Get-Content -LiteralPath $queueFile -Raw)
             Remove-Item -LiteralPath $queueFile -Force

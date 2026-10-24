@@ -33,7 +33,8 @@ $resolvedMode = if ($Mode) {
 $candidateRoot = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\..'))
 $repoRoot = (& git -C $candidateRoot rev-parse --show-toplevel 2>$null | Select-Object -First 1)
 if (-not $repoRoot) { exit 0 }
-$repoRoot = [IO.Path]::GetFullPath($repoRoot.Trim())
+# Git only gates the scan: state and scan root are the install itself, which may sit below the git root.
+$repoRoot = $candidateRoot
 
 $stateDir = Join-Path $repoRoot '.claude\.state'
 $queueFile = Join-Path $stateDir 'boy-scout-queue'
@@ -49,8 +50,8 @@ if ($resolvedMode -eq 'deliver') {
 }
 
 $changed = @()
-$changed += & git -C $repoRoot diff --name-only -- '*.ts'
-$changed += & git -C $repoRoot diff --cached --name-only -- '*.ts'
+$changed += & git -C $repoRoot diff --name-only --relative -- '*.ts'
+$changed += & git -C $repoRoot diff --cached --name-only --relative -- '*.ts'
 $changed += & git -C $repoRoot ls-files --others --exclude-standard -- '*.ts'
 
 $files = $changed |

@@ -81,6 +81,12 @@
 - **An update no longer fails when `LEARNINGS.md` is empty.** If your team emptied that file, the update used to stop with a
   raw error before showing its plan. It now treats an empty file as disabling no skills and leaves the file alone.
 
+- **A framework installed in a subfolder keeps its Boy Scout state in that folder.** When the framework sits in a
+  subfolder of a larger Git repository, the Boy Scout hook wrote its state and the Copilot queue to the repository's
+  top-level `.claude/.state`, which nothing ignores, so the next framework update refused the tree as dirty. It also
+  scanned other teams' folders. The hook and the prompt router now use the install's own `.claude/.state` and scan only
+  the install's folder. A framework installed at the repository root behaves as before.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
