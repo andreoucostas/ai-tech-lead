@@ -427,13 +427,13 @@ if ($changelogStamp.Stamped -gt 0) {
 $cl  = Join-Path $repo 'src/core/AGENTS.md'
 $txt = [System.IO.File]::ReadAllText($cl)
 $txt = [regex]::Replace($txt, '(?m)^(\s*version:\s*)\S+', "`${1}$Version", 1)
-$txt = [regex]::Replace($txt, '(?m)^(\s*applied:\s*)\S+', "`${1}$today", 1)
+$txt = [regex]::Replace($txt, '(?m)^(\s*applied:\s*)\S+', "`${1}$releaseDate", 1)
 [System.IO.File]::WriteAllText($cl, $txt)
 foreach ($d in $dists) {
     $fv = Join-Path $repo "src/stacks/$d/files/.claude/framework-version.json"
     $jt = [System.IO.File]::ReadAllText($fv)
     $jt = [regex]::Replace($jt, '"version"\s*:\s*"[^"]*"', "`"version`": `"$Version`"")
-    $jt = [regex]::Replace($jt, '"applied"\s*:\s*"[^"]*"', "`"applied`": `"$today`"")
+    $jt = [regex]::Replace($jt, '"applied"\s*:\s*"[^"]*"', "`"applied`": `"$releaseDate`"")
     [System.IO.File]::WriteAllText($fv, $jt)
 }
 # The root README states the shipped version in prose. It was hand-maintained, so it drifted (it
@@ -453,7 +453,7 @@ if ($versionLine.Groups[2].Value -eq $Version) {
 } else {
     $stamped = [regex]::Replace($rt, $versionLinePattern, "`${1}$Version`${3}", 1)
     [System.IO.File]::WriteAllText($rm, $stamped)
-    Write-Host "Stamped src + root README -> $Version ($today)."
+    Write-Host "Stamped src + root README -> $Version ($releaseDate)."
 }
 
 # ---- 3. Rebuild all three dists (the stamp must flow src -> dist in this same commit) ----
@@ -615,13 +615,21 @@ $ledgerText = [IO.File]::ReadAllText($ledger)
 if (Test-ReleaseReviewRecord -Text $ledgerText -Version $Version) {
     Write-Host "Review ledger: existing v$Version row retained (release retry)."
 } else {
-    Add-Content -LiteralPath $ledger -Value "| v$Version | $today | $evidenceCell |" -Encoding utf8
+    Add-Content -LiteralPath $ledger -Value "| v$Version | $releaseDate | $evidenceCell |" -Encoding utf8
     Write-Host "Review ledger: $evidenceCell"
 }
 
 # ---- 5. Commit + push ----
 git -C $repo add -A
+$addExit = $LASTEXITCODE
 $staged = git -C $repo diff --cached --name-only
+$diffExit = $LASTEXITCODE
+# A failed add (a held .git/index.lock) stages nothing, which the resume path below would read as
+# "the release commit already exists" and tag the commit BEFORE the release (B-464 A1).
+if ($addExit -ne 0 -or $diffExit -ne 0) {
+    [Console]::Error.WriteLine("FATAL: git add -A or git diff --cached failed (exit $addExit / $diffExit); nothing was committed. Clear any .git/index.lock and re-run the same command.")
+    exit 2
+}
 # This used to `exit 0` here. With a CI watch in the publish phase (step 5c) that stranded every
 # recovery: CI goes red -> the maintainer fixes it in a separate commit -> re-runs the release ->
 # nothing left to stage -> exit 0, never tagged, printed as if it had released. So it falls THROUGH
@@ -630,6 +638,12 @@ $staged = git -C $repo diff --cached --name-only
 # built idempotent by design (see step 5b).
 $nothingToCommit = -not $staged
 if ($nothingToCommit) {
+    # Nothing staged only means "already committed" when the tree equals HEAD.
+    $dirty = @(git -C $repo status --porcelain)
+    if ($LASTEXITCODE -ne 0 -or $dirty.Count -gt 0) {
+        [Console]::Error.WriteLine("FATAL: nothing was staged but the working tree differs from HEAD (or git status failed); nothing was committed. Refusing to resume the publish phase for a commit that lacks this release's changes.")
+        exit 2
+    }
     Write-Host 'Nothing new to stage -- resuming the publish phase for HEAD (push -> CI watch -> tag).'
 }
 
