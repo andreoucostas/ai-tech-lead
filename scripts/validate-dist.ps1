@@ -1,5 +1,5 @@
 ﻿# ai-tech-lead PowerShell dist validator. Validates an ALREADY-COMPOSED
-# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Fourteen checks, each
+# dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Sixteen checks, each
 # with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
 #   2. every *.json in the dist parses under a strict JSON grammar (then ConvertFrom-Json)
@@ -12,11 +12,15 @@
 #      on the exact event map (event, matcher, script order, -ExecutionPolicy Bypass, timeout floors)
 #   9. every core @stack marker expands from a non-empty stack snippet into the composed file
 #  10. section-path citations name a heading that exists in the cited shipped file
-#  11. CLAUDE.md imports AGENTS.md and the shipped framework-rules carrier
+#  11. CLAUDE.md imports exactly AGENTS.md and the shipped framework-rules carrier, and no other
+#      always-loaded instruction file ships
 #  12. top-level ordered-list runs are contiguous and prose step references resolve in-file
 #  13. Copilot userPromptSubmitted exists and has at most one entry (only its last entry is delivered)
 #  14. each route-prompt rail was reviewed with the canonical workflow bullet it repeats (meta/rail-sync.json;
 #      --update-rail-sync records a reviewed pair for the named dist)
+#  15. shipped skill and workflow-wrapper frontmatter loads on Copilot CLI
+#  16. framework-ownership.json lists exactly the installed files, and framework-retirements.json parses
+#      with the installer's rules and equals meta/framework-retirements-baseline.json
 # Exit 1 = at least one check found a wrong artifact (FAIL:). Otherwise exit 2 = usage error, missing
 # dist, or an input could not be examined (FATAL: or CANT-EXAMINE:, never skipped; the artifact is
 # neither proven right nor wrong). Otherwise exit 0 = every check passed.
@@ -51,7 +55,7 @@ for ($i = 0; $i -lt $args.Count; $i++) {
         $CheckArg = "$($args[$i])"
     } else { $positional += $a }
 }
-$ValidChecks = @('markers','json','powershell-topology','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references','prompt-hook-cardinality','rail-sync','skill-frontmatter')
+$ValidChecks = @('markers','json','powershell-topology','ps-syntax','template-checks','no-meta-leak','no-dead-instruction','hook-registration','marker-expansion','section-path','carrier-import','step-references','prompt-hook-cardinality','rail-sync','skill-frontmatter','ownership')
 $SelectedChecks = @()
 if ($null -ne $CheckArg) {
     $SelectedChecks = @($CheckArg -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
@@ -324,11 +328,16 @@ $citationFileFilter = New-Object Text.RegularExpressions.Regex (($citationFiles 
 $citationPatterns = @()
 $targetFileLookup = New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
 $targetHeadingLookup = New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+$citationReadFails = @()
 foreach ($citedFile in $citationFiles) {
     $fileToken = [regex]::Escape($citedFile)
     $target = Join-Path $DistAbs ($citedFile -replace '/', [IO.Path]::DirectorySeparatorChar)
-    $targetLines = if (Test-Path -LiteralPath $target -PathType Leaf) { [IO.File]::ReadAllLines($target) } else { @() }
-    if ($targetLines.Count -gt 0 -or (Test-Path -LiteralPath $target -PathType Leaf)) { [void]$targetFileLookup.Add($citedFile) }
+    $targetLines = @()
+    $targetPresent = Test-Path -LiteralPath $target -PathType Leaf
+    if ($targetPresent) {
+        try { $targetLines = @([IO.File]::ReadAllLines($target)) } catch { $citationReadFails += $citedFile }
+    }
+    if ($targetLines.Count -gt 0 -or $targetPresent) { [void]$targetFileLookup.Add($citedFile) }
     foreach ($heading in $citationHeadings) {
         # Only the two registered citation forms count. A terminating backtick or a
         # punctuation/end boundary prevents prose such as "CLAUDE.md > Conventions wins"
@@ -348,11 +357,16 @@ $textFilesScanned = 0
 foreach ($f in (Get-ChildItem -Recurse -File -Force -LiteralPath $DistAbs)) {
     $rel = $f.FullName.Substring($DistAbs.Length).TrimStart('\', '/').Replace('\', '/')
     if ($f.Name -eq 'CHANGELOG.md') { continue }
-    $bytes = [IO.File]::ReadAllBytes($f.FullName)
+    # A failed read is a statement error under EAP 'Continue': the variable would keep the PREVIOUS
+    # file's content and this file would be reported as scanned. Catch it and move on.
+    $bytes = $null
+    try { $bytes = [IO.File]::ReadAllBytes($f.FullName) } catch { $citationReadFails += $rel; continue }
     if ($bytes -contains 0) { continue }
+    $fileLines = $null
+    try { $fileLines = [IO.File]::ReadAllLines($f.FullName) } catch { $citationReadFails += $rel; continue }
     $textFilesScanned++
     $lineNo = 0
-    foreach ($line in [IO.File]::ReadAllLines($f.FullName)) {
+    foreach ($line in $fileLines) {
         $lineNo++
         if (-not $citationFileFilter.IsMatch($line)) { continue }
         foreach ($citedFile in $citationFiles) {
@@ -370,7 +384,9 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -LiteralPath $DistAbs)) {
         }
     }
 }
-if ($textFilesScanned -eq 0) {
+if ($citationReadFails.Count -gt 0) {
+    Cant-Examine ("section-path scan could not read:" + (($citationReadFails | Sort-Object -Unique) -join ' '))
+} elseif ($textFilesScanned -eq 0) {
     Fail "section-path reference check scanned zero textual files in $Dist -- the input is empty or unreadable."
 } elseif ($citationProblems.Count -gt 0) {
     Fail ("unresolved section-path references in shipped content -- {0}." -f $citationProblems.Count)
@@ -385,19 +401,74 @@ if (Test-CheckSelected 'carrier-import') {
 $importLine = '@.github/instructions/framework-rules.instructions.md'
 $claudePath = Join-Path $DistAbs 'CLAUDE.md'
 $carrierPath = Join-Path $DistAbs '.github/instructions/framework-rules.instructions.md'
+$claudeLines = @()
+$claudeText = $null
+$claudeReadError = $null
+if (Test-Path -LiteralPath $claudePath -PathType Leaf) {
+    try { $claudeText = [IO.File]::ReadAllText($claudePath); $claudeLines = @($claudeText -split "`r?`n") }
+    catch { $claudeReadError = $_.Exception.Message }
+}
 if (-not (Test-Path -LiteralPath $claudePath -PathType Leaf)) {
     Fail "framework-rules import cannot be checked because CLAUDE.md is missing from $Dist."
-} elseif (-not (Select-String -LiteralPath $claudePath -SimpleMatch -Pattern $importLine -Quiet)) {
+} elseif ($null -ne $claudeReadError) {
+    Cant-Examine "carrier-import could not read CLAUDE.md in $Dist : $claudeReadError"
+} elseif ($claudeText.IndexOf($importLine, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
     Fail "CLAUDE.md is missing required import $importLine."
 } elseif (-not (Test-Path -LiteralPath $carrierPath -PathType Leaf)) {
     Fail "CLAUDE.md imports $importLine but the carrier file is missing from $Dist."
-} elseif (-not (Select-String -LiteralPath $claudePath -Pattern '^@AGENTS\.md\s*$' -Quiet)) {
+} elseif (@($claudeLines | Where-Object { $_ -match '^@AGENTS\.md\s*$' }).Count -eq 0) {
     # B-272: AGENTS.md holds the project instructions; Claude Code reaches it only through this import.
     Fail "CLAUDE.md is missing required import @AGENTS.md."
 } elseif (-not (Test-Path -LiteralPath (Join-Path $DistAbs 'AGENTS.md') -PathType Leaf)) {
     Fail "CLAUDE.md imports @AGENTS.md but AGENTS.md is missing from $Dist."
 } else {
-    OK "CLAUDE.md imports AGENTS.md and the delivered framework-rules carrier."
+    # Invariant 2: the shipped AGENTS.md is the one instruction file. The context ceiling counts three
+    # fixed files, so an extra import or a second always-loaded file would add to every prompt unmeasured.
+    # Any @ token outside a fence or code span is an import (Claude Code resolves them mid-line too).
+    $instructionProblems = @()
+    $allowedImports = @('@AGENTS.md', $importLine)
+    $fenceChar = $null
+    $lineNo = 0
+    foreach ($line in $claudeLines) {
+        $lineNo++
+        if ($line -match '^\s*(`{3,}|~{3,})') {
+            $char = $Matches[1].Substring(0, 1)
+            if ($null -eq $fenceChar) { $fenceChar = $char } elseif ($fenceChar -eq $char) { $fenceChar = $null }
+            continue
+        }
+        if ($null -ne $fenceChar) { continue }
+        $prose = [regex]::Replace($line, '`+[^`]*`+', '')
+        foreach ($m in [regex]::Matches($prose, '(?:^|[\s(])(@[^\s)\]>",;]+)')) {
+            $token = $m.Groups[1].Value
+            if (@($allowedImports | Where-Object { $_ -ieq $token }).Count -eq 0) {
+                $instructionProblems += "CLAUDE.md : unexpected import $token (line $lineNo); it may import only @AGENTS.md and the framework-rules carrier"
+            }
+        }
+    }
+    $instructionFiles = @()
+    $instructionEnumError = $null
+    try { $instructionFiles = @(Get-ChildItem -Recurse -File -Force -LiteralPath $DistAbs -ErrorAction Stop) }
+    catch { $instructionEnumError = $_.Exception.Message }
+    foreach ($f in $instructionFiles) {
+        $rel = $f.FullName.Substring($DistAbs.Length).TrimStart('\', '/').Replace('\', '/')
+        $isInstruction = $false
+        if ($rel -imatch '^\.claude/rules/') { $isInstruction = $true }
+        elseif ($rel -ieq '.github/copilot-instructions.md') { $isInstruction = $true }
+        elseif ($rel -imatch '^\.github/instructions/.+\.instructions\.md$' -and $rel -ine '.github/instructions/framework-rules.instructions.md') { $isInstruction = $true }
+        elseif ($f.Name -ieq 'GEMINI.md' -or $f.Name -ieq 'CLAUDE.local.md') { $isInstruction = $true }
+        elseif ($rel.Contains('/') -and ($f.Name -ieq 'AGENTS.md' -or $f.Name -ieq 'CLAUDE.md')) { $isInstruction = $true }
+        if ($isInstruction) {
+            $instructionProblems += "$rel : an instruction file outside the expected set (root AGENTS.md, root CLAUDE.md, the framework-rules carrier); fold it into AGENTS.md"
+        }
+    }
+    if ($null -ne $instructionEnumError) {
+        Cant-Examine "carrier-import could not enumerate $Dist : $instructionEnumError"
+    } elseif ($instructionProblems.Count -gt 0) {
+        Fail ("unexpected always-loaded instruction content in $Dist -- {0} finding(s). The shipped AGENTS.md is the one instruction file; anything else loads on every prompt outside the measured context footprint." -f $instructionProblems.Count)
+        $instructionProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [carrier-import] $_" }
+    } else {
+        OK "CLAUDE.md imports AGENTS.md and the delivered framework-rules carrier."
+    }
 }
 }
 
@@ -515,7 +586,10 @@ if (-not (Test-Path -LiteralPath $Tc)) {
     $tcOut = & $Tc 2>&1
     $tcStatus = $LASTEXITCODE
     $tcOut | ForEach-Object { Write-Output "  [template-checks] $_" }
-    if ($tcStatus -ne 0) {
+    if ($tcStatus -eq 2) {
+        # template-checks' own contract: 2 = a required input could not be inspected, 3 = a verified finding.
+        Cant-Examine "$Tc could not examine its input (exit 2) -- see [template-checks] lines above."
+    } elseif ($tcStatus -ne 0) {
         Fail "$Tc failed (exit $tcStatus) -- see [template-checks] lines above."
     } else {
         OK "$Tc passed."
@@ -704,6 +778,7 @@ if (Test-CheckSelected 'hook-registration') {
 # shell routing, cardinality, and case-exact script target.
 $regFiles = @('.claude/settings.json', '.claude/settings.windows.json', '.github/hooks/hooks.json')
 $regProblems = @()
+$regUnreadable = @()
 $regCount = 0
 $settingsCounts = @{}
 $hookEntries = 0
@@ -812,8 +887,13 @@ function Get-HookWiringProblems {
 foreach ($rf in $regFiles) {
     $rfAbs = Join-Path $DistAbs $rf
     if (-not (Test-Path -LiteralPath $rfAbs)) { $regProblems += "$rf : registration file missing from this dist"; continue }
-    try { $rawRegistration = [IO.File]::ReadAllText($rfAbs); $json = ConvertFrom-StrictJson $rawRegistration }
-    catch { $regProblems += "$rf : registration file is unreadable or unparseable"; continue }
+    # Unreadable (could not examine) and unparseable (a wrong artifact) are different results.
+    $rawRegistration = $null
+    try { $rawRegistration = [IO.File]::ReadAllText($rfAbs) }
+    catch { $regUnreadable += $rf; continue }
+    $json = $null
+    try { $json = ConvertFrom-StrictJson $rawRegistration }
+    catch { $regProblems += "$rf : registration file is unparseable (not strict JSON)"; continue }
     if ($rawRegistration -match '(?i)"bash"\s*:') { $regProblems += "$rf : Bash hook key remains in PowerShell-only configuration" }
     if ($null -eq $json.hooks -or -not ($json.hooks -is [pscustomobject])) { $regProblems += "$rf : registration file has no hooks object"; continue }
     $handlers = 0
@@ -867,15 +947,21 @@ foreach ($rf in $regFiles) {
     if ($handlers -eq 0) { $regProblems += "$rf : registration file yields zero handlers" }
     else { $regProblems += (Get-HookWiringProblems -File $rf -Hooks $json.hooks -Claude ($rf -like '.claude/*')) }
 }
-foreach ($rf in @('.claude/settings.json','.claude/settings.windows.json')) {
-    if ([int]$settingsCounts[$rf] -ne 6) { $regProblems += "$rf : expected exactly 6 command hooks, found $([int]$settingsCounts[$rf])" }
+# The handler counts below are meaningless once a registration file could not be read.
+if (@($regUnreadable).Count -eq 0) {
+    foreach ($rf in @('.claude/settings.json','.claude/settings.windows.json')) {
+        if ([int]$settingsCounts[$rf] -ne 6) { $regProblems += "$rf : expected exactly 6 command hooks, found $([int]$settingsCounts[$rf])" }
+    }
+    if ($hookEntries -ne 6) { $regProblems += ".github/hooks/hooks.json : expected exactly 6 PowerShell entries, found $hookEntries" }
+    if ($regCount -ne 18) { $regProblems += "all registration files : expected exactly 18 PowerShell handlers, found $regCount" }
 }
-if ($hookEntries -ne 6) { $regProblems += ".github/hooks/hooks.json : expected exactly 6 PowerShell entries, found $hookEntries" }
-if ($regCount -ne 18) { $regProblems += "all registration files : expected exactly 18 PowerShell handlers, found $regCount" }
 if (@($regProblems).Count -gt 0) {
     Fail ("hook registrations reference {0} missing or invalid target(s) in {1}. A registration that cannot start is a hook that silently never runs." -f @($regProblems).Count, $Dist)
     $regProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [hook-registration] $_" }
-} else {
+}
+if (@($regUnreadable).Count -gt 0) {
+    Cant-Examine ("hook registration scan could not read:" + (($regUnreadable | Sort-Object -Unique) -join ' '))
+} elseif (@($regProblems).Count -eq 0) {
     OK "exactly 18 PowerShell hook registrations resolve (settings.json 6, settings.windows.json 6, hooks.json 6; strict JSON; event map, matchers and timeout floors pinned)"
 }
 }
@@ -898,11 +984,13 @@ foreach ($scope in @('.claude/skills','.claude/commands','.claude/agents')) {
 }
 $stepFiles = @($stepFiles | Sort-Object FullName -Unique)
 $stepProblems = @()
+$stepReadFails = @()
 $stepLabelCount = 0
 $stepReferenceCount = 0
 foreach ($file in $stepFiles) {
     $relative = $file.FullName.Substring($DistAbs.Length).TrimStart('\','/').Replace('\','/')
-    $rawLines = @([IO.File]::ReadAllLines($file.FullName))
+    $rawLines = $null
+    try { $rawLines = @([IO.File]::ReadAllLines($file.FullName)) } catch { $stepReadFails += $relative; continue }
     $lines = New-Object System.Collections.Generic.List[string]
     $inFence = $false
     foreach ($line in $rawLines) {
@@ -935,7 +1023,9 @@ foreach ($file in $stepFiles) {
         }
     }
 }
-if (@($stepFiles).Count -eq 0) {
+if ($stepReadFails.Count -gt 0) {
+    Cant-Examine ("step-reference scan could not read:" + (($stepReadFails | Sort-Object -Unique) -join ' '))
+} elseif (@($stepFiles).Count -eq 0) {
     Fail "step-reference scan found zero Markdown files in $Dist -- the input is empty or the scan scope changed."
 } elseif ($stepReferenceCount -eq 0) {
     Fail "step-reference scan found zero prose references in $Dist ($(@($stepFiles).Count) files scanned; $stepLabelCount ordered-list labels found) -- the extractor is blind."
@@ -1204,6 +1294,7 @@ function Get-FrontmatterValueProblems([string]$Relative, [string[]]$Lines) {
     }
 }
 $skillProblems = @()
+$skillReadFails = @()
 $wrapperProblems = @()
 $valueProblems = @()
 $valueScanCount = 0
@@ -1213,7 +1304,8 @@ $commandCount = 0
 $longestDescription = 0
 foreach ($skillPath in $skillFiles) {
     $relative = $skillPath.Substring($DistAbs.Length).TrimStart('\','/').Replace('\','/')
-    $lines = @([IO.File]::ReadAllLines($skillPath, [Text.Encoding]::UTF8))
+    $lines = $null
+    try { $lines = @([IO.File]::ReadAllLines($skillPath, [Text.Encoding]::UTF8)) } catch { $skillReadFails += $relative; continue }
     if ($relative.StartsWith('.claude/skills/', [StringComparison]::Ordinal)) { $claudeSkillCount++ }
     $end = Get-FrontmatterEnd $lines
     if ($end -lt 0) { $skillProblems += "$relative : no terminated YAML frontmatter"; continue }
@@ -1266,7 +1358,9 @@ foreach ($skillPath in $skillFiles) {
         $wrapperProblems += "$relative : runs .claude/commands/$workflow.md, which does not ship"
         continue
     }
-    $commandFrontmatter = Get-FrontmatterLines @([IO.File]::ReadAllLines($commandPath, [Text.Encoding]::UTF8))
+    $commandRaw = $null
+    try { $commandRaw = @([IO.File]::ReadAllLines($commandPath, [Text.Encoding]::UTF8)) } catch { $skillReadFails += ".claude/commands/$workflow.md"; continue }
+    $commandFrontmatter = Get-FrontmatterLines $commandRaw
     $wrapperRest = @(if ($frontmatter.Count -gt 1) { $frontmatter[1..($frontmatter.Count - 1)] })
     # A repeated key is invalid YAML to Copilot ("duplicate entry with key"), however it is spelt; the
     # wrapper carries the command's keys after its name line, so a name key in the command repeats too.
@@ -1284,7 +1378,9 @@ if (Test-Path -LiteralPath $commandsRoot -PathType Container) {
     foreach ($command in @(Get-ChildItem -LiteralPath $commandsRoot -File -Filter '*.md' -Force)) {
         $commandCount++
         $workflow = [IO.Path]::GetFileNameWithoutExtension($command.Name)
-        $commandLines = Get-FrontmatterLines @([IO.File]::ReadAllLines($command.FullName, [Text.Encoding]::UTF8))
+        $commandRaw = $null
+        try { $commandRaw = @([IO.File]::ReadAllLines($command.FullName, [Text.Encoding]::UTF8)) } catch { $skillReadFails += ".claude/commands/$($command.Name)"; continue }
+        $commandLines = Get-FrontmatterLines $commandRaw
         if ($null -ne $commandLines) {
             $valueScanCount++
             $valueProblems += @(Get-FrontmatterValueProblems ".claude/commands/$($command.Name)" $commandLines)
@@ -1294,7 +1390,9 @@ if (Test-Path -LiteralPath $commandsRoot -PathType Container) {
         }
     }
 }
-if ($claudeSkillCount -eq 0) {
+if ($skillReadFails.Count -gt 0) {
+    Cant-Examine ("skill frontmatter scan could not read:" + (($skillReadFails | Sort-Object -Unique) -join ' '))
+} elseif ($claudeSkillCount -eq 0) {
     Fail "skill frontmatter scan found no .claude/skills/*/SKILL.md in $Dist -- the scan is blind."
 } elseif ($commandCount -eq 0) {
     Fail "workflow wrapper scan found no .claude/commands/*.md in $Dist -- the scan is blind."
@@ -1313,6 +1411,189 @@ if ($claudeSkillCount -eq 0) {
     }
 } else {
     OK "every shipped skill description loads on Copilot CLI ($($skillFiles.Count) SKILL.md files; longest description $longestDescription of 1024 characters; $wrapperCount workflow wrapper(s) carry their command's frontmatter; $valueScanCount frontmatter(s) hold no value Copilot CLI refuses)."
+}
+}
+
+if (Test-CheckSelected 'ownership') {
+# --- 16. the ownership manifest and the retirement ledger match what ships -------------------------
+# The installer is the only consumer of framework-ownership.json and framework-retirements.json and it
+# refuses a dist whose manifest is missing, malformed, or names a file that is not shipped (exit 3).
+# build.ps1 generates the manifest, but exits 1 after writing a partial dist, and nothing here read
+# either file. This check applies the installer's own parse rules (src/core/scripts/install.ps1
+# Read-OwnershipManifest, Read-RetirementLedger and the incoming-metadata block) to the dist, and the
+# composer's own rules for which files are listed (build.ps1 step 3: every file except the install-
+# excluded set, tests/hooks/** and presentation/**) and for the ledger (step 4: it equals
+# meta/framework-retirements-baseline.json entry for entry). The excluded set is read from the dist's
+# own scripts/install.ps1, the same declaration build.ps1 reads.
+$ownProblems = @()
+$ownUnreadable = @()
+$ownManifestRel = 'framework-ownership.json'
+$ownLedgerRel = 'framework-retirements.json'
+$ownBaselineRel = 'meta/framework-retirements-baseline.json'
+function Test-OwnershipPathShape([string]$Relative) {
+    # Get-ContainedTargetPath's shape rules, without the target-root containment (implied by them).
+    if ([string]::IsNullOrWhiteSpace($Relative) -or $Relative.Contains('\') -or $Relative.Contains([string][char]0) -or
+        $Relative.StartsWith('/') -or $Relative -match '^[A-Za-z]:') { return $false }
+    foreach ($segment in $Relative.Split('/')) {
+        if ([string]::IsNullOrEmpty($segment) -or $segment -eq '.' -or $segment -eq '..') { return $false }
+    }
+    return $true
+}
+# One JSON metadata file: Doc is set when it parsed; a missing file is recorded as a problem, an
+# unreadable one as could-not-examine, and unparseable JSON as a problem.
+function Read-OwnershipDoc([string]$Path, [string]$Label, [bool]$Required) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        if ($Required) { $script:ownProblems += "$Label is missing from this dist; the installer refuses a dist without it (exit 3)" }
+        return $null
+    }
+    $text = $null
+    try { $text = [IO.File]::ReadAllText($Path) } catch { $script:ownUnreadable += $Label; return $null }
+    try { return ($text | ConvertFrom-Json -ErrorAction Stop) }
+    catch { $script:ownProblems += "$Label is not parseable JSON"; return $null }
+}
+$ownFiles = @()
+$ownEnumError = $null
+try { $ownFiles = @(Get-ChildItem -Recurse -File -Force -LiteralPath $DistAbs -ErrorAction Stop) }
+catch { $ownEnumError = $_.Exception.Message }
+$shipped = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+foreach ($f in $ownFiles) { [void]$shipped.Add($f.FullName.Substring($DistAbs.Length).TrimStart('\', '/').Replace('\', '/')) }
+
+# The install-excluded set, from the dist's own installer.
+$ownExcluded = $null
+$installerPath = Join-Path $DistAbs 'scripts/install.ps1'
+if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
+    $ownProblems += 'scripts/install.ps1 is missing from this dist, so the set of files the installer excludes is unknown'
+} else {
+    $installerText = $null
+    try { $installerText = [IO.File]::ReadAllText($installerPath) } catch { $ownUnreadable += 'scripts/install.ps1' }
+    if ($null -ne $installerText) {
+        $excludedMatch = [regex]::Match($installerText, '(?ms)^\$excludedFromInstall\s*=\s*@\((.*?)\)')
+        if (-not $excludedMatch.Success) { $ownProblems += 'scripts/install.ps1 declares no $excludedFromInstall set' }
+        else { $ownExcluded = @([regex]::Matches($excludedMatch.Groups[1].Value, "'([^']+)'") | ForEach-Object { $_.Groups[1].Value }) }
+    }
+}
+
+# --- the manifest, with the installer's rules
+$manifestPaths = $null
+$manifestDoc = Read-OwnershipDoc (Join-Path $DistAbs $ownManifestRel) $ownManifestRel $true
+if ($null -ne $manifestDoc) {
+    $entries = @($manifestDoc.paths)
+    if (-not ($manifestDoc.PSObject.Properties.Name -contains 'schema-version') -or [int]$manifestDoc.'schema-version' -ne 1 -or $null -eq $manifestDoc.paths) {
+        $ownProblems += "$ownManifestRel has an unsupported or missing schema"
+    } elseif ($entries.Count -eq 0) {
+        $ownProblems += "$ownManifestRel contains no paths"
+    } else {
+        $manifestPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        $seenInsensitive = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        foreach ($entry in $entries) {
+            $relative = [string]$entry.path
+            $ownership = [string]$entry.ownership
+            if (-not (Test-OwnershipPathShape $relative)) { $ownProblems += "$ownManifestRel has an unsafe or non-normalized path '$relative'"; continue }
+            if (-not $seenInsensitive.Add($relative)) { $ownProblems += "$ownManifestRel contains duplicate path '$relative'"; continue }
+            if ($ownership -notin @('framework-owned/overwritten', 'consumer-owned/protected', 'mixed')) {
+                $ownProblems += "$ownManifestRel has unsupported ownership '$ownership' for '$relative'"
+            }
+            [void]$manifestPaths.Add($relative)
+        }
+    }
+}
+
+# --- the ledger, with the installer's rules
+$ledgerEntries = $null
+$ledgerDoc = Read-OwnershipDoc (Join-Path $DistAbs $ownLedgerRel) $ownLedgerRel $true
+if ($null -ne $ledgerDoc) {
+    if (-not ($ledgerDoc.PSObject.Properties.Name -contains 'schema-version') -or [int]$ledgerDoc.'schema-version' -ne 1 -or $null -eq $ledgerDoc.retirements) {
+        $ownProblems += "$ownLedgerRel has an unsupported or missing schema"
+    } else {
+        $ledgerEntries = @($ledgerDoc.retirements)
+        $seenRetired = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        foreach ($entry in $ledgerEntries) {
+            $relative = [string]$entry.path
+            $version = [string]$entry.'retired-in'
+            $hashes = @($entry.'known-content-sha256' | ForEach-Object { [string]$_ })
+            if (-not (Test-OwnershipPathShape $relative)) { $ownProblems += "$ownLedgerRel has an unsafe or non-normalized path '$relative'"; $ledgerEntries = $null; continue }
+            if (-not $seenRetired.Add($relative)) { $ownProblems += "$ownLedgerRel contains duplicate path '$relative'"; $ledgerEntries = $null }
+            if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') { $ownProblems += "$ownLedgerRel has invalid retired-in version '$version' for '$relative'"; $ledgerEntries = $null }
+            if ($hashes.Count -eq 0 -or @($hashes | Where-Object { $_ -cnotmatch '^[0-9a-f]{64}$' }).Count -gt 0 -or @($hashes | Select-Object -Unique).Count -ne $hashes.Count) {
+                $ownProblems += "$ownLedgerRel has invalid or duplicate known-content-sha256 values for '$relative'"; $ledgerEntries = $null
+            }
+        }
+    }
+}
+if ($null -ne $ledgerEntries -and $null -ne $manifestPaths) {
+    foreach ($entry in $ledgerEntries) {
+        if ($manifestPaths.Contains([string]$entry.path)) { $ownProblems += "retirement '$([string]$entry.path)' is still present in the ownership manifest" }
+    }
+}
+
+# --- the ledger against the maintainer baseline (build.ps1 step 4: same cumulative entries)
+if ($null -ne $ledgerEntries) {
+    $baselinePath = Join-Path $RepoRoot $ownBaselineRel
+    $baselineDoc = $null
+    if (-not (Test-Path -LiteralPath $baselinePath -PathType Leaf)) {
+        $ownUnreadable += $ownBaselineRel
+    } else {
+        try { $baselineDoc = [IO.File]::ReadAllText($baselinePath) | ConvertFrom-Json -ErrorAction Stop }
+        catch { $ownUnreadable += $ownBaselineRel }
+    }
+    if ($null -ne $baselineDoc) {
+        if ($null -eq $baselineDoc.retirements -or [int]$baselineDoc.'schema-version' -ne 1) {
+            $ownUnreadable += $ownBaselineRel
+        } else {
+            $baseline = @($baselineDoc.retirements)
+            $difference = $null
+            if ($ledgerEntries.Count -ne $baseline.Count) {
+                $difference = "$($ledgerEntries.Count) entries in the dist, $($baseline.Count) in the baseline"
+            } else {
+                for ($i = 0; $i -lt $baseline.Count; $i++) {
+                    $current = $ledgerEntries[$i]; $maintained = $baseline[$i]
+                    $currentHashes = @($current.'known-content-sha256' | ForEach-Object { [string]$_ })
+                    $maintainedHashes = @($maintained.'known-content-sha256' | ForEach-Object { [string]$_ })
+                    if ([string]$current.path -cne [string]$maintained.path -or
+                        [string]$current.'retired-in' -cne [string]$maintained.'retired-in' -or
+                        $currentHashes.Count -ne $maintainedHashes.Count -or
+                        ($maintainedHashes.Count -gt 0 -and (Compare-Object -ReferenceObject $maintainedHashes -DifferenceObject $currentHashes -CaseSensitive))) {
+                        $difference = "entry $($i + 1) differs (dist '$([string]$current.path)' retired-in '$([string]$current.'retired-in')', baseline '$([string]$maintained.path)' retired-in '$([string]$maintained.'retired-in')')"
+                        break
+                    }
+                }
+            }
+            if ($null -ne $difference) { $ownProblems += "$ownLedgerRel differs from $ownBaselineRel : $difference" }
+        }
+    }
+}
+
+# --- the manifest against the files
+$installedCount = 0
+if ($null -eq $ownEnumError -and $null -ne $manifestPaths -and $null -ne $ownExcluded) {
+    foreach ($rel in $shipped) {
+        $notInstalled = $ownExcluded -ccontains $rel -or $rel.StartsWith('tests/hooks/', [StringComparison]::Ordinal) -or $rel.StartsWith('presentation/', [StringComparison]::Ordinal)
+        if ($notInstalled) {
+            if ($manifestPaths.Contains($rel)) { $ownProblems += "$rel is listed in $ownManifestRel but the installer never installs it (install-excluded, tests/hooks/** or presentation/**)" }
+            continue
+        }
+        $installedCount++
+        if (-not $manifestPaths.Contains($rel)) { $ownProblems += "$rel ships but is not listed in $ownManifestRel; the installer would never copy it" }
+    }
+    foreach ($listed in $manifestPaths) {
+        if (-not $shipped.Contains($listed)) { $ownProblems += "$listed is listed in $ownManifestRel but is not a shipped file; the installer refuses the dist (exit 3)" }
+    }
+}
+
+if ($null -ne $ownEnumError) {
+    Cant-Examine "ownership scan could not enumerate $Dist : $ownEnumError"
+} elseif ($shipped.Count -eq 0) {
+    Fail "ownership scan found zero files in $Dist."
+} else {
+    if ($ownProblems.Count -gt 0) {
+        Fail ("ownership manifest or retirement ledger disagree with what ships in {0} -- {1} finding(s). The installer refuses such a dist or never copies the unlisted file." -f $Dist, $ownProblems.Count)
+        $ownProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [ownership] $_" }
+    }
+    if ($ownUnreadable.Count -gt 0) {
+        Cant-Examine ("ownership check could not read:" + (($ownUnreadable | Sort-Object -Unique) -join ' '))
+    } elseif ($ownProblems.Count -eq 0) {
+        OK "$ownManifestRel lists exactly the $installedCount installed files; $ownLedgerRel is valid, retires nothing that is installed and equals $ownBaselineRel ($($ledgerEntries.Count) entries)."
+    }
 }
 }
 

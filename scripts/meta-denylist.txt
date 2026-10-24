@@ -45,7 +45,11 @@ DENY \bMaintainer-only\b
 DENY \brelease\.ps1\b
 DENY \bworkspace-decisions\b
 DENY \bmeta-invariant
-DENY \.claude/plans/
+DENY \.claude[\\/]plans[\\/]
+# The maintainer's record files, contributor guide and gate scripts: none ships, so naming one is a dead pointer.
+DENY \bmeta/(BACKLOG|LEARNINGS|rail-sync|review-ledger|decisions-index|context-footprint)
+DENY \bDEVELOPING\.md\b
+DENY \b(validate-dist|context-footprint)\.ps1\b
 
 # --- Machine-local paths -------------------------------------------------------------------------
 # A shipped artifact must not name a maintainer or tool-runner account. Generic documentation

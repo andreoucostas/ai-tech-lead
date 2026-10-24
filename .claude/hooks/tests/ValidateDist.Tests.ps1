@@ -458,7 +458,7 @@ try {
         Assert-Case 'clean-powershell-contract' { param($d) } 'exactly 18 PowerShell hook registrations resolve' 'powershell-topology,hook-registration' -Green -PowerShellOnly -AlsoPattern 'PowerShell-only topology: \d+ files scanned'
     }
     It 'case 13: an event whose value is not an array fails check 8' { Assert-Case 'bad-event-shape' { param($d) $p=Join-Path $d '.github\hooks\hooks.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"sessionStart": [','"sessionStart": {"invalid":"not-an-array"}, "sessionStartX": [')) } "hook event 'sessionStart' must be an array" 'hook-registration' }
-    It 'case 14: an unparseable registration file fails check 8 rather than yielding zero handlers' { Assert-Case 'unparseable' { param($d) [IO.File]::WriteAllText((Join-Path $d '.claude\settings.json'), '{"hooks": {"SessionStart": [ THIS IS NOT JSON') } 'registration file is unreadable or unparseable' 'hook-registration' }
+    It 'case 14: an unparseable registration file fails check 8 rather than yielding zero handlers' { Assert-Case 'unparseable' { param($d) [IO.File]::WriteAllText((Join-Path $d '.claude\settings.json'), '{"hooks": {"SessionStart": [ THIS IS NOT JSON') } 'unparseable' 'hook-registration' -AlsoPattern '(?m)^FAIL:' }
     # Windows resolves `.PS1` case-insensitively. The validator deliberately compares every path
     # segment ordinally so a wrong-case registration cannot pass locally and fail after checkout.
     It 'case 16: a registration whose casing differs from the shipped file fails check 8' { Assert-Case 'case-mismatch' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '.claude/hooks/session-start.PS1' } 'does not exist in this dist' 'hook-registration' }
@@ -598,7 +598,16 @@ try {
             @{ Check='markers';     Relative='README.md';                       Finding='marker scan could not read:' },
             @{ Check='json';        Relative='.claude/settings.json';           Finding='JSON scan could not read:' },
             @{ Check='powershell-topology'; Relative='README.md';                Finding='PowerShell topology scan could not read' },
-            @{ Check='ps-syntax';   Relative='.claude/hooks/audit-trail.ps1';    Finding='PowerShell scan could not read:' }
+            @{ Check='ps-syntax';   Relative='.claude/hooks/audit-trail.ps1';    Finding='PowerShell scan could not read:' },
+            # B-464 B7: the same lock used to make these checks re-read the previous file and report OK
+            # (section-path, step-references, skill-frontmatter), or to report a wrong artifact for a
+            # file that could not be examined (hook-registration, template-checks).
+            @{ Check='section-path'; Relative='README.md';                       Finding='section-path scan could not read:' },
+            @{ Check='step-references'; Relative='.claude/skills/create-adr/SKILL.md'; Finding='step-reference scan could not read:' },
+            @{ Check='skill-frontmatter'; Relative='.claude/skills/create-adr/SKILL.md'; Finding='skill frontmatter scan could not read:' },
+            @{ Check='skill-frontmatter'; Relative='.claude/commands/fix.md';    Finding='skill frontmatter scan could not read:' },
+            @{ Check='hook-registration'; Relative='.claude/settings.json';      Finding='hook registration scan could not read:' },
+            @{ Check='template-checks'; Relative='CHANGELOG.md';                 Finding='could not examine its input' }
         )
         foreach ($fixture in $fixtures) {
             $root = New-DistCopy -PowerShellOnly:($fixture.Check -eq 'powershell-topology')
@@ -1040,6 +1049,119 @@ try {
             Assert ([IO.File]::ReadAllText($path).Contains('"timeoutSec": 15')) 'fixture lacks the sessionStart timeoutSec'
             Replace-Text $path '"timeoutSec": 15' '"timeoutSec": 15,'
         } 'invalid JSON (strict grammar):' 'json' -AlsoPattern 'hooks\.json'
+    }
+
+    # B-464 B3: invariant 2 says the shipped AGENTS.md is the one instruction file, but check 11 only
+    # required CLAUDE.md's two imports. A second always-loaded file or an extra import loads on every
+    # prompt while the context ceiling, which counts three fixed files, stays green.
+    It 'case 50: an always-loaded instruction file outside the expected set fails the carrier-import check' {
+        foreach ($relative in '.claude/rules/team.md', '.github/copilot-instructions.md', '.github/instructions/extra.instructions.md', 'GEMINI.md', 'src/AGENTS.md', 'docs/CLAUDE.md') {
+            Assert-Case ('extra-instruction-file-' + ($relative -replace '[^A-Za-z]','-')) {
+                param($d)
+                $target = Join-Path $d ($relative -replace '/', '\')
+                [void][IO.Directory]::CreateDirectory((Split-Path -Parent $target))
+                [IO.File]::WriteAllText($target, "Always follow the team rules.`n")
+            } ('[carrier-import] ' + $relative) 'carrier-import'
+        }
+        # The framework-rules carrier itself, the two root files and an ordinary doc stay green.
+        Assert-Case 'expected-instruction-files' {
+            param($d)
+            [IO.File]::WriteAllText((Join-Path $d 'docs\team-notes.md'), "Notes.`n")
+        } 'CLAUDE.md imports AGENTS.md and the delivered framework-rules carrier' 'carrier-import' -Green
+    }
+    It 'case 50b: an @ import in CLAUDE.md beyond the two expected fails the carrier-import check' {
+        foreach ($line in '@docs/reference.md', 'Read @docs/playbook.md before every task.') {
+            Assert-Case ('extra-import-' + ($line -replace '[^A-Za-z]','-')) {
+                param($d)
+                [IO.File]::AppendAllText((Join-Path $d 'CLAUDE.md'), "`n$line`n")
+            } '[carrier-import] CLAUDE.md : unexpected import @docs/' 'carrier-import'
+        }
+        # An @ token inside a code span or fence is not an import and stays green.
+        Assert-Case 'code-span-at-token' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'CLAUDE.md'), "`nWrite ``@docs/x.md`` to import it.`n``````text`n@docs/y.md`n```````n")
+        } 'CLAUDE.md imports AGENTS.md and the delivered framework-rules carrier' 'carrier-import' -Green
+    }
+
+    # B-464 B4: nothing in this validator read the ownership manifest or the retirement ledger, so a
+    # dist the installer refuses (or one whose manifest lists a file that is gone or omits one that
+    # ships) was reported green.
+    It 'case 51: a dist without its ownership manifest or retirement ledger fails the ownership check' {
+        Assert-Case 'ownership-manifest-deleted' {
+            param($d) Remove-Item -LiteralPath (Join-Path $d 'framework-ownership.json') -Force
+        } '[ownership] framework-ownership.json is missing' 'ownership'
+        Assert-Case 'ownership-ledger-deleted' {
+            param($d) Remove-Item -LiteralPath (Join-Path $d 'framework-retirements.json') -Force
+        } '[ownership] framework-retirements.json is missing' 'ownership'
+        Assert-Case 'ownership-clean' { param($d) } 'framework-ownership.json lists exactly the' 'ownership' -Green
+    }
+    It 'case 51b: a shipped file the manifest does not list fails the ownership check' {
+        Assert-Case 'ownership-unlisted-file' {
+            param($d) [IO.File]::WriteAllText((Join-Path $d 'docs\new-guide.md'), "A new guide.`n")
+        } '[ownership] docs/new-guide.md ships but is not listed' 'ownership'
+        # Only the root README.md is outside the manifest by the installer's rule, not any file of that name.
+        Assert-Case 'ownership-unlisted-nested-readme' {
+            param($d) [IO.File]::WriteAllText((Join-Path $d 'docs\README.md'), "Nested.`n")
+        } '[ownership] docs/README.md ships but is not listed' 'ownership'
+        # tests/hooks/** and presentation/** ship but are never installed, so they are never listed.
+        Assert-Case 'ownership-uninstalled-trees' {
+            param($d)
+            [IO.File]::WriteAllText((Join-Path $d 'tests\hooks\zz-new.Tests.ps1'), "# t`n")
+            [IO.File]::WriteAllText((Join-Path $d 'presentation\zz-new.md'), "slide`n")
+        } 'framework-ownership.json lists exactly the' 'ownership' -Green
+    }
+    It 'case 51c: a manifest path whose file is not shipped fails the ownership check' {
+        Assert-Case 'ownership-listed-missing' {
+            param($d) Remove-Item -LiteralPath (Join-Path $d 'TECH_DEBT.md') -Force
+        } '[ownership] TECH_DEBT.md is listed in framework-ownership.json but is not a shipped file' 'ownership'
+    }
+    It 'case 51d: a manifest the installer would refuse fails the ownership check' {
+        $mutants = @(
+            @{ Name='duplicate-path'; Find='{ "path": "AGENTS.md", "ownership": "consumer-owned/protected" }'; Replace='{ "path": "AGENTS.md", "ownership": "consumer-owned/protected" },
+    { "path": "AGENTS.md", "ownership": "consumer-owned/protected" }'; Finding="duplicate path 'AGENTS.md'" },
+            @{ Name='bad-ownership'; Find='{ "path": "AGENTS.md", "ownership": "consumer-owned/protected" }'; Replace='{ "path": "AGENTS.md", "ownership": "everyone" }'; Finding="unsupported ownership 'everyone' for 'AGENTS.md'" },
+            @{ Name='backslash-path'; Find='{ "path": "AGENTS.md", "ownership": "consumer-owned/protected" }'; Replace='{ "path": "docs\\x.md", "ownership": "framework-owned/overwritten" }'; Finding="unsafe or non-normalized path 'docs\x.md'" }
+        )
+        foreach ($m in $mutants) {
+            Assert-Case ('ownership-' + $m.Name) {
+                param($d)
+                $p = Join-Path $d 'framework-ownership.json'
+                Assert ([IO.File]::ReadAllText($p).Contains($m.Find)) 'fixture lacks the AGENTS.md manifest entry'
+                Replace-Text $p $m.Find $m.Replace
+            } $m.Finding 'ownership'
+        }
+    }
+    It 'case 51e: a retired path still listed, or a ledger out of step with the maintainer baseline, fails the ownership check' {
+        Assert-Case 'ownership-retired-still-listed' {
+            param($d)
+            $p = Join-Path $d 'framework-ownership.json'
+            Replace-Text $p '{ "path": "AGENTS.md",' '{ "path": ".claude/hooks/guard.sh", "ownership": "framework-owned/overwritten" },
+    { "path": "AGENTS.md",'
+        } "[ownership] retirement '.claude/hooks/guard.sh' is still present in the ownership manifest" 'ownership'
+        Assert-Case 'ownership-ledger-entry-dropped' {
+            param($d)
+            $p = Join-Path $d 'framework-retirements.json'
+            $lines = @([IO.File]::ReadAllLines($p))
+            Assert ($lines[3].TrimStart().StartsWith('{"path"')) 'fixture: line 4 of the ledger is not an entry'
+            [IO.File]::WriteAllText($p, ((@($lines[0..2]) + @($lines[4..($lines.Count - 1)])) -join "`n") + "`n")
+        } '[ownership] framework-retirements.json differs from meta/framework-retirements-baseline.json' 'ownership'
+        Assert-Case 'ownership-ledger-version-changed' {
+            param($d)
+            $p = Join-Path $d 'framework-retirements.json'
+            Replace-Text $p '"retired-in":"0.95.0"' '"retired-in":"0.95.9"'
+        } '[ownership] framework-retirements.json differs from meta/framework-retirements-baseline.json' 'ownership'
+    }
+
+    # B-464 B9: the denylist named `.claude/plans/` with a forward slash only and no maintainer record
+    # path, the contributor guide or the maintainer gates at all.
+    It 'case 52: Windows plan paths, meta record paths, the contributor guide and the maintainer gates fail check 6' {
+        Assert-Case 'maintainer-records-and-gates' {
+            param($d)
+            [IO.File]::AppendAllText((Join-Path $d 'README.md'), "`nSee .claude\plans\2026-10-23-x.md, meta/BACKLOG.md, meta/LEARNINGS.md, DEVELOPING.md and scripts/validate-dist.ps1.`n")
+        } '\.claude[\\/]plans[\\/]' 'no-meta-leak' -AlsoPattern @(
+            [regex]::Escape('\bmeta/(BACKLOG|LEARNINGS|rail-sync|review-ledger|decisions-index|context-footprint)'),
+            [regex]::Escape('\bDEVELOPING\.md\b'),
+            [regex]::Escape('\b(validate-dist|context-footprint)\.ps1\b'))
     }
 
 } finally { foreach($p in $scratch) { if(Test-Path $p){ Remove-Item -LiteralPath $p -Recurse -Force } } }
