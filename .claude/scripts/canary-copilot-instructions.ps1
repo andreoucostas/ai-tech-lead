@@ -110,7 +110,8 @@ Write-Host "  B (.github/copilot-instructions) hit=$($armB.Hit) notInCtx=$($armB
 
 Write-Host ''
 Write-Host '=== VERDICT ==='
-if     ($armA.Hit -and $armB.Hit)       { Write-Host 'BOTH REACH — .github/instructions/ delivers; Option A gains a native Copilot leg.'; $code = 0 }
+if     (($armA.Hit -and $armA.ToolUsed) -or ($armB.Hit -and $armB.ToolUsed)) { Write-Host 'INCONCLUSIVE - a hit came with a file-tool use, so it is not attributable to the instruction surface.'; $code = 2 }
+elseif ($armA.Hit -and $armB.Hit)       { Write-Host 'BOTH REACH — .github/instructions/ delivers; Option A gains a native Copilot leg.'; $code = 0 }
 elseif (-not $armA.Hit -and $armB.Hit)  { Write-Host 'SUBJECT MISS, CONTROL HIT — .github/instructions/ does NOT reach this host. Option A needs another Copilot leg.'; $code = 1 }
 elseif (-not $armA.Hit -and -not $armB.Hit) { Write-Host 'INCONCLUSIVE — control also failed, so the method is wrong, not the finding. Do not record either way.'; $code = 2 }
 else   { Write-Host 'ANOMALOUS — subject hit while the known-good control missed. Investigate before believing either.'; $code = 3 }

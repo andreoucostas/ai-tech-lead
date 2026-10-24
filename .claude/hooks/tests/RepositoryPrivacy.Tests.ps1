@@ -241,4 +241,56 @@ It 'missing environment defaults fail with generic override guidance' {
     } finally { $env:APPDATA = $oldApp; $env:USERPROFILE = $oldProfile }
 }
 
+It 'Claude canaries honour -TimeoutSeconds against a hung CLI and report could-not-examine' {
+    $temp = Join-Path ([IO.Path]::GetTempPath()) ('b464-timeout-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $temp -Force | Out-Null
+    $fake = Join-Path $temp 'claude.cmd'
+    Set-Content -LiteralPath $fake -Value "@echo off`r`nping -n 21 127.0.0.1 >nul" -Encoding Ascii
+    $oldPath = $env:PATH
+    try {
+        $env:PATH = "$temp;$env:PATH"
+        $cases = @(
+            @{ Name = 'canary-single-carrier.ps1';    Args = @('-ClaudeCmd', $fake, '-TimeoutSeconds', '5') }
+            @{ Name = 'canary-import-resolution.ps1'; Args = @('-TimeoutSeconds', '5') }
+        )
+        foreach ($c in $cases) {
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $r = Invoke-ResolveOnly (Join-Path $repoRoot ".claude\scripts\$($c.Name)") $c.Args
+            $sw.Stop()
+            Assert ($sw.Elapsed.TotalSeconds -lt 15) "$($c.Name) ignored -TimeoutSeconds 5: returned after $([int]$sw.Elapsed.TotalSeconds) s"
+            Assert ($r.Exit -eq 2 -and $r.Out -match 'INCONCLUSIVE - the CLI did not finish within 5 s') "$($c.Name) did not report could-not-examine (exit $($r.Exit)): $($r.Out)"
+        }
+    } finally { $env:PATH = $oldPath; Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+function New-FakeCopilot {
+    param([string]$Dir, [string]$Body)
+    New-Item -ItemType Directory -Path $Dir -Force | Out-Null
+    $path = Join-Path $Dir 'copilot.cmd'
+    Set-Content -LiteralPath $path -Value ("@echo off`r`nif ""%~1""==""--version"" (echo fake-copilot 0.0 & exit /b 0)`r`n" + $Body) -Encoding Ascii
+    return $path
+}
+
+It 'Copilot canaries score a sentinel hit with no tool use as before' {
+    $temp = Join-Path ([IO.Path]::GetTempPath()) ('b464-hit-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $fake = New-FakeCopilot $temp 'echo QUVIRAX-3T8P MELDOVAR-9K2R VANTORIX-5H1D PELGRAMO-8W2F KRESSIDA-4B7N'
+        $r = Invoke-ResolveOnly (Join-Path $repoRoot '.claude\scripts\canary-copilot-instructions.ps1') @('-CopilotCmd', $fake, '-TimeoutSeconds', '60')
+        Assert ($r.Exit -eq 0 -and $r.Out -match 'BOTH REACH') "copilot-instructions hit without tool use changed (exit $($r.Exit)): $($r.Out)"
+        $r = Invoke-ResolveOnly (Join-Path $repoRoot '.claude\scripts\canary-applyto-scope.ps1') @('-CopilotCmd', $fake, '-TimeoutSeconds', '60')
+        Assert ($r.Exit -eq 1 -and $r.Out -match 'DOES NOT GATE') "applyto-scope hit without tool use changed (exit $($r.Exit)): $($r.Out)"
+    } finally { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'Copilot canaries score a sentinel hit alongside a file-tool use as inconclusive' {
+    $temp = Join-Path ([IO.Path]::GetTempPath()) ('b464-tool-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $fake = New-FakeCopilot $temp 'echo Reading file .github/instructions/x.md & echo QUVIRAX-3T8P MELDOVAR-9K2R VANTORIX-5H1D PELGRAMO-8W2F KRESSIDA-4B7N'
+        $r = Invoke-ResolveOnly (Join-Path $repoRoot '.claude\scripts\canary-copilot-instructions.ps1') @('-CopilotCmd', $fake, '-TimeoutSeconds', '60')
+        Assert ($r.Exit -eq 2 -and $r.Out -match 'INCONCLUSIVE - a hit came with a file-tool use') "copilot-instructions scored a tool-assisted hit (exit $($r.Exit)): $($r.Out)"
+        $r = Invoke-ResolveOnly (Join-Path $repoRoot '.claude\scripts\canary-applyto-scope.ps1') @('-CopilotCmd', $fake, '-TimeoutSeconds', '60')
+        Assert ($r.Exit -eq 2 -and $r.Out -match 'INCONCLUSIVE - a hit came with a file-tool use') "applyto-scope scored a tool-assisted hit (exit $($r.Exit)): $($r.Out)"
+    } finally { Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 exit (Write-TestSummary 'RepositoryPrivacy.Tests (authoring-tree privacy)')
