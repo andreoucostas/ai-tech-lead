@@ -85,6 +85,15 @@ function Resolve-AaRepositoryPath {
     return $full
 }
 
+# An entry is a link only when it is a reparse point whose LinkType is SymbolicLink or Junction, or that
+# reports a Target. Cloud-files folders (OneDrive) are reparse points with neither and are not links.
+# Never reduce this to the attribute alone, and never accept a link by anything looser than this test.
+function Test-IsLinkEntry {
+    param($Entry)
+    if (-not $Entry -or ($Entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { return $false }
+    if ([string]$Entry.LinkType -in 'SymbolicLink', 'Junction') { return $true }
+    return ([string]($Entry.Target -join '')).Length -gt 0
+}
 # A dangling link is visible to Get-Item -Force where Test-Path reports false; do not weaken this
 # to a Test-Path guard.
 function Get-AaReparseAncestor {
@@ -93,7 +102,7 @@ function Get-AaReparseAncestor {
     $current = [IO.Path]::GetFullPath($Path)
     while ($true) {
         $item = Get-Item -Force -LiteralPath $current -ErrorAction SilentlyContinue
-        if ($item -and (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { return $current }
+        if ($item -and (Test-IsLinkEntry $item)) { return $current }
         if ($current -eq $rootFull) { return $null }
         $parent = Split-Path -Parent $current
         if (-not $parent -or $parent -eq $current) { return $null }

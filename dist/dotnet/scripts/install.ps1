@@ -57,6 +57,15 @@ $tgtRoot = [IO.Path]::GetPathRoot($tgt)
 if ($tgt.Length -gt $tgtRoot.Length) { $tgt = $tgt.TrimEnd('\', '/'); if ($tgt.Length -lt $tgtRoot.Length) { $tgt = $tgtRoot } }
 $src = $src.TrimEnd('\', '/')
 if ($tgt -eq $src) { [Console]::Error.WriteLine("Target is the template repo itself — choose a different target."); exit 2 }
+# An entry is a link only when it is a reparse point whose LinkType is SymbolicLink or Junction, or that
+# reports a Target. Cloud-files folders (OneDrive) are reparse points with neither and are not links.
+# Never reduce this to the attribute alone, and never accept a link by anything looser than this test.
+function Test-IsLinkEntry {
+    param($Entry)
+    if (-not $Entry -or ($Entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { return $false }
+    if ([string]$Entry.LinkType -in 'SymbolicLink', 'Junction') { return $true }
+    return ([string]($Entry.Target -join '')).Length -gt 0
+}
 # Brownfield archive paths must never traverse a reparse point. Resolving a target path is not
 # enough: a junction/symlink below it can redirect either the collision source or the archive
 # destination outside the consumer repository before Move-Item gets a chance to report anything.
@@ -67,7 +76,7 @@ function Get-ReparsePointAncestor {
         # Get-Item -Force sees a dangling link where Test-Path reports false. Do not replace this
         # with a Test-Path guard: that was the route by which a broken link escaped preflight.
         $item = Get-Item -Force -LiteralPath $current -ErrorAction SilentlyContinue
-        if ($item -and (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { return $current }
+        if ($item -and (Test-IsLinkEntry $item)) { return $current }
         if ($current -eq $tgt) { return $null }
         $parent = Split-Path -Parent $current
         if (-not $parent -or $parent -eq $current) { return $null }
@@ -1156,7 +1165,7 @@ function Test-HeldBytes {
     param([string]$Relative, [byte[]]$Bytes)
     $held = $null
     $heldItem = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $Relative) -ErrorAction SilentlyContinue
-    if ($null -eq $heldItem -or ($heldItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -or [string]$heldItem.LinkType -eq 'HardLink') { return $false }
+    if ($null -eq $heldItem -or (Test-IsLinkEntry $heldItem) -or [string]$heldItem.LinkType -eq 'HardLink') { return $false }
     try { $held = [IO.File]::ReadAllBytes($heldItem.FullName) } catch { return $false }
     return [string]::Equals([Convert]::ToBase64String($held), [Convert]::ToBase64String($Bytes), [StringComparison]::Ordinal)
 }
@@ -1218,7 +1227,7 @@ foreach ($relative in $incomingPaths) {
     foreach ($onPath in '.agents', '.agents/skills', ".agents/skills/$workflow", $relative) {
         $item = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $onPath) -ErrorAction SilentlyContinue
         if ($null -eq $item) { break }
-        $blockerIsLink = ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+        $blockerIsLink = (Test-IsLinkEntry $item)
         if ($blockerIsLink -or ($onPath -cne $relative -and -not $item.PSIsContainer)) { $blocker = $onPath; break }
     }
     if ($blocker) {
@@ -1410,7 +1419,7 @@ function Add-BoundedReferenceDirectory {
     try { $rootEntry = Get-LiteralItem -Path $directory }
     catch [Management.Automation.ItemNotFoundException] { return }
     catch { $reconciliationMessages.Add("CANT-VERIFY: protected reference directory '$Relative' could not be examined; no stale-command conclusion was inferred."); return }
-    if (($rootEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or -not $rootEntry.PSIsContainer) {
+    if ((Test-IsLinkEntry $rootEntry) -or -not $rootEntry.PSIsContainer) {
         $reconciliationMessages.Add("CANT-VERIFY: protected reference directory '$Relative' is linked or not a directory; it was not traversed.")
         return
     }
@@ -1426,7 +1435,7 @@ function Add-BoundedReferenceDirectory {
         }
         foreach ($child in $children) {
             $childRelative = $child.FullName.Substring($tgt.Length).TrimStart('\', '/') -replace '\\', '/'
-            if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            if (Test-IsLinkEntry $child) {
                 $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$childRelative' is a reparse/symlink and was not followed.")
                 continue
             }
@@ -1644,7 +1653,7 @@ if ($updateMode) {
     }
     if (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) {
         foreach ($item in Get-ChildItem -LiteralPath $activeSkillsRoot -Recurse -Force) {
-            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            if (Test-IsLinkEntry $item) {
                 [Console]::Error.WriteLine("ERROR: Refusing update skill reconciliation: '$($item.FullName)' is a reparse/symlink."); exit 3
             }
         }
@@ -2336,19 +2345,30 @@ foreach ($entry in $disabledCarryPlan) {
 # A team's ignore file the update rewrites is written last, after every other write and deletion, so a step that fails
 # before it leaves the team's rules in place and the next run asks Git what they ignore.
 $ignoreLast = @($ignoreRewrites | ForEach-Object { $_.Relative })
-# The version stamp is copied after every other file (below, before the ignore rewrites): written early, a copy stopped by a
-# held file would leave a stamp naming this release over the old scripts, and the re-run would be refused as a dirty tree.
+# An update copies the version stamp after every other file (below, before the ignore rewrites): written early, a copy
+# stopped by a held file would leave a stamp naming this release over the old scripts, and the re-run would be refused as a
+# dirty tree. An install keeps it at its manifest position: with no stamp a re-run reads the files already copied as
+# existing AI tooling, and archives the framework's own files as a brownfield install.
 $stampRelative = '.claude/framework-version.json'
+$stampLast = [bool]$updateMode
 $applyWritten = 0
 function Stop-IncompleteCopy {
     param([string]$Relative, [string]$Reason, [int]$Written)
     $quote = { param([string]$Text) "'" + $Text.Replace("'", "''") + "'" }
-    $again = if ($updateMode) { "re-run  $followUpPowerShell $(& $quote $PSCommandPath) -AllowDirtyTree $(& $quote $tgt)  (the changes Git now shows are this run's own)" } else { 're-run the installer' }
-    [Console]::Error.WriteLine("ERROR: Could not copy '$Relative': $($Reason.TrimEnd('.', ' ')). $Written of $($ordinaryApplyPaths.Count) framework files were written and the version stamp, which is written last, was not. Resolve the cause (usually a program holding the file open), then $again.")
+    # The re-run needs each override this run was given, or it exits 4.
+    $flags = '-AllowDirtyTree'
+    foreach ($override in @(@('-AllowDowngrade', $AllowDowngrade), @('-AllowOutdated', $AllowOutdated), @('-AllowStackChange', $AllowStackChange))) { if ($override[1]) { $flags += " $($override[0])" } }
+    $rerun = "re-run  $followUpPowerShell $(& $quote $PSCommandPath) $flags $(& $quote $tgt)  (the changes Git now shows are this run's own)"
+    $stampNote = ''
+    if ($stampLast) { $stampNote = ' and the version stamp, which an update writes last, was not' }
+    # A re-run with no stamp sees the files copied so far as an existing setup and archives them.
+    $again = if ($stampLast -or (Test-Path -LiteralPath (Get-ContainedTargetPath -Relative $stampRelative) -PathType Leaf)) { $rerun }
+        else { "delete the files this run copied into the target (a re-run would read them as an existing setup and archive them), then re-run the installer" }
+    [Console]::Error.WriteLine("ERROR: Could not copy '$Relative': $($Reason.TrimEnd('.', ' ')). $Written of $($ordinaryApplyPaths.Count) framework files were written$stampNote. Resolve the cause (usually a program holding the file open), then $again.")
     exit 3
 }
 foreach ($relative in $ordinaryApplyPaths) {
-    if ($ignoreLast -ccontains $relative -or $relative -ceq $stampRelative) { continue }
+    if ($ignoreLast -ccontains $relative -or ($stampLast -and $relative -ceq $stampRelative)) { continue }
     try {
         $destination = Get-ContainedTargetPath -Relative $relative
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
@@ -2460,8 +2480,8 @@ if (-not $pwshAvailable) {
         Write-Output "  pwsh not found - activated Windows PowerShell 5.1 hooks (settings.windows.json -> settings.json)."
     }
 }
-# The version stamp: the last of the framework's files, so it names this release only once every file above is in place.
-if ($ordinaryApplyPaths.Contains($stampRelative)) {
+# An update's version stamp: the last of the framework's files, so it names this release only once every file above is in place.
+if ($stampLast -and $ordinaryApplyPaths.Contains($stampRelative)) {
     try { Copy-Item -Force -LiteralPath (Join-Path $src $stampRelative) -Destination (Get-ContainedTargetPath -Relative $stampRelative) -ErrorAction Stop }
     catch { Stop-IncompleteCopy -Relative $stampRelative -Reason $_.Exception.Message -Written $applyWritten }
 }

@@ -104,9 +104,9 @@
   the install's folder. A framework installed at the repository root behaves as before.
 
 - **An update stopped partway no longer claims the new version.** If a file was held open (by an editor or a virus scanner, say) while an update copied files, the update
-  stopped with a raw copy error after `.claude/framework-version.json` already named the new release, and the re-run was refused because the tree was dirty. The version
-  stamp is now copied after every other file, and a copy that fails prints one line naming the file, how many files were written, and the re-run command with
-  `-AllowDirtyTree`; it exits 3.
+  stopped with a raw copy error after `.claude/framework-version.json` already named the new release, and the re-run was refused because the tree was dirty. An update
+  now copies the version stamp after every other file, and a copy that fails prints one line naming the file, how many files were written, and the re-run command with
+  `-AllowDirtyTree` and any `-AllowDowngrade`, `-AllowOutdated` or `-AllowStackChange` you gave; it exits 3. A fresh install keeps its stamp where it was, so a re-run still reads as an update.
 - **An update refuses to switch stacks by accident.** Naming a different `-Stack` than the one `.claude/framework-version.json` records used to move the install to the
   other stack silently and leave the old stack's skills and files behind with nobody updating them. The installer now stops (exit 4, nothing changed). `-AllowStackChange`
   makes the move on purpose and prints one NOTICE naming each file the old stack shipped that the new one does not; those files stay where they are.
@@ -117,6 +117,10 @@
   where that skill is not installed; it now names the skill only when it is present and otherwise says to inspect the live
   schema before a warehouse write. `/feature`, `/fix`, `/refactor` and `/debt` also end with a line telling a host that does
   not expand `@` imports to read `.claude/workflow.md` for the self-review step.
+
+- **A repository under OneDrive can be installed.** The installer, the adoption helper, `framework-doctor.ps1` and the review-scope builder refused any folder under a OneDrive-redirected
+  location (such as `Documents`), naming a "symlink" that was not there. They now refuse only a real symbolic link or junction, so the install, update and doctor work there; a real link
+  in the path is still refused. `/review` of uncommitted work also no longer fails in a repository whose root is a drive root.
 
 ## 0.98.2 — 2026-10-20
 

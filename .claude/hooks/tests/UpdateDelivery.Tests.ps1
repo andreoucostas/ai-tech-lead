@@ -3891,6 +3891,43 @@ It 'a target below a junction, passed with a trailing backslash, installs; the w
     }
 }
 
+It 'a target that is itself a junction is refused with exit 3 naming the link' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('junctgt-' + [guid]::NewGuid())
+    $real = Join-Path $root 'real'
+    $link = Join-Path $root 'link'
+    try {
+        [void][IO.Directory]::CreateDirectory($real)
+        & cmd /c "mklink /J `"$link`" `"$real`" >nul"
+        Assert (Test-Path -LiteralPath $link) 'calibration: the junction was not created'
+        $out = Invoke-InstallerLiteralTarget -Dist 'dotnet' -Target $link
+        Assert ($LASTEXITCODE -eq 3 -and $out -match "traverses reparse/symlink '[^']*link'") "an install into a junction was not refused at the link (exit $LASTEXITCODE): $out"
+        Assert (@(Get-ChildItem -LiteralPath $real -Force).Count -eq 0) 'the install wrote through the junction'
+    } finally {
+        if (Test-Path -LiteralPath $link) { & cmd /c "rmdir `"$link`"" }
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# No test can give a folder the cloud-files attribute, so the predicate is taken from the installer's own AST.
+It 'the installer predicate calls a reparse point with no link type a folder and a junction or symlink a link' {
+    $script = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
+    $ast = [Management.Automation.Language.Parser]::ParseFile($script, [ref]$null, [ref]$null)
+    $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-IsLinkEntry' }, $true)
+    Assert ($null -ne $fn) 'the installer defines no Test-IsLinkEntry; any reparse point is treated as a link'
+    $predicate = $fn.Body.GetScriptBlock()
+    $dir = [IO.FileAttributes]'Directory, ReparsePoint'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = $null }))) 'a cloud-files folder (no LinkType, no Target) was called a link'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = ''; Target = @() }))) 'a cloud-files folder (empty LinkType, empty Target) was called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'Junction'; Target = @('C:\x') })) 'a junction was not called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'SymbolicLink'; Target = @('C:\x') })) 'a directory symlink was not called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = @('C:\x') })) 'a reparse point that reports a Target was not called a link'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = [IO.FileAttributes]'Directory'; LinkType = 'Junction'; Target = @('C:\x') }))) 'an entry without the reparse attribute was called a link'
+    Assert (-not (& $predicate $null)) 'a missing entry was called a link'
+    $bare = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.BinaryExpressionAst] -and $n.Operator -eq 'Band' -and $n.Extent.Text -match 'ReparsePoint' }, $true) |
+        Where-Object { $_.Extent.StartOffset -lt $fn.Extent.StartOffset -or $_.Extent.StartOffset -ge $fn.Extent.EndOffset })
+    Assert ($bare.Count -eq 0) "the installer still tests the reparse attribute alone at: $(($bare | ForEach-Object { $_.Extent.StartLineNumber }) -join ', ')"
+}
+
 It 'an update over a 0-byte LEARNINGS.md succeeds and disables no skill' {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-emptylearn-' + [guid]::NewGuid())
     New-Item -ItemType Directory -Force -Path $t | Out-Null
@@ -4037,4 +4074,55 @@ It 'C8 a dry run on a dirty Git tree names the refusal the real run makes and do
     }
 }
 
+# B-464 D1: a greenfield install stopped late must leave the version stamp where the manifest puts it. Without it the
+# re-run read the files already copied as existing AI tooling and archived 93 of the framework's own files as a brownfield install.
+It 'D1 a greenfield install stopped by a denied late folder is an update on the re-run, with nothing archived' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-d1-' + [guid]::NewGuid())
+    $specs = Join-Path $t 'specs'
+    New-Item -ItemType Directory -Force -Path $specs | Out-Null
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $denied = $false
+    try {
+        & icacls $specs /deny "*${sid}:(WD,AD)" | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: icacls could not deny writes in specs'
+        $denied = $true
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 3 -and $out -match 'mode: greenfield') "calibration: the install was not stopped by the denied folder (exit $exit): $out"
+        & icacls $specs /remove:d "*$sid" | Out-Null
+        $denied = $false
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $rerun -match '(?m)^\s*mode: update') "the re-run did not finish as an update (exit $LASTEXITCODE): $rerun"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t 'docs/pre-adoption'))) 'the re-run archived framework files into docs/pre-adoption'
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/adoption-pending.json'))) 'the re-run wrote an adoption marker'
+    } finally {
+        if ($denied) { & icacls $specs /remove:d "*$sid" | Out-Null }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# B-464 D2: the re-run line printed for a stopped update must carry each override the stopped run was given, or it exits 4.
+It 'D2 the re-run line of an update stopped by a held file carries the override flags it was given' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-d2-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    $handle = $null
+    try {
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "calibration: the install failed (exit $LASTEXITCODE): $first"
+        $stamp = Join-Path $t '.claude/framework-version.json'
+        $text = [IO.File]::ReadAllText($stamp) -replace '"version":\s*"[^"]*"', '"version": "99.0.0"' -replace '"template":\s*"[^"]*"', '"template": "angular"'
+        [IO.File]::WriteAllText($stamp, $text, [Text.UTF8Encoding]::new($false))
+        $handle = [IO.File]::Open((Join-Path $t 'scripts/template-checks.ps1'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+        $out = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -AllowDowngrade -AllowStackChange -AllowOutdated 2>&1 | Out-String
+        $exit = $LASTEXITCODE
+        $flat = $out -replace '\s+', ' '
+        Assert ($exit -eq 3) "calibration: the stopped update did not exit 3 (exit $exit): $out"
+        foreach ($flag in '-AllowDirtyTree', '-AllowDowngrade', '-AllowStackChange', '-AllowOutdated') {
+            Assert ($flat -match "install\.ps1' [^']*$flag") "the printed re-run line does not carry $flag : $out"
+        }
+    } finally {
+        if ($handle) { $handle.Dispose() }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 exit (Write-TestSummary 'UpdateDelivery.Tests')

@@ -88,11 +88,20 @@ function Test-DoctorExternalRepositoryEvidence([string]$Path) {
         $null -ne $objects -and $objects.PSIsContainer -and
         $null -ne $refs -and $refs.PSIsContainer)
 }
+# An entry is a link only when it is a reparse point whose LinkType is SymbolicLink or Junction, or that
+# reports a Target. Cloud-files folders (OneDrive) are reparse points with neither and are not links.
+# Never reduce this to the attribute alone, and never accept a link by anything looser than this test.
+function Test-IsLinkEntry {
+    param($Entry)
+    if (-not $Entry -or ($Entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { return $false }
+    if ([string]$Entry.LinkType -in 'SymbolicLink', 'Junction') { return $true }
+    return ([string]($Entry.Target -join '')).Length -gt 0
+}
 function Get-DoctorReparseAncestor([string]$Path) {
     $current = $Path
     while ($true) {
         $entry = Get-Item -Force -LiteralPath $current -ErrorAction SilentlyContinue
-        if ($entry -and (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { return $current }
+        if ($entry -and (Test-IsLinkEntry $entry)) { return $current }
         if ($current -eq $root) { return $null }
         $parent = Split-Path -Parent $current
         if (-not $parent -or $parent -eq $current -or -not $parent.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { return $null }
@@ -126,7 +135,7 @@ function Get-LegacyHookDoctorResult {
         }
         return New-LegacyHookDoctorResult OK 'not applicable: no default .git directory exists in this repository root.'
     }
-    if (($gitEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or -not $gitEntry.PSIsContainer) {
+    if ((Test-IsLinkEntry $gitEntry) -or -not $gitEntry.PSIsContainer) {
         return New-LegacyHookDoctorResult CANT-VERIFY 'Git metadata is linked, external, or non-directory state; no hook path was followed.'
     }
 
@@ -157,7 +166,7 @@ function Get-LegacyHookDoctorResult {
         try { $entry = Get-DoctorLiteralItem $path }
         catch [Management.Automation.ItemNotFoundException] { $helperStates[$relative] = 'absent'; continue }
         catch { $helperStates[$relative] = 'unverifiable'; continue }
-        if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $entry.PSIsContainer) { $helperStates[$relative] = 'unverifiable' }
+        if ((Test-IsLinkEntry $entry) -or $entry.PSIsContainer) { $helperStates[$relative] = 'unverifiable' }
         else { $helperStates[$relative] = 'present' }
     }
     $unverifiableHelpers = @($helperStates.Keys | Where-Object { $helperStates[$_] -eq 'unverifiable' } | Sort-Object)
@@ -179,7 +188,7 @@ function Get-LegacyHookDoctorResult {
         }
         return New-LegacyHookDoctorResult OK 'no default pre-commit hook or retired Git-hook helper remains.'
     }
-    if (($hookEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $hookEntry.PSIsContainer -or $hookEntry.Length -gt 1048576) {
+    if ((Test-IsLinkEntry $hookEntry) -or $hookEntry.PSIsContainer -or $hookEntry.Length -gt 1048576) {
         return New-LegacyHookDoctorResult CANT-VERIFY 'the default pre-commit hook is linked or is not a regular bounded text file; it was not read.'
     }
     try {
@@ -244,7 +253,7 @@ function Get-RetiredFrameworkResidueResult {
         try { $entry = Get-DoctorLiteralItem $candidate }
         catch [Management.Automation.ItemNotFoundException] { continue }
         catch { $unverifiable.Add($relative); continue }
-        if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $entry.PSIsContainer) {
+        if ((Test-IsLinkEntry $entry) -or $entry.PSIsContainer) {
             $unverifiable.Add($relative)
             continue
         }
@@ -521,7 +530,7 @@ else {
                 # A solution alone can contain only SSDT/sqlproj projects. Require an actual C#
                 # project before treating this repository as a .NET application.
                 $isMarker = $entry.Extension -eq '.csproj' -or $entry.Name -in $markerNames
-                $isReparsePoint = ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+                $isReparsePoint = (Test-IsLinkEntry $entry)
                 if ($isReparsePoint) {
                     if (($entry.PSIsContainer -and $markerExcludedDirectories -notcontains $entry.Name) -or $isMarker) { $markerScanFailed = $true }
                     continue

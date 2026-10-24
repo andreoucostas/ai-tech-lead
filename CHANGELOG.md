@@ -111,8 +111,8 @@ accelerator that any value passes, so `[]` and `[null]` still exited 1 on Window
 
 `install.ps1` and `src/core/scripts/install.ps1` (guarded; step 4; B-464 C5, C7, C8): three installer defects, each with a red case in `UpdateDelivery.Tests.ps1`.
 **C5**: the version stamp was the 34th of 101 copies, so a file held open later in the manifest stopped the update with a raw `Copy-Item` error after the stamp already
-named the new release; the re-run was then refused as a dirty tree. The stamp is now copied after every other file (before the ignore rewrites, which stay last so their messages
-stay true), and a failed copy prints one line naming the file, the count written and the re-run command with `-AllowDirtyTree`, then exits 3.
+named the new release; the re-run was then refused as a dirty tree. An update now copies the stamp after every other file (before the ignore rewrites, which stay last so their messages
+stay true); an install keeps it at its manifest position, since with no stamp a re-run read the files already copied as existing tooling and archived the framework's own files as a brownfield install (D1, found by the step-4 attack). A failed copy prints one line naming the file, the count written and the re-run command with `-AllowDirtyTree` plus each of `-AllowDowngrade`, `-AllowOutdated` and `-AllowStackChange` the stopped run was given (D2), then exits 3; an install stopped before its stamp says to delete the copied files first.
 **C7**: an update with another `-Stack` switched the install and left the old stack's skills live and unowned. The stack installer, which sees both stamps, now refuses a
 changed `template` in update mode (exit 4, nothing changed); the root wrapper forwards the new `-AllowStackChange`, which accepts it and prints one NOTICE naming each previously
 owned path the incoming manifest drops (kept in place). A stamp without a `template` string is not compared. `RootInstallerWarehouse.Tests.ps1`: the delegate stub's parameter list gains `-AllowStackChange`.
@@ -123,6 +123,16 @@ The installer's other `Get-Content` reads without `-Encoding` (ownership and ret
 never written back, so Windows PowerShell 5.1's ANSI decoding cannot corrupt a byte; left unchanged.
 
 B-464 D4-D7: `warehouse-map-check.ps1` names `/map-warehouse` in its missing-map and no-full-pass lines only when `.claude/skills/map-warehouse/SKILL.md` exists under the checked root, else says to inspect the live schema (the Angular dist ships no such skill); `WarehouseMapCheck.Tests.ps1` gains "the remedy names /map-warehouse only where that skill is installed", red on the unfixed script. The shipped `FrameworkDoctor.Tests.ps1` "pinned canary strings exist in PowerShell hooks" read `src/stacks` three levels up, so it failed from a standalone dist copy ("post-write absent", 1 failure) and checked the source hooks inside the authoring tree; it now reads the dist's own `.claude/hooks/post-write.ps1` when `framework-ownership.json` is present and falls back to `src/stacks` only in the authoring layout (green from the standalone copy). `/feature`, `/fix`, `/refactor` and `/debt` gain one plain sentence under their `@.claude/workflow.md` import for hosts that do not expand `@` (ships unmeasured on Copilot). `workflow.md` no longer says `/test` inlines it.
+
+B-464 C4, C9 (guarded by path, `install.ps1`, `adoption-archive.ps1`, `framework-doctor.ps1`, `review-scope.ps1`; the installer and `adoption-archive.ps1` are on the step-4 list): every
+"is this a link" test in the four scripts tested the `ReparsePoint` attribute alone, and OneDrive cloud-files folders (every folder under a redirected `Documents`, and the `.git`
+folder inside a clone there) carry it with an empty `LinkType`, so a repository under OneDrive was refused at its first write with `traverses reparse/symlink '<home>\OneDrive\Documents'`
+for a link that does not exist. Each script now has one `Test-IsLinkEntry`: a link is a reparse point whose `LinkType` is `SymbolicLink` or `Junction`, or that reports a `Target`; the attribute
+alone is not enough, and the predicate is never looser than that. A junction is refused with exit 3 as before (real-junction fixtures, both hosts; a directory symlink needs
+elevation to create here, so it is covered by the predicate case only, and Windows PowerShell 5.1 reports `LinkType` and `Target` for junctions exactly as 7 does). `test-weakening-scan.ps1`
+and `warehouse-map-check.ps1` keep their bare attribute tests (adjacent, not in this batch). `review-scope.ps1`'s untracked and whole-file ancestor walks gain the `$cursor -and` guard
+`Get-SelectedPaths` already had, so a repository at a volume root no longer throws `Cannot bind argument to parameter 'LiteralPath' because it is an empty string` (a `subst` drive cannot reach
+it: Git reports the folder the drive maps).
 
 ## 0.98.2 — 2026-10-20
 

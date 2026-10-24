@@ -77,20 +77,29 @@ function Invoke-GitBytes {
     }
 }
 
+# An entry is a link only when it is a reparse point whose LinkType is SymbolicLink or Junction, or that
+# reports a Target. Cloud-files folders (OneDrive) are reparse points with neither and are not links.
+# Never reduce this to the attribute alone, and never accept a link by anything looser than this test.
+function Test-IsLinkEntry {
+    param($Entry)
+    if (-not $Entry -or ($Entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { return $false }
+    if ([string]$Entry.LinkType -in 'SymbolicLink', 'Junction') { return $true }
+    return ([string]($Entry.Target -join '')).Length -gt 0
+}
 function Get-SelectedPaths {
     param([string]$InputPath)
     if (-not $script:PathFilterSupplied) { return @() }
     try { $pathEntry = Get-Item -Force -LiteralPath $InputPath -ErrorAction Stop }
     catch [System.Management.Automation.ItemNotFoundException] { $pathEntry = $null }
     catch { throw "CANNOT EXAMINE: could not inspect path list '$InputPath': $($_.Exception.Message)" }
-    if (-not $pathEntry -or $pathEntry.PSIsContainer -or (($pathEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+    if (-not $pathEntry -or $pathEntry.PSIsContainer -or (Test-IsLinkEntry $pathEntry)) {
         throw "INVALID: path list is not a regular file: '$InputPath'."
     }
     $pathCursor = $pathEntry.FullName
     while ($pathCursor) {
         try { $pathAncestor = Get-Item -Force -LiteralPath $pathCursor -ErrorAction Stop }
         catch { throw "CANNOT EXAMINE: could not inspect path-list ancestry '$InputPath': $($_.Exception.Message)" }
-        if (($pathAncestor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        if (Test-IsLinkEntry $pathAncestor) {
             throw "INVALID: path list traverses a reparse point: '$InputPath'."
         }
         $pathParent = Split-Path -Parent $pathCursor
@@ -134,7 +143,7 @@ function Get-SelectedPaths {
             try { $item = Get-Item -Force -LiteralPath $cursor -ErrorAction Stop }
             catch [System.Management.Automation.ItemNotFoundException] { $item = $null }
             catch { throw "CANNOT EXAMINE: could not inspect repository path '$path': $($_.Exception.Message)" }
-            if ($item -and (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+            if ($item -and (Test-IsLinkEntry $item)) {
                 throw "INVALID: repository path traverses a reparse point: '$path'."
             }
             $cursor = Split-Path -Parent $cursor
@@ -250,14 +259,14 @@ function Write-ReviewScopeBundle {
             $source = Join-Path $script:RepoRoot ($relative -replace '/', [IO.Path]::DirectorySeparatorChar)
             try { $entry = Get-Item -Force -LiteralPath $source -ErrorAction Stop }
             catch { throw "CANNOT EXAMINE: could not inspect untracked path '$relative': $($_.Exception.Message)" }
-            if ($entry.PSIsContainer -or (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+            if ($entry.PSIsContainer -or (Test-IsLinkEntry $entry)) {
                 throw "CANNOT EXAMINE: untracked path is not a readable regular file: '$relative'."
             }
             $cursor = $entry.FullName
-            while (-not [string]::Equals($cursor, $script:RepoRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            while ($cursor -and -not [string]::Equals($cursor, $script:RepoRoot, [StringComparison]::OrdinalIgnoreCase)) {
                 try { $ancestor = Get-Item -Force -LiteralPath $cursor -ErrorAction Stop }
                 catch { throw "CANNOT EXAMINE: could not inspect untracked path '$relative': $($_.Exception.Message)" }
-                if ($ancestor -and (($ancestor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+                if ($ancestor -and (Test-IsLinkEntry $ancestor)) {
                     throw "CANNOT EXAMINE: untracked path traverses a reparse point: '$relative'."
                 }
                 $cursor = Split-Path -Parent $cursor
@@ -282,14 +291,14 @@ function Write-ReviewScopeBundle {
             $source = Join-Path $script:RepoRoot ($relative -replace '/', [IO.Path]::DirectorySeparatorChar)
             try { $entry = Get-Item -Force -LiteralPath $source -ErrorAction Stop }
             catch { throw "CANNOT EXAMINE: could not inspect selected whole-file path '$relative': $($_.Exception.Message)" }
-            if ($entry.PSIsContainer -or (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+            if ($entry.PSIsContainer -or (Test-IsLinkEntry $entry)) {
                 throw "CANNOT EXAMINE: selected whole-file path is not a readable regular file: '$relative'."
             }
             $cursor = $entry.FullName
-            while (-not [string]::Equals($cursor, $script:RepoRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            while ($cursor -and -not [string]::Equals($cursor, $script:RepoRoot, [StringComparison]::OrdinalIgnoreCase)) {
                 try { $ancestor = Get-Item -Force -LiteralPath $cursor -ErrorAction Stop }
                 catch { throw "CANNOT EXAMINE: could not inspect selected whole-file path '$relative': $($_.Exception.Message)" }
-                if ($ancestor -and (($ancestor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+                if ($ancestor -and (Test-IsLinkEntry $ancestor)) {
                     throw "CANNOT EXAMINE: selected whole-file path traverses a reparse point: '$relative'."
                 }
                 $cursor = Split-Path -Parent $cursor
@@ -375,7 +384,7 @@ try {
     $cursor = $parent
     while ($cursor -and $cursor.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase)) {
         $entry = Get-Item -Force -LiteralPath $cursor -ErrorAction Stop
-        if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw "INVALID: output path traverses a reparse point: '$cursor'." }
+        if (Test-IsLinkEntry $entry) { throw "INVALID: output path traverses a reparse point: '$cursor'." }
         if ([string]::Equals($cursor, $tempRoot, [StringComparison]::OrdinalIgnoreCase)) { break }
         $cursor = Split-Path -Parent $cursor
     }
