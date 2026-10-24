@@ -58,14 +58,20 @@ exit 91
         $shas += $c
         $lines = if ($DiffTreeFails) { "[Console]::Error.WriteLine('fatal: bad object'); exit 128" } else {
             (@($Commits[$i] -split '\|' | Where-Object { $_ } | ForEach-Object { "Write-Output '$_'" }) + 'exit 0') -join '; ' }
-        $outgoing.Add("if (`$cmd -like '* diff-tree --root --no-commit-id --name-only -r -m $c') { $lines }")
+        $names = @($Commits[$i] -split '\|' | Where-Object { $_ })
+        # Absent -z the names come one per line; with -z (A8) NUL separated, as git writes them.
+        $zOut = if ($DiffTreeFails) { $lines } else { "Write-Output ('" + (($names | ForEach-Object { "$_' + [char]0 + '" }) -join '') + "'); exit 0" }
+        $outgoing.Add("if (`$cmd -like '* diff-tree --root --no-commit-id --name-only -r -m*$c') { if (`$cmd -like '* -z *') { $zOut } else { $lines } }")
     }
     if ($shas.Count -gt 0) {
         $unpublished = @($shas | Select-Object -Skip $OnOtherRemoteBranch)
         $outgoing.Insert(0, "if (`$cmd -like '* rev-list --reverse --topo-order master --not --remotes=origin') { " +
             ((@($unpublished | ForEach-Object { "Write-Output '$_'" }) + 'exit 0') -join '; ') + ' }')
-        $outgoing.Insert(0, "if (`$cmd -like '* rev-list --reverse --topo-order master --not refs/remotes/origin/master') { " +
-            ((@($shas | ForEach-Object { "Write-Output '$_'" }) + 'exit 0') -join '; ') + ' }')
+        # The classification range names the branch (before B-464 A4) or the resolved sha (after).
+        foreach ($tipName in 'master', $SHA) {
+            $outgoing.Insert(0, "if (`$cmd -like '* rev-list --reverse --topo-order $tipName --not refs/remotes/origin/master') { " +
+                ((@($shas | ForEach-Object { "Write-Output '$_'" }) + 'exit 0') -join '; ') + ' }')
+        }
     }
     $body = $body.Replace('__OUTGOING__', ($outgoing -join "`n"))
     $body = $body.Replace('__DIR__', $dir).Replace('__BRANCH__', $CurrentBranch).Replace('__SHA__', $SHA).Replace('__PUSHEXIT__', "$PushExit").Replace('__BADOUTGOING__', $(if ($BadOutgoingSubject) { '$true' } else { '$false' }))
@@ -75,14 +81,15 @@ exit 91
 }
 
 function New-GhStub {
-    param([ValidateSet('green','red','absent')][string]$State)
+    # -EchoSha: the run row carries the sha asked for with --commit, so a real-git case can watch any sha.
+    param([ValidateSet('green','red','absent')][string]$State, [switch]$EchoSha)
     $dir = Join-Path ([IO.Path]::GetTempPath()) ('pushcheck-gh-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $script:scratch += $dir
     $jobs = @('windows','windows-ps51','windows-hooks (dotnet)','windows-hooks (angular)','windows-hooks (monorepo)','windows-hooks-ps51 (dotnet)','windows-hooks-ps51 (angular)','windows-hooks-ps51 (monorepo)','windows-case-parity' |
         ForEach-Object { '{"name":"' + $_ + '","conclusion":"success","status":"completed"}' }) -join ','
     $conclusion = if ($State -eq 'red') { 'failure' } else { 'success' }
-    $row = '[{"conclusion":"' + $conclusion + '","databaseId":123,"event":"push","headSha":"' + $SHA + '","status":"completed","url":"https://github.com/owner/repo/actions/runs/123","workflowName":"CI"}]'
+    $row = '[{"conclusion":"' + $conclusion + '","databaseId":123,"event":"push","headSha":"@@HEAD@@","status":"completed","url":"https://github.com/owner/repo/actions/runs/123","workflowName":"CI"}]'
     $body = @'
 $dir = '__DIR__'
 $cmd = ($args -join ' ')
@@ -90,20 +97,23 @@ Add-Content -LiteralPath (Join-Path $dir 'watch-calls.log') -Value $cmd
 if ($cmd -like 'repo view*') { Write-Output '{"nameWithOwner":"owner/repo"}'; exit 0 }
 if ($cmd -like 'run view*') { Write-Output '{"jobs":[__JOBS__]}'; exit 0 }
 if ('__STATE__' -eq 'absent') { Write-Output '[]'; exit 0 }
-Write-Output '__ROW__'
+$head = '__HEAD__'
+if ('__ECHO__' -eq '1') { $i = [array]::IndexOf([string[]]$args, '--commit'); if ($i -ge 0) { $head = $args[$i + 1] } }
+Write-Output ('__ROW__'.Replace('@@HEAD@@', $head))
 exit 0
 '@
-    $body = $body.Replace('__DIR__',$dir).Replace('__JOBS__',$jobs).Replace('__STATE__',$State).Replace('__ROW__',$row)
+    $body = $body.Replace('__DIR__',$dir).Replace('__JOBS__',$jobs).Replace('__STATE__',$State).Replace('__HEAD__',$SHA).Replace('__ECHO__',$(if ($EchoSha) { '1' } else { '0' })).Replace('__ROW__',$row)
     $path = Join-Path $dir 'gh-stub.ps1'
     [IO.File]::WriteAllText($path, $body, [Text.UTF8Encoding]::new($true))
     return [pscustomobject]@{ Dir=$dir; Path=$path; Log=(Join-Path $dir 'watch-calls.log') }
 }
 
 function Invoke-Subject {
-    param($Git, $Gh, [string]$Branch = 'master', [switch]$OmitBranch, [string[]]$Watched = @('master'), [string]$GitPath)
+    param($Git, $Gh, [string]$Branch = 'master', [switch]$OmitBranch, [string[]]$Watched = @('master'), [string]$GitPath, [string]$Root)
     if (-not $GitPath) { $GitPath = $Git.Path }
+    if (-not $Root) { $Root = $repoRoot }
     $argsList = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$subject,'-GitPath',$GitPath,
-        '-RepoRoot',$repoRoot,'-TimeoutSeconds','5','-AppearSeconds','1','-PollSeconds','0',
+        '-RepoRoot',$Root,'-TimeoutSeconds','5','-AppearSeconds','1','-PollSeconds','0',
         '-WatchedBranches') + $Watched
     if (-not $OmitBranch) { $argsList += @('-Branch',$Branch) }
     if ($Gh) { $argsList += @('-GhPath',$Gh.Path) }
@@ -114,7 +124,125 @@ function Invoke-Subject {
     } finally { Remove-Item -LiteralPath $ef -Force -ErrorAction SilentlyContinue }
 }
 
+# Real-git fixtures (B-464 A4/A5/A8): a work repo with a local bare origin and the canonical guard, so
+# the push, the resolved sha and the path classification are git's own answers, not a stub's.
+$realGit = (Get-Command git -ErrorAction Stop).Source
+$guardSource = Join-Path $repoRoot 'src\core\.claude\hooks\guard.ps1'
+$savedGitEnv = @{}
+foreach ($name in 'GIT_CONFIG_GLOBAL','GIT_CONFIG_NOSYSTEM') { $savedGitEnv[$name] = [Environment]::GetEnvironmentVariable($name) }
+$env:GIT_CONFIG_GLOBAL = 'NUL'
+$env:GIT_CONFIG_NOSYSTEM = '1'
+
+function Invoke-RealGit([string]$Dir, [string[]]$GitArgs) {
+    $o = @(& $realGit -C $Dir @GitArgs 2>&1 | ForEach-Object { $_.ToString() })
+    if ($LASTEXITCODE -ne 0) { throw "git $($GitArgs -join ' ') failed: $($o -join "`n")" }
+    return $o
+}
+
+function New-RealFixture {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('pushcheck-real-' + [guid]::NewGuid().ToString('N'))
+    $work = Join-Path $root 'work'
+    $remote = Join-Path $root 'remote.git'
+    $script:scratch += $root
+    New-Item -ItemType Directory -Path $work -Force | Out-Null
+    $null = Invoke-RealGit $root @('init','--bare','-q',$remote)
+    $null = Invoke-RealGit $root @('init','-q','-b','master',$work)
+    $null = Invoke-RealGit $work @('config','user.email','fixture@example.invalid')
+    $null = Invoke-RealGit $work @('config','user.name','Fixture')
+    $hooks = Join-Path $work 'src\core\.claude\hooks'
+    New-Item -ItemType Directory -Path $hooks -Force | Out-Null
+    Copy-Item -LiteralPath $guardSource -Destination (Join-Path $hooks 'guard.ps1')
+    [IO.File]::WriteAllText((Join-Path $work 'README.md'), "fixture`n", [Text.UTF8Encoding]::new($false))
+    $null = Invoke-RealGit $work @('add','.')
+    $null = Invoke-RealGit $work @('commit','-q','-m','Create fixture baseline')
+    $null = Invoke-RealGit $work @('remote','add','origin',$remote)
+    $null = Invoke-RealGit $work @('push','-q','-u','origin','master')
+    return [pscustomobject]@{ Root=$root; Work=$work; Remote=$remote }
+}
+
+function Add-RealCommit($Fixture, [string]$Path, [string]$Text, [string]$Subject) {
+    $full = Join-Path $Fixture.Work $Path
+    New-Item -ItemType Directory -Path (Split-Path -Parent $full) -Force | Out-Null
+    [IO.File]::WriteAllText($full, $Text, [Text.UTF8Encoding]::new($false))
+    $null = Invoke-RealGit $Fixture.Work @('add','--',$Path)
+    $null = Invoke-RealGit $Fixture.Work @('commit','-q','-m',$Subject)
+    return @(Invoke-RealGit $Fixture.Work @('rev-parse','HEAD'))[0].Trim()
+}
+
+function Get-RemoteTip($Fixture) { return @(Invoke-RealGit $Fixture.Remote @('rev-parse','refs/heads/master'))[0].Trim() }
+
 try {
+    It 'B-464 A4: the pushed commit is the checked sha, not a commit that lands between check and push' {
+        $fx = New-RealFixture
+        $checked = Add-RealCommit $fx 'src/app.txt' "checked`n" 'Add the checked commit'
+        $wrapper = Join-Path $fx.Root 'git-wrapper.ps1'
+        $body = @'
+$real = '__GIT__'
+$mark = '__MARK__'
+if ($args -contains 'push' -and -not (Test-Path -LiteralPath $mark)) {
+    New-Item -ItemType File -Path $mark | Out-Null
+    $repo = '__WORK__'
+    $key = 'AK' + 'IA' + 'IOSFODNN7EXAMPLE'
+    [IO.File]::WriteAllText((Join-Path $repo 'src/appsettings.json'), ('{"Aws":{"AccessKeyId":"' + $key + '"}}'))
+    & $real -C $repo add -- src/appsettings.json | Out-Null
+    & $real -C $repo commit -q -m 'ordinary: concurrent session commits settings' | Out-Null
+}
+& $real @args
+exit $LASTEXITCODE
+'@
+        $body = $body.Replace('__GIT__',$realGit).Replace('__MARK__',(Join-Path $fx.Root 'raced.marker')).Replace('__WORK__',$fx.Work)
+        [IO.File]::WriteAllText($wrapper, $body, [Text.UTF8Encoding]::new($true))
+        $h = New-GhStub green -EchoSha
+        $r = Invoke-Subject $null $h -Branch master -GitPath $wrapper -Root $fx.Work
+        Assert (Test-Path -LiteralPath (Join-Path $fx.Root 'raced.marker')) "the concurrent commit never happened: $($r.Out)"
+        $local = @(Invoke-RealGit $fx.Work @('rev-parse','master'))[0].Trim()
+        Assert ($local -ne $checked) 'fixture: local master did not move past the checked commit'
+        Assert ((Get-RemoteTip $fx) -eq $checked) "origin got $(Get-RemoteTip $fx), not the checked sha ${checked}: $($r.Out)"
+    }
+    It 'B-464 A5: a detached HEAD does not redirect the CI watch away from the pushed branch tip' {
+        $fx = New-RealFixture
+        $old = @(Invoke-RealGit $fx.Work @('rev-parse','HEAD'))[0].Trim()
+        $tipCommit = Add-RealCommit $fx 'src/app.txt' "ahead`n" 'Add the commit ahead of origin'
+        $null = Invoke-RealGit $fx.Work @('checkout','-q','--detach',$old)
+        $h = New-GhStub green -EchoSha
+        $r = Invoke-Subject $null $h -Branch master -GitPath $realGit -Root $fx.Work
+        Assert ((Get-RemoteTip $fx) -eq $tipCommit) "master was not pushed: $($r.Out)"
+        Assert (Test-Path -LiteralPath $h.Log) "CI was not watched: $($r.Out)"
+        $asked = Get-Content -LiteralPath $h.Log -Raw
+        Assert ($asked -match "--commit $tipCommit") "gh was not asked about the pushed tip ${tipCommit}: $asked"
+        Assert ($asked -notmatch "--commit $old") "gh was asked about the detached HEAD ${old}: $asked"
+    }
+    It 'B-464 A5: -Branch refs/heads/master is normalised, pushed and watched' {
+        $fx = New-RealFixture
+        $tipCommit = Add-RealCommit $fx 'src/app.txt' "full ref`n" 'Add a commit pushed by full ref'
+        $h = New-GhStub green -EchoSha
+        $r = Invoke-Subject $null $h -Branch refs/heads/master -GitPath $realGit -Root $fx.Work
+        Assert ($r.Exit -eq 0) "expected 0: $($r.Out)"
+        Assert ((Get-RemoteTip $fx) -eq $tipCommit) "master was not pushed: $($r.Out)"
+        Assert (Test-Path -LiteralPath $h.Log) "refs/heads/master was not watched: $($r.Out)"
+        Assert ($r.Out -notmatch 'being skipped') "the watch was skipped: $($r.Out)"
+    }
+    It 'B-464 A5: a name that is not a local branch is refused with exit 2 and nothing is pushed' {
+        $fx = New-RealFixture
+        $before = Get-RemoteTip $fx
+        $null = Add-RealCommit $fx 'src/app.txt' "unpushed`n" 'Add an unpushed commit'
+        $h = New-GhStub green -EchoSha
+        $r = Invoke-Subject $null $h -Branch no-such-branch -GitPath $realGit -Root $fx.Work
+        Assert ($r.Exit -eq 2) "expected 2, got $($r.Exit): $($r.Out)"
+        Assert ($r.Out -match 'not a local branch') "refusal reason missing: $($r.Out)"
+        Assert ((Get-RemoteTip $fx) -eq $before) 'origin moved after a refused push'
+        Assert (-not (Test-Path -LiteralPath $h.Log)) 'CI watch ran after a refused push'
+    }
+    It 'B-464 A8: a non-ASCII top-level meta record push skips the CI watch' {
+        $fx = New-RealFixture
+        $name = 'meta/notes-' + [char]0xE9 + '.md'
+        $null = Add-RealCommit $fx $name "note`n" 'Add a non-ASCII record'
+        $h = New-GhStub absent
+        $r = Invoke-Subject $null $h -Branch master -GitPath $realGit -Root $fx.Work
+        Assert ($r.Exit -eq 0) "expected 0, got $($r.Exit): $($r.Out)"
+        Assert ($r.Out -match 'CI_WATCH SKIPPED records-only') "skip line missing: $($r.Out)"
+        Assert (-not (Test-Path -LiteralPath $h.Log)) 'watch-ci ran for a records-only push'
+    }
     It 'an outgoing-check refusal prevents git push' {
         $g=New-GitStub -BadOutgoingSubject; $h=New-GhStub green; $r=Invoke-Subject $g $h
         Assert ($r.Exit -eq 1) "expected outgoing refusal exit 1, got $($r.Exit): $($r.Out)"
@@ -130,7 +258,7 @@ try {
         Assert (-not (Test-Path -LiteralPath $h.Log)) 'watch-ci was invoked after a failed push'
         $calls = @(Get-Content -LiteralPath $g.Log)
         $fetchIndex = [Array]::FindIndex([string[]]$calls, [Predicate[string]]{ param($line) $line -like '* fetch --quiet --prune --no-tags origin' })
-        $pushIndex = [Array]::FindIndex([string[]]$calls, [Predicate[string]]{ param($line) $line -like '* push origin master' })
+        $pushIndex = [Array]::FindIndex([string[]]$calls, [Predicate[string]]{ param($line) $line -match 'push origin (master|[0-9a-f]{40}:refs/heads/master)$' })
         Assert ($fetchIndex -ge 0 -and $pushIndex -gt $fetchIndex) 'outgoing range was not checked before git push'
     }
     It 'an unwatched branch pushes, skips watching, and exits 0' {
@@ -146,7 +274,7 @@ try {
         $g=New-GitStub -CurrentBranch feature/from-git; $h=New-GhStub green; $r=Invoke-Subject $g $h -OmitBranch
         Assert ($r.Exit -eq 0) "expected 0: $($r.Out)"
         Assert (@(Get-Content $g.Log | Where-Object { $_ -like '* rev-parse --abbrev-ref HEAD' }).Count -eq 1) 'current branch was not queried'
-        Assert (@(Get-Content $g.Log | Where-Object { $_ -like '* push origin feature/from-git' }).Count -eq 1) 'resolved branch was not pushed'
+        Assert (@(Get-Content $g.Log | Where-Object { $_ -match 'push origin (feature/from-git|[0-9a-f]{40}:refs/heads/feature/from-git)$' }).Count -eq 1) 'resolved branch was not pushed'
         Assert (-not (Test-Path -LiteralPath $h.Log)) 'resolved unwatched branch started CI watch'
     }
     It 'an invalid GitPath reports whether another git is available' {
@@ -159,7 +287,7 @@ try {
         $g=New-GitStub -Commits @('meta/BACKLOG.md|.claude/plans/2026-09-19-x.md', 'meta/BACKLOG-DONE.md'); $h=New-GhStub absent; $r=Invoke-Subject $g $h
         Assert ($r.Exit -eq 0) "expected 0: $($r.Out)"
         Assert ($r.Out -match [regex]::Escape($skipLine)) "skip line missing: $($r.Out)"
-        Assert (@(Get-Content $g.Log | Where-Object { $_ -like '* push origin master' }).Count -eq 1) 'records-only range was not pushed'
+        Assert (@(Get-Content $g.Log | Where-Object { $_ -match 'push origin (master|[0-9a-f]{40}:refs/heads/master)$' }).Count -eq 1) 'records-only range was not pushed'
         Assert (-not (Test-Path -LiteralPath $h.Log)) 'watch-ci ran for a records-only range'
     }
     It 'WP2 (b): a mixed outgoing range is watched' {
@@ -237,6 +365,8 @@ try {
             Assert ($ci -ne $light) "drift on '$probe': ci.yml includes=$ci, Test-LightChangePath=$light"
         }
     }
-} finally { foreach ($p in $scratch) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue } }
+} finally {
+    foreach ($name in 'GIT_CONFIG_GLOBAL','GIT_CONFIG_NOSYSTEM') { [Environment]::SetEnvironmentVariable($name, $savedGitEnv[$name]) }
+    foreach ($p in $scratch) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue } }
 
 exit (Write-TestSummary 'PushAndCheck.Tests (B-137 ordinary push CI watch)')

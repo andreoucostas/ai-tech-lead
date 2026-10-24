@@ -100,10 +100,22 @@ if (-not $Branch) {
     $Branch = $current.Out.Trim()
 }
 
+# Resolve the branch to one commit now. That sha is checked, pushed and watched, so a commit that
+# lands on the branch (or a different HEAD) after this point is never pushed unchecked or watched
+# in its place. A name that is not a local branch is refused rather than guessed at.
+if ($Branch.StartsWith('refs/heads/', [StringComparison]::Ordinal)) { $Branch = $Branch.Substring('refs/heads/'.Length) }
+$tip = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'rev-parse', '--verify', "refs/heads/$Branch^{commit}")
+if ($tip.Exit -ne 0 -or $tip.Out.Trim() -notmatch '^[0-9a-f]{40,64}$') {
+    Write-Line "PUSH REFUSED: '$Branch' is not a local branch (refs/heads/$Branch does not resolve to a commit)."
+    if ($tip.Err) { [Console]::Error.Write($tip.Err) }
+    exit 2
+}
+$sha = $tip.Out.Trim()
+
 $outgoingCheck = Join-Path $PSScriptRoot 'check-outgoing-commits.ps1'
 Write-Line 'Checking commits that are not yet present on origin...'
 & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File $outgoingCheck `
-    -RepoRoot $RepoRoot -Remote origin -Revision $Branch -GitPath $git
+    -RepoRoot $RepoRoot -Remote origin -Revision $sha -GitPath $git
 $outgoingExit = $LASTEXITCODE
 if ($outgoingExit -ne 0) {
     Write-Line "PUSH REFUSED: outgoing-commit check exited $outgoingExit."
@@ -124,21 +136,22 @@ function Test-LightChangePath {
 # when every path is light and the list is known and non-empty; anything that cannot be read (no
 # origin/<branch> yet included) is watched.
 $recordsOnly = $false
-$range = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'rev-list', '--reverse', '--topo-order', $Branch, '--not', "refs/remotes/origin/$Branch")
+$range = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'rev-list', '--reverse', '--topo-order', $sha, '--not', "refs/remotes/origin/$Branch")
 if ($range.Exit -eq 0 -and $range.Out) {
     $changed = @()
     $readable = $true
     foreach ($commit in @($range.Out -split "`r?`n" | Where-Object { $_ })) {
-        # -m lists every parent diff of a merge commit; the union is classified.
-        $tree = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'diff-tree', '--root', '--no-commit-id', '--name-only', '-r', '-m', $commit)
+        # -m lists every parent diff of a merge commit; the union is classified. quotePath=false and
+        # -z give the real name of a non-ASCII path, which is what ci.yml's push filter reads.
+        $tree = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, '-c', 'core.quotePath=false', 'diff-tree', '--root', '--no-commit-id', '--name-only', '-r', '-m', '-z', $commit)
         if ($tree.Exit -ne 0) { $readable = $false; break }
-        $changed += @($tree.Out -split "`r?`n" | Where-Object { $_ })
+        $changed += @($tree.Out -split [char]0 | Where-Object { $_ })
     }
     $recordsOnly = $readable -and $changed.Count -gt 0 -and
         @($changed | Where-Object { -not (Test-LightChangePath $_) }).Count -eq 0
 }
 
-$push = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'push', 'origin', $Branch) -Live
+$push = Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'push', 'origin', "${sha}:refs/heads/$Branch") -Live
 if ($push.Exit -ne 0) {
     Write-Line "PUSH FAILED (git exit $($push.Exit))."
     # stdout was streamed already and stderr was printed immediately after the native call. Keep
@@ -156,13 +169,6 @@ if ($recordsOnly) {
     exit 0
 }
 
-$head =Invoke-GitCaptured -GitArgs @('-C', $RepoRoot, 'rev-parse', 'HEAD')
-if ($head.Exit -ne 0 -or -not $head.Out) {
-    Write-Line 'PUSH FAILED: push succeeded, but the pushed commit SHA could not be resolved.'
-    if ($head.Err) { [Console]::Error.Write($head.Err) }
-    exit $(if ($head.Exit) { $head.Exit } else { 2 })
-}
-$sha = $head.Out.Trim()
 $watch = Join-Path $PSScriptRoot 'watch-ci.ps1'
 $watchArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$watch,
     '-Sha',$sha,'-TimeoutSeconds',$TimeoutSeconds,'-AppearSeconds',$AppearSeconds,

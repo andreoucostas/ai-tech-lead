@@ -50,6 +50,25 @@ if ([IO.Path]::GetExtension($git) -ieq '.ps1') {
     $gitPrefixArguments = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$git)
 }
 $utf8 = [Text.UTF8Encoding]::new($false, $true)
+$latin1 = [Text.Encoding]::GetEncoding(28591)
+
+# A leading UTF-32 or UTF-16 byte-order mark names the blob's encoding; $null when there is none.
+function Get-WideEncoding([byte[]]$Bytes) {
+    $n = $Bytes.Length
+    if ($n -ge 4 -and $Bytes[0] -eq 0xFF -and $Bytes[1] -eq 0xFE -and $Bytes[2] -eq 0 -and $Bytes[3] -eq 0) {
+        return [pscustomobject]@{ Encoding=[Text.UTF32Encoding]::new($false, $true, $true); Skip=4 }
+    }
+    if ($n -ge 4 -and $Bytes[0] -eq 0 -and $Bytes[1] -eq 0 -and $Bytes[2] -eq 0xFE -and $Bytes[3] -eq 0xFF) {
+        return [pscustomobject]@{ Encoding=[Text.UTF32Encoding]::new($true, $true, $true); Skip=4 }
+    }
+    if ($n -ge 2 -and $Bytes[0] -eq 0xFF -and $Bytes[1] -eq 0xFE) {
+        return [pscustomobject]@{ Encoding=[Text.UnicodeEncoding]::new($false, $true, $true); Skip=2 }
+    }
+    if ($n -ge 2 -and $Bytes[0] -eq 0xFE -and $Bytes[1] -eq 0xFF) {
+        return [pscustomobject]@{ Encoding=[Text.UnicodeEncoding]::new($true, $true, $true); Skip=2 }
+    }
+    return $null
+}
 
 function Join-NativeArguments {
     param([Parameter(Mandatory = $true)][string[]]$Values)
@@ -198,10 +217,10 @@ foreach ($commit in $commits) {
     $paths = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $diffs = [Collections.Generic.List[object]]::new()
     if ($parents.Count -eq 0) {
-        $diffs.Add([string[]]@('diff-tree','--root','--no-commit-id','--name-only','-r','-z','--no-renames','--diff-filter=ACMR',$commit))
+        $diffs.Add([string[]]@('diff-tree','--root','--no-commit-id','--name-only','-r','-z','--no-renames','--diff-filter=ACMRT',$commit))
     } else {
         foreach ($parent in $parents) {
-            $diffs.Add([string[]]@('diff','--name-only','-z','--no-renames','--diff-filter=ACMR',$parent,$commit,'--'))
+            $diffs.Add([string[]]@('diff','--name-only','-z','--no-renames','--diff-filter=ACMRT',$parent,$commit,'--'))
         }
     }
     foreach ($argumentSet in $diffs) {
@@ -226,22 +245,45 @@ foreach ($commit in $commits) {
             $blob.Bytes[0] -ne 0xEF -or $blob.Bytes[1] -ne 0xBB -or $blob.Bytes[2] -ne 0xBF)) {
             $violations.Add("commit $commit contains a PowerShell file without UTF-8 BOM: $path")
         }
-        if ($blob.Bytes -contains 0) {
-            if ($isPowerShell) {
+        if ($isPowerShell) {
+            if ($blob.Bytes -contains 0) {
                 $violations.Add("commit $commit contains a PowerShell file with NUL/binary content: $path")
-            } else {
-                Write-Host "OUTGOING CHECK: skipped binary blob '$path' at commit $commit."
+                continue
             }
-            continue
+            try { $content = $utf8.GetString($blob.Bytes) }
+            catch { Stop-CantVerify "PowerShell blob '$path' at commit $commit is not valid UTF-8." }
+        } else {
+            # Every other blob is guarded: a UTF-16/UTF-32 BOM selects that encoding, UTF-8 is read
+            # as UTF-8, and anything else (binary included) is read byte for byte as Latin-1, because
+            # the guard's credential patterns are ASCII.
+            $content = $null
+            $wide = Get-WideEncoding $blob.Bytes
+            if ($wide) {
+                try { $content = $wide.Encoding.GetString($blob.Bytes, $wide.Skip, $blob.Bytes.Length - $wide.Skip) }
+                catch { $content = $null }
+            }
+            if ($null -eq $content) {
+                try { $content = $utf8.GetString($blob.Bytes) } catch { $content = $null }
+            }
+            if ($null -eq $content) {
+                $content = $latin1.GetString($blob.Bytes)
+                Write-Host "OUTGOING CHECK: blob '$path' at commit $commit is not UTF-8 text; guarded over a byte-preserving decode."
+            } elseif (-not $wide -and $blob.Bytes -contains 0) {
+                Write-Host "OUTGOING CHECK: blob '$path' at commit $commit has NUL bytes (binary); guarded as text and again with the NUL bytes removed."
+            }
         }
-        try { $content = $utf8.GetString($blob.Bytes) }
-        catch {
-            if ($isPowerShell) { Stop-CantVerify "PowerShell blob '$path' at commit $commit is not valid UTF-8." }
-            Write-Host "OUTGOING CHECK: skipped non-UTF-8 binary blob '$path' at commit $commit."
-            continue
+        # A blob with NUL bytes and no byte-order mark may be UTF-16 without a preamble, where every
+        # character is split by a NUL. It is guarded a second time with the NULs removed.
+        $contents = @($content)
+        if (-not $isPowerShell -and -not $wide -and $blob.Bytes -contains 0) {
+            $contents += $latin1.GetString($blob.Bytes).Replace([string][char]0, '')
         }
-        $guardResult = Invoke-Guard $path $content
-        if ($null -eq $guardResult.Exit) { Stop-CantVerify "guard launch failed for '$path': $($guardResult.Err.Trim())" }
+        $guardResult = $null
+        foreach ($candidate in $contents) {
+            $guardResult = Invoke-Guard $path $candidate
+            if ($null -eq $guardResult.Exit) { Stop-CantVerify "guard launch failed for '$path': $($guardResult.Err.Trim())" }
+            if ($guardResult.Exit -ne 0) { break }
+        }
         if ($guardResult.Exit -ne 0) {
             $digest = Get-Sha256Hex -Bytes $blob.Bytes
             $exceptionKey = "$path|$digest"
