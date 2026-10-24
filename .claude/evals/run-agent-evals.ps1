@@ -6073,119 +6073,63 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         Write-Output 'PASS: B-330 the Claude child gets --setting-sources project,local, and tokensOut sums modelUsage over every model'
         Write-Output 'PASS: B-277 Copilot events convert in order to a gradable transcript, recover a denied call, flag hook loading, and report missing/empty/truncated/unterminated/errored logs as unexaminable'
         Write-Output 'PASS: B-253 -TargetPatch changes only the patched bytes under core.autocrlf=true, refuses a stale patch, and a moved conventions placeholder fails loud'
+        # B-464 B11: a misspelt id in -Scenario is refused by name, not dropped.
+        $b11Config = Get-Content -Raw $scenarioPath | ConvertFrom-Json
+        $b11Refusal = [string](Get-ScenarioSelectionRefusal $b11Config @('route-fix', 'route-fx'))
+        if ($b11Refusal -notmatch 'route-fx' -or $b11Refusal -match 'route-fix') { throw "B-464 B11: route-fix,route-fx was not refused naming only route-fx; got '$b11Refusal'" }
+        if (Get-ScenarioSelectionRefusal $b11Config @('route-fix', 'route-fix-nl')) { throw 'B-464 B11: a selection of registered ids was refused' }
+        if (Get-ScenarioSelectionRefusal $b11Config @()) { throw 'B-464 B11: an empty selection (every scenario) was refused' }
+        Write-Output 'PASS: B-464 B11 -Scenario refuses an unregistered id by name and accepts registered ids and an empty selection'
+        # B-464 B12: a throw in setup on the second case (outside the per-case try) leaves the first case's row in the results file.
+        & {
+            $b12Repos = [ref]0
+            function New-EvalRepo([string]$Path, [string]$Stack) {
+                $b12Repos.Value++
+                if ($b12Repos.Value -ge $b12Throw) { throw 'b464 stub setup failure' }
+                New-Item -ItemType Directory -Path $Path -Force | Out-Null
+                git -C $Path init -q
+                git -C $Path -c user.name=t -c user.email=t@t commit --allow-empty -q -m seed
+            }
+            function Install-Framework { }
+            function Invoke-ClaudeProcess { [pscustomobject]@{ ExitCode = 0; TimedOut = $true; ErrorText = 'b464 stub run' } }
+            $version = '0.0.0'; $changelogDecision = [pscustomobject]@{ RootHead = '' }; $frameworkCommit = 'b464'; $hostVersion = 'stub'
+            $b12Cases = @([pscustomobject]@{ id = 'b464-first'; prompt = 'p'; budgetUsd = 1 }, [pscustomobject]@{ id = 'b464-second'; prompt = 'p'; budgetUsd = 1 })
+            foreach ($b12Throw in @(2, 99)) {
+                $b12Repos.Value = 0
+                $trialOf = @{}
+                $scratch = Join-Path $temp "b12-scratch-$b12Throw"
+                New-Item -ItemType Directory -Path $scratch | Out-Null
+                $b12File = Join-Path $temp "b12-results-$b12Throw.md"
+                $b12Rows = [System.Collections.Generic.List[object]]::new()
+                $b12Thrown = $null
+                try { Invoke-EvalRun $b12Cases $b12Rows $b12File | Out-Null } catch { $b12Thrown = $_.Exception.Message }
+                $b12Text = if (Test-Path -LiteralPath $b12File) { Get-Content -Raw -LiteralPath $b12File } else { '' }
+                if ($b12Throw -eq 2) {
+                    if ($b12Thrown -notmatch 'b464 stub setup failure') { throw "B-464 B12: the setup failure on the second case did not reach the caller; got '$b12Thrown'" }
+                    if ($b12Text -notmatch 'ERROR b464-first' -or $b12Text -match 'b464-second' -or $b12Text -notmatch 'ABORTED') { throw "B-464 B12: the first case's row was not left in the results file, marked aborted; file: $b12Text" }
+                } else {
+                    if ($b12Thrown) { throw "B-464 B12: a run with no failure threw '$b12Thrown'" }
+                    if ($b12Text -notmatch 'ERROR b464-first' -or $b12Text -notmatch 'ERROR b464-second' -or $b12Text -match 'ABORTED') { throw "B-464 B12: a completed run's results file is not both rows without ABORTED; file: $b12Text" }
+                }
+            }
+        }
+        Write-Output 'PASS: B-464 B12 a setup failure on a later case leaves the earlier rows in the results file marked aborted, and a completed run is written whole'
         Write-Output 'PASS: PowerShell UTF-8 BOM'
     } finally { if (Test-Path $temp) { Remove-Item -LiteralPath $temp -Recurse -Force } }
 }
 
-if ($SelfTest) { Invoke-SelfTest | Write-Output; exit 0 }
-if (-not $Live) {
-    Write-Output 'No agent was run. This harness incurs model usage and requires explicit consent.'
-    Write-Output 'Run: pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-fix] [-Model sonnet]'
-    exit 2
+# B-464 B11: a requested id that scenarios.json does not register is refused by name, before any spend or setup; dropping it silently
+# measured fewer cases than were pre-registered and could still exit 0.
+function Get-ScenarioSelectionRefusal($Config, [string[]]$Ids) {
+    $known = @($Config.scenarios | ForEach-Object { [string]$_.id })
+    $unknown = @($Ids | Where-Object { $_ -notin $known } | Select-Object -Unique)
+    if ($unknown) { return "Refusing -Scenario: $($unknown -join ', ') $(if ($unknown.Count -eq 1) { 'is' } else { 'are' }) not in scenarios.json." }
 }
-$agentCli = if ($Executor -eq 'copilot') { 'copilot' } else { 'claude' }
-if (-not (Get-Command $agentCli -ErrorAction SilentlyContinue)) { throw "$agentCli CLI is not installed or not on PATH." }
-if (git -C $repo status --porcelain -- dist/) { throw 'Refusing live eval: dist/ differs from the checked-out release.' }
 
-$config = Get-Content -Raw $scenarioPath | ConvertFrom-Json
-$scenarioIds = @($Scenario | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
-$selected = @($config.scenarios | Where-Object { -not $scenarioIds -or $_.id -in $scenarioIds })
-if ($selected.Count -eq 0) { throw 'No scenarios matched -Scenario.' }
-if ($Arm -eq 'none') {
-    $notBare = @($selected | Where-Object { -not $_.bareArm } | ForEach-Object { $_.id })
-    if ($notBare) { throw "Refusing -Arm none: no arm-neutral Outcome is graded for $($notBare -join ', '). Select scenarios marked bareArm in scenarios.json." }
-}
-if ($WarehouseMap -ne 'frozen') {
-    $notRoute = @($selected | Where-Object { $_.id -notlike 'warehouse-route-p*' } | ForEach-Object { $_.id })
-    if ($notRoute) { throw "Refusing -WarehouseMap ${WarehouseMap}: it only applies to the warehouse-route scenarios, not $($notRoute -join ', ')." }
-}
-if ($Executor -eq 'copilot') {
-    # Scenario-level model/agent overrides name Claude Code models and subagents. Refuse rather
-    # than silently substituting something else under a different host.
-    $claudeSpecific = @($selected | Where-Object { $_.model -or $_.agent } | ForEach-Object { $_.id } | Select-Object -Unique)
-    if ($claudeSpecific) { throw "Refusing -Executor copilot: $($claudeSpecific -join ', ') carry Claude-specific model/agent overrides. Run them under -Executor claude." }
-    if ($CopilotModel -eq 'auto') { throw "Refusing -Executor copilot with -CopilotModel auto: 'auto' resolves to a different vendor per run, so trials are not comparable." }
-    $b406ExecutorRefusal = Get-B406ExecutorRefusal $selected $Executor
-    if ($b406ExecutorRefusal) { throw $b406ExecutorRefusal }
-}
-$selected = @($selected | ForEach-Object { $repeated = $_; 1..$Trials | ForEach-Object { $repeated } })
-$trialOf = @{}
-$scratch = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-agent-evals-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-New-Item -ItemType Directory $scratch | Out-Null
-$version = (Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version
-$changelogDecision = Get-ChangelogGuardDecision (Get-Content -Raw (Join-Path $repo 'CHANGELOG.md')) $version
-if (-not $changelogDecision.Allowed) { throw "Refusing live eval: $($changelogDecision.Message)" }
-if ($WarehouseMap -in @('generated','partial')) {
-    $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo 'meta/eval-fixtures/warehouse-generated/provenance.json') $version
-    if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
-}
-# B-406: the bootstrap overlay is bound to the framework version it was generated on. Refused before any spend.
-# -Arm none cannot reach these cases: they carry no bareArm, so the refusal above already stops it.
-# B-409: the same for every contract fixture in the selection, each against its own overlay and provenance.
-$b406Cases = @($selected | Where-Object { $_.fixture -in $contractFixtures })
-$contractFixturesUsed = @($b406Cases | ForEach-Object { [string]$_.fixture } | Select-Object -Unique)
-foreach ($contractFixture in $contractFixturesUsed) {
-    $b406Root = Join-Path $repo "meta/eval-fixtures/$contractFixture"
-    $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $b406Root 'provenance.json') $version $contractFixture
-    if (-not $fixtureRefusal -and -not (Test-Path -LiteralPath (Join-Path $b406Root 'files') -PathType Container)) { $fixtureRefusal = "${contractFixture}: $(Join-Path $b406Root 'files') is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
-    if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
-}
-$patchTag = ''
-if ($TargetPatch) {
-    if ($Arm -ne 'framework') { throw 'Refusing -TargetPatch with -Arm none: there is no installed framework to patch.' }
-    $TargetPatch = (Resolve-Path -LiteralPath $TargetPatch).Path
-    $neverInstalled = @($selected | Where-Object { $_.id -in $selfInstallScenarios } | ForEach-Object { $_.id } | Select-Object -Unique)
-    if ($neverInstalled) { throw "Refusing -TargetPatch: $($neverInstalled -join ', ') never install the framework before the agent runs." }
-    foreach ($contractFixture in $contractFixturesUsed) {
-        # The overlay lands before the patch, on top of the fresh install the patch was cut against.
-        $b406Files = Join-Path $repo "meta/eval-fixtures/$contractFixture/files"
-        $b406Overlay = @(Get-ChildItem -LiteralPath $b406Files -Recurse -File -Force | ForEach-Object { [IO.Path]::GetRelativePath($b406Files, $_.FullName).Replace('\', '/') })
-        $overwritten = @(Get-TargetPatchPaths $TargetPatch | Where-Object { $_ -in $b406Overlay })
-        if ($overwritten) { throw "Refusing -TargetPatch with a $contractFixture case: the bootstrap overlay has already changed $($overwritten -join ', '), so a patch cut against a fresh install does not describe what the agent would see." }
-    }
-    # Once per stack before any spend: a patch that failed inside the loop would abort the
-    # invocation after paid runs, and their rows are written only at the end.
-    foreach ($patchStack in @($selected | ForEach-Object { if ($_.stack) { [string]$_.stack } else { 'dotnet' } } | Select-Object -Unique)) {
-        $preflight = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-patch-preflight-' + [guid]::NewGuid().ToString('N'))
-        try {
-            if ($WarehouseMap -in @('generated','partial')) {
-                # B-402: as in the run, the patch lands on the bootstrapped warehouse tree (Initialize-WarehouseScenario).
-                New-EvalRepo $preflight warehouse
-                Install-Framework $preflight $patchStack | Out-Null
-                $preflightMap = Get-WarehouseMapSwitch $WarehouseMap
-                Initialize-WarehouseScenario $preflight @preflightMap -TargetPatch $TargetPatch | Out-Null
-                $patchTag = Get-TargetPatchTag $TargetPatch
-            } else {
-                New-EvalRepo $preflight $patchStack
-                Install-Framework $preflight $patchStack | Out-Null
-                $patchTag = Invoke-TargetPatch $preflight $TargetPatch
-            }
-        } finally { if (Test-Path $preflight) { Remove-Item -LiteralPath $preflight -Recurse -Force } }
-    }
-}
-if (@($selected | Where-Object assertion -eq 'urlInstall').Count) {
-    # The URL scenarios install whatever GitHub's newest release is; the installed bytes are compared with that tag here.
-    $releaseTags = @(git ls-remote --tags --refs 'https://github.com/andreoucostas/ai-tech-lead.git' 'refs/tags/v*' | ForEach-Object { if ($_ -match 'refs/tags/(v\d+\.\d+\.\d+)$') { $Matches[1] } })
-    if ($LASTEXITCODE -ne 0 -or -not $releaseTags) { throw 'Refusing the url-install scenarios: could not list the release tags on GitHub.' }
-    $newestTag = $releaseTags | Sort-Object { [version]$_.Substring(1) } | Select-Object -Last 1
-    git -C $repo cat-file -e "$newestTag^{commit}" 2>$null
-    if ($LASTEXITCODE -ne 0) { throw "Refusing the url-install scenarios: $newestTag is not in this checkout; run git fetch --tags first." }
-    $script:UrlInstallReference = [pscustomobject]@{
-        Tag = $newestTag
-        Read = { param($Stack, $Relative)
-            $encoding = [Console]::OutputEncoding
-            [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-            try { $text = git -C $repo show "$($script:UrlInstallReference.Tag):dist/$Stack/$Relative" 2>$null; if ($LASTEXITCODE -eq 0) { $text -join "`n" } else { $null } }
-            finally { [Console]::OutputEncoding = $encoding } }
-    }
-}
-$frameworkCommit =(git -C $repo rev-parse HEAD | Out-String).Trim()
-$hostVersion = (& $agentCli --version | Out-String).Trim()
-# `copilot --version` also prints an update notice; keep the first line only.
-if ($Executor -eq 'copilot') { $hostVersion = [string](@($hostVersion -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 1)).Trim() }
-$results = @()
-try {
-    foreach ($case in $selected) {
+# B-464 B12: each case appends its row to $Rows as it is decided, and the results file is written from a finally, so a throw outside
+# the per-case try (setup, the followUp guard) or a Ctrl+C leaves the rows already paid for instead of losing them.
+function Invoke-EvalCases($Cases, $Rows) {
+    foreach ($case in $Cases) {
         # Isolate each case's entire visible fixture tree. Otherwise a model can satisfy a later
         # install case by copying artifacts from an earlier sibling instead of exercising the
         # requested canonical installer path.
@@ -6395,18 +6339,142 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $claudeDetail = if ($Executor -eq 'claude' -and $init) { "ccVersion=$($init[0].claude_code_version) initModel=$($init[0].model) " } else { '' }
             $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $claudeDetail$copilotDetail$(if ($case.bareArm) { "arm=$Arm outcome=$outcome " })$($evidence.Detail)"
         } catch { $status = 'ERROR'; $detail = "$(if ($Executor -eq 'copilot') { 'executor=copilot ' })$($_.Exception.Message)" }
-        $results += [pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail; Arm = $Arm; Scored = [bool]$case.bareArm; Outcome = $outcome; Executor = $Executor; Patch = $patchTag }
+        $Rows.Add([pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail; Arm = $Arm; Scored = [bool]$case.bareArm; Outcome = $outcome; Executor = $Executor; Patch = $patchTag })
         Write-Output "$status $($case.id): $detail"
     }
+}
+
+function Save-EvalResults([string]$Path, $Rows, [bool]$Complete) {
+    if (-not $Rows.Count) { return }
     $date = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
     # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
     # the host and the model actually used, and every Copilot row carries executor=copilot.
-    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($results | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })" } else { "Claude Code $hostVersion" }
+    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($Rows | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })" } else { "Claude Code $hostVersion" }
     $lines = @('', "## $date — framework v$version$(if ($changelogDecision.RootHead) { " (root head $($changelogDecision.RootHead))" }) ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" }) · scratch: retained=$KeepScratch", '')
-    foreach ($r in $results) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})$(if($r.Patch){"; patch=$($r.Patch)"})) — $(Protect-ResultText $r.Detail)" }
-    $lines += @(Get-OutcomeSummary $results)
+    foreach ($r in $Rows) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})$(if($r.Patch){"; patch=$($r.Patch)"})) — $(Protect-ResultText $r.Detail)" }
+    if (-not $Complete) { $lines += '- **ABORTED** the run stopped before its last case; the rows above are the cases decided before it stopped.' }
+    $lines += @(Get-OutcomeSummary $Rows)
     $lines += ''
-    Add-Content -LiteralPath $ResultsPath -Value ($lines -join "`n") -Encoding utf8NoBOM
+    Add-Content -LiteralPath $Path -Value ($lines -join "`n") -Encoding utf8NoBOM
+}
+
+function Invoke-EvalRun($Cases, $Rows, [string]$Path) {
+    $complete = $false
+    try { Invoke-EvalCases $Cases $Rows; $complete = $true }
+    finally { Save-EvalResults $Path $Rows $complete }
+}
+
+if ($SelfTest) { Invoke-SelfTest | Write-Output; exit 0 }
+if (-not $Live) {
+    Write-Output 'No agent was run. This harness incurs model usage and requires explicit consent.'
+    Write-Output 'Run: pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-fix] [-Model sonnet]'
+    exit 2
+}
+$agentCli = if ($Executor -eq 'copilot') { 'copilot' } else { 'claude' }
+if (-not (Get-Command $agentCli -ErrorAction SilentlyContinue)) { throw "$agentCli CLI is not installed or not on PATH." }
+if (git -C $repo status --porcelain -- dist/) { throw 'Refusing live eval: dist/ differs from the checked-out release.' }
+
+$config = Get-Content -Raw $scenarioPath | ConvertFrom-Json
+$scenarioIds = @($Scenario | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+$scenarioRefusal = Get-ScenarioSelectionRefusal $config $scenarioIds
+if ($scenarioRefusal) { Write-Output $scenarioRefusal; exit 2 }
+$selected = @($config.scenarios | Where-Object { -not $scenarioIds -or $_.id -in $scenarioIds })
+if ($selected.Count -eq 0) { throw 'No scenarios matched -Scenario.' }
+if ($Arm -eq 'none') {
+    $notBare = @($selected | Where-Object { -not $_.bareArm } | ForEach-Object { $_.id })
+    if ($notBare) { throw "Refusing -Arm none: no arm-neutral Outcome is graded for $($notBare -join ', '). Select scenarios marked bareArm in scenarios.json." }
+}
+if ($WarehouseMap -ne 'frozen') {
+    $notRoute = @($selected | Where-Object { $_.id -notlike 'warehouse-route-p*' } | ForEach-Object { $_.id })
+    if ($notRoute) { throw "Refusing -WarehouseMap ${WarehouseMap}: it only applies to the warehouse-route scenarios, not $($notRoute -join ', ')." }
+}
+if ($Executor -eq 'copilot') {
+    # Scenario-level model/agent overrides name Claude Code models and subagents. Refuse rather
+    # than silently substituting something else under a different host.
+    $claudeSpecific = @($selected | Where-Object { $_.model -or $_.agent } | ForEach-Object { $_.id } | Select-Object -Unique)
+    if ($claudeSpecific) { throw "Refusing -Executor copilot: $($claudeSpecific -join ', ') carry Claude-specific model/agent overrides. Run them under -Executor claude." }
+    if ($CopilotModel -eq 'auto') { throw "Refusing -Executor copilot with -CopilotModel auto: 'auto' resolves to a different vendor per run, so trials are not comparable." }
+    $b406ExecutorRefusal = Get-B406ExecutorRefusal $selected $Executor
+    if ($b406ExecutorRefusal) { throw $b406ExecutorRefusal }
+}
+$selected = @($selected | ForEach-Object { $repeated = $_; 1..$Trials | ForEach-Object { $repeated } })
+$trialOf = @{}
+$scratch = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-agent-evals-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+New-Item -ItemType Directory $scratch | Out-Null
+$version = (Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version
+$changelogDecision = Get-ChangelogGuardDecision (Get-Content -Raw (Join-Path $repo 'CHANGELOG.md')) $version
+if (-not $changelogDecision.Allowed) { throw "Refusing live eval: $($changelogDecision.Message)" }
+if ($WarehouseMap -in @('generated','partial')) {
+    $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo 'meta/eval-fixtures/warehouse-generated/provenance.json') $version
+    if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
+}
+# B-406: the bootstrap overlay is bound to the framework version it was generated on. Refused before any spend.
+# -Arm none cannot reach these cases: they carry no bareArm, so the refusal above already stops it.
+# B-409: the same for every contract fixture in the selection, each against its own overlay and provenance.
+$b406Cases = @($selected | Where-Object { $_.fixture -in $contractFixtures })
+$contractFixturesUsed = @($b406Cases | ForEach-Object { [string]$_.fixture } | Select-Object -Unique)
+foreach ($contractFixture in $contractFixturesUsed) {
+    $b406Root = Join-Path $repo "meta/eval-fixtures/$contractFixture"
+    $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $b406Root 'provenance.json') $version $contractFixture
+    if (-not $fixtureRefusal -and -not (Test-Path -LiteralPath (Join-Path $b406Root 'files') -PathType Container)) { $fixtureRefusal = "${contractFixture}: $(Join-Path $b406Root 'files') is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
+    if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
+}
+$patchTag = ''
+if ($TargetPatch) {
+    if ($Arm -ne 'framework') { throw 'Refusing -TargetPatch with -Arm none: there is no installed framework to patch.' }
+    $TargetPatch = (Resolve-Path -LiteralPath $TargetPatch).Path
+    $neverInstalled = @($selected | Where-Object { $_.id -in $selfInstallScenarios } | ForEach-Object { $_.id } | Select-Object -Unique)
+    if ($neverInstalled) { throw "Refusing -TargetPatch: $($neverInstalled -join ', ') never install the framework before the agent runs." }
+    foreach ($contractFixture in $contractFixturesUsed) {
+        # The overlay lands before the patch, on top of the fresh install the patch was cut against.
+        $b406Files = Join-Path $repo "meta/eval-fixtures/$contractFixture/files"
+        $b406Overlay = @(Get-ChildItem -LiteralPath $b406Files -Recurse -File -Force | ForEach-Object { [IO.Path]::GetRelativePath($b406Files, $_.FullName).Replace('\', '/') })
+        $overwritten = @(Get-TargetPatchPaths $TargetPatch | Where-Object { $_ -in $b406Overlay })
+        if ($overwritten) { throw "Refusing -TargetPatch with a $contractFixture case: the bootstrap overlay has already changed $($overwritten -join ', '), so a patch cut against a fresh install does not describe what the agent would see." }
+    }
+    # Once per stack before any spend: a patch that failed inside the loop would abort the
+    # invocation after paid runs (their rows are kept, marked aborted, but the rest of the selection is not measured).
+    foreach ($patchStack in @($selected | ForEach-Object { if ($_.stack) { [string]$_.stack } else { 'dotnet' } } | Select-Object -Unique)) {
+        $preflight = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-patch-preflight-' + [guid]::NewGuid().ToString('N'))
+        try {
+            if ($WarehouseMap -in @('generated','partial')) {
+                # B-402: as in the run, the patch lands on the bootstrapped warehouse tree (Initialize-WarehouseScenario).
+                New-EvalRepo $preflight warehouse
+                Install-Framework $preflight $patchStack | Out-Null
+                $preflightMap = Get-WarehouseMapSwitch $WarehouseMap
+                Initialize-WarehouseScenario $preflight @preflightMap -TargetPatch $TargetPatch | Out-Null
+                $patchTag = Get-TargetPatchTag $TargetPatch
+            } else {
+                New-EvalRepo $preflight $patchStack
+                Install-Framework $preflight $patchStack | Out-Null
+                $patchTag = Invoke-TargetPatch $preflight $TargetPatch
+            }
+        } finally { if (Test-Path $preflight) { Remove-Item -LiteralPath $preflight -Recurse -Force } }
+    }
+}
+if (@($selected | Where-Object assertion -eq 'urlInstall').Count) {
+    # The URL scenarios install whatever GitHub's newest release is; the installed bytes are compared with that tag here.
+    $releaseTags = @(git ls-remote --tags --refs 'https://github.com/andreoucostas/ai-tech-lead.git' 'refs/tags/v*' | ForEach-Object { if ($_ -match 'refs/tags/(v\d+\.\d+\.\d+)$') { $Matches[1] } })
+    if ($LASTEXITCODE -ne 0 -or -not $releaseTags) { throw 'Refusing the url-install scenarios: could not list the release tags on GitHub.' }
+    $newestTag = $releaseTags | Sort-Object { [version]$_.Substring(1) } | Select-Object -Last 1
+    git -C $repo cat-file -e "$newestTag^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) { throw "Refusing the url-install scenarios: $newestTag is not in this checkout; run git fetch --tags first." }
+    $script:UrlInstallReference = [pscustomobject]@{
+        Tag = $newestTag
+        Read = { param($Stack, $Relative)
+            $encoding = [Console]::OutputEncoding
+            [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+            try { $text = git -C $repo show "$($script:UrlInstallReference.Tag):dist/$Stack/$Relative" 2>$null; if ($LASTEXITCODE -eq 0) { $text -join "`n" } else { $null } }
+            finally { [Console]::OutputEncoding = $encoding } }
+    }
+}
+$frameworkCommit =(git -C $repo rev-parse HEAD | Out-String).Trim()
+$hostVersion = (& $agentCli --version | Out-String).Trim()
+# `copilot --version` also prints an update notice; keep the first line only.
+if ($Executor -eq 'copilot') { $hostVersion = [string](@($hostVersion -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 1)).Trim() }
+$results = [System.Collections.Generic.List[object]]::new()
+try {
+    Invoke-EvalRun $selected $results $ResultsPath
     if (@($results | Where-Object Status -ne 'PASS').Count) { exit 1 }
     exit 0
 } finally {
