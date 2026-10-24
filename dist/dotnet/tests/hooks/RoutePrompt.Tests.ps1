@@ -208,6 +208,26 @@ It 'route-prompt.ps1 answer-only question -> no rails (both surfaces)' {
         } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'route-prompt.ps1 in a subfolder install delivers the install''s own queue, not the outer root''s' {
+        $fixture = New-RoutePromptFixture
+        $app = Join-Path $fixture.Dir 'outer\app'
+        $queue = Join-Path $app '.claude\.state\boy-scout-queue'
+        $outerQueue = Join-Path $fixture.Dir 'outer\.claude\.state\boy-scout-queue'
+        try {
+            $hook = Copy-HookInto $rpPs $app
+            git -C (Join-Path $fixture.Dir 'outer') init --quiet
+            foreach ($q in $queue, $outerQueue) { New-Item -ItemType Directory -Path (Split-Path -Parent $q) -Force | Out-Null }
+            [IO.File]::WriteAllText($queue, 'SUBFOLDER_OWN_QUEUE_SENTINEL')
+            [IO.File]::WriteAllText($outerQueue, 'SUBFOLDER_OUTER_QUEUE_SENTINEL')
+            $r = Invoke-Hook $hook (New-CopilotPrompt '/review')
+            Assert ($r.Exit -eq 0) "exit $($r.Exit): $($r.Err)"
+            $o = $r.Out | ConvertFrom-Json
+            Assert ($o.additionalContext -eq 'SUBFOLDER_OWN_QUEUE_SENTINEL') "expected the install's own queue, got '$($o.additionalContext)'"
+            Assert (-not (Test-Path -LiteralPath $queue)) 'the install''s queue was not consumed'
+            Assert (Test-Path -LiteralPath $outerQueue) 'the outer root''s queue was consumed'
+        } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'route-prompt.ps1 Copilot empty routing + queue -> queue-only payload' {
         $fixture = New-RoutePromptFixture
         $queue = Join-Path $fixture.Repo '.claude\.state\boy-scout-queue'
