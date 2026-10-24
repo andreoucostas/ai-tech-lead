@@ -429,7 +429,7 @@ Reset-Tests
                 New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude') | Out-Null
                 [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), "{`"version`":`"99.0.0`",`"template`":`"$stack`"}", [Text.UTF8Encoding]::new($false))
                 $before = Get-TargetFingerprint $target
-                $result = Invoke-RootInstaller $target $stack -DryRun -AllowDowngrade
+                $result = Invoke-RootInstaller $target $stack -DryRun -AllowDowngrade -AllowDirtyTree
                 Assert ($result.Exit -eq 0) "$stack flag forwarding exited $($result.Exit): $($result.Output)"
                 Assert ($result.Output -match 'allow-downgrade accepted|AllowDowngrade accepted') "$stack did not observe the downgrade override"
                 Assert ($result.Output -match 'Dry run complete; target was not modified') "$stack did not observe the dry-run flag"
@@ -441,7 +441,7 @@ Reset-Tests
             New-Item -ItemType Directory -Force -Path (Join-Path $stampedTarget '.claude') | Out-Null
             [IO.File]::WriteAllText((Join-Path $stampedTarget '.claude/framework-version.json'), '{"version":"99.0.0","template":"dotnet","decimal":0.01,"exponent":1e01,"negativeExponent":1e-01}', [Text.UTF8Encoding]::new($false))
             $before = Get-TargetFingerprint $stampedTarget
-            $stamped = Invoke-RootInstaller $stampedTarget -DryRun -AllowDowngrade
+            $stamped = Invoke-RootInstaller $stampedTarget -DryRun -AllowDowngrade -AllowDirtyTree
             Assert ($stamped.Exit -eq 0) "valid lowercase update stamp exited $($stamped.Exit): $($stamped.Output)"
             Assert ($stamped.Output -match 'Stack: dotnet \(via update stamp \(\.claude/framework-version\.json template=dotnet\)\)') "valid lowercase update stamp did not select its recorded stack: $($stamped.Output)"
             Assert ($stamped.Output -match 'allow-downgrade accepted|AllowDowngrade accepted') 'valid stamped update did not forward the downgrade override'
@@ -505,7 +505,7 @@ Reset-Tests
                 $root = Join-Path $parent $name
                 [void][IO.Directory]::CreateDirectory((Join-Path $root 'dist/dotnet/scripts'))
                 Copy-Item -LiteralPath (Join-Path $repo 'install.ps1') -Destination (Join-Path $root 'install.ps1')
-                $stub = "param([string]`$Target, [switch]`$WhatIf, [switch]`$AllowDowngrade, [switch]`$AllowDirtyTree, [switch]`$AllowOutdated)`nWrite-Output 'DELEGATE: $name'`nWrite-Output ('CWD: ' + (Get-Location).ProviderPath)`nexit 0`n"
+                $stub = "param([string]`$Target, [switch]`$WhatIf, [switch]`$AllowDowngrade, [switch]`$AllowDirtyTree, [switch]`$AllowOutdated, [switch]`$AllowStackChange)`nWrite-Output 'DELEGATE: $name'`nWrite-Output ('CWD: ' + (Get-Location).ProviderPath)`nexit 0`n"
                 [IO.File]::WriteAllText((Join-Path $root 'dist/dotnet/scripts/install.ps1'), $stub, [Text.UTF8Encoding]::new($true))
             }
             foreach ($clone in @('fw[s]', 'fw`[t]')) {
