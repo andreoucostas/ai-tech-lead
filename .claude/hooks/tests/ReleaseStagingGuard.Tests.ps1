@@ -36,6 +36,17 @@ $end   = $text.IndexOf('# ---- 5b.')
 $guard = $null
 if ($start -ge 0 -and $end -gt $start) { $guard = $text.Substring($start, $end - $start) }
 
+# Step 5 (`git add -A` through the "nothing to stage" decision) and step 2 (the applied-date stamps),
+# extracted the same way so the tests run the code that ships (B-464 A1, A7).
+$stageStart = $text.IndexOf('# ---- 5. Commit + push')
+$stageEnd   = $text.IndexOf('# ---- 5a.')
+$stageRegion = $null
+if ($stageStart -ge 0 -and $stageEnd -gt $stageStart) { $stageRegion = $text.Substring($stageStart, $stageEnd - $stageStart) }
+$stampStart = $text.IndexOf('# ---- 2.')
+$stampEnd   = $text.IndexOf('# ---- 3.')
+$stampRegion = $null
+if ($stampStart -ge 0 -and $stampEnd -gt $stampStart) { $stampRegion = $text.Substring($stampStart, $stampEnd - $stampStart) }
+
 It 'the guard region can be extracted from release.ps1, and is neither too small nor too large' {
     Assert ($start -ge 0) 'no "# ---- 5a." marker in release.ps1 -- the guard was renamed or removed'
     Assert ($end -gt $start) 'no commit line found after the guard -- cannot bound the region'
@@ -86,8 +97,82 @@ exit 0
     } finally { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
 }
 
+# Runs an extracted release.ps1 region in a child host with the variables the script would have bound.
+function Invoke-Region {
+    param([string]$Region, [string]$Prelude)
+    $body = "`$ErrorActionPreference = 'Stop'`n$Prelude`n$Region`nWrite-Host 'REGION DONE'`nexit 0`n"
+    $f = Join-Path ([IO.Path]::GetTempPath()) ("relregion-run-" + [guid]::NewGuid().ToString('N') + '.ps1')
+    [IO.File]::WriteAllText($f, $body, [Text.UTF8Encoding]::new($true))   # BOM: invariant #4
+    try {
+        $out  = & (Get-PsExe) -NoProfile -ExecutionPolicy Bypass -File $f 2>&1
+        $code = $LASTEXITCODE
+        return [pscustomobject]@{ Exit = $code; Out = ($out | Out-String) }
+    } finally { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
+}
+
 $scratch = @()
 try {
+    It 'the step-5 and step-2 regions can be extracted from release.ps1' {
+        Assert ($null -ne $stageRegion) 'no "# ---- 5. Commit + push" .. "# ---- 5a." region in release.ps1'
+        Assert ($stageRegion -match [regex]::Escape('git -C $repo add -A')) 'step-5 region lacks the staging call -- would test nothing'
+        Assert ($stageRegion -notmatch [regex]::Escape('git -C $repo commit')) 'step-5 region wrongly includes the commit'
+        Assert ($null -ne $stampRegion) 'no "# ---- 2." .. "# ---- 3." region in release.ps1'
+        Assert ($stampRegion -match 'applied') 'step-2 region lacks the applied stamp -- would test nothing'
+    }
+
+    # A held index.lock (a stale lock, or another git) makes `git add -A` stage nothing and fail. The
+    # old code read only `diff --cached`, saw an empty index, and "resumed the publish phase for HEAD":
+    # it tagged the commit BEFORE the release and exited 0 with every stamp left uncommitted.
+    It 'a failed git add (held index.lock) is refused with EXIT=2, not read as nothing to stage' {
+        $d = New-ScratchRepo; $script:scratch += $d
+        Set-Content -LiteralPath (Join-Path $d 'src/thing.txt') -Value 'release change'
+        [IO.File]::WriteAllText((Join-Path $d '.git/index.lock'), '')
+        $r = Invoke-Region -Region $stageRegion -Prelude "`$repo = '$d'"
+        Assert ($r.Exit -eq 2) "expected EXIT=2 for a failed git add, got $($r.Exit): $($r.Out)"
+        Assert ($r.Out -notmatch 'Nothing new to stage') "a failed git add was read as 'Nothing new to stage': $($r.Out)"
+        Assert ($r.Out -match 'nothing was committed') "the refusal does not say nothing was committed: $($r.Out)"
+        $idx = (@(git -C $d diff --cached --name-only) -join ',')
+        Assert ([string]::IsNullOrWhiteSpace($idx)) "something was staged despite the held lock: '$idx'"
+    }
+
+    It 'a clean tree still resumes the publish phase, and a changed tree stages' {
+        $d = New-ScratchRepo; $script:scratch += $d
+        $r = Invoke-Region -Region $stageRegion -Prelude "`$repo = '$d'"
+        Assert ($r.Exit -eq 0) "clean tree: expected EXIT=0, got $($r.Exit): $($r.Out)"
+        Assert ($r.Out -match 'Nothing new to stage') "clean tree: the resume path was not taken: $($r.Out)"
+        Set-Content -LiteralPath (Join-Path $d 'src/thing.txt') -Value 'release change'
+        $r2 = Invoke-Region -Region $stageRegion -Prelude "`$repo = '$d'"
+        Assert ($r2.Exit -eq 0) "changed tree: expected EXIT=0, got $($r2.Exit): $($r2.Out)"
+        Assert ($r2.Out -notmatch 'Nothing new to stage') "changed tree: wrongly took the resume path: $($r2.Out)"
+        $idx = (@(git -C $d diff --cached --name-only) -join ',')
+        Assert ($idx -eq 'src/thing.txt') "changed tree: expected src/thing.txt staged, got '$idx'"
+    }
+
+    # A retry on a later day keeps the CHANGELOG heads' original date (B-54), so the applied stamps in
+    # src/core/AGENTS.md and the framework-version.json overlays must carry that same date.
+    It 'step 2 stamps applied with the resolved CHANGELOG date, not today, on a later-day retry' {
+        $d = Join-Path ([IO.Path]::GetTempPath()) ("relstamp-" + [guid]::NewGuid().ToString('N'))
+        $script:scratch += $d
+        New-Item -ItemType Directory -Path (Join-Path $d 'src/core') -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $d 'src/core/AGENTS.md'), "---`nversion: 9.8.6`napplied: 2030-01-01`n---`n")
+        foreach ($s in 'dotnet', 'angular', 'monorepo') {
+            $fvDir = Join-Path $d "src/stacks/$s/files/.claude"
+            New-Item -ItemType Directory -Path $fvDir -Force | Out-Null
+            [IO.File]::WriteAllText((Join-Path $fvDir 'framework-version.json'), "{ `"version`": `"9.8.6`", `"applied`": `"2030-01-01`" }")
+        }
+        [IO.File]::WriteAllText((Join-Path $d 'README.md'), "Current shipped version is **v9.8.6**.`n")
+        $prelude = "`$repo = '$d'; `$Version = '9.8.7'; `$dists = @('dotnet','angular','monorepo'); `$today = '2031-02-04'; `$releaseDate = '2031-02-03'"
+        $r = Invoke-Region -Region $stampRegion -Prelude $prelude
+        Assert ($r.Exit -eq 0) "expected EXIT=0, got $($r.Exit): $($r.Out)"
+        $agents = [IO.File]::ReadAllText((Join-Path $d 'src/core/AGENTS.md'))
+        Assert ($agents -match '(?m)^applied:\s*2031-02-03\s*$') "AGENTS.md applied is not the resolved date 2031-02-03: $agents"
+        foreach ($s in 'dotnet', 'angular', 'monorepo') {
+            $j = [IO.File]::ReadAllText((Join-Path $d "src/stacks/$s/files/.claude/framework-version.json"))
+            Assert ($j -match '"applied": "2031-02-03"') "$s framework-version.json applied is not the resolved date 2031-02-03: $j"
+        }
+        Assert ($r.Out -match '\(2031-02-03\)') "the step-2 message does not name the resolved date: $($r.Out)"
+    }
+
     It 'a release touching only tracked locations passes, and prints a manifest' {
         $d = New-ScratchRepo; $script:scratch += $d
         Set-Content -LiteralPath (Join-Path $d 'src/thing.txt') -Value 'release change'

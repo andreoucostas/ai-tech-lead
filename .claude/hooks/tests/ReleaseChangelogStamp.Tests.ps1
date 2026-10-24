@@ -197,6 +197,26 @@ try {
         Assert ((@($mixed.Problems) -join "`n") -match 'mixed changelog head state') "mixed-state refusal did not name the defect: $(@($mixed.Problems) -join '; ')"
     }
 
+    It 'the review-ledger row carries the resolved CHANGELOG date, not today, on a later-day retry' {
+        Assert $reviewFunctionReady "release helper Test-ReleaseReviewRecord is missing or ambiguous (found $($reviewFunctionAst.Count))"
+        $ledgerStart = $releaseText.IndexOf('# ---- 4b.')
+        $ledgerEnd = $releaseText.IndexOf('# ---- 5. Commit')
+        Assert ($ledgerStart -ge 0 -and $ledgerEnd -gt $ledgerStart) 'cannot extract release.ps1 step 4b'
+        $region = $releaseText.Substring($ledgerStart, $ledgerEnd - $ledgerStart)
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('release-ledger-' + [guid]::NewGuid().ToString('N'))
+        $scratch.Add($root)
+        New-Item -ItemType Directory -Path (Join-Path $root 'meta') -Force | Out-Null
+        $ledgerPath = Join-Path $root 'meta/review-ledger.md'
+        [IO.File]::WriteAllText($ledgerPath, "| Release | Date | Evidence |`n|---|---|---|`n")
+        & {
+            param($repo, $Version, $ReviewEvidence, $today, $releaseDate, $body)
+            & ([scriptblock]::Create($body)) 6>&1 | Out-Null
+        } $root $version 'ordinary; reviewer none; a..b' '2031-02-04' $date $region
+        $row = @([IO.File]::ReadAllLines($ledgerPath) | Where-Object { $_ -match "^\| v$([regex]::Escape($version)) \|" })
+        Assert ($row.Count -eq 1) "expected one ledger row for v$version, got $($row.Count)"
+        Assert ($row[0] -match "^\| v$([regex]::Escape($version)) \| $date \|") "ledger row is not dated the resolved CHANGELOG date ${date}: $($row[0])"
+    }
+
     It 'the composed source/dist postcondition rejects any planted Unreleased head and accepts the fully dated world' {
         Assert $functionsReady ("release helper extraction failed; found $($functionAsts.Count) of $($functionNames.Count) functions")
         $root = New-ChangelogWorld -Head "## $version — $date" -IncludeDist
