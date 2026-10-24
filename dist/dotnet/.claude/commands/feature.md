@@ -43,6 +43,7 @@ Apply the Boy Scout Rule (AGENTS.md > Boy Scout Rule) to every file you modified
 
 ### Step 4 — Wrap up
 @.claude/workflow.md
+(If your host did not expand the line above, read `.claude/workflow.md` and apply it here.)
 
 ### Step 5 — Present
 Summarise what was implemented, what was tested, and any documentation drift to flag.

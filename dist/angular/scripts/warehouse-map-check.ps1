@@ -47,14 +47,22 @@ foreach ($line in $signalLines) {
 $hits = @($hits | Sort-Object -Unique)
 if ($hits.Count -lt 2) { Write-Output "WAREHOUSE_MAP not-applicable ($($hits.Count) independent signal(s))"; exit 0 }
 $map = Join-Path $rootPath 'docs/warehouse-map.md'
+# Name the remedy skill only where this repository has it; some stacks do not ship it.
+$mapSkill = Test-Path -LiteralPath (Join-Path $rootPath '.claude/skills/map-warehouse/SKILL.md') -PathType Leaf
 if (-not (Test-Path -LiteralPath $map -PathType Leaf)) {
-    Write-Output 'WAREHOUSE_MAP missing - run /map-warehouse or inspect the live schema before a warehouse write.'; exit 1
+    if ($mapSkill) { Write-Output 'WAREHOUSE_MAP missing - run /map-warehouse or inspect the live schema before a warehouse write.' }
+    else { Write-Output 'WAREHOUSE_MAP missing - inspect the live schema before a warehouse write.' }
+    exit 1
 }
 $mapTime = (Get-Item -LiteralPath $map).LastWriteTimeUtc
 # A scoped pass rewrites the file but reads only some objects, so the last full pass's stamp, when the
 # map carries one, is the freshness that counts; the earlier of the two times wins.
 $mapText = [IO.File]::ReadAllText($map)
-if ($mapText.Contains('<!-- warehouse-map full pass: none -->')) { Write-Output 'WAREHOUSE_MAP stale (no full pass yet) - run /map-warehouse for the whole warehouse before trusting rows a scoped pass did not write.'; exit 1 }
+if ($mapText.Contains('<!-- warehouse-map full pass: none -->')) {
+    if ($mapSkill) { Write-Output 'WAREHOUSE_MAP stale (no full pass yet) - run /map-warehouse for the whole warehouse before trusting rows a scoped pass did not write.' }
+    else { Write-Output 'WAREHOUSE_MAP stale (no full pass yet) - inspect the live schema before trusting rows a scoped pass did not write.' }
+    exit 1
+}
 $stamp = [regex]::Match($mapText, '<!-- warehouse-map full pass: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?Z) -->')
 if ($stamp.Success) {
     $fullPass = [DateTime]::MinValue

@@ -36,6 +36,7 @@ Apply Boy Scout Rule (AGENTS.md > Boy Scout Rule) to every file you touched.
 
 ### Step 6 — Wrap up
 @.claude/workflow.md
+(If your host did not expand the line above, read `.claude/workflow.md` and apply it here.)
 
 ### Step 7 — Present
 Before/after summary: what was refactored and why, what AGENTS.md patterns were applied, **net LOC delta**, test results or strongest evidenced validation confirming no behavior change (including why tests are **not available**), and any TECH_DEBT.md items resolved. Per the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness), a refactor that grows the codebase needs an explicit reason in the summary.

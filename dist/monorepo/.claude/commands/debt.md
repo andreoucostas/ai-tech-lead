@@ -39,6 +39,7 @@ Apply Boy Scout Rule (AGENTS.md > Boy Scout Rule) to every file touched during t
 
 ### Step 5 — Wrap up
 @.claude/workflow.md
+(If your host did not expand the line above, read `.claude/workflow.md` and apply it here.)
 
 ### Step 6 — Report
 - What was fixed and what was deferred (with reason)

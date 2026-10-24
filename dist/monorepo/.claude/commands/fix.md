@@ -34,6 +34,7 @@ Apply only the Boy Scout work permitted by Step 3. Do not boy-scout unrelated fi
 
 ### Step 6 — Wrap up
 @.claude/workflow.md
+(If your host did not expand the line above, read `.claude/workflow.md` and apply it here.)
 
 ### Step 7 — Report
 - Root cause: what was wrong and why

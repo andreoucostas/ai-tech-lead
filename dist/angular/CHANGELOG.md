@@ -86,6 +86,11 @@
 - **An update no longer fails when `LEARNINGS.md` is empty.** If your team emptied that file, the update used to stop with a
   raw error before showing its plan. It now treats an empty file as disabling no skills and leaves the file alone.
 
+- **The warehouse-map reminder only names a skill you have.** `warehouse-map-check.ps1` told you to run `/map-warehouse` even
+  where that skill is not installed; it now names the skill only when it is present and otherwise says to inspect the live
+  schema before a warehouse write. `/feature`, `/fix`, `/refactor` and `/debt` also end with a line telling a host that does
+  not expand `@` imports to read `.claude/workflow.md` for the self-review step.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
