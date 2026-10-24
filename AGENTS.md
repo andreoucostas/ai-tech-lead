@@ -66,7 +66,7 @@ Anyone may raise a tier; no one lowers one. A batch takes its highest member.
 
 ## Scope
 
-- Do the asked change only. An adjacent finding is a `meta/BACKLOG.md` entry (Records), not an edit.
+- Do the asked change only. An adjacent finding is a `meta/BACKLOG.md` entry or a WSD-106 close, not an edit.
 - No new script, test file, gate, record or document unless the task requires it; propose it in
   one line instead. Prefer deleting to adding.
 - An escaped defect — one that reached a tag, or a gate that was green on a wrong artifact — gets
