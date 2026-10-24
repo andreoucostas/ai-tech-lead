@@ -369,6 +369,100 @@ try {
             }
         }
     }
+
+    # A V4A patch and Copilot's edit name files repository-relative, with no './' in front: a bare
+    # 'src/app/probe.ts' has no character before 'src', so a gate that wants '/src/' drops it unchecked.
+    if ($hookText -notmatch 'tsc --noEmit') {
+        Skip 'a repository-relative src path with no ./ is type-checked on every write shape' 'this post-write carries no Angular branch' -Invariant
+    } else {
+        It 'a repository-relative src path with no ./ is type-checked on every write shape' {
+            foreach ($probe in 'src/app/probe.ts', 'src/app/probe.component.html') {
+                $relWorld = @{ Name = 'ngc'; Shim = 'npx.cmd'; Probe = $probe }
+                $null = Reset-BuildWorld $relWorld "@echo simulated type failure 1>&2`r`n@exit /b 1`r`n"
+                $patch = "*** Begin Patch`n*** Add File: notes.txt`n+hello`n*** Update File: $probe`n@@`n-probe`n+probe 2`n*** End Patch`n"
+                $oldPath = $env:PATH
+                try {
+                    $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
+                    foreach ($shape in 'hooks.json', '.claude/settings.json') {
+                        Remove-Item -LiteralPath (Join-Path $tmp '.claude/.state') -Recurse -Force -ErrorAction SilentlyContinue
+                        $result = Invoke-Hook $postWrite (New-PatchEvent $shape $patch)
+                        if ($shape -eq 'hooks.json') {
+                            Assert ($result.Exit -eq 0 -and $result.Out -match '"additionalContext"' -and $result.Out -match 'failed -- fix before continuing') "${probe} apply_patch ($shape): expected exit 0 with the failure as additionalContext, got exit $($result.Exit), stdout: $($result.Out.Trim())"
+                        } else {
+                            Assert ($result.Exit -eq 2 -and $result.Err -match 'failed -- fix before continuing') "${probe} apply_patch ($shape): expected exit 2 with the failure on stderr, got exit $($result.Exit), stderr: $($result.Err.Trim())"
+                        }
+                    }
+                    Remove-Item -LiteralPath (Join-Path $tmp '.claude/.state') -Recurse -Force -ErrorAction SilentlyContinue
+                    $copilot = Invoke-Hook $postWrite ('{"toolName":"edit","toolArgs":{"path":"' + $probe + '","new_str":"probe 2"}}')
+                    Assert ($copilot.Exit -eq 0 -and $copilot.Out -match '"additionalContext"' -and $copilot.Out -match 'failed -- fix before continuing') "${probe} Copilot edit: expected exit 0 with the failure as additionalContext, got exit $($copilot.Exit), stdout: $($copilot.Out.Trim())"
+                } finally { $env:PATH = $oldPath }
+            }
+        }
+    }
+
+    # The repository is the folder that holds the hook. A solution, tsconfig or node_modules in a folder
+    # above it belongs to something else: the walk from the written file stops at the repository root.
+    $outerRoot = Join-Path $tmp 'umbrella'
+    function Reset-Umbrella {
+        Remove-Item -LiteralPath $outerRoot -Recurse -Force -ErrorAction SilentlyContinue
+        foreach ($folder in 'shop', 'shim') { [void][IO.Directory]::CreateDirectory((Join-Path $outerRoot $folder)) }
+    }
+    if ($hookText -notmatch 'dotnet build') {
+        Skip 'a project walk stops at the repository root, so an umbrella solution above it is never built' 'this post-write carries no dotnet branch' -Invariant
+    } else {
+        It 'a project walk stops at the repository root, so an umbrella solution above it is never built' {
+            Reset-Umbrella
+            $repo = Join-Path $outerRoot 'shop'
+            [void][IO.Directory]::CreateDirectory((Join-Path $repo 'src/Api'))
+            [IO.File]::WriteAllText((Join-Path $repo 'src/Api/Api.csproj'), '<Project Sdk="Microsoft.NET.Sdk" />')
+            [IO.File]::WriteAllText((Join-Path $repo 'src/Api/Foo.cs'), 'class Foo {}')
+            [IO.File]::WriteAllText((Join-Path $outerRoot 'All.sln'), 'Microsoft Visual Studio Solution File`nProject = "Other\Other.csproj"')
+            $argsFile = Join-Path $outerRoot 'dotnet-args'
+            [IO.File]::WriteAllText((Join-Path $outerRoot 'shim/dotnet.cmd'), "@echo %*> `"%POSTWRITE_ARGS%`"`r`n@echo simulated build failure 1>&2`r`n@exit /b 1`r`n")
+            $hook = Copy-HookInto (Join-Path $hooks 'post-write.ps1') $repo
+            $oldPath = $env:PATH; $oldArgs = $env:POSTWRITE_ARGS
+            try {
+                $env:PATH = (Join-Path $outerRoot 'shim') + [IO.Path]::PathSeparator + $oldPath
+                $env:POSTWRITE_ARGS = $argsFile
+                $writeEvent = @{ tool_name = 'Edit'; tool_input = @{ file_path = (Join-Path $repo 'src\Api\Foo.cs'); old_string = 'Foo'; new_string = 'Bar' } } | ConvertTo-Json -Compress
+                $result = Invoke-Hook $hook $writeEvent
+                $ran = if (Test-Path -LiteralPath $argsFile) { [IO.File]::ReadAllText($argsFile).Trim() } else { '' }
+                Assert ($ran -match 'Api\.csproj' -and $ran -notmatch 'All\.sln') "the build did not target the repository's own project: dotnet $ran"
+                Assert ($result.Exit -eq 2) "the failing build of the repository's project was not reported: exit $($result.Exit), stderr $($result.Err.Trim())"
+            } finally { $env:PATH = $oldPath; $env:POSTWRITE_ARGS = $oldArgs }
+        }
+    }
+    if ($hookText -notmatch 'tsc --noEmit') {
+        Skip 'a workspace walk stops at the repository root, so a tsconfig or node_modules above it is never used' 'this post-write carries no Angular branch' -Invariant
+    } else {
+        It 'a workspace walk stops at the repository root, so a tsconfig or node_modules above it is never used' {
+            foreach ($above in 'tsconfig', 'node_modules') {
+                Reset-Umbrella
+                $repo = Join-Path $outerRoot 'shop'
+                [void][IO.Directory]::CreateDirectory((Join-Path $repo 'src/app'))
+                [IO.File]::WriteAllText((Join-Path $repo 'src/app/probe.ts'), 'probe')
+                if ($above -eq 'tsconfig') {
+                    [void][IO.Directory]::CreateDirectory((Join-Path $outerRoot 'node_modules'))
+                    [IO.File]::WriteAllText((Join-Path $outerRoot 'tsconfig.json'), '{}')
+                } else {
+                    [IO.File]::WriteAllText((Join-Path $repo 'tsconfig.json'), '{}')
+                    [void][IO.Directory]::CreateDirectory((Join-Path $outerRoot 'node_modules'))
+                }
+                $sentinel = Join-Path $outerRoot 'npx-invoked'
+                [IO.File]::WriteAllText((Join-Path $outerRoot 'shim/npx.cmd'), "@echo invoked> `"%POSTWRITE_NPX_SENTINEL%`"`r`n@echo simulated type failure 1>&2`r`n@exit /b 1`r`n")
+                $hook = Copy-HookInto (Join-Path $hooks 'post-write.ps1') $repo
+                $oldPath = $env:PATH; $oldSentinel = $env:POSTWRITE_NPX_SENTINEL
+                try {
+                    $env:PATH = (Join-Path $outerRoot 'shim') + [IO.Path]::PathSeparator + $oldPath
+                    $env:POSTWRITE_NPX_SENTINEL = $sentinel
+                    $writeEvent = @{ tool_name = 'Write'; tool_input = @{ file_path = (Join-Path $repo 'src\app\probe.ts'); content = 'probe' } } | ConvertTo-Json -Compress
+                    $result = Invoke-Hook $hook $writeEvent
+                    Assert (-not (Test-Path -LiteralPath $sentinel)) "a $above above the repository was used: the type-check ran (exit $($result.Exit))"
+                    Assert ((Get-Decision $result) -eq 'ALLOW') "a $above above the repository blocked the write: $($result.Err.Trim())"
+                } finally { $env:PATH = $oldPath; $env:POSTWRITE_NPX_SENTINEL = $oldSentinel }
+            }
+        }
+    }
 } finally {
     Pop-Location
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

@@ -1,5 +1,5 @@
 {
-  "_comment": "Windows PowerShell 5.1 fallback settings. Copy to settings.json (team-wide) or settings.local.json (per-developer) only when PowerShell 7 is unavailable. Windows is the supported execution platform. Each hook sets cwd \".\" (the repository root) because Copilot CLI and VS Code's Copilot harness also run this file, and could otherwise start a hook in a subfolder workspace, where its relative script path fails.",
+  "_comment": "Windows PowerShell 5.1 fallback settings. Only when PowerShell 7 is unavailable, copy this over .claude/settings.json (it replaces that file, as the installer does when pwsh is missing); Claude Code runs the hooks of settings.local.json in addition to settings.json's, so a copy there would run every hook twice or fail the pwsh ones. Windows is the supported execution platform. Each hook sets cwd \".\" (the repository root) because Copilot CLI and VS Code's Copilot harness also run this file, and could otherwise start a hook in a subfolder workspace, where its relative script path fails.",
   "env": {
     "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
   },

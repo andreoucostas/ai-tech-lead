@@ -42,4 +42,23 @@ It 'old epoch approach overflows under a comma-decimal culture; new approach yie
     }
 }
 
+# --- The bounded tool's budget is read by Get-PostWriteBudget, lifted out of the shipped hook by its AST.
+# The host kills the hook at 90 s (Claude Code) / 120 s (Copilot): a larger knob value would be cut by the
+# host before the hook's own kill, so it is clamped to 80. Exactly one bounded tool call runs per hook run,
+# so the per-call clamp is the clamp for the run.
+It 'ATL_POSTWRITE_BUDGET_SEC above 80 is clamped to 80, and the default and non-numbers keep 45' {
+    $ast = [Management.Automation.Language.Parser]::ParseFile($hookPs, [ref]$null, [ref]$null)
+    $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-PostWriteBudget' }, $true)
+    Assert ($null -ne $fn) 'post-write.ps1 has no Get-PostWriteBudget: the accepted ATL_POSTWRITE_BUDGET_SEC range cannot be observed or bounded'
+    . ([scriptblock]::Create($fn.Extent.Text))
+    $old = $env:ATL_POSTWRITE_BUDGET_SEC
+    try {
+        foreach ($case in @(@('300', 80), @('600', 80), @('81', 80), @('80', 80), @('30', 30), @('1', 1), @('0', 45), @('601', 80), @('-5', 45), @('abc', 45), @('', 45))) {
+            $env:ATL_POSTWRITE_BUDGET_SEC = $case[0]
+            $got = Get-PostWriteBudget
+            Assert ($got -eq $case[1]) "ATL_POSTWRITE_BUDGET_SEC='$($case[0])': expected an effective budget of $($case[1]), got $got"
+        }
+    } finally { $env:ATL_POSTWRITE_BUDGET_SEC = $old }
+}
+
 exit (Write-TestSummary 'PostWrite.Tests (epoch)')

@@ -83,6 +83,16 @@
 - **An update no longer fails when `LEARNINGS.md` is empty.** If your team emptied that file, the update used to stop with a
   raw error before showing its plan. It now treats an empty file as disabling no skills and leaves the file alone.
 
+- **The post-write build and type-check now see the files they were skipping, and stop at your repository.** The Angular
+  type-check ignored a repository-relative path such as `src/app/x.ts`, which is how a GPT model on Copilot names every
+  file it writes, so those writes were never checked; they are now. The .NET build, and the Angular type-check, looked for
+  a solution, `tsconfig.json` or `node_modules` all the way up to the drive root, so a solution in a folder above your clone
+  was built in place of your own project; they now look no higher than the repository root. `ATL_POSTWRITE_BUDGET_SEC`
+  accepts whole seconds, and a value above 80 counts as 80, because the agent host stops the hook at 90 seconds on Claude Code
+  (120 on Copilot) and a longer build was cut off before the hook could report. The Windows PowerShell 5.1 fallback
+  `settings.windows.json` now says to copy it over `.claude/settings.json`, not into `settings.local.json`: Claude Code runs
+  the hooks of both files, so a copy there ran every hook twice.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

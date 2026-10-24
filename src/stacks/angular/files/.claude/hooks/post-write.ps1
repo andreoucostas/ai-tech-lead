@@ -9,17 +9,21 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
-# Bounded build/type-check. The agent host waits for this hook (Claude Code's default hook timeout is
-# 600 s), so the tool runs as a child process for at most the budget: 45 s, or
-# ATL_POSTWRITE_BUDGET_SEC (whole seconds, 1-600) when set in the hook's environment. On expiry the
-# whole process tree is killed. Returns $null when the result is unknown -- no launchable tool, a
+# Bounded build/type-check. The agent host waits for this hook but kills it at the registered timeout
+# (90 s on Claude Code, 120 s on Copilot), so the tool runs as a child process for at most the budget:
+# 45 s, or ATL_POSTWRITE_BUDGET_SEC (whole seconds; 80 at most, a larger value counts as 80 so the run
+# ends before the 90 s registration) when set in the hook's environment. A run makes one bounded call.
+# On expiry the whole process tree is killed. Returns $null when the result is unknown -- no launchable tool, a
 # failed launch, or an exceeded budget -- so an unverified build is never reported as broken.
-function Invoke-BoundedTool([string]$Name, [string[]]$Arguments, [string]$WorkDir) {
-    $budget = 45
+function Get-PostWriteBudget {
     $requested = 0
-    if ([int]::TryParse([string]$env:ATL_POSTWRITE_BUDGET_SEC, [ref]$requested) -and $requested -ge 1 -and $requested -le 600) {
-        $budget = $requested
+    if ([int]::TryParse([string]$env:ATL_POSTWRITE_BUDGET_SEC, [ref]$requested) -and $requested -ge 1) {
+        return [Math]::Min($requested, 80)
     }
+    return 45
+}
+function Invoke-BoundedTool([string]$Name, [string[]]$Arguments, [string]$WorkDir) {
+    $budget = Get-PostWriteBudget
     $deadline = [DateTime]::UtcNow.AddSeconds($budget)
     # Only files CreateProcess starts directly: `npx` also resolves to an extensionless shell script
     # and to npx.ps1, neither of which Process.Start can launch.
@@ -68,6 +72,9 @@ function Invoke-BoundedTool([string]$Name, [string[]]$Arguments, [string]$WorkDi
 # to a non-literal Test-Path a folder name such as 'Dev [App]' is a wildcard pattern.
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 Set-Location -LiteralPath $repoRoot
+# The walks below look for a solution, tsconfig or node_modules from the written file up to this folder and
+# no further: one above the repository belongs to something else.
+$repoRootTrim = $repoRoot.TrimEnd('\')
 $stateDir = Join-Path $repoRoot '.claude\.state'
 [void][IO.Directory]::CreateDirectory($stateDir)
 
@@ -141,7 +148,7 @@ if ([string]::IsNullOrEmpty($filePath) -and $patchPaths.Count -eq 0 -and $env:CL
 function Test-CheckInput([string]$Path) {
     $n = $Path -replace '\\', '/'
     if ($n -match '(^|/)tsconfig[^/]*\.json$') { return $true }
-    return ($n -match '/src/') -and ($Path -like '*.ts' -or ($Path -like '*.html' -and $n -notmatch '(^|/)index\.html$'))
+    return ($n -match '(^|/)src/') -and ($Path -like '*.ts' -or ($Path -like '*.html' -and $n -notmatch '(^|/)index\.html$'))
 }
 $filePath = @(@($filePath) + $patchPaths | Where-Object { $_ -and (Test-CheckInput $_) })[0]
 if (-not $filePath) { exit 0 }
@@ -160,6 +167,7 @@ while ($probe) {
     if ((Test-Path -LiteralPath (Join-Path $probe 'tsconfig.app.json')) -or (Test-Path -LiteralPath (Join-Path $probe 'tsconfig.json'))) {
         $workspace = $probe; break
     }
+    if ($probe.TrimEnd('\') -ieq $repoRootTrim) { break }
     $parent = Split-Path -Parent $probe
     if ($parent -eq $probe) { break }
     $probe = $parent
@@ -178,6 +186,7 @@ $hasModules = $false
 $mp = $workspace
 while ($mp) {
     if (Test-Path -LiteralPath (Join-Path $mp 'node_modules')) { $hasModules = $true; break }
+    if ($mp.TrimEnd('\') -ieq $repoRootTrim) { break }
     $parent = Split-Path -Parent $mp
     if ($parent -eq $mp) { break }
     $mp = $parent
