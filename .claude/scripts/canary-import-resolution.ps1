@@ -67,14 +67,24 @@ Do NOT read, search, glob, or grep any file. If it is not already in your contex
 "@
 
 $transcript = Join-Path $root 'transcript.jsonl'
-$args = @('-p', $prompt, '--model', $Model, '--output-format', 'stream-json', '--verbose',
-          '--dangerously-skip-permissions', '--no-session-persistence', '--max-budget-usd', '0.30')
+$claudeArgs = @('-p', $prompt, '--model', $Model, '--output-format', 'stream-json', '--verbose',
+                '--dangerously-skip-permissions', '--no-session-persistence', '--max-budget-usd', '0.30')
 
-Push-Location $root
-try {
-    $out = & claude @args 2>&1
-    $out | Set-Content -Path $transcript -Encoding utf8NoBOM
-} finally { Pop-Location }
+# A job bounds the call; a hung CLI is "could not examine", never a verdict on the treatment.
+$job = Start-Job -ScriptBlock {
+    param($a, $wd)
+    Set-Location $wd
+    & claude @a 2>&1 | ForEach-Object { [string]$_ }
+} -ArgumentList $claudeArgs, $root
+$done = Wait-Job $job -Timeout $TimeoutSeconds
+$out = if ($done) { @(Receive-Job $job) } else { @() }
+Remove-Job $job -Force -ErrorAction SilentlyContinue
+if (-not $done) {
+    Write-Host "VERDICT: INCONCLUSIVE - the CLI did not finish within $TimeoutSeconds s; nothing was examined."
+    Write-Host "Fixture kept for inspection: $root"
+    exit 2
+}
+$out | Set-Content -Path $transcript -Encoding utf8NoBOM
 
 $raw = ($out | Out-String)
 

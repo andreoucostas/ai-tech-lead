@@ -70,8 +70,20 @@ foreach ($arm in $arms) {
 
     $claudeArgs = @('-p', $prompt, '--model', $Model, '--output-format', 'stream-json', '--verbose',
                     '--dangerously-skip-permissions', '--no-session-persistence', '--max-budget-usd', '0.30')
-    Push-Location $root
-    try { $out = & $ClaudeCmd @claudeArgs 2>&1 } finally { Pop-Location }
+    # A job bounds the call; a hung CLI is "could not examine", never a verdict on the subject.
+    $job = Start-Job -ScriptBlock {
+        param($cmd, $a, $wd)
+        Set-Location $wd
+        & $cmd @a 2>&1 | ForEach-Object { [string]$_ }
+    } -ArgumentList $ClaudeCmd, $claudeArgs, $root
+    $done = Wait-Job $job -Timeout $TimeoutSeconds
+    $out = if ($done) { @(Receive-Job $job) } else { @() }
+    Remove-Job $job -Force -ErrorAction SilentlyContinue
+    if (-not $done) {
+        Write-Host "[$($arm.Name)] TIMEOUT after $TimeoutSeconds s"
+        Write-Host "VERDICT: INCONCLUSIVE - the CLI did not finish within $TimeoutSeconds s in arm $($arm.Name); nothing was examined."
+        exit 2
+    }
     $out | Set-Content -Path (Join-Path $root 'transcript.jsonl') -Encoding utf8NoBOM
     $raw = ($out | Out-String)
 

@@ -73,6 +73,7 @@ $results = foreach ($a in $arms) {
         ApplyTo  = if ($a.ApplyTo) { $a.ApplyTo } else { '(none)' }
         Hit      = $out -match [regex]::Escape($a.Sentinel)
         NotInCtx = $out -match 'NOT-IN-CONTEXT'
+        ToolUsed = $out -match '(?i)\b(reading|read file|glob|grep|searching)\b'
     }
 }
 
@@ -82,8 +83,12 @@ $star   = ($results | Where-Object Arm -eq 'star').Hit
 $narrow = ($results | Where-Object Arm -eq 'narrow').Hit
 $none   = ($results | Where-Object Arm -eq 'none').Hit
 
+$toolHit = @($results | Where-Object { $_.Hit -and $_.ToolUsed }).Count -gt 0
+
 Write-Host '=== VERDICT ==='
-if (-not $star) {
+if ($toolHit) {
+    Write-Host 'INCONCLUSIVE - a hit came with a file-tool use, so it is not attributable to the instruction surface.'; $code = 2
+} elseif (-not $star) {
     Write-Host 'INVALID — the "**" control did not deliver; do not interpret the other arms.'; $code = 3
 } elseif (-not $narrow) {
     Write-Host 'BREADTH IS LOAD-BEARING — a narrow applyTo does NOT deliver on a fileless prompt.'
