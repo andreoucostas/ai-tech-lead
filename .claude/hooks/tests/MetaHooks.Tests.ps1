@@ -103,41 +103,54 @@ Reset-Tests
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("metahooks-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmp -Force | Out-Null
 try {
-    # bom-fix: scoped to ai-tech-lead/ paths (the merged repo — WSD-012 D7), idempotent,
-    # content-preserving, .ps1-only.
-    $repoish = Join-Path $tmp 'ai-tech-lead\sub'; New-Item -ItemType Directory -Path $repoish -Force | Out-Null
-    $other   = Join-Path $tmp 'other';            New-Item -ItemType Directory -Path $other   -Force | Out-Null
+    # bom-fix: scoped to the repository root the running hook copy lives in ($PSScriptRoot\..\..), not to
+    # any path that merely contains "ai-tech-lead\"; idempotent, content-preserving, .ps1-only. The
+    # in-root cases run a fixture copy of the hook so the fixture tree is the root; the tree sits under an
+    # ai-tech-lead\ folder so the in-root case also holds on the old name-based rule.
+    $fx = Join-Path $tmp 'ai-tech-lead\fx'
+    New-Item -ItemType Directory -Path (Join-Path $fx '.claude\hooks') -Force | Out-Null
+    $repoish = Join-Path $fx 'scripts'; New-Item -ItemType Directory -Path $repoish -Force | Out-Null
+    $fxHook  = Join-Path $fx '.claude\hooks\bom-fix.ps1'
+    Copy-Item -LiteralPath $bomfix -Destination $fxHook
+    $other   = Join-Path $tmp 'other'; New-Item -ItemType Directory -Path $other -Force | Out-Null
 
-    It 'bom-fix adds a BOM to a bomless .ps1 under an ai-tech-lead/ path, content intact' {
+    It 'bom-fix adds a BOM to a bomless .ps1 inside the repository root its hook copy lives in, content intact' {
         $f = Join-Path $repoish 'x.ps1'; Write-NoBom $f "exit 0`n"
-        $r = Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        $r = Invoke-Hook $fxHook (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
         Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
         Assert (Test-Bom $f) 'BOM was not added'
         Assert (([IO.File]::ReadAllText($f)).Trim() -eq 'exit 0') 'content changed'
     }
+    It 'bom-fix leaves a bomless .ps1 under a shop-ai-tech-lead folder outside its repository root untouched' {
+        $shop = Join-Path $tmp 'shop-ai-tech-lead'; New-Item -ItemType Directory -Path $shop -Force | Out-Null
+        $f = Join-Path $shop 'x.ps1'; Write-NoBom $f "exit 0`n"
+        $r = Invoke-Hook $fxHook (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
+        Assert (-not (Test-Bom $f)) 'a path that only contains ai-tech-lead\ is not this repository; a BOM added there hides a BOM-less 5.1 mis-parse in a scratch repro'
+    }
     It 'bom-fix is idempotent (already-BOM .ps1 unchanged)' {
         $f = Join-Path $repoish 'y.ps1'; [IO.File]::WriteAllText($f, "exit 0`n", (New-Object System.Text.UTF8Encoding($true)))
         $before = [IO.File]::ReadAllBytes($f).Length
-        $r = Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        $r = Invoke-Hook $fxHook (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
         Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
         Assert ([IO.File]::ReadAllBytes($f).Length -eq $before) 'idempotent run changed the file'
     }
-    It 'bom-fix leaves a .ps1 OUTSIDE ai-tech-lead/ untouched (scope guard)' {
+    It 'bom-fix leaves a .ps1 outside its repository root untouched (scope guard)' {
         $f = Join-Path $other 'z.ps1'; Write-NoBom $f "exit 0`n"
-        $r = Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        $r = Invoke-Hook $fxHook(@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
         Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
         Assert (-not (Test-Bom $f)) 'should not have touched a file outside the repo'
     }
     It 'bom-fix does not fire on the LEGACY repo names (ai-tech-lead-dotnet is out of scope now)' {
         $legacy = Join-Path $tmp 'ai-tech-lead-dotnet'; New-Item -ItemType Directory -Path $legacy -Force | Out-Null
         $f = Join-Path $legacy 'l.ps1'; Write-NoBom $f "exit 0`n"
-        $r = Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        $r = Invoke-Hook $fxHook(@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
         Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
         Assert (-not (Test-Bom $f)) 'legacy repos are frozen — the hook must not rewrite them'
     }
     It 'bom-fix ignores non-.ps1 files' {
         $f = Join-Path $repoish 'note.txt'; Write-NoBom $f 'hi'
-        $r = Invoke-Hook $bomfix (@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
+        $r = Invoke-Hook $fxHook(@{tool_name='Write';tool_input=@{file_path=$f}} | ConvertTo-Json -Compress)
         Assert ($null -ne $r -and $r.Exit -eq 0) "bom-fix exited $(if($null -eq $r){'SKIP'}else{$r.Exit}) -- a hook that fails is not a hook that declined"
         Assert (-not (Test-Bom $f)) 'should not have rewritten a .txt'
     }

@@ -18,10 +18,17 @@ if ($obj.tool_input) {
 }
 if ([string]::IsNullOrEmpty($filePath)) { exit 0 }
 
-# Only .ps1 files, only under this repo (the don't-ship boundary works the other way here:
-# we only touch framework files, never the maintainer's own files elsewhere).
+# Only .ps1 files, only inside the repository this hook copy belongs to (.claude\hooks\..\..; a
+# worktree has its own copy, so its root is the worktree). A path that merely contains
+# "ai-tech-lead\" -- a session scratchpad, another clone -- is not this repo and keeps its bytes,
+# so a BOM-less repro there still fails on 5.1 as it would for a consumer.
 if ($filePath -notmatch '\.ps1$') { exit 0 }
-if ($filePath -notmatch 'ai-tech-lead[\\/]') { exit 0 }
+try {
+    $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..')).TrimEnd('\', '/')
+    $full = [System.IO.Path]::GetFullPath($filePath)
+} catch { exit 0 }
+if (-not $full.StartsWith($root + '\', [System.StringComparison]::OrdinalIgnoreCase)) { exit 0 }
+$filePath = $full
 if (-not (Test-Path -LiteralPath $filePath)) { exit 0 }
 
 try {
