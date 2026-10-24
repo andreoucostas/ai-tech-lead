@@ -173,7 +173,7 @@ try {
         $mangled = @(
             'C:/Program Files/Git/bootstrap and /adopt docs',
             'ordinary: ran C:\Program Files\Git\usr\bin tool',
-            'ordinary: path C:/Users/me/repo/review became a file',
+            'ordinary: path C:/work/me/repo/review became a file',
             'ordinary: D:\work\x\fix was expanded',
             'ordinary: "C:/Program Files/Git/map-warehouse" substituted'
         )

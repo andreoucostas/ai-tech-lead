@@ -198,7 +198,7 @@ and `review-scope.ps1` (~142, ~193-195, ~233-235, ~264) do not, so with `GIT_LIT
 Plan `.claude/plans/2026-10-23-bug-hunt-2-b463.md` holds every finding with its `path:line`, repro, fix and red case, in three groups: G1 `guard.ps1` (step 4; the credential exemption reads the absolute path, so `C:\Projects\test\repo` or `D:\Development\repo` disables it), G2 `audit-trail.ps1` and `session-start.ps1` (guarded), G3 the seven ordinary scripts.
 Adjacent, outside the batch: `src/core/scripts/template-checks.ps1` has the same `Set-Location` without `-LiteralPath` as G3 item 2 (B-460 touched that file today) and dies at a repository path containing `[`; `test-weakening-scan.ps1` (:25, :32, :77) and `warehouse-map-check.ps1` (:20) still test the bare `ReparsePoint` attribute, which B-464 C4 replaced in the other four scripts, so a OneDrive folder reads as a link there.
 
-### B-464 · Bug-hunt batch 3: three leftovers after the batch fixed or closed the other findings
+### B-464 · Bug-hunt batch 3: three leftovers of the 2026-10-24 batch
 **Filed against:** v0.98.2 (2026-10-24)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
 **Status:** Open, narrowed 2026-10-24; plan `.claude/plans/2026-10-24-bug-hunt-3-b464.md`. (1) Step 4 for the installer commit that fixed the fresh-session attack's findings on C5 (a greenfield stopped late re-ran as brownfield; the re-run line dropped override flags) ran no second attack: the maintainer reads that diff.
