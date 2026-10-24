@@ -36,7 +36,11 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    Without PowerShell 7, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File` instead of
    `pwsh -NoProfile -File`. Review every `PLAN` line, especially `replace` and `delete`, and inspect
    `create`. A preview lists file operations only: it is not a content diff, does not compare final
-   settings, skips the dirty-tree check, and does not prove the real update will pass. A protected path
+   settings, and does not prove the real update will pass. It runs the same Git checks as the real
+   update, but only reports a refusal: on a tree the update would refuse (uncommitted changes, say)
+   it prints `dry run: the real run would refuse: ...` and exits 4 instead of 0, and a `-Stack` that
+   differs from the stamp's stack is refused the same way (`-AllowStackChange` moves to the other stack
+   on purpose; the files only the old stack shipped stay in place, unowned). A protected path
    that is missing receives a template; if one of your populated files is unexpectedly missing,
    recover it before applying rather than accept a placeholder as project policy.
 

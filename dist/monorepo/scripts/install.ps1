@@ -1,5 +1,5 @@
 ﻿# Install the AI Tech Lead Framework into a target repository.
-# Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] [-AllowOutdated] C:\path\to\target-repo
+# Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] [-AllowOutdated] [-AllowStackChange] C:\path\to\target-repo
 #
 # Before it changes anything, it asks the remote of the framework clone it runs from whether that
 # clone is out of date: a newer vX.Y.Z release tag than this copy's version, or an upstream branch this
@@ -28,7 +28,8 @@ param(
     [switch]$AllowDirtyTree,
     [switch]$WhatIf,
     [switch]$AllowDowngrade,
-    [switch]$AllowOutdated
+    [switch]$AllowOutdated,
+    [switch]$AllowStackChange
 )
 $ErrorActionPreference = 'Stop'
 $followUpPowerShell = if ($PSVersionTable.PSVersion.Major -ge 7) {
@@ -388,7 +389,8 @@ try {
 
 $incomingVersionPath = Join-Path $src '.claude/framework-version.json'
 try {
-    $incomingVersion = [string](Get-Content -Raw -LiteralPath $incomingVersionPath | ConvertFrom-Json).version
+    $incomingStamp = Get-Content -Raw -LiteralPath $incomingVersionPath | ConvertFrom-Json
+    $incomingVersion = [string]$incomingStamp.version
     [void](Compare-ReleaseVersion -Left $incomingVersion -Right $incomingVersion)
 } catch {
     [Console]::Error.WriteLine("ERROR: Cannot validate incoming framework version: $($_.Exception.Message)")
@@ -403,7 +405,8 @@ if ($sourceFreshness.State -eq 'outdated' -and -not $AllowOutdated) {
 }
 if ($updateMode) {
     try {
-        $installedVersion = [string](Get-Content -Raw -LiteralPath (Join-Path $tgt '.claude/framework-version.json') | ConvertFrom-Json).version
+        $installedStamp = Get-Content -Raw -LiteralPath (Join-Path $tgt '.claude/framework-version.json') | ConvertFrom-Json
+        $installedVersion = [string]$installedStamp.version
         $versionComparison = Compare-ReleaseVersion -Left $installedVersion -Right $incomingVersion
     } catch {
         [Console]::Error.WriteLine("CANT-VERIFY: Installed framework version cannot be compared safely: $($_.Exception.Message)")
@@ -412,6 +415,17 @@ if ($updateMode) {
     if ($versionComparison -gt 0 -and -not $AllowDowngrade) {
         [Console]::Error.WriteLine("ERROR: Refusing framework downgrade from $installedVersion to $incomingVersion before mutation. Re-run with -AllowDowngrade only after reviewing the older release.")
         exit 4
+    }
+    # Both stamps name a stack: a different one is a switch, not an update. The old stack's files would stay live but
+    # unowned, so no later update would refresh or remove them. A stamp without a template names no stack to compare.
+    $stackChange = $null
+    if ($installedStamp.template -is [string] -and $incomingStamp.template -is [string] -and
+        $installedStamp.template.Length -gt 0 -and $incomingStamp.template.Length -gt 0 -and $installedStamp.template -cne $incomingStamp.template) {
+        $stackChange = "$($installedStamp.template) to $($incomingStamp.template)"
+        if (-not $AllowStackChange) {
+            [Console]::Error.WriteLine("ERROR: Refusing to change this install's stack from $stackChange before mutation: its .claude/framework-version.json names $($installedStamp.template), and this release is $($incomingStamp.template). If the stack was a mistake, run the $($installedStamp.template) installer (the root install.ps1 reads it from the stamp when -Stack is not given). To move to $($incomingStamp.template) on purpose, re-run with -AllowStackChange: the files only the $($installedStamp.template) release ships stay in place, and no later update refreshes or removes them. Nothing was changed.")
+            exit 4
+        }
     }
 }
 
@@ -509,6 +523,16 @@ if ($updateMode) {
                 }
                 $deletePlan.Add($retiredPath)
             }
+        }
+    }
+    if ($stackChange) {
+        $staysNote = "They stay in place, and no later update refreshes or removes them: delete the ones you do not want."
+        if ($previous) {
+            [string[]]$dropped = @($previous.Entries | Where-Object { [string]$_.ownership -ceq 'framework-owned/overwritten' -and -not $incoming.ByPath.ContainsKey([string]$_.path) -and -not $retirementLedger.ContainsKey([string]$_.path) } | ForEach-Object { [string]$_.path })
+            [Array]::Sort($dropped, [StringComparer]::Ordinal)
+            $reconciliationMessages.Add("NOTICE: -AllowStackChange accepted for $stackChange. The $($installedStamp.template) release owned $($dropped.Count) path(s) this release does not ship: $($dropped -join ', '). $staysNote")
+        } else {
+            $reconciliationMessages.Add("NOTICE: -AllowStackChange accepted for $stackChange. The previous framework-ownership.json could not be used, so the paths only the $($installedStamp.template) release shipped cannot be listed. $staysNote")
         }
     }
 }
@@ -815,9 +839,17 @@ function Protect-BackupResidue {
     return "  CANT-VERIFY: $done$seen$because, which may hold copies of files you had gitignored. Do not commit that folder: commit or stash only your own changes.$(if (-not $wrote) { ' Nothing was changed.' })"
 }
 
-function Stop-UnverifiableGitPreflight {
-    [Console]::Error.WriteLine('CANT-VERIFY: Git state for this update/brownfield target could not be verified safely. Unset Git routing variables, install or repair Git, or repair/remove corrupt repository metadata, then re-run the installer.')
+# The Git preflight's refusal. A real run prints it and exits 4. A dry run changes nothing, so it keeps the line and unwinds
+# to the preflight's catch; the plan is still printed, then the line, and the dry run exits 4 as the real run would.
+$script:DryRunRefusal = @()
+function Stop-GitPreflight {
+    param([Parameter(Mandatory = $true)][string[]]$Line)
+    if ($WhatIf) { $script:DryRunRefusal = $Line; throw 'ATL-DRY-RUN-REFUSED' }
+    foreach ($text in $Line) { [Console]::Error.WriteLine($text) }
     exit 4
+}
+function Stop-UnverifiableGitPreflight {
+    Stop-GitPreflight -Line 'CANT-VERIFY: Git state for this update/brownfield target could not be verified safely. Unset Git routing variables, install or repair Git, or repair/remove corrupt repository metadata, then re-run the installer.'
 }
 
 # The opt-in pre-commit convenience net was never installer-owned: it lives under .git, outside the
@@ -1439,44 +1471,49 @@ foreach ($relative in @($protectedReferenceCandidates | Sort-Object)) {
 # reinterpreted as non-Git. Refuse before mutation unless Git authoritatively identifies the target
 # and its porcelain status can be read through the selected target path.
 $script:TargetStatus = $null
-if (-not $WhatIf -and ($adoptMode -or $updateMode)) {
-    foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE')) {
-        $value = [Environment]::GetEnvironmentVariable($name, 'Process')
-        if ($null -ne $value -and $value.Length -gt 0) { Stop-UnverifiableGitPreflight }
-    }
-
-    try { $repositoryEvidence = Test-GitRepositoryEvidence -Path $tgt }
-    catch { Stop-UnverifiableGitPreflight }
-
-    $gitCommands = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
-    if ($gitCommands.Count -eq 0) {
-        if ($repositoryEvidence) { Stop-UnverifiableGitPreflight }
-    } else {
-        $gitPath = [string]$gitCommands[0].Source
-        $probe = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-inside-work-tree')
-        if ($probe.Started -and $probe.ExitCode -eq 0) {
-            if ($probe.Output -cne 'true') { Stop-UnverifiableGitPreflight }
-            $status = Get-TargetStatus -GitPath $gitPath
-            if ($null -eq $status) {
-                [Console]::Error.WriteLine('CANT-VERIFY: Git identified this target as a worktree, but its status could not be read. Commit, stash, or copy local changes, then repair Git and re-run the installer.')
-                exit 4
-            }
-            # An untracked file below the target's .claude/framework-update-backup/ is an earlier update's own copy, not the
-            # team's change; refusing for it would steer the team to commit it. The same records are counted in the keep-out line.
-            $script:TargetStatus = $status
-            $dirt = @($status.Records | Where-Object { -not ($updateMode -and $null -ne (ConvertFrom-BackupRecord -Record $_ -Prefix $status.Prefix)) })
-            if ($dirt.Count -gt 0) {
-                if (-not $AllowDirtyTree) {
-                    [Console]::Error.WriteLine('ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use -AllowDirtyTree only after doing so deliberately.')
-                    $residue = if ($updateMode) { Get-BackupResidue -Status $status } else { @() }
-                    if ($residue.Count -gt 0) { [Console]::Error.WriteLine((Protect-BackupResidue -GitPath $gitPath -Count $residue.Count)) }
-                    exit 4
-                }
-                Write-Output '  override: -AllowDirtyTree accepted for this dirty Git target.'
-            }
-        } elseif ($repositoryEvidence) {
-            Stop-UnverifiableGitPreflight
+if ($adoptMode -or $updateMode) {
+    try {
+        foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE')) {
+            $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+            if ($null -ne $value -and $value.Length -gt 0) { Stop-UnverifiableGitPreflight }
         }
+
+        try { $repositoryEvidence = Test-GitRepositoryEvidence -Path $tgt }
+        catch { Stop-UnverifiableGitPreflight }
+
+        $gitCommands = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+        if ($gitCommands.Count -eq 0) {
+            if ($repositoryEvidence) { Stop-UnverifiableGitPreflight }
+        } else {
+            $gitPath = [string]$gitCommands[0].Source
+            $probe = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-inside-work-tree')
+            if ($probe.Started -and $probe.ExitCode -eq 0) {
+                if ($probe.Output -cne 'true') { Stop-UnverifiableGitPreflight }
+                $status = Get-TargetStatus -GitPath $gitPath
+                if ($null -eq $status) {
+                    Stop-GitPreflight -Line 'CANT-VERIFY: Git identified this target as a worktree, but its status could not be read. Commit, stash, or copy local changes, then repair Git and re-run the installer.'
+                }
+                # An untracked file below the target's .claude/framework-update-backup/ is an earlier update's own copy, not the
+                # team's change; refusing for it would steer the team to commit it. The same records are counted in the keep-out line.
+                $script:TargetStatus = $status
+                $dirt = @($status.Records | Where-Object { -not ($updateMode -and $null -ne (ConvertFrom-BackupRecord -Record $_ -Prefix $status.Prefix)) })
+                if ($dirt.Count -gt 0) {
+                    if (-not $AllowDirtyTree) {
+                        $refusal = @('ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use -AllowDirtyTree only after doing so deliberately.')
+                        # Protect-BackupResidue writes the backup folder's keep-out list, which a dry run never does.
+                        $residue = if ($updateMode -and -not $WhatIf) { Get-BackupResidue -Status $status } else { @() }
+                        if ($residue.Count -gt 0) { $refusal += (Protect-BackupResidue -GitPath $gitPath -Count $residue.Count) }
+                        Stop-GitPreflight -Line $refusal
+                    }
+                    Write-Output '  override: -AllowDirtyTree accepted for this dirty Git target.'
+                }
+            } elseif ($repositoryEvidence) {
+                Stop-UnverifiableGitPreflight
+            }
+        }
+    } catch {
+        # Only a dry run's own unwind is swallowed; its refusal is printed with the plan, below.
+        if ($_.Exception.Message -cne 'ATL-DRY-RUN-REFUSED') { throw }
     }
 }
 
@@ -2068,7 +2105,15 @@ foreach ($category in @(
 )) {
     foreach ($relative in @($category.Values | Sort-Object -Unique)) { Write-Output "PLAN $($category.Name) $relative" }
 }
-if ($WhatIf) { Write-Output 'Dry run complete; target was not modified.'; exit 0 }
+if ($WhatIf) {
+    # Exit 4, as the real run: a preview that exits 0 reads as a go-ahead to a script or an agent that sees only the exit code.
+    if ($script:DryRunRefusal.Count -gt 0) {
+        foreach ($text in $script:DryRunRefusal) { [Console]::Error.WriteLine("dry run: the real run would refuse: $text") }
+        [Console]::Error.WriteLine('Dry run stopped; target was not modified.')
+        exit 4
+    }
+    Write-Output 'Dry run complete; target was not modified.'; exit 0
+}
 # What Git ignores below each ignore file this update rewrites, asked before the first change; checked after the last.
 $ignoredBefore = @{}
 if ($null -ne $script:TargetStatus) {
@@ -2291,11 +2336,25 @@ foreach ($entry in $disabledCarryPlan) {
 # A team's ignore file the update rewrites is written last, after every other write and deletion, so a step that fails
 # before it leaves the team's rules in place and the next run asks Git what they ignore.
 $ignoreLast = @($ignoreRewrites | ForEach-Object { $_.Relative })
+# The version stamp is copied after every other file (below, before the ignore rewrites): written early, a copy stopped by a
+# held file would leave a stamp naming this release over the old scripts, and the re-run would be refused as a dirty tree.
+$stampRelative = '.claude/framework-version.json'
+$applyWritten = 0
+function Stop-IncompleteCopy {
+    param([string]$Relative, [string]$Reason, [int]$Written)
+    $quote = { param([string]$Text) "'" + $Text.Replace("'", "''") + "'" }
+    $again = if ($updateMode) { "re-run  $followUpPowerShell $(& $quote $PSCommandPath) -AllowDirtyTree $(& $quote $tgt)  (the changes Git now shows are this run's own)" } else { 're-run the installer' }
+    [Console]::Error.WriteLine("ERROR: Could not copy '$Relative': $($Reason.TrimEnd('.', ' ')). $Written of $($ordinaryApplyPaths.Count) framework files were written and the version stamp, which is written last, was not. Resolve the cause (usually a program holding the file open), then $again.")
+    exit 3
+}
 foreach ($relative in $ordinaryApplyPaths) {
-    if ($ignoreLast -ccontains $relative) { continue }
-    $destination = Get-ContainedTargetPath -Relative $relative
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-    Copy-Item -Force -LiteralPath (Join-Path $src $relative) -Destination $destination
+    if ($ignoreLast -ccontains $relative -or $relative -ceq $stampRelative) { continue }
+    try {
+        $destination = Get-ContainedTargetPath -Relative $relative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+        Copy-Item -Force -LiteralPath (Join-Path $src $relative) -Destination $destination -ErrorAction Stop
+    } catch { Stop-IncompleteCopy -Relative $relative -Reason $_.Exception.Message -Written $applyWritten }
+    $applyWritten++
 }
 # A kept team file is not the framework's, so the manifest leaves it out, written as build.ps1 writes
 # it: a later update then finds the path unowned and saves the file before any wrapper replaces it.
@@ -2400,6 +2459,11 @@ if (-not $pwshAvailable) {
         Copy-Item -Force -LiteralPath $sjw -Destination $sj
         Write-Output "  pwsh not found - activated Windows PowerShell 5.1 hooks (settings.windows.json -> settings.json)."
     }
+}
+# The version stamp: the last of the framework's files, so it names this release only once every file above is in place.
+if ($ordinaryApplyPaths.Contains($stampRelative)) {
+    try { Copy-Item -Force -LiteralPath (Join-Path $src $stampRelative) -Destination (Get-ContainedTargetPath -Relative $stampRelative) -ErrorAction Stop }
+    catch { Stop-IncompleteCopy -Relative $stampRelative -Reason $_.Exception.Message -Written $applyWritten }
 }
 # The last write: each ignore file this update or install rewrites. Each file Git ignored below its folder before it and
 # would now show stays ignored by one anchored literal line below the marker, after the release's bytes: a '/', its path

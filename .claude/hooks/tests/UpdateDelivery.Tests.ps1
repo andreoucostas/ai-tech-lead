@@ -3932,4 +3932,109 @@ It 'a CRLF SKILL.md has its exemplar re-appended without a carriage return' {
     }
 }
 
+# B-464 C5: the version stamp is the 34th of 101 copies, so a file held open later in the manifest stopped the update
+# with a raw Copy-Item error after the stamp already named the new release, and the re-run was refused as a dirty tree.
+It 'C5 an update stopped by a held file keeps the old version stamp and prints the re-run command' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-c5-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    $handle = $null
+    try {
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "calibration: the install failed (exit $LASTEXITCODE): $first"
+        $stamp = Join-Path $t '.claude/framework-version.json'
+        $newVersion = [string](Get-Content -Raw -LiteralPath $stamp | ConvertFrom-Json).version
+        [IO.File]::WriteAllText($stamp, ([IO.File]::ReadAllText($stamp) -replace '"version":\s*"[^"]*"', "`"version`": `"$staleVersion`""), [Text.UTF8Encoding]::new($false))
+        $held = Join-Path $t 'scripts/template-checks.ps1'
+        $handle = [IO.File]::Open($held, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $flat = $out -replace '\s+', ' '
+        Assert ($exit -eq 3) "the update stopped by a held file did not exit 3 (exit $exit): $out"
+        Assert ([string](Get-Content -Raw -LiteralPath $stamp | ConvertFrom-Json).version -ceq $staleVersion) "the stopped update already wrote the new version stamp: $out"
+        Assert ($flat -match "Could not copy 'scripts/template-checks\.ps1'" -and $flat -match '[0-9]+ of [0-9]+ framework files' -and $flat -match 'install\.ps1[^ ]* -AllowDirtyTree ') "the stop did not name the file, the count written and the re-run command with -AllowDirtyTree: $out"
+        $handle.Dispose(); $handle = $null
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        Assert ($LASTEXITCODE -eq 0) "the re-run did not finish the update (exit $LASTEXITCODE): $rerun"
+        Assert ([string](Get-Content -Raw -LiteralPath $stamp | ConvertFrom-Json).version -ceq $newVersion) "the re-run did not write the new version stamp: $rerun"
+    } finally {
+        if ($handle) { $handle.Dispose() }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# B-464 C7: a mistyped -Stack on an update switched the install to the other stack's release and left the old stack's
+# skills live and unowned. The root dispatcher forwarded the override; the stack installer never compared the two stamps.
+function Get-TreeSnapshot {
+    param([string]$Root)
+    return (@(Get-ChildItem -LiteralPath $Root -Recurse -File -Force | Sort-Object FullName | ForEach-Object { $_.FullName.Substring($Root.Length) + ':' + (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }) -join "`n")
+}
+function Invoke-RootInstallerFor {
+    param([string]$Target, [string[]]$Extra = @())
+    $out = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'install.ps1') @Extra $Target 2>&1 | Out-String
+    return [pscustomobject]@{ Exit = [int]$LASTEXITCODE; Output = $out }
+}
+It 'C7 an update with another -Stack is refused and changes nothing' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-c7a-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    try {
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "calibration: the dotnet install failed (exit $LASTEXITCODE): $first"
+        $before = Get-TreeSnapshot -Root $t
+        $result = Invoke-RootInstallerFor -Target $t -Extra @('-Stack', 'angular')
+        $flat = $result.Output -replace '\s+', ' '
+        Assert ($result.Exit -ne 0) "an update naming another stack was not refused (exit $($result.Exit)): $($result.Output)"
+        Assert ((Get-TreeSnapshot -Root $t) -ceq $before) "the refused stack change still changed the target: $($result.Output)"
+        Assert ([string](Get-Content -Raw -LiteralPath (Join-Path $t '.claude/framework-version.json') | ConvertFrom-Json).template -ceq 'dotnet') 'the stamp no longer names dotnet'
+        Assert ($flat -match 'dotnet to angular' -and $flat -match '-AllowStackChange') "the refusal does not name both stacks and -AllowStackChange: $($result.Output)"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+It 'C7 -AllowStackChange applies the other stack and names each previously owned path it drops, keeping those files' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-c7b-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    try {
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "calibration: the dotnet install failed (exit $LASTEXITCODE): $first"
+        $perf = Join-Path $t '.claude/skills/perf/SKILL.md'
+        Assert (Test-Path -LiteralPath $perf -PathType Leaf) 'calibration: the dotnet install has no perf skill'
+        $result = Invoke-RootInstallerFor -Target $t -Extra @('-Stack', 'angular', '-AllowStackChange')
+        $flat = $result.Output -replace '\s+', ' '
+        Assert ($result.Exit -eq 0) "the deliberate stack change failed (exit $($result.Exit)): $($result.Output)"
+        Assert ([string](Get-Content -Raw -LiteralPath (Join-Path $t '.claude/framework-version.json') | ConvertFrom-Json).template -ceq 'angular') 'the stamp does not name angular'
+        Assert ($flat -match 'NOTICE: [^|]*dotnet to angular[^|]*\.claude/skills/perf/SKILL\.md') "no NOTICE names the dropped perf skill: $($result.Output)"
+        Assert (Test-Path -LiteralPath $perf -PathType Leaf) 'the stack change deleted a dropped file'
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# B-464 C8: -WhatIf skipped the Git preflight, so a dry run on a tree the real run refuses ended "Dry run complete".
+It 'C8 a dry run on a dirty Git tree names the refusal the real run makes and does not exit 0' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('upd-c8-' + [guid]::NewGuid())
+    try {
+        $t = New-B309GitTarget -Root $root -Name 'repo' -Ignore "bin/`n"
+        [IO.File]::WriteAllText((Join-Path $t 'App.csproj'), '<Project Sdk="Microsoft.NET.Sdk" />', [Text.UTF8Encoding]::new($false))
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "calibration: the install failed (exit $LASTEXITCODE): $first"
+        & git -C $t add -A -f 2>&1 | Out-Null
+        & git -C $t commit -qm install 2>&1 | Out-Null
+        $installer = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
+        $clean = & (Get-PsExe) -NoProfile -File $installer -Target $t -WhatIf 2>&1 | Out-String
+        Assert ($LASTEXITCODE -eq 0 -and $clean -match 'Dry run complete') "calibration: a dry run on a clean tree did not complete (exit $LASTEXITCODE): $clean"
+        [IO.File]::AppendAllText((Join-Path $t 'App.csproj'), "<!-- edited -->`n")
+        $dry = & (Get-PsExe) -NoProfile -File $installer -Target $t -WhatIf 2>&1 | Out-String
+        $dryExit = $LASTEXITCODE
+        $real = & (Get-PsExe) -NoProfile -File $installer -Target $t 2>&1 | Out-String
+        $realExit = $LASTEXITCODE
+        Assert ($realExit -eq 4 -and $real -match 'Refusing to mutate a dirty Git target') "calibration: the real run did not refuse the dirty tree (exit $realExit): $real"
+        Assert ($dryExit -eq 4 -and ($dry -replace '\s+', ' ') -match 'dry run: the real run would refuse: ERROR: Refusing to mutate a dirty Git target') "the dry run did not exit 4 naming the refusal (exit $dryExit): $dry"
+        Assert ($dry -notmatch 'Dry run complete') "the dry run still ends as complete: $dry"
+        $allowed = & (Get-PsExe) -NoProfile -File $installer -Target $t -WhatIf -AllowDirtyTree 2>&1 | Out-String
+        Assert ($LASTEXITCODE -eq 0 -and $allowed -match 'Dry run complete') "a dry run with -AllowDirtyTree did not complete (exit $LASTEXITCODE): $allowed"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 exit (Write-TestSummary 'UpdateDelivery.Tests')

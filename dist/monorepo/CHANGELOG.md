@@ -83,6 +83,16 @@
 - **An update no longer fails when `LEARNINGS.md` is empty.** If your team emptied that file, the update used to stop with a
   raw error before showing its plan. It now treats an empty file as disabling no skills and leaves the file alone.
 
+- **An update stopped partway no longer claims the new version.** If a file was held open (by an editor or a virus scanner, say) while an update copied files, the update
+  stopped with a raw copy error after `.claude/framework-version.json` already named the new release, and the re-run was refused because the tree was dirty. The version
+  stamp is now copied after every other file, and a copy that fails prints one line naming the file, how many files were written, and the re-run command with
+  `-AllowDirtyTree`; it exits 3.
+- **An update refuses to switch stacks by accident.** Naming a different `-Stack` than the one `.claude/framework-version.json` records used to move the install to the
+  other stack silently and leave the old stack's skills and files behind with nobody updating them. The installer now stops (exit 4, nothing changed). `-AllowStackChange`
+  makes the move on purpose and prints one NOTICE naming each file the old stack shipped that the new one does not; those files stay where they are.
+- **`-WhatIf` now shows the Git refusal.** A dry run on a tree the real run would refuse (uncommitted changes, unreadable Git state) used to end with "Dry run complete"
+  and exit 0. It now prints the plan, then `dry run: the real run would refuse: ...`, and exits 4.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

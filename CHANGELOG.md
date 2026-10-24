@@ -105,6 +105,19 @@ red on the unfixed helper. A top-level JSON array, empty or not, even one wrappi
 accelerator that any value passes, so `[]` and `[null]` still exited 1 on Windows PowerShell 5.1, `[[]]` on pwsh, and `[<marker>]` verified PASS; the test is now the real `PSCustomObject` type.
 **An update no longer crashes on an empty `LEARNINGS.md`.** `install.ps1` read the file with `Get-Content -Raw` and handed the result to `[regex]::Matches`; a 0-byte file yields no output, so the call threw a raw .NET error under `$ErrorActionPreference = 'Stop'` and the update (and `-WhatIf`) exited 1 before printing its plan. An empty file now means no disabled-skill headings. `UpdateDelivery.Tests.ps1` gains the case (install, empty the file, update: exit 0, `mode: update`, file still empty), red on the unfixed installer with `Exception calling "Matches" ... Value cannot be null`. The merged-installer attack found that a CRLF `SKILL.md` (a Windows clone with `core.autocrlf=true`) still left the exemplar line ending CRLF, because `(?m)^...see .+$` keeps the CR: the captured line is now trimmed of it (`UpdateDelivery.Tests.ps1` "a CRLF SKILL.md has its exemplar re-appended without a carriage return", red on pwsh).
 
+`install.ps1` and `src/core/scripts/install.ps1` (guarded; step 4; B-464 C5, C7, C8): three installer defects, each with a red case in `UpdateDelivery.Tests.ps1`.
+**C5**: the version stamp was the 34th of 101 copies, so a file held open later in the manifest stopped the update with a raw `Copy-Item` error after the stamp already
+named the new release; the re-run was then refused as a dirty tree. The stamp is now copied after every other file (before the ignore rewrites, which stay last so their messages
+stay true), and a failed copy prints one line naming the file, the count written and the re-run command with `-AllowDirtyTree`, then exits 3.
+**C7**: an update with another `-Stack` switched the install and left the old stack's skills live and unowned. The stack installer, which sees both stamps, now refuses a
+changed `template` in update mode (exit 4, nothing changed); the root wrapper forwards the new `-AllowStackChange`, which accepts it and prints one NOTICE naming each previously
+owned path the incoming manifest drops (kept in place). A stamp without a `template` string is not compared. `RootInstallerWarehouse.Tests.ps1`: the delegate stub's parameter list gains `-AllowStackChange`.
+**C8**: `-WhatIf` skipped the Git preflight, so a dry run on a tree the real run refuses ended "Dry run complete" with exit 0. The preflight now runs under `-WhatIf`, the plan is
+still printed, and a refusal is printed as `dry run: the real run would refuse: ...` with exit 4 (a preview that exits 0 reads as a go-ahead to an agent that sees only the exit code);
+the backup-folder keep-out write that the real refusal makes is not made in a dry run. `docs/upgrade-checklist.md` no longer says the preview skips the dirty-tree check.
+The installer's other `Get-Content` reads without `-Encoding` (ownership and retirement manifests, the version stamps, `LEARNINGS.md`) feed ASCII-only comparisons and values
+never written back, so Windows PowerShell 5.1's ANSI decoding cannot corrupt a byte; left unchanged.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload
