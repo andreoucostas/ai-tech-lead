@@ -284,6 +284,28 @@ try {
         Assert ($result.Out -match "guard rejected 'src/Api/nobom-be\.json'.*AWS access key id") "BOM-less BE guard reason missing: $($result.Out)"
     }
 
+    It 'B-464 A2: rejects a credential in a BOM-prefixed UTF-16/32 file whose body is not well formed' {
+        $fixture = New-RepositoryFixture
+        $le = [Text.UnicodeEncoding]::new($false, $true)
+        $be = [Text.UnicodeEncoding]::new($true, $true)
+        $u32 = [Text.UTF32Encoding]::new($false, $true)
+        $json = Get-SettingsJson
+        $shapes = [ordered]@{
+            'le-odd-byte.json'  = [byte[]]($le.GetPreamble() + $le.GetBytes($json) + [byte[]]@(0x41))
+            'le-lone-high.json' = [byte[]]($le.GetPreamble() + $le.GetBytes($json) + [byte[]]@(0x00, 0xD8))
+            'be-odd-byte.json'  = [byte[]]($be.GetPreamble() + $be.GetBytes($json) + [byte[]]@(0x41))
+            'u32-too-big.json'  = [byte[]]($u32.GetPreamble() + $u32.GetBytes($json) + [byte[]]@(0x00, 0x00, 0x11, 0x00))
+        }
+        foreach ($name in $shapes.Keys) {
+            Add-CommitBytes $fixture "src/Api/$name" $shapes[$name] "Add malformed wide settings fixture $name"
+        }
+        $result = Invoke-Checker $fixture
+        Assert ($result.Exit -eq 1) "malformed BOM-prefixed credential exit was $($result.Exit): $($result.Out)"
+        foreach ($name in $shapes.Keys) {
+            Assert ($result.Out -match ("guard rejected 'src/Api/" + [regex]::Escape($name) + "'.*AWS access key id")) "guard reason missing for ${name}: $($result.Out)"
+        }
+    }
+
     It 'B-464 A2: rejects a credential in a Windows-1252 settings file' {
         $fixture = New-RepositoryFixture
         $bytes = [Text.Encoding]::GetEncoding(28591).GetBytes((Get-SettingsJson))

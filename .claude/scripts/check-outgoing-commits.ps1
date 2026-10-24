@@ -268,15 +268,15 @@ foreach ($commit in $commits) {
             if ($null -eq $content) {
                 $content = $latin1.GetString($blob.Bytes)
                 Write-Host "OUTGOING CHECK: blob '$path' at commit $commit is not UTF-8 text; guarded over a byte-preserving decode."
-            } elseif (-not $wide -and $blob.Bytes -contains 0) {
-                Write-Host "OUTGOING CHECK: blob '$path' at commit $commit has NUL bytes (binary); guarded as text and again with the NUL bytes removed."
             }
         }
-        # A blob with NUL bytes and no byte-order mark may be UTF-16 without a preamble, where every
-        # character is split by a NUL. It is guarded a second time with the NULs removed.
+        # A blob with NUL bytes may be UTF-16 or UTF-32 that did not decode as such (no byte-order
+        # mark, or a mark over a malformed body), where every character is split by NULs. It is
+        # guarded a second time with the NULs removed, whatever the first decode was.
         $contents = @($content)
-        if (-not $isPowerShell -and -not $wide -and $blob.Bytes -contains 0) {
+        if (-not $isPowerShell -and $blob.Bytes -contains 0) {
             $contents += $latin1.GetString($blob.Bytes).Replace([string][char]0, '')
+            Write-Host "OUTGOING CHECK: blob '$path' at commit $commit has NUL bytes (binary); guarded as text and again with the NUL bytes removed."
         }
         $guardResult = $null
         foreach ($candidate in $contents) {
