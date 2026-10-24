@@ -2345,19 +2345,30 @@ foreach ($entry in $disabledCarryPlan) {
 # A team's ignore file the update rewrites is written last, after every other write and deletion, so a step that fails
 # before it leaves the team's rules in place and the next run asks Git what they ignore.
 $ignoreLast = @($ignoreRewrites | ForEach-Object { $_.Relative })
-# The version stamp is copied after every other file (below, before the ignore rewrites): written early, a copy stopped by a
-# held file would leave a stamp naming this release over the old scripts, and the re-run would be refused as a dirty tree.
+# An update copies the version stamp after every other file (below, before the ignore rewrites): written early, a copy
+# stopped by a held file would leave a stamp naming this release over the old scripts, and the re-run would be refused as a
+# dirty tree. An install keeps it at its manifest position: with no stamp a re-run reads the files already copied as
+# existing AI tooling, and archives the framework's own files as a brownfield install.
 $stampRelative = '.claude/framework-version.json'
+$stampLast = [bool]$updateMode
 $applyWritten = 0
 function Stop-IncompleteCopy {
     param([string]$Relative, [string]$Reason, [int]$Written)
     $quote = { param([string]$Text) "'" + $Text.Replace("'", "''") + "'" }
-    $again = if ($updateMode) { "re-run  $followUpPowerShell $(& $quote $PSCommandPath) -AllowDirtyTree $(& $quote $tgt)  (the changes Git now shows are this run's own)" } else { 're-run the installer' }
-    [Console]::Error.WriteLine("ERROR: Could not copy '$Relative': $($Reason.TrimEnd('.', ' ')). $Written of $($ordinaryApplyPaths.Count) framework files were written and the version stamp, which is written last, was not. Resolve the cause (usually a program holding the file open), then $again.")
+    # The re-run needs each override this run was given, or it exits 4.
+    $flags = '-AllowDirtyTree'
+    foreach ($override in @(@('-AllowDowngrade', $AllowDowngrade), @('-AllowOutdated', $AllowOutdated), @('-AllowStackChange', $AllowStackChange))) { if ($override[1]) { $flags += " $($override[0])" } }
+    $rerun = "re-run  $followUpPowerShell $(& $quote $PSCommandPath) $flags $(& $quote $tgt)  (the changes Git now shows are this run's own)"
+    $stampNote = ''
+    if ($stampLast) { $stampNote = ' and the version stamp, which an update writes last, was not' }
+    # A re-run with no stamp sees the files copied so far as an existing setup and archives them.
+    $again = if ($stampLast -or (Test-Path -LiteralPath (Get-ContainedTargetPath -Relative $stampRelative) -PathType Leaf)) { $rerun }
+        else { "delete the files this run copied into the target (a re-run would read them as an existing setup and archive them), then re-run the installer" }
+    [Console]::Error.WriteLine("ERROR: Could not copy '$Relative': $($Reason.TrimEnd('.', ' ')). $Written of $($ordinaryApplyPaths.Count) framework files were written$stampNote. Resolve the cause (usually a program holding the file open), then $again.")
     exit 3
 }
 foreach ($relative in $ordinaryApplyPaths) {
-    if ($ignoreLast -ccontains $relative -or $relative -ceq $stampRelative) { continue }
+    if ($ignoreLast -ccontains $relative -or ($stampLast -and $relative -ceq $stampRelative)) { continue }
     try {
         $destination = Get-ContainedTargetPath -Relative $relative
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
@@ -2469,8 +2480,8 @@ if (-not $pwshAvailable) {
         Write-Output "  pwsh not found - activated Windows PowerShell 5.1 hooks (settings.windows.json -> settings.json)."
     }
 }
-# The version stamp: the last of the framework's files, so it names this release only once every file above is in place.
-if ($ordinaryApplyPaths.Contains($stampRelative)) {
+# An update's version stamp: the last of the framework's files, so it names this release only once every file above is in place.
+if ($stampLast -and $ordinaryApplyPaths.Contains($stampRelative)) {
     try { Copy-Item -Force -LiteralPath (Join-Path $src $stampRelative) -Destination (Get-ContainedTargetPath -Relative $stampRelative) -ErrorAction Stop }
     catch { Stop-IncompleteCopy -Relative $stampRelative -Reason $_.Exception.Message -Written $applyWritten }
 }

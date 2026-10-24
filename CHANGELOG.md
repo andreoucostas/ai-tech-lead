@@ -111,8 +111,8 @@ accelerator that any value passes, so `[]` and `[null]` still exited 1 on Window
 
 `install.ps1` and `src/core/scripts/install.ps1` (guarded; step 4; B-464 C5, C7, C8): three installer defects, each with a red case in `UpdateDelivery.Tests.ps1`.
 **C5**: the version stamp was the 34th of 101 copies, so a file held open later in the manifest stopped the update with a raw `Copy-Item` error after the stamp already
-named the new release; the re-run was then refused as a dirty tree. The stamp is now copied after every other file (before the ignore rewrites, which stay last so their messages
-stay true), and a failed copy prints one line naming the file, the count written and the re-run command with `-AllowDirtyTree`, then exits 3.
+named the new release; the re-run was then refused as a dirty tree. An update now copies the stamp after every other file (before the ignore rewrites, which stay last so their messages
+stay true); an install keeps it at its manifest position, since with no stamp a re-run read the files already copied as existing tooling and archived the framework's own files as a brownfield install (D1, found by the step-4 attack). A failed copy prints one line naming the file, the count written and the re-run command with `-AllowDirtyTree` plus each of `-AllowDowngrade`, `-AllowOutdated` and `-AllowStackChange` the stopped run was given (D2), then exits 3; an install stopped before its stamp says to delete the copied files first.
 **C7**: an update with another `-Stack` switched the install and left the old stack's skills live and unowned. The stack installer, which sees both stamps, now refuses a
 changed `template` in update mode (exit 4, nothing changed); the root wrapper forwards the new `-AllowStackChange`, which accepts it and prints one NOTICE naming each previously
 owned path the incoming manifest drops (kept in place). A stamp without a `template` string is not compared. `RootInstallerWarehouse.Tests.ps1`: the delegate stub's parameter list gains `-AllowStackChange`.

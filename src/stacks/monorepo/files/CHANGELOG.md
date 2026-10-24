@@ -106,9 +106,9 @@
   the install's folder. A framework installed at the repository root behaves as before.
 
 - **An update stopped partway no longer claims the new version.** If a file was held open (by an editor or a virus scanner, say) while an update copied files, the update
-  stopped with a raw copy error after `.claude/framework-version.json` already named the new release, and the re-run was refused because the tree was dirty. The version
-  stamp is now copied after every other file, and a copy that fails prints one line naming the file, how many files were written, and the re-run command with
-  `-AllowDirtyTree`; it exits 3.
+  stopped with a raw copy error after `.claude/framework-version.json` already named the new release, and the re-run was refused because the tree was dirty. An update
+  now copies the version stamp after every other file, and a copy that fails prints one line naming the file, how many files were written, and the re-run command with
+  `-AllowDirtyTree` and any `-AllowDowngrade`, `-AllowOutdated` or `-AllowStackChange` you gave; it exits 3. A fresh install keeps its stamp where it was, so a re-run still reads as an update.
 - **An update refuses to switch stacks by accident.** Naming a different `-Stack` than the one `.claude/framework-version.json` records used to move the install to the
   other stack silently and leave the old stack's skills and files behind with nobody updating them. The installer now stops (exit 4, nothing changed). `-AllowStackChange`
   makes the move on purpose and prints one NOTICE naming each file the old stack shipped that the new one does not; those files stay where they are.

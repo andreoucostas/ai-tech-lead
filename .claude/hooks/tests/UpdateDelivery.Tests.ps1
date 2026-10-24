@@ -4074,4 +4074,55 @@ It 'C8 a dry run on a dirty Git tree names the refusal the real run makes and do
     }
 }
 
+# B-464 D1: a greenfield install stopped late must leave the version stamp where the manifest puts it. Without it the
+# re-run read the files already copied as existing AI tooling and archived 93 of the framework's own files as a brownfield install.
+It 'D1 a greenfield install stopped by a denied late folder is an update on the re-run, with nothing archived' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-d1-' + [guid]::NewGuid())
+    $specs = Join-Path $t 'specs'
+    New-Item -ItemType Directory -Force -Path $specs | Out-Null
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $denied = $false
+    try {
+        & icacls $specs /deny "*${sid}:(WD,AD)" | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: icacls could not deny writes in specs'
+        $denied = $true
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 3 -and $out -match 'mode: greenfield') "calibration: the install was not stopped by the denied folder (exit $exit): $out"
+        & icacls $specs /remove:d "*$sid" | Out-Null
+        $denied = $false
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $rerun -match '(?m)^\s*mode: update') "the re-run did not finish as an update (exit $LASTEXITCODE): $rerun"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t 'docs/pre-adoption'))) 'the re-run archived framework files into docs/pre-adoption'
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/adoption-pending.json'))) 'the re-run wrote an adoption marker'
+    } finally {
+        if ($denied) { & icacls $specs /remove:d "*$sid" | Out-Null }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# B-464 D2: the re-run line printed for a stopped update must carry each override the stopped run was given, or it exits 4.
+It 'D2 the re-run line of an update stopped by a held file carries the override flags it was given' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-d2-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    $handle = $null
+    try {
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "calibration: the install failed (exit $LASTEXITCODE): $first"
+        $stamp = Join-Path $t '.claude/framework-version.json'
+        $text = [IO.File]::ReadAllText($stamp) -replace '"version":\s*"[^"]*"', '"version": "99.0.0"' -replace '"template":\s*"[^"]*"', '"template": "angular"'
+        [IO.File]::WriteAllText($stamp, $text, [Text.UTF8Encoding]::new($false))
+        $handle = [IO.File]::Open((Join-Path $t 'scripts/template-checks.ps1'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+        $out = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -AllowDowngrade -AllowStackChange -AllowOutdated 2>&1 | Out-String
+        $exit = $LASTEXITCODE
+        $flat = $out -replace '\s+', ' '
+        Assert ($exit -eq 3) "calibration: the stopped update did not exit 3 (exit $exit): $out"
+        foreach ($flag in '-AllowDirtyTree', '-AllowDowngrade', '-AllowStackChange', '-AllowOutdated') {
+            Assert ($flat -match "install\.ps1' [^']*$flag") "the printed re-run line does not carry $flag : $out"
+        }
+    } finally {
+        if ($handle) { $handle.Dispose() }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 exit (Write-TestSummary 'UpdateDelivery.Tests')
