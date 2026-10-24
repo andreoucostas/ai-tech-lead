@@ -1152,6 +1152,32 @@ try {
         } '[ownership] framework-retirements.json differs from meta/framework-retirements-baseline.json' 'ownership'
     }
 
+    # B-464 B7 (marker-expansion): a throwing read left the variable holding the PREVIOUS file's text, so a
+    # locked composed file, core file or snippet was compared against another file's content, or not at all.
+    It 'case 53: a locked composed file, core file or snippet is could-not-examine for marker-expansion' {
+        $fixtures = @(
+            @{ Name='dist';    Relative='dist\dotnet\AGENTS.md' },
+            @{ Name='core';    Relative='src\core\AGENTS.md' },
+            @{ Name='snippet'; Relative='src\stacks\dotnet\snippets\AGENTS.md' }
+        )
+        foreach ($fixture in $fixtures) {
+            $isolated = New-ValidatorRepoCopy
+            $target = Join-Path $isolated $fixture.Relative
+            if ($fixture.Name -eq 'snippet') { $target = (Get-ChildItem -LiteralPath $target -File | Select-Object -First 1).FullName }
+            $handle = [IO.File]::Open($target,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+            try {
+                $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $isolated 'scripts\validate-dist.ps1') dotnet (Join-Path $isolated 'dist') -Check 'markers,marker-expansion' 2>&1
+                $code = $LASTEXITCODE
+            } finally { $handle.Dispose() }
+            $text = $out -join "`n"
+            Write-Host "[ValidateDist powershell unreadable-marker-expansion-$($fixture.Name)] EXIT=$code"; Write-Host $text
+            Assert ($code -eq 2) "unreadable-marker-expansion-$($fixture.Name) is 'could not examine' and must exit exactly 2, got EXIT=$code"
+            Assert ($text -match '(?m)^CANT-EXAMINE: marker-expansion could not read') "unreadable-marker-expansion-$($fixture.Name) did not print a marker-expansion CANT-EXAMINE line: $text"
+            Assert ($text -notmatch '(?m)^FAIL:') "unreadable-marker-expansion-$($fixture.Name) reported a wrong artifact for an input it could not read: $text"
+            Assert ($text -match [regex]::Escape((Split-Path $target -Leaf))) "unreadable-marker-expansion-$($fixture.Name) did not name the unreadable file: $text"
+        }
+    }
+
     # B-464 B9: the denylist named `.claude/plans/` with a forward slash only and no maintainer record
     # path, the contributor guide or the maintainer gates at all.
     It 'case 52: Windows plan paths, meta record paths, the contributor guide and the maintainer gates fail check 6' {
