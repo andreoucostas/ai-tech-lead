@@ -58,10 +58,25 @@ function Invoke-Composer {
     return [int]$process.ExitCode
 }
 
+# Like Invoke-Composer, but also returns what the composer wrote to stderr.
+function Invoke-ComposerCaptured {
+    param([string]$SubjectRoot, [string]$Mode = 'dotnet')
+    $errFile = Join-Path ([IO.Path]::GetTempPath()) ('composer-stderr-' + [guid]::NewGuid() + '.txt')
+    $outFile = $errFile + '.out'
+    try {
+        $process = Start-Process -FilePath $psExe -ArgumentList @('-NoProfile','-File',(Join-Path $SubjectRoot 'scripts\build.ps1'),$Mode) `
+            -WorkingDirectory $SubjectRoot -Wait -PassThru -NoNewWindow -RedirectStandardError $errFile -RedirectStandardOutput $outFile
+        return [pscustomobject]@{ Exit = [int]$process.ExitCode; Stderr = [IO.File]::ReadAllText($errFile) }
+    } finally {
+        foreach ($f in @($errFile, $outFile)) { if (Test-Path -LiteralPath $f) { Remove-Item -LiteralPath $f -Force } }
+    }
+}
+
 $failed = 0
 $executed = 0
 $cases = @(
     @{ Name = 'PowerShell malformed marker'; Kind = 'marker' },
+    @{ Name = 'PowerShell marker with a capital S in @Stack'; Kind = 'marker'; Replacement = '<!-- @Stack:fixture -->' },
     @{ Name = 'PowerShell unapproved overlay collision'; Kind = 'collision' },
     @{ Name = 'protected policy drift'; Kind = 'policy'; Target = 'src/core/scripts/install.ps1'; Find = "'CLAUDE.md'"; Replacement = "'NOT-CLAUDE.md'" },
     @{ Name = 'persistent policy drift'; Kind = 'policy'; Target = 'src/core/scripts/install.ps1'; Find = "'.claude/ai-audit.log'"; Replacement = "'.claude/not-the-audit.log'" },
@@ -83,7 +98,7 @@ foreach ($case in $cases) {
             $target = Join-Path $fixtureRoot 'composer-input.txt'
             $scratchSourceRoot = $fixtureRoot
             $find = '<!-- @stack:fixture -->'
-            $replacement = '<!-- @stack:fixture -- >'
+            $replacement = if ($case.Replacement) { $case.Replacement } else { '<!-- @stack:fixture -- >' }
         } else {
             $target = Join-Path $fixtureRoot 'composer-input.txt'
             $scratchSourceRoot = $fixtureRoot
@@ -361,6 +376,90 @@ foreach ($caseName in @('retirement baseline ignores a stale dist', 'retirement 
     } finally {
         if (Test-Path -LiteralPath $container) { Remove-Item -Recurse -Force -LiteralPath $container }
     }
+}
+
+# One marker grammar: a line that looks like a marker but is not exact (other case, no-break space, a
+# vertical tab before it) used to be consumed silently by the composer and then unseen by validate-dist.
+$lookAlikeRoot = Join-Path ([IO.Path]::GetTempPath()) ('composer-lookalike-' + [guid]::NewGuid())
+try {
+    Initialize-ComposerSubject $lookAlikeRoot
+    $utf8 = [Text.UTF8Encoding]::new($false)
+    [IO.File]::WriteAllText((Join-Path $lookAlikeRoot 'src/core/marker.txt'),
+        ("first`n<!-- @stack:fixture -->" + [char]0xA0 + "`nthird`n" + [char]0x0B + "# @stack:fixture`n<!-- @Stack:fixture -->`n"), $utf8)
+    $result = Invoke-ComposerCaptured $lookAlikeRoot
+    if ($result.Exit -ne 1) { throw "composer exited $($result.Exit) on three marker look-alikes, expected 1" }
+    foreach ($line in 2, 4, 5) {
+        if ($result.Stderr -notmatch [regex]::Escape("src/core/marker.txt:${line}:")) { throw "stderr does not name src/core/marker.txt line ${line}: $($result.Stderr)" }
+    }
+    $executed++
+    Write-Host '[ok] composer refuses marker look-alikes naming file and line'
+} catch {
+    $failed++
+    [Console]::Error.WriteLine("[FAIL] composer refuses marker look-alikes naming file and line -- $($_.Exception.Message)")
+} finally {
+    if (Test-Path -LiteralPath $lookAlikeRoot) { Remove-Item -Recurse -Force -LiteralPath $lookAlikeRoot }
+}
+
+# Byte-faithful: a source that is not valid UTF-8 used to be rewritten with U+FFFD in every dist.
+$badByteRoot = Join-Path ([IO.Path]::GetTempPath()) ('composer-badbyte-' + [guid]::NewGuid())
+try {
+    Initialize-ComposerSubject $badByteRoot
+    [IO.File]::WriteAllBytes((Join-Path $badByteRoot 'src/core/docs/notes.md'), [byte[]](0x63, 0x61, 0x66, 0xE9, 0x20, 0x97, 0x20, 0x6F, 0x6B, 0x0A))
+    $result = Invoke-ComposerCaptured $badByteRoot
+    if ($result.Exit -ne 1) { throw "composer exited $($result.Exit) on a source holding bytes that are not UTF-8, expected 1" }
+    if ($result.Stderr -notmatch [regex]::Escape('docs/notes.md')) { throw "stderr does not name docs/notes.md: $($result.Stderr)" }
+    if (Test-Path -LiteralPath (Join-Path $badByteRoot 'dist/dotnet/docs/notes.md')) { throw 'dist/dotnet/docs/notes.md was written from invalid bytes' }
+    $executed++
+    Write-Host '[ok] composer refuses a source that is not valid UTF-8 naming the file'
+} catch {
+    $failed++
+    [Console]::Error.WriteLine("[FAIL] composer refuses a source that is not valid UTF-8 naming the file -- $($_.Exception.Message)")
+} finally {
+    if (Test-Path -LiteralPath $badByteRoot) { Remove-Item -Recurse -Force -LiteralPath $badByteRoot }
+}
+
+# A build that fails after it has started composing must leave the previous dist/<mode> in place.
+$intactRoot = Join-Path ([IO.Path]::GetTempPath()) ('composer-intact-' + [guid]::NewGuid())
+try {
+    Initialize-ComposerSubject $intactRoot
+    if ((Invoke-Composer $intactRoot) -ne 0) { throw 'initial build failed; case cannot examine the composer' }
+    $sentinel = Join-Path $intactRoot 'dist/dotnet/zz-previous-build.txt'
+    $manifest = Join-Path $intactRoot 'dist/dotnet/framework-ownership.json'
+    [IO.File]::WriteAllText($sentinel, "previous`n")
+    $manifestBefore = [IO.File]::ReadAllText($manifest)
+    $installer = Join-Path $intactRoot 'src/core/scripts/install.ps1'
+    [IO.File]::WriteAllText($installer, ([IO.File]::ReadAllText($installer).Replace("'.template-repo'", "'.not-template-repo'")), [Text.UTF8Encoding]::new($false))
+    $result = Invoke-ComposerCaptured $intactRoot
+    if ($result.Exit -ne 1) { throw "composer exited $($result.Exit) on a policy drift, expected 1" }
+    if (-not (Test-Path -LiteralPath $sentinel -PathType Leaf)) { throw 'the failed build removed the previous dist/dotnet' }
+    if ([IO.File]::ReadAllText($manifest) -cne $manifestBefore) { throw 'the failed build changed the previous framework-ownership.json' }
+    if (Test-Path -LiteralPath (Join-Path $intactRoot 'dist/dotnet.build-tmp')) { throw 'the failed build left its staging directory behind' }
+    $executed++
+    Write-Host '[ok] a failed build leaves the previous dist in place'
+} catch {
+    $failed++
+    [Console]::Error.WriteLine("[FAIL] a failed build leaves the previous dist in place -- $($_.Exception.Message)")
+} finally {
+    if (Test-Path -LiteralPath $intactRoot) { Remove-Item -Recurse -Force -LiteralPath $intactRoot }
+}
+
+# A checkout whose path holds [ and ] must build like any other (the path was treated as a wildcard).
+$bracketContainer = Join-Path ([IO.Path]::GetTempPath()) ('composer-brackets-' + [guid]::NewGuid())
+try {
+    $bracketSubject = Join-Path $bracketContainer 'repo-[1]'
+    Initialize-ComposerSubject $bracketSubject
+    # Start-Process reads -WorkingDirectory as a wildcard, so launch from a plain folder; the composer
+    # anchors itself to the folder its script lives in.
+    $exit = Invoke-Composer $bracketSubject 'dotnet' ([IO.Path]::GetTempPath())
+    if ($exit -ne 0) { throw "composer exited $exit from a folder whose name holds brackets" }
+    if (-not (Test-Path -LiteralPath (Join-Path $bracketSubject 'dist/dotnet/framework-ownership.json') -PathType Leaf)) { throw 'no dist/dotnet was composed in the bracketed folder' }
+    $executed++
+    Write-Host '[ok] composer builds from a folder whose name holds brackets'
+} catch {
+    $failed++
+    [Console]::Error.WriteLine("[FAIL] composer builds from a folder whose name holds brackets -- $($_.Exception.Message)")
+} finally {
+    if (Test-Path -LiteralPath $bracketContainer) { Remove-Item -Recurse -Force -LiteralPath $bracketContainer }
 }
 
 if ($executed -le 0) { [Console]::Error.WriteLine('[FAIL] Composer.Tests executed zero checks'); exit 2 }
