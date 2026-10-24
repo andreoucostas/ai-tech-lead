@@ -1,29 +1,44 @@
 ﻿# ai-tech-lead context-footprint gate (schema-v2 PowerShell engine).
 # Measures deterministic framework context across all composed dists, renders the supported
 # PowerShell hooks, and compares the canonical result with meta/context-footprint.json.
-# Usage: context-footprint.ps1 [-Check|-Update] [-AllowCeilingBreach]
+# Usage: context-footprint.ps1 [-Check|-Update] [-AllowCeilingBreach] [-DistRoot <dir>]
+# -DistRoot measures the dotnet/angular/monorepo dists under <dir> instead of dist/ (for a test on a
+# scratch copy); it is refused with -Update so a copy can never rewrite the committed baseline.
 # Default/-Check: exit 1 for a missing or changed baseline or hook-render mismatch.
 # -Update: rewrite the BOM-less, LF-only canonical baseline.
 # Either mode: exit 1 when a declared ceiling is exceeded (B-110). -AllowCeilingBreach waives that
 # for one run and is named for what it risks: shipping static context past a budget nobody re-decided.
-# Exit 2: usage error, missing dist/tool, malformed frontmatter, or fixture execution failure.
+# Exit 2: usage error (an unknown parameter included), missing dist/tool, a file that cannot be read,
+# malformed frontmatter, or fixture execution failure.
 param(
     [switch]$Check,
     [switch]$Update,
-    [switch]$AllowCeilingBreach
+    [switch]$AllowCeilingBreach,
+    [string]$DistRoot = ''
 )
 $ErrorActionPreference = 'Stop'
 
 $repo = Split-Path -Parent $PSScriptRoot
 $baseline = Join-Path $repo 'meta/context-footprint.json'
+$distBase = if ($DistRoot) { [IO.Path]::GetFullPath($DistRoot) } else { Join-Path $repo 'dist' }
 $utf8 = New-Object System.Text.UTF8Encoding($false, $true)
 $lf = [string][char]10
 
+# No [CmdletBinding()]: an unknown switch (-Chek) would then end the run with exit 1, which reads as
+# a drift FAIL. Left in $args it is refused here with the documented usage exit.
+if (@($args).Count -gt 0) {
+    [Console]::Error.WriteLine("usage: context-footprint.ps1 [-Check|-Update] [-AllowCeilingBreach] [-DistRoot <dir>] (unknown argument: $($args -join ' '))")
+    exit 2
+}
 if ($Check -and $Update) {
     [Console]::Error.WriteLine('usage: context-footprint.ps1 [-Check|-Update]')
     exit 2
 }
-if (-not $Update -and -not (Test-Path $baseline)) {
+if ($Update -and $DistRoot) {
+    [Console]::Error.WriteLine('usage: -DistRoot is for -Check only; -Update rewrites the committed baseline from dist/.')
+    exit 2
+}
+if (-not $Update -and -not (Test-Path -LiteralPath $baseline)) {
     [Console]::Error.WriteLine("FAIL: context-footprint baseline missing: $baseline. Run with -Update and review the generated diff.")
     exit 1
 }
@@ -39,7 +54,13 @@ if ([string]::IsNullOrWhiteSpace($psHost) -or -not (Test-Path -LiteralPath $psHo
 
 # --- D1: LF-normalized UTF-8 byte counting -----------------------------------------------------
 function Get-NormalizedText([string]$Path) {
-    $text = $utf8.GetString([IO.File]::ReadAllBytes($Path))
+    # A file that cannot be read is "could not examine" (FATAL, exit 2), never a footprint verdict.
+    try {
+        $bytes = [IO.File]::ReadAllBytes($Path)
+    } catch [System.IO.IOException], [System.UnauthorizedAccessException] {
+        throw "FATAL: could not read ${Path}: $($_.Exception.Message)"
+    }
+    $text = $utf8.GetString($bytes)
     return $text.Replace(([char]13 + [char]10), $lf)
 }
 
@@ -115,7 +136,7 @@ function Invoke-HookFixture(
     [string]$TempRoot
 ) {
     $work = Join-Path $TempRoot ("$Dist-$Hook-" + $Fixture.Replace('/', '-'))
-    New-Item -ItemType Directory -Force $work | Out-Null
+    [void][IO.Directory]::CreateDirectory($work)
     if ($Hook -eq 'session-start') {
         [IO.File]::WriteAllText(
             (Join-Path $work 'CLAUDE.md'),
@@ -132,8 +153,8 @@ function Invoke-HookFixture(
     $psOutput = Join-Path $work 'ps.out'
     # A hook finds its repository from its own path, so the fixture runs a copy installed in it.
     $psHook = Join-Path $work ".claude/hooks/$Hook.ps1"
-    New-Item -ItemType Directory -Force (Split-Path -Parent $psHook) | Out-Null
-    Copy-Item -LiteralPath (Join-Path $repo "dist/$Dist/.claude/hooks/$Hook.ps1") -Destination $psHook -Force
+    [void][IO.Directory]::CreateDirectory((Split-Path -Parent $psHook))
+    [IO.File]::Copy((Join-Path $distBase "$Dist/.claude/hooks/$Hook.ps1"), $psHook, $true)
     $psi = New-Object Diagnostics.ProcessStartInfo
     $psi.FileName = $psHost
     $psi.Arguments = '-NoProfile -File "' + $psHook.Replace('"', '\"') + '"'
@@ -235,15 +256,51 @@ function ConvertTo-CanonicalJson($Value, [int]$Level = 0) {
     throw "FATAL: unsupported JSON value type: $($Value.GetType().FullName)"
 }
 
+# --- B3: files a dist loads without being named in a fixed list ------------------------------------
+# Claude Code follows `@path` tokens in CLAUDE.md and in every file it imports (relative to the
+# importing file), and loads .claude/rules/**/*.md on every session. Copilot applies .github/
+# copilot-instructions.md and any .github/instructions file whose applyTo covers everything. A dist
+# that grows through one of these must show in the footprint, not be absorbed by -Update.
+function Get-ImportTargets([string]$Text) {
+    $targets = New-Object Collections.ArrayList
+    $inFence = $false
+    foreach ($line in $Text.Split([char]10)) {
+        if ($line -match '^\s*(```|~~~)') { $inFence = -not $inFence; continue }
+        if ($inFence) { continue }
+        $plain = [regex]::Replace($line, '`[^`]*`', '')
+        foreach ($m in [regex]::Matches($plain, '(?<![\w@./~-])@([^\s<>"''`]+)')) { [void]$targets.Add($m.Groups[1].Value) }
+    }
+    return ,$targets.ToArray()
+}
+
+# The file an import token names inside $Root, or $null (missing, a directory, outside the dist).
+function Resolve-ImportPath([string]$FromFile, [string]$Target, [string]$Root) {
+    if ($Target -match '^([~/\\]|[A-Za-z]:)') { return $null }
+    $candidates = @($Target)
+    $trimmed = $Target.TrimEnd('.', ',', ';', ':', '!', '?', ')')
+    if ($trimmed -ne $Target -and $trimmed) { $candidates += $trimmed }
+    foreach ($candidate in $candidates) {
+        try {
+            $full = [IO.Path]::GetFullPath([IO.Path]::Combine([IO.Path]::GetDirectoryName($FromFile), $candidate.Replace('/', '\')))
+        } catch { continue }
+        if ($full.StartsWith($Root + '\', [StringComparison]::OrdinalIgnoreCase) -and [IO.File]::Exists($full)) { return $full }
+    }
+    return $null
+}
+
+function Get-RelativePath([string]$Root, [string]$Full) {
+    return $Full.Substring($Root.Length).TrimStart('\', '/').Replace('\', '/')
+}
+
 # --- D2/D4: measure all dists, derive totals, and issue advisory warnings -----------------------
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('context-footprint-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory $tempRoot | Out-Null
+[void][IO.Directory]::CreateDirectory($tempRoot)
 try {
     $distData = [ordered]@{}
     $derived = [ordered]@{}
     foreach ($dist in @('dotnet', 'angular', 'monorepo')) {
-        $root = Join-Path $repo "dist/$dist"
-        if (-not (Test-Path $root)) { throw "FATAL: missing dist/$dist -- rebuild first." }
+        $root = [IO.Path]::GetFullPath((Join-Path $distBase $dist)).TrimEnd('\', '/')
+        if (-not (Test-Path -LiteralPath $root)) { throw "FATAL: missing dist/$dist -- rebuild first." }
         $groups = [ordered]@{
             'static.claude'  = [Collections.ArrayList]@()
             'static.copilot' = [Collections.ArrayList]@()
@@ -263,19 +320,73 @@ try {
             [void]$groups['static.copilot'].Add((New-ItemRecord $relative (Get-ByteCount (Join-Path $root $relative))))
         }
         [void]$groups['static.copilot'].Add((New-ItemRecord $frameworkRules (Get-ByteCount (Join-Path $root $frameworkRules))))
+
+        # B3: whatever CLAUDE.md imports (recursively, each file once), plus the always-loaded files.
+        $counted = New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        foreach ($relative in @('CLAUDE.md', 'AGENTS.md', $frameworkRules)) { [void]$counted.Add((Join-Path $root $relative).Replace('/', '\')) }
+        $visited = New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        $queue = New-Object Collections.Queue
+        $queue.Enqueue((Join-Path $root 'CLAUDE.md').Replace('/', '\'))
+        while ($queue.Count -gt 0) {
+            $current = [string]$queue.Dequeue()
+            if (-not $visited.Add($current)) { continue }
+            foreach ($target in (Get-ImportTargets (Get-NormalizedText $current))) {
+                $imported = Resolve-ImportPath $current $target $root
+                if (-not $imported) { continue }
+                if ($counted.Add($imported)) {
+                    [void]$groups['static.claude'].Add((New-ItemRecord (Get-RelativePath $root $imported) (Get-ByteCount $imported)))
+                }
+                $queue.Enqueue($imported)
+            }
+        }
+        $rulesDir = Join-Path $root '.claude/rules'
+        if (Test-Path -LiteralPath $rulesDir -PathType Container) {
+            foreach ($file in (Get-ChildItem -LiteralPath $rulesDir -Filter '*.md' -File -Recurse -Force)) {
+                if ($counted.Add($file.FullName)) {
+                    [void]$groups['static.claude'].Add((New-ItemRecord (Get-RelativePath $root $file.FullName) (Get-ByteCount $file.FullName)))
+                }
+            }
+        }
+        $copilotCounted = New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        foreach ($relative in @('CLAUDE.md', 'AGENTS.md', $frameworkRules)) { [void]$copilotCounted.Add((Join-Path $root $relative).Replace('/', '\')) }
+        $copilotFiles = @()
+        $copilotRepoFile = Join-Path $root '.github/copilot-instructions.md'
+        if ([IO.File]::Exists($copilotRepoFile)) { $copilotFiles += $copilotRepoFile }
+        $instructionsDir = Join-Path $root '.github/instructions'
+        if (Test-Path -LiteralPath $instructionsDir -PathType Container) {
+            foreach ($file in (Get-ChildItem -LiteralPath $instructionsDir -Filter '*.instructions.md' -File -Force)) {
+                $text = Get-NormalizedText $file.FullName
+                if ($text -match '(?s)\A---\n(.*?)\n---\n') {
+                    $frontmatter = $Matches[1]
+                    if ($frontmatter -match '(?m)^applyTo:\s*(.+?)\s*$') {
+                        $globs = @($Matches[1] -split '\s*,\s*' | ForEach-Object { $_.Trim('"', "'", ' ') })
+                        if ($globs -contains '**' -or $globs -contains '**/*') { $copilotFiles += $file.FullName }
+                    }
+                }
+            }
+        }
+        foreach ($full in $copilotFiles) {
+            $full = $full.Replace('/', '\')
+            if ($copilotCounted.Add($full)) {
+                [void]$groups['static.copilot'].Add((New-ItemRecord (Get-RelativePath $root $full) (Get-ByteCount $full)))
+            }
+        }
         $instructedFiles = @((Get-Item -LiteralPath (Join-Path $root 'FRAMEWORK-CONTEXT.md') -Force -ErrorAction SilentlyContinue))
         $instructedFiles += @(Get-ChildItem -LiteralPath (Join-Path $root 'docs') -Filter '*.md' -File -Recurse -Force)
         foreach ($file in $instructedFiles) {
             $relative = $file.FullName.Substring($root.Length).TrimStart('\', '/').Replace('\', '/')
             $path = Join-Path $root $relative
-            if (Test-Path $path) {
+            if (Test-Path -LiteralPath $path) {
                 [void]$groups['instructed'].Add((New-ItemRecord $relative (Get-ByteCount $path)))
             }
         }
 
         $manifestFiles = @()
-        foreach ($pattern in @('.claude/skills/*/SKILL.md', '.claude/commands/*.md', '.claude/agents/*.md')) {
-            $manifestFiles += Get-ChildItem (Join-Path $root $pattern) -File -ErrorAction SilentlyContinue
+        foreach ($skillDir in @(Get-ChildItem -LiteralPath (Join-Path $root '.claude/skills') -Directory -ErrorAction SilentlyContinue)) {
+            $manifestFiles += Get-ChildItem -LiteralPath $skillDir.FullName -Filter 'SKILL.md' -File -ErrorAction SilentlyContinue
+        }
+        foreach ($sub in @('.claude/commands', '.claude/agents')) {
+            $manifestFiles += Get-ChildItem -LiteralPath (Join-Path $root $sub) -Filter '*.md' -File -ErrorAction SilentlyContinue
         }
         $manifestRecords = @()
         foreach ($file in $manifestFiles) {
@@ -401,5 +512,5 @@ try {
     if ($_.Exception.Message.StartsWith('FATAL:')) { exit 2 }
     exit 1
 } finally {
-    Remove-Item -Recurse -Force $tempRoot -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
