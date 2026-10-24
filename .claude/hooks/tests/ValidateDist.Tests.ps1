@@ -355,6 +355,77 @@ try {
             [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
         } 'Claude-format entry must set "cwd": "."' 'hook-registration'
     }
+    # B-464 D1: check 8 counted handlers and validated each one's interpreter and target, but never which
+    # script sits on which event, the matcher or the timeout. Every mutant below stayed green on the unfixed
+    # validator while its hook silently never ran (or ran on the wrong event, or was killed early).
+    It 'case 8g: a guard group whose matcher names no tool fails check 8' {
+        Assert-Case 'guard-matcher-no-such-tool' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.json'
+            $t = [IO.File]::ReadAllText($path)
+            $m = [regex]::Replace($t, '(?s)("matcher":\s*)"Write\|Edit"(,\s*"hooks":\s*\[\s*\{[^}]*guard\.ps1)', '$1"NoSuchTool"$2')
+            Assert ($m -ne $t) 'fixture did not find the guard group matcher'
+            [IO.File]::WriteAllText($path, $m)
+        } "PreToolUse matcher must be exactly 'Write|Edit', found 'NoSuchTool'" 'hook-registration'
+    }
+    It 'case 8h: a misspelt Claude event name fails check 8' {
+        Assert-Case 'claude-event-stopp' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.json'
+            Assert ([IO.File]::ReadAllText($path).Contains('"Stop": [')) 'fixture has no Stop event'
+            Replace-Text $path '"Stop": [' '"Stopp": ['
+        } "unexpected hook event 'Stopp'" 'hook-registration' -AlsoPattern "hook event 'Stop' is not registered"
+    }
+    It 'case 8i: the guard and session-start commands swapped between Copilot events fail check 8' {
+        Assert-Case 'copilot-guard-session-start-swapped' {
+            param($d)
+            $path = Join-Path $d '.github\hooks\hooks.json'
+            $t = [IO.File]::ReadAllText($path)
+            Assert ($t.Contains('session-start.ps1') -and $t.Contains('guard.ps1')) 'fixture lacks the session-start or guard command'
+            [IO.File]::WriteAllText($path, $t.Replace('session-start.ps1', '@@SWAP@@').Replace('guard.ps1', 'session-start.ps1').Replace('@@SWAP@@', 'guard.ps1'))
+        } 'event ''preToolUse'' handler 1 must run .claude/hooks/guard.ps1' 'hook-registration' -AlsoPattern 'event ''sessionStart'' handler 1 must run .claude/hooks/session-start.ps1'
+    }
+    It 'case 8j: a Copilot prompt event renamed to userPromptSubmit fails checks 8 and 13' {
+        Assert-Case 'copilot-user-prompt-submit' {
+            param($d)
+            $path = Join-Path $d '.github\hooks\hooks.json'
+            Assert ([IO.File]::ReadAllText($path).Contains('"userPromptSubmitted"')) 'fixture has no userPromptSubmitted event'
+            Replace-Text $path '"userPromptSubmitted"' '"userPromptSubmit"'
+        } "unexpected hook event 'userPromptSubmit'" 'hook-registration,prompt-hook-cardinality' -AlsoPattern @("hook event 'userPromptSubmitted' is not registered", 'hooks\.json : no userPromptSubmitted event')
+    }
+    It 'case 8k: a post-write timeout below the floor fails check 8 in both formats' {
+        Assert-Case 'claude-post-write-timeout-below-floor' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.json'
+            Assert ([IO.File]::ReadAllText($path).Contains('"timeout": 90')) 'fixture lacks the 90 s post-write timeout'
+            Replace-Text $path '"timeout": 90' '"timeout": 30'
+        } 'post-write timeout must be at least 85 s, found 30' 'hook-registration'
+        Assert-Case 'copilot-post-write-timeout-below-floor' {
+            param($d)
+            $path = Join-Path $d '.github\hooks\hooks.json'
+            Assert ([IO.File]::ReadAllText($path).Contains('"timeoutSec": 120')) 'fixture lacks the 120 s post-write timeout'
+            Replace-Text $path '"timeoutSec": 120' '"timeoutSec": 20'
+        } 'post-write timeout must be at least 85 s, found 20' 'hook-registration'
+    }
+    It 'case 8l: a guard timeout below its floor fails check 8' {
+        Assert-Case 'copilot-guard-timeout-below-floor' {
+            param($d)
+            $path = Join-Path $d '.github\hooks\hooks.json'
+            $t = [IO.File]::ReadAllText($path)
+            $m = [regex]::Replace($t, '(guard\.ps1",\s*"timeoutSec":\s*)10', '${1}2')
+            Assert ($m -ne $t) 'fixture did not find the guard timeout'
+            [IO.File]::WriteAllText($path, $m)
+        } 'guard timeout must be at least 10 s, found 2' 'hook-registration'
+    }
+    It 'case 8m: a registration without -ExecutionPolicy Bypass fails check 8' {
+        Assert-Case 'windows-registration-without-execution-policy' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.windows.json'
+            $find = '-NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1'
+            Assert ([IO.File]::ReadAllText($path).Contains($find)) 'fixture lacks the session-start registration'
+            Replace-Text $path $find '-NoProfile -File .claude/hooks/session-start.ps1'
+        } 'command omits exact -ExecutionPolicy Bypass' 'hook-registration'
+    }
     It 'case 9: a dead documented command fails check 7' { Assert-Case 'dead-doc' { param($d) Replace-Text (Join-Path $d 'README.md') 'scripts/install.ps1' 'scripts/definitely-missing.ps1' } 'dead instructions in shipped docs' 'no-dead-instruction' }
     # -Force is load-bearing: most shipped Markdown lives below dot-directories.
     It 'case 10: no markdown files fails check 7' { Assert-Case 'no-docs' { param($d) Get-ChildItem -LiteralPath $d -Recurse -Filter *.md -Force | Remove-Item -Force } 'no-dead-instruction scanned zero documentation files' 'no-dead-instruction' }
@@ -941,6 +1012,34 @@ try {
                 [IO.File]::WriteAllText($path, [regex]::Replace($text, '(?m)^description: "(Bug-fix workflow: [^"]*)"$', 'description: $1'))
             }
         } 'shipped frontmatter values Copilot CLI refuses' 'skill-frontmatter' -AlsoPattern @("\.claude/commands/fix\.md : description has an unquoted value holding ': '", "\.agents/skills/fix/SKILL\.md : description has an unquoted value holding ': '")
+    }
+
+    # B-464 B1: ConvertFrom-Json accepts single quotes, bare keys and NaN on both hosts, and trailing
+    # commas and comments on pwsh; both agent hosts read these files with a strict parser, so a dist
+    # carrying one has no hooks at all. Each mutant printed OK on the unfixed check 2.
+    It 'case 45: a single-quoted key in hooks.json fails the JSON check' {
+        Assert-Case 'json-single-quoted-key-hooks' {
+            param($d)
+            $path = Join-Path $d '.github\hooks\hooks.json'
+            Assert ([IO.File]::ReadAllText($path).Contains('"timeoutSec": 10')) 'fixture lacks a timeoutSec'
+            Replace-Text $path '"timeoutSec": 10' "'timeoutSec': 10"
+        } 'invalid JSON (strict grammar):' 'json' -AlsoPattern 'hooks\.json'
+    }
+    It 'case 46: a single-quoted value in settings.json fails the JSON check' {
+        Assert-Case 'json-single-quoted-value-settings' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.json'
+            Assert ([IO.File]::ReadAllText($path).Contains('"defaultShell": "powershell"')) 'fixture lacks defaultShell'
+            Replace-Text $path '"defaultShell": "powershell"' "`"defaultShell`": 'powershell'"
+        } 'invalid JSON (strict grammar):' 'json' -AlsoPattern 'settings\.json'
+    }
+    It 'case 47: a trailing comma in hooks.json fails the JSON check on both hosts' {
+        Assert-Case 'json-trailing-comma-hooks' {
+            param($d)
+            $path = Join-Path $d '.github\hooks\hooks.json'
+            Assert ([IO.File]::ReadAllText($path).Contains('"timeoutSec": 15')) 'fixture lacks the sessionStart timeoutSec'
+            Replace-Text $path '"timeoutSec": 15' '"timeoutSec": 15,'
+        } 'invalid JSON (strict grammar):' 'json' -AlsoPattern 'hooks\.json'
     }
 
 } finally { foreach($p in $scratch) { if(Test-Path $p){ Remove-Item -LiteralPath $p -Recurse -Force } } }

@@ -38,7 +38,7 @@ or type error in a .NET source file or an Angular application source file throug
 post-write throttle has elapsed; only hook output
 starting `## dotnet build failed`, `## tsc --noEmit failed` or, after an Angular template write,
 `## ngc --noEmit failed` proves that host path. The hook gives
-the build or type-check 45 seconds (`ATL_POSTWRITE_BUDGET_SEC`, 1-600, overrides it); a run that
+the build or type-check 45 seconds (`ATL_POSTWRITE_BUDGET_SEC`, whole seconds, overrides it; anything above 80 counts as 80, because the host stops the hook at 90 s on Claude Code and 120 s on Copilot); a run that
 exceeds the budget is stopped and reports nothing, and the next one waits five minutes. A .NET build that
 could not run because the packages were never restored (NETSDK1004/1005) reports "Build not verified" and
 asks for one `dotnet restore`, then waits the same five minutes. An Angular workspace with no

@@ -2,18 +2,19 @@
 # dist/<mode> tree — it does NOT rebuild it (see scripts/build.ps1 for that). Fourteen checks, each
 # with a clear OK/FAIL line:
 #   1. no unresolved @stack:NAME markers survive anywhere in the dist (composer leftovers)
-#   2. every *.json in the dist parses (ConvertFrom-Json)
+#   2. every *.json in the dist parses under a strict JSON grammar (then ConvertFrom-Json)
 #   3. no active shell script, shell shebang, or non-Windows GitHub runner remains
 #   4. PowerShell AST parse is clean on every *.ps1 in the dist
 #   5. the dist's OWN template-checks.ps1 suite passes, run from inside the dist dir
 #   6. no meta-dev vocabulary leaks into shipped content (scripts/meta-denylist.txt)
 #   7. every script a shipped *.md tells someone to RUN and every rendered relative inline link resolves
-#   8. exactly 18 PowerShell hook registrations resolve with case-exact paths and required settings
+#   8. exactly 18 PowerShell hook registrations resolve with case-exact paths and required settings,
+#      on the exact event map (event, matcher, script order, -ExecutionPolicy Bypass, timeout floors)
 #   9. every core @stack marker expands from a non-empty stack snippet into the composed file
 #  10. section-path citations name a heading that exists in the cited shipped file
 #  11. CLAUDE.md imports AGENTS.md and the shipped framework-rules carrier
 #  12. top-level ordered-list runs are contiguous and prose step references resolve in-file
-#  13. Copilot userPromptSubmitted has at most one entry (only its last entry is delivered)
+#  13. Copilot userPromptSubmitted exists and has at most one entry (only its last entry is delivered)
 #  14. each route-prompt rail was reviewed with the canonical workflow bullet it repeats (meta/rail-sync.json;
 #      --update-rail-sync records a reviewed pair for the named dist)
 # Exit 1 = at least one check found a wrong artifact (FAIL:). Otherwise exit 2 = usage error, missing
@@ -170,6 +171,23 @@ function Test-HookRef {
         return $problems
     }
     return $problems
+}
+
+# Strict JSON grammar for every registration and JSON-parse decision below. ConvertFrom-Json alone
+# accepts single quotes, bare keys and NaN on both hosts, and trailing commas, comments and hex on
+# pwsh, while both agent hosts read these files with a strict parser: one such file means no hook
+# in it runs and every gate green. Copied from the shipped framework-doctor.ps1 (ConvertFrom-StrictJson)
+# because this validator must not depend on a script inside the dist it examines.
+function ConvertFrom-StrictJson([string]$Text) {
+    $state = [pscustomobject]@{ Text = $Text; Index = 0; Length = $Text.Length }
+    function Fail-StrictJson { throw 'invalid strict JSON' }
+    function Skip-JsonWhitespace { while ($state.Index -lt $state.Length -and ([int]$state.Text[$state.Index] -in @(0x20,0x09,0x0A,0x0D))) { $state.Index++ } }
+    function Read-JsonString { if($state.Index-ge$state.Length-or$state.Text[$state.Index]-ne'"'){Fail-StrictJson};$state.Index++;while($state.Index-lt$state.Length){$c=$state.Text[$state.Index];$state.Index++;if($c-eq'"'){return};if([int]$c-lt0x20){Fail-StrictJson};if($c-eq'\'){if($state.Index-ge$state.Length){Fail-StrictJson};$escape=$state.Text[$state.Index];$state.Index++;if('"\/bfnrt'.IndexOf($escape)-ge0){continue};if($escape-ne'u'-or$state.Index+4-gt$state.Length){Fail-StrictJson};for($h=0;$h-lt4;$h++){if(-not[Uri]::IsHexDigit($state.Text[$state.Index+$h])){Fail-StrictJson}};$state.Index+=4}};Fail-StrictJson }
+    function Read-JsonNumber { if($state.Text[$state.Index]-eq'-'){$state.Index++;if($state.Index-ge$state.Length){Fail-StrictJson}};$code=[int]$state.Text[$state.Index];if($code-eq0x30){$state.Index++;if($state.Index-lt$state.Length-and[int]$state.Text[$state.Index]-ge0x30-and[int]$state.Text[$state.Index]-le0x39){Fail-StrictJson}}elseif($code-ge0x31-and$code-le0x39){do{$state.Index++}while($state.Index-lt$state.Length-and[int]$state.Text[$state.Index]-ge0x30-and[int]$state.Text[$state.Index]-le0x39)}else{Fail-StrictJson};if($state.Index-lt$state.Length-and$state.Text[$state.Index]-eq'.'){$state.Index++;$start=$state.Index;while($state.Index-lt$state.Length-and[int]$state.Text[$state.Index]-ge0x30-and[int]$state.Text[$state.Index]-le0x39){$state.Index++};if($state.Index-eq$start){Fail-StrictJson}};if($state.Index-lt$state.Length-and($state.Text[$state.Index]-eq'e'-or$state.Text[$state.Index]-eq'E')){$state.Index++;if($state.Index-lt$state.Length-and($state.Text[$state.Index]-eq'+'-or$state.Text[$state.Index]-eq'-')){$state.Index++};$start=$state.Index;while($state.Index-lt$state.Length-and[int]$state.Text[$state.Index]-ge0x30-and[int]$state.Text[$state.Index]-le0x39){$state.Index++};if($state.Index-eq$start){Fail-StrictJson}} }
+    function Read-JsonArray { $state.Index++;Skip-JsonWhitespace;if($state.Index-lt$state.Length-and$state.Text[$state.Index]-eq']'){$state.Index++;return};while($true){Read-JsonValue;Skip-JsonWhitespace;if($state.Index-ge$state.Length){Fail-StrictJson};$c=$state.Text[$state.Index];$state.Index++;if($c-eq']'){return};if($c-ne','){Fail-StrictJson};Skip-JsonWhitespace} }
+    function Read-JsonObject { $state.Index++;Skip-JsonWhitespace;if($state.Index-lt$state.Length-and$state.Text[$state.Index]-eq'}'){$state.Index++;return};while($true){Read-JsonString;Skip-JsonWhitespace;if($state.Index-ge$state.Length-or$state.Text[$state.Index]-ne':'){Fail-StrictJson};$state.Index++;Read-JsonValue;Skip-JsonWhitespace;if($state.Index-ge$state.Length){Fail-StrictJson};$c=$state.Text[$state.Index];$state.Index++;if($c-eq'}'){return};if($c-ne','){Fail-StrictJson};Skip-JsonWhitespace} }
+    function Read-JsonValue { Skip-JsonWhitespace;if($state.Index-ge$state.Length){Fail-StrictJson};$c=$state.Text[$state.Index];if($c-eq'"'){Read-JsonString;return};if($c-eq'{'){Read-JsonObject;return};if($c-eq'['){Read-JsonArray;return};foreach($literal in @('true','false','null')){if($state.Index+$literal.Length-le$state.Length-and$state.Text.Substring($state.Index,$literal.Length)-ceq$literal){$state.Index+=$literal.Length;return}};if($c-eq'-'-or([int]$c-ge0x30-and[int]$c-le0x39)){Read-JsonNumber;return};Fail-StrictJson }
+    Read-JsonValue;Skip-JsonWhitespace;if($state.Index-ne$state.Length){Fail-StrictJson};return($Text|ConvertFrom-Json -ErrorAction Stop)
 }
 
 # -Force on every enumeration below is LOAD-BEARING, not defensive. A leading-dot directory can be
@@ -396,15 +414,15 @@ foreach ($f in $jsonInputs) {
         $jsonText = [IO.File]::ReadAllText($f.FullName)
     } catch { $jsonReadFails += $f.FullName; continue }
     try {
-        $jsonText | ConvertFrom-Json | Out-Null
+        ConvertFrom-StrictJson $jsonText | Out-Null
     } catch { $jsonFails += $f.FullName
     }
 }
 if ($null -ne $jsonEnumError) { Cant-Examine "JSON scan could not enumerate $Dist : $jsonEnumError" }
 elseif ($jsonInputs.Count -eq 0) { Fail "JSON scan found zero files in $Dist." }
 elseif ($jsonReadFails.Count -gt 0) { Cant-Examine ("JSON scan could not read:" + ($jsonReadFails -join ' ')) }
-elseif ($jsonFails.Count -gt 0) { Fail ("invalid JSON (ConvertFrom-Json):" + ($jsonFails -join ' ')) }
-else { OK "all $($jsonInputs.Count) *.json files parse (ConvertFrom-Json)." }
+elseif ($jsonFails.Count -gt 0) { Fail ("invalid JSON (strict grammar):" + ($jsonFails -join ' ')) }
+else { OK "all $($jsonInputs.Count) *.json files parse (strict grammar, then ConvertFrom-Json)." }
 }
 
 if (Test-CheckSelected 'powershell-topology') {
@@ -696,10 +714,105 @@ function Get-FileArgument {
     if ($m.Groups[1].Success) { return $m.Groups[1].Value }
     return $m.Groups[2].Value
 }
+# The exact event map each registration file must carry: which script sits on which event, the
+# matcher, the order within an event, and the timeout floors. Counting handlers and checking each
+# one's target left a dist whose guard sat on the wrong event, behind a matcher naming no tool, or
+# under a 1 s timeout green while the hook never did its job. The post-write floor is the hook's
+# own budget ceiling (clamped to 80 s by the hook) plus a margin for its bounded-tool cleanup.
+function New-HookExpectation {
+    param([string]$Name, [int]$Floor = 0, [bool]$Required = $false, [string]$Mode = '')
+    return @{ Name = $Name; Script = ".claude/hooks/$Name.ps1"; Floor = $Floor; Required = $Required; Mode = $Mode }
+}
+function Get-HookWiringProblems {
+    param([string]$File, $Hooks, [bool]$Claude)
+    $problems = @()
+    $sessionStart = New-HookExpectation 'session-start'
+    $routePrompt = New-HookExpectation 'route-prompt'
+    $guard = New-HookExpectation 'guard' 10
+    $postWrite = New-HookExpectation 'post-write' 85 $true
+    $auditTrail = New-HookExpectation 'audit-trail'
+    if ($Claude) {
+        $expected = @(
+            @{ Event = 'SessionStart';     Matcher = '';           Handlers = @($sessionStart) },
+            @{ Event = 'UserPromptSubmit'; Matcher = '';           Handlers = @($routePrompt) },
+            @{ Event = 'PreToolUse';       Matcher = 'Write|Edit'; Handlers = @($guard) },
+            @{ Event = 'PostToolUse';      Matcher = 'Write|Edit'; Handlers = @($postWrite, $auditTrail) },
+            @{ Event = 'Stop';             Matcher = '';           Handlers = @((New-HookExpectation 'boy-scout-check')) }
+        )
+        $timeoutKey = 'timeout'; $commandKey = 'command'
+    } else {
+        $expected = @(
+            @{ Event = 'sessionStart';        Matcher = ''; Handlers = @($sessionStart) },
+            @{ Event = 'userPromptSubmitted'; Matcher = ''; Handlers = @($routePrompt) },
+            @{ Event = 'preToolUse';          Matcher = ''; Handlers = @($guard) },
+            @{ Event = 'postToolUse';         Matcher = ''; Handlers = @($postWrite, $auditTrail) },
+            @{ Event = 'agentStop';           Matcher = ''; Handlers = @((New-HookExpectation 'boy-scout-check' 0 $false 'scan')) }
+        )
+        $timeoutKey = 'timeoutSec'; $commandKey = 'powershell'
+    }
+    $eventNames = @($expected | ForEach-Object { $_.Event })
+    foreach ($property in @($Hooks.PSObject.Properties)) {
+        if ($eventNames -cnotcontains $property.Name) { $problems += "$File : unexpected hook event '$($property.Name)'; the only registered events are $($eventNames -join ', ') (names are case-exact)" }
+    }
+    foreach ($exp in $expected) {
+        $match = @($Hooks.PSObject.Properties | Where-Object { $_.Name -ceq $exp.Event })
+        if ($match.Count -ne 1) { $problems += "$File : hook event '$($exp.Event)' is not registered"; continue }
+        if ($match[0].Value -isnot [System.Array]) { continue }
+        $carriers = @($match[0].Value)
+        $entries = @()
+        if ($Claude) {
+            if ($carriers.Count -ne 1) { $problems += "$File : event '$($exp.Event)' must hold exactly one hook group, found $($carriers.Count)" }
+            if ($carriers.Count -gt 0 -and $carriers[0] -is [pscustomobject]) {
+                $carrier = $carriers[0]
+                if ($carrier.hooks -is [System.Array]) { $entries = @($carrier.hooks) }
+            } else { continue }
+        } else {
+            $carrier = $null
+            $entries = $carriers
+        }
+        # Claude carries the matcher on the group; Copilot has no matcher at all, and guard.ps1
+        # self-filters by path and content.
+        $matcherHolders = @(); if ($Claude) { $matcherHolders = @($carrier) } else { $matcherHolders = @($entries) }
+        foreach ($holder in $matcherHolders) {
+            $found = @(); if ($holder -is [pscustomobject]) { $found = @($holder.PSObject.Properties | Where-Object { $_.Name -ieq 'matcher' }) }
+            if ($exp.Matcher -ne '') {
+                $foundText = 'none'; if ($found.Count -gt 0) { $foundText = [string]$found[0].Value }
+                if ($found.Count -ne 1 -or $found[0].Name -cne 'matcher' -or [string]$found[0].Value -cne $exp.Matcher) { $problems += "$File : $($exp.Event) matcher must be exactly '$($exp.Matcher)', found '$foundText'" }
+            } elseif ($found.Count -gt 0) {
+                $problems += "$File : $($exp.Event) must not carry a matcher, found '$([string]$found[0].Value)'"
+            }
+        }
+        $wanted = @($exp.Handlers | ForEach-Object { $_.Script })
+        if ($entries.Count -ne $exp.Handlers.Count) { $problems += "$File : event '$($exp.Event)' must register exactly $($exp.Handlers.Count) handler(s) ($($wanted -join ', ')), found $($entries.Count)" }
+        for ($i = 0; $i -lt [Math]::Min($entries.Count, $exp.Handlers.Count); $i++) {
+            $h = $exp.Handlers[$i]; $entry = $entries[$i]
+            $cmd = ''
+            if ($entry -is [pscustomobject]) {
+                $cp = @($entry.PSObject.Properties | Where-Object { $_.Name -ceq $commandKey })
+                if ($cp.Count -eq 1) { $cmd = [string]$cp[0].Value }
+            }
+            $target = Get-FileArgument $cmd
+            $rel = ''; if ($target) { $rel = $target -replace '\\+', '/' }
+            if ($rel -cne $h.Script) { $problems += "$File : event '$($exp.Event)' handler $($i + 1) must run $($h.Script), found '$rel'" }
+            if ($h.Mode -ne '' -and $cmd -cnotmatch ('(?:^|\s)-Mode\s+' + [regex]::Escape($h.Mode) + '(?:\s|$)')) { $problems += "$File : event '$($exp.Event)' command must pass -Mode $($h.Mode): $cmd" }
+            if ($h.Floor -gt 0 -and $entry -is [pscustomobject]) {
+                $tp = @($entry.PSObject.Properties | Where-Object { $_.Name -ceq $timeoutKey })
+                if ($tp.Count -eq 0) {
+                    if ($h.Required) { $problems += "$File : $($h.Name) timeout must be at least $($h.Floor) s, found none ($timeoutKey is missing)" }
+                } elseif ($tp[0].Value -isnot [ValueType] -or $tp[0].Value -is [bool]) {
+                    $problems += "$File : $($h.Name) timeout must be at least $($h.Floor) s, found '$([string]$tp[0].Value)' ($timeoutKey is not a number)"
+                } elseif ([double]$tp[0].Value -lt $h.Floor) {
+                    $problems += "$File : $($h.Name) timeout must be at least $($h.Floor) s, found $($tp[0].Value) ($timeoutKey)"
+                }
+            }
+        }
+    }
+    return $problems
+}
 foreach ($rf in $regFiles) {
     $rfAbs = Join-Path $DistAbs $rf
     if (-not (Test-Path -LiteralPath $rfAbs)) { $regProblems += "$rf : registration file missing from this dist"; continue }
-    try { $rawRegistration = [IO.File]::ReadAllText($rfAbs); $json = $rawRegistration | ConvertFrom-Json }
+    try { $rawRegistration = [IO.File]::ReadAllText($rfAbs); $json = ConvertFrom-StrictJson $rawRegistration }
     catch { $regProblems += "$rf : registration file is unreadable or unparseable"; continue }
     if ($rawRegistration -match '(?i)"bash"\s*:') { $regProblems += "$rf : Bash hook key remains in PowerShell-only configuration" }
     if ($null -eq $json.hooks -or -not ($json.hooks -is [pscustomobject])) { $regProblems += "$rf : registration file has no hooks object"; continue }
@@ -718,6 +831,7 @@ foreach ($rf in $regFiles) {
                     $cmd = [string]$entry.command; $interp = ($cmd -split '\s+')[0]
                     if ($interp -cne $expectedInterpreter) { $regProblems += "$rf : expected interpreter '$expectedInterpreter', found '$interp' in: $cmd" }
                     if ($cmd -cnotmatch '(?:^|\s)-NoProfile(?:\s|$)') { $regProblems += "$rf : command omits exact -NoProfile: $cmd" }
+                    if ($cmd -cnotmatch '(?:^|\s)-ExecutionPolicy\s+Bypass(?:\s|$)') { $regProblems += "$rf : command omits exact -ExecutionPolicy Bypass: $cmd" }
                     if ([string]$entry.shell -cne 'powershell') { $regProblems += "$rf : command hook shell must be exactly 'powershell': $cmd" }
                     if ([string]$entry.cwd -cne '.') { $regProblems += "$rf : Claude-format entry must set ""cwd"": ""."" (repository root); Copilot runtimes read this file too, and one starting it in a subfolder workspace fails its relative -File: $cmd" }
                     $script = Get-FileArgument $cmd
@@ -741,6 +855,7 @@ foreach ($rf in $regFiles) {
                 $interp = ($cmd -split '\s+')[0]
                 if ($interp -cne 'pwsh') { $regProblems += "$rf : Copilot command must explicitly invoke 'pwsh', found '$interp' in: $cmd" }
                 if ($cmd -cnotmatch '(?:^|\s)-NoProfile(?:\s|$)') { $regProblems += "$rf : command omits exact -NoProfile: $cmd" }
+                if ($cmd -cnotmatch '(?:^|\s)-ExecutionPolicy\s+Bypass(?:\s|$)') { $regProblems += "$rf : command omits exact -ExecutionPolicy Bypass: $cmd" }
                 if ([string]$entry.cwd -cne '.') { $regProblems += "$rf : Copilot entry must set ""cwd"": ""."" (repository root), or a host starting it elsewhere fails its relative -File: $cmd" }
                 $script = Get-FileArgument $cmd
                 if (-not $script) { $regProblems += "$rf : no -File argument in: $cmd" }
@@ -750,6 +865,7 @@ foreach ($rf in $regFiles) {
         }
     }
     if ($handlers -eq 0) { $regProblems += "$rf : registration file yields zero handlers" }
+    else { $regProblems += (Get-HookWiringProblems -File $rf -Hooks $json.hooks -Claude ($rf -like '.claude/*')) }
 }
 foreach ($rf in @('.claude/settings.json','.claude/settings.windows.json')) {
     if ([int]$settingsCounts[$rf] -ne 6) { $regProblems += "$rf : expected exactly 6 command hooks, found $([int]$settingsCounts[$rf])" }
@@ -760,7 +876,7 @@ if (@($regProblems).Count -gt 0) {
     Fail ("hook registrations reference {0} missing or invalid target(s) in {1}. A registration that cannot start is a hook that silently never runs." -f @($regProblems).Count, $Dist)
     $regProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [hook-registration] $_" }
 } else {
-    OK "exactly 18 PowerShell hook registrations resolve (settings.json 6, settings.windows.json 6, hooks.json 6; parsed by ConvertFrom-Json)"
+    OK "exactly 18 PowerShell hook registrations resolve (settings.json 6, settings.windows.json 6, hooks.json 6; strict JSON; event map, matchers and timeout floors pinned)"
 }
 }
 
@@ -842,7 +958,7 @@ $promptHookEvents = 0
 foreach ($file in $promptHookFiles) {
     $relative = $file.FullName.Substring($DistAbs.Length).TrimStart('\','/').Replace('\','/')
     try {
-        $doc = [IO.File]::ReadAllText($file.FullName, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        $doc = ConvertFrom-StrictJson ([IO.File]::ReadAllText($file.FullName, [Text.Encoding]::UTF8))
     } catch {
         $promptHookProblems += "$relative : hooks.json is unparseable ($($_.Exception.Message))"
         continue
@@ -859,6 +975,9 @@ foreach ($file in $promptHookFiles) {
         if ($entries.Count -gt 1) {
             $promptHookProblems += "$relative : userPromptSubmitted has $($entries.Count) entries; Copilot CLI 1.0.80 delivers only the last entry, so compose model-facing additionalContext into one hook instead"
         }
+    } else {
+        # Renaming the event used to disarm this check instead of failing it: no event, no finding.
+        $promptHookProblems += "$relative : no userPromptSubmitted event; the routing and rail hook is not registered under the exact event name Copilot CLI delivers"
     }
 }
 if ($promptHookFiles.Count -eq 0) {

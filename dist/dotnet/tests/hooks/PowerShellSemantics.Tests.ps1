@@ -69,6 +69,36 @@ It 'boy-scout repeats no unchanged finding set in a repository folder named with
     } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# A subfolder install (framework in app\ below the git root) keeps its state and queue in its own .claude\.state
+# and scans only its own folder; writer and reader agree on the queue path. The outer root's .claude\.state is
+# unignored, so a write there leaves the tree dirty and the next installer update refuses it.
+It 'boy-scout in a subfolder install keeps state and queue in the install and scans only its folder' {
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('boysub-' + [guid]::NewGuid().ToString('N'))
+    $outer = Join-Path $dir 'outer'
+    $app = Join-Path $outer 'app'
+    try {
+        $hook = Copy-HookInto $boyScout $app
+        git -C $outer init --quiet
+        foreach ($file in 'app\src\Commented.cs', 'app\src\commented.ts', 'other\Other.cs', 'other\other.ts') {
+            $path = Join-Path $outer $file
+            [void][IO.Directory]::CreateDirectory((Split-Path -Parent $path))
+            [IO.File]::WriteAllText($path, "// first();`n// second();`nclass Probe {}`n")
+        }
+        Push-Location -LiteralPath $dir
+        try {
+            $scan = Invoke-BoyScoutHook $hook '{}' 'scan'
+            $status = @(git -C $outer status --porcelain --untracked-files=all)
+            $deliver = Invoke-BoyScoutHook $hook '{}' 'deliver'
+        } finally { Pop-Location }
+        Assert ($scan.Exit -eq 0 -and $scan.Out -match 'commented-out code block') "the scan reported no candidate: exit $($scan.Exit), stdout '$($scan.Out)', stderr '$($scan.Err)'"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $outer '.claude'))) "state was written at the outer repository root: $(@($status | Where-Object { $_ -match '\.claude/' }) -join '; ')"
+        Assert (Test-Path -LiteralPath (Join-Path $app '.claude\.state\last-boy-scout-hash')) 'the dedup record is not in the install''s .claude\.state'
+        Assert ($scan.Out -notmatch '(?i)other') "the scan reached another team's folder: '$($scan.Out)'"
+        Assert ($deliver.Exit -eq 0 -and $deliver.Out -match 'commented-out code block') "deliver did not find the queue the scan wrote: exit $($deliver.Exit), stdout '$($deliver.Out)'"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $app '.claude\.state\boy-scout-queue'))) 'deliver did not consume the queue'
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 if (-not (Test-Path -LiteralPath $boyScout) -or -not ((Get-Content -Raw -LiteralPath $boyScout) -match 'read-style EF Core query')) {
     Skip 'boy-scout EF evidence gate' 'distribution does not carry the .NET boy-scout heuristic'
 } else {

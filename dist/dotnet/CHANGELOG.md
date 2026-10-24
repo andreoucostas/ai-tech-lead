@@ -81,6 +81,28 @@
 - **An update no longer fails when `LEARNINGS.md` is empty.** If your team emptied that file, the update used to stop with a
   raw error before showing its plan. It now treats an empty file as disabling no skills and leaves the file alone.
 
+- **An adoption now completes on Windows PowerShell 5.1 when a file's name is not ASCII.** A file such as
+  `docs/adr/0001-décision.md` could not be archived there: `adoption-archive.ps1` read its plan and marker in the
+  system's ANSI code page, so the name came back garbled and the freeze, the move or the verification refused, and a
+  marker frozen on PowerShell 7 failed to verify on 5.1. It now reads them as UTF-8, with or without a byte-order mark.
+  Nothing else about the archive checks changed.
+
+- **The post-write build and type-check now see the files they were skipping, and stop at your repository.** The Angular
+  type-check ignored a repository-relative path such as `src/app/x.ts`, which is how a GPT model on Copilot names every
+  file it writes, so those writes were never checked; they are now. The .NET build, and the Angular type-check, looked for
+  a solution, `tsconfig.json` or `node_modules` all the way up to the drive root, so a solution in a folder above your clone
+  was built in place of your own project; they now look no higher than the repository root. `ATL_POSTWRITE_BUDGET_SEC`
+  accepts whole seconds, and a value above 80 counts as 80, because the agent host stops the hook at 90 seconds on Claude Code
+  (120 on Copilot) and a longer build was cut off before the hook could report. The Windows PowerShell 5.1 fallback
+  `settings.windows.json` now says to copy it over `.claude/settings.json`, not into `settings.local.json`: Claude Code runs
+  the hooks of both files, so a copy there ran every hook twice.
+
+- **A framework installed in a subfolder keeps its Boy Scout state in that folder.** When the framework sits in a
+  subfolder of a larger Git repository, the Boy Scout hook wrote its state and the Copilot queue to the repository's
+  top-level `.claude/.state`, which nothing ignores, so the next framework update refused the tree as dirty. It also
+  scanned other teams' folders. The hook and the prompt router now use the install's own `.claude/.state` and scan only
+  the install's folder. A framework installed at the repository root behaves as before.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
