@@ -233,19 +233,27 @@ if (Test-CheckSelected 'marker-expansion') {
 # silently empty section. Derive the inventory from core rather than maintaining a second list.
 $coreRoot = (Resolve-Path -LiteralPath (Join-Path $RepoRoot 'src/core')).ProviderPath
 $expansionProblems = @()
+$expansionUnreadable = @()
 $markerCount = 0
 $consumedSnippets = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
 foreach ($coreFile in (Get-ChildItem -Recurse -File -Force -LiteralPath $coreRoot)) {
     $coreRel = $coreFile.FullName.Substring($coreRoot.Length).TrimStart('\', '/').Replace('\', '/')
     $distFile = Join-Path $DistAbs ($coreRel -replace '/', [IO.Path]::DirectorySeparatorChar)
-    $distText = if (Test-Path -LiteralPath $distFile) { ([IO.File]::ReadAllText($distFile) -replace "`r`n", "`n") } else { $null }
+    # A failed read is a statement error under EAP 'Continue': the variable would keep the PREVIOUS
+    # file's text. Catch it, record the file, and skip what depended on it.
+    $distText = $null
+    if (Test-Path -LiteralPath $distFile) {
+        try { $distText = ([IO.File]::ReadAllText($distFile) -replace "`r`n", "`n") } catch { $expansionUnreadable += $distFile; continue }
+    }
+    $coreText = $null
+    try { $coreText = [IO.File]::ReadAllText($coreFile.FullName) } catch { $expansionUnreadable += $coreFile.FullName; continue }
     # BOTH marker forms, anchored exactly as the composer anchors them (build.ps1 $HtmlMarker /
     # $HashMarker): markdown uses `<!-- @stack:NAME -->`, scripts use `# @stack:NAME`, and each must
     # be the whole line. Matching only the HTML form left this gate blind to the 15 hash markers in
     # route-prompt/audit-trail/.gitignore/CI -- i.e. blind to the shipped hooks, which is the very
     # failure class it exists to catch. Anchoring also stops a prose mention of the syntax counting
     # as a marker.
-    foreach ($match in [regex]::Matches([IO.File]::ReadAllText($coreFile.FullName), '(?m)^[ \t]*(?:<!-- @stack:([A-Za-z0-9_-]+) -->|# @stack:([A-Za-z0-9_-]+))[ \t]*\r?$')) {
+    foreach ($match in [regex]::Matches($coreText, '(?m)^[ \t]*(?:<!-- @stack:([A-Za-z0-9_-]+) -->|# @stack:([A-Za-z0-9_-]+))[ \t]*\r?$')) {
         $markerCount++
         $name = if ($match.Groups[1].Success) { $match.Groups[1].Value } else { $match.Groups[2].Value }
         [void]$consumedSnippets.Add("$coreRel/$name")
@@ -281,7 +289,14 @@ foreach ($coreFile in (Get-ChildItem -Recurse -File -Force -LiteralPath $coreRoo
                 if ($otherCount -lt 2) { continue }
             }
         }
-        $snippetText = (($snippetPaths | ForEach-Object { ([IO.File]::ReadAllText($_) -replace "`r`n", "`n").TrimEnd("`n", "`r") }) -join "`n")
+        $snippetTexts = @()
+        $snippetUnreadable = $false
+        foreach ($snippetPath in $snippetPaths) {
+            try { $snippetTexts += ([IO.File]::ReadAllText($snippetPath) -replace "`r`n", "`n").TrimEnd("`n", "`r") }
+            catch { $expansionUnreadable += $snippetPath; $snippetUnreadable = $true }
+        }
+        if ($snippetUnreadable) { continue }
+        $snippetText = $snippetTexts -join "`n"
         if ([string]::IsNullOrWhiteSpace($snippetText)) {
             $expansionProblems += "$Mode : $coreRel @stack:$name resolves to an empty expansion"
         } elseif ($null -eq $distText) {
@@ -307,7 +322,10 @@ if (Test-Path -LiteralPath $stacksRoot -PathType Container) {
         }
     }
 }
-if ($markerCount -eq 0) {
+if ($expansionUnreadable.Count -gt 0) {
+    Cant-Examine ("marker-expansion could not read {0} file(s) in {1} -- the inventory is broken, not the dist." -f @($expansionUnreadable | Sort-Object -Unique).Count, $Mode)
+    $expansionUnreadable | Sort-Object -Unique | ForEach-Object { Write-Output "  [marker-expansion] unreadable: $_" }
+} elseif ($markerCount -eq 0) {
     Fail "marker-expansion inventory found zero core @stack markers -- the inventory is broken, not the dist."
 } elseif ($expansionProblems.Count -gt 0) {
     Fail ("marker expansion failed for {0} problem(s) in {1}." -f $expansionProblems.Count, $Mode)
