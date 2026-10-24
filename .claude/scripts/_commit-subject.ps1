@@ -1,6 +1,6 @@
 ﻿# Shared by release.ps1 and check-outgoing-commits.ps1. Keep the MSYS corruption signature here so
 # release commits and ordinary pushes cannot drift.
-$gitRootPattern = '(?i)(Program Files[\\/]+Git|Git[\\/]+usr[\\/]+bin|[A-Za-z]:[\\/]+.*[\\/]+(?:bootstrap|adopt|review|fix|feature|design|debt|map-warehouse)\b)'
+$gitRootPattern = '(?i)(Program Files[\\/]+Git|Git[\\/]+usr[\\/]+bin|(?<![\p{L}\p{N}])[A-Za-z]:[\\/]+.*[\\/]+(?:bootstrap|adopt|review|fix|feature|design|debt|map-warehouse)\b)'
 
 function Test-MsysMangledSubject {
     param([string]$Subject)
