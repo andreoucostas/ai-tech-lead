@@ -163,6 +163,22 @@ try {
         Assert ($r.Exit -eq 2 -and $r.Err -match 'FATAL:') "locked file: exit=$($r.Exit), want 2 with FATAL; err=[$($r.Err.Trim())]"
     }
 
+    It 'B7: a failed -Update write exits 2 with FATAL, not 1 with a raw I/O error' {
+        $dir = New-Scratch $tmp 'heldbaseline'
+        $lock = [IO.File]::Open((Join-Path $dir 'meta/context-footprint.json'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+        try {
+            $r = Invoke-Footprint (Join-Path $dir 'scripts/context-footprint.ps1') @('-Update')
+        } finally { $lock.Dispose() }
+        Assert ($r.Exit -eq 2 -and $r.Err -match 'FATAL:') "held baseline: exit=$($r.Exit), want 2 with FATAL; err=[$($r.Err.Trim())]"
+    }
+
+    It 'B7: a missing docs directory exits 2 with FATAL, not 1 with a raw path error' {
+        $dir = New-Scratch $tmp 'nodocs'
+        Remove-Item -LiteralPath (Join-Path $dir 'dist/dotnet/docs') -Recurse -Force
+        $r = Invoke-Footprint (Join-Path $dir 'scripts/context-footprint.ps1') @('-Check')
+        Assert ($r.Exit -eq 2 -and $r.Err -match 'FATAL:') "missing docs: exit=$($r.Exit), want 2 with FATAL; err=[$($r.Err.Trim())]"
+    }
+
     # --- B8: a path holding [ is a path, not a wildcard -----------------------------------------
     It 'B8: a checkout under a folder named with [1] gives the same -Check verdict as a plain one' {
         $dir = Join-Path $tmp 'grp[1]'

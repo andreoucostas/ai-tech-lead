@@ -64,6 +64,15 @@ function Get-NormalizedText([string]$Path) {
     return $text.Replace(([char]13 + [char]10), $lf)
 }
 
+# A directory that is missing or cannot be listed is "could not examine" (FATAL, exit 2).
+function Get-DirItems([string]$Dir, [hashtable]$Params) {
+    try {
+        return @(Get-ChildItem -LiteralPath $Dir -ErrorAction Stop @Params)
+    } catch {
+        throw "FATAL: could not enumerate ${Dir}: $($_.Exception.Message)"
+    }
+}
+
 function Get-ByteCount([string]$Path) {
     return $utf8.GetByteCount((Get-NormalizedText $Path))
 }
@@ -341,7 +350,7 @@ try {
         }
         $rulesDir = Join-Path $root '.claude/rules'
         if (Test-Path -LiteralPath $rulesDir -PathType Container) {
-            foreach ($file in (Get-ChildItem -LiteralPath $rulesDir -Filter '*.md' -File -Recurse -Force)) {
+            foreach ($file in (Get-DirItems $rulesDir @{ Filter = '*.md'; File = $true; Recurse = $true; Force = $true })) {
                 if ($counted.Add($file.FullName)) {
                     [void]$groups['static.claude'].Add((New-ItemRecord (Get-RelativePath $root $file.FullName) (Get-ByteCount $file.FullName)))
                 }
@@ -354,7 +363,7 @@ try {
         if ([IO.File]::Exists($copilotRepoFile)) { $copilotFiles += $copilotRepoFile }
         $instructionsDir = Join-Path $root '.github/instructions'
         if (Test-Path -LiteralPath $instructionsDir -PathType Container) {
-            foreach ($file in (Get-ChildItem -LiteralPath $instructionsDir -Filter '*.instructions.md' -File -Force)) {
+            foreach ($file in (Get-DirItems $instructionsDir @{ Filter = '*.instructions.md'; File = $true; Force = $true })) {
                 $text = Get-NormalizedText $file.FullName
                 if ($text -match '(?s)\A---\n(.*?)\n---\n') {
                     $frontmatter = $Matches[1]
@@ -372,7 +381,7 @@ try {
             }
         }
         $instructedFiles = @((Get-Item -LiteralPath (Join-Path $root 'FRAMEWORK-CONTEXT.md') -Force -ErrorAction SilentlyContinue))
-        $instructedFiles += @(Get-ChildItem -LiteralPath (Join-Path $root 'docs') -Filter '*.md' -File -Recurse -Force)
+        $instructedFiles += @(Get-DirItems (Join-Path $root 'docs') @{ Filter = '*.md'; File = $true; Recurse = $true; Force = $true })
         foreach ($file in $instructedFiles) {
             $relative = $file.FullName.Substring($root.Length).TrimStart('\', '/').Replace('\', '/')
             $path = Join-Path $root $relative
@@ -382,11 +391,11 @@ try {
         }
 
         $manifestFiles = @()
-        foreach ($skillDir in @(Get-ChildItem -LiteralPath (Join-Path $root '.claude/skills') -Directory -ErrorAction SilentlyContinue)) {
-            $manifestFiles += Get-ChildItem -LiteralPath $skillDir.FullName -Filter 'SKILL.md' -File -ErrorAction SilentlyContinue
+        foreach ($skillDir in (Get-DirItems (Join-Path $root '.claude/skills') @{ Directory = $true })) {
+            $manifestFiles += Get-DirItems $skillDir.FullName @{ Filter = 'SKILL.md'; File = $true }
         }
         foreach ($sub in @('.claude/commands', '.claude/agents')) {
-            $manifestFiles += Get-ChildItem -LiteralPath (Join-Path $root $sub) -Filter '*.md' -File -ErrorAction SilentlyContinue
+            $manifestFiles += Get-DirItems (Join-Path $root $sub) @{ Filter = '*.md'; File = $true }
         }
         $manifestRecords = @()
         foreach ($file in $manifestFiles) {
@@ -496,7 +505,11 @@ try {
     }
 
     if ($Update) {
-        [IO.File]::WriteAllText($baseline, $json, $utf8)
+        try {
+            [IO.File]::WriteAllText($baseline, $json, $utf8)
+        } catch [System.IO.IOException], [System.UnauthorizedAccessException] {
+            throw "FATAL: could not write ${baseline}: $($_.Exception.Message)"
+        }
         Write-Output 'UPDATED: meta/context-footprint.json'
         exit 0
     }
