@@ -30,7 +30,7 @@
 $ErrorActionPreference = 'Continue'
 
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-Set-Location $RepoRoot
+Set-Location -LiteralPath $RepoRoot
 
 # --content-only is an explicit ARGUMENT, deliberately not an environment variable: an ambient switch
 # that narrows a gate's scope can be inherited by a shell that never asked for it, and `release.ps1`
@@ -85,14 +85,15 @@ if ($Mode -ne 'dotnet' -and $Mode -ne 'angular' -and $Mode -ne 'monorepo') {
 }
 $DistRoot = if ($positional.Count -ge 2 -and $positional[1]) { $positional[1] } else { 'dist' }
 $Dist = Join-Path $DistRoot $Mode
-if (-not (Test-Path $Dist -PathType Container)) {
+# Resolve to absolute NOW: check 5 invokes the dist's own template-checks.ps1, which Set-Location's
+# into the dist dir and does not restore it. Any relative path used after check 5 would resolve
+# against the wrong root. Windows PowerShell 5.1 also misreads a relative -LiteralPath while the
+# current location holds [ or ], so every read goes through $DistAbs; $Dist stays as typed, for messages.
+$DistAbs = [IO.Path]::GetFullPath($(if ([IO.Path]::IsPathRooted($Dist)) { $Dist } else { Join-Path $RepoRoot $Dist }))
+if (-not (Test-Path -LiteralPath $DistAbs -PathType Container)) {
     [Console]::Error.WriteLine("no $Dist -- run scripts/build.ps1 $Mode first")
     exit 2
 }
-# Resolve to absolute NOW: check 5 invokes the dist's own template-checks.ps1, which Set-Location's
-# into the dist dir and does not restore it. Any relative path used after check 5 would resolve
-# against the wrong root.
-$DistAbs = (Resolve-Path $Dist).Path
 
 $failed = 0
 $cantExamine = 0
@@ -182,7 +183,7 @@ $markerFiles = @()
 $markerReadFails = @()
 $markerInputs = @()
 $markerEnumError = $null
-try { $markerInputs = @(Get-ChildItem -Recurse -File -Force -Path $Dist -ErrorAction Stop) }
+try { $markerInputs = @(Get-ChildItem -Recurse -File -Force -LiteralPath $DistAbs -ErrorAction Stop) }
 catch { $markerEnumError = $_.Exception.Message }
 foreach ($f in $markerInputs) {
     try {
@@ -208,10 +209,11 @@ if (Test-CheckSelected 'marker-expansion') {
 # --- 1a. every core marker expands from a non-empty snippet --------------------------------------
 # The composer consumes a marker even when its snippet is absent, producing a marker-free but
 # silently empty section. Derive the inventory from core rather than maintaining a second list.
-$coreRoot = (Resolve-Path (Join-Path $RepoRoot 'src/core')).Path
+$coreRoot = (Resolve-Path -LiteralPath (Join-Path $RepoRoot 'src/core')).ProviderPath
 $expansionProblems = @()
 $markerCount = 0
-foreach ($coreFile in (Get-ChildItem -Recurse -File -Force -Path $coreRoot)) {
+$consumedSnippets = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+foreach ($coreFile in (Get-ChildItem -Recurse -File -Force -LiteralPath $coreRoot)) {
     $coreRel = $coreFile.FullName.Substring($coreRoot.Length).TrimStart('\', '/').Replace('\', '/')
     $distFile = Join-Path $DistAbs ($coreRel -replace '/', [IO.Path]::DirectorySeparatorChar)
     $distText = if (Test-Path -LiteralPath $distFile) { ([IO.File]::ReadAllText($distFile) -replace "`r`n", "`n") } else { $null }
@@ -224,6 +226,7 @@ foreach ($coreFile in (Get-ChildItem -Recurse -File -Force -Path $coreRoot)) {
     foreach ($match in [regex]::Matches([IO.File]::ReadAllText($coreFile.FullName), '(?m)^[ \t]*(?:<!-- @stack:([A-Za-z0-9_-]+) -->|# @stack:([A-Za-z0-9_-]+))[ \t]*\r?$')) {
         $markerCount++
         $name = if ($match.Groups[1].Success) { $match.Groups[1].Value } else { $match.Groups[2].Value }
+        [void]$consumedSnippets.Add("$coreRel/$name")
         # Resolve with the composer's exact semantics: monorepo prefers its authored snippet, then
         # falls back to dotnet + angular concatenation (either side may be absent).
         $snippetPaths = @()
@@ -266,10 +269,26 @@ foreach ($coreFile in (Get-ChildItem -Recurse -File -Force -Path $coreRoot)) {
         }
     }
 }
+# The mirror image: a snippet no core marker consumes (its marker line deleted or renamed, or its core
+# file gone) ships in no dist, and nothing else reports it.
+$stacksRoot = Join-Path $RepoRoot 'src/stacks'
+if (Test-Path -LiteralPath $stacksRoot -PathType Container) {
+    foreach ($stackDir in (Get-ChildItem -LiteralPath $stacksRoot -Directory -Force)) {
+        $snipRoot = Join-Path $stackDir.FullName 'snippets'
+        if (-not (Test-Path -LiteralPath $snipRoot -PathType Container)) { continue }
+        $snipRootFull = (Resolve-Path -LiteralPath $snipRoot).ProviderPath
+        foreach ($snip in (Get-ChildItem -Recurse -File -Force -LiteralPath $snipRootFull)) {
+            $snipRel = $snip.FullName.Substring($snipRootFull.Length).TrimStart('\', '/').Replace('\', '/')
+            if (-not $consumedSnippets.Contains($snipRel)) {
+                $expansionProblems += "$($stackDir.Name) : src/stacks/$($stackDir.Name)/snippets/$snipRel no core marker consumes this snippet"
+            }
+        }
+    }
+}
 if ($markerCount -eq 0) {
     Fail "marker-expansion inventory found zero core @stack markers -- the inventory is broken, not the dist."
 } elseif ($expansionProblems.Count -gt 0) {
-    Fail ("marker expansion failed for {0} core marker(s) in {1}." -f $expansionProblems.Count, $Mode)
+    Fail ("marker expansion failed for {0} problem(s) in {1}." -f $expansionProblems.Count, $Mode)
     $expansionProblems | Sort-Object -Unique | ForEach-Object { Write-Output "  [marker-expansion] $_" }
 } else {
     OK "all $markerCount core @stack markers expand from non-empty $Mode snippets into composed files."
@@ -308,7 +327,7 @@ foreach ($citedFile in $citationFiles) {
 }
 $citationProblems = @()
 $textFilesScanned = 0
-foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs)) {
+foreach ($f in (Get-ChildItem -Recurse -File -Force -LiteralPath $DistAbs)) {
     $rel = $f.FullName.Substring($DistAbs.Length).TrimStart('\', '/').Replace('\', '/')
     if ($f.Name -eq 'CHANGELOG.md') { continue }
     $bytes = [IO.File]::ReadAllBytes($f.FullName)
@@ -370,7 +389,7 @@ $jsonFails = @()
 $jsonReadFails = @()
 $jsonInputs = @()
 $jsonEnumError = $null
-try { $jsonInputs = @(Get-ChildItem -Recurse -File -Force -Filter *.json -Path $Dist -ErrorAction Stop) }
+try { $jsonInputs = @(Get-ChildItem -Recurse -File -Force -Filter *.json -LiteralPath $DistAbs -ErrorAction Stop) }
 catch { $jsonEnumError = $_.Exception.Message }
 foreach ($f in $jsonInputs) {
     try {
@@ -394,7 +413,7 @@ $topologyProblems = @()
 $topologyReadFails = @()
 $topologyFiles = @()
 $topologyEnumError = $null
-try { $topologyFiles = @(Get-ChildItem -Recurse -File -Force -Path $Dist -ErrorAction Stop) }
+try { $topologyFiles = @(Get-ChildItem -Recurse -File -Force -LiteralPath $DistAbs -ErrorAction Stop) }
 catch { $topologyEnumError = $_.Exception.Message }
 foreach ($f in $topologyFiles) {
     $relative = $f.FullName.Substring($DistAbs.Length).TrimStart('\','/').Replace('\','/')
@@ -449,7 +468,7 @@ $ps1Fails = @()
 $ps1ReadFails = @()
 $ps1Inputs = @()
 $ps1EnumError = $null
-try { $ps1Inputs = @(Get-ChildItem -Recurse -File -Force -Filter *.ps1 -Path $Dist -ErrorAction Stop) }
+try { $ps1Inputs = @(Get-ChildItem -Recurse -File -Force -Filter *.ps1 -LiteralPath $DistAbs -ErrorAction Stop) }
 catch { $ps1EnumError = $_.Exception.Message }
 foreach ($f in $ps1Inputs) {
     $e = $null
@@ -471,8 +490,8 @@ else { OK "all $($ps1Inputs.Count) *.ps1 files parse cleanly." }
 
 if (Test-CheckSelected 'template-checks') {
 # --- 5. the dist's own template-checks suite ------------------------------------------------------
-$Tc = Join-Path $Dist 'scripts/template-checks.ps1'
-if (-not (Test-Path $Tc)) {
+$Tc = Join-Path $DistAbs 'scripts/template-checks.ps1'
+if (-not (Test-Path -LiteralPath $Tc)) {
     Fail "missing $Tc -- cannot run the dist's own template-checks suite."
 } else {
     $tcOut = & $Tc 2>&1
@@ -494,13 +513,13 @@ if (Test-CheckSelected 'no-meta-leak') {
 # authoring past, maintainer-only tooling — must not appear there. Patterns live in
 # scripts/meta-denylist.txt so policy and implementation remain independently reviewable.
 $DenyFile = Join-Path $RepoRoot 'scripts/meta-denylist.txt'
-if (-not (Test-Path $DenyFile)) {
+if (-not (Test-Path -LiteralPath $DenyFile)) {
     [Console]::Error.WriteLine("FATAL: missing $DenyFile -- cannot run the no-meta-leak check.")
     exit 2
 }
 $denyPatterns = @()
 $allowPaths   = @()
-foreach ($line in (Get-Content $DenyFile)) {
+foreach ($line in (Get-Content -LiteralPath $DenyFile)) {
     $t = $line.Trim()
     if ($t -eq '' -or $t.StartsWith('#')) { continue }
     if ($t -match '^DENY\s+(.+)$')  { $denyPatterns += $Matches[1].Trim(); continue }
@@ -512,7 +531,7 @@ if ($denyPatterns.Count -eq 0) {
 }
 $leaks = @()
 $scanErrors = @()
-$distFiles = @(Get-ChildItem -Recurse -File -Force -Path $DistAbs)
+$distFiles = @(Get-ChildItem -Recurse -File -Force -LiteralPath $DistAbs)
 $filesScanned = @($distFiles).Count
 foreach ($f in $distFiles) {
     $rel = ($f.FullName.Substring($DistAbs.Length).TrimStart('\', '/')) -replace '\\', '/'
@@ -524,7 +543,7 @@ foreach ($f in $distFiles) {
         # A read error must be RECORDED, not swallowed: -ErrorAction SilentlyContinue alone let an
         # unreadable file count as scanned and clean (B-59, and sol's review of this change).
         $scanErr = $null
-        foreach ($m in (Select-String -Path $f.FullName -Pattern $p -ErrorAction SilentlyContinue -ErrorVariable scanErr)) {
+        foreach ($m in (Select-String -LiteralPath $f.FullName -Pattern $p -ErrorAction SilentlyContinue -ErrorVariable scanErr)) {
             $leaks += ("{0}:{1}: {2}" -f $rel, $m.LineNumber, $p)
         }
         if ($scanErr) { $scanErrors += ("{0}: {1}" -f $rel, $scanErr[0].Exception.Message) }
@@ -567,14 +586,14 @@ $docsScanned = 0
 $refsExtracted = 0
 $linksExtracted = 0
 $deadLinks = @()
-foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)) {
+foreach ($f in (Get-ChildItem -Recurse -File -Force -LiteralPath $DistAbs -Filter *.md)) {
     if ($f.Name -eq 'CHANGELOG.md') { continue }
     $docsScanned++
     $rel = ($f.FullName.Substring($DistAbs.Length).TrimStart('\', '/')) -replace '\\', '/'
     $n = 0
     # Same rule as check 6: a doc that could not be READ is not a doc that contained nothing.
     $docErr = $null
-    $lines = @(Get-Content $f.FullName -ErrorAction SilentlyContinue -ErrorVariable docErr)
+    $lines = @(Get-Content -LiteralPath $f.FullName -ErrorAction SilentlyContinue -ErrorVariable docErr)
     if ($docErr) { $docReadErrors += ("{0}: {1}" -f $rel, $docErr[0].Exception.Message); continue }
     $fenceChar = $null
     foreach ($line in $lines) {
@@ -589,7 +608,7 @@ foreach ($f in (Get-ChildItem -Recurse -File -Force -Path $DistAbs -Filter *.md)
                 $absoluteRefs += ("{0}:{1}: absolute example `{2}` out of scope" -f $rel, $n, $script)
                 continue
             }
-            if (-not (Test-Path (Join-Path $DistAbs $script))) {
+            if (-not (Test-Path -LiteralPath (Join-Path $DistAbs $script))) {
                 $deadRefs += ("{0}:{1}: `{2}` does not exist in this dist" -f $rel, $n, $script)
             }
         }
@@ -679,7 +698,7 @@ function Get-FileArgument {
 }
 foreach ($rf in $regFiles) {
     $rfAbs = Join-Path $DistAbs $rf
-    if (-not (Test-Path $rfAbs)) { $regProblems += "$rf : registration file missing from this dist"; continue }
+    if (-not (Test-Path -LiteralPath $rfAbs)) { $regProblems += "$rf : registration file missing from this dist"; continue }
     try { $rawRegistration = [IO.File]::ReadAllText($rfAbs); $json = $rawRegistration | ConvertFrom-Json }
     catch { $regProblems += "$rf : registration file is unreadable or unparseable"; continue }
     if ($rawRegistration -match '(?i)"bash"\s*:') { $regProblems += "$rf : Bash hook key remains in PowerShell-only configuration" }
@@ -754,7 +773,7 @@ if (Test-CheckSelected 'step-references') {
 $stepFiles = @()
 foreach ($scope in @('.claude/skills','.claude/commands','.claude/agents')) {
     $path = Join-Path $DistAbs $scope
-    if (-not (Test-Path $path -PathType Container)) { continue }
+    if (-not (Test-Path -LiteralPath $path -PathType Container)) { continue }
     if ($scope -eq '.claude/skills') {
         $stepFiles += @(Get-ChildItem -LiteralPath $path -Recurse -Force -File -Filter *.md)
     } else {

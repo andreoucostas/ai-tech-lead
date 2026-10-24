@@ -15,8 +15,13 @@
 #      a path exists in both stacks' files/ without a monorepo override (no silent last-wins:
 #      every whole-file collision must be an explicit authored decision).
 #   3. Validate: no unresolved @stack: markers remain in dist.
+#   Markers are exact: case-sensitive `@stack:`, only spaces and tabs around the line. validate-dist
+#   inventories them the same way, so a line that looks like a marker but is not exact is refused (exit 1).
+#   The composer writes into dist/<mode>.build-tmp and swaps it in last: a failed build leaves the
+#   previous dist/<mode> in place.
 # 5.1-safe: no pwsh-only syntax. Byte-faithful: preserves UTF-8 BOM per file, never re-encodes
-# through Get-Content/Set-Content (which would mangle BOMs and append trailing newlines).
+# through Get-Content/Set-Content (which would mangle BOMs and append trailing newlines). A source that
+# is not valid UTF-8 is refused (exit 1) rather than rewritten with U+FFFD.
 param(
     [Parameter(Position = 0)]
     [string]$Mode,
@@ -34,24 +39,31 @@ if ($Mode -ne 'dotnet' -and $Mode -ne 'angular' -and $Mode -ne 'monorepo') {
 }
 
 # Anchor to the repo this script lives in (scripts/..), not the caller's cwd.
-Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+Set-Location -LiteralPath (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 # Set-Location leaves the .NET process directory alone; the [System.IO.File] calls below resolve against it.
 [Environment]::CurrentDirectory = (Get-Location).ProviderPath
 
-$CORE = "src/core"
-$SNIP = "src/stacks/$Mode/snippets"
-$DIST = "dist/$Mode"
+# Every read and write goes through an absolute path: Windows PowerShell 5.1 misreads a relative
+# -LiteralPath while the current location holds [ or ]. $DistLabel is the repo-relative name for messages.
+$Root = (Get-Location).ProviderPath
+$CORE = Join-Path $Root 'src/core'
+$SNIP = Join-Path $Root "src/stacks/$Mode/snippets"
+$DIST = Join-Path $Root "dist/$Mode"
+$DistLabel = "dist/$Mode"
 if ($Mode -eq 'monorepo') {
-    $OVERLAYS = @('src/stacks/dotnet/files', 'src/stacks/angular/files', 'src/stacks/monorepo/files')
+    $OVERLAYS = @((Join-Path $Root 'src/stacks/dotnet/files'), (Join-Path $Root 'src/stacks/angular/files'), (Join-Path $Root 'src/stacks/monorepo/files'))
 } else {
-    $OVERLAYS = @("src/stacks/$Mode/files")
+    $OVERLAYS = @((Join-Path $Root "src/stacks/$Mode/files"))
 }
 
-$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false, $true)
 $Bom = [byte[]](0xEF, 0xBB, 0xBF)
 $AnyMarker = '@stack:[A-Za-z0-9_-]+'
-$HtmlMarker = '^\s*<!-- @stack:([A-Za-z0-9_-]+) -->\s*$'
-$HashMarker = '^\s*# @stack:([A-Za-z0-9_-]+)\s*$'
+# One marker grammar, matched with -cmatch (validate-dist check 1a uses the same one): a line is a
+# marker only if it is exactly this. $LooseMarker catches the look-alikes the exact form rejects.
+$HtmlMarker = '^[ \t]*<!-- @stack:([A-Za-z0-9_-]+) -->[ \t]*$'
+$HashMarker = '^[ \t]*# @stack:([A-Za-z0-9_-]+)[ \t]*$'
+$LooseMarker = '(?i)^\s*(<!--\s*@stack:|#\s*@stack:)'
 
 # Read a file as (HasBom, Text) without letting .NET's encoding-detecting overloads touch it --
 # ReadAllBytes + manual BOM strip is the only way to know for certain whether a BOM was present.
@@ -64,14 +76,20 @@ function Read-TextFile {
     } else {
         $body = $bytes
     }
-    if ($body.Length -eq 0) { $text = '' } else { $text = $Utf8NoBom.GetString($body) }
+    if ($body.Length -eq 0) { $text = '' } else {
+        try { $text = $Utf8NoBom.GetString($body) }
+        catch {
+            [Console]::Error.WriteLine("ERROR: not valid UTF-8: $($Path -replace '\\', '/') -- fix the bytes in the source; the composer will not rewrite them as U+FFFD")
+            exit 1
+        }
+    }
     return @{ HasBom = $hasBom; Text = $text }
 }
 
 function Write-TextFile {
     param([string]$Path, [bool]$HasBom, [string]$Text)
     $dir = Split-Path -Parent $Path
-    if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    if ($dir) { [void][System.IO.Directory]::CreateDirectory($dir) }
     $bytes = $Utf8NoBom.GetBytes($Text)
     if ($HasBom) { $out = $Bom + $bytes } else { $out = $bytes }
     [System.IO.File]::WriteAllBytes($Path, $out)
@@ -134,13 +152,13 @@ function Get-SnippetLines {
 function Get-MarkerLines {
     param([string]$Rel, [string]$Name)
     if ($Mode -eq 'monorepo') {
-        $monoDir = Join-Path 'src/stacks/monorepo/snippets' $Rel
+        $monoDir = Join-Path (Join-Path $Root 'src/stacks/monorepo/snippets') $Rel
         if (Test-Path -LiteralPath (Join-Path $monoDir $Name) -PathType Leaf) {
             return , (Get-SnippetLines -SnipDir $monoDir -Name $Name)
         }
         $result = New-Object System.Collections.Generic.List[string]
-        foreach ($sl in (Get-SnippetLines -SnipDir (Join-Path 'src/stacks/dotnet/snippets' $Rel) -Name $Name)) { $result.Add($sl) }
-        foreach ($sl in (Get-SnippetLines -SnipDir (Join-Path 'src/stacks/angular/snippets' $Rel) -Name $Name)) { $result.Add($sl) }
+        foreach ($sl in (Get-SnippetLines -SnipDir (Join-Path (Join-Path $Root 'src/stacks/dotnet/snippets') $Rel) -Name $Name)) { $result.Add($sl) }
+        foreach ($sl in (Get-SnippetLines -SnipDir (Join-Path (Join-Path $Root 'src/stacks/angular/snippets') $Rel) -Name $Name)) { $result.Add($sl) }
         return , $result.ToArray()
     }
     return , (Get-SnippetLines -SnipDir (Join-Path $SNIP $Rel) -Name $Name)
@@ -148,7 +166,7 @@ function Get-MarkerLines {
 
 function Get-RelativeFiles {
     param([string]$Root)
-    $rootFull = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/')
+    $rootFull = (Resolve-Path -LiteralPath $Root).ProviderPath.TrimEnd('\', '/')
     $items = Get-ChildItem -LiteralPath $Root -Recurse -File -Force
     $out = New-Object System.Collections.Generic.List[string]
     foreach ($it in $items) {
@@ -199,9 +217,9 @@ function Get-ValidatedRetirements {
 if ($Mode -eq 'monorepo') {
     # In monorepo mode the file collision check must pass before anything is composed.
     $collide = $false
-    foreach ($rel in (Get-RelativeFiles 'src/stacks/dotnet/files')) {
-        if ((Test-Path -LiteralPath "src/stacks/angular/files/$rel" -PathType Leaf) -and
-            -not (Test-Path -LiteralPath "src/stacks/monorepo/files/$rel" -PathType Leaf)) {
+    foreach ($rel in (Get-RelativeFiles (Join-Path $Root 'src/stacks/dotnet/files'))) {
+        if ((Test-Path -LiteralPath (Join-Path $Root "src/stacks/angular/files/$rel") -PathType Leaf) -and
+            -not (Test-Path -LiteralPath (Join-Path $Root "src/stacks/monorepo/files/$rel") -PathType Leaf)) {
             [Console]::Error.WriteLine("ERROR: '$rel' exists in both src/stacks/dotnet/files and src/stacks/angular/files but has no src/stacks/monorepo/files override")
             $collide = $true
         }
@@ -211,11 +229,12 @@ if ($Mode -eq 'monorepo') {
 
 $retirementBaselines = New-Object System.Collections.Generic.List[object]
 $maintainerLedgerPath = 'meta/framework-retirements-baseline.json'
+$maintainerLedgerFile = Join-Path $Root $maintainerLedgerPath
 try {
-    if (-not (Test-Path -LiteralPath $maintainerLedgerPath -PathType Leaf)) {
+    if (-not (Test-Path -LiteralPath $maintainerLedgerFile -PathType Leaf)) {
         throw "missing retirement ledger: $maintainerLedgerPath"
     }
-    $maintainerLedger = (Read-TextFile $maintainerLedgerPath).Text | ConvertFrom-Json
+    $maintainerLedger = (Read-TextFile $maintainerLedgerFile).Text | ConvertFrom-Json
     $maintainerRetirements = Get-ValidatedRetirements -Document $maintainerLedger -Label $maintainerLedgerPath
     foreach ($entry in $maintainerRetirements) { $retirementBaselines.Add($entry) }
 } catch {
@@ -263,35 +282,62 @@ foreach ($ref in $baselineRefNames) {
     }
 }
 
-if (Test-Path $DIST) { Remove-Item -Recurse -Force $DIST }
-New-Item -ItemType Directory -Force -Path $DIST | Out-Null
-
 # Each dist path is written once: the last overlay carrying a path supplies it, and core skips a path
 # an overlay replaces. A host scanner may map a file between two writes, and truncating a mapped file
 # fails (0x800704C8 refused four 0.96.0 releases at compose dist/monorepo).
 $overlaySource = [ordered]@{}
 foreach ($FILES in $OVERLAYS) {
-    if (Test-Path $FILES) {
+    if (Test-Path -LiteralPath $FILES) {
         foreach ($rel in (Get-RelativeFiles $FILES)) { $overlaySource[$rel] = Join-Path $FILES $rel }
     }
 }
 
-# 1. core, with marker substitution; normalize to LF
+# Enumerate and read every core input, and refuse a marker look-alike, before any output exists.
 $coreFiles = Get-RelativeFiles $CORE
+$coreRead = @{}
+$markerProblems = New-Object System.Collections.Generic.List[string]
 foreach ($rel in $coreFiles) {
     if ($overlaySource.Contains($rel)) { continue }
-    $srcPath = Join-Path $CORE $rel
-    $dstPath = Join-Path $DIST $rel
-    $r = Read-TextFile $srcPath
+    $r = Read-TextFile (Join-Path $CORE $rel)
+    $coreRead[$rel] = $r
+    $lineNo = 0
+    foreach ($rawLine in (Get-Lines $r.Text)) {
+        $lineNo++
+        $s = Strip-CR $rawLine
+        if (($s -match $LooseMarker) -and ($s -cnotmatch $HtmlMarker) -and ($s -cnotmatch $HashMarker)) {
+            $markerProblems.Add("src/core/${rel}:${lineNo}: not an exact @stack marker (case-sensitive, spaces and tabs only around it): $s")
+        }
+    }
+}
+if ($markerProblems.Count -gt 0) {
+    foreach ($problem in $markerProblems) { [Console]::Error.WriteLine("ERROR: $problem") }
+    exit 1
+}
+
+# Compose into a sibling directory and swap it in last: a build that fails anywhere below leaves the
+# previous $DistLabel in place. $StageDir is the composed tree until the swap.
+$StageDir = "$DIST.build-tmp"
+$PrevDir = "$DIST.old"
+foreach ($leftover in @($StageDir, $PrevDir)) {
+    if (Test-Path -LiteralPath $leftover) { Remove-Item -LiteralPath $leftover -Recurse -Force }
+}
+[void][System.IO.Directory]::CreateDirectory($StageDir)
+try {
+
+# 1. core, with marker substitution; normalize to LF
+foreach ($rel in $coreFiles) {
+    if ($overlaySource.Contains($rel)) { continue }
+    $dstPath = Join-Path $StageDir $rel
+    $r = $coreRead[$rel]
 
     if ($r.Text -match $AnyMarker) {
         $lines = Get-Lines $r.Text
         $out = New-Object System.Collections.Generic.List[string]
         foreach ($rawLine in $lines) {
             $s = Strip-CR $rawLine
-            if ($s -match $HtmlMarker) {
+            if ($s -cmatch $HtmlMarker) {
                 foreach ($sl in (Get-MarkerLines -Rel $rel -Name $Matches[1])) { $out.Add($sl) }
-            } elseif ($s -match $HashMarker) {
+            } elseif ($s -cmatch $HashMarker) {
                 foreach ($sl in (Get-MarkerLines -Rel $rel -Name $Matches[1])) { $out.Add($sl) }
             } else {
                 $out.Add($s)
@@ -312,7 +358,7 @@ foreach ($rel in $coreFiles) {
 foreach ($rel in $overlaySource.Keys) {
     $r = Read-TextFile $overlaySource[$rel]
     $stripped = [regex]::Replace($r.Text, '(?m)\r$', '')
-    Write-TextFile -Path (Join-Path $DIST $rel) -HasBom $r.HasBom -Text $stripped
+    Write-TextFile -Path (Join-Path $StageDir $rel) -HasBom $r.HasBom -Text $stripped
 }
 
 # 3. Generate the installed-path ownership manifest. The path inventory comes from the composed
@@ -324,7 +370,7 @@ function Get-SingleQuotedValues {
     return $values.ToArray()
 }
 
-$psInstaller = (Read-TextFile (Join-Path $DIST 'scripts/install.ps1')).Text
+$psInstaller = (Read-TextFile (Join-Path $StageDir 'scripts/install.ps1')).Text
 $psProtectedMatch = [regex]::Match($psInstaller, '(?ms)^\$protected\s*=\s*@\((.*?)\)')
 $psPersistentMatch = [regex]::Match($psInstaller, '(?ms)^\$persistentCopyIfAbsent\s*=\s*@\((.*?)\)')
 $psMetaMatch = [regex]::Match($psInstaller, '(?m)^\$metaFiles\s*=\s*@\(([^\r\n]+)\)')
@@ -380,9 +426,9 @@ if ($policyProblems.Count -gt 0) {
 }
 
 $extraProtected = $psPersistent
-$manifestPath = Join-Path $DIST 'framework-ownership.json'
+$manifestPath = Join-Path $StageDir 'framework-ownership.json'
 $paths = New-Object System.Collections.Generic.List[object]
-foreach ($rel in @((Get-RelativeFiles $DIST) | Sort-Object)) {
+foreach ($rel in @((Get-RelativeFiles $StageDir) | Sort-Object)) {
     if ($rel -in $notInstalled) { continue }
     # tests/hooks/** stays in every composed dist for maintainer and template CI, but is not a
     # consumer artifact: it must never enter framework-ownership.json, so installers never copy it
@@ -424,9 +470,9 @@ Write-TextFile -Path $manifestPath -HasBom $false -Text (($jsonLines -join "`n")
 # comes from the committed maintainer baseline plus the Git refs named with -RetirementBaselineRef,
 # both read before composition; the previous dist is not consulted. A retired path may never also
 # be an incoming installed path.
-$ledgerPath = Join-Path $DIST 'framework-retirements.json'
+$ledgerPath = "$DistLabel/framework-retirements.json"
 try {
-    $ledger = (Read-TextFile $ledgerPath).Text | ConvertFrom-Json
+    $ledger = (Read-TextFile (Join-Path $StageDir 'framework-retirements.json')).Text | ConvertFrom-Json
     $retirements = Get-ValidatedRetirements -Document $ledger -Label $ledgerPath
 } catch {
     [Console]::Error.WriteLine("ERROR: $($_.Exception.Message)")
@@ -479,17 +525,33 @@ foreach ($old in $retirementBaselines) {
 
 # 5. validate: no unresolved markers
 $badFiles = New-Object System.Collections.Generic.List[string]
-if (Test-Path $DIST) {
-    foreach ($f in (Get-ChildItem -LiteralPath $DIST -Recurse -File -Force)) {
-        $r = Read-TextFile $f.FullName
-        if ($r.Text -match $AnyMarker) { $badFiles.Add($f.FullName) }
-    }
+$outFull = (Resolve-Path -LiteralPath $StageDir).ProviderPath.TrimEnd('\', '/')
+foreach ($f in (Get-ChildItem -LiteralPath $StageDir -Recurse -File -Force)) {
+    $r = Read-TextFile $f.FullName
+    if ($r.Text -match $AnyMarker) { $badFiles.Add("$DistLabel/" + ($f.FullName.Substring($outFull.Length).TrimStart('\', '/') -replace '\\', '/')) }
 }
 if ($badFiles.Count -gt 0) {
     foreach ($bf in $badFiles) { Write-Output $bf }
-    [Console]::Error.WriteLine("ERROR: unresolved @stack markers in $DIST (files listed above)")
+    [Console]::Error.WriteLine("ERROR: unresolved @stack markers in $DistLabel (files listed above)")
     exit 1
 }
 
-$fileCount = (Get-ChildItem -LiteralPath $DIST -Recurse -File -Force).Count
-Write-Output "composed $DIST ($fileCount files)"
+$fileCount = (Get-ChildItem -LiteralPath $StageDir -Recurse -File -Force).Count
+
+# 6. swap the composed tree in. The old dist is renamed aside first, so a refused rename leaves it.
+if (Test-Path -LiteralPath $DIST) { [System.IO.Directory]::Move($DIST, $PrevDir) }
+try { [System.IO.Directory]::Move($StageDir, $DIST) }
+catch {
+    $swapError = $_.Exception.Message
+    if (Test-Path -LiteralPath $PrevDir) { [System.IO.Directory]::Move($PrevDir, $DIST) }
+    [Console]::Error.WriteLine("ERROR: could not move the composed tree into $DistLabel ($swapError); the previous $DistLabel is unchanged")
+    exit 1
+}
+if (Test-Path -LiteralPath $PrevDir) {
+    try { Remove-Item -LiteralPath $PrevDir -Recurse -Force } catch { [Console]::Error.WriteLine("note: could not remove $PrevDir ($($_.Exception.Message)); delete it by hand") }
+}
+Write-Output "composed $DistLabel ($fileCount files)"
+
+} finally {
+    if (Test-Path -LiteralPath $StageDir) { Remove-Item -LiteralPath $StageDir -Recurse -Force -ErrorAction SilentlyContinue }
+}

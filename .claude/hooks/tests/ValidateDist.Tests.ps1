@@ -53,7 +53,9 @@ function New-DistCopy {
 function New-ValidatorRepoCopy {
     # Marker inventory derives from authoring src/, so its red fixture needs an isolated source tree
     # as well as an isolated dist. Never mutate the live shared snippets during a test run.
-    $root = Join-Path ([IO.Path]::GetTempPath()) ('validate-dist-repo-' + [guid]::NewGuid().ToString('N'))
+    # -Infix goes into the folder name (a checkout path holding brackets, say).
+    param([string]$Infix = '')
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('validate-dist-repo-' + $Infix + [guid]::NewGuid().ToString('N'))
     foreach ($dir in @('scripts','src','dist','meta')) { New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force | Out-Null }
     Copy-Item -LiteralPath (Join-Path $repo 'meta\rail-sync.json') -Destination (Join-Path $root 'meta') -ErrorAction SilentlyContinue
     Copy-Item -LiteralPath (Join-Path $repo 'scripts\validate-dist.ps1') -Destination (Join-Path $root 'scripts')
@@ -427,6 +429,55 @@ try {
         Assert ($code -ne 0) 'an unsupplied core marker should be red in single-stack mode'
         Assert ($text.Contains('dotnet : AGENTS.md @stack:zz-typo-no-supplier is supplied by no stack')) "unsupplied marker not named with file, marker and dist: $text"
         Assert (-not $text.Contains('zz-supplied-by-angular-only')) "the angular-only marker was wrongly reported: $text"
+    }
+
+    It 'case 20c: a snippet no core marker consumes fails marker expansion' {
+        $isolated = New-ValidatorRepoCopy
+        [IO.File]::WriteAllText((Join-Path $isolated 'src\stacks\dotnet\snippets\AGENTS.md\zz-orphan-snippet'), "orphan`n")
+        $noCore = Join-Path $isolated 'src\stacks\angular\snippets\no-such-core-file.md'
+        [void][IO.Directory]::CreateDirectory($noCore)
+        [IO.File]::WriteAllText((Join-Path $noCore 'zz-orphan-too'), "orphan`n")
+        $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $isolated 'scripts\validate-dist.ps1') dotnet (Join-Path $isolated 'dist') -Check marker-expansion 2>&1
+        $code = $LASTEXITCODE
+        $text = $out -join "`n"
+        Write-Host "[ValidateDist powershell orphan-snippet] EXIT=$code"; Write-Host $text
+        Assert ($code -ne 0) 'an orphan snippet should be red'
+        Assert ($text.Contains('[marker-expansion] dotnet : src/stacks/dotnet/snippets/AGENTS.md/zz-orphan-snippet no core marker consumes')) "orphan snippet not named with its stack and path: $text"
+        Assert ($text.Contains('[marker-expansion] angular : src/stacks/angular/snippets/no-such-core-file.md/zz-orphan-too no core marker consumes')) "snippet of a core file that does not exist not named: $text"
+    }
+    It 'case 48: a shipped file whose name holds brackets is scanned by no-meta-leak' {
+        Assert-Case 'bracket-name-leak' {
+            param($d)
+            [void][IO.Directory]::CreateDirectory((Join-Path $d 'docs'))
+            [IO.File]::WriteAllText((Join-Path $d 'docs\notes[1].md'), ('Tracked as B' + "-463; see WSD-106.`n"))
+        } '[no-meta-leak] docs/notes[1].md' 'no-meta-leak'
+    }
+    It 'case 48b: a shipped document whose name holds brackets is readable by the dead-instruction check' {
+        $root = New-DistCopy
+        [void][IO.Directory]::CreateDirectory((Join-Path $root 'dotnet\docs'))
+        [IO.File]::WriteAllText((Join-Path $root 'dotnet\docs\notes[1].md'), "Nothing to run here.`n")
+        $r = Invoke-Validator -Root $root -Check 'no-dead-instruction'
+        Write-Host "[ValidateDist powershell bracket-name-doc] EXIT=$($r.Exit)"; Write-Host $r.Out
+        Assert ($r.Out -notmatch 'CANT-EXAMINE') "a document named notes[1].md could not be examined: $($r.Out)"
+        Assert ($r.Exit -eq 0) "a clean document named notes[1].md should leave check 7 green, got EXIT=$($r.Exit): $($r.Out)"
+    }
+    It 'case 49: a checkout whose path holds brackets validates like any other' {
+        $isolated = New-ValidatorRepoCopy -Infix '[1]-'
+        $dist = Join-Path $isolated 'dist'
+        $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $isolated 'scripts\validate-dist.ps1') dotnet $dist -Check 'markers,json,marker-expansion,section-path,no-meta-leak,no-dead-instruction,hook-registration,carrier-import' 2>&1
+        $code = $LASTEXITCODE
+        $text = $out -join "`n"
+        Write-Host "[ValidateDist powershell bracket-checkout] EXIT=$code"; Write-Host $text
+        Assert ($code -eq 0) "a clean dist in a folder holding brackets should be green, got EXIT=$code"
+        Assert ($text -notmatch '(?m)^(FAIL|CANT-EXAMINE):') "a clean dist in a folder holding brackets was given a bad verdict: $text"
+        Assert ($text -match 'all \d+ core @stack markers expand') "marker expansion did not run over the bracketed checkout: $text"
+        # No dist-root argument: the default 'dist' is relative to the checkout.
+        $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $isolated 'scripts\validate-dist.ps1') dotnet -Check 'markers,json,marker-expansion,section-path' 2>&1
+        $code = $LASTEXITCODE
+        $text = $out -join "`n"
+        Write-Host "[ValidateDist powershell bracket-checkout-default-dist] EXIT=$code"; Write-Host $text
+        Assert ($code -eq 0) "a clean default dist in a folder holding brackets should be green, got EXIT=$code"
+        Assert ($text -notmatch '(?m)^(FAIL|CANT-EXAMINE):') "a clean default dist in a folder holding brackets was given a bad verdict: $text"
     }
 
     It 'case 22: an empty dist fails the marker scan instead of reporting a vacuous pass' { Assert-Case 'zero-marker-files' { param($d) Get-ChildItem -LiteralPath $d -Force | Remove-Item -Recurse -Force } 'marker scan found zero files' 'markers' }
