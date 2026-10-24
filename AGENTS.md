@@ -62,11 +62,11 @@ Anyone may raise a tier; no one lowers one. A batch takes its highest member.
   say which. A host that cannot execute a leg has produced no evidence for it.
 - Gates are hermetic: they decide from repository content and explicit inputs, never from ambient
   release state.
-- A reviewer's correction or another agent's report is input, not verdict; re-run it before acting.
+- A reviewer's correction or another agent's report is input, not verdict; re-check it yourself.
 
 ## Scope
 
-- Do the asked change only. An adjacent finding goes to `meta/BACKLOG.md`, not into the change.
+- Do the asked change only. An adjacent finding is a `meta/BACKLOG.md` entry (Records), not an edit.
 - No new script, test file, gate, record or document unless the task requires it; propose it in
   one line instead. Prefer deleting to adding.
 - An escaped defect — one that reached a tag, or a gate that was green on a wrong artifact — gets
