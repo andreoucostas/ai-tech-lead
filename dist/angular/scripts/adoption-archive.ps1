@@ -357,7 +357,10 @@ function Get-AaIntegrityBlock {
 function Read-AaJsonDocument {
     param([Parameter(Mandatory = $true)][string]$Path, [switch]$RequireObject)
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "evidence file '$Path' is missing or not a regular file" }
-    $raw = Get-Content -Raw -LiteralPath $Path
+    # The plan and the marker are written UTF-8 without a BOM; Windows PowerShell 5.1 decodes a BOM-less file
+    # as the ANSI code page unless told otherwise, so a non-ASCII file name would read back as another string.
+    # -Encoding UTF8 reads UTF-8 with or without a BOM on both hosts.
+    $raw = Get-Content -Raw -Encoding UTF8 -LiteralPath $Path
     # A marker is a JSON object. A zero-byte or literal 'null' file parses to $null without error, and
     # pwsh unrolls a top-level array into its elements (so '[<marker>]' would pass as the marker), so the
     # text is checked before parsing. The real type is tested afterwards: [pscustomobject] is the psobject

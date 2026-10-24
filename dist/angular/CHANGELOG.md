@@ -86,6 +86,12 @@
 - **An update no longer fails when `LEARNINGS.md` is empty.** If your team emptied that file, the update used to stop with a
   raw error before showing its plan. It now treats an empty file as disabling no skills and leaves the file alone.
 
+- **An adoption now completes on Windows PowerShell 5.1 when a file's name is not ASCII.** A file such as
+  `docs/adr/0001-décision.md` could not be archived there: `adoption-archive.ps1` read its plan and marker in the
+  system's ANSI code page, so the name came back garbled and the freeze, the move or the verification refused, and a
+  marker frozen on PowerShell 7 failed to verify on 5.1. It now reads them as UTF-8, with or without a byte-order mark.
+  Nothing else about the archive checks changed.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**

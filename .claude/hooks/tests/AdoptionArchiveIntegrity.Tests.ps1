@@ -422,6 +422,33 @@ It 'workflow Freeze extends an installer inventory and refreshes its identity be
     } finally { Remove-Fixture $fx }
 }
 
+It 'C1 a plan naming a non-ASCII file freezes, moves and verifies on either host' {
+    $fx = New-FixtureRepo
+    try {
+        # The plan and the marker are written UTF-8 without a BOM; Windows PowerShell 5.1 decoded them as
+        # the ANSI code page, so the name read back as another string and Freeze, MoveFrozen and Verify refused.
+        $name = 'docs/adr/0001-d' + [char]0xE9 + 'cision.md'
+        New-Item -ItemType Directory -Force -Path (Join-Path $fx 'docs/adr'), (Join-Path $fx '.claude') | Out-Null
+        [IO.File]::WriteAllText((Join-Path $fx $name), 'decision', [Text.UTF8Encoding]::new($false))
+        Add-Commit -Repo $fx
+        $marker = New-EvidenceFile -Path (Join-Path $fx '.claude/adoption-pending.json') -Entries @()
+        $destination = 'docs/pre-adoption/' + $name
+        $plan = New-ArchivePlanFile -Path (Join-Path $fx 'plan.json') -Entries @([ordered]@{ originalPath = $name; destination = $destination })
+        Assert ([IO.File]::ReadAllBytes($plan)[0] -ne 0xEF) 'the fixture plan must be BOM-less, as an agent writes it'
+        $freeze = Invoke-Aa @('-Freeze', '-RepoRoot', $fx, '-EvidencePath', $marker, '-PlanPath', $plan)
+        Assert ($freeze.Exit -eq 0) "Freeze refused a plan naming a non-ASCII file: $($freeze.Output)"
+        $move = Invoke-Aa @('-MoveFrozen', '-RepoRoot', $fx, '-EvidencePath', $marker, '-OriginalPath', $name, '-Destination', $destination)
+        Assert ($move.Exit -eq 0 -and (Test-Path -LiteralPath (Join-Path $fx $destination))) "MoveFrozen refused a non-ASCII file: $($move.Output)"
+        $verify = Invoke-Aa @('-Verify', '-RepoRoot', $fx, '-EvidencePath', $marker)
+        Assert ($verify.Exit -eq 0 -and $verify.Output -match 'RESULT: PASS') "Verify did not pass a non-ASCII archive: $($verify.Output)"
+        # A marker saved with a BOM by another editor still reads.
+        $text = [IO.File]::ReadAllText($marker, [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText($marker, $text, [Text.UTF8Encoding]::new($true))
+        $bom = Invoke-Aa @('-Verify', '-RepoRoot', $fx, '-EvidencePath', $marker)
+        Assert ($bom.Exit -eq 0 -and $bom.Output -match 'RESULT: PASS') "Verify refused a BOM-prefixed marker: $($bom.Output)"
+    } finally { Remove-Fixture $fx }
+}
+
 It 'B-307 Freeze refuses every plan entry whose source Git ignores, before any capture' {
     $fx = New-FixtureRepo
     try {
