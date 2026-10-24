@@ -122,6 +122,8 @@ the backup-folder keep-out write that the real refusal makes is not made in a dr
 The installer's other `Get-Content` reads without `-Encoding` (ownership and retirement manifests, the version stamps, `LEARNINGS.md`) feed ASCII-only comparisons and values
 never written back, so Windows PowerShell 5.1's ANSI decoding cannot corrupt a byte; left unchanged.
 
+B-464 D4-D7: `warehouse-map-check.ps1` names `/map-warehouse` in its missing-map and no-full-pass lines only when `.claude/skills/map-warehouse/SKILL.md` exists under the checked root, else says to inspect the live schema (the Angular dist ships no such skill); `WarehouseMapCheck.Tests.ps1` gains "the remedy names /map-warehouse only where that skill is installed", red on the unfixed script. The shipped `FrameworkDoctor.Tests.ps1` "pinned canary strings exist in PowerShell hooks" read `src/stacks` three levels up, so it failed from a standalone dist copy ("post-write absent", 1 failure) and checked the source hooks inside the authoring tree; it now reads the dist's own `.claude/hooks/post-write.ps1` when `framework-ownership.json` is present and falls back to `src/stacks` only in the authoring layout (green from the standalone copy). `/feature`, `/fix`, `/refactor` and `/debt` gain one plain sentence under their `@.claude/workflow.md` import for hosts that do not expand `@` (ships unmeasured on Copilot). `workflow.md` no longer says `/test` inlines it.
+
 ## 0.98.2 — 2026-10-20
 
 `session-start.ps1` (guarded, B-414): in a bootstrapped repository (no `.claude/adoption-pending.json`, `AGENTS.md` without `BOOTSTRAP_PENDING`) the preload

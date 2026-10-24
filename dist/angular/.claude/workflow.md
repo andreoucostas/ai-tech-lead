@@ -1,6 +1,6 @@
 # Shared workflow tail
 
-> Inlined by `/feature`, `/fix`, `/refactor`, `/test`, and `/debt` via `@.claude/workflow.md`.
+> Inlined by `/feature`, `/fix`, `/refactor`, and `/debt` via `@.claude/workflow.md`.
 > Defines Self-review + Flag-drift — the steps that are identical across those commands.
 > Boy Scout scope and repository-evidenced verification commands live in the calling command
 > (because they vary: `/fix` scopes Boy Scout to blast radius, etc.).

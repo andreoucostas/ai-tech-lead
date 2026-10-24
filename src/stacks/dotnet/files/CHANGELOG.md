@@ -113,6 +113,11 @@
 - **`-WhatIf` now shows the Git refusal.** A dry run on a tree the real run would refuse (uncommitted changes, unreadable Git state) used to end with "Dry run complete"
   and exit 0. It now prints the plan, then `dry run: the real run would refuse: ...`, and exits 4.
 
+- **The warehouse-map reminder only names a skill you have.** `warehouse-map-check.ps1` told you to run `/map-warehouse` even
+  where that skill is not installed; it now names the skill only when it is present and otherwise says to inspect the live
+  schema before a warehouse write. `/feature`, `/fix`, `/refactor` and `/debt` also end with a line telling a host that does
+  not expand `@` imports to read `.claude/workflow.md` for the self-review step.
+
 ## 0.98.2 — 2026-10-20
 
 - **After `/bootstrap`, each session names your recorded test command and asks for a failing run before the fix.**
