@@ -6,6 +6,10 @@
 
 ## 0.98.3 — Unreleased
 
+- **Specs are now written at the level where the risk lives.** The always-loaded rules now say a new spec belongs at the
+  level where the risk lives: a substitute that cannot reproduce the failure is no oracle. Editing a snapshot or an
+  approved/golden file to make a spec pass now needs the same explicit flag as editing an assertion. Nothing to do.
+
 - **A security finding now always says where it is and what it is.** The `/security-gate` verdict names the file and
   line of each finding. The row it adds to `SECURITY_FINDINGS.md` names the file (no line, since lines move) and, when
   the file alone is ambiguous, the symbol, route or type, with one sentence giving the kind of defect and the kind of

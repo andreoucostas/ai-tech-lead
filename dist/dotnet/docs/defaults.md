@@ -124,12 +124,16 @@ Mocking: `NSubstitute` · `Moq` · `FakeItEasy`. Assertions: `FluentAssertions` 
 Choose the level by what the test actually exercises — *push each test to the lowest level that still runs real behavior; test at the boundary, not the mock.* A heuristic, not a fixed ratio; `/bootstrap` replaces it with the shape your codebase warrants.
 - Domain / application logic (rules, calculations, branching, validation) → unit-dense.
 - Cross-cutting paths (routing, model binding, data access, auth, serialization) → use the
-  repository's established integration boundary (for example `WebApplicationFactory` where already
-  evidenced); exercise the real pipeline, don't invent or over-mock it.
+  repository's established integration boundary (for example `WebApplicationFactory`, or a
+  test-owned database for data access, where already evidenced); exercise the real pipeline, don't
+  invent or over-mock it.
+- Structured outputs (reports, exports, generated files, mapped rows) → a checked-in expected-output
+  file built from a small curated input, scrubbed and small enough to read in review; re-accepting
+  it is an assertion edit.
 - Critical journeys → a sparse top layer of full-stack behavioral checks. Few, high-value.
 - Boundary-heavy / gateway services → weight toward integration (honeycomb / risk-based), not unit.
 - Anti-shape: the inverted suite (mostly slow end-to-end tests over a thin unit base). Slow + flaky = wrong shape.
 
 ### Test determinism
-- Tests must be deterministic and hermetic: no real network, clock, randomness, filesystem, or inter-test order dependence. An intermittently-failing test is worse than none — it trains the team to ignore red.
+- Tests must be deterministic and hermetic: no real network, clock, randomness, shared database or environment, filesystem beyond checked-in fixture files, or inter-test order dependence. A database the test owns and resets per run is hermetic, but slower: keep it for risks that live in the engine. An intermittently-failing test is worse than none — it trains the team to ignore red.
 - Pin time behind an abstraction (`TimeProvider` / injected clock); seed or stub randomness; isolate state between tests.

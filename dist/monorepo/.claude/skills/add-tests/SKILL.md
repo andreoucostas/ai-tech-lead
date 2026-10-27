@@ -33,8 +33,8 @@ developer agreement below.
      — as does MSTest's `[Ignore]` and xUnit's `[Fact(Skip=…)]`.
    - **Angular:** a sibling `*.spec.ts` or `*.test.ts` — runner (Karma/Jasmine, Jest, or Vitest), `TestBed` setup, `HttpTestingController` usage, component harnesses, and any shared fixtures/builders/HTTP mocks.
    - If nothing is found anywhere for the touched stack, switch to **Suite bootstrap mode** below.
-2. **Decide the level.**
-   - **.NET:** Pure logic / branching → unit test against the concrete class. Full HTTP path (routing, model binding, middleware, auth, serialization) → an integration test only when the repository already evidences that boundary (for example a `WebApplicationFactory<Program>` fixture); otherwise report it as **not available**.
+2. **Decide the level by where the risk lives** (Verification Rule #9).
+   - **.NET:** Pure logic / branching → unit test against the concrete class. Full HTTP path (routing, model binding, middleware, auth, serialization), or data access whose risk lives in the engine (query translation, constraints, transactions, migrations) → an integration test only when the repository already evidences that boundary (for example a `WebApplicationFactory<Program>` fixture or a test-owned database reset per run); otherwise report it as **not available**. An in-memory provider cannot reproduce an engine defect, so an in-memory test does not cover that risk. A structured output (report, export, generated file, mapped rows) → compare it with a checked-in expected-output file built from a small curated input, scrubbed of personal or customer data and small enough to read in review. The red check in step 7 still applies, and re-accepting that file is an assertion edit (Verification Rule #5).
    - **Angular:**
      - **Service / signal store**: instantiate via `TestBed.inject`; mock HTTP with `HttpTestingController`; for stores, assert **state transitions** (input → resulting signal/computed values), not getters.
      - **Component**: prefer the component's public behavior via a harness or DOM query over inspecting internals. Mock injected services via `{ provide, useValue }`.
@@ -62,7 +62,7 @@ When the goal is to make untested legacy code *safe to change* (e.g. before `/re
   - **.NET:** `DateTime.Now`/`UtcNow`, `Guid.NewGuid()`, random, file/network/DB I/O.
   - **Angular:** `Date.now()`/`new Date()`, `Math.random()`, timers/`setTimeout`, animation timing, real HTTP (fake the clock, flush `HttpTestingController`).
 - **HALT on money- / security-sensitive code.** If it touches `decimal` money, balances, ledgers, idempotency keys, or regulatory figures (.NET), or auth, tokens, sanitisation / `bypassSecurityTrust*`, PII, or monetary values (Angular), STOP before treating any characterization test as a contract: present the captured behavior and ask the developer to confirm it is *correct*, not merely *current*. Pinning a wrong rounding mode, an off-by-one balance, or an insecure behavior as "approved" is a hazard — if confirmed wrong-but-load-bearing, record it in `FRAMEWORK-CONTEXT.md > Known Hazard Areas`.
-- These tests are scaffolding for a safe refactor, not a substitute for behavior-first tests. Once the intended behavior is understood, prefer real behavioral assertions.
+- These tests are scaffolding for a safe refactor, not a substitute for behavior-first tests. Once the intended behavior is understood, prefer real behavioral assertions. Exception: a captured structured output that the developer confirms is correct, not merely current, may stay as the durable expected-output test, without the CHARACTERIZATION header.
 
 ---
 

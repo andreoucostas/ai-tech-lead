@@ -167,5 +167,8 @@ Derive this operation's shape from first-party implementation, configuration, te
    - Reconciliation: source/staging and target differences are explained through the project’s
      control mechanism (for example rejected rows or deduplication).
    - History and orchestration: exercise the applicable change-history and dependency-order paths.
+   - Expected rows: where the repository evidences a harness that runs loads against a test
+     database, check in a small known input with its expected target rows, including a rerun;
+     otherwise report this check as not available rather than adding a harness from this recipe.
    - For dimension/fact targets, justify new dimensions and report unresolved relationship-key
      rows through the project’s established policy rather than assuming zero.

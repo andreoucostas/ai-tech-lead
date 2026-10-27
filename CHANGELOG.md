@@ -13,6 +13,21 @@
 
 ## 0.98.3 — Unreleased
 
+Test level by risk, golden files and re-acceptance (guarded by path, `src/stacks/*/files/.claude/**`; text only, no
+behaviour to show red; plan reviewed twice by a fresh Fable session). Consumers mostly type plain prompts, not commands,
+so the level rule goes where every session sees it. Always loaded: Verification Rule #5 x3 now covers expected-output
+files (snapshots, approved/golden files); Rule #9 x3 adds "write the test at the level where the risk lives: a substitute
+that cannot reproduce the failure is no oracle" (dotnet and monorepo add the in-memory-provider-for-a-SQL-bug example);
+lean #14 (dotnet, monorepo) mocks the database only when a test-owned instance reset per run won't do, which removes the
+one always-loaded push toward an in-memory database. On demand: `test-critic` (dotnet, monorepo) stops flagging a
+test-owned per-run-reset database or checked-in fixture files as non-hermetic, so it no longer contradicts #14;
+`add-tests` (dotnet, monorepo) picks the level by risk (engine-level data access, structured outputs to expected-output
+files) and lets a confirmed characterization output stay as the durable test; `docs/defaults.md` (dotnet, monorepo) Test
+shape and Test determinism match, which matters because most consumers never run `/bootstrap`; `add-warehouse-load` step
+10 adds expected rows through an evidenced harness. Dropped as unreachable for a user who types no command: the
+`/bootstrap`, `/test` and `/fix` edits and a golden-file scope for `test-critic`. The `route-prompt` fix rail is
+unchanged; revisit if an in-memory regression test for a SQL defect is reported.
+
 `security-gate.md` x3, the Angular `security-gate` Copilot wrapper and the `security-auditor` Copilot agent's `findings-note` (guarded by path, `src/stacks/*/files/.claude/**`, no step 4; B-450, field report #10): a
 team ran `/security-gate` and could not tell what a finding was or where it was. Step 5's opt-in locator ("`file:line` only when both the locator and target
 are safe for every repository reader") is now a floor: the verdict table names the repository-relative `file:line`, and a path, or the register summary, is

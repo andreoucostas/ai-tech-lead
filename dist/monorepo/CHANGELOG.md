@@ -7,6 +7,18 @@
 
 ## 0.98.3 — Unreleased
 
+- **Tests are now written at the level where the risk lives, not defaulted to unit tests.** The always-loaded rules now
+  say a new test belongs at the level where the risk lives: a substitute that cannot reproduce the failure, such as an
+  in-memory provider for a SQL bug, is no oracle. Editing a snapshot or an approved/golden file to make a test pass now
+  needs the same explicit flag as editing an assertion, on both sides. On the .NET side, the database is mocked only
+  when a test-owned instance reset per run won't do (before: when an in-memory substitute won't do); the `add-tests`
+  skill sends data access whose risk lives in the engine (query translation, constraints, transactions, migrations) to
+  your existing integration boundary, or reports that risk as untested, and compares structured outputs (reports,
+  exports, mapped rows) with a small checked-in expected-output file; a characterization test's captured output may stay
+  as the durable test once you confirm it is correct; `test-critic` no longer flags a test-owned, per-run-reset database
+  or checked-in fixture files as non-hermetic, and `docs/defaults.md` says the same. Nothing to do: no test harness is
+  added for you.
+
 - **A security finding now always says where it is and what it is.** The `/security-gate` verdict names the file and
   line of each finding. The row it adds to `SECURITY_FINDINGS.md` names the file (no line, since lines move) and, when
   the file alone is ambiguous, the symbol, route or type, with one sentence giving the kind of defect and the kind of
