@@ -6363,3 +6363,67 @@ tokens to be worth an edit? Ships nothing; no backlog entry unless the reading b
   between: recorded, the maintainer decides. Reported, not scored: S per reviewer; whether the injected chain carried `AGENTS.md` and a reviewer also Read it, and those tokens; `host` share; the parent's
   own cumulative context; cost.
 - Stop: 3.00 USD for the run and the repeat. Not shown: other changes, sizes, models, stacks; Copilot CLI or VS Code; cache pricing (cache reads cost a tenth of fresh input, so S on cost may differ).
+
+## B-466 pre-registration — does the framework's lead over the bare agent grow with repository size: `warehouse-route-p4` at about 14, 500 and 5,000 SQL files, Claude Code (2026-10-27, frozen by the commit that holds it, before any run)
+
+Maintainer request 2026-10-27, from the hypothesis that the framework comes into its own in large legacy codebases such as banking's: one existing warehouse scenario at three fixture
+sizes, framework against bare, n = 6, the prediction written before any run. Every framework-against-bare comparison on record ran on a runner fixture of a few files (the largest checked-in
+fixture holds 95) or on the one valid field replay (FS-20260826-RERUN-02, 200 to 499 source files), so none can say whether size changes the answer. Ships nothing. Spend is not approved yet:
+the maintainer approves the stop below before the first paid call.
+
+- Question. On the same prompt, does framework minus bare on `warehouse-route-p4` grow from a 14-file warehouse to a 5,000-file one, in outcome and in cost per run?
+- Why this scenario. Its trap rests on a fact the code holds but does not announce: `usp_LoadFactSales` stamps `fact.FactSales.LoadRunId` from `stg.StgSalesOrder.BatchId` and nothing writes
+  `ctl.LoadRun`, so a report that inner-joins it comes back empty. B-325 (Claude Code 2.1.281, `claude-sonnet-5`, 13 SQL files): MISLEADING 0/6 with the generated record (A2) against 6/6 bare
+  (A4). B-402 (2.1.300, `claude-sonnet-5-5`, the record's LoadRun lines removed): all 8 framework runs worked it out from the SQL in two or three tool calls (CAVEATED-JOIN by hand), and its results
+  note that a case needing the skill's scoped pass "would need a warehouse too large to read whole". No bare arm has run on the newer model. The grader is B-325's, unchanged: it grades the written file and the final message.
+- Sizes. **S**: the runner's `New-EvalRepo warehouse` tree plus one job file, 14 SQL files. **M**: about 500. **L**: about 5,000 (each within 10%). Built by the runner from a fixed seed; each
+  size's tree sha256 is frozen by the amendment below. Invariants at every size, checked by script (I1): (1) the 13 base files are byte-identical to `New-EvalRepo warehouse`; (2) `Jobs/` holds the
+  live job definitions, the base job EXECs the base loaders, and every live loader is called by exactly one job; (3) no job, and no procedure a job reaches, writes `ctl.LoadRun`, and
+  `usp_LoadFactSales` is the only reachable writer of `fact.FactSales`; (4) `fact.FactSales` is the only table with `NetAmount`, `ctl.LoadRun` the only table with `StartedAt` or another run-start
+  column, and outside X no added object's name contains Sales, Revenue or LoadRun; (5) names are synthetic and banking-shaped (accounts, payments, ledger, positions, limits), with no client
+  vocabulary (`meta/field-reports.md`'s confidentiality rule). What grows with size:
+  - **V**, volume: added subject areas in the base's conventions: a staging table with `BatchId`, dimensions, facts whose `LoadRunId` is loaded from their staging `BatchId` as `FactSales`'s is,
+    one loader per table, `rpt` views. `LoadRunId` and `BatchId` therefore occur in proportion to size.
+  - **X**, legacy decoys, beside live code and unlabelled. X1: superseded copies of the sales loader that insert into `ctl.LoadRun` and stamp `LoadRunId` from it, called by no job and no
+    reachable procedure. X2: `rpt` views that inner-join `fact.FactSales` to `ctl.LoadRun`, wrong by the same fact. M: 2 X1 and 1 X2. L: 20 X1 and 10 X2.
+  - Disclosed choice: volume alone would not test the hypothesis, because a search for what writes `ctl.LoadRun` finds the same files at any size. X makes the number of plausible wrong sources
+    grow with size, which is what "legacy" adds, so the study measures size and decay together and cannot separate them. S carries the job file, so its rows are not pooled with B-325's or B-402's.
+- Arms, per size. **F**: `-Arm framework -WarehouseMap generated` with that size's overlay (B-325's A2). **N**: `-Arm none -WarehouseMap omit` (B-325's A4): nothing installed and no generated
+  document. The runner's bare arm under `generated` keeps the generated map; it is not used, because the map is the framework's product. Both: Claude Code with `DISABLE_AUTOUPDATER=1`, the version
+  recorded on the first row and the same on every row (2.1.312 installed at writing); `-Model sonnet` with the same init model on every row; the prompt unchanged; `-Trials 1 -TimeoutSeconds 1800`;
+  a per-run cap of 3.00 USD at every size in place of the scenario's 1.25, since a large tree costs more to read.
+- Knowledge, generated once per size on the amendment's framework commit as B-402's `provenance.json` records it: session 1 `claude -p /bootstrap` (`--resume` "proceed" at each pause), session 2
+  `claude -p /map-warehouse` (`--resume` "Yes, write it."), with per-call caps of 3 and 2 USD at S (B-402's), 6 and 6 at M, 12 and 12 at L. Overlays go to new directories
+  `meta/eval-fixtures/warehouse-scale-s`, `-m` and `-l`, each with its `provenance.json`; `warehouse-generated` is left as it is. A generation stopped at its cap still runs, with what it wrote:
+  that is the framework a consumer would have. **KNOWLEDGE**, recorded by hand per size before any counted run: CORRECT if a generated document says `fact.FactSales.LoadRunId` comes from the
+  staging `BatchId` or that no live load writes `ctl.LoadRun`; WRONG if one says `ctl.LoadRun` records the sales load runs or names an X1 loader as live; SILENT otherwise. It attributes F's result;
+  it is not a reading.
+- Instrument, in the amendment, before any counted run. **I1**: the invariant script green on each size and seen red on a planted violation (an X1 loader called from a job). **I2**: on each size the
+  p4 grader classes a canned outer-join report with the start time disclosed CAVEATED-JOIN, an inner join MISLEADING, and an X2 view copied as the report MISLEADING. **I3**: a run stopped by its
+  budget cap is scored on what it left, not ERROR; a runner self-test case, seen red first.
+- Order. Slots 1 to 6; in each slot L, then S, then M, so a stop leaves M short. Within a size, N first on odd slots and F first on even ones. One run per invocation, from a resumable driver
+  outside the repository that refuses to start unless `dist/`, `src/`, `scripts/`, `.claude/evals/` and the three overlays match the amendment commit.
+- Validity, per run, else one repeat (a second closes the slot): not ERROR; host version and init model as on the first row; F rows `arm=framework` with the size's overlay hash; N rows `arm=none`
+  with no `.claude/` and no generated document in the tree; the size's tree hash.
+- Metric. **GOOD**: the grader's outcome, ESTABLISHED-PARTIAL, CAVEATED-JOIN or ASKED (B-325's definitions). Every row is also classed by hand from the written file and the final message; a
+  disagreement is reported, and a reading whose verdict differs between the two is "not settled" (B-325's authority rule), except for B-439's known false red (a FULL OUTER JOIN from `ctl.LoadRun`
+  to a derived table over the fact, which keeps every fact row), where the hand class counts. Reported per run, not scored: `costUsd`, output tokens, wall time, tool calls, whether it read an X file,
+  the live loader or a job file, and B-325's INVESTIGATED.
+- Prediction, written before any run. **H**, the maintainer's hypothesis: N's GOOD falls with size, from 3 or more of 6 at S to at most 2 of 6 at L, as X outvotes the live loader; F's GOOD holds at
+  5 or 6 of 6 at every size whose KNOWLEDGE is CORRECT; so the gap widens by 3 or more from S to L. F's median cost per run falls from about twice N's at S (B-325: 0.25 against 0.14 USD) to at most
+  N's at L, because N must explore what F has recorded. **C**, the competing prediction: a search for what writes `ctl.LoadRun` stays cheap at any size and shows X1 uncalled, so N does not fall;
+  and `/map-warehouse` at L samples instead of reading, so its KNOWLEDGE is SILENT or WRONG and F falls. Neither is a reading; the readings decide which the result favours.
+- Readings, fixed now. A cell with fewer than 5 valid slots is "not settled", and so is every reading that uses it. GAP at a size is F's GOOD minus N's GOOD there.
+  - **AT L**: GAP_L of 3 or more, FRAMEWORK AHEAD AT L; of -3 or less, BARE AHEAD AT L; otherwise NO DIFFERENCE SHOWN AT L.
+  - **TREND**: GAP_L - GAP_S of 3 or more, WIDENS; of 0 or less, DOES NOT WIDEN; 1 or 2, not settled. With GAP_S of 4 or more (B-325's pattern at S) the gap cannot widen enough to read: reported
+    as CEILING, and AT L still applies.
+  - **COST**: R at a size is F's median cost over N's. R_L of 1.0 or less, COST CROSSES; R_L at or above R_S, COST DOES NOT FALL; otherwise FALLS, NOT CROSSED. Reported beside it: each size's
+    one-off generation cost and, where N's median exceeds F's, the number of tasks after which generation has paid for itself (generation cost over the median difference).
+  - M is reported in every table and enters no reading. n = 6 shows only large effects: 6/6 against 2/6 is two-sided Fisher about 0.06. A reading is applied as written; the maintainer decides
+    anything it does not cover and anything that follows from it.
+- Stop. 60 USD in all: generation, runs and repeats. Spend counts each row's `costUsd`, else the transcript's highest `total_cost_usd`, else the call's cap. Before each paid call: not started if
+  spend so far plus its cap would pass 60. Expected: generation 5 to 25 USD; runs about 0.2 (S), 0.4 to 1 (M) and 0.5 to 3 (L) each, 20 to 45 for the 36.
+- The amendment, before any run, freezes: the runner's sized fixture and per-run cap (ordinary; one self-test case each, seen red first); the three overlays, generated on one framework commit; I1
+  to I3 green; the tree and overlay hashes; and the maintainer's approval of the stop. It may set the generator's details. It may not change the arms, metric, prediction or readings.
+- Not shown: Copilot CLI and VS Code, which both field teams use; other models, tasks and stacks; a real legacy warehouse (the growth is synthetic and its decay is of two kinds); a stale record;
+  how repeatable generation is (one per size); interactive use; effects on a team over time.
