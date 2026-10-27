@@ -6454,3 +6454,39 @@ host's auto mode); EXIT 0, `success`, 13 turns, 127 s, **0.54 USD** of the 3.00 
 - `code` is 7.1%: the subject here is small (3,643 bytes) and each reviewer read the bundle's patches once. On a larger change `code` grows and S falls; the fixed cost per reviewer does not.
 - Cache: reviewers 129,391 cache-creation and 346,950 cache-read tokens; each reviewer wrote its own prefix, so the chain was paid at the cache-write rate about six times.
 - Not shown: as registered; and whether Claude Code offers a way to keep the `CLAUDE.md` chain out of a custom sub-agent (B-467's first step).
+
+## Test-level clause before/after — 2026-10-27 (maintainer request, not pre-registered)
+
+Question: does 39ed0c98, which added "write the test at the level where the risk lives: a substitute that cannot reproduce the failure (an in-memory provider for a SQL bug) is no oracle" to
+Verification Rule #9 (with Rule #5's expected-output files and lean #14's test-owned database in the same commit), change the level of regression test a plain bug-fix prompt gets? Arms:
+`dist/dotnet` at 59fd6f5b (old) and 39ed0c98 (new), each installed by its own tree's `install.ps1`, not bootstrapped (most consumers type no command). Run ad hoc, outside
+`run-agent-evals.ps1`: its `-Live` refuses while `dist/` is ahead of the last release, and no scenario covers this.
+
+- Fixture: an Orders API, ASP.NET Core minimal API and EF Core 8.0.10 on SQLite. `GetPlacedInMonthAsync` filters with a private C# helper EF cannot translate, so SQLite throws and the in-memory
+  provider runs it; premise checked before any run (an in-memory probe passes on the bug, a SQLite probe fails with the real exception). xUnit tests on the in-memory provider. Variant A adds a
+  `SqliteTestDatabase` helper and one test using it; variant B has the in-memory helper only. The SQLite provider reaches the test project through its reference to the API in both.
+- Host: Claude Code 2.1.312, `claude-sonnet-5-5`, `--setting-sources project,local`, `--max-budget-usd 3` per leg, launched from a Claude Code desktop session's shell with its `CLAUDE*` and
+  `ANTHROPIC*` variables removed (the child could not use the session's login). The host's auto mode refused `--dangerously-skip-permissions`, so `--permission-mode acceptEdits` with an
+  allowlist: Read, Grep, Glob, Edit, Write, Skill, Agent, TodoWrite, `dotnet build|test|restore`, read-only `git`. Eight runs had a command denied (shell reads such as `cat` or `grep`, one `python` script) and carried on.
+- Prompt: the 500 on `GET /orders/monthly`, the EF "could not be translated" log lines, then "Please fix it."; "Go ahead." on `--resume` only when leg 1 left `OrderRepository.cs` untouched.
+- Graded on tool events (the first test file written and its provider; a `dotnet test` red before the first production edit) and an oracle: the final tests run in a copy with the original
+  `OrderRepository.cs` restored. Every test an agent kept went red there except the one in-memory test below.
+
+| variant | arm | n | SQLite test that catches the bug | in-memory test kept, green on the bug | no test | stopped at a plan |
+|---|---|---|---|---|---|---|
+| A | old | 3 | 3 | 0 | 0 | 1 |
+| A | new | 3 | 3 | 0 | 0 | 0 |
+| B | old | 13 | 11 | 1 | 1 | 2 |
+| B | new | 13 | 12 | 0 | 1 | 5 |
+
+- No difference shown: 12 of 13 against 11 of 13 (two-sided Fisher 1.0). Variant A's six runs all reused `SqliteTestDatabase`. In variant B, VR #9's red check did the work in both arms: of the
+  runs whose first test used the in-memory provider, new 6 of 6 and old 3 of 4 saw it pass on the bug and moved to SQLite (Fisher 0.4); the old one that stayed said so in its report.
+- The skipped test, one per arm, had one cause: the agent said a SQLite test needed "a new package" and harness, which it did not, and asked. B-468. Two runs (one per arm) added an explicit
+  `Microsoft.EntityFrameworkCore.Sqlite` reference to the test project, redundant but harmless.
+- New-arm runs stopped at a plan more often, 5 of 13 against 2 of 13 (Fisher 0.38); each of the five planned the SQLite test and wrote it after "Go ahead.".
+- No run loaded a skill, so `add-tests` and the other on-demand edits of 39ed0c98 were not exercised. Recommended: keep the clause unchanged (no harm traced to it; the one behaviour it targets
+  points its way), and cut it first if the always-loaded budget tightens. A recommendation, not a recorded decision.
+- Cost 7.41 USD: 2.59 for the 12 runs of variants A and B, 4.82 for 20 more of B; legs took 40 to 160 s. Evidence (fixture, `run-one.sh`, `grade.ps1`, transcripts, `grades.json`) in the
+  session's `%TEMP%\claude\...\scratchpad\eval\`; none in the repository. The first batch's level labels were corrected by hand after a grader path fix.
+- Not shown: other models and hosts (Copilot CLI and VS Code); a bug that returns wrong rows without throwing (this prompt names the translation failure); a larger repository; a bootstrapped
+  repository; interactive use.
