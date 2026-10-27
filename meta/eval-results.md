@@ -6427,3 +6427,30 @@ the maintainer approves the stop below before the first paid call.
   to I3 green; the tree and overlay hashes; and the maintainer's approval of the stop. It may set the generator's details. It may not change the arms, metric, prediction or readings.
 - Not shown: Copilot CLI and VS Code, which both field teams use; other models, tasks and stacks; a real legacy warehouse (the growth is synthetic and its decay is of two kinds); a stale record;
   how repeatable generation is (one per size); interactive use; effects on a team over time.
+
+## Sub-agent context results — 2026-10-27 (pre-registered at 7a1278ba)
+
+Claude Code 2.1.312; parent `claude-sonnet-5-5`, reviewers `claude-haiku-5-5` (convention-check, debt-radar, bloat-radar) and `claude-sonnet-5-5` (security-auditor, solid-check, test-critic), as
+`review.md`'s reviewer-model rule sets. The fixture's install is byte-identical to 39ed0c98's `dist/dotnet` (HEAD's). The maintainer ran the registered command (the agent's own launch was refused by its
+host's auto mode); EXIT 0, `success`, 13 turns, 127 s, **0.54 USD** of the 3.00 stop, verdict REQUEST CHANGES. Valid on the first attempt: six framework reviewers, each with usage, per-request scale
+0.98 to 1.00. Evidence (`review.jsonl`, `subctx-out.txt`, the r-sensitivity copies) in `%TEMP%\b466-subctx\run1\` (the folder name predates B-466 and is unrelated to it); none in the repository.
+
+| reviewer | requests | cumulative context | fw_static | fw_support | code | self | host |
+|---|---|---|---|---|---|---|---|
+| convention-check | 4 | 83,552 | 66.5% | 0.0% | 7.2% | 3.5% | 22.8% |
+| debt-radar | 5 | 117,158 | 57.1% | 11.8% | 6.1% | 5.0% | 20.0% |
+| security-auditor | 3 | 64,750 | 73.0% | 0.0% | 6.1% | 0.9% | 20.0% |
+| bloat-radar | 3 | 62,730 | 69.6% | 0.0% | 6.8% | 1.9% | 21.7% |
+| solid-check | 4 | 84,861 | 66.7% | 0.0% | 9.7% | 1.4% | 22.2% |
+| test-critic | 3 | 63,334 | 70.8% | 0.1% | 6.8% | 1.4% | 20.9% |
+| **pooled** | 22 | 476,385 | 66.1% | 2.9% | 7.1% | 2.6% | 21.2% |
+
+- Reading, applied as registered: **S = 69.0%**, at least 25%, so **FILE**: B-467. r was fitted at 0.470 tokens/char on only 63,855 chars of growth, high for Markdown; fixed at 0.25, 0.30 and 0.35
+  (not scored) S is 39.1%, 46.2% and 53.1%, above the line at every value. The parent's own cumulative context was 435,057 tokens over 8 requests, so the reviewers were 52% of the run's input.
+- Where `fw_static` comes from, hand-read: every reviewer's first request carried the same `instructions` attachment, 25,805 chars, the consumer `CLAUDE.md` with its two imports, `AGENTS.md`
+  (10,780 bytes) and `.github/instructions/framework-rules.instructions.md` (15,351 bytes). The agent definitions (2,700 to 7,600 bytes) and dispatch prompts (290 to 607 chars) are the rest. So the
+  host injects the main agent's whole instruction chain into each custom sub-agent, six times a review, and the rules carrier, the main agent's working rules, is its larger half.
+- The duplicate read named in the question did not happen: convention-check made no Read of `AGENTS.md` (it used the injected copy). The one `fw_support` read of note: debt-radar's `TECH_DEBT.md`.
+- `code` is 7.1%: the subject here is small (3,643 bytes) and each reviewer read the bundle's patches once. On a larger change `code` grows and S falls; the fixed cost per reviewer does not.
+- Cache: reviewers 129,391 cache-creation and 346,950 cache-read tokens; each reviewer wrote its own prefix, so the chain was paid at the cache-write rate about six times.
+- Not shown: as registered; and whether Claude Code offers a way to keep the `CLAUDE.md` chain out of a custom sub-agent (B-467's first step).
