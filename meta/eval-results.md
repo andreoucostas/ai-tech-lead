@@ -6334,3 +6334,32 @@ the frozen paths matched 0986260c. All six runs were valid on the first attempt 
   test file or harness: 0 of 6 (every run changed `src/Calculator.cs` only).
 - Spend: Copilot 6 of 7 premium requests (61.76 AI credits, uncapped). B-414d and B-414e together: 18 of 21 premium requests, 0.80 USD.
 - Limits and not shown: as B-414d; CPC and CCT were not re-run under the fixed grader (their retained runs re-grade 0/6 and 6/6).
+
+## Sub-agent context pre-registration — how much of a `/review` reviewer's input is framework instruction (2026-10-27, maintainer request, frozen by the commit that holds it, before any run)
+
+Q. Would scoping each reviewer sub-agent's context (dropping `convention-check`'s Read of an `AGENTS.md` the host may already inject, or passing only the sections a reviewer needs) save enough
+tokens to be worth an edit? Ships nothing; no backlog entry unless the reading below says so.
+- Fixture, by hand in `%TEMP%\b466-subctx\target`, the runner's `b409-orders-ci` recipe without the runner (its overlay is 0.98.1 and HEAD's dist is 0.98.2, so `-Live` would refuse it): the B-345
+  generator (sha256 `277d4d02951d…`), `dotnet new sln` and sorted `dotnet sln add`, the runner's `ci.yml` bytes, committed; `install.ps1 -Stack dotnet` from this commit's tree (dist stamp 0.98.2),
+  committed; `meta/eval-fixtures/b409-orders-ci/files` laid over, committed; a `bin/` `obj/` `.gitignore`, committed (HEAD `e9a8a4a`). A consumer bootstrapped on 0.98.1 and updated to 0.98.2.
+- Subject, written by the maintainer's agent before any run and left uncommitted: contract-restate's refund endpoint (`Refund` action, `Invoice.Refunded`, its `HasDefaultValue(false)`, an
+  InMemory package and an `Orders.Api` reference in the test csproj, and a new `CheckoutRefundTests.cs` with the 202, 404 and 409 cases). Five files, 3,643 bytes changed or new; sha256 of
+  `git diff HEAD` plus the new file's `--no-index` diff `ba702ecc8124`. `dotnet build Orders.sln` 0 errors, `dotnet test Orders.sln --no-build` 9 passed. A small change: instruction share
+  falls as the subject grows, so a CLOSE here holds a fortiori for larger PRs and a FILE does not.
+- Run, n = 1, one repeat allowed: in the target, `claude -p "/review" ` plus one line naming the contract (contract-restate's prompt as "the request as stated"), `--session-id <new uuid> --model
+  sonnet --output-format stream-json --verbose --include-hook-events --dangerously-skip-permissions --max-budget-usd 3 --setting-sources project,local`, with `DISABLE_AUTOUPDATER=1` and
+  `ATL_SOURCE_CHECK=off`; session persistence on, since the sub-agent transcripts are the instrument. Claude Code 2.1.312.
+- Instrument: `subctx.py` (sha256 `d63ecbe87459`, kept beside the evidence) over `~/.claude/projects/<target>/<session>/subagents/`. A request's context is the API's own input + cache-creation +
+  cache-read count. Visible transcript text becomes tokens by one ratio r fitted on growth between consecutive requests, net of the earlier request's output tokens; each request's own output counts
+  as `self` by its output tokens; what the first request holds beyond its visible text is hidden: the agent definition's body at r, the rest `host`. Each category's tokens are summed over every
+  request that carried them (cumulative context), scaled so each request sums to its API count. Categories: `fw_static` (the injected `CLAUDE.md` chain and nested memory, the parent's dispatch
+  prompt, the agent definition), `fw_support` (reads of `AGENTS.md`, `CLAUDE.md`, `FRAMEWORK-CONTEXT.md`, `TECH_DEBT.md`, `SECURITY_FINDINGS.md`, `*.instructions.md`, and files under `.claude/`,
+  `.github/`, `.agents/`, `docs/`), `code` (the bundle, its manifest and hash, and `src/` or `tests/` reads and searches), `verify` (`dotnet` runs), `self`, `other_tool`, `host`. Dry run on a past
+  session's 11 sub-agents (0533b2e3, no spend): r 0.396, per-request scale 0.82 to 1.08, per-agent framework share 2.6% to 45.6%, so it reads both sides of the line below.
+- Validity, else CANNOT-EXAMINE and the one repeat: the run's result is not an error; at least three sub-agents whose `agentType` is a framework reviewer; every one has at least one request with usage;
+  per-request scale within 0.75 to 1.25 for every reviewer.
+- Metric: S = (`fw_static` + `fw_support`) / all cumulative context, pooled over the framework-reviewer sub-agents. Readings, fixed now: **CLOSE** if S < 16.7%: reviewer instruction context is not
+  where the tokens are; nothing ships, nothing filed. **FILE** if S ≥ 25%: one ordinary `meta/BACKLOG.md` entry to trim reviewer instruction context, naming the two largest contributors. **INCONCLUSIVE**
+  between: recorded, the maintainer decides. Reported, not scored: S per reviewer; whether the injected chain carried `AGENTS.md` and a reviewer also Read it, and those tokens; `host` share; the parent's
+  own cumulative context; cost.
+- Stop: 3.00 USD for the run and the repeat. Not shown: other changes, sizes, models, stacks; Copilot CLI or VS Code; cache pricing (cache reads cost a tenth of fresh input, so S on cost may differ).
