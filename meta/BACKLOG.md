@@ -27,7 +27,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 12 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
 | 13 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
 | 14 | B-383 | Maintainer request reopening B-343: shipped descriptions use about 40-60% of the cap before consumer skills; no field report |
-| 15 | B-467 | Measured, not field-raised: each `/review` reviewer carries the main agent's whole instruction chain, 39% to 69% of its input; first find whether the host can keep it out |
+| 15 | B-467 | Measured, not field-raised: each `/review` reviewer carries the main agent's whole instruction chain, about 53% of its input; `omitClaudeMd` drops it, so what is left is which rules each reviewer needs |
 | 16 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
 | 17 | B-373 | Stall class, but only on a degenerate C# file; no field report |
 | 18 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
@@ -217,9 +217,9 @@ Before any run, an amendment freezes the sized fixture and per-run cap in the ru
 ### B-467 · Each `/review` reviewer sub-agent carries the main agent's whole instruction chain
 **Filed against:** v0.98.2 (2026-10-27)
 **Priority:** P3 · **Effort:** S · **Invariants:** #2
-**Status:** Open (maintainer request; `meta/eval-results.md`, "Sub-agent context results", read FILE): Claude Code injects the consumer `CLAUDE.md` with both imports into all six reviewers, 69% of their pooled input (39% at r 0.25).
-The two largest contributors: the rules carrier `framework-rules.instructions.md` (15,351 bytes) and `AGENTS.md` (10,780 bytes). First establish whether the host can keep the chain out of a custom
-sub-agent; else weigh fewer reviewers per review or a shorter carrier against what each reviewer needs from it. No reviewer-definition trim: the guessed duplicate `AGENTS.md` read did not occur.
+**Status:** Open (maintainer request; `meta/eval-results.md`, "Sub-agent context results", read FILE): Claude Code injects the consumer `CLAUDE.md`, `AGENTS.md` and the rules carrier, 25,805 chars, about 9,100 tokens, into all six reviewers: about 53% of their pooled input at that ratio.
+Step 1 done 2026-10-28: the frontmatter field `omitClaudeMd: true` (Claude Code 2.1.271+) drops it; on 2.1.312 a probe agent's first request fell from 11,782 to 2,656 tokens with it, and kept the chain without it (0.01 USD).
+Left: which reviewers need which rules (convention-check already Reads `AGENTS.md`; the others would need them restated in the dispatch prompt), then a red-first `/review` comparison before shipping.
 
 ### B-468 · A plain bug fix can skip the regression test, wrongly saying a SQLite test needs a new package
 **Filed against:** v0.98.2 (2026-10-27)
