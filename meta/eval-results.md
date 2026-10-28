@@ -6490,3 +6490,33 @@ Verification Rule #9 (with Rule #5's expected-output files and lean #14's test-o
   session's `%TEMP%\claude\...\scratchpad\eval\`; none in the repository. The first batch's level labels were corrected by hand after a grader path fix.
 - Not shown: other models and hosts (Copilot CLI and VS Code); a bug that returns wrong rows without throwing (this prompt names the translation failure); a larger repository; a bootstrapped
   repository; interactive use.
+
+## B-470 pre-registration — does a new Angular page mirror its sibling flow's error, empty and success handling, framework against bare, Claude Code (2026-10-28, frozen by the commit that holds it, before any run)
+
+Maintainer request 2026-10-28, after a fresh-session attack on a four-step UX-consistency proposal (a bootstrap pass, an auto-invoked skill, Stop-hook UX smells, a feature-rail line) found
+every step duplicating bootstrap A3/A5, `docs/defaults.md` ("handle loading, error, and success states explicitly"; "mirror it; do not introduce a second approach") or `/design`, or
+misstating how it fires (`convention-check` runs only under `/review`; the fix rails carry no Conventions step; the Stop hook reads `*.ts` only), and no transcript showing a consumer lose UX
+consistency. Ships nothing. Spend is not approved yet: the maintainer approves the stop below before the first paid call.
+
+- Question. On a bootstrapped Angular repository with one existing flow that handles loading, empty, error and success states, does an "add a similar page" prompt produce a page that
+  mirrors that flow's handling, and does the framework arm do so more often than bare?
+- Fixture, in the amendment. The runner's `New-EvalRepo angular` tree plus one sibling flow: an `OrderListComponent` and `OrderService` that load `/api/orders` through `HttpClient`, render a
+  loading state, an empty-state message, an inline error message set from `catchError`, and the list on success, with one spec; the tree sha256 frozen by the amendment. The bootstrap overlay
+  is generated once by `claude -p /bootstrap` (`--resume` "proceed" at each pause, cap 3 USD) on the amendment's framework commit and frozen under `meta/eval-fixtures/angular-ux-generated/`
+  with `provenance.json`, as B-402's warehouse overlay is. **KNOWLEDGE**, recorded by hand before any counted run: CARRIED if the generated Conventions name the sibling's loading, empty and
+  error handling, SILENT otherwise. It attributes F's result; it is not a reading.
+- Prompt, unchanged across arms: "Add an invoices page that lists the current user's invoices from /api/invoices, following this repository's conventions. No tests needed. I approve this
+  change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built." (the approval clause as `angular-feature-placement` carries it).
+- Arms. **F**: `-Arm framework` with the overlay. **N**: `-Arm none`, nothing installed and no overlay (a new scenario marked `bareArm`; `angular-feature-placement` is not). Both: Claude
+  Code with `DISABLE_AUTOUPDATER=1`, the version on the first row and the same on every row; `-Model sonnet`; `-Trials 1`; a cap of 1.50 USD a run. n = 6 per arm, 12 runs, about 18 USD plus
+  the overlay's 3; N and F alternate within each slot.
+- Grader, in the amendment, seen red on a planted page that renders the list with no loading, empty or error branch. Per run, from the written files only: MIRRORS when the new page has all
+  three of a loading state, an empty state and an error message reaching the template, each by the sibling's mechanism (`catchError` to an inline message, not `alert`, not a silent empty
+  list); PARTIAL when one or two; NONE when none; ERROR when no page was written. The report text is not graded.
+- Prediction, written before any run. F: MIRRORS in at least 5 of 6. N: MIRRORS in at least 4 of 6, since the model copies a visible sibling without instruction. Expected: no difference
+  between arms (Fisher exact, two-sided, above 0.05), and nothing ships.
+- Decision rule. F MIRRORS in 5 or 6 of 6: close B-470 by measurement, no surface added. F MIRRORS in 4 or fewer of 6: ship one line in `docs/defaults.md` naming empty and success states
+  beside loading and error, plus at most one bullet in bootstrap pass A3 naming empty, success and confirm states, mirrored in `src/stacks/monorepo/`, then re-run F only (6 more, about
+  9 USD) and ship only if it reaches 5 of 6. N above F by two or more: a separate finding, filed, not fixed here.
+- Not shown: Copilot CLI and VS Code; a repository whose sibling flows disagree; a greenfield repository (no sibling, `BOOTSTRAP_PENDING`); product thinking (who the user is, whether the
+  page should exist), which no arm measures; interactive use.
