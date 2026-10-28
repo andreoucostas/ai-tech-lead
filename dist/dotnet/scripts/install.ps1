@@ -1,5 +1,5 @@
 ﻿# Install the AI Tech Lead Framework into a target repository.
-# Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] [-AllowOutdated] [-AllowStackChange] C:\path\to\target-repo
+# Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] [-AllowOutdated] [-AllowStackChange] [-Reinstall] C:\path\to\target-repo
 #
 # Before it changes anything, it asks the remote of the framework clone it runs from whether that
 # clone is out of date: a newer vX.Y.Z release tag than this copy's version, or an upstream branch this
@@ -23,13 +23,20 @@
 #                paths are restored; framework-owned machinery is overwritten; mixed-ownership
 #                .claude/settings.json is backed up, refreshed, and adapted to the host. An older
 #                instruction layout (project text in CLAUDE.md) is moved once into AGENTS.md.
+#
+# -Reinstall (an existing install only; it needs a clean Git tree and refuses -AllowDirtyTree): an update from
+# a release older than the retirement ledger's oldest entry deletes nothing, so the old framework files stay
+# beside the new ones. -Reinstall instead deletes the framework files Git tracks under .claude/, .github/
+# instructions|chatmodes|skills, .agents/skills and tests/hooks, plus every other file this release or its
+# ledger names, then installs this release fresh. No backup is written: the last commit holds what it deletes.
 param(
     [Parameter(Mandatory = $true)][string]$Target,
     [switch]$AllowDirtyTree,
     [switch]$WhatIf,
     [switch]$AllowDowngrade,
     [switch]$AllowOutdated,
-    [switch]$AllowStackChange
+    [switch]$AllowStackChange,
+    [switch]$Reinstall
 )
 $ErrorActionPreference = 'Stop'
 $followUpPowerShell = if ($PSVersionTable.PSVersion.Major -ge 7) {
@@ -373,6 +380,14 @@ $adoptionSignals = @('CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.cursorrules', '.cu
     'docs/wiki/INDEX.md')
 
 $updateMode = Test-Path -LiteralPath (Join-Path $tgt '.claude/framework-version.json')
+if ($Reinstall -and $AllowDirtyTree) {
+    [Console]::Error.WriteLine('ERROR: -Reinstall cannot be combined with -AllowDirtyTree: a reinstall deletes the old framework files and writes no backup, so a clean Git tree, whose last commit holds them, is the only way back. Commit or stash your changes, then re-run with -Reinstall alone. Nothing was changed.')
+    exit 4
+}
+if ($Reinstall -and -not $updateMode) {
+    [Console]::Error.WriteLine('ERROR: -Reinstall applies only to an existing install (one with .claude/framework-version.json), and this target has none. Run the installer without -Reinstall. Nothing was changed.')
+    exit 4
+}
 $detected = @()
 if (-not $updateMode) {
     $detected = @($adoptionSignals | Where-Object { Test-Path -LiteralPath (Join-Path $tgt $_) })
@@ -436,6 +451,16 @@ if ($updateMode) {
             exit 4
         }
     }
+    # Below the ledger's oldest entry no manifest or retirement record exists to delete by, so an update would only add
+    # files beside the old ones. The floor is read from the ledger, never written here; an empty ledger sets none.
+    $ledgerFloor = $null
+    foreach ($ledgerEntry in $retirementLedger.Values) {
+        if ($null -eq $ledgerFloor -or (Compare-ReleaseVersion -Left $ledgerEntry.Version -Right $ledgerFloor) -lt 0) { $ledgerFloor = $ledgerEntry.Version }
+    }
+    if ($ledgerFloor -and (Compare-ReleaseVersion -Left $installedVersion -Right $ledgerFloor) -lt 0 -and -not $Reinstall) {
+        [Console]::Error.WriteLine("ERROR: Refusing to update from $installedVersion before mutation: releases before $ledgerFloor left no ownership manifest or retirement record this installer can use, so an update would leave that release's framework files (old hooks, commands, scripts and settings) in place beside the new ones. Re-run with -Reinstall: it deletes the old framework files Git tracks and installs this release fresh, keeping your protected files (AGENTS.md, CLAUDE.md, LEARNINGS.md and the others), files Git does not track, and your own code outside the folders it clears (-WhatIf lists every file it would delete). It needs a clean Git tree, since your last commit is then the only copy of what it deletes. Nothing was changed.")
+        exit 4
+    }
 }
 
 # A shipped path already holding other bytes is consumer content the copy would overwrite, whether
@@ -476,7 +501,9 @@ $retirementPreserve = New-Object System.Collections.Generic.List[string]
 $reconciliationMessages = New-Object System.Collections.Generic.List[string]
 if ($updateMode) {
     $previousManifestPath = Join-Path $tgt 'framework-ownership.json'
-    if (-not (Test-Path -LiteralPath $previousManifestPath -PathType Leaf)) {
+    if ($Reinstall) {
+        # The sweep below replaces the retirement plan; the previous manifest is not read.
+    } elseif (-not (Test-Path -LiteralPath $previousManifestPath -PathType Leaf)) {
         $reconciliationMessages.Add('CANT-VERIFY: previous framework-ownership.json is missing; additive compatibility mode will perform no stale deletion.')
     } elseif (Get-ReparsePointAncestor -Path $previousManifestPath) {
         $reconciliationMessages.Add('CANT-VERIFY: previous framework-ownership.json traverses a reparse/symlink; additive compatibility mode will perform no stale deletion.')
@@ -534,7 +561,9 @@ if ($updateMode) {
             }
         }
     }
-    if ($stackChange) {
+    if ($stackChange -and $Reinstall) {
+        $reconciliationMessages.Add("NOTICE: -AllowStackChange accepted for $stackChange with -Reinstall. Files only the $($installedStamp.template) release shipped outside the folders -Reinstall clears stay in place: delete the ones you do not want.")
+    } elseif ($stackChange) {
         $staysNote = "They stay in place, and no later update refreshes or removes them: delete the ones you do not want."
         if ($previous) {
             [string[]]$dropped = @($previous.Entries | Where-Object { [string]$_.ownership -ceq 'framework-owned/overwritten' -and -not $incoming.ByPath.ContainsKey([string]$_.path) -and -not $retirementLedger.ContainsKey([string]$_.path) } | ForEach-Object { [string]$_.path })
@@ -1148,6 +1177,218 @@ if ($legacyGitHookInspection.Kind -eq 'LEGACY') {
     $reconciliationMessages.Add("NOTICE: $($legacyGitHookInspection.Detail)")
 }
 
+# -Reinstall: the files to delete are exactly the ones the target's last commit holds, so Git is the only authority and
+# every question is asked before anything changes. It sits here, not beside the retirement plan, because the Git helpers
+# it uses are defined above and the wrapper loop below reads its result. Only a tracked file is ever deleted, one at a
+# time; an ignored or untracked file under a cleared folder is not in the commit, so it stays.
+$reinstallCommit = $null
+$reinstallSweep = New-Object System.Collections.Generic.List[string]
+$reinstallKept = New-Object System.Collections.Generic.List[string]
+if ($Reinstall) {
+    foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE')) {
+        if (-not [string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable($name, 'Process'))) {
+            [Console]::Error.WriteLine("CANT-VERIFY: -Reinstall cannot verify this target's Git state while the Git routing variable $name is set. Unset it, then re-run. Nothing was changed.")
+            exit 4
+        }
+    }
+    $reinstallGits = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($reinstallGits.Count -eq 0) {
+        [Console]::Error.WriteLine('ERROR: -Reinstall needs Git: it deletes the old framework files and keeps no backup, so the target''s last commit must hold them. Install Git, commit the target, then re-run. Nothing was changed.')
+        exit 4
+    }
+    $reinstallGit = [string]$reinstallGits[0].Source
+    $reinstallInside = Invoke-GitText -GitPath $reinstallGit -Arguments @('-C', $tgt, 'rev-parse', '--is-inside-work-tree')
+    if (-not ($reinstallInside.Started -and $reinstallInside.ExitCode -eq 0 -and $reinstallInside.Output -ceq 'true')) {
+        [Console]::Error.WriteLine("ERROR: -Reinstall needs a Git work tree: '$tgt' is not inside one, so no commit would hold the files it deletes. Commit the target to Git, then re-run. Nothing was changed.")
+        exit 4
+    }
+    $reinstallHead = Invoke-GitText -GitPath $reinstallGit -Arguments @('-C', $tgt, 'rev-parse', '--verify', '--quiet', 'HEAD^{commit}')
+    if (-not ($reinstallHead.Started -and $reinstallHead.ExitCode -eq 0 -and $reinstallHead.Output -cmatch '^[0-9a-f]{40}$')) {
+        [Console]::Error.WriteLine('ERROR: -Reinstall needs a commit: this repository has no commit yet, so nothing would hold the files it deletes. Commit the target, then re-run. Nothing was changed.')
+        exit 4
+    }
+    $reinstallCommit = $reinstallHead.Output
+    $cantList = 'CANT-VERIFY: Git could not list the files it tracks in this target, so -Reinstall cannot tell which files your last commit holds. Repair Git, then re-run. Nothing was changed.'
+    # No pathspec: one beyond a symbolic link makes Git fail. Each record is '<mode> <sha> <stage><TAB><path>', the path
+    # relative to the target.
+    $reinstallRecords = Invoke-GitRecords -GitPath $reinstallGit -Arguments @('-C', $tgt, 'ls-files', '-z', '--stage')
+    if ($null -eq $reinstallRecords) { [Console]::Error.WriteLine($cantList); exit 4 }
+    $reinstallSkipped = Get-GitSkippedFiles
+    if ($null -eq $reinstallSkipped) { [Console]::Error.WriteLine($cantList); exit 4 }
+    $trackedModes = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    $trackedBlobs = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    foreach ($record in @($reinstallRecords)) {
+        $tab = $record.IndexOf("`t")
+        if ($tab -lt 1) { continue }
+        $trackedMode = $record.Substring(0, $tab).Split(' ')[0]
+        $trackedPath = $record.Substring($tab + 1)
+        $trackedBlobs[$trackedPath] = $record.Substring(0, $tab).Split(' ')[1]
+        # A path with several records (unmerged) keeps a submodule or link mode if any record has one.
+        if (-not $trackedModes.ContainsKey($trackedPath) -or $trackedMode -in @('160000', '120000')) { $trackedModes[$trackedPath] = $trackedMode }
+    }
+    $sweepRoots = @('.claude', '.github/instructions', '.github/chatmodes', '.github/skills', '.agents/skills', 'tests/hooks')
+    foreach ($root in $sweepRoots) {
+        $rootReparse = Get-ReparsePointAncestor -Path (Get-ContainedTargetPath -Relative $root)
+        if ($rootReparse) {
+            [Console]::Error.WriteLine("ERROR: Refusing reinstall deletion '$root': target path traverses reparse/symlink '$rootReparse'. Remove the link, then re-run. Nothing was changed.")
+            exit 3
+        }
+    }
+    $sweepPrefixes = @('.claude/', '.github/instructions/', '.github/chatmodes/', '.github/skills/', '.agents/skills/', 'tests/hooks/')
+    $sweepOwned = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($entry in $incoming.Entries) { if ([string]$entry.ownership -ceq 'framework-owned/overwritten') { [void]$sweepOwned.Add([string]$entry.path) } }
+    $sweepLedger = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($retiredPath in $retirementLedger.Keys) { [void]$sweepLedger.Add([string]$retiredPath) }
+    # Kept whole: protected files, persistent state, the stamp (written last, as in any update, so an interrupted
+    # reinstall still carries the old one) and the brownfield archive.
+    $sweepExempt = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($exempt in @($protected) + @($persistentCopyIfAbsent) + @('.claude/adoption-pending.json', '.claude/framework-version.json')) { [void]$sweepExempt.Add($exempt) }
+    $trackedSorted = [string[]]@($trackedModes.Keys)
+    [Array]::Sort($trackedSorted, [StringComparer]::Ordinal)
+    foreach ($trackedPath in $trackedSorted) {
+        if ($sweepExempt.Contains($trackedPath) -or $trackedPath.StartsWith('docs/pre-adoption/', [StringComparison]::OrdinalIgnoreCase)) { continue }
+        $inRoot = $false
+        foreach ($prefix in $sweepPrefixes) { if ($trackedPath.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { $inRoot = $true; break } }
+        if (-not ($inRoot -or $sweepOwned.Contains($trackedPath) -or $sweepLedger.Contains($trackedPath))) { continue }
+        if ($trackedModes[$trackedPath] -ceq '160000') {
+            [Console]::Error.WriteLine("ERROR: Refusing reinstall: '$trackedPath' is a Git submodule, and -Reinstall deletes only files your last commit holds. Move it out of that folder, then re-run. Nothing was changed.")
+            exit 4
+        }
+        if ($trackedModes[$trackedPath] -ceq '120000') {
+            [Console]::Error.WriteLine("ERROR: Refusing reinstall deletion '$trackedPath': it is a symbolic link, which the installer never reads or deletes through. Remove the link, then re-run. Nothing was changed.")
+            exit 3
+        }
+        if ($reinstallSkipped.Contains($trackedPath)) {
+            [Console]::Error.WriteLine("ERROR: Refusing reinstall: Git is told not to see local changes to '$trackedPath' (skip-worktree or assume-unchanged), so its bytes may differ from commit $reinstallCommit, and -Reinstall would delete them. Clear the flag (git update-index --no-skip-worktree --no-assume-unchanged -- $trackedPath), commit or discard the change, then re-run. Nothing was changed.")
+            exit 4
+        }
+        try { $sweepFull = Get-ContainedTargetPath -Relative $trackedPath }
+        catch {
+            [Console]::Error.WriteLine("ERROR: Refusing reinstall deletion '$trackedPath': $($_.Exception.Message). Nothing was changed.")
+            exit 3
+        }
+        $sweepReparse = Get-ReparsePointAncestor -Path $sweepFull
+        if ($sweepReparse) {
+            [Console]::Error.WriteLine("ERROR: Refusing reinstall deletion '$trackedPath': target path traverses reparse/symlink '$sweepReparse'. Remove the link, then re-run. Nothing was changed.")
+            exit 3
+        }
+        # Absent on disk (a sparse checkout): nothing to delete. Any other failure to look is not absence.
+        try { $sweepEntry = Get-LiteralItem -Path $sweepFull }
+        catch [Management.Automation.ItemNotFoundException] { continue }
+        catch {
+            [Console]::Error.WriteLine("CANT-VERIFY: -Reinstall could not examine '$trackedPath': $($_.Exception.Message). Nothing was changed.")
+            exit 4
+        }
+        if ($sweepEntry.PSIsContainer) {
+            [Console]::Error.WriteLine("ERROR: Refusing reinstall deletion '$trackedPath': Git tracks it as a file but it is not a regular file. Nothing was changed.")
+            exit 3
+        }
+        $reinstallSweep.Add($trackedPath)
+    }
+    # What stays under the cleared folders: files on disk that are not swept and that Git does not track. A breadth-first
+    # walk (as Add-BoundedReferenceDirectory) that lists nothing through a link, reporting the link itself as kept.
+    $sweepSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($swept in $reinstallSweep) { [void]$sweepSet.Add($swept) }
+    $reinstallTracked = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($trackedPath in $trackedModes.Keys) { [void]$reinstallTracked.Add($trackedPath) }
+    foreach ($root in $sweepRoots) {
+        $rootEntry = Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative $root) -ErrorAction SilentlyContinue
+        if ($null -eq $rootEntry -or -not $rootEntry.PSIsContainer) { continue }
+        $walk = New-Object System.Collections.Generic.Queue[string]
+        $walk.Enqueue($rootEntry.FullName)
+        while ($walk.Count -gt 0) {
+            $walkDir = $walk.Dequeue()
+            try { $walkChildren = @(Get-ChildItem -Force -LiteralPath $walkDir -ErrorAction Stop) } catch { continue }
+            foreach ($child in $walkChildren) {
+                $childRelative = $child.FullName.Substring($tgt.Length).TrimStart('\', '/') -replace '\\', '/'
+                if (Test-IsLinkEntry $child) {
+                    if (-not $sweepSet.Contains($childRelative) -and -not $reinstallTracked.Contains($childRelative)) { $reinstallKept.Add($childRelative) }
+                } elseif ($child.PSIsContainer) {
+                    $walk.Enqueue($child.FullName)
+                } elseif (-not $sweepSet.Contains($childRelative) -and -not $reinstallTracked.Contains($childRelative) -and $childRelative -ine '.claude/framework-version.json') {
+                    $reinstallKept.Add($childRelative)
+                }
+            }
+        }
+    }
+    $reinstallKept.Sort([StringComparer]::Ordinal)
+    # The copy overwrites every shipped path, and -Reinstall saves no copy first: a file there that the commit does not
+    # hold (ignored, or tracked with changes Git is told not to see) and that differs from this release would be lost.
+    $reinstallUnheld = New-Object System.Collections.Generic.List[string]
+    foreach ($relative in $incomingPaths) {
+        if ($relative -in $protected -or $relative -in $copyIfAbsent -or $relative -ieq '.claude/framework-version.json') { continue }
+        if ($reinstallTracked.Contains($relative) -and -not $reinstallSkipped.Contains($relative)) { continue }
+        $unheldPath = Get-ContainedTargetPath -Relative $relative
+        # A link or a folder on the path is refused by the write plan below, before any change.
+        if (Get-ReparsePointAncestor -Path $unheldPath) { continue }
+        if (-not (Test-Path -LiteralPath $unheldPath -PathType Leaf)) { continue }
+        try { $unheldSame = (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes($unheldPath))) -ceq (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Join-Path $src $relative)))) }
+        catch {
+            [Console]::Error.WriteLine("CANT-VERIFY: '$relative' could not be read to decide whether -Reinstall would overwrite content your last commit does not hold. Make it readable or move it aside, then re-run. Nothing was changed.")
+            exit 4
+        }
+        if (-not $unheldSame) { $reinstallUnheld.Add($relative) }
+    }
+    if ($reinstallUnheld.Count -gt 0) {
+        [Console]::Error.WriteLine("ERROR: Refusing reinstall: this release would overwrite $($reinstallUnheld.Count) file(s) whose content commit $reinstallCommit does not hold (Git ignores them, or is told not to see their changes), and -Reinstall writes no backup: $($reinstallUnheld -join ', '). Move them out of the repository or commit them, then re-run. Nothing was changed.")
+        exit 4
+    }
+    # A clean status is not proof that the commit holds a file's bytes: a clean filter hides lines from Git, and a
+    # same-size edit with its old timestamp is never re-read. Each file this run deletes or rewrites must equal what
+    # checking out the commit writes: its raw bytes hash to the blob, or they equal the blob as the checkout filters it.
+    function Invoke-ReinstallGitBytes {
+        param([Parameter(Mandatory = $true)][string[]]$Arguments)
+        $start = New-Object Diagnostics.ProcessStartInfo
+        $start.FileName = $reinstallGit
+        $start.Arguments = @($Arguments | ForEach-Object { ConvertTo-NativeArgument -Value $_ }) -join ' '
+        $start.UseShellExecute = $false; $start.CreateNoWindow = $true
+        $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
+        try {
+            $process = [Diagnostics.Process]::Start($start)
+            $stderr = $process.StandardError.ReadToEndAsync()
+            $bytes = New-Object IO.MemoryStream
+            $process.StandardOutput.BaseStream.CopyTo($bytes)
+            $process.WaitForExit(); [void]$stderr.Result
+            if ($process.ExitCode -ne 0) { return $null }
+        } catch { return $null }
+        return , $bytes.ToArray()
+    }
+    $heldCheck = @($reinstallSweep) + @(@('CLAUDE.md', 'AGENTS.md') | Where-Object { $trackedBlobs.ContainsKey($_) -and -not (Get-ReparsePointAncestor -Path (Get-ContainedTargetPath -Relative $_)) -and (Test-Path -LiteralPath (Get-ContainedTargetPath -Relative $_) -PathType Leaf) })
+    $reinstallDiffers = New-Object System.Collections.Generic.List[string]
+    for ($at = 0; $at -lt $heldCheck.Count; $at += 50) {
+        $chunk = @($heldCheck[$at..([Math]::Min($at + 49, $heldCheck.Count - 1))])
+        $rawHashes = Invoke-GitRecords -GitPath $reinstallGit -Arguments (@('-C', $tgt, 'hash-object', '--no-filters', '--') + $chunk)
+        $rawLines = if ($null -eq $rawHashes) { @() } else { @((@($rawHashes) -join '') -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
+        for ($i = 0; $i -lt $chunk.Count; $i++) {
+            if ($rawLines.Count -eq $chunk.Count -and $rawLines[$i] -ceq $trackedBlobs[$chunk[$i]]) { continue }
+            $checkedOut = Invoke-ReinstallGitBytes -Arguments @('-C', $tgt, 'cat-file', '--filters', "HEAD:./$($chunk[$i])")
+            try { $onDisk = [IO.File]::ReadAllBytes((Get-ContainedTargetPath -Relative $chunk[$i])) } catch { $onDisk = $null }
+            if ($null -eq $checkedOut -or $null -eq $onDisk) {
+                [Console]::Error.WriteLine("CANT-VERIFY: -Reinstall could not compare '$($chunk[$i])' with commit $reinstallCommit, so it cannot show the commit holds what it would delete. Repair Git or make the file readable, then re-run. Nothing was changed.")
+                exit 4
+            }
+            if (-not [string]::Equals([Convert]::ToBase64String($checkedOut), [Convert]::ToBase64String($onDisk), [StringComparison]::Ordinal)) { $reinstallDiffers.Add($chunk[$i]) }
+        }
+    }
+    if ($reinstallDiffers.Count -gt 0) {
+        [Console]::Error.WriteLine("ERROR: Refusing reinstall: $($reinstallDiffers.Count) file(s) on disk differ from commit $reinstallCommit although git status shows them unchanged (a clean filter keeps part of them out of Git, or Git has not noticed an edit), and -Reinstall would delete or rewrite them with no backup: $($reinstallDiffers -join ', '). Copy what you need out of the repository; to take the commit's version instead, delete the file, then run  git checkout $reinstallCommit -- <path>  (Git skips a file it believes unchanged). Then re-run. Nothing was changed.")
+        exit 4
+    }
+    # The consumer-owned pre-commit hook may still run a helper the sweep would delete: keep it, as an update does.
+    if ($legacyGitHookInspection.Kind -in @('LEGACY', 'CANT-VERIFY')) {
+        foreach ($dependency in $legacyGitHookInspection.Dependencies) {
+            $at = -1
+            for ($i = 0; $i -lt $reinstallSweep.Count; $i++) { if ($reinstallSweep[$i] -ieq $dependency) { $at = $i; break } }
+            if ($at -ge 0) {
+                $keptDependency = $reinstallSweep[$at]
+                $reinstallSweep.RemoveAt($at)
+                $reconciliationMessages.Add("MIGRATION: -Reinstall kept '$keptDependency': the consumer-owned .git/hooks/pre-commit may still run it. Remove or replace that hook, then delete '$keptDependency'.")
+            }
+        }
+    }
+    $reinstallSweep.Sort([StringComparer]::Ordinal)
+}
+
 # .agents/skills is shared with other agents, so a team's own skill can sit at a workflow wrapper's
 # path. A link or a file where the wrapper needs a folder is the team's in every mode: kept, since the
 # installer never writes through a link. Otherwise a fresh install archives a colliding file, and an
@@ -1230,6 +1471,8 @@ foreach ($relative in $incomingPaths) {
         $blockerIsLink = (Test-IsLinkEntry $item)
         if ($blockerIsLink -or ($onPath -cne $relative -and -not $item.PSIsContainer)) { $blocker = $onPath; break }
     }
+    # Under -Reinstall a tracked file the sweep deletes is not the team's to keep.
+    if ($blocker -and $Reinstall -and -not $blockerIsLink -and $reinstallSweep.Contains($blocker)) { $blocker = $null }
     if ($blocker) {
         [void]$teamSkillPaths.Add($relative)
         if ($blockerIsLink) {
@@ -1239,7 +1482,7 @@ foreach ($relative in $incomingPaths) {
         }
         continue
     }
-    if (-not $updateMode) { continue }
+    if (-not $updateMode -or $Reinstall) { continue }
     $destination = Get-ContainedTargetPath -Relative $relative
     if ($null -eq (Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue)) { continue }
     $existingBytes = $null
@@ -1273,7 +1516,7 @@ foreach ($relative in $incomingPaths) {
 # A retirement can delete only where the immediately previous manifest grants authority. That
 # limitation must not hide high-risk residuals on later updates after the new manifest no longer
 # owns them. Inspect exact ledger paths read-only; this diagnostic grants no deletion authority.
-if ($updateMode) {
+if ($updateMode -and -not $Reinstall) {
     foreach ($retiredPath in @($retirementLedger.Keys | Sort-Object)) {
         $isGitHubSkill = $retiredPath -match '^\.github/skills/([^/]+)/'
         $slug = if ($isGitHubSkill) { $Matches[1] } else { $null }
@@ -1510,7 +1753,7 @@ if ($adoptMode -or $updateMode) {
                     if (-not $AllowDirtyTree) {
                         $refusal = @('ERROR: Refusing to mutate a dirty Git target. Commit, stash, or copy local changes, then re-run; use -AllowDirtyTree only after doing so deliberately.')
                         # Protect-BackupResidue writes the backup folder's keep-out list, which a dry run never does.
-                        $residue = if ($updateMode -and -not $WhatIf) { Get-BackupResidue -Status $status } else { @() }
+                        $residue = if ($updateMode -and -not $WhatIf -and -not $Reinstall) { Get-BackupResidue -Status $status } else { @() }
                         if ($residue.Count -gt 0) { $refusal += (Protect-BackupResidue -GitPath $gitPath -Count $residue.Count) }
                         Stop-GitPreflight -Line $refusal
                     }
@@ -1529,7 +1772,8 @@ if ($adoptMode -or $updateMode) {
 Write-Output "Installing AI Tech Lead Framework"
 Write-Output "  from: $src"
 Write-Output "  into: $tgt"
-if ($updateMode)    { Write-Output "  mode: update (existing install detected via .claude/framework-version.json)" }
+if ($Reinstall)     { Write-Output "  mode: reinstall (existing install detected via .claude/framework-version.json; the old framework files Git tracks are deleted, then this release is installed fresh)" }
+elseif ($updateMode) { Write-Output "  mode: update (existing install detected via .claude/framework-version.json)" }
 elseif ($adoptMode) { Write-Output "  mode: brownfield (pre-existing AI tooling, or files this install would overwrite: $($detected -join ', '))" }
 else                { Write-Output "  mode: greenfield" }
 if ($updateMode -and $versionComparison -gt 0 -and $AllowDowngrade) {
@@ -1540,7 +1784,9 @@ elseif ($sourceFreshness.State -eq 'outdated') { Write-Output "  override: -Allo
 else { Write-Output "  NOTE: could not check that this framework copy is up to date: $($sourceFreshness.Detail). Confirm it is the newest release before you rely on this install." }
 foreach ($message in $reconciliationMessages) { Write-Output "  $message" }
 
-if ($updateMode) {
+if ($Reinstall) {
+    Write-Output "  REINSTALL: deletes every file Git tracks under .claude/ (except .claude/ai-audit.log and .claude/adoption-pending.json), .github/instructions/, .github/chatmodes/, .github/skills/, .agents/skills/ and tests/hooks/, and every other file this release or its retirement ledger names, then copies this release. Commit $reinstallCommit holds all of it; no backup is written."
+} elseif ($updateMode) {
     Write-Output "  UPDATE PREFLIGHT: This update replaces framework-owned files, including .claude/settings.json."
     Write-Output "  Ensure any local edits to those files were committed, stashed, or copied first."
     Write-Output "  Review the resulting diff before committing."
@@ -1657,7 +1903,8 @@ if ($updateMode) {
                 [Console]::Error.WriteLine("ERROR: Refusing update skill reconciliation: '$($item.FullName)' is a reparse/symlink."); exit 3
             }
         }
-        foreach ($skillDir in Get-ChildItem -LiteralPath $activeSkillsRoot -Directory) {
+        # Under -Reinstall the sweep removes every tracked skill file, so no discovered-skill or exemplar state is read.
+        foreach ($skillDir in $(if ($Reinstall) { @() } else { Get-ChildItem -LiteralPath $activeSkillsRoot -Directory })) {
             $skillFile = Join-Path $skillDir.FullName 'SKILL.md'
             if (-not (Test-Path -LiteralPath $skillFile -PathType Leaf)) { continue }
             $oldText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($skillFile))
@@ -1681,7 +1928,7 @@ $backupSkillsRoot = Join-Path $tgt '.claude/framework-update-backup/skills'
 $backupIncompleteRelative = '.claude/framework-update-backup/skills-backup-incomplete'
 # Each copy's path is mapped by ConvertTo-SavedRelative, so no copy loads as a live skill or is a live repository, and
 # moved beside a path Git tracks (Get-UntrackedSaveRelative).
-if ($updateMode -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) -and
+if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) -and
     (-not (Test-Path -LiteralPath $backupSkillsRoot) -or (Test-Path -LiteralPath (Join-Path $tgt $backupIncompleteRelative) -PathType Leaf))) {
     [void](Assert-SafeTargetMutation -Relative $backupIncompleteRelative)
     foreach ($file in Get-ChildItem -LiteralPath $activeSkillsRoot -Recurse -File -Force) {
@@ -1701,7 +1948,7 @@ foreach ($entry in $updateBackups) { [void](Add-PlannedWrite -Relative $entry.Re
 # out of commits is never carried: .claude/disabled-skills/ is committable, so it is saved below the
 # backup folder instead, as is anything the carry or the overlay would lose.
 $disabledActiveFiles = New-Object System.Collections.Generic.List[object]
-foreach ($name in $disabledSkillNames) {
+foreach ($name in $(if ($Reinstall) { @() } else { $disabledSkillNames })) {
     $activeRoot = Join-Path $activeSkillsRoot $name
     if (Test-Path -LiteralPath $activeRoot -PathType Container) {
         $keptOut = Get-GitKeptOutFiles -Folder ".claude/skills/$name"
@@ -1754,7 +2001,7 @@ foreach ($relative in $retirementPreserve) { [void]$preservePlan.Add($relative) 
 # ConvertTo-SavedRelative, so no saved copy is live.
 $saveMessages = New-Object System.Collections.Generic.List[string]
 $savesRelative = '.claude/framework-update-backup/files'
-if ($updateMode) {
+if ($updateMode -and -not $Reinstall) {
     $savedElsewhere = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
     [void]$savedElsewhere.Add('.claude/settings.json')
     foreach ($entry in $skillBackupPlan) { [void]$savedElsewhere.Add($entry.SourceRelative) }
@@ -1892,7 +2139,7 @@ if ($updateMode -or $adoptMode) {
         $dropped = @($body | Where-Object { $_.TrimEnd([char]32).Length -gt 0 -and -not $_.StartsWith('#', [StringComparison]::Ordinal) -and $releaseLines -cnotcontains $_ })
         $savedAt = $null
         if ($adoptMode -and $archiveSources.Contains($relative)) { $savedAt = @(@($archivePlan | Where-Object { $_.OriginalRelative -ceq $relative })[0].Relative) }
-        elseif ($updateMode -and $dropped.Count -gt 0) {
+        elseif ($updateMode -and -not $Reinstall -and $dropped.Count -gt 0) {
             # The save above for files the previous manifest does not list may already have taken it.
             $savedAt = @($updateBackups | Where-Object { $_.SourceRelative -ceq $relative } | ForEach-Object { $_.Relative } | Select-Object -First 1)
             if ($savedAt.Count -eq 0) {
@@ -1996,17 +2243,23 @@ if ($updateMode) {
             if ($agentsEntry -and -not $agentsEntry.PSIsContainer -and -not (Get-ReparsePointAncestor -Path $agentsTarget)) {
                 try { $agentsIsMirror = Test-RetiredMirrorText -Text ([IO.File]::ReadAllText($agentsTarget)) } catch { $agentsIsMirror = $false }
             }
-            if (-not $agentsEntry -or $agentsIsMirror) {
+            # -Reinstall writes no backup, so it moves only originals its commit holds unchanged.
+            $layoutUnheld = $Reinstall -and @(@('CLAUDE.md') + @(if ($agentsEntry) { 'AGENTS.md' }) | Where-Object { -not $reinstallTracked.Contains($_) -or $reinstallSkipped.Contains($_) }).Count -gt 0
+            if ($layoutUnheld) {
+                $layoutMessage = "LAYOUT: commit $reinstallCommit does not hold CLAUDE.md or AGENTS.md as they are on disk (Git ignores one, or is told not to see its changes), and -Reinstall writes no backup, so both were left as they are. Merge CLAUDE.md into AGENTS.md by hand and make CLAUDE.md the two-import stub (docs/upgrade-checklist.md)."
+            } elseif (-not $agentsEntry -or $agentsIsMirror) {
                 $layoutMove = [pscustomobject]@{
                     AgentsText = ConvertTo-AgentsInstructionText -Text $claudeText
                     HasBom = $claudeHasBom
-                    BackupAgents = [bool]$agentsEntry
-                    ClaudeBackup = Get-UntrackedSaveRelative -Relative '.claude/framework-update-backup/instruction-files/CLAUDE.md' -Source $claudeTarget
-                    AgentsBackup = $(if ($agentsEntry) { Get-UntrackedSaveRelative -Relative '.claude/framework-update-backup/instruction-files/AGENTS.md' -Source $agentsTarget } else { $null })
+                    # Under -Reinstall the clean-tree commit holds both originals, so no copy is written.
+                    BackupAgents = ([bool]$agentsEntry -and -not $Reinstall)
+                    ClaudeBackup = $(if ($Reinstall) { $null } else { Get-UntrackedSaveRelative -Relative '.claude/framework-update-backup/instruction-files/CLAUDE.md' -Source $claudeTarget })
+                    AgentsBackup = $(if ($agentsEntry -and -not $Reinstall) { Get-UntrackedSaveRelative -Relative '.claude/framework-update-backup/instruction-files/AGENTS.md' -Source $agentsTarget } else { $null })
                 }
-                foreach ($relative in @($layoutMove.ClaudeBackup, 'CLAUDE.md', 'AGENTS.md')) { [void](Add-PlannedWrite -Relative $relative) }
+                foreach ($relative in @(@($layoutMove.ClaudeBackup, 'CLAUDE.md', 'AGENTS.md') | Where-Object { $_ })) { [void](Add-PlannedWrite -Relative $relative) }
                 if ($layoutMove.BackupAgents) { [void](Add-PlannedWrite -Relative $layoutMove.AgentsBackup) }
                 $layoutMessage = 'LAYOUT: moving the project instructions from CLAUDE.md into AGENTS.md (replacing the generated mirror) and writing the CLAUDE.md import stub; both originals, including any hand edits to the mirror, go to .claude/framework-update-backup/instruction-files/. Review AGENTS.md before committing.'
+                if ($Reinstall) { $layoutMessage = "LAYOUT: moving the project instructions from CLAUDE.md into AGENTS.md (replacing the generated mirror) and writing the CLAUDE.md import stub; both originals are in commit $reinstallCommit. Review AGENTS.md before committing." }
             } else {
                 $layoutMessage = 'LAYOUT: AGENTS.md is not the retired generated mirror, so CLAUDE.md and AGENTS.md were left as they are. Merge CLAUDE.md into AGENTS.md by hand and make CLAUDE.md the two-import stub (docs/upgrade-checklist.md).'
             }
@@ -2016,7 +2269,7 @@ if ($updateMode) {
 
 $settingsBackupRelative = $null
 $settingsBackupKept = $false
-if ($updateMode -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.json') -PathType Leaf)) {
+if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.json') -PathType Leaf)) {
     # Settings equal to one of this framework's own variants (line endings aside: a core.autocrlf checkout
     # rewrites them) were written by an earlier run of this update; saving them again would replace the
     # consumer's settings in the existing backup. Unreadable settings are backed up as before.
@@ -2080,7 +2333,7 @@ $backupResidue = @(); $backupTracked = 0; $backupKeepOut = $null; $savesIntoBack
 # Git as the status reads below use it, an install's ignore-file rewrite included.
 $statusGit = @(Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
 if ($statusGit.Count -gt 0) { $statusGitPath = [string]$statusGit[0].Source }
-if ($updateMode) {
+if ($updateMode -and -not $Reinstall) {
     $statusRouted = @(@('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE') | Where-Object { [Environment]::GetEnvironmentVariable($_, 'Process') }).Count -gt 0
     if ($WhatIf -and $statusGitPath -and -not $statusRouted) { $script:TargetStatus = Get-TargetStatus -GitPath $statusGitPath }
     if ($null -ne $script:TargetStatus) { $backupResidue = Get-BackupResidue -Status $script:TargetStatus }
@@ -2101,7 +2354,7 @@ if ($updateMode) {
 
 $adoptionMarkerRelative = $null
 if ($adoptMode) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
-$modeName = if ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
+$modeName = if ($Reinstall) { 'reinstall' } elseif ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
 if ($layoutMessage) { Write-Output "  $layoutMessage" }
 foreach ($message in $saveMessages) { Write-Output "  $message" }
 Write-Output "OPERATION-PLAN schema=1 mode=$modeName"
@@ -2110,7 +2363,7 @@ foreach ($category in @(
     [pscustomobject]@{ Name = 'replace'; Values = $replacePlan },
     [pscustomobject]@{ Name = 'preserve'; Values = $preservePlan },
     [pscustomobject]@{ Name = 'archive'; Values = @($archivePlan | ForEach-Object { $_.Relative }) },
-    [pscustomobject]@{ Name = 'delete'; Values = @($deletePlan) + @($skillDeletePlan) }
+    [pscustomobject]@{ Name = 'delete'; Values = @($deletePlan) + @($skillDeletePlan) + @($reinstallSweep) }
 )) {
     foreach ($relative in @($category.Values | Sort-Object -Unique)) { Write-Output "PLAN $($category.Name) $relative" }
 }
@@ -2290,6 +2543,35 @@ foreach ($relative in $deletePlan) {
     $retiredDeleted.Add([pscustomobject]@{ Relative = $relative; Path = $retiredPath; Bytes = $retiredBytes })
 }
 foreach ($done in $retiredDeleted) { Write-Output "  retired: $($done.Relative)" }
+# -Reinstall sweep: before the settings step and every copy. Nothing is put back on a failure; the commit holds every
+# deleted file, and the message says how to restore them.
+if ($Reinstall) {
+    $sweepParents = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($relative in $reinstallSweep) {
+        $sweepPath = Get-ContainedTargetPath -Relative $relative
+        try { Remove-Item -Force -LiteralPath $sweepPath -ErrorAction Stop }
+        catch {
+            [Console]::Error.WriteLine("ERROR: Could not delete '$relative': $($_.Exception.Message). Every file this reinstall deleted is in commit ${reinstallCommit}: restore them with  git -C `"$tgt`" checkout $reinstallCommit -- .  then re-run with -Reinstall.")
+            exit 3
+        }
+        Write-Output "  removed: $relative"
+        [void]$sweepParents.Add((Split-Path -Parent $sweepPath))
+    }
+    # Now-empty folders go, from each deleted file's parent upward, never the target itself, a link, or a folder with an entry.
+    $targetPrefix = $tgt.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+    foreach ($parentDir in $sweepParents) {
+        $emptyDir = $parentDir
+        while ($emptyDir -and $emptyDir.StartsWith($targetPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+            $emptyItem = Get-Item -Force -LiteralPath $emptyDir -ErrorAction SilentlyContinue
+            if ($null -eq $emptyItem -or -not $emptyItem.PSIsContainer -or (Test-IsLinkEntry $emptyItem)) { break }
+            $hasEntry = $false
+            try { foreach ($unused in [IO.Directory]::EnumerateFileSystemEntries($emptyDir)) { $hasEntry = $true; break } } catch { break }
+            if ($hasEntry) { break }
+            try { [IO.Directory]::Delete($emptyDir, $false) } catch { break }
+            $emptyDir = Split-Path -Parent $emptyDir
+        }
+    }
+}
 if ($settingsBackupRelative) {
     $settingsBackup = Get-ContainedTargetPath -Relative $settingsBackupRelative
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $settingsBackup) | Out-Null
@@ -2364,6 +2646,7 @@ function Stop-IncompleteCopy {
     # A re-run with no stamp sees the files copied so far as an existing setup and archives them.
     $again = if ($stampLast -or (Test-Path -LiteralPath (Get-ContainedTargetPath -Relative $stampRelative) -PathType Leaf)) { $rerun }
         else { "delete the files this run copied into the target (a re-run would read them as an existing setup and archive them), then re-run the installer" }
+    if ($Reinstall) { $again = "restore the tree with  git -C $(& $quote $tgt) checkout $reinstallCommit -- .  , delete the files this run created that git status lists as untracked (leave .claude/framework-update-backup/, which an earlier update wrote), then re-run with -Reinstall" }
     [Console]::Error.WriteLine("ERROR: Could not copy '$Relative': $($Reason.TrimEnd('.', ' ')). $Written of $($ordinaryApplyPaths.Count) framework files were written$stampNote. Resolve the cause (usually a program holding the file open), then $again.")
     exit 3
 }
@@ -2423,15 +2706,18 @@ if ($layoutMove) {
     # Backups first, byte-for-byte; then AGENTS.md; the stub last, so an interrupted run leaves
     # CLAUDE.md un-migrated and a re-run finds AGENTS.md no longer a mirror and stops.
     $backupRoot = '.claude/framework-update-backup/instruction-files'
-    $backupDestination = Get-ContainedTargetPath -Relative $layoutMove.ClaudeBackup
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupDestination) | Out-Null
-    Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'CLAUDE.md') -Destination $backupDestination
+    if ($layoutMove.ClaudeBackup) {
+        $backupDestination = Get-ContainedTargetPath -Relative $layoutMove.ClaudeBackup
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupDestination) | Out-Null
+        Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'CLAUDE.md') -Destination $backupDestination
+    }
     if ($layoutMove.BackupAgents) {
         Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'AGENTS.md') -Destination (Get-ContainedTargetPath -Relative $layoutMove.AgentsBackup)
     }
     [IO.File]::WriteAllText((Get-ContainedTargetPath -Relative 'AGENTS.md'), $layoutMove.AgentsText, [Text.UTF8Encoding]::new($layoutMove.HasBom))
     Copy-Item -Force -LiteralPath (Join-Path $src 'CLAUDE.md') -Destination (Get-ContainedTargetPath -Relative 'CLAUDE.md')
-    Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in $backupRoot/)."
+    if ($Reinstall) { Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in commit $reinstallCommit)." }
+    else { Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in $backupRoot/)." }
 }
 # Asked after the last copy: only Git can say none is committable. A target without Git has no commit to keep them from.
 if ($savesIntoBackup) {
@@ -2642,7 +2928,24 @@ if ($skillsLeftActive.Count -gt 0) {
     exit 3
 }
 if ($updateMode) {
-    Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; .claude/settings.json was backed up and refreshed."
+    if ($Reinstall) {
+        Write-Output "Done (reinstall). Every file Git tracked in the cleared folders and every file this release or its retirement ledger names was deleted, and this release was installed fresh; protected files, files Git does not track, and other files outside those folders were left in place."
+        Write-Output "  The previous framework files are in commit $reinstallCommit, HEAD when this reinstall ran; no backup folder was written."
+        Write-Output "  .claude/settings.json was written fresh from this release: re-add your own entries (permissions, hooks, env) from  git show ${reinstallCommit}:.claude/settings.json"
+        Write-Output "  Restore any other deleted file with  git checkout $reinstallCommit -- <path>"
+        # Neither shipped by this release nor a retired framework file: an older release's file, or your team's own.
+        $notShipped = @($reinstallSweep | Where-Object { -not $incoming.ByPath.ContainsKey($_) -and -not $retirementLedger.ContainsKey($_) })
+        if ($notShipped.Count -gt 0) {
+            Write-Output "  Deleted $($notShipped.Count) file(s) that neither this release nor its retirement ledger names, so each is an older release's file or your team's own (a skill, command, agent, hook or rule): $($notShipped -join ', '). They are in commit $reinstallCommit."
+        }
+        if ($reinstallKept.Count -gt 0) {
+            $keptShown = @($reinstallKept | Select-Object -First 20) -join ', '
+            if ($reinstallKept.Count -gt 20) { $keptShown += ", and $($reinstallKept.Count - 20) more" }
+            Write-Output "  Kept $($reinstallKept.Count) file(s) Git does not track under the cleared folders (ignored or untracked, so not in commit ${reinstallCommit}): $keptShown."
+        }
+    } else {
+        Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; .claude/settings.json was backed up and refreshed."
+    }
     Write-Output "  Reconcile protected rules and verify the update with docs/upgrade-checklist.md."
     Write-Output "  Next: review the diff, run  $followUpPowerShell scripts/docs-sync-check.ps1 , then commit."
 } elseif ($adoptMode) {

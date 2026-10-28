@@ -21,7 +21,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $b429BlanketLine = "kept out of Git: every copy this update saves goes under \.claude/framework-update-backup/, whose \.gitignore ends with '\*', so Git ignores the whole folder\."
 $carrierRel = '.github/instructions/framework-rules.instructions.md'
 $importLine = '@.github/instructions/framework-rules.instructions.md'
-$staleVersion = '0.40.0'
+# At the retirement ledger's floor (0.76.0): an older stamp is refused, and names -Reinstall.
+$staleVersion = '0.76.0'
 $learningsFixtureText = "## Disabled framework skill: perf`t`r`nDisabled: 2026-08-01`r`nReason: not used here.`r`n"
 [byte[]]$learningsExpectedBytes = @(
     0xEF, 0xBB, 0xBF, 0x23, 0x23, 0x20, 0x44, 0x69, 0x73, 0x61, 0x62, 0x6C, 0x65, 0x64,
@@ -1035,7 +1036,7 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
         try {
             [Environment]::SetEnvironmentVariable('GIT_OPTIONAL_LOCKS', '1', 'Process')
             New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
-            Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.72.0"}' -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Value '{"version":"0.76.0"}' -Encoding utf8
             Set-Content -LiteralPath (Join-Path $t '.claude/ai-audit.log') -Value 'DIRTY AUDIT SENTINEL' -Encoding utf8
             & git -C $t init -q
             & git -C $t config user.email 'tests@example.invalid'
@@ -4123,6 +4124,285 @@ It 'D2 the re-run line of an update stopped by a held file carries the override 
     } finally {
         if ($handle) { $handle.Dispose() }
         Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+# -Reinstall: delete the old framework surface of an install older than the retirement-ledger floor and install fresh.
+# The fixture is a real v0.26.0 install (built from the local tag), committed to Git, plus consumer-owned files.
+function New-ReinstallFixture {
+    $target = Join-Path ([IO.Path]::GetTempPath()) ('reinst-' + [guid]::NewGuid().ToString('N'))
+    $stage = Join-Path ([IO.Path]::GetTempPath()) ('reinst-stage-' + [guid]::NewGuid().ToString('N'))
+    $archive = Join-Path ([IO.Path]::GetTempPath()) ('reinst-' + [guid]::NewGuid().ToString('N') + '.tar')
+    New-Item -ItemType Directory -Force -Path $target, $stage | Out-Null
+    try {
+        & git -C $repoRoot archive --format=tar "--output=$archive" v0.26.0 dist/dotnet 2>&1 | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: could not archive v0.26.0 dist/dotnet'
+        # Prefer the Windows tar: a GNU tar earlier on PATH reads 'C:' as a remote host.
+        $tarExe = Join-Path $env:SystemRoot 'System32/tar.exe'
+        if (-not (Test-Path -LiteralPath $tarExe)) { $tarExe = 'tar' }
+        & $tarExe -xf $archive -C $stage 2>&1 | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: could not extract the v0.26.0 archive'
+        $src = (Join-Path $stage 'dist/dotnet')
+        $skip = @('.template-repo', 'README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes', 'scripts/install.ps1', '.github/workflows/template-ci.yml')
+        $oldHooks = [System.Collections.Generic.List[string]]::new()
+        foreach ($f in Get-ChildItem -LiteralPath $src -Recurse -Force -File) {
+            $rel = $f.FullName.Substring($src.Length).TrimStart('\', '/').Replace('\', '/')
+            if ($skip -contains $rel) { continue }
+            if ($rel.StartsWith('.claude/hooks/')) { $oldHooks.Add($rel) }
+            $dest = Join-Path $target $rel
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dest) | Out-Null
+            Copy-Item -LiteralPath $f.FullName -Destination $dest -Force
+        }
+        $enc = [Text.UTF8Encoding]::new($false)
+        [IO.File]::WriteAllText((Join-Path $target '.claude/hooks/team-hook.ps1'), "# consumer-added hook`n", $enc)
+        New-Item -ItemType Directory -Force -Path (Join-Path $target 'scripts') | Out-Null
+        [IO.File]::WriteAllBytes((Join-Path $target 'scripts/consumer-tool.ps1'), [byte[]](0x23, 0x20, 0x63, 0x6F, 0x6E, 0x73, 0x75, 0x6D, 0x65, 0x72, 0x00, 0xFE, 0x0D, 0x0A, 0x7F, 0x31, 0x0A))
+        [IO.File]::AppendAllText((Join-Path $target 'CLAUDE.md'), "`nCONSUMER SENTINEL 7f3a`n", $enc)
+        [IO.File]::WriteAllText((Join-Path $target '.gitignore'), "/.claude/settings.local.json`n", $enc)
+        [IO.File]::WriteAllBytes((Join-Path $target '.claude/settings.local.json'), [byte[]](0x7B, 0x22, 0x6C, 0x6F, 0x63, 0x61, 0x6C, 0x22, 0x3A, 0x31, 0x39, 0x37, 0x31, 0x7D, 0x0A))
+        & git -C $target init -q 2>&1 | Out-Null
+        & git -C $target config user.email 'fixture@example.test'
+        & git -C $target config user.name 'Fixture'
+        & git -C $target config core.autocrlf false
+        & git -C $target add -A 2>&1 | Out-Null
+        & git -C $target commit -qm fixture 2>&1 | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: could not commit the reinstall fixture'
+        $head = (& git -C $target rev-parse HEAD).Trim()
+        return [pscustomobject]@{ Path = $target; Head = $head; OldHooks = $oldHooks.ToArray() }
+    } finally {
+        Remove-Item -Recurse -Force -LiteralPath $stage -ErrorAction SilentlyContinue
+        Remove-Item -Force -LiteralPath $archive -ErrorAction SilentlyContinue
+    }
+}
+
+# "<relative path>`t<sha256>" for every file outside .git, then HEAD, then the porcelain status.
+function Get-ReinstallFingerprint {
+    param([string]$Target)
+    $lines = foreach ($f in Get-ChildItem -LiteralPath $Target -Recurse -Force -File -ErrorAction SilentlyContinue) {
+        $rel = $f.FullName.Substring($Target.Length).TrimStart('\', '/').Replace('\', '/')
+        if ($rel -eq '.git' -or $rel.StartsWith('.git/')) { continue }
+        "$rel`t$((Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash)"
+    }
+    $head = (& git -C $Target rev-parse HEAD 2>&1 | Out-String).Trim()
+    $status = (& git -C $Target status --porcelain --untracked-files=all 2>&1 | Out-String)
+    $sorted = [string[]]@($lines)
+    [Array]::Sort($sorted, [StringComparer]::Ordinal)
+    return (($sorted -join "`n") + "`nHEAD $head`n" + $status)
+}
+
+# Runs the built dotnet installer with exactly these switches; returns exit code and combined output.
+function Invoke-ReinstallInstaller {
+    param([string]$Target, [string[]]$Switches = @())
+    $installer = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
+    $out = & (Get-PsExe) -NoProfile -File $installer -Target $Target @Switches 2>&1 | Out-String
+    return [pscustomobject]@{ Exit = $LASTEXITCODE; Out = $out }
+}
+
+function Remove-ReinstallTemp {
+    param([string[]]$Paths)
+    foreach ($p in $Paths) {
+        if (-not $p -or -not (Test-Path -LiteralPath $p)) { continue }
+        # Junctions are detached without recursing through them.
+        foreach ($d in Get-ChildItem -LiteralPath $p -Recurse -Force -Directory -ErrorAction SilentlyContinue) {
+            if ($d.Attributes -band [IO.FileAttributes]::ReparsePoint) { try { [IO.Directory]::Delete($d.FullName, $false) } catch { } }
+        }
+        Remove-Item -Recurse -Force -LiteralPath $p -ErrorAction SilentlyContinue
+    }
+}
+
+if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue)) {
+    Skip 'reinstall: -Reinstall behaviour' 'git is unavailable'
+} else {
+    It 'reinstall: a plain update from below the retirement-ledger floor refuses before mutation and names -Reinstall' {
+        $fx = New-ReinstallFixture
+        try {
+            $before = Get-ReinstallFingerprint $fx.Path
+            $r = Invoke-ReinstallInstaller -Target $fx.Path
+            Assert ($r.Exit -eq 4) "expected exit 4 from a plain update below the ledger floor, got $($r.Exit): $($r.Out)"
+            Assert ($r.Out -match '-Reinstall') "the refusal does not name -Reinstall: $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $fx.Path)) "the refused update changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: -Reinstall deletes the old framework surface and keeps consumer files' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            $toolBefore = [IO.File]::ReadAllBytes((Join-Path $t 'scripts/consumer-tool.ps1'))
+            $localBefore = [IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.local.json'))
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            $o = $r.Out
+            Assert ($r.Exit -eq 0) "expected exit 0 from -Reinstall, got $($r.Exit): $o"
+            Assert-BytesEqual $toolBefore ([IO.File]::ReadAllBytes((Join-Path $t 'scripts/consumer-tool.ps1'))) "scripts/consumer-tool.ps1 bytes changed: $o"
+            Assert-BytesEqual $localBefore ([IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.local.json'))) ".claude/settings.local.json bytes changed: $o"
+            $text = ''
+            foreach ($n in 'AGENTS.md', 'CLAUDE.md') { $p = Join-Path $t $n; if (Test-Path -LiteralPath $p) { $text += [IO.File]::ReadAllText($p) } }
+            Assert ($text -match 'CONSUMER SENTINEL 7f3a') "the project text did not survive into AGENTS.md or CLAUDE.md: $o"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/hooks/team-hook.ps1'))) ".claude/hooks/team-hook.ps1 was not deleted: $o"
+            $owned = @((Get-Content -LiteralPath (Join-Path $repoRoot 'dist/dotnet/framework-ownership.json') -Raw | ConvertFrom-Json).paths | ForEach-Object { $_.path })
+            foreach ($h in $fx.OldHooks) {
+                if ($owned -contains $h) { continue }
+                Assert (-not (Test-Path -LiteralPath (Join-Path $t $h))) "$h is a v0.26.0 hook this release does not ship, but it is still present: $o"
+            }
+            $stamp = Get-Content -LiteralPath (Join-Path $t '.claude/framework-version.json') -Raw | ConvertFrom-Json
+            $want = (Get-Content -LiteralPath (Join-Path $repoRoot 'dist/dotnet/.claude/framework-version.json') -Raw | ConvertFrom-Json).version
+            Assert ($stamp.version -eq $want) "stamp version is $($stamp.version), expected $want : $o"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-update-backup'))) "a .claude/framework-update-backup folder was written: $o"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/.state/settings.json.pre-update'))) "a settings.json.pre-update backup was written: $o"
+            foreach ($p in $owned) {
+                Assert (Test-Path -LiteralPath (Join-Path $t $p)) "owned path $p is missing after the reinstall: $o"
+            }
+            Assert ($o.Contains("git show $($fx.Head):.claude/settings.json")) "the output does not give 'git show $($fx.Head):.claude/settings.json': $o"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: -Reinstall with -AllowDirtyTree refuses before mutation' {
+        $fx = New-ReinstallFixture
+        try {
+            $before = Get-ReinstallFingerprint $fx.Path
+            $r = Invoke-ReinstallInstaller -Target $fx.Path -Switches @('-Reinstall', '-AllowDirtyTree')
+            Assert ($r.Exit -eq 4) "expected exit 4 from -Reinstall -AllowDirtyTree, got $($r.Exit): $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $fx.Path)) "the refused run changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: -Reinstall on a dirty tree refuses before mutation' {
+        $fx = New-ReinstallFixture
+        try {
+            [IO.File]::AppendAllText((Join-Path $fx.Path 'scripts/consumer-tool.ps1'), "# uncommitted edit`n")
+            $before = Get-ReinstallFingerprint $fx.Path
+            $r = Invoke-ReinstallInstaller -Target $fx.Path -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 4) "expected exit 4 from -Reinstall on a dirty tree, got $($r.Exit): $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $fx.Path)) "the refused run changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: -WhatIf -Reinstall lists the deletions and changes nothing' {
+        $fx = New-ReinstallFixture
+        try {
+            $before = Get-ReinstallFingerprint $fx.Path
+            $r = Invoke-ReinstallInstaller -Target $fx.Path -Switches @('-WhatIf', '-Reinstall')
+            Assert ($r.Exit -eq 0) "expected exit 0 from -WhatIf -Reinstall, got $($r.Exit): $($r.Out)"
+            Assert ($r.Out -match 'PLAN delete \.claude/hooks/team-hook\.ps1') "the plan does not list 'PLAN delete .claude/hooks/team-hook.ps1': $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $fx.Path)) "-WhatIf changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: -Reinstall outside update mode refuses and creates nothing' {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('reinst-empty-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Force -Path $t | Out-Null
+        try {
+            [IO.File]::WriteAllText((Join-Path $t 'README.md'), "# readme`n", [Text.UTF8Encoding]::new($false))
+            & git -C $t init -q 2>&1 | Out-Null
+            & git -C $t config user.email 'fixture@example.test'
+            & git -C $t config user.name 'Fixture'
+            & git -C $t add -A 2>&1 | Out-Null
+            & git -C $t commit -qm readme 2>&1 | Out-Null
+            $before = Get-ReinstallFingerprint $t
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 4) "expected exit 4 from -Reinstall on a target with no install, got $($r.Exit): $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $t)) "the refused run created or changed files: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($t) }
+    }
+
+    It 'reinstall: a skip-worktree file in the sweep refuses before mutation' {
+        $fx = New-ReinstallFixture
+        try {
+            & git -C $fx.Path update-index --skip-worktree -- .claude/settings.json 2>&1 | Out-Null
+            Assert ($LASTEXITCODE -eq 0) 'calibration: could not set skip-worktree'
+            [IO.File]::AppendAllText((Join-Path $fx.Path '.claude/settings.json'), "`n")
+            $before = Get-ReinstallFingerprint $fx.Path
+            $r = Invoke-ReinstallInstaller -Target $fx.Path -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 4) "expected exit 4 with a skip-worktree file in the sweep, got $($r.Exit): $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $fx.Path)) "the refused run changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: an ignored file at a shipped path refuses, since no commit holds what the copy would overwrite' {
+        $fx = New-ReinstallFixture
+        try {
+            $rel = '.github/instructions/framework-rules.instructions.md'
+            [IO.File]::AppendAllText((Join-Path $fx.Path '.gitignore'), "/$rel`n")
+            & git -C $fx.Path add -A 2>&1 | Out-Null
+            & git -C $fx.Path commit -qm ignore-rules 2>&1 | Out-Null
+            New-Item -ItemType Directory -Force -Path (Join-Path $fx.Path '.github/instructions') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $fx.Path $rel), "# a developer's own rules, in no commit`n", [Text.UTF8Encoding]::new($false))
+            Assert ((& git -C $fx.Path status --porcelain --untracked-files=all | Out-String).Trim().Length -eq 0) 'calibration: the ignored file shows in git status'
+            $before = Get-ReinstallFingerprint $fx.Path
+            $r = Invoke-ReinstallInstaller -Target $fx.Path -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 4) "expected exit 4 with an ignored file at a shipped path, got $($r.Exit): $($r.Out)"
+            Assert ($r.Out.Contains($rel)) "the refusal does not name $rel : $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $fx.Path)) "the refused run changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    # Found by the fresh-session attack: a clean status was taken as proof that the commit holds a file's bytes.
+    It 'reinstall: a file a clean filter keeps partly out of Git refuses, though git status is clean' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            & git -C $t config filter.strip.clean 'sed /LOCALONLY/d'
+            & git -C $t config filter.strip.smudge 'cat'
+            [IO.File]::WriteAllText((Join-Path $t '.gitattributes'), ".claude/rules/*.md filter=strip`n", [Text.UTF8Encoding]::new($false))
+            New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/rules') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $t '.claude/rules/env.md'), "shared`n", [Text.UTF8Encoding]::new($false))
+            & git -C $t add -A 2>&1 | Out-Null
+            & git -C $t commit -qm filtered 2>&1 | Out-Null
+            [IO.File]::AppendAllText((Join-Path $t '.claude/rules/env.md'), "LOCALONLY token=abc123`n")
+            & git -C $t add -A 2>&1 | Out-Null
+            Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String).Trim().Length -eq 0) 'calibration: the filtered edit shows in git status'
+            $before = Get-ReinstallFingerprint $t
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 4) "expected exit 4 for a file whose disk bytes the commit does not hold, got $($r.Exit): $($r.Out)"
+            Assert ($r.Out.Contains('.claude/rules/env.md')) "the refusal does not name .claude/rules/env.md: $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $t)) "the refused run changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: a same-size edit Git has not noticed refuses, though git status is clean' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            $note = Join-Path $t '.claude/rules/team-notes.md'
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $note) | Out-Null
+            [IO.File]::WriteAllText($note, "budget: AAAAAAAA`n", [Text.UTF8Encoding]::new($false))
+            $stamp = [DateTime]::UtcNow.AddMinutes(-10)
+            [IO.File]::SetLastWriteTimeUtc($note, $stamp)
+            & git -C $t add -A 2>&1 | Out-Null
+            & git -C $t commit -qm notes 2>&1 | Out-Null
+            & git -C $t update-index --really-refresh 2>&1 | Out-Null
+            [IO.File]::WriteAllText($note, "budget: SECRET99`n", [Text.UTF8Encoding]::new($false))
+            [IO.File]::SetLastWriteTimeUtc($note, $stamp)
+            Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String).Trim().Length -eq 0) 'calibration: Git noticed the same-size edit'
+            $before = Get-ReinstallFingerprint $t
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 4) "expected exit 4 for an edit Git has not noticed, got $($r.Exit): $($r.Out)"
+            Assert ([IO.File]::ReadAllText($note) -ceq "budget: SECRET99`n") "the unnoticed edit was lost: $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $t)) "the refused run changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: a junction below .claude is neither followed nor emptied' {
+        $fx = New-ReinstallFixture
+        $outside = Join-Path ([IO.Path]::GetTempPath()) ('reinst-outside-' + [guid]::NewGuid().ToString('N'))
+        $link = Join-Path $fx.Path '.claude/linked'
+        try {
+            New-Item -ItemType Directory -Force -Path $outside | Out-Null
+            $payload = [byte[]](0x6F, 0x75, 0x74, 0x00, 0x01, 0x0A)
+            [IO.File]::WriteAllBytes((Join-Path $outside 'outside.txt'), $payload)
+            [IO.File]::AppendAllText((Join-Path $fx.Path '.gitignore'), "/.claude/linked`n")
+            & git -C $fx.Path add -A 2>&1 | Out-Null
+            & git -C $fx.Path commit -qm ignore-link 2>&1 | Out-Null
+            New-Item -ItemType Junction -Path $link -Target $outside | Out-Null
+            Assert (Test-Path -LiteralPath (Join-Path $link 'outside.txt')) 'calibration: the junction does not expose outside.txt'
+            $r = Invoke-ReinstallInstaller -Target $fx.Path -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 0) "expected exit 0 from -Reinstall beside an ignored junction, got $($r.Exit): $($r.Out)"
+            Assert (Test-Path -LiteralPath (Join-Path $outside 'outside.txt')) "outside.txt was deleted through the junction: $($r.Out)"
+            Assert-BytesEqual $payload ([IO.File]::ReadAllBytes((Join-Path $outside 'outside.txt'))) "outside.txt bytes changed: $($r.Out)"
+            Assert (Test-Path -LiteralPath $link) "the junction itself was removed: $($r.Out)"
+        } finally {
+            if (Test-Path -LiteralPath $link) { try { [IO.Directory]::Delete($link, $false) } catch { } }
+            Remove-ReinstallTemp @($fx.Path, $outside)
+        }
     }
 }
 exit (Write-TestSummary 'UpdateDelivery.Tests')

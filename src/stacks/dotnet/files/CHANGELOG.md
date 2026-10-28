@@ -6,6 +6,17 @@
 
 ## 0.98.3 — Unreleased
 
+- **A very old install can now be replaced cleanly with `-Reinstall`.** An update from an install older than any
+  release the installer can clean up after used to leave every old hook, command, script and setting beside the new
+  ones. It now stops before changing anything and names `-Reinstall`. Re-run with it from a clean Git tree: it deletes
+  the old framework files Git tracks (`.claude/`, `.github/instructions/`, `.github/chatmodes/`, `.github/skills/`,
+  `.agents/skills/`, `tests/hooks/`, and every file the release or its retirement list names), installs the release
+  fresh, and keeps your protected files, files Git does not track, and your own files outside those folders (`-WhatIf` lists every file it would delete). It refuses a file
+  whose bytes your last commit does not hold. No
+  backup folder is written: your last commit holds what was deleted, and the installer prints its id with
+  `git show <commit>:.claude/settings.json` and `git checkout <commit> -- <path>` to bring back your own settings,
+  skills or hooks. See `docs/upgrade-checklist.md`.
+
 - **Tests are now written at the level where the risk lives, not defaulted to unit tests.** The always-loaded rules now
   say a new test belongs at the level where the risk lives: a substitute that cannot reproduce the failure, such as an
   in-memory provider for a SQL bug, is no oracle. The database is mocked only when a test-owned instance reset per run

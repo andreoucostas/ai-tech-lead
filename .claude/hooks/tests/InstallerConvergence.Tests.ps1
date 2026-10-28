@@ -49,7 +49,8 @@ function New-LegacyRetirementTarget {
             Copy-Item -LiteralPath $source -Destination $destination -Force
         }
         New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude') | Out-Null
-        [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), '{"version":"0.75.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
+        # v0.75.0's files under the floor's stamp (0.76.0): an older stamp is refused, and names -Reinstall.
+        [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), '{"version":"0.76.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
         return $target
     } finally {
         Remove-Item -Recurse -Force -LiteralPath $stage -ErrorAction SilentlyContinue
@@ -164,7 +165,7 @@ function New-B217LegacyManifestTarget {
     param([string]$StockPath, [ValidateSet('missing', 'malformed')][string]$ManifestShape)
     $target = Join-Path ([IO.Path]::GetTempPath()) ('b217-legacy-manifest-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Force -Path (Join-Path $target '.claude'), (Split-Path -Parent (Join-Path $target $StockPath)) | Out-Null
-    [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), '{"version":"0.64.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $target '.claude/framework-version.json'), '{"version":"0.76.0","template":"dotnet"}', [Text.UTF8Encoding]::new($false))
     $canonicalStock = $StockPath -replace '^\.github/skills/', '.claude/skills/'
     [IO.File]::WriteAllBytes((Join-Path $target $StockPath), [IO.File]::ReadAllBytes((Join-Path $repoRoot ('dist/dotnet/' + $canonicalStock))))
     if ($ManifestShape -eq 'malformed') {

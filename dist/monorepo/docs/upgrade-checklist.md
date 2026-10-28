@@ -47,6 +47,19 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
 5. **Apply.** Run the same command without `-WhatIf`. Keep the preview and apply output, and act on
    every line it prints (see [What the installer's messages ask of you](#what-the-installers-messages-ask-of-you)).
 
+   **When the update refuses and names `-Reinstall`:** your install is older than any release the
+   installer can clean up after, so a plain update would leave the old hooks, commands and settings
+   beside the new ones. Commit everything, then re-run with `-Reinstall` (preview it with `-WhatIf`
+   first). It deletes every file Git tracks under `.claude/` (except `.claude/ai-audit.log`),
+   `.github/instructions/`, `.github/chatmodes/`, `.github/skills/`, `.agents/skills/` and
+   `tests/hooks/`, plus every file this release or its retirement list names, then installs the
+   release fresh. Protected files, files Git does not track, and your own files outside those folders
+   stay; it refuses a file whose bytes your last commit does not hold. It writes no backup: your
+   last commit holds what it deleted, and it prints that commit's id with the commands to bring
+   files back. Team skills, commands and hooks kept under
+   `.claude/` are deleted with the rest; restore the ones you want from that commit. It refuses a
+   tree with uncommitted changes and cannot be combined with `-AllowDirtyTree`.
+
 6. **Reconcile your settings.** `.claude/settings.json` is shared: the update saves your copy to
    `.claude/.state/settings.json.pre-update`, then refreshes it and adapts it to the PowerShell host it
    found. Re-apply your own settings selectively from the diff; never restore the whole old file over

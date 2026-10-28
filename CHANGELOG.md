@@ -13,6 +13,22 @@
 
 ## 0.98.3 — Unreleased
 
+`-Reinstall` for installs below the retirement ledger's floor (guarded, `install.ps1`; maintainer design, parent session
+2026-10-28). An update from a stamp older than the ledger's oldest `retired-in` (0.76.0 today, computed, not hardcoded)
+deleted nothing and left the whole old surface live; it now refuses (exit 4) and names `-Reinstall`, after the outdated-clone,
+downgrade and stack-change refusals. `-Reinstall` needs a Git work tree with a commit and a clean tree (`-AllowDirtyTree`
+refused), deletes only files `git ls-files` lists under `.claude/` (keeping the audit log, the adoption marker and the stamp,
+which is written last), `.github/{instructions,chatmodes,skills}/`, `.agents/skills/`, `tests/hooks/`, and the incoming
+framework-owned and ledger paths, never a protected path or `docs/pre-adoption/`; it refuses a link, a submodule or a
+skip-worktree file in that set, refuses when a file it would delete or overwrite is not in the commit byte for byte (an
+ignored file at a shipped path; a clean-filtered or unnoticed same-size edit, which a clean status hides: each file must
+hash raw to its blob or equal `git cat-file --filters HEAD:./<path>`), keeps ignored and untracked files, keeps a legacy
+pre-commit hook's helpers, then copies the release as an update with no backup copies and prints the commit id with
+`git show` and `git checkout` recovery lines. The fresh-session attack executed both clean-status losses before the
+content check existed; both are now test cases. Fixtures stamped 0.40.0, 0.64.0, 0.72.0 and 0.75.0 move to the floor.
+v0.26.0 survivors outside the swept set (`scripts/install.sh`, `tests/evals/*`) are not in the ledger. B-469 files
+retiring the plain update's backup folder the same way.
+
 Test level by risk, golden files and re-acceptance (guarded by path, `src/stacks/*/files/.claude/**`; text only, no
 behaviour to show red; plan reviewed twice by a fresh Fable session). Consumers mostly type plain prompts, not commands,
 so the level rule goes where every session sees it. Always loaded: Verification Rule #5 x3 now covers expected-output
