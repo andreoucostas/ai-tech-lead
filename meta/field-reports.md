@@ -297,6 +297,33 @@ hash difference. Item 6 is a question, not a defect.
 
 ---
 
+## Report #11 — a pre-task question the developer could not answer
+
+| | |
+|---|---|
+| **Date received** | 2026-10-29 (screenshot taken the same day) |
+| **Stack / repo shape** | not captured; the work was a ticket in the team's tracker |
+| **Framework installed** | not captured; the message matches carrier §2's ask-first shape (questions before starting work, each with the agent's default), and its version is not captured |
+| **Host / IDE** | not captured; a question tool showed one question per page ("1/6"), two numbered options and a free-text third |
+| **What misfired** | The agent opened "Five decisions before I start <ticket>. My recommendation is the default in each field." Question 1 was titled with a two-word label for a data field and stated the agent's verified finding in its own shorthand: a pinned client package cannot return that field, so it stays null and a SHA-256 hash is the change detector, with no package bump. Options: "Waive" (leave it null, record the waiver in the PR text) and "Stop" (raise the client package first). The developer typed in the free-text option: "what [label], I need more infformation, I dont know what are you talking about". The maintainer's summary: "Questions sometimes don't have enough context for the Devs to know what's going on." |
+| **What fired** | carrier §2's ask-first bullet (inferred from the message's shape) |
+| **What got ignored** | nothing; the framework was silent. §2 asked for "at most five questions, each with the assumption you would otherwise make" and said nothing about a question making sense to someone who had not seen the investigation |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | a consumer developer's screenshot, relayed by the maintainer |
+
+**Epistemic status.** One question of six is visible; the other five, the ticket, the stack, the host, the model and
+the version were not captured. "Sometimes" is the maintainer's word; this is one observed instance. Whether the
+investigation was visible to the developer earlier in the session is unknown. The client's ticket key, the developer's
+name, the package version and the field's label are left out under the confidentiality rule; the screenshot was
+removed after transcription at the maintainer's request.
+
+**Outcome:** done 2026-10-29 for 0.98.3 (Unreleased head), unmeasured, no backlog entry: carrier §2 x3 gains a bullet
+saying every question to the developer, in any workflow, stands alone (which requirement, file or behaviour; what was
+found; what each answer changes; in the ticket's and the code's terms, not shorthand the agent coined).
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.

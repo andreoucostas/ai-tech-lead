@@ -13,6 +13,12 @@
 
 ## 0.98.3 — Unreleased
 
+Questions that stand alone (ordinary; field report #11, relayed by the maintainer 2026-10-29; unmeasured). A developer
+answered a pre-task question by typing that they did not know what it was about: it carried the agent's shorthand from
+its investigation and named neither the requirement nor what each answer would change. Carrier §2 x3 gains one bullet
+after the ask-first bullet: every question to the developer, in any workflow, stands alone (which requirement, file or
+behaviour; what was found; what each answer changes; in the ticket's and the code's terms).
+
 `-Reinstall` for installs below the retirement ledger's floor (guarded, `install.ps1`; maintainer design, parent session
 2026-10-28). An update from a stamp older than the ledger's oldest `retired-in` (0.76.0 today, computed, not hardcoded)
 deleted nothing and left the whole old surface live; it now refuses (exit 4) and names `-Reinstall`, after the outdated-clone,

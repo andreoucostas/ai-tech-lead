@@ -6,6 +6,12 @@
 
 ## 0.98.3 — Unreleased
 
+- **A question the agent asks you now says what it is about.** The always-loaded rules now ask that every question put
+  to you, in any workflow, make sense to someone who has not followed the agent's investigation: which requirement,
+  file or behaviour it concerns, what the agent found, and what each answer would change, in the ticket's and the
+  code's terms rather than shorthand the agent made up. A team reported a question whose title and options made sense
+  only to the agent. Nothing to do.
+
 - **A very old install can now be replaced cleanly with `-Reinstall`.** An update from an install older than any
   release the installer can clean up after used to leave every old hook, command, script and setting beside the new
   ones. It now stops before changing anything and names `-Reinstall`. Re-run with it from a clean Git tree: it deletes
