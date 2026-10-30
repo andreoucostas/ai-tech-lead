@@ -322,6 +322,47 @@ removed after transcription at the maintainer's request.
 saying every question to the developer, in any workflow, stands alone (which requirement, file or behaviour; what was
 found; what each answer changes; in the ticket's and the code's terms, not shorthand the agent coined).
 
+## Report #12 — VS Code offers to migrate the framework's prompt files to skills
+
+| | |
+|---|---|
+| **Date received** | 2026-10-30 |
+| **Stack / repo shape** | not captured |
+| **Framework installed** | yes, inferred: the prompt files VS Code offers to convert are the twelve `.github/prompts/<name>.prompt.md` wrappers the framework shipped through v0.93.0; version not captured |
+| **Host / IDE** | VS Code with GitHub Copilot; VS Code and Copilot Chat versions not captured. The offer belongs to the Copilot harness (VS Code's docs, read 2026-10-30: Copilot harness sessions "do not load `*.prompt.md` files"; "Prompt files remain supported in Local harness sessions") |
+| **What misfired** | The maintainer's words: "Migration of prompts to skills. Getting prompted in VS Code." VS Code's customization-migration notice offered to convert the framework's prompt files to skills. What the developer did with the offer not captured |
+| **What fired** | VS Code's migration notice (its docs: "A notice appears in chat when a workspace requires customization migrations"; the list sits under Chat: Open Customizations, Migrations, "Convert Prompt to Skills") |
+| **What got ignored** | nothing by an agent. The framework's remedy shipped in v0.94.0 (2026-10-08): the prompt files were retired and replaced by `.agents/skills/<name>/SKILL.md` wrappers, and that release's CHANGELOG entry tells a team what to do with a conversion it already accepted. Whether the team has that release, or read the entry, not captured |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | relayed by the maintainer in one line; whether the sighting was a consumer developer's or the maintainer's own, not captured |
+
+**Epistemic status.** The maintainer saw the same offer on 2026-10-06 and 0.94.0 was the response (its root CHANGELOG
+entry names that sighting); this is the first sighting since the release, three weeks on. Nothing in the report says
+which of three states the repository is in, and `.claude/framework-version.json` plus `git ls-files .github/prompts`
+would decide it: (1) the install is older than 0.94.0, so the prompt files are still the live Copilot wrappers and an
+update retires them (the ledger holds 85 digests, every released blob through v0.93.0 in all three distributions);
+(2) the install is 0.94.0 or later and the update kept a prompt file it could not own, an edited one or every one of an
+install too old to carry `framework-ownership.json`, each reported as `CANT-VERIFY` naming the `.agents/skills/` skill
+that replaces it, so the offer concerns files the team was told to delete after review; (3) the install is 0.94.0 or
+later and unedited prompt files survived the update, an escaped defect no gate has shown. The report says nothing about
+the separate open question of whether VS Code's Copilot harness loads the `.agents/skills/` wrappers at all: 0.94.0
+shipped with "not examined: VS Code itself (no seat)", and VS Code's skills documentation (read 2026-10-30) lists
+`.github/skills/` as that harness's supported project location and names `.agents/skills/` only for Local sessions,
+while calling its table "a supported project and personal location for each harness, not every directory it
+recognizes". A developer who accepts the offer gets a skill at the destination VS Code selects (its docs do not name
+the folder; the table gives `.github/skills/` for the Copilot harness), which the shipped `docs-sync-check` fails on
+("migrate its contents to .claude/skills"), and a copy at `.claude/skills/<name>/` would shadow the same-named command
+in Claude Code.
+
+**Outcome:** no change to the tree; the remedy is v0.94.0 (2026-10-08). Answer to the team: update (the update deletes
+the unedited prompt files and, for a kept one, names the skill that replaces it); decline the offer, or delete the
+`.github/skills/` folder it made, since this framework ships its own wrappers and `docs-sync-check` fails while that
+folder exists. Whether the Copilot harness loads `.agents/skills/` stays unmeasured and unfiled pending the
+maintainer's word.
+
+---
+
 ---
 
 ## Intake gaps (a finding in its own right)
@@ -346,6 +387,12 @@ Reports arrive as a sentence or two about one defect, and most table fields go u
    parenthetical. Report #5 instead concerns sampling, state preservation, document ownership, and
    routing. Do not generalise the earlier four-of-four pattern now that the intake population has
    changed; keep coverage and workflow failures as separate cuts of the improvement ledger.
+
+4. **Report #12 is the first report of a defect whose fix had already shipped, and the one field that decides
+   whether the fix reached the team, the installed version, was not captured.** Three weeks after v0.94.0 retired the
+   prompt files, the same VS Code offer arrived from the field in one line. Ask for the `.claude/framework-version.json`
+   stamp with every report: one line for the reporter, and "already fixed, please update" becomes an answer instead of a
+   guess.
 
 Capture the table fields **at intake**, before the defect is diagnosed — by then attention has moved
 to the fix and the context is lost.
