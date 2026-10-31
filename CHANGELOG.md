@@ -102,8 +102,9 @@ blank lines: 50.8 s on pwsh, >40 s on 5.1, 0.6 s and 0.4 s after; 30,000 `[Fact(
 0.5 s after; 100,000: 13.0 s on pwsh, >40 s on 5.1, 1.7 s and 0.7 s); the SAS signature in both orders (20,000 `sv=...&`
 fragments: 57.5 s on pwsh, >40 s on 5.1, 0.7 s and 0.4 s; 8,000 `sig=` fragments each followed by `&`: 24.9 s, >40 s, 0.9 s and
 0.5 s; one `sig=` and 100,000 characters: >60 s, >40 s, 0.6 s and 0.4 s); and the placeholder `<...>` (a million `<`: 25.1 s on
-pwsh, 80,000 took 125 s on 5.1; 2.0 s and 0.4 s after). Item 5 (NotebookEdit) closed by decision: the event shape is
-unmeasured and the matcher would need a `settings.json` change in every stack.
+pwsh, 80,000 took 125 s on 5.1; 2.0 s and 0.4 s after). Item 5 (the guard never reads a `NotebookEdit` write) stays
+open as B-474: the event shape is unmeasured and the matcher lives in every stack's `settings.json` and in the core
+`settings.windows.json`.
 
 Skill-description budget stated (ordinary; B-383, maintainer request 2026-10-11; measured 2026-10-31, no gate added).
 `docs/reference.md > Skills` now says Copilot in VS Code lists every skill's name and description inside one shared
