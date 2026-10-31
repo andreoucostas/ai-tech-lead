@@ -10,6 +10,9 @@
 # clone, so it is not content even when the repository's ignore rules miss it.
 # A recorded file whose content now sits at exactly one new path moved (RENAMED): its claims follow it,
 # and the files the Known Hazard Areas rows name are recorded so /rebootstrap can re-point those rows.
+# The baseline lists each file a claim's pattern matched once (file rows) and a claim's evidence as the pattern alone, so
+# it grows with the repository, not with claims times files. A carried claim whose files changed keeps one row per file as
+# recorded, and so does every schema 1 baseline; both read the same way.
 # Exit codes: 0 done; 1 INVALID input; 2 CANNOT EXAMINE; 3 (Impact) no usable baseline, run in full.
 [CmdletBinding()]
 param(
@@ -193,9 +196,14 @@ function Get-Snapshot {
         }
         for ($i = 0; $i -lt $paths.Count; $i++) { $blobs[$paths[$i]] = $hashes[$i].Trim() }
     }
-    $sorted = [string[]]@($blobs.Keys)
+    return ConvertTo-Snapshot $blobs
+}
+
+function ConvertTo-Snapshot($Blobs) {
+    # The shape Resolve-Evidence reads; Read-State builds one from a baseline's file rows.
+    $sorted = [string[]]@($Blobs.Keys)
     [Array]::Sort($sorted, [StringComparer]::Ordinal)
-    return [pscustomobject]@{ Blobs = $blobs; Sorted = $sorted; Joined = ($sorted -join "`n") }
+    return [pscustomobject]@{ Blobs = $Blobs; Sorted = $sorted; Joined = ($sorted -join "`n") }
 }
 
 function Get-Areas($Snapshot) {
@@ -369,12 +377,16 @@ function Read-State {
         Projects = @{}; Workspaces = @{}; Hazards = New-PathMap
         Claims = New-Object 'System.Collections.Generic.List[object]'; ClaimsById = @{}; Lines = New-PathMap
     }
-    $schema = $false
+    # Schema 2 writes each matched file once, as a file row, and a claim's evidence as the pattern alone; schema 1, and a
+    # carried claim whose evidence no longer matches the tree, hold one evidence row per file. Both read the same way.
+    $schema = $false; $version = 0
+    $files = New-PathMap
     foreach ($line in ([IO.File]::ReadAllText($path).TrimStart([char]0xFEFF) -replace "`r", '').Split("`n")) {
         if (-not $line -or $line.StartsWith('#')) { continue }
         $f = $line.Split("`t")
         switch ($f[0]) {
-            'schema' { if ($f.Count -ne 2 -or $f[1] -ne '1') { $script:StateProblem = "$script:StateRel has an unsupported schema"; return $null }; $schema = $true }
+            'schema' { if ($f.Count -ne 2 -or ($f[1] -ne '1' -and $f[1] -ne '2')) { $script:StateProblem = "$script:StateRel has an unsupported schema"; return $null }; $schema = $true; $version = [int]$f[1] }
+            'file' { if ($version -ne 2 -or $f.Count -ne 3) { $script:StateProblem = "$script:StateRel has a malformed file row"; return $null }; $files[$f[1]] = $f[2] }
             'recorded' { $state.Recorded = $f[1] }
             'profile' { if ($script:Profiles -notcontains $f[1]) { $script:StateProblem = "$script:StateRel names an unknown profile '$($f[1])'"; return $null }; $state.Profiles.Add($f[1]) }
             'line' { if ($f.Count -ne 2) { $script:StateProblem = "$script:StateRel has a malformed line row"; return $null }; $state.Lines[$f[1]] = $true }
@@ -393,18 +405,31 @@ function Read-State {
             'claim' {
                 if ($f.Count -ne 6 -or $script:Kinds -notcontains $f[4]) { $script:StateProblem = "$script:StateRel has a malformed claim row"; return $null }
                 $claim = [pscustomobject]@{ Id = $f[1]; Profile = $f[2]; Pass = $f[3]; Kind = $f[4]; Text = $f[5]; Line = $line
-                    Evidence = New-Object 'System.Collections.Generic.List[object]'; EvidenceLines = New-Object 'System.Collections.Generic.List[string]' }
+                    Evidence = New-Object 'System.Collections.Generic.List[object]'; Rows = New-Object 'System.Collections.Generic.List[object]' }
                 $state.Claims.Add($claim); $state.ClaimsById[$f[1]] = $claim
             }
             'evidence' {
-                if ($f.Count -ne 5 -or -not $state.ClaimsById.ContainsKey($f[1])) { $script:StateProblem = "$script:StateRel has a malformed evidence row"; return $null }
-                $state.ClaimsById[$f[1]].Evidence.Add([pscustomobject]@{ Pattern = $f[2]; Path = $f[3]; Blob = $f[4] })
-                $state.ClaimsById[$f[1]].EvidenceLines.Add($line)
+                # Five fields: a recorded path and blob. Three (schema 2 only): the pattern alone, read below from the file rows.
+                $wide = $f.Count -eq 5; $narrow = $f.Count -eq 3 -and $version -eq 2
+                if (-not ($wide -or $narrow) -or -not $state.ClaimsById.ContainsKey($f[1])) { $script:StateProblem = "$script:StateRel has a malformed evidence row"; return $null }
+                $state.ClaimsById[$f[1]].Rows.Add([pscustomobject]@{ Pattern = $f[2]; Path = $(if ($wide) { $f[3] } else { $null }); Blob = $(if ($wide) { $f[4] } else { $null }) })
             }
             default { $script:StateProblem = "$script:StateRel has an unknown row '$($f[0])'"; return $null }
         }
     }
     if (-not $schema -or $state.Profiles.Count -eq 0) { $script:StateProblem = "$script:StateRel has no schema or profile rows"; return $null }
+    # A pattern's recorded set is what it resolves to among the recorded files, which hold every file any pattern matched;
+    # none, for an "no X exists" claim, is the '-' row schema 1 wrote.
+    $recorded = ConvertTo-Snapshot $files
+    $sets = New-PathMap
+    foreach ($claim in $state.Claims) {
+        foreach ($row in $claim.Rows) {
+            if ($null -ne $row.Path) { $claim.Evidence.Add($row); continue }
+            if (-not $sets.ContainsKey($row.Pattern)) { $sets[$row.Pattern] = Resolve-Evidence $recorded $row.Pattern }
+            if ($sets[$row.Pattern].Count -eq 0) { $claim.Evidence.Add([pscustomobject]@{ Pattern = $row.Pattern; Path = '-'; Blob = '-' }) }
+            foreach ($member in $sets[$row.Pattern]) { $claim.Evidence.Add([pscustomobject]@{ Pattern = $row.Pattern; Path = $member; Blob = $files[$member] }) }
+        }
+    }
     return $state
 }
 
@@ -426,6 +451,8 @@ function Invoke-Record {
     if ($selected.Count -eq 0) { $problems.Add('INVALID: profiles must list at least one of dotnet, angular, warehouse.') }
     foreach ($profile in $selected) { if ($script:Profiles -cnotcontains $profile) { $problems.Add("INVALID: unknown profile '$profile' (expected dotnet, angular or warehouse).") } }
     $rows = New-Object 'System.Collections.Generic.List[string]'
+    # Every file a compact evidence row's pattern matched, once however many claims share it.
+    $fileTable = New-PathMap
     $ids = @{}
     $texts = New-Object 'System.Collections.Generic.List[string]'
     foreach ($claim in @($claimsInput.claims)) {
@@ -458,8 +485,8 @@ function Invoke-Record {
                 $problems.Add("INVALID: claim '$label' evidence '$pattern' matches no file outside the paths framework-ownership.json lists.")
                 continue
             }
-            if ($found.Count -eq 0) { $evidenceRows.Add("evidence`t$id`t$pattern`t-`t-") }
-            foreach ($path in $found) { $evidenceRows.Add("evidence`t$id`t$pattern`t$path`t$($snapshot.Blobs[$path])") }
+            $evidenceRows.Add("evidence`t$id`t$pattern")
+            foreach ($path in $found) { $fileTable[$path] = $snapshot.Blobs[$path] }
         }
         $rows.Add("claim`t$id`t$($claim.profile)`t$($claim.pass)`t$($claim.kind)`t$text")
         $rows.AddRange($evidenceRows)
@@ -481,12 +508,31 @@ function Invoke-Record {
             $rows.Add($old.Line)
             # A file that moved unchanged is re-pointed, unless the claim's text names what the move changed.
             $follow = Get-Followed $snapshot $moves $old
-            for ($i = 0; $i -lt $old.Evidence.Count; $i++) {
-                $row = $old.Evidence[$i]; $key = "$($row.Path)`t$($row.Blob)"
-                if ($follow.Named -or -not $follow.Moves.ContainsKey($key)) { $rows.Add($old.EvidenceLines[$i]); continue }
-                $to = $follow.Moves[$key]
-                $pattern = if ($row.Pattern -ceq $row.Path) { $to } else { $row.Pattern }
-                $rows.Add("evidence`t$($old.Id)`t$pattern`t$to`t$($row.Blob)")
+            $groups = New-PathMap
+            $order = New-Object 'System.Collections.Generic.List[string]'
+            foreach ($row in $old.Evidence) {
+                $key = "$($row.Path)`t$($row.Blob)"
+                if (-not $follow.Named -and $follow.Moves.ContainsKey($key)) {
+                    $to = $follow.Moves[$key]
+                    $row = [pscustomobject]@{ Pattern = $(if ($row.Pattern -ceq $row.Path) { $to } else { $row.Pattern }); Path = $to; Blob = $row.Blob }
+                }
+                if (-not $groups.ContainsKey($row.Pattern)) { $groups[$row.Pattern] = New-Object 'System.Collections.Generic.List[object]'; $order.Add($row.Pattern) }
+                $groups[$row.Pattern].Add($row)
+            }
+            # A pattern whose recorded files are exactly what the tree now holds is written as the pattern alone. One whose files
+            # differ keeps its recorded hashes, so carrying a claim forward never marks it verified.
+            foreach ($pattern in $order) {
+                $was = New-PathMap
+                foreach ($row in $groups[$pattern]) { if ($row.Blob -ne '-') { $was[$row.Path] = $row.Blob } }
+                $now = Resolve-Evidence $snapshot $pattern
+                $same = $was.Count -eq $now.Count
+                foreach ($path in $now) { if ($same -and (-not $was.ContainsKey($path) -or $was[$path] -cne $snapshot.Blobs[$path])) { $same = $false } }
+                if (-not $same) {
+                    foreach ($row in $groups[$pattern]) { $rows.Add("evidence`t$($old.Id)`t$($row.Pattern)`t$($row.Path)`t$($row.Blob)") }
+                    continue
+                }
+                $rows.Add("evidence`t$($old.Id)`t$pattern")
+                foreach ($path in $now) { $fileTable[$path] = $snapshot.Blobs[$path] }
             }
             $texts.Add($old.Text)
             $carried++
@@ -501,7 +547,7 @@ function Invoke-Record {
     [Array]::Sort($areaKeys, [StringComparer]::Ordinal)
     $out = New-Object 'System.Collections.Generic.List[string]'
     $out.Add('# ai-tech-lead rebootstrap baseline. Written by scripts/bootstrap-baseline.ps1 -Mode Record; do not edit by hand.')
-    $out.Add("schema`t1")
+    $out.Add("schema`t2")
     $out.Add("recorded`t$([DateTime]::UtcNow.ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture))")
     foreach ($profile in $selected) { $out.Add("profile`t$profile") }
     $lineKeys = [string[]]@($agents.Lines.Keys)
@@ -513,6 +559,9 @@ function Invoke-Record {
     $hazardKeys = [string[]]@($hazards.Keys)
     [Array]::Sort($hazardKeys, [StringComparer]::Ordinal)
     foreach ($path in $hazardKeys) { $out.Add("hazard`t$path`t$($hazards[$path])") }
+    $fileKeys = [string[]]@($fileTable.Keys)
+    [Array]::Sort($fileKeys, [StringComparer]::Ordinal)
+    foreach ($path in $fileKeys) { $out.Add("file`t$path`t$($fileTable[$path])") }
     $out.AddRange($rows)
     $target = Join-Path $script:RootFull $script:StateRel
     [IO.Directory]::CreateDirectory((Split-Path $target -Parent)) | Out-Null

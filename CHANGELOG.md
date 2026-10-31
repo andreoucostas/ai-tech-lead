@@ -13,6 +13,29 @@
 
 ## 0.98.3 — Unreleased
 
+A compact baseline (ordinary; B-451, field report #10 item 2, relayed by the maintainer 2026-10-21; measured on generated
+repositories only). The baseline wrote `evidence <id> <pattern> <path> <blob>` for every file of every claim's pattern, so a
+field repository's ran to 3,856 lines (the reporter's). Schema 2 writes `file <path> <blob>` once per matched file, ordinally
+sorted, and `evidence <id> <pattern>` per claim pattern. `Read-State` recovers a claim's recorded files by resolving the pattern
+against the file rows, so `Get-Moves`, `Get-Followed` and Impact are untouched and print the same `AREA`, `RENAMED` and `CLAIM`
+lines: the previous script on a baseline it recorded and this one on its own baseline, and this one on the previous script's
+baseline, gave identical Impact output (exit code included) in 22 scenarios (edits, moves, a moved-and-changed file, a deleted
+file, a glob move-out, a new deep file, a new SQL file, each also after a carrying record). A carried claim is written compactly only
+when its recorded files still equal what the tree holds; otherwise it keeps one row per recorded file (the schema 1 row, valid in
+schema 2), so carrying never marks a claim verified and `names-old-path` and move-following behave as before. A schema 1 baseline
+is read as it is and rewritten by the next record; a schema 2 baseline read by the previous script is "unsupported schema", exit 3,
+`RESULT full` (observed). Measured on generated repositories: 600 files and 36 claims, 9,424 to 766 lines (1,046,678 to 55,610
+bytes); 3,000 files and 60 claims, 74,036 to 3,306 lines (8.3 MB to 255 KB); Impact took 2.8 s against 3.5-3.9 s at 600 files and
+18.4 s against 18.9 s at 3,000. The red cases: a record is schema 2 with each file once and pattern-only evidence rows, a schema 1
+baseline is rewritten by the next record, a carried claim keeps its recorded hash when its file changed, and file rows lost from a
+baseline read as changed evidence. Not done: the shipped `.gitattributes` lines (`-diff`, `linguist-generated`). A framework-owned
+file below `.claude/` goes through the installer's ownership policy (guarded, step 4) and needs a brownfield-archive case, and
+whether the reporter's Bitbucket host honours the attribute is unconfirmed; B-451 keeps that half. Rejected: one row per pattern
+holding only a hash of its set (the entry's first candidate), because it cannot tell which file moved, so a rename inside a glob
+would read as changed evidence and trip the 50% threshold; and recording a commit to diff against, because the baseline avoids
+commit ids on purpose (a squash merge or a shallow clone). Impact takes about 18 s at 3,000 files in both schemas, which this
+change did not cause.
+
 The baseline is committed on purpose, and hashed the same under every `core.autocrlf` (guarded, `rebootstrap.md` x3 sit under
 `src/stacks/*/files/.claude/`; B-452, field report #10 item 3, relayed by the maintainer 2026-10-21; unmeasured). A team asked
 whether `.claude/bootstrap-baseline.tsv` is meant to be committed, since nearly any PR makes `/rebootstrap` report drift. It is:

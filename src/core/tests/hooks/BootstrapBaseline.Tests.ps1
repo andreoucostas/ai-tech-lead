@@ -513,6 +513,102 @@ It 'a baseline recorded under one core.autocrlf setting reports no drift under a
         ExitIs $back 0; Has $back 'CHANGED-AREAS 0'; Has $back 'RESULT stop'
     } finally { Drop $r; Drop $c }
 }
+function AsSchemaOne([string]$State) {
+    # The baseline an earlier release wrote for AllClaims: schema 1, one evidence row per matched file, '-' for a claim of absence.
+    $blob = @{}
+    foreach ($m in [regex]::Matches($State, '(?m)^file\t([^\t\n]+)\t([0-9a-f]{40})$')) { $blob[$m.Groups[1].Value] = $m.Groups[2].Value }
+    $expand = @{
+        'src/Orders/Data/OrderRepository.cs'   = @('src/Orders/Data/OrderRepository.cs')
+        'src/Orders/Api/ServiceRegistration.cs' = @('src/Orders/Api/ServiceRegistration.cs')
+        'src/Orders/Api/Controllers/*.cs'      = @('src/Orders/Api/Controllers/OrdersController.cs')
+        '**/Migrations/*.sql'                  = @()
+    }
+    $rows = foreach ($line in $State.Split("`n")) {
+        if (-not $line -or $line.StartsWith("file`t")) { continue }
+        if ($line -eq "schema`t2") { "schema`t1"; continue }
+        $f = $line.Split("`t")
+        if ($f[0] -eq 'evidence' -and $f.Count -eq 3) {
+            if ($expand[$f[2]].Count -eq 0) { "evidence`t$($f[1])`t$($f[2])`t-`t-" }
+            foreach ($path in $expand[$f[2]]) { "evidence`t$($f[1])`t$($f[2])`t$path`t$($blob[$path])" }
+            continue
+        }
+        $line
+    }
+    ($rows -join "`n") + "`n"
+}
+It 'claims sharing a glob record each matched file once, and an evidence row names its pattern only' {
+    $r = Fixture
+    try {
+        $extra = @(1..30 | ForEach-Object { "Module $_ follows the layered convention." })
+        Put (Join-Path $r 'AGENTS.md') (Agents (@($claimRepo, $claimDi, $claimCtl, $claimNoSql) + $extra))
+        $claims = @(AllClaims) + @($extra | ForEach-Object { Claim 'B1' 'scoped' $_ @('src/Orders/**/*.cs') })
+        $res = Record $r $claims
+        ExitIs $res 0
+        $state = [IO.File]::ReadAllText((Join-Path $r $stateRel))
+        Assert ($state -match "(?m)^schema`t2$") "the record is not in the compact schema: $state"
+        $paths = @([regex]::Matches($state, '(?m)^file\t([^\t\n]+)\t[0-9a-f]{40}$') | ForEach-Object { $_.Groups[1].Value })
+        Assert ($paths.Count -eq 3) "expected the three matched .cs files once each, got $($paths.Count): $($paths -join ', ')"
+        $ordered = [string[]]$paths.Clone(); [Array]::Sort($ordered, [StringComparer]::Ordinal)
+        Assert (($ordered -join "`n") -ceq ($paths -join "`n")) "file rows are not in ordinal order: $($paths -join ', ')"
+        $narrow = [regex]::Matches($state, '(?m)^evidence\t[0-9a-f]{12}\t[^\t\n]+$').Count
+        Assert ($narrow -eq 34) "expected one pattern-only evidence row per claim and pattern (34), got $narrow"
+        Assert ($state -notmatch '(?m)^evidence\t[0-9a-f]{12}\t[^\t\n]+\t') 'an evidence row still lists a path'
+        $after = Impact $r
+        ExitIs $after 0; Has $after 'CHANGED-AREAS 0'; Has $after 'RESULT stop'
+    } finally { Drop $r }
+}
+It 'a baseline in the previous schema is still read, and the next record rewrites it' {
+    $r = Fixture
+    try {
+        Recorded $r
+        $state = Join-Path $r $stateRel
+        Put $state (AsSchemaOne ([IO.File]::ReadAllText($state)))
+        Assert ([IO.File]::ReadAllText($state) -match "(?m)^evidence`t[0-9a-f]{12}`tsrc/Orders/Data/OrderRepository\.cs`tsrc/Orders/Data/OrderRepository\.cs`t[0-9a-f]{40}$") 'the helper did not write a per-file evidence row'
+        $same = Impact $r
+        ExitIs $same 0; Has $same 'CHANGED-AREAS 0'; Has $same 'RESULT stop'
+        Put (Join-Path $r 'src/Orders/Api/ServiceRegistration.cs') 'static class ServiceRegistration { static void AddOrders() {} }'
+        $drift = Impact $r
+        ExitIs $drift 0; Has $drift 'AREA src/Orders/Api'
+        Assert ($drift.Out -match '(?m)^CLAIM changed-evidence [0-9a-f]{12} dotnet/A3: ') "the old baseline missed the changed file: $($drift.Out)"
+        $res = Record $r @()
+        ExitIs $res 0; Has $res 'RECORDED claims=4 carried=4 unclaimed=0 profiles=dotnet'
+        Assert ([IO.File]::ReadAllText($state) -match "(?m)^schema`t2$") 'the next record did not rewrite the baseline in the current schema'
+        $after = Impact $r
+        ExitIs $after 0; Has $after 'CHANGED-AREAS 0'
+        Assert ($after.Out -match '(?m)^CLAIM changed-evidence [0-9a-f]{12} dotnet/A3: ') "carrying the claim forward marked it verified: $($after.Out)"
+    } finally { Drop $r }
+}
+It 'record writes an unlisted claim as its pattern alone when its files are unchanged, and keeps its recorded hashes when they changed' {
+    $r = Fixture
+    try {
+        Recorded $r
+        $first = [IO.File]::ReadAllText((Join-Path $r $stateRel))
+        $was = [regex]::Match($first, '(?m)^file\tsrc/Orders/Api/ServiceRegistration\.cs\t([0-9a-f]{40})$').Groups[1].Value
+        Assert ($was.Length -eq 40) "the first record has no file row for the registration file: $first"
+        Put (Join-Path $r 'src/Orders/Api/ServiceRegistration.cs') 'static class ServiceRegistration { static void AddOrders() {} }'
+        G $r @('commit', '-q', '-am', 'change registration')
+        $res = Record $r @((Claim 'A2' 'scoped' $claimRepo @('src/Orders/Data/OrderRepository.cs')))
+        ExitIs $res 0; Has $res 'RECORDED claims=4 carried=3 unclaimed=0 profiles=dotnet'
+        $state = [IO.File]::ReadAllText((Join-Path $r $stateRel))
+        Assert ($state -match "(?m)^evidence`t[0-9a-f]{12}`tsrc/Orders/Api/ServiceRegistration\.cs`tsrc/Orders/Api/ServiceRegistration\.cs`t$was$") "the changed claim lost its recorded hash: $state"
+        Assert ($state -notmatch '(?m)^file\tsrc/Orders/Api/ServiceRegistration\.cs\t') "the changed file was listed under its new hash: $state"
+        $narrow = [regex]::Matches($state, '(?m)^evidence\t[0-9a-f]{12}\t[^\t\n]+$').Count
+        Assert ($narrow -eq 3) "expected the listed, universal and absence claims as pattern-only rows (3), got $narrow"
+    } finally { Drop $r }
+}
+It 'file rows lost from a baseline read as changed evidence, never as no drift' {
+    $r = Fixture
+    try {
+        Recorded $r
+        $state = Join-Path $r $stateRel
+        $kept = @([IO.File]::ReadAllText($state).Split("`n") | Where-Object { $_ -notlike "file`t*" })
+        Put $state (($kept -join "`n"))
+        $res = Impact $r
+        ExitIs $res 0
+        HasNot $res '(?m)^RESULT stop'
+        Has $res 'PROFILE dotnet full affected=3/4 (75%) reason=threshold'
+    } finally { Drop $r }
+}
 It 'a corrupt baseline asks for a full run' {
     $r = Fixture
     try {
