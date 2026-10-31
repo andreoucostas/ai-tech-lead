@@ -57,6 +57,12 @@ Skills in `.claude/skills/` load only when a task needs them. This distribution 
 `AGENTS.md > Common Tasks` describes each in one line, and a skill applies only where your
 repository's evidence supports it. Project skills that `/bootstrap` drafts live in the same folder.
 
+Copilot in VS Code lists every skill's name and description to the model within one shared character budget:
+15,000 in Local sessions, and in Copilot CLI sessions 15,000 up to VS Code 1.141 and 30,000 from 1.142 (the
+experimental user setting `chat.copilot.skillCharBudget`). This distribution's skills and workflow wrappers use
+roughly 7,000 to 11,000 characters of it, depending on the stack, and your personal skills share it; a skill
+past the budget is listed by name only, so Copilot has just its name to go on. Keep project skill descriptions short.
+
 ## Hooks
 
 PowerShell scripts in `.claude/hooks/`, registered for Claude Code in `.claude/settings.json` and for

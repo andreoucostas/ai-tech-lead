@@ -13,6 +13,13 @@
 
 ## 0.98.3 — Unreleased
 
+Skill-description budget stated (ordinary; B-383, maintainer request 2026-10-11; measured 2026-10-31, no gate added).
+`docs/reference.md > Skills` now says Copilot in VS Code lists every skill's name and description inside one shared
+character budget (15,000 in Local sessions; in Copilot CLI sessions 15,000 up to VS Code 1.141 and 30,000 from 1.142), that
+the shipped skills use roughly 7,000 to 11,000 of it, and that a skill past it is listed by name only. Read from
+microsoft/vscode at tags 1.118.0 to 1.144.0 and checked by calling the Copilot runtimes' own skill loader and prompt
+builder on all three dists; no `validate-dist` ceiling, because the load has not grown (see the B-383 record).
+
 The audit and session-start hooks, B-463 group G2 (guarded, `src/core/.claude/hooks/{audit-trail,session-start}.ps1` and the
 `src/stacks/{dotnet,angular}/snippets/.claude/hooks/audit-trail.ps1/skip` snippets; items 7 to 11 of
 `.claude/plans/2026-10-23-bug-hunt-2-b463.md`, no step 4; each fixed with its case seen red first, item 9's red on Windows PowerShell 5.1 only).

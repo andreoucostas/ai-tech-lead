@@ -7,17 +7,26 @@
 
 ## 0.98.3 — Unreleased
 
+- **The reference now says how much room skill descriptions have in VS Code.** Copilot in VS Code lists every skill's
+  name and description to the model inside one shared character budget: 15,000 in Local sessions, and in Copilot CLI
+  sessions 15,000 up to VS Code 1.141 and 30,000 from 1.142. The framework's skills and workflow wrappers use roughly
+  7,000 to 11,000 characters of it, depending on the stack, and your personal skills share it. A skill past the budget
+  is listed by name only, so Copilot has just its name to go on; keep project skill descriptions short. Nothing to do
+  unless you have many project skills.
+
 - **`.claude/ai-audit.log` no longer loses lines or stays empty for some checkouts.** The audit hook (`audit-trail.ps1`) dropped a
   line when two file writes finished at the same moment (parallel tool calls do that), and recorded nothing at all when your checkout's own
   folder path contained `bin`, `obj`, `node_modules`, `dist`, `.angular` or `coverage` (for example `C:\work\bin\shop`), because it matched
   the build-folder skip against the whole path. It now appends under a short retry, and skips those folders only inside the repository, as
   before. If the log is still busy after about three seconds the hook says so on stderr and the edit goes on. The log is UTF-8 without a
   BOM (Windows PowerShell 5.1 used to start a new log with one). Nothing to do.
+
 - **The session preload reads your files as UTF-8 and finds git when the framework is installed below the repository root.** On Windows
   PowerShell 5.1 the team wiki index (every entry holds an em dash) and other non-ASCII text in the files the preload reads reached the
   agent as garbled characters. When the folder that holds `.claude/` is a subfolder of a git repository, the preload left out the branch,
   recent commits, unrecorded test entry points and the debt-heat line; it now includes them, and the debt-heat count looks only at files
   under your folder. In a repository with no commit yet it reports the branch as unknown without git's `fatal:` lines on stderr. Nothing to do.
+
 - **A question the agent asks you now says what it is about.** The always-loaded rules now ask that every question put
   to you, in any workflow, make sense to someone who has not followed the agent's investigation: which requirement,
   file or behaviour it concerns, what the agent found, and what each answer would change, in the ticket's and the
