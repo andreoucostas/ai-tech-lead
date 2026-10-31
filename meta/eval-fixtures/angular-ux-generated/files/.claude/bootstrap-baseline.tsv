@@ -1,0 +1,156 @@
+# ai-tech-lead rebootstrap baseline. Written by scripts/bootstrap-baseline.ps1 -Mode Record; do not edit by hand.
+schema	1
+recorded	2026-10-31
+profile	angular
+line	0012ec0cc0c9
+line	002602a00f57
+line	03a920e8aab6
+line	048e64ee60b7
+line	0628ff91d2d9
+line	07999391dda3
+line	09742a8f9b2d
+line	0f0cbea24538
+line	13d106299133
+line	17e4542b4cf8
+line	1d8636009aad
+line	1f2ee7c2e67b
+line	22b661b78fbf
+line	25a20b1e013d
+line	270e71b62709
+line	2753619cd1aa
+line	27540c6129ad
+line	2aadc4b0e771
+line	3123c3422128
+line	3259964d9f34
+line	327910687c42
+line	3285d3834c17
+line	36d4693e75cb
+line	3c07178e6831
+line	3d5b844fa4d4
+line	3d6c8ed7efd5
+line	44a64f2d40b5
+line	44f34af8c7b4
+line	46d1893c406c
+line	47c37aff2e7f
+line	4923f61a439a
+line	4a83d7114783
+line	4aee9830c965
+line	4b4924036098
+line	4b73eb9e9b05
+line	4b8feef6974c
+line	502fe1b1f630
+line	52612fbfc57a
+line	60ae86ed4263
+line	60c0ee992f38
+line	62b67e1f685b
+line	65994624c64c
+line	66c5771b675c
+line	6a8c5ed94005
+line	6dcc5221e887
+line	71ab5bb65349
+line	721bff47e091
+line	767a1ed3662f
+line	7762c3f67888
+line	7a1cb97c0e2d
+line	7afe77d48953
+line	7bb86190d527
+line	7bd42b77dc37
+line	7e7b14e200aa
+line	7f59637897f7
+line	871f98e26996
+line	8871555dfef5
+line	8a99ed748c6f
+line	9054eb36c537
+line	936f630708e7
+line	94112d1eefd0
+line	94bc863e797c
+line	95dd9a2b5ace
+line	98ebb18781f6
+line	99c624a83bc2
+line	9b8023f88991
+line	9d400c4c5c50
+line	9daa825613a3
+line	a07c2244edf3
+line	a25b4f227992
+line	a27e5fd0d8f2
+line	a6268ae096a3
+line	a88719915f43
+line	a8e6c68da36a
+line	abbcfa5715f1
+line	ac7f81d95750
+line	aff721b8e99c
+line	b0313f3c078d
+line	b6ebb843a511
+line	b9a6a9c28c10
+line	cb3f91d54eee
+line	cb9213101ddb
+line	cbd85c7ea471
+line	cd21c555150f
+line	d455514ecdd7
+line	d78f8567ee35
+line	d8dbe5f46ecc
+line	dacb5a1bab59
+line	db6cc67f38b1
+line	e18992ce9cc5
+line	e192b4a7d42a
+line	e580ce34717e
+line	e600c5a3766f
+line	e85454c807dd
+line	f1b901847390
+line	f1f6a343c027
+line	f2a5ec63b1c4
+line	f3b69f522397
+line	f4a1ddfd8688
+area	.	455033d6e859e465
+area	src	fde15e076167625c
+area	src/app	6b4cb02c29f04e68
+area	src/app/orders	5c183f8bedf45cb4
+area	src/app/profile-form	ef84b77f36b435de
+workspace	angular	angular.json	762b8b6e482c4001c0ffd01e485d79a4cb10b2ab
+project	angular	package.json
+hazard	package.json	71346c8a8d96fdc306bd991850f39129f4703ebd
+hazard	src/app/profile-form/profile-form.component.ts	a2a2d7815fb36891f102f7328a05a6f574071812
+claim	4bd94b42114e	angular	A6	scoped	Angular 19 (`^19.0.0`, `package.json`): out of Angular's support window and below v21 — upgrade debt (DEBT-001). Zone-based change detection (no zoneless provider in `src/main.ts`).
+evidence	4bd94b42114e	package.json	package.json	71346c8a8d96fdc306bd991850f39129f4703ebd
+evidence	4bd94b42114e	src/main.ts	src/main.ts	e41ff30f045b4502de2f0fe477d8096eb9e0f26b
+claim	b556f23a89ac	angular	A1	universal	Standalone components only (`standalone: true`, no NgModules); `inject()` for DI, no constructor injection (`src/app/orders/order-list.component.ts`).
+evidence	b556f23a89ac	src/app/**/*.ts	src/app/app.component.ts	1a567bb770f0704ba0e87481cf996df11b7057bd
+evidence	b556f23a89ac	src/app/**/*.ts	src/app/orders/order-list.component.spec.ts	4e42b9d337e6059ff6d8267f49b9dd17b0cb744d
+evidence	b556f23a89ac	src/app/**/*.ts	src/app/orders/order-list.component.ts	96244c10d5133638cbc0f07fcaf048348bdfe272
+evidence	b556f23a89ac	src/app/**/*.ts	src/app/orders/order.service.ts	3718905a0c4759e5644f2d65f05d53773f2b1f5b
+evidence	b556f23a89ac	src/app/**/*.ts	src/app/profile-form/profile-form.component.ts	a2a2d7815fb36891f102f7328a05a6f574071812
+evidence	b556f23a89ac	src/app/**/*.ts	src/app/user.service.ts	ace262442868256a4d9a42dda9ef0ba21c212d11
+claim	1436f4789552	angular	A1	scoped	No routing yet; all features render from `AppComponent`.
+evidence	1436f4789552	src/app/app.component.ts	src/app/app.component.ts	1a567bb770f0704ba0e87481cf996df11b7057bd
+evidence	1436f4789552	src/main.ts	src/main.ts	e41ff30f045b4502de2f0fe477d8096eb9e0f26b
+claim	2e6052d3b1c3	angular	A3	scoped	Inline templates with built-in control flow (`@if`/`@for` with `track`) (`order-list.component.ts`).
+evidence	2e6052d3b1c3	src/app/orders/order-list.component.ts	src/app/orders/order-list.component.ts	96244c10d5133638cbc0f07fcaf048348bdfe272
+claim	90a8abfc9cc9	angular	A3	universal	No component sets `changeDetection` (default eager); OnPush is not used.
+evidence	90a8abfc9cc9	src/app/**/*.ts	src/app/app.component.ts	1a567bb770f0704ba0e87481cf996df11b7057bd
+evidence	90a8abfc9cc9	src/app/**/*.ts	src/app/orders/order-list.component.spec.ts	4e42b9d337e6059ff6d8267f49b9dd17b0cb744d
+evidence	90a8abfc9cc9	src/app/**/*.ts	src/app/orders/order-list.component.ts	96244c10d5133638cbc0f07fcaf048348bdfe272
+evidence	90a8abfc9cc9	src/app/**/*.ts	src/app/orders/order.service.ts	3718905a0c4759e5644f2d65f05d53773f2b1f5b
+evidence	90a8abfc9cc9	src/app/**/*.ts	src/app/profile-form/profile-form.component.ts	a2a2d7815fb36891f102f7328a05a6f574071812
+evidence	90a8abfc9cc9	src/app/**/*.ts	src/app/user.service.ts	ace262442868256a4d9a42dda9ef0ba21c212d11
+claim	b0b2c52d42c2	angular	A3	scoped	State is local `signal()`s in the component; no shared store.
+evidence	b0b2c52d42c2	src/app/orders/order-list.component.ts	src/app/orders/order-list.component.ts	96244c10d5133638cbc0f07fcaf048348bdfe272
+claim	1461f590fdaf	angular	A3	scoped	Reactive forms with `FormBuilder` and `Validators` (`profile-form.component.ts`); `FormGroup` is untyped (`any` values).
+evidence	1461f590fdaf	src/app/profile-form/profile-form.component.ts	src/app/profile-form/profile-form.component.ts	a2a2d7815fb36891f102f7328a05a6f574071812
+claim	ea0d37f9e080	angular	A2	scoped	Component-local signals; server data loaded in `ngOnInit` and written into signals. No NgRx/NGXS/BehaviorSubject stores.
+evidence	ea0d37f9e080	src/app/orders/order-list.component.ts	src/app/orders/order-list.component.ts	96244c10d5133638cbc0f07fcaf048348bdfe272
+claim	c2ae5e8bab1f	angular	A4	scoped	Services return cold `Observable<T>`; component `.subscribe()`s manually with `catchError` + `finalize` (`order-list.component.ts`); one-shot HTTP, so no explicit cleanup.
+evidence	c2ae5e8bab1f	src/app/orders/order-list.component.ts	src/app/orders/order-list.component.ts	96244c10d5133638cbc0f07fcaf048348bdfe272
+evidence	c2ae5e8bab1f	src/app/orders/order.service.ts	src/app/orders/order.service.ts	3718905a0c4759e5644f2d65f05d53773f2b1f5b
+claim	2e639bb6cc36	angular	A5	scoped	Services wrap `HttpClient` with `providedIn: 'root'`, relative URLs (`/api/...`), typed responses for orders; `UserService.updateProfile` is untyped. `provideHttpClient()` without interceptors; no global error handling — errors handled per component with an inline message.
+evidence	2e639bb6cc36	src/app/orders/order.service.ts	src/app/orders/order.service.ts	3718905a0c4759e5644f2d65f05d53773f2b1f5b
+evidence	2e639bb6cc36	src/app/user.service.ts	src/app/user.service.ts	ace262442868256a4d9a42dda9ef0ba21c212d11
+evidence	2e639bb6cc36	src/main.ts	src/main.ts	e41ff30f045b4502de2f0fe477d8096eb9e0f26b
+claim	72780f4e4585	angular	A6	scoped	`strict`, `noImplicitReturns`, `noPropertyAccessFromIndexSignature`, `strictTemplates` on (`tsconfig.json`).
+evidence	72780f4e4585	tsconfig.json	tsconfig.json	97c7d0f18900ad013b9dbcb036d03a62428330b0
+claim	61c4a154dcb4	angular	A6	absence	No styles, SSR, or hydration present.
+evidence	61c4a154dcb4	src/**/*.css	-	-
+evidence	61c4a154dcb4	src/**/*.scss	-	-
+evidence	61c4a154dcb4	src/**/*.server.ts	-	-
+claim	8fa3e40f57d1	angular	A6	scoped	Karma builder configured; specs use Jasmine-style globals with `TestBed` and `HttpTestingController`, asserting rendered text (`order-list.component.spec.ts`). Only `OrderListComponent` has a spec.
+evidence	8fa3e40f57d1	angular.json	angular.json	762b8b6e482c4001c0ffd01e485d79a4cb10b2ab
+evidence	8fa3e40f57d1	src/app/orders/order-list.component.spec.ts	src/app/orders/order-list.component.spec.ts	4e42b9d337e6059ff6d8267f49b9dd17b0cb744d

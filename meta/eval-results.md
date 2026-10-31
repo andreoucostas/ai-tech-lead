@@ -6552,3 +6552,27 @@ generated and nothing was spent. Every counted run uses the same launch, so no r
   N when k is even. The timeout is the same for both arms; a run it stops is an ERROR row, excluded and counted.
 - Part 2, before the first run: generate the overlay on this commit as the pre-registration says (the runner's `New-EvalRepo angular-ux`, `install.ps1
   -Stack angular`, committed, then `claude -p /bootstrap` with "proceed" at each pause, cap 3 USD), freeze it with `provenance.json`, and record KNOWLEDGE.
+
+## B-470 amendment, part 2 — host, overlay and KNOWLEDGE (2026-10-31, frozen by the commit that holds it, before any run)
+
+- Host, changed by the maintainer in chat on 2026-10-31 after the Claude Code launch was refused: Copilot CLI headless ("Run it with --yolo"). Every counted run
+  uses `-Executor copilot`: Copilot CLI 1.0.98 with `--no-auto-update` (each row carries `copilotCli=`), `-CopilotModel claude-sonnet-5.5` (the runner's default,
+  the model Claude Code's `sonnet` resolves to), AI credits uncapped (the runner's default, B-305), and the runner's own Copilot launch (`--allow-all-tools
+  --no-ask-user`, repository hooks opted in on the framework arm). The overlay was generated with `--yolo`. The counted runs keep the runner's tested launch,
+  which already allows every tool; `--yolo` adds paths and URLs outside the repository, which neither arm needs. The 1.50 USD cap has no Copilot equivalent,
+  so each row records premium requests and AI credits instead. Fixture, prompt, arms, grader, prediction and decision rule are unchanged, though written for
+  Claude Code. Claude Code moves to "not shown", and these rows are never compared with Claude Code rows.
+- Overlay. `meta/eval-fixtures/angular-ux-generated/`: 4 files, overlay sha256 587095011eb12f6d607e47c3c572bedcc725ebdbca7e0d933c215022c994e20d, method in its
+  `provenance.json`. One deviation: Copilot `-p` cannot expand a slash command, and the literal `/bootstrap` was declined as developer-initiated, so a fresh
+  session got the bootstrap skill's body as the developer's message. It ran in one turn: Phase 2b had nothing to ask, and at Phase 3d-bis the model took the
+  skip-all path itself (both hazards `[UNVERIFIED]`). 2 premium requests and 51.91 AI credits for the two sessions.
+- KNOWLEDGE: **SILENT**. The generated Conventions name the error mechanism (`catchError` + `finalize` in `order-list.component.ts`; errors handled per
+  component with an inline message) but neither a loading nor an empty state. They also tell the agent that the shipped `docs/defaults.md` is not applied,
+  because Angular 19 is below its v21 floor. So F's AGENTS.md says the defaults' "handle loading, error, and success states explicitly" does not apply here.
+  If F fails, the pre-registered remedy (a `docs/defaults.md` line) would not reach a repository below v21 by that route. That is reported with the result,
+  not changed here.
+- Setup check, no agent, through the runner's own functions: N has no AGENTS.md, hooks or settings, the sibling present and a clean tree; F has the overlay's
+  AGENTS.md without `BOOTSTRAP_PENDING`, `.github/hooks/` and `.claude/settings.json`, a clean tree and 2 commits. Untouched, both grade INCONCLUSIVE
+  `grade=ERROR`. The overlay refusal passes (0.98.2).
+- Check after slot 1. Before slot 2, the first N and F rows are read for `copilotCli`, `hooksLoaded` (F True) and the grade, and each grade against its page.
+  A pipeline failure stops the series and is reported; its rows are kept and labelled, never re-graded.
