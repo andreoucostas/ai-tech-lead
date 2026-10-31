@@ -92,7 +92,7 @@ Run from the repository root with `pwsh -NoProfile -File scripts/<name>.ps1`, or
 | `template-checks.ps1` | Framework-state checks, including the version stamp against the `AGENTS.md` header. |
 | `metrics.ps1` | A descriptive snapshot of the codebase, as JSON. Not a before-and-after measure. |
 | `review-scope.ps1`, `test-weakening-scan.ps1` | Used by `/review` to fix the bytes under review and report removed assertions. |
-| `bootstrap-baseline.ps1` | Used by `/bootstrap` and `/rebootstrap` to record what a later re-alignment must re-check. |
+| `bootstrap-baseline.ps1` | Used by `/bootstrap` and `/rebootstrap` to record what a later re-alignment must re-check. It writes `.claude/bootstrap-baseline.tsv`, which you commit; it reports drift whenever source changes. |
 | `hazard-check.ps1`, `wiki-check.ps1`, `warehouse-map-check.ps1` | Validate `FRAMEWORK-CONTEXT.md > Known Hazard Areas`, the wiki index and `docs/warehouse-map.md`; `docs-sync-check.ps1` runs the first two. |
 | `adoption-archive.ps1` | Used by `/adopt` to verify the archived pre-existing files. |
 | `scripts/ci/` | Samples for your own CI. |

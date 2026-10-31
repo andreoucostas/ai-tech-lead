@@ -483,6 +483,36 @@ It 'a new uncommitted file in an application folder named like tool output still
         HasNot $res '(?m)^RESULT stop'
     } finally { Drop $r }
 }
+It 'a baseline recorded under one core.autocrlf setting reports no drift under another, for LF blobs and CRLF blobs alike' {
+    # git hash-object runs the clean filter: a machine with core.autocrlf=true hashed a blob that holds CRLF as LF,
+    # and one with false hashed it as stored, so two teammates recorded different hashes for an unchanged file.
+    $r = Fixture
+    $c = Join-Path ([IO.Path]::GetTempPath()) ('baseline-eol-' + [guid]::NewGuid())
+    try {
+        G $r @('config', 'core.autocrlf', 'false')
+        Put (Join-Path $r 'src/Orders/Data/OrderRepository.cs') "class OrderRepository {`n    void Save() {}`n}`n"
+        Put (Join-Path $r 'src/Orders/Api/ServiceRegistration.cs') "static class ServiceRegistration {`r`n    static void AddOrders() {}`r`n}`r`n"
+        G $r @('add', '-A'); G $r @('commit', '-q', '-m', 'sources with line endings')
+        Recorded $r
+        G $r @('add', '--', $stateRel); G $r @('commit', '-q', '-m', 'baseline')
+        # The same tree under another developer's setting.
+        G $r @('config', 'core.autocrlf', 'true')
+        $same = Impact $r
+        ExitIs $same 0; Has $same 'CHANGED-AREAS 0'; Has $same 'RESULT stop'
+        G $r @('config', 'core.autocrlf', 'false')
+        # A clone with core.autocrlf=true checks the LF blob out as CRLF, and holds the CRLF blob as it is.
+        G $r @('clone', '-q', '-c', 'core.autocrlf=true', $r, $c)
+        $lf = [IO.File]::ReadAllText((Join-Path $c 'src/Orders/Data/OrderRepository.cs'))
+        Assert ($lf.Contains("`r`n")) 'the clone did not check the LF blob out as CRLF, so nothing was examined'
+        $clone = Impact $c
+        ExitIs $clone 0; Has $clone 'CHANGED-AREAS 0'; Has $clone 'RESULT stop'
+        # And the other way round: a baseline recorded in the CRLF clone is accepted by the first tree.
+        Recorded $c
+        [IO.File]::Copy((Join-Path $c $stateRel), (Join-Path $r $stateRel), $true)
+        $back = Impact $r
+        ExitIs $back 0; Has $back 'CHANGED-AREAS 0'; Has $back 'RESULT stop'
+    } finally { Drop $r; Drop $c }
+}
 It 'a corrupt baseline asks for a full run' {
     $r = Fixture
     try {

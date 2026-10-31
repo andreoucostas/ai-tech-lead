@@ -232,8 +232,8 @@
         },
         {
           "path": "docs/reference.md",
-          "chars": 10939,
-          "tok": 2735
+          "chars": 11043,
+          "tok": 2761
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -378,8 +378,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 21243,
-          "tok": 5311
+          "chars": 21636,
+          "tok": 5409
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -656,8 +656,8 @@
         },
         {
           "path": "docs/reference.md",
-          "chars": 10833,
-          "tok": 2708
+          "chars": 10937,
+          "tok": 2734
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -802,8 +802,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 20015,
-          "tok": 5004
+          "chars": 20408,
+          "tok": 5102
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1080,8 +1080,8 @@
         },
         {
           "path": "docs/reference.md",
-          "chars": 10958,
-          "tok": 2740
+          "chars": 11062,
+          "tok": 2766
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -1226,8 +1226,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 23490,
-          "tok": 5872
+          "chars": 23883,
+          "tok": 5971
         },
         {
           "path": ".claude/commands/refactor.md#body",

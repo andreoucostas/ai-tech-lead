@@ -4674,3 +4674,14 @@ not yet read by the maintainer, 2026-10-20).** Every copy an update saves goes b
 `*`, written before the first copy and before any dirty-tree refusal, and checked against Git afterwards: a tracked original is already in history and an ignored one must not leak, so no copy needs committing. A team's own
 lines stay before the `*`, so none re-includes; files a team already tracks there stay tracked. Rejected: per-copy keep-out lists (beaten three times), and committable copies
 for review (the leak class). **Reopen** if a team needs a backup copy in a commit, or a Git feature re-includes a file below an excluded folder.
+
+## WSD-118: the rebootstrap baseline is a committed artifact, drift against it is the signal, and its hashes do not move with `core.autocrlf` (2026-10-31)
+
+**Context.** A team asked (field report #10 item 3, B-452) whether `.claude/bootstrap-baseline.tsv` is meant to be committed, since almost any PR makes
+`/rebootstrap` report drift. **Decision.** It stays committed (0.90.0 said so): it records what the last `/bootstrap` or `/rebootstrap` saw, for every
+clone, so a teammate's first run is incremental and a fresh clone can reach `RESULT stop`; drift after an unrelated change is the mechanism working, and
+`rebootstrap.md` x3, `docs/reference.md` and the CHANGELOG say so. Its hashes no longer couple to line endings: `git hash-object` runs the clean filter,
+so a CRLF-stored file hashed differently under `core.autocrlf` true and false (observed: `CHANGED-AREAS 1` on an unchanged tree); the script now passes
+`-c core.autocrlf=true` to that call alone. Rejected: an ignored local file (every clone's first run is full), CI generation (the baseline is the output
+of an analysis the agent ran, not a function of the tree), index blobs for unmodified files and `--no-filters` (reasoned, not run). **Reopen** if two
+machines hash the same commit differently, or a host cannot review or merge the compact file.

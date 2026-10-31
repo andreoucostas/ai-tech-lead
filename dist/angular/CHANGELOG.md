@@ -6,6 +6,8 @@
 
 ## 0.98.3 — Unreleased
 
+- **`.claude/bootstrap-baseline.tsv` is meant to be committed, and its hashes no longer depend on your line-ending setting.** Commit it with the other `/bootstrap` artifacts. It records what the last `/bootstrap` or `/rebootstrap` saw, for every clone, so a teammate's first `/rebootstrap` is incremental; a file you ignore or generate locally makes everyone's first run a full one. `/rebootstrap` reports drift whenever source has changed since that record, including after an unrelated change: that is the file working, not a defect, and `RESULT stop` is the no-drift case. Its hash rows are not for review. A team asked about this, and `rebootstrap.md` and `docs/reference.md` now say it. Separately, the hashes used to depend on `core.autocrlf`: a file Git stores with CRLF line endings hashed one way on a machine set to `true` (the Git for Windows default) and another on a machine set to `false` or `input`, so two teammates recorded different hashes for an unchanged file and each saw the other's files as drift. The script now hashes with end-of-line conversion on whatever your setting is, so they agree. If your repository stores CRLF files, your existing baseline lists them as changed until the next `/rebootstrap` re-records it; a repository whose files are stored with LF is unaffected.
+
 - **The write guard no longer switches its credential check off because of the folder your checkout sits in.** The
   guard lets a test or sample file hold a placeholder password, and it decided what counts as one by reading every folder
   in the file's full path. A repository cloned under `C:\Development\`, `C:\Projects\test\`, `C:\Samples\` or a similar

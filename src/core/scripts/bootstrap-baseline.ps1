@@ -184,7 +184,9 @@ function Get-Snapshot {
     $blobs = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
     if ($paths.Count -gt 0) {
         $pathBytes = [Text.Encoding]::UTF8.GetBytes((($paths.ToArray()) -join "`n") + "`n")
-        $hashed = Invoke-Git @('hash-object', '--stdin-paths') $pathBytes
+        # core.autocrlf=true for this call only: the clean filter then turns CRLF into LF in every text file whatever the
+        # developer's own setting, so a file Git holds with CRLF hashes the same on a machine set to false as on one set to true.
+        $hashed = Invoke-Git @('-c', 'core.autocrlf=true', 'hash-object', '--stdin-paths') $pathBytes
         $hashes = @($hashed.Text.Split([char[]]"`n", [StringSplitOptions]::RemoveEmptyEntries))
         if ($hashed.Exit -ne 0 -or $hashes.Count -ne $paths.Count) {
             Stop-With 2 "CANNOT EXAMINE: git hash-object failed: $($hashed.Error.Trim())"

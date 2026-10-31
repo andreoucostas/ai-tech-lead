@@ -67,6 +67,11 @@ its last line:
 
 A profile re-selected in pre-flight 3 without a `PROFILE` line runs in full.
 
+`.claude/bootstrap-baseline.tsv` is committed on purpose: it records what the last run saw, for every
+clone, so a teammate's first `/rebootstrap` is incremental (an ignored copy would make it full). It
+disagrees with the tree whenever source changes; a drift report after an unrelated change is the
+mechanism working, and `RESULT stop` is the no-drift case. Its hash rows are not for review.
+
 For shared A8 only, run `git log --since="3 months ago" --stat` and identify actively changed
 areas—files and directories with the most edits in the past 3 months. They do not bound shared A8: it
 also rechecks retained knowledge's explicit evidence/dependency sources, including quiet callers,

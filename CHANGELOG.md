@@ -13,6 +13,19 @@
 
 ## 0.98.3 — Unreleased
 
+The baseline is committed on purpose, and hashed the same under every `core.autocrlf` (guarded, `rebootstrap.md` x3 sit under
+`src/stacks/*/files/.claude/`; B-452, field report #10 item 3, relayed by the maintainer 2026-10-21; unmeasured). A team asked
+whether `.claude/bootstrap-baseline.tsv` is meant to be committed, since nearly any PR makes `/rebootstrap` report drift. It is:
+0.90.0 said so, the file records the last run's state for every clone (an ignored copy makes each teammate's first run full), and
+drift is the signal. `rebootstrap.md` x3 and `docs/reference.md` now say it. The line-ending half was a reasoned claim and it held:
+`git hash-object` runs the clean filter, so on a file Git stores with CRLF `core.autocrlf=true` hashed LF and `false` hashed CRLF
+(red case: a tree recorded under `false` reported `CHANGED-AREAS 1` and a changed-evidence claim under `true`).
+`bootstrap-baseline.ps1` now passes `-c core.autocrlf=true` to its `hash-object` call alone, so a text file hashes as LF whatever
+the developer's setting; binary files and `-text` paths stay raw. A CRLF-storing repository's existing baseline reads those files
+as changed once, the safe direction. Rejected, reasoned and not run: index blobs for unmodified files (a file edited at record
+time would still hash cleaned and differ from the blob it is later committed as) and `--no-filters` (the LF and CRLF checkouts
+of one blob would then differ).
+
 Write guard reads the path under the repository, and two stalls (guarded, `guard.ps1`; B-463 G1, bug hunt 2, items 1-4
 and 6). Secret-leak class: the credential exemption for test and sample paths split the absolute `file_path`, so a
 checkout under `C:\Development\repo`, `C:\Projects\test\repo`, `D:\Projects\samples\shop` or `C:\Mocks\repo` had the
