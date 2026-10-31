@@ -1,6 +1,6 @@
 ﻿# Watch the CI run for a commit and report its conclusion (B-88). Maintainer-only, does NOT ship.
 #
-# Usage:  pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha <sha> [-TimeoutSeconds 1200]
+# Usage:  pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha <sha> [-TimeoutSeconds 2400]
 #                [-AppearSeconds 180] [-PollSeconds 20] [-GhPath <path>]
 #                [-ExpectedJobs windows,windows-ps51,...]
 #
@@ -27,9 +27,9 @@
 # the supported Windows/PowerShell host and has no alternate shell implementation.
 param(
     [Parameter(Mandatory)][string]$Sha,
-    # Overall budget. CI has measured ~7-8 min wall time on this repo; 20 min leaves room for a
-    # queued runner without waiting forever.
-    [int]$TimeoutSeconds = 1200,
+    # Overall budget. Master CI runs took 1,264 to 1,623 s (2026-10-31); 40 min leaves room for a
+    # queued runner without waiting forever. release.ps1 takes this default; push-and-check passes its own.
+    [int]$TimeoutSeconds = 2400,
     # Sub-deadline (inside TimeoutSeconds) for the run to be REGISTERED at all. A push does not
     # create a run instantly, so an empty result early means "not yet", not "no CI".
     [int]$AppearSeconds = 180,

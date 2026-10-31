@@ -382,6 +382,20 @@ try {
         Assert ($t -match 'Get-CiPublishDecision') 'release.ps1 does not use the publish decision function'
     }
 
+    # Master CI runs took 1,264 to 1,623 s (2026-10-31), so v0.98.3's watch at the old 1,200 s default ended at
+    # CANT-VERIFY with CI still running, and the release had to be re-run to tag.
+    It 'the default watch outlasts a full CI run, the usage line names it, and release.ps1 takes it' {
+        $timeoutParam = [System.Management.Automation.Language.Parser]::ParseFile($watchCi, [ref]$null, [ref]$null).ParamBlock.Parameters |
+            Where-Object { $_.Name.VariablePath.UserPath -eq 'TimeoutSeconds' }
+        Assert ($null -ne $timeoutParam -and $null -ne $timeoutParam.DefaultValue) 'watch-ci.ps1 declares no -TimeoutSeconds default'
+        $default = [int]$timeoutParam.DefaultValue.Value
+        Assert ($default -ge 2400) "the default watch is $default s; master CI runs took up to 1,623 s, so it must be at least 2,400 s"
+        Assert ([IO.File]::ReadAllText($watchCi) -match "\[-TimeoutSeconds $default\]") "the usage line does not name the default ($default s)"
+        $calls = @([IO.File]::ReadAllText($release) -split "`n" | Where-Object { $_ -match 'watch-ci\.ps1' -and $_ -match '-Sha' })
+        Assert ($calls.Count -ge 2) "expected release.ps1's two watch-ci.ps1 runs, found $($calls.Count)"
+        Assert (@($calls | Where-Object { $_ -match '-TimeoutSeconds' }).Count -eq 0) 'release.ps1 passes its own -TimeoutSeconds to watch-ci.ps1, so the default does not reach it'
+    }
+
     It 'release.ps1 no longer exits 0 when there is nothing to stage' {
         # With a watch in the publish phase, the old early exit stranded every recovery: CI red ->
         # fix in a separate commit -> re-run -> nothing staged -> exit 0, never tagged, printed as
