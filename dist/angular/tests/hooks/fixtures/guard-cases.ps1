@@ -110,6 +110,20 @@ $GuardCases = @(
     @{ n='Azure storage AccountKey';           f='src/Storage.cs';            c="var cs = `"DefaultEndpointsProtocol=https;AccountName=acct;AccountKey=$azureKey;EndpointSuffix=core.windows.net`";"; block=$true }
     @{ n='Azure AccountKey in a test path';    f='tests/StorageTests.cs';     c="var cs = `"AccountName=acct;AccountKey=$azureKey`";"; block=$true }
     @{ n='Azure SAS token sig=';               f='src/Storage.cs';            c='var url = "https://acct.blob.core.windows.net/c/b?sv=2022-11-02&ss=b&srt=o&sp=r&se=2026-01-01T00:00:00Z&sig=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D";'; block=$true }
+    # The test/sample exemption reads the path under the repository the hook belongs to, never the absolute
+    # path: a checkout under a folder that is itself named test, samples, Development or Mocks must not
+    # exempt its source. Paths outside that repository get no exemption; Guard.Tests.ps1 also places a copy
+    # of the hook inside such folders and sends it the repository's own source and test paths. A `..`
+    # segment is collapsed before the exemption is read, so tests\..\src is src, not tests.
+    @{ n='credential in an absolute path under a Projects\test folder'; f='C:\Projects\test\repo\src\AuthService.cs'; c='var password = "hunter2hunter2";'; block=$true }
+    @{ n='credential in an absolute path under a Development folder'; f='C:\Development\repo\src\AuthService.cs'; c='var password = "hunter2hunter2";'; block=$true }
+    @{ n='credential in a forward-slash path under a Mocks folder'; f='C:/Mocks/repo/src/AuthService.cs'; c='var password = "hunter2hunter2";'; block=$true }
+    @{ n='ConnectionStrings password in an absolute path under a samples folder'; f='D:\Projects\samples\shop\src\Api\appsettings.json'; c='{ "ConnectionStrings": { "Main": "Server=prod-sql;Database=app;User Id=app;Password=Pr0dS3cret!;" } }'; block=$true }
+    @{ n='credential behind a .. segment out of tests\';  f='tests\..\src\AuthService.cs'; c='var password = "hunter2hunter2";'; block=$true }
+    @{ n='credential behind .. segments in a forward-slash path'; f='src/../tests/../src/AuthService.cs'; c='var password = "hunter2hunter2";'; block=$true }
+    # .NET and PowerShell resolve a trailing space or dot away (Foo.cs<space> and Foo.cs. are Foo.cs), so such a name is checked as Foo.cs.
+    @{ n='C# suppression in a .cs name with a trailing space'; f='src/Foo.cs '; c='#pragma warning disable CS8602'; block=$true }
+    @{ n='C# suppression in a .cs name with a trailing dot';   f='src/Foo.cs.'; c='#pragma warning disable CS8602'; block=$true }
 
     @{ n='clean .cs (allow)';                  f='src/Foo.cs';                c='public int Add(int a, int b) => a + b;';               block=$false }
     @{ n='clean .spec.ts real assertion';      f='src/app.spec.ts';           c="it('adds', () => { expect(add(1,2)).toBe(3); });";     block=$false }
@@ -136,6 +150,7 @@ $GuardCases = @(
     @{ n='credential in Api.UnitTests dir (allow)'; f='src/Api.UnitTests/AuthClient.cs'; c='var password = "hunter2hunter2";';           block=$false }
     @{ n='credential in __mocks__ (allow)';    f='src/__mocks__/auth.ts';     c="const password = 'hunter2hunter2';";                   block=$false }
     @{ n='credential in appsettings.Development.json (allow)'; f='src/Api/appsettings.Development.json'; c='"Password": "hunter2hunter2"'; block=$false }
+    @{ n='credential in tests\ reached through a .. segment (allow)'; f='src/../tests/AuthServiceTests.cs'; c='var password = "hunter2hunter2";'; block=$false }
     @{ n='Azurite well-known dev key (allow)'; f='src/Storage.cs';            c='var cs = "AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";'; block=$false }
     @{ n='SAS sig= without a token (allow)';   f='src/Storage.cs';            c='var q = "?sv=2022-11-02&sig=";';                        block=$false }
     @{ n='passwordless connection string';     f='src/AuthService.cs';       c='var connectionString = "Server=localhost;Trusted_Connection=True";'; block=$false }

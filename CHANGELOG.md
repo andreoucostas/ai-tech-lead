@@ -13,6 +13,24 @@
 
 ## 0.98.3 — Unreleased
 
+Write guard reads the path under the repository, and two stalls (guarded, `guard.ps1`; B-463 G1, bug hunt 2, items 1-4
+and 6). Secret-leak class: the credential exemption for test and sample paths split the absolute `file_path`, so a
+checkout under `C:\Development\repo`, `C:\Projects\test\repo`, `D:\Projects\samples\shop` or `C:\Mocks\repo` had the
+credential check off for all of its source (a literal in `src\AuthService.cs`, a production connection string in
+`src\Api\appsettings.json`: exit 0, no output, on both hosts; an `apply_patch` `Add File:` at an absolute path the same),
+and `tests\..\src\AuthService.cs` was exempt. The path is now made repository-relative first: the repository is the hook's
+own `..\..`, a relative path resolves against it, `GetFullPath` collapses `..`, the root prefix is cut ordinal-ignore-case,
+and a path outside the repository, or one `GetFullPath` rejects, gets no exemption. Cost, measured: a test file reached by
+another spelling of the repository's path (a junction) is no longer exempt (exit 2, safe direction). Two stalls: the
+connection-string pattern was quadratic on a literal that never closes (820 KB of `password=abcd;` after an unclosed
+`connectionString = "`: still scanning at 15 s on pwsh, 1.2 s after) and the `[Fact(`/`[Theory(` Skip pattern on unclosed
+openings (234 KB: 48 s on pwsh, 0.5 s after). Neither is capped: a `(?=[^"']*["'])` asks once whether the quote-free run
+closes, and the Skip pattern's argument text may not hold another opening; 60,000 random strings each matched the old
+patterns' spans and values exactly (a 2000/500-character cap would have let a longer connection string or attribute
+through). A `.cs`/`.ts` name with a trailing space or dot is checked as the file `GetFullPath` resolves it to (Node, which
+the hosts write with, keeps the literal name on this machine, so this only widens the check). Item 5 (NotebookEdit)
+closed by decision: the event shape is unmeasured and the matcher would need a `settings.json` change in every stack.
+
 Skill-description budget stated (ordinary; B-383, maintainer request 2026-10-11; measured 2026-10-31, no gate added).
 `docs/reference.md > Skills` now says Copilot in VS Code lists every skill's name and description inside one shared
 character budget (15,000 in Local sessions; in Copilot CLI sessions 15,000 up to VS Code 1.141 and 30,000 from 1.142), that

@@ -150,19 +150,40 @@ function Test-GuardPattern {
     }
 }
 
+# The repository is this hook's own ..\.. (the registrations run it from the project root, as the audit
+# and routing hooks assume). $null when that path cannot be read, which leaves every path non-exempt.
+$repoRoot = $null
+try { $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..')).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar } catch { }
+
+# A written path read under the repository: a relative path resolves against it, '.' and '..' segments
+# collapse, and the repository's own folder names are cut off, so the folders the checkout happens to
+# sit in never decide anything. $null for a path outside the repository or one that cannot be read.
+function Get-RepositoryRelativePath([string]$Path) {
+    if (-not $repoRoot) { return $null }
+    try { $full = [IO.Path]::GetFullPath([IO.Path]::Combine($repoRoot, $Path)) } catch { return $null }
+    if (-not $full.StartsWith($repoRoot, $ordinalIgnoreCase)) { return $null }
+    return $full.Substring($repoRoot.Length)
+}
+
 $blocked = New-Object System.Collections.Generic.List[object]
 foreach ($write in $writes) {
     $fp = $write.Path
     $content = $write.Content
     $reasons = @()
+    # .NET and PowerShell resolve 'Foo.cs ' and 'Foo.cs.' to Foo.cs, so a name that ends in a space or a dot
+    # is checked as the file it resolves to (Node keeps the literal name, which only makes this the safe side).
+    $fileName = ([string]$fp).TrimEnd(' ', '.')
 
-    if ([regex]::IsMatch([string]$fp, '\.cs$', $ci)) {
+    if ([regex]::IsMatch($fileName, '\.cs$', $ci)) {
         if (Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
-        if (Test-GuardPattern '\[(Fact|Theory)\([^)]*Skip\s*=' 'test-defeat/suppression') { $reasons += "skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+        # The attribute's argument text may not hold another [Fact( or [Theory( opening: the match then starts
+        # at the last one before the Skip, so the same writes match, and an open run of openings is read once,
+        # not rescanned from every opening.
+        if (Test-GuardPattern '\[(Fact|Theory)\((?:(?!\[(?:Fact|Theory)\()[^)])*Skip\s*=' 'test-defeat/suppression') { $reasons += "skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
         if (Test-GuardPattern '(?m)^\s*\[([^]]*[,\s])?(Ignore)(Attribute)?\s*[\](,=]' 'test-defeat/suppression') { $reasons += "skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
         if ((Test-GuardPattern 'Assert\.True\(\s*true\s*[),]' 'test-defeat/suppression') -or (Test-GuardPattern 'Assert\.False\(\s*false\s*[),]' 'test-defeat/suppression')) { $reasons += "adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)" }
     }
-    if ([regex]::IsMatch([string]$fp, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) {
+    if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) {
         if (Test-GuardPattern 'eslint-disable' 'test-defeat/suppression') { $reasons += "adds an 'eslint-disable' directive — fix the lint cause, don't silence it" }
         if (Test-GuardPattern '@ts-(ignore|nocheck)' 'test-defeat/suppression') { $reasons += "adds '@ts-ignore'/'@ts-nocheck' — fix the type error, don't suppress it" }
     }
@@ -175,7 +196,7 @@ foreach ($write in $writes) {
     # which makes the scan quadratic on a long run of blank lines and stalls the hook. For the same reason a
     # modifier chain is bounded at three ({0,3}), never *: an open chain rescans a long run of chained names
     # from every name in it.
-    if ([regex]::IsMatch([string]$fp, '\.(spec|test|cy)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) {
+    if ([regex]::IsMatch($fileName, '\.(spec|test|cy)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) {
         if ((Test-GuardPattern '(?m)^[^\S\r\n]*f(it|describe)\s*(\(|\.each\b)' 'test-defeat/suppression') -or (Test-GuardPattern '\b(it|test|describe|suite|context|specify)(\.(concurrent|sequential|fails|shuffle|fail|describe(\.(serial|parallel))?)){0,3}\.only\s*[(.`]' 'test-defeat/suppression')) { $reasons += "adds a focused test (fit/fdescribe/.only) — it silently skips the rest of the suite; remove it before committing" }
         # On test.skip, test.fixme and Vitest's context.skip only declaration forms count: a title (string,
         # template or X.name) followed by the body, a literal true, or a chained form such as test.skip.each.
@@ -208,10 +229,14 @@ foreach ($write in $writes) {
     # Test and sample paths are exempt from the credential heuristic only when a path segment carries
     # the marker as a whole token: delimited by . _ - or the segment edge (folded, like the routing
     # predicates), or as a PascalCase affix (case-sensitive: the capital is the only word boundary, so
-    # Latest and Specification do not qualify but AuthServiceTests and Api.UnitTests do).
+    # Latest and Specification do not qualify but AuthServiceTests and Api.UnitTests do). Only the path under
+    # the repository is read (see Get-RepositoryRelativePath): the folders a checkout sits in, such as
+    # C:\Projects\test\repo, and a '..' that leaves a test folder decide nothing, and a path outside the
+    # repository is never exempt.
     $credentialExempt = $false
-    if ($fp) {
-        $segments = @($fp -split '[\\/]' | Where-Object { $_ })
+    $relativePath = if ($fp) { Get-RepositoryRelativePath ([string]$fp) }
+    if ($relativePath) {
+        $segments = @($relativePath -split '[\\/]' | Where-Object { $_ })
         for ($i = 0; $i -lt $segments.Count; $i++) {
             $segment = $segments[$i]
             $stem = if ($i -eq $segments.Count - 1) { $segment -replace '\.[^.]*$', '' } else { $segment }
@@ -237,8 +262,11 @@ foreach ($write in $writes) {
             return $false
         }
         # Every credential-shaped match is checked, so an earlier placeholder cannot hide a later literal.
+        # A connection string must close its quote, so the (?=...) asks once whether the quote-free run ends
+        # in one: without it each password= in a literal that never closes rescanned the run to its end, so a
+        # long enough write outlasted the hook's time limit. The same writes match as before.
         $credentialHit = $false
-        foreach ($m in [regex]::Matches($content, '(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|client[_-]?secret)["'' ]*[:=]\s*["''](?<v>[^"'']{8,})["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']|connectionstring["'' ]*[:=]\s*["''][^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']', $ci)) {
+        foreach ($m in [regex]::Matches($content, '(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|client[_-]?secret)["'' ]*[:=]\s*["''](?<v>[^"'']{8,})["'']|connectionstring["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']|connectionstring["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']', $ci)) {
             if (Test-CredentialMatch $m) { $credentialHit = $true; break }
         }
         # appsettings.json's standard layout names each connection string inside a ConnectionStrings

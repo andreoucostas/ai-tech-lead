@@ -6,6 +6,22 @@
 
 ## 0.98.3 — Unreleased
 
+- **The write guard no longer switches its credential check off because of the folder your checkout sits in.** The
+  guard lets a test or sample file hold a placeholder password, and it decided what counts as one by reading every folder
+  in the file's full path. A repository cloned under `C:\Development\`, `C:\Projects\test\`, `C:\Samples\` or a similar
+  folder therefore had the credential check off for all of its source: a hardcoded password or API key in
+  `src\app\auth.service.ts` was written without a word, and so was a path such as `tests\..\src\app\auth.service.ts`.
+  The guard now reads the path from your repository's root: only the folders and file name inside the repository count,
+  `..` is resolved first, and a file outside the repository is never exempt. Nothing to do. One effect to know: a test
+  file written through another spelling of the repository's path (a junction or a `subst` drive) is no longer recognised
+  as a test file, and the guard asks for an environment variable instead; write it by the repository's own path.
+
+- **The write guard can no longer be stalled past its time limit by one large file.** A write of a few hundred kilobytes
+  holding a connection-string literal that never closes kept the guard scanning for longer than the agent host allows
+  (10 seconds in Copilot CLI, 60 in Claude Code), and the host then let the write through unchecked. It is now read in
+  one pass, in about a second. A `.ts` or `.js` file name that ends in a space or a dot (`app.ts.`), which .NET and
+  PowerShell resolve to `app.ts`, is now checked as that file. Nothing to do.
+
 - **The reference now says how much room skill descriptions have in VS Code.** Copilot in VS Code lists every skill's
   name and description to the model inside one shared character budget: 15,000 in Local sessions, and in Copilot CLI
   sessions 15,000 up to VS Code 1.141 and 30,000 from 1.142. The framework's skills and workflow wrappers use roughly

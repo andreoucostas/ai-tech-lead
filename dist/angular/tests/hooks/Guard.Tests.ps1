@@ -93,6 +93,82 @@ It 'guard BLOCK (Claude) and DENY (Copilot) under tr-TR: credential literals und
     } finally { Remove-Item -LiteralPath $wrapper -Force -ErrorAction SilentlyContinue }
 }
 
+# --- The test/sample exemption reads the written path under the repository the hook belongs to ---
+# A checkout that itself sits under folders named Development, test or samples must keep the credential
+# check on its source files and the exemption on its own tests. The case table above sends paths that lie
+# outside the repository; this puts a copy of the hook inside such a repository (a hook finds its
+# repository from its own path), so the repository's own paths are the ones under test.
+It 'guard: a repository under Development\test folders keeps the credential check on its source and the exemption on its tests' {
+    $base = Join-Path ([IO.Path]::GetTempPath()) ('guard-root-' + [guid]::NewGuid().ToString('N'))
+    $root = Join-Path $base 'Development\test\repo'
+    $credential = 'var password = "hunter2hunter2";'
+    try {
+        $hook = Copy-HookInto $guardPs $root
+        $writes = @(
+            @{ f = "$root\src\AuthService.cs";                         allowed = $false; n = 'an absolute source path' }
+            @{ f = ($root.Replace('\', '/') + '/src/AuthService.cs');  allowed = $false; n = 'an absolute source path with forward slashes' }
+            @{ f = 'src\AuthService.cs';                               allowed = $false; n = 'a relative source path' }
+            @{ f = "$root\tests\..\src\AuthService.cs";                allowed = $false; n = 'an absolute path that leaves tests\ through ..' }
+            @{ f = $root.ToUpperInvariant() + '\src\AuthService.cs';   allowed = $false; n = 'an absolute source path in another letter case' }
+            @{ f = "$root\tests\AuthServiceTests.cs";                  allowed = $true;  n = 'an absolute test path' }
+            @{ f = "$root\src\Api.UnitTests\AuthClient.cs";            allowed = $true;  n = 'an absolute path in a UnitTests folder' }
+            @{ f = "$root\src\..\tests\AuthServiceTests.cs";           allowed = $true;  n = 'an absolute path that enters tests\ through ..' }
+        )
+        foreach ($write in $writes) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $write.f $credential } else { New-CopilotEvent $write.f $credential }
+                $expected = if ($write.allowed) { 'ALLOW' } elseif ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }
+                Assert-Decision (Invoke-Hook $hook $evt) $expected "$($write.n) ($surface)"
+            }
+        }
+        $patch = "*** Begin Patch`n*** Add File: $root\src\AuthService.cs`n+$credential`n*** End Patch`n"
+        Assert-Decision (Invoke-Hook $hook (New-PatchEvent 'hooks.json' $patch)) 'DENY' 'an apply_patch Add File: at an absolute source path'
+    } finally { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# --- A hostile write must not stall the hook past its time limit ---
+# Copilot's hooks.json gives the hook 10 s and Claude Code 60 s; past either the write goes ahead unchecked.
+# Invoke-Hook waits without end, so these runs wait up to $stallLimitMs and kill the hook past it. Each
+# payload is sized so that the quadratic pattern needs several times that limit on either host, while a
+# linear scan of it finishes in a second or two.
+$stallLimitMs = 15000
+function Invoke-HookBounded {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Json, [int]$TimeoutMs = 15000)
+    Assert-PowerShellSubject $Path
+    $stdinFile = [IO.Path]::GetTempFileName()
+    $stdoutFile = [IO.Path]::GetTempFileName()
+    $stderrFile = [IO.Path]::GetTempFileName()
+    $process = $null
+    try {
+        [IO.File]::WriteAllText($stdinFile, $Json, (New-Object System.Text.UTF8Encoding($false)))
+        $clock = [Diagnostics.Stopwatch]::StartNew()
+        $process = Start-Process -FilePath (Get-PsExe) -ArgumentList ('"-NoProfile" "-ExecutionPolicy" "Bypass" "-File" "' + $Path + '"') -NoNewWindow -PassThru `
+            -RedirectStandardInput $stdinFile -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+        $null = $process.Handle   # keeps the exit code readable on Windows PowerShell 5.1
+        $finished = $process.WaitForExit($TimeoutMs)
+        $clock.Stop()
+        if (-not $finished) { try { $process.Kill() } catch { }; $process.WaitForExit() }
+        return [pscustomobject]@{ TimedOut = (-not $finished); Seconds = [math]::Round($clock.Elapsed.TotalSeconds, 1); Exit = $(if ($finished) { [int]$process.ExitCode } else { -1 }) }
+    } finally {
+        if ($process) { $process.Dispose() }
+        foreach ($tempFile in $stdinFile, $stdoutFile, $stderrFile) { if (Test-Path -LiteralPath $tempFile) { [IO.File]::Delete($tempFile) } }
+    }
+}
+It 'guard: a connection-string literal that never closes, with 60000 password keys, is decided inside the time limit' {
+    $content = 'var connectionString = "' + ('password=abcd;' * 60000)
+    $r = Invoke-HookBounded $guardPs (New-ClaudeEvent 'src/AuthService.cs' $content) $stallLimitMs
+    Assert (-not $r.TimedOut) "the hook was still scanning after $($stallLimitMs / 1000) s on a $([int]($content.Length / 1024)) KB write and was killed"
+    Assert ($r.Exit -eq 0) "the hook exited $($r.Exit) after $($r.Seconds) s on a write with no credential literal in it"
+}
+# Each opening follows other text on its line: a line that starts with [ also reaches the [Ignore] pattern,
+# which is quadratic on such lines too (a separate, known stall) and would hide the Skip pattern under test.
+It 'guard: 30000 unclosed [Fact( openings, each after other text on its line, are decided inside the time limit' {
+    $content = "x[Fact(`n" * 30000
+    $r = Invoke-HookBounded $guardPs (New-ClaudeEvent 'src/Foo.cs' $content) $stallLimitMs
+    Assert (-not $r.TimedOut) "the hook was still scanning after $($stallLimitMs / 1000) s on a $([int]($content.Length / 1024)) KB write and was killed"
+    Assert ($r.Exit -eq 0) "the hook exited $($r.Exit) after $($r.Seconds) s on a write with no skip in it"
+}
+
 # Every case above pipes stdin straight into guard.ps1. The agent host does not: the registration
 # carries "shell": "powershell", so the whole command STRING runs inside an outer PowerShell, and
 # `-Command` collapses a failing native command's exit code to 1. The host then reads a non-blocking
