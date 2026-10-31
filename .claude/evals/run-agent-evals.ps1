@@ -60,7 +60,7 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','dotnet-notest','angular','b406-orders','b409-orders-ci','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','dotnet-notest','angular','angular-ux','b406-orders','b409-orders-ci','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
     if ($Stack -in $contractFixtures) {
         # B-406 fixture v2: the frozen B-345 generator (it deletes and recreates $Path itself), then an Orders.sln.
@@ -682,7 +682,7 @@ public partial class InitialCreate : Migration
         git -C $Path commit --quiet -m 'fixture baseline'
         return
     }
-    if ($Stack -eq 'angular') {
+    if ($Stack -in @('angular', 'angular-ux')) {
         @'
 {
   "name": "eval-fixture",
@@ -785,6 +785,145 @@ export class ProfileFormComponent {
   });
 }
 '@ | Set-Content -LiteralPath (Join-Path $Path 'src/app/profile-form/profile-form.component.ts') -Encoding utf8NoBOM
+        # B-470: angular-ux is the tree above plus one sibling flow, the orders list, whose loading, empty, error and success
+        # handling a new page can mirror. The angular tree itself is unchanged, so angular-feature-placement's fixture is too.
+        if ($Stack -eq 'angular-ux') {
+            $packagePath = Join-Path $Path 'package.json'
+            (Get-Content -Raw -LiteralPath $packagePath).Replace('"@angular/platform-browser": "^19.0.0"', "`"@angular/platform-browser`": `"^19.0.0`",`n    `"rxjs`": `"~7.8.0`"") | Set-Content -LiteralPath $packagePath -Encoding utf8NoBOM -NoNewline
+            New-Item -ItemType Directory -Path (Join-Path $Path 'src/app/orders') -Force | Out-Null
+            @'
+import { Component } from '@angular/core';
+import { ProfileFormComponent } from './profile-form/profile-form.component';
+import { OrderListComponent } from './orders/order-list.component';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [ProfileFormComponent, OrderListComponent],
+  template: '<app-profile-form /><app-order-list />',
+})
+export class AppComponent {}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/app/app.component.ts') -Encoding utf8NoBOM
+            @'
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+export interface Order {
+  id: string;
+  placedOn: string;
+  total: number;
+}
+
+@Injectable({ providedIn: 'root' })
+export class OrderService {
+  private readonly http = inject(HttpClient);
+
+  getOrders(): Observable<Order[]> {
+    return this.http.get<Order[]>('/api/orders');
+  }
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/app/orders/order.service.ts') -Encoding utf8NoBOM
+            @'
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { CurrencyPipe, DatePipe } from '@angular/common';
+import { catchError, finalize, of } from 'rxjs';
+import { Order, OrderService } from './order.service';
+
+@Component({
+  selector: 'app-order-list',
+  standalone: true,
+  imports: [CurrencyPipe, DatePipe],
+  template: `
+    <h2>Your orders</h2>
+    @if (loading()) {
+      <p class="state state--loading">Loading your orders...</p>
+    } @else if (error()) {
+      <p class="state state--error" role="alert">{{ error() }}</p>
+    } @else if (orders().length === 0) {
+      <p class="state state--empty">You have no orders yet.</p>
+    } @else {
+      <ul class="order-list">
+        @for (order of orders(); track order.id) {
+          <li>{{ order.placedOn | date }} - {{ order.total | currency }}</li>
+        }
+      </ul>
+    }
+  `,
+})
+export class OrderListComponent implements OnInit {
+  private readonly orderService = inject(OrderService);
+
+  readonly orders = signal<Order[]>([]);
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
+
+  ngOnInit(): void {
+    this.orderService
+      .getOrders()
+      .pipe(
+        catchError(() => {
+          this.error.set('Your orders could not be loaded. Please try again later.');
+          return of<Order[]>([]);
+        }),
+        finalize(() => this.loading.set(false)),
+      )
+      .subscribe((orders) => this.orders.set(orders));
+  }
+}
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/app/orders/order-list.component.ts') -Encoding utf8NoBOM
+            @'
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { OrderListComponent } from './order-list.component';
+
+describe('OrderListComponent', () => {
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [OrderListComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  function render() {
+    const fixture = TestBed.createComponent(OrderListComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('shows the loading state until the orders arrive', () => {
+    const fixture = render();
+    expect(fixture.nativeElement.textContent).toContain('Loading your orders');
+    http.expectOne('/api/orders').flush([]);
+  });
+
+  it('shows the empty state when there are no orders', () => {
+    const fixture = render();
+    http.expectOne('/api/orders').flush([]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('You have no orders yet.');
+  });
+
+  it('shows an inline error when the orders cannot be loaded', () => {
+    const fixture = render();
+    http.expectOne('/api/orders').flush('unavailable', { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('could not be loaded');
+  });
+
+  it('lists the orders on success', () => {
+    const fixture = render();
+    http.expectOne('/api/orders').flush([{ id: 'o-1', placedOn: '2026-10-01', total: 42 }]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('li').length).toBe(1);
+  });
+});
+'@ | Set-Content -LiteralPath (Join-Path $Path 'src/app/orders/order-list.component.spec.ts') -Encoding utf8NoBOM
+        }
         git -C $Path init --quiet
         git -C $Path config user.email 'agent-evals@invalid.local'
         git -C $Path config user.name 'Agent Evals'
@@ -956,6 +1095,77 @@ function Initialize-B406Overlay([string]$Path, [string]$Fixture, [string]$Fixtur
     Copy-Item -Path (Join-Path $overlayRoot '*') -Destination $Path -Recurse -Force
     git -C $Path add -A
     git -C $Path commit --quiet -m "$($Fixture.Split('-')[0]) bootstrap overlay"
+}
+
+# B-470: a scenario's "overlay" names a frozen /bootstrap overlay under meta/eval-fixtures/, as the warehouse and contract
+# overlays are, copied over the install and committed. Framework arm only: the bare arm installs nothing, so it gets none.
+function Initialize-GeneratedOverlay([string]$Path, [string]$Overlay, [string]$FixturesRoot = (Join-Path $repo 'meta/eval-fixtures')) {
+    $files = Join-Path $FixturesRoot "$Overlay/files"
+    if (-not (Test-Path -LiteralPath $files -PathType Container)) { throw "${Overlay}: $files is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
+    Copy-Item -Path (Join-Path $files '*') -Destination $Path -Recurse -Force
+    git -C $Path add -A
+    git -C $Path commit --quiet -m "$Overlay bootstrap overlay"
+}
+
+# B-470: does the page a run wrote mirror the sibling's loading, empty and error handling? Written files only; the report is
+# not read. The page is every new or changed non-spec .ts/.html under src/ since the run started whose path names an invoice
+# or whose text calls /api/invoices, plus the templateUrl files those name. A state counts only by the sibling's mechanism:
+# a control-flow branch in the template keyed on it (for empty, an explicit emptiness test, @empty, or a length test with
+# an else), and for the error also a catchError whose handler sets something error-shaped, never alert(). No page: ERROR.
+function Get-AngularUxGrade([string]$Target, [int]$BeforeCommits) {
+    $base = @(git -C $Target rev-list --reverse HEAD)[$BeforeCommits - 1]
+    $changed = @(
+        @(git -C $Target diff --name-only $base -- src)
+        @(git -C $Target ls-files --others --exclude-standard -- src)
+    ) | Where-Object { $_ -and $_ -match '\.(?:ts|html)$' -and $_ -notmatch '\.spec\.ts$' -and (Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf) } | Select-Object -Unique
+    $page = @{}
+    foreach ($path in $changed) {
+        $text = Get-Content -Raw -LiteralPath (Join-Path $Target $path)
+        if ($path -match '(?i)invoice' -or $text -match '/api/invoices') { $page[$path] = $text }
+    }
+    foreach ($path in @($page.Keys | Where-Object { $_ -like '*.ts' })) {
+        foreach ($m in [regex]::Matches($page[$path], 'templateUrl\s*:\s*[''"]([^''"]+)[''"]')) {
+            $full = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent (Join-Path $Target $path)) $m.Groups[1].Value))
+            $relative = [IO.Path]::GetRelativePath($Target, $full).Replace('\', '/')
+            if (-not $page.ContainsKey($relative) -and (Test-Path -LiteralPath $full -PathType Leaf)) { $page[$relative] = Get-Content -Raw -LiteralPath $full }
+        }
+    }
+    [string[]]$pageFiles = @($page.Keys)
+    [Array]::Sort($pageFiles, [StringComparer]::Ordinal)
+    if ($pageFiles.Count -eq 0) { return [pscustomobject]@{ Grade = 'ERROR'; Detail = 'grade=ERROR no page written pageFiles=' } }
+    $template = (@($pageFiles | ForEach-Object {
+        if ($_ -like '*.html') { $page[$_] } else { [regex]::Matches($page[$_], '(?s)\btemplate\s*:\s*`(.*?)`') | ForEach-Object { $_.Groups[1].Value } }
+    }) -join "`n")
+    $code = (@($pageFiles | Where-Object { $_ -like '*.ts' } | ForEach-Object { $page[$_] }) -join "`n")
+    # Each branch condition, and whether an @else follows its block (or the *ngIf names an else template).
+    $branches = foreach ($m in [regex]::Matches($template, '(?:@(?:else\s+)?if|@case|@switch)\s*\(([^{]*)\)\s*\{|\*ngIf\s*=\s*"([^"]*)"')) {
+        $condition = $m.Groups[1].Value + $m.Groups[2].Value
+        $hasElse = $condition -match ';\s*else\s+\w+'
+        if ($m.Groups[1].Success) {
+            $depth = 1; $i = $m.Index + $m.Length
+            while ($i -lt $template.Length -and $depth -gt 0) { if ($template[$i] -eq '{') { $depth++ } elseif ($template[$i] -eq '}') { $depth-- }; $i++ }
+            $hasElse = $template.Substring($i) -match '^\s*@else\b'
+        }
+        [pscustomobject]@{ Condition = $condition; HasElse = $hasElse }
+    }
+    $branches = @($branches)
+    $loading = [bool]@($branches | Where-Object { $_.Condition -match '(?i)loading' } | Select-Object -First 1)
+    $explicitEmpty = '(?i)\.length\s*(?:===?\s*0|<\s*1|<=\s*0)\b|!\s*[\w$.()?\[\]]*\.length\b|empty'
+    $empty = $template -match '@empty\b' -or [bool]@($branches | Where-Object { $_.Condition -match $explicitEmpty -or ($_.Condition -match '\.length\b' -and $_.HasElse) } | Select-Object -First 1)
+    $errorBranch = [bool]@($branches | Where-Object { $_.Condition -match '(?i)error|fail' } | Select-Object -First 1)
+    $catchErrorSets = $false
+    foreach ($m in [regex]::Matches($code, '\bcatchError\s*\(')) {
+        $depth = 1; $i = $m.Index + $m.Length
+        while ($i -lt $code.Length -and $depth -gt 0) { if ($code[$i] -eq '(') { $depth++ } elseif ($code[$i] -eq ')') { $depth-- }; $i++ }
+        $handler = $code.Substring($m.Index + $m.Length, [Math]::Max(0, $i - 1 - ($m.Index + $m.Length)))
+        $handler = $handler -replace '^\s*(?:\([^)]*\)|[\w$]+)\s*=>', '' -replace '\bconsole\.\w+\s*\([^)]*\)', '' -replace '\bthrowError\b', ''
+        if ($handler -match '(?i)error|fail|message') { $catchErrorSets = $true }
+    }
+    $alert = $code -match '(?<![\w.])(?:window\.)?alert\s*\('
+    $errorState = $errorBranch -and $catchErrorSets -and -not $alert
+    $count = @(@($loading, $empty, $errorState) | Where-Object { $_ }).Count
+    $grade = if ($count -eq 3) { 'MIRRORS' } elseif ($count -gt 0) { 'PARTIAL' } else { 'NONE' }
+    return [pscustomobject]@{ Grade = $grade; Detail = "grade=$grade loading=$loading empty=$empty error=$errorState errorBranch=$errorBranch catchErrorSets=$catchErrorSets alert=$alert pageFiles=$($pageFiles -join ',')" }
 }
 
 # -WarehouseMap partial: drop every line naming ctl.LoadRun or LoadRunId from the generated documents
@@ -2282,6 +2492,12 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $featureInOtherInjectable = [bool]@($texts.Keys | Where-Object { $_ -ne 'src/app/user.service.ts' -and $texts[$_] -match '@Injectable\b' -and $texts[$_] -match $featureTokens } | Select-Object -First 1)
             $injectsUserService = [bool]@($texts.Keys | Where-Object { $_ -ne 'src/app/user.service.ts' -and $texts[$_] -match '\binject\s*\(\s*UserService\b|:\s*UserService\b' } | Select-Object -First 1)
             return [pscustomobject]@{ Status = 'PASS'; Pass = (-not $boltOn -and -not $subclass); Detail = "boltOn=$boltOn subclass=$subclass addedMembers=$($addedMembers -join ',') newInjectable=$newInjectable featureInComponent=$featureInComponent featureInOtherInjectable=$featureInOtherInjectable injectsUserService=$injectsUserService usedSkill=add-service:$usedSkill" }
+        }
+        'angular-ux-sibling' {
+            # B-470: arm-neutral; the grade reads only the page the run wrote. No page is not examined, never scored False.
+            $ux = Get-AngularUxGrade $Target $BeforeCommits
+            if ($ux.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $ux.Detail } }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = ($ux.Grade -eq 'MIRRORS'); Outcome = ($ux.Grade -eq 'MIRRORS'); Detail = $ux.Detail }
         }
         { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3','warehouse-route-p4') } {
             $successful = @($e.Tools | Where-Object {
@@ -3741,6 +3957,162 @@ function Invoke-RouterProbeSelfTest([string]$Temp) {
     if ($selfText -notmatch [regex]::Escape('-IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios) -SessionId $legSession')) { throw 'carrier-trim the live loop does not request hook events for the router-probe scenarios' }
 }
 
+# B-470: the angular-ux fixture is the angular tree plus one sibling flow, and its grader reads only the written page.
+# Each page below is written into a fresh copy of the fixture; the planted page is the one the pre-registration names.
+function Invoke-AngularUxSelfTest([string]$Temp) {
+    $plain = Join-Path $Temp 'b470-angular'
+    $ux = Join-Path $Temp 'b470-angular-ux'
+    New-EvalRepo $plain angular
+    New-EvalRepo $ux angular-ux
+    $plainHashes = Get-TreeHashes $plain
+    $uxHashes = Get-TreeHashes $ux
+    [string[]]$delta = @(@($plainHashes.Keys) + @($uxHashes.Keys) | Select-Object -Unique | Where-Object { $plainHashes[$_] -ne $uxHashes[$_] })
+    [Array]::Sort($delta, [StringComparer]::Ordinal)
+    if (($delta -join ',') -ne 'package.json,src/app/app.component.ts,src/app/orders/order-list.component.spec.ts,src/app/orders/order-list.component.ts,src/app/orders/order.service.ts') { throw "angular-ux is not the angular tree plus the orders flow: $($delta -join ',')" }
+    $sibling = Get-Content -Raw -LiteralPath (Join-Path $ux 'src/app/orders/order-list.component.ts')
+    $mirrored = $sibling.Replace('Order', 'Invoice').Replace('order', 'invoice')
+    $errorLine = "this.error.set('Your invoices could not be loaded. Please try again later.');"
+    if ($mirrored -notmatch [regex]::Escape($errorLine)) { throw 'the angular-ux sibling no longer sets its inline error inside catchError' }
+    $planted = @'
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+
+@Component({
+  selector: 'app-invoice-list',
+  standalone: true,
+  template: `
+    <h2>Your invoices</h2>
+    <ul>
+      @for (invoice of invoices(); track invoice.id) {
+        <li>{{ invoice.number }}</li>
+      }
+    </ul>
+  `,
+})
+export class InvoiceListComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+  readonly invoices = signal<{ id: string; number: string }[]>([]);
+
+  ngOnInit(): void {
+    this.http.get<{ id: string; number: string }[]>('/api/invoices').subscribe((invoices) => this.invoices.set(invoices));
+  }
+}
+'@
+    $switchPage = @'
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { catchError, map, of } from 'rxjs';
+import { Invoice, InvoiceService } from './invoice.service';
+
+type InvoicesState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'loaded'; invoices: Invoice[] };
+
+@Component({
+  selector: 'app-invoices-page',
+  standalone: true,
+  template: `
+    @switch (state().status) {
+      @case ('loading') { <p>Loading invoices...</p> }
+      @case ('error') { <p class="error">{{ message() }}</p> }
+      @default {
+        @if (invoices().length === 0) { <p>No invoices yet.</p> }
+        @else { <ul>@for (invoice of invoices(); track invoice.id) { <li>{{ invoice.id }}</li> }</ul> }
+      }
+    }
+  `,
+})
+export class InvoicesPageComponent implements OnInit {
+  private readonly invoiceService = inject(InvoiceService);
+  readonly state = signal<InvoicesState>({ status: 'loading' });
+  readonly invoices = computed(() => { const s = this.state(); return s.status === 'loaded' ? s.invoices : []; });
+  readonly message = computed(() => { const s = this.state(); return s.status === 'error' ? s.message : ''; });
+
+  ngOnInit(): void {
+    this.invoiceService.getInvoices().pipe(
+      map((invoices): InvoicesState => ({ status: 'loaded', invoices })),
+      catchError(() => of<InvoicesState>({ status: 'error', message: 'Invoices could not be loaded.' })),
+    ).subscribe((state) => this.state.set(state));
+  }
+}
+'@
+    $billingCode = @'
+import { Component, OnInit, inject } from '@angular/core';
+import { NgFor, NgIf } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { catchError, of } from 'rxjs';
+
+@Component({
+  selector: 'app-billing-page',
+  standalone: true,
+  imports: [NgFor, NgIf],
+  templateUrl: './billing-page.component.html',
+})
+export class BillingPageComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+  bills: { number: string }[] = [];
+  isLoading = true;
+  loadError = '';
+
+  ngOnInit(): void {
+    this.http.get<{ number: string }[]>('/api/invoices').pipe(
+      catchError((err) => { this.loadError = 'Could not load invoices.'; return of([]); }),
+    ).subscribe((bills) => { this.bills = bills; this.isLoading = false; });
+  }
+}
+'@
+    $billingHtml = @'
+<p *ngIf="isLoading">Loading...</p>
+<p *ngIf="loadError" class="error">{{ loadError }}</p>
+<ul *ngIf="bills.length > 0; else noBills">
+  <li *ngFor="let bill of bills">{{ bill.number }}</li>
+</ul>
+<ng-template #noBills><p *ngIf="!isLoading && !loadError">No invoices yet.</p></ng-template>
+'@
+    $uxEvidence = [pscustomobject]@{ Events = @(
+        ([pscustomobject]@{ type='system'; subtype='init' }),
+        ([pscustomobject]@{ type='result'; is_error=$false; result='I added an invoices page with loading, empty and error states.' })
+    ) }
+    $uxCases = @(
+        [pscustomobject]@{ Name = 'the sibling copied for invoices'; Pass = $true; Detail = '^grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts$'; Files = @{ 'src/app/invoices/invoice-list.component.ts' = $mirrored } }
+        [pscustomobject]@{ Name = 'the planted page with no loading, empty or error branch'; Pass = $false; Detail = '^grade=NONE loading=False empty=False error=False errorBranch=False catchErrorSets=False alert=False '; Files = @{ 'src/app/invoices/invoice-list.component.ts' = $planted } }
+        [pscustomobject]@{ Name = 'an alert on error'; Pass = $false; Detail = '^grade=PARTIAL loading=True empty=True error=False errorBranch=True catchErrorSets=False alert=True '; Files = @{ 'src/app/invoices/invoice-list.component.ts' = $mirrored.Replace($errorLine, "alert('Your invoices could not be loaded.');") } }
+        [pscustomobject]@{ Name = 'catchError to a silent empty list'; Pass = $false; Detail = '^grade=PARTIAL loading=True empty=True error=False errorBranch=True catchErrorSets=False alert=False '; Files = @{ 'src/app/invoices/invoice-list.component.ts' = $mirrored.Replace($errorLine, '') } }
+        [pscustomobject]@{ Name = 'a @switch on a status signal'; Pass = $true; Detail = '^grade=MIRRORS '; Files = @{ 'src/app/invoices/invoices-page.component.ts' = $switchPage } }
+        [pscustomobject]@{ Name = 'a templateUrl page not named invoice, with *ngIf else'; Pass = $true; Detail = '^grade=MIRRORS .* pageFiles=src/app/billing/billing-page.component.html,src/app/billing/billing-page.component.ts$'; Files = @{ 'src/app/billing/billing-page.component.ts' = $billingCode; 'src/app/billing/billing-page.component.html' = $billingHtml } }
+    )
+    foreach ($case in $uxCases) {
+        git -C $ux checkout --quiet -- .
+        git -C $ux clean --quiet -fd -- src
+        foreach ($path in $case.Files.Keys) {
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $ux $path)) | Out-Null
+            $case.Files[$path] | Set-Content -LiteralPath (Join-Path $ux $path) -Encoding utf8NoBOM
+        }
+        $graded = Test-ScenarioEvidence 'angular-ux-sibling' $ux $uxEvidence 1
+        if ($null -eq $graded -or $graded.Status -ne 'PASS' -or $graded.Pass -ne $case.Pass -or [bool]$graded.Outcome -ne $case.Pass -or $graded.Detail -notmatch $case.Detail) {
+            throw "angular-ux-sibling misjudged $($case.Name): $(if ($graded) { "$($graded.Status) pass=$($graded.Pass) outcome=$($graded.Outcome) $($graded.Detail)" } else { 'no result' })"
+        }
+    }
+    git -C $ux checkout --quiet -- .
+    git -C $ux clean --quiet -fd -- src
+    $noPage = Test-ScenarioEvidence 'angular-ux-sibling' $ux $uxEvidence 1
+    if ($null -eq $noPage -or $noPage.Status -ne 'INCONCLUSIVE' -or $noPage.Pass -or $noPage.Detail -notmatch '^grade=ERROR ') { throw "angular-ux-sibling graded a run that wrote no page: $(if ($noPage) { "$($noPage.Status) $($noPage.Detail)" } else { 'no result' })" }
+    # The framework arm's overlay: copied over the install and committed, so the grader's base commit is the overlay's.
+    New-Item -ItemType Directory -Force -Path (Join-Path $Temp 'b470-overlay/files/docs') | Out-Null
+    'bootstrapped' | Set-Content -LiteralPath (Join-Path $Temp 'b470-overlay/files/docs/overlay-marker.md') -Encoding utf8NoBOM
+    Initialize-GeneratedOverlay $ux 'b470-overlay' $Temp
+    if ([int](git -C $ux rev-list --count HEAD) -ne 2 -or -not (Test-Path -LiteralPath (Join-Path $ux 'docs/overlay-marker.md'))) { throw 'Initialize-GeneratedOverlay did not commit the overlay over the fixture' }
+    $missingOverlay = $null
+    try { Initialize-GeneratedOverlay $ux 'b470-no-overlay' $Temp } catch { $missingOverlay = $_.Exception.Message }
+    if ($missingOverlay -notmatch 'Generate the fixture first') { throw "Initialize-GeneratedOverlay accepted a missing overlay: $missingOverlay" }
+    # The live loop applies a scenario's overlay inside the framework-arm block, and -Live refuses a stale one: the runner's own text.
+    $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-AngularUxSelfTest).ScriptBlock.Ast.Extent.Text, '')
+    $armBlock = [regex]::Match($selfText, "(?s)if \(\`$Arm -eq 'framework' -and \`$case\.id -notin \`$selfInstallScenarios\) \{.*?\n        \}\n").Value
+    if ($armBlock -notmatch [regex]::Escape('if ($case.overlay) { Initialize-GeneratedOverlay $target ([string]$case.overlay) }')) { throw 'the live loop does not apply a scenario overlay in the framework arm only' }
+    if ($selfText -notmatch [regex]::Escape('Get-GeneratedFixtureRefusal (Join-Path $repo "meta/eval-fixtures/$overlay/provenance.json") $version $overlay')) { throw '-Live does not refuse a stale scenario overlay before any spend' }
+    $uxScenario = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.id -eq 'angular-ux-sibling' })
+    $uxPrompt = 'Add an invoices page that lists the current user''s invoices from /api/invoices, following this repository''s conventions. No tests needed. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.'
+    if ($uxScenario.Count -ne 1 -or -not ([string]$uxScenario[0].fixture).Equals('angular-ux') -or -not ([string]$uxScenario[0].overlay).Equals('angular-ux-generated') -or $uxScenario[0].stack -ne 'angular' -or $uxScenario[0].bareArm -ne $true -or [string]$uxScenario[0].budgetUsd -ne '1.5' -or $uxScenario[0].assertion -ne 'angularUxMirror' -or $uxScenario[0].prompt -cne $uxPrompt) { throw 'angular-ux-sibling is not the pre-registered B-470 scenario (fixture, overlay, stack, bareArm, budget, assertion or prompt)' }
+    Write-Output 'PASS: B-470 angular-ux is the angular tree plus the orders flow; its grader reads MIRRORS for the sibling copied, @switch and templateUrl pages, PARTIAL for alert and a silent empty list, NONE for the planted page, ERROR for no page'
+}
+
 function Invoke-SelfTest {
     $temp =Join-Path ([IO.Path]::GetTempPath()) ('b41-selftest-' + [guid]::NewGuid().ToString('N'))
     try {
@@ -3837,7 +4209,8 @@ function Invoke-SelfTest {
         $bareScenarios = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.bareArm } | ForEach-Object { $_.id })
         # warehouse-route-p4 joined 2026-09-29: its Outcome reads the written SQL and the final message, what the
         # consumer receives (B-325), so it is arm-neutral.
-        if (($bareScenarios -join ',') -ne 'route-fix,route-fix-nl,guard-retry,warehouse-route-p1,warehouse-route-p4,warehouse-bind-sql') { throw "bareArm scenarios changed without a grader Outcome review: $($bareScenarios -join ',')" }
+        # angular-ux-sibling joined 2026-10-31 (B-470): its Outcome reads only the page the run wrote.
+        if (($bareScenarios -join ',') -ne 'route-fix,route-fix-nl,guard-retry,angular-ux-sibling,warehouse-route-p1,warehouse-route-p4,warehouse-bind-sql') { throw "bareArm scenarios changed without a grader Outcome review: $($bareScenarios -join ',')" }
 
         # B-277 (WSD-097): the Copilot executor reuses these graders only through the events-log
         # converter, so the converter is what has to be exercised. Fixtures are synthetic but shaped
@@ -4369,6 +4742,7 @@ export class UserService {
         Invoke-ContractFixtureSelfTest $temp
         Invoke-RiskDesignSelfTest $temp
         Invoke-RouterProbeSelfTest $temp
+        Invoke-AngularUxSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
         Write-Output 'PASS: B-410 risk-design grades FULL only when one main-agent text block before the first main-agent write holds options A and B and a recommendation (a subagent''s text, a block after a write, one part alone, and the retained S1-C alternative-as-a-sentence shapes are not), reports where it was, whether the developer was left to answer, the turn-1 question and plan fields and what the second leg did, refuses a second leg whose prompt carried the plan gate or got no hook response, grades the decoy the other way round, merges two legs without a replay, builds the first-leg and resume arguments from the default, and pins both prompts, the follow-up and the dist router''s reading of them'
         Write-Output 'PASS: B-409 the contract fixtures are one list covering b406-orders and b409-orders-ci in the Copilot refusal, the stale and missing overlay refusals, the generator refusal, the overlay helper (copies and commits that fixture''s files, refuses a missing or unknown one) and every live-loop condition; the b409 baseline carries the pinned ci.yml (UTF-8, no BOM, LF) written between the solution and the baseline commit; contract-trace-ci is contract-trace on b409-orders-ci (same prompt, budget, grader, stack) and grades identically on one transcript'
@@ -6146,6 +6520,8 @@ function Invoke-EvalCases($Cases, $Rows) {
             Install-Framework $target $caseStack | Out-Null
             # B-406: the target becomes a repository that ran /bootstrap; before any patch or scenario setup.
             if ($caseFixture -in $contractFixtures) { Initialize-B406Overlay $target $caseFixture }
+            # B-470: the bootstrapped repository the scenario names; the bare arm keeps the fixture alone.
+            if ($case.overlay) { Initialize-GeneratedOverlay $target ([string]$case.overlay) }
             # Before the scenario setup, which commits the framework files in the warehouse cases:
             # the patch adds no commit, so `git log` (session-start preloads it) matches both arms.
             # B-402: under -WarehouseMap generated|partial it lands inside that setup, after the bootstrap overlay.
@@ -6417,6 +6793,12 @@ foreach ($contractFixture in $contractFixturesUsed) {
     $b406Root = Join-Path $repo "meta/eval-fixtures/$contractFixture"
     $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $b406Root 'provenance.json') $version $contractFixture
     if (-not $fixtureRefusal -and -not (Test-Path -LiteralPath (Join-Path $b406Root 'files') -PathType Container)) { $fixtureRefusal = "${contractFixture}: $(Join-Path $b406Root 'files') is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
+    if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
+}
+# B-470: a scenario's overlay is bound to the framework version it was generated on. Refused before any spend, on either arm,
+# so the two arms of one probe run against one framework version.
+foreach ($overlay in @($selected | Where-Object { $_.overlay } | ForEach-Object { [string]$_.overlay } | Select-Object -Unique)) {
+    $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo "meta/eval-fixtures/$overlay/provenance.json") $version $overlay
     if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
 }
 $patchTag = ''

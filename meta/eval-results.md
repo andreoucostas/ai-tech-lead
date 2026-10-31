@@ -6520,3 +6520,35 @@ consistency. Ships nothing. Spend is not approved yet: the maintainer approves t
   9 USD) and ship only if it reaches 5 of 6. N above F by two or more: a separate finding, filed, not fixed here.
 - Not shown: Copilot CLI and VS Code; a repository whose sibling flows disagree; a greenfield repository (no sibling, `BOOTSTRAP_PENDING`); product thinking (who the user is, whether the
   page should exist), which no arm measures; interactive use.
+
+## B-470 amendment, part 1 — fixture, scenario and grader (2026-10-31, frozen by the commit that holds it, before any run)
+
+The maintainer approved the spend in chat on 2026-10-31. Part 2, the frozen `/bootstrap` overlay and its KNOWLEDGE reading, is not written: in this session the
+host's auto-mode permission classifier refused the headless `claude -p /bootstrap ... --dangerously-skip-permissions` launch before it started, so nothing was
+generated and nothing was spent. Every counted run uses the same launch, so no run comes before part 2.
+
+- Fixture. `New-EvalRepo angular-ux` is the `angular` tree plus the orders flow: `src/app/orders/order.service.ts` (`getOrders()` on `/api/orders`),
+  `order-list.component.ts` (signals `loading`, `error` and `orders`; the template branches `@if (loading())`, `@else if (error())`,
+  `@else if (orders().length === 0)` and the list; `catchError` sets the inline error, `finalize` clears loading) and one spec covering the four states.
+  `app.component.ts` renders it beside the profile form and `package.json` gains `rxjs`. The `angular` tree is unchanged, so `angular-feature-placement`'s
+  fixture is too; the self-test asserts the delta is exactly those five paths. 10 files, 6,427 bytes as written on Windows; tree sha256
+  f9f03b5cab9dbef1a2364942a8bfb98f6b5c2e7d9e2acabe2735278e783040ee over the lines `<file sha256>  <path>`, sorted by path (ordinal), joined with LF plus
+  a trailing LF; baseline git tree 9ce435aa0de30a8a20596040f254b8992a92f823.
+- Scenario. `angular-ux-sibling`: stack angular, fixture angular-ux, overlay angular-ux-generated, `bareArm`, 1.50 USD, the pre-registered prompt verbatim,
+  assertion `angularUxMirror`. The framework arm installs dist/angular, copies `meta/eval-fixtures/angular-ux-generated/files/` over it and commits; the bare
+  arm gets the fixture alone. `-Live` refuses either arm before any spend when that overlay's `provenance.json` is missing or names another framework version.
+- Grader, the pre-registered one made mechanical. The page is every new or changed non-spec `.ts` or `.html` under `src/` since the run started whose path
+  names an invoice or whose text calls `/api/invoices`, plus the `templateUrl` files those name. Loading: a template branch (`@if`, `@else if`, `@case`,
+  `*ngIf`) whose condition names loading. Empty: `@empty`, a branch with an explicit emptiness test, or a length test followed by an else. Error: a branch
+  naming error or fail, a `catchError` whose handler (parameters, `console.*` and `throwError` removed) names error, fail or message, and no `alert(`.
+  MIRRORS all three, PARTIAL one or two, NONE none. The pre-registered ERROR (no page written) is an INCONCLUSIVE row with `grade=ERROR`, which the summary
+  excludes from the denominator and counts. Every verdict is also read by hand against the written page before the results are recorded.
+- Seen red. The new self-test case failed on the unfixed runner, first at the fixture (`The argument "angular-ux" does not belong to the set ...`), then,
+  with the fixture in place, at the grader (`Unknown scenario 'angular-ux-sibling'.`). With the grader it reads the planted page (the list with no loading,
+  empty or error branch) as NONE, an `alert()` on error and `catchError` to a silent empty list as PARTIAL, the sibling copied for invoices, a `@switch`
+  on a status signal and a `templateUrl` page not named invoice as MIRRORS, and no page as ERROR. Full `-SelfTest` under pwsh 7: EXIT=0, 46 PASS
+  lines against 45 before the change; Windows PowerShell 5.1 refuses the runner at its `#Requires -Version 7.0`, so that leg has no evidence.
+- Run order. `-Model sonnet -Trials 1 -TimeoutSeconds 600`, `DISABLE_AUTOUPDATER=1`, from one shell; slot k = 1 to 6 runs N then F when k is odd and F then
+  N when k is even. The timeout is the same for both arms; a run it stops is an ERROR row, excluded and counted.
+- Part 2, before the first run: generate the overlay on this commit as the pre-registration says (the runner's `New-EvalRepo angular-ux`, `install.ps1
+  -Stack angular`, committed, then `claude -p /bootstrap` with "proceed" at each pause, cap 3 USD), freeze it with `provenance.json`, and record KNOWLEDGE.

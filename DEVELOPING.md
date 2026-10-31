@@ -311,6 +311,8 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor copilot 
 # rewrites a leading `/` into a Windows path), answering each pause with `claude -p <answer> --resume <id>`;
 # a resumed run's total_cost_usd is the whole session's, not that call's.
 # warehouse-route-p4 (WSD-105) runs -WarehouseMap generated, then omit, then -Arm none -WarehouseMap omit.
+# A scenario's "overlay" (B-470 angular-ux-sibling: angular-ux-generated) is a frozen /bootstrap overlay its framework arm
+# gets; regenerate it the same way on its own fixture (New-EvalRepo angular-ux, dist/angular), /bootstrap only.
 # B-253 -TargetPatch <file> (framework arm only) applies a unified diff to the installed framework
 # before scenario setup, with no extra commit, so a text variant (a B-255 candidate, a knockout, a
 # probe) runs the unpatched arm's fixture path. It is refused before any spend if it does not apply,

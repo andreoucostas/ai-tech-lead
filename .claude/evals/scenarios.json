@@ -102,6 +102,17 @@
       "assertion": "angularFeaturePlacement"
     },
     {
+      "id": "angular-ux-sibling",
+      "measures": "B-470 (pre-registered in meta/eval-results.md): on a repository whose orders list handles loading, empty, error and success states, does an \"add a similar page\" prompt produce a page that mirrors that handling? Arm-neutral: the grade reads only the page the run wrote (MIRRORS, PARTIAL, NONE; no page is not examined). Framework arm runs on the frozen /bootstrap overlay meta/eval-fixtures/angular-ux-generated; the bare arm on the fixture alone.",
+      "stack": "angular",
+      "fixture": "angular-ux",
+      "overlay": "angular-ux-generated",
+      "bareArm": true,
+      "budgetUsd": 1.50,
+      "prompt": "Add an invoices page that lists the current user's invoices from /api/invoices, following this repository's conventions. No tests needed. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.",
+      "assertion": "angularUxMirror"
+    },
+    {
       "id": "contract-restate",
       "measures": "B-406 S1: on the natural-language path (no slash command), whether the agent posts Done-when criteria with a boundary example before any write and stops for the go-ahead. Gates on CONTRACT: a Done-when or acceptance-criteria section of at least two list lines, one naming a boundary, in main-agent text before the first write, and no file written in the run. It shows the stop, not what follows a go-ahead (no second turn), and not the fix path, Copilot, VS Code, Angular or monorepo.",
       "fixture": "b406-orders",
