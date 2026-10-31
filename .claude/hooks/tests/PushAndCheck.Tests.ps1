@@ -322,6 +322,16 @@ exit $LASTEXITCODE
         Assert ($r.Out -notmatch [regex]::Escape($skipLine)) "an empty range was classified records-only: $($r.Out)"
         Assert (Test-Path -LiteralPath $h.Log) 'watch-ci did not run for an empty range'
     }
+    # The default watch must outlast a full CI run. Master runs took 1,215 to 1,539 s (2026-10-27 to 2026-10-31), so the
+    # old 1,200 s default ended all three watches of one session at CI CANT-VERIFY while CI was still running.
+    It 'the default -TimeoutSeconds outlasts a full CI run, and the usage line names it' {
+        $timeoutParam = [System.Management.Automation.Language.Parser]::ParseFile($subject, [ref]$null, [ref]$null).ParamBlock.Parameters |
+            Where-Object { $_.Name.VariablePath.UserPath -eq 'TimeoutSeconds' }
+        Assert ($null -ne $timeoutParam -and $null -ne $timeoutParam.DefaultValue) 'push-and-check.ps1 declares no -TimeoutSeconds default'
+        $default = [int]$timeoutParam.DefaultValue.Value
+        Assert ($default -ge 2400) "the default watch is $default s; master CI runs took up to 1,539 s, so it must be at least 2,400 s"
+        Assert ([IO.File]::ReadAllText($subject) -match "\[-TimeoutSeconds $default\]") "the usage line does not name the default ($default s)"
+    }
 
     # (d) Drift guard. Test-LightChangePath is lifted out of the subject by AST and compared, path by
     # path, with an evaluator of ci.yml's push `paths:` list written from GitHub's documented rules:

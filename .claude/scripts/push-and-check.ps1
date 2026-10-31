@@ -2,7 +2,7 @@
 # Maintainer-only, does NOT ship. It is part of the Windows/PowerShell-only maintainer topology.
 #
 # Usage: pwsh -NoProfile -File .claude/scripts/push-and-check.ps1 [-Branch <branch>]
-#              [-WatchedBranches master] [-TimeoutSeconds 1200] [-AppearSeconds 180]
+#              [-WatchedBranches master] [-TimeoutSeconds 2400] [-AppearSeconds 180]
 #              [-PollSeconds 20] [-GhPath <path>] [-GitPath <path>] [-RepoRoot <path>]
 param(
     # Defaults to the checked-out branch, resolved through git after -GitPath is resolved.
@@ -10,7 +10,7 @@ param(
     # Keep this default in sync with the branches under `on: push:` in .github/workflows/ci.yml, and
     # Test-LightChangePath below with that trigger's `paths:` list (PushAndCheck.Tests.ps1 case d).
     [string[]]$WatchedBranches = @('master'),
-    [int]$TimeoutSeconds = 1200,
+    [int]$TimeoutSeconds = 2400,
     [int]$AppearSeconds = 180,
     [int]$PollSeconds = 20,
     # Passed through to watch-ci.ps1; that script owns gh resolution and CI classification.
