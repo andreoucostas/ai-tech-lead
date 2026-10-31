@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.98.3 — Unreleased
+## 0.98.3 — 2026-10-31
 
 - **A fresh install that stops partway no longer tells you to delete files, and says what its re-run will do.** When a held file or
   a folder that refuses writes stops the copy, the installer names the file and how many were written. Stopped before
