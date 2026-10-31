@@ -20,7 +20,11 @@ $ci = [Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [Text.RegularExpre
 $ordinal = [StringComparison]::Ordinal
 $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
 
-$raw = [Console]::In.ReadToEnd()
+# The agents send UTF-8. [Console]::In decodes with the console's input code page (437, 850, 1252), which turns
+# a non-ASCII path or a no-break space in the text into other characters, so the stream is read as UTF-8 here
+# (not by setting [Console]::InputEncoding, which would change the user's console).
+$stdin = New-Object IO.StreamReader([Console]::OpenStandardInput(), (New-Object Text.UTF8Encoding($false)))
+$raw = $stdin.ReadToEnd()
 if (-not $raw) { exit 0 }
 try { $d = $raw | ConvertFrom-Json } catch { exit 0 }
 
@@ -155,14 +159,49 @@ function Test-GuardPattern {
 $repoRoot = $null
 try { $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..')).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar } catch { }
 
-# A written path read under the repository: a relative path resolves against it, '.' and '..' segments
-# collapse, and the repository's own folder names are cut off, so the folders the checkout happens to
-# sit in never decide anything. $null for a path outside the repository or one that cannot be read.
+# A written path read under the repository, by its text alone: nothing here asks the file system. A path with
+# a '~' makes GetFullPath expand an 8.3 short name through the file system, and for an unreachable UNC host
+# that waited ~21 s per path, past the hosts' time limits. '/' is '\'; a relative path is taken under the
+# repository; '.' and '..' collapse here (a '..' above the repository leaves it); a drive path is cut at the
+# repository's root, ordinal-ignore-case, so the folders a checkout sits in decide nothing; '\\?\C:\...'
+# is 'C:\...'. A path that cannot be read this way is never under the repository: drive-relative (C:src),
+# rooted without a drive (\x), UNC, \\.\, a leading '~', a URI (file:), or a ':' anywhere past the drive
+# (a stream suffix). $null for those and for a path outside the repository.
 function Get-RepositoryRelativePath([string]$Path) {
     if (-not $repoRoot) { return $null }
-    try { $full = [IO.Path]::GetFullPath([IO.Path]::Combine($repoRoot, $Path)) } catch { return $null }
+    $p = $Path.Replace('/', '\')
+    if ([regex]::IsMatch($p, '^\\\\\?\\[A-Za-z]:\\')) { $p = $p.Substring(4) }
+    $drive = ''
+    if ([regex]::IsMatch($p, '^[A-Za-z]:\\')) { $drive = $p.Substring(0, 3); $p = $p.Substring(3) }
+    elseif ($p.StartsWith('\', $ordinal) -or $p.StartsWith('~', $ordinal)) { return $null }
+    if ($p.IndexOf(':') -ge 0) { return $null }
+    $kept = New-Object System.Collections.Generic.List[string]
+    foreach ($segment in $p.Split([char]'\')) {
+        if ($segment.Length -eq 0 -or [string]::Equals($segment, '.', $ordinal)) { continue }
+        if ([string]::Equals($segment, '..', $ordinal)) {
+            if ($kept.Count -eq 0) { return $null }
+            $kept.RemoveAt($kept.Count - 1)
+            continue
+        }
+        $kept.Add($segment)
+    }
+    $rest = $kept -join '\'
+    if (-not $drive) { return $rest }
+    $full = $drive + $rest
     if (-not $full.StartsWith($repoRoot, $ordinalIgnoreCase)) { return $null }
     return $full.Substring($repoRoot.Length)
+}
+
+# The name the extension checks read. .NET and PowerShell resolve 'Foo.cs ' and 'Foo.cs.' to Foo.cs, so a
+# trailing space or dot is cut (Node keeps the literal name, which only makes this the safe side). Windows
+# also writes 'Foo.cs::$DATA' (an NTFS stream suffix, ':name[:type]' on the last segment) into Foo.cs itself,
+# so everything from the segment's first ':' is cut first. A drive designator ('C:Foo.cs') is not a stream.
+function Get-CheckedFileName([string]$Path) {
+    $start = $Path.LastIndexOfAny([char[]]@('\', '/')) + 1
+    if ($start -eq 0 -and [regex]::IsMatch($Path, '^[A-Za-z]:')) { $start = 2 }
+    $colon = $Path.IndexOf(':', $start)
+    if ($colon -ge 0) { $Path = $Path.Substring(0, $colon) }
+    return $Path.TrimEnd(' ', '.')
 }
 
 $blocked = New-Object System.Collections.Generic.List[object]
@@ -170,9 +209,7 @@ foreach ($write in $writes) {
     $fp = $write.Path
     $content = $write.Content
     $reasons = @()
-    # .NET and PowerShell resolve 'Foo.cs ' and 'Foo.cs.' to Foo.cs, so a name that ends in a space or a dot
-    # is checked as the file it resolves to (Node keeps the literal name, which only makes this the safe side).
-    $fileName = ([string]$fp).TrimEnd(' ', '.')
+    $fileName = Get-CheckedFileName ([string]$fp)
 
     if ([regex]::IsMatch($fileName, '\.cs$', $ci)) {
         if (Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
@@ -180,7 +217,12 @@ foreach ($write in $writes) {
         # at the last one before the Skip, so the same writes match, and an open run of openings is read once,
         # not rescanned from every opening.
         if (Test-GuardPattern '\[(Fact|Theory)\((?:(?!\[(?:Fact|Theory)\()[^)])*Skip\s*=' 'test-defeat/suppression') { $reasons += "skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
-        if (Test-GuardPattern '(?m)^\s*\[([^]]*[,\s])?(Ignore)(Attribute)?\s*[\](,=]' 'test-defeat/suppression') { $reasons += "skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+        # [Ignore] opens a line: only horizontal whitespace may precede it ([^\S\n]*, which finds the same openings as
+        # \s* did, since the last newline of a whitespace run is a line start, and does not scan a run of blank lines
+        # from every line in it). The attribute's list text may not hold another opening that starts a line: the match
+        # then starts at that one, so the same writes match, and a run of unclosed openings is read once, not rescanned
+        # to the end from each.
+        if (Test-GuardPattern '(?m)^[^\S\n]*\[(?:(?:(?!\n[^\S\n]*\[)[^]])*[,\s])?(Ignore)(Attribute)?\s*[\](,=]' 'test-defeat/suppression') { $reasons += "skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
         if ((Test-GuardPattern 'Assert\.True\(\s*true\s*[),]' 'test-defeat/suppression') -or (Test-GuardPattern 'Assert\.False\(\s*false\s*[),]' 'test-defeat/suppression')) { $reasons += "adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)" }
     }
     if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) {
@@ -223,7 +265,12 @@ foreach ($write in $writes) {
     elseif (Test-GuardPattern 'AIza[0-9A-Za-z_-]{35}' 'secret')               { $secretKind = 'a Google API key (AIza…)' }
     # The Azurite emulator's published development key is excluded: it is not a secret.
     elseif (Test-GuardPattern 'AccountKey=(?!Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==)[A-Za-z0-9+/]{86}==' 'secret') { $secretKind = 'an Azure storage account key (AccountKey=…)' }
-    elseif (Test-GuardPattern '\bsv=\d{4}-\d{2}-\d{2}&[^\s"'']*?\bsig=[A-Za-z0-9%+/]{40,}|\bsig=[A-Za-z0-9%+/]{40,}[^\s"'']*?&sv=\d{4}-\d{2}-\d{2}' 'secret') { $secretKind = 'an Azure SAS token signature (sv=…&sig=…)' }
+    # The SAS signature, either order. The text between the two parts may not hold another opening of the same kind
+    # (sv=…& in the first form, sig= and 40 signature characters in the second): the match then starts at that one,
+    # so the same writes match, and a run of openings is read once, not rescanned to its end from each. The second
+    # form's signature run is atomic: the text after it accepts the same characters, so giving some back only
+    # rescanned that text from every shorter length.
+    elseif (Test-GuardPattern '\bsv=\d{4}-\d{2}-\d{2}&(?:(?!\bsv=\d{4}-\d{2}-\d{2}&)[^\s"''])*?\bsig=[A-Za-z0-9%+/]{40,}|\bsig=(?>[A-Za-z0-9%+/]{40,})(?:(?!\bsig=[A-Za-z0-9%+/]{40,})[^\s"''])*?&sv=\d{4}-\d{2}-\d{2}' 'secret') { $secretKind = 'an Azure SAS token signature (sv=…&sig=…)' }
     if ($secretKind) { $reasons += "contains $secretKind — secrets must not be committed; use user-secrets / env vars / a vault" }
 
     # Test and sample paths are exempt from the credential heuristic only when a path segment carries
@@ -247,18 +294,28 @@ foreach ($write in $writes) {
         }
     }
     if (-not $credentialExempt) {
-        # A placeholder word anywhere in the matched text exempts it, as it always has.
-        $placeholder = '(changeme|placeholder|your[_-]|example|dummy|<[^>]+>|\$\{|process\.env|%[A-Z_]+%)'
+        # A placeholder word anywhere in the matched text exempts it, as it always has. <...> is written so that its
+        # content holds no '<' except as its last character: that finds the same matches (a '<' inside the content
+        # starts a match of its own, except one right before the '>'), and a long run of '<' is no longer rescanned
+        # to its end from every '<' (80,000 of them took 125 s on Windows PowerShell 5.1).
+        $placeholder = '(changeme|placeholder|your[_-]|example|dummy|<(?:[^<>]+|[^<>]*<)>|\$\{|process\.env|%[A-Z_]+%)'
         # A release-pipeline token (#{X}#, __X__, $(X), {{X}}) is replaced at deploy time, so it exempts the
         # credential value it stands in for, and only that value: a token elsewhere must not hide a literal.
         $token = '^\s*(?:#\{[^}]{1,200}\}#|__[A-Za-z0-9_.:-]{1,200}__|\$\([A-Za-z0-9_.:-]{1,200}\)|\{\{[^}]{1,200}\}\}|replace[_-]?me|\*{6,200})\s*$'
         # A connection string can carry several passwords (CertificatePassword=, SSL Password=, Proxy
-        # Password=), so every password and userinfo value in the match must be a token to exempt it.
+        # Password=), so every password and userinfo value in the match must be a token to exempt it. The first
+        # value that is not a token decides, and the rest are not read: collecting them all first (an array grown
+        # with +=) took 27 s on a literal of 30,000 password keys.
         function Test-CredentialMatch($Match) {
             if ([regex]::IsMatch($Match.Value, $placeholder, $ci)) { return $false }
-            $values = @($Match.Groups['v'].Value)
-            foreach ($inner in [regex]::Matches($Match.Value, '(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))|://[^/\s:@"'']+:(?<v>[^/\s@"'']+)@', $ci)) { $values += $inner.Groups['v'].Value }
-            foreach ($value in $values) { if ($value -and -not [regex]::IsMatch($value, $token, $ci)) { return $true } }
+            $value = $Match.Groups['v'].Value
+            if ($value -and -not [regex]::IsMatch($value, $token, $ci)) { return $true }
+            $inner = [regex]::Match($Match.Value, '(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))|://[^/\s:@"'']+:(?<v>[^/\s@"'']+)@', $ci)
+            while ($inner.Success) {
+                $value = $inner.Groups['v'].Value
+                if ($value -and -not [regex]::IsMatch($value, $token, $ci)) { return $true }
+                $inner = $inner.NextMatch()
+            }
             return $false
         }
         # Every credential-shaped match is checked, so an earlier placeholder cannot hide a later literal.

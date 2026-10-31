@@ -3,23 +3,43 @@
   "exceptions": [
     {
       "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
-      "sha256": "A9690C78C316CA51AF82C66D6C5EB7345AB8587D552EBD0594C9F523714D70E0",
+      "sha256": "12587E4A380B3DD522FC860E20DDB59F2825CAC97F250B21FDB73400A1F7D73C",
       "reason": "Canonical guard-policy fixture intentionally contains synthetic blocked patterns."
     },
     {
       "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
-      "sha256": "A9690C78C316CA51AF82C66D6C5EB7345AB8587D552EBD0594C9F523714D70E0",
+      "sha256": "12587E4A380B3DD522FC860E20DDB59F2825CAC97F250B21FDB73400A1F7D73C",
       "reason": "Generated copy of the canonical guard-policy fixture."
     },
     {
       "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
-      "sha256": "A9690C78C316CA51AF82C66D6C5EB7345AB8587D552EBD0594C9F523714D70E0",
+      "sha256": "12587E4A380B3DD522FC860E20DDB59F2825CAC97F250B21FDB73400A1F7D73C",
       "reason": "Generated copy of the canonical guard-policy fixture."
     },
     {
       "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
-      "sha256": "A9690C78C316CA51AF82C66D6C5EB7345AB8587D552EBD0594C9F523714D70E0",
+      "sha256": "12587E4A380B3DD522FC860E20DDB59F2825CAC97F250B21FDB73400A1F7D73C",
       "reason": "Generated copy of the canonical guard-policy fixture."
+    },
+    {
+      "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "A9690C78C316CA51AF82C66D6C5EB7345AB8587D552EBD0594C9F523714D70E0",
+      "reason": "B-463 G1's intermediate guard-policy fixture, pushed with the G1 follow-up commit that supersedes it."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "A9690C78C316CA51AF82C66D6C5EB7345AB8587D552EBD0594C9F523714D70E0",
+      "reason": "B-463 G1's intermediate guard-policy fixture, pushed with the G1 follow-up commit that supersedes it."
+    },
+    {
+      "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "A9690C78C316CA51AF82C66D6C5EB7345AB8587D552EBD0594C9F523714D70E0",
+      "reason": "B-463 G1's intermediate guard-policy fixture, pushed with the G1 follow-up commit that supersedes it."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "A9690C78C316CA51AF82C66D6C5EB7345AB8587D552EBD0594C9F523714D70E0",
+      "reason": "B-463 G1's intermediate guard-policy fixture, pushed with the G1 follow-up commit that supersedes it."
     },
     {
       "path": "meta/host-certification.md",

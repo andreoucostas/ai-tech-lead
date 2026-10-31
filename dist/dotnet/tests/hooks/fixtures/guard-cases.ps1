@@ -124,7 +124,16 @@ $GuardCases = @(
     # .NET and PowerShell resolve a trailing space or dot away (Foo.cs<space> and Foo.cs. are Foo.cs), so such a name is checked as Foo.cs.
     @{ n='C# suppression in a .cs name with a trailing space'; f='src/Foo.cs '; c='#pragma warning disable CS8602'; block=$true }
     @{ n='C# suppression in a .cs name with a trailing dot';   f='src/Foo.cs.'; c='#pragma warning disable CS8602'; block=$true }
+    # Windows writes 'Foo.cs::$DATA' (an NTFS stream suffix, ':name[:type]' on the last segment) into Foo.cs itself, so the
+    # suffix is cut before the extension is read; a drive designator ('C:Foo.cs') is not a stream.
+    @{ n='C# suppression in a .cs name with an NTFS stream suffix'; f='src\Foo.cs::$DATA'; c='#pragma warning disable CS8602'; block=$true }
+    @{ n='C# suppression in a relative .cs name with a lowercase stream suffix'; f='Foo.cs::$data'; c='#pragma warning disable CS8602'; block=$true }
+    @{ n='C# suppression in a drive-relative .cs name with a stream suffix'; f='C:Foo.cs::$DATA'; c='#pragma warning disable CS8602'; block=$true }
+    @{ n='focused spec in a .spec.ts name with a named stream'; f='src/app.spec.ts:s:$DATA'; c="fit('x', () => {});"; block=$true }
+    # A focus indented with a no-break space (UTF-8 C2 A0) still anchors fit(): the hook reads its stdin as UTF-8 whatever the console code page.
+    @{ n='spec fit() indented with a no-break space'; f='src/app.spec.ts'; c="describe('a', () => {`n$([char]0x00A0)fit('b', () => {});`n});"; block=$true }
 
+    @{ n='a stream suffix on a .txt name is not a C# file (allow)'; f='notes/Foo.txt::$DATA'; c='#pragma warning disable CS8602'; block=$false }
     @{ n='clean .cs (allow)';                  f='src/Foo.cs';                c='public int Add(int a, int b) => a + b;';               block=$false }
     @{ n='clean .spec.ts real assertion';      f='src/app.spec.ts';           c="it('adds', () => { expect(add(1,2)).toBe(3); });";     block=$false }
     @{ n='RxJS skip() not a test-skip';        f='src/stream.spec.ts';        c='source$.pipe(skip(1)).subscribe();';                   block=$false }

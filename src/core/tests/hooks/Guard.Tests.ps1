@@ -126,6 +126,61 @@ It 'guard: a repository under Development\test folders keeps the credential chec
     } finally { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# The path is read by its text alone. One the hook cannot read as a path under its repository exempts nothing:
+# a leading ~ (a home folder, which the host does not expand), a URI, a drive-relative, rooted, UNC or device
+# path, a stream suffix, or a '..' out of the repository. \\?\C:\... is the drive path C:\... .
+It 'guard: a path the hook cannot read as under its repository is never exempt, and a \\?\ drive path is read as the drive path' {
+    $base = Join-Path ([IO.Path]::GetTempPath()) ('guard-root-' + [guid]::NewGuid().ToString('N'))
+    $root = Join-Path $base 'Development\test\shop'
+    $drive = $root.Substring(0, 2)
+    $credential = 'var password = "hunter2hunter2";'
+    try {
+        $hook = Copy-HookInto $guardPs $root
+        $writes = @(
+            @{ f = '~\Development\test\shop\src\AuthService.cs';       allowed = $false; n = 'a ~ path that spells test folders' }
+            @{ f = '~/tests/AuthServiceTests.cs';                      allowed = $false; n = 'a ~ path to a test file' }
+            @{ f = 'file:///' + $root.Replace('\', '/') + '/tests/AuthServiceTests.cs'; allowed = $false; n = 'a file: URI to a test file' }
+            @{ f = $drive + 'tests\AuthServiceTests.cs';               allowed = $false; n = 'a drive-relative path' }
+            @{ f = '\tests\AuthServiceTests.cs';                       allowed = $false; n = 'a rooted path without a drive' }
+            @{ f = '/tests/AuthServiceTests.cs';                       allowed = $false; n = 'a rooted path with a forward slash' }
+            @{ f = '\\fileserver\share\tests\AuthServiceTests.cs';     allowed = $false; n = 'a UNC path to a test file' }
+            @{ f = '\\.\' + "$root\tests\AuthServiceTests.cs";         allowed = $false; n = 'a device path to a test file' }
+            @{ f = '\\?\UNC\fileserver\share\tests\AuthServiceTests.cs'; allowed = $false; n = 'a \\?\UNC path to a test file' }
+            @{ f = "$root\tests\AuthServiceTests.cs:notes";            allowed = $false; n = 'a test file with a stream suffix' }
+            @{ f = '..\shop\tests\AuthServiceTests.cs';                allowed = $false; n = 'a relative path that climbs out of the repository and back in' }
+            @{ f = '\\?\' + "$root\src\AuthService.cs";                allowed = $false; n = 'a \\?\ drive path to source' }
+            @{ f = '\\?\' + "$root\tests\AuthServiceTests.cs";         allowed = $true;  n = 'a \\?\ drive path to a test file' }
+            @{ f = '\\?\' + "$root\src\..\tests\AuthServiceTests.cs";  allowed = $true;  n = 'a \\?\ drive path that enters tests\ through ..' }
+        )
+        foreach ($write in $writes) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $write.f $credential } else { New-CopilotEvent $write.f $credential }
+                $expected = if ($write.allowed) { 'ALLOW' } elseif ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }
+                Assert-Decision (Invoke-Hook $hook $evt) $expected "$($write.n) ($surface)"
+            }
+        }
+    } finally { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# The hook reads its stdin as UTF-8, which is what the agents send, not through the console's input code page
+# (437, 850, 1252): decoded that way a non-ASCII folder name no longer matches the repository's root, and a
+# genuine test file is refused. This is red only where the console is not UTF-8 (the CP437 leg).
+It 'guard: a test file under a repository folder with a non-ASCII name is exempt, and its source is not' {
+    $base = Join-Path ([IO.Path]::GetTempPath()) ('guard-root-' + [guid]::NewGuid().ToString('N'))
+    $root = Join-Path $base ('M' + [char]0x00FC + 'ller\shop')
+    $credential = 'var password = "hunter2hunter2";'
+    try {
+        $hook = Copy-HookInto $guardPs $root
+        foreach ($surface in 'Claude', 'Copilot') {
+            $test = "$root\tests\AuthServiceTests.cs"; $source = "$root\src\AuthService.cs"
+            $evtTest = if ($surface -eq 'Claude') { New-ClaudeEvent $test $credential } else { New-CopilotEvent $test $credential }
+            $evtSource = if ($surface -eq 'Claude') { New-ClaudeEvent $source $credential } else { New-CopilotEvent $source $credential }
+            Assert-Decision (Invoke-Hook $hook $evtTest) 'ALLOW' "a test file under $($root.Substring($base.Length)) ($surface)"
+            Assert-Decision (Invoke-Hook $hook $evtSource) $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "a source file under $($root.Substring($base.Length)) ($surface)"
+        }
+    } finally { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 # --- A hostile write must not stall the hook past its time limit ---
 # Copilot's hooks.json gives the hook 10 s and Claude Code 60 s; past either the write goes ahead unchecked.
 # Invoke-Hook waits without end, so these runs wait up to $stallLimitMs and kill the hook past it. Each
@@ -167,6 +222,40 @@ It 'guard: 30000 unclosed [Fact( openings, each after other text on its line, ar
     $r = Invoke-HookBounded $guardPs (New-ClaudeEvent 'src/Foo.cs' $content) $stallLimitMs
     Assert (-not $r.TimedOut) "the hook was still scanning after $($stallLimitMs / 1000) s on a $([int]($content.Length / 1024)) KB write and was killed"
     Assert ($r.Exit -eq 0) "the hook exited $($r.Exit) after $($r.Seconds) s on a write with no skip in it"
+}
+# A path with a ~ made the hook ask the file system to expand an 8.3 name; for an unreachable host that waited
+# ~21 s per path (192.0.2.0/24 is TEST-NET-1, never routed). The path is now read by its text alone.
+It 'guard: a write to a UNC path with a ~ segment is decided inside the time limit' {
+    $r = Invoke-HookBounded $guardPs (New-ClaudeEvent '\\192.0.2.14\share\TESTS~1\AuthService.cs' 'var password = "hunter2hunter2";') $stallLimitMs
+    Assert (-not $r.TimedOut) "the hook was still resolving the path after $($stallLimitMs / 1000) s and was killed"
+    Assert ($r.Exit -eq 2) "the hook exited $($r.Exit) after $($r.Seconds) s on a credential literal at a path outside the repository"
+}
+It 'guard: an apply_patch that adds three files under a UNC path with a ~ segment is decided inside the time limit' {
+    # A different host in each section: Windows remembers an unreachable one, which would answer the later sections at once.
+    $patch = "*** Begin Patch`n" + (-join @(1..3 | ForEach-Object { "*** Add File: \\192.0.2.$($_ + 20)\share\TESTS~$_\F$_.cs`n+var x = $_;`n" })) +
+        "*** Add File: src\AuthService.cs`n+var password = `"hunter2hunter2`";`n*** End Patch`n"
+    $r = Invoke-HookBounded $guardPs (New-PatchEvent '.claude/settings.json' $patch) $stallLimitMs
+    Assert (-not $r.TimedOut) "the hook was still resolving the paths after $($stallLimitMs / 1000) s and was killed"
+    Assert ($r.Exit -eq 2) "the hook exited $($r.Exit) after $($r.Seconds) s on a patch with a credential literal in it"
+}
+# The other scans that grew faster than their input. Each payload is a repeated fragment that the old pattern
+# re-read to the end of the text from every repetition (or, for the password keys, that the old code collected
+# into a growing array before it looked at the first); none is capped, so a longer real input is read the same.
+$stallCases = @(
+    @{ n = '200000 blank lines in a .cs file';                             f = 'src/Foo.cs';        c = ("`n" * 200000);                                                  exit = 0 }
+    @{ n = '30000 lines that each open an unclosed [Fact( in a .cs file';  f = 'src/Foo.cs';        c = ("[Fact(`n" * 30000);                                             exit = 0 }
+    @{ n = 'a closed connection string with 150000 password keys';         f = 'src/AuthService.cs'; c = ('var connectionString = "' + ('password=abcd;' * 150000) + '"');  exit = 2 }
+    @{ n = '20000 SAS sv=...& fragments';                                  f = 'src/Storage.cs';    c = ('sv=2022-11-02&' * 20000);                                       exit = 0 }
+    @{ n = '12000 SAS sig= fragments, each followed by an &';              f = 'src/Storage.cs';    c = (('sig=' + ('A' * 40) + '&') * 12000);                            exit = 0 }
+    @{ n = 'one SAS sig= value of 100000 characters';                      f = 'src/Storage.cs';    c = ('sig=' + ('A' * 100000));                                        exit = 0 }
+    @{ n = 'a credential literal of 1500000 < characters';                 f = 'src/AuthService.cs'; c = ('var password = "' + ('<' * 1500000) + '"');                     exit = 2 }
+)
+foreach ($stall in $stallCases) {
+    It "guard: $($stall.n) is decided inside the time limit" {
+        $r = Invoke-HookBounded $guardPs (New-ClaudeEvent $stall.f $stall.c) $stallLimitMs
+        Assert (-not $r.TimedOut) "the hook was still scanning after $($stallLimitMs / 1000) s on a $([int]($stall.c.Length / 1024)) KB write and was killed"
+        Assert ($r.Exit -eq $stall.exit) "the hook exited $($r.Exit) after $($r.Seconds) s; expected $($stall.exit)"
+    }
 }
 
 # Every case above pipes stdin straight into guard.ps1. The agent host does not: the registration

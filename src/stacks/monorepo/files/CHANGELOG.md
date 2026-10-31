@@ -42,18 +42,25 @@
   in the file's full path. A repository cloned under `C:\Development\`, `C:\Projects\test\`, `C:\Samples\` or a similar
   folder therefore had the credential check off for all of its source: a hardcoded password in `src\AuthService.cs` or a
   production connection string in `appsettings.json` was written without a word, and so was a path such as
-  `tests\..\src\AuthService.cs`. The guard now reads the path from your repository's root: only the folders and file name
-  inside the repository count, `..` is resolved first, and a file outside the repository is never exempt. Nothing to do.
-  One effect to know: a test file written through another spelling of the repository's path (a junction or a `subst`
-  drive) is no longer recognised as a test file, and the guard asks for a user-secret or environment variable instead;
-  write it by the repository's own path.
+  `tests\..\src\AuthService.cs`. The guard now reads the path from your repository's root, by its text alone: only the
+  folders and file name inside the repository count, `..` is resolved first, and a file outside the repository, or at a
+  path the guard cannot read that way (a `~` home path, a `file:` address, a network or drive-relative path), is never
+  exempt. Nothing to do. One effect to know: a test file written through another spelling of the repository's path (a
+  junction, a `subst` drive or a short 8.3 name) is no longer recognised as a test file, and the guard asks for a
+  user-secret or environment variable instead; write it by the repository's own path.
 
-- **The write guard can no longer be stalled past its time limit by one large file.** A write of a few hundred kilobytes
-  holding a connection-string literal that never closes, or thousands of unclosed `[Fact(` or `[Theory(` attributes, kept
-  the guard scanning for longer than the agent host allows (10 seconds in Copilot CLI, 60 in Claude Code), and the host
-  then let the write through unchecked. Both are now read in one pass, in about a second. A `.cs`, `.ts` or `.js` file
-  name that ends in a space or a dot (`Foo.cs.`), which .NET and PowerShell resolve to `Foo.cs`, is now checked as that
-  file. Nothing to do.
+- **The write guard can no longer be stalled past its time limit by one file.** A write of a few hundred kilobytes could
+  keep the guard scanning for longer than the agent host allows (10 seconds in Copilot CLI, 60 in Claude Code), and the
+  host then let the write through unchecked: a connection-string literal that never closes or holds tens of thousands of
+  `password=` keys, thousands of unclosed `[Fact(` or `[Theory(` attributes, or of lines that open with an unclosed `[`, a
+  very long run of blank lines in a `.cs` file, a long repeated or unbroken Azure SAS fragment (`sv=...&` or `sig=...`),
+  or a very long run of `<` in a credential value. So could a path on an unreachable network share that contains a `~`:
+  the guard asked Windows to expand the short name and waited about 21 seconds for each such path. Each is now read in
+  one pass, with no cap on the length that is checked. A `.cs`, `.ts` or `.js` file name that ends in a space or a dot
+  (`Foo.cs.`), which .NET and PowerShell resolve to `Foo.cs`, or that carries an NTFS stream suffix (`Foo.cs::$DATA`,
+  which Windows writes into `Foo.cs`), is checked as that file. The guard also reads what the agent sends as UTF-8
+  whatever the console's code page, so a repository under a folder with a non-ASCII name (`D:\repos\Müller\shop`) keeps
+  its test-file exemption and a focused test (`fit(`) indented with a no-break space is still caught. Nothing to do.
 
 - **The reference now says how much room skill descriptions have in VS Code.** Copilot in VS Code lists every skill's
   name and description to the model inside one shared character budget: 15,000 in Local sessions, and in Copilot CLI

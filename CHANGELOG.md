@@ -72,23 +72,38 @@ as changed once, the safe direction. Rejected, reasoned and not run: index blobs
 time would still hash cleaned and differ from the blob it is later committed as) and `--no-filters` (the LF and CRLF checkouts
 of one blob would then differ).
 
-Write guard reads the path under the repository, and two stalls (guarded, `guard.ps1`; B-463 G1, bug hunt 2, items 1-4
-and 6). Secret-leak class: the credential exemption for test and sample paths split the absolute `file_path`, so a
-checkout under `C:\Development\repo`, `C:\Projects\test\repo`, `D:\Projects\samples\shop` or `C:\Mocks\repo` had the
-credential check off for all of its source (a literal in `src\AuthService.cs`, a production connection string in
-`src\Api\appsettings.json`: exit 0, no output, on both hosts; an `apply_patch` `Add File:` at an absolute path the same),
-and `tests\..\src\AuthService.cs` was exempt. The path is now made repository-relative first: the repository is the hook's
-own `..\..`, a relative path resolves against it, `GetFullPath` collapses `..`, the root prefix is cut ordinal-ignore-case,
-and a path outside the repository, or one `GetFullPath` rejects, gets no exemption. Cost, measured: a test file reached by
-another spelling of the repository's path (a junction) is no longer exempt (exit 2, safe direction). Two stalls: the
-connection-string pattern was quadratic on a literal that never closes (820 KB of `password=abcd;` after an unclosed
-`connectionString = "`: still scanning at 15 s on pwsh, 1.2 s after) and the `[Fact(`/`[Theory(` Skip pattern on unclosed
-openings (234 KB: 48 s on pwsh, 0.5 s after). Neither is capped: a `(?=[^"']*["'])` asks once whether the quote-free run
-closes, and the Skip pattern's argument text may not hold another opening; 60,000 random strings each matched the old
-patterns' spans and values exactly (a 2000/500-character cap would have let a longer connection string or attribute
-through). A `.cs`/`.ts` name with a trailing space or dot is checked as the file `GetFullPath` resolves it to (Node, which
-the hosts write with, keeps the literal name on this machine, so this only widens the check). Item 5 (NotebookEdit)
-closed by decision: the event shape is unmeasured and the matcher would need a `settings.json` change in every stack.
+Write guard reads the path under the repository, and its stalls (guarded, `guard.ps1`; B-463 G1 and its follow-up, bug hunt 2,
+items 1-4 and 6; B-373; B-374 for this hook only). Secret-leak class: the credential exemption for test and sample paths
+split the absolute `file_path`, so a checkout under `C:\Development\repo`, `C:\Projects\test\repo`, `D:\Projects\samples\shop`
+or `C:\Mocks\repo` had the credential check off for all of its source (a literal in `src\AuthService.cs`, a production
+connection string in `src\Api\appsettings.json`: exit 0, no output, on both hosts; an `apply_patch` `Add File:` at an absolute
+path the same), and `tests\..\src\AuthService.cs` was exempt. The path is now read under the repository by its text alone: the
+repository is the hook's own `..\..`, `/` is `\`, a relative path is taken under it, `.` and `..` collapse in the guard (a `..`
+above the repository leaves it), a drive path is cut at the root ordinal-ignore-case, and `\\?\C:\...` is `C:\...`. A path the
+guard cannot read that way is never exempt: drive-relative (`C:src`), rooted without a drive, UNC, `\\.\`, a leading `~`, a URI
+or a `:` past the drive (`~\...\Development\test\shop\src\AuthService.cs` and `file:` forms were exempt before G1 and under it).
+G1's first version called `GetFullPath` on the written path, and with a `~` in it .NET expands an 8.3 name through the file
+system: one Write to `\\192.0.2.14\share\TESTS~1\AuthService.cs` took 21.5 s here (the reviewer saw an `apply_patch` with three
+such sections plus a source file take 63.6 s, >60 s here), past Copilot's 10 s and Claude Code's 60 s, where the parent took
+0.4 s; nothing in the guard asks the file system now (0.5 s and 0.6 s on pwsh, 0.4 s on 5.1). Cost, measured: a test file
+reached by another spelling of the repository's path (a junction, a short 8.3 name) is no longer exempt (exit 2, safe
+direction). Stdin is read as UTF-8 (a `StreamReader` over `OpenStandardInput`, not `[Console]::InputEncoding`, which changes
+the user's console): under CP437 G1 read `...\Müller\shop\tests\AuthServiceTests.cs` as `M├╝ller` and refused a genuine test
+file (exit 2 and deny, both hosts), and a Jasmine `fit(` indented with U+00A0 passed (B-374; `route-prompt`, `session-start`
+and `audit-trail` still read through `[Console]::In`). A `.cs`/`.ts` name with a trailing space or dot is checked as the file
+.NET resolves it to (Node keeps the literal name on this machine, so this only widens the check), after cutting an NTFS stream
+suffix (`src\Foo.cs::$DATA` with a suppression was allowed; `fs.writeFileSync` writes it into `Foo.cs`; a drive designator,
+`C:Foo.cs`, is not a stream). Stalls, none capped, each pattern matching the old one's language (60,000-string differential
+fuzz, 0 differences; a mutant that forbids any nested opening differs in 339 and 204 strings, so the fuzz can go red): the
+connection-string pattern on a literal that never closes and the `[Fact(`/`[Theory(` Skip pattern on unclosed openings (G1);
+then the C# `[Ignore]` pattern (`^\s*` spanned newlines and `[^]]*` ran to the end from every `[` that starts a line; 200,000
+blank lines: 50.8 s on pwsh, >40 s on 5.1, 0.6 s and 0.4 s after; 30,000 `[Fact(` lines: >60 s, >40 s, 0.5 s and 0.4 s);
+`Test-CredentialMatch` (it collected every password value in an array before reading the first; 30,000 keys: 30.6 s on 5.1,
+0.5 s after; 100,000: 13.0 s on pwsh, >40 s on 5.1, 1.7 s and 0.7 s); the SAS signature in both orders (20,000 `sv=...&`
+fragments: 57.5 s on pwsh, >40 s on 5.1, 0.7 s and 0.4 s; 8,000 `sig=` fragments each followed by `&`: 24.9 s, >40 s, 0.9 s and
+0.5 s; one `sig=` and 100,000 characters: >60 s, >40 s, 0.6 s and 0.4 s); and the placeholder `<...>` (a million `<`: 25.1 s on
+pwsh, 80,000 took 125 s on 5.1; 2.0 s and 0.4 s after). Item 5 (NotebookEdit) closed by decision: the event shape is
+unmeasured and the matcher would need a `settings.json` change in every stack.
 
 Skill-description budget stated (ordinary; B-383, maintainer request 2026-10-11; measured 2026-10-31, no gate added).
 `docs/reference.md > Skills` now says Copilot in VS Code lists every skill's name and description inside one shared
