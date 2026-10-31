@@ -2923,6 +2923,26 @@ if ($updateMode -or $adoptMode) {
         Write-Output "NOTICE: Git tracks $($logPaths -join ', '), which this release ignores (.claude/.gitignore). It is local hook telemetry, not compliance evidence, and every developer's copy differs. $how  and commit that with the copied files; your local file stays. An older CLAUDE.md that said to keep it in version control is superseded; docs/upgrade-checklist.md has the step and says what to check if Git refuses."
     }
 }
+# A tracked file Git is told not to see local changes to (skip-worktree or assume-unchanged) hides a framework file as an ignore
+# rule does, and check-ignore never reports it: the file this run wrote there shows nowhere in git status, so "commit the copied
+# files" keeps the team's committed version. Named when this run wrote it (a preserved or protected file is unchanged), as Git
+# spells it, with the audit log left out as above. The installer never changes the index, so the list read before the copy
+# holds. A tag cannot say which flag a path carries, and one update-index naming both --no- options clears only one, so each
+# flag has its own command, which is a no-op on a path without it.
+$flaggedAfterCopy = Get-GitSkippedFiles
+if ($null -eq $flaggedAfterCopy) {
+    Write-Output "NOTE: Git could not say whether it is told not to see local changes to any of the framework's files (skip-worktree or assume-unchanged), which would leave them out of a commit; run  git ls-files -v  before committing: a file tagged S or a lower-case letter is one."
+} elseif ($flaggedAfterCopy.Count -gt 0) {
+    $wroteShipped = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($relative in $ordinaryApplyPaths) { if ($relative -notin $persistentCopyIfAbsent) { [void]$wroteShipped.Add($relative) } }
+    $flaggedShipped = [string[]]@($flaggedAfterCopy | Where-Object { $wroteShipped.Contains($_) })
+    if ($flaggedShipped.Count -gt 0) {
+        [Array]::Sort($flaggedShipped, [StringComparer]::Ordinal)
+        $flaggedNames = @($flaggedShipped | ForEach-Object { Format-PastedGitPath -Path $_ }) -join ' '
+        $updateIndex = "git -C $(Format-PastedGitPath -Path $tgt) update-index"
+        Write-Output "WARNING: Git is told not to see local changes to $($flaggedShipped.Count) of the framework's own files (skip-worktree or assume-unchanged), so committing this install leaves them out and teammates will not get them: $($flaggedShipped -join ', '). To make Git show them, run both  $updateIndex --no-skip-worktree -- $flaggedNames  and  $updateIndex --no-assume-unchanged -- $flaggedNames  (one command naming both options clears only one flag), then commit them with the copied files."
+    }
+}
 if ($skillsLeftActive.Count -gt 0) {
     [Console]::Error.WriteLine('  Every other step of this update is done. After deleting what is named above, continue with docs/upgrade-checklist.md.')
     exit 3

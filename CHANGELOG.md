@@ -13,6 +13,14 @@
 
 ## 0.98.3 — Unreleased
 
+Flagged framework files named in the handoff (guarded, `install.ps1`; B-449, found reasoned by B-435, now reproduced). An
+install or update wrote the framework's file at a tracked path marked skip-worktree or assume-unchanged; Git does not look
+there, so `git status` showed nothing and "commit the copied files" kept the team's committed version (`check-ignore` never
+reports a tracked path, so B-313's warning could not see it either). The handoff now ends with a WARNING naming each such path
+this run wrote (not a preserved or protected file, not the audit log) and the two commands that clear the flags, run
+separately because one `update-index` naming both `--no-` options never clears skip-worktree (Git 2.52.0): the same read of
+`ls-files -v` as the archive keep-out, no new refusal, exit codes and writes unchanged. When Git cannot answer, a NOTE says so.
+
 A compact baseline (ordinary; B-451, field report #10 item 2, relayed by the maintainer 2026-10-21; measured on generated
 repositories only). The baseline wrote `evidence <id> <pattern> <path> <blob>` for every file of every claim's pattern, so a
 field repository's ran to 3,856 lines (the reporter's). Schema 2 writes `file <path> <blob>` once per matched file, ordinally

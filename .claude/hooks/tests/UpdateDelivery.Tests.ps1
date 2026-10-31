@@ -3354,6 +3354,68 @@ It 'B-435 attack: a team''s own .claude/.gitignore is archived as _.gitignore, s
     }
 }
 
+It 'B-449 the handoff names a framework file the install wrote where Git is told not to see local changes (skip-worktree, or assume-unchanged under another letter case) and the two commands that clear the flags; a flagged file the install left alone is not named' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b449-' + [guid]::NewGuid())
+    try {
+        # check-ignore never reports a tracked path, so the install wrote the framework's file at a flagged path, git status showed
+        # nothing there, and "commit the copied files" kept the team's committed version: teammates never got the framework's.
+        # One update-index naming both --no- options clears only one flag, so the handoff gives the pair and the test runs it.
+        $clear = {
+            param([string]$Text, [string]$Folder)
+            $m = [regex]::Match($Text, 'run both  (git -C [^\r\n]+? update-index --no-skip-worktree -- [^\r\n]+?)  and  (git -C [^\r\n]+? update-index --no-assume-unchanged -- [^\r\n]+?)  \(one command naming both options clears only one flag\), then commit')
+            Assert $m.Success "the handoff does not give the two commands that clear the flags: $Text"
+            foreach ($i in 1, 2) { Invoke-Expression $m.Groups[$i].Value; Assert ($LASTEXITCODE -eq 0) "the printed command failed (exit ${LASTEXITCODE}): $($m.Groups[$i].Value)" }
+            return (& git -C $Folder status --porcelain --untracked-files=all | Out-String)
+        }
+
+        $t = New-B309GitTarget -Root $root -Name 'brownfield' -Ignore "bin/`n"
+        Write-B429Files -Folder $t -Files ([ordered]@{ '.claude/settings.json' = "{}`n"; 'claude.md' = "# team rules`n"; 'TECH_DEBT.md' = "# team debt`n" })
+        & git -C $t add -A
+        & git -C $t commit -qm 'team files'
+        & git -C $t update-index --skip-worktree .claude/settings.json
+        & git -C $t update-index --assume-unchanged claude.md
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: brownfield') "the brownfield install failed (exit $LASTEXITCODE): $out"
+        $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
+        Assert ($status -notmatch '(?mi)^ ?M (\.claude/settings\.json|claude\.md)') "calibration: Git shows the framework's file at a flagged path: $status"
+        Assert ($out -cmatch "(?m)^WARNING: Git is told not to see local changes to 2 of the framework's own files \(skip-worktree or assume-unchanged\)[^\r\n]*: \.claude/settings\.json, claude\.md\. To make Git show them, run both ") "the handoff does not name the two flagged files the install wrote: $out"
+        Assert ($out -cnotmatch 'TECH_DEBT\.md[^\r\n]*\. To make Git show them') "the handoff names an unflagged file: $out"
+        $after = & $clear $out $t
+        Assert ($after -match '(?m)^ M \.claude/settings\.json' -and $after -match '(?m)^ M claude\.md') "after the printed commands Git still does not show the framework's files: $after"
+
+        # An update names a flagged file it replaced, and not one it leaves alone: AGENTS.md is the team's, so it stays as it was.
+        $u = New-B309GitTarget -Root $root -Name 'update' -Ignore "bin/`n"
+        $first = Invoke-Installer -Dist 'dotnet' -Target $u
+        Assert ($LASTEXITCODE -eq 0 -and $first -match 'mode: greenfield' -and $first -notmatch 'told not to see') "the greenfield install failed, or warned with nothing flagged (exit $LASTEXITCODE): $first"
+        Write-B429Files -Folder $u -Files ([ordered]@{ '.claude/settings.json' = "{`"team-copy-before-b449`":true}`n" })
+        & git -C $u add -A
+        & git -C $u commit -qm 'team install'
+        & git -C $u update-index --skip-worktree .claude/settings.json
+        & git -C $u update-index --assume-unchanged AGENTS.md
+        $update = Invoke-Installer -Dist 'dotnet' -Target $u
+        Assert ($LASTEXITCODE -eq 0 -and $update -match 'mode: update') "the update failed (exit $LASTEXITCODE): $update"
+        Assert ([IO.File]::ReadAllText((Join-Path $u '.claude/settings.json')) -notmatch 'team-copy-before-b449' -and (& git -C $u show HEAD:.claude/settings.json | Out-String) -match 'team-copy-before-b449') 'calibration: the update did not replace the committed settings'
+        Assert ((& git -C $u status --porcelain --untracked-files=all | Out-String) -notmatch '(?m)^ ?M \.claude/settings\.json') 'calibration: Git shows the replaced settings'
+        Assert ($update -cmatch "(?m)^WARNING: Git is told not to see local changes to 1 of the framework's own files \(skip-worktree or assume-unchanged\)[^\r\n]*: \.claude/settings\.json\. To make Git show them, run both ") "the update's handoff does not name the one replaced flagged file: $update"
+        Assert ($update -cnotmatch 'AGENTS\.md[^\r\n]*\. To make Git show them') "the update's handoff names a flagged file it left alone: $update"
+        $afterUpdate = & $clear $update $u
+        Assert ($afterUpdate -match '(?m)^ M \.claude/settings\.json') "after the printed commands Git still does not show the replaced settings: $afterUpdate"
+
+        # Git failing that one question is "could not examine", not "nothing flagged": a git.cmd ahead on PATH fails only ls-files -v.
+        $shim = Join-Path $root 'git-shim'
+        [void][IO.Directory]::CreateDirectory($shim)
+        $realGit = (Get-Command git -CommandType Application | Select-Object -First 1).Source
+        [IO.File]::WriteAllText((Join-Path $shim 'git.cmd'), "@echo off`r`nif ""%~3""==""ls-files"" if ""%~4""==""-v"" exit /b 1`r`n""$realGit"" %*`r`n")
+        $blind = New-B309GitTarget -Root $root -Name 'blind' -Ignore "bin/`n"
+        $savedPath = $env:PATH
+        try { $env:PATH = "$shim;$savedPath"; $blindOut = Invoke-Installer -Dist 'dotnet' -Target $blind; $blindExit = $LASTEXITCODE } finally { $env:PATH = $savedPath }
+        Assert ($blindExit -eq 0 -and $blindOut -match 'mode: greenfield') "the install with a failing ls-files -v did not finish (exit $blindExit): $blindOut"
+        Assert ($blindOut -cmatch "(?m)^NOTE: Git could not say whether it is told not to see local changes to any of the framework's files[^\r\n]*run  git ls-files -v  before committing") "the handoff says nothing when Git could not say whether files are flagged: $blindOut"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'a disabled retired recipe skill: the update finishes, carries the folder''s consumer files and removes the active copy' {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('recipe-disabled-' + [guid]::NewGuid())
     try {
