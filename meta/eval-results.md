@@ -6576,3 +6576,114 @@ generated and nothing was spent. Every counted run uses the same launch, so no r
   `grade=ERROR`. The overlay refusal passes (0.98.2).
 - Check after slot 1. Before slot 2, the first N and F rows are read for `copilotCli`, `hooksLoaded` (F True) and the grade, and each grade against its page.
   A pipeline failure stops the series and is reported; its rows are kept and labelled, never re-graded.
+
+## 2026-10-31 11:43:43 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: none · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3088; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=8 arm=none outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=none outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:44:58 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=12 tokensOut=3215; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=8 arm=framework outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:46:17 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=12 tokensOut=3175; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=8 arm=framework outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:46:45 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: none · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3179; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=10 arm=none outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=none outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:47:13 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: none · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3428; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=12 arm=none outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=none outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:48:08 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=12 tokensOut=3154; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=8 arm=framework outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:49:03 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=12 tokensOut=3157; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=8 arm=framework outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:49:29 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: none · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3084; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=8 arm=none outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=none outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:49:56 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: none · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3267; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=9 arm=none outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=none outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:50:51 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=12 tokensOut=3232; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=8 arm=framework outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:51:46 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=12 tokensOut=3297; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=8 arm=framework outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-10-31 11:52:14 +00:00 — framework v0.98.2 (root head 0.98.3 — Unreleased) (a6a1244adbfef4c1bcf3f1867d34231086c1ce55)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: none · scratch: retained=True
+
+- **PASS angular-ux-sibling** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3463; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=12 arm=none outcome=True grade=MIRRORS loading=True empty=True error=True errorBranch=True catchErrorSets=True alert=False pageFiles=src/app/invoices/invoice-list.component.ts,src/app/invoices/invoice.service.ts
+- **SUMMARY angular-ux-sibling** arm=none outcome=1/1 excluded=0 executor=copilot
+
+## B-470 results — 2026-10-31 (pre-registered at aede6460, amended at ab02a649 and a6a1244a; Copilot CLI 1.0.98)
+
+- 12 of 12 runs valid, in the amended order (slot 1 N first, slot 2 F first, alternating): Copilot CLI 1.0.98, `claude-sonnet-5.5`, `hooksLoaded=True` on
+  every F row and False on every N row, one premium request each, no ERROR or INCONCLUSIVE row. The twelve result blocks above carry the rows.
+- **F MIRRORS 6 of 6; N MIRRORS 6 of 6.** Fisher exact, two-sided, p = 1.00. The prediction (F at least 5, N at least 4, no difference) held.
+- Hand check: each grade read against its page, 12 of 12 agree. Every page in both arms is the same near-verbatim copy of `OrderListComponent` renamed: the
+  branches `@if (loading())`, `@else if (error())` and `@else if (invoices().length === 0)`, `catchError` setting the inline error, `finalize` clearing
+  loading, an `InvoiceService` under `src/app/invoices/`, and `app.component.ts` rendering the new page.
+- Attribution. KNOWLEDGE was SILENT and F's AGENTS.md says `docs/defaults.md` is not applied, so F's 6 of 6 does not come from an instruction naming the
+  states. N shows the model copies a visible sibling without instruction.
+- Decision, as pre-registered: F 6 of 6 closes B-470 by measurement. No UX-consistency surface is added and nothing ships.
+- Cost: overlay 2 premium requests and 51.91 AI credits; runs 12 premium requests, F 85.75 AI credits (14.11 to 14.58 a run, about 55 s), N 52.54 (7.77 to
+  12.36, about 27 s). For the same page, F used about 1.6 times N's credits.
+- Not shown, beyond the pre-registration's list: Claude Code, the pre-registered host, which was not run (amendment part 2); a new page whose needs differ from
+  the sibling's, where copying is not enough (pagination, a detail view, a form that submits); consistency across pages or a whole user journey.
