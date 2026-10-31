@@ -6,6 +6,13 @@
 
 ## 0.98.3 — Unreleased
 
+- **Hooks now read the event the agent sends as UTF-8, on any Windows console.** They used the console's input code page, so on
+  the code pages a default Windows console uses (437, 850, 1252) a character outside ASCII arrived as other characters. The
+  effect you could see: a prompt with a no-break space next to a keyword (as pasted from a web page or a chat tool) got no
+  workflow rails because the keyword no longer stood alone as a word, and the audit log wrote a placeholder in place of the
+  path of a file whose folder or name has an accented letter. This changes only how the prompt, session-start and audit hooks
+  read their input; the console's own code page is left as it was.
+
 - **The installer now tells you when Git will not show a framework file it wrote.** If you had marked a tracked file
   `skip-worktree` or `assume-unchanged` (to keep local edits out of `git status`) and an install or update replaced it with
   the framework's version, such as `.claude/settings.json`, `git status` showed nothing there, so committing the copied files

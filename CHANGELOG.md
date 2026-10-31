@@ -13,6 +13,19 @@
 
 ## 0.98.3 — Unreleased
 
+Three hooks read their event as UTF-8 (guarded; B-374, found by B-372's CP437 leg; `guard.ps1` is the same item's other half).
+`route-prompt.ps1`, `session-start.ps1` and `audit-trail.ps1` read stdin through `[Console]::In`, which decodes with the
+console's input code page, so under 437, 850 or 1252 a character outside ASCII reached them as other characters: `audit-trail`
+logged `[path-normalisation-failed]` for a Write under `src\Müller\`, and `route-prompt` found no word boundary between a
+keyword and a no-break space (UTF-8 C2 A0 decoded to a letter on the code page), so `please<nbsp>fix<nbsp>the date formatting`
+got no rails on either surface. Each now reads a UTF-8 `StreamReader` over `[Console]::OpenStandardInput()`, not
+`[Console]::InputEncoding`, which would change the user's console. `session-start` reads its event only for a leading `{` and
+`hook_event_name`, which no non-ASCII byte changes; its one observable difference is a leading byte-order mark, which the
+reader drops and `[Console]::In` turned into three characters on those code pages (a Copilot event then got plain output).
+Three cases, one per hook, each red on the CP437 `powershell.exe` leg before the change and green after it; the harness
+already feeds UTF-8, so none is red on a console at 65001. `boy-scout-check.ps1`, `post-write.ps1` and the maintainer
+`bom-fix.ps1` read stdin the same way and are not changed here.
+
 Flagged framework files named in the handoff (guarded, `install.ps1`; B-449, found reasoned by B-435, now reproduced). An
 install or update wrote the framework's file at a tracked path marked skip-worktree or assume-unchanged; Git does not look
 there, so `git status` showed nothing and "commit the copied files" kept the team's committed version (`check-ignore` never

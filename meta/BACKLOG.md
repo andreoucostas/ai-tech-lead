@@ -32,7 +32,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 17 | B-453 | Field report: a zero-byte `.cs` sat in a claim's evidence; the baseline could name it instead of silently resting on it |
 | 18 | B-455 | Field question: whether a semantic repository index is needed beyond the wiki index and Repository Structure; decide before building |
 | 19 | B-459 | Consumer expectation, not a defect: no recipe for writing a reporting view or procedure; B-129's budget blocker is gone, its no-observed-error bar is not; decide before building |
-| 20 | B-374 | False-green class, but only for a focus indented with non-ASCII whitespace on a non-UTF-8 console; no field report |
+| 20 | B-374 | False-green class on a non-UTF-8 console: what the guard and the stack hooks read from the agent's event (a non-ASCII path, a no-break space) arrives mis-decoded; three hooks done; no field report |
 | 21 | B-448 | Secret-leak class, tr-TR only: the Turkish-cased `APİ_KEY` passes the guard since B-445; guarded, step 4 |
 | 22 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
 | 23 | B-461 | Data-loss class, environment-only: a caller's `GIT_LITERAL_PATHSPECS` or `GIT_ICASE_PATHSPECS` changes what the installer's and review-scope's pathspecs match; guarded |
@@ -52,9 +52,9 @@ here needs its own red case and a step-4 review.
 ### B-374 · Hooks decode their stdin with the console's input code page, not as the UTF-8 the agents send
 **Filed against:** v0.94.0 (2026-10-09)
 **Priority:** P3 · **Effort:** S · **Invariants:** #1 #3 #7
-**Status:** Open; found by B-372's CP437 leg. `guard.ps1`, `route-prompt.ps1`, `session-start.ps1` and `audit-trail.ps1` read stdin through `[Console]::In`, so
-under code page 437 (and 850 and 1252, per the reviewing session) a `fit` indented with a no-break space (UTF-8 C2 A0) arrives mis-decoded and passes, on both
-hosts, before B-372 and after it alike. Fix verified by that session: a UTF-8 `StreamReader` over `[Console]::OpenStandardInput()`, not `[Console]::InputEncoding` (it changes the user's console); red case: that row on the CP437 leg.
+**Status:** Open, narrowed 2026-10-31: `route-prompt.ps1`, `session-start.ps1` and `audit-trail.ps1` read stdin through a UTF-8 `StreamReader` over `[Console]::OpenStandardInput()` (a write under `src\Müller\`,
+a prompt with a no-break space beside a keyword and a BOM-led Copilot event were each red on the CP437 leg). Left: `guard.ps1` (under code page 437, 850 or 1252 a `fit` indented with a no-break space
+arrives mis-decoded and passes) and the stack hooks `post-write.ps1` and `boy-scout-check.ps1` (`src/stacks/*/files/.claude/hooks`, guarded), which read `[Console]::In` the same way, unexamined.
 
 ### B-348 · Measure whether the agent's own security pass on Copilot CLI and VS Code runs the project's skill or the host's built-in agent
 **Filed against:** v0.92.0 (2026-10-04)

@@ -170,6 +170,22 @@ It 'route-prompt.ps1 both surfaces under tr-TR -> uppercase-I keywords still rou
     } finally { Remove-Item -LiteralPath $wrapper -Force -ErrorAction SilentlyContinue }
 }
 
+# --- The prompt arrives as the UTF-8 the agents send, whatever the console's input code page ---
+# A no-break space (UTF-8 C2 A0) is what a prompt pasted from a web page or a chat tool carries between words. Read
+# through [Console]::In it was decoded with the console's input code page: on 437 as a box-drawing character and
+# a-acute, on 1252 as A-circumflex and a no-break space. The accented letter touches the keyword, so `\bfix\b` found no
+# boundary and the prompt got no rails. The harness feeds UTF-8, so this is red on a console whose code page is not
+# 65001 and green on one that is.
+It 'route-prompt.ps1 both surfaces -> a keyword next to a no-break space still routes' {
+    $nbsp = [string][char]0xA0
+    $prompt = "please${nbsp}fix${nbsp}the date formatting"
+    $claude = Invoke-Hook $rpPs (New-ClaudePrompt $prompt)
+    Assert ($claude.Exit -eq 0 -and $claude.Out -match '## Routed intent: `fix`') "Claude: fix did not route (exit $($claude.Exit)): '$($claude.Out)'"
+    $copilot = Invoke-Hook $rpPs (New-CopilotPrompt $prompt)
+    Assert ($copilot.Exit -eq 0 -and -not [string]::IsNullOrWhiteSpace($copilot.Out)) "Copilot: no output (exit $($copilot.Exit))"
+    Assert (($copilot.Out | ConvertFrom-Json).additionalContext -match 'Routed intent: `fix`') 'Copilot: fix did not route'
+}
+
 # --- No-op cases stay no-op on both surfaces ---
 It 'route-prompt.ps1 slash command -> no output (both surfaces)' {
     foreach ($evt in (New-ClaudePrompt '/fix the thing'), (New-CopilotPrompt '/fix the thing')) {

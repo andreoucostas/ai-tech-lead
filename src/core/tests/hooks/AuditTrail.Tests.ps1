@@ -90,6 +90,23 @@ try {
         Assert ($fields[2] -ne '[path-normalisation-failed]') 'successful resolution unexpectedly hit the failure sentinel'
     }
 
+    # The agents send the event as UTF-8. Read through [Console]::In it was decoded with the console's input code
+    # page, so on code page 437 (850, 1252) the bytes of a non-ASCII folder or file name arrived as other characters,
+    # no such path resolved, and the log held the sentinel in place of the path. The harness feeds UTF-8, so this is
+    # red on a console whose code page is not 65001 and green on one that is.
+    It 'a Write to a path with a non-ASCII folder and file name logs the path as written' {
+        [System.IO.File]::WriteAllText($logPath, '')
+        $folder = "M$([char]0xFC)ller"
+        $file = "R$([char]0xE9)sum$([char]0xE9).md"
+        $null = New-Item -ItemType File -Force -Path "src/$folder/$file"
+        $r = Invoke-Hook $hookPs (New-ClaudeEvent "src/$folder/$file" 'hello world')
+        Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
+        $lines = Get-AuditLines
+        Assert ($lines.Count -eq 1) "expected 1 line, got $($lines.Count)"
+        $expected = ".\src\$folder\$file"
+        Assert ((@($lines)[0] -split "`t")[2] -ceq $expected) "expected '$expected', got '$(@($lines)[0])'"
+    }
+
     # Under ar-SA the calendar is Umm al-Qura, where 2026 is 1448. The hook runs inside a wrapper that sets
     # ar-SA first; exit 3 means the culture did not take.
     It 'under ar-SA (Umm al-Qura calendar) the timestamp is the Gregorian UTC time' {

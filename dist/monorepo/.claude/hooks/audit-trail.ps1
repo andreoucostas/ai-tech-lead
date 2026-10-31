@@ -9,7 +9,9 @@
 
 $ErrorActionPreference = 'SilentlyContinue'
 
-$inputJson = [Console]::In.ReadToEnd()
+# The agents send the event as UTF-8. [Console]::In would decode it with the console's input code page (437, 850 or
+# 1252 on a default Windows console), so the stream is read as UTF-8; [Console]::InputEncoding is left alone, as it is the user's console's.
+$inputJson = (New-Object IO.StreamReader([Console]::OpenStandardInput(), (New-Object Text.UTF8Encoding($false)))).ReadToEnd()
 $filePath = ''
 $patchPaths = @()
 

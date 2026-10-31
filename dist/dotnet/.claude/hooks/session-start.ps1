@@ -34,9 +34,11 @@ if ([Console]::IsOutputRedirected) {
     [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 }
 
-# Read stdin (when redirected) for surface detection; Claude Code events carry hook_event_name.
+# Read stdin (when redirected) for surface detection; Claude Code events carry hook_event_name. The agents send
+# UTF-8, so it is read as UTF-8 (dropping a leading byte-order mark); [Console]::In would decode it with the console's
+# input code page, and [Console]::InputEncoding is left alone, as it is the user's console's.
 $stdinJson = ''
-if ([Console]::IsInputRedirected) { $stdinJson = [Console]::In.ReadToEnd() }
+if ([Console]::IsInputRedirected) { $stdinJson = (New-Object IO.StreamReader([Console]::OpenStandardInput(), (New-Object Text.UTF8Encoding($false)))).ReadToEnd() }
 
 # Weekly, offline-only version awareness. This does not know whether a newer version exists; it
 # only names the installed stamp and says how to update. Claim the throttle record before
