@@ -135,6 +135,38 @@ try {
         Assert ([string]::IsNullOrWhiteSpace($idx)) "something was staged despite the held lock: '$idx'"
     }
 
+    # A tracked file whose index entry carries assume-unchanged or skip-worktree is a promise to git
+    # that it equals the index, so `git add -A` and `git status --porcelain` never look at it. The
+    # check above and the clean-`status` rule on the resume path therefore still read "the tree equals
+    # HEAD", tagged the commit before the release and exited 0 with the stamped file uncommitted
+    # (B-464 leftover 3). One regex covers both flags, so both are driven. The second leg adds an
+    # unflagged change: a refusal confined to the resume path would still commit a release that
+    # silently lacks the hidden file.
+    foreach ($flag in 'assume-unchanged', 'skip-worktree') {
+        It "a tracked change hidden by $flag is refused with EXIT=2, not read as nothing to stage" {
+            $d = New-ScratchRepo; $script:scratch += $d
+            git -C $d update-index "--$flag" -- src/thing.txt
+            Assert ($LASTEXITCODE -eq 0) "could not set --$flag on the fixture"
+            Set-Content -LiteralPath (Join-Path $d 'src/thing.txt') -Value 'release change'
+            $seen = @(git -C $d status --porcelain)
+            Assert ($seen.Count -eq 0) "fixture is not hidden from git status ($($seen -join ',')) -- the case would pass vacuously"
+            $r = Invoke-Region -Region $stageRegion -Prelude "`$repo = '$d'"
+            Assert ($r.Exit -eq 2) "expected EXIT=2 for a change hidden by $flag, got $($r.Exit): $($r.Out)"
+            Assert ($r.Out -notmatch 'Nothing new to stage') "a change hidden by $flag was read as 'Nothing new to stage': $($r.Out)"
+            Assert ($r.Out -match 'nothing was committed') "the refusal does not say nothing was committed: $($r.Out)"
+            Assert ($r.Out -match 'src/thing\.txt') "the refusal does not name the flagged path: $($r.Out)"
+            Assert ($r.Out -match 'git update-index --no-') "the refusal does not say how to clear the flag: $($r.Out)"
+            $idx = (@(git -C $d diff --cached --name-only) -join ',')
+            Assert ([string]::IsNullOrWhiteSpace($idx)) "something was staged despite the hidden change: '$idx'"
+
+            Set-Content -LiteralPath (Join-Path $d 'src/other.txt') -Value 'other release change'
+            $r2 = Invoke-Region -Region $stageRegion -Prelude "`$repo = '$d'"
+            Assert ($r2.Exit -eq 2) "with another change staged, expected EXIT=2 for a change hidden by $flag, got $($r2.Exit): $($r2.Out)"
+            $idx2 = (@(git -C $d diff --cached --name-only) -join ',')
+            Assert ([string]::IsNullOrWhiteSpace($idx2)) "a partial release was staged around the hidden change: '$idx2'"
+        }
+    }
+
     It 'a clean tree still resumes the publish phase, and a changed tree stages' {
         $d = New-ScratchRepo; $script:scratch += $d
         $r = Invoke-Region -Region $stageRegion -Prelude "`$repo = '$d'"

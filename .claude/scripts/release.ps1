@@ -620,6 +620,25 @@ if (Test-ReleaseReviewRecord -Text $ledgerText -Version $Version) {
 }
 
 # ---- 5. Commit + push ----
+# An index entry flagged assume-unchanged (`ls-files -v` tag h) or skip-worktree (S) tells git the file
+# equals the index, so `add -A` and `status --porcelain` never see a change to it: it is left out of
+# the release commit, or, with nothing else staged, the resume path below reads "tree equals HEAD" and
+# tags the commit before the release (B-464). Any flagged path is refused, not only one whose bytes
+# differ: proving a difference past the flag means re-hashing around filters, modes and deletions, and
+# the gates ran on working-tree bytes the flag lets differ from what is committed.
+$lsFiles = @(git -C $repo -c core.quotepath=false ls-files -v)
+$lsExit = $LASTEXITCODE
+if ($lsExit -ne 0) {
+    [Console]::Error.WriteLine("FATAL: git ls-files -v failed (exit $lsExit); cannot tell whether an index flag hides a tracked change; nothing was committed.")
+    exit 2
+}
+$flagged = @($lsFiles | Where-Object { $_ -cmatch '^[a-zS] ' })
+if ($flagged.Count -gt 0) {
+    $more = if ($flagged.Count -gt 10) { " ... and $($flagged.Count - 10) more" } else { '' }
+    [Console]::Error.WriteLine("FATAL: $($flagged.Count) tracked path(s) carry an index flag that hides working-tree changes from git add and git status; nothing was committed. Flagged (tag path): $(($flagged | Select-Object -First 10) -join '; ')$more")
+    [Console]::Error.WriteLine("Clear each, then re-run the same command: git update-index --no-assume-unchanged -- <path> (tag h), git update-index --no-skip-worktree -- <path> (tag S); a path can carry both flags, so run both.")
+    exit 2
+}
 git -C $repo add -A
 $addExit = $LASTEXITCODE
 $staged = git -C $repo diff --cached --name-only

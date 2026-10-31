@@ -14,7 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team |
-| 2 | B-464 | Three leftovers of bug-hunt batch 3: the maintainer's read of the installer attack-fix diff (step 4), D6's Copilot fallback line shipped unmeasured, and a release resume that tags HEAD past a change hidden by an index flag (false-green class, contrived) |
+| 2 | B-464 | Two leftovers of bug-hunt batch 3: the step-4 attack on the installer attack-fix diff, and D6's Copilot fallback line shipped unmeasured |
 | 3 | B-463 | Bug-hunt batch 2, 26 findings captured in one plan: the guard's credential exemption is inert for any checkout under a test- or development-named folder (secret-leak class, executed), two quadratic guard regexes that outlast the hosts' hook timeouts, silent audit-log loss under parallel hooks, and 20 more across session-start, the baseline, the checks and metrics; three sessions, hooks guarded |
 | 4 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; pre-registered, runner work and three generations before any run, at most 60 USD |
 | 5 | B-451 | Field report: a 3,856-line committed baseline, one evidence row per file per claim, noisy to review and conflict-prone |
@@ -205,8 +205,8 @@ Adjacent, outside the batch: `src/core/scripts/template-checks.ps1` has the same
 ### B-464 · Bug-hunt batch 3: three leftovers of the 2026-10-24 batch
 **Filed against:** v0.98.2 (2026-10-24)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
-**Status:** Open, narrowed 2026-10-24; plan `.claude/plans/2026-10-24-bug-hunt-3-b464.md`. (1) Step 4 for the installer commit that fixed the fresh-session attack's findings on C5 (a greenfield stopped late re-ran as brownfield; the re-run line dropped override flags) ran no second attack: the maintainer reads that diff.
-(2) D6's line under the four `@.claude/workflow.md` imports shipped unmeasured (WSD-111): one Copilot CLI `/fix` run graded on the calibration line, premium requests. (3) Found by the attack on `release.ps1`: with a tracked change behind `assume-unchanged` or `skip-worktree`, neither `add -A` nor `status --porcelain` sees it, so the resume path tags HEAD without it (exit 0).
+**Status:** Open, narrowed 2026-10-31; plan `.claude/plans/2026-10-24-bug-hunt-3-b464.md`. (1) Step 4 for the installer commit that fixed the fresh-session attack's findings on C5 (a greenfield stopped late re-ran as brownfield; the re-run line dropped override flags) ran no second attack: per WSD-116 a fresh session attacks that diff.
+(2) D6's line under the four `@.claude/workflow.md` imports shipped unmeasured (WSD-111): one Copilot CLI `/fix` run graded on the calibration line, premium requests. Leftover (3), a release resume past an index-flagged change, done 2026-10-31: release.ps1 refuses any assume-unchanged or skip-worktree entry before `add -A`.
 
 ### B-466 · Measure whether the framework's lead over the bare agent grows with repository size
 **Filed against:** v0.98.2 (2026-10-27)
