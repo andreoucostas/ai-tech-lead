@@ -2637,14 +2637,24 @@ $applyWritten = 0
 function Stop-IncompleteCopy {
     param([string]$Relative, [string]$Reason, [int]$Written)
     $quote = { param([string]$Text) "'" + $Text.Replace("'", "''") + "'" }
+    # A greenfield install ran no Git preflight, so its re-run line adds -AllowDirtyTree only when it was given: what Git shows may be the team's own.
+    $greenfield = -not $updateMode -and -not $adoptMode
     # The re-run needs each override this run was given, or it exits 4.
-    $flags = '-AllowDirtyTree'
+    $flags = if ($greenfield -and -not $AllowDirtyTree) { '' } else { ' -AllowDirtyTree' }
     foreach ($override in @(@('-AllowDowngrade', $AllowDowngrade), @('-AllowOutdated', $AllowOutdated), @('-AllowStackChange', $AllowStackChange))) { if ($override[1]) { $flags += " $($override[0])" } }
-    $rerun = "re-run  $followUpPowerShell $(& $quote $PSCommandPath) $flags $(& $quote $tgt)  (the changes Git now shows are this run's own)"
+    $rerun = "re-run  $followUpPowerShell $(& $quote $PSCommandPath)$flags $(& $quote $tgt)"
+    if ($greenfield) {
+        # With the stamp written the re-run is an update: its Done block is the update's, not /bootstrap's hand-off, and a Git tree holding the copies is dirty to it.
+        $rerun += '  (that run reports itself as an update, but the next step is still /bootstrap, and docs-sync-check fails until it has run). This installer did not check your Git tree before it ran, so the changes Git now shows are this run''s copies and may include changes of your own: review git status first'
+        if (-not $AllowDirtyTree) { $rerun += '. In a Git repository the update refuses uncommitted changes (exit 4); add -AllowDirtyTree only after that review' }
+    } else { $rerun += "  (the changes Git now shows are this run's own)" }
     $stampNote = ''
     if ($stampLast) { $stampNote = ' and the version stamp, which an update writes last, was not' }
-    # A re-run with no stamp sees the files copied so far as an existing setup and archives them.
-    $again = if ($stampLast -or (Test-Path -LiteralPath (Get-ContainedTargetPath -Relative $stampRelative) -PathType Leaf)) { $rerun }
+    # A brownfield re-run with no stamp reads the files copied so far as an existing setup and archives them. A greenfield one is a
+    # greenfield again: the manifest puts the stamp before every adoption signal (UpdateDelivery.Tests.ps1, D4), so a plain re-run is the remedy.
+    $stampWritten = $stampLast -or (Test-Path -LiteralPath (Get-ContainedTargetPath -Relative $stampRelative) -PathType Leaf)
+    $again = if ($stampWritten) { $rerun }
+        elseif ($greenfield) { 're-run the installer' }
         else { "delete the files this run copied into the target (a re-run would read them as an existing setup and archive them), then re-run the installer" }
     if ($Reinstall) { $again = "restore the tree with  git -C $(& $quote $tgt) checkout $reinstallCommit -- .  , delete the files this run created that git status lists as untracked (leave .claude/framework-update-backup/, which an earlier update wrote), then re-run with -Reinstall" }
     [Console]::Error.WriteLine("ERROR: Could not copy '$Relative': $($Reason.TrimEnd('.', ' ')). $Written of $($ordinaryApplyPaths.Count) framework files were written$stampNote. Resolve the cause (usually a program holding the file open), then $again.")

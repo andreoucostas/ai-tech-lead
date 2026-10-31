@@ -4188,6 +4188,141 @@ It 'D2 the re-run line of an update stopped by a held file carries the override 
         Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
+
+# B-464 D3: a greenfield install stopped before its version stamp was told to delete "the files this run copied", which it
+# did not name, and to do that by folder would delete a team's own file beside the framework's. Its re-run is a clean greenfield.
+It 'D3 a greenfield install stopped before the version stamp is told to re-run the installer, and that re-run is a greenfield that archives nothing' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-d3-' + [guid]::NewGuid())
+    $commands = Join-Path $t '.claude/commands'
+    $ours = Join-Path $t '.claude/agents/ours.md'
+    New-Item -ItemType Directory -Force -Path $commands, (Split-Path -Parent $ours) | Out-Null
+    [IO.File]::WriteAllText($ours, "# a team agent`n", [Text.UTF8Encoding]::new($false))
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $denied = $false
+    try {
+        & icacls $commands /deny "*${sid}:(WD,AD)" | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: icacls could not deny writes in .claude/commands'
+        $denied = $true
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $flat = $out -replace '\s+', ' '
+        Assert ($exit -eq 3 -and $out -match 'mode: greenfield') "calibration: the install was not stopped by the denied folder (exit $exit): $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-version.json'))) "calibration: the stop came after the version stamp: $out"
+        Assert ($flat -match 'framework files were written\. Resolve the cause \(usually a program holding the file open\), then re-run the installer\.') "the stop before the stamp did not say to re-run the installer: $out"
+        Assert ($flat -notmatch 'delete the files|archive them') "the stop before the stamp still tells the developer to delete files: $out"
+        & icacls $commands /remove:d "*$sid" | Out-Null
+        $denied = $false
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $rerun -match '(?m)^\s*mode: greenfield' -and $rerun -match 'must type:\s+/bootstrap') "the plain re-run was not a greenfield install with the /bootstrap hand-off (exit $LASTEXITCODE): $rerun"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t 'docs/pre-adoption')) -and -not (Test-Path -LiteralPath (Join-Path $t '.claude/adoption-pending.json'))) 'the re-run archived files or wrote an adoption marker'
+        Assert ((Test-Path -LiteralPath (Join-Path $t '.claude/framework-version.json')) -and [IO.File]::ReadAllText($ours) -ceq "# a team agent`n") 'the re-run did not finish, or changed the team agent beside the framework files'
+    } finally {
+        if ($denied) { & icacls $commands /remove:d "*$sid" | Out-Null }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# B-464 D3's premise, pinned: the plain advice holds only while no framework file written before the stamp is an adoption signal
+# (a re-run would then archive it). The installer's own signal list is read, a path counts when it is one or sits under one, and
+# the instrument is shown to flag a manifest in which the stamp comes late.
+function Get-SignalsBeforeStamp {
+    param([string[]]$Paths, [string[]]$Signals, [string]$Stamp)
+    $stampAt = [Array]::IndexOf($Paths, $Stamp)
+    if ($stampAt -lt 0) { return @('(no stamp entry)') }
+    $early = New-Object System.Collections.Generic.List[string]
+    for ($i = 0; $i -lt $stampAt; $i++) {
+        foreach ($signal in $Signals) {
+            if ($Paths[$i] -ieq $signal -or $Paths[$i].StartsWith($signal + '/', [StringComparison]::OrdinalIgnoreCase)) { $early.Add($Paths[$i]); break }
+        }
+    }
+    return @($early)
+}
+It 'D4 every manifest puts the version stamp before every adoption signal, so a greenfield stopped before it re-runs as a greenfield' {
+    $stampPath = '.claude/framework-version.json'
+    foreach ($dist in 'dotnet', 'angular', 'monorepo') {
+        $list = [regex]::Match([IO.File]::ReadAllText((Join-Path $repoRoot "dist/$dist/scripts/install.ps1")), '(?s)\$adoptionSignals\s*=\s*@\((.*?)\)')
+        Assert $list.Success "calibration: dist/$dist/scripts/install.ps1 has no `$adoptionSignals list to read"
+        $signals = @([regex]::Matches($list.Groups[1].Value, "'([^']+)'") | ForEach-Object { $_.Groups[1].Value })
+        Assert ($signals.Count -ge 15 -and $signals -contains 'CLAUDE.md' -and $signals -contains '.github/instructions') "calibration: dist/$dist's signal list read as $($signals -join ', ')"
+        $paths = @((Get-Content -Raw -LiteralPath (Join-Path $repoRoot "dist/$dist/framework-ownership.json") | ConvertFrom-Json).paths | ForEach-Object { [string]$_.path })
+        Assert ($paths -contains $stampPath) "calibration: dist/$dist's manifest has no $stampPath entry"
+        $late = @(Get-SignalsBeforeStamp -Paths $paths -Signals $signals -Stamp $stampPath)
+        Assert ($late.Count -eq 0) "dist/$dist's manifest copies $($late -join ', ') before $stampPath, so a greenfield stopped before the stamp would re-run as a brownfield install and archive it; the plain re-run advice in Stop-IncompleteCopy is then wrong"
+        if ($dist -eq 'dotnet') {
+            $reordered = @('.claude/commands/adopt.md', 'agents.md', '.github/instructions/framework-rules.instructions.md', $stampPath, 'CLAUDE.md')
+            Assert ((@(Get-SignalsBeforeStamp -Paths $reordered -Signals $signals -Stamp $stampPath) -join ',') -ceq 'agents.md,.github/instructions/framework-rules.instructions.md') 'the check did not flag a manifest that copies AGENTS.md and a file under .github/instructions before the stamp'
+        }
+    }
+}
+
+# B-464 D5: a greenfield install runs no Git preflight, so its stopped-after-the-stamp line must not add -AllowDirtyTree the developer never
+# passed, nor call every change Git shows this run's own: a team's uncommitted edit may be among them. Its re-run is an update and does refuse a dirty tree.
+It 'D5 a greenfield install stopped after its stamp in a Git repository with a team edit prints a re-run line without -AllowDirtyTree and without the claim that the changes are its own' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-d5-' + [guid]::NewGuid())
+    $specs = Join-Path $t 'specs'
+    New-Item -ItemType Directory -Force -Path $specs | Out-Null
+    & git -C $t init -q
+    & git -C $t config user.email 'tests@example.invalid'
+    & git -C $t config user.name 'installer tests'
+    [IO.File]::WriteAllText((Join-Path $t 'Smoke.csproj'), '<Project />', [Text.UTF8Encoding]::new($false))
+    & git -C $t add Smoke.csproj
+    & git -C $t commit -qm base
+    [IO.File]::AppendAllText((Join-Path $t 'Smoke.csproj'), "<!-- team edit -->`n")
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $denied = $false
+    try {
+        & icacls $specs /deny "*${sid}:(WD,AD)" | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: icacls could not deny writes in specs'
+        $denied = $true
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $flat = $out -replace '\s+', ' '
+        Assert ($exit -eq 3 -and $out -match 'mode: greenfield') "calibration: the install was not stopped by the denied folder (exit $exit): $out"
+        Assert (Test-Path -LiteralPath (Join-Path $t '.claude/framework-version.json')) "calibration: the stop came before the version stamp: $out"
+        Assert ($flat -match "then re-run pwsh -NoProfile -File '[^']*install\.ps1' '[^']*'|then re-run powershell\.exe -NoProfile -ExecutionPolicy Bypass -File '[^']*install\.ps1' '[^']*'") "the printed re-run line is not the installer and the target alone: $out"
+        Assert ($flat -notmatch "this run's own") "the stop still calls every change Git shows this run's own: $out"
+        Assert ($flat -match 'did not check your Git tree' -and $flat -match 'review git status first' -and $flat -match 'add -AllowDirtyTree only after that review') "the stop does not tell the developer to review git status before adding -AllowDirtyTree: $out"
+        & icacls $specs /remove:d "*$sid" | Out-Null
+        $denied = $false
+        $refused = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 4 -and $refused -match 'Refusing to mutate a dirty Git target') "calibration: the printed line's re-run was not refused as a dirty tree (exit $LASTEXITCODE): $refused"
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        Assert ($LASTEXITCODE -eq 0 -and $rerun -match '(?m)^\s*mode: update') "the re-run with -AllowDirtyTree did not finish as an update (exit $LASTEXITCODE): $rerun"
+        Assert ([IO.File]::ReadAllText((Join-Path $t 'Smoke.csproj')) -match 'team edit') 'the re-run changed the team edit'
+        Assert (@(& git -C $t status --short | Where-Object { $_ -match '^ M Smoke\.csproj' }).Count -eq 1) 'Git no longer shows the team edit as modified'
+    } finally {
+        if ($denied) { & icacls $specs /remove:d "*$sid" | Out-Null }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# B-464 D6: the re-run of a greenfield stopped after its stamp is an update, so it ends "Done (update)" and points at docs-sync-check,
+# which fails by design until /bootstrap has run; the stop line is where the developer or the agent learns that the next step is still /bootstrap.
+It 'D6 a greenfield install stopped after its stamp says its re-run reports an update while the next step is still /bootstrap' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-d6-' + [guid]::NewGuid())
+    $specs = Join-Path $t 'specs'
+    New-Item -ItemType Directory -Force -Path $specs | Out-Null
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $denied = $false
+    try {
+        & icacls $specs /deny "*${sid}:(WD,AD)" | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: icacls could not deny writes in specs'
+        $denied = $true
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $flat = $out -replace '\s+', ' '
+        Assert ($exit -eq 3 -and $out -match 'mode: greenfield') "calibration: the install was not stopped by the denied folder (exit $exit): $out"
+        Assert (Test-Path -LiteralPath (Join-Path $t '.claude/framework-version.json')) "calibration: the stop came before the version stamp: $out"
+        Assert ($flat -match 'reports itself as an update' -and $flat -match 'next step is still /bootstrap' -and $flat -match 'docs-sync-check fails until it has run') "the stop does not say the re-run reports an update while /bootstrap is still the next step: $out"
+        & icacls $specs /remove:d "*$sid" | Out-Null
+        $denied = $false
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $rerun -match '(?m)^\s*mode: update' -and $rerun -match 'Done \(update\)') "calibration: the re-run did not report itself as an update (exit $LASTEXITCODE): $rerun"
+    } finally {
+        if ($denied) { & icacls $specs /remove:d "*$sid" | Out-Null }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 # -Reinstall: delete the old framework surface of an install older than the retirement-ledger floor and install fresh.
 # The fixture is a real v0.26.0 install (built from the local tag), committed to Git, plus consumer-owned files.
 function New-ReinstallFixture {

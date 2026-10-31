@@ -6,6 +6,17 @@
 
 ## 0.98.3 — Unreleased
 
+- **A fresh install that stops partway no longer tells you to delete files, and says what its re-run will do.** When a held file or
+  a folder that refuses writes stops the copy, the installer names the file and how many were written. Stopped before
+  `.claude/framework-version.json` was written, it said to delete "the files this run copied" without naming them; deleting by
+  folder could remove your own files beside the framework's. It now says to re-run the installer, which installs fresh again and
+  leaves your files alone. Stopped after that file, it printed an update's re-run command with `-AllowDirtyTree` already added and
+  said the changes Git shows are the run's own, though a fresh install does not check your Git tree first and an uncommitted
+  edit of yours may be among them. It now prints the command with only the options you gave, tells you to review `git status`
+  first, and says the re-run (an update) refuses a Git tree with uncommitted changes, so add `-AllowDirtyTree` only after that
+  review. That re-run reports itself as an update and points at `docs-sync-check`, which fails until `/bootstrap` has run; the
+  line now says the next step is still `/bootstrap`.
+
 - **Hooks now read the event the agent sends as UTF-8, on any Windows console.** They used the console's input code page, so on
   the code pages a default Windows console uses (437, 850, 1252) a character outside ASCII arrived as other characters. The
   effect you could see: a prompt with a no-break space next to a keyword (as pasted from a web page or a chat tool) got no
