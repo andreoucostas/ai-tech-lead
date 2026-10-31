@@ -13,6 +13,18 @@
 
 ## 0.98.3 — Unreleased
 
+The audit and session-start hooks, B-463 group G2 (guarded, `src/core/.claude/hooks/{audit-trail,session-start}.ps1` and the
+`src/stacks/{dotnet,angular}/snippets/.claude/hooks/audit-trail.ps1/skip` snippets; items 7 to 11 of
+`.claude/plans/2026-10-23-bug-hunt-2-b463.md`, no step 4; each fixed with its case seen red first, item 9's red on Windows PowerShell 5.1 only).
+Item 7: the stack skip line (`bin`/`obj`, or `node_modules`/`dist`/`.angular`/`coverage`) matched the absolute path, so a checkout whose own
+path held one of those folders recorded nothing; it now matches the repository-relative path (the raw path only when it could not be made
+relative), and the monorepo dist takes both lines by union as before. Item 8: `Out-File -Append` lost a line when two hook runs met; the
+log is opened with `[IO.FileStream]` (`Append`, `Write`, `FileShare.Read`), retried for up to 3 s, written as UTF-8 without a BOM and with
+CRLF, and a line still unwritten says so in one stderr line while the exit stays 0. Item 9: every `Get-Content` in `session-start.ps1`
+reads UTF-8, so the BOM-less shipped `INDEX.md` is no longer mojibake on 5.1. Items 10 and 11: one `git rev-parse --is-inside-work-tree`
+gates the branch, test-entry-point and debt-heat sections (a subfolder install keeps them; the debt-heat `git log` gains `--relative`), and
+git's fatal lines on an unborn branch go to `$null`. The 8.3 short-cwd note stays unverified.
+
 Questions that stand alone (ordinary; field report #11, relayed by the maintainer 2026-10-29; unmeasured). A developer
 answered a pre-task question by typing that they did not know what it was about: it carried the agent's shorthand from
 its investigation and named neither the requirement nor what each answer would change. Carrier §2 x3 gains one bullet

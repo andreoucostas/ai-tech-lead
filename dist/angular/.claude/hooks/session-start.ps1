@@ -44,7 +44,7 @@ if ([Console]::IsInputRedirected) { $stdinJson = [Console]::In.ReadToEnd() }
 $versionNudge = $null
 try {
     $versionFile = Get-RepoPath '.claude/framework-version.json'
-    $installedVersion = (Get-Content -LiteralPath $versionFile -Raw -ErrorAction Stop | ConvertFrom-Json).version
+    $installedVersion = (Get-Content -LiteralPath $versionFile -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json).version
     if ($installedVersion) {
         $nowEpoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
         $awarenessFile = Join-Path $stateDir 'last-version-awareness'
@@ -64,16 +64,19 @@ $body = (& {
 Write-Output "## Session preload"
 if ($versionNudge) { Write-Output $versionNudge }
 
-# 1. Git branch + last 3 commits
-if (Test-Path -LiteralPath (Get-RepoPath '.git')) {
-    $branch = git -C $repoRoot rev-parse --abbrev-ref HEAD
+# 1. Git branch + last 3 commits. $inGit gates every git-backed section (this one, the test entry points, the debt
+# heat): the repository may sit above the folder the framework is installed in, so a `.git` entry in $repoRoot is not
+# the test. git's own words go to $null; an unborn branch makes several of its calls fail with a fatal line.
+$inGit = ([string](git -C $repoRoot rev-parse --is-inside-work-tree 2>$null)).Trim() -eq 'true'
+if ($inGit) {
+    $branch = git -C $repoRoot rev-parse --abbrev-ref HEAD 2>$null
     if ($LASTEXITCODE -eq 0 -and $branch) {
         Write-Output "- **Branch:** ``$branch``"
     } else {
         Write-Output "- **Branch:** ``(unknown)``"
     }
 
-    $recent = git -C $repoRoot log -3 --format='  - `%h` %s'
+    $recent = git -C $repoRoot log -3 --format='  - `%h` %s' 2>$null
     if ($LASTEXITCODE -eq 0 -and $recent) {
         Write-Output "- **Recent commits:**"
         foreach ($line in $recent) { Write-Output $line }
@@ -87,12 +90,12 @@ if (Test-Path -LiteralPath (Get-RepoPath '.claude/adoption-pending.json')) {
     # AGENTS.md is the project instruction file; a repo still on the older layout keeps it in CLAUDE.md.
     foreach ($instructionFile in @('AGENTS.md', 'CLAUDE.md')) {
         if (-not (Test-Path -LiteralPath (Get-RepoPath $instructionFile))) { continue }
-        $text = Get-Content -LiteralPath (Get-RepoPath $instructionFile) -Raw
+        $text = Get-Content -LiteralPath (Get-RepoPath $instructionFile) -Raw -Encoding UTF8
         if ($text -and $text -match 'BOOTSTRAP_PENDING') {
             Write-Output "- ⚠ **$instructionFile is unbootstrapped** (BOOTSTRAP_PENDING marker present). ``/bootstrap`` must run before non-trivial work — conventions are still placeholder. It is developer-initiated and cannot be invoked by the model: if you are an agent, tell the developer to type ``/bootstrap``."
             # Before /bootstrap records a test command, name up to eight test entry points the repository tracks, leaving out every
             # framework-owned or retired framework path; when the ownership manifest lists no path, list nothing rather than a framework file.
-            if ((Test-Path -LiteralPath (Get-RepoPath '.git')) -and (Test-Path -LiteralPath (Get-RepoPath 'framework-ownership.json'))) {
+            if ($inGit -and (Test-Path -LiteralPath (Get-RepoPath 'framework-ownership.json'))) {
                 $framework = @{}; $ownedCount = 0
                 try {
                     foreach ($entry in @((Get-Content -LiteralPath (Get-RepoPath 'framework-ownership.json') -Raw -Encoding UTF8 | ConvertFrom-Json).paths | Where-Object { $_.path })) { $framework[[string]$entry.path] = $true }
@@ -144,7 +147,7 @@ if (Test-Path -LiteralPath (Get-RepoPath '.claude/adoption-pending.json')) {
 # the retired generated mirror, and the newly delivered carrier needs its import. This is
 # discovery, not delivery: do not duplicate the rules into hook output.
 if (Test-Path -LiteralPath (Get-RepoPath 'CLAUDE.md')) {
-    $claude = Get-Content -LiteralPath (Get-RepoPath 'CLAUDE.md') -Raw
+    $claude = Get-Content -LiteralPath (Get-RepoPath 'CLAUDE.md') -Raw -Encoding UTF8
     # Any @AGENTS.md mention counts, as in the installer: Claude Code honours inline imports too.
     if ($claude -and $claude -cnotmatch '(?<![\w/.@-])@(\./)?AGENTS\.md(?![\w-])') {
         Write-Output '- ⚠ **Instruction layout migration:** this repository''s instructions are still in `CLAUDE.md`; the framework now reads and writes them in `AGENTS.md`. Read `CLAUDE.md` for project conventions until this is fixed. To fix it, merge `CLAUDE.md`''s content into `AGENTS.md`, then reduce `CLAUDE.md` to the two lines `@AGENTS.md` and `@.github/instructions/framework-rules.instructions.md` (see `docs/upgrade-checklist.md`).'
@@ -165,14 +168,15 @@ if (Test-Path -LiteralPath (Get-RepoPath 'CLAUDE.md')) {
 }
 
 # 5. TECH_DEBT items touching recently changed files
-if ((Test-Path -LiteralPath (Get-RepoPath 'TECH_DEBT.md')) -and (Test-Path -LiteralPath (Get-RepoPath '.git'))) {
-    $recentFiles = git -C $repoRoot log --since="14 days ago" --name-only --format="" |
+if ((Test-Path -LiteralPath (Get-RepoPath 'TECH_DEBT.md')) -and $inGit) {
+    # --relative: from a folder below the repository root, only that folder's files, named as TECH_DEBT.md names them.
+    $recentFiles = git -C $repoRoot log --since="14 days ago" --name-only --relative --format="" 2>$null |
         Where-Object { $_ -and $_.Trim() } |
         Sort-Object -Unique |
         Select-Object -First 30
 
     if ($recentFiles) {
-        $debt = Get-Content -LiteralPath (Get-RepoPath 'TECH_DEBT.md') -Raw
+        $debt = Get-Content -LiteralPath (Get-RepoPath 'TECH_DEBT.md') -Raw -Encoding UTF8
         $hot = 0
         if ($debt) {
             foreach ($f in $recentFiles) {
@@ -188,12 +192,12 @@ if ((Test-Path -LiteralPath (Get-RepoPath 'TECH_DEBT.md')) -and (Test-Path -Lite
 
 # 6. Overdue security findings
 if (Test-Path -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md')) {
-    $secContent = Get-Content -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md') -Raw
+    $secContent = Get-Content -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md') -Raw -Encoding UTF8
     $openCount = ([regex]::Matches($secContent, '\| Open ')).Count
     if ($openCount -gt 0) {
         $today = (Get-Date).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
         $overdue = 0
-        foreach ($line in (Get-Content -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md'))) {
+        foreach ($line in (Get-Content -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md') -Encoding UTF8)) {
             if ($line -match '\| Open ') {
                 $dates = [regex]::Matches($line, '\d{4}-\d{2}-\d{2}')
                 if ($dates.Count -ge 2) {
@@ -212,7 +216,7 @@ if (Test-Path -LiteralPath (Get-RepoPath 'SECURITY_FINDINGS.md')) {
 
 # 7. Team wiki index (cheap capped preload; staleness belongs to wiki-check)
 if (Test-Path -LiteralPath (Get-RepoPath 'docs/wiki/INDEX.md')) {
-    $wikiIndex = Get-Content -LiteralPath (Get-RepoPath 'docs/wiki/INDEX.md') -Raw
+    $wikiIndex = Get-Content -LiteralPath (Get-RepoPath 'docs/wiki/INDEX.md') -Raw -Encoding UTF8
     $wikiCount = ([regex]::Matches($wikiIndex, '(?m)^- \[')).Count
     if ($wikiCount -le 30) { Write-Output $wikiIndex.TrimEnd() }
     else { Write-Output "$wikiCount wiki entries — read docs/wiki/INDEX.md" }
@@ -220,13 +224,13 @@ if (Test-Path -LiteralPath (Get-RepoPath 'docs/wiki/INDEX.md')) {
 
 # 8. Hazard-area staleness
 if (Test-Path -LiteralPath (Get-RepoPath 'FRAMEWORK-CONTEXT.md')) {
-    $frameworkContext = Get-Content -LiteralPath (Get-RepoPath 'FRAMEWORK-CONTEXT.md') -Raw
+    $frameworkContext = Get-Content -LiteralPath (Get-RepoPath 'FRAMEWORK-CONTEXT.md') -Raw -Encoding UTF8
     if ($frameworkContext -and $frameworkContext -notmatch 'KNOWN_HAZARD_AREAS_PENDING') {
         $inHazards = $false
         $openStale = 0
         $confirmedStale = 0
         $cutoff = (Get-Date).AddDays(-90)
-        foreach ($line in (Get-Content -LiteralPath (Get-RepoPath 'FRAMEWORK-CONTEXT.md'))) {
+        foreach ($line in (Get-Content -LiteralPath (Get-RepoPath 'FRAMEWORK-CONTEXT.md') -Encoding UTF8)) {
             if ($line -match '^## Known Hazard Areas\s*$') { $inHazards = $true; continue }
             if ($inHazards -and $line -match '^## ') { break }
             if (-not $inHazards -or $line -notmatch '^\|') { continue }

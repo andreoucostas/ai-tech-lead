@@ -22,6 +22,19 @@ It 'package.json counts only with a test script' {foreach($case in @(@('{"script
 It 'dependency and build folders are skipped' {$r=Root -Files @('node_modules/lib/tests/a.js','src/App/bin/Debug/tests/b.ps1','tests/run.ps1');try{$o=RunAt $r $claude;Assert((Listed $o)-eq'tests/run.ps1')"expected only tests/run.ps1: $(Listed $o)"}finally{Remove-Item -Recurse -Force $r}}
 It 'at most eight are named, then "and more"' {$r=Root -Files @(1..10|ForEach-Object{"tests/t$_.ps1"});try{$o=RunAt $r $claude;Assert($o.Out-match[regex]::Escape($label)+'(?:tests/t\d+\.ps1, ){7}tests/t\d+\.ps1 \(and more\)\.')"cap not applied: $($o.Out)"}finally{Remove-Item -Recurse -Force $r}}
 It 'not a git repository: silent, no crash' {$r=Root -Git $false;try{$o=RunAt $r $claude;Assert($o.Exit-eq0)"hook crashed: $($o.Err)";Assert(-not$o.Out.Contains('Unrecorded test entry points'))'line emitted outside a git repository'}finally{Remove-Item -Recurse -Force $r}}
+It 'an install in a subfolder of the repository still gets the branch, recent commits, test entry points and debt heat' {
+    $r=Root -Git $false -Files @('tests/Test-Calculator.ps1','tests/evals/cases.yaml','TECH_DEBT.md') -Content @{'TECH_DEBT.md'="- tests/Test-Calculator.ps1 is slow`n"}
+    $outer=$r+'-outer';New-Item -ItemType Directory -Force $outer|Out-Null;$app=Join-Path $outer 'app';Move-Item -LiteralPath $r -Destination $app
+    try{
+        git -C $outer init -q 2>$null;git -C $outer add -A 2>$null;git -C $outer -c user.name=fixture -c user.email=fixture@example.invalid commit -q -m 'subfolder fixture' 2>$null
+        $branch=[string](git -C $outer rev-parse --abbrev-ref HEAD 2>$null)
+        $o=RunAt $app $claude
+        Assert($o.Exit-eq0)"hook crashed: $($o.Err)"
+        Assert($o.Out.Contains("- **Branch:** ``$branch``")-and$o.Out.Contains('subfolder fixture'))"branch or recent commits missing: $($o.Out)"
+        Assert((Listed $o)-eq'tests/Test-Calculator.ps1')"expected the test entry point relative to the install folder, got '$(Listed $o)': $($o.Out)"
+        Assert($o.Out.Contains('- **Debt heat:** 1 TECH_DEBT entry'))"debt heat missing, or counted against repository-root paths: $($o.Out)"
+    }finally{Remove-Item -Recurse -Force $outer}}
+It 'a repository with no commit yet reports an unknown branch and leaves git''s fatal lines off stderr' {$r=Root -Files @('tests/Test-Calculator.ps1','TECH_DEBT.md');try{$o=RunAt $r $claude;Assert($o.Exit-eq0)"hook crashed: $($o.Err)";Assert($o.Out.Contains('- **Branch:** `(unknown)`'))"expected an unknown branch: $($o.Out)";Assert($o.Err-eq'')"git's output reached stderr: $($o.Err)"}finally{Remove-Item -Recurse -Force $r}}
 It 'Copilot JSON carries the line in both shapes' {$r=Root;try{$o=RunAt $r $copilot;Assert($o.Exit-eq0)'hook crashed';$j=($o.Out|ConvertFrom-Json);Assert(([string]$j.additionalContext).Contains($label+'tests/Test-Calculator.ps1.'))'top-level additionalContext lacks the line';Assert(([string]$j.hookSpecificOutput.additionalContext).Contains($label+'tests/Test-Calculator.ps1.'))'hookSpecificOutput lacks the line'}finally{Remove-Item -Recurse -Force $r}}
 It 'retired framework test files are never listed' {$r=Root -Files @('tests/hooks/Guard.Tests.ps1','tests/hooks/_HookHarness.ps1','tests/run.ps1') -Retirements '{"schema-version":1,"retirements":[{"path":"tests/hooks/Guard.Tests.ps1","retired-in":"0.81.0"},{"path":"tests/hooks/_HookHarness.ps1","retired-in":"0.81.0"}]}';try{$o=RunAt $r $claude;Assert((Listed $o)-eq'tests/run.ps1')"a retired framework file was listed: $(Listed $o)"}finally{Remove-Item -Recurse -Force $r}}
 It 'a missing or unreadable ownership manifest lists nothing' {foreach($own in @($null,'{"paths":[',' ')){$r=Root -Ownership $own;try{$o=RunAt $r $claude;Assert($o.Exit-eq0)"hook crashed: $($o.Err)";Assert((Listed $o)-eq'none')"ownership '$own' listed: $(Listed $o)"}finally{Remove-Item -Recurse -Force $r}}}

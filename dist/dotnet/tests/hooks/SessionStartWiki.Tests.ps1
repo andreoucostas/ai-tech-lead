@@ -78,6 +78,19 @@ It 'small index is inlined' {
     finally { Remove-Item -Recurse -Force $root }
 }
 
+# Every valid index line holds an em dash and the shipped INDEX.md has no BOM. Windows PowerShell 5.1 reads a BOM-less
+# file as ANSI unless told it is UTF-8, so the entry reached the host as "a-circumflex, euro sign, ..." text.
+It 'a BOM-less UTF-8 index entry reaches the host as written' {
+    $root = New-WikiRoot -1
+    try {
+        $entry = "- [gotcha] [alpha](./alpha.md) $([char]0x2014) R$([char]0xE9)sum$([char]0xE9)"
+        [IO.File]::WriteAllText((Join-Path $root 'docs/wiki/INDEX.md'), "# Team Wiki Index`n$entry`n", [Text.UTF8Encoding]::new($false))
+        $result = Invoke-SessionStartAt $root $claude
+        Assert ($result.Exit -eq 0) "hook failed: $($result.Err)"
+        Assert ($result.Out.Contains($entry)) "the index entry was altered on the way to the host: $($result.Out)"
+    } finally { Remove-Item -Recurse -Force $root }
+}
+
 It 'index above the inline threshold is summarized' {
     $root = New-WikiRoot 31
     try {

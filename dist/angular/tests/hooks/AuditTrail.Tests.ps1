@@ -19,9 +19,11 @@ Reset-Tests
 It 'audit-trail.ps1 self-skip regex contains ai-audit\.log' {
     Assert ($srcPs -match 'ai-audit\\\.log') 'self-skip regex is missing ai-audit\.log in .ps1'
 }
-It 'audit-trail.ps1 appends tab-delimited line via Out-File -Append -Encoding utf8' {
-    Assert ($srcPs -match 'Out-File.*-FilePath.*ai-audit\.log.*-Append.*-Encoding\s+utf8') `
-        '.ps1 does not append with the expected Out-File -Append -Encoding utf8 signature'
+It 'audit-trail.ps1 appends through a FileStream that lets other processes only read, not through Out-File' {
+    Assert ($srcPs -match '\[IO\.FileStream\].*\[IO\.FileMode\]::Append.*\[IO\.FileAccess\]::Write.*\[IO\.FileShare\]::Read\b') `
+        '.ps1 does not open the log with FileStream Append / Write / FileShare.Read'
+    $code = (@($srcPs -split '\r?\n' | Where-Object { $_ -notmatch '^\s*#' })) -join "`n"
+    Assert ($code -notmatch 'Out-File') '.ps1 appends with Out-File again, whose share mode loses lines under parallel hook runs'
 }
 It 'the PowerShell hook uses only the constant path-normalisation failure sentinel in fallback branches' {
     Assert ($srcPs -match '\$rel = ''\[path-normalisation-failed\]''') '.ps1 sentinel initialisation missing'
@@ -189,6 +191,79 @@ try {
             Pop-Location
             Remove-Item -LiteralPath $elsewhere -Recurse -Force -ErrorAction SilentlyContinue
         }
+    }
+
+    # The stack's skip line (dist hooks only) tested the absolute path, so a repository whose own folder was named like
+    # a skipped one recorded nothing. The folders of every stack are nested here, so each dist is red on its own names
+    # and the src hook, which has no skip line, is green throughout.
+    It 'a repository whose own path holds bin, obj, node_modules, dist, .angular and coverage still records a write by absolute path' {
+        $deep = Join-Path ([IO.Path]::GetTempPath()) ('audit-dirs-' + [guid]::NewGuid().ToString('N'))
+        $repo = Join-Path $deep 'bin\obj\node_modules\dist\.angular\coverage\app'
+        try {
+            $deepHook = Copy-HookInto $hookSrc $repo
+            $null = Copy-HookInto (Join-Path (Split-Path -Parent $hookSrc) 'guard.ps1') $repo
+            $null = New-Item -ItemType File -Force -Path (Join-Path $repo 'src\x.txt')
+            $r = Invoke-Hook $deepHook (New-ClaudeEvent (Join-Path $repo 'src\x.txt') 'hello world')
+            Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
+            $deepLog = Join-Path $repo '.claude\ai-audit.log'
+            $lines = if (Test-Path -LiteralPath $deepLog) { @([IO.File]::ReadAllLines($deepLog) | Where-Object { $_ -ne '' }) } else { @() }
+            Assert ($lines.Count -eq 1) "expected 1 line for an absolute path in a repository under ...\bin\obj\node_modules\dist\.angular\coverage\, got $($lines.Count)"
+            Assert ((@($lines)[0] -split "`t")[2] -ceq '.\src\x.txt') "expected '.\src\x.txt', got '$(@($lines)[0])'"
+        } finally { Remove-Item -LiteralPath $deep -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    # The skip is tested on the repository-relative path, where a top-level `.angular\...` has no separator before its
+    # first folder; each folder the hook source names as skipped is still skipped by absolute path, and `src` is not.
+    It 'every folder the hook source skips is skipped by absolute path at the top level, and src is not' {
+        foreach ($name in 'bin', 'obj', 'node_modules', 'dist', '.angular', 'coverage', 'src') {
+            [System.IO.File]::WriteAllText($logPath, '')
+            $file = Join-Path $tmp "$name\f.txt"
+            $null = New-Item -ItemType File -Force -Path $file
+            $r = Invoke-Hook $hookPs (New-ClaudeEvent $file 'hello world')
+            Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
+            $skipped = $srcPs.Contains('[\\/]' + [regex]::Escape($name) + '[\\/]')
+            $count = (Get-AuditLines).Count
+            Assert ($count -eq $(if ($skipped) { 0 } else { 1 })) "$name\f.txt by absolute path: the hook source $(if ($skipped) { 'skips' } else { 'does not skip' }) '$name', but $count line(s) were recorded"
+        }
+    }
+
+    # Parallel tool calls fire this hook together, and Out-File -Append opened the log in a share mode a second appender
+    # could not join, so under SilentlyContinue the loser dropped its line without a word. Here the log is held with
+    # FileShare.None for 2 s from the moment the hook starts: the unfixed hook has tried within that time, failed and
+    # exited, so it leaves 0 lines; the fixed one retries for 3 s and appends once the hold ends.
+    It 'a log another process holds for two seconds still receives the line' {
+        [System.IO.File]::WriteAllText($logPath, '')
+        $null = New-Item -ItemType File -Force -Path 'src/x.txt'
+        $stdinFile = [IO.Path]::GetTempFileName(); $stdoutFile = [IO.Path]::GetTempFileName(); $stderrFile = [IO.Path]::GetTempFileName()
+        try {
+            [IO.File]::WriteAllText($stdinFile, (New-ClaudeEvent 'src/x.txt' 'hello world'), (New-Object System.Text.UTF8Encoding($false)))
+            $hold = [IO.File]::Open($logPath, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+            try {
+                $p = Start-Process -FilePath (Get-PsExe) -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $hookPs) -NoNewWindow -PassThru `
+                    -RedirectStandardInput $stdinFile -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+                $null = $p.Handle
+                Start-Sleep -Milliseconds 2000
+            } finally { $hold.Dispose() }
+            Assert ($p.WaitForExit(30000)) 'the hook was still running 30 s after the log was released'
+            Assert ($p.ExitCode -eq 0) "hook exited $($p.ExitCode), stderr: $([IO.File]::ReadAllText($stderrFile))"
+            $lines = Get-AuditLines
+            Assert ($lines.Count -eq 1) "expected the hook to retry until the hold ended and append 1 line, got $($lines.Count)"
+            Assert ((@($lines)[0] -split "`t").Count -eq 3) "expected 3 tab-delimited fields, got '$(@($lines)[0])'"
+            $bytes = [IO.File]::ReadAllBytes($logPath)
+            Assert (-not ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)) 'the log starts with a UTF-8 BOM'
+            Assert ($bytes[$bytes.Length - 2] -eq 13 -and $bytes[$bytes.Length - 1] -eq 10) 'the line does not end with CRLF'
+        } finally { Remove-Item -LiteralPath $stdinFile, $stdoutFile, $stderrFile -Force -ErrorAction SilentlyContinue }
+    }
+
+    # When the log stays held past the hook's retries, the line is lost, but the hook says so on stderr and still exits 0.
+    It 'a log that stays held makes the hook say so on stderr and still exit 0' {
+        [System.IO.File]::WriteAllText($logPath, '')
+        $hold = [IO.File]::Open($logPath, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+        try { $r = Invoke-Hook $hookPs (New-ClaudeEvent 'src/x.txt' 'hello world') } finally { $hold.Dispose() }
+        Assert ($r.Exit -eq 0) "hook exited $($r.Exit), stderr: $($r.Err)"
+        Assert ($r.Err -match 'ai-audit\.log') "no stderr line names the log: '$($r.Err)'"
+        Assert (@($r.Err -split "`n" | Where-Object { $_.Trim() }).Count -eq 1) "expected exactly one stderr line, got: '$($r.Err)'"
+        Assert ((Get-AuditLines).Count -eq 0) 'a line was written although the log was held'
     }
 
 } finally {

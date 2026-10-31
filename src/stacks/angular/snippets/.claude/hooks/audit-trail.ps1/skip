@@ -1,1 +1,1 @@
-    if ($filePath -match 'ai-audit\.log|[\\/]node_modules[\\/]|[\\/]dist[\\/]|[\\/]\.angular[\\/]|[\\/]coverage[\\/]') { continue }
+    if ($skipSubject -match 'ai-audit\.log|[\\/]node_modules[\\/]|[\\/]dist[\\/]|[\\/]\.angular[\\/]|[\\/]coverage[\\/]') { continue }

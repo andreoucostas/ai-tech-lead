@@ -79,10 +79,34 @@ if (-not $branch) { $branch = 'unknown' }
 
 $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
 
+# Parallel tool calls fire this hook together. Out-File -Append opens the log in a share mode a second appender
+# cannot join, and under SilentlyContinue the loser dropped its line without a word. The log is opened for append
+# with other processes allowed only to read it, so one appender at a time holds it; a busy log is retried for up to
+# 3 s (Copilot gives the hook 10 s), then the line is given up with one stderr line and the exit stays 0. The line is
+# UTF-8 without a BOM and ends in CRLF, as Out-File wrote it on PowerShell 7.
+$logPath = Join-Path $repoRoot '.claude\ai-audit.log'
+$utf8NoBom = [Text.UTF8Encoding]::new($false)
+function Add-AuditLine([string]$Line) {
+    $bytes = $utf8NoBom.GetBytes($Line + "`r`n")
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $reason = ''
+    do {
+        $stream = $null
+        try {
+            $stream = [IO.FileStream]::new($logPath, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+            $stream.Write($bytes, 0, $bytes.Length)
+            return
+        } catch {
+            $reason = $_.Exception.GetType().Name
+            if ($_.Exception -is [IO.DirectoryNotFoundException]) { break }
+        } finally { if ($stream) { $stream.Dispose() } }
+        Start-Sleep -Milliseconds (Get-Random -Minimum 10 -Maximum 50)
+    } while ($clock.ElapsedMilliseconds -lt 3000)
+    [Console]::Error.WriteLine("audit-trail: a line was not written to .claude\ai-audit.log ($reason)")
+}
+
 # One line per path; a skipped path (the stack's skip line, which ends in `continue`) drops only its own.
 foreach ($filePath in $filePaths) {
-    # @stack:skip
-
     # Normalise to a repo-relative path so the local log stays portable and does not leak
     # local absolute paths (usernames, drive layout). It is what Resolve-Path -Relative writes from
     # the repository root: the same normalisation against $repoRoot, then its .\ prefix.
@@ -104,7 +128,13 @@ foreach ($filePath in $filePaths) {
         }
     } catch { $rel = '[path-normalisation-failed]' }
 
-    "$timestamp`t$branch`t$rel" | Out-File -FilePath (Join-Path $repoRoot '.claude\ai-audit.log') -Append -Encoding utf8
+    # The stack's skip line tests the repository-relative path, so a repository whose own folder is named like a
+    # skipped one (bin, dist, ...) still records; a path that could not be made relative is tested as written. The
+    # skip patterns want a separator before the folder name, which a top-level `.angular\...` lacks, so one is added.
+    $skipSubject = if ($rel -ceq '[path-normalisation-failed]') { $filePath } else { '\' + $rel }
+    # @stack:skip
+
+    Add-AuditLine "$timestamp`t$branch`t$rel"
 }
 
 exit 0
