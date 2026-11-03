@@ -15,7 +15,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 |---|---|---|
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team |
 | 2 | B-475 | P1, false green on the framework's primary target: in VS Code 1.144.1 no repository hook runs in a trusted folder (0 of 7), so the write guard never fires there; root cause found 2026-11-03, reported upstream (microsoft/vscode#345931) |
-| 3 | B-476 | Per-prompt rails never reach the model on the first prompt of a VS Code Copilot-harness session; measured 2026-11-03 on sessions where the hooks do run |
+| 3 | B-476 | Per-prompt rails never reach the model on the first prompt of a VS Code Copilot-harness session; blocked on microsoft/vscode#345931, no code until it is re-measured |
 | 4 | B-464 | One leftover of bug-hunt batch 3: D6's Copilot fallback line shipped unmeasured; one Copilot CLI `/fix` run, premium requests |
 | 5 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; pre-registered, runner work and three generations before any run, at most 60 USD |
 | 6 | B-425 | A plain-words review may dispatch no reviewer, and so skip B-418's contract step; blocked on B-416's review answer; guarded, about 3 USD and 3 premium requests to measure |
@@ -236,11 +236,11 @@ Start from one captured hook event per surface, then the matchers and a guard re
 **Priority:** P1 · **Effort:** M · **Invariants:** #5 #7
 **Status:** Open; root cause found 2026-11-03 (`meta/host-certification.md`): for a trusted folder VS Code creates the runtime session with `trustWorkingDirectory: "session"`, the runtime defers repository hooks
 until `sessions.loadDeferredRepoHooks`, which 1.144.1's agent host does not reference (inferred from the code): 0 of 7 trusted-folder sessions ran a hook, 4 of 4 untrusted ones did, and the same files through an untrusted junction ran all eight events.
-Regression from microsoft/vscode#343403 (trust forwarding, 1.144); reported upstream as microsoft/vscode#345931 (2026-11-03). Next, per Fable's review: correct the enforcement docs, a doctor warning when no hook fired, then test runtime folder trust; a user-level dispatcher only opt-in, guard-only, running installed code.
+Regression from microsoft/vscode#343403 (trust forwarding, 1.144); reported upstream as microsoft/vscode#345931. No workaround ships (maintainer, 2026-11-03); `docs/enforcement-surfaces.md` corrected 2026-11-03 (0.98.4 head); next: the doctor reports hook liveness per surface, since a Claude-format run can mark it OK.
 
 ### B-476 · VS Code's Copilot harness drops `route-prompt`'s rails on a session's first prompt
 **Filed against:** v0.98.3 (2026-11-03)
 **Priority:** P2 · **Effort:** S to M · **Invariants:** #5
 **Status:** Open; measured 2026-11-03 where hooks run (`meta/host-certification.md`): the runtime keeps one `userPromptSubmitted` output per prompt and on a chat's first prompt VS Code's own `<workspace_info>`
-takes it (rails reached the model 0 of 2 first prompts, 1 of 1 second), while `sessionStart` outputs are joined and delivered. Fix candidate: `sessionStart`'s payload carries `initialPrompt`,
-so `session-start.ps1` can route it and carry the first prompt's rails (guarded). Moot in VS Code until B-475 is fixed.
+takes it (rails reached the model 0 of 2 first prompts, 1 of 1 second), while `sessionStart` outputs are joined and delivered.
+Blocked on microsoft/vscode#345931: Fable's review 2026-11-03 ruled out routing it in `session-start` (both hook files run it and joined outputs would double the rails; a queued Boy Scout finding could be lost; unmeasurable meanwhile). Re-measure after the fix; if prompt 1 still loses its rails, accept one duplicate (Option B).

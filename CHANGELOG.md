@@ -11,6 +11,13 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.98.4 — Unreleased
+
+VS Code 1.144.1 Copilot-harness correction (ordinary, `docs/enforcement-surfaces.md`; B-475, measured 2026-11-03, `meta/host-certification.md`).
+In a folder VS Code trusts, the Copilot harness ran no repository hook, 0 of 7 sessions, against 4 of 4 in untrusted folders; reported as microsoft/vscode#345931,
+a regression from microsoft/vscode#343403. The page now says so at the top, in the write-guard cell, the harness bullet, the setup advice and the folder-trust note, and
+calls the harness instruction-only until VS Code fixes it. No code works around the bug (maintainer decision 2026-11-03); B-476 stays open on the upstream fix.
+
 ## 0.98.3 — 2026-10-31
 
 Greenfield stop messages (guarded, `install.ps1`, step 4; B-464 leftover 1: the three defects the fresh-session review of 8928c0e4 confirmed, each reproduced by `icacls /deny` on a pre-created folder). A greenfield stopped before the stamp (copy entry 34 of 101) was told to "delete the files this run copied", which it did not name; by folder that deletes a team's `.claude/agents/ours.md` beside the framework's, and a plain re-run is a clean greenfield, so the line is now "re-run the installer". D4 pins why that is true: in all three manifests the stamp comes before every path equal to or under an entry of the installer's own `$adoptionSignals`. A greenfield stopped after the stamp got the update's line, with `-AllowDirtyTree` the developer never passed and "the changes Git now shows are this run's own"; a greenfield runs no Git preflight, so a team edit (` M Smoke.csproj`) is among them. The line now carries only the overrides given, says this installer did not check the tree, to review `git status` first, and that the re-run, an update, refuses a dirty Git tree (exit 4) so `-AllowDirtyTree` is added only after that review; the review's suggestion to drop the flag outright would print a line that exits 4 in a Git target (observed), so the message names where the flag belongs. That re-run ends "Done (update)" and points at `docs-sync-check`, which fails by design until `/bootstrap` has run, so the line says the next step is still `/bootstrap`. An update's and a brownfield install's stop lines are unchanged. Red on the unfixed installer: D3, D5, D6 in `UpdateDelivery.Tests.ps1`; D4 is the premise pin and is green on it by design.
