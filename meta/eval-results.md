@@ -6687,3 +6687,28 @@ Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.
   12.36, about 27 s). For the same page, F used about 1.6 times N's credits.
 - Not shown, beyond the pre-registration's list: Claude Code, the pre-registered host, which was not run (amendment part 2); a new page whose needs differ from
   the sibling's, where copying is not enough (pagination, a detail view, a form that submits); consistency across pages or a whole user journey.
+
+## B-464 leftover (2) pre-registration — does a Copilot CLI `/fix` run reach `.claude/workflow.md` and close with its Verification & confidence line (2026-11-03, frozen by the commit that holds it, before any run)
+
+D6 (`.claude/plans/2026-10-24-bug-hunt-3-b464.md`): on Copilot, `.claude/commands/fix.md`'s Step 4 is the Claude Code import line `@.claude/workflow.md`, which Copilot does not expand;
+0.98.2 added under it "(If your host did not expand the line above, read `.claude/workflow.md` and apply it here.)", unmeasured (WSD-111). "Verification & confidence" appears in no
+always-loaded file, only in `.claude/workflow.md`, so the label in the closing message is evidence that file reached the model.
+
+- Host: Copilot CLI 1.0.98, Windows 11 Pro 10.0.26300, PowerShell 7.6.9; `--model claude-sonnet-5.5` (paid seat, upgraded 2026-11-03).
+- Fixture: the eval runner's `dotnet` calculator fixture (`New-EvalRepo` tail: `EvalFixture.csproj`, `src/Calculator.cs` with `value < max`, `tests/Test-Calculator.ps1`), its
+  baseline committed, then HEAD e1d3b319's `dist/dotnet` (stamp 0.98.3) installed greenfield and committed. Driver outside the repository.
+- Prompt: "Use this repository's fix skill to fix this bug: the calculator's inclusive upper-bound check in src/Calculator.cs is broken. I approve the fix in advance; do not stop
+  for a plan or for confirmation, and do not ask questions." (`-p` dispatches no slash command, B-384, so the prompt names the skill.)
+- Flags as B-396: `copilot -p <prompt> -C <fixture> --model claude-sonnet-5.5 --allow-all-tools --allow-all-paths --no-ask-user --no-remote --no-remote-export --no-color
+  --no-auto-update --session-id <id> --log-dir <dir> --log-level all --usage-output-file <file>`; child environment with `COPILOT_ALLOW_ALL` and
+  `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS` set to `true`; session `b4640000-0000-4000-8000-000000000101`, repeat `-0102`.
+- Valid, else CANNOT-EXAMINE and one repeat: `session.start` 1.0.98; `claude-sonnet-5.5` on the main assistant messages; no auth, quota or model error; the fix route taken: a
+  `skill.invoked` for `fix`, or a read of `.agents/skills/fix/SKILL.md` or `.claude/commands/fix.md`.
+- Counted from `events.jsonl`: a read of `.claude/workflow.md` (a view or shell read naming it) and its order against the last assistant message; a line in the last assistant
+  message labelled "Verification & confidence" or "Verification and confidence" (case-insensitive); whether `tests/Test-Calculator.ps1` ran.
+- Readings, fixed now: `workflow.md` read and the labelled line present: the 0.98.2 sentence works on this host and model, leftover (2) closes. The labelled line absent: the
+  sentence is not enough here; the candidate is naming `.claude/workflow.md` in the four `.agents/skills` wrappers' bodies, measured the same way. The line present without a
+  read of `workflow.md`: no reading. One run shows the mechanism, not a rate.
+- Stop: 2 runs, repeats included; premium requests and AI credits recorded.
+- Not shown: VS Code (its Copilot harness runs no repository hook in a trusted folder, B-475, which does not matter here: this reads instructions), other models, `/feature`,
+  `/refactor` and `/debt`, the quality of the line's content.
