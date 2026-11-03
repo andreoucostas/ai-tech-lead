@@ -14,7 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team |
-| 2 | B-475 | P1, false green on the framework's primary target: in VS Code 1.144.1 a Copilot-harness session started from the Chat view ran no repository hook, 3 of 3, so the write guard never fires there; measured 2026-11-03 |
+| 2 | B-475 | P1, false green on the framework's primary target: in VS Code 1.144.1 no repository hook runs in a trusted folder (0 of 7), so the write guard never fires there; root cause found 2026-11-03, candidate fix a user-level dispatcher |
 | 3 | B-476 | Per-prompt rails never reach the model on the first prompt of a VS Code Copilot-harness session; measured 2026-11-03 on sessions where the hooks do run |
 | 4 | B-464 | One leftover of bug-hunt batch 3: D6's Copilot fallback line shipped unmeasured; one Copilot CLI `/fix` run, premium requests |
 | 5 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; pre-registered, runner work and three generations before any run, at most 60 USD |
@@ -231,16 +231,16 @@ Guarded, step 4.
 **Status:** Open; B-463 G1 item 5, reopened: closed 2026-10-31 by WSD-106, which excludes the secret-leak class; found by the fresh-session attack on 1cbedd79. The three stack `settings.json` and the core `settings.windows.json` match the guard on `Write|Edit`; a piped `NotebookEdit` event holding an AKIA key exits 0 where the same `Write` exits 2. Unmeasured: whether Claude Code fires that matcher for `NotebookEdit`, its `tool_input` names (`notebook_path`, `new_source`), and Copilot's notebook tool, which reaches the guard unmatched.
 Start from one captured hook event per surface, then the matchers and a guard read of the cell source, with a red case. Guarded, step 4 (`guard.ps1`, `settings*.json`).
 
-### B-475 · VS Code 1.144.1: Copilot-harness sessions started from the Chat view run no repository hook
+### B-475 · VS Code 1.144.1: repository hooks never load in a folder VS Code trusts, so no framework hook runs in its Copilot harness
 **Filed against:** v0.98.3 (2026-11-03)
 **Priority:** P1 · **Effort:** M · **Invariants:** #5 #7
-**Status:** Open; maintainer request, measured 2026-11-03 (`meta/host-certification.md`). 3 of 3 sessions started from the Chat view (`code chat`, trusted folder) ran no hook from `.github/hooks/*.json` or
-`.claude/settings.json`, though the session listed both as loaded, and wrote `#pragma warning disable`; 4 of 4 sessions a script created in the same agent host ran every hook and the guard denied it.
-Lead: the window resumes a session it pre-created at folder open. Next: repeat on a paid seat and a non-temp folder, report upstream; `docs/enforcement-surfaces.md`'s Copilot-harness column overstates enforcement until then.
+**Status:** Open; root cause found 2026-11-03 (`meta/host-certification.md`): for a trusted folder VS Code creates the runtime session with `trustWorkingDirectory: "session"`, the runtime defers repository hooks
+until `sessions.loadDeferredRepoHooks`, and VS Code never calls it: 0 of 7 trusted-folder sessions ran a hook, 4 of 4 untrusted ones did, and the same files through an untrusted junction ran all eight events.
+User-level hooks (`~/.copilot/hooks`) still ran there, 11 events: candidate fix a user-level dispatcher to the repository's hooks (guarded; its deny path unverified, the test was not run); also report upstream.
 
 ### B-476 · VS Code's Copilot harness drops `route-prompt`'s rails on a session's first prompt
 **Filed against:** v0.98.3 (2026-11-03)
 **Priority:** P2 · **Effort:** S to M · **Invariants:** #5
-**Status:** Open; measured 2026-11-03 on script-created sessions (`meta/host-certification.md`). The runtime keeps one `userPromptSubmitted` output per prompt: on a chat's first prompt VS Code's own
-`<workspace_info>` block takes it (routed rails reached the model 0 of 2 first prompts, 1 of 1 second prompt), and a second hook file's output was dropped 4 of 4. Session-start and post-tool output arrived.
-Candidate: carry what the first prompt needs in `session-start`'s output; decide after B-475.
+**Status:** Open; measured 2026-11-03 where hooks run (`meta/host-certification.md`): the runtime keeps one `userPromptSubmitted` output per prompt and on a chat's first prompt VS Code's own `<workspace_info>`
+takes it (rails reached the model 0 of 2 first prompts, 1 of 1 second), while `sessionStart` outputs are joined and delivered. Fix candidate: `sessionStart`'s payload carries `initialPrompt`,
+so `session-start.ps1` can route it and carry the first prompt's rails (guarded). Moot in VS Code until B-475 is fixed.
