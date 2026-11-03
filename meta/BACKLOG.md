@@ -14,7 +14,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team |
-| 2 | B-475 | P1, false green on the framework's primary target: in VS Code 1.144.1 no repository hook runs in a trusted folder (0 of 7), so the write guard never fires there; root cause found 2026-11-03, candidate fix a user-level dispatcher |
+| 2 | B-475 | P1, false green on the framework's primary target: in VS Code 1.144.1 no repository hook runs in a trusted folder (0 of 7), so the write guard never fires there; root cause found 2026-11-03, reported upstream (microsoft/vscode#345931) |
 | 3 | B-476 | Per-prompt rails never reach the model on the first prompt of a VS Code Copilot-harness session; measured 2026-11-03 on sessions where the hooks do run |
 | 4 | B-464 | One leftover of bug-hunt batch 3: D6's Copilot fallback line shipped unmeasured; one Copilot CLI `/fix` run, premium requests |
 | 5 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; pre-registered, runner work and three generations before any run, at most 60 USD |
@@ -235,8 +235,8 @@ Start from one captured hook event per surface, then the matchers and a guard re
 **Filed against:** v0.98.3 (2026-11-03)
 **Priority:** P1 · **Effort:** M · **Invariants:** #5 #7
 **Status:** Open; root cause found 2026-11-03 (`meta/host-certification.md`): for a trusted folder VS Code creates the runtime session with `trustWorkingDirectory: "session"`, the runtime defers repository hooks
-until `sessions.loadDeferredRepoHooks`, and VS Code never calls it: 0 of 7 trusted-folder sessions ran a hook, 4 of 4 untrusted ones did, and the same files through an untrusted junction ran all eight events.
-User-level hooks (`~/.copilot/hooks`) still ran there, 11 events: candidate fix a user-level dispatcher to the repository's hooks (guarded; its deny path unverified, the test was not run); also report upstream.
+until `sessions.loadDeferredRepoHooks`, which 1.144.1's agent host does not reference (inferred from the code): 0 of 7 trusted-folder sessions ran a hook, 4 of 4 untrusted ones did, and the same files through an untrusted junction ran all eight events.
+Regression from microsoft/vscode#343403 (trust forwarding, 1.144); reported upstream as microsoft/vscode#345931 (2026-11-03). Next, per Fable's review: correct the enforcement docs, a doctor warning when no hook fired, then test runtime folder trust; a user-level dispatcher only opt-in, guard-only, running installed code.
 
 ### B-476 · VS Code's Copilot harness drops `route-prompt`'s rails on a session's first prompt
 **Filed against:** v0.98.3 (2026-11-03)
