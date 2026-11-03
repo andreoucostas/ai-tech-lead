@@ -203,4 +203,21 @@ It 'Copilot JSON contains a large summary in both additionalContext shapes' {
     } finally { Remove-Item -Recurse -Force $root }
 }
 
+It 'records a Copilot-format run apart from a Claude-format one' {
+    foreach ($case in @(@{ Json = $copilot; Copilot = $true }, @{ Json = $claude; Copilot = $false })) {
+        $root = New-WikiRoot -1
+        try {
+            $result = Invoke-SessionStartAt $root $case.Json
+            Assert ($result.Exit -eq 0) "hook crashed: $($result.Err)"
+            Assert (Test-Path -LiteralPath (Join-Path $root '.claude/.state/last-session-start')) 'generic liveness record absent'
+            $record = Join-Path $root '.claude/.state/last-session-start-copilot'
+            Assert ((Test-Path -LiteralPath $record) -eq $case.Copilot) "Copilot record present=$(Test-Path -LiteralPath $record) for $($case.Json)"
+            if ($case.Copilot) {
+                $first = ([IO.File]::ReadAllText($record) -split "`n")[0].Trim()
+                Assert ($first -match '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$') "first line is not ISO-8601 UTC: $first"
+            }
+        } finally { Remove-Item -Recurse -Force $root }
+    }
+}
+
 exit (Write-TestSummary 'SessionStartWiki.Tests')

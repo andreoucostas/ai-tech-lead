@@ -12,6 +12,10 @@
   off, from the Chat view or otherwise, while in folders VS Code had not trusted every hook ran. It is reported to VS Code as
   microsoft/vscode#345931. Until a VS Code release fixes it, treat that harness as instruction-only: `AGENTS.md` and the framework rules
   still reach the agent. Nothing for you to change in your repo; this concerns VS Code's Copilot harness only.
+- **The doctor no longer calls Copilot's hooks live because another agent's hooks ran.** Its `Hook liveness` row went green when any
+  agent's session-start hook ran, so a repo used with Claude Code and with VS Code's Copilot harness (whose hooks do not run in a
+  trusted folder, above) looked enforced on Copilot too. A new `Copilot hook liveness` row reads a record only Copilot's own
+  session-start writes, and says plainly when Copilot has not run your hooks here; `Hook liveness` now says it covers any agent.
 
 ## 0.98.3 — 2026-10-31
 

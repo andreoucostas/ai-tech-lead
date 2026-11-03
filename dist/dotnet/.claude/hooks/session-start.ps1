@@ -40,6 +40,31 @@ if ([Console]::IsOutputRedirected) {
 $stdinJson = ''
 if ([Console]::IsInputRedirected) { $stdinJson = (New-Object IO.StreamReader([Console]::OpenStandardInput(), (New-Object Text.UTF8Encoding($false)))).ReadToEnd() }
 
+# A Copilot-format event (JSON without hook_event_name) also gets its own liveness record, so the doctor can tell
+# Copilot's hooks apart from a Claude-format run: a run by any host must not make Copilot look live. The second
+# line names up to three parent processes, to identify the writer. Best-effort, like the record above.
+if ($stdinJson.TrimStart().StartsWith('{') -and $stdinJson -notmatch '"hook_event_name"') {
+    $parents = @()
+    try {
+        $current = $PID
+        for ($i = 0; $i -lt 3; $i++) {
+            $process = Get-CimInstance Win32_Process -Filter "ProcessId=$current" -ErrorAction Stop
+            if (-not $process -or -not $process.ParentProcessId) { break }
+            $current = $process.ParentProcessId
+            $parent = Get-Process -Id $current -ErrorAction SilentlyContinue
+            if (-not $parent) { break }
+            $parents += $parent.ProcessName
+        }
+    } catch { }
+    try {
+        [IO.File]::WriteAllText(
+            (Join-Path $stateDir 'last-session-start-copilot'),
+            [DateTime]::UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture) + "`nparents=" + ($parents -join '<-'),
+            [Text.UTF8Encoding]::new($false)
+        )
+    } catch { }
+}
+
 # Weekly, offline-only version awareness. This does not know whether a newer version exists; it
 # only names the installed stamp and says how to update. Claim the throttle record before
 # emitting so an unwritable state directory cannot turn a low-noise nudge into every-session noise.

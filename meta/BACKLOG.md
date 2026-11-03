@@ -236,7 +236,7 @@ Start from one captured hook event per surface, then the matchers and a guard re
 **Priority:** P1 · **Effort:** M · **Invariants:** #5 #7
 **Status:** Open; root cause found 2026-11-03 (`meta/host-certification.md`): for a trusted folder VS Code creates the runtime session with `trustWorkingDirectory: "session"`, the runtime defers repository hooks
 until `sessions.loadDeferredRepoHooks`, which 1.144.1's agent host does not reference (inferred from the code): 0 of 7 trusted-folder sessions ran a hook, 4 of 4 untrusted ones did, and the same files through an untrusted junction ran all eight events.
-Regression from microsoft/vscode#343403 (trust forwarding, 1.144); reported upstream as microsoft/vscode#345931. No workaround ships (maintainer, 2026-11-03); `docs/enforcement-surfaces.md` corrected 2026-11-03 (0.98.4 head); next: the doctor reports hook liveness per surface, since a Claude-format run can mark it OK.
+Regression from microsoft/vscode#343403 (trust forwarding, 1.144); reported upstream as microsoft/vscode#345931. No workaround ships (maintainer, 2026-11-03); docs corrected and the doctor's `Copilot hook liveness` row added (0.98.4 head). Left: re-measure when VS Code fixes it.
 
 ### B-476 · VS Code's Copilot harness drops `route-prompt`'s rails on a session's first prompt
 **Filed against:** v0.98.3 (2026-11-03)

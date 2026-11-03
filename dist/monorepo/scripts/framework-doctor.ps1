@@ -442,9 +442,19 @@ if ($settingsReadFailed) {
 $livenessPath = Join-Path $root '.claude/.state/last-session-start'
 try { $lastSessionStart = Get-Content -Raw -LiteralPath $livenessPath -ErrorAction Stop } catch { $lastSessionStart = $null }
 if (-not [string]::IsNullOrWhiteSpace($lastSessionStart)) {
-    Row OK 'Hook liveness' ("hooks have demonstrably run in this repo, most recently at '{0}'." -f $lastSessionStart.Trim())
+    Row OK 'Hook liveness' ("a hook from some agent has run in this repo, most recently at '{0}'; the next row says whether Copilot's have." -f $lastSessionStart.Trim())
 } else {
     Row CANT-VERIFY 'Hook liveness' 'no hook has recorded a run here; if you have already started a Claude Code session in this repo, your hooks are not firing -- check the wired interpreter above, and see docs/enforcement-surfaces.md.'
+}
+# Copilot's own record: session-start.ps1 writes it only for a Copilot-format event, so a run by another agent
+# cannot make Copilot look live.
+$copilotLivenessPath = Join-Path $root '.claude/.state/last-session-start-copilot'
+try { $copilotLiveness = Get-Content -Raw -LiteralPath $copilotLivenessPath -ErrorAction Stop } catch { $copilotLiveness = $null }
+$copilotLastRun = if ($copilotLiveness) { ($copilotLiveness -split "`n")[0].Trim() } else { '' }
+if ($copilotLastRun) {
+    Row OK 'Copilot hook liveness' ("Copilot ran this repo's hooks most recently at '{0}'. A past run does not mean they run now: VS Code 1.144.1's Copilot harness runs none in a folder VS Code trusts (microsoft/vscode#345931); see docs/enforcement-surfaces.md." -f $copilotLastRun)
+} else {
+    Row CANT-VERIFY 'Copilot hook liveness' "Copilot has not recorded a run of this repo's hooks here. If you have used Copilot in this folder, its hooks are not running: VS Code 1.144.1's Copilot harness runs none in a folder VS Code trusts (microsoft/vscode#345931), and Copilot CLI runs them only in a folder it trusts. Until then, only the framework's instructions apply; see docs/enforcement-surfaces.md."
 }
 
 $legacyHookRetirement = Get-LegacyHookDoctorResult

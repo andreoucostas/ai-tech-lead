@@ -30,15 +30,16 @@ Three delivery tiers:
 > folders VS Code had not trusted, every hook ran, 4 of 4. VS Code 1.144 began passing its workspace
 > trust to the Copilot runtime (microsoft/vscode#343403); the hooks stopping is reported as
 > microsoft/vscode#345931. Until a VS Code release fixes it, treat that harness as instruction-only:
-> `AGENTS.md` and the framework-rules file still reach the model, the hooks do not.
+> `AGENTS.md` and the framework-rules file still reach the model, the hooks do not. The doctor's
+> `Copilot hook liveness` row reads only Copilot's own record, so another agent's run cannot make it look live.
 
 A configuration-only diagnostic can report healthy wiring while hooks are dead. Run
 `pwsh -NoProfile -File scripts/framework-doctor.ps1` on each Windows developer machine, or use
 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/framework-doctor.ps1` when PowerShell
 7 is unavailable. A bare executable name remains `CANT-VERIFY`: the doctor cannot observe the
 later agent-host process. The bare name is intentional team configuration across Windows machines;
-do not pin one developer's absolute path. Use the doctor's `Hook liveness` row and actual-host
-canaries. Stack-toolchain and Copilot CLI visibility likewise describe the doctor process, not the
+do not pin one developer's absolute path. Use the doctor's `Hook liveness` row (any agent), its
+`Copilot hook liveness` row (Copilot's own record) and actual-host canaries. Stack-toolchain and Copilot CLI visibility likewise describe the doctor process, not the
 later agent-host process. The write-guard canary proves the actual host's enforcement path: after its
 summary the doctor prints it for each host (ask the agent to create `tmp-doctor-canary.txt` containing
 `AKIA` plus 16 uppercase letters or digits; pass = the hook answers "Blocked write to"; a polite refusal
