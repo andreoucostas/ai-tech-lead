@@ -422,9 +422,11 @@ Run `pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Record -ClaimsPa
 (Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File` with the
 same arguments), then delete the claims file. Exit 0 writes `.claude/bootstrap-baseline.tsv`; commit
 it with the other artifacts. Each `UNCLAIMED` line it prints is a statement no claim covers: add a
-claim for each one a pass finding supports and rerun, and report the rest with why. Exit 1 lists each
-refused claim (text that is not one whole statement, or evidence matching no file outside the paths
-`framework-ownership.json` lists): correct the claims file and rerun. Exit 2, or no PowerShell host,
+claim for each one a pass finding supports and rerun, and report the rest with why. Each `EMPTY` line
+names a zero-byte file a claim's evidence matched, which evidences nothing and is not recorded: add a
+`TECH_DEBT.md` block for it (delete the file or give it content) unless the register names it. Exit 1
+lists each refused claim (text that is not one whole statement, or evidence matching no non-empty file
+outside the paths `framework-ownership.json` lists): correct the claims file and rerun. Exit 2, or no PowerShell host,
 records nothing: report it, and the next `/rebootstrap` runs in full. If the completion gate's repairs
 change `AGENTS.md`, the hazard table or a file `framework-ownership.json` does not list, record again.
 
@@ -465,7 +467,7 @@ Then output:
 - Top 3 quick wins (including the Severity-High no-test-suite entry when A6 found no spec files)
 - Files generated/modified
 - **Phase 2a recheck**: each finding dropped because its cited evidence did not show it, with the reason, or "none dropped".
-- **Rebootstrap baseline (3f)**: the `RECORDED` line verbatim and why each `UNCLAIMED` statement has no claim, or why no baseline was recorded.
+- **Rebootstrap baseline (3f)**: the `RECORDED` line verbatim, why each `UNCLAIMED` statement has no claim, and each `EMPTY` path with its `TECH_DEBT.md` item, or why no baseline was recorded.
 - **Repository knowledge discovery (A7)**: list each new review draft with body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result; also list skipped duplicates/owner-routed items, actual reads, inventory-only/excluded/inaccessible areas, and the next bounded continuation. For each new project skill add one plain-language line: the operation, its instance count, its exemplar path, and the Common Tasks line its `## After review` paragraph names. Also list each qualifying operation left over after the three-draft limit and each leftover `references/project-pattern.md`. State that drafts await PR review and changed no owner-authored knowledge.
 - **FRAMEWORK-CONTEXT.md sections drafted from code (3d-ter)**: one line per section — what was found (e.g. "Cross-Service Communication: auth + correlation-ID interceptors, typed error envelope in `core/api/`") or the verified negative. Remind the user: these describe what the code shows; anything about *other* repos and services still needs a maintainer to fill in (the drafted comment in each section says exactly that).
 

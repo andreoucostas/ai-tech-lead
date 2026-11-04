@@ -13,6 +13,7 @@
 # The baseline lists each file a claim's pattern matched once (file rows) and a claim's evidence as the pattern alone, so
 # it grows with the repository, not with claims times files. A carried claim whose files changed keeps one row per file as
 # recorded, and so does every schema 1 baseline; both read the same way.
+# A zero-byte file evidences nothing: both modes leave it out of every claim's evidence, and Record names it (EMPTY).
 # Exit codes: 0 done; 1 INVALID input; 2 CANNOT EXAMINE; 3 (Impact) no usable baseline, run in full.
 [CmdletBinding()]
 param(
@@ -33,6 +34,8 @@ $script:Manifests = @{
     warehouse = @{ Project = @('*.sqlproj'); Workspace = @('dbt_project.yml') }
 }
 $script:Kinds = @('scoped', 'universal', 'absence')
+# Git's empty blob in a SHA-1 and in a SHA-256 repository.
+$script:EmptyBlobs = @('e69de29bb2d1d6434b8b29ae775ad8c2e48c5391', '473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813')
 # Untracked tool output: the Angular CLI template's root-level output folders, and at any depth the caches
 # and Vitest browser mode's failure screenshots, which it writes beside the spec.
 # Anchoring the output folders keeps a new file in an application folder such as src/app/tmp/ counted.
@@ -244,17 +247,22 @@ function Test-SafePattern([string]$Pattern) {
     return $true
 }
 
-function Resolve-Evidence($Snapshot, [string]$Pattern) {
-    # Returns the ordinally sorted non-excluded paths a glob, exact file or directory names.
+function Resolve-Evidence($Snapshot, [string]$Pattern, $Empty) {
+    # Returns the ordinally sorted non-excluded paths a glob, exact file or directory names. A zero-byte file is left out, in
+    # Record and Impact alike, and added to $Empty when the caller passes a collection.
     if ($Pattern.IndexOfAny([char[]]'*?') -ge 0) {
-        $regex = '(?m)^' + (ConvertTo-GlobRegex $Pattern) + '$'
+        $found = @([regex]::Matches($Snapshot.Joined, '(?m)^' + (ConvertTo-GlobRegex $Pattern) + '$') | ForEach-Object { $_.Value })
     } elseif ($Snapshot.Blobs.ContainsKey($Pattern)) {
-        return , @($Pattern)
+        $found = @($Pattern)
     } else {
-        $regex = '(?m)^' + [regex]::Escape($Pattern.TrimEnd('/') + '/') + '[^\n]*$'
+        $found = @([regex]::Matches($Snapshot.Joined, '(?m)^' + [regex]::Escape($Pattern.TrimEnd('/') + '/') + '[^\n]*$') | ForEach-Object { $_.Value })
     }
-    $found = @([regex]::Matches($Snapshot.Joined, $regex) | ForEach-Object { $_.Value })
-    return , $found
+    $kept = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($path in $found) {
+        if ($script:EmptyBlobs -notcontains $Snapshot.Blobs[$path]) { $kept.Add($path) }
+        elseif ($null -ne $Empty) { [void]$Empty.Add($path) }
+    }
+    return , $kept.ToArray()
 }
 
 function Get-HazardPaths($Snapshot) {
@@ -453,6 +461,8 @@ function Invoke-Record {
     $rows = New-Object 'System.Collections.Generic.List[string]'
     # Every file a compact evidence row's pattern matched, once however many claims share it.
     $fileTable = New-PathMap
+    # Every zero-byte file a claim's pattern matched, named before the RECORDED line.
+    $empty = New-Object 'System.Collections.Generic.SortedSet[string]' ([StringComparer]::Ordinal)
     $ids = @{}
     $texts = New-Object 'System.Collections.Generic.List[string]'
     foreach ($claim in @($claimsInput.claims)) {
@@ -480,9 +490,12 @@ function Invoke-Record {
         $evidenceRows = New-Object 'System.Collections.Generic.List[string]'
         foreach ($pattern in $patterns) {
             if (-not (Test-SafePattern $pattern)) { $problems.Add("INVALID: claim '$label' evidence '$pattern' is not a repository-relative path or glob."); continue }
-            $found = Resolve-Evidence $snapshot $pattern
+            $emptyHere = New-Object 'System.Collections.Generic.List[string]'
+            $found = Resolve-Evidence $snapshot $pattern $emptyHere
+            foreach ($path in $emptyHere) { [void]$empty.Add($path) }
             if ($found.Count -eq 0 -and $claim.kind -ne 'absence') {
-                $problems.Add("INVALID: claim '$label' evidence '$pattern' matches no file outside the paths framework-ownership.json lists.")
+                if ($emptyHere.Count -gt 0) { $problems.Add("INVALID: claim '$label' evidence '$pattern' matches only zero-byte files, which evidence nothing.") }
+                else { $problems.Add("INVALID: claim '$label' evidence '$pattern' matches no file outside the paths framework-ownership.json lists.") }
                 continue
             }
             $evidenceRows.Add("evidence`t$id`t$pattern")
@@ -524,7 +537,7 @@ function Invoke-Record {
             foreach ($pattern in $order) {
                 $was = New-PathMap
                 foreach ($row in $groups[$pattern]) { if ($row.Blob -ne '-') { $was[$row.Path] = $row.Blob } }
-                $now = Resolve-Evidence $snapshot $pattern
+                $now = Resolve-Evidence $snapshot $pattern $empty
                 $same = $was.Count -eq $now.Count
                 foreach ($path in $now) { if ($same -and (-not $was.ContainsKey($path) -or $was[$path] -cne $snapshot.Blobs[$path])) { $same = $false } }
                 if (-not $same) {
@@ -572,6 +585,7 @@ function Invoke-Record {
     [IO.File]::Delete($temp)
     # In full, not excerpted, so the text can be copied into a claim.
     foreach ($statement in $unclaimed) { Say "UNCLAIMED $statement" }
+    foreach ($path in $empty) { Say "EMPTY $path" }
     Say "RECORDED claims=$($ids.Count) carried=$carried unclaimed=$($unclaimed.Count) profiles=$($selected -join ',')"
     Say "WROTE $script:StateRel"
     exit 0

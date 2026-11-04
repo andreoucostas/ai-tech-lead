@@ -609,6 +609,29 @@ It 'file rows lost from a baseline read as changed evidence, never as no drift' 
         Has $res 'PROFILE dotnet full affected=3/4 (75%) reason=threshold'
     } finally { Drop $r }
 }
+# In the field a stray zero-byte .cs (git's empty blob) sat in a claim's evidence, and the team noticed it only by reading the baseline.
+It 'record names a zero-byte file a claim matched and leaves it out of the evidence, which reads it again once it has content' {
+    $r = Fixture
+    try {
+        Put (Join-Path $r 'src/Orders/Api/Controllers/Empty.cs') ''
+        G $r @('add', '-A'); G $r @('commit', '-q', '-m', 'empty file')
+        $res = Record $r
+        ExitIs $res 0
+        Has $res 'EMPTY src/Orders/Api/Controllers/Empty.cs'
+        Assert ($res.Out.IndexOf('EMPTY ') -lt $res.Out.IndexOf('RECORDED ')) "the EMPTY line does not come before the RECORDED line: $($res.Out)"
+        $state = [IO.File]::ReadAllText((Join-Path $r $stateRel))
+        Assert ($state -notmatch "(?m)^(file|evidence)\t[^\n]*Empty\.cs") "the baseline still rests on the zero-byte file: $state"
+        $same = Impact $r
+        ExitIs $same 0; Has $same 'RESULT stop'
+        $only = Record $r @((Claim 'A2' 'scoped' $claimRepo @('src/Orders/Api/Controllers/Empty.cs')))
+        ExitIs $only 1
+        Assert ($only.Out -match 'INVALID: .*Empty\.cs.* matches only zero-byte files') "evidence resting on a zero-byte file alone was accepted: $($only.Out)"
+        Put (Join-Path $r 'src/Orders/Api/Controllers/Empty.cs') 'class EmptyController : ApiControllerBase {}'
+        $grown = Impact $r
+        ExitIs $grown 0
+        Assert ($grown.Out -match '(?m)^CLAIM changed-evidence [0-9a-f]{12} dotnet/A4: Every API controller') "the file that gained content did not mark its universal claim: $($grown.Out)"
+    } finally { Drop $r }
+}
 It 'a corrupt baseline asks for a full run' {
     $r = Fixture
     try {

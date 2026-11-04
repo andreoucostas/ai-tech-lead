@@ -30,6 +30,11 @@
   now refuses only a real junction or symbolic link. `template-checks` (run by `docs-sync-check`) stopped before any check when your
   repository's path held a `[`, and on Windows PowerShell 5.1 it then reported `AGENTS.md` and the hooks missing; it now runs every
   check there as it does at any other path. Nothing for you to change.
+- **The rebootstrap baseline no longer rests a convention on an empty file, and names it.** A zero-byte file a convention's evidence
+  matched was recorded as if it supported that convention. `/bootstrap` and `/rebootstrap` now leave it out of the baseline and list it
+  on an `EMPTY` line, and `/bootstrap` adds a `TECH_DEBT.md` item for it (delete the file or give it content) unless your register
+  already names it. A file that later gains content makes `/rebootstrap` recheck the conventions that match it. Your existing baseline
+  still reads; a convention whose recorded evidence included an empty file is rechecked once.
 
 ## 0.98.3 — 2026-10-31
 

@@ -302,7 +302,7 @@ After all accepted changes are applied, output:
 - **TECH_DEBT items added**: list by ID and title
 - **Hazard areas re-confirmed**: rows verified, re-pointed, retired, or left unanswered this run (or "none")
 - **Areas not re-analysed**: explicit list with reason (e.g., "unchanged since the baseline of <date>")
-- **Rebootstrap baseline**: each `PROFILE` line and the 3d `RECORDED` line, verbatim, or why none was recorded; each claim 3d left out because its change was not applied
+- **Rebootstrap baseline**: each `PROFILE` line and the 3d `RECORDED` line, verbatim, or why none was recorded; each 3d `EMPTY` path with its `TECH_DEBT.md` item; each claim 3d left out because its change was not applied
 - **Repository knowledge drafts and refresh**: new drafts, skipped duplicates/owner-routed items, changed evidence/dependency sources (including quiet callers), semantic refresh results, preserved verification dates, and unresolved/deleted/unavailable sources
 - **Declined recipes recorded**: list any `## Declined recipe:` blocks appended to `LEARNINGS.md` this run by the resurrection guard (or "none")
 - **Deterministic completion gate**: command run and PASS, failure, or CANT-VERIFY result.
