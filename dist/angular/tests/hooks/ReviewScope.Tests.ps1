@@ -335,4 +335,24 @@ It 'keeps two paths that differ only by letter case in the layer inventory and t
     }
 }
 
+It 'a caller''s GIT_LITERAL_PATHSPECS does not empty a path-filtered capture, which would read the :(literal) prefix as part of the file name' {
+    $repo = New-ReviewRepo; $bundle = New-BundlePath; $paths = $null
+    $prior = [Environment]::GetEnvironmentVariable('GIT_LITERAL_PATHSPECS', 'Process')
+    try {
+        [IO.File]::WriteAllText((Join-Path $repo 'tests/Foo.Tests.ps1'), "Assert 1`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $repo 'tests/New.Tests.ps1'), "Assert 'new'`n", [Text.UTF8Encoding]::new($false))
+        $paths = New-PathFile @('tests/Foo.Tests.ps1', 'tests/New.Tests.ps1')
+        $env:GIT_LITERAL_PATHSPECS = '1'
+        $result = Invoke-AtRepo $repo $builder @('-Mode','Uncommitted','-OutputPath',$bundle,'-PathFile',$paths)
+        Assert ($result.Exit -eq 0) "capture failed: $($result.Text)"
+        $selection = @((Read-Manifest $bundle).selection | ForEach-Object { "$($_.path)@$($_.layer)" })
+        Assert (($selection -ccontains 'tests/Foo.Tests.ps1@unstaged') -and ($selection -ccontains 'tests/New.Tests.ps1@untracked')) "the selected changes were not captured: $($selection -join ', ')"
+    } finally {
+        if ($null -eq $prior) { Remove-Item -LiteralPath Env:GIT_LITERAL_PATHSPECS -ErrorAction SilentlyContinue } else { $env:GIT_LITERAL_PATHSPECS = $prior }
+        Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $bundle -Recurse -Force -ErrorAction SilentlyContinue
+        if ($paths) { Remove-Item -LiteralPath $paths -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 exit (Write-TestSummary 'ReviewScope.Tests')

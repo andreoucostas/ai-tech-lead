@@ -57,6 +57,11 @@ function Invoke-GitBytes {
     $startInfo.RedirectStandardError = $true
     $startInfo.EnvironmentVariables['GIT_OPTIONAL_LOCKS'] = '0'
     $startInfo.EnvironmentVariables['GIT_NO_LAZY_FETCH'] = '1'
+    # A caller's pathspec switches would change what the selection means: GIT_LITERAL_PATHSPECS reads the ':(literal)'
+    # prefix as part of the file name, so a selected path matches nothing. Removed for git only; this process keeps them.
+    foreach ($name in @('GIT_LITERAL_PATHSPECS', 'GIT_GLOB_PATHSPECS', 'GIT_NOGLOB_PATHSPECS', 'GIT_ICASE_PATHSPECS')) {
+        [void]$startInfo.EnvironmentVariables.Remove($name)
+    }
     if ($script:PrivateIndexPath) { $startInfo.EnvironmentVariables['GIT_INDEX_FILE'] = $script:PrivateIndexPath }
     $process = New-Object Diagnostics.Process
     $process.StartInfo = $startInfo

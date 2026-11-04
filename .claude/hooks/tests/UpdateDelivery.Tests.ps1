@@ -3078,6 +3078,29 @@ It 'B-431 status: a file a team''s own line in .claude/.gitignore ignored stays 
     }
 }
 
+# GIT_LITERAL_PATHSPECS=1 makes Git read a ':(literal)' or ':(icase)' prefix as part of the file name, so the question
+# "what does Git ignore below .claude/" matched nothing and the token file lost its ignore line without a word.
+It 'B-461 a caller''s GIT_LITERAL_PATHSPECS around an update still keeps a file a team''s own .claude/.gitignore line ignored' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b461-' + [guid]::NewGuid())
+    $prior = [Environment]::GetEnvironmentVariable('GIT_LITERAL_PATHSPECS', 'Process')
+    try {
+        $team = [Text.UTF8Encoding]::new($false).GetBytes(((Get-B431ReleaseLines) + 'mcp.local.json' -join "`n") + "`n")
+        $t = New-B431Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/mcp.local.json' = "{`"token`":`"sk-live-FX-SECRET`"}`n" })
+        Assert ((Get-B431Committable $t).Count -eq 0) 'calibration: the token file is committable before the update'
+        $env:GIT_LITERAL_PATHSPECS = '1'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        if ($null -eq $prior) { Remove-Item -LiteralPath Env:GIT_LITERAL_PATHSPECS -ErrorAction SilentlyContinue } else { $env:GIT_LITERAL_PATHSPECS = $prior }
+        Assert ($exit -eq 0) "the update failed (exit $exit): $out"
+        $committable = Get-B431Committable $t
+        Assert ($committable -notcontains '.claude/mcp.local.json') "the team's ignore line was dropped, so its token file is committable: $($committable -join ', ') :: $out"
+        Assert (Test-B194BytesEqual (Get-B431Expected @('/mcp.local.json')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the update did not keep the token file ignored by one anchored line: $(Get-B431Text $t)"
+    } finally {
+        if ($null -eq $prior) { Remove-Item -LiteralPath Env:GIT_LITERAL_PATHSPECS -ErrorAction SilentlyContinue } else { $env:GIT_LITERAL_PATHSPECS = $prior }
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'B-431 status: no team line is copied, so a line identical to a framework line appears once, and each file another line ignored gets one anchored line with the glob characters in its name escaped' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-same-' + [guid]::NewGuid())
     try {

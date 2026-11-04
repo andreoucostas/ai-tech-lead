@@ -218,6 +218,10 @@ function Compare-ReleaseVersion {
     return 0
 }
 
+# A caller's pathspec switches change what every pathspec below means: GIT_LITERAL_PATHSPECS reads a ':(literal)' or
+# ':(icase)' prefix as part of the file name, so it matches nothing. Every git this installer runs goes without them,
+# and the caller's environment is left as it was.
+$script:GitPathspecSwitches = @('GIT_LITERAL_PATHSPECS', 'GIT_GLOB_PATHSPECS', 'GIT_NOGLOB_PATHSPECS', 'GIT_ICASE_PATHSPECS')
 # One git command in the framework clone, bounded by the check's shared deadline so that no remote can
 # hold the install: stdin is closed, Git's own prompts are off (terminal, Git Credential Manager, askpass),
 # and at the deadline the process tree is killed, prompt or not. $null means git could not be run.
@@ -241,6 +245,7 @@ function Invoke-SourceGit {
         # Empty, not absent: git then also skips core.askPass and SSH_ASKPASS.
         $psi.EnvironmentVariables['GIT_ASKPASS'] = ''
         $psi.EnvironmentVariables['SSH_ASKPASS_REQUIRE'] = 'never'
+        foreach ($name in $script:GitPathspecSwitches) { [void]$psi.EnvironmentVariables.Remove($name) }
         $proc = [System.Diagnostics.Process]::Start($psi)
         $proc.StandardInput.Close()
         $stdout = $proc.StandardOutput.ReadToEndAsync()
@@ -613,9 +618,13 @@ function Test-GitRepositoryEvidence {
 function Invoke-GitText {
     param([Parameter(Mandatory = $true)][string]$GitPath, [Parameter(Mandatory = $true)][string[]]$Arguments)
     $priorPreference = $ErrorActionPreference
+    # The native call inherits this process's environment, so the pathspec switches are cleared around it and restored.
+    $priorPathspec = @{}
+    foreach ($name in $script:GitPathspecSwitches) { $priorPathspec[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
     $stdout = @()
     $exitCode = $null
     try {
+        foreach ($name in $script:GitPathspecSwitches) { [Environment]::SetEnvironmentVariable($name, $null, 'Process') }
         $ErrorActionPreference = 'Continue'
         # LASTEXITCODE is maintained in the runspace's global scope. Creating a local variable here
         # shadows the value the native adapter updates and makes a successful launch look absent.
@@ -629,6 +638,7 @@ function Invoke-GitText {
         }
     } finally {
         $ErrorActionPreference = $priorPreference
+        foreach ($name in $script:GitPathspecSwitches) { [Environment]::SetEnvironmentVariable($name, $priorPathspec[$name], 'Process') }
     }
     $normalized = (@($stdout | ForEach-Object { ([string]$_).TrimEnd("`r") }) -join "`n")
     return [pscustomobject]@{
@@ -658,6 +668,7 @@ function Invoke-GitRecords {
     $start.CreateNoWindow = $true
     $start.RedirectStandardOutput = $true
     $start.RedirectStandardError = $true
+    foreach ($name in $script:GitPathspecSwitches) { [void]$start.EnvironmentVariables.Remove($name) }
     try {
         $process = [Diagnostics.Process]::Start($start)
         $stderr = $process.StandardError.ReadToEndAsync()
@@ -1343,6 +1354,7 @@ if ($Reinstall) {
         $start.Arguments = @($Arguments | ForEach-Object { ConvertTo-NativeArgument -Value $_ }) -join ' '
         $start.UseShellExecute = $false; $start.CreateNoWindow = $true
         $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
+        foreach ($name in $script:GitPathspecSwitches) { [void]$start.EnvironmentVariables.Remove($name) }
         try {
             $process = [Diagnostics.Process]::Start($start)
             $stderr = $process.StandardError.ReadToEndAsync()
