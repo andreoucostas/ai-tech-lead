@@ -347,6 +347,34 @@ try {
         }
     }
 
+    # The agents send the event as UTF-8. Read through [Console]::In it was decoded with the console's input code
+    # page, so on code page 437 (850, 1252) a file under a folder named with a u-umlaut arrived as a path that does
+    # not exist, the walk found no project or workspace, and a broken build or type-check passed unreported. The
+    # harness feeds UTF-8, so this is red on a console whose code page is not 65001 and green on one that is.
+    It 'a write under a folder with a non-ASCII name is still built or type-checked (both surfaces)' {
+        $folder = "M$([char]0xFC)ller"
+        foreach ($world in $worlds) {
+            $null = Reset-BuildWorld $world "@echo simulated build failure 1>&2`r`n@exit /b 1`r`n"
+            $probe = switch ($world.Name) { 'dotnet' { "$folder/Probe.cs" } 'tsc' { "$folder/tsconfig.json" } default { "src/$folder/probe.component.html" } }
+            Remove-Item -LiteralPath (Join-Path $tmp $folder) -Recurse -Force -ErrorAction SilentlyContinue
+            [void][IO.Directory]::CreateDirectory((Split-Path -Parent (Join-Path $tmp $probe)))
+            [IO.File]::WriteAllText((Join-Path $tmp $probe), 'probe')
+            $oldPath = $env:PATH
+            try {
+                $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
+                Remove-Item -LiteralPath (Join-Path $tmp '.claude/.state') -Recurse -Force -ErrorAction SilentlyContinue
+                $claude = Invoke-Hook $postWrite ('{"tool_name":"Write","tool_input":{"file_path":"' + $probe + '","content":"probe"}}')
+                Assert ($claude.Exit -eq 2 -and $claude.Err -match 'fix before continuing') "$($world.Name) Claude, $($probe): expected exit 2 with the failure on stderr, got exit $($claude.Exit), stderr: $($claude.Err.Trim())"
+                Remove-Item -LiteralPath (Join-Path $tmp '.claude/.state') -Recurse -Force -ErrorAction SilentlyContinue
+                $copilot = Invoke-Hook $postWrite ('{"toolName":"create","toolArgs":{"path":"' + $probe + '","file_text":"probe"}}')
+                Assert ($copilot.Exit -eq 0 -and $copilot.Out -match '"additionalContext"' -and $copilot.Out -match 'fix before continuing') "$($world.Name) Copilot, $($probe): expected exit 0 with the failure as additionalContext, got exit $($copilot.Exit), stdout: $($copilot.Out.Trim())"
+            } finally {
+                $env:PATH = $oldPath
+                Remove-Item -LiteralPath (Join-Path $tmp $folder) -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
     # apply_patch, in the envelopes Copilot CLI 1.0.95 sent its two hook files (fixtures/guard-patch-cases.ps1):
     # toolName apply_patch from .github/hooks/hooks.json gets the additionalContext JSON, tool_name Edit from
     # .claude/settings.json the exit 2. The patch's first file is one no check reads, so the checked file

@@ -27,6 +27,11 @@
   warehouse" rules, on the joins the map proves. Power BI authoring is out of scope. If a reporting view or procedure written this
   way comes out wrong or fails to publish, or your team keeps repeating the same steps for one, report it: that is what would
   change this.
+- **Build and type-check feedback now reaches the agent for files under a folder with an accented name, on any Windows console.** The
+  post-write hook read the event the agent sends in the console's code page, so on the code pages a default Windows console uses (437,
+  850, 1252) a written file under a folder such as `Müller\` arrived as a path that does not exist, and a broken build or type-check
+  after that write was never reported. It now reads the event as UTF-8, as the prompt, session-start, audit and write-guard hooks
+  already do; the console's own code page is left as it was.
 
 ## 0.98.3 — 2026-10-31
 

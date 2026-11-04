@@ -20,6 +20,11 @@
   change, and your agent already searches the code itself (Claude Code's tools, Copilot's workspace index). `AGENTS.md >
   Repository Structure` says where each kind of change goes and `/rebootstrap` updates it after a structural change;
   `docs/wiki/INDEX.md` holds your scoped claims. Nothing for you to change.
+- **Build and type-check feedback now reaches the agent for files under a folder with an accented name, on any Windows console.** The
+  post-write hook read the event the agent sends in the console's code page, so on the code pages a default Windows console uses (437,
+  850, 1252) a written file under a folder such as `Müller\` arrived as a path that does not exist, and a broken build or type-check
+  after that write was never reported. It now reads the event as UTF-8, as the prompt, session-start, audit and write-guard hooks
+  already do; the console's own code page is left as it was.
 
 ## 0.98.3 — 2026-10-31
 
