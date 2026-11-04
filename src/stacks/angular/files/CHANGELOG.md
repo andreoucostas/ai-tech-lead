@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.98.4 — Unreleased
+## 0.98.4 — 2026-11-04
 
 - **`docs/enforcement-surfaces.md` now says that VS Code 1.144.1's Copilot harness runs none of your hooks in a folder VS Code trusts.** Measured on
   2026-11-03: in trusted folders the write guard, build feedback, per-prompt rails, session preload, Boy Scout nudge and audit line all stayed
