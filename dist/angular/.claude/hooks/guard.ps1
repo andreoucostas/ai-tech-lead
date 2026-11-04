@@ -166,15 +166,17 @@ try { $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..')).Trim
 # that waited ~21 s per path, past the hosts' time limits. '/' is '\'; a relative path is taken under the
 # repository; '.' and '..' collapse here (a '..' above the repository leaves it); a drive path is cut at the
 # repository's root, ordinal-ignore-case, so the folders a checkout sits in decide nothing; '\\?\C:\...'
-# is 'C:\...'. A path that cannot be read this way is never under the repository: drive-relative (C:src),
-# rooted without a drive (\x), UNC, \\.\, a leading '~', a URI (file:), or a ':' anywhere past the drive
-# (a stream suffix). $null for those and for a path outside the repository.
+# is 'C:\...', and a UNC path's '\\server\share\' is its drive part (a repository opened as \\server\share\repo
+# or \\wsl.localhost\Ubuntu\...). A path that cannot be read this way is never under the repository:
+# drive-relative (C:src), rooted without a drive (\x), \\.\, \\?\UNC\, a leading '~', a URI (file:), or a ':'
+# anywhere past the drive (a stream suffix). $null for those and for a path outside the repository.
 function Get-RepositoryRelativePath([string]$Path) {
     if (-not $repoRoot) { return $null }
     $p = $Path.Replace('/', '\')
     if ([regex]::IsMatch($p, '^\\\\\?\\[A-Za-z]:\\')) { $p = $p.Substring(4) }
     $drive = ''
     if ([regex]::IsMatch($p, '^[A-Za-z]:\\')) { $drive = $p.Substring(0, 3); $p = $p.Substring(3) }
+    elseif (($unc = [regex]::Match($p, '^\\\\[^\\.?:][^\\:]*\\[^\\:]+\\')).Success) { $drive = $unc.Value; $p = $p.Substring($drive.Length) }
     elseif ($p.StartsWith('\', $ordinal) -or $p.StartsWith('~', $ordinal)) { return $null }
     if ($p.IndexOf(':') -ge 0) { return $null }
     $kept = New-Object System.Collections.Generic.List[string]
@@ -194,16 +196,25 @@ function Get-RepositoryRelativePath([string]$Path) {
     return $full.Substring($repoRoot.Length)
 }
 
-# The name the extension checks read. .NET and PowerShell resolve 'Foo.cs ' and 'Foo.cs.' to Foo.cs, so a
-# trailing space or dot is cut (Node keeps the literal name, which only makes this the safe side). Windows
-# also writes 'Foo.cs::$DATA' (an NTFS stream suffix, ':name[:type]' on the last segment) into Foo.cs itself,
-# so everything from the segment's first ':' is cut first. A drive designator ('C:Foo.cs') is not a stream.
+# The name the extension checks read: the last segment left once '.' and '..' collapse and empty segments drop,
+# as Node, which the hosts run on, resolves a path before it writes (Foo.cs\, Foo.cs\. and Foo.cs\x\.. all write
+# Foo.cs). .NET and PowerShell resolve 'Foo.cs ' and 'Foo.cs.' to Foo.cs, so a trailing space or dot is cut (Node
+# keeps the literal name, which only makes this the safe side). Windows also writes 'Foo.cs::$DATA' (an NTFS
+# stream suffix, ':name[:type]' on the last segment) into Foo.cs itself, so everything from the segment's first
+# ':' is cut first. A drive designator ('C:Foo.cs') is not a stream.
 function Get-CheckedFileName([string]$Path) {
-    $start = $Path.LastIndexOfAny([char[]]@('\', '/')) + 1
-    if ($start -eq 0 -and [regex]::IsMatch($Path, '^[A-Za-z]:')) { $start = 2 }
-    $colon = $Path.IndexOf(':', $start)
-    if ($colon -ge 0) { $Path = $Path.Substring(0, $colon) }
-    return $Path.TrimEnd(' ', '.')
+    if ([regex]::IsMatch($Path, '^[A-Za-z]:')) { $Path = $Path.Substring(2) }
+    $kept = New-Object System.Collections.Generic.List[string]
+    foreach ($segment in $Path.Split([char[]]@('\', '/'))) {
+        if ($segment.Length -eq 0 -or [string]::Equals($segment, '.', $ordinal)) { continue }
+        if ([string]::Equals($segment, '..', $ordinal)) { if ($kept.Count -gt 0) { $kept.RemoveAt($kept.Count - 1) }; continue }
+        $kept.Add($segment)
+    }
+    if ($kept.Count -eq 0) { return '' }
+    $name = $kept[$kept.Count - 1]
+    $colon = $name.IndexOf(':')
+    if ($colon -ge 0) { $name = $name.Substring(0, $colon) }
+    return $name.TrimEnd(' ', '.')
 }
 
 $blocked = New-Object System.Collections.Generic.List[object]
@@ -239,8 +250,9 @@ foreach ($write in $writes) {
     # Leading whitespace is [^\S\r\n]* (whitespace that cannot cross a line), never \s*: \s spans newlines,
     # which makes the scan quadratic on a long run of blank lines and stalls the hook. For the same reason a
     # modifier chain is bounded at three ({0,3}), never *: an open chain rescans a long run of chained names
-    # from every name in it.
-    if ([regex]::IsMatch($fileName, '\.(spec|test|cy)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) {
+    # from every name in it. An 8.3 short name such as APPSPE~1.TS, which Windows opens as app.spec.ts, has lost the
+    # infix, so a ~N name in those extensions is read as a test file too.
+    if ([regex]::IsMatch($fileName, '(\.(spec|test|cy)|~[0-9]+)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) {
         if ((Test-GuardPattern '(?m)^[^\S\r\n]*f(it|describe)\s*(\(|\.each\b)' 'test-defeat/suppression') -or (Test-GuardPattern '\b(it|test|describe|suite|context|specify)(\.(concurrent|sequential|fails|shuffle|fail|describe(\.(serial|parallel))?)){0,3}\.only\s*[(.`]' 'test-defeat/suppression')) { $reasons += "adds a focused test (fit/fdescribe/.only) — it silently skips the rest of the suite; remove it before committing" }
         # On test.skip, test.fixme and Vitest's context.skip only declaration forms count: a title (string,
         # template or X.name) followed by the body, a literal true, or a chained form such as test.skip.each.

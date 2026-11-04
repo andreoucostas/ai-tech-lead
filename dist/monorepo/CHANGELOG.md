@@ -46,6 +46,11 @@
   `api_key` gives `APİ_KEY` (a dotted capital İ) and lower-casing `API_KEY` gives `apı_key` (a dotless ı); since 0.98.2 the guard let a
   literal under the dotted form through, and it never caught the dotless one. Both are now refused like `API_KEY`, and so are
   `ConnectionString` and `ConnectionStrings` cased the same way. Nothing to do.
+- **The write guard recognises your test files again when the repository is opened through a network path, and checks more spellings
+  of a file name.** With the repository at `\\server\share\...` or `\\wsl.localhost\...`, 0.98.3 treated every test file as source and
+  refused its sample credentials; the share is now read as the repository's drive. A `.cs`, `.spec.ts` or similar name written with a
+  trailing `\`, `\.` or `\x\..`, or through its short 8.3 name (such as `APPSPE~1.TS` for `app.spec.ts`), now gets the same checks as
+  the plain name. A JavaScript or TypeScript file whose own name ends in `~` and a number is checked as a test file. Nothing to do.
 
 ## 0.98.3 — 2026-10-31
 

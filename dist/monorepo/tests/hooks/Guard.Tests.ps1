@@ -156,8 +156,8 @@ It 'guard: a repository under Development\test folders keeps the credential chec
 }
 
 # The path is read by its text alone. One the hook cannot read as a path under its repository exempts nothing:
-# a leading ~ (a home folder, which the host does not expand), a URI, a drive-relative, rooted, UNC or device
-# path, a stream suffix, or a '..' out of the repository. \\?\C:\... is the drive path C:\... .
+# a leading ~ (a home folder, which the host does not expand), a URI, a drive-relative, rooted or device path, a UNC
+# path on another host, a stream suffix, or a '..' out of the repository. \\?\C:\... is the drive path C:\... .
 It 'guard: a path the hook cannot read as under its repository is never exempt, and a \\?\ drive path is read as the drive path' {
     $base = Join-Path ([IO.Path]::GetTempPath()) ('guard-root-' + [guid]::NewGuid().ToString('N'))
     $root = Join-Path $base 'Development\test\shop'
@@ -189,6 +189,63 @@ It 'guard: a path the hook cannot read as under its repository is never exempt, 
             }
         }
     } finally { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# A repository opened through a UNC path (\\server\share\repo, \\wsl.localhost\Ubuntu\...) reads '\\server\share\' as the
+# drive part of a written path. The repository here is reached through this machine's administrative share \\localhost\<drive>$.
+$uncCase = 'guard: a repository opened through a UNC path keeps the exemption on its tests and the credential check on its source'
+$uncBase = Join-Path ([IO.Path]::GetTempPath()) ('guard-root-' + [guid]::NewGuid().ToString('N'))
+$uncTail = $uncBase.Substring(0, 1) + '$' + $uncBase.Substring(2)
+if (-not [regex]::IsMatch($uncBase, '^[A-Za-z]:\\') -or -not (Test-Path -LiteralPath ('\\localhost\' + $uncBase.Substring(0, 1) + '$\'))) {
+    Skip $uncCase "this machine has no administrative share \\localhost\$($uncBase.Substring(0, 1))`$ to reach the repository through"
+} else { It $uncCase {
+    $credential = 'var password = "hunter2hunter2";'
+    try {
+        $null = Copy-HookInto $guardPs (Join-Path $uncBase 'shop')
+        $uncRoot = '\\localhost\' + $uncTail + '\shop'
+        $hook = "$uncRoot\.claude\hooks\guard.ps1"
+        $writes = @(
+            @{ f = "$uncRoot\tests\AuthServiceTests.cs";                                  allowed = $true;  n = 'a UNC test path' }
+            @{ f = ($uncRoot.Replace('\', '/') + '/tests/AuthServiceTests.cs');           allowed = $true;  n = 'a UNC test path with forward slashes' }
+            @{ f = 'tests\AuthServiceTests.cs';                                           allowed = $true;  n = 'a relative test path' }
+            @{ f = "$uncRoot\src\AuthService.cs";                                         allowed = $false; n = 'a UNC source path' }
+            @{ f = "$uncRoot\tests\..\src\AuthService.cs";                                allowed = $false; n = 'a UNC path that leaves tests\ through ..' }
+            @{ f = ('\\fileserver\' + $uncTail + '\shop\tests\AuthServiceTests.cs');       allowed = $false; n = 'the same path on another host' }
+            @{ f = ('\\localhost\' + $uncTail.Substring(0, 2) + '\..\' + $uncTail + '\shop\tests\AuthServiceTests.cs'); allowed = $false; n = 'a .. above the share' }
+        )
+        foreach ($write in $writes) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $write.f $credential } else { New-CopilotEvent $write.f $credential }
+                $expected = if ($write.allowed) { 'ALLOW' } elseif ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }
+                Assert-Decision (Invoke-Hook $hook $evt) $expected "$($write.n) ($surface)"
+            }
+        }
+    } finally { Remove-Item -LiteralPath $uncBase -Recurse -Force -ErrorAction SilentlyContinue }
+} }
+
+# Node, which the hosts run on, resolves '.' and '..' and drops a trailing separator before it writes, so Foo.cs\, Foo.cs\. and
+# Foo.cs\x\.. all write Foo.cs (observed with Node's fs.writeFileSync); the extension checks read the name that walk leaves.
+It 'guard BLOCK (Claude) and DENY (Copilot): a trailing separator, \. or \x\.. after a .cs or .spec.ts name still reads that name' {
+    $writes = @(
+        @{ f = 'src\Foo.cs\';            c = '#pragma warning disable CS8602' }
+        @{ f = 'src/Foo.cs/.';           c = '#pragma warning disable CS8602' }
+        @{ f = 'src\Foo.cs\x\..';        c = '#pragma warning disable CS8602' }
+        @{ f = 'src/app.spec.ts/';       c = "fit('x', () => {});" }
+        @{ f = 'src\app.spec.ts\x\..';   c = "fit('x', () => {});" }
+    )
+    foreach ($write in $writes) {
+        foreach ($surface in 'Claude', 'Copilot') {
+            $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $write.f $write.c } else { New-CopilotEvent $write.f $write.c }
+            Assert-Decision (Invoke-Hook $guardPs $evt) $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "$($write.f) ($surface)"
+        }
+    }
+}
+# Windows opens an 8.3 short name (APPSPE~1.TS is app.spec.ts where the volume keeps short names), which has lost the .spec infix.
+It 'guard BLOCK (Claude) and DENY (Copilot): a focused test written through an 8.3 short name of a spec file' {
+    foreach ($surface in 'Claude', 'Copilot') {
+        $evt = if ($surface -eq 'Claude') { New-ClaudeEvent 'src\APPSPE~1.TS' "fit('x', () => {});" } else { New-CopilotEvent 'src\APPSPE~1.TS' "fit('x', () => {});" }
+        Assert-Decision (Invoke-Hook $guardPs $evt) $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "src\APPSPE~1.TS ($surface)"
+    }
 }
 
 # The hook reads its stdin as UTF-8, which is what the agents send, not through the console's input code page
