@@ -1270,7 +1270,10 @@ if ($Reinstall) {
             exit 3
         }
         if ($reinstallSkipped.Contains($trackedPath)) {
-            [Console]::Error.WriteLine("ERROR: Refusing reinstall: Git is told not to see local changes to '$trackedPath' (skip-worktree or assume-unchanged), so its bytes may differ from commit $reinstallCommit, and -Reinstall would delete them. Clear the flag (git update-index --no-skip-worktree --no-assume-unchanged -- $trackedPath), commit or discard the change, then re-run. Nothing was changed.")
+            # One update-index naming both --no- options clears only one flag, so each has its own command (a no-op without it).
+            $pasted = { param([string]$Text) if ($Text -cmatch '^[A-Za-z0-9_./-]+$') { $Text } else { "'" + $Text.Replace("'", "''") + "'" } }
+            $updateIndex = "git -C $(& $pasted $tgt) update-index"
+            [Console]::Error.WriteLine("ERROR: Refusing reinstall: Git is told not to see local changes to '$trackedPath' (skip-worktree or assume-unchanged), so its bytes may differ from commit $reinstallCommit, and -Reinstall would delete them. Clear the flag with both  $updateIndex --no-skip-worktree -- $(& $pasted $trackedPath)  and  $updateIndex --no-assume-unchanged -- $(& $pasted $trackedPath)  (one command naming both options clears only one), commit or discard the change, then re-run. Nothing was changed.")
             exit 4
         }
         try { $sweepFull = Get-ContainedTargetPath -Relative $trackedPath }
@@ -2577,6 +2580,9 @@ foreach ($relative in $deletePlan) {
     $retiredDeleted.Add([pscustomobject]@{ Relative = $relative; Path = $retiredPath; Bytes = $retiredBytes })
 }
 foreach ($done in $retiredDeleted) { Write-Output "  retired: $($done.Relative)" }
+# Every re-run a stop below prints needs each override this run was given, or it exits 4.
+$rerunOverrides = ''
+foreach ($override in @(@('-AllowDowngrade', $AllowDowngrade), @('-AllowOutdated', $AllowOutdated), @('-AllowStackChange', $AllowStackChange))) { if ($override[1]) { $rerunOverrides += " $($override[0])" } }
 # -Reinstall sweep: before the settings step and every copy. Nothing is put back on a failure; the commit holds every
 # deleted file, and the message says how to restore them.
 if ($Reinstall) {
@@ -2585,7 +2591,7 @@ if ($Reinstall) {
         $sweepPath = Get-ContainedTargetPath -Relative $relative
         try { Remove-Item -Force -LiteralPath $sweepPath -ErrorAction Stop }
         catch {
-            [Console]::Error.WriteLine("ERROR: Could not delete '$relative': $($_.Exception.Message). Every file this reinstall deleted is in commit ${reinstallCommit}: restore them with  git -C `"$tgt`" checkout $reinstallCommit -- .  then re-run with -Reinstall.")
+            [Console]::Error.WriteLine("ERROR: Could not delete '$relative': $($_.Exception.Message). Every file this reinstall deleted is in commit ${reinstallCommit}: restore them with  git -C `"$tgt`" checkout $reinstallCommit -- .  then re-run with -Reinstall$rerunOverrides.")
             exit 3
         }
         Write-Output "  removed: $relative"
@@ -2673,9 +2679,7 @@ function Stop-IncompleteCopy {
     $quote = { param([string]$Text) "'" + $Text.Replace("'", "''") + "'" }
     # A greenfield install ran no Git preflight, so its re-run line adds -AllowDirtyTree only when it was given: what Git shows may be the team's own.
     $greenfield = -not $updateMode -and -not $adoptMode
-    # The re-run needs each override this run was given, or it exits 4.
-    $flags = if ($greenfield -and -not $AllowDirtyTree) { '' } else { ' -AllowDirtyTree' }
-    foreach ($override in @(@('-AllowDowngrade', $AllowDowngrade), @('-AllowOutdated', $AllowOutdated), @('-AllowStackChange', $AllowStackChange))) { if ($override[1]) { $flags += " $($override[0])" } }
+    $flags = $(if ($greenfield -and -not $AllowDirtyTree) { '' } else { ' -AllowDirtyTree' }) + $rerunOverrides
     $rerun = "re-run  $followUpPowerShell $(& $quote $PSCommandPath)$flags $(& $quote $tgt)"
     if ($greenfield) {
         # With the stamp written the re-run is an update: its Done block is the update's, not /bootstrap's hand-off, and a Git tree holding the copies is dirty to it.
@@ -2688,9 +2692,9 @@ function Stop-IncompleteCopy {
     # greenfield again: the manifest puts the stamp before every adoption signal (UpdateDelivery.Tests.ps1, D4), so a plain re-run is the remedy.
     $stampWritten = $stampLast -or (Test-Path -LiteralPath (Get-ContainedTargetPath -Relative $stampRelative) -PathType Leaf)
     $again = if ($stampWritten) { $rerun }
-        elseif ($greenfield) { 're-run the installer' }
+        elseif ($greenfield) { "re-run the installer$(if ($rerunOverrides) { " with$rerunOverrides" })" }
         else { "delete the files this run copied into the target (a re-run would read them as an existing setup and archive them), then re-run the installer" }
-    if ($Reinstall) { $again = "restore the tree with  git -C $(& $quote $tgt) checkout $reinstallCommit -- .  , delete the files this run created that git status lists as untracked (leave .claude/framework-update-backup/, which an earlier update wrote), then re-run with -Reinstall" }
+    if ($Reinstall) { $again = "restore the tree with  git -C $(& $quote $tgt) checkout $reinstallCommit -- .  , delete the files this run created that git status lists as untracked (leave .claude/framework-update-backup/, which an earlier update wrote), then re-run with -Reinstall$rerunOverrides" }
     [Console]::Error.WriteLine("ERROR: Could not copy '$Relative': $($Reason.TrimEnd('.', ' ')). $Written of $($ordinaryApplyPaths.Count) framework files were written$stampNote. Resolve the cause (usually a program holding the file open), then $again.")
     exit 3
 }

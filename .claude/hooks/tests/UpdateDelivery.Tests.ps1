@@ -4401,6 +4401,30 @@ It 'D6 a greenfield install stopped after its stamp says its re-run reports an u
         Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
+
+# B-471 (b): a greenfield stopped before its stamp was told to "re-run the installer" without the -AllowOutdated it was given,
+# so following the line on an outdated checkout exits 4.
+It 'B-471 a greenfield install stopped before the version stamp names the override it was given in its re-run advice' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('upd-b471g-' + [guid]::NewGuid())
+    $commands = Join-Path $t '.claude/commands'
+    New-Item -ItemType Directory -Force -Path $commands | Out-Null
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $denied = $false
+    try {
+        & icacls $commands /deny "*${sid}:(WD,AD)" | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: icacls could not deny writes in .claude/commands'
+        $denied = $true
+        $out = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -AllowOutdated 2>&1 | Out-String
+        $exit = $LASTEXITCODE
+        $flat = $out -replace '\s+', ' '
+        Assert ($exit -eq 3 -and $out -match 'mode: greenfield') "calibration: the install was not stopped by the denied folder (exit $exit): $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-version.json'))) "calibration: the stop came after the version stamp: $out"
+        Assert ($flat -match 're-run the installer with -AllowOutdated\.') "the stop before the stamp does not say to re-run with -AllowOutdated: $out"
+    } finally {
+        if ($denied) { & icacls $commands /remove:d "*$sid" | Out-Null }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 # -Reinstall: delete the old framework surface of an install older than the retirement-ledger floor and install fresh.
 # The fixture is a real v0.26.0 install (built from the local tag), committed to Git, plus consumer-owned files.
 function New-ReinstallFixture {
@@ -4590,6 +4614,65 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
             Assert ($r.Exit -eq 4) "expected exit 4 with a skip-worktree file in the sweep, got $($r.Exit): $($r.Out)"
             Assert ($before -ceq (Get-ReinstallFingerprint $fx.Path)) "the refused run changed the tree: $($r.Out)"
         } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    # B-471 (b): the refusal printed one update-index naming both --no- options, which clears only assume-unchanged.
+    It 'B-471 reinstall: the skip-worktree refusal prints commands that, run as printed, clear the flag' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            & git -C $t update-index --skip-worktree -- .claude/settings.json 2>&1 | Out-Null
+            Assert ($LASTEXITCODE -eq 0) 'calibration: could not set skip-worktree'
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 4) "calibration: expected exit 4 with a skip-worktree file in the sweep, got $($r.Exit): $($r.Out)"
+            $flat = $r.Out -replace '\s+', ' '
+            $commands = @([regex]::Matches($flat, "git (?:-C (?:'[^']*'|[^\s']+) )?update-index (?:--no-[a-z-]+ )+-- (?:'[^']*'|[^\s'),]+)") | ForEach-Object { $_.Value })
+            Assert ($commands.Count -gt 0) "the refusal prints no update-index command: $($r.Out)"
+            Push-Location -LiteralPath $t
+            try { foreach ($command in $commands) { Invoke-Expression $command 2>&1 | Out-Null } } finally { Pop-Location }
+            $tag = (@(& git -C $t ls-files -v -- .claude/settings.json) -join '')
+            Assert ($tag -cmatch '^H ') "the printed commands ($($commands -join ' ; ')) left the flag set: ls-files -v reads '$tag'"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    # B-471 (b): the sweep's and the copy's stop lines said "re-run with -Reinstall" without the overrides the run was given,
+    # so following them exits 4 (here -AllowStackChange, which a stamp naming another stack needs).
+    It 'B-471 reinstall: a reinstall stopped in its sweep or in its copy names each override it was given in the re-run advice' {
+        $fx = New-ReinstallFixture
+        $t = $fx.Path
+        $specs = Join-Path $t 'specs'
+        $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+        $denied = $false
+        $handle = $null
+        try {
+            $stamp = Join-Path $t '.claude/framework-version.json'
+            [IO.File]::WriteAllText($stamp, ([IO.File]::ReadAllText($stamp) -replace '"template":\s*"[^"]*"', '"template": "angular"'), [Text.UTF8Encoding]::new($false))
+            [IO.File]::WriteAllText((Join-Path $specs 'team-spec.md'), "# a team spec`n", [Text.UTF8Encoding]::new($false))
+            & git -C $t add -A 2>&1 | Out-Null
+            & git -C $t commit -qm 'angular stamp, team spec' 2>&1 | Out-Null
+            Assert ($LASTEXITCODE -eq 0) 'calibration: could not commit the fixture change'
+            $switches = @('-Reinstall', '-AllowStackChange', '-AllowOutdated')
+            # Readable, so the reinstall's byte check passes; not deletable, so its sweep stops there.
+            $handle = [IO.File]::Open((Join-Path $t 'scripts/template-checks.ps1'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            $r = Invoke-ReinstallInstaller -Target $t -Switches $switches
+            $flat = $r.Out -replace '\s+', ' '
+            Assert ($r.Exit -eq 3 -and $flat -match "Could not delete 'scripts/template-checks\.ps1'") "calibration: the reinstall was not stopped in its sweep by the held file (exit $($r.Exit)): $($r.Out)"
+            Assert ($flat -match 're-run with -Reinstall -AllowOutdated -AllowStackChange\.') "the sweep's stop line does not carry the overrides: $($r.Out)"
+            $handle.Dispose(); $handle = $null
+            & git -C $t checkout -q HEAD -- . 2>&1 | Out-Null
+            Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String).Trim().Length -eq 0) 'calibration: the restored tree is not clean'
+            & icacls $specs /deny "*${sid}:(WD,AD)" | Out-Null
+            Assert ($LASTEXITCODE -eq 0) 'calibration: icacls could not deny writes in specs'
+            $denied = $true
+            $r = Invoke-ReinstallInstaller -Target $t -Switches $switches
+            $flat = $r.Out -replace '\s+', ' '
+            Assert ($r.Exit -eq 3 -and $flat -match "Could not copy 'specs/") "calibration: the reinstall was not stopped in its copy by the denied folder (exit $($r.Exit)): $($r.Out)"
+            Assert ($flat -match 're-run with -Reinstall -AllowOutdated -AllowStackChange\.') "the copy's stop line does not carry the overrides: $($r.Out)"
+        } finally {
+            if ($handle) { $handle.Dispose() }
+            if ($denied) { & icacls $specs /remove:d "*$sid" | Out-Null }
+            Remove-ReinstallTemp @($fx.Path)
+        }
     }
 
     It 'reinstall: an ignored file at a shipped path refuses, since no commit holds what the copy would overwrite' {
