@@ -2799,6 +2799,25 @@ if ($savesIntoBackup) {
         $seen = if ($null -eq $visible) { 'Git could not say what it would commit there.' } else { "Git can still commit $(if ($visible -eq 1) { '1 file' } else { "$visible files" }) there." }
         Write-Output "  CANT-VERIFY: every copy this update saves goes under $backupRelative/, $why $seen Copies there may hold files you had gitignored: do not commit that folder. Keep what you need under other paths, then delete it."
     }
+    # A copy of a tracked file Git was told not to see the local changes of holds content no commit holds, and Git treats an
+    # ignored file as expendable: checking out a branch that tracks the copy's path overwrites it with exit 0. Each is named.
+    $flaggedSources = Get-GitSkippedFiles
+    if ($null -ne $flaggedSources -and $flaggedSources.Count -gt 0) {
+        $flaggedCopies = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        foreach ($plan in @($updateBackups, $skillBackupPlan)) {
+            foreach ($entry in $plan) { if ($flaggedSources.Contains([string]$entry.SourceRelative)) { [void]$flaggedCopies.Add([string]$entry.Relative) } }
+        }
+        if ($layoutMove) {
+            if ($layoutMove.ClaudeBackup -and $flaggedSources.Contains('CLAUDE.md')) { [void]$flaggedCopies.Add([string]$layoutMove.ClaudeBackup) }
+            if ($layoutMove.BackupAgents -and $flaggedSources.Contains('AGENTS.md')) { [void]$flaggedCopies.Add([string]$layoutMove.AgentsBackup) }
+        }
+        if ($flaggedCopies.Count -gt 0) {
+            $copies = [string[]]@($flaggedCopies)
+            [Array]::Sort($copies, [StringComparer]::Ordinal)
+            $one = $copies.Count -eq 1
+            Write-Output "  NOTICE: $(if ($one) { '1 copy' } else { "$($copies.Count) copies" }) this update saved $(if ($one) { 'holds' } else { 'hold' }) local changes Git was told not to see (skip-worktree or assume-unchanged), which no commit holds: $($copies -join ', '). Git treats an ignored file as expendable, so checking out a branch that tracks the same path overwrites $(if ($one) { 'it' } else { 'them' }) without a warning: move $(if ($one) { 'it' } else { 'them' }) out of the repository before you switch branches."
+        }
+    }
 }
 if ($backupTracked -gt 0) {
     Write-Output "  NOTICE: Git tracks $(if ($backupTracked -eq 1) { '1 file' } else { "$backupTracked files" }) under $backupRelative/, which may hold copies of files you had gitignored; '*' hides only what Git does not track yet. Review them, then untrack them with  git rm -r --cached $backupRelative  and commit that. A secret once committed there stays in your Git history: rotate it, or rewrite that history."

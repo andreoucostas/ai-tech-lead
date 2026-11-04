@@ -2571,6 +2571,39 @@ It 'B-429 an update keeps out of Git the saved copy of a tracked file whose loca
     }
 }
 
+# B-440: Git treats an ignored file as expendable, so checking out a branch that tracks a backup path overwrote the saved copy of a
+# skip-worktree file's local content, which no commit holds, without a word (exit 0). The update names such copies so the team moves them out first.
+It 'B-440 an update names each saved copy of a file whose local changes Git was told not to see, and no other, with the checkout that can overwrite it' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b440-' + [guid]::NewGuid())
+    try {
+        $t = New-B429GitTarget -Root $root -Ignore "/scratch/`n"
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        New-Item -ItemType Directory -Force -Path (Join-Path $t 'docs'), (Join-Path $t '.claude/skills/team-tool') | Out-Null
+        # docs/reference.md is new in 0.95.0, so the update saves the team's file there before replacing it.
+        [IO.File]::WriteAllText((Join-Path $t 'docs/reference.md'), "# Team reference template`n", $utf8)
+        [IO.File]::WriteAllText((Join-Path $t '.claude/skills/team-tool/config.json'), "{}`n", $utf8)
+        [IO.File]::WriteAllText((Join-Path $t '.claude/skills/team-tool/SKILL.md'), "---`nname: team-tool`ndescription: team tool`n---`n", $utf8)
+        & git -C $t add -A
+        & git -C $t commit -qm 'team files'
+        & git -C $t update-index --skip-worktree docs/reference.md
+        & git -C $t update-index --assume-unchanged .claude/skills/team-tool/config.json
+        [IO.File]::WriteAllText((Join-Path $t 'docs/reference.md'), "# Team reference`nLOCAL-ONLY-FIXTURE-KEY`n", $utf8)
+        [IO.File]::WriteAllText((Join-Path $t '.claude/skills/team-tool/config.json'), "{`"key`":`"LOCAL-FIXTURE`"}`n", $utf8)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $referenceCopy = '.claude/framework-update-backup/files/docs/reference.md'
+        $configCopy = '.claude/framework-update-backup/skills/team-tool/config.json'
+        $skillCopy = '.claude/framework-update-backup/skills/team-tool/SKILL.md'
+        foreach ($copy in $referenceCopy, $configCopy, $skillCopy) { Assert (Test-Path -LiteralPath (Join-Path $t $copy) -PathType Leaf) "calibration: the update did not save $copy : $out" }
+        $notice = [regex]::Match($out, "(?m)^\s*NOTICE: [^\r\n]*told not to see[^\r\n]*")
+        Assert $notice.Success "no NOTICE names the saved copies of files Git was told not to see: $out"
+        Assert ($notice.Value.Contains("$referenceCopy, $configCopy") -and $notice.Value -match 'checking out a branch that tracks' -and $notice.Value -match 'before you switch branches') "the NOTICE does not name both copies and the checkout that can overwrite them: $($notice.Value)"
+        Assert (-not $notice.Value.Contains($skillCopy)) "the NOTICE names the copy of a file Git sees, whose content a commit holds: $($notice.Value)"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Write-B429Files {
     param([Parameter(Mandatory)][string]$Folder, [Parameter(Mandatory)][Collections.IDictionary]$Files)
     foreach ($name in $Files.Keys) {
