@@ -6747,3 +6747,17 @@ controls (its README), so a fresh driver outside the repository is used.
   the instrument is broken, no reading. One run per arm shows the mechanism, not a rate.
 - Stop: 3 runs plus at most one repeat per arm; premium requests and AI credits recorded.
 - Not shown: VS Code (no repository hook runs in a trusted folder there, B-475), the Boy Scout scan itself, other models, how often a block-driven extra turn changes code.
+
+## B-380 result — arms N, T, S, 2026-11-04 (pre-registered at ed776d72)
+
+- Valid, all three: Copilot CLI 1.0.98, `claude-sonnet-5.5`, no error event, exit 0 in 9-12 s; the hook fired (log lines 1, 2, 2); S has `subagent.started`/`completed`. No
+  tool call in any arm read the hook file or the environment (N and T made none; S made only the `task` call). No repeat.
+- N: one firing, `stopReason` `end_turn`, `stop_hook_active` false; one assistant message "DONE"; no token anywhere. 1 premium request, 6.69 AI credits.
+- T: two firings; the first printed the block; the runtime added a `user.message` carrying the reason (event 9), a second assistant message replied "DONE\n<token>" (event
+  12), and the second firing had `stop_hook_active` true. 2 premium requests (the continuation is billed as a second request), 2.40 AI credits.
+- S: the first firing came from the subagent's turn, with a different `sessionId` and extra keys `agentId`, `agentType` (`general-purpose`), `parentAgentId` (the main session).
+  Its block was returned (`hook.end` output) but the subagent completed with "PONG" and no continuation; that spent the once-counter, so the main turn's firing (no agent keys,
+  `stop_hook_active` false) did not block and the main answer was "DONE" without the token. The session ended normally. 1 premium request, 8.83 AI credits.
+- Readings, as fixed: T echoed the token after a second assistant turn and N did not, so the block reaches the model on CLI 1.0.98 and a Boy Scout `agentStop` block is a
+  candidate, guarded by a once-per-turn counter of its own. S had a firing attributable to the subagent turn, so an adoption must tell subagent turns apart; the payload key
+  `parentAgentId` (or `agentId`) does. Not a reading: each block-driven continuation costs one premium request on this host. One run per arm shows the mechanism, not a rate.

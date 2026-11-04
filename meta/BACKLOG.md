@@ -78,9 +78,9 @@ design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B.
 ### B-380 · Measure an `agentStop` `decision: block` for the Boy Scout nudge on Copilot, replacing the next-prompt queue
 **Filed against:** v0.94.0 (2026-10-11)
 **Priority:** P3 · **Effort:** M · **Invariants:** #5 #7
-**Status:** Open; maintainer request 2026-10-11; unblocked the same day by B-377, which saw the next-prompt queue still delivered on CLI 1.0.95 and `agentStop` fire in a `-p` run. The Copilot runtime documents
-`{"decision":"block","reason":...}` on `agentStop` (at most 8 in a row, `stop_hook_active` on re-entry); VS Code's Local harness maps `agentStop` to `Stop` and needs the `hookSpecificOutput` form or exit 2. copilot-cli
-issue #3894 (open, not primary) reports `agentStop` firing on subagent turns and stalling `/review`, so run `meta/canaries/agent-stop-delivery/` with the review fan-out before changing `boy-scout-check.ps1`.
+**Status:** Open; mechanism measured 2026-11-04 on CLI 1.0.98 (`meta/eval-results.md`, pre-registered at ed776d72): a block reaches the model as a second turn (control clean), `stop_hook_active` is
+true on re-entry, each continuation costs one premium request, and `agentStop` also fires on subagent turns, whose payload carries `parentAgentId`. Left, maintainer's call: adopt in `boy-scout-check.ps1`
+(guarded) skipping payloads with `parentAgentId` and blocking at most once per turn, or keep the next-prompt queue to save the premium request. VS Code untestable until microsoft/vscode#345931.
 
 ### B-403 · Measure whether the plan gate asks its tech-lead questions before it plans
 **Filed against:** v0.96.0 (2026-10-14)
