@@ -92,6 +92,35 @@ It 'guard BLOCK (Claude) and DENY (Copilot) under tr-TR: credential literals und
         }
     } finally { Remove-Item -LiteralPath $wrapper -Force -ErrorAction SilentlyContinue }
 }
+# tr-TR upper-cases i to a dotted capital I (U+0130) and lower-cases I to a dotless i (U+0131); a key name cased that way is still the key.
+It 'guard BLOCK (Claude) and DENY (Copilot) under tr-TR: credential literals under key names in Turkish casing (dotted capital I, dotless small i)' {
+    $wrapper = Join-Path ([IO.Path]::GetTempPath()) ('guard-tr-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    $text = "[Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::new('tr-TR')`n" +
+        "if ([regex]::IsMatch('I', 'i', 'IgnoreCase')) { exit 3 }`n& '" + $guardPs.Replace("'", "''") + "'`nexit `$LASTEXITCODE`n"
+    [IO.File]::WriteAllText($wrapper, $text, (New-Object System.Text.UTF8Encoding($true)))
+    $value = 'Zq8v' + 'R2mK4tW7xN'   # assembled at run time, as the outgoing-commit guard asks
+    $dotted = [string][char]0x0130; $dotless = [string][char]0x0131
+    $writes = @(
+        @{ n = 'AP(U+0130)_KEY';                  f = 'src/Client.cs'; c = "const string AP${dotted}_KEY = `"$value`";" }
+        @{ n = 'ap(U+0131)_key';                  f = '.env.local.json'; c = "{ `"ap${dotless}_key`": `"$value`" }" }
+        @{ n = 'CONNECT(U+0130)ONSTR(U+0130)NG';  f = 'src/Db.cs'; c = "const string CONNECT${dotted}ONSTR${dotted}NG = `"Server=db;User Id=app;Password=$value;`";" }
+        @{ n = 'connect(U+0131)onstr(U+0131)ng';  f = 'src/Db.cs'; c = "var connect${dotless}onstr${dotless}ng = `"Server=db;User Id=app;Password=$value;`";" }
+        @{ n = 'CONNECT(U+0130)ONSTR(U+0130)NGS'; f = 'src/Api/appsettings.json'; c = "{ `"CONNECT${dotted}ONSTR${dotted}NGS`": { `"Main`": `"Server=db;User Id=app;Password=$value;`" } }" }
+        @{ n = 'connect(U+0131)onstr(U+0131)ngs'; f = 'src/Api/appsettings.json'; c = "{ `"connect${dotless}onstr${dotless}ngs`": { `"Main`": `"Server=db;User Id=app;Password=$value;`" } }" }
+    )
+    try {
+        foreach ($write in $writes) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $write.f $write.c } else { New-CopilotEvent $write.f $write.c }
+                $r = Invoke-Hook $wrapper $evt
+                Assert ($r.Exit -ne 3) 'tr-TR did not take in the wrapper (exit 3), so nothing was examined'
+                Assert-Decision $r $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "tr-TR, $surface, $($write.n)"
+                $reason = if ($r.Exit -eq 2) { [string]$r.Err } else { [string]($r.Out | ConvertFrom-Json).permissionDecisionReason }
+                Assert ($reason.Contains('hardcoded credential literal')) "tr-TR, $surface, $($write.n): blocked for another reason -- $reason"
+            }
+        }
+    } finally { Remove-Item -LiteralPath $wrapper -Force -ErrorAction SilentlyContinue }
+}
 
 # --- The test/sample exemption reads the written path under the repository the hook belongs to ---
 # A checkout that itself sits under folders named Development, test or samples must keep the credential

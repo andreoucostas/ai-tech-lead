@@ -15,7 +15,9 @@
 $ErrorActionPreference = 'SilentlyContinue'
 # Case-insensitive patterns fold case culture-invariantly ($ci) and string comparisons are ordinal:
 # under tr-TR the current culture folds 'I' to a dotless i (U+0131), so a culture-following (?i)
-# api[_-]?key missed API_KEY and let its literal through. -match and inline (?i) follow the culture.
+# api[_-]?key missed API_KEY and let its literal through. -match and inline (?i) follow the culture. The invariant
+# fold does not equate i with what tr-TR makes of it, a dotted capital I (U+0130) upper-cased or a dotless i (U+0131)
+# lower-cased, so a credential key name spells each i as [i\u0130\u0131].
 $ci = [Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [Text.RegularExpressions.RegexOptions]::CultureInvariant
 $ordinal = [StringComparison]::Ordinal
 $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
@@ -323,7 +325,7 @@ foreach ($write in $writes) {
         # in one: without it each password= in a literal that never closes rescanned the run to its end, so a
         # long enough write outlasted the hook's time limit. The same writes match as before.
         $credentialHit = $false
-        foreach ($m in [regex]::Matches($content, '(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|client[_-]?secret)["'' ]*[:=]\s*["''](?<v>[^"'']{8,})["'']|connectionstring["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']|connectionstring["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']', $ci)) {
+        foreach ($m in [regex]::Matches($content, '(password|passwd|pwd|secret|ap[i\u0130\u0131][_-]?key|access[_-]?key|client[_-]?secret)["'' ]*[:=]\s*["''](?<v>[^"'']{8,})["'']|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']', $ci)) {
             if (Test-CredentialMatch $m) { $credentialHit = $true; break }
         }
         # appsettings.json's standard layout names each connection string inside a ConnectionStrings
@@ -331,7 +333,7 @@ foreach ($write in $writes) {
         # The section capture skips whole strings, so a brace inside a value (ODBC Driver={...}) does not
         # end it; atomic groups keep both patterns linear on Windows PowerShell 5.1.
         if (-not $credentialHit) {
-            foreach ($section in [regex]::Matches($content, '"connectionstrings"\s*:\s*\{((?:(?>"(?:[^"\\]|\\.)*")|[^{}"])*)', $ci)) {
+            foreach ($section in [regex]::Matches($content, '"connect[i\u0130\u0131]onstr[i\u0130\u0131]ngs"\s*:\s*\{((?:(?>"(?:[^"\\]|\\.)*")|[^{}"])*)', $ci)) {
                 foreach ($entry in [regex]::Matches($section.Groups[1].Value, '"[^"]*"\s*:\s*"[^"]*(?:(?:password|pwd)\s*=\s*(?<v>(?>[^;"]{4,}))|://[^/\s:@"]+:(?<v>[^/\s@"]+)@)[^"]*"', $ci)) {
                     if (Test-CredentialMatch $entry) { $credentialHit = $true; break }
                 }

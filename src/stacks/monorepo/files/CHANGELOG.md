@@ -42,6 +42,10 @@
   on an `EMPTY` line, and `/bootstrap` adds a `TECH_DEBT.md` item for it (delete the file or give it content) unless your register
   already names it. A file that later gains content makes `/rebootstrap` recheck the conventions that match it. Your existing baseline
   still reads; a convention whose recorded evidence included an empty file is rechecked once.
+- **The write guard again refuses a hardcoded credential under a key name in Turkish casing.** On a machine set to Turkish, upper-casing
+  `api_key` gives `APİ_KEY` (a dotted capital İ) and lower-casing `API_KEY` gives `apı_key` (a dotless ı); since 0.98.2 the guard let a
+  literal under the dotted form through, and it never caught the dotless one. Both are now refused like `API_KEY`, and so are
+  `ConnectionString` and `ConnectionStrings` cased the same way. Nothing to do.
 
 ## 0.98.3 — 2026-10-31
 
