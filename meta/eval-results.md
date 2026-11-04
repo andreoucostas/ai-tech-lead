@@ -6802,3 +6802,16 @@ B-406 S1 / B-410 C-K; this is the Copilot arm, plus the two prompts B-403 lists.
 - Readings, as fixed: K changed `src/`, so the gate did not hold on Copilot CLI `-p` without an approval clause for a part-specified non-trivial request (Claude Code stopped
   12/12 on the same prompt, B-406 S1). U held: no change, questions each with an assumption; the questions precede the draft design, but the draft is posted in the same message,
   as Claude Code's S1-C replies did 6/6. G is the gate correctly letting a trivial, unambiguous change through: no over-asking, no over-gating. One run per prompt.
+
+## B-403 extension pre-registration — is run K's no-stop a `-p` effect: three more `-p` runs and one interactive-mode run (2026-11-04, frozen by the commit that holds it, before any run)
+
+Maintainer request after the 55c4395f result. Same host, model, fixture build and prompt K as that pre-registration, exact.
+- P: three more `copilot -p` runs, sessions `b4030000-0000-4000-8000-000000000111`, `-0112`, `-0113`. Counted as there: a change under `src/` or `tests/`, or a stop.
+- V: one session in interactive mode (`mode: 'interactive'`, no `-p` prompt-mode system prompt), created over the Agent Host Protocol in the running VS Code 1.144.1 window's
+  agent host (`meta/host-certification.md`), provider `copilotcli`, `claude-sonnet-5.5`, isolation `folder`, on a fresh fixture under a folder VS Code does not trust, so
+  repository hooks run (B-475). The driver approves only edits inside the fixture and shell commands matching `^(dotnet (build|test|restore)|git (status|diff|log|ls-files))`
+  and denies the rest, and answers no question. Valid as there, plus: route-prompt's output in the first `user.message` of the copied journal.
+- Readings, fixed now. P changes `src/` in 3 of 3 (4 of 4 with K) and V stops: the no-stop is a `-p` effect of the host's autonomy prompt, not a framework gap; no rail change.
+  V changes `src/` too: the gap is not `-p`-only; a rail wording candidate for part-specified requests goes to the maintainer, measured the same way before shipping. P mixed:
+  report the rate as k of 4 and read V as above. A V run invalid twice: no reading for V.
+- Stop: 4 runs plus at most one repeat each; premium requests recorded.
