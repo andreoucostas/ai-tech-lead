@@ -54,6 +54,15 @@
   was not registered on, so a key or token written into a cell was not caught. The guard now reads the cell's new text and blocks it like
   any other write; deleting a cell is not checked, so you can still remove a leaked key. Nothing for you to change; an update brings the
   new `.claude/settings.json` registration.
+- **An update keeps your ignored files ignored even when `GIT_LITERAL_PATHSPECS` is set in your environment.** With that variable set
+  (or `GIT_GLOB_PATHSPECS`, `GIT_NOGLOB_PATHSPECS` or `GIT_ICASE_PATHSPECS`), Git matched none of the installer's exact-path questions.
+  An update could rewrite `.claude/.gitignore` and leave a file that your own line there had ignored, a local token file say,
+  committable without a word, and `scripts/review-scope.ps1` captured nothing for a path-filtered review. Both now run Git without
+  those variables. Your shell keeps them.
+- **On Windows PowerShell 5.1 without long-path support, an install or update whose files would reach 260 characters now stops before
+  changing anything.** It used to read such a path as missing, then stop partway through copying with "Could not find a part of the
+  path". It now names the longest path and tells you to run the installer with PowerShell 7 (`pwsh`), turn on Windows'
+  `LongPathsEnabled` setting, or move the repository to a shorter path. PowerShell 7 was never affected.
 
 ## 0.98.3 — 2026-10-31
 

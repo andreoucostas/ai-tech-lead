@@ -2366,7 +2366,29 @@ if ($updateMode -and -not $Reinstall) {
 
 $adoptionMarkerRelative = $null
 if ($adoptMode) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
-$modeName = if ($Reinstall) { 'reinstall' } elseif ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
+# Windows PowerShell 5.1 can write a path of 260 characters or more, or create a folder of 248 or more, only where
+# Windows lets it use long paths (the LongPathsEnabled setting); PowerShell 7 always can. Without that, it reads such a
+# path as absent and cannot write it, so a run stopped partway at its first deep write, an update's saved copy (39 or
+# more characters longer than its original) say. Checked before the first change; Windows is asked only for such a path.
+$tooLongPaths = @(@($createPlan) + @($replacePlan) + @($archivePlan | ForEach-Object { $_.Relative }) | Where-Object { $_ } | ForEach-Object {
+    $full = Get-ContainedTargetPath -Relative $_
+    $parent = [IO.Path]::GetDirectoryName($full)
+    if ($full.Length -ge 260 -or ($parent.Length -ge 248 -and -not (Test-Path -LiteralPath $parent -PathType Container))) { $full }
+})
+if ($tooLongPaths.Count -gt 0 -and $PSVersionTable.PSEdition -eq 'Desktop') {
+    $longPathsOn = $false
+    try {
+        if (-not ('AtlInstall.LongPaths' -as [type])) { Add-Type -Namespace AtlInstall -Name LongPaths -MemberDefinition '[DllImport("ntdll.dll")] public static extern byte RtlAreLongPathsEnabled();' }
+        $longPathsOn = ('AtlInstall.LongPaths' -as [type])::RtlAreLongPathsEnabled() -ne 0
+    } catch { $longPathsOn = $false }
+    if (-not $longPathsOn) {
+        $longest = @($tooLongPaths | Sort-Object Length -Descending)[0]
+        $others = if ($tooLongPaths.Count -gt 1) { " and $($tooLongPaths.Count - 1) other path$(if ($tooLongPaths.Count -gt 2) { 's' }) that long" } else { '' }
+        [Console]::Error.WriteLine("ERROR: Refusing ${runName}: it must write '$longest' ($($longest.Length) characters)$others, and Windows PowerShell 5.1 cannot write a path of 260 characters or more, or create a folder of 248 or more, while Windows long-path support (the LongPathsEnabled setting) is off. Run the installer with PowerShell 7 (pwsh), turn that setting on, or move the repository to a shorter path, then re-run. Nothing was changed.")
+        exit 3
+    }
+}
+$modeName =if ($Reinstall) { 'reinstall' } elseif ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
 if ($layoutMessage) { Write-Output "  $layoutMessage" }
 foreach ($message in $saveMessages) { Write-Output "  $message" }
 Write-Output "OPERATION-PLAN schema=1 mode=$modeName"

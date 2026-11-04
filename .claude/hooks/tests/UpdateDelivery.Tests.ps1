@@ -2297,6 +2297,61 @@ It 'B-393 an update refuses before any change when both save names for a team''s
     }
 }
 
+# Windows decides once per process whether it may use a path of 260 characters or more (the LongPathsEnabled setting and
+# the program's manifest) and keeps the answer in the process's PEB. Clearing it there makes Windows PowerShell 5.1 on this
+# host behave as on one where the setting is off: it reads a long path as absent and cannot write it. PowerShell 7's .NET
+# handles a long path itself either way. The installer runs in that process, as the root dispatcher runs it.
+$b432Wrapper = @'
+param([string]$Installer, [string]$Target)
+$env:ATL_SOURCE_CHECK = 'off'
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class B432Peb {
+    [StructLayout(LayoutKind.Sequential)]
+    struct Pbi { public IntPtr ExitStatus; public IntPtr Peb; public IntPtr AffinityMask; public IntPtr BasePriority; public IntPtr Pid; public IntPtr ParentPid; }
+    [DllImport("ntdll.dll")] static extern int NtQueryInformationProcess(IntPtr process, int infoClass, ref Pbi info, int length, out int returned);
+    [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+    [DllImport("ntdll.dll")] public static extern byte RtlAreLongPathsEnabled();
+    public static void ClearLongPathAware() { Pbi p = new Pbi(); int r; NtQueryInformationProcess(GetCurrentProcess(), 0, ref p, Marshal.SizeOf(p), out r); Marshal.WriteByte(p.Peb, 3, (byte)(Marshal.ReadByte(p.Peb, 3) & 0x7F)); }
+}
+"@
+[B432Peb]::ClearLongPathAware()
+Write-Output "B432-LONG-PATHS=$([B432Peb]::RtlAreLongPathsEnabled())"
+& $Installer -Target $Target
+exit $LASTEXITCODE
+'@
+It 'B-432 without Windows long-path support an update on Windows PowerShell 5.1 refuses before any change when a save path reaches 260 characters, naming it and the setting; PowerShell 7 saves it' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b432-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+    try {
+        # 195 characters: every file the release ships fits below 260, and the team file's save path does not.
+        $t = $root
+        while ($t.Length -lt 183) { $t = Join-Path $t 'deepfolder' }
+        $t = Join-Path $t ('t' * (194 - $t.Length))
+        $gateBytes = New-B393Target -Target $t
+        $save = Join-Path $t '.claude/framework-update-backup/files/_.claude/commands/security-gate.md'
+        Assert ($t.Length -eq 195 -and $save.Length -ge 260 -and ($t.Length + 1 + 52) -lt 260) "calibration: the target is $($t.Length) characters and its save path $($save.Length)"
+        $wrapper = Join-Path $root 'b432-wrapper.ps1'
+        [IO.File]::WriteAllText($wrapper, $b432Wrapper, [Text.UTF8Encoding]::new($true))
+        $before = Get-B194Fingerprint -Root $t
+        # Read raw: Windows PowerShell 5.1 renders a child's stderr as error records wrapped at the console width.
+        $run = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $wrapper, '-Installer', (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), '-Target', $t)
+        $out = $run.Out + "`n" + $run.Err
+        $exit = $run.Exit
+        Assert ($out -match 'B432-LONG-PATHS=0') "calibration: the process still has long-path support: $out"
+        if ($PSVersionTable.PSEdition -eq 'Desktop') {
+            Assert ($exit -eq 3) "the update did not refuse with exit 3 (exit $exit): $out"
+            Assert (($out -replace '\s+', ' ') -match ("ERROR: Refusing update: it must write '" + [regex]::Escape($save.Replace('/', '\')) + "' \($($save.Length) characters\), and Windows PowerShell 5\.1 cannot write a path of 260 characters or more, or create a folder of 248 or more, while Windows long-path support \(the LongPathsEnabled setting\) is off\. Run the installer with PowerShell 7 \(pwsh\), turn that setting on, or move the repository to a shorter path, then re-run\. Nothing was changed\.")) "the refusal did not name the path and the setting: $out"
+            Assert ((Get-B194Fingerprint -Root $t) -ceq $before) "the refused update changed the target: $out"
+        } else {
+            Assert ($exit -eq 0) "the update failed (exit $exit): $out"
+            Assert ((Test-Path -LiteralPath $save -PathType Leaf) -and (Test-B194BytesEqual $gateBytes ([IO.File]::ReadAllBytes($save)))) "the team's file was not saved at its long save path: $out"
+        }
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'B-393 a link never carries a save: a linked folder on a new framework path refuses the update unchanged, and a hard link at the save path is no save' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b393-link-' + [guid]::NewGuid())
     try {
