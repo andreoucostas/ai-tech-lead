@@ -6830,3 +6830,11 @@ Maintainer request after the 55c4395f result. Same host, model, fixture build an
 - V2, pre-registered now: as V on a fresh fixture, but prompt 1 is "What does this repository do? Answer in one sentence and change nothing." and prompt 2 is K, in the same
   chat. Valid as V, with route-prompt's output (`Routed intent:`) in the second `user.message`'s `transformedContent`. Readings as V's at 79a175a0, read on prompt 2: a stop
   with no change is the `-p` effect; a change under `src/` or `tests/` means the gap is not `-p`-only. Stop: 1 run plus one repeat if invalid.
+
+## B-403 V2 result (2026-11-04, pre-registered at 387b9cd5)
+
+- Valid: VS Code 1.144.1 agent host, interactive mode, `claude-sonnet-5.5`, no error event; prompt 1 got VS Code's `<workspace_info>` (as V), prompt 2's `user.message` carries
+  `Routed intent: feature` and the plan gate. Prompt 2: reads only (view, glob, grep), no change in `git status`. It opened "I've read the code and haven't edited anything …
+  I'm posting a design for you to approve first", then Done-when lines, evidence with file links, and numbered open questions each with its assumption in brackets.
+- Reading, as fixed: a stop with no change, so run K's no-stop (4 of 4 under `copilot -p`) is a `-p` effect of the host's autonomy prompt, not a framework gap; no rail change.
+  One interactive run.

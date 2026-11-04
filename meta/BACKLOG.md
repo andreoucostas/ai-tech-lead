@@ -78,7 +78,7 @@ design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B.
 **Priority:** P3 · **Effort:** M · **Invariants:** #5
 **Status:** Open; shipped unmeasured (WSD-111 precedent, plan `.claude/plans/2026-10-14-plan-gate-tech-lead-interview.md`). B-406 S1 shows Claude Code `-p` without the approval clause stops
 before writing (12/12 T, 6/6 C); hand-read, the S1-C replies ask 3-5 questions with an assumption each 6/6 and post the plan in the same message 6/6. B-410's C-K leg 1 repeated it on HEAD: 28 questions, 27 with an assumption, the plan in the same message 6/6.
-Copilot CLI arm measured 2026-11-04 (pre-registered at 55c4395f): an underspecified prompt stops with five questions, each with its assumption; a no-gap one goes straight through; S1's part-specified prompt was implemented without a stop (Claude Code 12/12 stopped). Left: the maintainer decides whether that K result is a defect worth a rail change (one run, `-p` mode); Claude Code on U and G unmeasured.
+Copilot CLI arm measured 2026-11-04 (pre-registered at 55c4395f): an underspecified prompt stops with five questions, each with its assumption; a no-gap one goes straight through; S1's part-specified prompt was implemented without a stop under `copilot -p` 4 of 4, but an interactive-mode session with the rails stopped with a design and questions (V2), so that is the host's `-p` autonomy prompt, not a framework gap; no rail change. Left: Claude Code on U and G.
 
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 
