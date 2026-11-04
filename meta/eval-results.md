@@ -6724,3 +6724,26 @@ always-loaded file, only in `.claude/workflow.md`, so the label in the closing m
 - Observed, not a reading: the sentence did get the file read in full, so the fixed candidate (naming `.claude/workflow.md` in the four `.agents/skills` wrappers) targets
   reach, which this run did not lack; what was missing is applying the label. The closing list carried calibration content unlabelled ("only checks the source text…",
   "the C# has not been compiled"), which this measurement does not grade. One run shows the mechanism, not a rate.
+
+## B-380 pre-registration — does a Copilot CLI `agentStop` `decision: block` reach the model, and does it misfire on a subagent turn (2026-11-04, frozen by the commit that holds it, before any run)
+
+B-380 asks whether the Boy Scout nudge can be delivered at turn end by `{"decision":"block","reason":...}` on `agentStop` instead of the next-prompt queue. This measures the
+host mechanism only, in a bare canary repository with no framework installed; `boy-scout-check.ps1` is not changed or run. The kit in `meta/canaries/agent-stop-delivery/` lacks
+controls (its README), so a fresh driver outside the repository is used.
+
+- Host: Copilot CLI 1.0.98, Windows 11 Pro 10.0.26300, PowerShell 7.6.9, `--model claude-sonnet-5.5`; flags and environment as the B-464 leftover (2) pre-registration.
+- Fixture per arm: a fresh Git repository holding `README.md` and `.github/hooks/hooks.json` registering one `agentStop` PowerShell hook, which appends its stdin payload to a log
+  outside the fixture. Arm N: it only logs. Arms T and S: on its first firing it also prints `{"decision":"block","reason":"Before you finish, write one more line that says
+  exactly: <token>"}`, where `<token>` is a fresh random `STOPTOKEN-` string per arm; a counter outside the fixture makes it block at most once. Prompt N and T: "Answer with the
+  single word DONE." Prompt S: "Use your task tool to start exactly one subagent whose only job is to reply with the word PONG. When it returns, answer DONE."
+  Sessions `b3800000-0000-4000-8000-0000000000{N:01,T:02,S:03}`, a repeat adds 10.
+- Valid, else CANNOT-EXAMINE and one repeat: `session.start` 1.0.98, `claude-sonnet-5.5`, no auth, quota or model error, the hook fired at least once (log line); for S, a
+  subagent event in `events.jsonl`. A tool call that reads the hook file or the environment makes a token echo uncountable (T and S then read as no delivery evidence).
+- Counted from `events.jsonl` and the hook log: hook firings and their payload keys (is `stop_hook_active` or an equivalent present); assistant messages after the block; the token
+  in an assistant message; for S, whether any firing comes from the subagent's turn and whether the session ends with exit 0 under 10 minutes.
+- Readings, fixed now: T echoes the token after a second assistant turn and N does not: the block reaches the model on this host, and a Boy Scout `agentStop` block is a candidate,
+  guarded by a once-per-turn counter of its own. T without the token: the block does not reach the model here; B-380 closes as not adoptable on CLI 1.0.98. S with a firing
+  attributable to the subagent turn, or a session that does not end: any adoption must tell subagent turns apart (by a payload key if one exists) or not ship. N echoing a token:
+  the instrument is broken, no reading. One run per arm shows the mechanism, not a rate.
+- Stop: 3 runs plus at most one repeat per arm; premium requests and AI credits recorded.
+- Not shown: VS Code (no repository hook runs in a trusted folder there, B-475), the Boy Scout scan itself, other models, how often a block-driven extra turn changes code.
