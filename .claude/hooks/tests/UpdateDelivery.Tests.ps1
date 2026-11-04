@@ -3571,6 +3571,44 @@ It 'B-449 the handoff names a framework file the install wrote where Git is told
     }
 }
 
+# B-471 (c): the layout move's CLAUDE.md stub is a write of this run, so a skip-worktree CLAUDE.md hides it from the commit as it
+# hides any framework file the install wrote.
+It 'B-471 the skip-worktree WARNING names CLAUDE.md when the instruction layout move rewrote it' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b471c-' + [guid]::NewGuid())
+    try {
+        $t = New-B429GitTarget -Root $root -Ignore "bin/`n"
+        [IO.File]::WriteAllText((Join-Path $t 'CLAUDE.md'), "# Project`n`nB471 consumer rule.`n", [Text.UTF8Encoding]::new($false))
+        & git -C $t add -A
+        & git -C $t commit -qm 'team files'
+        & git -C $t update-index --skip-worktree CLAUDE.md
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'moved: CLAUDE\.md -> AGENTS\.md') "calibration: the update did not move the instruction layout (exit $LASTEXITCODE): $out"
+        Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String) -notmatch '(?m)^ ?M CLAUDE\.md') 'calibration: Git shows the rewritten CLAUDE.md'
+        Assert ($out -cmatch "(?m)^WARNING: Git is told not to see local changes to [0-9]+ of the framework's own files \(skip-worktree or assume-unchanged\)[^\r\n]*: ([^\r\n]*, )?CLAUDE\.md[,.]") "the handoff does not name the CLAUDE.md stub the layout move wrote: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# B-471 (c): a greenfield in a repository whose Git this installer cannot run is "could not say", not "nothing flagged".
+It 'B-471 a greenfield install into a Git repository with no Git on PATH says it could not ask Git about skip-worktree files' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b471c2-' + [guid]::NewGuid())
+    try {
+        $g = New-B309GitTarget -Root $root -Name 'nogit' -Ignore "bin/`n"
+        $savedPath = $env:PATH
+        try {
+            $env:PATH = (@($savedPath -split ';' | Where-Object { $_ -and -not (Test-Path -LiteralPath (Join-Path $_ 'git.exe')) -and -not (Test-Path -LiteralPath (Join-Path $_ 'git.cmd')) }) -join ';')
+            Assert (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue)) 'calibration: git is still on PATH'
+            $blind = Invoke-Installer -Dist 'dotnet' -Target $g
+            $blindExit = $LASTEXITCODE
+        } finally { $env:PATH = $savedPath }
+        Assert ($blindExit -eq 0 -and $blind -match 'mode: greenfield') "calibration: the greenfield without Git on PATH did not finish (exit $blindExit): $blind"
+        Assert ($blind -cmatch "(?m)^NOTE: Git could not say whether it is told not to see local changes to any of the framework's files[^\r\n]*run  git ls-files -v  before committing") "a greenfield in a repository whose Git could not run says nothing about skip-worktree files: $blind"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'a disabled retired recipe skill: the update finishes, carries the folder''s consumer files and removes the active copy' {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('recipe-disabled-' + [guid]::NewGuid())
     try {

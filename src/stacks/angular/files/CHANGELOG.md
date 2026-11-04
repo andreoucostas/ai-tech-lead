@@ -57,6 +57,16 @@
   changing anything.** It used to read such a path as missing, then stop partway through copying with "Could not find a part of the
   path". It now names the longest path and tells you to run the installer with PowerShell 7 (`pwsh`), turn on Windows'
   `LongPathsEnabled` setting, or move the repository to a shorter path. PowerShell 7 was never affected.
+- **A stopped install or update prints a re-run line that works, and says more about files Git is told not to see.** A `-Reinstall`
+  that stopped partway, or a fresh install stopped early, printed a re-run without the `-AllowStackChange`, `-AllowOutdated` or
+  `-AllowDowngrade` you had given, so following it was refused; it now carries them. When `-Reinstall` refuses a file marked
+  skip-worktree, it prints one `git update-index` command per flag: the single command it printed before cleared only one. A write the
+  update could not make after its main copy (a disabled skill's files, the move of `CLAUDE.md` into `AGENTS.md`, the Windows PowerShell
+  settings switch and others) now stops with exit 3 and the re-run line, not a raw error. An update that saves a copy of a file Git is
+  told not to see your changes to (skip-worktree or assume-unchanged) names that copy: no commit holds its content, and checking out a
+  branch that tracks the same path overwrites it without a warning, so move it out of the repository first. The warning about such
+  files also names `CLAUDE.md` and `AGENTS.md` when the update rewrote them, and a fresh install in a repository where Git could not be
+  run says it could not check, instead of saying nothing.
 
 ## 0.98.3 — 2026-10-31
 

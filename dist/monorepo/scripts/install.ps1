@@ -3012,11 +3012,17 @@ if ($updateMode -or $adoptMode) {
 # holds. A tag cannot say which flag a path carries, and one update-index naming both --no- options clears only one, so each
 # flag has its own command, which is a no-op on a path without it.
 $flaggedAfterCopy = Get-GitSkippedFiles
+# Empty also when this installer cannot run Git (a greenfield runs no Git preflight): inside a repository that is "could not say".
+if ($null -ne $flaggedAfterCopy -and $flaggedAfterCopy.Count -eq 0 -and -not (Get-WorkTreeGit)) {
+    try { if (Test-GitRepositoryEvidence -Path $tgt) { $flaggedAfterCopy = $null } } catch { $flaggedAfterCopy = $null }
+}
 if ($null -eq $flaggedAfterCopy) {
     Write-Output "NOTE: Git could not say whether it is told not to see local changes to any of the framework's files (skip-worktree or assume-unchanged), which would leave them out of a commit; run  git ls-files -v  before committing: a file tagged S or a lower-case letter is one."
 } elseif ($flaggedAfterCopy.Count -gt 0) {
     $wroteShipped = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
     foreach ($relative in $ordinaryApplyPaths) { if ($relative -notin $persistentCopyIfAbsent) { [void]$wroteShipped.Add($relative) } }
+    # The layout move rewrites both instruction files.
+    if ($layoutMove) { [void]$wroteShipped.Add('CLAUDE.md'); [void]$wroteShipped.Add('AGENTS.md') }
     $flaggedShipped = [string[]]@($flaggedAfterCopy | Where-Object { $wroteShipped.Contains($_) })
     if ($flaggedShipped.Count -gt 0) {
         [Array]::Sort($flaggedShipped, [StringComparer]::Ordinal)
