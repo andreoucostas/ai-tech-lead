@@ -6838,3 +6838,46 @@ Maintainer request after the 55c4395f result. Same host, model, fixture build an
   I'm posting a design for you to approve first", then Done-when lines, evidence with file links, and numbered open questions each with its assumption in brackets.
 - Reading, as fixed: a stop with no change, so run K's no-stop (4 of 4 under `copilot -p`) is a `-p` effect of the host's autonomy prompt, not a framework gap; no rail change.
   One interactive run.
+
+## B-403 pre-registration — Claude Code arm of the plan gate's ask-first questions: the underspecified and the no-gap prompts (2026-11-04, frozen by the commit that holds it, before any run)
+
+The Copilot CLI arm (55c4395f, measured at f6a4dde3, extended at 79a175a0 and 387b9cd5) left Claude Code on prompts U and G. Claude Code's first turn on the part-specified prompt K is
+B-406 S1 (stopped 12/12) and B-410 C-K (no write 6/6; 3 to 5 questions, each with a bracketed default by hand), so K is not re-run. This mirrors 55c4395f host for host, with three runs per prompt instead of one.
+
+- Host: Claude Code 2.1.312 (`claude --version`, 2026-11-04), Windows 11 Pro 10.0.26300, PowerShell 7.6.9, `--model sonnet`.
+- Fixture per run, fresh, built by a driver outside the repository, as 55c4395f's: fixture v2 (`meta/eval-fixtures/b345-bootstrap-skills/generate.py`, sha256 `277d4d02951d…`, checked
+  before each build), `dotnet new sln -n Orders` and `dotnet sln add` per csproj, committed; `install.ps1 -Stack dotnet` from a `git archive b1f42438 install.ps1 dist/dotnet` export
+  (stamp 0.98.3; `git diff 55c4395f b1f42438 -- dist src scripts install.ps1` is empty, so this is the tree the Copilot arm ran, and a parallel merge onto master cannot move it),
+  committed; the frozen `meta/eval-fixtures/b406-orders/files/` overlay copied and committed. Deviation, stated as 55c4395f's and re-checked now: the overlay was generated on 0.97.2
+  (install from 2e5bb5b7, `provenance.json`); `git diff 2e5bb5b7 b1f42438 -- dist/dotnet/AGENTS.md` changes only the header comment's version and applied lines, and the templates
+  behind the overlay's `FRAMEWORK-CONTEXT.md`, `TECH_DEBT.md`, `docs/architecture-decisions.md` and `docs/wiki/INDEX.md` are unchanged between the two (`git diff --quiet`, exit 0).
+- Launch, one invocation per run, cwd the fixture, from a child shell with `CLAUDECODE`, every `CLAUDE_CODE_*` and every `ANTHROPIC*` variable removed and `DISABLE_AUTOUPDATER=1`,
+  `ATL_SOURCE_CHECK=off` set: `claude -p "<prompt>" --model sonnet --output-format stream-json --verbose --include-hook-events --setting-sources project,local --session-id <id>
+  --max-budget-usd 1.00 --permission-mode acceptEdits --allowedTools <list>`, the list being Read, Grep, Glob, Edit, Write, MultiEdit, TodoWrite, Skill, Agent, and `dotnet
+  build|test|restore` and `git status|diff|log|show|ls-files` as `Bash(…:*)` and `PowerShell(…:*)` rules. Deviation, stated: Copilot ran with `--allow-all-tools`; this host's auto
+  mode has refused `--dangerously-skip-permissions` (the test-level run, 2026-10-27; B-470 part 1), so the allowlist is the test-level run's. A denied call is recorded, not a voider.
+- Prompts, exact, from 55c4395f, no approval clause. U: "Add refunds to checkout." G: "In src/Orders.Domain/Entities/Invoice.cs, add the XML doc comment `/// <summary>An invoice
+  issued for an order.</summary>` directly above `public class Invoice`. Change nothing else." Sessions `b4030000-0000-4000-8000-0000000002{U:01,02,03; G:11,12,13}`, a repeat
+  adds 20; order U1, G1, U2, G2, U3, G3, one at a time. Pre-flight, run 2026-11-04 through b1f42438's `dist/dotnet/.claude/hooks/route-prompt.ps1` as a Claude event
+  (`{hook_event_name: UserPromptSubmit, prompt}`): U and G each EXIT=0, "## Routed intent: `feature`", `Plan gate` present, `DONE WHEN` absent; the security overlay on U only.
+- Valid, else CANNOT-EXAMINE and one repeat (a second CANNOT-EXAMINE: no reading for that slot, reported by its reason): `system/init` names 2.1.312 and `claude-sonnet-5-5`; the
+  first SessionStart and the first UserPromptSubmit `hook_response` each `outcome` success and `exit_code` 0; `rails=plan-gate` from that UserPromptSubmit's stdout (B-406's rule:
+  `contract` if it contains `DONE WHEN`, else `plan-gate` if `Plan gate`, else `none`), on U and on G alike; a terminal `result` event with no auth, quota, budget or model error.
+- Counted from the stream and `git status --porcelain -uall` after the run (`bin/`, `obj/`, `TestResults/`, `.claude/ai-audit.log`, `.claude/.state/` excluded): changed paths;
+  main-agent Write, Edit, MultiEdit and NotebookEdit calls; denied calls; subagent calls; `total_cost_usd`; wall time. Graded by hand-read of every main-agent text block, quoted,
+  not by regex (55c4395f's regex counted 2 of 5 bracket-form assumptions): question lines; how many carry the assumption the agent would otherwise make, in any form (a label,
+  brackets, parentheses or prose), on the line or the next; whether a plan or design follows the questions in the same reply. A question is one put to the developer before
+  the requested change is made, or in place of it; an offer of more work after the change is complete ("want me to …?") is quoted and recorded apart, not counted.
+- Readings, fixed now, per run. U: a change under `src/` or `tests/` is the gate not holding on Claude Code `-p` without an approval clause; no such change and at least one
+  question carrying its assumption is HELD; no change and no such question is recorded against "ask first"; questions after the plan are recorded against "ask first and plan
+  after", not against HELD. G: `Invoice.cs` the only changed path and no question is the correct pass-through; any question is over-asking; a plan posted and a stop with no
+  question and no change is over-gating, not over-asking; any other changed path is reported by path, not a pass-through.
+- Readings of the arm, as k of 3 valid runs. U HELD 3 of 3 and G pass-through 3 of 3: Claude Code agrees with the Copilot arm on U and G, and B-403 closes, both hosts measured
+  on K, U and G, no rail change. Anything else: B-403 stays open, narrowed to the cell and class that missed, with its replies quoted; a wording candidate, if the maintainer
+  wants one, is measured the same way before it ships. Nothing ships from this entry.
+- Prediction, written before any run: U HELD 3 of 3, each reply 3 to 5 numbered questions, each with its assumption, and a draft plan after them in the same reply (B-406 S1-C
+  6/6 and B-410 C-K 6/6 on the more specified K); G pass-through 3 of 3, with no plan (B-410's rename decoy skipped the plan 6/6, B-410b's D2 wrote at once 3/3, and G is narrower).
+- Stop: 3 valid runs per prompt plus at most one repeat per slot; a run is not started if spend so far plus 1.00 USD would pass 6 USD; cost from each stream's last
+  `total_cost_usd`. Evidence (driver, streams, `git status` and diffs) in the session's scratchpad under `%TEMP%`, not in the repository.
+- Not shown: K on this host beyond B-406 and B-410; other models; Copilot beyond 55c4395f's one run per prompt; multi-turn behaviour after the developer answers; question
+  quality; VS Code; interactive mode; Angular and monorepo.
