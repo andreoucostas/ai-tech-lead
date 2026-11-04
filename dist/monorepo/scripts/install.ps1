@@ -2659,11 +2659,6 @@ foreach ($entry in $updateBackups) {
         exit 3
     }
 }
-foreach ($entry in $disabledCarryPlan) {
-    $destination = Get-ContainedTargetPath -Relative $entry.Relative
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-    Copy-Item -Force -LiteralPath $entry.Source -Destination $destination
-}
 # A team's ignore file the update rewrites is written last, after every other write and deletion, so a step that fails
 # before it leaves the team's rules in place and the next run asks Git what they ignore.
 $ignoreLast = @($ignoreRewrites | ForEach-Object { $_.Relative })
@@ -2698,6 +2693,14 @@ function Stop-IncompleteCopy {
     [Console]::Error.WriteLine("ERROR: Could not copy '$Relative': $($Reason.TrimEnd('.', ' ')). $Written of $($ordinaryApplyPaths.Count) framework files were written$stampNote. Resolve the cause (usually a program holding the file open), then $again.")
     exit 3
 }
+# Every write from here to the version stamp stops through Stop-IncompleteCopy (exit 3 and the re-run line), not a raw error.
+foreach ($entry in $disabledCarryPlan) {
+    try {
+        $destination = Get-ContainedTargetPath -Relative $entry.Relative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+        Copy-Item -Force -LiteralPath $entry.Source -Destination $destination -ErrorAction Stop
+    } catch { Stop-IncompleteCopy -Relative $entry.Relative -Reason $_.Exception.Message -Written $applyWritten }
+}
 foreach ($relative in $ordinaryApplyPaths) {
     if ($ignoreLast -ccontains $relative -or ($stampLast -and $relative -ceq $stampRelative)) { continue }
     try {
@@ -2719,21 +2722,26 @@ if ($teamSkillPaths.Count -gt 0 -and $ordinaryApplyPaths.Contains('framework-own
         $manifestLines.Add(('    {{ "path": "{0}", "ownership": "{1}" }}{2}' -f $pathJson, $ownedEntries[$i].ownership, $comma))
     }
     $manifestLines.Add('  ]'); $manifestLines.Add('}')
-    [IO.File]::WriteAllText((Get-ContainedTargetPath -Relative 'framework-ownership.json'), (($manifestLines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
+    try { [IO.File]::WriteAllText((Get-ContainedTargetPath -Relative 'framework-ownership.json'), (($manifestLines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false)) }
+    catch { Stop-IncompleteCopy -Relative 'framework-ownership.json' -Reason $_.Exception.Message -Written $applyWritten }
 }
 foreach ($entry in $disabledIncomingPlan) {
-    $destination = Get-ContainedTargetPath -Relative $entry.Relative
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-    Copy-Item -Force -LiteralPath (Join-Path $src $entry.Source) -Destination $destination
+    try {
+        $destination = Get-ContainedTargetPath -Relative $entry.Relative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+        Copy-Item -Force -LiteralPath (Join-Path $src $entry.Source) -Destination $destination -ErrorAction Stop
+    } catch { Stop-IncompleteCopy -Relative $entry.Relative -Reason $_.Exception.Message -Written $applyWritten }
 }
 foreach ($name in $skillExemplars.Keys) {
     $base = if ($disabledSkillNames.Contains($name)) { ".claude/disabled-skills/$name" } else { ".claude/skills/$name" }
     $newFile = Join-Path $tgt "$base/SKILL.md"
     if (Test-Path -LiteralPath $newFile -PathType Leaf) {
-        $newText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($newFile))
-        $newText = [regex]::Replace($newText, '(?m)^For a concrete current instance in this repo, see .+\r?\n?', '')
-        # No BOM and one closing LF on every host: Set-Content -Encoding UTF8 added a BOM on 5.1 and a CRLF after this LF on both.
-        [IO.File]::WriteAllText($newFile, ($newText.TrimEnd() + "`n`n" + $skillExemplars[$name] + "`n"), [Text.UTF8Encoding]::new($false))
+        try {
+            $newText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($newFile))
+            $newText = [regex]::Replace($newText, '(?m)^For a concrete current instance in this repo, see .+\r?\n?', '')
+            # No BOM and one closing LF on every host: Set-Content -Encoding UTF8 added a BOM on 5.1 and a CRLF after this LF on both.
+            [IO.File]::WriteAllText($newFile, ($newText.TrimEnd() + "`n`n" + $skillExemplars[$name] + "`n"), [Text.UTF8Encoding]::new($false))
+        } catch { Stop-IncompleteCopy -Relative "$base/SKILL.md" -Reason $_.Exception.Message -Written $applyWritten }
     }
 }
 # A disabled skill's files are already carried to .claude/disabled-skills, so a folder that cannot be
@@ -2754,16 +2762,22 @@ if ($layoutMove) {
     # Backups first, byte-for-byte; then AGENTS.md; the stub last, so an interrupted run leaves
     # CLAUDE.md un-migrated and a re-run finds AGENTS.md no longer a mirror and stops.
     $backupRoot = '.claude/framework-update-backup/instruction-files'
-    if ($layoutMove.ClaudeBackup) {
-        $backupDestination = Get-ContainedTargetPath -Relative $layoutMove.ClaudeBackup
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupDestination) | Out-Null
-        Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'CLAUDE.md') -Destination $backupDestination
-    }
-    if ($layoutMove.BackupAgents) {
-        Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'AGENTS.md') -Destination (Get-ContainedTargetPath -Relative $layoutMove.AgentsBackup)
-    }
-    [IO.File]::WriteAllText((Get-ContainedTargetPath -Relative 'AGENTS.md'), $layoutMove.AgentsText, [Text.UTF8Encoding]::new($layoutMove.HasBom))
-    Copy-Item -Force -LiteralPath (Join-Path $src 'CLAUDE.md') -Destination (Get-ContainedTargetPath -Relative 'CLAUDE.md')
+    $layoutAt = $layoutMove.ClaudeBackup
+    try {
+        if ($layoutMove.ClaudeBackup) {
+            $backupDestination = Get-ContainedTargetPath -Relative $layoutMove.ClaudeBackup
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backupDestination) | Out-Null
+            Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'CLAUDE.md') -Destination $backupDestination -ErrorAction Stop
+        }
+        $layoutAt = $layoutMove.AgentsBackup
+        if ($layoutMove.BackupAgents) {
+            Copy-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative 'AGENTS.md') -Destination (Get-ContainedTargetPath -Relative $layoutMove.AgentsBackup) -ErrorAction Stop
+        }
+        $layoutAt = 'AGENTS.md'
+        [IO.File]::WriteAllText((Get-ContainedTargetPath -Relative 'AGENTS.md'), $layoutMove.AgentsText, [Text.UTF8Encoding]::new($layoutMove.HasBom))
+        $layoutAt = 'CLAUDE.md'
+        Copy-Item -Force -LiteralPath (Join-Path $src 'CLAUDE.md') -Destination (Get-ContainedTargetPath -Relative 'CLAUDE.md') -ErrorAction Stop
+    } catch { Stop-IncompleteCopy -Relative $layoutAt -Reason $_.Exception.Message -Written $applyWritten }
     if ($Reinstall) { Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in commit $reinstallCommit)." }
     else { Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in $backupRoot/)." }
 }
@@ -2810,7 +2824,8 @@ if (-not $pwshAvailable) {
     $sj  = Join-Path $tgt '.claude/settings.json'
     $sjw = Join-Path $tgt '.claude/settings.windows.json'
     if ((Test-Path -LiteralPath $sjw) -and (Test-Path -LiteralPath $sj)) {
-        Copy-Item -Force -LiteralPath $sjw -Destination $sj
+        try { Copy-Item -Force -LiteralPath $sjw -Destination $sj -ErrorAction Stop }
+        catch { Stop-IncompleteCopy -Relative '.claude/settings.json' -Reason $_.Exception.Message -Written $applyWritten }
         Write-Output "  pwsh not found - activated Windows PowerShell 5.1 hooks (settings.windows.json -> settings.json)."
     }
 }

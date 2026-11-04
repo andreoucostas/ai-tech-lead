@@ -1921,6 +1921,50 @@ It 'B-320 an active copy of a disabled skill that cannot be removed is the only 
     }
 }
 
+# B-471 (a): the writes outside the wrapped copy loop died with a raw error and exit 1, not the copy stop's exit 3 and re-run line.
+function New-B471DisabledSkillTarget {
+    param([Parameter(Mandatory)][string]$Target)
+    New-ArchGeneratorTarget -Target $Target
+    [IO.File]::WriteAllBytes((Join-Path $Target 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.86.7:dist/dotnet/framework-ownership.json'))
+    [IO.File]::WriteAllText((Join-Path $Target 'LEARNINGS.md'), "# Learnings`n`n## Disabled framework skill: perf`n`nNot used here.`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $Target 'CLAUDE.md'), "# Project`n`nB471 consumer rule.`n", [Text.UTF8Encoding]::new($false))
+    New-Item -ItemType Directory -Force -Path (Join-Path $Target '.claude/skills/perf') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $Target '.claude/skills/perf/SKILL.md'), "---`nname: perf`n---`n# perf`n", [Text.UTF8Encoding]::new($false))
+}
+It 'B-471 a disabled skill carry or an instruction layout move that cannot write stops with exit 3 and the re-run line, and the re-run finishes the update' {
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    foreach ($case in @(
+            @{ Label = 'carry'; Denied = '.claude/disabled-skills/perf'; Named = "Could not copy '\.claude/disabled-skills/perf/SKILL\.md'" },
+            @{ Label = 'layout'; Denied = '.claude/framework-update-backup/instruction-files'; Named = "Could not copy '\.claude/framework-update-backup/instruction-files/CLAUDE\.md'" })) {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ("b471a-$($case.Label)-" + [guid]::NewGuid())
+        $folder = Join-Path $t $case.Denied
+        $denied = $false
+        try {
+            New-B471DisabledSkillTarget -Target $t
+            New-Item -ItemType Directory -Force -Path $folder | Out-Null
+            & icacls $folder /deny "*${sid}:(WD,AD)" | Out-Null
+            Assert ($LASTEXITCODE -eq 0) "calibration: icacls could not deny writes in $($case.Denied)"
+            $denied = $true
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $exit = $LASTEXITCODE
+            $flat = $out -replace '\s+', ' '
+            Assert ($exit -eq 3) "$($case.Label): a write the update could not make did not stop with exit 3 (exit $exit): $out"
+            Assert ($flat -match $case.Named -and $flat -match 'then re-run (pwsh|powershell\.exe) [^'']*''[^'']*install\.ps1'' -AllowDirtyTree ') "$($case.Label): the stop does not name the path and the re-run line: $out"
+            & icacls $folder /remove:d "*$sid" | Out-Null
+            $denied = $false
+            $rerun = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+            Assert ($LASTEXITCODE -eq 0) "$($case.Label): the printed re-run did not finish the update (exit $LASTEXITCODE): $rerun"
+            Assert ((Test-Path -LiteralPath (Join-Path $t '.claude/disabled-skills/perf/SKILL.md')) -and -not (Test-Path -LiteralPath (Join-Path $t '.claude/skills/perf'))) "$($case.Label): the re-run did not carry the disabled skill: $rerun"
+            # Stopped inside the move, the copy has already written the template AGENTS.md, so the re-run says to merge by hand.
+            $kept = (@('AGENTS.md', 'CLAUDE.md') | ForEach-Object { [IO.File]::ReadAllText((Join-Path $t $_)) }) -join "`n"
+            Assert ($kept -match 'B471 consumer rule\.' -and ($rerun -match 'moved: CLAUDE\.md -> AGENTS\.md' -or $rerun -match 'LAYOUT: [^\r\n]*Merge CLAUDE\.md into AGENTS\.md by hand')) "$($case.Label): the re-run lost the project instructions, or left them unmoved without saying so: $rerun"
+        } finally {
+            if ($denied) { & icacls $folder /remove:d "*$sid" | Out-Null }
+            Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 It 'B-252 the presentation deck stays in the framework checkout: an update removes its installed copies and points an edited one there' {
     $t = Join-Path ([IO.Path]::GetTempPath()) ('b252-' + [guid]::NewGuid())
     try {
