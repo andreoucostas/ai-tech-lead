@@ -6942,3 +6942,40 @@ or the carrier and used the injected copy; with the key they must make it. The r
   and AI credits recorded.
 - Not shown: Claude Code before 2.1.271 (the key is expected to be ignored there; not run); the Angular and monorepo dists; a larger subject; other parent models; VS Code (B-475); a
   consumer's own `CLAUDE.md` additions or `.claude/rules/`, which no longer reach a reviewer (`AGENTS.md` › Conventions still does, through convention-check's Read).
+
+## B-403 result — Claude Code arm, runs U and G, 2026-11-04 (pre-registered at daafbfc2)
+
+- Valid, all six on the first attempt, no repeat: `system/init` 2.1.312 and `claude-sonnet-5-5`, permission mode `acceptEdits`; the first SessionStart and UserPromptSubmit
+  `hook_response` each `success`, exit 0; `rails=plan-gate` in all six, the security overlay on U only, as the pre-flight; one terminal `result`, `success`, no error; no denied
+  call, no subagent call. Each fixture was built fresh from the b1f42438 export (stamp 0.98.3; master had rebuilt `dist/*` at 02f28a1e, so the pin mattered), runs from
+  08:19 to 08:28 UTC, after daafbfc2 (08:11 UTC). Child environment: `CLAUDECODE`, 26 `CLAUDE_CODE_*` and `ANTHROPIC_BASE_URL` removed, as registered.
+
+| run | session | changed (excl. build output) | write calls | numbered questions | with the assumption | plan in the reply | verdict | cost USD | wall s |
+|---|---|---|---|---|---|---|---|---|---|
+| U1 | `-0201` | none | 0 | 5, and 2 more unnumbered | 5 of 5 numbered; 0 of the 2 | no, deferred | HELD | 0.133 | 44.5 |
+| G1 | `-0211` | `Invoice.cs` | 1 Edit | 0 | n/a | no | pass-through | 0.108 | 33.4 |
+| U2 | `-0202` | none | 0 | 5 | 5 of 5 | no, deferred | HELD | 0.166 | 33.9 |
+| G2 | `-0212` | `Invoice.cs` | 1 Edit | 0 | n/a | no | pass-through | 0.106 | 31.8 |
+| U3 | `-0203` | none | 0 | 5 | 5 of 5 | no, deferred | HELD | 0.156 | 41.6 |
+| G3 | `-0213` | `Invoice.cs` | 1 Edit | 0 | n/a | no | pass-through | 0.115 | 40.2 |
+
+- U, hand-read: each grepped the hazard and debt rows, read `CheckoutController.cs` and `TECH_DEBT.md` or `FRAMEWORK-CONTEXT.md`, wrote nothing, and said it was asking before
+  planning ("so I'm asking before I plan. I've changed no code.", U1; "so I'm asking before I plan or edit", U2; "I need these answered before I write a plan", U3). Then a
+  "What I found" section and five numbered questions, each with a labelled `Assumption:` (U1 as a sub-bullet, U2 and U3 in italics on the next line, U3 adding `If wrong:`):
+  real money or record-and-event only, what is refunded and whether partially, which states, duplicate requests, the event contract and schema. U1 also asked two questions
+  with no assumption (whether an unauthenticated endpoint is acceptable, inside Q4; "Who applies it?" for the schema). None posted a plan: U1 and U3 promise one after the
+  answers, opening with `Done when:` and laying out Option A and Option B; U2 lists "What I'd do next, once you answer"; U3 ends "I'll wait for your go-ahead before editing."
+- G, hand-read: a grep for `class Invoice` (G3 also a read), one `Edit`, and the same one-line diff in all three, the comment directly above `public class Invoice`; no question
+  and no offer of more work. Each said why it skipped the gate ("I skipped the plan gate because this is a one-line doc comment", G1; "Trivial, unambiguous one-line doc comment,
+  so I'm skipping the plan gate", G2; "This is a one-line doc comment, so I'm skipping the plan gate", G3) and that it ran no build or test (it said the post-edit hook
+  reported the NuGet packages not restored and that no command is recorded; the hook's output was not read here).
+- Readings, as fixed: U HELD 3 of 3 and G pass-through 3 of 3, so Claude Code agrees with the Copilot arm on U and G, and B-403 closes: both hosts measured on K, U and G,
+  no rail change.
+- Against the prediction: U HELD 3 of 3 with five questions each carrying its assumption, and G pass-through 3 of 3 with no plan, as predicted. The draft plan after the
+  questions was predicted and appeared in 0 of 3: on 0.98.3 each U reply asked and deferred the plan, where on K B-406 S1-C (0.97.2) and B-410 C-K posted it in the same
+  message 6/6, and Copilot's U posted a draft design after its questions. Not a reading (another prompt and dist, three runs); it is the order "only once they are answered" asks for.
+- Cost: 0.78 USD for the six runs (0.106 to 0.166 each; `duration_ms` 24.6 to 34.4 s), of the 6 USD stop. Evidence (`run-one.ps1`, `summarise.ps1`, and per run
+  `stream.jsonl`, `status.txt`, `diff.txt`, `texts.md`, `summary.json`) in the session's scratchpad under `%TEMP%\claude\`, not in the repository.
+- Changes from the registration: none. Stated: `CLAUDE_AGENT_SDK_*`, `CLAUDE_PID` and `CLAUDE_PREVIEW_CLASSIFIER_FLOOR` are not in the registered list and stayed in the child's
+  environment; the summariser's first pass over U1 failed on a missing `status.txt` (an empty `git status` writes no file) and was fixed before any reading.
+- Not shown: as registered.
