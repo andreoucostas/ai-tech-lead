@@ -40,20 +40,24 @@ if ($ta -is [string]) { try { $ta = $ta | ConvertFrom-Json } catch { $ta = $null
 # Field names vary by surface: Claude (file_path/content/new_string), Copilot CLI (filePath/
 # newString), and VS Code agent mode's text-editor tools (path + file_text on `create`, new_str
 # on `str_replace`/`insert`) -- Task 0 confirmed the VS Code shapes, so they are covered here.
+# Claude Code's NotebookEdit (2.1.312) sends notebook_path and the cell's new_source; a delete
+# writes no source, so its new_source is not read.
 $fp = $null
-foreach ($v in @($ti.file_path, $ti.filePath, $ti.path, $ta.filePath, $ta.file_path, $ta.path)) { if ($v) { $fp = $v; break } }
-$parts = @($ti.content, $ti.new_string, $ti.newString, $ti.file_text, $ti.new_str, $ti.text,
+foreach ($v in @($ti.file_path, $ti.filePath, $ti.path, $ti.notebook_path, $ta.filePath, $ta.file_path, $ta.path)) { if ($v) { $fp = $v; break } }
+$cellSource = if (-not [string]::Equals([string]$ti.edit_mode, 'delete', $ordinalIgnoreCase)) { $ti.new_source }
+$parts = @($ti.content, $ti.new_string, $ti.newString, $ti.file_text, $ti.new_str, $ti.text, $cellSource,
            $ta.content, $ta.new_string, $ta.newString, $ta.file_text, $ta.new_str, $ta.text) | Where-Object { $_ }
 $content = ($parts -join "`n")
 
-# Emit a block response by detected input shape. PascalCase Edit/Write (and the ambiguous empty
-# tool) emit the Claude-shaped signal: reason on stderr plus exit 2. Other shapes emit a documented
+# Emit a block response by detected input shape. PascalCase Edit/Write/NotebookEdit (and the ambiguous
+# empty tool) emit the Claude-shaped signal: reason on stderr plus exit 2. Other shapes emit a documented
 # Copilot-compatible superset deny: top-level `permissionDecision` plus the same decision nested in
 # `hookSpecificOutput`. These emitted shapes and registration do not prove that a client fired the
 # hook or honored the denial; client behavior is capability-specific. See
 # docs/enforcement-surfaces.md.
 function Exit-Blocked([string]$Message) {
-    if ([string]::Equals($tool, 'Edit', $ordinal) -or [string]::Equals($tool, 'Write', $ordinal) -or $emptyTool) {
+    if ([string]::Equals($tool, 'Edit', $ordinal) -or [string]::Equals($tool, 'Write', $ordinal) -or
+        [string]::Equals($tool, 'NotebookEdit', $ordinal) -or $emptyTool) {
         [Console]::Error.WriteLine($Message)
         exit 2
     }

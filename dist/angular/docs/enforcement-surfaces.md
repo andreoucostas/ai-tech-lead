@@ -131,9 +131,13 @@ organization enforces.
 > The workflow rails in the framework-rules carrier are canonical and binding. Commands and `route-prompt` may elaborate, not contradict.
 
 > **Scope caveat — write hooks only see supported editor/file-write events.** `guard.ps1` is
-> registered on `Write`/`Edit` tool calls (Claude Code) and on Copilot tool calls that carry a file
+> registered on `Write`, `Edit` and `NotebookEdit` tool calls (Claude Code; `NotebookEdit` only from
+> 0.98.4, before which a secret written into a notebook cell passed unchecked; the guard reads the cell
+> source it writes, not a cell it deletes) and on Copilot tool calls that carry a file
 > path + content or an `apply_patch` patch (the patch only from 0.96.0; before, every `apply_patch`
-> write passed unchecked) — nothing else. `audit-trail.ps1` and `post-write` see the same calls (the
+> write passed unchecked) — nothing else. Copilot CLI 1.0.98 has no notebook tool: it edits a
+> notebook's JSON text with `edit`, which the guard reads. `audit-trail.ps1` and `post-write` see the
+> same calls except `NotebookEdit` (the
 > patch only from 0.96.0, read with the guard's own section split): the audit log gets one line per
 > file the patch names, and `post-write` checks the first file in the patch that it reads, so in the
 > monorepo dist a patch that changes both a .NET and an Angular file is checked for one stack only. Both

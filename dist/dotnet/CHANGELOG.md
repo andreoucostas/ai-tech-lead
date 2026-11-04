@@ -50,6 +50,10 @@
   refused its sample credentials; the share is now read as the repository's drive. A `.cs`, `.spec.ts` or similar name written with a
   trailing `\`, `\.` or `\x\..`, or through its short 8.3 name (such as `APPSPE~1.TS` for `app.spec.ts`), now gets the same checks as
   the plain name. A JavaScript or TypeScript file whose own name ends in `~` and a number is checked as a test file. Nothing to do.
+- **The write guard now checks notebook cells.** Claude Code edits a Jupyter notebook cell with its own notebook tool, which the guard
+  was not registered on, so a key or token written into a cell was not caught. The guard now reads the cell's new text and blocks it like
+  any other write; deleting a cell is not checked, so you can still remove a leaked key. Nothing for you to change; an update brings the
+  new `.claude/settings.json` registration.
 
 ## 0.98.3 — 2026-10-31
 

@@ -828,7 +828,7 @@ function Get-HookWiringProblems {
         $expected = @(
             @{ Event = 'SessionStart';     Matcher = '';           Handlers = @($sessionStart) },
             @{ Event = 'UserPromptSubmit'; Matcher = '';           Handlers = @($routePrompt) },
-            @{ Event = 'PreToolUse';       Matcher = 'Write|Edit'; Handlers = @($guard) },
+            @{ Event = 'PreToolUse';       Matcher = 'Write|Edit|NotebookEdit'; Handlers = @($guard) },
             @{ Event = 'PostToolUse';      Matcher = 'Write|Edit'; Handlers = @($postWrite, $auditTrail) },
             @{ Event = 'Stop';             Matcher = '';           Handlers = @((New-HookExpectation 'boy-scout-check')) }
         )

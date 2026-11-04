@@ -61,6 +61,28 @@ It 'guard ALLOW (Copilot): an unrelated tool call is not read as a patch' {
     $evt = @{ toolName = 'powershell'; toolArgs = @{ command = 'git status'; description = 'Show the working tree status' } } | ConvertTo-Json -Compress -Depth 6
     Assert-Decision (Invoke-Hook $guardPs $evt) 'ALLOW' 'powershell tool'
 }
+# Claude Code's NotebookEdit, as Claude Code 2.1.312 sent it (2026-11-04): the notebook in notebook_path, the cell's
+# new text in new_source, edit_mode replace or insert (insert adds cell_type). A delete removes the cell and writes
+# no source, so its new_source is not read: refusing it would keep a leaked key in the notebook.
+It 'guard BLOCK (Claude NotebookEdit): a key-shaped cell source on replace and insert; a clean cell and a delete pass' {
+    $keyShaped = 'AKIA' + '1234567890ABCDEF'   # assembled at run time, as the outgoing-commit guard asks
+    $notebook = 'analysis\x.ipynb'
+    $cells = @(
+        @{ mode = 'replace'; source = "aws_key = '$keyShaped'"; expected = 'BLOCK' }
+        @{ mode = 'insert';  source = "aws_key = '$keyShaped'"; expected = 'BLOCK'; type = 'code' }
+        @{ mode = 'replace'; source = 'print(1)';               expected = 'ALLOW' }
+        @{ mode = 'delete';  source = "aws_key = '$keyShaped'"; expected = 'ALLOW' }
+    )
+    foreach ($cell in $cells) {
+        $in = [ordered]@{ notebook_path = $notebook; cell_id = 'c0a1b2c3'; new_source = $cell.source; edit_mode = $cell.mode }
+        if ($cell.type) { $in.cell_type = $cell.type }
+        $r = Invoke-Hook $guardPs (@{ tool_name = 'NotebookEdit'; tool_input = $in } | ConvertTo-Json -Compress -Depth 6)
+        Assert-Decision $r $cell.expected "NotebookEdit $($cell.mode) of '$($cell.source)'"
+        if ($cell.expected -eq 'BLOCK') {
+            Assert (([string]$r.Err).Contains("Blocked write to ${notebook}: it contains an AWS access key id")) "NotebookEdit $($cell.mode): the reason does not name the notebook and the key -- $($r.Err)"
+        }
+    }
+}
 It 'guard DENY (Copilot): a create whose text carries a patch is checked as that create' {
     $evt = New-CopilotEvent 'src\Foo.cs' "*** Begin Patch`n*** Add File: notes.txt`n+x`n*** End Patch`n#pragma warning disable CS8602"
     Assert-Decision (Invoke-Hook $guardPs $evt) 'DENY' 'create carrying patch text'

@@ -358,15 +358,17 @@ try {
     # B-464 D1: check 8 counted handlers and validated each one's interpreter and target, but never which
     # script sits on which event, the matcher or the timeout. Every mutant below stayed green on the unfixed
     # validator while its hook silently never ran (or ran on the wrong event, or was killed early).
-    It 'case 8g: a guard group whose matcher names no tool fails check 8' {
-        Assert-Case 'guard-matcher-no-such-tool' {
+    # Claude Code fires a 'Write|Edit' group on neither a NotebookEdit nor any tool it does not list, so the
+    # guard never read a notebook cell's source (Claude Code 2.1.312, 2026-11-04).
+    It 'case 8g: a guard group whose matcher leaves out NotebookEdit fails check 8' {
+        Assert-Case 'guard-matcher-without-notebook-edit' {
             param($d)
             $path = Join-Path $d '.claude\settings.json'
             $t = [IO.File]::ReadAllText($path)
-            $m = [regex]::Replace($t, '(?s)("matcher":\s*)"Write\|Edit"(,\s*"hooks":\s*\[\s*\{[^}]*guard\.ps1)', '$1"NoSuchTool"$2')
+            $m = [regex]::Replace($t, '(?s)("matcher":\s*)"Write\|Edit\|NotebookEdit"(,\s*"hooks":\s*\[\s*\{[^}]*guard\.ps1)', '$1"Write|Edit"$2')
             Assert ($m -ne $t) 'fixture did not find the guard group matcher'
             [IO.File]::WriteAllText($path, $m)
-        } "PreToolUse matcher must be exactly 'Write|Edit', found 'NoSuchTool'" 'hook-registration'
+        } "PreToolUse matcher must be exactly 'Write|Edit|NotebookEdit', found 'Write|Edit'" 'hook-registration'
     }
     It 'case 8h: a misspelt Claude event name fails check 8' {
         Assert-Case 'claude-event-stopp' {
