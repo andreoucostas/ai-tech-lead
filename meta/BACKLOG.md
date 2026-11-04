@@ -175,7 +175,7 @@ and `review-scope.ps1` (~142, ~193-195, ~233-235, ~264) do not, so with `GIT_LIT
 **Filed against:** v0.98.2 (2026-10-24)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
 **Status:** Open, narrowed 2026-10-31; plan `.claude/plans/2026-10-24-bug-hunt-3-b464.md`. Leftover (1) done 2026-10-31: a fresh session attacked 8928c0e4 (C5's attack fixes) and confirmed three misleading stop messages, fixed red first and reviewed again by another fresh session; its other findings are in B-471.
-Open: (2) D6's line under the four `@.claude/workflow.md` imports shipped unmeasured (WSD-111): one Copilot CLI `/fix` run graded on the calibration line, premium requests. Leftover (3), a release resume past an index-flagged change, done 2026-10-31: release.ps1 refuses any assume-unchanged or skip-worktree entry before `add -A`.
+Open: (2) D6's line under the four `@.claude/workflow.md` imports measured 2026-11-04 (eval-results): Copilot CLI read `workflow.md` but closed without the labelled line; the fixed candidate (wrappers name the file) targets reach, which was not lacking; maintainer picks the next candidate. Leftover (3), a release resume past an index-flagged change, done 2026-10-31: release.ps1 refuses any assume-unchanged or skip-worktree entry before `add -A`.
 
 ### B-466 · Measure whether the framework's lead over the bare agent grows with repository size
 **Filed against:** v0.98.2 (2026-10-27)

@@ -6712,3 +6712,15 @@ always-loaded file, only in `.claude/workflow.md`, so the label in the closing m
 - Stop: 2 runs, repeats included; premium requests and AI credits recorded.
 - Not shown: VS Code (its Copilot harness runs no repository hook in a trusted folder, B-475, which does not matter here: this reads instructions), other models, `/feature`,
   `/refactor` and `/debt`, the quality of the line's content.
+
+## B-464 leftover (2) result — run `-0101`, 2026-11-04
+
+- Valid: `session.start` 1.0.98, `claude-sonnet-5.5` on every assistant message, no error event, `skill.invoked` `fix` plus a view of `.claude/commands/fix.md`. No repeat (the
+  repeat was for CANNOT-EXAMINE only). Copilot exit 0, 47 s; 1 premium request, 5 model calls, 16.58 AI credits (`totalNanoAiu` 16584490000); hooks ran (sessionStart,
+  userPromptSubmitted, preToolUse, postToolUse, agentStop).
+- Counted: `.claude/workflow.md` read, event 40, a shell `Get-Content .claude\workflow.md | Select-Object -First 40` (the file has 31 lines; the label is line 20), before the
+  last assistant message (event 63). Labelled line: absent; the closing message has a `**Verification:**` list instead. `tests/Test-Calculator.ps1` ran (red before, PASS after).
+- Reading, as fixed: the labelled line absent, so the 0.98.2 sentence is not enough on this host and model; leftover (2) stays open.
+- Observed, not a reading: the sentence did get the file read in full, so the fixed candidate (naming `.claude/workflow.md` in the four `.agents/skills` wrappers) targets
+  reach, which this run did not lack; what was missing is applying the label. The closing list carried calibration content unlabelled ("only checks the source text…",
+  "the C# has not been compiled"), which this measurement does not grade. One run shows the mechanism, not a rate.
