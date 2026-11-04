@@ -6786,3 +6786,19 @@ B-406 S1 / B-410 C-K; this is the Copilot arm, plus the two prompts B-403 lists.
   over-gating, not over-asking. One run per prompt shows the mechanism, not a rate.
 - Stop: 3 runs plus at most one repeat per prompt; premium requests and AI credits recorded.
 - Not shown: VS Code (no repository hook in a trusted folder, B-475), Claude Code on U and G, other models, multi-turn behaviour after the developer answers, question quality.
+
+## B-403 result — Copilot CLI arm, runs K, U, G, 2026-11-04 (pre-registered at 55c4395f)
+
+- Valid, all three: Copilot CLI 1.0.98, `claude-sonnet-5.5`, no error event, exit 0 (58 s, 31 s, 19 s); route-prompt's output in the first `user.message` (`Routed intent:
+  feature`, the plan gate present) in each; all five hook types ran. No repeat. 1 premium request each; 18.72, 11.52 and 9.79 AI credits.
+- K (part-specified refund endpoint): no question, no stop. Three reads, two `edit` calls (`Invoice.cs` `Refunded`, `CheckoutController.cs` the endpoint), a `dotnet build`,
+  then "Implemented the refund endpoint (workflow: feature)". It filled the one gap itself and said so ("I treated an already-refunded invoice as 409, which you didn't specify")
+  and listed schema, concurrency, auth and tests as not done; it ran no security pass and wrote no test.
+- U ("Add refunds to checkout."): read-only (grep, glob, three views), no change. It opened "I'm stopping before any code … so the plan gate says to ask first", posted five
+  numbered questions, each with its assumption in brackets (5 of 5 by hand; the grader's regex counted 2, it does not know the bracket form), then a "Draft design, pending your
+  answers" with options A and B and a recommendation, and ended "Reply with your answers, or "go with the assumptions", and I'll implement."
+- G (no-gap doc comment): one grep, one `edit` of `Invoice.cs`, no question, no plan; the only tracked change is `Invoice.cs` (`obj/` folders from the framework's post-edit
+  build check are untracked).
+- Readings, as fixed: K changed `src/`, so the gate did not hold on Copilot CLI `-p` without an approval clause for a part-specified non-trivial request (Claude Code stopped
+  12/12 on the same prompt, B-406 S1). U held: no change, questions each with an assumption; the questions precede the draft design, but the draft is posted in the same message,
+  as Claude Code's S1-C replies did 6/6. G is the gate correctly letting a trivial, unambiguous change through: no over-asking, no over-gating. One run per prompt.
