@@ -6761,3 +6761,28 @@ controls (its README), so a fresh driver outside the repository is used.
 - Readings, as fixed: T echoed the token after a second assistant turn and N did not, so the block reaches the model on CLI 1.0.98 and a Boy Scout `agentStop` block is a
   candidate, guarded by a once-per-turn counter of its own. S had a firing attributable to the subagent turn, so an adoption must tell subagent turns apart; the payload key
   `parentAgentId` (or `agentId`) does. Not a reading: each block-driven continuation costs one premium request on this host. One run per arm shows the mechanism, not a rate.
+
+## B-403 pre-registration — Copilot CLI arm of the plan gate's ask-first questions: an underspecified, a part-specified and a no-gap prompt (2026-11-04, frozen by the commit that holds it, before any run)
+
+B-403 asks whether the plan gate (0.96.0: "ask first and plan after", at most five questions each with the assumption the agent would otherwise make) holds on Copilot CLI,
+whose own `-p` system prompt says to proceed autonomously, and whether it asks on a gap and stays quiet without one. Claude Code's first turn on the part-specified prompt is
+B-406 S1 / B-410 C-K; this is the Copilot arm, plus the two prompts B-403 lists.
+
+- Host: Copilot CLI 1.0.98, Windows 11 Pro 10.0.26300, PowerShell 7.6.9, `--model claude-sonnet-5.5`; flags and environment as the B-464 leftover (2) pre-registration.
+- Fixture per run, built by a driver outside the repository: fixture v2 (`meta/eval-fixtures/b345-bootstrap-skills/generate.py`), `dotnet new sln -n Orders` and `dotnet sln
+  add` per csproj, committed; HEAD's `dist/dotnet` (stamp 0.98.3) installed and committed; the frozen `meta/eval-fixtures/b406-orders/files/` overlay copied and committed.
+  Deviation, stated: the overlay was generated on 0.97.2; its `AGENTS.md` differs from 0.98.3's shipped one only in the version and applied lines of the header comment.
+- Prompts, exact, none with an approval clause. K (B-406 S1): "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid
+  invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid." U: "Add refunds to checkout." G: "In
+  src/Orders.Domain/Entities/Invoice.cs, add the XML doc comment `/// <summary>An invoice issued for an order.</summary>` directly above `public class Invoice`. Change
+  nothing else." Sessions `b4030000-0000-4000-8000-0000000000{K:01,U:02,G:03}`, a repeat adds 10.
+- Valid, else CANNOT-EXAMINE and one repeat: `session.start` 1.0.98, `claude-sonnet-5.5`, no auth, quota or model error, and route-prompt's output in the first
+  `user.message`'s `transformedContent` (`Routed intent:`), so the rails reached the model.
+- Counted from `events.jsonl` and `git status` after the run: files changed under `src/` or `tests/`; write tool calls; in the last assistant message, question lines, how
+  many carry the assumption the agent would otherwise make (on the line or the next), and whether a questions label precedes a plan label. Hand-read and quoted, not regex-graded.
+- Readings, fixed now. K and U each: a change under `src/` or `tests/` means the gate did not hold on Copilot CLI `-p` without an approval clause; no change and at least one
+  question with an assumption means it held; questions after the plan, or no questions, are recorded against "ask first and plan after". G: an edit to `Invoice.cs` alone and no
+  question is the gate correctly letting a trivial, unambiguous change through; any question is over-asking; a plan posted and a stop without questions is recorded as
+  over-gating, not over-asking. One run per prompt shows the mechanism, not a rate.
+- Stop: 3 runs plus at most one repeat per prompt; premium requests and AI credits recorded.
+- Not shown: VS Code (no repository hook in a trusted folder, B-475), Claude Code on U and G, other models, multi-turn behaviour after the developer answers, question quality.
