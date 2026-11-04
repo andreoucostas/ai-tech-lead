@@ -6815,3 +6815,18 @@ Maintainer request after the 55c4395f result. Same host, model, fixture build an
   V changes `src/` too: the gap is not `-p`-only; a rail wording candidate for part-specified requests goes to the maintainer, measured the same way before shipping. P mixed:
   report the rate as k of 4 and read V as above. A V run invalid twice: no reading for V.
 - Stop: 4 runs plus at most one repeat each; premium requests recorded.
+
+## B-403 extension result — P and V (2026-11-04, pre-registered at 79a175a0), and the V2 pre-registration (frozen by the commit that holds it, before its run)
+
+- Operator error, stated: the first P runs (`-0111` to `-0113`) sent "111", "112", "113" as the prompt (a PowerShell variable name collision in the driver loop, `$k` over
+  `$K`); invalid, 3 premium requests spent. Repeats `-0121` to `-0123` sent K exactly.
+- P, valid, 3 of 3: `Routed intent: feature` and the plan gate in the first `user.message`; each changed `CheckoutController.cs` and `Invoice.cs` with no question and no stop
+  (8, 6, 4 write calls; 294 s, 191 s, 54 s; 1 premium request each; 43.28, 41.23, 15.18 AI credits). `-0121` ran the security gate (REQUEST CHANGES, SF-1 written), `-0122`
+  ran the 6 existing tests, `-0123` ran neither. With K: 4 of 4 `-p` runs implemented.
+- V, invalid: VS Code 1.144.1 agent host, runtime 1.0.103-unstable, `claude-sonnet-5.5`, all hook types ran, no error, no file changed; but route-prompt's output did not reach
+  the model: its `userPromptSubmitted` returned VS Code's `<workspace_info>` and the first `user.message` carries only the date and the prompt (B-476's first-prompt slot). The
+  repeat was not run: the cause is structural, so the same design cannot be valid. No reading for V. Observed, not a reading: with only the always-loaded rules, the session
+  stopped before any edit with Done-when lines, options A and B, a recommendation and four questions each with its default, and "Reply "go" to accept option B".
+- V2, pre-registered now: as V on a fresh fixture, but prompt 1 is "What does this repository do? Answer in one sentence and change nothing." and prompt 2 is K, in the same
+  chat. Valid as V, with route-prompt's output (`Routed intent:`) in the second `user.message`'s `transformedContent`. Readings as V's at 79a175a0, read on prompt 2: a stop
+  with no change is the `-p` effect; a change under `src/` or `tests/` means the gap is not `-p`-only. Stop: 1 run plus one repeat if invalid.
