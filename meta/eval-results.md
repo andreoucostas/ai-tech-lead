@@ -6881,3 +6881,64 @@ B-406 S1 (stopped 12/12) and B-410 C-K (no write 6/6; 3 to 5 questions, each wit
   `total_cost_usd`. Evidence (driver, streams, `git status` and diffs) in the session's scratchpad under `%TEMP%`, not in the repository.
 - Not shown: K on this host beyond B-406 and B-410; other models; Copilot beyond 55c4395f's one run per prompt; multi-turn behaviour after the developer answers; question
   quality; VS Code; interactive mode; Angular and monorepo.
+
+## B-467 pre-registration — reviewer sub-agents without the main instruction chain: T against C `/review` on Claude Code, and one Copilot CLI load check (2026-11-04, frozen by the commit that holds it, before any run)
+
+Claude Code injects the consumer `CLAUDE.md`, `AGENTS.md` and the rules carrier (25,805 chars) into every `/review` reviewer ("Sub-agent context results"); frontmatter `omitClaudeMd: true`
+(2.1.271+) drops it (step 1, 111c715b). Design, read from the six reviewer bodies in all three dists and `review.md` Step 1: every rule a reviewer checks is already named by a Read in
+its own Process. `convention-check` step 1 reads `AGENTS.md` (Conventions, Boy Scout Rule); `solid-check` step 1 the carrier's SOLID and `AGENTS.md` › Conventions; `test-critic` step 1
+the carrier's Verification Rules and Test leanness (Angular and monorepo step 3 also name `AGENTS.md` › Conventions › Testing); `debt-radar` step 1 `TECH_DEBT.md`, which the chain never
+held. `security-auditor` and `bloat-radar` carry their checklists whole: the auditor's `FRAMEWORK-CONTEXT.md` cross-reference is outside the chain, it never reads `SECURITY_FINDINGS.md`
+(`/security-gate` writes that), and the carrier's security line tells the main agent when to run the gate, not what the auditor checks. So the candidate is one line, `omitClaudeMd: true`
+under `model: inherit`, in the 12 reviewer sources (3 in `src/core/.claude/agents/`, 9 stack whole-files), with no `review.md` change. In run1 the three that name a policy Read made no Read of `AGENTS.md`
+or the carrier and used the injected copy; with the key they must make it. The risk: a reviewer that skips its Read, or leaned on chain-only context (`AGENTS.md`'s "no auth is present"), finds less.
+
+- Host: Claude Code 2.1.312 (recorded per run, the same on every row); parent `--model sonnet`; reviewer models as `review.md`'s reviewer-model rule sets them.
+- Arms. **C**: `dist/dotnet` of the master commit this branch is rebased onto. **T**: that commit plus the candidate, its three dists rebuilt. Before any run, `git diff --stat` C..T over
+  `dist/dotnet` names exactly the six reviewer files, each `+omitClaudeMd: true` and nothing else; else not run.
+- Fixture per run: a fresh `git clone` of `%TEMP%\b466-subctx\target` (HEAD e9a8a4a: the b409 Orders API with 0.98.2 and the b409 overlay, committed) into a new directory under
+  `%TEMP%\b467\`; the arm's tree's `install.ps1 -Stack dotnet` over it (an update; any flag the installer demands, the same in both arms), committed; then the subject's five files copied
+  over, uncommitted (one untracked). Before the first counted run, the C and T fixtures' tracked files differ in exactly the six reviewer files.
+- Subject: run1's refund endpoint plus planted defects; five files frozen in the session scratchpad, manifest `subject.sha256` sha256 `fa359a464ac1`; `dotnet build Orders.sln` 0 warnings
+  and 0 errors, `dotnet test Orders.sln --no-build` 10 passed. Planted, owner in brackets: D1 an interpolated log message (`CheckoutController.cs:70`) and D2 an unused `using System.Text;`
+  (`:2`), against the fixture's Logging convention and Boy Scout Subtract 5 [convention-check]; D4 the `Authorization` header logged (`:57`) [security-auditor]; D7
+  `Controller_can_be_constructed`, whose only assertion is `Assert.NotNull` on a fresh object (`CheckoutRefundTests.cs:27`) [test-critic]; D10 `catch (Exception)` log-and-swallow around
+  `SaveChangesAsync` (`:62-68`) [bloat-radar]. Natural, each found in run1: D3 the `Refunded` column has no evidenced deployment step (Conventions › Data access) [convention-check]; D5 the
+  non-atomic check-then-set (a double refund) and D6 no authorization on the action [security-auditor]; D8 the 202 test re-reads the tracked entity, so it passes with the save removed,
+  and D9 no test of the already-refunded 409 [test-critic]; D11 DEBT-001 and D12 DEBT-004, whose `Files:` name `CheckoutController.cs` [debt-radar]. Classes: convention D1-D3, security
+  D4-D6, tests D7-D9, bloat D10, debt D11-D12.
+- Run: in the fixture, `claude -p` with run1's prompt byte for byte (`/review The request as stated: Add a refund endpoint to CheckoutController: … 409 when it is not paid.`), `--session-id
+  <new uuid> --model sonnet --output-format stream-json --verbose --include-hook-events --permission-mode acceptEdits --allowedTools <list> --max-budget-usd 3 --setting-sources
+  project,local`, from a child `pwsh` with every `CLAUDECODE`, `CLAUDE_CODE_*` and `ANTHROPIC*` variable removed, `DISABLE_AUTOUPDATER=1` and `ATL_SOURCE_CHECK=off`; never
+  `--dangerously-skip-permissions`. Allowlist: Read, Grep, Glob, Agent, TodoWrite, Skill, and the PowerShell commands `/review` and the reviewers name (`pwsh -NoProfile -File` of
+  `scripts/review-scope.ps1` and `scripts/test-weakening-scan.ps1`, `Get-FileHash`, `Get-Content`, `Get-ChildItem`, `Test-Path`, `dotnet build`, `dotnet test`, read-only `git`). First one
+  uncounted pilot on C: read-only commands it had denied join the list, which is then fixed and recorded for every counted run.
+- Order: slot 1 C then T, slot 2 T then C; n = 2 per arm. Valid, else one repeat (a second invalid run leaves that slot not settled): the result is not an error; all six reviewers were
+  dispatched, each with usage and a returned message; no reviewer or parent CANNOT EXAMINE; no denied call stopped the capture, a hash check or a reviewer.
+- Instrument: `grade.ps1` (sha256 `6a470f610caa`, kept beside the evidence) over the session's `subagents/`. A request's context is input + cache-creation + cache-read, counted once per API
+  message id. A finding matches Dk when it is a table row in the returned message of Dk's owner, names Dk's file and matches Dk's case-insensitive pattern, frozen in the script (D4 needs
+  `log` and the header or a token; D6 excludes a row that is D4's; D11 and D12 match a row opening with the DEBT id). A match by a non-owner is reported, not scored. Seen on run1's six
+  reviewers (the unplanted subject): D3, D5, D6, D8, D9, D11 and D12 found, D1, D2, D4, D7 and D10 not; its context sums equal run1's table (convention-check 83,552, debt-radar 117,158).
+  Every returned row is also read by hand against D1-D12; a disagreement that would change a reading makes it not settled.
+- **R1**, tokens: HOLDS if, for each of the six reviewers, its mean first-request context over T's runs is at least 5,000 below its mean over C's; else FAILS.
+- **R2**, findings: detect(arm, Dk) counts the arm's valid runs whose owner matched Dk. HOLDS if the sum over Dk of detect(T) is at least C's and no class's sum is two or more below C's.
+  FAILS if T's sum is three or more below C's, or a class's is two or more below. Otherwise (T one or two below): slot 3 is run, C then T, and on n = 3 R2 HOLDS if T's sum is at least C's
+  minus 1 and no class's is two or more below, else FAILS.
+- Ship only if R1 and R2 hold and the Copilot check below reads **loads**: one guarded commit with the candidate, this measurement as its red/green evidence. Otherwise the results land,
+  the candidate does not, and the entry narrows.
+- Prediction, before any run. R1 HOLDS: each reviewer's first request falls by about 8,000 to 9,500 tokens (run1: 17,333 to 19,419). R2 HOLDS: C finds D3, D5, D6, D8, D9, D11 and D12 as
+  run1 did, plus most plants; T is within one detection; in every T run convention-check reads `AGENTS.md`, and solid-check and test-critic the carrier. Pooled reviewer cumulative context
+  falls 30% to 45%, since those three Reads add part of the chain back.
+- Reported, not scored: cumulative context per reviewer and arm; each reviewer's policy Reads; returned rows; non-owner matches; the verdict; cost, wall time and denials.
+- Stop: 12 USD for the pilot, runs, repeats and slot 3 (run1 cost 0.54 USD).
+- Copilot CLI load check, one run on the T fixture after the Claude Code runs. Copilot CLI 1.0.98, `--model claude-sonnet-5.5`, flags and environment as the B-464 leftover (2)
+  pre-registration, session `b4670000-0000-4000-8000-000000000101`, repeat `-0102`. Prompt: "Use your task tool six times, once each with agent_type convention-check, debt-radar,
+  bloat-radar, solid-check, test-critic and security-auditor, each asking it to reply with the single word ready; pass no model argument. Then report each agent's reply or the tool's error
+  verbatim, one line per agent, and stop. Do not edit any file." B-399 saw this CLI select the same-named `.github/agents` wrapper, which tells the agent to read the `.claude` file; B-398
+  saw it load a wrapper-less `.claude/agents` file and refuse its `model: sonnet`. Valid, else CANNOT-EXAMINE and the repeat: `session.start` 1.0.98, that model on the main messages, no
+  auth, quota or model error, at least one `task` call. Reading: **loads** if every `task` call reaches `subagent.started` and `subagent.completed` and no CLI log line reports a parse,
+  schema or validation failure naming a `.claude/agents/` file; **refuses**, do not ship the key, on a `task` error naming a definition or the key, such a log line, or no exit within 10
+  minutes. A warning naming a `.claude/agents/` file while every task completes: one run of the same prompt on C decides (present on C too: not the key's). Stop: 3 runs; premium requests
+  and AI credits recorded.
+- Not shown: Claude Code before 2.1.271 (the key is expected to be ignored there; not run); the Angular and monorepo dists; a larger subject; other parent models; VS Code (B-475); a
+  consumer's own `CLAUDE.md` additions or `.claude/rules/`, which no longer reach a reviewer (`AGENTS.md` › Conventions still does, through convention-check's Read).
