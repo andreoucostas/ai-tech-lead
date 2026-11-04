@@ -6979,3 +6979,64 @@ or the carrier and used the injected copy; with the key they must make it. The r
 - Changes from the registration: none. Stated: `CLAUDE_AGENT_SDK_*`, `CLAUDE_PID` and `CLAUDE_PREVIEW_CLASSIFIER_FLOOR` are not in the registered list and stayed in the child's
   environment; the summariser's first pass over U1 failed on a missing `status.txt` (an empty `git status` writes no file) and was fixed before any reading.
 - Not shown: as registered.
+
+## B-467 results — 2026-11-04 (pre-registered at d7da3b75)
+
+Claude Code 2.1.312, parent `claude-sonnet-5-5`, reviewers as `review.md` sets them. C = `dist/dotnet` at d7da3b75, T = fb299354 (C plus `omitClaudeMd: true` in the six reviewer
+files); `git diff --stat` C..T over `dist/dotnet` named exactly the six files, each `+omitClaudeMd: true`, and the C and T fixtures' tracked trees (175 files) differed in exactly those six.
+Evidence (`review.jsonl`, fixtures, `grade.ps1`, `run-one.ps1`, `approve-readonly.ps1`, the subject) in `%TEMP%\b467\` and the session scratchpad; none in the repository.
+
+- Harness amendment, frozen by the agent's message to the lead at 08:53 UTC, before the first counted run, and not by a commit (only d7da3b75 is a commit); the same in both
+  arms; grader, subject, arms, metric, readings and prediction unchanged. Five uncounted C pilots (p0C to p4C, 1.65 USD) showed the registered prefix allowlist cannot run
+  `/review` headless: the bundle under `%TEMP%` lay outside the session's working directories (p0C); every capture or hash command the parent and reviewers wrote was
+  compound or used `&` or `$()`, which no prefix rule matched (p0C to p3C); the Sonnet reviewers stopped at CANNOT EXAMINE on one denied hash command (p2C). A whole-tool
+  PowerShell and Bash allow was refused by the launching host's auto mode and not used. Items: (1) each run's TEMP and TMP set to its own `tmp\`, passed with `--add-dir`;
+  (2) call-form prefix rules for the two review scripts; (3) a harness PreToolUse hook, `approve-readonly.ps1` (sha256 `f6bc93af1231`), in the fixture's git-ignored
+  `.claude/settings.local.json`, auto-approving a PowerShell command only when every `;`- or `|`-separated segment is read-only (read-only cmdlets, literal or `Join-Path`
+  assignments, echoes, the two review scripts, `dotnet build|test|restore`, read-only `git`; never a script block, `$()`, redirection or `&&`), seen right on 16 allow and
+  deny cases; anything else stayed denied; (4) driver `run-one.ps1` (sha256 `16040cd68cec`); (5) validity: a run missing a reviewer is repeated once; if the repeat also
+  lacks it, the run counts and that reviewer's class leaves both arms' sums for that slot. The hook auto-approves read-only segments in the nested eval session, the same in
+  both arms; a consumer's `/review` runs under the consumer's own permissions, which this harness does not reproduce. p4C ran clean: six reviewers, REQUEST CHANGES, 11 of 12.
+- Counted runs and validity, as registered. Slot 1: s1C and s1T stopped on the account's usage limit (error results), so each took its repeat. s1C-r: test-critic CANNOT
+  EXAMINE (its hash command used the alias `Select`, which the hook does not list, so it was denied) and bloat-radar not dispatched: invalid, so slot 1 C is **not settled**.
+  s1T-r: six reviewers, none CANNOT EXAMINE: **valid**. Slot 2: s2T dispatched three reviewers (convention, security, test-critic), repeated; s2T-r dispatched six, but its
+  first test-critic returned CANNOT EXAMINE on the same denied alias before the parent re-dispatched it: invalid, so slot 2 T is **not settled**. s2C: test-critic CANNOT
+  EXAMINE (same cause), repeated; s2C-r: six reviewers, none CANNOT EXAMINE: **valid**. Valid: one run per arm, in different slots. Every verdict REQUEST CHANGES.
+
+| run | arm | valid | reviewers | conv D1-D3 | sec D4-D6 | tests D7-D9 | bloat D10 | debt D11-D12 | cost USD |
+|---|---|---|---|---|---|---|---|---|---|
+| s1C-r | C | no (test-critic CANNOT EXAMINE; no bloat-radar) | 5 | 3 | 3 | 0 | – | 2 | 0.57 |
+| s2C | C | no (test-critic CANNOT EXAMINE) | 6 | 2 | 3 | 0 | 1 | 2 | 0.53 |
+| s2C-r | C | yes | 6 | 3 | 3 | 3 | 1 | 2 | 0.66 |
+| s1T-r | T | yes | 6 | 3 | 3 | 2 (3 by hand) | 1 | 2 | 0.61 |
+| s2T | T | no (3 reviewers) | 3 | 3 | 3 | 3 | – | – | 0.49 |
+| s2T-r | T | no (first test-critic CANNOT EXAMINE) | 6 | 3 | 3 | 3 | 1 | 2 | 0.63 |
+
+| reviewer | C first request, mean (n) | T first request, mean (n) | drop | C cumulative, mean | T cumulative, mean |
+|---|---|---|---|---|---|
+| convention-check | 18,055 (3) | 8,862 (3) | 9,193 | 71,557 | 61,850 |
+| debt-radar | 17,412 (3) | 8,211 (2) | 9,201 | 73,892 | 46,172 |
+| bloat-radar | 18,654 (2) | 9,436 (2) | 9,218 | 123,114 | 73,718 |
+| solid-check | 18,193 (3) | 8,988 (2) | 9,205 | 68,572 | 58,523 |
+| test-critic | 18,809 (3) | 9,650 (4) | 9,159 | 47,072 | 32,717 |
+| security-auditor | 19,521 (3) | 10,334 (3) | 9,188 | 74,317 | 47,926 |
+
+- **R1**, on the valid runs (s2C-r against s1T-r): every reviewer's first request fell by 9,196 to 9,250 tokens, at least 5,000: **HOLDS**. The table above pools every reviewer
+  instance of the six counted attempts (C 17,384 to 19,539, T 8,205 to 10,343, no overlap), and agrees.
+- **R2**, on the valid runs: the grader gives C 12 and T 11 (T one below: slot 3 required, not run); by hand T is 12, because s1T-r's test-critic row on the untested
+  already-refunded 409 names `CheckoutController.Refund` with no `.cs`, which D9's file pattern misses. A hand-read disagreement that changes the reading, and only one valid
+  run per arm against the registered n = 2: **not settled**. Reported, not scored: every T run that dispatched a class's owner found that class's planted and natural
+  defects; the misses in C are the invalid runs' test-critic CANNOT EXAMINEs and missing bloat-radar, plus s2C's D3.
+- Copilot CLI load check, session `b4670000-0000-4000-8000-000000000101` on a T fixture (built like the counted ones, no Claude run), run while the last two Claude runs were in
+  flight. Deviation: the registered `--allow-all-tools --allow-all-paths` and `COPILOT_ALLOW_ALL` were refused by the launching host's auto mode, so the run used
+  `--available-tools task read_agent view glob grep --allow-tool task read_agent view glob grep` (no shell, no write); other flags as registered. Valid: `session.start` 1.0.98,
+  `claude-sonnet-5.5` on every subagent, no auth, quota or model error. Six `task` calls, six `subagent.started` and six `subagent.completed`, each replying "ready", each
+  `agentDescription` the `.github/agents` wrapper's, as B-399 saw; no CLI log line reports a parse, schema or validation failure naming `.claude/agents/` (the one `[ERROR]` is a
+  remote Task API 404 under `--no-remote`). Reading: **loads**. 1 premium request, 36.78 AI credits, 68 s.
+- Prediction against the result: R1's 8,000 to 9,500 range held (9,159 to 9,250). In T, convention-check read `AGENTS.md` in 3 of 3 runs, solid-check the carrier in 2 of 2
+  and test-critic in 2 of 3 runs (s2T-r's two instances read neither); no C reviewer read either. Pooled reviewer cumulative context fell 30% (all instances) and 40% (valid
+  runs: 554,660 against 333,950), inside the predicted 30% to 45%. R2 could not be read.
+- Decision, as registered: R2 is not settled, so the candidate does not ship; fb299354 stays on the branch, unmerged. Spend: pilots 1.65, counted attempts 3.60, so 5.25 USD
+  of the 12 stop; Copilot 1 premium request.
+- Not shown: as registered; and whether test-critic's CANNOT EXAMINE rate under this harness differs by arm (first test-critic CANNOT EXAMINE in C 2 of 3 attempts, T 1 of 3); a hash
+  command the hook did not cover caused each one, so the harness drove it, not the key as far as these runs show.
