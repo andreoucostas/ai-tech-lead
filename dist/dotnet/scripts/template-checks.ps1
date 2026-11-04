@@ -13,7 +13,11 @@ $ErrorActionPreference = 'Stop'
 
 # Anchor to the repo this script lives in (scripts/..), not the caller's cwd — running from
 # elsewhere must never silently audit the wrong directory.
-Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+Set-Location -LiteralPath (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+$rootFull = (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)).TrimEnd('\','/')
+# Every path below is absolute and literal. Windows PowerShell 5.1 reads a relative path against a location holding [ or ] as
+# a wildcard, even with -LiteralPath, so a repository at such a path read as having no AGENTS.md and no hooks.
+function Get-RepoPath([string]$Relative) { Join-Path $rootFull $Relative }
 
 $failed = 0
 function Fail($m) { Write-Output "FAIL: $m"; $script:failed++ }
@@ -21,21 +25,21 @@ function OK($m)   { Write-Output "OK:   $m" }
 
 # --- 1. Version-stamp sync -------------------------------------------------------------------
 $vClaude = $null; $vJson = $null; $vLog = $null; $vLogLine = $null; $changelogHeads = @()
-$isTemplateRepo = Test-Path -LiteralPath '.template-repo' -PathType Leaf
-if (Test-Path 'AGENTS.md') {
-    $head = Get-Content 'AGENTS.md' -TotalCount 10
+$isTemplateRepo = Test-Path -LiteralPath (Get-RepoPath '.template-repo') -PathType Leaf
+if (Test-Path -LiteralPath (Get-RepoPath 'AGENTS.md')) {
+    $head = Get-Content -LiteralPath (Get-RepoPath 'AGENTS.md') -TotalCount 10
     foreach ($l in $head) { if ($l -match '^\s*version:\s*(\S+)') { $vClaude = $Matches[1]; break } }
 }
-if (Test-Path '.claude/framework-version.json') {
-    try { $vJson = (Get-Content '.claude/framework-version.json' -Raw | ConvertFrom-Json).version } catch {}
+if (Test-Path -LiteralPath (Get-RepoPath '.claude/framework-version.json')) {
+    try { $vJson = (Get-Content -LiteralPath (Get-RepoPath '.claude/framework-version.json') -Raw | ConvertFrom-Json).version } catch {}
 }
-if ($isTemplateRepo -and (Test-Path -LiteralPath 'CHANGELOG.md' -PathType Leaf)) {
+if ($isTemplateRepo -and (Test-Path -LiteralPath (Get-RepoPath 'CHANGELOG.md') -PathType Leaf)) {
     # Get-Content has no explicit -Encoding here, so on Windows PowerShell 5.1 a BOM-less file (this
     # one deliberately has none) decodes against the system codepage, not UTF-8 -- mangling a
     # non-ASCII em dash in the head line. Read the bytes directly via an absolute path: Set-Location
     # above updates the PowerShell provider location but not the .NET process CWD, so a relative
     # [IO.File] path would resolve against the wrong directory.
-    try { $clText = [IO.File]::ReadAllText((Resolve-Path -LiteralPath 'CHANGELOG.md').Path) }
+    try { $clText = [IO.File]::ReadAllText((Resolve-Path -LiteralPath (Get-RepoPath 'CHANGELOG.md')).ProviderPath) }
     catch {
         Write-Output 'CANT-VERIFY: template-checks could not inspect CHANGELOG.md; changelog headings remain UNKNOWN. Fix the host/resource read problem and rerun.'
         exit 2
@@ -55,7 +59,7 @@ if ($isTemplateRepo -and (Test-Path -LiteralPath 'CHANGELOG.md' -PathType Leaf))
 if (-not $vClaude) { Fail 'AGENTS.md has no version stamp in its header comment.' }
 elseif (-not $vJson) { Fail '.claude/framework-version.json missing or unparsable.' }
 elseif ($vClaude -ne $vJson) { Fail "version-stamp drift: AGENTS.md says $vClaude, framework-version.json says $vJson." }
-elseif ($isTemplateRepo -and -not (Test-Path -LiteralPath 'CHANGELOG.md' -PathType Leaf)) { Fail 'marked template repo has no CHANGELOG.md.' }
+elseif ($isTemplateRepo -and -not (Test-Path -LiteralPath (Get-RepoPath 'CHANGELOG.md') -PathType Leaf)) { Fail 'marked template repo has no CHANGELOG.md.' }
 # The version number alone is not proof the entry is released: the marked template's literal first
 # H2 must use the same dated whole-line grammar the release preflight accepts after stamping. Unmarked
 # consumers own their changelog convention, so their CHANGELOG.md is deliberately not parsed.
@@ -98,13 +102,13 @@ function Test-ImportLine($Lines, [string[]]$Import) {
     return [bool](@($Lines) | Where-Object { $Import -ccontains $_.Trim() } | Select-Object -First 1)
 }
 $layoutHelp = 'Move the project instructions into AGENTS.md and make CLAUDE.md the two-import stub (docs/upgrade-checklist.md).'
-if (-not (Test-Path -LiteralPath 'AGENTS.md' -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath (Get-RepoPath 'AGENTS.md') -PathType Leaf)) {
     Fail "AGENTS.md is missing. $layoutHelp"
-} elseif (-not (Test-Path -LiteralPath 'CLAUDE.md' -PathType Leaf)) {
+} elseif (-not (Test-Path -LiteralPath (Get-RepoPath 'CLAUDE.md') -PathType Leaf)) {
     Fail 'CLAUDE.md is missing - Claude Code needs it to import AGENTS.md and the framework rules.'
 } else {
-    $cl = @(Get-Content 'CLAUDE.md')
-    $ag = @(Get-Content 'AGENTS.md')
+    $cl = @(Get-Content -LiteralPath (Get-RepoPath 'CLAUDE.md'))
+    $ag = @(Get-Content -LiteralPath (Get-RepoPath 'AGENTS.md'))
     # Any @AGENTS.md mention counts, as in the installer and session-start: Claude Code honours
     # inline imports too, and a false "older layout" finding would send a migrated repo backwards.
     if (-not (($cl -join "`n") -cmatch '(?<![\w/.@-])@(\./)?AGENTS\.md(?![\w-])')) {
@@ -123,16 +127,16 @@ if (-not (Test-Path -LiteralPath 'AGENTS.md' -PathType Leaf)) {
 }
 
 # --- 4. Framework .ps1 files carry a UTF-8 BOM (Windows PowerShell 5.1 requirement) -----------
-$scanDirs = @('.claude/hooks','scripts','tests/hooks') | Where-Object { Test-Path $_ }
+$scanDirs = @('.claude/hooks','scripts','tests/hooks') | Where-Object { Test-Path -LiteralPath (Get-RepoPath $_) }
 # In a consumer repository scripts/ is shared with the consumer's own scripts, which are not the
 # framework's to police: check only the .ps1 files framework-ownership.json lists. The marked
 # template repo, and an older install with no manifest, keep the full scan. A manifest that is
 # present but unreadable is "could not examine", never a pass.
 $ownedScripts = $null
-if (-not $isTemplateRepo -and (Test-Path -LiteralPath 'framework-ownership.json')) {
+if (-not $isTemplateRepo -and (Test-Path -LiteralPath (Get-RepoPath 'framework-ownership.json'))) {
     try {
         $ownedScripts = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-        $ownEntries = @((Get-Content -LiteralPath 'framework-ownership.json' -Raw -Encoding UTF8 | ConvertFrom-Json).paths)
+        $ownEntries = @((Get-Content -LiteralPath (Get-RepoPath 'framework-ownership.json') -Raw -Encoding UTF8 | ConvertFrom-Json).paths)
         if ($ownEntries.Count -eq 0) { throw 'no paths inventory' }
         foreach ($entry in $ownEntries) {
             if ($entry.path -isnot [string] -or -not $entry.path) { throw 'entry without a path' }
@@ -143,10 +147,9 @@ if (-not $isTemplateRepo -and (Test-Path -LiteralPath 'framework-ownership.json'
         exit 2
     }
 }
-$rootFull = (Resolve-Path -LiteralPath '.').ProviderPath.TrimEnd('\','/')
 function Get-FrameworkScripts {
     foreach ($d in $scanDirs) {
-        foreach ($f in (Get-ChildItem -Recurse -Filter *.ps1 -Path $d)) {
+        foreach ($f in (Get-ChildItem -Recurse -Filter *.ps1 -LiteralPath (Get-RepoPath $d))) {
             if ($null -eq $ownedScripts) { $f; continue }
             if ($ownedScripts.Contains(($f.FullName.Substring($rootFull.Length + 1) -replace '\\','/'))) { $f }
         }
@@ -162,7 +165,7 @@ foreach ($d in @('.')) {
 if ($noBom.Count -gt 0) { Fail ("BOM missing on: " + ($noBom -join ', ')) } else { OK 'all framework .ps1 files carry a UTF-8 BOM.' }
 
 # --- 5. Framework PowerShell hook set ----------------------------------------------------------
-if (Test-Path '.claude/hooks') {
+if (Test-Path -LiteralPath (Get-RepoPath '.claude/hooks')) {
     $requiredHooks = @(
         'audit-trail.ps1',
         'boy-scout-check.ps1',
@@ -172,7 +175,7 @@ if (Test-Path '.claude/hooks') {
         'session-start.ps1'
     )
     $missingHooks = @($requiredHooks | Where-Object {
-        -not (Test-Path -LiteralPath (Join-Path '.claude/hooks' $_) -PathType Leaf)
+        -not (Test-Path -LiteralPath (Join-Path (Get-RepoPath '.claude/hooks') $_) -PathType Leaf)
     })
     if ($missingHooks.Count -gt 0) {
         Fail ("required framework PowerShell hooks missing: " + ($missingHooks -join ', ') + '.')
@@ -197,13 +200,13 @@ if ($parseFails.Count -gt 0) { Fail ("PS syntax errors: " + ($parseFails -join '
 # --- 7. Canonical project-skill location ------------------------------------------------------
 # GitHub Copilot documents .claude/skills as a project-skill location. A second .github/skills
 # tree is therefore a higher-priority shadow and a migration defect, not a mirror to repair.
-if (Test-Path -LiteralPath '.github/skills') {
+if (Test-Path -LiteralPath (Get-RepoPath '.github/skills')) {
     Fail '.github/skills exists — migrate its contents to .claude/skills, then remove the GitHub path.'
 } else {
     OK 'canonical project skills use .claude/skills (.github/skills absent).'
 }
 $retiredSkillSync = @('scripts/sync-agent-files.ps1') |
-    Where-Object { Test-Path -LiteralPath $_ }
+    Where-Object { Test-Path -LiteralPath (Get-RepoPath $_) }
 if ($retiredSkillSync.Count -gt 0) {
     Fail ("retired skill-mirror sync scripts exist: " + ($retiredSkillSync -join ', ') + ' — remove these framework leftovers.')
 } else {

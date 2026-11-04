@@ -32,6 +32,11 @@
   850, 1252) a written file under a folder such as `Müller\` arrived as a path that does not exist, and a broken build or type-check
   after that write was never reported. It now reads the event as UTF-8, as the prompt, session-start, audit and write-guard hooks
   already do; the console's own code page is left as it was.
+- **The review's test-weakening check and the framework checks now work in a OneDrive folder and at a path with `[` or `]`.** `/review`
+  stopped with "cannot examine" when its review snapshot sat under a OneDrive folder, because the scanner took the folder for a link; it
+  now refuses only a real junction or symbolic link. `template-checks` (run by `docs-sync-check`) stopped before any check when your
+  repository's path held a `[`, and on Windows PowerShell 5.1 it then reported `AGENTS.md` and the hooks missing; it now runs every
+  check there as it does at any other path. Nothing for you to change.
 
 ## 0.98.3 — 2026-10-31
 

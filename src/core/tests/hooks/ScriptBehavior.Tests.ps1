@@ -45,8 +45,8 @@ function CopyScript($Name, $Root) {
     Copy-Item (Join-Path $scripts "$Name.ps1") (Join-Path $Root scripts)
 }
 
-function TemplateFixture {
-    $root = Temp template
+function TemplateFixture([string]$Name = 'template') {
+    $root = Temp $Name
     CopyScript template-checks $root
     Put (Join-Path $root '.template-repo') "fixture`n"
     Put (Join-Path $root CHANGELOG.md) "# Changelog`n`n## 1.2.3 — 2026-08-08`n`n- Fixture.`n"
@@ -131,9 +131,9 @@ It 'template-checks reaches the complete clean contract and reports planted drif
 
         $absent = 'CHANGELOG.__b175_absent__'
         $source = [IO.File]::ReadAllText($subject)
-        $anchor = "Resolve-Path -LiteralPath 'CHANGELOG.md'"
+        $anchor = "Resolve-Path -LiteralPath (Get-RepoPath 'CHANGELOG.md')"
         Assert ((LiteralCount $source $anchor) -eq 1) 'CHANGELOG input anchor changed'
-        PutBom $subject ($source.Replace($anchor, "Resolve-Path -LiteralPath '$absent'"))
+        PutBom $subject ($source.Replace($anchor, "Resolve-Path -LiteralPath (Get-RepoPath '$absent')"))
         $resource = RunArg $subject
         $diagnostic = 'CANT-VERIFY: template-checks could not inspect CHANGELOG.md; changelog headings remain UNKNOWN. Fix the host/resource read problem and rerun.'
         Assert ($resource.Exit -eq 2 -and $resource.Out.Trim() -ceq $diagnostic) "resource contract changed: exit=$($resource.Exit) out='$($resource.Out)'"
@@ -221,6 +221,24 @@ It 'template-checks rejects an Unreleased stamped head but accepts a dated one' 
             }
         } finally { Remove-Item -Recurse -Force $root }
     }
+}
+
+# Set-Location without -LiteralPath read the repository path as a wildcard and died with "does not exist" before any check ran; on
+# Windows PowerShell 5.1 a relative path then still missed every file. A planted BOM-less script that does not parse shows the scan ran.
+It 'template-checks reaches the same checks at a path with [ ] as at a plain one' {
+    $roots = @((TemplateFixture), (TemplateFixture 'template-[1]'))
+    try {
+        $results = @(foreach ($root in $roots) {
+            Put (Join-Path $root '.claude/hooks/planted.ps1') "if (`n"
+            RunArg (Join-Path $root scripts/template-checks.ps1)
+        })
+        Assert ($results[0].Exit -eq 3) "the plain fixture did not report the planted script: exit=$($results[0].Exit) $($results[0].Out) $($results[0].Err)"
+        Assert (-not ($results[1].Out + $results[1].Err).Contains('does not exist')) "the bracketed path was read as a wildcard: $($results[1].Out) $($results[1].Err)"
+        Assert ($results[1].Exit -eq $results[0].Exit) "the bracketed path exited $($results[1].Exit), the plain one $($results[0].Exit): $($results[1].Out) $($results[1].Err)"
+        $plain = (Records $results[0].Out.Replace($roots[0], '<root>')) -join "`n"; $bracketed = (Records $results[1].Out.Replace($roots[1], '<root>')) -join "`n"
+        Assert ($plain.Contains('planted.ps1')) "the plain fixture did not name the planted script: $plain"
+        Assert ($bracketed -ceq $plain) "the bracketed path reported differently:`n$bracketed`nplain:`n$plain"
+    } finally { foreach ($root in $roots) { Remove-Item -Recurse -Force -LiteralPath $root -ErrorAction SilentlyContinue } }
 }
 
 It 'docs-sync-check preserves all wrapper states and advisory prose' {

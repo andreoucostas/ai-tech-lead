@@ -182,4 +182,46 @@ It 'Vitest *.test.ts, MSTest FooTest.cs and __tests__/ files are test files too'
     } finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# A OneDrive (cloud files) folder is a reparse point with no LinkType and no Target, and refusing it as a link stopped /review on a
+# bundle under one. No test can give a folder that attribute without a filter driver, so the scanner's predicate is taken from its own
+# AST, as review-scope's is, beside the behaviour that must stay: a junction standing in for the bundle is still refused.
+It 'the scanner predicate calls a reparse point with no link type a folder and a junction or symlink a link' {
+    $ast = [Management.Automation.Language.Parser]::ParseFile($scan, [ref]$null, [ref]$null)
+    $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-IsLinkEntry' }, $true)
+    Assert ($null -ne $fn) 'the scanner defines no Test-IsLinkEntry; any reparse point, a OneDrive folder included, is refused as a link'
+    $predicate = $fn.Body.GetScriptBlock()
+    $dir = [IO.FileAttributes]'Directory, ReparsePoint'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = $null }))) 'a cloud-files folder (no LinkType, no Target) was called a link'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = ''; Target = @() }))) 'a cloud-files folder (empty LinkType, empty Target) was called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'Junction'; Target = @('C:\x') })) 'a junction was not called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'SymbolicLink'; Target = @('C:\x') })) 'a directory symlink was not called a link'
+    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = @('C:\x') })) 'a reparse point that reports a Target was not called a link'
+    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = [IO.FileAttributes]'Directory'; LinkType = 'Junction'; Target = @('C:\x') }))) 'an entry without the reparse attribute was called a link'
+    Assert (-not (& $predicate $null)) 'a missing entry was called a link'
+    $bare = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.BinaryExpressionAst] -and $n.Operator -eq 'Band' -and $n.Extent.Text -match 'ReparsePoint' }, $true) |
+        Where-Object { $_.Extent.StartOffset -lt $fn.Extent.StartOffset -or $_.Extent.StartOffset -ge $fn.Extent.EndOffset })
+    Assert ($bare.Count -eq 0) "the scanner still tests the reparse attribute alone at: $(($bare | ForEach-Object { $_.Extent.StartLineNumber }) -join ', ')"
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { return }
+    $repo = New-ScanRepo
+    $bundle = Join-Path ([IO.Path]::GetTempPath()) ('tw-link-target-' + [guid]::NewGuid().ToString('N'))
+    $link = Join-Path ([IO.Path]::GetTempPath()) ('tw-link-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $builder = Join-Path (Split-Path -Parent $scan) 'review-scope.ps1'
+        Push-Location $repo
+        try { $buildOut = & (Get-Process -Id $PID).Path -NoProfile -File $builder -Mode Uncommitted -OutputPath $bundle 2>&1 | Out-String; $buildExit = $LASTEXITCODE }
+        finally { Pop-Location }
+        Assert ($buildExit -eq 0) "could not build the junction's target bundle: $buildOut"
+        New-Item -ItemType Junction -Path $link -Target $bundle | Out-Null
+        Assert ([string](Get-Item -Force -LiteralPath $link).LinkType -eq 'Junction') 'the fixture junction was not created'
+        $direct = Invoke-Scan $repo @('-ScopePath', $bundle)
+        Assert ($direct.Exit -eq 0) "the bundle itself did not scan: $($direct.Exit) $($direct.Text)"
+        $linked = Invoke-Scan $repo @('-ScopePath', $link)
+        Assert ($linked.Exit -eq 2 -and $linked.Text -match 'not a regular directory') "a junction standing in for the bundle was not refused: $($linked.Exit) $($linked.Text)"
+    } finally {
+        # Delete the junction itself, never through it.
+        if (Test-Path -LiteralPath $link) { [IO.Directory]::Delete($link, $false) }
+        Remove-Item -LiteralPath $repo, $bundle -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 exit (Write-TestSummary 'TestWeakeningScan.Tests (advisory contract)')

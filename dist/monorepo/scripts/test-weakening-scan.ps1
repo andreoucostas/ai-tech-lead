@@ -15,6 +15,16 @@ param(
 $ErrorActionPreference = 'Stop'
 $assertionShape = 'Assert|expect\s*\(|Should|\.Verify\s*\(|\[(Fact|Test)\b|\bit\s*\(|\bdescribe\s*\('
 
+# An entry is a link only when it is a reparse point whose LinkType is SymbolicLink or Junction, or that
+# reports a Target. Cloud-files folders (OneDrive) are reparse points with neither and are not links.
+# Never reduce this to the attribute alone, and never accept a link by anything looser than this test.
+function Test-IsLinkEntry {
+    param($Entry)
+    if (-not $Entry -or ($Entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) { return $false }
+    if ([string]$Entry.LinkType -in 'SymbolicLink', 'Junction') { return $true }
+    return ([string]($Entry.Target -join '')).Length -gt 0
+}
+
 function Read-ReviewScopeBundle {
     param([string]$BundlePath)
     if ([string]::IsNullOrWhiteSpace($BundlePath)) { throw 'INVALID: -ScopePath cannot be empty.' }
@@ -22,14 +32,14 @@ function Read-ReviewScopeBundle {
     try { $bundleEntry = Get-Item -Force -LiteralPath $bundleFull -ErrorAction Stop }
     catch [System.Management.Automation.ItemNotFoundException] { $bundleEntry = $null }
     catch { throw "CANNOT EXAMINE: could not inspect review scope '$BundlePath': $($_.Exception.Message)" }
-    if (-not $bundleEntry -or -not $bundleEntry.PSIsContainer -or (($bundleEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+    if (-not $bundleEntry -or -not $bundleEntry.PSIsContainer -or (Test-IsLinkEntry $bundleEntry)) {
         throw "INVALID: review scope is not a regular directory: '$BundlePath'."
     }
     $manifestPath = Join-Path $bundleFull 'manifest.json'
     try { $manifestEntry = Get-Item -Force -LiteralPath $manifestPath -ErrorAction Stop }
     catch [System.Management.Automation.ItemNotFoundException] { $manifestEntry = $null }
     catch { throw "CANNOT EXAMINE: could not inspect review manifest: $($_.Exception.Message)" }
-    if (-not $manifestEntry -or $manifestEntry.PSIsContainer -or (($manifestEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+    if (-not $manifestEntry -or $manifestEntry.PSIsContainer -or (Test-IsLinkEntry $manifestEntry)) {
         throw 'INVALID: review scope has no regular manifest.json.'
     }
     try { $manifestText = [IO.File]::ReadAllText($manifestPath, [Text.Encoding]::UTF8) }
@@ -74,7 +84,7 @@ function Read-ReviewScopeBundle {
             try { $entry = Get-Item -Force -LiteralPath $cursor -ErrorAction Stop }
             catch [System.Management.Automation.ItemNotFoundException] { $entry = $null }
             catch { throw "CANNOT EXAMINE: could not inspect review artifact '$relative': $($_.Exception.Message)" }
-            if ($entry -and (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+            if ($entry -and (Test-IsLinkEntry $entry)) {
                 throw "INVALID: review artifact traverses a reparse point: '$relative'."
             }
             $cursor = Split-Path -Parent $cursor
