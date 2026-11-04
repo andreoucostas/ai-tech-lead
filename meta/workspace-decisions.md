@@ -4694,3 +4694,25 @@ next `userPromptSubmitted`: the nudge is a regex heuristic, `/fix` confines Boy 
 prompt later. Rejected: a block (premium request per nudge; Copilot registers the script from both `hooks.json` and `.claude/settings.json`, so one stop could block twice,
 unmeasured); a block only for non-trivial findings (the scanner has no severity). Proposed by a Fable review, accepted by the maintainer. **Reopen** on a field report that the
 nudge arrives too late, or if Copilot stops billing a block continuation as a premium request.
+
+## WSD-120: no semantic or symbol index of a consumer's code; the hosts bring retrieval (2026-11-04)
+
+**Context.** Field report #10 item 6 (B-455) asked whether a semantic repository index is needed beyond `AGENTS.md > Repository Structure`, `docs/wiki/INDEX.md`,
+`docs/architecture-decisions.md`, `docs/warehouse-map.md` on demand and `FRAMEWORK-CONTEXT.md > Known Hazard Areas`. Claude Code's tools and Copilot's workspace index read the
+tree themselves, and no carrier points at a generated index. **Decision (a Fable review under the maintainer's chat mandate of 2026-11-04 to answer direction questions in
+their place; not yet read by the maintainer).** The framework ships no symbol or semantic index: it would be a second committed artifact that goes stale on every change
+(B-452's complaint, multiplied), the hosts already index, and knowledge increments stay held under WSD-091; this lifts nothing WSD-091 or WSD-097 holds. `docs/reference.md`
+says what to use instead. Rejected: the 3 USD read-count probe of `.claude/plans/2026-10-21-field-report-10-b450-b455.md`, since no reported task failed to locate code with
+the shipped carriers, so there is nothing to measure against. **Reopen** on a field report naming one task in a bootstrapped repository that the shipped carriers and the
+host's search failed to locate; measure it as that plan's step 2 before anything is built.
+
+## WSD-121: no write-side recipe for warehouse reporting views and procedures; B-129's reopen bar stands (2026-11-04)
+
+**Context.** A consumer expected `/map-warehouse` to bring skills for adding facts, dimensions, reporting procedures and Power BI reports (maintainer relay 2026-10-23, B-459;
+no field report). Facts and dimensions are `add-warehouse-load`'s; reporting views and procedures have only `map-warehouse`'s read-side Querying rules. B-129 closed 2026-08-31
+to reopen only on a concrete framework-caused publication error; of its three reasons only the static headroom is gone. **Decision (a Fable review under the maintainer's chat
+mandate of 2026-11-04; not yet read by the maintainer, who reopened the question).** An expectation is not an observed error, so B-129's bar stands, and WSD-109 ships a new
+operation skill only on a field report or a measured outcome; nothing is built. The consumer CHANGELOG answers the team: `add-warehouse-load` covers facts and dimensions, a
+reporting view or procedure is written under `map-warehouse`'s Querying rules on the map's proven joins, and Power BI authoring is out of scope. Rejected: reopening B-129's
+bounded section on headroom alone, the smallest of its three reasons. **Reopen** on a field report of a reporting view or procedure written with the framework that was wrong
+or failed to publish, or of a repeated step a team wants kept (then a `/bootstrap` 3a-bis project-skill draft, not a shipped skill).

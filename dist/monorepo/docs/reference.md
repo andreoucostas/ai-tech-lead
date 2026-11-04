@@ -124,6 +124,10 @@ three classes.
 | `tests/evals/` | A readable catalogue of the behaviour the framework intends. |
 | `docs/` | These guides, `defaults.md` (conventions before `/bootstrap`), and your team's decisions and wiki. |
 
+The framework ships no symbol or semantic index of your code. Your agent's own search finds code (Claude Code's
+tools, Copilot's workspace index); `AGENTS.md > Repository Structure` says where each kind of change goes, and
+`/rebootstrap` updates it after a structural change; `docs/wiki/INDEX.md` holds scoped claims to check against the code.
+
 Other tools: Gemini reads `GEMINI.md` by default and Aider reads these files only when configured to.
 Copilot's inline suggestions in VS Code read no instruction file.
 

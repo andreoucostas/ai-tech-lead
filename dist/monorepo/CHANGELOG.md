@@ -16,6 +16,17 @@
   agent's session-start hook ran, so a repo used with Claude Code and with VS Code's Copilot harness (whose hooks do not run in a
   trusted folder, above) looked enforced on Copilot too. A new `Copilot hook liveness` row reads a record only Copilot's own
   session-start writes, and says plainly when Copilot has not run your hooks here; `Hook liveness` now says it covers any agent.
+- **`docs/reference.md` now says the framework ships no index of your code, and what to use instead.** A team asked whether a
+  semantic or symbol index of the repository is needed. None ships: it would be one more committed file that goes stale on every
+  change, and your agent already searches the code itself (Claude Code's tools, Copilot's workspace index). `AGENTS.md >
+  Repository Structure` says where each kind of change goes and `/rebootstrap` updates it after a structural change;
+  `docs/wiki/INDEX.md` holds your scoped claims. Nothing for you to change.
+- **No skill writes warehouse reporting views or procedures for you yet, on purpose.** A team expected `/map-warehouse` to bring
+  skills for adding facts, dimensions, reporting procedures and Power BI reports. Facts and dimensions are `add-warehouse-load`'s.
+  For a reporting view or procedure, map the tables it reads with `map-warehouse` and write it under that skill's "Querying this
+  warehouse" rules, on the joins the map proves. Power BI authoring is out of scope. If a reporting view or procedure written this
+  way comes out wrong or fails to publish, or your team keeps repeating the same steps for one, report it: that is what would
+  change this.
 
 ## 0.98.3 — 2026-10-31
 

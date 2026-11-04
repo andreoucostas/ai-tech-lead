@@ -15,6 +15,11 @@
   agent's session-start hook ran, so a repo used with Claude Code and with VS Code's Copilot harness (whose hooks do not run in a
   trusted folder, above) looked enforced on Copilot too. A new `Copilot hook liveness` row reads a record only Copilot's own
   session-start writes, and says plainly when Copilot has not run your hooks here; `Hook liveness` now says it covers any agent.
+- **`docs/reference.md` now says the framework ships no index of your code, and what to use instead.** A team asked whether a
+  semantic or symbol index of the repository is needed. None ships: it would be one more committed file that goes stale on every
+  change, and your agent already searches the code itself (Claude Code's tools, Copilot's workspace index). `AGENTS.md >
+  Repository Structure` says where each kind of change goes and `/rebootstrap` updates it after a structural change;
+  `docs/wiki/INDEX.md` holds your scoped claims. Nothing for you to change.
 
 ## 0.98.3 — 2026-10-31
 

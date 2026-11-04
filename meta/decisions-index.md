@@ -91,3 +91,5 @@ authoritative.
 - “Vendor-capability claims are maintainer-owned and gated meta-side, never in a consumer's build.” — `meta/BACKLOG-DONE.md B-55`
 - “The rebootstrap baseline is committed on purpose: it records the last run's state for every clone, drift against it is the signal, and its hashes do not move with core.autocrlf.” — `meta/workspace-decisions.md WSD-118` (B-452, 2026-10-31)
 - “The Boy Scout nudge on Copilot stays on the free next-prompt queue; an agentStop block costs a premium request per nudge.” — `meta/workspace-decisions.md WSD-119` (B-380, 2026-11-04)
+- “The framework ships no semantic or symbol index of a consumer's code; the hosts' own search finds code, and Repository Structure and the wiki say where things go.” — `meta/workspace-decisions.md WSD-120` (B-455, Fable review under the maintainer's mandate, 2026-11-04)
+- “No write-side recipe for warehouse reporting views or procedures until a field report shows one written with the framework that was wrong; B-129's reopen bar stands.” — `meta/workspace-decisions.md WSD-121` (B-459, Fable review under the maintainer's mandate, 2026-11-04)
