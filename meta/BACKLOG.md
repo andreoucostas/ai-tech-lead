@@ -16,33 +16,31 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team |
 | 2 | B-475 | P1, false green on the framework's primary target: in VS Code 1.144.1 no repository hook runs in a trusted folder (0 of 7), so the write guard never fires there; root cause found 2026-11-03, reported upstream (microsoft/vscode#345931) |
 | 3 | B-476 | Per-prompt rails never reach the model on the first prompt of a VS Code Copilot-harness session; blocked on microsoft/vscode#345931, no code until it is re-measured |
-| 4 | B-464 | One leftover of bug-hunt batch 3: D6's Copilot fallback line shipped unmeasured; one Copilot CLI `/fix` run, premium requests |
-| 5 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; pre-registered, runner work and three generations before any run, at most 60 USD |
-| 6 | B-425 | A plain-words review may dispatch no reviewer, and so skip B-418's contract step; blocked on B-416's review answer; guarded, about 3 USD and 3 premium requests to measure |
-| 7 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half can now be driven through VS Code's agent host (2026-11-03), but B-475 decides which session path it measures |
-| 8 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 9 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
-| 10 | B-380 | Improvement: end-of-turn Boy Scout delivery on Copilot instead of the next-prompt queue, which B-377 saw still delivered on CLI 1.0.95 |
-| 11 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
-| 12 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
-| 13 | B-467 | Measured, not field-raised: each `/review` reviewer carries the main agent's whole instruction chain, about 53% of its input; `omitClaudeMd` drops it, so what is left is which rules each reviewer needs |
-| 14 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 15 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
-| 16 | B-440 | Data-loss class, contrived: an ignored backup copy can be overwritten by a checkout of a branch that tracks the same backup path; guarded |
-| 17 | B-453 | Field report: a zero-byte `.cs` sat in a claim's evidence; the baseline could name it instead of silently resting on it |
-| 18 | B-455 | Field question: whether a semantic repository index is needed beyond the wiki index and Repository Structure; decide before building |
-| 19 | B-459 | Consumer expectation, not a defect: no recipe for writing a reporting view or procedure; B-129's budget blocker is gone, its no-observed-error bar is not; decide before building |
-| 20 | B-374 | False-green class on a non-UTF-8 console: what the guard and the stack hooks read from the agent's event (a non-ASCII path, a no-break space) arrives mis-decoded; the four core hooks done, the two stack hooks left; no field report |
-| 21 | B-448 | Secret-leak class, tr-TR only: the Turkish-cased `APİ_KEY` passes the guard since B-445; guarded, step 4 |
-| 22 | B-474 | Secret-leak class, `NotebookEdit` only and unmeasured: a notebook-cell write never reaches the guard; guarded, step 4, starts from one captured hook event |
-| 23 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
-| 24 | B-461 | Data-loss class, environment-only: a caller's `GIT_LITERAL_PATHSPECS` or `GIT_ICASE_PATHSPECS` changes what the installer's and review-scope's pathspecs match; guarded |
-| 25 | B-468 | Measured, not field-raised: 2 of 26 plain bug fixes skipped the regression test, wrongly saying a SQLite test needs a new package; the agent said the fix was untested |
-| 26 | B-469 | Maintainer request: an update's `.claude/framework-update-backup/` copies get forgotten and committed; `-Reinstall` already relies on the last commit instead; guarded |
-| 27 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
-| 28 | B-471 | Installer leftovers of the 2026-10-31 attacks: exit 1 instead of 3 outside the copy loop, two printed remedies that fail, three gaps in the skip-worktree warning; guarded, step 4 |
-| 29 | B-472 | Write-guard leftovers: a UNC repository root loses the test exemption (safe side); a separator after a `.cs` name skips the C# checks, host acceptance unverified; guarded, step 4 |
-| 30 | B-473 | False green, OneDrive only: test-weakening-scan skips files under a OneDrive folder; template-checks dies at a path with `[`; ordinary |
+| 4 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; pre-registered, runner work and three generations before any run, at most 60 USD |
+| 5 | B-425 | A plain-words review may dispatch no reviewer, and so skip B-418's contract step; blocked on B-416's review answer; guarded, about 3 USD and 3 premium requests to measure |
+| 6 | B-348 | False-green class: its Copilot CLI half was measured 2026-10-11 (B-388, B-389); the VS Code half can now be driven through VS Code's agent host (2026-11-03), but B-475 decides which session path it measures |
+| 7 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
+| 8 | B-403 | Shipped unmeasured (WSD-111); Claude Code's first turn is seen (B-406, B-410), the underspecified and no-gap prompts and the Copilot arm are left |
+| 9 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
+| 10 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
+| 11 | B-467 | Measured, not field-raised: each `/review` reviewer carries the main agent's whole instruction chain, about 53% of its input; `omitClaudeMd` drops it, so what is left is which rules each reviewer needs |
+| 12 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 13 | B-432 | Stall class, reasoned only: B-393's longer save paths on Windows PowerShell 5.1 without long-path support; nothing changes before it would throw |
+| 14 | B-440 | Data-loss class, contrived: an ignored backup copy can be overwritten by a checkout of a branch that tracks the same backup path; guarded |
+| 15 | B-453 | Field report: a zero-byte `.cs` sat in a claim's evidence; the baseline could name it instead of silently resting on it |
+| 16 | B-455 | Field question: whether a semantic repository index is needed beyond the wiki index and Repository Structure; decide before building |
+| 17 | B-459 | Consumer expectation, not a defect: no recipe for writing a reporting view or procedure; B-129's budget blocker is gone, its no-observed-error bar is not; decide before building |
+| 18 | B-374 | False-green class on a non-UTF-8 console: what the guard and the stack hooks read from the agent's event (a non-ASCII path, a no-break space) arrives mis-decoded; the four core hooks done, the two stack hooks left; no field report |
+| 19 | B-448 | Secret-leak class, tr-TR only: the Turkish-cased `APİ_KEY` passes the guard since B-445; guarded, step 4 |
+| 20 | B-474 | Secret-leak class, `NotebookEdit` only and unmeasured: a notebook-cell write never reaches the guard; guarded, step 4, starts from one captured hook event |
+| 21 | B-357 | Reaches only a consumer hosting on github.com; the field consumers host on Bitbucket Data Center (maintainer, 2026-10-11) |
+| 22 | B-461 | Data-loss class, environment-only: a caller's `GIT_LITERAL_PATHSPECS` or `GIT_ICASE_PATHSPECS` changes what the installer's and review-scope's pathspecs match; guarded |
+| 23 | B-468 | Measured, not field-raised: 2 of 26 plain bug fixes skipped the regression test, wrongly saying a SQLite test needs a new package; the agent said the fix was untested |
+| 24 | B-469 | Maintainer request: an update's `.claude/framework-update-backup/` copies get forgotten and committed; `-Reinstall` already relies on the last commit instead; guarded |
+| 25 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
+| 26 | B-471 | Installer leftovers of the 2026-10-31 attacks: exit 1 instead of 3 outside the copy loop, two printed remedies that fail, three gaps in the skip-worktree warning; guarded, step 4 |
+| 27 | B-472 | Write-guard leftovers: a UNC repository root loses the test exemption (safe side); a separator after a `.cs` name skips the C# checks, host acceptance unverified; guarded, step 4 |
+| 28 | B-473 | False green, OneDrive only: test-weakening-scan skips files under a OneDrive folder; template-checks dies at a path with `[`; ordinary |
 
 ## Open entries
 
@@ -74,13 +72,6 @@ Measure one PR on an installed fixture before changing the wrapper's model invoc
 **Status:** Open; raised by the maintainer 2026-10-05, no field report (WSD-109). The candidate bullet shipped unmeasured in carrier §2 (WSD-111).
 Measure it (B-346 method): an extension-point feature, a third instance and a plain CRUD decoy whose false-offer rate decides whether it stays;
 design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B.
-
-### B-380 · Measure an `agentStop` `decision: block` for the Boy Scout nudge on Copilot, replacing the next-prompt queue
-**Filed against:** v0.94.0 (2026-10-11)
-**Priority:** P3 · **Effort:** M · **Invariants:** #5 #7
-**Status:** Open; mechanism measured 2026-11-04 on CLI 1.0.98 (`meta/eval-results.md`, pre-registered at ed776d72): a block reaches the model as a second turn (control clean), `stop_hook_active` is
-true on re-entry, each continuation costs one premium request, and `agentStop` also fires on subagent turns, whose payload carries `parentAgentId`. Left, maintainer's call: adopt in `boy-scout-check.ps1`
-(guarded) skipping payloads with `parentAgentId` and blocking at most once per turn, or keep the next-prompt queue to save the premium request. VS Code untestable until microsoft/vscode#345931.
 
 ### B-403 · Measure whether the plan gate asks its tech-lead questions before it plans
 **Filed against:** v0.96.0 (2026-10-14)
@@ -170,12 +161,6 @@ The third still holds, so decide first whether a consumer's expectation clears B
 **Status:** Open; found by the fresh-session attack on the adoption-archive `:(literal)` fix, which now clears `GIT_LITERAL_PATHSPECS`, `GIT_GLOB_PATHSPECS`,
 `GIT_NOGLOB_PATHSPECS` and `GIT_ICASE_PATHSPECS` for its own git calls. `src/core/scripts/install.ps1` (its `:(literal)` calls; its GIT_DIR-family refusal at ~243, ~638, ~871)
 and `review-scope.ps1` (~142, ~193-195, ~233-235, ~264) do not, so with `GIT_LITERAL_PATHSPECS=1` set a `:(literal)` path matches nothing. Red case: that variable set around one update.
-
-### B-464 · Bug-hunt batch 3: one leftover of the 2026-10-24 batch
-**Filed against:** v0.98.2 (2026-10-24)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
-**Status:** Open, narrowed 2026-10-31; plan `.claude/plans/2026-10-24-bug-hunt-3-b464.md`. Leftover (1) done 2026-10-31: a fresh session attacked 8928c0e4 (C5's attack fixes) and confirmed three misleading stop messages, fixed red first and reviewed again by another fresh session; its other findings are in B-471.
-Open: (2) D6's line under the four `@.claude/workflow.md` imports measured 2026-11-04 (eval-results): Copilot CLI read `workflow.md` but closed without the labelled line; the fixed candidate (wrappers name the file) targets reach, which was not lacking; maintainer picks the next candidate. Leftover (3), a release resume past an index-flagged change, done 2026-10-31: release.ps1 refuses any assume-unchanged or skip-worktree entry before `add -A`.
 
 ### B-466 · Measure whether the framework's lead over the bare agent grows with repository size
 **Filed against:** v0.98.2 (2026-10-27)

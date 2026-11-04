@@ -4685,3 +4685,12 @@ so a CRLF-stored file hashed differently under `core.autocrlf` true and false (o
 `-c core.autocrlf=true` to that call alone. Rejected: an ignored local file (every clone's first run is full), CI generation (the baseline is the output
 of an analysis the agent ran, not a function of the tree), index blobs for unmodified files and `--no-filters` (reasoned, not run). **Reopen** if two
 machines hash the same commit differently, or a host cannot review or merge the compact file.
+
+## WSD-119: the Boy Scout nudge on Copilot stays on the next-prompt queue; no `agentStop` block (2026-11-04)
+
+**Context.** B-380 measured on Copilot CLI 1.0.98 (`meta/eval-results.md`, pre-registered at ed776d72) that an `agentStop` `decision: block` reaches the model as a second
+turn and costs the consumer one premium request, and that `agentStop` also fires on subagent turns. **Decision.** Keep `boy-scout-check.ps1` advisory and queued for the
+next `userPromptSubmitted`: the nudge is a regex heuristic, `/fix` confines Boy Scout to the blast radius so a forced turn often changes nothing, and the queue is free one
+prompt later. Rejected: a block (premium request per nudge; Copilot registers the script from both `hooks.json` and `.claude/settings.json`, so one stop could block twice,
+unmeasured); a block only for non-trivial findings (the scanner has no severity). Proposed by a Fable review, accepted by the maintainer. **Reopen** on a field report that the
+nudge arrives too late, or if Copilot stops billing a block continuation as a premium request.

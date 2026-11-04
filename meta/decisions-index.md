@@ -90,3 +90,4 @@ authoritative.
 - “B-129/WSD-042 is out of scope for this item” — `meta/BACKLOG-DONE.md B-140`
 - “Vendor-capability claims are maintainer-owned and gated meta-side, never in a consumer's build.” — `meta/BACKLOG-DONE.md B-55`
 - “The rebootstrap baseline is committed on purpose: it records the last run's state for every clone, drift against it is the signal, and its hashes do not move with core.autocrlf.” — `meta/workspace-decisions.md WSD-118` (B-452, 2026-10-31)
+- “The Boy Scout nudge on Copilot stays on the free next-prompt queue; an agentStop block costs a premium request per nudge.” — `meta/workspace-decisions.md WSD-119` (B-380, 2026-11-04)
