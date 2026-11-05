@@ -29,6 +29,14 @@ mutation dropping its guard. The existing reinstall case now finds the project t
 double-quoted the target, so pasted into PowerShell a `$` in the path expanded (single-quoted now), and the "already exists" refusal
 said the commit keeps an earlier archive Git does not track (now only when it does). B-481 and B-482 file its two pre-existing finds.
 
+`add-warehouse-load` writes its own change back to the map (guarded, the skill's `SKILL.md`; maintainer idea 2026-11-05, narrowed by a
+fresh-session review, WSD-122). New step 11: in a `docs/warehouse-map.md` that carries a full-pass line, add the rows for objects the
+change created, correct the cells it made untrue and add a dated Coverage line; never the stamp, Findings or Querying, and nothing
+the agent only read. A map with no full-pass line is left alone: one appended row turned an unstamped stale map `current` (executed,
+exit 1 to 0). Text-only, so no behaviour to show red, and no agent run has measured whether the step is followed. The review dropped
+unprompted writes of what an agent read, repair in place of `CONFLICTING`, and row staleness from git commit time. B-483 files the
+freshness check's false green.
+
 ## 0.98.4 — 2026-11-04
 
 VS Code 1.144.1 Copilot-harness correction (ordinary, `docs/enforcement-surfaces.md`; B-475, measured 2026-11-03, `meta/host-certification.md`).

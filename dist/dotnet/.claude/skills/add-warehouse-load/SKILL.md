@@ -33,7 +33,8 @@ Derive this operation's shape from first-party implementation, configuration, te
    `docs/warehouse-map.md` is preferred, but the artifact is optional: if the check above reports
    it missing or stale, or the map has no rows for the target or its sibling loads, run
    `map-warehouse`'s scoped pass on them and continue from the rows it produces. **Do not design a dimension from absent or stale evidence.** The map is a snapshot, not a
-   live view** — nothing refreshes it when the warehouse changes. Before copying a pattern out
+   live view** — apart from step 11's rows for what a run of this recipe wrote, nothing refreshes
+   it when the warehouse changes. Before copying a pattern out
    of it, confirm the entities and load procs it names still exist in the SQL tree; where the
    map and the code disagree the code wins — re-run `map-warehouse` rather than trusting it
    further. Locate 1–2 existing loads in the same target family and derive their applicable
@@ -172,3 +173,16 @@ Derive this operation's shape from first-party implementation, configuration, te
      otherwise report this check as not available rather than adding a harness from this recipe.
    - For dimension/fact targets, justify new dimensions and report unresolved relationship-key
      rows through the project’s established policy rather than assuming zero.
+
+11. **Record this change in the map, where one exists.** If `docs/warehouse-map.md` exists and
+   carries a `<!-- warehouse-map full pass: … -->` line, add its Table inventory, Relationship edge
+   list and Loading rows for the objects this change created; where the change altered an object
+   the map already describes, correct the cells it made untrue. Write only what the DDL and load
+   statements of this change establish: an edge's `version resolution` is what your load does with
+   the key, its `evidence` the file you wrote, its `confidence` `Declared` for a foreign key the
+   change declares and `Load-derived` otherwise. What you only read stays out, and a row that is
+   wrong for any other reason is reported, not corrected here. Add one dated line to Coverage
+   naming the objects, and leave the full-pass line, Findings and the Querying section as they
+   are. Do not create a map from this recipe, and do not write to one without that line: say that
+   a full `map-warehouse` pass must stamp it first, because a row added to an unstamped map makes
+   the freshness check read the whole map as current.

@@ -175,3 +175,9 @@ Candidate: build it with `Stop-IncompleteCopy`'s `$quote`; red case: hold a swep
 **Priority:** P3 · **Effort:** S · **Invariants:** #7
 **Status:** Open; found by the same attack (executed, identical with v0.98.4's installer). The archive change leaves both instruction files to a pending adoption, so the old layout move still runs; it writes no backup under `-Reinstall`, so team edits to a mirror that still opens with the `GENERATED FILE` banner survive only in the commit the `LAYOUT:` line names.
 Candidate: decline the move when the mirror differs from what `/generate-copilot` would have written, or name the edit in that line. Guarded, step 4.
+### B-483 · `warehouse-map-check` reports `current` for a map whose tables were deleted, or that has no full-pass stamp
+**Filed against:** v0.98.4 (2026-11-05)
+**Priority:** P3 · **Effort:** M · **Invariants:** none
+**Status:** Open; found by the fresh-session review of WSD-122's design and re-run (executed on scratch fixtures with the shipped check). It compares file write times only: deleting a mapped table's SQL leaves `WAREHOUSE_MAP current`, exit 0 (a rename too, in the review's run), and one row appended to a stale map with no full-pass line turned it `current` (exit 1 to 0), which the scoped pass can still do. `add-warehouse-load` step 1 prefers a `current` map; its "confirm the entities still exist" is the only backstop.
+The same clock reads `stale` in a fresh clone of an unchanged commit (executed), so the answer depends on who cloned when.
+Candidate: the check prints a digest of the warehouse artifacts' paths and contents, a full pass copies it into the stamp line, a map is current when the digests match and stale without one; red cases: the three runs above. e003c8c8 rejected parsing the Coverage line, and the review's runs showed git commit time wrong in both directions.

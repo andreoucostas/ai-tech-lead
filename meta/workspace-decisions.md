@@ -4716,3 +4716,15 @@ operation skill only on a field report or a measured outcome; nothing is built. 
 reporting view or procedure is written under `map-warehouse`'s Querying rules on the map's proven joins, and Power BI authoring is out of scope. Rejected: reopening B-129's
 bounded section on headroom alone, the smallest of its three reasons. **Reopen** on a field report of a reporting view or procedure written with the framework that was wrong
 or failed to publish, or of a repeated step a team wants kept (then a `/bootstrap` 3a-bis project-skill draft, not a shipped skill).
+
+## WSD-122: an agent writes warehouse-map rows unasked only for what its own change created or altered (2026-11-05)
+
+**Context.** Maintainer idea (chat, 2026-11-05): the map covers only what a pass spot-checked, so let the agent keep documenting as it works and fix what it finds stale. The
+first design (unprompted writes from the scoped pass of whatever was opened, replace in place of `CONFLICTING`, row staleness from git commit time against the Coverage line)
+went to a fresh-session review; its load-bearing findings were re-read in `meta/eval-results.md`. Reading is not knowing: 11 of 12 runs read the loader and all 12 still joined
+wrongly, while a record alone took MISLEADING from 6 of 6 to 0 of 6 (B-325 confirmation run), so a wrong row is not harmless. `map-warehouse` was reached mid-task in 0 of 61
+route runs (B-279), 0 of 8 (B-402) and 1 of 3 through Rule 11 (B-400/B-401), all on fixtures small enough to read whole. Commit time said `current` after an `ALTER` in another
+file and `stale` in a depth-1 clone (the review's runs, not repeated), and e003c8c8 had rejected parsing the Coverage line.
+**Decision (user, 2026-11-05: "Yes" to the narrowed design).** `add-warehouse-load` step 11 is the one unprompted writer: rows for objects the change created, cells it made
+untrue, a dated Coverage line, only in a map that carries a full-pass line, never the stamp, Findings or Querying. The scoped pass keeps offering and keeps `CONFLICTING`.
+Rejected: doing nothing (a load added through the recipe stayed unmapped). **Reopen** the read-side half on B-466's result or a field report of a map that misled by silence.

@@ -13,6 +13,14 @@
   new `AGENTS.md` for you to review. If an earlier adoption's `docs/pre-adoption/AGENTS.md` or `CLAUDE.md` is still there, it stops
   before changing anything and says so: move it out, commit that, and re-run. While an earlier adoption is still pending, it leaves
   both files as they are and says so on a `LAYOUT:` line.
+- **`add-warehouse-load` now records what it built in your warehouse map.** A fact or dimension added through the recipe was
+  missing from `docs/warehouse-map.md` until someone re-ran `map-warehouse`, so the next task found the map silent on your newest
+  objects. The recipe's last step now adds the map's inventory, relationship and loading rows for the objects the change created,
+  corrects the cells of existing rows the change made untrue, and adds a dated Coverage line, in the same diff as the load, for
+  you to review. It records only what the change itself established: what the agent merely read is left out, and a row that is
+  wrong for another reason is reported to you, not rewritten. It never creates a map. A map with no
+  `<!-- warehouse-map full pass: … -->` line (one written before 0.96.0) is left alone and the agent says so, because a row added
+  to it would make the freshness check read the whole map as current; run `/map-warehouse` once to stamp it.
 ## 0.98.4 — 2026-11-04
 
 - **`docs/enforcement-surfaces.md` now says that VS Code 1.144.1's Copilot harness runs none of your hooks in a folder VS Code trusts.** Measured on
