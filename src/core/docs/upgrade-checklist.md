@@ -53,8 +53,14 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    first). It deletes every file Git tracks under `.claude/` (except `.claude/ai-audit.log`),
    `.github/instructions/`, `.github/chatmodes/`, `.github/skills/`, `.agents/skills/` and
    `tests/hooks/`, plus every file this release or its retirement list names, then installs the
-   release fresh. Protected files, files Git does not track, and your own files outside those folders
-   stay; it refuses a file whose bytes your last commit does not hold. It writes no backup: your
+   release fresh. Your `AGENTS.md` and `CLAUDE.md`, which an old release wrote in its own format,
+   move to `docs/pre-adoption/` and this release's take their place: the installer then names
+   `/adopt` as the next step, which merges your project text into the new `AGENTS.md` for you to
+   review. It refuses while an earlier adoption's `docs/pre-adoption/AGENTS.md` or `CLAUDE.md` is
+   still there (move it out and commit that first), and leaves both files in place, saying so on a
+   `LAYOUT:` line, while an adoption is still pending. The other protected files, files Git does not
+   track, and your own files outside those folders stay; it refuses a file whose bytes your last
+   commit does not hold. It writes no backup: your
    last commit holds what it deleted, and it prints that commit's id with the commands to bring
    files back. Team skills, commands and hooks kept under
    `.claude/` are deleted with the rest; restore the ones you want from that commit. It refuses a

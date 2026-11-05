@@ -4649,8 +4649,8 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
             Assert-BytesEqual $toolBefore ([IO.File]::ReadAllBytes((Join-Path $t 'scripts/consumer-tool.ps1'))) "scripts/consumer-tool.ps1 bytes changed: $o"
             Assert-BytesEqual $localBefore ([IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.local.json'))) ".claude/settings.local.json bytes changed: $o"
             $text = ''
-            foreach ($n in 'AGENTS.md', 'CLAUDE.md') { $p = Join-Path $t $n; if (Test-Path -LiteralPath $p) { $text += [IO.File]::ReadAllText($p) } }
-            Assert ($text -match 'CONSUMER SENTINEL 7f3a') "the project text did not survive into AGENTS.md or CLAUDE.md: $o"
+            foreach ($n in 'docs/pre-adoption/AGENTS.md', 'docs/pre-adoption/CLAUDE.md') { $p = Join-Path $t $n; if (Test-Path -LiteralPath $p) { $text += [IO.File]::ReadAllText($p) } }
+            Assert ($text -match 'CONSUMER SENTINEL 7f3a') "the project text did not survive into docs/pre-adoption/: $o"
             Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/hooks/team-hook.ps1'))) ".claude/hooks/team-hook.ps1 was not deleted: $o"
             $owned = @((Get-Content -LiteralPath (Join-Path $repoRoot 'dist/dotnet/framework-ownership.json') -Raw | ConvertFrom-Json).paths | ForEach-Object { $_.path })
             foreach ($h in $fx.OldHooks) {
@@ -4876,6 +4876,105 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
             if (Test-Path -LiteralPath $link) { try { [IO.Directory]::Delete($link, $false) } catch { } }
             Remove-ReinstallTemp @($fx.Path, $outside)
         }
+    }
+
+    It 'reinstall: the old CLAUDE.md and AGENTS.md move to docs/pre-adoption/ byte for byte, this release''s replace them, and a marker that verifies hands them to /adopt' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            $old = @{ 'CLAUDE.md' = [IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md')); 'AGENTS.md' = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')) }
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            $o = $r.Out
+            Assert ($r.Exit -eq 0) "expected exit 0 from -Reinstall, got $($r.Exit): $o"
+            foreach ($name in 'CLAUDE.md', 'AGENTS.md') {
+                $archive = Join-Path $t "docs/pre-adoption/$name"
+                Assert (Test-Path -LiteralPath $archive -PathType Leaf) "docs/pre-adoption/$name is missing: $o"
+                Assert-BytesEqual $old[$name] ([IO.File]::ReadAllBytes($archive)) "docs/pre-adoption/$name does not hold the old $name byte for byte: $o"
+                Assert-BytesEqual ([IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/dotnet/$name"))) ([IO.File]::ReadAllBytes((Join-Path $t $name))) "$name is not this release's: $o"
+            }
+            $marker = Join-Path $t '.claude/adoption-pending.json'
+            Assert (Test-Path -LiteralPath $marker -PathType Leaf) ".claude/adoption-pending.json was not written: $o"
+            $verify = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/adoption-archive.ps1') -Verify -RepoRoot $t -EvidencePath $marker 2>&1 | Out-String
+            $verifyExit = $LASTEXITCODE
+            Assert ($verifyExit -eq 0 -and $verify -match 'RESULT: PASS') "adoption-archive.ps1 -Verify did not pass on the marker (exit $verifyExit): $verify"
+            $mapped = [string[]]@((Get-Content -LiteralPath $marker -Raw | ConvertFrom-Json).archivedOriginals)
+            [Array]::Sort($mapped, [StringComparer]::Ordinal)
+            Assert (($mapped -join ',') -ceq 'docs/pre-adoption/AGENTS.md,docs/pre-adoption/CLAUDE.md') "archivedOriginals is '$($mapped -join ',')': $o"
+            Assert ($o -match 'type:\s+/adopt') "the output does not hand off to /adopt: $o"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: an earlier adoption''s docs/pre-adoption/AGENTS.md refuses before mutation and names it' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            New-Item -ItemType Directory -Force -Path (Join-Path $t 'docs/pre-adoption') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $t 'docs/pre-adoption/AGENTS.md'), "# an earlier adoption's archive`n", [Text.UTF8Encoding]::new($false))
+            & git -C $t add -A 2>&1 | Out-Null
+            & git -C $t commit -qm earlier-archive 2>&1 | Out-Null
+            Assert ($LASTEXITCODE -eq 0) 'calibration: could not commit the earlier archive'
+            $before = Get-ReinstallFingerprint $t
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 3) "expected exit 3 from -Reinstall over an earlier archive, got $($r.Exit): $($r.Out)"
+            Assert ($r.Out -match 'docs/pre-adoption/AGENTS\.md') "the refusal does not name docs/pre-adoption/AGENTS.md: $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $t)) "the refused reinstall changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: an earlier archive Git does not track is not said to be in the commit, since deleting it would lose it' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            New-Item -ItemType Directory -Force -Path (Join-Path $t 'docs/pre-adoption') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $t 'docs/pre-adoption/AGENTS.md'), "# an untracked earlier archive`n", [Text.UTF8Encoding]::new($false))
+            $before = Get-ReinstallFingerprint $t
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            $flat = $r.Out -replace '\s+', ' '
+            Assert ($r.Exit -eq 3 -and $flat -match "'docs/pre-adoption/AGENTS\.md', which already exists") "calibration: the reinstall was not refused by the untracked archive (exit $($r.Exit)): $($r.Out)"
+            Assert ($flat -notmatch 'keeps it') "the refusal says a commit keeps an archive Git does not track: $($r.Out)"
+            Assert ($flat -match 'move it out of the repository') "the refusal does not say to move the untracked archive out of the repository: $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $t)) "the refused reinstall changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
+    It 'reinstall: an archive stop''s restore line, run as printed, restores a target whose path holds a $' {
+        $fx = New-ReinstallFixture
+        $t = $fx.Path + '$x'
+        $handle = $null
+        try {
+            Move-Item -LiteralPath $fx.Path -Destination $t
+            # Readable, so the commit-bytes check passes; not movable, so the archive stops at CLAUDE.md, after the sweep.
+            $handle = [IO.File]::Open((Join-Path $t 'CLAUDE.md'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            $handle.Dispose(); $handle = $null
+            $flat = $r.Out -replace '\s+', ' '
+            Assert ($r.Exit -eq 3 -and $flat -match 'move failed for .CLAUDE\.md.') "calibration: the reinstall was not stopped by the held CLAUDE.md (exit $($r.Exit)): $($r.Out)"
+            $line = [regex]::Match($flat, 'git -C (.+?) checkout [0-9a-f]{40} -- \.')
+            Assert $line.Success "the stop prints no restore line: $($r.Out)"
+            $pasted = & (Get-PsExe) -NoProfile -Command $line.Value 2>&1 | Out-String
+            $tracked = (& git -C $t status --porcelain --untracked-files=no 2>&1 | Out-String).Trim()
+            Assert ($tracked.Length -eq 0) "the restore line, run as printed ($($line.Value)), did not restore the tracked files: $pasted / $tracked"
+        } finally {
+            if ($handle) { $handle.Dispose() }
+            Remove-ReinstallTemp @($fx.Path, $t)
+        }
+    }
+
+    It 'reinstall: an adoption still pending keeps its marker byte for byte and moves neither instruction file' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            $markerBytes = [Text.UTF8Encoding]::new($false).GetBytes("{`"installedAt`":`"2026-01-01`",`"detectedArtifacts`":[`".cursorrules`"],`"archivedOriginals`":[]}`n")
+            [IO.File]::WriteAllBytes((Join-Path $t '.claude/adoption-pending.json'), $markerBytes)
+            & git -C $t add -A 2>&1 | Out-Null
+            & git -C $t commit -qm pending-adoption 2>&1 | Out-Null
+            Assert ($LASTEXITCODE -eq 0) 'calibration: could not commit the pending marker'
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 0) "expected exit 0 from -Reinstall with an adoption pending, got $($r.Exit): $($r.Out)"
+            Assert-BytesEqual $markerBytes ([IO.File]::ReadAllBytes((Join-Path $t '.claude/adoption-pending.json'))) "the pending adoption's marker changed: $($r.Out)"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t 'docs/pre-adoption'))) "docs/pre-adoption/ was written although an adoption is pending: $($r.Out)"
+            Assert ($r.Out -match 'LAYOUT: [^\r\n]*adoption still pending') "the output does not say why the instruction files stayed: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
     }
 }
 exit (Write-TestSummary 'UpdateDelivery.Tests')

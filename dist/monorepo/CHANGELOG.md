@@ -5,6 +5,15 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.98.5 — Unreleased
+
+- **`-Reinstall` now replaces an old `AGENTS.md` and `CLAUDE.md` too, and hands your project text to `/adopt`.** A reinstall kept
+  them as the old release wrote them: skills this release no longer ships listed under Common Tasks, the old Boy Scout and SOLID
+  wording, and text about a generated `AGENTS.md` mirror. It now moves each one that differs from this release's to
+  `docs/pre-adoption/`, byte for byte, installs this release's, and ends by naming `/adopt`, which merges your project text into the
+  new `AGENTS.md` for you to review. If an earlier adoption's `docs/pre-adoption/AGENTS.md` or `CLAUDE.md` is still there, it stops
+  before changing anything and says so: move it out, commit that, and re-run. While an earlier adoption is still pending, it leaves
+  both files as they are and says so on a `LAYOUT:` line.
 ## 0.98.4 — 2026-11-04
 
 - **`docs/enforcement-surfaces.md` now says that VS Code 1.144.1's Copilot harness runs none of your hooks in a folder VS Code trusts.** Measured on

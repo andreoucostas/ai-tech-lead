@@ -11,6 +11,24 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.98.5 — Unreleased
+
+`-Reinstall` hands the old instruction files to `/adopt` (guarded, `install.ps1`; maintainer report 2026-11-05, design chosen by the
+maintainer). A reinstall from below the ledger floor kept `AGENTS.md` and `CLAUDE.md` as protected, or moved the old `CLAUDE.md` into
+`AGENTS.md` with only its opening note rewritten, so the old template's sections stayed live: retired skills under Common Tasks, the
+`/generate-copilot` mirror text, the Boy Scout skip-TODO and the SOLID/DIP service-interface item. Each that differs from this
+release's now goes to `docs/pre-adoption/` through the brownfield archive (frozen digests, byte-verified move, a marker
+`adoption-archive.ps1 -Verify` passes), this release's is installed and the run ends on `/adopt`. It refuses (exit 3, nothing changed)
+an existing `docs/pre-adoption/<name>`; it leaves both files with a `LAYOUT:` line while an adoption is pending (that marker is never
+replaced) or when one to move is not a regular file the commit holds; the moved files leave the stale-reference scan. The retired
+deletes and the sweep now run before the archive's marker write and moves (no change for brownfield, which has neither), so a
+stopped sweep's `git checkout` advice still leaves a clean tree, and an archive stop under `-Reinstall` prints the restore line.
+Four `UpdateDelivery` cases, all red on the unfixed installer; the pending-marker case's marker assertion also went red under a
+mutation dropping its guard. The existing reinstall case now finds the project text under `docs/pre-adoption/`. The step-4 attack
+(fresh session) held on every behaviour and broke two new messages, both fixed with a case each, red first: the archive's restore line
+double-quoted the target, so pasted into PowerShell a `$` in the path expanded (single-quoted now), and the "already exists" refusal
+said the commit keeps an earlier archive Git does not track (now only when it does). B-481 and B-482 file its two pre-existing finds.
+
 ## 0.98.4 — 2026-11-04
 
 VS Code 1.144.1 Copilot-harness correction (ordinary, `docs/enforcement-surfaces.md`; B-475, measured 2026-11-03, `meta/host-certification.md`).

@@ -29,6 +29,8 @@
 # beside the new ones. -Reinstall instead deletes the framework files Git tracks under .claude/, .github/
 # instructions|chatmodes|skills, .agents/skills and tests/hooks, plus every other file this release or its
 # ledger names, then installs this release fresh. No backup is written: the last commit holds what it deletes.
+# CLAUDE.md and AGENTS.md, written in the old release's format, move to docs/pre-adoption/ as a brownfield
+# install's would, this release's take their place, and .claude/adoption-pending.json hands the old ones to /adopt.
 param(
     [Parameter(Mandatory = $true)][string]$Target,
     [switch]$AllowDirtyTree,
@@ -463,7 +465,7 @@ if ($updateMode) {
         if ($null -eq $ledgerFloor -or (Compare-ReleaseVersion -Left $ledgerEntry.Version -Right $ledgerFloor) -lt 0) { $ledgerFloor = $ledgerEntry.Version }
     }
     if ($ledgerFloor -and (Compare-ReleaseVersion -Left $installedVersion -Right $ledgerFloor) -lt 0 -and -not $Reinstall) {
-        [Console]::Error.WriteLine("ERROR: Refusing to update from $installedVersion before mutation: releases before $ledgerFloor left no ownership manifest or retirement record this installer can use, so an update would leave that release's framework files (old hooks, commands, scripts and settings) in place beside the new ones. Re-run with -Reinstall: it deletes the old framework files Git tracks and installs this release fresh, keeping your protected files (AGENTS.md, CLAUDE.md, LEARNINGS.md and the others), files Git does not track, and your own code outside the folders it clears (-WhatIf lists every file it would delete). It needs a clean Git tree, since your last commit is then the only copy of what it deletes. Nothing was changed.")
+        [Console]::Error.WriteLine("ERROR: Refusing to update from $installedVersion before mutation: releases before $ledgerFloor left no ownership manifest or retirement record this installer can use, so an update would leave that release's framework files (old hooks, commands, scripts and settings) in place beside the new ones. Re-run with -Reinstall: it deletes the old framework files Git tracks and installs this release fresh, moving AGENTS.md and CLAUDE.md to docs/pre-adoption/ for /adopt to merge into this release's format, and keeping your other protected files (LEARNINGS.md, TECH_DEBT.md and the others), files Git does not track, and your own code outside the folders it clears (-WhatIf lists every file it would delete or move). It needs a clean Git tree, since your last commit is then the only copy of what it deletes. Nothing was changed.")
         exit 4
     }
 }
@@ -1403,6 +1405,70 @@ if ($Reinstall) {
     }
     $reinstallSweep.Sort([StringComparer]::Ordinal)
 }
+# -Reinstall installs this release's CLAUDE.md and AGENTS.md too: the old ones, in an older release's format, move to
+# docs/pre-adoption/ as a brownfield install's would, and the adoption marker hands them to /adopt. A file equal to this
+# release's stays. Neither moves while an adoption is pending (its marker is never replaced), or when one to move is
+# not a regular file or not held by the commit as it is on disk; the LAYOUT line says which. Decided here, before the
+# stale-reference scan below, which then leaves the moved files out.
+$reinstallArchivePlan = New-Object System.Collections.Generic.List[object]
+$reinstallLayoutNote = $null
+$reinstallAdoptionPending = $false
+if ($Reinstall) {
+    $instructionMoves = New-Object System.Collections.Generic.List[string]
+    if (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative '.claude/adoption-pending.json') -ErrorAction SilentlyContinue) {
+        $reinstallAdoptionPending = $true
+        $reinstallLayoutNote = 'LAYOUT: .claude/adoption-pending.json shows an adoption still pending, so -Reinstall left CLAUDE.md and AGENTS.md for it rather than replace its marker. After /adopt, bring AGENTS.md to this release''s sections by hand (docs/upgrade-checklist.md).'
+    } else {
+        $instructionLeft = $null
+        foreach ($name in @('CLAUDE.md', 'AGENTS.md')) {
+            $instructionPath = Get-ContainedTargetPath -Relative $name
+            $instructionEntry = Get-Item -Force -LiteralPath $instructionPath -ErrorAction SilentlyContinue
+            if ($null -eq $instructionEntry) { continue }
+            if ($instructionEntry.PSIsContainer -or (Get-ReparsePointAncestor -Path $instructionPath)) { $instructionLeft = "$name is not a regular file in the repository"; break }
+            try { $instructionSame = (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes($instructionPath))) -ceq (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Join-Path $src $name)))) }
+            catch {
+                [Console]::Error.WriteLine("CANT-VERIFY: '$name' could not be read to decide whether -Reinstall moves it to docs/pre-adoption/. Make it readable, then re-run. Nothing was changed.")
+                exit 4
+            }
+            if ($instructionSame) { continue }
+            if (-not $reinstallTracked.Contains($name) -or $reinstallSkipped.Contains($name)) { $instructionLeft = "commit $reinstallCommit does not hold $name as it is on disk (Git does not track it, or is told not to see its changes)"; break }
+            $instructionMoves.Add($name)
+        }
+        if ($instructionLeft) {
+            $instructionMoves.Clear()
+            $reinstallLayoutNote = "LAYOUT: $instructionLeft, so -Reinstall left CLAUDE.md and AGENTS.md as they are. Bring them to this release's format by hand: merge CLAUDE.md into AGENTS.md, compare AGENTS.md with this release's sections, and make CLAUDE.md the two-import stub (docs/upgrade-checklist.md)."
+        }
+    }
+    foreach ($name in $instructionMoves) {
+        $rel = "docs/pre-adoption/$name"
+        $dest = Get-ContainedTargetPath -Relative $rel
+        $destinationReparse = Get-ReparsePointAncestor -Path $dest
+        if ($destinationReparse) {
+            [Console]::Error.WriteLine("ERROR: Refusing reinstall: the archive for $name, '$rel', traverses reparse/symlink '$destinationReparse'. Remove the link, then re-run. Nothing was changed.")
+            exit 3
+        }
+        if (Get-Item -Force -LiteralPath $dest -ErrorAction SilentlyContinue) {
+            # Only a file Git tracks is in the commit; deleting any other loses it.
+            $earlierHeld = $reinstallTracked.Contains($rel) -and -not $reinstallSkipped.Contains($rel)
+            $earlierRemedy = if ($earlierHeld) { "Move it out of docs/pre-adoption/ or delete it, commit that (commit $reinstallCommit keeps it), then re-run." } else { 'Git does not track it as it is on disk, so no commit holds it: move it out of the repository, then re-run.' }
+            [Console]::Error.WriteLine("ERROR: Refusing reinstall: -Reinstall moves the old $name to '$rel', which already exists (an earlier adoption's archive, most likely). $earlierRemedy Nothing was changed.")
+            exit 3
+        }
+        $parent = Split-Path -Parent $dest
+        while ($parent -and $parent.StartsWith($tgt, [StringComparison]::OrdinalIgnoreCase) -and $parent -ne $tgt) {
+            if ((Test-Path -LiteralPath $parent) -and -not (Test-Path -LiteralPath $parent -PathType Container)) {
+                [Console]::Error.WriteLine("ERROR: Refusing reinstall: the archive folder for $name, '$parent', is not a directory. Nothing was changed.")
+                exit 3
+            }
+            $parent = Split-Path -Parent $parent
+        }
+        $reinstallArchivePlan.Add([pscustomobject]@{ Original = (Get-ContainedTargetPath -Relative $name); OriginalRelative = $name; Relative = $rel; Destination = $dest })
+    }
+    if ($reinstallArchivePlan.Count -gt 0) {
+        $detected = @($reinstallArchivePlan | ForEach-Object { $_.OriginalRelative })
+        $reinstallLayoutNote = "LAYOUT: moving $($detected -join ' and '), written in an older release's format, to docs/pre-adoption/ and installing this release's; .claude/adoption-pending.json hands them to /adopt, which merges your project text into this release's sections. Commit $reinstallCommit holds them too."
+    }
+}
 
 # .agents/skills is shared with other agents, so a team's own skill can sit at a workflow wrapper's
 # path. A link or a file where the wrapper needs a folder is the team's in every mode: kept, since the
@@ -1665,6 +1731,8 @@ $protectedReferenceCandidates = New-Object 'System.Collections.Generic.HashSet[s
 foreach ($relative in $protected + @('.claude/settings.local.json', '.gitlab-ci.yml', '.gitlab-ci.yaml',
     'azure-pipelines.yml', 'azure-pipelines.yaml', 'bitbucket-pipelines.yml', 'bitbucket-pipelines.yaml',
     'Jenkinsfile')) { [void]$protectedReferenceCandidates.Add($relative) }
+# A file -Reinstall moves to docs/pre-adoption/ is replaced, not kept, so a stale reference in it is /adopt's to drop.
+foreach ($entry in $reinstallArchivePlan) { [void]$protectedReferenceCandidates.Remove($entry.OriginalRelative) }
 
 function Add-BoundedReferenceDirectory {
     param([string]$Relative, [int]$MaxDepth, [string[]]$Extensions)
@@ -1867,7 +1935,11 @@ if ($adoptMode) {
         }
         $archivePlan.Add([pscustomobject]@{ Original = $orig; OriginalRelative = $f; Relative = $rel; Destination = $dest })
     }
+} elseif ($Reinstall) {
+    foreach ($entry in $reinstallArchivePlan) { $archivePlan.Add($entry) }
 }
+# A reinstall that archives writes the same adoption marker a brownfield install does.
+$writesAdoptionMarker = $adoptMode -or ($Reinstall -and $archivePlan.Count -gt 0)
 
 # Compute the complete deployment/reconciliation plan before the first target mutation. Legacy
 # snapshot/restore writes are gone: protected files are skipped directly, and every skill backup
@@ -1999,7 +2071,7 @@ foreach ($relative in $incomingPaths) {
     $exists = $null -ne (Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue)
     $preserveDiscovered = $claudeSkill.Success -and $discoveredSkillNames.Contains($claudeSkill.Groups[1].Value)
     $preserve = $exists -and ($relative -in $copyIfAbsent -or
-        ($updateMode -and $relative -in $protected) -or $preserveDiscovered -or
+        ($updateMode -and $relative -in $protected -and -not $archiveSources.Contains($relative)) -or $preserveDiscovered -or
         $teamSkillPaths.Contains($relative))
     if ($preserve) { [void]$preservePlan.Add($relative); continue }
     if ($teamSkillPaths.Contains($relative)) { continue }
@@ -2239,7 +2311,8 @@ function Test-RetiredMirrorText {
 
 $layoutMove = $null
 $layoutMessage = $null
-if ($updateMode) {
+# A reinstall decides the instruction files above; it reaches this move only while an adoption is pending.
+if ($updateMode -and -not ($Reinstall -and -not $reinstallAdoptionPending)) {
     $claudeTarget = Get-ContainedTargetPath -Relative 'CLAUDE.md'
     $agentsTarget = Get-ContainedTargetPath -Relative 'AGENTS.md'
     $claudeEntry = Get-Item -Force -LiteralPath $claudeTarget -ErrorAction SilentlyContinue
@@ -2368,7 +2441,7 @@ if ($updateMode -and -not $Reinstall) {
 }
 
 $adoptionMarkerRelative = $null
-if ($adoptMode) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
+if ($writesAdoptionMarker) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
 # Windows PowerShell 5.1 can write a path of 260 characters or more, or create a folder of 248 or more, only where
 # Windows lets it use long paths (the LongPathsEnabled setting); PowerShell 7 always can. Without that, it reads such a
 # path as absent and cannot write it, so a run stopped partway at its first deep write, an update's saved copy (39 or
@@ -2392,6 +2465,7 @@ if ($tooLongPaths.Count -gt 0 -and $PSVersionTable.PSEdition -eq 'Desktop') {
     }
 }
 $modeName =if ($Reinstall) { 'reinstall' } elseif ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
+if ($reinstallLayoutNote) { Write-Output "  $reinstallLayoutNote" }
 if ($layoutMessage) { Write-Output "  $layoutMessage" }
 foreach ($message in $saveMessages) { Write-Output "  $message" }
 Write-Output "OPERATION-PLAN schema=1 mode=$modeName"
@@ -2425,13 +2499,13 @@ $archiveEvidence = New-Object System.Collections.Generic.List[object]
 $archiveBaselineRevision = $null
 $archiveInventoryIdentity = $null
 $archiveInventoryComplete = $true
-if ($adoptMode) {
+if ($writesAdoptionMarker) {
     $archiveBaselineRevision = Get-AdoptionArchiveBaselineRevision
     foreach ($entry in $archivePlan) {
         try {
             $archiveEvidence.Add((New-AdoptionArchiveEvidence -OriginalRelative $entry.OriginalRelative -DestinationRelative $entry.Relative))
         } catch {
-            [Console]::Error.WriteLine("ERROR: Refusing brownfield install: could not capture pre-move evidence for '$($entry.OriginalRelative)': $($_.Exception.Message)")
+            [Console]::Error.WriteLine("ERROR: Refusing $(if ($Reinstall) { 'reinstall' } else { 'brownfield install' }): could not capture pre-move evidence for '$($entry.OriginalRelative)': $($_.Exception.Message)$(if ($Reinstall) { ' Nothing was changed.' })")
             exit 3
         }
     }
@@ -2458,7 +2532,7 @@ function Write-AdoptionMarker {
             inventoryIdentity = $archiveInventoryIdentity
         }
         nextStep          = '/adopt - a developer types it in a session, OR an agent runs it headless (read .claude/commands/adopt.md and follow its Headless mode with a --headless directive). Headless prepares an adopt-ai-framework PR branch for human review; it does not auto-merge discovered content.'
-        _comment          = 'Written by the framework installer because pre-existing AI tooling was detected. Consolidate it with /adopt - NOT /bootstrap. /adopt keeps this marker through archive and merge work, verifies and copies it for recovery, deletes it only immediately before the Phase-7 bootstrap, and restores it if completion fails.'
+        _comment          = $(if ($Reinstall) { 'Written by the framework installer because -Reinstall moved an older release''s instruction files to docs/pre-adoption/.' } else { 'Written by the framework installer because pre-existing AI tooling was detected.' }) + ' Consolidate it with /adopt - NOT /bootstrap. /adopt keeps this marker through archive and merge work, verifies and copies it for recovery, deletes it only immediately before the Phase-7 bootstrap, and restores it if completion fails.'
     }
     $markerPath = Join-Path $tgt '.claude/adoption-pending.json'
     $markerParent = Split-Path -Parent $markerPath
@@ -2478,82 +2552,6 @@ function Write-AdoptionMarker {
     }
 }
 
-$archiveEvidenceByDest = @{}
-foreach ($ev in $archiveEvidence) { $archiveEvidenceByDest[[string]$ev.destination] = $ev }
-if ($adoptMode) {
-    # Persist the complete frozen inventory before the first source/archive mutation. If this
-    # write cannot happen, do not begin a move whose provenance receipt could be lost.
-    try {
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $tgt '.claude/adoption-pending.json')) | Out-Null
-        Write-AdoptionMarker -InventoryComplete $true
-    } catch {
-        [Console]::Error.WriteLine("ERROR: Refusing brownfield install: could not persist the complete pre-move archive inventory: $($_.Exception.Message)")
-        exit 3
-    }
-}
-if ($keptOutEntries.Count -gt 0) {
-    # Written before any move, so an interrupted run never leaves a committable archive behind.
-    try {
-        $archiveIgnorePath = Get-ContainedTargetPath -Relative $archiveIgnoreRelative
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archiveIgnorePath) | Out-Null
-        $archiveIgnoreText = if (Test-Path -LiteralPath $archiveIgnorePath -PathType Leaf) { [IO.File]::ReadAllText($archiveIgnorePath) } else { '' }
-        $archiveIgnoreLines = @($archiveIgnoreText -split '\r?\n')
-        $archiveIgnoreNew = @($keptOutEntries | ForEach-Object { '/' + $_.Relative.Substring('docs/pre-adoption/'.Length) } | Where-Object { $_ -cnotin $archiveIgnoreLines })
-        if ($archiveIgnoreNew.Count -gt 0) {
-            $separator = if ($archiveIgnoreText.Length -gt 0 -and -not $archiveIgnoreText.EndsWith("`n")) { "`n" } else { '' }
-            [IO.File]::AppendAllText($archiveIgnorePath, $separator + ($archiveIgnoreNew -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
-        }
-    } catch {
-        [Console]::Error.WriteLine("ERROR: Refusing brownfield install: could not write $archiveIgnoreRelative before archiving gitignored originals: $($_.Exception.Message)")
-        exit 3
-    }
-}
-# An ignore file this install rewrites last is archived by copy, so the team's rules stay in place until that write.
-$archiveByCopy = @($ignoreRewrites | ForEach-Object { $_.Relative })
-foreach ($entry in $archivePlan) {
-    try {
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $entry.Destination) | Out-Null
-        if ($archiveByCopy -ccontains $entry.OriginalRelative) { Copy-Item -LiteralPath $entry.Original -Destination $entry.Destination }
-        else { Move-Item -LiteralPath $entry.Original -Destination $entry.Destination }
-    } catch {
-        $archiveInventoryComplete = $false
-        try { if ($adoptMode) { Write-AdoptionMarker -InventoryComplete $false } } catch { [Console]::Error.WriteLine("ERROR: Could not update the frozen archive inventory after move failure: $($_.Exception.Message)") }
-        [Console]::Error.WriteLine("ERROR: Brownfield archive move failed for '$($entry.OriginalRelative)' -> '$($entry.Relative)': $($_.Exception.Message)")
-        [Console]::Error.WriteLine('  The complete pre-move inventory was written before archive mutation; originals not yet moved are untouched. Recover manually, then re-run.')
-        exit 3
-    }
-    $ev = $archiveEvidenceByDest[[string]$entry.Relative]
-    $movedBytes = $null
-    try { $movedBytes = [IO.File]::ReadAllBytes($entry.Destination) } catch { $movedBytes = $null }
-    $verdict = 'CANT-VERIFY'
-    if ($null -ne $movedBytes) {
-        $verdict = if ([int64]$movedBytes.LongLength -eq [int64]$ev.byteLength -and (Get-Sha256Hex -Bytes $movedBytes) -ceq [string]$ev.sha256) { 'PASS' } else { 'CORRUPTION' }
-    }
-    if ($verdict -eq 'PASS') {
-        $ev.verified = $true
-        $archived += $entry.Relative
-        try { if ($adoptMode) { Write-AdoptionMarker -InventoryComplete $true } } catch {
-            [Console]::Error.WriteLine("ERROR: Archive '$($entry.OriginalRelative)' passed byte verification but progress could not be persisted: $($_.Exception.Message)")
-            [Console]::Error.WriteLine('  The earlier frozen inventory remains on disk with this entry unverified; do not continue or rebaseline it.')
-            exit 3
-        }
-        Write-Output "  archived: $($entry.OriginalRelative) -> $($entry.Relative) (pre/post-move bytes verified)"
-    } else {
-        $archiveInventoryComplete = $false
-        if ($adoptMode) { Write-AdoptionMarker -InventoryComplete $false }
-        [Console]::Error.WriteLine("ERROR: Brownfield archive integrity check failed for '$($entry.OriginalRelative)' -> '$($entry.Relative)': $verdict.")
-        [Console]::Error.WriteLine("  Verified moves before the failure: $(if ($archived.Count) { $archived -join ', ' } else { '(none)' }).")
-        [Console]::Error.WriteLine('  Nothing was rolled back, re-hashed, or overwritten; originals not yet moved are untouched. Recover the archives manually, then re-run.')
-        exit 3
-    }
-}
-# Asked of Git after the moves: a rule beside an archive, or one of the team's, could still re-include a kept-out archive.
-$keptOutLeaks = @()
-if ($keptOutEntries.Count -gt 0 -and $statusGitPath -and $null -ne $script:TargetStatus) {
-    $keptOutLeaks = @($keptOutEntries | Where-Object {
-        $probe = Invoke-GitText -GitPath $statusGitPath -Arguments @('-C', $tgt, 'check-ignore', '-q', '--no-index', '--', $_.Relative)
-        -not ($probe.Started -and $probe.ExitCode -eq 0) })
-}
 # Stop at the first failed delete, before any copy, and put back what this run already deleted: the
 # tree is then unchanged (a Git target stays clean) and the old ownership manifest, the deletion
 # authority, is still there, so a plain re-run finishes the job.
@@ -2611,6 +2609,86 @@ if ($Reinstall) {
             $emptyDir = Split-Path -Parent $emptyDir
         }
     }
+}
+# A reinstall archives after its sweep, so a stop below is recovered from the commit, as the sweep's is.
+# Single-quoted, as Stop-IncompleteCopy's line, so a '$' in the path is not expanded when the line is pasted into PowerShell.
+$archiveRecovery = if ($Reinstall) { "Every file this reinstall deleted or moved is in commit ${reinstallCommit}: restore them with  git -C '$($tgt.Replace("'", "''"))' checkout $reinstallCommit -- .  , delete the files this run created that git status lists as untracked, then re-run with -Reinstall$rerunOverrides." } else { $null }
+$archiveEvidenceByDest = @{}
+foreach ($ev in $archiveEvidence) { $archiveEvidenceByDest[[string]$ev.destination] = $ev }
+if ($writesAdoptionMarker) {
+    # Persist the complete frozen inventory before the first source/archive mutation. If this
+    # write cannot happen, do not begin a move whose provenance receipt could be lost.
+    try {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent (Join-Path $tgt '.claude/adoption-pending.json')) | Out-Null
+        Write-AdoptionMarker -InventoryComplete $true
+    } catch {
+        if ($archiveRecovery) { [Console]::Error.WriteLine("ERROR: Could not write .claude/adoption-pending.json before moving the instruction files: $($_.Exception.Message). $archiveRecovery") }
+        else { [Console]::Error.WriteLine("ERROR: Refusing brownfield install: could not persist the complete pre-move archive inventory: $($_.Exception.Message)") }
+        exit 3
+    }
+}
+if ($keptOutEntries.Count -gt 0) {
+    # Written before any move, so an interrupted run never leaves a committable archive behind.
+    try {
+        $archiveIgnorePath = Get-ContainedTargetPath -Relative $archiveIgnoreRelative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $archiveIgnorePath) | Out-Null
+        $archiveIgnoreText = if (Test-Path -LiteralPath $archiveIgnorePath -PathType Leaf) { [IO.File]::ReadAllText($archiveIgnorePath) } else { '' }
+        $archiveIgnoreLines = @($archiveIgnoreText -split '\r?\n')
+        $archiveIgnoreNew = @($keptOutEntries | ForEach-Object { '/' + $_.Relative.Substring('docs/pre-adoption/'.Length) } | Where-Object { $_ -cnotin $archiveIgnoreLines })
+        if ($archiveIgnoreNew.Count -gt 0) {
+            $separator = if ($archiveIgnoreText.Length -gt 0 -and -not $archiveIgnoreText.EndsWith("`n")) { "`n" } else { '' }
+            [IO.File]::AppendAllText($archiveIgnorePath, $separator + ($archiveIgnoreNew -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
+        }
+    } catch {
+        [Console]::Error.WriteLine("ERROR: Refusing brownfield install: could not write $archiveIgnoreRelative before archiving gitignored originals: $($_.Exception.Message)")
+        exit 3
+    }
+}
+# An ignore file this install rewrites last is archived by copy, so the team's rules stay in place until that write.
+$archiveByCopy = @($ignoreRewrites | ForEach-Object { $_.Relative })
+foreach ($entry in $archivePlan) {
+    try {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $entry.Destination) | Out-Null
+        if ($archiveByCopy -ccontains $entry.OriginalRelative) { Copy-Item -LiteralPath $entry.Original -Destination $entry.Destination }
+        else { Move-Item -LiteralPath $entry.Original -Destination $entry.Destination }
+    } catch {
+        $archiveInventoryComplete = $false
+        try { if ($writesAdoptionMarker) { Write-AdoptionMarker -InventoryComplete $false } } catch { [Console]::Error.WriteLine("ERROR: Could not update the frozen archive inventory after move failure: $($_.Exception.Message)") }
+        [Console]::Error.WriteLine("ERROR: $(if ($Reinstall) { 'Archive' } else { 'Brownfield archive' }) move failed for '$($entry.OriginalRelative)' -> '$($entry.Relative)': $($_.Exception.Message)")
+        [Console]::Error.WriteLine($(if ($archiveRecovery) { "  $archiveRecovery" } else { '  The complete pre-move inventory was written before archive mutation; originals not yet moved are untouched. Recover manually, then re-run.' }))
+        exit 3
+    }
+    $ev = $archiveEvidenceByDest[[string]$entry.Relative]
+    $movedBytes = $null
+    try { $movedBytes = [IO.File]::ReadAllBytes($entry.Destination) } catch { $movedBytes = $null }
+    $verdict = 'CANT-VERIFY'
+    if ($null -ne $movedBytes) {
+        $verdict = if ([int64]$movedBytes.LongLength -eq [int64]$ev.byteLength -and (Get-Sha256Hex -Bytes $movedBytes) -ceq [string]$ev.sha256) { 'PASS' } else { 'CORRUPTION' }
+    }
+    if ($verdict -eq 'PASS') {
+        $ev.verified = $true
+        $archived += $entry.Relative
+        try { if ($writesAdoptionMarker) { Write-AdoptionMarker -InventoryComplete $true } } catch {
+            [Console]::Error.WriteLine("ERROR: Archive '$($entry.OriginalRelative)' passed byte verification but progress could not be persisted: $($_.Exception.Message)")
+            [Console]::Error.WriteLine($(if ($archiveRecovery) { "  $archiveRecovery" } else { '  The earlier frozen inventory remains on disk with this entry unverified; do not continue or rebaseline it.' }))
+            exit 3
+        }
+        Write-Output "  archived: $($entry.OriginalRelative) -> $($entry.Relative) (pre/post-move bytes verified)"
+    } else {
+        $archiveInventoryComplete = $false
+        if ($writesAdoptionMarker) { Write-AdoptionMarker -InventoryComplete $false }
+        [Console]::Error.WriteLine("ERROR: $(if ($Reinstall) { 'Archive' } else { 'Brownfield archive' }) integrity check failed for '$($entry.OriginalRelative)' -> '$($entry.Relative)': $verdict.")
+        [Console]::Error.WriteLine("  Verified moves before the failure: $(if ($archived.Count) { $archived -join ', ' } else { '(none)' }).")
+        [Console]::Error.WriteLine($(if ($archiveRecovery) { "  $archiveRecovery" } else { '  Nothing was rolled back, re-hashed, or overwritten; originals not yet moved are untouched. Recover the archives manually, then re-run.' }))
+        exit 3
+    }
+}
+# Asked of Git after the moves: a rule beside an archive, or one of the team's, could still re-include a kept-out archive.
+$keptOutLeaks = @()
+if ($keptOutEntries.Count -gt 0 -and $statusGitPath -and $null -ne $script:TargetStatus) {
+    $keptOutLeaks = @($keptOutEntries | Where-Object {
+        $probe = Invoke-GitText -GitPath $statusGitPath -Arguments @('-C', $tgt, 'check-ignore', '-q', '--no-index', '--', $_.Relative)
+        -not ($probe.Started -and $probe.ExitCode -eq 0) })
 }
 if ($settingsBackupRelative) {
     $settingsBackup = Get-ContainedTargetPath -Relative $settingsBackupRelative
@@ -2823,11 +2901,11 @@ if ($backupTracked -gt 0) {
     Write-Output "  NOTICE: Git tracks $(if ($backupTracked -eq 1) { '1 file' } else { "$backupTracked files" }) under $backupRelative/, which may hold copies of files you had gitignored; '*' hides only what Git does not track yet. Review them, then untrack them with  git rm -r --cached $backupRelative  and commit that. A secret once committed there stays in your Git history: rotate it, or rewrite that history."
 }
 if ($updateMode) {
-    $untouchedContent = @($protected | Where-Object { -not ($layoutMove -and $_ -in @('CLAUDE.md', 'AGENTS.md')) })
+    $untouchedContent = @($protected | Where-Object { -not ($layoutMove -and $_ -in @('CLAUDE.md', 'AGENTS.md')) -and -not $archiveSources.Contains($_) })
     Write-Output "  consumer-owned content files left untouched ($($untouchedContent -join ', '))."
 }
 
-if ($adoptMode) {
+if ($writesAdoptionMarker) {
     # Durable adoption marker: the SessionStart hook warns every new session, and docs-sync-check
     # fails CI, until /adopt completes. It remains through archive and merge work, is verified and
     # copied for recovery, then is removed only immediately before the Phase-7 bootstrap and
@@ -3037,7 +3115,9 @@ if ($skillsLeftActive.Count -gt 0) {
 }
 if ($updateMode) {
     if ($Reinstall) {
-        Write-Output "Done (reinstall). Every file Git tracked in the cleared folders and every file this release or its retirement ledger names was deleted, and this release was installed fresh; protected files, files Git does not track, and other files outside those folders were left in place."
+        $instructionMoved = @($archivePlan | ForEach-Object { $_.OriginalRelative })
+        Write-Output "Done (reinstall). Every file Git tracked in the cleared folders and every file this release or its retirement ledger names was deleted, and this release was installed fresh; $(if ($instructionMoved.Count -gt 0) { 'the other ' })protected files, files Git does not track, and other files outside those folders were left in place."
+        if ($instructionMoved.Count -gt 0) { Write-Output "  Moved to docs/pre-adoption/, in an older release's format: $($instructionMoved -join ', '). This release's AGENTS.md and CLAUDE.md replace them; /adopt (below) merges your project text into AGENTS.md." }
         Write-Output "  The previous framework files are in commit $reinstallCommit, HEAD when this reinstall ran; no backup folder was written."
         Write-Output "  .claude/settings.json was written fresh from this release: re-add your own entries (permissions, hooks, env) from  git show ${reinstallCommit}:.claude/settings.json"
         Write-Output "  Restore any other deleted file with  git checkout $reinstallCommit -- <path>"
@@ -3055,7 +3135,7 @@ if ($updateMode) {
         Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; .claude/settings.json was backed up and refreshed."
     }
     Write-Output "  Reconcile protected rules and verify the update with docs/upgrade-checklist.md."
-    Write-Output "  Next: review the diff, run  $followUpPowerShell scripts/docs-sync-check.ps1 , then commit."
+    if (-not $writesAdoptionMarker) { Write-Output "  Next: review the diff, run  $followUpPowerShell scripts/docs-sync-check.ps1 , then commit." }
 } elseif ($adoptMode) {
     # Say what the consumer will find: only colliding files move; other tooling stays in place.
     $moved = @($archivePlan | ForEach-Object { $_.OriginalRelative })
@@ -3069,6 +3149,25 @@ if ($updateMode) {
     if ($keptOutHeld.Count -gt 0) { Write-Output "Kept out of Git - you had gitignored these, or told Git not to see your changes to them, and they may hold secrets: $(@($keptOutHeld | ForEach-Object { $_.OriginalRelative }) -join ', '). $archiveIgnoreRelative lists their archives; keep per-developer settings in files Git ignores, such as .claude/settings.local.json." }
     # Without Git's answer an archived original may still be one you had gitignored.
     if ($moved.Count -gt 0 -and ($null -eq $ignoredShippedPaths -or $null -eq $archiveSkipped)) { Write-Output "Some may be files you had gitignored: check docs/pre-adoption/ for secrets before committing." }
+} else {
+    Write-Output "Done. Next steps in the target repo:"
+    Write-Output "  1. Review and commit the copied files (they are team-shared config, not local settings)."
+    Write-Output "  2. A developer starts a Claude Code session, or an interactive Copilot CLI session, in the"
+    Write-Output "     target repo and must type:  /bootstrap"
+    Write-Output "     It reads the code and writes AGENTS.md, which every AI tool in the repo follows; review it"
+    Write-Output "     afterwards. Only a developer can start it."
+    Write-Output "  3. docs/getting-started.md walks the developer from here to a first reviewed fix."
+    Write-Output "  Until /bootstrap has run, new sessions show a reminder and docs-sync-check fails by design;"
+    Write-Output "  neither is a defect to fix. After it has run, verify:  $followUpPowerShell scripts/docs-sync-check.ps1"
+    Write-Output ""
+    Write-Output "  IF YOU ARE AN AI AGENT running this installer: your task is NOT complete until you"
+    Write-Output "  have done step 1 and then told the developer, explicitly, to start a Claude Code or an"
+    Write-Output "  interactive Copilot CLI session in the target repo and type /bootstrap. Report that as the"
+    Write-Output "  required manual next step in your final summary."
+    Write-Output "  Do not attempt /bootstrap yourself or replicate it by hand."
+}
+# A brownfield install, and a reinstall that moved the instruction files, hand off to /adopt.
+if ($writesAdoptionMarker) {
     Write-Output ""
     Write-Output "Next steps in the target repo:"
     Write-Output "  1. Review and commit the copied files (they are team-shared config, not local settings)."
@@ -3087,21 +3186,5 @@ if ($updateMode) {
     Write-Output "  replicate it by hand. Only if the developer asked you for unattended adoption, follow"
     Write-Output "  'Headless mode' in .claude/commands/adopt.md instead: it prepares a branch with every merge"
     Write-Output "  staged for a person to review, and opens or merges nothing."
-} else {
-    Write-Output "Done. Next steps in the target repo:"
-    Write-Output "  1. Review and commit the copied files (they are team-shared config, not local settings)."
-    Write-Output "  2. A developer starts a Claude Code session, or an interactive Copilot CLI session, in the"
-    Write-Output "     target repo and must type:  /bootstrap"
-    Write-Output "     It reads the code and writes AGENTS.md, which every AI tool in the repo follows; review it"
-    Write-Output "     afterwards. Only a developer can start it."
-    Write-Output "  3. docs/getting-started.md walks the developer from here to a first reviewed fix."
-    Write-Output "  Until /bootstrap has run, new sessions show a reminder and docs-sync-check fails by design;"
-    Write-Output "  neither is a defect to fix. After it has run, verify:  $followUpPowerShell scripts/docs-sync-check.ps1"
-    Write-Output ""
-    Write-Output "  IF YOU ARE AN AI AGENT running this installer: your task is NOT complete until you"
-    Write-Output "  have done step 1 and then told the developer, explicitly, to start a Claude Code or an"
-    Write-Output "  interactive Copilot CLI session in the target repo and type /bootstrap. Report that as the"
-    Write-Output "  required manual next step in your final summary."
-    Write-Output "  Do not attempt /bootstrap yourself or replicate it by hand."
 }
 exit 0

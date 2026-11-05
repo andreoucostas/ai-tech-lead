@@ -70,7 +70,8 @@ already has the framework (`.claude/framework-version.json`), this is an update:
 protected consumer paths and are never overwritten; `.github/instructions/framework-rules.instructions.md` is
 framework-owned and is replaced on each update.
 An install too old for an update to clean up is refused with a message naming `-Reinstall`, which
-replaces the old framework files from a clean Git tree; the checklist says when to use it.
+replaces the old framework files from a clean Git tree and moves the old `CLAUDE.md` and `AGENTS.md`
+to `docs/pre-adoption/` for `/adopt` to merge into this release's; the checklist says when to use it.
 
 ## For AI agents
 
