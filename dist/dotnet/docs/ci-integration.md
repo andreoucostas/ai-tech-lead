@@ -10,6 +10,8 @@ any human, any `--no-verify` — is your CI server.
 its own CI (Bamboo, Jenkins, TeamCity — whatever the team already runs) that must pass before a
 PR can merge.** This document is the recipe. It assumes Bitbucket Data Center; on GitHub the
 shipped `docs-sync-check.yml` workflow already does the equivalent.
+Nothing else runs that workflow: in a repository not on GitHub, delete
+`.github/workflows/docs-sync-check.yml` and commit that; framework updates then leave it deleted.
 
 ## What the required build must run
 

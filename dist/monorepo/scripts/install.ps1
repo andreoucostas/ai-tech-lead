@@ -22,7 +22,8 @@
 #   update     — target already carries .claude/framework-version.json. Consumer-owned protected
 #                paths are restored; framework-owned machinery is overwritten; mixed-ownership
 #                .claude/settings.json is backed up, refreshed, and adapted to the host. An older
-#                instruction layout (project text in CLAUDE.md) is moved once into AGENTS.md.
+#                instruction layout (project text in CLAUDE.md) is moved once into AGENTS.md. A deleted
+#                .github/workflows/docs-sync-check.yml stays deleted.
 #
 # -Reinstall (an existing install only; it needs a clean Git tree and refuses -AllowDirtyTree): an update from
 # a release older than the retirement ledger's oldest entry deletes nothing, so the old framework files stay
@@ -375,6 +376,9 @@ $persistentCopyIfAbsent = @(
 $copyIfAbsent = $persistentCopyIfAbsent + @(
     'docs/wiki/INDEX.md', 'docs/ARCHITECTURE.md', 'docs/architecture-decisions.md'
 )
+# Only GitHub Actions runs this workflow, and no other framework file reads it, so a team on other CI (Bitbucket with
+# Bamboo or Jenkins) may delete it. An update leaves it deleted when the previous manifest says the framework wrote it.
+$staysDeletedOnUpdate = @('.github/workflows/docs-sync-check.yml')
 
 # Signals that the target already has AI tooling and therefore needs /adopt, not /bootstrap. A shipped
 # path that collides with an existing file selects brownfield as well.
@@ -504,6 +508,7 @@ $adoptMode = (-not $updateMode) -and ($detected.Count -gt 0)
 # enabled only when the whole previous manifest is valid, and every candidate also matches bytes
 # named by the incoming framework-authored ledger.
 $deletePlan = New-Object System.Collections.Generic.List[string]
+$keptDeleted = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
 $retirementPreserve = New-Object System.Collections.Generic.List[string]
 $reconciliationMessages = New-Object System.Collections.Generic.List[string]
 if ($updateMode) {
@@ -1852,6 +1857,37 @@ if ($adoptMode -or $updateMode) {
     }
 }
 
+# A team deleted a path the previous manifest owned only when nothing is there, only folders lead to it, and Git does not
+# track it: a sparse or skip-worktree file is missing, not deleted. Anything else, or a question Git cannot answer, is
+# written as before, so a link or a file on the way is still refused.
+if ($null -ne $priorManifest) {
+    foreach ($optional in $staysDeletedOnUpdate) {
+        if (-not $incoming.ByPath.ContainsKey($optional) -or -not $priorManifest.ByPath.ContainsKey($optional) -or
+            $priorManifest.ByPath[$optional] -cne 'framework-owned/overwritten') { continue }
+        $optionalPath = Get-ContainedTargetPath -Relative $optional
+        try { [void](Get-LiteralItem -Path $optionalPath); continue }
+        catch [Management.Automation.ItemNotFoundException] { }
+        catch { continue }
+        if (Get-ReparsePointAncestor -Path $optionalPath) { continue }
+        $nearest = $null
+        for ($parent = Split-Path -Parent $optionalPath; $parent -and $parent.Length -ge $tgt.Length; $parent = Split-Path -Parent $parent) {
+            try { $nearest = Get-LiteralItem -Path $parent; break }
+            catch [Management.Automation.ItemNotFoundException] { }
+            catch { break }
+        }
+        if ($null -eq $nearest -or -not $nearest.PSIsContainer) { continue }
+        $optionalGit = Get-WorkTreeGit
+        if ($optionalGit) {
+            $tracked = Invoke-GitRecords -GitPath $optionalGit -Arguments @('-C', $tgt, 'ls-files', '-z', '--', ":(icase,literal)$optional")
+            if ($null -eq $tracked -or @($tracked).Count -gt 0) { continue }
+        } else {
+            try { if (Test-GitRepositoryEvidence -Path $tgt) { continue } } catch { continue }
+        }
+        [void]$keptDeleted.Add($optional)
+        $reconciliationMessages.Add("NOTICE: $optional was not put back: an earlier install wrote it and it has since been deleted. Only GitHub Actions runs it. To restore it, copy it from $([IO.Path]::Combine($src, $optional.Replace('/', [IO.Path]::DirectorySeparatorChar)))")
+    }
+}
+
 Write-Output "Installing AI Tech Lead Framework"
 Write-Output "  from: $src"
 Write-Output "  into: $tgt"
@@ -2067,6 +2103,7 @@ foreach ($relative in $incomingPaths) {
         $disabledIncomingPlan.Add([pscustomobject]@{ Source = $relative; Relative = $inactive })
         continue
     }
+    if ($keptDeleted.Contains($relative)) { continue }
     $destination = Get-ContainedTargetPath -Relative $relative
     $exists = $null -ne (Get-Item -Force -LiteralPath $destination -ErrorAction SilentlyContinue)
     $preserveDiscovered = $claudeSkill.Success -and $discoveredSkillNames.Contains($claudeSkill.Groups[1].Value)
@@ -3030,7 +3067,7 @@ Write-Output "Each developer should run  $followUpPowerShell scripts/framework-d
 # The audit log is ignored on purpose (it is per-machine state).
 $script:IgnoreUnanswered = $false
 $ignoredAfterCopy = Get-IgnoredShippedPaths
-$hiddenShipped = @($ignoredAfterCopy | Where-Object { $_ -and $_ -notin $persistentCopyIfAbsent -and -not $teamSkillPaths.Contains($_) })
+$hiddenShipped = @($ignoredAfterCopy | Where-Object { $_ -and $_ -notin $persistentCopyIfAbsent -and -not $teamSkillPaths.Contains($_) -and -not $keptDeleted.Contains($_) })
 if ($hiddenShipped.Count -gt 0) {
     $hiddenSummary = @($hiddenShipped | Group-Object { if ($_.Contains('/')) { $_.Split('/')[0] + '/' } else { $_ } } | Sort-Object Name |
         ForEach-Object { if ($_.Count -gt 1) { "$($_.Name) ($($_.Count) files)" } else { $_.Group[0] } }) -join ', '

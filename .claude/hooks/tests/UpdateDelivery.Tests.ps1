@@ -3943,6 +3943,103 @@ It 'a missing previous ownership manifest never authorizes generator deletion' {
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# Field report #13: on Bitbucket with Bamboo nothing runs the GitHub Actions workflow, and every update put a deleted copy back.
+It 'a deleted GitHub Actions workflow stays deleted across updates; another deleted framework file, or the workflow with no usable manifest, comes back' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('wf-deleted-' + [guid]::NewGuid())
+    try {
+        $t = New-B309GitTarget -Root $root -Name 'bitbucket' -Ignore "bin/`n"
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $first -match 'mode: greenfield') "calibration: the first install failed (exit $LASTEXITCODE): $first"
+        $workflow = Join-Path $t '.github/workflows/docs-sync-check.yml'
+        $other = Join-Path $t 'scripts/wiki-check.ps1'
+        Assert ((Test-Path -LiteralPath $workflow -PathType Leaf) -and (Test-Path -LiteralPath $other -PathType Leaf)) "calibration: the install wrote no workflow or no scripts/wiki-check.ps1: $first"
+        & git -C $t add -A; & git -C $t commit -qm 'framework install'
+        Remove-Item -LiteralPath $workflow, $other -Force
+        & git -C $t add -A; & git -C $t commit -qm 'no GitHub Actions here'
+        $update = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $update -match 'mode: update') "the update failed (exit $LASTEXITCODE): $update"
+        Assert (-not (Test-Path -LiteralPath $workflow)) "the update put back the deleted .github/workflows/docs-sync-check.yml: $update"
+        Assert (Test-Path -LiteralPath $other -PathType Leaf) "the update did not put back the deleted scripts/wiki-check.ps1: $update"
+        $source = Join-Path (Resolve-Path -LiteralPath (Join-Path $repoRoot 'dist/dotnet')).Path '.github\workflows\docs-sync-check.yml'
+        Assert ($update -match 'NOTICE: \.github/workflows/docs-sync-check\.yml was not put back' -and $update.Contains($source)) "the update does not say it left the workflow out and where to copy it from ($source): $update"
+        $listed = @((Get-Content -Raw -LiteralPath (Join-Path $t 'framework-ownership.json') | ConvertFrom-Json).paths | Where-Object { [string]$_.path -ceq '.github/workflows/docs-sync-check.yml' })
+        Assert ($listed.Count -eq 1) "the manifest no longer lists the workflow, so the next update would put it back: $update"
+        & git -C $t add -A; & git -C $t commit -qm 'framework update'
+        $again = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and -not (Test-Path -LiteralPath $workflow)) "a second update put the workflow back (exit $LASTEXITCODE): $again"
+        # Without a usable previous manifest nothing says the framework wrote it, so the workflow is installed.
+        Remove-Item -LiteralPath (Join-Path $t 'framework-ownership.json') -Force
+        & git -C $t add -A; & git -C $t commit -qm 'no manifest'
+        $unowned = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $workflow -PathType Leaf)) "without a previous manifest the update did not install the workflow (exit $LASTEXITCODE): $unowned"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# The step-4 attack on the field report #13 change: missing from disk is not deleted while Git still tracks the file.
+It 'a workflow Git still tracks but that is missing from disk (skip-worktree) is put back, not taken for a deletion' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('wf-skipped-' + [guid]::NewGuid())
+    try {
+        $t = New-B309GitTarget -Root $root -Name 'skipped' -Ignore "bin/`n"
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $first -match 'mode: greenfield') "calibration: the first install failed (exit $LASTEXITCODE): $first"
+        & git -C $t add -A; & git -C $t commit -qm 'framework install'
+        & git -C $t update-index --skip-worktree -- .github/workflows/docs-sync-check.yml
+        $workflow = Join-Path $t '.github/workflows/docs-sync-check.yml'
+        Remove-Item -LiteralPath $workflow -Force
+        Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String).Trim() -eq '') 'calibration: git status shows the skip-worktree file missing'
+        $update = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $update"
+        Assert ((Test-Path -LiteralPath $workflow -PathType Leaf) -and $update -notmatch 'was not put back') "a workflow Git still tracks was taken for a deletion: $update"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'a junction or a file in place of .github/workflows is refused as before, never taken for a deletion' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('wf-blocked-' + [guid]::NewGuid())
+    $outside = Join-Path $root 'outside'
+    try {
+        foreach ($shape in 'junction', 'file') {
+            $t = New-B309GitTarget -Root $root -Name $shape -Ignore "bin/`n"
+            $first = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0 -and $first -match 'mode: greenfield') "calibration: the $shape fixture's first install failed (exit $LASTEXITCODE): $first"
+            & git -C $t add -A; & git -C $t commit -qm 'framework install'
+            & git -C $t rm -q -- .github/workflows/docs-sync-check.yml; & git -C $t commit -qm 'no GitHub Actions here'
+            $folder = Join-Path $t '.github/workflows'
+            Assert (-not (Test-Path -LiteralPath $folder)) "calibration: git rm left .github/workflows in the $shape fixture"
+            if ($shape -eq 'junction') {
+                [void][IO.Directory]::CreateDirectory($outside)
+                New-Item -ItemType Junction -Path $folder -Target $outside | Out-Null
+            } else {
+                [IO.File]::WriteAllText($folder, "not a folder`n", [Text.UTF8Encoding]::new($false))
+                & git -C $t add -- .github/workflows; & git -C $t commit -qm 'a file where the folder was'
+            }
+            Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String).Trim() -eq '') "calibration: the $shape fixture is not clean"
+            $update = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 3 -and $update -notmatch 'was not put back') "a $shape at .github/workflows was taken for a deletion instead of refused (exit $LASTEXITCODE): $update"
+        }
+        Assert (@(Get-ChildItem -Force -LiteralPath $outside).Count -eq 0) 'the update wrote through the junction'
+    } finally {
+        $link = Join-Path $root 'junction/.github/workflows'
+        if (Test-Path -LiteralPath $link) { [IO.Directory]::Delete($link) }
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'a workflow kept deleted under the team''s own ignore rule draws no WARNING that the rule hides it' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('wf-ignored-' + [guid]::NewGuid())
+    try {
+        $t = New-B309GitTarget -Root $root -Name 'ignored' -Ignore "bin/`n"
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $first -match 'mode: greenfield') "calibration: the first install failed (exit $LASTEXITCODE): $first"
+        & git -C $t add -A; & git -C $t commit -qm 'framework install'
+        & git -C $t rm -q -- .github/workflows/docs-sync-check.yml
+        [IO.File]::AppendAllText((Join-Path $t '.gitignore'), ".github/workflows/`n", [Text.UTF8Encoding]::new($false))
+        & git -C $t add -- .gitignore; & git -C $t commit -qm 'no GitHub Actions here'
+        $update = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and -not (Test-Path -LiteralPath (Join-Path $t '.github/workflows/docs-sync-check.yml'))) "calibration: the update did not keep the workflow deleted (exit $LASTEXITCODE): $update"
+        Assert ($update -notmatch 'ignore rules hide') "the update warns that an ignore rule hides a file it did not write: $update"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 # Regression guard. install.ps1 built the .sh twin's replacement only when the matching .ps1 was
 # still in the incoming manifest, and the generic residual arm mapped any .sh to its .ps1. Retiring
 # the .ps1 would therefore have silently dropped the .sh twin's migration message and, where one

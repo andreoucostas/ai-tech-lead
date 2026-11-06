@@ -2,6 +2,8 @@ name: Docs sync check
 
 # GitHub Actions wrapper for the supported Windows execution surface. The same PowerShell check can
 # be wired into a self-hosted Windows Bamboo or Jenkins agent; see docs/ci-integration.md.
+# Only GitHub Actions runs this file. If your repository is not on GitHub, delete it and commit that: framework
+# updates then leave it deleted.
 
 on:
   pull_request:

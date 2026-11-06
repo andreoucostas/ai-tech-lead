@@ -207,8 +207,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 8855,
-          "tok": 2214
+          "chars": 9024,
+          "tok": 2256
         },
         {
           "path": "docs/defaults.md",
@@ -343,13 +343,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 42014,
-          "tok": 10504
+          "chars": 42745,
+          "tok": 10686
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 56495,
-          "tok": 14124
+          "chars": 57239,
+          "tok": 14310
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -378,8 +378,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 21687,
-          "tok": 5422
+          "chars": 22391,
+          "tok": 5598
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -631,8 +631,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 8697,
-          "tok": 2174
+          "chars": 8866,
+          "tok": 2216
         },
         {
           "path": "docs/defaults.md",
@@ -767,13 +767,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 42167,
-          "tok": 10542
+          "chars": 42898,
+          "tok": 10724
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 50096,
-          "tok": 12524
+          "chars": 50840,
+          "tok": 12710
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -802,8 +802,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 20459,
-          "tok": 5115
+          "chars": 21163,
+          "tok": 5291
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1055,8 +1055,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 8923,
-          "tok": 2231
+          "chars": 9092,
+          "tok": 2273
         },
         {
           "path": "docs/defaults.md",
@@ -1191,13 +1191,13 @@
         },
         {
           "path": ".claude/commands/adopt.md#body",
-          "chars": 43145,
-          "tok": 10786
+          "chars": 43876,
+          "tok": 10969
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 65898,
-          "tok": 16474
+          "chars": 66642,
+          "tok": 16660
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1226,8 +1226,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 23934,
-          "tok": 5984
+          "chars": 24638,
+          "tok": 6160
         },
         {
           "path": ".claude/commands/refactor.md#body",

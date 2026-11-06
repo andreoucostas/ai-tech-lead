@@ -37,6 +37,25 @@ exit 1 to 0). Text-only, so no behaviour to show red, and no agent run has measu
 unprompted writes of what an agent read, repair in place of `CONFLICTING`, and row staleness from git commit time. B-483 files the
 freshness check's false green.
 
+Field report #13, two items (guarded). (1) A committed credential gets a follow-up question (the three stacks' `bootstrap.md`,
+`adopt.md`, `rebootstrap.md`). `/bootstrap` wrote a credential hazard row, left `SECURITY_FINDINGS.md` alone by design, and its PR
+checklist asked only about unsure hazards, so a confirmed committed credential reached no one. The `/bootstrap` and `/adopt` Phase 8
+checklists now open with one question covering every such row not reviewed as no hazard (revoked or rotated, and the incident
+handler told?), repeating no path or value; `/rebootstrap`'s report asks it for rows 3c added. Text-only, no behaviour to show red,
+unmeasured. B-484 files the adjacent defect: the row itself commits the secret's `path:line`, which `/security-gate` forbids.
+(2) A deleted `.github/workflows/docs-sync-check.yml` stays deleted (`install.ps1`; the maintainer chose this over labelling the
+file or shipping it as an example). Nothing on Bitbucket runs it, and as a framework-owned path every update put a deleted copy back.
+An update now leaves it out when the previous manifest owned it as framework-owned, nothing is there (a true ItemNotFound), only
+folders lead to it, and Git does not track it; anything else, or a question Git cannot answer, is written as before. It prints a
+`NOTICE:` naming the release copy to restore from and keeps the path in the manifest, so the next update leaves it out again. No
+usable previous manifest, or `-Reinstall`, installs it. The step-4 attack (fresh session, pwsh and 5.1) held on scope (seven other
+deleted framework files came back), manifest variants, `-WhatIf`, `-AllowDirtyTree`, `-Reinstall`, `-AllowStackChange` and the
+restore remedy, and broke three things in the first version, each now a case, red on that version: a tracked file missing from disk
+(sparse, skip-worktree) taken for a deletion, so the old workflow stayed committed with nothing said; a junction or a file in place
+of `.github/workflows` passing (exit 0) instead of being refused (exit 3); and the ignore-rules WARNING naming the unwritten file.
+The tightened version was not attacked again. The first case was red on the unfixed installer ("the update put back the deleted
+.github/workflows/docs-sync-check.yml").
+
 ## 0.98.4 — 2026-11-04
 
 VS Code 1.144.1 Copilot-harness correction (ordinary, `docs/enforcement-surfaces.md`; B-475, measured 2026-11-03, `meta/host-certification.md`).

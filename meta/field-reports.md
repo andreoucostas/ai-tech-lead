@@ -363,6 +363,29 @@ maintainer's word.
 
 ---
 
+## Report #13 — a committed credential with no follow-up, and a GitHub workflow on Bitbucket
+
+| | |
+|---|---|
+| **Date received** | 2026-11-06 |
+| **Stack / repo shape** | not captured; hosted on Bitbucket with Bamboo |
+| **Framework installed** | yes, inferred: both items name shipped surfaces; version not captured |
+| **What misfired** | The maintainer's words: "credentials hazards documented but security follow up not yet recorded", and "github actions workflow is inert on a bamboo/bitbucket platform". |
+| **What fired** | item 1: the hazard step wrote credential rows to `FRAMEWORK-CONTEXT.md > Known Hazard Areas` (inferred from "documented") |
+| **What got ignored** | nothing by an agent: item 1's run followed the text, which leaves `SECURITY_FINDINGS.md` alone and lists only unsure hazards on the PR checklist; item 2's file is framework-owned, so every update put a deleted copy back |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | relayed by the maintainer in two lines; whose run it was, not captured |
+
+**Outcome:** done 2026-11-06 for 0.98.5 (Unreleased head). Item 1: the `/bootstrap` and `/adopt` PR checklists open with
+one question covering every committed-credential row not reviewed as no hazard (rotated, and the incident handler told?),
+repeating no path or value; `/rebootstrap`'s report asks it for rows it added. Unmeasured. B-484 files the adjacent
+defect: the hazard row itself commits the secret's `path:line`, which `/security-gate` forbids. Item 2 (the maintainer
+chose this over labelling the file or shipping it as an example): once a team deletes
+`.github/workflows/docs-sync-check.yml` and commits that, an update leaves it deleted when the previous manifest owned it,
+and says where to copy it from.
+The version stamp was again not captured (intake gap 4).
+
 ---
 
 ## Intake gaps (a finding in its own right)

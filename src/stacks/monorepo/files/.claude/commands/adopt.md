@@ -362,10 +362,11 @@ Show the user:
 
 Before the commit reminder below, re-scan the durable artifacts and emit a prioritized checklist capped at about 10 entries. This Phase 8 block is the sole emitter during `/adopt`; it aggregates bootstrap-side sources rather than trusting conversation memory. Omit any source category with no entries, in this priority order:
 
-1. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (AGENTS.md > Conventions > [subsection])"
-2. For each `(c) unsure` or tooling-only hazard: "Is [specific risk] real in this codebase? If you're not sure, leave it as it is. (FRAMEWORK-CONTEXT.md > Known Hazard Areas)"
-3. For each `<!-- DEFAULTED: … -->` marker written in Phase 4a: "You had [A] in your code and [B] in [old file]; I kept **[A]**. Right call? (AGENTS.md > [section])"
-4. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line as a yes/no question with its skill file pointer.
+1. For each hazard row that records a credential committed to the repository (a password, key, token, or a connection string holding one), unless its Status is `[REVIEWED: not a hazard — …]`: "`FRAMEWORK-CONTEXT.md > Known Hazard Areas` records a credential committed to this repository. Has it been revoked or rotated, and has whoever handles security incidents for your team been told? It stays readable in Git history until it is rotated, and this run recorded no security follow-up: a credential incident is handled by people, never written to `SECURITY_FINDINGS.md` automatically." One question covers every such row; it repeats no path, line or part of the value. Such a row does not also get the unsure-hazard question.
+2. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (AGENTS.md > Conventions > [subsection])"
+3. For each `(c) unsure` or tooling-only hazard: "Is [specific risk] real in this codebase? If you're not sure, leave it as it is. (FRAMEWORK-CONTEXT.md > Known Hazard Areas)"
+4. For each `<!-- DEFAULTED: … -->` marker written in Phase 4a: "You had [A] in your code and [B] in [old file]; I kept **[A]**. Right call? (AGENTS.md > [section])"
+5. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line as a yes/no question with its skill file pointer.
 
 Emit the result in a fenced code block whose first line is exactly:
 
@@ -374,7 +375,7 @@ Paste this into your PR (or commit message)
 [prioritized yes/no questions]
 ```
 
-If every category is empty, replace the questions with the single line: `No open judgment calls — the run resolved everything against your code.` After listing source 3, the `<!-- DEFAULTED: … -->` markers may be stripped; they are a review-handoff trace, not permanent documentation.
+If every category is empty, replace the questions with the single line: `No open judgment calls — the run resolved everything against your code.` After listing source 4, the `<!-- DEFAULTED: … -->` markers may be stripped; they are a review-handoff trace, not permanent documentation.
 
 Remind the user to:
 1. Review the updated AGENTS.md — especially merged Conventions and Architecture Decisions

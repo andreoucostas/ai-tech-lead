@@ -21,6 +21,17 @@
   wrong for another reason is reported to you, not rewritten. It never creates a map. A map with no
   `<!-- warehouse-map full pass: … -->` line (one written before 0.96.0) is left alone and the agent says so, because a row added
   to it would make the freshness check read the whole map as current; run `/map-warehouse` once to stamp it.
+- **A GitHub Actions workflow you delete now stays deleted.** Only GitHub Actions runs
+  `.github/workflows/docs-sync-check.yml`, so in a repository on Bitbucket with Bamboo or Jenkins it does nothing, and every
+  update put a deleted copy back. Once you delete it and commit that, an update leaves it deleted and prints a `NOTICE:` line
+  naming the copy in this release to restore it from; `-Reinstall` installs it again. Your required build there is the Bamboo plan or Jenkins job
+  `docs/ci-integration.md` describes.
+- **`/bootstrap`, `/adopt` and `/rebootstrap` now ask for the follow-up on a committed credential.** A hazard row recording a
+  password, key, token or connection string committed to your repository went into `FRAMEWORK-CONTEXT.md`, and nothing asked
+  anyone to act on it. The paste-into-your-PR checklist now opens with one question: has it been revoked or rotated, and has
+  whoever handles security incidents for your team been told? It names no path or value. Nothing is written to
+  `SECURITY_FINDINGS.md`, which is not where a credential incident belongs.
+
 ## 0.98.4 — 2026-11-04
 
 - **`docs/enforcement-surfaces.md` now says that VS Code 1.144.1's Copilot harness runs none of your hooks in a folder VS Code trusts.** Measured on

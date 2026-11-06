@@ -301,6 +301,7 @@ After all accepted changes are applied, output:
 - **TECH_DEBT items resolved**: list by ID and title
 - **TECH_DEBT items added**: list by ID and title
 - **Hazard areas re-confirmed**: rows verified, re-pointed, retired, or left unanswered this run (or "none")
+- **Credential follow-up**: when 3c added a row that records a credential committed to the repository (a password, key, token, or a connection string holding one), unless its Status is `[REVIEWED: not a hazard — …]`, ask: "`FRAMEWORK-CONTEXT.md > Known Hazard Areas` records a credential committed to this repository. Has it been revoked or rotated, and has whoever handles security incidents for your team been told? It stays readable in Git history until it is rotated, and this run recorded no security follow-up: a credential incident is handled by people, never written to `SECURITY_FINDINGS.md` automatically." One question covers every such row; it repeats no path, line or part of the value.
 - **Areas not re-analysed**: explicit list with reason (e.g., "unchanged since the baseline of <date>")
 - **Rebootstrap baseline**: each `PROFILE` line and the 3d `RECORDED` line, verbatim, or why none was recorded; each 3d `EMPTY` path with its `TECH_DEBT.md` item; each claim 3d left out because its change was not applied
 - **Repository knowledge drafts and refresh**: new drafts, skipped duplicates/owner-routed items, changed evidence/dependency sources (including quiet callers), semantic refresh results, preserved verification dates, and unresolved/deleted/unavailable sources

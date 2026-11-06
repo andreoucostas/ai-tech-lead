@@ -591,9 +591,10 @@ Then output:
 
 Unless this `/bootstrap` is being invoked from within `/adopt`, emit a prioritized checklist capped at about 10 entries. Under `/adopt`, suppress this checklist because adopt Phase 8 is the sole emitter and aggregates these sources. Re-scan the written artifacts, omit any source category with no entries, and use this priority order:
 
-1. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (AGENTS.md > Conventions > [subsection])"
-2. For each `(c) unsure` or tooling-only hazard from 3d-bis: "Is [specific risk] real in this codebase? If you're not sure, leave it as it is. (FRAMEWORK-CONTEXT.md > Known Hazard Areas)"
-3. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line from the report as a yes/no question with its skill file pointer; a yes means applying its `## After review` paragraph.
+1. For each hazard row 3d-bis wrote that records a credential committed to the repository (a password, key, token, or a connection string holding one), unless its Status is `[REVIEWED: not a hazard — …]`: "`FRAMEWORK-CONTEXT.md > Known Hazard Areas` records a credential committed to this repository. Has it been revoked or rotated, and has whoever handles security incidents for your team been told? It stays readable in Git history until it is rotated, and this run recorded no security follow-up: a credential incident is handled by people, never written to `SECURITY_FINDINGS.md` automatically." One question covers every such row; it repeats no path, line or part of the value. Such a row does not also get the unsure-hazard question.
+2. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (AGENTS.md > Conventions > [subsection])"
+3. For each `(c) unsure` or tooling-only hazard from 3d-bis: "Is [specific risk] real in this codebase? If you're not sure, leave it as it is. (FRAMEWORK-CONTEXT.md > Known Hazard Areas)"
+4. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line from the report as a yes/no question with its skill file pointer; a yes means applying its `## After review` paragraph.
 
 Emit the result in a fenced code block whose first line is exactly:
 
