@@ -207,15 +207,47 @@ organization enforces.
 > (`xox…`), an `sk-` API key where a key starts (OpenAI, Anthropic and others), a Google API key
 > (`AIza…`), an Azure storage account key, and an Azure SAS signature. Outside test, spec, mock,
 > fixture, example, sample and `Development` paths, also a quoted value of 8 or more characters
-> assigned to a name ending in password, secret, API key, access key or client secret, and a
-> connection string with a password of 4 or more characters or a `user:password@` address, whether
-> under a `connectionString` key or in a quoted `"ConnectionStrings": { … }` object such as
-> `appsettings.json`'s. Every match, and every password inside a matched connection string, is
-> checked. A placeholder word such as `<from-vault>`, `changeme`, `example` or `${VAR}` anywhere in
-> the matched text excuses it; a release-pipeline token such as `#{X}#`, `__X__` or `$(X)` excuses
-> only a password that is exactly the token. **Not matched:** an unquoted generic value (an `.env`
-> line or a YAML scalar) unless it has one of the key formats above; a name that does not end in one
-> of those words (`SecretKey`); an `appSettings` `<add key="DbPassword" value="…" />`; flat
+> assigned to a name ending in password, secret, API key, access key or client secret (the name may
+> end an indexer key such as `config["Password"]`, may carry a type annotation as in
+> `password: string = "…"`, and the value may be a verbatim `@"…"` string), and a connection string
+> with a password of 4 or more characters or a `user:password@` address, whether under a
+> `connectionString` key, in a quoted `"ConnectionStrings": { … }` object such as
+> `appsettings.json`'s, or with no key before it (passed to `UseSqlServer`, `new SqlConnection` or a
+> Service Bus client, or assigned to a variable). Every match, and every password inside a matched
+> connection string, is checked. A placeholder word such as `<from-vault>`, `changeme`, `example` or
+> `${VAR}` anywhere in the matched text excuses it; a release-pipeline token such as `#{X}#`, `__X__`
+> or `$(X)` excuses only a password that is exactly the token. A connection string with no key
+> before it is read when its quoted one-line literal holds at least two `;`-separated `key=value`
+> pairs, one of them a `Password=`, `Pwd=` or `SharedAccessKey=` pair (the key may carry a prefix
+> such as `Db2Password` or `Proxy.Password`, and `=` must touch the key and the value), or holds that
+> one pair, with or without a trailing `;`, as a piece of a longer string: the argument of
+> `.Append(` or `.AppendLine(`, or joined by `+` (blanks and newlines allowed) to the next or the
+> previous quoted literal when that literal holds a `key=value` pair (`"Server=db;" + "User Id=app;"
+> + "Password=…"`). A literal of one such pair on its own (a regex or a mask, a log or exception
+> message, SQL text, a flag) is not read. A value that opens with `{` or `$` (an interpolation hole
+> or a variable) or `@` (a SQL parameter) is not read as a password, the Service Bus emulator's
+> published key value `SAS_KEY_VALUE` is never read as one, wherever it stands, and the placeholder
+> and token exemptions read that password's value only, so a placeholder elsewhere in the literal
+> excuses nothing. A write holding more than 500 password values is blocked with a message to write
+> it in parts, because the hook could not check them inside its time limit; a value counts once
+> however many passes and matches read it (500 token values in a `ConnectionStrings` object pass,
+> the 501st blocks).
+> **Not matched:** an unquoted generic value (an `.env` line or a YAML scalar) unless it has one of
+> the key formats above; a connection string literal that spans lines, holds one pair that is not a
+> piece of a longer string, or is built by `string.Join(";", …)` or a TypeScript `.join(';')`, or a
+> piece joined to a neighbour that holds no `key=value` pair (a variable between the pieces, as in
+> `"Server=" + host + ";Password=…"`), joined by VB `&`, F# `^` or across a comment line, added by
+> `+=`, `string.Concat`, `AppendFormat`, `.Add(` or `.push(`, or passed to `.Append (` with a space;
+> a `;;` between
+> pairs, a quote of the other kind or an escaped quote inside the literal, a JDBC neighbour with no
+> `=`, a `:` in a neighbouring key, a no-break space or vertical tab before the key; the computed key
+> `{ ['password']: '…' }`. **False blocks:** compact code with no spaces between two literals
+> (`u.Name="bob";u.Password=Hash(p);…`), and a mask, a message or SQL text that is one piece of a
+> longer string: an `.Append(` or `.AppendLine(` of a `Password=` mask of asterisks or `[REDACTED]`,
+> a `Password=required;` message joined to an `Email=required;` piece, or a `SET Password=NULL`
+> piece joined by `+` to a `WHERE Id=1` piece. Also not matched: a
+> name that does not end in one of those words (`SecretKey`); an `appSettings`
+> `<add key="DbPassword" value="…" />`; flat
 > `ConnectionStrings:Main` or `ConnectionStrings__Main` keys (user secrets, `launchSettings.json`,
 > docker-compose); other key formats, such as Stripe's `sk_live_`; ConnectionStrings entries after a
 > brace in a JSON comment or after a nested object; and anything the edit and shell caveats above

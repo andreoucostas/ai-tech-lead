@@ -5,6 +5,9 @@ $azureKey = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8' + 'gISIjJCUmJygpKissLS
 # Synthetic sk- keys, assembled from halves for the same reason as $azureKey.
 $openAiKey    = 'sk-proj-' + 'Qx7RkP2mVt9LwZ4nHc8JdB3sFy6GaE1u' + 'Ko5TiN0rXj2WqM7vLp4ShD9gCz3YbU8e'
 $anthropicKey = 'sk-ant-api03-' + 'Hn4Rk8PqZ2xVt6LmW9cJ3dBsF7yGa1uE' + 'o5TiK0rNj2XqM7vLp4ShD9gCz3YbU8eQ'
+# Synthetic password and Service Bus key for the connection-string and credential-name cases, assembled from halves for the same reason.
+$sqlPassword = 'Zq8v' + 'R2mK4tW7xN'
+$busKey = 'Zq8vR2mK4tW7xNpL9cJ3dBsF7yGa1uEo5TiK' + '0rNj2XqM7v='
 # System.Text.Json's default escape for a quote, built in two pieces so no tool unescapes it.
 $u22 = '\u' + '0022'
 $GuardCases = @(
@@ -239,6 +242,96 @@ $GuardCases = @(
     @{ n='edit drops an eslint-enable and an unrelated eslint-disable-line'; f='src/app.ts'; o="/* eslint-disable no-alert */`nfoo();`n/* eslint-enable no-alert */`nf(); // eslint-disable-line no-console"; c="/* eslint-disable no-alert */`nfoo();"; block=$true }
     @{ n='edit drops only the eslint-enable and keeps the eslint-disable-line'; f='src/app.ts'; o="/* eslint-disable no-alert */`nfoo();`n/* eslint-enable no-alert */`nf(); // eslint-disable-line no-console"; c="/* eslint-disable no-alert */`nfoo();`nf(); // eslint-disable-line no-console"; block=$true }
     @{ n='edit drops an unrelated eslint-disable-line and keeps the block pair (allow)'; f='src/app.ts'; o="/* eslint-disable no-alert */`nfoo();`n/* eslint-enable no-alert */`nf(); // eslint-disable-line no-console"; c="/* eslint-disable no-alert */`nfoo();`n/* eslint-enable no-alert */`nf();"; block=$false }
+    # Connection strings and credential names as .NET and TypeScript code writes them. A quoted literal on one line that holds a
+    # Password=, Pwd= or SharedAccessKey= pair is a connection string wherever it stands (not only under a connectionString key
+    # or in a ConnectionStrings section); the generic rule also reads a verbatim @"..." value, an indexer key and a type
+    # annotation between the name and the value. The empty, placeholder, token, interpolated and prose cases below stay allowed.
+    @{ n='connection string literal passed to UseSqlServer'; f='src/Db.cs'; c="services.AddDbContext<Db>(o => o.UseSqlServer(`"Server=db;User Id=app;Password=$sqlPassword;`"));"; block=$true }
+    @{ n='connection string literal passed to new SqlConnection'; f='src/Db.cs'; c="using var c = new SqlConnection(`"Server=db;User Id=app;Password=$sqlPassword;`");"; block=$true }
+    @{ n='connection string literal assigned to var connStr'; f='src/Db.cs'; c="var connStr = `"Server=db;User Id=app;Password=$sqlPassword;`";"; block=$true }
+    @{ n='connection string literal in a verbatim @ string'; f='src/Db.cs'; c="var cs = @`"Server=db;User Id=app;Pwd=$sqlPassword`";"; block=$true }
+    @{ n='password assigned a verbatim @ string'; f='src/Db.cs'; c="var password = @`"$sqlPassword`";"; block=$true }
+    @{ n='password assigned through an indexer key'; f='src/Db.cs'; c="config[`"Password`"] = `"$sqlPassword`";"; block=$true }
+    @{ n='TypeScript password field with a string type annotation'; f='src/db.ts'; c="private password: string = '$sqlPassword';"; block=$true }
+    @{ n='Service Bus connection string literal with a SharedAccessKey'; f='src/Bus.cs'; c="var cs = `"Endpoint=sb://acme.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=$busKey`";"; block=$true }
+    @{ n='Pwd pair in a single-quoted TypeScript literal'; f='src/db.ts'; c="const cs = 'Server=db;User Id=app;Pwd=$sqlPassword';"; block=$true }
+    @{ n='connection string literal with an empty Password (allow)'; f='src/Db.cs'; c='var cs = "Server=db;User Id=app;Password=;Database=app";'; block=$false }
+    @{ n='Password= in prose in a .md file (allow)'; f='docs/connection-strings.md'; c='Set the Password= pair of the connection string from user-secrets, never inline, and keep Pwd= and SharedAccessKey= out of the repository.'; block=$false }
+    @{ n='connection string literal with a placeholder Password (allow)'; f='src/Db.cs'; c='services.AddDbContext<Db>(o => o.UseSqlServer("Server=db;User Id=app;Password=<from-vault>;"));'; block=$false }
+    @{ n='connection string literal with a release-token Password (allow)'; f='src/Db.cs'; c='var cs = "Server=db;User Id=app;Password=#{SqlPassword}#;";'; block=$false }
+    @{ n='connection string literal with Integrated Security and no password (allow)'; f='src/Db.cs'; c='var cs = "Server=db;Database=app;Integrated Security=true";'; block=$false }
+    @{ n='interpolated connection string literal with a Password hole (allow)'; f='src/Db.cs'; c='var cs = $"Server={host};User Id={user};Password={password};";'; block=$false }
+    @{ n='PowerShell connection string literal with a Password variable (allow)'; f='scripts/deploy.ps1'; c='$cs = "Server=db;User Id=app;Password=$sqlPassword;"'; block=$false }
+    @{ n='object initializer assigning Password between two literals (allow)'; f='src/Users.cs'; c='var u = new User { Name = "bob", Password = Hash(p), Role = "admin" };'; block=$false }
+    @{ n='Password assigned on a line between two literals (allow)'; f='src/Users.cs'; c="u.Name = `"bob`";`nu.Password = Hash(p);`nu.Role = `"admin`";"; block=$false }
+    @{ n='indexer read and comparison of a Password setting (allow)'; f='src/Db.cs'; c="var p = config[`"Password`"]; if (config[`"Password`"] == null) { }"; block=$false }
+    @{ n='Service Bus connection string literal with a key name and no key (allow)'; f='src/Bus.cs'; c='var cs = "Endpoint=sb://acme.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey";'; block=$false }
+    @{ n='TypeScript password field with a type annotation and a short value (allow)'; f='src/db.ts'; c="private password: string = 'abc';"; block=$false }
+    @{ n='connection string literal with a Password in a *Tests* file (allow)'; f='tests/DbTests.cs'; c="var cs = `"Server=db;User Id=app;Password=$sqlPassword;`";"; block=$false }
+    # A connection string with no key before it is read only when its literal holds two or more ";"-separated pairs, one of them
+    # the password, and is read after the keyed forms, so code between two literals can neither hide a keyed password nor be
+    # read as a connection string. A keyed password after a Password=, Pwd= or token between two literals still blocks:
+    @{ n='keyed password after a Password= placeholder between two literals'; f='src/Db.cs'; c='var a = "x"; Password=changeme; var password = "hunter2hunter2";'; block=$true }
+    @{ n='keyed apiKey after a process.env pwd between two literals'; f='src/auth.ts'; c="login('bob'); const pwd=process.env.PWD; const apiKey = 'Zq8vR2mK4tW7xNpL9c';"; block=$true }
+    @{ n='keyed connectionString after a Pwd= placeholder between two literals'; f='src/Db.cs'; c='var a = "x"; Pwd=changeme; var connectionString = "Server=db;Password=hunter2hunter2";'; block=$true }
+    @{ n='keyed password after a Pwd= release token between two literals'; f='src/Db.cs'; c='Run("a"); Pwd=#{P}#; var password = "hunter2hunter2";'; block=$true }
+    # Text that holds a Password= or Pwd= pair but is not a connection string stays allowed:
+    @{ n='SQL text assigning a Password parameter (allow)'; f='src/Users.cs'; c='var q = "UPDATE Users SET Password=@Password WHERE Id=@Id";'; block=$false }
+    @{ n='Password assigned between two literals with no space around = (allow)'; f='src/Users.cs'; c='Name = "bob"; Password=hash; Role = "admin";'; block=$false }
+    @{ n='indexer read of a Password setting in a ternary (allow)'; f='src/Users.cs'; c='var shown = reveal ? user["Password"] : "(hidden)";'; block=$false }
+    @{ n='Service Bus emulator connection string (allow)'; f='src/Bus.cs'; c='var cs = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;";'; block=$false }
+    @{ n='Regex pattern holding Pwd= (allow)'; f='src/Users.cs'; c='var r = new Regex("Pwd=(.*)");'; block=$false }
+    @{ n='Replace of a password with a masked Password= (allow)'; f='src/Users.cs'; c='var m = s.Replace(pwd, "Password=****");'; block=$false }
+    @{ n='ChangePassword flag literal (allow)'; f='src/Users.cs'; c='var flag = "ChangePassword=true";'; block=$false }
+    @{ n='route template holding ;Password= (allow)'; f='src/Users.cs'; c='[HttpGet("login;Password=true")]'; block=$false }
+    @{ n='log message holding ; Password= (allow)'; f='src/Users.cs'; c='Log("Login failed; Password=expired for user");'; block=$false }
+    @{ n='URL holding ;pwd= (allow)'; f='src/Users.cs'; c='var url = "https://h/x;pwd=reset1234";'; block=$false }
+    @{ n='single Password=0000 pair in a TypeScript literal (allow)'; f='src/db.ts'; c="const p = 'Password=0000';"; block=$false }
+    @{ n='shell export of OLDPWD between two echo strings (allow)'; f='scripts/run.sh'; c='echo "start"; export OLDPWD=/tmp/foo; echo "done"'; block=$false }
+    # A placeholder word elsewhere in the literal, or a key prefix or blank before the pair, no longer hides a password:
+    @{ n='Password in a literal whose server name holds example'; f='src/Db.cs'; c='var cs = "Server=db.example.com;User Id=app;Password=hunter2hunter2;";'; block=$true }
+    @{ n='Password in a literal that ends with a Your- placeholder word'; f='src/Db.cs'; c='var cs = "Server=db;User Id=app;Password=hunter2hunter2;Application Name=Your-App";'; block=$true }
+    @{ n='Password in a literal with a %VARIABLE% elsewhere'; f='src/Db.cs'; c='var cs = "Server=db;User Id=%USERPROFILE%;Password=hunter2hunter2;";'; block=$true }
+    # A long connection string is usually written as a run of one-pair literals joined by +, or appended piece by piece, so a
+    # literal of one Password=, Pwd= or SharedAccessKey= pair, with or without a ";" at its end, is read as a piece of a longer
+    # string: when it is the argument of .Append( or .AppendLine(, or a + (blanks and newlines allowed) joins it to a quoted
+    # literal that holds a key=value pair. On its own (in a call, a message, SQL text or a flag) it is not a connection string.
+    # A value opening with @ (a SQL parameter) is not read.
+    @{ n='concatenated connection string with the password on its own line'; f='src/Db.cs'; c="string cs = `"Data Source=SQL01;`" +`n    `"Initial Catalog=Sales;`" +`n    `"User ID=sa;`" +`n    `"Password=$sqlPassword;`";"; block=$true }
+    @{ n='concatenated connection string on one line'; f='src/Db.cs'; c="string cs = `"Data Source=SQL01;`" + `"User ID=sa;`" + `"Password=$sqlPassword;`";"; block=$true }
+    @{ n='StringBuilder append of a Password pair'; f='src/Db.cs'; c="sb.Append(`"Password=$sqlPassword;`");"; block=$true }
+    @{ n='SQL text assigning a Password parameter and ending in ; (allow)'; f='src/Users.cs'; c='var q = "UPDATE Users SET Password=@Password;";'; block=$false }
+    @{ n='StringBuilder append of a placeholder Password pair (allow)'; f='src/Db.cs'; c='sb.Append("Password=<from-vault>;");'; block=$false }
+    @{ n='concatenated connection string whose last piece has no trailing ;'; f='src/Db.cs'; c="string cs = `"Server=db;`" + `"User Id=app;`" + `"Password=$sqlPassword`";"; block=$true }
+    @{ n='concatenated connection string over four lines whose last piece has no trailing ;'; f='src/Db.cs'; c="string cs = `"Server=db;`" +`n    `"Database=Sales;`" +`n    `"User Id=app;`" +`n    `"Password=$sqlPassword`";"; block=$true }
+    @{ n='concatenated connection string with the password piece first'; f='src/Db.cs'; c="string cs = `"Password=$sqlPassword;`" + `"Server=db;`";"; block=$true }
+    @{ n='concatenated connection string with a verbatim @ password piece'; f='src/Db.cs'; c="string cs = `"Server=db;`" + @`"Password=$sqlPassword`";"; block=$true }
+    @{ n='concatenated Pwd piece in single-quoted TypeScript literals'; f='src/db.ts'; c="const cs = 'Server=db;' + 'Pwd=$sqlPassword';"; block=$true }
+    @{ n='concatenated Service Bus SharedAccessKey piece'; f='src/Bus.cs'; c="var cs = `"Endpoint=sb://acme.servicebus.windows.net/;`" + `"SharedAccessKey=$busKey`";"; block=$true }
+    @{ n='StringBuilder AppendLine of a Password pair with no trailing ;'; f='src/Db.cs'; c="sb.AppendLine(`"Password=$sqlPassword`");"; block=$true }
+    @{ n='chained Append calls ending in a Password pair'; f='src/Db.cs'; c="sb.Append(`"Server=db;`").Append(`"Password=$sqlPassword;`");"; block=$true }
+    # A literal of one pair that is not a piece of a longer string stays allowed: a regex or a mask, a log or exception message,
+    # SQL text, a flag, a hint.
+    @{ n='Regex.Replace masking a Password pair (allow)'; f='src/Users.cs'; c='s = Regex.Replace(s, "Password=[^;]*;", "Password=****;");'; block=$false }
+    @{ n='Password=[REDACTED]; literal (allow)'; f='src/Users.cs'; c='var m = "Password=[REDACTED];";'; block=$false }
+    @{ n='log message holding Password=redacted; (allow)'; f='src/Users.cs'; c='_log.LogDebug("Connecting with Password=redacted;");'; block=$false }
+    @{ n='Password=*****; literal (allow)'; f='src/Users.cs'; c='"Password=*****;"'; block=$false }
+    @{ n='SQL setting a Password to NULL (allow)'; f='src/Users.cs'; c='var q = "UPDATE Users SET Password=NULL;";'; block=$false }
+    @{ n='SQL setting a Password to NULL with a WHERE (allow)'; f='src/Users.cs'; c='var q = "UPDATE Users SET Password=NULL WHERE Id=1;";'; block=$false }
+    @{ n='SQL setting a Pwd to DEFAULT (allow)'; f='src/Users.cs'; c='var q = "UPDATE Users SET Pwd=DEFAULT;";'; block=$false }
+    @{ n='SQL setting a password to a named parameter (allow)'; f='src/Users.cs'; c='var q = "UPDATE users SET password=:password;";'; block=$false }
+    @{ n='RequirePassword=true; flag literal (allow)'; f='src/Users.cs'; c='var opt = "RequirePassword=true;";'; block=$false }
+    @{ n='Password hint literal (allow)'; f='src/Users.cs'; c="var hint = `"Password=Contrase$([char]0xF1)a;`";"; block=$false }
+    @{ n='exception message holding Password=wrong; (allow)'; f='src/Users.cs'; c='throw new InvalidOperationException("Password=wrong;");'; block=$false }
+    @{ n='Service Bus emulator connection string split over four literals (allow)'; f='src/Bus.cs'; c="var cs = `"Endpoint=sb://localhost;`" +`n    `"SharedAccessKeyName=RootManageSharedAccessKey;`" +`n    `"SharedAccessKey=SAS_KEY_VALUE;`" +`n    `"UseDevelopmentEmulator=true;`";"; block=$false }
+    @{ n='emulator SharedAccessKey=SAS_KEY_VALUE piece appended on its own (allow)'; f='src/Bus.cs'; c='sb.Append("SharedAccessKey=SAS_KEY_VALUE;");'; block=$false }
+    @{ n='SAS_KEY_VALUE in a two-pair literal with no emulator flag (allow)'; f='src/Bus.cs'; c='var cs = "Endpoint=sb://localhost;SharedAccessKey=SAS_KEY_VALUE;";'; block=$false }
+    @{ n='keyed access key assigned the emulator value (allow)'; f='src/Bus.cs'; c='var accessKey = "SAS_KEY_VALUE";'; block=$false }
+    @{ n='lower-case sas_key_value is an ordinary key value'; f='src/Bus.cs'; c='var cs = "Endpoint=sb://localhost;SharedAccessKey=sas_key_value;";'; block=$true }
+    @{ n='Password beside UseDevelopmentEmulator=true in a connection string literal'; f='src/Bus.cs'; c='var cs = "Endpoint=sb://localhost;User Id=app;Password=hunter2hunter2;UseDevelopmentEmulator=true;";'; block=$true }
+    @{ n='Password pair after a tab'; f='src/Db.cs'; c="var cs = `"Server=db;`tPassword=hunter2hunter2;`";"; block=$true }
+    @{ n='Db2Password pair'; f='src/Db.cs'; c='var cs = "Server=db;User Id=app;Db2Password=hunter2hunter2;";'; block=$true }
+    @{ n='Proxy.Password pair'; f='src/Db.cs'; c='var cs = "Server=db;User Id=app;Proxy.Password=hunter2hunter2;";'; block=$true }
 )
 
 # The edit events of the two surfaces, for the cases that carry o: Claude Code's Edit (file_path, old_string, new_string)

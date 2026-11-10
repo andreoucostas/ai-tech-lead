@@ -48,6 +48,13 @@
   `eslint-disable`) and a write that keeps a disable but drops the `eslint-enable` closing it. An edit to the code after one on
   the same line, such as the body of a one-line `xit(...)`, still counts as a new one. Focused tests (`fit`, `.only`) and
   tautological assertions are judged by the new text alone, as before. `docs/enforcement-surfaces.md` lists what still passes.
+- **The write guard now refuses a hardcoded password in more TypeScript forms.** A typed field such as
+  `password: string = '…'`, an indexer such as `config['password'] = '…'`, and a quoted connection string holding `Password=`
+  with another `;`-separated pair, or joined by `+` to other pieces, were written without a word. It does not read that pair
+  in a literal of its own, a value that opens with `{`, `$` or `@` (an interpolation hole, a variable, a SQL parameter), or a
+  placeholder such as `<from-vault>`. A write holding more than 500 password values is blocked with a message to write it in
+  parts. `docs/enforcement-surfaces.md` lists the forms it does not read, such as the computed key `{ ['password']: '…' }`, a
+  `.push(` piece or a string built with `.join(';')`; your CI secret scanning is the gate for those.
 
 ## 0.98.4 — 2026-11-04
 

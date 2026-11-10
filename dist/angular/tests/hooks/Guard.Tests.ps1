@@ -642,6 +642,42 @@ if (-not $caseSensitive) {
         Assert (-not $reason.Contains("Blocked write to $upper")) "Legacy.cs, which keeps the pragma its disk copy holds, is named -- $reason"
     } finally { Remove-Item -LiteralPath $caseFolder -Recurse -Force -ErrorAction SilentlyContinue }
 } }
+# Password values are counted for the whole event, and a write that holds more than 500 is blocked with a message to write
+# it in parts: each one costs about 0.1 ms to check, so 90,000 keyed password="__AAAAAA__"; assignments (1.9 MB) took
+# 12 to 15 s. A connection string with no key before it is read only when its literal holds two or more pairs, or one pair
+# that is a piece of a longer string, so 140,000 "x";pwd=__A__; pairs between literals are not candidates at all. Each of
+# these decides inside Copilot's 10 s.
+$credentialStalls = @(
+    @{ n = '140000 "x";pwd=__A__; pairs between literals'; c = ('"x";pwd=__A__;' * 140000); surface = 'Claude'; decision = 'ALLOW' }
+    @{ n = '70000 "x";pwd=__A__; pairs between literals, then a keyed password'; c = (('"x";pwd=__A__;' * 70000) + 'var password = "hunter2hunter2";'); surface = 'Copilot'; decision = 'DENY' }
+    @{ n = '90000 keyed password="__AAAAAA__"; assignments'; c = ('password="__AAAAAA__";' * 90000); surface = 'Claude'; decision = 'BLOCK'; reason = 'too many to check inside the hook' }
+    @{ n = 'one keyed literal of 233000 Pwd=$(A); pairs, then a real credential'; c = ('var connectionString = "' + ('Pwd=$(A);' * 233000) + '";' + 'var password = "hunter2hunter2";'); surface = 'Copilot'; decision = 'DENY'; reason = 'too many to check inside the hook'; limit = 5000 }
+    # The cap counts a password value once, wherever the passes and the pairs of a match reach it: 250 release-token values
+    # fit in each shape that reads a value more than once, 500 fit, and the 501st blocks.
+    @{ n = 'a ConnectionStrings section of 250 #{P}# token entries'; c = ('{"ConnectionStrings":{' + ((1..250 | ForEach-Object { '"C' + $_ + '":"Server=s;Password=#{P}#"' }) -join ',') + '}}'); surface = 'Claude'; decision = 'ALLOW' }
+    @{ n = '250 keyed connectionString = "...#{P}#" lines'; c = ((1..250 | ForEach-Object { 'var connectionString = "Server=s;Password=#{P}#";' }) -join "`n"); surface = 'Copilot'; decision = 'ALLOW' }
+    @{ n = 'one keyed literal of 250 Password=#{P}#; token pairs'; c = ('var connectionString = "' + ('Password=#{P}#;' * 250) + '";'); surface = 'Claude'; decision = 'ALLOW' }
+    @{ n = 'a ConnectionStrings section of 500 #{P}# token entries'; c = ('{"ConnectionStrings":{' + ((1..500 | ForEach-Object { '"C' + $_ + '":"Server=s;Password=#{P}#"' }) -join ',') + '}}'); surface = 'Copilot'; decision = 'ALLOW' }
+    @{ n = 'a ConnectionStrings section of 501 #{P}# token entries'; c = ('{"ConnectionStrings":{' + ((1..501 | ForEach-Object { '"C' + $_ + '":"Server=s;Password=#{P}#"' }) -join ',') + '}}'); surface = 'Claude'; decision = 'BLOCK'; reason = 'too many to check inside the hook' }
+    @{ n = 'one keyed literal of 501 Password=#{P}#; token pairs'; c = ('var connectionString = "' + ('Password=#{P}#;' * 501) + '";'); surface = 'Copilot'; decision = 'DENY'; reason = 'too many to check inside the hook' }
+    # Quote-joined pieces and long runs of key=value text, which the one-pair reading looks at around each quote: linear in the text.
+    @{ n = '60000 "Password=#{P}#;" + "k=v;" + pieces'; c = ('var cs = ' + ('"Password=#{P}#;" + "k=v;" + ' * 60000) + '"";'); surface = 'Claude'; decision = 'BLOCK'; reason = 'too many to check inside the hook' }
+    @{ n = '80000 "k=v;" + pieces, then a Password piece without a trailing ;'; c = ('var cs = ' + ('"k=v;" + ' * 80000 + '"Password=hunter2hunter2";')); surface = 'Copilot'; decision = 'DENY' }
+    @{ n = 'a 900 KB line of a=b pairs, then " + "Password=hunter2hunter2"'; c = ('var cs = "' + ('a=b ' * 225000) + '" + "Password=hunter2hunter2";'); surface = 'Claude'; decision = 'BLOCK' }
+    @{ n = 'a 900 KB line of a=b pairs, then " + "x" with no password'; c = ('var cs = "' + ('a=b ' * 225000) + '" + "x";'); surface = 'Copilot'; decision = 'ALLOW' }
+    @{ n = '40000 .Append( calls with a one-pair literal and a placeholder'; c = ('sb.Append("Password=<from-vault>;");' * 40000); surface = 'Claude'; decision = 'BLOCK'; reason = 'too many to check inside the hook' }
+)
+foreach ($stall in $credentialStalls) {
+    $limitMs = if ($stall.limit) { $stall.limit } else { 10000 }
+    It "guard: $($stall.n) is decided inside $($limitMs / 1000) s" {
+        $evt = if ($stall.surface -eq 'Claude') { New-ClaudeEvent 'src/Db.cs' $stall.c } else { New-CopilotEvent 'src/Db.cs' $stall.c }
+        $r = Invoke-HookBounded $guardPs $evt $limitMs
+        Assert (-not $r.TimedOut) "the hook was still scanning after $($limitMs / 1000) s on a $([int]($stall.c.Length / 1024)) KB write and was killed"
+        $got = Get-Decision $r
+        Assert ($got -eq $stall.decision) "the hook decided $got after $($r.Seconds) s; expected $($stall.decision)"
+        if ($stall.reason) { Assert (([string]$r.Err + [string]$r.Out).Contains($stall.reason)) "the block reason does not say the write holds too many values to check -- $($r.Err)$($r.Out)" }
+    }
+}
 
 # Every case above pipes stdin straight into guard.ps1. The agent host does not: the registration
 # carries "shell": "powershell", so the whole command STRING runs inside an outer PowerShell, and

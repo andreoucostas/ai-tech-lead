@@ -57,6 +57,17 @@
   different skip reason) and a write that keeps a disable but drops the `#pragma warning restore` closing it. An edit to the
   code after one on the same line, such as a method declared on the `[Fact(Skip=...)]` line, still counts as a new one.
   Tautological assertions are judged by the new text alone, as before. `docs/enforcement-surfaces.md` lists what still passes.
+- **The write guard now refuses a hardcoded password in a connection string written straight into code.** A password in
+  `UseSqlServer("…;Password=…")`, `new SqlConnection("…")`, a connection string assigned to a variable or built from
+  `"…;" + "Password=…"` pieces or `sb.Append("Password=…;")`, a Service Bus `SharedAccessKey=`, a verbatim `@"…"` value or
+  `config["Password"] = "…"` was written without a word. The guard now reads a quoted one-line literal with two or more
+  `;`-separated pairs, or a `Password=` pair that is one piece of a longer string. It does not read that pair in a literal of
+  its own, such as a log message, a value that opens with `{`, `$` or `@` (an interpolation hole, a variable, a SQL parameter
+  such as `SET Password=@Password`), the Service Bus emulator's published key, or a placeholder such as `<from-vault>`. A
+  write holding more than 500 password values is blocked with a message to write it in parts. A redaction mask appended to a
+  `StringBuilder`, or SQL text joined from pieces, can be refused; `docs/enforcement-surfaces.md` lists these and the forms it
+  does not read, such as a literal spanning lines or a host variable between the pieces. Your CI secret scanning is the gate
+  for those.
 
 ## 0.98.4 — 2026-11-04
 

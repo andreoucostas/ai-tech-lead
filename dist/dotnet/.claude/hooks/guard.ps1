@@ -23,7 +23,7 @@
 # disable CS0618 to a bare disable, a rule or a rule list changed, xit to xdescribe), does not. Stated limits: an
 # unchanged directive moved to other code (an [Ignore] from a method to its class) or across the hunks of one patch
 # section, a commented-out one un-commented, rules added past the first 8 lines or 1 KB of a line of a comment that
-# does not close within them, a write that only removes a closer, a closer moved to later code, any text that
+# does not close within them, rules written after a */ in a line comment, a write that only removes a closer, a closer moved to later code, any text that
 # matches a closer pattern (a string included) counting as a closer, and, because the key runs to the end of the
 # line, an edit to the code after a directive on the same line counting as a new directive. Old text the guard
 # cannot get counts as none, so the write is read as it always was.
@@ -384,6 +384,13 @@ function Get-CheckedFileName([string]$Path) {
     return $name.TrimEnd(' ', '.')
 }
 
+# A write that holds more password values than this is blocked, not checked: each one costs about 0.1 ms in
+# Test-CredentialMatch, so an unbounded count outlasts the hook's time limit. The unit is a password value, counted once
+# for the whole event wherever it is read: a value that two passes reach, or a match reaches again through its pairs, is
+# counted at the first reading only (it is told by where it ends in the text), so 500 values fit, and a value read a
+# second time is read again but not counted again.
+$maxCredentialMatches = 500
+$credentialExamined = 0
 $blocked = New-Object System.Collections.Generic.List[object]
 foreach ($write in $writes) {
     $fp = $write.Path
@@ -482,19 +489,34 @@ foreach ($write in $writes) {
         # to its end from every '<' (80,000 of them took 125 s on Windows PowerShell 5.1).
         $placeholder = '(changeme|placeholder|your[_-]|example|dummy|<(?:[^<>]+|[^<>]*<)>|\$\{|process\.env|%[A-Z_]+%)'
         # A release-pipeline token (#{X}#, __X__, $(X), {{X}}) is replaced at deploy time, so it exempts the
-        # credential value it stands in for, and only that value: a token elsewhere must not hide a literal.
-        $token = '^\s*(?:#\{[^}]{1,200}\}#|__[A-Za-z0-9_.:-]{1,200}__|\$\([A-Za-z0-9_.:-]{1,200}\)|\{\{[^}]{1,200}\}\}|replace[_-]?me|\*{6,200})\s*$'
+        # credential value it stands in for, and only that value: a token elsewhere must not hide a literal. The Service Bus
+        # emulator's published key value SAS_KEY_VALUE (exact case) is not a secret and is never read as one, wherever it stands.
+        $token = '^\s*(?:#\{[^}]{1,200}\}#|__[A-Za-z0-9_.:-]{1,200}__|\$\([A-Za-z0-9_.:-]{1,200}\)|\{\{[^}]{1,200}\}\}|replace[_-]?me|\*{6,200}|(?-i:SAS_KEY_VALUE))\s*$'
+        # Counts a password value once for the whole write, told by where it ends, and returns false once the cap is passed.
+        $script:valueSeen = New-Object 'System.Collections.Generic.HashSet[int]'
+        function Add-ExaminedValue([int]$End) {
+            if ($script:valueSeen.Add($End)) {
+                $script:credentialExamined++
+                if ($script:credentialExamined -gt $maxCredentialMatches) { $script:tooManyValues = $true }
+            }
+            return -not $script:tooManyValues
+        }
         # A connection string can carry several passwords (CertificatePassword=, SSL Password=, Proxy
         # Password=), so every password and userinfo value in the match must be a token to exempt it. The first
         # value that is not a token decides, and the rest are not read: collecting them all first (an array grown
-        # with +=) took 27 s on a literal of 30,000 password keys.
-        function Test-CredentialMatch($Match) {
+        # with +=) took 27 s on a literal of 30,000 password keys. $Shift is where the text $Match was matched in
+        # starts in the write, so that each value is counted by its place in the write.
+        function Test-CredentialMatch($Match, [int]$Shift) {
+            $v = $Match.Groups['v']
+            if (-not (Add-ExaminedValue ($Shift + $v.Index + $v.Length))) { return $false }
             if ([regex]::IsMatch($Match.Value, $placeholder, $ci)) { return $false }
-            $value = $Match.Groups['v'].Value
+            $value = $v.Value
             if ($value -and -not [regex]::IsMatch($value, $token, $ci)) { return $true }
             $inner = [regex]::Match($Match.Value, '(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))|://[^/\s:@"'']+:(?<v>[^/\s@"'']+)@', $ci)
             while ($inner.Success) {
-                $value = $inner.Groups['v'].Value
+                $v = $inner.Groups['v']
+                if (-not (Add-ExaminedValue ($Shift + $Match.Index + $v.Index + $v.Length))) { return $false }
+                $value = $v.Value
                 if ($value -and -not [regex]::IsMatch($value, $token, $ci)) { return $true }
                 $inner = $inner.NextMatch()
             }
@@ -505,20 +527,76 @@ foreach ($write in $writes) {
         # in one: without it each password= in a literal that never closes rescanned the run to its end, so a
         # long enough write outlasted the hook's time limit. The same writes match as before.
         $credentialHit = $false
-        foreach ($m in [regex]::Matches($content, '(password|passwd|pwd|secret|ap[i\u0130\u0131][_-]?key|access[_-]?key|client[_-]?secret)["'' ]*[:=]\s*["''](?<v>[^"'']{8,})["'']|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']', $ci)) {
-            if (Test-CredentialMatch $m) { $credentialHit = $true; break }
+        # Two passes. The first reads the keyed forms: a quoted value assigned to a credential name -- between the name
+        # and the "=" or ":" it also reads the "]" that ends an indexer key (config["Password"] = "..."; only "=" may
+        # follow that "]", so a ternary is not an assignment) and a type annotation, one type name or a union of them
+        # (password: string | null = "..."), which prose after a colon is not; an "@" may stand before the quote (a
+        # verbatim string) -- and the two connection-string forms under a connectionString key. The runs between the
+        # name and the "=" are atomic or disjoint, so a long run of spaces or quotes cannot be re-split.
+        $type = '[A-Za-z_$][\w$.]*(?:\[\])*'
+        $keyedPattern = '(password|passwd|pwd|secret|ap[i\u0130\u0131][_-]?key|access[_-]?key|client[_-]?secret)(?>["'' ]*)(?:(?>\][^\S\r\n]*)=|(?::[^\S\r\n]*' + $type + '(?:[^\S\r\n]*\|[^\S\r\n]*' + $type + ')*[^\S\r\n]*)?[:=])\s*@?["''](?<v>[^"'']{8,})["'']' +
+            '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']' +
+            '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']'
+        $tooManyValues = $false
+        foreach ($m in [regex]::Matches($content, $keyedPattern, $ci)) {
+            if (Test-CredentialMatch $m 0) { $credentialHit = $true; break }
+            if ($tooManyValues) { break }
+        }
+        # The second pass reads a connection string with no key before it (UseSqlServer("..."), new SqlConnection("..."),
+        # var connStr = "...") and runs only when nothing above was found, so it can never use up a quote a keyed form
+        # needs. It matches no text: from each quote it looks ahead for a closed one-line literal that holds a Password=,
+        # Pwd= or SharedAccessKey= pair, and reads it as a connection string in three cases: it holds at least two
+        # ";"-separated key=value pairs, one of them that pair; or it holds that one pair (with or without a trailing ";")
+        # and is the argument of .Append( or .AppendLine(; or it holds that one pair and a "+" (blanks and newlines
+        # allowed) joins it to the next or the previous quoted literal, when that literal holds a key=value pair (a
+        # long string written as "Data Source=...;" + "User ID=...;" + "Password=..."). Any other literal with one pair
+        # ("Password=****;", "UPDATE Users SET Password=NULL;", a log or exception message) is not read. A key may carry a
+        # prefix of letters, digits, ".", "_", "-" and blanks (Db2Password, Proxy.Password); "=" touches the key and the
+        # value; a value that opens with "{" or "$" is an interpolation hole or a variable, and one that opens with "@"
+        # a SQL parameter (Password=@Password;), not a literal. The placeholder and release-token exemptions read each
+        # password's value only, not the whole literal, so a placeholder word elsewhere in the literal excuses nothing.
+        # The look-ahead for a pair in the joined literal is atomic, so a long literal of "k=v" pieces is read once.
+        if (-not $credentialHit -and -not $tooManyValues -and [regex]::IsMatch($content, '(?:password|pwd|SharedAccessKey)=', $ci)) {
+            $k = '[A-Za-z0-9_.\- \t]'
+            $quote = '["'']'
+            $credentialPair = $k + '*?(?:password|pwd|SharedAccessKey)=[^;{$@"''\r\n][^;"''\r\n]{3,}'
+            $otherPair = $k + '+=[^\s;="''][^;"''\r\n]*'
+            $anyPair = $k + '=[^\s;="'']'
+            $onePair = '(?<lit>' + $credentialPair + ';?)' + $quote
+            $joinTo = '\s*\+\s*[$@]{0,2}' + $quote
+            $literalPattern = $quote + '(?:' +
+                '(?=(?<lit>[^"''\r\n]*)' + $quote + ')(?=(?:[^"''\r\n]*;)?(?:' + $credentialPair + ';' + $otherPair + '|' + $otherPair + ';' + $credentialPair + '))' +
+                '|(?<=\.Append(?:Line)?\(\s*[$@]{0,2}' + $quote + ')(?=' + $onePair + ')' +
+                '|(?=' + $onePair + $joinTo + '(?>[^"''\r\n]*?' + $anyPair + '))' +
+                '|(?=(?>[^"''\r\n]*?' + $anyPair + ')[^"''\r\n]*' + $quote + $joinTo + $onePair + ')' +
+                ')'
+            $pairPattern = '(?:^|;)' + $k + '*?(?:password|pwd|SharedAccessKey)=(?<v>[^;{$@][^;]{3,})'
+            foreach ($m in [regex]::Matches($content, $literalPattern, $ci)) {
+                $lit = $m.Groups['lit']
+                foreach ($pair in [regex]::Matches($lit.Value, $pairPattern, $ci)) {
+                    $v = $pair.Groups['v']
+                    if (-not (Add-ExaminedValue ($lit.Index + $v.Index + $v.Length))) { break }
+                    $value = $v.Value
+                    if (-not [regex]::IsMatch($value, $placeholder, $ci) -and -not [regex]::IsMatch($value, $token, $ci)) { $credentialHit = $true; break }
+                }
+                if ($credentialHit -or $tooManyValues) { break }
+            }
         }
         # appsettings.json's standard layout names each connection string inside a ConnectionStrings
         # object, so no connectionString key sits beside the value; check every entry of each section.
         # The section capture skips whole strings, so a brace inside a value (ODBC Driver={...}) does not
         # end it; atomic groups keep both patterns linear on Windows PowerShell 5.1.
-        if (-not $credentialHit) {
+        if (-not $credentialHit -and -not $tooManyValues) {
             foreach ($section in [regex]::Matches($content, '"connect[i\u0130\u0131]onstr[i\u0130\u0131]ngs"\s*:\s*\{((?:(?>"(?:[^"\\]|\\.)*")|[^{}"])*)', $ci)) {
                 foreach ($entry in [regex]::Matches($section.Groups[1].Value, '"[^"]*"\s*:\s*"[^"]*(?:(?:password|pwd)\s*=\s*(?<v>(?>[^;"]{4,}))|://[^/\s:@"]+:(?<v>[^/\s@"]+)@)[^"]*"', $ci)) {
-                    if (Test-CredentialMatch $entry) { $credentialHit = $true; break }
+                    if (Test-CredentialMatch $entry $section.Groups[1].Index) { $credentialHit = $true; break }
+                    if ($tooManyValues) { break }
                 }
-                if ($credentialHit) { break }
+                if ($credentialHit -or $tooManyValues) { break }
             }
+        }
+        if ($tooManyValues -and -not $credentialHit) {
+            $reasons += "holds more than $maxCredentialMatches credential-shaped values, too many to check inside the hook's time limit; write it in parts of fewer values"
         }
         if ($credentialHit) {
             $reasons += "assigns a hardcoded credential literal — move it to user-secrets / env vars / a vault"

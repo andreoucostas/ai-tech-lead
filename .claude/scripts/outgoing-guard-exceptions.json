@@ -62,6 +62,26 @@
       "reason": "Generated copy of the canonical guard-policy fixture."
     },
     {
+      "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "C1543D36A416DD88E750576107CC86AB86ADDBDD17E44A0EA7004852F0E5C972",
+      "reason": "Canonical guard-policy fixture with the connection-string, concatenated-piece and credential-name cases; still intentionally contains synthetic blocked patterns."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "C1543D36A416DD88E750576107CC86AB86ADDBDD17E44A0EA7004852F0E5C972",
+      "reason": "Generated copy of the canonical guard-policy fixture."
+    },
+    {
+      "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "C1543D36A416DD88E750576107CC86AB86ADDBDD17E44A0EA7004852F0E5C972",
+      "reason": "Generated copy of the canonical guard-policy fixture."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "C1543D36A416DD88E750576107CC86AB86ADDBDD17E44A0EA7004852F0E5C972",
+      "reason": "Generated copy of the canonical guard-policy fixture."
+    },
+    {
       "path": "meta/host-certification.md",
       "sha256": "71F5E15A0DFAD507298427FFF5163A7BA2D26076219F705E393B3142DDC47479",
       "reason": "Frozen pre-release certification record named the canonical synthetic AWS example; the follow-up commit removes the literal."

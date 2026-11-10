@@ -97,6 +97,21 @@ other code or across the hunks of one section, a commented-out one un-commented,
 not close within it, rules after a `*/` in a line comment, a write that only removes or moves a closer, and any text matching
 a closer, a string included. Focus, tautology and credential patterns are unchanged.
 
+The write guard reads a connection string with no key before it and three more forms of password assignment (B-487, guarded;
+external audit 2026-11-10). A write of `UseSqlServer("…;Password=…")`, `new SqlConnection("…")`, a `"…;" + "Password=…"`
+run, `sb.Append("Password=…;")`, `config["Password"] = "…"`, a TypeScript `password: string = '…'` or a Service Bus
+`SharedAccessKey=` literal exited 0, while the same value assigned to a field named `password` exited 2. After the keyed forms,
+`guard.ps1` now reads a quoted one-line literal holding a `Password=`, `Pwd=` or `SharedAccessKey=` pair with another
+`;`-separated `key=value` pair, or holding that one pair as a piece of a longer string (the argument of `.Append(` or
+`.AppendLine(`, or joined by `+` to a literal holding a `key=value` pair, trailing `;` or not), and judges each password's value
+alone: a value opening with `{`, `$` or `@` (an interpolation hole, a variable, a SQL parameter) and the emulator key
+`SAS_KEY_VALUE` are not read, and the placeholder and release-token exemptions read that value only. A one-pair literal on its
+own (a regex mask, a log message, SQL text) is not read. The generic rule reads a verbatim `@"…"` value, an indexer key and a
+type annotation. A write holding more than 500 password values, each counted once, is blocked with a message to write it in
+parts. Not read, stated in `enforcement-surfaces.md` (B-499 files them): a literal spanning lines, a variable between the
+pieces, VB `&`, `+=`, `string.Concat`, `.Add(`, `string.Join` or `.join(';')`, an unkeyed password opening with `@`. False
+blocks, also stated: compact code with no spaces between two literals, and a mask or SQL text that is a piece of a longer string.
+
 ## 0.98.4 — 2026-11-04
 
 VS Code 1.144.1 Copilot-harness correction (ordinary, `docs/enforcement-surfaces.md`; B-475, measured 2026-11-03, `meta/host-certification.md`).
