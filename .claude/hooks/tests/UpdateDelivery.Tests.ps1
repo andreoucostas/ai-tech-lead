@@ -377,7 +377,11 @@ $powerShellExtension = 'ps1'
         $backup = Join-Path $target '.claude/.state/settings.json.pre-update'
         Assert (Test-Path -LiteralPath $backup -PathType Leaf) 'rolling settings backup was not created'
         Assert ((Get-Content -LiteralPath $backup -Raw) -match 'recover me') 'consumer settings edit was not recoverable from the backup'
-        Assert (-not ((Get-Content -LiteralPath (Join-Path $target '.claude/settings.json') -Raw) -match 'recover me')) 'framework settings were not refreshed after backup'
+        # consumerEdit is a top-level key the release does not define, so the refresh carries it (B-486); what proves the
+        # refresh is that the release's own hook registrations are in the file beside it.
+        $refreshed = Get-Content -LiteralPath (Join-Path $target '.claude/settings.json') -Raw
+        Assert ($refreshed -match 'hooks/session-start\.ps1') 'framework settings were not refreshed after backup'
+        Assert ($refreshed -match '"consumerEdit": "recover me"') 'the consumer key the release does not define was not carried into the refreshed settings'
     }
 
     # THE assertions. If either fails, the framework is destroying consumer content.
@@ -3542,7 +3546,8 @@ It 'B-449 the handoff names a framework file the install wrote where Git is told
         $u = New-B309GitTarget -Root $root -Name 'update' -Ignore "bin/`n"
         $first = Invoke-Installer -Dist 'dotnet' -Target $u
         Assert ($LASTEXITCODE -eq 0 -and $first -match 'mode: greenfield' -and $first -notmatch 'told not to see') "the greenfield install failed, or warned with nothing flagged (exit $LASTEXITCODE): $first"
-        Write-B429Files -Folder $u -Files ([ordered]@{ '.claude/settings.json' = "{`"team-copy-before-b449`":true}`n" })
+        # A value of a key the release defines, so the update replaces it: a key the release lacks would be carried (B-486).
+        Write-B429Files -Folder $u -Files ([ordered]@{ '.claude/settings.json' = "{`"defaultShell`":`"team-copy-before-b449`"}`n" })
         & git -C $u add -A
         & git -C $u commit -qm 'team install'
         & git -C $u update-index --skip-worktree .claude/settings.json
@@ -5074,4 +5079,333 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
         } finally { Remove-ReinstallTemp @($fx.Path) }
     }
 }
+# B-486: an update refreshes .claude/settings.json from the release and used to leave only the release's keys, so a deny rule
+# the team had added stopped applying for every teammate. The team's keys the release does not define are carried back in.
+function Get-B486Dist { param([switch]$Windows) return [Text.UTF8Encoding]::new($false).GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot ('dist/dotnet/.claude/' + $(if ($Windows) { 'settings.windows.json' } else { 'settings.json' }))))) }
+# Members written after the last one of Text, as a team adds them by hand and as the installer writes them.
+function Add-B486TopLevel {
+    param([string]$Text, [string[]]$Members)
+    $nl = if ($Text.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $at = $Text.TrimEnd().Length - 1
+    return $Text.Substring(0, $at).TrimEnd() + ",$nl  " + ($Members -join ",$nl  ") + "$nl}$nl"
+}
+function Get-B486Notices { param([string]$Output) return @($Output -split '\r?\n' | Where-Object { $_ -match 'NOTICE: \.claude/settings\.json:' } | ForEach-Object { $_.Trim() }) }
+function Write-B486Text { param([string]$Path, [string]$Text) [IO.File]::WriteAllBytes($Path, [Text.UTF8Encoding]::new($false).GetBytes($Text)) }
+$b486Backup = '.claude/.state/settings.json.pre-update'
+$b486Deny = @('"permissions": { "deny": ["Read(./secrets/**)"] }', '"model": "opus"')
+
+It 'B-486 an update carries the top-level settings keys of the team into the refreshed file' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+    try {
+        # A greenfield install, committed; the team then adds a deny rule beside the release's keys, commits, and updates.
+        $t = Join-Path $root 'carry'
+        [void][IO.Directory]::CreateDirectory($t)
+        & git -C $t init -q
+        & git -C $t config user.email 'tests@example.invalid'
+        & git -C $t config user.name 'installer tests'
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "calibration: the greenfield install failed (exit $LASTEXITCODE): $first"
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm install 2>&1 | Out-Null
+        $settings = Join-Path $t '.claude/settings.json'
+        $team = Add-B486TopLevel -Text ([IO.File]::ReadAllText($settings)) -Members $b486Deny
+        Write-B486Text -Path $settings -Text $team
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'team deny rule' 2>&1 | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: could not commit the team settings'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $exit): $out"
+        $after = [IO.File]::ReadAllText($settings)
+        $json = $after | ConvertFrom-Json
+        Assert (@($json.permissions.deny).Count -eq 1 -and @($json.permissions.deny)[0] -ceq 'Read(./secrets/**)') "the team's deny rule is not in the refreshed settings.json: $after"
+        Assert ($after.Contains('"deny": ["Read(./secrets/**)"]')) "the one-rule array did not stay as written: $after"
+        Assert (($json.PSObject.Properties.Name -join ',') -ceq '_comment,env,defaultShell,hooks,permissions,model') "the keys are not the release's followed by the team's, in the team's order: $(($json.PSObject.Properties.Name -join ','))"
+        $dist = Get-B486Dist
+        Assert ($after -ceq (Add-B486TopLevel -Text $dist -Members $b486Deny)) 'the refreshed file is not the release''s own bytes followed by the team''s members'
+        $kept = [IO.File]::ReadAllText((Join-Path $t $b486Backup))
+        Assert ($kept -ceq $team) 'the pre-update backup is not the team''s file as it was'
+        Assert ((($out -replace '\s+', ' ') -match 'carried your own top-level keys into the refreshed file, unchanged: permissions, model') -and ($out -match 'and your own top-level keys \(permissions, model\) were carried into it')) "the update did not say which keys it carried: $out"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-486 an update names each team value it replaced or dropped, and -WhatIf prints the same lines' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+    try {
+        New-ArchGeneratorTarget -Target $t
+        $settings = Join-Path $t '.claude/settings.json'
+        $team = '{ "_comment": "team note", "env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "0", "B486_TEAM_VAR": "sk-B486-SECRET", "OTHER": "kept" }, "defaultShell": "bash", "hooks": { "Stop": [] } }' + "`n"
+        Write-B486Text -Path $settings -Text $team
+        $installer = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
+        $dry = & (Get-PsExe) -NoProfile -File $installer -Target $t -WhatIf 2>&1 | Out-String
+        Assert ($LASTEXITCODE -eq 0 -and $dry -match 'Dry run complete') "calibration: the dry run failed (exit $LASTEXITCODE): $dry"
+        Assert (([IO.File]::ReadAllText($settings)) -ceq $team -and -not (Test-Path -LiteralPath (Join-Path $t $b486Backup))) 'the dry run wrote to the target'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0) "the update failed (exit $exit): $out"
+        $lines = Get-B486Notices -Output $out
+        # No line for _comment (the release's own note, which the fixture changed), and the backup is named as the file before the update.
+        $copy = "; the file as it was before this update is saved in $b486Backup."
+        $expected = @(
+            "NOTICE: .claude/settings.json: your env variable 'CLAUDE_CODE_USE_POWERSHELL_TOOL' differed from this release's and was replaced by it$copy",
+            "NOTICE: .claude/settings.json: your env variable 'B486_TEAM_VAR', which this release does not set, was dropped$copy",
+            "NOTICE: .claude/settings.json: your env variable 'OTHER', which this release does not set, was dropped$copy",
+            "NOTICE: .claude/settings.json: your 'defaultShell' differed from this release's and was replaced by it$copy",
+            "NOTICE: .claude/settings.json: your 'hooks' differed from this release's and was replaced by it (hook entries of your own are not merged)$copy")
+        Assert (($lines -join "`n") -ceq ($expected -join "`n")) "the lines for the replaced and dropped values are not the expected ones: $($lines -join ' | ')"
+        Assert ((Get-B486Notices -Output $dry | Out-String) -ceq ($lines | Out-String)) "the dry run printed other lines than the update did: $($dry)"
+        Assert ($out -notmatch 'sk-B486-SECRET' -and $dry -notmatch 'sk-B486-SECRET') 'a value of the team''s env was printed'
+        Assert ([IO.File]::ReadAllText($settings) -ceq (Get-B486Dist)) 'a key both files define did not take the release''s value as it shipped'
+        Assert ([IO.File]::ReadAllText((Join-Path $t $b486Backup)) -ceq $team) 'the backup does not hold the team''s values'
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+function Set-B486Stamp { param([string]$Target, [string]$Version) [IO.File]::WriteAllText((Join-Path $Target '.claude/framework-version.json'), "{`"version`":`"$Version`"}", [Text.UTF8Encoding]::new($false)) }
+
+It 'B-486 an interrupted update leaves the merged settings in place, and its re-run keeps the team keys and the first backup' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+    $handle = $null
+    try {
+        # The team's file is not the release's, so a half-done update shows whether settings.json is written once, merged.
+        New-ArchGeneratorTarget -Target $t
+        # The release's own manifest as the previous one, so the update does not read the held file while planning.
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet/framework-ownership.json') -Destination (Join-Path $t 'framework-ownership.json')
+        $original = '{ "env": { "B486_VAR": "1" }, ' + ($b486Deny -join ', ') + " }`n"
+        $settings = Join-Path $t '.claude/settings.json'
+        $backup = Join-Path $t $b486Backup
+        Write-B486Text -Path $settings -Text $original
+        $victim = Join-Path $t 'scripts/wiki-check.ps1'
+        [IO.File]::WriteAllText($victim, "# held by another program`n", [Text.UTF8Encoding]::new($false))
+        $handle = [IO.File]::Open($victim, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+        $stopped = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 3 -and $stopped -match 'Could not copy') "calibration: the held file did not stop the update (exit $LASTEXITCODE): $stopped"
+        $handle.Dispose(); $handle = $null
+        $merged = Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny
+        Assert ([IO.File]::ReadAllText($settings) -ceq $merged) "the stopped update did not leave the release's settings with the team's keys in them: $([IO.File]::ReadAllText($settings))"
+        Assert ([IO.File]::ReadAllText($backup) -ceq $original) 'the stopped update did not leave the team''s file in the backup'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the re-run failed (exit $LASTEXITCODE): $out"
+        Assert ([IO.File]::ReadAllText($settings) -ceq $merged) "the re-run changed the merged settings: $out"
+        Assert ([IO.File]::ReadAllText($backup) -ceq $original) 'the re-run replaced the first backup'
+        Assert (($out -replace '\s+', ' ') -match 'kept the earlier pre-update settings backup') "the re-run did not say it kept the backup: $out"
+    } finally {
+        if ($handle) { $handle.Dispose() }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-486 a backup left by another branch or an earlier run is never imported, and a key the team deleted stays deleted across a later release' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+    try {
+        New-ArchGeneratorTarget -Target $t
+        $dist = Get-B486Dist
+        $settings = Join-Path $t '.claude/settings.json'
+        $backup = Join-Path $t $b486Backup
+        # Settings equal to the release's own, and a git-ignored backup another branch wrote: it holds nothing of this team's.
+        $foreign = '{ "permissions": { "allow": ["Bash(*)"] } }' + "`n"
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backup) | Out-Null
+        Write-B486Text -Path $backup -Text $foreign
+        Write-B486Text -Path $settings -Text $dist
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $first"
+        Assert ([IO.File]::ReadAllText($settings) -ceq $dist -and $first -notmatch 'carried your own' -and [IO.File]::ReadAllText($backup) -ceq $foreign) "a backup another branch wrote was imported as the team's keys: $first"
+        # The team's keys are carried by one release, then deleted by hand; a later release (same settings, older stamp) does not bring them back.
+        Set-B486Stamp -Target $t -Version '0.97.0'
+        Write-B486Text -Path $settings -Text (Add-B486TopLevel -Text $dist -Members $b486Deny)
+        $carried = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $carried -match 'carried your own top-level keys') "calibration: the team keys were not carried: $carried"
+        Write-B486Text -Path $settings -Text $dist
+        Set-B486Stamp -Target $t -Version '0.97.0'
+        $later = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and [IO.File]::ReadAllText($settings) -ceq $dist -and $later -notmatch 'carried your own') "a key the team deleted came back from the backup: $later"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-486 a key added after a completed carry survives a later update that stops partway, and its re-run' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+    $handle = $null
+    try {
+        New-ArchGeneratorTarget -Target $t
+        $dist = Get-B486Dist
+        $settings = Join-Path $t '.claude/settings.json'
+        Write-B486Text -Path $settings -Text (Add-B486TopLevel -Text $dist -Members $b486Deny[0])
+        $one = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $one -match 'unchanged: permissions\.') "calibration: the first update did not carry permissions: $one"
+        # The team adds a key after that update; the next release leaves the settings unchanged, and its update stops on a held file.
+        $withModel = Add-B486TopLevel -Text $dist -Members $b486Deny
+        Write-B486Text -Path $settings -Text $withModel
+        Set-B486Stamp -Target $t -Version '0.97.1'
+        $victim = Join-Path $t 'scripts/wiki-check.ps1'
+        $handle = [IO.File]::Open($victim, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+        $stopped = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 3) "calibration: the held file did not stop the update (exit $LASTEXITCODE): $stopped"
+        $handle.Dispose(); $handle = $null
+        Assert ([IO.File]::ReadAllText($settings) -ceq $withModel) "the stopped update lost a key the team added: $([IO.File]::ReadAllText($settings))"
+        $again = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and [IO.File]::ReadAllText($settings) -ceq $withModel) "the re-run lost a key the team added: $again"
+    } finally {
+        if ($handle) { $handle.Dispose() }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-486 a top-level key the release no longer sets is dropped and named, not carried as the team own' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+    try {
+        # A later release that drops defaultShell: a copy of this dist with the line removed from both settings files.
+        $future = Join-Path $root 'future'
+        [void][IO.Directory]::CreateDirectory($root)
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $future -Recurse
+        foreach ($name in 'settings.json', 'settings.windows.json') {
+            $path = Join-Path $future ".claude/$name"
+            $text = [IO.File]::ReadAllText($path)
+            $changed = $text -replace '(?m)^\s*"defaultShell":\s*"powershell",\r?\n', ''
+            Assert ($changed -cne $text) "calibration: $name has no defaultShell line to remove"
+            Write-B486Text -Path $path -Text $changed
+        }
+        $stamp = Join-Path $future '.claude/framework-version.json'
+        [IO.File]::WriteAllText($stamp, ([IO.File]::ReadAllText($stamp) -replace '"version":\s*"[^"]+"', '"version": "0.99.0"'))
+        $t = Join-Path $root 'target'
+        New-ArchGeneratorTarget -Target $t
+        $settings = Join-Path $t '.claude/settings.json'
+        Write-B486Text -Path $settings -Text (Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny)
+        $out = & (Get-PsExe) -NoProfile -File (Join-Path $future 'scripts/install.ps1') -Target $t 2>&1 | Out-String
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $after = [IO.File]::ReadAllText($settings)
+        Assert ($after -notmatch 'defaultShell') "a key the release dropped was carried as the team's: $after"
+        Assert ($after -ceq (Add-B486TopLevel -Text ([IO.File]::ReadAllText((Join-Path $future '.claude/settings.json'))) -Members $b486Deny)) "the team's own keys were not carried beside the release's: $after"
+        Assert ($out -match "NOTICE: \.claude/settings\.json: your 'defaultShell', which this release does not set, was dropped; the file as it was before this update is saved in $([regex]::Escape($b486Backup))\.") "the dropped key was not named: $out"
+        Assert ($out -notmatch 'unchanged: [^\r\n]*defaultShell') "defaultShell is named as carried: $out"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-486 env variables that differ only in case do not stop the team keys being carried' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+    try {
+        New-ArchGeneratorTarget -Target $t
+        $dist = Get-B486Dist
+        $wide = '"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1", "HTTP_PROXY": "http://proxy:8080", "http_proxy": "http://proxy:8080" }'
+        $team = $dist.Replace('"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1" }', $wide)
+        Assert ($team -cne $dist) 'calibration: the fixture env was not widened'
+        $settings = Join-Path $t '.claude/settings.json'
+        Write-B486Text -Path $settings -Text (Add-B486TopLevel -Text $team -Members $b486Deny)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        Assert ([IO.File]::ReadAllText($settings) -ceq (Add-B486TopLevel -Text $dist -Members $b486Deny)) "the case-variant env names stopped the team keys being carried: $out"
+        Assert ($out -match "your env variable 'HTTP_PROXY', which this release does not set, was dropped" -and $out -match "your env variable 'http_proxy', which this release does not set, was dropped") "the dropped env variables were not named: $out"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-486 settings written for the other PowerShell are not reported as values of the team' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+    try {
+        # A machine without pwsh got the 5.1 variant; the next update, with pwsh, finds hooks the team never edited.
+        New-ArchGeneratorTarget -Target $t
+        $settings = Join-Path $t '.claude/settings.json'
+        Write-B486Text -Path $settings -Text (Add-B486TopLevel -Text (Get-B486Dist -Windows) -Members $b486Deny)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $lines = @(Get-B486Notices -Output $out)
+        Assert ($lines.Count -eq 1 -and $lines[0] -match 'carried your own top-level keys into the refreshed file, unchanged: permissions, model\.$') "the variant switch was reported as the team's values: $($lines -join ' | ')"
+        Assert ([IO.File]::ReadAllText($settings) -ceq (Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny)) 'the refreshed settings are not the release followed by the team keys'
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-486 a settings file that is not strict JSON is not carried and the notice names the backup' {
+    $utf16 = [Text.Encoding]::Unicode.GetPreamble() + [Text.Encoding]::Unicode.GetBytes('{ "permissions": { "deny": ["Read(./x)"] } }')
+    $legs = [ordered]@{
+        'a comment'         = [Text.UTF8Encoding]::new($false).GetBytes("{`n  // team note`n  `"permissions`": { `"deny`": [`"Read(./x)`"] }`n}`n")
+        'an empty file'     = [byte[]]@()
+        'a trailing comma'  = [Text.UTF8Encoding]::new($false).GetBytes('{ "permissions": { "deny": ["Read(./x)"] }, }')
+        'keys in two cases' = [Text.UTF8Encoding]::new($false).GetBytes('{ "permissions": {}, "Permissions": {} }')
+        'a key in the case of a release key' = [Text.UTF8Encoding]::new($false).GetBytes('{ "Env": { "A": "1" }, "permissions": {} }')
+        'UTF-16 text'       = [byte[]]$utf16
+    }
+    foreach ($leg in $legs.Keys) {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+        try {
+            New-ArchGeneratorTarget -Target $t
+            $settings = Join-Path $t '.claude/settings.json'
+            [IO.File]::WriteAllBytes($settings, $legs[$leg])
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $exit = $LASTEXITCODE
+            Assert ($exit -eq 0) "${leg}: the update failed (exit $exit): $out"
+            $flat = $out -replace '\s+', ' '
+            Assert ($flat -match "NOTICE: \.claude/settings\.json: your own top-level keys were not carried into the refreshed file, which holds only this release's keys, because .+\. The file as it was before this update is saved in $([regex]::Escape($b486Backup)); re-add") "${leg}: the update did not say the keys were not carried, naming the backup: $out"
+            Assert ($flat -match 'but your own top-level keys were NOT carried into it') "${leg}: the Done line did not say so: $out"
+            Assert (Test-B194BytesEqual ([Text.UTF8Encoding]::new($false).GetBytes((Get-B486Dist))) ([IO.File]::ReadAllBytes($settings))) "${leg}: the refreshed file is not the release's own"
+            Assert (Test-B194BytesEqual $legs[$leg] ([IO.File]::ReadAllBytes((Join-Path $t $b486Backup)))) "${leg}: the backup is not the team's file as it was"
+        } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+It 'B-486 without pwsh on PATH the team keys are carried into the Windows PowerShell 5.1 settings' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+    $savedPath = $env:PATH
+    try {
+        # Only Windows PowerShell can take the 5.1 fallback; under pwsh the same fixture asserts the shipped pwsh settings stay.
+        New-ArchGeneratorTarget -Target $t
+        $settings = Join-Path $t '.claude/settings.json'
+        Write-B486Text -Path $settings -Text (Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny)
+        $env:PATH = @($savedPath -split ';' | Where-Object {
+            try { $_ -and -not [IO.File]::Exists([IO.Path]::Combine($_, 'pwsh.exe')) } catch { $true }
+        }) -join ';'
+        Assert ($null -eq (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue)) 'calibration: pwsh is still resolvable after removing its directories from PATH'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0) "the update failed (exit $exit): $out"
+        $windows = $PSVersionTable.PSVersion.Major -lt 7
+        if ($windows) { Assert ($out -match 'activated Windows PowerShell 5.1 hooks') "the 5.1 hook fallback did not run: $out" }
+        $expected = Add-B486TopLevel -Text (Get-B486Dist -Windows:$windows) -Members $b486Deny
+        Assert ([IO.File]::ReadAllText($settings) -ceq $expected) "the refreshed settings are not the installing host's variant followed by the team's keys: $out"
+    } finally {
+        $env:PATH = $savedPath
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-486 every top-level key a shipped settings file sets is in the installer list of keys no release leaves to the team' {
+    # A key a release ships and a later release drops would otherwise be carried as the team's own, because nothing named it.
+    $installer = Join-Path $repoRoot 'src/core/scripts/install.ps1'
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($installer, [ref]$null, [ref]$null)
+    $assignment = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and $node.Left.Extent.Text -ceq '$script:SjEverShipped' }, $true)
+    Assert ($null -ne $assignment) 'calibration: the installer has no $script:SjEverShipped list'
+    $listed = @($assignment.Right.FindAll({ param($node) $node -is [System.Management.Automation.Language.StringConstantExpressionAst] }, $true) | ForEach-Object { [string]$_.Value })
+    Assert ($listed.Count -gt 0) 'calibration: the installer list holds no key'
+    $files = @(
+        foreach ($d in 'dotnet', 'angular', 'monorepo') { "dist/$d/.claude/settings.json"; "dist/$d/.claude/settings.windows.json"; "src/stacks/$d/files/.claude/settings.json" }
+        'src/core/.claude/settings.windows.json')
+    $unlisted = New-Object System.Collections.Generic.List[string]
+    foreach ($relative in $files) {
+        $path = Join-Path $repoRoot $relative
+        Assert (Test-Path -LiteralPath $path -PathType Leaf) "calibration: $relative does not exist"
+        foreach ($key in @(([IO.File]::ReadAllText($path) | ConvertFrom-Json).PSObject.Properties.Name)) {
+            if ($listed -cnotcontains $key) { $unlisted.Add("$relative sets '$key'") }
+        }
+    }
+    Assert ($unlisted.Count -eq 0) "a shipped settings file sets a top-level key the installer does not list in `$script:SjEverShipped (append it there): $($unlisted -join '; ')"
+}
+
+It 'B-486 an update that carries team keys does not need the system temporary folder' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+    $savedTemp = $env:TEMP; $savedTmp = $env:TMP
+    try {
+        # TEMP and TMP name a file, so nothing can be created in them (a folder holding every tmpXXXX.tmp name fails the same way).
+        $t = Join-Path $root 'target'
+        New-ArchGeneratorTarget -Target $t
+        $settings = Join-Path $t '.claude/settings.json'
+        Write-B486Text -Path $settings -Text (Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny)
+        $notAFolder = Join-Path $root 'not-a-folder.txt'
+        [IO.File]::WriteAllText($notAFolder, 'x')
+        $env:TEMP = $notAFolder; $env:TMP = $notAFolder
+        try { $out = Invoke-Installer -Dist 'dotnet' -Target $t; $exit = $LASTEXITCODE } finally { $env:TEMP = $savedTemp; $env:TMP = $savedTmp }
+        Assert ($exit -eq 0 -and $out -match 'Done \(update\)') "the update failed without a usable temporary folder (exit $exit): $out"
+        Assert ([IO.File]::ReadAllText($settings) -ceq (Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny)) "the refreshed settings are not the release followed by the team keys: $out"
+        Assert (@(Get-ChildItem -LiteralPath (Join-Path $t '.claude/.state') -Filter 'settings.json.*.tmp' -Force).Count -eq 0) 'a staged copy of the settings was left behind'
+    } finally {
+        $env:TEMP = $savedTemp; $env:TMP = $savedTmp
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 exit (Write-TestSummary 'UpdateDelivery.Tests')

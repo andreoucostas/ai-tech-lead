@@ -21,7 +21,8 @@
 #                steers to /adopt. Next step is /adopt.
 #   update     — target already carries .claude/framework-version.json. Consumer-owned protected
 #                paths are restored; framework-owned machinery is overwritten; mixed-ownership
-#                .claude/settings.json is backed up, refreshed, and adapted to the host. An older
+#                .claude/settings.json is backed up, refreshed, and adapted to the host, and the
+#                team's own top-level keys (permissions, ...) are carried back into it. An older
 #                instruction layout (project text in CLAUDE.md) is moved once into AGENTS.md. A deleted
 #                .github/workflows/docs-sync-check.yml stays deleted.
 #
@@ -2392,23 +2393,324 @@ if ($updateMode -and -not ($Reinstall -and -not $reinstallAdoptionPending)) {
     }
 }
 
+# .claude/settings.json holds the framework's hook registrations beside the team's own top-level keys (permissions, model,
+# statusLine, ...). An update writes the release's file over it, so each key the release does not define is read from the
+# team's pre-update file and spliced back into the refreshed one as the team wrote it. Values are carried as text, never
+# serialized again: Windows PowerShell 5.1's ConvertTo-Json rewrites escapes and numbers, collapses a one-element array and
+# cuts nesting at -Depth. The reader below is strict (the grammar framework-doctor.ps1 applies: no comment, no trailing comma,
+# no empty key, no duplicate key, nesting of 32 or less), so both hosts read a file the same way.
+# Scanned by hand, not with Regex.Match(text, startat), which PowerShell 7 runs in time proportional to the whole text.
+$script:SjStop = [char[]](@(0..31) + @(34, 92))
+# Every top-level key any release has shipped; a release that adds one appends it here. One of them is never the team's own.
+$script:SjEverShipped = @('_comment', 'env', 'defaultShell', 'hooks')
+function Skip-SjSpace {
+    $t = $script:SjText; $p = $script:SjPos; $n = $t.Length
+    while ($p -lt $n) { $c = $t[$p]; if ($c -ceq ' ' -or $c -ceq "`n" -or $c -ceq "`r" -or $c -ceq "`t") { $p++ } else { break } }
+    $script:SjPos = $p
+}
+# The end of the string that starts at SjPos, or -1 when it is not closed or holds a control character or a bad escape.
+function Find-SjStringEnd {
+    $t = $script:SjText; $n = $t.Length; $p = $script:SjPos + 1
+    while ($true) {
+        $j = $t.IndexOfAny($script:SjStop, $p)
+        if ($j -lt 0) { return -1 }
+        if ($t[$j] -ceq '"') { return $j + 1 }
+        if ($t[$j] -cne '\' -or $j + 1 -ge $n) { return -1 }
+        $e = $t[$j + 1]
+        if ($e -ceq 'u') {
+            if ($j + 6 -gt $n -or $t.Substring($j + 2, 4) -cnotmatch '\A[0-9A-Fa-f]{4}\z') { return -1 }
+            $p = $j + 6
+        } elseif ('"\/bfnrt'.IndexOf($e) -ge 0) { $p = $j + 2 } else { return -1 }
+    }
+}
+# The end of the number or literal that starts at SjPos, or -1.
+function Find-SjScalarEnd {
+    $t = $script:SjText; $n = $t.Length; $p = $script:SjPos
+    foreach ($word in 'true', 'false', 'null') {
+        if ($p + $word.Length -le $n -and $t.Substring($p, $word.Length) -ceq $word) { return $p + $word.Length }
+    }
+    $q = $p
+    while ($q -lt $n -and '0123456789+-.eE'.IndexOf($t[$q]) -ge 0) { $q++ }
+    if ($q -gt $p -and $t.Substring($p, $q - $p) -cmatch '\A-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\z') { return $q }
+    return -1
+}
+function ConvertFrom-SjKey {
+    param([string]$Token)
+    $inner = $Token.Substring(1, $Token.Length - 2)
+    if ($inner.IndexOf('\') -lt 0) { return $inner }
+    return [regex]::Replace($inner, '\\(?:u([0-9A-Fa-f]{4})|(.))', [Text.RegularExpressions.MatchEvaluator]{
+        param($m)
+        if ($m.Groups[1].Success) { return [string][char][Convert]::ToInt32($m.Groups[1].Value, 16) }
+        $c = $m.Groups[2].Value
+        if ($c -ceq 'b') { return "`b" } elseif ($c -ceq 'f') { return "`f" } elseif ($c -ceq 'n') { return "`n" } elseif ($c -ceq 'r') { return "`r" } elseif ($c -ceq 't') { return "`t" }
+        return $c
+    })
+}
+function Read-SjValue {
+    param([int]$Depth)
+    $t = $script:SjText; $p = $script:SjPos
+    if ($p -ge $t.Length) { $script:SjWhy = 'the text ends where a value should be'; return $false }
+    $c = $t[$p]
+    if ($c -ceq '{' -or $c -ceq '[') {
+        if ($Depth -ge 32) { $script:SjWhy = 'it is nested more than 32 deep'; return $false }
+        if ($c -ceq '{') { return (Read-SjObject -Depth ($Depth + 1)) }
+        return (Read-SjArray -Depth ($Depth + 1))
+    }
+    $end = if ($c -ceq '"') { Find-SjStringEnd } else { Find-SjScalarEnd }
+    if ($end -lt 0) {
+        $script:SjWhy = if ($c -ceq '"') { "the string at character $p is not closed, or holds a control character or a bad escape" } else { "the text at character $p is not a JSON value" }
+        return $false
+    }
+    $script:SjPos = $end
+    return $true
+}
+function Read-SjArray {
+    param([int]$Depth)
+    $t = $script:SjText
+    $script:SjPos++
+    Skip-SjSpace
+    if ($script:SjPos -lt $t.Length -and $t[$script:SjPos] -ceq ']') { $script:SjPos++; return $true }
+    while ($true) {
+        Skip-SjSpace
+        if (-not (Read-SjValue -Depth $Depth)) { return $false }
+        Skip-SjSpace
+        if ($script:SjPos -ge $t.Length) { $script:SjWhy = 'the text ends inside an array'; return $false }
+        $c = $t[$script:SjPos]; $script:SjPos++
+        if ($c -ceq ']') { return $true }
+        if ($c -cne ',') { $script:SjWhy = "an array element at character $($script:SjPos - 1) is not followed by a comma or a closing bracket"; return $false }
+    }
+}
+function Read-SjObject {
+    param([int]$Depth)
+    $t = $script:SjText
+    $script:SjPos++
+    # Case-only twins are refused at the top level only (framework-doctor.ps1 reads the file with a parser that refuses them
+    # anywhere); a carried value that holds some is refused by the host's own parse of the result, so both hosts decline it.
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ($(if ($Depth -eq 1 -and $script:SjFoldTop) { [StringComparer]::OrdinalIgnoreCase } else { [StringComparer]::Ordinal }))
+    $found = New-Object System.Collections.Generic.List[object]
+    Skip-SjSpace
+    if ($script:SjPos -lt $t.Length -and $t[$script:SjPos] -ceq '}') { $script:SjPos++; $script:SjLastMembers = $found; return $true }
+    while ($true) {
+        Skip-SjSpace
+        $keyStart = $script:SjPos
+        $keyEnd = if ($keyStart -lt $t.Length -and $t[$keyStart] -ceq '"') { Find-SjStringEnd } else { -1 }
+        if ($keyEnd -lt 0) { $script:SjWhy = "the text at character $keyStart is not a string key"; return $false }
+        $keyToken = $t.Substring($keyStart, $keyEnd - $keyStart)
+        $script:SjPos = $keyEnd
+        $key = ConvertFrom-SjKey -Token $keyToken
+        if ($key.Length -eq 0) { $script:SjWhy = 'an object has an empty key'; return $false }
+        if (-not $seen.Add($key)) { $script:SjWhy = "an object holds the key '$key' twice, or twice in different case"; return $false }
+        Skip-SjSpace
+        if ($script:SjPos -ge $t.Length -or $t[$script:SjPos] -cne ':') { $script:SjWhy = "the key '$key' is not followed by a colon"; return $false }
+        $script:SjPos++
+        Skip-SjSpace
+        $valueStart = $script:SjPos
+        if (-not (Read-SjValue -Depth $Depth)) { return $false }
+        $found.Add([pscustomobject]@{ Key = $key; KeyToken = $keyToken; KeyStart = $keyStart; Start = $valueStart; End = $script:SjPos })
+        Skip-SjSpace
+        if ($script:SjPos -ge $t.Length) { $script:SjWhy = 'the text ends inside an object'; return $false }
+        $c = $t[$script:SjPos]; $script:SjPos++
+        if ($c -ceq '}') { break }
+        if ($c -cne ',') { $script:SjWhy = "the value of '$key' is not followed by a comma or a closing brace"; return $false }
+    }
+    $script:SjLastMembers = $found
+    return $true
+}
+# Reads one JSON object. The result holds each top-level member's key and where its value starts and ends in .Text.
+function Read-SettingsJson {
+    param([AllowEmptyString()][string]$Text, [bool]$FoldTop = $true)
+    $script:SjText = $Text; $script:SjPos = 0; $script:SjWhy = $null; $script:SjLastMembers = $null; $script:SjFoldTop = $FoldTop
+    $ok = $false
+    Skip-SjSpace
+    if ($script:SjPos -ge $Text.Length) { $script:SjWhy = 'the file is empty' }
+    elseif ($Text[$script:SjPos] -cne '{') { $script:SjWhy = 'the top level is not an object' }
+    elseif (Read-SjObject -Depth 1) {
+        Skip-SjSpace
+        if ($script:SjPos -eq $Text.Length) { $ok = $true } else { $script:SjWhy = "text follows the closing brace, at character $($script:SjPos)" }
+    }
+    $members = @()
+    if ($ok) { $members = $script:SjLastMembers.ToArray() }
+    return [pscustomobject]@{ Ok = $ok; Why = $script:SjWhy; Text = $Text; Members = $members }
+}
+function Read-SettingsBytes {
+    param([AllowNull()][byte[]]$Bytes)
+    $fail = { param([string]$Why) [pscustomobject]@{ Ok = $false; Why = $Why; Text = ''; Members = @(); Bom = $false } }
+    if ($null -eq $Bytes) { return (& $fail 'your pre-update file could not be read') }
+    if ($Bytes.Length -gt 65536) { return (& $fail 'your pre-update file is larger than 64 KB') }
+    try { $text = [Text.UTF8Encoding]::new($false, $true).GetString($Bytes) } catch { return (& $fail 'your pre-update file is not UTF-8 text') }
+    $bom = $text.Length -gt 0 -and $text[0] -ceq [char]0xFEFF
+    if ($bom) { $text = $text.Substring(1) }
+    $read = Read-SettingsJson -Text $text
+    if (-not $read.Ok) { return (& $fail "your pre-update file is not strict JSON ($($read.Why))") }
+    $read | Add-Member -NotePropertyName Bom -NotePropertyValue $bom
+    return $read
+}
+function Get-SjRaw { param($Read, $Member) return $Read.Text.Substring($Member.Start, $Member.End - $Member.Start) }
+# A value with the whitespace between its tokens removed, so two values compare as JSON does.
+function Get-SjCanonical {
+    param([string]$Raw)
+    return [regex]::Replace($Raw, '("(?:[^"\\]|\\.)*")|[ \t\r\n]+', [Text.RegularExpressions.MatchEvaluator]{ param($m) $m.Groups[1].Value })
+}
+# True when CURRENT holds, for every key one release variant defines, that variant's value: the file an earlier run of this
+# update wrote (the release's file with the team's own keys after it), whose backup must be kept for the same reason as above.
+function Test-SettingsAreReleasePlusTeam {
+    param($Current, $Variants)
+    if (-not $Current.Ok) { return $false }
+    $mine = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    foreach ($m in $Current.Members) { $mine[$m.Key] = Get-SjCanonical -Raw (Get-SjRaw -Read $Current -Member $m) }
+    foreach ($variant in $Variants) {
+        if (-not $variant.Ok -or $variant.Members.Count -eq 0) { continue }
+        $all = $true
+        foreach ($m in $variant.Members) {
+            if (-not $mine.ContainsKey($m.Key) -or $mine[$m.Key] -cne (Get-SjCanonical -Raw (Get-SjRaw -Read $variant -Member $m))) { $all = $false; break }
+        }
+        # A key an earlier release shipped and this one dropped is not the team's: the file is not this release's plus the team's.
+        foreach ($key in $mine.Keys) { if ($all -and $script:SjEverShipped -ccontains $key -and -not @($variant.Members | Where-Object { $_.Key -ceq $key })) { $all = $false } }
+        if ($all) { return $true }
+    }
+    return $false
+}
+# What the refresh does to the team's .claude/settings.json: Bytes is the refreshed file with the team's own top-level keys
+# after the release's (null when there are none to carry), Lines say what was carried, replaced or dropped, and Declined says
+# the team's keys could not be read or the result could not be verified, in which case the refreshed file is the release's own.
+function Get-SettingsCarryPlan {
+    param([AllowNull()][byte[]]$ConsumerBytes, [Parameter(Mandatory = $true)][byte[]]$ShippedBytes, [AllowNull()][byte[]]$AlternateBytes, [Parameter(Mandatory = $true)][string]$BackupRelative)
+    $about = '.claude/settings.json'
+    $result = {
+        param($Bytes, [string[]]$Carried, [string[]]$Lines, [bool]$Declined)
+        [pscustomobject]@{ Bytes = $Bytes; Carried = @($Carried); Lines = @($Lines); Declined = $Declined }
+    }
+    $declined = {
+        param([string]$Why)
+        & $result $null @() @("NOTICE: ${about}: your own top-level keys were not carried into the refreshed file, which holds only this release's keys, because $Why. The file as it was before this update is saved in $BackupRelative; re-add your permissions, env, hooks and any other keys of yours from it.") $true
+    }
+    $theirs = Read-SettingsBytes -Bytes $ConsumerBytes
+    if (-not $theirs.Ok) { return (& $declined $theirs.Why) }
+    $release = Read-SettingsBytes -Bytes $ShippedBytes
+    if (-not $release.Ok -or $release.Members.Count -eq 0) { return (& $declined "this release's own settings file did not read as strict JSON") }
+    $releaseByKey = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
+    $releaseLoose = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($m in $release.Members) { $releaseByKey[$m.Key] = $m; [void]$releaseLoose.Add($m.Key) }
+    $extras = New-Object System.Collections.Generic.List[object]
+    $lines = New-Object System.Collections.Generic.List[string]
+    $copyIn = "; the file as it was before this update is saved in $BackupRelative."
+    # The release's other settings variant (the hooks for the other PowerShell): a value of the team's equal to it is not the team's.
+    $other = Read-SettingsBytes -Bytes $AlternateBytes
+    $otherByKey = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
+    if ($other.Ok) { foreach ($m in $other.Members) { $otherByKey[$m.Key] = $m } }
+    foreach ($m in $theirs.Members) {
+        if (-not $releaseByKey.ContainsKey($m.Key) -and $script:SjEverShipped -ccontains $m.Key) {
+            # Written by an earlier release, not by the team: this release no longer sets it.
+            if ($m.Key -cne '_comment') { $lines.Add("NOTICE: ${about}: your '$($m.Key)', which this release does not set, was dropped$copyIn") }
+            continue
+        } elseif (-not $releaseByKey.ContainsKey($m.Key)) {
+            # 5.1's ConvertFrom-Json, which framework-doctor.ps1 reads this file with, refuses two keys that differ only in case.
+            if ($releaseLoose.Contains($m.Key)) { return (& $declined "your key '$($m.Key)' differs from a key of this release's only in case") }
+            $extras.Add($m)
+            continue
+        }
+        $mine = Get-SjRaw -Read $theirs -Member $m
+        $its = Get-SjRaw -Read $release -Member $releaseByKey[$m.Key]
+        if ((Get-SjCanonical -Raw $mine) -ceq (Get-SjCanonical -Raw $its) -or $m.Key -ceq '_comment') { continue }
+        if ($otherByKey.ContainsKey($m.Key) -and (Get-SjCanonical -Raw $mine) -ceq (Get-SjCanonical -Raw (Get-SjRaw -Read $other -Member $otherByKey[$m.Key]))) { continue }
+        $named = $false
+        if ($m.Key -ceq 'env') {
+            # Variable names only: a value may be a secret.
+            $theirEnv = Read-SettingsJson -Text $mine -FoldTop $false
+            $itsEnv = Read-SettingsJson -Text $its -FoldTop $false
+            if ($theirEnv.Ok -and $itsEnv.Ok) {
+                $named = $true
+                $itsVars = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+                foreach ($v in $itsEnv.Members) { $itsVars[$v.Key] = Get-SjCanonical -Raw (Get-SjRaw -Read $itsEnv -Member $v) }
+                foreach ($v in $theirEnv.Members) {
+                    if (-not $itsVars.ContainsKey($v.Key)) { $lines.Add("NOTICE: ${about}: your env variable '$($v.Key)', which this release does not set, was dropped$copyIn") }
+                    elseif ($itsVars[$v.Key] -cne (Get-SjCanonical -Raw (Get-SjRaw -Read $theirEnv -Member $v))) { $lines.Add("NOTICE: ${about}: your env variable '$($v.Key)' differed from this release's and was replaced by it$copyIn") }
+                }
+            }
+        }
+        if (-not $named) {
+            $merge = if ($m.Key -ceq 'hooks') { ' (hook entries of your own are not merged)' } else { '' }
+            $lines.Add("NOTICE: ${about}: your '$($m.Key)' differed from this release's and was replaced by it$merge$copyIn")
+        }
+    }
+    if ($extras.Count -eq 0) { return (& $result $null @() @($lines) $false) }
+    # The release's text up to the end of its last value stays as shipped; the team's members go in after it.
+    $nl = if ($release.Text.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $first = $release.Members[0]
+    $from = $first.KeyStart
+    while ($from -gt 0 -and ($release.Text[$from - 1] -ceq ' ' -or $release.Text[$from - 1] -ceq "`t")) { $from-- }
+    $indent = if ($from -gt 0 -and $release.Text[$from - 1] -ceq "`n") { $release.Text.Substring($from, $first.KeyStart - $from) } else { '  ' }
+    $at = $release.Members[$release.Members.Count - 1].End
+    $insert = New-Object Text.StringBuilder
+    foreach ($m in $extras) {
+        [void]$insert.Append(',').Append($nl).Append($indent).Append($m.KeyToken).Append(': ').Append(([regex]::Replace((Get-SjRaw -Read $theirs -Member $m), '\r?\n', $nl)))
+    }
+    $text = $release.Text.Substring(0, $at) + $insert.ToString() + $release.Text.Substring($at)
+    # Verified before anything is written: this reader and the host's own parser both take the result, it holds the release's
+    # members and then the team's with their values unchanged, and the release's text is intact around the insertion.
+    $back = Read-SettingsJson -Text $text
+    $expect = New-Object System.Collections.Generic.List[object]
+    foreach ($m in $release.Members) { $expect.Add([pscustomobject]@{ Read = $release; Member = $m }) }
+    foreach ($m in $extras) { $expect.Add([pscustomobject]@{ Read = $theirs; Member = $m }) }
+    $good = $back.Ok -and $back.Members.Count -eq $expect.Count -and
+        $text.StartsWith($release.Text.Substring(0, $at), [StringComparison]::Ordinal) -and $text.EndsWith($release.Text.Substring($at), [StringComparison]::Ordinal)
+    for ($i = 0; $good -and $i -lt $expect.Count; $i++) {
+        $good = $back.Members[$i].Key -ceq $expect[$i].Member.Key -and
+            (Get-SjCanonical -Raw (Get-SjRaw -Read $back -Member $back.Members[$i])) -ceq (Get-SjCanonical -Raw (Get-SjRaw -Read $expect[$i].Read -Member $expect[$i].Member))
+    }
+    if (-not $good) { return (& $declined 'the merged file did not read back as this release''s keys followed by yours') }
+    try {
+        $parsed = $text | ConvertFrom-Json -ErrorAction Stop
+        if (@($parsed.PSObject.Properties).Count -ne $expect.Count) { throw 'a top-level key went missing' }
+    } catch { return (& $declined 'this PowerShell could not parse the merged file (a value of yours this PowerShell cannot read, such as two keys that differ only in case or a number too large for it)') }
+    $encoding = [Text.UTF8Encoding]::new($false)
+    $bytes = [byte[]]$encoding.GetBytes($text)
+    if ($release.Bom) { $bytes = [byte[]](@([byte]0xEF, [byte]0xBB, [byte]0xBF) + $bytes) }
+    $names = @($extras | ForEach-Object { $_.Key })
+    $lines.Insert(0, "NOTICE: ${about}: carried your own top-level $(if ($names.Count -eq 1) { 'key' } else { 'keys' }) into the refreshed file, unchanged: $($names -join ', ').")
+    return (& $result $bytes $names @($lines) $false)
+}
+
 $settingsBackupRelative = $null
 $settingsBackupKept = $false
+$settingsKeptWithTeam = $false
+$settingsCarry = $null
+$settingsMessages = New-Object System.Collections.Generic.List[string]
 if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.json') -PathType Leaf)) {
     # Settings equal to one of this framework's own variants (line endings aside: a core.autocrlf checkout
     # rewrites them) were written by an earlier run of this update; saving them again would replace the
-    # consumer's settings in the existing backup. Unreadable settings are backed up as before.
-    try { $currentSettings = Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Join-Path $tgt '.claude/settings.json'))) }
-    catch { $currentSettings = $null }
-    $shippedSettings = @(foreach ($variant in '.claude/settings.json', '.claude/settings.windows.json') {
+    # consumer's settings in the existing backup. So are the settings an earlier run wrote with the team's own keys
+    # carried into them, unless carrying them again would not keep all of them. Unreadable settings are backed up as before.
+    # The team's keys are read from the file as it is, never from the backup, which may belong to another branch or an earlier run.
+    $settingsBackupAt = '.claude/.state/settings.json.pre-update'
+    try { $currentBytes = [IO.File]::ReadAllBytes((Join-Path $tgt '.claude/settings.json')); $currentSettings = Get-LfSha256 -Bytes $currentBytes }
+    catch { $currentBytes = $null; $currentSettings = $null }
+    $variantBytes = New-Object System.Collections.Generic.List[object]
+    foreach ($variant in '.claude/settings.json', '.claude/settings.windows.json') {
         $shippedPath = Join-Path $src $variant
-        if (Test-Path -LiteralPath $shippedPath -PathType Leaf) { Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes($shippedPath)) }
-    })
-    if ($currentSettings -and ($shippedSettings -ccontains $currentSettings) -and
-        (Test-Path -LiteralPath (Join-Path $tgt '.claude/.state/settings.json.pre-update') -PathType Leaf)) {
+        if (Test-Path -LiteralPath $shippedPath -PathType Leaf) { $variantBytes.Add([IO.File]::ReadAllBytes($shippedPath)) }
+    }
+    $shippedSettings = @(foreach ($variantContent in $variantBytes) { Get-LfSha256 -Bytes $variantContent })
+    $backupPresent = Test-Path -LiteralPath (Join-Path $tgt $settingsBackupAt) -PathType Leaf
+    $currentIsRelease = [bool]$currentSettings -and ($shippedSettings -ccontains $currentSettings)
+    # Settings equal to the release's own hold nothing of the team's. Any other file is merged with the variant this host needs;
+    # that merge is the one write of the file, so an interrupted run leaves the old file or the merged one.
+    if (-not $currentIsRelease -and $ordinaryApplyPaths.Contains('.claude/settings.json')) {
+        $useFirst = $pwshAvailable -or $variantBytes.Count -lt 2
+        $alternate = $null
+        if ($variantBytes.Count -eq 2) { $alternate = $variantBytes[$(if ($useFirst) { 1 } else { 0 })] }
+        $settingsCarry = Get-SettingsCarryPlan -ConsumerBytes $currentBytes -ShippedBytes $variantBytes[$(if ($useFirst) { 0 } else { 1 })] -AlternateBytes $alternate -BackupRelative $settingsBackupAt
+        foreach ($line in $settingsCarry.Lines) { $settingsMessages.Add($line) }
+    }
+    $keepBackup = $backupPresent -and $currentIsRelease
+    if ($backupPresent -and -not $currentIsRelease -and $null -ne $currentBytes -and -not ($null -ne $settingsCarry -and $settingsCarry.Declined)) {
+        $keepBackup = Test-SettingsAreReleasePlusTeam -Current (Read-SettingsBytes -Bytes $currentBytes) -Variants @($variantBytes | ForEach-Object { Read-SettingsBytes -Bytes $_ })
+    }
+    if ($keepBackup) {
         $settingsBackupKept = $true
+        $settingsKeptWithTeam = -not $currentIsRelease
     } else {
-        $settingsBackupRelative = '.claude/.state/settings.json.pre-update'
+        $settingsBackupRelative = $settingsBackupAt
         [void](Add-PlannedWrite -Relative $settingsBackupRelative)
     }
 }
@@ -2505,6 +2807,7 @@ $modeName =if ($Reinstall) { 'reinstall' } elseif ($updateMode) { 'update' } els
 if ($reinstallLayoutNote) { Write-Output "  $reinstallLayoutNote" }
 if ($layoutMessage) { Write-Output "  $layoutMessage" }
 foreach ($message in $saveMessages) { Write-Output "  $message" }
+foreach ($message in $settingsMessages) { Write-Output "  $message" }
 Write-Output "OPERATION-PLAN schema=1 mode=$modeName"
 foreach ($category in @(
     [pscustomobject]@{ Name = 'create'; Values = $createPlan },
@@ -2733,7 +3036,7 @@ if ($settingsBackupRelative) {
     Copy-Item -Force -LiteralPath (Join-Path $tgt '.claude/settings.json') -Destination $settingsBackup
     Write-Output "  saved pre-update settings: $settingsBackupRelative"
 } elseif ($settingsBackupKept) {
-    Write-Output '  kept the earlier pre-update settings backup: .claude/.state/settings.json.pre-update (.claude/settings.json is already this framework''s own).'
+    Write-Output "  kept the earlier pre-update settings backup: .claude/.state/settings.json.pre-update (.claude/settings.json is already this framework's own$(if ($settingsKeptWithTeam) { ', beside the keys of yours an earlier run carried into it' }))."
 }
 # The folder's '*' is written before the first copy into it, the skill backup's included; a linked list never is.
 if ($savesIntoBackup -and $backupKeepOut.State -eq 'write') {
@@ -2818,11 +3121,23 @@ foreach ($entry in $disabledCarryPlan) {
 }
 foreach ($relative in $ordinaryApplyPaths) {
     if ($ignoreLast -ccontains $relative -or ($stampLast -and $relative -ceq $stampRelative)) { continue }
+    $staged = $null; $copyFailure = $null
     try {
         $destination = Get-ContainedTargetPath -Relative $relative
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-        Copy-Item -Force -LiteralPath (Join-Path $src $relative) -Destination $destination -ErrorAction Stop
-    } catch { Stop-IncompleteCopy -Relative $relative -Reason $_.Exception.Message -Written $applyWritten }
+        if ($relative -ceq '.claude/settings.json' -and $null -ne $settingsCarry -and $null -ne $settingsCarry.Bytes) {
+            # The release's settings with the team's own keys in them are this file's one write, staged in the ignored .state folder
+            # beside it: the system's temporary folder may be full or unusable, and a copy must not depend on it.
+            $staged = Get-ContainedTargetPath -Relative ".claude/.state/settings.json.$([guid]::NewGuid().ToString('N')).tmp"
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $staged) | Out-Null
+            [IO.File]::WriteAllBytes($staged, $settingsCarry.Bytes)
+            Copy-Item -Force -LiteralPath $staged -Destination $destination -ErrorAction Stop
+        } else {
+            Copy-Item -Force -LiteralPath (Join-Path $src $relative) -Destination $destination -ErrorAction Stop
+        }
+    } catch { $copyFailure = $_.Exception.Message }
+    finally { if ($staged) { Remove-Item -LiteralPath $staged -Force -ErrorAction SilentlyContinue } }
+    if ($copyFailure) { Stop-IncompleteCopy -Relative $relative -Reason $copyFailure -Written $applyWritten }
     $applyWritten++
 }
 # A kept team file is not the framework's, so the manifest leaves it out, written as build.ps1 writes
@@ -2958,8 +3273,11 @@ if (-not $pwshAvailable) {
     $sj  = Join-Path $tgt '.claude/settings.json'
     $sjw = Join-Path $tgt '.claude/settings.windows.json'
     if ((Test-Path -LiteralPath $sjw) -and (Test-Path -LiteralPath $sj)) {
-        try { Copy-Item -Force -LiteralPath $sjw -Destination $sj -ErrorAction Stop }
-        catch { Stop-IncompleteCopy -Relative '.claude/settings.json' -Reason $_.Exception.Message -Written $applyWritten }
+        # A merge written above was made with this variant already.
+        if ($null -eq $settingsCarry -or $null -eq $settingsCarry.Bytes) {
+            try { Copy-Item -Force -LiteralPath $sjw -Destination $sj -ErrorAction Stop }
+            catch { Stop-IncompleteCopy -Relative '.claude/settings.json' -Reason $_.Exception.Message -Written $applyWritten }
+        }
         Write-Output "  pwsh not found - activated Windows PowerShell 5.1 hooks (settings.windows.json -> settings.json)."
     }
 }
@@ -3169,7 +3487,10 @@ if ($updateMode) {
             Write-Output "  Kept $($reinstallKept.Count) file(s) Git does not track under the cleared folders (ignored or untracked, so not in commit ${reinstallCommit}): $keptShown."
         }
     } else {
-        Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; .claude/settings.json was backed up and refreshed."
+        $settingsDone = '.claude/settings.json was backed up and refreshed'
+        if ($null -ne $settingsCarry -and $settingsCarry.Carried.Count -gt 0) { $settingsDone += ", and your own top-level $(if ($settingsCarry.Carried.Count -eq 1) { 'key' } else { 'keys' }) ($($settingsCarry.Carried -join ', ')) $(if ($settingsCarry.Carried.Count -eq 1) { 'was' } else { 'were' }) carried into it" }
+        elseif ($null -ne $settingsCarry -and $settingsCarry.Declined) { $settingsDone += ', but your own top-level keys were NOT carried into it (see the NOTICE above)' }
+        Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; $settingsDone."
     }
     Write-Output "  Reconcile protected rules and verify the update with docs/upgrade-checklist.md."
     if (-not $writesAdoptionMarker) { Write-Output "  Next: review the diff, run  $followUpPowerShell scripts/docs-sync-check.ps1 , then commit." }

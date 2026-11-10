@@ -73,6 +73,16 @@ skipped and focused test forms, each piped through `guard.ps1` and seen blocked,
 rests on `scripts/metrics.ps1`; `framework-technical.html` no longer says `/feature` spawns `debt-radar` and uses `DEBT-014`. The
 optional Code Insights recipes in `ci-integration.md` and `security-gate.md` stay: they claim nothing ships a publisher.
 
+An update keeps the team's own top-level keys of `.claude/settings.json` (B-486, guarded; external audit 2026-11-10). It wrote
+the release's file over the team's, so a committed `permissions.deny` rule stopped applying for every teammate. `install.ps1`
+now reads the file with a strict JSON reader and writes, as that file's one write, the release's settings with each top-level
+key the release does not define spliced back as written, checked by its reader and by the host's parser. A key both define, or
+one a release has shipped (`_comment`, `env`, `defaultShell`, `hooks`; a test pins that list to the shipped files), takes the
+release's value, with a `NOTICE` per value replaced or dropped (an `env` variable by name, never by value); a file that is not
+strict JSON carries nothing and says so. The backup is never read back, so an interrupted run leaves the old file or the merged
+one and a key deleted by hand stays deleted; the merge is staged under `.claude/.state/`, not TEMP. `upgrade-checklist.md`
+step 6 says this.
+
 ## 0.98.4 — 2026-11-04
 
 VS Code 1.144.1 Copilot-harness correction (ordinary, `docs/enforcement-surfaces.md`; B-475, measured 2026-11-03, `meta/host-certification.md`).

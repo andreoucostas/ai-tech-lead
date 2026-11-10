@@ -66,11 +66,22 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    `.claude/` are deleted with the rest; restore the ones you want from that commit. It refuses a
    tree with uncommitted changes and cannot be combined with `-AllowDirtyTree`.
 
-6. **Reconcile your settings.** `.claude/settings.json` is shared: the update saves your copy to
-   `.claude/.state/settings.json.pre-update`, then refreshes it and adapts it to the PowerShell host it
-   found. Re-apply your own settings selectively from the diff; never restore the whole old file over
-   the new hook registrations. `.claude/framework-update-backup/` holds an update's other backups for
-   review; it is not a fresh snapshot of every update.
+6. **Reconcile your settings.** `.claude/settings.json` is shared: the update saves the file as it
+   was to `.claude/.state/settings.json.pre-update` (Git ignores it, so it exists on one machine
+   only), refreshes the file, adapts it to the PowerShell host it found, and carries every top-level
+   key of it that the release does not define (`permissions`, `model`, `statusLine` and the like)
+   into it, unchanged and after the release's own keys. A `NOTICE` names the keys it carried. For a
+   key both define (`env`, `defaultShell`, `hooks`) the release's value wins, and a `NOTICE` names
+   each value of yours it replaced or dropped, an `env` variable by name and never by value; so does
+   a key an earlier release set and this one no longer does, which is dropped, not carried. Entries
+   of your own inside `hooks` are not merged, so re-apply those from the backup
+   selectively, never the whole old file over the new hook registrations. If the installer could not
+   read your copy as strict JSON (a comment, a trailing comma, an empty file, two keys that differ
+   only in case) it carries nothing and says so on a `NOTICE`: re-add your keys from the backup by
+   hand. A key you later delete from the file stays deleted, because the next update reads the file
+   as it then is. Commit the result: your teammates get the carried keys from your commit, not from
+   the backup. `.claude/framework-update-backup/` holds an update's other backups for review; it is
+   not a fresh snapshot of every update.
 
 7. **Copy the version into `AGENTS.md`.** Copy `version` and `applied` from
    `.claude/framework-version.json` into the header comment at the top of `AGENTS.md`. Do not replace

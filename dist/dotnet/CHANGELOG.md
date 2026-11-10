@@ -43,6 +43,13 @@
   scanning is the gate for every other credential shape. The briefing deck and talking points no longer mention `/impact`,
   publishing to Bitbucket Code Insights or a generated Copilot digest, none of which this release ships, or a "measurable"
   impact; the metrics slide now shows what `scripts/metrics.ps1` reports, a current-state snapshot.
+- **An update keeps your own settings.** Updating wrote this release's `.claude/settings.json` over yours, so a committed
+  `permissions.deny` rule, a `model` or a `statusLine` you had added was gone afterwards. The update now carries every
+  top-level key of yours that the release does not set into the refreshed file, unchanged, and a `NOTICE` names them. For
+  `env`, `defaultShell` and `hooks` the release's value still wins, and a `NOTICE` names each value of yours it replaced (an
+  `env` variable by name, never by value); your own `hooks` entries are not merged, so re-apply them from
+  `.claude/.state/settings.json.pre-update`. A file that is not strict JSON (a comment, a trailing comma) carries nothing, and
+  the `NOTICE` says so. Commit the result; `docs/upgrade-checklist.md` step 6 has the details.
 
 ## 0.98.4 — 2026-11-04
 
