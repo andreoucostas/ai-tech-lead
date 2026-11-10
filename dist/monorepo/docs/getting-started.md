@@ -81,8 +81,8 @@ What happens next:
 
 Where hooks run, writing a `.cs` file triggers an incremental `dotnet build`, a `.ts` file
 `tsc --noEmit` and a component template `ngc --noEmit`, and the agent sees any errors.
-A write that adds a warning suppression or a hardcoded secret is blocked; fix the cause rather than
-work around it.
+A write that adds a warning suppression or a credential in a format the guard matches
+(`docs/enforcement-surfaces.md` lists them) is blocked; fix the cause rather than work around it.
 
 You can also name a workflow directly:
 

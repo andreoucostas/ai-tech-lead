@@ -92,8 +92,9 @@ Developer types: "add export button to dashboard"
 Every rule reaches the agent in one of three ways, and they are not equally strong:
 
 - **Enforced by a hook:** a script runs on an event and the client acts on its result, whatever the
-  model would prefer: a write that adds a warning suppression or a hardcoded secret is blocked, a
-  compile error after a write is shown to the agent. This holds only where the client runs hooks
+  model would prefer: a write that adds a warning suppression or a credential in a format
+  `docs/enforcement-surfaces.md` lists is blocked, a compile error after a write is shown to the
+  agent. This holds only where the client runs hooks
   (native Windows, with PowerShell, in a client and version that fires that event) and only for
   writes made through the editor or file tools; a shell command that writes a file is not inspected.
 - **Instructed:** the framework rules and `AGENTS.md` are loaded into the agent's context and it is

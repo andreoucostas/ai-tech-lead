@@ -21,7 +21,7 @@ agent terms.
   package exists, and that your Angular version has an API, before it uses one.
 - **Guard rails on file writes.** Where hooks run, writing a `.ts` file triggers `tsc --noEmit` and a
   component template triggers `ngc --noEmit`; a write that adds `// eslint-disable`, `@ts-ignore`,
-  `@ts-nocheck` or a hardcoded secret is blocked.
+  `@ts-nocheck` or a credential in a format `docs/enforcement-surfaces.md` lists is blocked.
 - **Your own recipes.** For an operation your code repeats (adding a component, service, route or
   store), `/bootstrap` drafts a project skill from your existing instances for your team to approve.
 - **Review and security passes.** `/review` runs specialist reviewers in parallel (conventions, SOLID

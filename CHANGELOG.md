@@ -64,6 +64,15 @@ touched files or area, and `debt-radar`'s two descriptions and its opening parag
 block, and `perf` appends a block after checking dismissals. The PR template drops "or skip reason noted in code", which the
 bug-fix scope forbids. No script parses the register (session-start substring-matches changed paths against it).
 
+The README's guarantee sentence and the shipped deck say what ships (B-485, ordinary; external audit 2026-11-10). Root
+`README.md` now names the forms the guard blocks (`#pragma warning disable`, `eslint-disable`, `@ts-ignore`/`@ts-nocheck`, the
+skipped and focused test forms, each piped through `guard.ps1` and seen blocked, and a credential in a format
+`docs/enforcement-surfaces.md` lists) and says a required CI build with secret scanning gates the rest; the three stack READMEs,
+`getting-started.md`, `reference.md` and `playbook.md` say that for "a hardcoded secret". The deck and talking points drop
+`/impact`, the Code Insights and Copilot-digest claims, every unbacked "measurable" and slide 1's "how we prove it"; slide 10
+rests on `scripts/metrics.ps1`; `framework-technical.html` no longer says `/feature` spawns `debt-radar` and uses `DEBT-014`. The
+optional Code Insights recipes in `ci-integration.md` and `security-gate.md` stay: they claim nothing ships a publisher.
+
 ## 0.98.4 — 2026-11-04
 
 VS Code 1.144.1 Copilot-harness correction (ordinary, `docs/enforcement-surfaces.md`; B-475, measured 2026-11-03, `meta/host-certification.md`).

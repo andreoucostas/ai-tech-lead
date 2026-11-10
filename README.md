@@ -89,9 +89,12 @@ a first reviewed fix; every installed guide is listed in your distribution's REA
 ## What is guaranteed, and what it costs
 
 - **Guaranteed only where hooks run:** on native Windows, in a client that fires the event, a file
-  write that adds a warning suppression or a hardcoded secret is blocked and a compile error is shown
-  to the agent. Writes made by shell commands are not inspected, and the Copilot cloud coding agent
-  runs no hooks.
+  write that adds `#pragma warning disable`, `eslint-disable`, `@ts-ignore` or `@ts-nocheck`, a
+  skipped or focused test (`[Fact(Skip=…)]`, `[Ignore]`, `xit`, `.skip`, `.only`) or a credential in
+  one of the formats `docs/enforcement-surfaces.md` lists is blocked, and a compile error is shown to
+  the agent. Any other suppression syntax, test-skipping form or secret shape passes the guard; a
+  required CI build with secret scanning is the gate for those. Writes made by shell commands are not
+  inspected, and the Copilot cloud coding agent runs no hooks.
 - **Instructed everywhere else:** planning first, verifying before referencing, a failing test
   before a fix, reviewing its own work. The agent is told to; it can still skip an instruction.
 - **The one gate for every person and tool** is a required build in your CI; each distribution's

@@ -74,7 +74,7 @@ each client does with each event.
 |---|---|---|
 | `session-start.ps1` | session start | Adds the branch, recent commits, a pending `/bootstrap` or `/adopt`, tech debt in recently changed files, open security findings, the wiki index, stale hazard areas and a framework-version reminder. |
 | `route-prompt.ps1` | each prompt | Classifies a plain-words request and adds the matching workflow's rules. |
-| `guard.ps1` | before a file write | Blocks an editor or file-tool write that adds a warning suppression, a hardcoded secret or a test-defeat. Writes made by shell commands are not inspected. |
+| `guard.ps1` | before a file write | Blocks an editor or file-tool write that adds a warning suppression, a test-defeat or a credential in a format [enforcement-surfaces.md](enforcement-surfaces.md) lists. Writes made by shell commands are not inspected. |
 | `post-write.ps1` | after a file write | After a `.cs` (or project, `.razor`, `.cshtml`) write, runs an incremental `dotnet build` against the nearest solution or project and shows the agent the errors. A warehouse-only repository has no such build. |
 | `audit-trail.ps1` | after a file write | Appends the branch and path to `.claude/ai-audit.log`, a local, ignored file. It is telemetry, not compliance evidence. |
 | `boy-scout-check.ps1` | end of turn | Lists cleanup candidates in the files changed, as advice. |

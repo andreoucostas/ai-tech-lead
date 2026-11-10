@@ -22,7 +22,7 @@ agent terms.
 - **Guard rails on file writes.** Where hooks run, writing a `.cs` file triggers an incremental
   `dotnet build`, a `.ts` file `tsc --noEmit` and a component template `ngc --noEmit`; a write that adds
   a warning suppression (`#pragma warning disable`, `// eslint-disable`, `@ts-ignore`, `@ts-nocheck`)
-  or a hardcoded secret is blocked.
+  or a credential in a format `docs/enforcement-surfaces.md` lists is blocked.
 - **Your own recipes.** For an operation your code repeats (an endpoint, an entity, a load, a component,
   a route, a store), `/bootstrap` drafts a project skill from your existing instances for your team to
   approve.

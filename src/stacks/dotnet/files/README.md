@@ -20,7 +20,8 @@ agent terms.
 - **No invented code.** The agent must confirm that a class, method, package, route or SQL object
   exists before it uses one.
 - **Guard rails on file writes.** Where hooks run, writing a `.cs` file triggers an incremental
-  `dotnet build`, and a write that adds `#pragma warning disable` or a hardcoded secret is blocked.
+  `dotnet build`, and a write that adds `#pragma warning disable` or a credential in a format
+  `docs/enforcement-surfaces.md` lists is blocked.
 - **Your own recipes.** For an operation your code repeats (adding an endpoint, a load, an entity),
   `/bootstrap` drafts a project skill from your existing instances for your team to approve.
 - **Data warehouses.** `/map-warehouse` maps layers, grain, load ordering and idempotency before the

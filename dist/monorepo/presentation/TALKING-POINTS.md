@@ -13,10 +13,10 @@ You're presenting to two audiences. Use the **same deck**, but change emphasis a
 
 | Audience | Length | Lead with | Go light on | Skip if short |
 |----------|--------|-----------|-------------|---------------|
-| **Tech leads** (decision) | 20–25 min | Governance, enforcement (7), impact (10), tradeoffs (13), the ask (14) | Live workflow detail | 9 (developer detail) |
+| **Tech leads** (decision) | 20–25 min | Governance, enforcement (7), the current-state snapshot (10), tradeoffs (13), the ask (14) | Live workflow detail | 9 (developer detail) |
 | **Teams** (enablement) | 15–20 min | Daily workflow (9), what's enforced (6–7), demo | Governance/audit, ROI | 8, 13 |
 
-> **Golden rule:** to leads, you're selling *governance + measurable impact*. To teams, you're selling
+> **Golden rule:** to leads, you're selling *governance they can inspect*. To teams, you're selling
 > *less friction + fewer review cycles*, and being honest about the constraints.
 
 ---
@@ -37,8 +37,8 @@ You're presenting to two audiences. Use the **same deck**, but change emphasis a
 These mirror the in-deck speaker notes (press **N**), collected here for printing or rehearsal.
 
 ### 1 · Title
-- Open: *"AI is already writing a meaningful share of our code. This is how we make sure it writes
-  **our** code, to **our** standards — and how we prove it."*
+- Open: *"AI is already writing a meaningful share of our code. This gives it **our** standards,
+  adds bounded machine backstops, and makes the remaining gaps explicit."*
 - Frame the two audiences and that this is rails over the tools we already use, not a new tool.
 
 ### 2 · The shift
@@ -72,8 +72,8 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
   and secrets; shell/terminal writes and unavailable hooks remain blind spots.
 - Subagents review; wired CI can block drift and configured architecture violations; supported hooked
   editor events append mutable local telemetry.
-- **Bitbucket:** guardrails run in Bamboo/Jenkins on self-hosted Windows agents and post to PRs via
-  Code Insights. Copilot coding-agent cloud hooks are unsupported.
+- **Bitbucket:** guardrails run in Bamboo/Jenkins on self-hosted Windows agents and gate PRs as a
+  required build. Copilot coding-agent cloud hooks are unsupported.
 - Punchline: **rules that aren't enforced are just suggestions.**
 
 ### 8 · For tech leads
@@ -89,7 +89,7 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 - Pre-empt "enforced on a deadline?": yes, friction is cheaper than cleanup — but there's a documented
   escape hatch for genuine hotfixes.
 
-### 10 · Measurable impact  *(the differentiator)*
+### 10 · Inspect, don't overclaim  *(credibility)*
 - `scripts/metrics.ps1` reports a descriptive current-state scorecard of the codebase on request.
 - It is a snapshot only. There is no before/after arm and no behavioral A/B to claim from it.
 - Be honest about **stochasticity**: read distributions, not single runs.
@@ -112,8 +112,7 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 - Name the costs yourself — it disarms skeptics who've seen silver-bullet pitches.
 - Token cost: managed (cheap agents for cheap checks, heavy model only where it matters, tight base
   file). Discipline cost: the friction is the point. Learning curve: a handful of commands.
-- ROI line: cost is tokens + discipline; return is consistency, fewer review cycles, a **measurable**
-  quality delta.
+- ROI line: cost is tokens + discipline; return is consistency and fewer review cycles.
 
 ### 14 · The ask
 - Small and concrete: **one repo, one sprint, then we look at the numbers.**
@@ -124,7 +123,7 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 ## Anticipated questions & answers
 
 **"Does this lock us into Claude / one vendor?"**
-No. The source is `AGENTS.md`, the open standard, and Copilot's digest is generated from it.
+No. The source is `AGENTS.md`, the open standard.
 Supported Copilot agent surfaces, GitHub code review, Codex, and Cursor read `AGENTS.md`; Claude
 Code reads it through a `CLAUDE.md` import. Gemini and Aider can join when configured for the
 appropriate carrier, so changing assistants does not require rewriting the rules.
@@ -142,8 +141,8 @@ Up front, slightly — new commands and enforced discipline. Net, it's faster: l
 knows our conventions), fewer review round-trips (guardrails catch slips early), and consistent output.
 
 **"Can it run on our Bitbucket Data Center / behind the firewall?"**
-Yes — on supported Windows hosts. CI uses Bamboo/Jenkins Windows agents plus Bitbucket Code
-Insights. Copilot coding-agent cloud hook execution is unsupported.
+Yes — on supported Windows hosts. CI uses a required build on Bamboo/Jenkins Windows agents.
+Copilot coding-agent cloud hook execution is unsupported.
 
 **"How do we know it actually helps?"**
 `scripts/metrics.ps1` reports current-state metrics for discussion. `/adopt` does not run it
@@ -151,7 +150,7 @@ automatically, and nothing in the output supports a comparative claim.
 
 **"What's the maintenance burden?"**
 Mainly keeping AGENTS.md current as conventions evolve — kept under a 16 KB budget, with drift
-checks that flag when the Copilot digest or docs fall behind. The tech lead owns it; it's a first-class artifact.
+checks that flag when the docs fall behind. The tech lead owns it; it's a first-class artifact.
 
 **"What if someone needs to ship a hotfix right now?"**
 The Boy Scout / cleanup rules have a documented skip for hotfixes and incidents; unrelated deferred

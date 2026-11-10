@@ -38,6 +38,12 @@
   `## DEBT-NNN` block, the format `/bootstrap` and `/debt` already write, instead of a table row, and the `TECH_DEBT.md` a new
   install creates shows one example block. An update does not change your own `TECH_DEBT.md`. The pull request template no
   longer offers "skip reason noted in code", which the bug-fix rules forbid.
+- **The guides now say exactly what the write guard blocks.** `docs/getting-started.md`, `docs/reference.md` and
+  `docs/playbook.md` said a write that adds "a hardcoded secret" is blocked; the guard matches the credential formats
+  `docs/enforcement-surfaces.md` lists, so they and the distribution's README now say that; your required CI build with secret
+  scanning is the gate for every other credential shape. The briefing deck and talking points no longer mention `/impact`,
+  publishing to Bitbucket Code Insights or a generated Copilot digest, none of which this release ships, or a "measurable"
+  impact; the metrics slide now shows what `scripts/metrics.ps1` reports, a current-state snapshot.
 
 ## 0.98.4 — 2026-11-04
 

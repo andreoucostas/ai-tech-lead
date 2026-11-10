@@ -113,13 +113,13 @@
     <div class="wrap">
       <span class="kicker">Engineering Briefing</span>
       <h1>The AI&nbsp;Tech&nbsp;Lead Framework</h1>
-      <div class="tagline">Governed, consistent, <em style="color:var(--accent2);font-style:normal">measurable</em> AI-assisted development.</div>
+      <div class="tagline">Governed, consistent, <em style="color:var(--accent2);font-style:normal">inspectable</em> AI-assisted development.</div>
       <p class="lead">One authored ruleset, delivered through client-specific carriers and reinforced by hooks and CI where their prerequisites are live.</p>
       <div class="meta">.NET &amp; Angular · Supports local Bitbucket + Windows · Client data boundaries still apply</div>
     </div>
     <aside class="notes">
       <p><b>Opening line:</b> "AI is already writing a meaningful share of our code. This gives it our standards, adds bounded machine backstops, and makes the remaining gaps explicit."</p>
-      <p>Set the frame: this is not a new tool to learn so much as a set of rails that make our existing standards automatic. Two audiences today: leads first (governance + impact), then teams (daily workflow).</p>
+      <p>Set the frame: this is not a new tool to learn so much as a set of rails that make our existing standards automatic. Two audiences today: leads first (governance you can inspect), then teams (daily workflow).</p>
       <p>Keep this slide up while people settle. 30 seconds.</p>
     </aside>
   </section>
@@ -244,7 +244,7 @@
     <aside class="notes">
       <p><b>This is the slide leads care about most.</b> The difference between a style guide nobody reads and a system that holds the line.</p>
       <p>Concrete: on supported hosts with hooks available, the PreToolUse guard blocks defined editor/file-write events. Shell and external writes remain outside its scope.</p>
-      <p>Bitbucket note: CI guardrails run via Bamboo/Jenkins on self-hosted Windows agents and publish to PRs through Bitbucket Code Insights. Copilot coding-agent cloud hooks are unsupported.</p>
+      <p>Bitbucket note: CI guardrails run via Bamboo/Jenkins on self-hosted Windows agents and gate PRs as a required build. Copilot coding-agent cloud hooks are unsupported.</p>
     </aside>
   </section>
 
@@ -312,23 +312,23 @@
     </aside>
   </section>
 
-  <!-- 10 MEASURABLE IMPACT -->
+  <!-- 10 CURRENT-STATE SNAPSHOT -->
   <section class="slide">
     <div class="wrap">
       <span class="kicker">Inspect, Don't Overclaim</span>
       <h2>We can record the current state</h2>
-      <p class="lead"><code>/impact</code> runs only on request and reports descriptive current-state metrics. Adoption does not create a baseline or behavioral A/B.</p>
+      <p class="lead"><code>scripts/metrics.ps1</code> runs only on request and reports descriptive current-state metrics. Adoption does not create a baseline or behavioral A/B.</p>
       <div class="grid three" style="margin-top:1.2rem">
-        <div class="card"><span class="tag">Descriptive</span><h3>Capability inventory</h3><p>Which framework mechanisms are present now, with no causal attribution.</p></div>
-        <div class="card"><span class="tag">Descriptive</span><h3>Current-state scorecard</h3><p>Repository counts and patterns at the time the command runs; mutable project context, not a baseline.</p></div>
-        <div class="card"><span class="tag">Retired</span><h3>Comparative runner</h3><p>The compatibility tombstone does not execute an old-vs-new agent experiment.</p></div>
+        <div class="card"><span class="tag">Descriptive</span><h3>Pattern counts</h3><p>How often the code shows suppressions, skipped tests and TODO markers right now, with no causal attribution.</p></div>
+        <div class="card"><span class="tag">Descriptive</span><h3>Readiness signals</h3><p>Whether CI, coverage and compiler strictness are present at the time the script runs; mutable project context, not a baseline.</p></div>
+        <div class="card"><span class="tag">Not shipped</span><h3>Before/after comparison</h3><p>No comparative runner exists, so nothing here can show what the framework changed.</p></div>
       </div>
       <div class="punch" style="font-size:1.3rem">Use the metrics as discussion input, <em>not proof of adoption impact.</em></div>
     </div>
     <aside class="notes">
       <p><b>Boundary.</b> Current-state counts can guide a discussion, but they cannot show what the framework caused.</p>
-      <p>The retired runner remains only as an explicit compatibility refusal until its paths are removed; no behavioral trial is available.</p>
-      <p><b>Before the meeting:</b> inspect the installed controls and, if useful, run <code>/impact</code> separately. Do not present the output as a before/after.</p>
+      <p>No comparative runner ships; no behavioral trial is available.</p>
+      <p><b>Before the meeting:</b> inspect the installed controls and, if useful, run <code>scripts/metrics.ps1</code> separately. Do not present the output as a before/after.</p>
     </aside>
   </section>
 
@@ -339,7 +339,7 @@
       <h2>Built for our environment</h2>
       <div class="grid two">
         <div class="card good"><h3>Repository-local controls</h3><p>The files work with <b>Bitbucket Data Center</b>. VS Code hooks depend on the harness (Local: Preview and on by default; Copilot: both hook files run), your organization can turn them off, and the full lifecycle is uncertified; each AI client's data boundary also applies.</p></div>
-        <div class="card good"><h3>CI on our terms</h3><p>Guardrails run in Bamboo / Jenkins on self-hosted Windows agents and report to PRs via Bitbucket Code Insights.</p></div>
+        <div class="card good"><h3>CI on our terms</h3><p>Guardrails run in Bamboo / Jenkins on self-hosted Windows agents and gate PRs as a required build.</p></div>
         <div class="card good"><h3>Windows-first</h3><p>Supported execution is Windows-only: PowerShell 7 primary, native Windows PowerShell 5.1 fallback.</p></div>
         <div class="card good"><h3>Both stacks</h3><p>.NET and Angular share doctrine; NetArchTest and dependency-cruiser remain scaffoldable until wired into consumer CI.</p></div>
       </div>
@@ -359,14 +359,14 @@
       <div class="steps">
         <div class="step"><div><b>Run <code>/adopt</code> on a pilot repo</b><span>Ingests any existing AI config (Cursor, Copilot, Aider…) and <b>archives originals</b> — nothing is lost, fully reversible.</span></div></div>
         <div class="step"><div><b><code>/bootstrap</code> learns the codebase</b><span>Fills AGENTS.md from your actual structure, conventions, and tech debt.</span></div></div>
-        <div class="step"><div><b>Verify the installed surfaces</b><span>Run the doctor and actual-host canaries; optionally run <code>/impact</code> for descriptive current-state metrics.</span></div></div>
+        <div class="step"><div><b>Verify the installed surfaces</b><span>Run the doctor and actual-host canaries; optionally run <code>scripts/metrics.ps1</code> for descriptive current-state metrics.</span></div></div>
         <div class="step"><div><b>The team works through slash commands</b><span>Day-to-day development, now on rails. Expand to more repos when convinced.</span></div></div>
       </div>
     </div>
     <aside class="notes">
       <p><b>Goal:</b> make starting feel safe and small. The word that matters is <i>reversible</i> — adoption archives, never deletes.</p>
       <p>Recommend: pilot on one active-but-not-critical repo for a sprint. Low blast radius, real signal.</p>
-      <p>Adoption archives existing AI material before reconciliation, then hands setup to <code>/bootstrap</code>. It does not auto-run comparative impact evidence.</p>
+      <p>Adoption archives existing AI material before reconciliation, then hands setup to <code>/bootstrap</code>. It does not run <code>scripts/metrics.ps1</code> or any before/after comparison for you.</p>
     </aside>
   </section>
 
@@ -385,7 +385,7 @@
     <aside class="notes">
       <p><b>Credibility move.</b> Naming the costs yourself earns trust and disarms skeptics. Leads have seen enough silver-bullet pitches.</p>
       <p>Token cost is real but actively managed — cheaper agents for cheap checks, the heavy model only where it matters, and a tight per-turn base file.</p>
-      <p>If pressed on ROI: the cost is tokens + discipline; the return is consistency, fewer review cycles, and a measurable quality delta.</p>
+      <p>If pressed on ROI: the cost is tokens + discipline; the return is consistency and fewer review cycles.</p>
     </aside>
   </section>
 
