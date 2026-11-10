@@ -83,6 +83,20 @@ strict JSON carries nothing and says so. The backup is never read back, so an in
 one and a key deleted by hand stays deleted; the merge is staged under `.claude/.state/`, not TEMP. `upgrade-checklist.md`
 step 6 says this.
 
+An edit that keeps a suppression or skipped test already in the file passes the write guard (B-488, guarded; external audit
+2026-11-10). `guard.ps1` read only a write's new text, so an `Edit`, `edit`, `apply_patch` or `Write` that carried an existing
+`#pragma warning disable` or `[Fact(Skip=…)]` through was refused as adding one. For the suppression and skip patterns it now
+keys each directive as its own text to the end of its line (inside a block comment, to its `*/`, within a window of 8 lines
+of 1 KB) and compares it with the text the write replaces: an edit's old text, the lines an `apply_patch` section removes (its
+hunks joined), or the file on disk under a whole-file write or an Add File, read once per path by exact spelling (ordinal
+caches), only for an absolute local path Windows and Node resolve to the same file, at most 2 MB each and 4 MB per call. A
+directive that is new or changed is blocked, and so is a write that keeps a `#pragma warning disable` or block `eslint-disable`
+but leaves more of them without their `restore` or `eslint-enable` than the replaced text did; an edit to the code after a
+directive on the same line counts as new. Let through, stated in `enforcement-surfaces.md`: an unchanged directive moved to
+other code or across the hunks of one section, a commented-out one un-commented, rules past the window of a comment that does
+not close within it, rules after a `*/` in a line comment, a write that only removes or moves a closer, and any text matching
+a closer, a string included. Focus, tautology and credential patterns are unchanged.
+
 ## 0.98.4 — 2026-11-04
 
 VS Code 1.144.1 Copilot-harness correction (ordinary, `docs/enforcement-surfaces.md`; B-475, measured 2026-11-03, `meta/host-certification.md`).

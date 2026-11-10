@@ -11,7 +11,22 @@
 # Stated as a limit in docs/enforcement-surfaces.md rather than fixed: scanning the pre-edit file
 # alongside the new text refuses the edit that REMOVES a leaked key, and reconstructing the
 # post-edit file needs edit semantics this hook cannot know for the file-write tools it accepts by
-# shape alone.
+# shape alone. The one exception is a suppression or a skipped test: it is compared with the text the
+# write replaces (an edit's old text, the lines a patch section removes, the file on disk under a whole-file
+# write). A directive is the matched text plus the rest of its line, up to a closing */ and trimmed
+# (disable CS0618, CS8602 / eslint-disable @angular-eslint/component-selector); one inside a block comment (a /*
+# before it within 8 lines with no */ between) runs to the */ or to the end of a window of 8 lines, 1 KB a line.
+# The write is blocked when any such text occurs more often in what it writes than in what it replaces, or, when it
+# still holds a #pragma warning disable or a block eslint-disable (not -line or -next-line), when it leaves more of
+# them unclosed than that text did: a write that keeps a disable but drops the restore or eslint-enable closing it
+# is blocked. A directive kept or moved unchanged passes; one added, or widened (@ts-ignore to @ts-nocheck,
+# disable CS0618 to a bare disable, a rule or a rule list changed, xit to xdescribe), does not. Stated limits: an
+# unchanged directive moved to other code (an [Ignore] from a method to its class) or across the hunks of one patch
+# section, a commented-out one un-commented, rules added past the first 8 lines or 1 KB of a line of a comment that
+# does not close within them, a write that only removes a closer, a closer moved to later code, any text that
+# matches a closer pattern (a string included) counting as a closer, and, because the key runs to the end of the
+# line, an edit to the code after a directive on the same line counting as a new directive. Old text the guard
+# cannot get counts as none, so the write is read as it always was.
 $ErrorActionPreference = 'SilentlyContinue'
 # Case-insensitive patterns fold case culture-invariantly ($ci) and string comparisons are ordinal:
 # under tr-TR the current culture folds 'I' to a dotless i (U+0131), so a culture-following (?i)
@@ -45,9 +60,30 @@ if ($ta -is [string]) { try { $ta = $ta | ConvertFrom-Json } catch { $ta = $null
 $fp = $null
 foreach ($v in @($ti.file_path, $ti.filePath, $ti.path, $ti.notebook_path, $ta.filePath, $ta.file_path, $ta.path)) { if ($v) { $fp = $v; break } }
 $cellSource = if (-not [string]::Equals([string]$ti.edit_mode, 'delete', $ordinalIgnoreCase)) { $ti.new_source }
-$parts = @($ti.content, $ti.new_string, $ti.newString, $ti.file_text, $ti.new_str, $ti.text, $cellSource,
-           $ta.content, $ta.new_string, $ta.newString, $ta.file_text, $ta.new_str, $ta.text) | Where-Object { $_ }
-$content = ($parts -join "`n")
+# Each text the event writes, beside the text it replaces, which the suppression and skip checks below read
+# (Test-GuardPattern -Adds): an edit's old_string, oldString or old_str beside its new_string, newString or
+# new_str, one pair per field and never pooled. A whole-file text (Write's or create's content, file_text) has
+# the file on disk as its old text, read only for a path that names the same file to Windows and to Node
+# (Get-ExistingText). Any other text (an insert's new_str, text, a notebook cell) replaces nothing the event
+# names, so it has no old text.
+function New-WriteUnit($New, $Old, [bool]$Whole) { [pscustomobject]@{ New = $New; Old = $Old; Whole = $Whole } }
+$wholeFileTool = [string]::Equals($tool, 'Write', $ordinalIgnoreCase) -or [string]::Equals($tool, 'create', $ordinalIgnoreCase)
+$units = @(
+    New-WriteUnit $ti.content $null $wholeFileTool
+    New-WriteUnit $ti.new_string $ti.old_string $false
+    New-WriteUnit $ti.newString $ti.oldString $false
+    New-WriteUnit $ti.file_text $null $true
+    New-WriteUnit $ti.new_str $ti.old_str $false
+    New-WriteUnit $ti.text $null $false
+    New-WriteUnit $cellSource $null $false
+    New-WriteUnit $ta.content $null $wholeFileTool
+    New-WriteUnit $ta.new_string $ta.old_string $false
+    New-WriteUnit $ta.newString $ta.oldString $false
+    New-WriteUnit $ta.file_text $null $true
+    New-WriteUnit $ta.new_str $ta.old_str $false
+    New-WriteUnit $ta.text $null $false
+) | Where-Object { $_.New }
+$content = (@($units | ForEach-Object { $_.New }) -join "`n")
 
 # Emit a block response by detected input shape. PascalCase Edit/Write/NotebookEdit (and the ambiguous
 # empty tool) emit the Claude-shaped signal: reason on stderr plus exit 2. Other shapes emit a documented
@@ -95,8 +131,11 @@ function Get-PatchSections([string]$Patch, [int]$Max) {
     # Self-contained: audit-trail.ps1 and post-write.ps1 load this function alone from this file.
     $ordinal = [StringComparison]::Ordinal
     $ci = [Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [Text.RegularExpressions.RegexOptions]::CultureInvariant
+    # Removed: every line the section removes, all its hunks together, beside Lines, every line it adds. The
+    # suppression and skip checks compare the one against the other, a section at a time, not a hunk at a time:
+    # a patch can hold tens of thousands of hunks, and each text is counted once per pattern.
     $sections = New-Object System.Collections.Generic.List[object]
-    $current = [pscustomobject]@{ Kind = ''; Paths = New-Object System.Collections.Generic.List[string]; Moved = $false; Lines = New-Object System.Collections.Generic.List[string] }
+    $current = [pscustomobject]@{ Kind = ''; Paths = New-Object System.Collections.Generic.List[string]; Moved = $false; Lines = New-Object System.Collections.Generic.List[string]; Removed = New-Object System.Collections.Generic.List[string] }
     $sections.Add($current)
     # Lines end at LF only, as both hosts split them; a lone CR stays inside its line.
     foreach ($line in ($Patch -split '\r?\n')) {
@@ -104,7 +143,7 @@ function Get-PatchSections([string]$Patch, [int]$Max) {
         if (($header = [regex]::Match($marker, '^\*\*\* (Add|Update|Delete) File:\s*(.+)$', $ci)).Success -and
             -not ([string]::Equals($current.Kind, 'update', $ordinal) -and [char]::IsWhiteSpace($line, 0))) {
             if ($sections.Count -gt $Max) { return $null }
-            $current = [pscustomobject]@{ Kind = $header.Groups[1].Value.ToLowerInvariant(); Paths = New-Object System.Collections.Generic.List[string]; Moved = $false; Lines = New-Object System.Collections.Generic.List[string] }
+            $current = [pscustomobject]@{ Kind = $header.Groups[1].Value.ToLowerInvariant(); Paths = New-Object System.Collections.Generic.List[string]; Moved = $false; Lines = New-Object System.Collections.Generic.List[string]; Removed = New-Object System.Collections.Generic.List[string] }
             $current.Paths.Add($header.Groups[2].Value.Trim())
             $sections.Add($current)
         } elseif (($move = [regex]::Match($marker, '^\*\*\* Move to:\s*(.+)$', $ci)).Success -and $current.Paths.Count -gt 0 -and -not $current.Moved) {
@@ -112,8 +151,10 @@ function Get-PatchSections([string]$Patch, [int]$Max) {
             $current.Moved = $true
         } elseif ($line.StartsWith('+', $ordinal)) {
             $current.Lines.Add($line.Substring(1))
-        } elseif ($line.Length -gt 0 -and -not $line.StartsWith('-', $ordinal) -and -not $line.StartsWith(' ', $ordinal) -and
-                  -not $line.StartsWith('@@', $ordinal) -and -not [regex]::IsMatch($marker, '^\*\*\* (?:Begin Patch|End Patch|End of File)$', $ci)) {
+        } elseif ($line.StartsWith('-', $ordinal)) {
+            $current.Removed.Add($line.Substring(1))
+        } elseif ($line.Length -gt 0 -and -not $line.StartsWith(' ', $ordinal) -and -not $line.StartsWith('@@', $ordinal) -and
+                  -not [regex]::IsMatch($marker, '^\*\*\* (?:Begin Patch|End Patch|End of File)$', $ci)) {
             $current.Lines.Add($line)
         }
     }
@@ -129,11 +170,19 @@ if ($isPatch) {
         if (-not $namedPatch) { exit 0 }
         Exit-Blocked "Blocked write to every file in this apply_patch call: the write guard cannot read it as a patch (no '*** Add File:', '*** Update File:' or '*** Delete File:' line), so it checked none of it. Send the change as one patch: '*** Begin Patch', the file sections, then '*** End Patch'."
     }
+    # An update's old text is the lines it removes, all its hunks together, against all the lines it adds; an added
+    # file's is the file on disk, if it exists. A section that moves its file has none: its removed lines belong to
+    # the source file, not to the path it writes.
     $writes = @(foreach ($section in $sections) {
         if ($section.Lines.Count -eq 0) { continue }
         $text = $section.Lines -join "`n"
-        if ($section.Paths.Count -eq 0) { [pscustomobject]@{ Path = $null; Content = $text } }
-        foreach ($path in $section.Paths) { [pscustomobject]@{ Path = $path; Content = $text } }
+        $sectionUnits = if ($section.Moved) {
+            @(New-WriteUnit $text $null $false)
+        } elseif ([string]::Equals($section.Kind, 'update', $ordinal)) {
+            @(New-WriteUnit $text ($section.Removed -join "`n") $false)
+        } else { @(New-WriteUnit $text $null ([string]::Equals($section.Kind, 'add', $ordinal))) }
+        if ($section.Paths.Count -eq 0) { [pscustomobject]@{ Path = $null; Content = $text; Units = $sectionUnits } }
+        foreach ($path in $section.Paths) { [pscustomobject]@{ Path = $path; Content = $text; Units = $sectionUnits } }
     })
 } else {
     # Gate on whether this is an inspectable write, independent of surface: Claude sends
@@ -144,13 +193,125 @@ if ($isPatch) {
                   [string]::Equals($tool, 'create', $ordinalIgnoreCase) -or $emptyTool
     if (-not ($knownWrite -or ($fp -and $content))) { exit 0 }
     if (-not $content) { exit 0 }
-    $writes = @([pscustomobject]@{ Path = $fp; Content = $content })
+    $writes = @([pscustomobject]@{ Path = $fp; Content = $content; Units = $units })
+}
+
+# The text of the file at $Path on disk, '' when it cannot be read as the file the write replaces: a path that
+# is not absolute and local (a relative path is the tool's to resolve, and a UNC path may be an unreachable host
+# that outlasts the hook's time limit); one that Windows and Node resolve to different files, because Windows
+# drops a trailing dot or space from every segment ('Dir.\Legacy.cs' is Dir\Legacy.cs) and reads 'Legacy.cs::$DATA'
+# as Legacy.cs while Node writes the literal name, so a path with a ':' or such a segment (other than '.' and '..')
+# names no file here, nor does a reserved device name (CON, NUL, COM1) or, after '\\?\', a '.' or '..' segment; a
+# file that is absent, a directory, larger than $maxExistingBytes, locked, or past the $diskBudget this event may
+# read in all; or any error. Each path is read once per event, by its exact spelling: a folder can be case-sensitive
+# ('Legacy.cs' and 'legacy.cs' two files), so no case is folded. '' is no old text, which leaves the write read as it
+# always was.
+$maxExistingBytes = 2MB
+$diskBudget = 4MB
+$script:diskBytesRead = 0
+$script:diskTexts = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+function Get-ExistingText([string]$Path) {
+    if ($script:diskTexts.ContainsKey($Path)) { return $script:diskTexts[$Path] }
+    $text = ''
+    try {
+        $m = [regex]::Match($Path, '^(?<raw>\\\\\?\\)?[A-Za-z]:[\\/](?<rest>.*)$', [Text.RegularExpressions.RegexOptions]::Singleline)
+        $readable = $m.Success -and $m.Groups['rest'].Value.IndexOf(':') -lt 0
+        if ($readable) {
+            foreach ($segment in $m.Groups['rest'].Value.Split([char[]]@('\', '/'))) {
+                $dots = [string]::Equals($segment, '.', $ordinal) -or [string]::Equals($segment, '..', $ordinal)
+                if (($dots -and $m.Groups['raw'].Success) -or (-not $dots -and ($segment.EndsWith('.', $ordinal) -or $segment.EndsWith(' ', $ordinal))) -or
+                    [regex]::IsMatch($segment, '^(?:CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9]|CONIN\$|CONOUT\$) *(?:\..*)?$', $ci)) { $readable = $false; break }
+            }
+        }
+        if ($readable) {
+            $file = New-Object IO.FileInfo($Path)
+            if ($file.Exists -and $file.Length -le $maxExistingBytes -and $script:diskBytesRead + $file.Length -le $diskBudget) {
+                $script:diskBytesRead += $file.Length
+                $text = [string][IO.File]::ReadAllText($file.FullName)
+            }
+        }
+    } catch { $text = '' }
+    $script:diskTexts[$Path] = $text
+    return $text
+}
+
+# The directives of $Pattern in $Text, counted by text: each match with the rest of its line (its own arguments:
+# disable CS0618, CS8602 / eslint-disable-line no-console / eslint-disable @angular-eslint/component-selector),
+# up to a closing */ and trimmed. A directive inside a block comment (a /* before it, within 8 lines and 1 KB a line,
+# with no */ between) runs to the */ or to the end of that window: 8 lines, 1 KB a line. The key starts at the match, so
+# editing the code before a directive leaves its text alone; it runs to the end of the line, so editing the code after
+# one on the same line is a new directive. One regex finds every key, so the cost is the text's size, however many
+# directives it holds; a directive is not counted again inside the window of the one before it.
+# Balance: the directives that stay in force until they are closed ($Opener, else $Pattern) less the closers
+# ($Closer): #pragma warning disable less restore, block eslint-disable less eslint-enable.
+$directiveBehind = '/\*(?:(?!\*/)[^\n]){0,1024}(?:\n(?:(?!\*/)[^\n]){0,1024}){0,8}'
+$directiveWindow = '(?:(?!\*/)[^\n]){0,1024}(?:\n(?:(?!\*/)[^\n]){0,1024}){0,7}'
+$directiveLine = '(?:(?!\*/)[^\r\n])*'
+function Get-DirectiveInfo([string]$Text, [string]$Pattern, [string]$Closer, [string]$Opener, $Options) {
+    # An ordinal Hashtable and an indexed loop: [ref] arguments and foreach over a MatchCollection cost several
+    # times as much per match under PowerShell 7, and a 2 MB text can hold 100,000 matches.
+    $counts = New-Object Collections.Hashtable([StringComparer]::Ordinal)
+    if ($Text.Contains("`r")) { $Text = $Text.Replace("`r`n", "`n") }
+    $found = [regex]::Matches($Text, '(?:' + $Pattern + ')(?:(?<=' + $directiveBehind + ')' + $directiveWindow + '|' + $directiveLine + ')', $Options)
+    $total = $found.Count
+    for ($i = 0; $i -lt $total; $i++) {
+        $key = $found[$i].Value.Trim()
+        $counts[$key] = 1 + $counts[$key]
+    }
+    $balance = 0
+    if ($Closer) {
+        if (-not $Opener) { $Opener = $Pattern }
+        $balance = [regex]::Matches($Text, $Opener, $Options).Count - [regex]::Matches($Text, $Closer, $Options).Count
+    }
+    return [pscustomobject]@{ Counts = $counts; Balance = $balance }
+}
+
+# The directives of the text a unit replaces: the file on disk for a whole-file text (counted once per pattern and
+# path for the whole event), else the unit's old text. $null when there is none.
+$script:diskInfo = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
+function Get-OldDirectiveInfo($Unit, [string]$Pattern, [string]$Closer, [string]$Opener, $Options) {
+    if ($Unit.Whole) {
+        $cacheKey = $Pattern + "`0" + [string]$fp
+        if (-not $script:diskInfo.ContainsKey($cacheKey)) {
+            $old = Get-ExistingText ([string]$fp)
+            $script:diskInfo[$cacheKey] = $(if ($old) { Get-DirectiveInfo $old $Pattern $Closer $Opener $Options } else { $null })
+        }
+        return $script:diskInfo[$cacheKey]
+    }
+    $old = [string]$Unit.Old
+    if (-not $old) { return $null }
+    return Get-DirectiveInfo $old $Pattern $Closer $Opener $Options
 }
 
 function Test-GuardPattern {
-    param([string]$Pattern, [ValidateSet('secret','test-defeat/suppression')][string]$Category)
+    param([string]$Pattern, [ValidateSet('secret','test-defeat/suppression')][string]$Category, [switch]$Adds, [string]$Closer, [string]$Opener)
     # Case-sensitive, as -cmatch was; CultureInvariant also folds any inline (?i) the invariant way.
-    try { return [regex]::IsMatch([string]$content, $Pattern, [Text.RegularExpressions.RegexOptions]::CultureInvariant) }
+    $options = [Text.RegularExpressions.RegexOptions]::CultureInvariant
+    try {
+        if (-not [regex]::IsMatch([string]$content, $Pattern, $options)) { return $false }
+        if (-not $Adds) { return $true }
+        # -Adds: the write must ADD a directive, not keep one. Each text is compared with the text it replaces, by
+        # directive text (Get-DirectiveInfo): it is blocked when any directive occurs more often in it than in
+        # that text, so an edit that carries an existing suppression through unchanged passes, and one that adds
+        # another, or widens one, does not. With -Closer it is also blocked when it leaves more directives unclosed
+        # than the text it replaces, so dropping a #pragma warning restore or an eslint-enable widens nothing unseen.
+        # No old text (nothing to compare with, or none that could be read) is no directive there. A match that
+        # spans two of the event's texts is read as a match, as it was when they were pooled.
+        $matchedAUnit = $false
+        foreach ($unit in $writeUnits) {
+            $new = [string]$unit.New
+            if ($writeUnits.Count -gt 1 -and -not [regex]::IsMatch($new, $Pattern, $options)) { continue }
+            $matchedAUnit = $true
+            $oldInfo = Get-OldDirectiveInfo $unit $Pattern $Closer $Opener $options
+            if ($null -eq $oldInfo -or $oldInfo.Counts.Count -eq 0) { return $true }
+            $newInfo = Get-DirectiveInfo $new $Pattern $Closer $Opener $options
+            foreach ($directive in $newInfo.Counts.Keys) {
+                if ($newInfo.Counts[$directive] -gt [int]$oldInfo.Counts[$directive]) { return $true }
+            }
+            if ($Closer -and $newInfo.Balance -gt $oldInfo.Balance) { return $true }
+        }
+        return -not $matchedAUnit
+    }
     catch {
         [Console]::Error.WriteLine("guard: regex error in $Category pattern '$Pattern'")
         if ([string]::Equals($Category, 'secret', $ordinal)) {
@@ -203,9 +364,11 @@ function Get-RepositoryRelativePath([string]$Path) {
 # The name the extension checks read: the last segment left once '.' and '..' collapse and empty segments drop,
 # as Node, which the hosts run on, resolves a path before it writes (Foo.cs\, Foo.cs\. and Foo.cs\x\.. all write
 # Foo.cs). .NET and PowerShell resolve 'Foo.cs ' and 'Foo.cs.' to Foo.cs, so a trailing space or dot is cut (Node
-# keeps the literal name, which only makes this the safe side). Windows also writes 'Foo.cs::$DATA' (an NTFS
-# stream suffix, ':name[:type]' on the last segment) into Foo.cs itself, so everything from the segment's first
-# ':' is cut first. A drive designator ('C:Foo.cs') is not a stream.
+# keeps the literal name, so these checks may read a .cs rule onto a file that is not one, the safe side for the
+# extension rules; Get-ExistingText, which compares the file with the one on disk, cannot rely on that and
+# refuses such a path). Windows also writes 'Foo.cs::$DATA' (an NTFS stream suffix, ':name[:type]' on the last
+# segment) into Foo.cs itself, so everything from the segment's first ':' is cut first. A drive designator
+# ('C:Foo.cs') is not a stream.
 function Get-CheckedFileName([string]$Path) {
     if ([regex]::IsMatch($Path, '^[A-Za-z]:')) { $Path = $Path.Substring(2) }
     $kept = New-Object System.Collections.Generic.List[string]
@@ -225,26 +388,27 @@ $blocked = New-Object System.Collections.Generic.List[object]
 foreach ($write in $writes) {
     $fp = $write.Path
     $content = $write.Content
+    $writeUnits = @($write.Units)
     $reasons = @()
     $fileName = Get-CheckedFileName ([string]$fp)
 
     if ([regex]::IsMatch($fileName, '\.cs$', $ci)) {
-        if (Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
+        if (Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression' -Adds -Closer '#pragma\s+warning\s+restore') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
         # The attribute's argument text may not hold another [Fact( or [Theory( opening: the match then starts
         # at the last one before the Skip, so the same writes match, and an open run of openings is read once,
         # not rescanned from every opening.
-        if (Test-GuardPattern '\[(Fact|Theory)\((?:(?!\[(?:Fact|Theory)\()[^)])*Skip\s*=' 'test-defeat/suppression') { $reasons += "skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+        if (Test-GuardPattern '\[(Fact|Theory)\((?:(?!\[(?:Fact|Theory)\()[^)])*Skip\s*=' 'test-defeat/suppression' -Adds) { $reasons += "skips a test via [Fact/Theory(Skip=...)] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
         # [Ignore] opens a line: only horizontal whitespace may precede it ([^\S\n]*, which finds the same openings as
         # \s* did, since the last newline of a whitespace run is a line start, and does not scan a run of blank lines
         # from every line in it). The attribute's list text may not hold another opening that starts a line: the match
         # then starts at that one, so the same writes match, and a run of unclosed openings is read once, not rescanned
         # to the end from each.
-        if (Test-GuardPattern '(?m)^[^\S\n]*\[(?:(?:(?!\n[^\S\n]*\[)[^]])*[,\s])?(Ignore)(Attribute)?\s*[\](,=]' 'test-defeat/suppression') { $reasons += "skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+        if (Test-GuardPattern '(?m)^[^\S\n]*\[(?:(?:(?!\n[^\S\n]*\[)[^]])*[,\s])?(Ignore)(Attribute)?\s*[\](,=]' 'test-defeat/suppression' -Adds) { $reasons += "skips a test via [Ignore] — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
         if ((Test-GuardPattern 'Assert\.True\(\s*true\s*[),]' 'test-defeat/suppression') -or (Test-GuardPattern 'Assert\.False\(\s*false\s*[),]' 'test-defeat/suppression')) { $reasons += "adds a tautological assertion (Assert.True(true) / Assert.False(false)) — assert observable behaviour, not a constant (Test leanness #15)" }
     }
     if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) {
-        if (Test-GuardPattern 'eslint-disable' 'test-defeat/suppression') { $reasons += "adds an 'eslint-disable' directive — fix the lint cause, don't silence it" }
-        if (Test-GuardPattern '@ts-(ignore|nocheck)' 'test-defeat/suppression') { $reasons += "adds '@ts-ignore'/'@ts-nocheck' — fix the type error, don't suppress it" }
+        if (Test-GuardPattern 'eslint-disable' 'test-defeat/suppression' -Adds -Closer 'eslint-enable' -Opener 'eslint-disable(?!-(?:next-)?line)') { $reasons += "adds an 'eslint-disable' directive — fix the lint cause, don't silence it" }
+        if (Test-GuardPattern '@ts-(ignore|nocheck)' 'test-defeat/suppression' -Adds) { $reasons += "adds '@ts-ignore'/'@ts-nocheck' — fix the type error, don't suppress it" }
     }
     # Test files: *.spec.* (Jasmine/Karma, Jest, Vitest, Playwright), *.test.* (Vitest and Jest; the Angular
     # unit-test builder runs both) and Cypress *.cy.*, in any JS or TS extension. The focus and skip forms
@@ -263,10 +427,10 @@ foreach ($write in $writes) {
         # Playwright's test.skip(condition, reason) and test.skip(), and Vitest's context.skip(), run at test time.
         # A title is read for at most 200 characters: an open read rescans a long line of unclosed calls from
         # every call in it.
-        if ((Test-GuardPattern '(?m)^[^\S\r\n]*x(it|describe|test|context|specify)\s*(\(|\.each\b)' 'test-defeat/suppression') -or
-            (Test-GuardPattern '\b(it|describe|suite|specify)(\.(concurrent|sequential|fails|shuffle)){0,3}\.skip\s*[(.`]' 'test-defeat/suppression') -or
-            (Test-GuardPattern '\btest(\.(concurrent|sequential|fails|describe)){1,3}\.(skip|fixme)\s*[(.`]' 'test-defeat/suppression') -or
-            (Test-GuardPattern '\b(test\.(skip|fixme)|context\.skip)\s*(\.[A-Za-z_$]|\(\s*([''"`][^\n]{0,200}?[''"`]\s*,|true\b\s*[,)]|[A-Za-z_$][\w$]*\.name\s*,))' 'test-defeat/suppression')) { $reasons += "skips a test (xit/xdescribe/.skip) — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
+        if ((Test-GuardPattern '(?m)^[^\S\r\n]*x(it|describe|test|context|specify)\s*(\(|\.each\b)' 'test-defeat/suppression' -Adds) -or
+            (Test-GuardPattern '\b(it|describe|suite|specify)(\.(concurrent|sequential|fails|shuffle)){0,3}\.skip\s*[(.`]' 'test-defeat/suppression' -Adds) -or
+            (Test-GuardPattern '\btest(\.(concurrent|sequential|fails|describe)){1,3}\.(skip|fixme)\s*[(.`]' 'test-defeat/suppression' -Adds) -or
+            (Test-GuardPattern '\b(test\.(skip|fixme)|context\.skip)\s*(\.[A-Za-z_$]|\(\s*([''"`][^\n]{0,200}?[''"`]\s*,|true\b\s*[,)]|[A-Za-z_$][\w$]*\.name\s*,))' 'test-defeat/suppression' -Adds)) { $reasons += "skips a test (xit/xdescribe/.skip) — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
         if ((Test-GuardPattern 'expect\(\s*true\s*\)\.toBe\(\s*true\s*\)' 'test-defeat/suppression') -or (Test-GuardPattern 'expect\(\s*false\s*\)\.toBe\(\s*false\s*\)' 'test-defeat/suppression')) { $reasons += "adds a tautological assertion (expect(true).toBe(true)) — assert observable behaviour, not a constant (Test leanness #15)" }
     }
 

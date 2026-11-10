@@ -51,6 +51,14 @@
   `env` variable by name, never by value); your own `hooks` entries are not merged, so re-apply them from
   `.claude/.state/settings.json.pre-update`. A file that is not strict JSON (a comment, a trailing comma) carries nothing, and
   the `NOTICE` says so. Commit the result; `docs/upgrade-checklist.md` step 6 has the details.
+- **The write guard no longer refuses an edit that only keeps a suppression or skipped test already in the file.** An edit,
+  patch or whole-file write that carried an existing `#pragma warning disable`, `[Fact(Skip=...)]`, `eslint-disable`,
+  `@ts-ignore` or `xit` through unchanged was refused as adding one. The guard now compares each with the text the write
+  replaces, or the file on disk, and lets an unchanged one through. It still blocks one that is new or changed (`disable
+  CS0618` to a bare `disable`, `@ts-ignore` to `@ts-nocheck`, a rule dropped from an `eslint-disable`) and a write that keeps a
+  disable but drops the `#pragma warning restore` or `eslint-enable` closing it. An edit to the code after one on the same
+  line, such as a method declared on the `[Fact(Skip=...)]` line, still counts as a new one. Focused tests and tautological
+  assertions are judged by the new text alone, as before. `docs/enforcement-surfaces.md` lists what still passes.
 
 ## 0.98.4 — 2026-11-04
 

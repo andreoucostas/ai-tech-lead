@@ -166,8 +166,35 @@ organization enforces.
 > the surrounding line, with only the value replaced, is not matched; and a key split across two
 > edits passes both times, because neither fragment matches on its own. An `apply_patch` patch is
 > read the same way: the lines it adds to each file, checked against that file's path (and its new
-> path when the patch moves it), never its context or removed lines; a patch with more than 200 file
-> sections, or an `apply_patch` call the guard cannot read, is blocked. **This is a stated limit,
+> path when the patch moves it), never its context lines; a patch with more than 200 file
+> sections, or an `apply_patch` call the guard cannot read, is blocked. A suppression (`#pragma
+> warning disable`, `eslint-disable`, `@ts-ignore`) or a skipped test (`[Fact(Skip=…)]`, `[Ignore]`,
+> `xit`, `.skip`) is the exception: it is compared with the text the write replaces (an edit's old
+> text, the lines a patch section removes, the file on disk under a whole-file write). A directive is
+> the matched text plus the rest of its line, such as `eslint-disable-line no-console`,
+> `eslint-disable @angular-eslint/component-selector` or `disable CS0618, CS8602`, up to a closing
+> `*/`; inside a block comment (a `/*` before it within 8 lines with no `*/` between) it runs to the
+> `*/` or to the end of a window of 8 lines, 1 KB a line. The write is blocked when any such directive
+> occurs more often in it than in the text it replaces, or, when it still holds a
+> `#pragma warning disable` or a block `eslint-disable` (not `-line` or `-next-line`), when it leaves
+> more of them without their `restore` or `eslint-enable` than that text did: a write that keeps a
+> disable but drops the closer is blocked. An edit that keeps one, or edits the code on other lines,
+> passes; one that adds another or widens one (`@ts-ignore` to `@ts-nocheck`, `disable CS0618` to a
+> bare `disable`, a rule or rule list changed, `xit` to `xdescribe`) is blocked. **Stated limits:**
+> an unchanged directive moved to other code (an `[Ignore]` from a method to its class) or across the
+> hunks of one patch section, a commented-out one un-commented, rules added past the first 8 lines or
+> 1 KB of a line of a comment that does not close within them, rules written after a `*/` in a line
+> comment (`// eslint-disable-next-line a */, b`), a write that only removes a closer, a closer moved
+> to later code, and any text that matches a closer pattern (a string included) counting as a closer
+> all pass; an edit to the code after a directive on the same line (a `[Fact(Skip="x")]` with its
+> method), a reindent or an added trailing blank inside a kept multi-line block directive, and an
+> edit to the lines after a directive that a `/*` inside a string above it (`'src/**/*.ts'`) puts
+> in a block comment count as a new directive and are blocked, no worse than before this rule. The
+> file on disk is
+> read only for an absolute local path that Windows and Node resolve to the same file (no `:`, no folder or
+> file name ending in a dot or space), by its exact spelling, at most 2 MB of it, 4 MB in all per
+> call; where there is no old text (an insert, a patch section that moves its file, a relative or
+> network path, an unreadable file) the write is judged by its own text, as before. **This is a stated limit,
 > not a control.** Scanning the pre-edit file together with the new text is not the fix — that
 > refuses the edit which *removes* a leaked key, and a scanner that blocks the cleanup is worse than
 > the gap it closes. Reconstructing the post-edit file is sound, but it needs each host's edit

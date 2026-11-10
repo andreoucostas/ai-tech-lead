@@ -10,6 +10,15 @@ $hooks   = (Resolve-Path (Join-Path $PSScriptRoot '..\..\.claude\hooks')).Path
 $guardPs = Join-Path $hooks 'guard.ps1'
 
 Reset-Tests
+# A file that exists under a new scratch folder, for the tests that need the guard to find a file on disk (the folder
+# is returned through $Scratch for the caller to remove). Returns the file's absolute path.
+function New-ExistingFile([ref]$Scratch, [string]$RelativePath, [string]$Text) {
+    $Scratch.Value = Join-Path ([IO.Path]::GetTempPath()) ('guard-disk-' + [guid]::NewGuid().ToString('N'))
+    $path = Join-Path $Scratch.Value $RelativePath
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
+    [IO.File]::WriteAllText($path, $Text, (New-Object System.Text.UTF8Encoding($false)))
+    $path
+}
 $selectedCases = @($GuardCases)
 if ($env:GUARD_TEST_POLICY) {
     $selectedCases = @($GuardCases | Where-Object { $_.policy -eq $env:GUARD_TEST_POLICY })
@@ -27,11 +36,20 @@ if ($env:GUARD_TEST_POLICY) {
 if ($selectedCases.Count -eq 0) { [Console]::Error.WriteLine('Guard.Tests: case table is empty'); exit 111 }
 foreach ($case in $selectedCases) {
     foreach ($surface in 'Claude','Copilot') {
-        $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $case.f $case.c } else { New-CopilotEvent $case.f $case.c }
         $expected = if (-not $case.block) { 'ALLOW' } elseif ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }
         It "guard $expected ($surface): $($case.n)" {
-            $rps = Invoke-Hook $guardPs $evt
-            Assert-Decision $rps $expected $case.n
+            # A disk case is a whole-file write over a file that exists: the file is written under a scratch folder
+            # and the event carries its absolute path.
+            $scratch = $null
+            try {
+                $path = $case.f
+                if ($case.ContainsKey('disk')) { $path = New-ExistingFile ([ref]$scratch) $case.f $case.disk }
+                $evt = if ($case.ContainsKey('o')) {
+                    if ($surface -eq 'Claude') { New-ClaudeEditEvent $path $case.o $case.c } else { New-CopilotEditEvent $path $case.o $case.c }
+                } elseif ($surface -eq 'Claude') { New-ClaudeEvent $path $case.c } else { New-CopilotEvent $path $case.c }
+                $rps = Invoke-Hook $guardPs $evt
+                Assert-Decision $rps $expected $case.n
+            } finally { if ($scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue } }
         }
     }
 }
@@ -86,6 +104,152 @@ It 'guard BLOCK (Claude NotebookEdit): a key-shaped cell source on replace and i
 It 'guard DENY (Copilot): a create whose text carries a patch is checked as that create' {
     $evt = New-CopilotEvent 'src\Foo.cs' "*** Begin Patch`n*** Add File: notes.txt`n+x`n*** End Patch`n#pragma warning disable CS8602"
     Assert-Decision (Invoke-Hook $guardPs $evt) 'DENY' 'create carrying patch text'
+}
+
+# --- A suppression or skip is counted against the text the write replaces (the table's o and disk cases, and the patch cases) ---
+# The edit spellings the guard reads: Claude Code's Edit, Copilot CLI's edit with snake_case and with camelCase field names
+# (and with toolArgs sent as a JSON string), and the text editor's str_replace under a Claude-format envelope. Each passes
+# when it keeps the pragma its old text holds and is blocked when it adds a second. An insert (new_str, no old text) replaces
+# nothing, so it is read as it always was.
+It 'guard: an edit that keeps a #pragma warning disable passes in every field spelling, and one that adds a second, or an insert, is blocked' {
+    $file = 'C:\work\repo\src\Foo.cs'
+    $old = "#pragma warning disable CS0618`nvar a = Old();"
+    $kept = "$old`nvar b = Old();"
+    $added = "#pragma warning disable CS0618`n#pragma warning disable CS0612`nvar a = Old();"
+    $shapes = @(
+        @{ n = 'Claude Edit';                       deny = 'BLOCK'; e = { param($o, $n) @{ tool_name = 'Edit'; tool_input = @{ file_path = $file; old_string = $o; new_string = $n } } } }
+        @{ n = 'Copilot edit (old_str/new_str)';    deny = 'DENY';  e = { param($o, $n) @{ toolName = 'edit'; toolArgs = @{ path = $file; old_str = $o; new_str = $n } } } }
+        @{ n = 'Copilot edit (camelCase)';          deny = 'DENY';  e = { param($o, $n) @{ toolName = 'edit'; toolArgs = @{ filePath = $file; oldString = $o; newString = $n } } } }
+        @{ n = 'Copilot edit (toolArgs as a string)'; deny = 'DENY'; e = { param($o, $n) @{ toolName = 'edit'; toolArgs = (@{ path = $file; old_str = $o; new_str = $n } | ConvertTo-Json -Compress) } } }
+        @{ n = 'str_replace under a Claude envelope'; deny = 'BLOCK'; e = { param($o, $n) @{ tool_name = 'Edit'; tool_input = @{ path = $file; old_str = $o; new_str = $n } } } }
+    )
+    foreach ($shape in $shapes) {
+        $keptEvent = (& $shape.e $old $kept) | ConvertTo-Json -Compress -Depth 6
+        $addedEvent = (& $shape.e $old $added) | ConvertTo-Json -Compress -Depth 6
+        Assert-Decision (Invoke-Hook $guardPs $keptEvent) 'ALLOW' "$($shape.n) keeping the pragma"
+        Assert-Decision (Invoke-Hook $guardPs $addedEvent) $shape.deny "$($shape.n) adding a second pragma"
+    }
+    $insert = @{ toolName = 'insert'; toolArgs = @{ path = $file; insert_line = 3; new_str = '#pragma warning disable CS0618' } } | ConvertTo-Json -Compress -Depth 6
+    Assert-Decision (Invoke-Hook $guardPs $insert) 'DENY' 'an insert of a pragma, which replaces no text'
+}
+
+# A whole-file write is compared with the file on disk, but only when that file can be read as one. Every other leg is read
+# as it always was (blocked): no old text is no match, so the write is judged by what it contains alone.
+It 'guard BLOCK (Claude) and DENY (Copilot): a whole-file write with no readable file under it to compare with is blocked for its pragma' {
+    $existing = "#pragma warning disable CS0618`nvar a = 1;`n"
+    $content = "#pragma warning disable CS0618`nvar a = 2;`n"
+    $scratch = $null
+    $stream = $null
+    try {
+        $path = New-ExistingFile ([ref]$scratch) 'src\Foo.cs' $existing
+        # The control: the file is there and readable, so the same write to its absolute path passes. The legs below differ from it only in what stands at the path.
+        foreach ($surface in 'Claude', 'Copilot') {
+            $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $path $content } else { New-CopilotEvent $path $content }
+            Assert-Decision (Invoke-Hook $guardPs $evt) 'ALLOW' "the control, an existing file under $surface"
+        }
+        $directory = Join-Path $scratch 'dir\Foo.cs'
+        New-Item -ItemType Directory -Force -Path $directory | Out-Null
+        $oversize = Join-Path $scratch 'big\Foo.cs'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $oversize) | Out-Null
+        [IO.File]::WriteAllText($oversize, $existing + ('/' * (5 * 1MB)), (New-Object System.Text.UTF8Encoding($false)))   # past the 4 MB the guard reads
+        $locked = Join-Path $scratch 'locked\Foo.cs'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $locked) | Out-Null
+        [IO.File]::WriteAllText($locked, $existing, (New-Object System.Text.UTF8Encoding($false)))
+        $stream = New-Object IO.FileStream($locked, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+        $legs = @(
+            @{ n = 'a directory at the path';           p = $directory }
+            @{ n = 'a file past the size the guard reads'; p = $oversize }
+            @{ n = 'a file another process holds locked'; p = $locked }
+            @{ n = 'no file at the path';               p = (Join-Path $scratch 'absent\Foo.cs') }
+        )
+        foreach ($leg in $legs) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $leg.p $content } else { New-CopilotEvent $leg.p $content }
+                Assert-Decision (Invoke-Hook $guardPs $evt) $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "$($leg.n) ($surface)"
+            }
+        }
+        # A relative path is the tool's to resolve against its own directory, which the hook cannot know, so it is never read even when
+        # a file stands at that path under the hook's directory. The first assertion proves the child starts in the scratch folder.
+        Push-Location $scratch
+        try {
+            $startedIn = (Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-Command', '(Get-Location).Path')).Out
+            Assert ((Split-Path -Leaf $startedIn) -eq (Split-Path -Leaf $scratch)) "the hook would not start in the scratch folder ($startedIn), so the relative-path legs prove nothing"
+            foreach ($surface in 'Claude', 'Copilot') {
+                $evt = if ($surface -eq 'Claude') { New-ClaudeEvent 'src\Foo.cs' $content } else { New-CopilotEvent 'src\Foo.cs' $content }
+                Assert-Decision (Invoke-Hook $guardPs $evt) $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "a relative path to an existing file ($surface)"
+            }
+        } finally { Pop-Location }
+    } finally {
+        if ($stream) { $stream.Dispose() }
+        if ($scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+# An apply_patch Add File over a file that exists is a whole-file write, compared with that file as a Write is.
+It 'guard: an apply_patch Add File over an existing file keeps the pragma it holds, and over a file or path without one is blocked' {
+    $scratch = $null
+    try {
+        $path = New-ExistingFile ([ref]$scratch) 'src\Foo.cs' "#pragma warning disable CS0618`nvar a = 1;`n"
+        $keeps = "*** Begin Patch`n*** Add File: $path`n+#pragma warning disable CS0618`n+var a = 2;`n*** End Patch`n"
+        $adds = "*** Begin Patch`n*** Add File: $path`n+#pragma warning disable CS0618`n+#pragma warning disable CS0612`n+var a = 2;`n*** End Patch`n"
+        $absent = "*** Begin Patch`n*** Add File: $(Join-Path $scratch 'src\New.cs')`n+#pragma warning disable CS0618`n*** End Patch`n"
+        foreach ($shape in 'hooks.json', '.claude/settings.json') {
+            $deny = if ($shape -eq '.claude/settings.json') { 'BLOCK' } else { 'DENY' }
+            Assert-Decision (Invoke-Hook $guardPs (New-PatchEvent $shape $keeps)) 'ALLOW' "an Add File that keeps the pragma on disk ($shape)"
+            Assert-Decision (Invoke-Hook $guardPs (New-PatchEvent $shape $adds)) $deny "an Add File that adds a second pragma ($shape)"
+            Assert-Decision (Invoke-Hook $guardPs (New-PatchEvent $shape $absent)) $deny "an Add File of a new file with a pragma ($shape)"
+        }
+    } finally { if ($scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+# The file under a whole-file write is the one the tool writes only when Windows and Node resolve the path to the same
+# file. Windows drops a trailing dot or space from every segment ('Dir.\Legacy.cs' reads Dir\Legacy.cs) and reads
+# 'Legacy.cs::$DATA' as Legacy.cs, where Node writes the literal name, so such a path is compared with nothing and the write
+# is judged by its own pragmas. A '.' segment collapses the same way in both, so it is still compared.
+It 'guard BLOCK (Claude) and DENY (Copilot): a path Windows and Node resolve to different files is not compared with the file Windows would open' {
+    $existing = "#pragma warning disable CS0618`n#pragma warning disable CS0612`n#pragma warning disable CS8602`n"
+    $scratch = $null
+    try {
+        $path = New-ExistingFile ([ref]$scratch) 'Dir\Legacy.cs' $existing
+        $folder = Split-Path -Parent (Split-Path -Parent $path)
+        $forms = @(
+            @{ n = 'a dot after a folder name';        p = "$folder\Dir.\Legacy.cs";      allowed = $false }
+            @{ n = 'a dot after the file name';        p = "$folder\Dir\Legacy.cs.";      allowed = $false }
+            @{ n = 'a space after the file name';      p = "$folder\Dir\Legacy.cs ";      allowed = $false }
+            @{ n = 'a space after a folder name';      p = "$folder\Dir \Legacy.cs";      allowed = $false }
+            @{ n = 'an NTFS stream suffix';            p = "${path}::`$DATA";             allowed = $false }
+            @{ n = 'a dot segment after \\?\';         p = "\\?\$folder\Dir\.\Legacy.cs"; allowed = $false }
+            @{ n = 'the path as it is (control)';      p = $path;                         allowed = $true }
+            @{ n = 'a . segment without \\?\ (control)'; p = "$folder\Dir\.\Legacy.cs";   allowed = $true }
+            @{ n = 'forward slashes (control)';        p = $path.Replace('\', '/');       allowed = $true }
+        )
+        foreach ($form in $forms) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                $evt = if ($surface -eq 'Claude') { New-ClaudeEvent $form.p $existing } else { New-CopilotEvent $form.p $existing }
+                $expected = if ($form.allowed) { 'ALLOW' } elseif ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }
+                Assert-Decision (Invoke-Hook $guardPs $evt) $expected "$($form.n) ($surface)"
+            }
+        }
+    } finally { if ($scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+# One event reads at most 4 MB of files from disk: three Add File sections over three different 1.5 MB files that each keep
+# their pragma, the first two are compared with their files and the third, past the budget, has no old text and is blocked.
+It 'guard DENY (Copilot): an apply_patch reads at most 4 MB of files, so the file past the budget has no old text' {
+    $scratch = $null
+    try {
+        $text = "#pragma warning disable CS0618`n" + ("var a = 1;`n" * 136000)   # about 1.5 MB
+        $first = New-ExistingFile ([ref]$scratch) 'src\First.cs' $text
+        $second = Join-Path $scratch 'src\Second.cs'; $third = Join-Path $scratch 'src\Third.cs'
+        [IO.File]::WriteAllText($second, $text, (New-Object System.Text.UTF8Encoding($false)))
+        [IO.File]::WriteAllText($third, $text, (New-Object System.Text.UTF8Encoding($false)))
+        $patch = "*** Begin Patch`n" + (-join @($first, $second, $third | ForEach-Object { "*** Add File: $_`n+#pragma warning disable CS0618`n+var b = 2;`n" })) + "*** End Patch`n"
+        $r = Invoke-Hook $guardPs (New-PatchEvent 'hooks.json' $patch)
+        Assert-Decision $r 'DENY' 'three Add File sections over three 1.5 MB files'
+        $reason = [string]($r.Out | ConvertFrom-Json).permissionDecisionReason
+        Assert ($reason.Contains("Blocked write to $third")) "the file past the budget is not named -- $reason"
+        Assert (-not $reason.Contains($first) -and -not $reason.Contains($second)) "a file inside the budget is named -- $reason"
+    } finally { if ($scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue } }
 }
 
 # --- Credential names match whatever the culture: tr-TR folds "I" to a dotless i (U+0131) ---
@@ -311,7 +475,8 @@ function Invoke-HookBounded {
         $finished = $process.WaitForExit($TimeoutMs)
         $clock.Stop()
         if (-not $finished) { try { $process.Kill() } catch { }; $process.WaitForExit() }
-        return [pscustomobject]@{ TimedOut = (-not $finished); Seconds = [math]::Round($clock.Elapsed.TotalSeconds, 1); Exit = $(if ($finished) { [int]$process.ExitCode } else { -1 }) }
+        return [pscustomobject]@{ TimedOut = (-not $finished); Seconds = [math]::Round($clock.Elapsed.TotalSeconds, 1); Exit = $(if ($finished) { [int]$process.ExitCode } else { -1 })
+            Out = $(if ($finished) { [IO.File]::ReadAllText($stdoutFile) } else { '' }); Err = $(if ($finished) { [IO.File]::ReadAllText($stderrFile) } else { '' }) }
     } finally {
         if ($process) { $process.Dispose() }
         foreach ($tempFile in $stdinFile, $stdoutFile, $stderrFile) { if (Test-Path -LiteralPath $tempFile) { [IO.File]::Delete($tempFile) } }
@@ -365,6 +530,118 @@ foreach ($stall in $stallCases) {
         Assert ($r.Exit -eq $stall.exit) "the hook exited $($r.Exit) after $($r.Seconds) s; expected $($stall.exit)"
     }
 }
+# A whole-file write is also compared with the file on disk, so a large write over a large file must be decided inside the
+# limit too: one pragma in each (the common case), and tens of thousands in each (every one counted in both texts).
+$pragma = "#pragma warning disable CS0618`n"
+$diskStallCases = @(
+    @{ n = 'a 2 MB write holding one #pragma over a 2 MB file holding one'; old = ($pragma + ("var a = 1;`n" * 170000)); new = ($pragma + ("var b = 2;`n" * 180000)); exit = 0 }
+    @{ n = 'a write of 40000 #pragma lines over a file of 40000';          old = ($pragma * 40000);                          new = ($pragma * 40000);                          exit = 0 }
+    @{ n = 'a write of 40001 #pragma lines over a file of 40000';          old = ($pragma * 40000);                          new = ($pragma * 40001);                          exit = 2 }
+)
+foreach ($stall in $diskStallCases) {
+    It "guard: $($stall.n) is decided inside the time limit" {
+        $scratch = $null
+        try {
+            $path = New-ExistingFile ([ref]$scratch) 'src\Foo.cs' $stall.old
+            $r = Invoke-HookBounded $guardPs (New-ClaudeEvent $path $stall.new) $stallLimitMs
+            Assert (-not $r.TimedOut) "the hook was still scanning after $($stallLimitMs / 1000) s on a $([int]($stall.new.Length / 1024)) KB write over a $([int]($stall.old.Length / 1024)) KB file and was killed"
+            Assert ($r.Exit -eq $stall.exit) "the hook exited $($r.Exit) after $($r.Seconds) s; expected $($stall.exit)"
+        } finally { if ($scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue } }
+    }
+}
+# Every Add File section over the same large file used to read that file again and scan it for each pattern the section
+# matched (200 sections over one 3.9 MB file took 45 s). The file is read once per event and its directives are counted
+# once per pattern, so these decide inside Copilot's 10 s: 200 sections over one file just under the 2 MB the guard reads,
+# first each keeping a pragma, then each keeping all six suppressions and skips a .spec.ts file can hold.
+function New-AddFilePatch([string]$Path, [string[]]$Lines, [int]$Sections) {
+    $builder = New-Object System.Text.StringBuilder
+    [void]$builder.Append("*** Begin Patch`n")
+    for ($i = 1; $i -le $Sections; $i++) {
+        [void]$builder.Append("*** Add File: $Path`n")
+        foreach ($line in $Lines) { [void]$builder.Append("+$line`n") }
+        [void]$builder.Append("+const v$i = $i;`n")
+    }
+    [void]$builder.Append("*** End Patch`n")
+    $builder.ToString()
+}
+$directives = @('// eslint-disable-next-line no-console', '// @ts-ignore', "xit('a', () => {});", "it.skip('b', () => {});", "test.concurrent.skip('c', async () => {});", "test.skip('d', () => {});")
+$directiveBlock = ($directives -join "`n") + "`n" + ("const filler = 1;`n" * 3)
+$sectionCases = @(
+    @{ n = '200 Add File sections over one 2 MB .cs file, each keeping its #pragma';  file = 'src\Legacy.cs';        old = ($pragma + ("var a = 1;`n" * 170000));                                   lines = @('#pragma warning disable CS0618') }
+    @{ n = '200 Add File sections over one 2 MB .spec.ts file, each keeping all six suppressions and skips'; file = 'src\legacy.spec.ts'; old = ($directiveBlock * [int](1900000 / $directiveBlock.Length)); lines = $directives }
+)
+foreach ($case in $sectionCases) {
+    It "guard: $($case.n) is decided inside 10 s" {
+        $scratch = $null
+        try {
+            $path = New-ExistingFile ([ref]$scratch) $case.file $case.old
+            $r = Invoke-HookBounded $guardPs (New-PatchEvent 'hooks.json' (New-AddFilePatch $path $case.lines 200)) 10000
+            Assert (-not $r.TimedOut) "the hook was still scanning after 10 s on 200 sections over a $([int]($case.old.Length / 1024)) KB file and was killed"
+            Assert ((Get-Decision $r) -eq 'ALLOW') "the hook decided $(Get-Decision $r) after $($r.Seconds) s; every section keeps what the file holds"
+        } finally { if ($scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue } }
+    }
+}
+# A patch section's hunks are compared as one text against one text, so a patch of tens of thousands of hunks is counted
+# twice per pattern, not twice per hunk (20,000 hunks that each rewrite two directives took 13 to 20 s, and 14,000 that
+# each rewrite three, beside one that adds a pragma, outlasted 10 s). Each of these decides inside Copilot's 10 s.
+$keepTwo = "@@`n-#pragma warning disable CS0618`n-[Ignore]`n+#pragma warning disable CS0618`n+[Ignore]`n"
+$keepThree = "@@`n-#pragma warning disable CS0618`n-[Ignore]`n-[Fact(Skip=`"x`")]`n+#pragma warning disable CS0618`n+[Ignore]`n+[Fact(Skip=`"x`")]`n"
+$hunkCases = @(
+    @{ n = '20000 hunks of one update, each rewriting a #pragma and an [Ignore]';                       p = ("*** Begin Patch`n*** Update File: src\Foo.cs`n" + ($keepTwo * 20000) + "*** End Patch`n"); decision = 'ALLOW' }
+    @{ n = '14000 hunks of one update rewriting three directives each, and one hunk that adds a #pragma'; p = ("*** Begin Patch`n*** Update File: src\Foo.cs`n" + ($keepThree * 14000) + "@@`n-var x = 1;`n+#pragma warning disable CS0612`n*** End Patch`n"); decision = 'DENY' }
+)
+foreach ($case in $hunkCases) {
+    It "guard: $($case.n) is decided inside 10 s" {
+        $r = Invoke-HookBounded $guardPs (New-PatchEvent 'hooks.json' $case.p) 10000
+        Assert (-not $r.TimedOut) "the hook was still scanning after 10 s on a $([int]($case.p.Length / 1024)) KB patch and was killed"
+        Assert ((Get-Decision $r) -eq $case.decision) "the hook decided $(Get-Decision $r) after $($r.Seconds) s; expected $($case.decision)"
+    }
+}
+# Looking for the */ that ends a directive's comment, and for the /* before it, is bounded to its 8-line window, so a text
+# of 100,000 lines that each open a block eslint-disable and never close one is counted in the time its size takes (the
+# unbounded search was quadratic: 10 s for an edit of 100,000 lines on pwsh, 29 s on Windows PowerShell 5.1, and 17 s and
+# 45 s for a write that keeps a 95,000-line file). Each of these decides inside Copilot's 10 s.
+$openLine = "/* eslint-disable r`n"
+It 'guard BLOCK (Claude): an edit that adds 140000 lines each opening a block eslint-disable with no */ is decided inside 10 s' {
+    $r = Invoke-HookBounded $guardPs (New-ClaudeEditEvent 'src/app.ts' $openLine ($openLine * 140000)) 10000
+    Assert (-not $r.TimedOut) 'the hook was still scanning after 10 s on a 2.7 MB edit and was killed'
+    Assert ((Get-Decision $r) -eq 'BLOCK') "the hook decided $(Get-Decision $r) after $($r.Seconds) s; expected BLOCK"
+}
+It 'guard ALLOW (Claude): a whole-file write that keeps a 1.9 MB file of 95000 lines each opening a block eslint-disable is decided inside 10 s' {
+    $scratch = $null
+    try {
+        $path = New-ExistingFile ([ref]$scratch) 'src\app.ts' ($openLine * 95000)
+        $r = Invoke-HookBounded $guardPs (New-ClaudeEvent $path ($openLine * 95000)) 10000
+        Assert (-not $r.TimedOut) 'the hook was still scanning after 10 s on a 1.9 MB write over a 1.9 MB file and was killed'
+        Assert ((Get-Decision $r) -eq 'ALLOW') "the hook decided $(Get-Decision $r) after $($r.Seconds) s; expected ALLOW"
+    } finally { if ($scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+# A folder can be case-sensitive (fsutil file setCaseSensitiveInfo), where Legacy.cs and legacy.cs are two files. The disk text
+# and its directives are read by the exact spelling of the path, so an Add File of legacy.cs is not compared with the disk copy
+# of Legacy.cs. This needs the NTFS flag on a scratch folder, which a host may refuse; it is skipped there.
+$caseCase = 'guard DENY (Copilot): in a case-sensitive folder an Add File of legacy.cs is not compared with the disk copy of Legacy.cs'
+$caseFolder = Join-Path ([IO.Path]::GetTempPath()) ('guard-case-' + [guid]::NewGuid().ToString('N'))
+$caseSensitive = $false
+try {
+    $null = New-Item -ItemType Directory -Force -Path $caseFolder
+    $null = & fsutil file setCaseSensitiveInfo $caseFolder enable 2>&1
+    $caseSensitive = ($LASTEXITCODE -eq 0) -and ([string](& fsutil file queryCaseSensitiveInfo $caseFolder 2>&1) -match 'is enabled')
+} catch { $caseSensitive = $false }
+if (-not $caseSensitive) {
+    Remove-Item -LiteralPath $caseFolder -Recurse -Force -ErrorAction SilentlyContinue
+    Skip $caseCase 'this host would not make a scratch folder case-sensitive (fsutil file setCaseSensitiveInfo)'
+} else { It $caseCase {
+    try {
+        [IO.File]::WriteAllText((Join-Path $caseFolder 'Legacy.cs'), "#pragma warning disable CS0618`nvar a = 1;`n", (New-Object System.Text.UTF8Encoding($false)))
+        $upper = Join-Path $caseFolder 'Legacy.cs'; $lower = Join-Path $caseFolder 'legacy.cs'
+        $patch = "*** Begin Patch`n*** Add File: $upper`n+#pragma warning disable CS0618`n+var a = 2;`n*** Add File: $lower`n+#pragma warning disable CS0618`n+var a = 2;`n*** End Patch`n"
+        $r = Invoke-Hook $guardPs (New-PatchEvent 'hooks.json' $patch)
+        Assert-Decision $r 'DENY' 'Add File of Legacy.cs, then of legacy.cs, each adding the pragma'
+        $reason = [string]($r.Out | ConvertFrom-Json).permissionDecisionReason
+        Assert ($reason.Contains("Blocked write to $lower")) "legacy.cs, which has no copy on disk, is not named -- $reason"
+        Assert (-not $reason.Contains("Blocked write to $upper")) "Legacy.cs, which keeps the pragma its disk copy holds, is named -- $reason"
+    } finally { Remove-Item -LiteralPath $caseFolder -Recurse -Force -ErrorAction SilentlyContinue }
+} }
 
 # Every case above pipes stdin straight into guard.ps1. The agent host does not: the registration
 # carries "shell": "powershell", so the whole command STRING runs inside an outer PowerShell, and

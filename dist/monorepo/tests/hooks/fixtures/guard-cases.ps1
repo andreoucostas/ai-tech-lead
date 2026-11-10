@@ -181,4 +181,67 @@ $GuardCases = @(
     @{ n='public key block near-miss';          f='src/deploy.cs';             c='-----BEGIN PUBLIC KEY-----';                            block=$false; policy='secret' }
     @{ n='case-sensitive ASSERT near-miss';    f='tests/FooTests.cs';         c='ASSERT.True(true);';                                   block=$false }
     @{ n='case-sensitive ESLINT near-miss';    f='src/app.ts';                c='// ESLINT-DISABLE-next-line';                          block=$false }
+    # A suppression or skip is counted against the text the write replaces, so a write that keeps one already in the file
+    # passes and one that adds another is blocked. An edit case carries o, the text it replaces (old_string on Claude Code,
+    # old_str on Copilot) beside c, the new text. A disk case is a whole-file write of c over a file that holds that text on
+    # disk: Guard.Tests.ps1 writes the file and sends its absolute path. Credential patterns are not counted this way.
+    @{ n='edit keeps an existing #pragma warning disable (allow)'; f='src/Foo.cs'; o="#pragma warning disable CS0618`nvar a = Old();"; c="#pragma warning disable CS0618`nvar a = Old();`nvar b = Old();"; block=$false }
+    @{ n='edit keeps an existing [Fact(Skip=...)] on its own line (allow)'; f='tests/FooTests.cs'; o="[Fact(Skip=`"flaky`")]`npublic void A(){}"; c="[Fact(Skip=`"flaky`")]`npublic void A(){ var q = 1; }"; block=$false }
+    @{ n='edit of the code after a [Fact(Skip=...)] on the same line'; f='tests/FooTests.cs'; o='[Fact(Skip="flaky")] public void A(){}'; c='[Fact(Skip="flaky")] public void A(){ var q = 1; }'; block=$true }
+    @{ n='edit keeps an existing [Ignore] (allow)'; f='tests/FooTests.cs'; o="[Test]`n[Ignore(`"flaky`")]`npublic void A(){}"; c="[Test]`n[Ignore(`"flaky`")]`npublic void A(){ var q = 1; }"; block=$false }
+    @{ n='edit keeps an existing eslint-disable (allow)'; f='src/app.ts'; o="// eslint-disable-next-line no-console`nconsole.log(a);"; c="// eslint-disable-next-line no-console`nconsole.log(a, b);"; block=$false }
+    @{ n='edit keeps an existing @ts-ignore (allow)'; f='src/app.ts'; o="// @ts-ignore`nconst a: number = 'x';"; c="// @ts-ignore`nconst a: number = 'x'; const b = a;"; block=$false }
+    @{ n='edit keeps an existing xit with a multi-line body (allow)'; f='src/app.spec.ts'; o="xit('x', () => {`n  doIt();`n});"; c="xit('x', () => {`n  doIt();`n  expect(1).toBe(1);`n});"; block=$false }
+    @{ n='edit of the code after an xit on the same line'; f='src/app.spec.ts'; o="xit('x', () => {});"; c="xit('x', () => { expect(1).toBe(1); });"; block=$true }
+    @{ n='edit that removes one of two #pragma warning disable (allow)'; f='src/Foo.cs'; o="#pragma warning disable CS0618`n#pragma warning disable CS0612`nvar a = Old();"; c="#pragma warning disable CS0618`nvar a = Old();"; block=$false }
+    @{ n='edit adds a second #pragma warning disable beside an existing one'; f='src/Foo.cs'; o="#pragma warning disable CS0618`nvar a = Old();"; c="#pragma warning disable CS0618`n#pragma warning disable CS0612`nvar a = Old();"; block=$true; policy='test-defeat/suppression' }
+    @{ n='edit adds a #pragma warning disable where its old text has none'; f='src/Foo.cs'; o='var a = Old();'; c="#pragma warning disable CS0618`nvar a = Old();"; block=$true }
+    @{ n='edit adds a second [Fact(Skip=...)] beside an existing one'; f='tests/FooTests.cs'; o='[Fact(Skip="flaky")] public void A(){}'; c='[Fact(Skip="flaky")] public void A(){} [Fact(Skip="slow")] public void B(){}'; block=$true }
+    @{ n='edit adds a second eslint-disable beside an existing one'; f='src/app.ts'; o="// eslint-disable-next-line no-console`nconsole.log(a);"; c="// eslint-disable-next-line no-console`nconsole.log(a);`n// eslint-disable-next-line no-alert`nalert(a);"; block=$true }
+    @{ n='edit adds a second xit beside an existing one'; f='src/app.spec.ts'; o="xit('x', () => {});"; c="xit('x', () => {});`nxit('y', () => {});"; block=$true }
+    @{ n='whole-file write keeps the #pragma warning disable already on disk (allow)'; f='src/Foo.cs'; disk="#pragma warning disable CS0618`nvar a = 1;`n"; c="#pragma warning disable CS0618`nvar a = 2;`n"; block=$false }
+    @{ n='whole-file write keeps the [Fact(Skip=...)] already on disk on its own line (allow)'; f='tests/FooTests.cs'; disk="[Fact(Skip=`"flaky`")]`npublic void A(){}`n"; c="[Fact(Skip=`"flaky`")]`npublic void A(){ var q = 1; }`n"; block=$false }
+    @{ n='whole-file write that edits the code after a [Fact(Skip=...)] on the same line of the file on disk'; f='tests/FooTests.cs'; disk='[Fact(Skip="flaky")] public void A(){}'; c='[Fact(Skip="flaky")] public void A(){ var q = 1; }'; block=$true }
+    @{ n='whole-file write adds a second #pragma warning disable to the file on disk'; f='src/Foo.cs'; disk="#pragma warning disable CS0618`nvar a = 1;`n"; c="#pragma warning disable CS0618`n#pragma warning disable CS0612`nvar a = 2;`n"; block=$true }
+    @{ n='whole-file write adds a #pragma warning disable to a file on disk without one'; f='src/Foo.cs'; disk="var a = 1;`n"; c="#pragma warning disable CS0618`nvar a = 2;`n"; block=$true }
+    # A directive is compared as text: the match plus the words, commas, hyphens and blanks after it on its line, trimmed. A
+    # write that widens one, or turns a mention of one into a directive, adds a new text and is blocked; one that keeps a
+    # directive's text, or edits the code around it, does not. An unchanged directive moved to other code is a stated limit.
+    @{ n='edit widens @ts-ignore to @ts-nocheck'; f='src/app.ts'; o="// @ts-ignore`nconst a: number = 'x';"; c="// @ts-nocheck`nconst a: number = 'x';"; block=$true }
+    @{ n='edit widens #pragma warning disable CS0618 to a bare #pragma warning disable'; f='src/Foo.cs'; o="#pragma warning disable CS0618`nvar a = Old();"; c="#pragma warning disable`nvar a = Old();"; block=$true }
+    @{ n='edit widens eslint-disable-next-line to a block /* eslint-disable */'; f='src/app.ts'; o="// eslint-disable-next-line no-console`nconsole.log(a);"; c="/* eslint-disable */`nconsole.log(a);"; block=$true }
+    @{ n='edit widens xit to xdescribe'; f='src/app.spec.ts'; o="xit('x', () => {});"; c="xdescribe('x', () => {});"; block=$true }
+    @{ n='edit widens it.skip to describe.skip'; f='src/app.spec.ts'; o="it.skip('x', () => {});"; c="describe.skip('x', () => {});"; block=$true }
+    @{ n='edit turns a comment that mentions eslint-disable into a directive'; f='src/app.ts'; o="// dropped the eslint-disable here`nconst a = 1;"; c="// eslint-disable-next-line no-console`nconst a = 1;"; block=$true }
+    @{ n='edit of the code before an eslint-disable-line keeps it (allow)'; f='src/app.ts'; o='foo(); // eslint-disable-line no-console'; c='foo(1); // eslint-disable-line no-console'; block=$false }
+    @{ n='edit moves an unchanged eslint-disable-next-line to other code (allow, a stated limit)'; f='src/app.ts'; o="// eslint-disable-next-line no-console`nconsole.log(a);"; c="console.log(b);`n// eslint-disable-next-line no-console"; block=$false }
+    @{ n='whole-file LF write keeps the #pragma warning disable of a CRLF file on disk (allow)'; f='src/Foo.cs'; disk="#pragma warning disable CS0618`r`nvar a = 1;`r`n"; c="#pragma warning disable CS0618`nvar a = 2;`n"; block=$false }
+    # The directive's text runs to the end of its line (to the */ for a block comment that does not close there), so a rule
+    # dropped from or added to a directive is a new directive, and a closing line that goes leaves a suppression in force.
+    @{ n='edit drops the rule from an eslint-disable-next-line'; f='src/app.ts'; o="// eslint-disable-next-line @typescript-eslint/no-explicit-any`nconst a: any = 1;"; c="// eslint-disable-next-line`nconst a: any = 1;"; block=$true }
+    @{ n='edit drops the rule from a block /* eslint-disable */'; f='src/app.ts'; o="/* eslint-disable @angular-eslint/component-selector */`n@Component({})"; c="/* eslint-disable */`n@Component({})"; block=$true }
+    @{ n='edit appends rules to an eslint-disable-next-line'; f='src/app.ts'; o="// eslint-disable-next-line react-hooks/exhaustive-deps`nuseEffect(f, []);"; c="// eslint-disable-next-line react-hooks/exhaustive-deps, no-console, react/jsx-key`nuseEffect(f, []);"; block=$true }
+    @{ n='edit adds a rule to a block eslint-disable that closes on a later line'; f='src/app.ts'; o="/* eslint-disable`n   no-console,`n   no-alert */`nfoo();"; c="/* eslint-disable`n   no-console,`n   no-alert,`n   no-debugger */`nfoo();"; block=$true }
+    @{ n='edit keeps an eslint-disable-next-line with a scoped rule (allow)'; f='src/app.ts'; o="// eslint-disable-next-line @typescript-eslint/no-explicit-any`nconst a: any = 1;"; c="// eslint-disable-next-line @typescript-eslint/no-explicit-any`nconst a: any = 2;"; block=$false }
+    @{ n='edit of the code after a block eslint-disable that closes on a later line keeps it (allow)'; f='src/app.ts'; o="/* eslint-disable`n   no-console,`n   no-alert */`nfoo();"; c="/* eslint-disable`n   no-console,`n   no-alert */`nfoo(1);"; block=$false }
+    @{ n='edit drops the #pragma warning restore that closes a disable'; f='src/Foo.cs'; o="#pragma warning disable CS0618`nint a;`n#pragma warning restore CS0618`nint b;"; c="#pragma warning disable CS0618`nint a;`nint b;"; block=$true }
+    @{ n='edit drops the eslint-enable that closes a block eslint-disable'; f='src/app.ts'; o="/* eslint-disable no-console */`nfoo();`n/* eslint-enable no-console */`nbar();"; c="/* eslint-disable no-console */`nfoo();`nbar();"; block=$true }
+    @{ n='edit keeps the #pragma warning restore that closes a disable (allow)'; f='src/Foo.cs'; o="#pragma warning disable CS0618`nint a;`n#pragma warning restore CS0618`nint b;"; c="#pragma warning disable CS0618`nint a2;`n#pragma warning restore CS0618`nint b;"; block=$false }
+    @{ n='whole-file write drops the #pragma warning restore of the file on disk'; f='src/Foo.cs'; disk="#pragma warning disable CS0618`nint a;`n#pragma warning restore CS0618`nint b;`n"; c="#pragma warning disable CS0618`nint a;`nint b;`n"; block=$true }
+    # A directive is inside a block comment when a /* before it, within 8 lines, has no */ between: its text then runs to the */
+    # or to the end of an 8-line, 1 KB-a-line window, not to the end of its line. A /* that closed earlier on the line does not count.
+    @{ n='edit of the code after a closed /* c */ keeps the eslint-disable-next-line on its line (allow)'; f='src/app.ts'; o="const a = /* c */ 1; // eslint-disable-next-line no-console`nfoo();`n/* z */"; c="const a = /* c */ 1; // eslint-disable-next-line no-console`nbar();`n/* z */"; block=$false }
+    @{ n='edit drops rules from a block eslint-disable whose /* is on the line above'; f='src/app.ts'; o="/*`n eslint-disable`n no-console,`n no-alert`n*/"; c="/*`n eslint-disable`n*/"; block=$true }
+    @{ n='edit shortens a 9-line block eslint-disable to a bare one'; f='src/app.ts'; o="/* eslint-disable`n r1,`n r2,`n r3,`n r4,`n r5,`n r6,`n r7,`n r8 */`nfoo();"; c="/* eslint-disable */`nfoo();"; block=$true }
+    @{ n='edit shortens a 1100-character block eslint-disable to a bare one'; f='src/app.ts'; o=("/* eslint-disable " + ('rule-a, ' * 138) + "*/`nfoo();"); c="/* eslint-disable */`nfoo();"; block=$true }
+    # The balance counts only the block form of eslint-disable as an opener (not -line or -next-line), so an unrelated
+    # eslint-disable-line that goes cannot pay for an eslint-enable that goes.
+    @{ n='edit drops an eslint-enable and an unrelated eslint-disable-line'; f='src/app.ts'; o="/* eslint-disable no-alert */`nfoo();`n/* eslint-enable no-alert */`nf(); // eslint-disable-line no-console"; c="/* eslint-disable no-alert */`nfoo();"; block=$true }
+    @{ n='edit drops only the eslint-enable and keeps the eslint-disable-line'; f='src/app.ts'; o="/* eslint-disable no-alert */`nfoo();`n/* eslint-enable no-alert */`nf(); // eslint-disable-line no-console"; c="/* eslint-disable no-alert */`nfoo();`nf(); // eslint-disable-line no-console"; block=$true }
+    @{ n='edit drops an unrelated eslint-disable-line and keeps the block pair (allow)'; f='src/app.ts'; o="/* eslint-disable no-alert */`nfoo();`n/* eslint-enable no-alert */`nf(); // eslint-disable-line no-console"; c="/* eslint-disable no-alert */`nfoo();`n/* eslint-enable no-alert */`nf();"; block=$false }
 )
+
+# The edit events of the two surfaces, for the cases that carry o: Claude Code's Edit (file_path, old_string, new_string)
+# and Copilot CLI's edit (path, old_str, new_str).
+function New-ClaudeEditEvent  { param($File,$Old,$New) (@{ tool_name='Edit'; tool_input=@{ file_path=$File; old_string=$Old; new_string=$New } } | ConvertTo-Json -Compress -Depth 6) }
+function New-CopilotEditEvent { param($File,$Old,$New) (@{ toolName='edit'; toolArgs=@{ path=$File; old_str=$Old; new_str=$New } } | ConvertTo-Json -Compress -Depth 6) }
