@@ -1,6 +1,6 @@
 {
   "template": "angular",
-  "version": "0.98.4",
-  "applied": "2026-11-04",
+  "version": "0.98.5",
+  "applied": "2026-11-10",
   "_comment": "Machine-readable framework version stamp; the installer overwrites it on every install and update. The protected AGENTS.md header repeats version and applied: copy them there after an update (docs/upgrade-checklist.md, step: Copy the version into AGENTS.md), or scripts/template-checks.ps1 reports version-stamp drift."
 }

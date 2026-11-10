@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.98.5 — Unreleased
+## 0.98.5 — 2026-11-10
 
 `-Reinstall` hands the old instruction files to `/adopt` (guarded, `install.ps1`; maintainer report 2026-11-05, design chosen by the
 maintainer). A reinstall from below the ledger floor kept `AGENTS.md` and `CLAUDE.md` as protected, or moved the old `CLAUDE.md` into

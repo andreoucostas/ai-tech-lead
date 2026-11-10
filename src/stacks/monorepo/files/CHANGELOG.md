@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.98.5 — Unreleased
+## 0.98.5 — 2026-11-10
 
 - **`-Reinstall` now replaces an old `AGENTS.md` and `CLAUDE.md` too, and hands your project text to `/adopt`.** A reinstall kept
   them as the old release wrote them: skills this release no longer ships listed under Common Tasks, the old Boy Scout and SOLID
