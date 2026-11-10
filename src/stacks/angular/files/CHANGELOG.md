@@ -23,6 +23,11 @@
   anyone to act on it. The paste-into-your-PR checklist now opens with one question: has it been revoked or rotated, and has
   whoever handles security incidents for your team been told? It names no path or value. Nothing is written to
   `SECURITY_FINDINGS.md`, which is not where a credential incident belongs.
+- **`/feature` checks your debt register itself, and the register has one format.** `/feature` told the agent to start the
+  `debt-radar` reviewer before planning, but that reviewer only works inside `/review`, so the step found nothing. `/feature` now
+  reads `TECH_DEBT.md` for entries that name the files or area you are changing. The `TECH_DEBT.md` a new install creates now
+  shows one `## DEBT-NNN` example block, the format `/bootstrap` and `/debt` already write, instead of a table; an update does
+  not change your own. The pull request template no longer offers "skip reason noted in code", which the bug-fix rules forbid.
 
 ## 0.98.4 — 2026-11-04
 

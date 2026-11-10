@@ -56,6 +56,14 @@ of `.github/workflows` passing (exit 0) instead of being refused (exit 3); and t
 The tightened version was not attacked again. The first case was red on the unfixed installer ("the update put back the deleted
 .github/workflows/docs-sync-check.yml").
 
+`/feature` reads `TECH_DEBT.md` itself, and the debt register has one format (B-492, guarded text-only for the dotnet `perf`
+skill; external audit 2026-11-10). `/feature` told the agent to spawn `debt-radar` via `Task` before scoping, and `debt-radar`
+refuses a call without `/review`'s scope bundle as `CANNOT EXAMINE`; `/feature` now reads `TECH_DEBT.md` for entries naming the
+touched files or area, and `debt-radar`'s two descriptions and its opening paragraph say it runs inside `/review`. The seed
+`TECH_DEBT.md` was a table while `/bootstrap`, `/debt` and `debt-radar` use `## DEBT-NNN` blocks: it now shows one fenced example
+block, and `perf` appends a block after checking dismissals. The PR template drops "or skip reason noted in code", which the
+bug-fix scope forbids. No script parses the register (session-start substring-matches changed paths against it).
+
 ## 0.98.4 — 2026-11-04
 
 VS Code 1.144.1 Copilot-harness correction (ordinary, `docs/enforcement-surfaces.md`; B-475, measured 2026-11-03, `meta/host-certification.md`).

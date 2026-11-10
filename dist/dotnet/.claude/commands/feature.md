@@ -21,7 +21,7 @@ Before writing any code, reason through:
 - What tests will verify success?
 - **Leanness check** (the framework rules (`.github/instructions/framework-rules.instructions.md` › Leanness)): does this change an existing responsibility (edit its owner) or add one (its own service or class, even with one consumer — Leanness #1)? Are you tempted to introduce a new interface / helper / wrapper — is there a second consumer in this change-set? If not, defer the abstraction.
 
-If the feature touches a clear file or area, spawn the `debt-radar` subagent via `Task` to surface bundleable TECH_DEBT entries before you scope the work. Fold any "Yes — same blast radius" entries into the plan when the marginal effort is small.
+If the feature touches a clear file or area, read `TECH_DEBT.md` for active entries that name the touched files or that area, before you scope the work. Fold any entry with the same blast radius into the plan when the marginal effort is small.
 
 State the plan: files to create/modify, order of operations, test strategy, debt being bundled (if any).
 

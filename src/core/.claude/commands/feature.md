@@ -21,7 +21,7 @@ Before writing any code, reason through:
 - What tests will verify success?
 <!-- @stack:leanness -->
 
-If the feature touches a clear file or area, spawn the `debt-radar` subagent via `Task` to surface bundleable TECH_DEBT entries before you scope the work. Fold any "Yes — same blast radius" entries into the plan when the marginal effort is small.
+If the feature touches a clear file or area, read `TECH_DEBT.md` for active entries that name the touched files or that area, before you scope the work. Fold any entry with the same blast radius into the plan when the marginal effort is small.
 
 State the plan: files to create/modify, order of operations, test strategy, debt being bundled (if any).
 

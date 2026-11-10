@@ -11,7 +11,7 @@
 - What would break if implemented differently?
 
 ## Boy Scout
-- [ ] Touched files were boy-scouted (or skip reason noted in code)
+- [ ] Touched files were boy-scouted
 - [ ] No new tech debt introduced (or DEBT-NNN added to TECH_DEBT.md)
 - [ ] Resolved DEBT items removed from TECH_DEBT.md
 

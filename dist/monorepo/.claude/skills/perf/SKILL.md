@@ -151,10 +151,22 @@ Close with: _"Results are non-deterministic grep-based heuristics. Confirm Criti
 
 ## Step 5 — TECH_DEBT.md integration
 
-For each 🔴 Critical and any 🟡 Moderate flagged as systematic, offer to append a row to TECH_DEBT.md:
+For each 🔴 Critical and any 🟡 Moderate flagged as systematic, offer to append a block to TECH_DEBT.md, after the last existing `## DEBT-NNN` block and before `## Dismissed proposals`, numbered with the next unused `DEBT-NNN`:
 
-```
-| PERFxx | Performance | Critical | <files> | <issue> | <fix> | M |
+```markdown
+## DEBT-NNN: <Short title>
+
+- **Key**: performance::<claim-slug>
+- **Category**: Performance
+- **Severity**: Critical | High | Medium | Low
+- **Effort**: S | M | L | XL
+- **Files**: `<path>:<line>`, `<path>`
+
+### Issue
+<the anti-pattern and why it matters>
+
+### Recommended fix
+<the change and any risks>
 ```
 
-Only append — never overwrite existing rows.
+Check `## Dismissed proposals` for the same key first and skip a match. Only append — never overwrite existing blocks.

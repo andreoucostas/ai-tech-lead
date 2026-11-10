@@ -28,8 +28,8 @@
         },
         {
           "path": ".claude/agents/debt-radar.md#frontmatter",
-          "chars": 309,
-          "tok": 77
+          "chars": 289,
+          "tok": 72
         },
         {
           "path": ".claude/agents/security-auditor.md#frontmatter",
@@ -323,8 +323,8 @@
         },
         {
           "path": ".claude/agents/debt-radar.md#body",
-          "chars": 2435,
-          "tok": 609
+          "chars": 2428,
+          "tok": 607
         },
         {
           "path": ".claude/agents/security-auditor.md#body",
@@ -368,8 +368,8 @@
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 4036,
-          "tok": 1009
+          "chars": 4031,
+          "tok": 1008
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -438,8 +438,8 @@
         },
         {
           "path": ".claude/skills/perf/SKILL.md#body",
-          "chars": 6405,
-          "tok": 1601
+          "chars": 6849,
+          "tok": 1712
         },
         {
           "path": ".claude/skills/remember-for-team/SKILL.md#body",
@@ -467,8 +467,8 @@
         },
         {
           "path": ".claude/agents/debt-radar.md#frontmatter",
-          "chars": 309,
-          "tok": 77
+          "chars": 289,
+          "tok": 72
         },
         {
           "path": ".claude/agents/security-auditor.md#frontmatter",
@@ -747,8 +747,8 @@
         },
         {
           "path": ".claude/agents/debt-radar.md#body",
-          "chars": 2435,
-          "tok": 609
+          "chars": 2428,
+          "tok": 607
         },
         {
           "path": ".claude/agents/security-auditor.md#body",
@@ -792,8 +792,8 @@
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 3492,
-          "tok": 873
+          "chars": 3487,
+          "tok": 872
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -876,8 +876,8 @@
         },
         {
           "path": ".claude/agents/debt-radar.md#frontmatter",
-          "chars": 309,
-          "tok": 77
+          "chars": 289,
+          "tok": 72
         },
         {
           "path": ".claude/agents/security-auditor.md#frontmatter",
@@ -1171,8 +1171,8 @@
         },
         {
           "path": ".claude/agents/debt-radar.md#body",
-          "chars": 2456,
-          "tok": 614
+          "chars": 2449,
+          "tok": 612
         },
         {
           "path": ".claude/agents/security-auditor.md#body",
@@ -1216,8 +1216,8 @@
         },
         {
           "path": ".claude/commands/feature.md#body",
-          "chars": 4633,
-          "tok": 1158
+          "chars": 4628,
+          "tok": 1157
         },
         {
           "path": ".claude/commands/fix.md#body",
@@ -1286,8 +1286,8 @@
         },
         {
           "path": ".claude/skills/perf/SKILL.md#body",
-          "chars": 6405,
-          "tok": 1601
+          "chars": 6849,
+          "tok": 1712
         },
         {
           "path": ".claude/skills/remember-for-team/SKILL.md#body",
@@ -1299,24 +1299,24 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 34595,
-      "static.claude.tok": 8649,
+      "static.claude.chars": 34575,
+      "static.claude.tok": 8644,
       "static.copilot.chars": 22976,
       "static.copilot.tok": 5744,
       "prompt.max.chars": 3993,
       "prompt.max.tok": 998
     },
     "angular": {
-      "static.claude.chars": 32366,
-      "static.claude.tok": 8092,
+      "static.claude.chars": 32346,
+      "static.claude.tok": 8086,
       "static.copilot.chars": 23221,
       "static.copilot.tok": 5805,
       "prompt.max.chars": 3796,
       "prompt.max.tok": 949
     },
     "monorepo": {
-      "static.claude.chars": 38240,
-      "static.claude.tok": 9560,
+      "static.claude.chars": 38220,
+      "static.claude.tok": 9555,
       "static.copilot.chars": 25763,
       "static.copilot.tok": 6441,
       "prompt.max.chars": 4408,

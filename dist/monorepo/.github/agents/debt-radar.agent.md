@@ -1,6 +1,6 @@
 ---
 name: debt-radar
-description: Maps a file path or feature area to TECH_DEBT.md entries and suggests Trojan-Horse cleanup bundles to fold into the current change. Read-only.
+description: Runs inside /review, which supplies the scope bundle it requires. Maps the changed files to TECH_DEBT.md entries and suggests Trojan-Horse cleanup bundles to fold into the change. Read-only.
 include-custom-instructions: true
 ---
 

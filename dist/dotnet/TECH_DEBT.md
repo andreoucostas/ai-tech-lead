@@ -3,13 +3,31 @@
 > Run `/bootstrap` to populate this file from your actual codebase analysis.
 > Run `/debt [area]` to find and fix items. Run `/docs-sync` to check for staleness.
 
-| ID | Category | Severity | Files Affected | Issue | Recommended Fix | Effort |
-|----|----------|----------|----------------|-------|-----------------|--------|
-| _  | _        | _        | _              | _Run `/bootstrap` to populate_ | _ | _ |
+One `## DEBT-NNN` block per item. To add an item, copy the template below after the last block with the next unused number. To remove a resolved item, delete its whole block.
+
+Template (an example, not an item):
+
+```markdown
+## DEBT-001: <Short title>
+
+- **Key**: <area>::<claim-slug>
+- **Category**: <one of the categories below>
+- **Severity**: Critical | High | Medium | Low
+- **Effort**: S (<1hr) | M (half day) | L (1-2 days) | XL (needs spike)
+- **Files**: `path/to/file:42`, `path/to/other-file`
+
+### Issue
+<1-3 sentences on what's wrong and why it matters>
+
+### Recommended fix
+<1-3 sentences on the change and any risks>
+
+---
+```
+
+_No items yet. Run `/bootstrap` to populate this register._
 
 **Categories**: Architecture, Data Access, DI/Lifetime, API Design, Async, Testing, Types/Nullability, Performance, Dependencies, Security
-**Severity**: Critical / High / Medium / Low
-**Effort**: S (< 1hr) / M (half day) / L (1-2 days) / XL (needs spike)
 
 ---
 
