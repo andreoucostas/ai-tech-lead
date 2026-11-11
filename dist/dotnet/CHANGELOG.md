@@ -6,6 +6,11 @@
 
 ## 0.98.6 — Unreleased
 
+- **A `-Reinstall` stopped by a file it could not delete now prints a restore command you can paste as is.** The command named
+  your repository's folder in double quotes, so in PowerShell a `$` in the folder's path was read as a variable: the command
+  restored nothing, or ran against a different folder. The folder is now in single quotes, and every printed restore and re-run
+  command also doubles a typographic apostrophe (`’`) in it, which PowerShell reads as a quote too.
+
 - **A brownfield install no longer moves your own documents and scripts off the framework's paths without asking.** If Git tracks
   a file of yours at a path the framework owns outside its agent folders, such as `docs/getting-started.md`, `docs/reference.md`,
   `scripts/metrics.ps1`, `tests/evals/README.md` or `.github/PULL_REQUEST_TEMPLATE.md`, the installer now stops before changing

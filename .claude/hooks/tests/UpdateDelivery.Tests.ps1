@@ -4710,10 +4710,15 @@ function Get-ReinstallFingerprint {
 
 # Runs the built dotnet installer with exactly these switches; returns exit code and combined output.
 function Invoke-ReinstallInstaller {
-    param([string]$Target, [string[]]$Switches = @())
+    # -Utf8Output: the console's code page turns a U+2019 in a printed path into ' on the way back, so read it as UTF-8.
+    param([string]$Target, [string[]]$Switches = @(), [switch]$Utf8Output)
     $installer = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
-    $out = & (Get-PsExe) -NoProfile -File $installer -Target $Target @Switches 2>&1 | Out-String
-    return [pscustomobject]@{ Exit = $LASTEXITCODE; Out = $out }
+    $previous = [Console]::OutputEncoding
+    $changed = $false
+    if ($Utf8Output) { try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false); $changed = $true } catch { } }
+    try { $out = & (Get-PsExe) -NoProfile -File $installer -Target $Target @Switches 2>&1 | Out-String; $exit = $LASTEXITCODE }
+    finally { if ($changed) { try { [Console]::OutputEncoding = $previous } catch { } } }
+    return [pscustomobject]@{ Exit = $exit; Out = $out }
 }
 
 function Remove-ReinstallTemp {
@@ -5042,15 +5047,16 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
         } finally { Remove-ReinstallTemp @($fx.Path) }
     }
 
-    It 'reinstall: an archive stop''s restore line, run as printed, restores a target whose path holds a $' {
+    # B-481: PowerShell reads U+2019 as a single quote too, so a line that doubles only the ASCII one does not parse.
+    It 'reinstall: an archive stop''s restore line, run as printed, restores a target whose path holds a $ and a typographic apostrophe' {
         $fx = New-ReinstallFixture
-        $t = $fx.Path + '$x'
+        $t = $fx.Path + [char]0x2019 + '$x'
         $handle = $null
         try {
             Move-Item -LiteralPath $fx.Path -Destination $t
             # Readable, so the commit-bytes check passes; not movable, so the archive stops at CLAUDE.md, after the sweep.
             $handle = [IO.File]::Open((Join-Path $t 'CLAUDE.md'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall') -Utf8Output
             $handle.Dispose(); $handle = $null
             $flat = $r.Out -replace '\s+', ' '
             Assert ($r.Exit -eq 3 -and $flat -match 'move failed for .CLAUDE\.md.') "calibration: the reinstall was not stopped by the held CLAUDE.md (exit $($r.Exit)): $($r.Out)"
@@ -5059,6 +5065,31 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
             $pasted = & (Get-PsExe) -NoProfile -Command $line.Value 2>&1 | Out-String
             $tracked = (& git -C $t status --porcelain --untracked-files=no 2>&1 | Out-String).Trim()
             Assert ($tracked.Length -eq 0) "the restore line, run as printed ($($line.Value)), did not restore the tracked files: $pasted / $tracked"
+        } finally {
+            if ($handle) { $handle.Dispose() }
+            Remove-ReinstallTemp @($fx.Path, $t)
+        }
+    }
+
+    # B-481: the sweep's stop line double-quoted the target, so pasted into PowerShell the $x expanded and nothing was restored.
+    It 'B-481 reinstall: a sweep stop''s restore line, run as printed, restores a target whose path holds a $ and a typographic apostrophe' {
+        $fx = New-ReinstallFixture
+        $t = $fx.Path + [char]0x2019 + '$x'
+        $handle = $null
+        try {
+            Move-Item -LiteralPath $fx.Path -Destination $t
+            # Readable, so the commit-bytes check passes; not deletable, so the sweep stops there.
+            $handle = [IO.File]::Open((Join-Path $t 'scripts/template-checks.ps1'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall') -Utf8Output
+            $handle.Dispose(); $handle = $null
+            $flat = $r.Out -replace '\s+', ' '
+            Assert ($r.Exit -eq 3 -and $flat -match "Could not delete 'scripts/template-checks\.ps1'") "calibration: the reinstall was not stopped in its sweep by the held file (exit $($r.Exit)): $($r.Out)"
+            Assert ((& git -C $t status --porcelain --untracked-files=no 2>&1 | Out-String).Trim().Length -gt 0) "calibration: the sweep deleted nothing before the held file: $($r.Out)"
+            $line = [regex]::Match($flat, 'git -C (.+?) checkout [0-9a-f]{40} -- \.')
+            Assert $line.Success "the sweep's stop prints no restore line: $($r.Out)"
+            $pasted = & (Get-PsExe) -NoProfile -Command $line.Value 2>&1 | Out-String
+            $tracked = (& git -C $t status --porcelain --untracked-files=no 2>&1 | Out-String).Trim()
+            Assert ($tracked.Length -eq 0) "the sweep's restore line, run as printed ($($line.Value)), did not restore the tracked files: $pasted / $tracked"
         } finally {
             if ($handle) { $handle.Dispose() }
             Remove-ReinstallTemp @($fx.Path, $t)

@@ -13,6 +13,16 @@
 
 ## 0.98.6 — Unreleased
 
+Every printed restore line of `-Reinstall` now single-quotes the target (guarded, `install.ps1`; B-481, found by the step-4
+attack on 0.98.5's instruction-file archive). The sweep's `Could not delete` stop printed `git -C "<target>" checkout <commit> -- .`;
+pasted into PowerShell, a `$` in the target path expanded, so the line restored nothing, or checked out over a sibling repository at
+the expanded path. It now builds the line with `Stop-IncompleteCopy`'s `$quote`, moved to script scope above the sweep, and the
+archive's restore line uses it too. The step-4 attack (fresh session) broke the first version: PowerShell reads U+2018, U+2019, U+201A
+and U+201B as single quotes, so a target holding `’` gave a line that did not parse; `$quote` now doubles each of them as well as `'`,
+which the copy-stop re-run and restore lines share. One new `UpdateDelivery` case and the archive's paste case, both red first, run
+the printed line in a target holding `’$x` and read the installer's output as UTF-8 (the console's code page turns `’` into `'`,
+B-501). The outdated-clone advice still double-quotes the clone path (B-500).
+
 A brownfield install stops for the team's own files on framework-owned paths (guarded, `install.ps1`; B-494, external audit
 2026-11-10, Option B chosen by the maintainer, WSD-123). A repository with its own `docs/getting-started.md`, `docs/reference.md`,
 `scripts/metrics.ps1` or `tests/evals/README.md` installed as brownfield, moved them to `docs/pre-adoption/`, wrote the framework's

@@ -2951,6 +2951,9 @@ foreach ($relative in $deletePlan) {
     $retiredDeleted.Add([pscustomobject]@{ Relative = $relative; Path = $retiredPath; Bytes = $retiredBytes })
 }
 foreach ($done in $retiredDeleted) { Write-Output "  retired: $($done.Relative)" }
+# A path in a printed command, single-quoted so a $ in it does not expand when pasted into PowerShell, which also reads
+# U+2018, U+2019, U+201A and U+201B as single quotes: each is doubled, or a folder named Bob's (typographic) breaks the line.
+$quote = { param([string]$Text) "'" + ($Text -replace ('[''' + [char]0x2018 + [char]0x2019 + [char]0x201A + [char]0x201B + ']'), '$0$0') + "'" }
 # Every re-run a stop below prints needs each override this run was given, or it exits 4.
 $rerunOverrides = ''
 foreach ($override in @(@('-AllowDowngrade', $AllowDowngrade), @('-AllowOutdated', $AllowOutdated), @('-AllowStackChange', $AllowStackChange))) { if ($override[1]) { $rerunOverrides += " $($override[0])" } }
@@ -2962,7 +2965,7 @@ if ($Reinstall) {
         $sweepPath = Get-ContainedTargetPath -Relative $relative
         try { Remove-Item -Force -LiteralPath $sweepPath -ErrorAction Stop }
         catch {
-            [Console]::Error.WriteLine("ERROR: Could not delete '$relative': $($_.Exception.Message). Every file this reinstall deleted is in commit ${reinstallCommit}: restore them with  git -C `"$tgt`" checkout $reinstallCommit -- .  then re-run with -Reinstall$rerunOverrides.")
+            [Console]::Error.WriteLine("ERROR: Could not delete '$relative': $($_.Exception.Message). Every file this reinstall deleted is in commit ${reinstallCommit}: restore them with  git -C $(& $quote $tgt) checkout $reinstallCommit -- .  then re-run with -Reinstall$rerunOverrides.")
             exit 3
         }
         Write-Output "  removed: $relative"
@@ -2985,7 +2988,7 @@ if ($Reinstall) {
 }
 # A reinstall archives after its sweep, so a stop below is recovered from the commit, as the sweep's is.
 # Single-quoted, as Stop-IncompleteCopy's line, so a '$' in the path is not expanded when the line is pasted into PowerShell.
-$archiveRecovery = if ($Reinstall) { "Every file this reinstall deleted or moved is in commit ${reinstallCommit}: restore them with  git -C '$($tgt.Replace("'", "''"))' checkout $reinstallCommit -- .  , delete the files this run created that git status lists as untracked, then re-run with -Reinstall$rerunOverrides." } else { $null }
+$archiveRecovery = if ($Reinstall) { "Every file this reinstall deleted or moved is in commit ${reinstallCommit}: restore them with  git -C $(& $quote $tgt) checkout $reinstallCommit -- .  , delete the files this run created that git status lists as untracked, then re-run with -Reinstall$rerunOverrides." } else { $null }
 $archiveEvidenceByDest = @{}
 foreach ($ev in $archiveEvidence) { $archiveEvidenceByDest[[string]$ev.destination] = $ev }
 if ($writesAdoptionMarker) {
@@ -3122,7 +3125,6 @@ $stampLast = [bool]$updateMode
 $applyWritten = 0
 function Stop-IncompleteCopy {
     param([string]$Relative, [string]$Reason, [int]$Written)
-    $quote = { param([string]$Text) "'" + $Text.Replace("'", "''") + "'" }
     # A greenfield install ran no Git preflight, so its re-run line adds -AllowDirtyTree only when it was given: what Git shows may be the team's own.
     $greenfield = -not $updateMode -and -not $adoptMode
     $flags = $(if ($greenfield -and -not $AllowDirtyTree) { '' } else { ' -AllowDirtyTree' }) + $rerunOverrides
