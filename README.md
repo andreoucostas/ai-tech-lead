@@ -61,7 +61,10 @@ tree must be clean: commit or stash first, or the installer stops.
    - `/adopt` if it already had some (a `CLAUDE.md`, `.cursorrules`, Copilot instructions and so on).
      The installer says which: it moves any file it would have overwritten to `docs/pre-adoption/`
      and writes `.claude/adoption-pending.json`. `/adopt` merges that earlier material in; nothing is
-     deleted.
+     deleted. If Git tracks a file of yours at a path the framework owns outside its agent folders
+     (a `docs/reference.md`, a metrics script, a `.github/PULL_REQUEST_TEMPLATE.md` and so on), it
+     stops before changing anything and names each one: every update replaces those paths. Rename
+     them and re-run, or pass `-AllowMoveAside` to have them moved to `docs/pre-adoption/`.
 
    The command analyses the code and writes `AGENTS.md` (your conventions and architecture) and
    `TECH_DEBT.md`.

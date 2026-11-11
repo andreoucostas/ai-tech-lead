@@ -88,10 +88,12 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
 }
 
 function Invoke-Installer {
-    param([string]$Dist, [string]$Target, [switch]$AllowDirtyTree)
+    param([string]$Dist, [string]$Target, [switch]$AllowDirtyTree, [switch]$AllowMoveAside)
     $installer = Join-Path $repoRoot "dist/$Dist/scripts/install.ps1"
-    if ($AllowDirtyTree) { & (Get-PsExe) -NoProfile -File $installer -Target $Target -AllowDirtyTree 2>&1 | Out-String }
-    else { & (Get-PsExe) -NoProfile -File $installer -Target $Target 2>&1 | Out-String }
+    $switches = @()
+    if ($AllowDirtyTree) { $switches += '-AllowDirtyTree' }
+    if ($AllowMoveAside) { $switches += '-AllowMoveAside' }
+    & (Get-PsExe) -NoProfile -File $installer -Target $Target @switches 2>&1 | Out-String
 }
 
 function Get-Hash { param([string]$P) (Get-FileHash -LiteralPath $P -Algorithm SHA256).Hash }
@@ -1569,7 +1571,8 @@ It 'B-297 a tracked collision spelt differently from the shipped name records th
         [IO.File]::WriteAllBytes((Join-Path $t '.github/pull_request_template.md'), $template)
         & git -C $t add .github/pull_request_template.md
         & git -C $t commit -qm template
-        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        # The team's tracked template sits on a framework-owned path, so the archive needs the override (B-494).
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowMoveAside
         Assert ($LASTEXITCODE -eq 0 -and $out -match 'mode: brownfield') "the brownfield install failed: $out"
         $marker = [IO.File]::ReadAllText((Join-Path $t '.claude/adoption-pending.json')) | ConvertFrom-Json
         $entry = @($marker.archiveIntegrity.entries | Where-Object { $_.destination -ceq 'docs/pre-adoption/.github/PULL_REQUEST_TEMPLATE.md' })
@@ -3453,7 +3456,7 @@ It 'B-441 write last: a brownfield install that stops at a file another program 
         $t = New-B441Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/token.txt' = "sk-FIXTURE2`n" }) -Tracked ([ordered]@{ 'scripts/wiki-check.ps1' = "# the team's own script`n" })
         Assert ((Get-B431Committable $t).Count -eq 0) 'calibration: the token file is committable before the install'
         $held = [IO.File]::Open((Join-Path $t 'scripts/wiki-check.ps1'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
-        try { $out = Invoke-Installer -Dist 'dotnet' -Target $t; $code = $LASTEXITCODE } finally { $held.Dispose() }
+        try { $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowMoveAside; $code = $LASTEXITCODE } finally { $held.Dispose() }
         Assert ($code -ne 0 -and ($out -replace '\s+', ' ') -match "Brownfield archive move failed for 'scripts/wiki-check\.ps1'") "calibration: the install did not stop at the held file (exit $code): $out"
         Assert ((Test-Path -LiteralPath (Join-Path $t '.claude/.gitignore') -PathType Leaf) -and (Test-B194BytesEqual $team ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore'))))) "the stopped install had already taken the team's .claude/.gitignore away: $out"
         Assert ((Get-B431Committable $t) -notcontains '.claude/token.txt') "after the stopped install the token file is committable: $out"

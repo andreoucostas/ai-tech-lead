@@ -75,14 +75,16 @@ function New-RichUpdateTarget {
 }
 
 function Invoke-CurrentInstaller {
-    param([string]$Target, [string]$SourceRoot, [switch]$DryRun, [switch]$AllowDowngrade, [switch]$AllowDirtyTree)
+    param([string]$Target, [string]$SourceRoot, [switch]$DryRun, [switch]$AllowDowngrade, [switch]$AllowDirtyTree, [switch]$AllowMoveAside)
     $root = if ($SourceRoot) { $SourceRoot } else { Join-Path $repoRoot 'dist/dotnet' }
     $installer = Join-Path $root 'scripts/install.ps1'
     $arguments = @('-NoProfile','-File',$installer,'-Target',$Target)
     if ($DryRun) { $arguments += '-WhatIf' }
     if ($AllowDowngrade) { $arguments += '-AllowDowngrade' }
     if ($AllowDirtyTree) { $arguments += '-AllowDirtyTree' }
-    $output = & (Get-PsExe) @arguments 2>&1 | Out-String
+    if ($AllowMoveAside) { $arguments += '-AllowMoveAside' }
+    # Windows PowerShell wraps each native stderr line in an error record that Out-String reflows; keep the line's own text.
+    $output = (@(& (Get-PsExe) @arguments 2>&1 | ForEach-Object { if ($_ -is [Management.Automation.ErrorRecord]) { $_.Exception.Message } else { [string]$_ } }) -join "`n") + "`n"
     return [pscustomobject]@{ Exit = [int]$LASTEXITCODE; Output = $output }
 }
 
@@ -284,6 +286,87 @@ It 'historical PowerShell hook digest is pinned to the bytes WriteAllText emitte
         $text = [IO.File]::ReadAllText((Join-Path $repoRoot $relative))
         Assert ($text.Contains($digest)) "$relative does not recognize the exact historical PowerShell hook body"
     }
+}
+
+# B-494: a team's own tracked file on a framework-owned path outside the agent folders would be moved aside and, once
+# restored, replaced by every update, so a brownfield install stops before any change and names it and the override.
+It 'brownfield stops before any change for tracked team files on framework-owned paths' {
+    $target = Join-Path ([IO.Path]::GetTempPath()) ('brownfield-team-paths-' + [guid]::NewGuid().ToString('N'))
+    $agentOnly = Join-Path ([IO.Path]::GetTempPath()) ('brownfield-agent-only-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $teamFiles = @('docs/getting-started.md', 'scripts/metrics.ps1', 'tests/evals/README.md', '.github/PULL_REQUEST_TEMPLATE.md')
+        # Not named: a protected path, a tracked agent-tooling path, and a framework-owned path Git ignores.
+        $otherFiles = @('LEARNINGS.md', '.claude/commands/review.md', 'docs/playbook.md')
+        New-Item -ItemType Directory -Force -Path $target | Out-Null
+        foreach ($relative in $teamFiles + $otherFiles) {
+            $path = Join-Path $target $relative
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
+            [IO.File]::WriteAllText($path, "team's own $relative`n", [Text.UTF8Encoding]::new($false))
+        }
+        [IO.File]::WriteAllText((Join-Path $target '.gitignore'), "docs/playbook.md`n", [Text.UTF8Encoding]::new($false))
+        & git -C $target init -q
+        & git -C $target add -- .
+        & git -C $target -c user.name=t -c user.email=t@example.invalid -c core.autocrlf=false commit -q -m 'team files'
+        Assert ($LASTEXITCODE -eq 0) 'could not commit the team-file fixture'
+        $workTree = { (Get-FileState $target).GetEnumerator() | Where-Object { $_.Key -notmatch '^\.git/' } | Sort-Object Key | ForEach-Object { "$($_.Key)|$($_.Value)" } | Out-String }
+        $before = & $workTree
+
+        $dry = Invoke-CurrentInstaller -Target $target -DryRun
+        Assert ($dry.Exit -eq 4) "dry run exited $($dry.Exit), expected 4: $($dry.Output)"
+        Assert ($dry.Output -match 'dry run: the real run would refuse: .*-AllowMoveAside') "dry run did not report the refusal and its override: $($dry.Output)"
+
+        $result = Invoke-CurrentInstaller -Target $target
+        Assert ($result.Exit -eq 4) "brownfield install over tracked team files exited $($result.Exit), expected 4: $($result.Output)"
+        $refusal = @(($result.Output -split "`r?`n") | Where-Object { $_ -match '^ERROR: Refusing brownfield install' }) -join "`n"
+        Assert ($refusal.Length -gt 0) "no brownfield refusal line: $($result.Output)"
+        foreach ($relative in $teamFiles) { Assert ($refusal.Contains($relative)) "refusal does not name $relative`: $refusal" }
+        foreach ($relative in $otherFiles) { Assert (-not $refusal.Contains($relative)) "refusal names $relative, which is not a tracked team file on a framework-owned path: $refusal" }
+        Assert ($refusal.Contains('-AllowMoveAside') -and $refusal.Contains('Nothing was changed')) "refusal does not name its override or say nothing changed: $refusal"
+        Assert ((& $workTree) -ceq $before) 'the refused install changed the work tree'
+
+        $moved = Invoke-CurrentInstaller -Target $target -AllowMoveAside
+        Assert ($moved.Exit -eq 0) "install with -AllowMoveAside exited $($moved.Exit): $($moved.Output)"
+        Assert ($moved.Output -match 'override: -AllowMoveAside accepted') "the accepted override was not reported: $($moved.Output)"
+        foreach ($relative in $teamFiles) {
+            Assert ([IO.File]::ReadAllText((Join-Path $target "docs/pre-adoption/$relative")) -ceq "team's own $relative`n") "$relative was not moved to docs/pre-adoption/ as it was"
+        }
+
+        # Tracked agent tooling and a protected file alone still install as brownfield, unchanged.
+        New-Item -ItemType Directory -Force -Path (Join-Path $agentOnly '.claude/commands') | Out-Null
+        [IO.File]::WriteAllText((Join-Path $agentOnly '.claude/commands/review.md'), "team review`n", [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $agentOnly 'LEARNINGS.md'), "team learnings`n", [Text.UTF8Encoding]::new($false))
+        & git -C $agentOnly init -q
+        & git -C $agentOnly add -- .
+        & git -C $agentOnly -c user.name=t -c user.email=t@example.invalid commit -q -m 'agent tooling'
+        $agent = Invoke-CurrentInstaller -Target $agentOnly
+        Assert ($agent.Exit -eq 0) "brownfield install over tracked agent tooling exited $($agent.Exit): $($agent.Output)"
+        Assert (Test-Path -LiteralPath (Join-Path $agentOnly 'docs/pre-adoption/.claude/commands/review.md') -PathType Leaf) 'tracked agent tooling was not moved to docs/pre-adoption/'
+    } finally { Remove-Item -Recurse -Force -LiteralPath $target, $agentOnly -ErrorAction SilentlyContinue }
+}
+
+# B-494 step-4 attack: the superproject's index lists a submodule, not the files in it, so a team file the submodule
+# tracks at a framework-owned path was moved aside and replaced with exit 0.
+It 'brownfield stops for a team file a submodule tracks on a framework-owned path' {
+    $target = Join-Path ([IO.Path]::GetTempPath()) ('brownfield-submodule-' + [guid]::NewGuid().ToString('N'))
+    $origin = Join-Path ([IO.Path]::GetTempPath()) ('brownfield-submodule-origin-' + [guid]::NewGuid().ToString('N'))
+    try {
+        New-Item -ItemType Directory -Force -Path $target, $origin | Out-Null
+        [IO.File]::WriteAllText((Join-Path $origin 'reference.md'), "team reference`n", [Text.UTF8Encoding]::new($false))
+        & git -C $origin init -q
+        & git -C $origin add -- .
+        & git -C $origin -c user.name=t -c user.email=t@example.invalid commit -q -m 'team docs'
+        [IO.File]::WriteAllText((Join-Path $target 'Program.cs'), "class P {}`n", [Text.UTF8Encoding]::new($false))
+        & git -C $target init -q
+        & git -C $target -c protocol.file.allow=always submodule --quiet add -- $origin docs 2>$null
+        & git -C $target add -- .
+        & git -C $target -c user.name=t -c user.email=t@example.invalid commit -q -m 'docs as a submodule'
+        Assert ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath (Join-Path $target 'docs/reference.md') -PathType Leaf)) 'could not build the submodule fixture'
+        $before = (Get-FileHash -LiteralPath (Join-Path $target 'docs/reference.md') -Algorithm SHA256).Hash
+        $result = Invoke-CurrentInstaller -Target $target
+        Assert ($result.Exit -eq 4) "brownfield install over a submodule's team file exited $($result.Exit), expected 4: $($result.Output)"
+        Assert ($result.Output -match 'ERROR: Refusing brownfield install: .*docs/reference\.md.*-AllowMoveAside') "refusal does not name docs/reference.md and its override: $($result.Output)"
+        Assert ((Get-FileHash -LiteralPath (Join-Path $target 'docs/reference.md') -Algorithm SHA256).Hash -ceq $before) 'the refused install changed the submodule file'
+    } finally { Remove-Item -Recurse -Force -LiteralPath $target, $origin -ErrorAction SilentlyContinue }
 }
 
 It 'brownfield consumer install.sh text is not misdiagnosed as a framework migration' {

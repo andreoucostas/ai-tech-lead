@@ -4728,3 +4728,15 @@ file and `stale` in a depth-1 clone (the review's runs, not repeated), and e003c
 **Decision (user, 2026-11-05: "Yes" to the narrowed design).** `add-warehouse-load` step 11 is the one unprompted writer: rows for objects the change created, cells it made
 untrue, a dated Coverage line, only in a map that carries a full-pass line, never the stamp, Findings or Querying. The scoped pass keeps offering and keeps `CONFLICTING`.
 Rejected: doing nothing (a load added through the recipe stayed unmapped). **Reopen** the read-side half on B-466's result or a field report of a map that misled by silence.
+
+## WSD-123: a brownfield install stops for a team's tracked file on a framework-owned path (2026-11-11)
+
+**Context.** B-494 (external audit 2026-11-10, re-run 2026-11-11): a repository with no AI tooling but its own `docs/getting-started.md`,
+`docs/reference.md`, `scripts/metrics.ps1` and `tests/evals/README.md` installed as brownfield, those files went to `docs/pre-adoption/`,
+the framework's took their paths, exit 0; the paths are `framework-owned/overwritten`, so every update replaces a restored copy.
+**Decision (maintainer, chat 2026-11-11: Option B).** Before any change the installer stops (exit 4) when Git tracks, a submodule's files
+included, the colliding file on a `framework-owned/overwritten` path outside the agent folders, naming each path and `-AllowMoveAside`,
+which keeps the move. Protected paths, agent tooling and untracked, ignored or non-Git files keep the old move. Rejected: Option A,
+namespaced framework folders (largest change: a retirement for every moved path and every command's references; a candidate release);
+Option C, keeping the move with corrected wording and restore lines (the restored file still loses to the next update).
+**Reopen** on a field report of an untracked team file lost this way, or when Option A is planned.

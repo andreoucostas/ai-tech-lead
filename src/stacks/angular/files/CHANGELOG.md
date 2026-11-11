@@ -4,6 +4,16 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.98.6 — Unreleased
+
+- **A brownfield install no longer moves your own documents and scripts off the framework's paths without asking.** If Git tracks
+  a file of yours at a path the framework owns outside its agent folders, such as `docs/getting-started.md`, `docs/reference.md`,
+  `scripts/metrics.ps1`, `tests/evals/README.md` or `.github/PULL_REQUEST_TEMPLATE.md`, the installer now stops before changing
+  anything (exit 4) and names each one. Every update replaces those paths, so a copy moved to `docs/pre-adoption/` and put back
+  would not last. Rename or move them, commit that, and re-run; or re-run with `-AllowMoveAside` to have them moved to
+  `docs/pre-adoption/` as before. Your AI tooling (`CLAUDE.md`, `.claude/`, Copilot instructions) is still moved for `/adopt` as
+  it was.
+
 ## 0.98.5 — 2026-11-10
 
 - **`-Reinstall` now replaces an old `AGENTS.md` and `CLAUDE.md` too, and hands your project text to `/adopt`.** A reinstall kept

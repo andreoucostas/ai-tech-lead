@@ -38,7 +38,9 @@ Start Claude Code, or an interactive Copilot CLI session, at the repository root
 - `/bootstrap` if the repository had no AI tooling before, or
 - `/adopt` if it had some (a `CLAUDE.md`, `.cursorrules`, Copilot instructions). The installer moved
   any file it would have overwritten to `docs/pre-adoption/`; `/adopt` merges that material in and
-  then runs `/bootstrap`. Nothing is deleted.
+  then runs `/bootstrap`. Nothing is deleted. A file of yours that Git tracks at a path the framework
+  owns outside its agent folders (`docs/reference.md`, `scripts/metrics.ps1`) stops the install
+  instead, since every update replaces that path: rename it, or re-run with `-AllowMoveAside`.
 
 Until one of them has run, every new session reminds you which one. Only you can start it: the agent
 will tell you to type it rather than run it.

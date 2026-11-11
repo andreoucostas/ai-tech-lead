@@ -1,5 +1,5 @@
 ﻿# Install the AI Tech Lead Framework into a target repository.
-# Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] [-AllowOutdated] [-AllowStackChange] [-Reinstall] C:\path\to\target-repo
+# Usage: pwsh -NoProfile -File scripts/install.ps1 [-AllowDirtyTree] [-WhatIf] [-AllowDowngrade] [-AllowOutdated] [-AllowStackChange] [-Reinstall] [-AllowMoveAside] C:\path\to\target-repo
 #
 # Before it changes anything, it asks the remote of the framework clone it runs from whether that
 # clone is out of date: a newer vX.Y.Z release tag than this copy's version, or an upstream branch this
@@ -18,7 +18,10 @@
 #                ADRs, ...) or a shipped path holding other bytes (tracked, untracked, ignored or
 #                outside Git): the originals this copy would overwrite are moved to docs/pre-adoption/
 #                first, and .claude/adoption-pending.json is written so every later session (and CI)
-#                steers to /adopt. Next step is /adopt.
+#                steers to /adopt. Next step is /adopt. It stops before any change (exit 4) when Git
+#                tracks such a file on a framework-owned path outside the agent folders (.claude/,
+#                .agents/, .github/agents|hooks|instructions|chatmodes|skills|prompts/): every update
+#                replaces that path, so the team's file could not come back. -AllowMoveAside moves it.
 #   update     — target already carries .claude/framework-version.json. Consumer-owned protected
 #                paths are restored; framework-owned machinery is overwritten; mixed-ownership
 #                .claude/settings.json is backed up, refreshed, and adapted to the host, and the
@@ -40,7 +43,8 @@ param(
     [switch]$AllowDowngrade,
     [switch]$AllowOutdated,
     [switch]$AllowStackChange,
-    [switch]$Reinstall
+    [switch]$Reinstall,
+    [switch]$AllowMoveAside
 )
 $ErrorActionPreference = 'Stop'
 $followUpPowerShell = if ($PSVersionTable.PSVersion.Major -ge 7) {
@@ -1847,6 +1851,35 @@ if ($adoptMode -or $updateMode) {
                         Stop-GitPreflight -Line $refusal
                     }
                     Write-Output '  override: -AllowDirtyTree accepted for this dirty Git target.'
+                }
+                if ($adoptMode) {
+                    # A team file Git tracks on a framework-owned path outside the agent folders is the team's own document or
+                    # script, not AI tooling: moved aside, its path then belongs to the framework, and every update replaces a
+                    # copy put back there. Stop before any change and name each one, unless the team chose the move.
+                    [string[]]$teamOnOwned = @($detected | Where-Object {
+                        $incoming.ByPath.ContainsKey($_) -and $incoming.ByPath[$_] -ceq 'framework-owned/overwritten' -and
+                        $_ -notmatch '^(?:\.claude|\.agents|\.github/(?:agents|hooks|instructions|chatmodes|skills|prompts))/' })
+                    if ($teamOnOwned.Count -gt 0) {
+                        # A submodule's files are listed only with --recurse-submodules. A record names the colliding file when
+                        # both spell to the same disk entry: any case in a case-insensitive folder, the exact name where a
+                        # case-sensitive folder holds case variants. A spelling that cannot be read counts as that file.
+                        $trackedRecords = Invoke-GitRecords -GitPath $gitPath -Arguments (@('-C', $tgt, 'ls-files', '-z', '--recurse-submodules', '--') + @($teamOnOwned | ForEach-Object { ":(icase,literal)$_" }))
+                        if ($null -eq $trackedRecords) {
+                            Stop-GitPreflight -Line "CANT-VERIFY: Git could not say whether it tracks your own files at framework-owned paths ($($teamOnOwned -join ', ')). Repair Git, then re-run. Nothing was changed."
+                        }
+                        [string[]]$teamTracked = @($teamOnOwned | Where-Object {
+                            $owned = $_
+                            $ownedDisk = Get-DiskSpelling -Relative $owned
+                            @(@($trackedRecords) | Where-Object {
+                                $_.Equals($owned, [StringComparison]::OrdinalIgnoreCase) -and
+                                ($null -eq $ownedDisk -or $null -eq ($recordDisk = Get-DiskSpelling -Relative $_) -or $recordDisk -ceq $ownedDisk) }).Count -gt 0 })
+                        if ($teamTracked.Count -gt 0 -and -not $AllowMoveAside) {
+                            Stop-GitPreflight -Line "ERROR: Refusing brownfield install: Git tracks $($teamTracked.Count) file(s) of yours at paths this framework owns: $($teamTracked -join ', '). The install would move them to docs/pre-adoption/ and write the framework's files in their place, and every later update replaces those paths again, so a copy you put back there would not last. Rename or move them (and update what refers to them), commit that, then re-run; or re-run with -AllowMoveAside to have them moved to docs/pre-adoption/ as they are. Nothing was changed."
+                        }
+                        if ($teamTracked.Count -gt 0) {
+                            Write-Output "  override: -AllowMoveAside accepted: moving $($teamTracked -join ', ') to docs/pre-adoption/; the framework owns those paths from now on."
+                        }
+                    }
                 }
             } elseif ($repositoryEvidence) {
                 Stop-UnverifiableGitPreflight

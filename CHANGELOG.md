@@ -11,6 +11,22 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.98.6 — Unreleased
+
+A brownfield install stops for the team's own files on framework-owned paths (guarded, `install.ps1`; B-494, external audit
+2026-11-10, Option B chosen by the maintainer, WSD-123). A repository with its own `docs/getting-started.md`, `docs/reference.md`,
+`scripts/metrics.ps1` or `tests/evals/README.md` installed as brownfield, moved them to `docs/pre-adoption/`, wrote the framework's
+files there and exited 0; those paths are `framework-owned/overwritten`, so a copy put back is replaced by every update. Now, in the
+Git preflight (so `-WhatIf` reports it too), a collision on a `framework-owned/overwritten` path outside `.claude/`, `.agents/` and
+`.github/agents|hooks|instructions|chatmodes|skills|prompts/` that Git tracks, a submodule's files included, stops with exit 4 before
+any change, naming each path and `-AllowMoveAside`, which keeps the old move and says so; the root `install.ps1` forwards it. A tracked
+file counts only when it is the colliding disk entry, so a case variant in a case-sensitive folder does not stop the install. Untracked,
+ignored and non-Git files keep the move. Two `InstallerConvergence` cases, red first; two `UpdateDelivery` cases that exercise the
+archive with a tracked framework-path file now pass `-AllowMoveAside`. The step-4 attack (fresh session) held on case, subfolder,
+staged, skip-worktree, dispatcher and both hosts, and broke one: a file a submodule tracks passed with exit 0 (`--recurse-submodules`
+now, with a case); the suites then showed a case variant in a case-sensitive folder stopping the install (an existing
+`UpdateDelivery` case went red), fixed above.
+
 ## 0.98.5 — 2026-11-10
 
 `-Reinstall` hands the old instruction files to `/adopt` (guarded, `install.ps1`; maintainer report 2026-11-05, design chosen by the
