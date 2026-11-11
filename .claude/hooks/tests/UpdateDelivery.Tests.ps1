@@ -4330,6 +4330,66 @@ It 'a CRLF SKILL.md has its exemplar re-appended without a carriage return' {
     }
 }
 
+# B-480: the copy loop wrote the release's SKILL.md and a later step appended the team's exemplar line, so an update that
+# stopped between the two (a later file held, or the SKILL.md itself unwritable by then) left a SKILL.md without the line,
+# and the re-run had none to carry.
+It 'B-480 an update stopped after it replaced a SKILL.md keeps the team''s exemplar line through the re-run' {
+    $exemplar = 'For a concrete current instance in this repo, see `warehouse/LoadSales.sql`.'
+    foreach ($leg in 'later-file-held', 'skill-held-after-copy') {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ("b480-$leg-" + [guid]::NewGuid())
+        New-Item -ItemType Directory -Force -Path $t | Out-Null
+        $handle = $null; $watcher = $null; $state = [hashtable]::Synchronized(@{ Handle = $null })
+        try {
+            $first = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "${leg}: calibration: the install failed (exit $LASTEXITCODE): $first"
+            $skill = Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md'
+            # An older body, so the release's copy changes the file's length, which the watcher below reads without opening it.
+            [IO.File]::WriteAllText($skill, "---`nname: add-warehouse-load`n---`n# Old framework body`n`n$exemplar`n", [Text.UTF8Encoding]::new($false))
+            if ($leg -eq 'later-file-held') {
+                # scripts/ follows .claude/skills/ in the manifest, so the copy loop has replaced SKILL.md when it stops here.
+                $handle = [IO.File]::Open((Join-Path $t 'scripts/template-checks.ps1'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+            } else {
+                # The attack: SKILL.md becomes unwritable once the copy has written it, so only a later write to it can fail.
+                $watcher = [PowerShell]::Create()
+                [void]$watcher.AddScript({
+                        param($Path, $OldLength, $State)
+                        $clock = [Diagnostics.Stopwatch]::StartNew()
+                        while ($clock.Elapsed.TotalSeconds -lt 300) {
+                            $info = [IO.FileInfo]::new($Path)
+                            if ($info.Exists -and $info.Length -ne $OldLength) {
+                                try { $State.Handle = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read); return } catch { }
+                            }
+                            [Threading.Thread]::Sleep(1)
+                        }
+                    }).AddArgument($skill).AddArgument(([IO.FileInfo]::new($skill)).Length).AddArgument($state)
+                $async = $watcher.BeginInvoke()
+            }
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $exit = $LASTEXITCODE
+            if ($leg -eq 'later-file-held') {
+                Assert ($exit -eq 3 -and ($out -replace '\s+', ' ') -match "Could not copy 'scripts/template-checks\.ps1'") "${leg}: calibration: the update did not stop at the held file (exit $exit): $out"
+                $handle.Dispose(); $handle = $null
+            } else {
+                Assert ($null -ne $state.Handle) "${leg}: calibration: the watcher never held SKILL.md after the copy wrote it: $out"
+                Assert ($exit -eq 0 -or ($exit -eq 3 -and ($out -replace '\s+', ' ') -match "Could not copy '\.claude/skills/add-warehouse-load/SKILL\.md'")) "${leg}: the update neither finished nor stopped naming SKILL.md (exit $exit): $out"
+                $state.Handle.Dispose(); $state.Handle = $null
+            }
+            if ($exit -ne 0) {
+                $rerun = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+                Assert ($LASTEXITCODE -eq 0) "${leg}: the printed re-run did not finish the update (exit $LASTEXITCODE): $rerun"
+            }
+            $text = [IO.File]::ReadAllText($skill, [Text.UTF8Encoding]::new($false))
+            Assert ($text -notmatch 'Old framework body') "${leg}: SKILL.md does not hold the release's body: $text"
+            Assert ($text.EndsWith("`n`n$exemplar`n", [StringComparison]::Ordinal)) "${leg}: the team's exemplar line was lost (it survives only in .claude/framework-update-backup/): $text"
+        } finally {
+            if ($handle) { $handle.Dispose() }
+            if ($watcher) { $watcher.Stop(); $watcher.Dispose() }
+            if ($state.Handle) { $state.Handle.Dispose() }
+            Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 # B-464 C5: the version stamp is the 34th of 101 copies, so a file held open later in the manifest stopped the update
 # with a raw Copy-Item error after the stamp already named the new release, and the re-run was refused as a dirty tree.
 It 'C5 an update stopped by a held file keeps the old version stamp and prints the re-run command' {

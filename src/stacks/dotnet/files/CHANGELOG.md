@@ -6,6 +6,11 @@
 
 ## 0.98.6 — Unreleased
 
+- **An update that stops partway no longer loses the "For a concrete current instance in this repo" line of your skills.** An
+  update replaced a skill's `SKILL.md` with the framework's copy first and added your line back in a later step, so if it
+  stopped in between (a file held open by another program, or the `SKILL.md` itself unwritable) the printed re-run found no
+  line to keep, and it survived only in `.claude/framework-update-backup/`. The update now writes each such `SKILL.md` once,
+  with your line already in it. If an earlier update lost yours, copy it back from that backup folder.
 - **A `-Reinstall` stopped by a file it could not delete now prints a restore command you can paste as is.** The command named
   your repository's folder in double quotes, so in PowerShell a `$` in the folder's path was read as a variable: the command
   restored nothing, or ran against a different folder. The folder is now in single quotes, and every printed restore and re-run

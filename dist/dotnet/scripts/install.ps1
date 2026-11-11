@@ -3146,6 +3146,21 @@ function Stop-IncompleteCopy {
     [Console]::Error.WriteLine("ERROR: Could not copy '$Relative': $($Reason.TrimEnd('.', ' ')). $Written of $($ordinaryApplyPaths.Count) framework files were written$stampNote. Resolve the cause (usually a program holding the file open), then $again.")
     exit 3
 }
+# An active framework SKILL.md whose team copy carries an exemplar line is written once, the release's text with that
+# line appended: written bare and given the line by a later step, a stop between the two left a file without it, and
+# the re-run had no line to carry. A disabled skill's SKILL.md keeps the later step: its team copy stays in the active
+# folder, where a re-run reads the line, until the step after it deletes that folder.
+$exemplarWritten = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+function Get-ExemplarCarryBytes {
+    param([string]$Relative, [string]$Source)
+    $skill = [regex]::Match($Relative, '^\.claude/skills/([^/]+)/SKILL\.md$')
+    if (-not $skill.Success -or -not $skillExemplars.ContainsKey($skill.Groups[1].Value) -or $disabledSkillNames.Contains($skill.Groups[1].Value)) { return $null }
+    $name = $skill.Groups[1].Value
+    # No BOM and one closing LF on every host, as the later step writes.
+    $text = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($Source))
+    $text = [regex]::Replace($text, '(?m)^For a concrete current instance in this repo, see .+\r?\n?', '')
+    return , [Text.UTF8Encoding]::new($false).GetBytes($text.TrimEnd() + "`n`n" + $skillExemplars[$name] + "`n")
+}
 # Every write from here to the version stamp stops through Stop-IncompleteCopy (exit 3 and the re-run line), not a raw error.
 foreach ($entry in $disabledCarryPlan) {
     try {
@@ -3160,13 +3175,17 @@ foreach ($relative in $ordinaryApplyPaths) {
     try {
         $destination = Get-ContainedTargetPath -Relative $relative
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-        if ($relative -ceq '.claude/settings.json' -and $null -ne $settingsCarry -and $null -ne $settingsCarry.Bytes) {
-            # The release's settings with the team's own keys in them are this file's one write, staged in the ignored .state folder
-            # beside it: the system's temporary folder may be full or unusable, and a copy must not depend on it.
-            $staged = Get-ContainedTargetPath -Relative ".claude/.state/settings.json.$([guid]::NewGuid().ToString('N')).tmp"
+        [byte[]]$carryBytes = $null
+        if ($relative -ceq '.claude/settings.json' -and $null -ne $settingsCarry -and $null -ne $settingsCarry.Bytes) { $carryBytes = $settingsCarry.Bytes }
+        else { $carryBytes = Get-ExemplarCarryBytes -Relative $relative -Source (Join-Path $src $relative) }
+        if ($null -ne $carryBytes) {
+            # The release's file with the team's own keys or exemplar line in it is this file's one write, staged in the ignored
+            # .state folder beside it: the system's temporary folder may be full or unusable, and a copy must not depend on it.
+            $staged = Get-ContainedTargetPath -Relative ".claude/.state/$(Split-Path -Leaf $relative).$([guid]::NewGuid().ToString('N')).tmp"
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $staged) | Out-Null
-            [IO.File]::WriteAllBytes($staged, $settingsCarry.Bytes)
+            [IO.File]::WriteAllBytes($staged, $carryBytes)
             Copy-Item -Force -LiteralPath $staged -Destination $destination -ErrorAction Stop
+            if ($relative -cne '.claude/settings.json') { [void]$exemplarWritten.Add($relative) }
         } else {
             Copy-Item -Force -LiteralPath (Join-Path $src $relative) -Destination $destination -ErrorAction Stop
         }
@@ -3199,6 +3218,7 @@ foreach ($entry in $disabledIncomingPlan) {
 }
 foreach ($name in $skillExemplars.Keys) {
     $base = if ($disabledSkillNames.Contains($name)) { ".claude/disabled-skills/$name" } else { ".claude/skills/$name" }
+    if ($exemplarWritten.Contains("$base/SKILL.md")) { continue }
     $newFile = Join-Path $tgt "$base/SKILL.md"
     if (Test-Path -LiteralPath $newFile -PathType Leaf) {
         try {

@@ -13,6 +13,15 @@
 
 ## 0.98.6 — Unreleased
 
+An update stopped after it replaced a skill's `SKILL.md` no longer loses the team's exemplar line (guarded, `install.ps1`;
+B-480, found by the step-4 attack on B-471 (a)). The copy loop wrote the release's `SKILL.md` and a later step appended the
+"For a concrete current instance" line captured beforehand, so a stop between the two (a later file held, or the `SKILL.md`
+unwritable by then, exit 3) left the file without the line and the re-run had none to carry; only the unnamed
+`.claude/framework-update-backup/skills/` copy kept it. The copy loop now writes an active skill's `SKILL.md` once, the
+release's text with the line appended, staged in `.claude/.state/` as the settings carry is, and the later step runs only for
+a disabled skill, whose team copy stays in the active folder until the step after it. Naming the backup in the stop line was
+rejected: B-469 plans to retire that folder. One new `UpdateDelivery` case, red first, stops the update at a later held file
+and, in its second leg, holds `SKILL.md` as soon as the copy has written it, then runs the re-run.
 Every printed restore line of `-Reinstall` now single-quotes the target (guarded, `install.ps1`; B-481, found by the step-4
 attack on 0.98.5's instruction-file archive). The sweep's `Could not delete` stop printed `git -C "<target>" checkout <commit> -- .`;
 pasted into PowerShell, a `$` in the target path expanded, so the line restored nothing, or checked out over a sibling repository at
