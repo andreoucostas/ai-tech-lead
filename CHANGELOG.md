@@ -13,6 +13,16 @@
 
 ## 0.98.6 — Unreleased
 
+With an adoption pending, `-Reinstall`'s layout move names the mirror `AGENTS.md` it replaces and how to read it back (guarded, `install.ps1`; B-482, found by the step-4 attack on 0.98.5's instruction-file archive). The archive leaves both
+instruction files to a pending adoption, so the old layout move still ran, replaced a `GENERATED FILE` mirror with the moved
+`CLAUDE.md` text and, writing no backup under `-Reinstall`, said only "both originals are in commit <hash>"; the pending note
+above it even said both files were left. The move line now says the mirror's hand edits are not carried, that only that
+commit holds them, and prints `git -C '<target>' show <hash>:./<tracked name>`; the pending note says what it did not do (move
+them to `docs/pre-adoption/`). The step-4 attack (fresh session) broke the first version, a bare `git show <hash>:AGENTS.md`: it
+failed pasted outside the repository, for a target in a subfolder, and for a mirror Git tracks as `agents.md`; all three now
+run as printed on both hosts. It also found B-503 (that case variant skips the commit check). Declining the move when the mirror differs from what `/generate-copilot` would have written was
+rejected: that command was agent-written and condensed, so the installer cannot recompute it. One new `UpdateDelivery`
+case, red first, edits the mirror, runs `-Reinstall` and runs the printed command from outside the repository.
 An update stopped after it replaced a skill's `SKILL.md` no longer loses the team's exemplar line (guarded, `install.ps1`;
 B-480, found by the step-4 attack on B-471 (a)). The copy loop wrote the release's `SKILL.md` and a later step appended the
 "For a concrete current instance" line captured beforehand, so a stop between the two (a later file held, or the `SKILL.md`

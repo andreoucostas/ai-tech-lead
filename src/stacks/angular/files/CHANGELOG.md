@@ -6,6 +6,11 @@
 
 ## 0.98.6 — Unreleased
 
+- **With an adoption still pending, `-Reinstall` now tells you when it replaces a hand-edited `AGENTS.md` mirror.** If your
+  `AGENTS.md` still opened with the `GENERATED FILE` banner, `-Reinstall` moved your `CLAUDE.md` text into it and replaced it,
+  writing no backup, and said only that the commit held the originals. The `LAYOUT:` line now says that any hand edits to
+  the mirror are not carried into the new `AGENTS.md`, and prints a `git -C '<your repository>' show <commit>:./AGENTS.md` command that
+  reads them back from any folder, so you can carry the ones you keep.
 - **An update that stops partway no longer loses the "For a concrete current instance in this repo" line of your skills.** An
   update replaced a skill's `SKILL.md` with the framework's copy first and added your line back in a later step, so if it
   stopped in between (a file held open by another program, or the `SKILL.md` itself unwritable) the printed re-run found no

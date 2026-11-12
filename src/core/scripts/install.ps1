@@ -1415,6 +1415,9 @@ if ($Reinstall) {
     }
     $reinstallSweep.Sort([StringComparer]::Ordinal)
 }
+# A path in a printed command, single-quoted so a $ in it does not expand when pasted into PowerShell, which also reads
+# U+2018, U+2019, U+201A and U+201B as single quotes: each is doubled, or a folder named Bob's (typographic) breaks the line.
+$quote = { param([string]$Text) "'" + ($Text -replace ('[''' + [char]0x2018 + [char]0x2019 + [char]0x201A + [char]0x201B + ']'), '$0$0') + "'" }
 # -Reinstall installs this release's CLAUDE.md and AGENTS.md too: the old ones, in an older release's format, move to
 # docs/pre-adoption/ as a brownfield install's would, and the adoption marker hands them to /adopt. A file equal to this
 # release's stays. Neither moves while an adoption is pending (its marker is never replaced), or when one to move is
@@ -1427,7 +1430,7 @@ if ($Reinstall) {
     $instructionMoves = New-Object System.Collections.Generic.List[string]
     if (Get-Item -Force -LiteralPath (Get-ContainedTargetPath -Relative '.claude/adoption-pending.json') -ErrorAction SilentlyContinue) {
         $reinstallAdoptionPending = $true
-        $reinstallLayoutNote = 'LAYOUT: .claude/adoption-pending.json shows an adoption still pending, so -Reinstall left CLAUDE.md and AGENTS.md for it rather than replace its marker. After /adopt, bring AGENTS.md to this release''s sections by hand (docs/upgrade-checklist.md).'
+        $reinstallLayoutNote = 'LAYOUT: .claude/adoption-pending.json shows an adoption still pending, so -Reinstall did not move CLAUDE.md or AGENTS.md to docs/pre-adoption/ (that would replace its marker). After /adopt, bring AGENTS.md to this release''s sections by hand (docs/upgrade-checklist.md).'
     } else {
         $instructionLeft = $null
         foreach ($name in @('CLAUDE.md', 'AGENTS.md')) {
@@ -2418,7 +2421,14 @@ if ($updateMode -and -not ($Reinstall -and -not $reinstallAdoptionPending)) {
                 foreach ($relative in @(@($layoutMove.ClaudeBackup, 'CLAUDE.md', 'AGENTS.md') | Where-Object { $_ })) { [void](Add-PlannedWrite -Relative $relative) }
                 if ($layoutMove.BackupAgents) { [void](Add-PlannedWrite -Relative $layoutMove.AgentsBackup) }
                 $layoutMessage = 'LAYOUT: moving the project instructions from CLAUDE.md into AGENTS.md (replacing the generated mirror) and writing the CLAUDE.md import stub; both originals, including any hand edits to the mirror, go to .claude/framework-update-backup/instruction-files/. Review AGENTS.md before committing.'
-                if ($Reinstall) { $layoutMessage = "LAYOUT: moving the project instructions from CLAUDE.md into AGENTS.md (replacing the generated mirror) and writing the CLAUDE.md import stub; both originals are in commit $reinstallCommit. Review AGENTS.md before committing." }
+                # No backup under -Reinstall: a hand edit to the replaced mirror is held only by the commit, so say so and how to read it.
+                if ($Reinstall -and $agentsEntry) {
+                    # Git's tree paths are case-sensitive and relative to the repository root: name the tracked spelling,
+                    # relative to the target, with -C so the line works from any folder.
+                    $agentsTrackedName = @(@($trackedModes.Keys | Where-Object { $_ -ceq 'AGENTS.md' }) + @($trackedModes.Keys | Where-Object { $_ -ieq 'AGENTS.md' }))[0]
+                    $layoutMessage = "LAYOUT: moving the project instructions from CLAUDE.md into AGENTS.md and writing the CLAUDE.md import stub. This replaces AGENTS.md, the generated mirror, and -Reinstall writes no backup: any hand edits to it are not carried, and only commit $reinstallCommit holds them. Read them with  git -C $(& $quote $tgt) show ${reinstallCommit}:./$agentsTrackedName  and carry any you keep into the new AGENTS.md. Review AGENTS.md before committing."
+                }
+                elseif ($Reinstall) { $layoutMessage = "LAYOUT: moving the project instructions from CLAUDE.md into AGENTS.md and writing the CLAUDE.md import stub; the original CLAUDE.md is in commit $reinstallCommit. Review AGENTS.md before committing." }
             } else {
                 $layoutMessage = 'LAYOUT: AGENTS.md is not the retired generated mirror, so CLAUDE.md and AGENTS.md were left as they are. Merge CLAUDE.md into AGENTS.md by hand and make CLAUDE.md the two-import stub (docs/upgrade-checklist.md).'
             }
@@ -2951,9 +2961,6 @@ foreach ($relative in $deletePlan) {
     $retiredDeleted.Add([pscustomobject]@{ Relative = $relative; Path = $retiredPath; Bytes = $retiredBytes })
 }
 foreach ($done in $retiredDeleted) { Write-Output "  retired: $($done.Relative)" }
-# A path in a printed command, single-quoted so a $ in it does not expand when pasted into PowerShell, which also reads
-# U+2018, U+2019, U+201A and U+201B as single quotes: each is doubled, or a folder named Bob's (typographic) breaks the line.
-$quote = { param([string]$Text) "'" + ($Text -replace ('[''' + [char]0x2018 + [char]0x2019 + [char]0x201A + [char]0x201B + ']'), '$0$0') + "'" }
 # Every re-run a stop below prints needs each override this run was given, or it exits 4.
 $rerunOverrides = ''
 foreach ($override in @(@('-AllowDowngrade', $AllowDowngrade), @('-AllowOutdated', $AllowOutdated), @('-AllowStackChange', $AllowStackChange))) { if ($override[1]) { $rerunOverrides += " $($override[0])" } }

@@ -5172,6 +5172,33 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
             Assert ($r.Out -match 'LAYOUT: [^\r\n]*adoption still pending') "the output does not say why the instruction files stayed: $($r.Out)"
         } finally { Remove-ReinstallTemp @($fx.Path) }
     }
+
+    # B-482: with an adoption pending the old layout move still replaces the mirror, and -Reinstall writes no backup, so
+    # the team's edit to it is only in the commit: the LAYOUT line must say so and print a command that brings it back.
+    It 'B-482 reinstall: with an adoption pending, the layout move names the replaced mirror and how to read it back from the commit' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            [IO.File]::AppendAllText((Join-Path $t 'AGENTS.md'), "`n- TEAM MIRROR EDIT 5c1e: never call the billing API from a test.`n", [Text.UTF8Encoding]::new($false))
+            [IO.File]::WriteAllBytes((Join-Path $t '.claude/adoption-pending.json'), [Text.UTF8Encoding]::new($false).GetBytes("{`"installedAt`":`"2026-01-01`",`"detectedArtifacts`":[`".cursorrules`"],`"archivedOriginals`":[]}`n"))
+            & git -C $t add -A 2>&1 | Out-Null
+            & git -C $t commit -qm mirror-edit 2>&1 | Out-Null
+            Assert ($LASTEXITCODE -eq 0) 'calibration: could not commit the edited mirror'
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 0) "expected exit 0, got $($r.Exit): $($r.Out)"
+            Assert (-not ([IO.File]::ReadAllText((Join-Path $t 'AGENTS.md')).Contains('TEAM MIRROR EDIT 5c1e'))) "calibration: the layout move did not replace the edited mirror: $($r.Out)"
+            $flat = $r.Out -replace '\s+', ' '
+            $line = [regex]::Match($flat, 'LAYOUT: moving the project instructions[^.]*\..*?Review AGENTS\.md before committing\.')
+            Assert $line.Success "calibration: no layout-move line: $($r.Out)"
+            Assert ($line.Value -match 'hand edits') "the LAYOUT line does not say the mirror's hand edits are not carried: $($line.Value)"
+            $show = [regex]::Match($line.Value, 'git -C .+? show [0-9a-f]{40}:\./AGENTS\.md')
+            Assert $show.Success "the LAYOUT line prints no command that reads the replaced mirror back: $($line.Value)"
+            # Pasted as printed, from a folder outside the repository, as an installer is usually run.
+            Push-Location ([IO.Path]::GetTempPath())
+            try { $back = & (Get-PsExe) -NoProfile -Command $show.Value 2>&1 | Out-String } finally { Pop-Location }
+            Assert ($back.Contains('TEAM MIRROR EDIT 5c1e')) "the printed command, run as printed outside the repository, does not bring the edit back: $($show.Value) / $back"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
 }
 # B-486: an update refreshes .claude/settings.json from the release and used to leave only the release's keys, so a deny rule
 # the team had added stopped applying for every teammate. The team's keys the release does not define are carried back in.
