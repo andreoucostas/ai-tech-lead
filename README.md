@@ -14,8 +14,10 @@ To hand it to an agent, start the agent in your repository and ask for the commi
 agents commit only when you ask.
 
 **You need:** Windows; Git; PowerShell 7 (`pwsh`), or Windows PowerShell 5.1 as a fallback; and
-Claude Code 2.1.141 or newer, or GitHub Copilot (VS Code or Copilot CLI). Your repository's working
-tree must be clean: commit or stash first, or the installer stops.
+Claude Code 2.1.141 or newer, or GitHub Copilot (VS Code or Copilot CLI). Commit or stash your own
+changes first, so the working tree is clean: an update, or an install over AI tooling the repository
+already has, stops on uncommitted changes. A first install into a repository with none does not check,
+and its files then sit among your uncommitted ones in `git status`.
 
 1. **Get the framework at its newest release**, outside your repository and at a short path:
 
@@ -29,8 +31,8 @@ tree must be clean: commit or stash first, or the installer stops.
    again. A deep folder (an agent's scratch or temp directory, say) can push the clone's paths past
    Windows' 260-character limit, and `git clone` then fails with "Filename too long". Install from a release
    tag, not from `master`: `master` carries unreleased work stamped with the previous version, which
-   confuses later updates. The installer checks the clone against its remote and stops if a newer
-   release exists.
+   confuses later updates. The installer checks the clone against its remote, stops if a newer
+   release exists, and says in its `source:` line when the checkout is not at a release tag.
 
 2. **Run the installer against your repository's Git root:**
 

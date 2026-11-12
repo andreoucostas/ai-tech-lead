@@ -7,6 +7,14 @@
 
 ## 0.98.6 — Unreleased
 
+- **The installer says when your framework clone is not at a release tag, and an update's plan shows which files it changes.**
+  Run from a clone left on `master`, the installer printed "no release newer than" the last release and stamped that
+  version, though the checkout held unreleased changes. Its `source:` line now adds that the checkout is not at the release
+  tag and prints the `git checkout` command that gets the release. An update also listed every framework file as
+  `PLAN replace`, so a file you had edited, which the update writes over, looked the same as the ones it left as they were.
+  A file that already holds the release's text (line endings aside) is now listed as `PLAN unchanged`, and the
+  `PLAN replace` lines are the files whose text changes: the release changed them, or you had edited them. The update
+  itself is as before, so read the `PLAN replace` lines before you commit.
 - **With an adoption still pending, `-Reinstall` now tells you when it replaces a hand-edited `AGENTS.md` mirror.** If your
   `AGENTS.md` still opened with the `GENERATED FILE` banner, `-Reinstall` moved your `CLAUDE.md` text into it and replaced it,
   writing no backup, and said only that the commit held the originals. The `LAYOUT:` line now says that any hand edits to

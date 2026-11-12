@@ -312,7 +312,8 @@ function Get-SourceFreshness {
             $remote = $upstreamRemote.Output; $branch = $upstreamBranch.Output
         }
     }
-    $query = @('ls-remote', '--refs', $remote, 'refs/tags/v*')
+    # Without --refs an annotated tag is listed twice: its own object, and the commit it names as <tag>^{}.
+    $query = @('ls-remote', $remote, 'refs/tags/v*')
     if ($branch) { $query += $branch }
     $listing = Invoke-SourceGit -GitPath $gitPath -Directory $clone -Deadline $deadline -Arguments $query
     if (-not $listing) { return & $unchecked 'Git could not be run' }
@@ -356,7 +357,21 @@ function Get-SourceFreshness {
     if ($stale.Count -gt 0) { return [pscustomobject]@{ State = 'outdated'; Detail = ($stale -join '; '); Update = $update } }
     if ($unknown) { return & $unchecked $unknown }
     if ($fresh.Count -eq 0) { return & $unchecked "$remote has no vX.Y.Z release tag, and this checkout tracks none of its branches" }
-    return [pscustomobject]@{ State = 'current'; Detail = "checked against ${remote}: $($fresh -join ', ')"; Update = $null }
+    # A checkout that is not at its version's release tag, as a branch is between releases, holds unreleased work under
+    # the last release's version number, and "no release newer" alone read as "this is that release". The remote's tag
+    # decides, by the commit it names: a clone may lack the tag (--no-tags) or hold its own under that name. Only HEAD is
+    # looked up here. The checkout command is the one built above, printed when it names this version.
+    $detail = "checked against ${remote}: $($fresh -join ', ')"
+    $releaseTag = "refs/tags/v$incomingVersion"
+    $releaseCommit = if ($tips.ContainsKey("$releaseTag^{}")) { $tips["$releaseTag^{}"] } elseif ($tips.ContainsKey($releaseTag)) { $tips[$releaseTag] } else { $null }
+    $here = Invoke-SourceGit -GitPath $gitPath -Directory $clone -Deadline $deadline -Arguments @('rev-parse', '--verify', '--quiet', 'HEAD')
+    if (-not $releaseCommit) { $detail += "; but $remote has no v$incomingVersion release tag, so this checkout is not a release from it" }
+    elseif (-not $here -or $here.TimedOut -or $here.ExitCode -ne 0 -or -not $here.Output) { $detail += "; could not tell whether this checkout is at the v$incomingVersion release tag" }
+    elseif ($here.Output -cne $releaseCommit) {
+        $detail += "; but this checkout is not at the v$incomingVersion release tag, so it may hold unreleased changes under that version number"
+        if ($newest -ceq $incomingVersion) { $detail += " (for the release itself: $update)" }
+    }
+    return [pscustomobject]@{ State = 'current'; Detail = $detail; Update = $null }
 }
 # Template-repo meta files that must never land in (or overwrite their namesakes in) a consumer repo.
 $metaFiles = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', '.gitignore', '.gitattributes')
@@ -2851,10 +2866,36 @@ if ($reinstallLayoutNote) { Write-Output "  $reinstallLayoutNote" }
 if ($layoutMessage) { Write-Output "  $layoutMessage" }
 foreach ($message in $saveMessages) { Write-Output "  $message" }
 foreach ($message in $settingsMessages) { Write-Output "  $message" }
+# An update copies every framework file again. One whose text already equals the release's file (line endings aside, as
+# a core.autocrlf checkout's differ), or for the settings the file this update writes, is listed as unchanged, so a
+# replace line names a file whose text may change: a release's change, or a team's edit this update writes over. A file
+# that cannot be read, and one written in another form than the release's (a SKILL.md with the team's exemplar line, a
+# manifest without the team's skill files, an ignore file with kept lines below its marker), stays a replace.
+$unchangedPlan = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+if ($updateMode -and -not $Reinstall) {
+    foreach ($relative in $ordinaryApplyPaths) {
+        $exemplarSkill = [regex]::Match($relative, '^\.claude/skills/([^/]+)/SKILL\.md$')
+        if (-not $replacePlan.Contains($relative) -or ($exemplarSkill.Success -and $skillExemplars.ContainsKey($exemplarSkill.Groups[1].Value)) -or
+            ($relative -ceq 'framework-ownership.json' -and $teamSkillPaths.Count -gt 0)) { continue }
+        try {
+            $leaves = Join-Path $src $relative
+            [byte[]]$leftBytes = $null
+            if ($relative -ceq '.claude/settings.json') {
+                # The merge with the team's keys, or the Windows PowerShell 5.1 variant the last step copies over it.
+                if ($null -ne $settingsCarry -and $null -ne $settingsCarry.Bytes) { $leftBytes = $settingsCarry.Bytes }
+                elseif (-not $pwshAvailable -and $incoming.ByPath.ContainsKey('.claude/settings.windows.json')) { $leaves = Join-Path $src '.claude/settings.windows.json' }
+            }
+            if ($null -eq $leftBytes) { $leftBytes = [IO.File]::ReadAllBytes($leaves) }
+            if ((Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Get-ContainedTargetPath -Relative $relative)))) -cne (Get-LfSha256 -Bytes $leftBytes)) { continue }
+        } catch { continue }
+        [void]$replacePlan.Remove($relative); [void]$unchangedPlan.Add($relative)
+    }
+}
 Write-Output "OPERATION-PLAN schema=1 mode=$modeName"
 foreach ($category in @(
     [pscustomobject]@{ Name = 'create'; Values = $createPlan },
     [pscustomobject]@{ Name = 'replace'; Values = $replacePlan },
+    [pscustomobject]@{ Name = 'unchanged'; Values = $unchangedPlan },
     [pscustomobject]@{ Name = 'preserve'; Values = $preservePlan },
     [pscustomobject]@{ Name = 'archive'; Values = @($archivePlan | ForEach-Object { $_.Relative }) },
     [pscustomobject]@{ Name = 'delete'; Values = @($deletePlan) + @($skillDeletePlan) + @($reinstallSweep) }

@@ -5529,4 +5529,30 @@ It 'B-486 an update that carries team keys does not need the system temporary fo
     }
 }
 
+# A re-run of the installed release printed a PLAN replace line for each of its 91 files, so the three whose team edits it
+# wrote over were named nowhere.
+It 'B-495 an update lists a file that already holds the release''s text as unchanged, so its replace lines name only the files whose text it changes' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b495-' + [guid]::NewGuid())
+    try {
+        New-Item -ItemType Directory -Force -Path $t | Out-Null
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the first install failed (exit $LASTEXITCODE): $first"
+        $edited = '.claude/commands/feature.md'; $crlf = '.claude/commands/fix.md'
+        [IO.File]::AppendAllText((Join-Path $t $edited), "`nB495 team edit.`n")
+        # A core.autocrlf checkout holds the release's text with CRLF line endings: nothing of the team's.
+        $crlfPath = Join-Path $t $crlf
+        [IO.File]::WriteAllText($crlfPath, ([IO.File]::ReadAllText($crlfPath) -replace "`r?`n", "`r`n"), [Text.UTF8Encoding]::new($false))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $LASTEXITCODE): $out"
+        $replaced = @([regex]::Matches($out, '(?m)^PLAN replace (\S+)\r?$') | ForEach-Object { $_.Groups[1].Value })
+        Assert ($replaced -ccontains $edited) "the plan did not name the edited file as replaced: $out"
+        Assert ($replaced.Count -eq 1) "the plan lists $($replaced.Count) files as replaced where the update changes the text of one: $($replaced -join ', ')"
+        Assert ($out -match "(?m)^PLAN unchanged $([regex]::Escape($crlf))\r?$") "the release's text with CRLF line endings was not listed as unchanged: $out"
+        Assert ($out -match '(?m)^PLAN unchanged \.claude/settings\.json\r?$') "settings that already equal what the update writes were not listed as unchanged: $out"
+        Assert-BytesEqual ([IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/dotnet/$edited"))) ([IO.File]::ReadAllBytes((Join-Path $t $edited))) 'the update did not write the release''s file over the edited one'
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 exit (Write-TestSummary 'UpdateDelivery.Tests')

@@ -583,6 +583,13 @@ Reset-Tests
             $fw = New-B324Clone $parent
             $current = Invoke-B324Installer $fw.Clone $fw.Target -DryRun
             Assert ($current.Exit -eq 0 -and $current.Output -match ('source: checked against origin: no release newer than v' + [regex]::Escape($fw.Version) + ', not behind origin/master')) "a current clone was not reported current, exit $($current.Exit): $($current.Output)"
+            # B-495 step-4 attack: the remote's tag decides, by the commit it names. A clone without tags at the release
+            # commit, the tag annotated as the framework's are, is that release; its own tag elsewhere under that name is not.
+            foreach ($step in @(@('tag', '-f', '-a', '-m', 'release', "v$($fw.Version)"), @('push', '-q', '-f', 'origin', "v$($fw.Version)"))) { Invoke-B324Git $fw.Clone $step }
+            $tagless = Join-Path $parent 'tagless'
+            Invoke-B324Git $parent @('clone', '-q', '--no-tags', $fw.Remote, $tagless)
+            $atRelease = Invoke-B324Installer $tagless $fw.Target -DryRun
+            Assert ($atRelease.Exit -eq 0 -and $atRelease.Output -match 'source: checked against origin: no release newer' -and ($atRelease.Output -replace '\s+', '') -notmatch 'releasetag') "a clone without tags at the release commit was not reported as the release, exit $($atRelease.Exit): $($atRelease.Output)"
             # A clone that took the remote's tip by URL, which leaves its tracking ref behind, is current too.
             $other = Join-Path $parent 'other'
             Invoke-B324Git $parent @('clone', '-q', $fw.Remote, $other)
@@ -590,6 +597,15 @@ Reset-Tests
             foreach ($step in @(@('fetch', '-q', $fw.Remote, 'master'), @('merge', '-q', '--ff-only', 'FETCH_HEAD'))) { Invoke-B324Git $fw.Clone $step }
             $byUrl = Invoke-B324Installer $fw.Clone $fw.Target -DryRun
             Assert ($byUrl.Exit -eq 0 -and $byUrl.Output -match 'source: checked against origin: .*not behind origin/master') "a clone at the remote's tip with a stale tracking ref was not reported current, exit $($byUrl.Exit): $($byUrl.Output)"
+            # B-495: that clone is one commit past its release tag, as master is between releases, and stamps the
+            # last release's version; the first run was at the tag. Whitespace removed: 5.1 may wrap a long line.
+            $offTag = 'notatthev' + [regex]::Escape($fw.Version) + 'releasetag'
+            Assert (($byUrl.Output -replace '\s+', '') -match ('source:checkedagainstorigin:.*' + $offTag + '.*checkoutv' + [regex]::Escape($fw.Version))) "a checkout past its release tag was not named as off it, with the command that checks the tag out: $($byUrl.Output)"
+            Assert (($current.Output -replace '\s+', '') -notmatch $offTag) "a checkout at its release tag was reported as off it: $($current.Output)"
+            # The clone's own tag of that name, moved onto the unreleased commit, does not make it the release.
+            Invoke-B324Git $fw.Clone @('tag', '-f', "v$($fw.Version)")
+            $ownTag = Invoke-B324Installer $fw.Clone $fw.Target -DryRun
+            Assert ($ownTag.Exit -eq 0 -and ($ownTag.Output -replace '\s+', '') -match $offTag) "a clone's own tag on an unreleased commit hid that it is off the release, exit $($ownTag.Exit): $($ownTag.Output)"
             # A copy inside another repository is not that repository's clone: its tags must not refuse the
             # copy, nor its update advice move the host. One copy is committed below the host's root; the
             # other is committed where a clone keeps its dist, with the root dispatcher beside it.

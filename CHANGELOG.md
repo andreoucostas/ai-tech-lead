@@ -13,6 +13,28 @@
 
 ## 0.98.6 — Unreleased
 
+The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the
+release's text as `PLAN unchanged` (guarded, `install.ps1`; B-495, the 2026-11-10 external audit, a sub-session's runs). Run
+from `master` three commits past a tag, the `source:` line said only "no release newer than" that tag, and a re-run of the
+installed release printed 91 `PLAN replace` lines, so the three files whose team edits it wrote over were named nowhere.
+(1) In the "current" state the `source:` line now adds that the checkout is not at the `v<version>` tag and, when that is the
+remote's newest release, the fetch-and-checkout command the outdated refusal already builds; the remote's tag decides, by the
+commit it names, so `ls-remote` runs without `--refs` to read an annotated tag's commit, and only `HEAD` is looked up locally.
+A remote without that tag is said to have none. No exit code changes: the maintainer installs from `master`. (2) In a plain
+update a file whose text equals the release's (CR LF aside), or for the settings the file this update writes, moves from
+`replace` to a new `unchanged` category; it is copied as before. A file written in another form (an exemplar `SKILL.md`, a
+manifest without team skill files, an ignore file with kept lines) stays `replace`. On a version-changing update a `replace`
+line still cannot say whether the release or the team changed the file: the installer holds no copy of the previous
+release, so the brief's "differs from the last installed copy" suffix was not added. (3) The README no longer says the
+installer stops on any dirty tree: a first install runs no Git check, and the sentence now says so; a greenfield warning
+would have put a Git read into the one mode that has none, for a case that loses nothing.
+Step 4: a fresh session's first attack held the plan labels over some 20 cases on both
+hosts (no `unchanged` on a file whose content changed) and broke the first tag check, which asked the clone's own tags: a
+`--no-tags` clone at the release commit was told it may hold unreleased changes; a second fresh session then ran about 75
+cases against the remote-tag check, old installer beside new, and every state and exit code matched. Its leftovers are
+closed by decision (WSD-106): the advice cannot reach the release in a clone holding its own tag of that name.
+Two cases, red first: a new `UpdateDelivery` case (one edited file, one CRLF file, the rest unchanged) and the B-324
+current-clone case in `RootInstallerWarehouse`, extended.
 With an adoption pending, `-Reinstall`'s layout move names the mirror `AGENTS.md` it replaces and how to read it back (guarded, `install.ps1`; B-482, found by the step-4 attack on 0.98.5's instruction-file archive). The archive leaves both
 instruction files to a pending adoption, so the old layout move still ran, replaced a `GENERATED FILE` mirror with the moved
 `CLAUDE.md` text and, writing no backup under `-Reinstall`, said only "both originals are in commit <hash>"; the pending note
