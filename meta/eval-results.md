@@ -7129,3 +7129,28 @@ Scoped in `.claude/plans/2026-11-13-copilot-window-briefs.md`, Brief 1 (755deef0
   FG-MAIN (BUILTIN-REACHED cannot be undone; its R so far is reported); the futility rule above stands.
 - Not shown in any outcome: Chat-view sessions, worktree isolation, other models, other VS Code versions, the Angular and monorepo carriers, a workaround
   for B-475, any wording change, which review is better.
+
+## B-348 pre-registration addendum (VS Code half) — T redefined after B-475 read differently (2026-11-13, frozen before any further run)
+
+Amends the section pre-registered at 0ec0ed53, as that section's own rule required: the batch stopped at T-01 and the maintainer was asked.
+
+- What stopped it: T-01, in a clone under `<scratch>\trusted` with the agent host's trust-grant line for its runtime session (21:36:22.783), ran 16
+  `hook.start` events, and they were the repository's: the `sessionStart` `hook.end` #3 returned `session-start.ps1`'s "## Session preload" with "v0.98.6
+  installed", and the `postToolUse` `hook.end` #75 returned `post-write.ps1`'s "Build not verified: the NuGet packages are not restored"; there is no
+  user-level hook folder. So on VS Code 1.146.0 with runtime 1.0.108-0 a trusted session ran repository hooks (1 of 1), against B-475's 0 of 7 on 1.144.1.
+  Runs before the stop, both readers agreeing: PB-01 BUILTIN, FG-MAIN (main `task` agent_type `security-review` #81, `subagent.started` #84, selected #86
+  "Security Review Agent"), so P-B stopped there; U-01 project (PROJECT-SKILL #186→#192, PROJECT-VIEW #198→#220, PROJECT-AGENT #242→#245), FG-MAIN false,
+  R true; T-01 no mechanism.
+- Driver deviation, recorded here and in the results: in PB-01 the built-in's subagent waited 24 minutes for `powershell` approvals raised on its own
+  chat, which the frozen driver did not answer; a second client approved them under the same approve-every-call policy, and from U-01 the driver
+  (SHA-256 prefix 9c2182a7e0f3) answers every `session/inputNeededSet` tool confirmation of a non-main chat on that chat's channel.
+- The maintainer, shown T-01 and this proposal, answered: "Continue as proposed".
+- T from here: a trusted folder, the repository's hooks running, K as the session's first prompt, so `route-prompt`'s rails and overlay do not reach the
+  model (B-476) while the session preload and the rules file do; its question is how often a security-sensitive change gets a pass on a session's first
+  prompt in VS Code's harness as it now behaves. T's validity item "the trust-grant line and no `hook.start`" is replaced by: the trust-grant line for the
+  session, at least one `hook.start`, and the `sessionStart` `hook.end` holding "## Session preload". Whether prompt 1's `transformedContent` holds the
+  overlay is recorded, not required. T-01 meets these items and counts as T's first valid run; the redefinition follows from its hooks, not its class.
+- Unchanged: U; every other validity item; the mechanisms; the readings in form (for T, R reported as the adherence finding is now "a pass on a first
+  prompt without the per-prompt reminder"); the futility rule (R 0 of the first 3 valid runs stops a cell at 3); the early stop; the readers; the stop.
+  U and T alternate from U-02. U against T is reported descriptively with a two-sided Fisher exact p; no reading rests on it.
+- B-475 riding: every T run's hook count; a T session that runs no hook fails T's validity and is recorded as B-475 back.
