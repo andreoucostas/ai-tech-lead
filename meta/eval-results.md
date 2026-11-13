@@ -7159,7 +7159,9 @@ Amends the section pre-registered at 0ec0ed53, as that section's own rule requir
 
 VS Code 1.146.0 (69047191fc) in every session; runtime `copilotVersion` 1.0.108-0 in all 10 runs; `claude-sonnet-5.5` on every main model call (the
 harness's own `gpt-5.4-nano` side calls, chat naming and a frustration check, appear only as `model.*` events with no `assistant.message` or usage record
-and are not the agent's calls); folder isolation; a fresh clone of the base per run, one run at a time; the driver as frozen for PB-01 (with the deviation
+and are not the agent's calls); folder isolation; a fresh clone of the base per run (a plain `git clone`, so under this machine's Git for Windows `core.autocrlf=true` the text
+files were checked out with CRLF, as a Windows consumer's default clone has them; `git status` listed no file changed by it), one run at a time; the
+driver as frozen for PB-01 (with the deviation
 below) and at SHA-256 prefix 9c2182a7e0f3 from U-01. Evidence per run (journal, protocol stream, agent host log slice, `run.json`, status, diff) under
 `<scratch>\runs\<id>\out`. Every run was valid at its first attempt; none needed a "Proceed." turn or a repeat; reader 2 classed every run from the
 evidence and the frozen text alone and agreed with reader 1 on every class and event number; `~\.copilot\config.json` was byte-identical before and after
@@ -7249,3 +7251,30 @@ sense". B-425 stays blocked on B-416's review answer: nothing ships from this le
 - Recorded, not scored: the reviewers' models, the verdict line, whether the contract step ran, what the final message says ran, premium requests, AI
   credits, wall time.
 - Not shown: the Claude Code leg (about 3 USD, left), VS Code, other models, other prompts, whether the reviews are good.
+
+## B-425 results (Copilot leg) — 2026-11-13 (hand-written; as pre-registered at 873bb161)
+
+Copilot CLI 1.0.98 in all 6 sessions; `claude-sonnet-5.5` on every main model call; no subagent in any run; the repository's hooks ran in every run (11 to
+16 `hook.start`); every first `user.message` held "Routed intent: `review`", and the candidate's line in T 3 of 3 and in no C run; at the end of every run
+the uncommitted change was still the subject patch (the same blobs; no run changed a tracked file); `session.shutdown` in all six, none at the limit;
+`~\.copilot\config.json` byte-identical before and after each. Every run was valid at its first attempt, and reader 2 agreed with reader 1 on every grade.
+Evidence under `<scratch>\b425\runs\<arm>-<nn>\out`.
+
+| arm | DISPATCH | REVIEWERS | SAID-SO | scope bundle captured | per run (main-agent events) |
+|---|---|---|---|---|---|
+| C, as installed | 2 of 3 | 0 of 3 | 2 of 3 | 0 of 3 | C-01 `skill` review #10→#16; C-02 the same; C-03 none (four shell calls; no `review.md` read) |
+| T, the candidate | 3 of 3 | 0 of 3 | 3 of 3 | 2 of 3 | T-01 `skill` #10→#16, `view` of `review.md` #22, `review-scope.ps1` #36; T-02 the same with two captures (#46, same manifest hash); T-03 `skill` #10→#16 only |
+
+- Reading as fixed: not shown. T had DISPATCH 3 of 3 but C had 2 of 3, above the one the reading allows, and no reviewer started in either arm (0 of 6),
+  so the candidate is not shown to reach the reviewers on Copilot CLI. Nothing ships; B-425 stays blocked on B-416.
+- What the runs show beyond the grade: on Copilot CLI the plain-words prompt already reaches the `review` skill (5 of 6 loads, the routed `review` rails
+  in every prompt). The gap is inside the skill: no run carried out Step 1, which `review.md` requires ("A missing parallel capability is not a reason to
+  omit a reviewer"; "do not redo the scans yourself"), and 5 of 6 said they reviewed the 12-line diff directly because it was small (C-02: "It is two
+  files and 12 lines, so I did not dispatch auditors or capture frozen bundles"; T-02: "I did not dispatch the auditor subagents (…). I reviewed the
+  two-file diff directly, so the verdict is not backed by them"). C-03 gave its verdict without saying so; the only thing it said it had not run was
+  `security-gate`. Recorded in B-425's status, since it is the same gap seen one step later.
+- Recorded, not scored: every verdict was REQUEST CHANGES, each naming the missing authentication, the check-then-set race and the missing schema script;
+  5 of 6 said `security-gate` had not run; no contract was supplied and each said it judged against the request; T captured the scope bundle in 2 of 3
+  runs and C in none, so the candidate's line moved the agent further into the skill without reaching Step 1.
+- Spend: 6 premium requests; 95.0 AI credits; 4.6 minutes of runs.
+- Not shown: as pre-registered.
