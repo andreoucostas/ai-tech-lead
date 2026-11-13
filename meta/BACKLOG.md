@@ -54,21 +54,21 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 **Status:** Open for VS Code only. The Copilot CLI half was measured 2026-10-11 on CLI 1.0.95 (`meta/eval-results.md`, pre-registered at f00d3e1d; `meta/host-certification.md`):
 the shipped wording reached the CLI's built-in agent (B-388), and, under the prompts' advance approval, the pass ran only when the per-prompt reminder fired (B-389). VS Code is drivable since 2026-11-03: a script
 creates sessions in the window's agent host over the Agent Host Protocol, and `code chat` starts Chat-view ones (`meta/host-certification.md`). Run Part A's T-K and P-B prompts on an installed fixture
-once B-475 says which path runs hooks; design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part A.
+once B-475 says which path runs hooks; design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part A. Window brief: `.claude/plans/2026-11-13-copilot-window-briefs.md`, Brief 1.
 
 ### B-357 · Measure whether Copilot code review on github.com loads the `review` or `security-gate` skill wrapper, and what it posts
 **Filed against:** v0.93.0 (2026-10-06)
 **Priority:** P2 · **Effort:** S to M to measure · **Invariants:** #1 #7
 **Status:** Open; found while shipping the unreleased 0.94.0 `.agents/skills/` wrappers, no field report. GitHub documents that Copilot code review uses
 relevant repository skills automatically, review-named ones first; the wrapper runs `.claude/commands/review.md`, which needs `scripts/review-scope.ps1`.
-Measure one PR on an installed fixture before changing the wrapper's model invocation, which Copilot CLI's by-name route to the framework's `/review` uses.
+Measure one PR on an installed fixture before changing the wrapper's model invocation, which Copilot CLI's by-name route to the framework's `/review` uses. Scoped, decision first: `.claude/plans/2026-11-13-copilot-window-briefs.md`, Brief 3.
 
 ### B-356 · Measure a plan-step offer of a test, Conventions line or project-skill draft when a feature creates a repeatable operation
 **Filed against:** v0.93.0 (2026-10-05)
 **Priority:** P3 · **Effort:** M to measure, S to change · **Invariants:** #1 #7
 **Status:** Open; raised by the maintainer 2026-10-05, no field report (WSD-109). The candidate bullet shipped unmeasured in carrier §2 (WSD-111).
 Measure it (B-346 method): an extension-point feature, a third instance and a plain CRUD decoy whose false-offer rate decides whether it stays;
-design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B.
+design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B. Its Copilot stage: `.claude/plans/2026-11-13-copilot-window-briefs.md`, "B-356".
 
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 
@@ -100,7 +100,7 @@ Next, the maintainer's choice: a boundary the agent meets in the code it reads, 
 **Priority:** P2 · **Effort:** S to change, S to measure · **Invariants:** #5 #7
 **Status:** Blocked on B-416's review answer (maintainer, 2026-10-19, on Fable's advice). `$railsReview` (`src/core/.claude/hooks/route-prompt.ps1:88`) is an inline checklist naming neither `/review` nor a reviewer, and carrier §1 has no Review bullet, so the reviewers and B-418's contract step run only when `/review` is typed or chosen; the field's VS Code Local harness (`meta/field-reports.md:174`) may run no hooks, so only the carrier reaches it.
 Candidate: a §1 Review bullet plus `$railsReview` in `$railsSecurity`'s shape (run this repository's `review` skill, by name on Copilot CLI; a verdict given without reviewers says so); guarded (`hooks/**`), with the `rail-sync` pair in `scripts/validate-dist.ps1` re-recorded.
-Measure T vs C on both CLIs on the retained B-412 tree, graded by a reviewer `Task` or `Skill review` plus `review-scope.ps1`: about 3 USD and 3 premium requests.
+Measure T vs C on both CLIs on the retained B-412 tree, graded by a reviewer `Task` or `Skill review` plus `review-scope.ps1`: about 3 USD and 3 premium requests. Copilot leg scoped, decision first: `.claude/plans/2026-11-13-copilot-window-briefs.md`, Brief 2.
 
 ### B-451 · The rebootstrap baseline has no review-tool markers, so a diff still shows its rows
 **Filed against:** v0.98.2 (2026-10-21)
@@ -147,14 +147,14 @@ Replace each save with the commit id and `git show`/`git checkout` lines, keepin
 **Priority:** P1 · **Effort:** M · **Invariants:** #5 #7
 **Status:** Open; root cause found 2026-11-03 (`meta/host-certification.md`): for a trusted folder VS Code creates the runtime session with `trustWorkingDirectory: "session"`, the runtime defers repository hooks
 until `sessions.loadDeferredRepoHooks`, which 1.144.1's agent host does not reference (inferred from the code): 0 of 7 trusted-folder sessions ran a hook, 4 of 4 untrusted ones did, and the same files through an untrusted junction ran all eight events.
-Regression from microsoft/vscode#343403 (trust forwarding, 1.144); reported upstream as microsoft/vscode#345931. No workaround ships (maintainer, 2026-11-03); docs corrected and the doctor's `Copilot hook liveness` row added (0.98.4 head). Left: re-measure when VS Code fixes it.
+Regression from microsoft/vscode#343403 (trust forwarding, 1.144); reported upstream as microsoft/vscode#345931. No workaround ships (maintainer, 2026-11-03); docs corrected and the doctor's `Copilot hook liveness` row added (0.98.4 head). Left: re-measure when VS Code fixes it. Rides on B-348's runs: `.claude/plans/2026-11-13-copilot-window-briefs.md`, Brief 1.
 
 ### B-476 · VS Code's Copilot harness drops `route-prompt`'s rails on a session's first prompt
 **Filed against:** v0.98.3 (2026-11-03)
 **Priority:** P2 · **Effort:** S to M · **Invariants:** #5
 **Status:** Open; measured 2026-11-03 where hooks run (`meta/host-certification.md`): the runtime keeps one `userPromptSubmitted` output per prompt and on a chat's first prompt VS Code's own `<workspace_info>`
 takes it (rails reached the model 0 of 2 first prompts, 1 of 1 second), while `sessionStart` outputs are joined and delivered.
-Blocked on microsoft/vscode#345931: Fable's review 2026-11-03 ruled out routing it in `session-start` (both hook files run it and joined outputs would double the rails; a queued Boy Scout finding could be lost; unmeasurable meanwhile). Re-measure after the fix; if prompt 1 still loses its rails, accept one duplicate (Option B).
+Blocked on microsoft/vscode#345931: Fable's review 2026-11-03 ruled out routing it in `session-start` (both hook files run it and joined outputs would double the rails; a queued Boy Scout finding could be lost; unmeasurable meanwhile). Re-measure after the fix; if prompt 1 still loses its rails, accept one duplicate (Option B). Rides on B-348's runs: `.claude/plans/2026-11-13-copilot-window-briefs.md`, Brief 1.
 ### B-477 · The write guard walks a written path twice, so on PowerShell 7 a pathological path takes twice as long to decide
 **Filed against:** v0.98.3 (2026-11-04)
 **Priority:** P3 · **Effort:** S · **Invariants:** #3
