@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.98.6 — Unreleased
+## 0.98.6 — 2026-11-13
 
 - **The installer says when your framework clone is not at a release tag, and an update's plan shows which files it changes.**
   Run from a clone left on `master`, the installer printed "no release newer than" the last release and stamped that

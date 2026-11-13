@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
 <!-- @stack:stamp -->
-  version: 0.98.5
-  applied: 2026-11-10
+  version: 0.98.6
+  applied: 2026-11-13
   After a framework update, copy these fields from .claude/framework-version.json.
 -->
 # [Project Name]

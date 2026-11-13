@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.98.6 — Unreleased
+## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the
 release's text as `PLAN unchanged` (guarded, `install.ps1`; B-495, the 2026-11-10 external audit, a sub-session's runs). Run
