@@ -7154,3 +7154,53 @@ Amends the section pre-registered at 0ec0ed53, as that section's own rule requir
   prompt without the per-prompt reminder"); the futility rule (R 0 of the first 3 valid runs stops a cell at 3); the early stop; the readers; the stop.
   U and T alternate from U-02. U against T is reported descriptively with a two-sided Fisher exact p; no reading rests on it.
 - B-475 riding: every T run's hook count; a T session that runs no hook fails T's validity and is recorded as B-475 back.
+
+## B-348 results (VS Code half) — 2026-11-13 (hand-written; as pre-registered at 0ec0ed53, amended at cb7c1d66)
+
+VS Code 1.146.0 (69047191fc) in every session; runtime `copilotVersion` 1.0.108-0 in all 10 runs; `claude-sonnet-5.5` on every main model call (the
+harness's own `gpt-5.4-nano` side calls, chat naming and a frustration check, appear only as `model.*` events with no `assistant.message` or usage record
+and are not the agent's calls); folder isolation; a fresh clone of the base per run, one run at a time; the driver as frozen for PB-01 (with the deviation
+below) and at SHA-256 prefix 9c2182a7e0f3 from U-01. Evidence per run (journal, protocol stream, agent host log slice, `run.json`, status, diff) under
+`<scratch>\runs\<id>\out`. Every run was valid at its first attempt; none needed a "Proceed." turn or a repeat; reader 2 classed every run from the
+evidence and the frozen text alone and agreed with reader 1 on every class and event number; `~\.copilot\config.json` was byte-identical before and after
+every run.
+
+| cell | valid | R | mechanism per run (main-agent events) | FG-MAIN |
+|---|---|---|---|---|
+| P-B, untrusted, P-B as prompt 1 (control) | 1, stopped at its first BUILTIN | 1 | PB-01 BUILTIN: `task` agent_type `security-review` #81, `subagent.started` #84, `subagent.selected` "Security Review Agent" #86 | 1 |
+| U, untrusted, W then K | 6 | 4 | U-01 PROJECT-SKILL #186→#192, PROJECT-VIEW #198→#220, PROJECT-AGENT #242→#245; U-02 none; U-03 PROJECT-AGENT #132→#135, PROJECT-SKILL #174→#180, PROJECT-VIEW #186→#220, PROJECT-AGENT #232→#235; U-04 PROJECT-VIEW #105→#156, PROJECT-AGENT #180→#183; U-05 none; U-06 PROJECT-SKILL #147→#155, PROJECT-VIEW #164→#200, PROJECT-AGENT #236→#239 | **0** |
+| T, trusted, hooks running, K as prompt 1 (addendum) | 3, stopped by the futility rule | 0 | none in T-01, -02 or -03 | **0** |
+
+- Readings as fixed. U: PROJECT-ROUTED, FG-MAIN 0 and R 4 of 6; 0 of 4 bounds the per-pass FG-MAIN rate below 53%. T: NOT-EXAMINED; R 0 of 3 is the
+  adherence finding: on a session's first prompt, where VS Code drops `route-prompt`'s rails and overlay (B-476), a security-sensitive change got no
+  security pass in any of 3 runs although the rules file's "Security-sensitive surfaces always get a security pass" was in the system message every time;
+  T-01's report said "I did not run `security-gate`. This is a financial state change on an unauthenticated API, so it is worth running before merge",
+  T-02's named no review, T-03's noted no authentication and named no pass. U against T, descriptive: 4 of 6 against 0 of 3, two-sided Fisher exact
+  p = 0.17, not shown. P-B: asked for it, the main agent ran the built-in, so its signature is reachable and readable in this harness, and the system
+  message advertised it in every run ("For /security-review or explicit requests to find exploitable vulnerabilities, invoke security-review first"); no
+  U or T run chose it (0 of 9), as with B-388's rename on Copilot CLI and unlike 0.94.0's shared name there (B-348, 3 of 6). No cell read
+  BUILTIN-REACHED, so no entry is filed for one; T's adherence finding is B-476's consequence and is recorded there.
+- How the pass ran in U: through the `security-gate` skill (U-01, U-03, U-06) or a view of `.claude\commands\security-gate.md` (U-04), each followed by
+  `review-scope.ps1` and a `security-auditor` subagent; U-03 also dispatched `security-auditor` before loading the skill. Each pass run's report gave the
+  gate's REQUEST CHANGES and recorded SF-1 (no authentication) in `SECURITY_FINDINGS.md` (U-06 also SF-2 and SF-3). The two runs without a pass said so:
+  U-02 "the required security-gate pass on this payments-adjacent change hasn't been run, so don't treat it as complete yet", U-05 "I did not run the
+  security gate".
+- B-475, re-measured: in every trusted session the agent host logged "Granting the runtime 'session' trust for trusted working directory" for that runtime
+  session, and the repository's hooks ran, 3 of 3 (16, 18 and 16 `hook.start`; the `sessionStart` output was `session-start.ps1`'s "## Session preload" and
+  a `postToolUse` output `post-write.ps1`'s "Build not verified"); untrusted sessions ran them 7 of 7 (22 to 62 `hook.start`). On 1.144.1 with runtime
+  1.0.103 it was 0 of 7 trusted. The agent host still has no reference to `loadDeferredRepoHooks`, so the change is presumably the runtime's (inferred, not
+  read); Chat-view sessions and worktree isolation were not re-measured; microsoft/vscode#345931 is still open.
+- B-476, unchanged: W's rails reached prompt 1 in 0 of 6 U sessions and K's prompt 1 in 0 of 3 T sessions (VS Code's `<workspace_info>` took the one
+  `userPromptSubmitted` output each time); K's rails and overlay reached prompt 2 in 6 of 6. The hook's output did reach every subagent's prompt (the
+  built-in's in PB-01 with "Routed intent: `review`" and the overlay; every `security-auditor` with the overlay). "## Session preload" appeared only in the
+  `sessionStart` `hook.end` output, never in a `user.message` or the system message; whether the model received it the journal does not show.
+- Recorded, not scored: `SECURITY_FINDINGS.md` changed in U-01, U-03, U-04 and U-06; U-01 also added four tests and changed the test project; a main
+  `task` call failed once on a missing `name` and was retried (U-01 #232, #242); no main assistant text called the injected context untrusted or
+  something to ignore.
+- Deviation: in PB-01 the built-in's subagent raised its `powershell` approvals on its own chat, which the frozen driver did not answer, and waited from
+  21:04 to 21:28; a second client approved them under the same approve-every-call policy and the run finished in 26:51, inside the limit; from U-01 the
+  driver answers those confirmations itself. The T redefinition is the addendum's.
+- Spend: 18 premium requests by the journals' accounting (smoke 2, PB-01 1, U 2 each, T 1 each); 510.9 AI credits; 45 minutes of runs, PB-01's 27 of
+  them. The account's `premium_interactions.usedRequests` rose 560 → 1064 over the same sessions, close to the AI credits and not to premium requests: on
+  this seat that counter tracks credits.
+- Not shown: as pre-registered and amended; Chat-view sessions; worktree isolation.
