@@ -7204,3 +7204,48 @@ every run.
   them. The account's `premium_interactions.usedRequests` rose 560 → 1064 over the same sessions, close to the AI credits and not to premium requests: on
   this seat that counter tracks credits.
 - Not shown: as pre-registered and amended; Chat-view sessions; worktree isolation.
+
+## B-425 pre-registration (Copilot leg) — does "Review my changes." reach this framework's reviewers on Copilot CLI, without and with the candidate wording (2026-11-13, frozen before any run)
+
+Scoped in `.claude/plans/2026-11-13-copilot-window-briefs.md`, Brief 2 (755deef0), decision first. The maintainer's word reached this session two ways:
+asked in the scoping session "Should Opus also run the two gated items, B-425's Copilot leg and B-357?", they typed "yes" (relayed by that session,
+which noted they named no stop figure); in this session they then said "rather than asking me for things going forward, you can ask fable, give it
+instructed you to do this", and of spend, "just keep going until we run out" and "obviously dont go if it doesnt make sense to - only go if it makes
+sense". B-425 stays blocked on B-416's review answer: nothing ships from this leg either way; it is measured now because Copilot access ends 2026-11-18.
+
+- Subject: the refund change of B-348's VS Code run PB-01, `git diff --binary` of its clone (2 files, 12 insertions; its untracked `bin/` and `obj/`
+  build output left out), frozen as `<scratch>\b425\subject.patch` (SHA-256 prefix eb05dbf066a4); on a fresh clone of the B-348 base (c4b48da0) with
+  the patch applied, `dotnet build Orders.sln` 0 errors and `dotnet test Orders.sln --no-build` 6 passed. Each run: a fresh clone of its arm's base with
+  `core.autocrlf=false` (this machine's Git default is `true`, which would check text files out with CRLF and could keep the LF patch from applying),
+  then `git apply` of the patch, left uncommitted.
+- Arms. C: the base as installed (`route-prompt.ps1` 949b74bf705d, `framework-rules.instructions.md` 368b3905a5a5). T: the base plus one commit
+  (101ed3d3) adding exactly the plan's two candidate lines, BOM and LF kept: in `route-prompt.ps1`'s `$railsReview`, after "This is a quality gate, not a
+  rubber stamp.", "Run this repository's review skill (.claude/commands/review.md; on Copilot CLI, by name: the review skill) on the change: it captures
+  the scope bundle and dispatches the reviewers. A verdict given without them says so." (60c92d843598); in the rules file's section 1 after the Debt
+  cleanup bullet, "- **Review** — *review my changes / check this PR*: run this repository's `review` skill (`.claude/commands/review.md`), which captures
+  the scope and dispatches the reviewers; a verdict given without them says so." (bc07c96c63e8).
+- Prompt "Review my changes." (d3c9b9c5c752). Piped as a Copilot event through each arm's `route-prompt.ps1` in a clone with the patch applied: EXIT=0,
+  "Routed intent: `review`" in both, the new line in T only.
+- Host and run: Copilot CLI 1.0.98, `<scratch>\b425\run-cli.ps1` (2fbb8e36b90e): `-p` with the runner's `Get-CopilotArguments` flags (`--model
+  claude-sonnet-5.5 --allow-all-tools --no-ask-user --no-remote --no-remote-export --no-color --no-auto-update --session-id --usage-output-file`, no
+  credit cap), `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true`, 20 minutes, the journal copied after exit. Cells C ×3 and T ×3, alternating, C first;
+  session ids `b4250000-0000-4000-8000-0000000<cc><rrr>` (cc 11 C, 12 T; rrr 001-003, 101+ for repeats), none existing before.
+- Validity per run, else CANNOT-EXAMINE and one repeat: `copilotVersion` 1.0.98 and `claude-sonnet-5.5` on every main model call; at least one
+  `hook.start`; the first main `user.message`'s `transformedContent` holds "Routed intent: `review`", and "Run this repository's review skill" in T and not
+  in C; the uncommitted change at start is the patch; `session.shutdown`, not killed at the limit; no auth, quota or model error; `~\.copilot\config.json`
+  byte-identical before and after.
+- Grade per run, main agent (no top-level `agentId`), event numbers 0-based: DISPATCH, a `skill` call whose `skill.invoked` path ends
+  `.agents\skills\review\SKILL.md` or `.claude\commands\review.md`, or a read of `review.md` or that wrapper (a `view`, or a shell command naming the file
+  with a read verb) followed later by a shell call running `review-scope.ps1`. REVIEWERS, how many of `convention-check`, `solid-check`, `debt-radar`,
+  `bloat-radar`, `test-critic` and `security-auditor` a main `task` started (`subagent.started`). SAID-SO, hand-read only when REVIEWERS is 0: the final
+  message says no reviewer ran.
+- Reading, descriptive at n = 3: "the candidate reaches the reviewers on Copilot CLI" only if T has DISPATCH 3 of 3 and C at most 1 of 3; otherwise not
+  shown. Nothing ships either way.
+- Readers: reader 1, `<scratch>\reader\read-run.mjs --mode review` (41d4e483dd44), before the freeze said DISPATCH true by each route (skill, view, shell
+  read) and false (reviewers started without a review read; nothing at all) on 9 retained Copilot CLI journals, matching a hand read; reader 2 classes
+  each run from the evidence and this text alone; one disagreement repeats the run, a second is CANNOT-EXAMINE.
+- Stop: none but access, as the maintainer said; the plan's proposed 8 premium requests is recorded, not theirs. Planned 6 premium requests. All six
+  runs make sense to run: B-425's status needs the counts of both arms, and none can be taken after 2026-11-18.
+- Recorded, not scored: the reviewers' models, the verdict line, whether the contract step ran, what the final message says ran, premium requests, AI
+  credits, wall time.
+- Not shown: the Claude Code leg (about 3 USD, left), VS Code, other models, other prompts, whether the reviews are good.
