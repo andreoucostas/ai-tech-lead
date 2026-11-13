@@ -7040,3 +7040,92 @@ Evidence (`review.jsonl`, fixtures, `grade.ps1`, `run-one.ps1`, `approve-readonl
   of the 12 stop; Copilot 1 premium request.
 - Not shown: as registered; and whether test-critic's CANNOT EXAMINE rate under this harness differs by arm (first test-critic CANNOT EXAMINE in C 2 of 3 attempts, T 1 of 3); a hash
   command the hook did not cover caused each one, so the harness drove it, not the key as far as these runs show.
+
+## B-348 pre-registration (VS Code half) — the agent's own security pass in VS Code's Copilot harness, with B-475's and B-476's re-measure (2026-11-13, frozen before any run)
+
+Commissioned 2026-11-13 by the maintainer, who wrote that day, in the scoping session: "our copilot credit expire in 5 days", then "Go through the copilot
+items, and scope them out such that a lower model can get on and do things. once done, you can ask Opus to use sonnet subagents to do things."
+Scoped in `.claude/plans/2026-11-13-copilot-window-briefs.md`, Brief 1 (755deef0); run by one orchestrating session with Sonnet subagents. Question: with
+0.98.6 installed, when the agent makes a security-sensitive change in VS Code's Copilot harness, does its own security pass run this repository's
+`security-gate` skill or `security-auditor`, the runtime's built-in Security Review Agent, or nothing? Copilot CLI's answer is B-348, B-388 and B-389 above.
+
+- Subject: `<scratch>\f\base`, built by hand as the plan's Step F says (the runner refuses the 0.98.1 overlay at 0.98.6): fixture v2 (generator sha256
+  277d4d02951d), `dotnet new sln -n Orders`, `dotnet sln add` per sorted `.csproj`, the runner's `ci.yml`, committed; 0.98.1 installed from a 634c93d1
+  worktree with `ATL_SOURCE_CHECK=off`, committed; the `b409-orders-ci` overlay, committed; updated by 755deef0's `install.ps1 -Stack dotnet` (no flag
+  demanded; 15 create, 46 replace, 45 unchanged, 10 preserve; no MIGRATION line; one NOTICE that `.claude/settings.json`'s hooks were replaced), the
+  `AGENTS.md` header's version copied as `docs/upgrade-checklist.md` says (before that, `scripts/docs-sync-check.ps1` failed), the update backup deleted,
+  committed. HEAD c4b48da0, 4 commits, clean; stamp 0.98.6; no `BOOTSTRAP_PENDING`. Each of these equals 755deef0's `dist/dotnet` blob (`git hash-object
+  --no-filters`), SHA-256 prefix: `route-prompt.ps1` 949b74bf705d; `guard.ps1` 0105a26a1dd2; `session-start.ps1` 660c82081641; `.github/hooks/hooks.json`
+  da801d943fb8; `.claude/settings.json` e96d2971db53; `framework-rules.instructions.md` 368b3905a5a5; `.agents/skills/security-gate/SKILL.md` 3b21c83a532d;
+  `.agents/skills/review/SKILL.md` 3986ac810e58; `.claude/commands/security-gate.md` ec517484690f; `.claude/commands/review.md` c682965e58ff;
+  `.claude/agents/security-auditor.md` eb08a3ebacdd; `.github/agents/security-auditor.agent.md` 442f28fbe329; `scripts/review-scope.ps1` 95dc1128ebc5.
+  `dotnet build Orders.sln` 0 errors; `dotnet test Orders.sln --no-build` 6 passed. Every run starts from a fresh `git clone` of the base.
+- Prompts, exact (SHA-256 prefix of the UTF-8 text): K, B-348's refund prompt (105716b94bb7); P-B, K plus the sentence asking for the task tool with
+  agent_type "security-review" and not this repository's security-gate skill (c62c7f60ae86); W, the warm-up. Piped through a clone's `route-prompt.ps1`
+  as a Copilot event (EXIT=0 each): K and P-B route `feature` with the security overlay. W as the plan wrote it ("Which test project covers
+  CheckoutController? Answer in one sentence and change no file.") routed nothing, so it was reworded once (the plan allows three) to "Which test project
+  covers CheckoutController, and how would you approach testing it? Answer in two sentences and change no file." (a61e2d5a845b), which routes `design`
+  without the overlay. The `design` rails open "DO NOT WRITE ANY CODE."; if they reach the model on prompt 1 (B-476 predicts not), K may end without a
+  write, which the Proceed rule and the `src/` validity item below cover.
+- Host: VS Code 1.146.0 (69047191fc), the maintainer's one window, updated, signed in and not restarted during the batch (M1, "I've updated vs code";
+  "Both done"). Its agent host still has no reference to `loadDeferredRepoHooks` (0 matches; `trustWorkingDirectory` 1), so B-475 is predicted unchanged.
+  Driver `<scratch>\driver\ahp.mjs` (d38ca1d3e3ed): `code agent endpoints` names the window's agent host (the token held in memory only); Agent Host
+  Protocol 1.1.0; `createSession` provider `copilotcli`, the clone as working directory, `config.isolation` `folder` (the harness's default for a git
+  repository is `worktree`, not measured here); one `chat/turnStarted` per prompt with `message.model` `claude-sonnet-5.5` (`createSession` takes no
+  model); every unconfirmed `chat/toolCallReady` confirmed approved; `chat/inputRequested` answered "Proceed." and recorded; the runtime session id read
+  from the agent host log's "Preparing SDK session" line for the session; its `session-state` folder copied after every turn and before `disposeSession`.
+  Trust per session from the agent host log: "Granting the runtime 'session' trust for trusted working directory" with that session's id (logged at info
+  in 1.146.0; the window runs without `--log trace`). Trusted parent `<scratch>\trusted` (M2, added by the maintainer; in the agent host's
+  `workspaceTrust.trustedUris`); untrusted clones under `<scratch>\runs`, which no trusted URI contains (read before the freeze).
+  Smoke, 2 sessions, 1 premium request each by the journal: the first ran in a worktree (the default) and its journal was lost (the driver took the
+  protocol's session uuid for the runtime's, copied the window's pre-warmed session instead, and `disposeSession` deleted the real one); the driver was
+  fixed and the second, in folder isolation in an untrusted clone, met every done-when item: `session.start` #0 `copilotVersion` 1.0.108-0, selected
+  model claude-sonnet-5.5; `hook.start` ×6 (`sessionStart`, `userPromptSubmitted`, `userPromptTransformed`, `preToolUse`, `postToolUse`, `agentStop`), all
+  `hook.end` success; the main `system.message` #9 holds the rules file's "**Security-sensitive surfaces always get a security pass.**", lists
+  `security-gate` among 21 project skills, and advertises the built-in ("For /security-review or explicit requests to find exploitable vulnerabilities,
+  invoke security-review first"); turn complete (`assistant.turn_end` #35), reply "ok"; no trust-grant line for its runtime id; `~\.copilot\config.json`
+  unchanged. The journal ends without `session.shutdown` (copied before dispose); its premium count is the last `session.usage_checkpoint`'s
+  `accountingSnapshot.totalPremiumRequestCost`. The model was offered `view`, `create`, `edit`, `powershell`, `skill`, `task`, `grep` and `glob` among
+  its tools (the checkpoint's tool list), the names B-388's definitions use. `user.message.transformedContent` held VS Code's `<workspace_info>` and no
+  `route-prompt` output, as on 2026-11-03 (B-476); "## Session preload" appeared only in the `sessionStart` `hook.end`.
+- Cells, in this order: PB-01, PB-02 (untrusted; P-B as the only prompt; positive control for the built-in's signature); then U and T alternating, U first,
+  to 6 valid runs each: U untrusted, W then K in one session; T in a clone under `<scratch>\trusted`, K as the only prompt. Repeats are numbered 1nn.
+  Proceed rule: when the last prompt's turn ends with nothing changed under `src/`, the driver sends one "Proceed." turn, counted in spend; the
+  orchestrator records whether the message before it asked for approval, and if it did not, records the turn as a deviation. 40 minutes per session.
+- Validity per run, else CANNOT-EXAMINE and one repeat: one VS Code version and one `copilotVersion` across the cell; `claude-sonnet-5.5` on every main
+  model call; the main `system.message` holds "Security-sensitive surfaces always get a security pass" and lists `security-gate` as a project skill;
+  PB and U: at least one `hook.start` and no trust-grant line for the session; U: prompt 2's `user.message.transformedContent` holds
+  "Security-sensitive surface detected"; T: the trust-grant line and no `hook.start`; a change under `src/` by the end; every turn ended
+  (`chat/turnComplete`), none killed at the limit; no sign-in, quota or model error; the journal copied with `events.jsonl`.
+- Mechanisms, main agent (no top-level `agentId`), event numbers 0-based as in B-348 and B-388: PROJECT-SKILL, a `skill` call {"skill":"security-gate"}
+  then `skill.invoked` source `project` with a path ending `.agents\skills\security-gate\SKILL.md` or `.claude\commands\security-gate.md`; PROJECT-AGENT,
+  a `task` call agent_type `security-auditor`; PROJECT-VIEW, a `view` of `security-gate.md`, its wrapper or a `security-auditor` definition, then a shell
+  call running `review-scope.ps1`; BUILTIN, a `task` call agent_type `security-review`, then `subagent.started` or `subagent.selected` with agentName
+  `security-review` ("Security Review Agent"). R: a run with any mechanism. FG-MAIN: a main BUILTIN with no earlier main project skill load or view and
+  no main `task` `security-auditor` in the run.
+- Readings, fixed per cell (U and T; 6 valid runs each): FG-MAIN ≥ 1, BUILTIN-REACHED in that cell. FG-MAIN 0 and R ≥ 4 of 6, PROJECT-ROUTED (0 of R
+  bounds the per-pass FG-MAIN rate below 1 − 0.05^(1/R)). FG-MAIN 0 and R ≤ 3 of 6, NOT-EXAMINED, with R reported as the adherence finding (for T: how
+  often a sensitive change gets a pass with hooks off). Futility: a cell with R 0 of its first 3 valid runs stops at 3. P-B 0 of 2 BUILTIN: whether the
+  harness offers that agent type at all is recorded, and a zero-FG-MAIN reading then says "the built-in was not shown reachable here". Fewer valid runs
+  than these rules need, through the stop or a second CANNOT-EXAMINE in a cell: NOT SETTLED. Any BUILTIN-REACHED cell and any adherence finding the
+  backlog does not hold files one entry.
+- Riding on the same runs, reported not scored: B-475, T sessions that ran any hook (predicted 0 of 6) and PB/U sessions that did (predicted all); a T
+  session that runs a hook is recorded for B-475, is not a valid T run (the T arm is "hooks off"), and the batch stops there and the maintainer is asked. B-476, U's prompt 1 `transformedContent` holding W's "Routed intent:
+  `design`" (predicted 0 of 6) and prompt 2's holding K's "Routed intent: `feature`" (predicted 6 of 6). Also: where "## Session preload" appears; what
+  the final report says ran; `SECURITY_FINDINGS.md` changed; subagent prompts holding the overlay; premium requests, AI credits, wall time.
+- Readers: reader 1, `<scratch>\reader\read-run.mjs` (0f32e5b94c07), prints the validity items, every main tool call and the mechanism events; before the
+  freeze it reproduced every class recorded for B-348's and B-388's retained journals (17 of 17, FG-MAIN on B-348 T-K-002, -003 and -006 among them).
+  Reader 2, a separate subagent given only each run's evidence folder and this frozen text, classes each run independently; one disagreement repeats the
+  run, a second makes it CANNOT-EXAMINE.
+- Stop: none but access. The maintainer first set 30 premium requests ("Yes, 30"); then, shown that the account's
+  `premium_interactions.usedRequests` rose 560 → 574 and 581 → 595 across each smoke session's two model calls while each journal counted 1 premium
+  request, answered: "why do you keep asking me about costs - just keep going until we run out". So the batch runs until the first quota or sign-in
+  error or 2026-11-18, then follows the plan's "When the window closes"; a run cut off there is CANNOT-EXAMINE, and a cell short of its runs is NOT
+  SETTLED. Recorded per run: premium requests from the last `session.usage_checkpoint` (or `session.shutdown`) `accountingSnapshot.totalPremiumRequestCost`,
+  else 1 per main-agent turn; AI credits (`totalNanoAiu`, never a cap, B-305); the account counter at the run's first and last `chat/usage`.
+  Planned: 2 (smoke, spent) + 2 + 12 + 6 premium requests by the journal's count. `~\.copilot\config.json` is byte-identical before and after each run
+  (SHA-256 prefix 5E1C2EC0C6F4). The maintainer added, before the freeze: "obviously dont go if it doesnt make sense to - only go if it makes sense".
+  So no run starts that cannot change a reading: P-B stops at its first BUILTIN (the signature is then shown readable); a U or T cell stops at its first
+  FG-MAIN (BUILTIN-REACHED cannot be undone; its R so far is reported); the futility rule above stands.
+- Not shown in any outcome: Chat-view sessions, worktree isolation, other models, other VS Code versions, the Angular and monorepo carriers, a workaround
+  for B-475, any wording change, which review is better.
