@@ -33,8 +33,8 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    pwsh -NoProfile -File C:\src\ai-tech-lead\install.ps1 -WhatIf C:\path\to\your-repo
    ```
 
-   Without PowerShell 7, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File` instead of
-   `pwsh -NoProfile -File`. Review every `PLAN` line, especially `replace` and `delete`, and inspect
+   The installer needs PowerShell 7; under Windows PowerShell 5.1 it stops with one line and changes
+   nothing. Review every `PLAN` line, especially `replace` and `delete`, and inspect
    `create`. A preview lists file operations only: it is not a content diff, does not compare final
    settings, and does not prove the real update will pass. It runs the same Git checks as the real
    update, but only reports a refusal: on a tree the update would refuse (uncommitted changes, say)
@@ -68,7 +68,7 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
 
 6. **Reconcile your settings.** `.claude/settings.json` is shared: the update saves the file as it
    was to `.claude/.state/settings.json.pre-update` (Git ignores it, so it exists on one machine
-   only), refreshes the file, adapts it to the PowerShell host it found, and carries every top-level
+   only), refreshes the file, and carries every top-level
    key of it that the release does not define (`permissions`, `model`, `statusLine` and the like)
    into it, unchanged and after the release's own keys. A `NOTICE` names the keys it carried. For a
    key both define (`env`, `defaultShell`, `hooks`) the release's value wins, and a `NOTICE` names

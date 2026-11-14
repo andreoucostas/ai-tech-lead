@@ -24,7 +24,7 @@
 #                replaces that path, so the team's file could not come back. -AllowMoveAside moves it.
 #   update     — target already carries .claude/framework-version.json. Consumer-owned protected
 #                paths are restored; framework-owned machinery is overwritten; mixed-ownership
-#                .claude/settings.json is backed up, refreshed, and adapted to the host, and the
+#                .claude/settings.json is backed up and refreshed, and the
 #                team's own top-level keys (permissions, ...) are carried back into it. An older
 #                instruction layout (project text in CLAUDE.md) is moved once into AGENTS.md. A deleted
 #                .github/workflows/docs-sync-check.yml stays deleted.
@@ -36,6 +36,10 @@
 # ledger names, then installs this release fresh. No backup is written: the last commit holds what it deletes.
 # CLAUDE.md and AGENTS.md, written in the old release's format, move to docs/pre-adoption/ as a brownfield
 # install's would, this release's take their place, and .claude/adoption-pending.json hands the old ones to /adopt.
+#
+# PowerShell 7 only. Windows PowerShell 5.1 parses a whole script before it runs any of it, so this file must stay
+# parseable by 5.1 for the version check below to refuse there with its one line: no ??, ?:, && or || chains, or other
+# PowerShell 7-only syntax anywhere in it.
 param(
     [Parameter(Mandatory = $true)][string]$Target,
     [switch]$AllowDirtyTree,
@@ -47,13 +51,12 @@ param(
     [switch]$AllowMoveAside
 )
 $ErrorActionPreference = 'Stop'
-$followUpPowerShell = if ($PSVersionTable.PSVersion.Major -ge 7) {
-    'pwsh -NoProfile -File'
-} else {
-    'powershell.exe -NoProfile -ExecutionPolicy Bypass -File'
+# First, before any Git or file check. The line names no path, so nothing in it can be pasted back as a command.
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    [Console]::Error.WriteLine('This release needs PowerShell 7. Install it (winget install --id Microsoft.PowerShell) and run the same command with pwsh in place of powershell.exe.')
+    exit 4
 }
-$pwshAvailable = $PSVersionTable.PSVersion.Major -ge 7 -or
-    $null -ne (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+$followUpPowerShell = 'pwsh -NoProfile -File'
 
 # A path Test-Path cannot evaluate (cmd turns `"C:\x\"` into `C:\x"`; 5.1 throws "Illegal characters") is the same usage error.
 $targetIsDirectory = try { Test-Path -LiteralPath $Target -PathType Container } catch [System.ArgumentException] { $false }
@@ -2625,7 +2628,7 @@ function Get-SjCanonical {
     param([string]$Raw)
     return [regex]::Replace($Raw, '("(?:[^"\\]|\\.)*")|[ \t\r\n]+', [Text.RegularExpressions.MatchEvaluator]{ param($m) $m.Groups[1].Value })
 }
-# True when CURRENT holds, for every key one release variant defines, that variant's value: the file an earlier run of this
+# True when CURRENT holds, for every key the release's file defines, that file's value: the file an earlier run of this
 # update wrote (the release's file with the team's own keys after it), whose backup must be kept for the same reason as above.
 function Test-SettingsAreReleasePlusTeam {
     param($Current, $Variants)
@@ -2648,7 +2651,7 @@ function Test-SettingsAreReleasePlusTeam {
 # after the release's (null when there are none to carry), Lines say what was carried, replaced or dropped, and Declined says
 # the team's keys could not be read or the result could not be verified, in which case the refreshed file is the release's own.
 function Get-SettingsCarryPlan {
-    param([AllowNull()][byte[]]$ConsumerBytes, [Parameter(Mandatory = $true)][byte[]]$ShippedBytes, [AllowNull()][byte[]]$AlternateBytes, [Parameter(Mandatory = $true)][string]$BackupRelative)
+    param([AllowNull()][byte[]]$ConsumerBytes, [Parameter(Mandatory = $true)][byte[]]$ShippedBytes, [Parameter(Mandatory = $true)][string]$BackupRelative)
     $about = '.claude/settings.json'
     $result = {
         param($Bytes, [string[]]$Carried, [string[]]$Lines, [bool]$Declined)
@@ -2668,17 +2671,13 @@ function Get-SettingsCarryPlan {
     $extras = New-Object System.Collections.Generic.List[object]
     $lines = New-Object System.Collections.Generic.List[string]
     $copyIn = "; the file as it was before this update is saved in $BackupRelative."
-    # The release's other settings variant (the hooks for the other PowerShell): a value of the team's equal to it is not the team's.
-    $other = Read-SettingsBytes -Bytes $AlternateBytes
-    $otherByKey = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
-    if ($other.Ok) { foreach ($m in $other.Members) { $otherByKey[$m.Key] = $m } }
     foreach ($m in $theirs.Members) {
         if (-not $releaseByKey.ContainsKey($m.Key) -and $script:SjEverShipped -ccontains $m.Key) {
             # Written by an earlier release, not by the team: this release no longer sets it.
             if ($m.Key -cne '_comment') { $lines.Add("NOTICE: ${about}: your '$($m.Key)', which this release does not set, was dropped$copyIn") }
             continue
         } elseif (-not $releaseByKey.ContainsKey($m.Key)) {
-            # 5.1's ConvertFrom-Json, which framework-doctor.ps1 reads this file with, refuses two keys that differ only in case.
+            # ConvertFrom-Json, which framework-doctor.ps1 reads this file with, refuses two keys that differ only in case.
             if ($releaseLoose.Contains($m.Key)) { return (& $declined "your key '$($m.Key)' differs from a key of this release's only in case") }
             $extras.Add($m)
             continue
@@ -2686,7 +2685,6 @@ function Get-SettingsCarryPlan {
         $mine = Get-SjRaw -Read $theirs -Member $m
         $its = Get-SjRaw -Read $release -Member $releaseByKey[$m.Key]
         if ((Get-SjCanonical -Raw $mine) -ceq (Get-SjCanonical -Raw $its) -or $m.Key -ceq '_comment') { continue }
-        if ($otherByKey.ContainsKey($m.Key) -and (Get-SjCanonical -Raw $mine) -ceq (Get-SjCanonical -Raw (Get-SjRaw -Read $other -Member $otherByKey[$m.Key]))) { continue }
         $named = $false
         if ($m.Key -ceq 'env') {
             # Variable names only: a value may be a secret.
@@ -2751,7 +2749,7 @@ $settingsKeptWithTeam = $false
 $settingsCarry = $null
 $settingsMessages = New-Object System.Collections.Generic.List[string]
 if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.json') -PathType Leaf)) {
-    # Settings equal to one of this framework's own variants (line endings aside: a core.autocrlf checkout
+    # Settings equal to the release's own (line endings aside: a core.autocrlf checkout
     # rewrites them) were written by an earlier run of this update; saving them again would replace the
     # consumer's settings in the existing backup. So are the settings an earlier run wrote with the team's own keys
     # carried into them, unless carrying them again would not keep all of them. Unreadable settings are backed up as before.
@@ -2759,26 +2757,18 @@ if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath (Join-Path $tg
     $settingsBackupAt = '.claude/.state/settings.json.pre-update'
     try { $currentBytes = [IO.File]::ReadAllBytes((Join-Path $tgt '.claude/settings.json')); $currentSettings = Get-LfSha256 -Bytes $currentBytes }
     catch { $currentBytes = $null; $currentSettings = $null }
-    $variantBytes = New-Object System.Collections.Generic.List[object]
-    foreach ($variant in '.claude/settings.json', '.claude/settings.windows.json') {
-        $shippedPath = Join-Path $src $variant
-        if (Test-Path -LiteralPath $shippedPath -PathType Leaf) { $variantBytes.Add([IO.File]::ReadAllBytes($shippedPath)) }
-    }
-    $shippedSettings = @(foreach ($variantContent in $variantBytes) { Get-LfSha256 -Bytes $variantContent })
+    $shippedBytes = [IO.File]::ReadAllBytes((Join-Path $src '.claude/settings.json'))
     $backupPresent = Test-Path -LiteralPath (Join-Path $tgt $settingsBackupAt) -PathType Leaf
-    $currentIsRelease = [bool]$currentSettings -and ($shippedSettings -ccontains $currentSettings)
-    # Settings equal to the release's own hold nothing of the team's. Any other file is merged with the variant this host needs;
+    $currentIsRelease = [bool]$currentSettings -and ($currentSettings -ceq (Get-LfSha256 -Bytes $shippedBytes))
+    # Settings equal to the release's own hold nothing of the team's. Any other file is merged with the release's;
     # that merge is the one write of the file, so an interrupted run leaves the old file or the merged one.
     if (-not $currentIsRelease -and $ordinaryApplyPaths.Contains('.claude/settings.json')) {
-        $useFirst = $pwshAvailable -or $variantBytes.Count -lt 2
-        $alternate = $null
-        if ($variantBytes.Count -eq 2) { $alternate = $variantBytes[$(if ($useFirst) { 1 } else { 0 })] }
-        $settingsCarry = Get-SettingsCarryPlan -ConsumerBytes $currentBytes -ShippedBytes $variantBytes[$(if ($useFirst) { 0 } else { 1 })] -AlternateBytes $alternate -BackupRelative $settingsBackupAt
+        $settingsCarry = Get-SettingsCarryPlan -ConsumerBytes $currentBytes -ShippedBytes $shippedBytes -BackupRelative $settingsBackupAt
         foreach ($line in $settingsCarry.Lines) { $settingsMessages.Add($line) }
     }
     $keepBackup = $backupPresent -and $currentIsRelease
     if ($backupPresent -and -not $currentIsRelease -and $null -ne $currentBytes -and -not ($null -ne $settingsCarry -and $settingsCarry.Declined)) {
-        $keepBackup = Test-SettingsAreReleasePlusTeam -Current (Read-SettingsBytes -Bytes $currentBytes) -Variants @($variantBytes | ForEach-Object { Read-SettingsBytes -Bytes $_ })
+        $keepBackup = Test-SettingsAreReleasePlusTeam -Current (Read-SettingsBytes -Bytes $currentBytes) -Variants @(Read-SettingsBytes -Bytes $shippedBytes)
     }
     if ($keepBackup) {
         $settingsBackupKept = $true
@@ -2786,6 +2776,39 @@ if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath (Join-Path $tg
     } else {
         $settingsBackupRelative = $settingsBackupAt
         [void](Add-PlannedWrite -Relative $settingsBackupRelative)
+    }
+}
+# Releases before 0.99.0 wrote hook commands that run Windows PowerShell 5.1 (powershell, not pwsh) on a machine without pwsh;
+# this release writes pwsh ones only. Said once, so that every machine and CI agent gets PowerShell 7; nothing else rests on it.
+function Test-HooksRunWindowsPowerShell {
+    param([AllowNull()][byte[]]$Bytes)
+    if ($null -eq $Bytes) { return $false }
+    try {
+        $text = [Text.UTF8Encoding]::new($false, $true).GetString($Bytes)
+        if ($text.Length -gt 0 -and $text[0] -ceq [char]0xFEFF) { $text = $text.Substring(1) }
+        $hooks = @(($text | ConvertFrom-Json -ErrorAction Stop).PSObject.Properties | Where-Object { $_.Name -ceq 'hooks' })
+    } catch { return $false }
+    if ($hooks.Count -ne 1) { return $false }
+    # Only a command's interpreter counts: each entry's "shell": "powershell" names Claude Code's shell, not the PowerShell it runs.
+    $pending = New-Object System.Collections.Generic.Stack[object]
+    $pending.Push($hooks[0].Value)
+    while ($pending.Count -gt 0) {
+        $value = $pending.Pop()
+        if ($null -eq $value -or $value -is [string] -or $value -is [ValueType]) { continue }
+        if ($value -is [Array]) { foreach ($item in $value) { $pending.Push($item) }; continue }
+        foreach ($property in $value.PSObject.Properties) {
+            if ($property.Name -ceq 'command' -and $property.Value -is [string]) {
+                if ($property.Value -match '(?i)(?:^|[\s;&|(''"\\/])powershell(?:\.exe)?(?=$|[\s;&|)''"])') { return $true }
+            } else { $pending.Push($property.Value) }
+        }
+    }
+    return $false
+}
+if ($updateMode) {
+    $previousSettingsBytes = $null
+    try { $previousSettingsBytes = [IO.File]::ReadAllBytes((Join-Path $tgt '.claude/settings.json')) } catch { $previousSettingsBytes = $null }
+    if (Test-HooksRunWindowsPowerShell -Bytes $previousSettingsBytes) {
+        $settingsMessages.Add("NOTICE: .claude/settings.json ran the framework's hooks under Windows PowerShell 5.1; it now runs them under PowerShell 7 (pwsh). Every machine and CI agent that uses Claude Code or runs the framework's checks in this repository needs PowerShell 7.")
     }
 }
 
@@ -2855,28 +2878,6 @@ if ($updateMode -and -not $Reinstall) {
 
 $adoptionMarkerRelative = $null
 if ($writesAdoptionMarker) { $adoptionMarkerRelative = '.claude/adoption-pending.json'; [void](Add-PlannedWrite -Relative $adoptionMarkerRelative) }
-# Windows PowerShell 5.1 can write a path of 260 characters or more, or create a folder of 248 or more, only where
-# Windows lets it use long paths (the LongPathsEnabled setting); PowerShell 7 always can. Without that, it reads such a
-# path as absent and cannot write it, so a run stopped partway at its first deep write, an update's saved copy (39 or
-# more characters longer than its original) say. Checked before the first change; Windows is asked only for such a path.
-$tooLongPaths = @(@($createPlan) + @($replacePlan) + @($archivePlan | ForEach-Object { $_.Relative }) | Where-Object { $_ } | ForEach-Object {
-    $full = Get-ContainedTargetPath -Relative $_
-    $parent = [IO.Path]::GetDirectoryName($full)
-    if ($full.Length -ge 260 -or ($parent.Length -ge 248 -and -not (Test-Path -LiteralPath $parent -PathType Container))) { $full }
-})
-if ($tooLongPaths.Count -gt 0 -and $PSVersionTable.PSEdition -eq 'Desktop') {
-    $longPathsOn = $false
-    try {
-        if (-not ('AtlInstall.LongPaths' -as [type])) { Add-Type -Namespace AtlInstall -Name LongPaths -MemberDefinition '[DllImport("ntdll.dll")] public static extern byte RtlAreLongPathsEnabled();' }
-        $longPathsOn = ('AtlInstall.LongPaths' -as [type])::RtlAreLongPathsEnabled() -ne 0
-    } catch { $longPathsOn = $false }
-    if (-not $longPathsOn) {
-        $longest = @($tooLongPaths | Sort-Object Length -Descending)[0]
-        $others = if ($tooLongPaths.Count -gt 1) { " and $($tooLongPaths.Count - 1) other path$(if ($tooLongPaths.Count -gt 2) { 's' }) that long" } else { '' }
-        [Console]::Error.WriteLine("ERROR: Refusing ${runName}: it must write '$longest' ($($longest.Length) characters)$others, and Windows PowerShell 5.1 cannot write a path of 260 characters or more, or create a folder of 248 or more, while Windows long-path support (the LongPathsEnabled setting) is off. Run the installer with PowerShell 7 (pwsh), turn that setting on, or move the repository to a shorter path, then re-run. Nothing was changed.")
-        exit 3
-    }
-}
 $modeName =if ($Reinstall) { 'reinstall' } elseif ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
 if ($reinstallLayoutNote) { Write-Output "  $reinstallLayoutNote" }
 if ($layoutMessage) { Write-Output "  $layoutMessage" }
@@ -2897,9 +2898,8 @@ if ($updateMode -and -not $Reinstall) {
             $leaves = Join-Path $src $relative
             [byte[]]$leftBytes = $null
             if ($relative -ceq '.claude/settings.json') {
-                # The merge with the team's keys, or the Windows PowerShell 5.1 variant the last step copies over it.
+                # The merge with the team's keys.
                 if ($null -ne $settingsCarry -and $null -ne $settingsCarry.Bytes) { $leftBytes = $settingsCarry.Bytes }
-                elseif (-not $pwshAvailable -and $incoming.ByPath.ContainsKey('.claude/settings.windows.json')) { $leaves = Join-Path $src '.claude/settings.windows.json' }
             }
             if ($null -eq $leftBytes) { $leftBytes = [IO.File]::ReadAllBytes($leaves) }
             if ((Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Get-ContainedTargetPath -Relative $relative)))) -cne (Get-LfSha256 -Bytes $leftBytes)) { continue }
@@ -3385,21 +3385,6 @@ if ($writesAdoptionMarker) {
     Write-AdoptionMarker -InventoryComplete $archiveInventoryComplete
 }
 
-# Claude Code hooks default to pwsh (PowerShell 7). If it isn't installed, fall back to the Windows
-# PowerShell 5.1 variant (preinstalled on every Windows box) so the hooks still fire. Reuse that
-# resolved host in the printed follow-up commands; guidance must not name an unavailable executable.
-if (-not $pwshAvailable) {
-    $sj  = Join-Path $tgt '.claude/settings.json'
-    $sjw = Join-Path $tgt '.claude/settings.windows.json'
-    if ((Test-Path -LiteralPath $sjw) -and (Test-Path -LiteralPath $sj)) {
-        # A merge written above was made with this variant already.
-        if ($null -eq $settingsCarry -or $null -eq $settingsCarry.Bytes) {
-            try { Copy-Item -Force -LiteralPath $sjw -Destination $sj -ErrorAction Stop }
-            catch { Stop-IncompleteCopy -Relative '.claude/settings.json' -Reason $_.Exception.Message -Written $applyWritten }
-        }
-        Write-Output "  pwsh not found - activated Windows PowerShell 5.1 hooks (settings.windows.json -> settings.json)."
-    }
-}
 # An update's version stamp: the last of the framework's files, so it names this release only once every file above is in place.
 if ($stampLast -and $ordinaryApplyPaths.Contains($stampRelative)) {
     try { Copy-Item -Force -LiteralPath (Join-Path $src $stampRelative) -Destination (Get-ContainedTargetPath -Relative $stampRelative) -ErrorAction Stop }

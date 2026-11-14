@@ -320,11 +320,11 @@ try {
     # Every case above invokes post-write.ps1 directly. The agent host does not: the registration
     # carries "shell": "powershell", so the whole command STRING runs inside an outer PowerShell, and
     # `-Command` collapses a failing native command's exit code to 1 -- the build failure is then a
-    # non-blocking hook error and never reaches the agent. Read the command registered for THIS host
+    # non-blocking hook error and never reaches the agent. Read the registered command
     # and launch it as the host does, over a fixture repo holding the shipped hook and a failing
     # build tool. The registered path is repo-root-relative, so the fixture carries the hook.
-    $registrationRelative = if ($PSVersionTable.PSVersion.Major -ge 6) { '.claude/settings.json' } else { '.claude/settings.windows.json' }
-    $expectedInterpreter = if ($PSVersionTable.PSVersion.Major -ge 6) { 'pwsh' } else { 'powershell' }
+    $registrationRelative = '.claude/settings.json'
+    $expectedInterpreter = 'pwsh'
     It "registered post-write command reports a build failure with exit 2 through the host's outer -Command shell ($registrationRelative)" {
         $registrationPath = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path $registrationRelative
         Assert (Test-Path -LiteralPath $registrationPath -PathType Leaf) "registration file not found: $registrationRelative"

@@ -11,7 +11,24 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.98.7 — Unreleased
+## 0.99.0 — Unreleased
+
+Windows PowerShell 5.1 support ends; the release is 0.99.0, not 0.98.7 (guarded, step 4; B-506, WSD-125 (5): the maintainer
+in chat on 2026-11-14, "fine with powershell 7 only", then, on scope and version, "1. everywhere 2. 99"). Since 9e8dbb28 the
+guard refuses every write without `pwsh`, and the documented remedy, copying `settings.windows.json` over the committed
+`settings.json`, switched the whole team and was written back by the next update. `settings.windows.json` is retired through the
+ledger with its 14 known blobs (every version under `dist/`, `legacy/` and `src/core/`); the installer's copy-over, its
+`$pwshAvailable` and two-variant merge, its 5.1 long-path refusal and its `powershell.exe` follow-up commands go. Both installers
+and the doctor check the host first and, under Windows PowerShell 5.1, print one line naming no path and exit (installers 4, the
+refuse-before-change code; doctor 2), and each keeps a header saying it must stay 5.1-parseable down to that check. An update of
+settings whose hook commands ran `powershell` prints one NOTICE (message only). The doctor's `Wired hook shell` row is `MISSING`
+when a bare interpreter is not on the `PATH` it was given (B-490's second half): PowerShell 7 puts `$PSHOME` first on `PATH` at
+start, so the row and the `Copilot surface` row look past that entry. `template-checks`' BOM check now stands on byte stability;
+`bootstrap-baseline`'s non-Core stdin branch, `metrics`' 5.1 working-directory branch, the 5.1 job in the shipped `template-ci.yml`,
+check 8's variant (18 handlers become 12) and every consumer document's 5.1 fallback go; the 0.98.7 copy-over advice in the
+consumer changelogs is replaced. Red first: `UpdateDelivery`'s B-506 case (an update of the v0.98.6 variant), `InstallerContract`'s
+5.1 refusal (both entry points under `powershell.exe`, the one deliberate cross-host launch) and `FrameworkDoctor`'s
+interpreter-not-on-`PATH` case.
 
 On Copilot, `session-start` carries the rails of the session's first prompt (guarded, `hooks/**`; B-476, filed 2026-11-03, re-measured
 by B-348's VS Code runs). VS Code's Copilot harness keeps one `userPromptSubmitted` output per prompt and gives a chat's first prompt's

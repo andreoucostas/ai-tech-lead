@@ -11,9 +11,8 @@ if ($CaseCountPath -and (Test-Path -LiteralPath $CaseCountPath)) {
 $invokingPsExe = (Get-Process -Id $PID).Path
 $psExe = $invokingPsExe
 
-# Prove the executable handed to every suite really preserves this runner's host. This runtime
-# assertion prevents a future resolver or wrapper from turning an explicit Windows PowerShell 5.1
-# run into pwsh 7 and silently erasing 5.1-only coverage.
+# Prove the executable handed to every suite really preserves this runner's host, so no resolver or
+# wrapper can run a suite under another PowerShell than the one this runner was started with.
 $hostProbeOutput = @(& $psExe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '[Console]::Out.Write((Get-Process -Id $PID).Path)' 2>&1 |
     ForEach-Object { $_.ToString() })
 $hostProbeExit = [int]$LASTEXITCODE
@@ -70,7 +69,6 @@ if (-not $FixtureDiscovery) {
 # most of a modern box idle. HOOKTESTS_THROTTLE lets a caller that runs several suites at once
 # hand each one a share instead of every suite assuming it owns the machine -- without it, three
 # concurrent suites at 4 lanes each oversubscribe and every lane gets slower.
-# ([Environment]::ProcessorCount and this if/else chain are 5.1-safe.)
 if ($env:HOOKTESTS_THROTTLE) { $throttle = [int]$env:HOOKTESTS_THROTTLE }
 else { $throttle = [Environment]::ProcessorCount }
 if ($throttle -lt 2) { $throttle = 2 } elseif ($throttle -gt 8) { $throttle = 8 }

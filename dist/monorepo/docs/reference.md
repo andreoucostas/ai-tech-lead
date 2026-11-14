@@ -82,8 +82,8 @@ each client does with each event.
 
 ## Scripts
 
-Run from the repository root with `pwsh -NoProfile -File scripts/<name>.ps1`, or with
-`powershell.exe -NoProfile -ExecutionPolicy Bypass -File` where PowerShell 7 is missing.
+Run from the repository root with `pwsh -NoProfile -File scripts/<name>.ps1`. They need PowerShell 7;
+Windows PowerShell 5.1 is not supported.
 
 | Script | Use |
 |---|---|
@@ -118,7 +118,7 @@ three classes.
 | `.claude/commands/`, `.agents/skills/` | Workflows, and their Copilot wrappers. |
 | `.claude/agents/`, `.github/agents/` | Reviewers, and their Copilot wrappers. |
 | `.claude/skills/` | Framework skills and your project skills. |
-| `.claude/hooks/`, `.claude/settings*.json`, `.github/hooks/` | Hooks and their registrations (PowerShell 7, with a Windows PowerShell 5.1 fallback). |
+| `.claude/hooks/`, `.claude/settings.json`, `.github/hooks/` | Hooks and their registrations (PowerShell 7). |
 | `.github/workflows/` | GitHub Actions; on Bitbucket, see [ci-integration.md](ci-integration.md). |
 | `specs/` | Specs written by `/design`. |
 | `tests/evals/` | A readable catalogue of the behaviour the framework intends. |

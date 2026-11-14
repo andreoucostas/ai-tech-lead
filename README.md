@@ -13,9 +13,9 @@ To hand it to an agent, start the agent in your repository and ask for the commi
 *"Install https://github.com/andreoucostas/ai-tech-lead into this repository and commit it."* Most
 agents commit only when you ask.
 
-**You need:** Windows; Git; PowerShell 7 (`pwsh`), or Windows PowerShell 5.1 as a fallback; and
-Claude Code 2.1.141 or newer, or GitHub Copilot (VS Code or Copilot CLI). Commit or stash your own
-changes first, so the working tree is clean: an update, or an install over AI tooling the repository
+**You need:** Windows; Git; PowerShell 7 (`pwsh`; `winget install --id Microsoft.PowerShell`) on every
+developer machine and CI agent that runs the framework's hooks or checks; and Claude Code 2.1.141 or
+newer, or GitHub Copilot (VS Code or Copilot CLI). Commit or stash your own changes first, so the working tree is clean: an update, or an install over AI tooling the repository
 already has, stops on uncommitted changes. A first install into a repository with none does not check,
 and its files then sit among your uncommitted ones in `git status`.
 
@@ -40,7 +40,7 @@ and its files then sit among your uncommitted ones in `git status`.
    pwsh -NoProfile -File install.ps1 C:\path\to\your-repo
    ```
 
-   Without PowerShell 7: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1 C:\path\to\your-repo`.
+   Windows PowerShell 5.1 is not supported: under `powershell.exe` the installer stops with one line.
    Add `-WhatIf` first to preview without changing anything.
 
    The installer picks the distribution from what it finds in your repository:

@@ -683,14 +683,13 @@ foreach ($stall in $credentialStalls) {
 # carries "shell": "powershell", so the whole command STRING runs inside an outer PowerShell, and
 # `-Command` collapses a failing native command's exit code to 1. The host then reads a non-blocking
 # error and performs the write anyway. Launch the registered command the way the host does, reading
-# it from the registration file THIS host uses -- never the other host's (PowerShell topology).
+# it from the registration file the host reads.
 $installRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$registrationRelative = if ($PSVersionTable.PSVersion.Major -ge 6) { '.claude/settings.json' } else { '.claude/settings.windows.json' }
-$expectedInterpreter = if ($PSVersionTable.PSVersion.Major -ge 6) { 'pwsh' } else { 'powershell' }
+$registrationRelative = '.claude/settings.json'
+$expectedInterpreter = 'pwsh'
 $registeredCase = "registered guard command blocks with exit 2 through the host's outer -Command shell ($registrationRelative)"
-# src/core carries only settings.windows.json; the pwsh registration is a per-stack whole file, so the
-# authoring source tree has nothing to launch under PowerShell 7. A built dist always has both
-# (validate-dist resolves every registration), so this never skips where CI runs it.
+# The registration is a per-stack whole file, so the authoring source tree src/core has nothing to launch. A built
+# dist always has it (validate-dist resolves every registration), so this never skips where CI runs it.
 if (-not (Test-Path -LiteralPath (Join-Path $installRoot $registrationRelative) -PathType Leaf)) {
     Skip $registeredCase "no $registrationRelative in this tree (authoring source layout); the dist legs launch it"
 } else { It $registeredCase {

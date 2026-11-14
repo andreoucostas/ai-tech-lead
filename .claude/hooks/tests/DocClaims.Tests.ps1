@@ -21,7 +21,6 @@ $contracts = @(
 )
 
 $completionHosts = @(
-    [pscustomobject]@{ Label = 'Windows PowerShell 5.1'; Command = 'powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1' }
     [pscustomobject]@{ Label = 'PowerShell 7'; Command = 'pwsh -NoProfile -File scripts/docs-sync-check.ps1' }
 )
 $completionResultContract = @(
@@ -623,37 +622,23 @@ It 'repository-knowledge capture carriers preserve draft and refresh boundaries'
     Assert-RepositoryKnowledgeCaptureContracts -DistEntries $distEntries
 }
 
-It 'each supported completion host invocation is independently required' {
+It 'the supported completion host invocation is required' {
     $valid = @"
 ## Deterministic completion gate
 
-Windows PowerShell 5.1:
+PowerShell 7 (``pwsh``; Windows PowerShell 5.1 is not supported):
 $($completionHosts[0].Command)
-
-PowerShell 7:
-$($completionHosts[1].Command)
 
 PASS requires exit code 0 and the final line ``All AI Tech Lead framework checks passed.``
 "@
     Assert-CompletionHostMatrix -Section $valid -Label 'negative-control baseline'
-    foreach ($hostContract in $completionHosts) {
-        $mutated = $valid.Replace($hostContract.Command, '<removed invocation>')
-        Assert ($mutated -cne $valid) "negative control did not remove $($hostContract.Label)"
-        $caught = $null
-        try { Assert-CompletionHostMatrix -Section $mutated -Label 'negative-control mutation' }
-        catch { $caught = $_.Exception.Message }
-        Assert ($caught -like "*omits supported host invocation*$($hostContract.Command)*") `
-            "removing $($hostContract.Label) was not rejected precisely: $caught"
-    }
-
-    $swapMarker = '<swapped PowerShell invocation>'
-    $swapped = $valid.Replace($completionHosts[0].Command, $swapMarker).
-        Replace($completionHosts[1].Command, $completionHosts[0].Command).
-        Replace($swapMarker, $completionHosts[1].Command)
+    $mutated = $valid.Replace($completionHosts[0].Command, '<removed invocation>')
+    Assert ($mutated -cne $valid) 'negative control did not remove the PowerShell 7 invocation'
     $caught = $null
-    try { Assert-CompletionHostMatrix -Section $swapped -Label 'negative-control swapped matrix' }
+    try { Assert-CompletionHostMatrix -Section $mutated -Label 'negative-control mutation' }
     catch { $caught = $_.Exception.Message }
-    Assert ($caught -like '*does not pair*') "swapping the PowerShell invocations was not rejected precisely: $caught"
+    Assert ($caught -like "*omits supported host invocation*$($completionHosts[0].Command)*") `
+        "removing the PowerShell 7 invocation was not rejected precisely: $caught"
 }
 
 exit (Write-TestSummary 'DocClaims.Tests')

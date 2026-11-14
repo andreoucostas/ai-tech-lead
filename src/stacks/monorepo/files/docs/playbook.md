@@ -114,7 +114,7 @@ cloud coding agent runs no hooks, and Linux, WSL and macOS are not supported.
 
 - **Setup:** one install commit, then one `/bootstrap` (or `/adopt`) session per repository, plus the
   time to review the `AGENTS.md` it writes. Each developer runs `scripts/framework-doctor.ps1` once.
-- **Platform:** Windows; Git; PowerShell 7, or Windows PowerShell 5.1; Claude Code 2.1.141 or newer,
+- **Platform:** Windows; Git; PowerShell 7 (Windows PowerShell 5.1 is not supported); Claude Code 2.1.141 or newer,
   or GitHub Copilot in VS Code or Copilot CLI.
 - **Every session:** `AGENTS.md` and the framework rules load on every turn. `/bootstrap` keeps the
   sections it writes to about 6 KB and the whole file under 16 KB; the session preload and the

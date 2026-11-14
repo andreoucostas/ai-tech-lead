@@ -27,12 +27,10 @@ It also runs `hazard-check`, validating hazard-table Status tokens, Reviewed dat
 
 ```powershell
 pwsh -NoProfile -File scripts/docs-sync-check.ps1
-# Fallback when PowerShell 7 is unavailable:
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1
 ```
 
-Execution is supported on Windows only. PowerShell 7 is primary and native Windows PowerShell 5.1
-is the fallback. Exit `0` = pass, non-zero = fail,
+Execution is supported on Windows only, under PowerShell 7 (`pwsh`), so every CI agent that runs it
+needs PowerShell 7 (`winget install --id Microsoft.PowerShell`). Exit `0` = pass, non-zero = fail,
 findings printed to stdout. It verifies the framework itself is healthy: adoption completed (no
 `adoption-pending.json`), `AGENTS.md` bootstrapped, `CLAUDE.md` importing it,
 version stamps in sync, PowerShell hook registrations and BOM intact (via
@@ -96,8 +94,7 @@ the reported Bamboo build key.
 One plan, one job, two script tasks (order matters — fail fast on framework state):
 
 - **Task 1 (Script)**: on a self-hosted Windows agent, invoke
-  `pwsh -NoProfile -File scripts/docs-sync-check.ps1` (or native Windows PowerShell 5.1 using the
-  fallback command above).
+  `pwsh -NoProfile -File scripts/docs-sync-check.ps1`; the agent needs PowerShell 7.
 - **Task 2 (Script)**: the exact applicable commands from `AGENTS.md > Conventions > Verification
   Commands` whose execution policy permits this CI context. If it says `not available` or marks a
   command manual/CI-only without an established controlled CI target, omit that command and record

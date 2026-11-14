@@ -84,17 +84,10 @@ function Invoke-Git([string[]]$Arguments, [byte[]]$Stdin) {
     $process.StartInfo = $startInfo
     $stdout = New-Object IO.MemoryStream
     try {
-        # Windows PowerShell 5.1 opens the redirected stdin with the console input encoding and writes its
-        # preamble at once, so under a UTF-8 console git would read a byte-order mark before the first path.
-        $console = $null
-        if ($PSVersionTable.PSEdition -ne 'Core') {
-            try { if ([Console]::InputEncoding.GetPreamble().Length -gt 0) { $console = [Console]::InputEncoding; [Console]::InputEncoding = New-Object Text.UTF8Encoding($false) } }
-            catch { $console = $null }
-        }
-        try { [void]$process.Start() } finally { if ($console) { try { [Console]::InputEncoding = $console } catch { } } }
+        [void]$process.Start()
         $stdoutTask = $process.StandardOutput.BaseStream.CopyToAsync($stdout)
         $stderrTask = $process.StandardError.ReadToEndAsync()
-        # Raw UTF-8 bytes: Windows PowerShell 5.1 cannot set a stdin encoding for a child process.
+        # Raw UTF-8 bytes on the base stream, whatever the console's input encoding.
         # git can exit before it has read every path (one unreadable file); its stderr, not the broken pipe, says why.
         try { if ($Stdin) { $process.StandardInput.BaseStream.Write($Stdin, 0, $Stdin.Length) } } catch [IO.IOException] { }
         try { $process.StandardInput.Close() } catch [IO.IOException] { }

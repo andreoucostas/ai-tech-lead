@@ -843,28 +843,8 @@ It 'audit-byte preservation assertion rejects a deliberately mutated fixture' {
     Assert $rejected 'audit preservation assertion accepted a deliberately mutated fixture'
 }
 
-# B-194 PowerShell host matrix. These cases retain optional-Git and refusal semantics without
-# routing any PowerShell behavior through a retired shell implementation.
-function Get-B194PowerShellHosts {
-    $hosts = [System.Collections.Generic.List[object]]::new()
-    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    $pwshCommand = Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($pwshCommand -and $seen.Add($pwshCommand.Source)) {
-        $hosts.Add([pscustomobject]@{ Label = 'PowerShell 7'; Path = $pwshCommand.Source; IsWindowsPowerShell = $false }) | Out-Null
-    }
-    $native = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-    if ((Test-Path -LiteralPath $native -PathType Leaf) -and $seen.Add($native)) {
-        $hosts.Add([pscustomobject]@{ Label = 'Windows PowerShell 5.1'; Path = $native; IsWindowsPowerShell = $true }) | Out-Null
-    }
-    return $hosts.ToArray()
-}
-
-$powerShellHosts = @(Get-B194PowerShellHosts)
-It 'PowerShell installer matrix has both supported nonzero Windows hosts' {
-    Assert ($powerShellHosts.Count -eq 2) "expected PS7 and Windows PowerShell 5.1, found $($powerShellHosts.Count)"
-    Assert (@($powerShellHosts | Where-Object { $_.IsWindowsPowerShell }).Count -eq 1) 'Windows PowerShell 5.1 host is absent'
-    Assert (@($powerShellHosts | Where-Object { -not $_.IsWindowsPowerShell }).Count -eq 1) 'PowerShell 7 host is absent'
-}
+# B-194: optional-Git and refusal semantics, run under this suite's own PowerShell 7 host.
+$powerShellHosts = @([pscustomobject]@{ Label = 'PowerShell 7'; Path = (Get-PsExe) })
 
 It 'B-194 plain non-Git update and brownfield remain supported when Git is optional' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b194-nongit-' + [guid]::NewGuid())
@@ -915,27 +895,6 @@ It 'B-194 plain non-Git update and brownfield remain supported when Git is optio
             }
         }
 
-        $nativeHost = @($powerShellHosts | Where-Object { $_.IsWindowsPowerShell })[0]
-        $pathParts = @()
-        if ($gitExe) { $pathParts += (Split-Path -Parent $gitExe) }
-        $pathParts += @((Join-Path $env:SystemRoot 'System32'), $env:SystemRoot, (Split-Path -Parent $nativeHost.Path))
-        $nativePath = (($pathParts | Where-Object { $_ } | Select-Object -Unique) -join [IO.Path]::PathSeparator)
-        $nativeTarget = New-B194UpdateTarget -Parent $root -Name 'native-no-pwsh-update'
-        $nativeCapture = Invoke-B194Installer -Target $nativeTarget -PowerShellExe $nativeHost.Path -Environment @{
-            PATH = $nativePath
-            B194_PS_PATH = $nativePath
-            GIT_CONFIG_GLOBAL = $gitConfig
-        }
-        Add-B194SuccessProblems -Problems $problems -Label 'Windows PowerShell 5.1 with no pwsh on PATH' -Capture $nativeCapture -Completion 'Done \(update\)'
-        if ($nativeCapture.Out -notmatch 'powershell\.exe -NoProfile -ExecutionPolicy Bypass -File scripts/framework-doctor\.ps1') {
-            $problems.Add("PS5 no-pwsh guidance omitted its resolvable doctor command: $($nativeCapture.Out)") | Out-Null
-        }
-        if ($nativeCapture.Out -notmatch 'powershell\.exe -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check\.ps1') {
-            $problems.Add("PS5 no-pwsh guidance omitted its resolvable docs-sync command: $($nativeCapture.Out)") | Out-Null
-        }
-        if ($nativeCapture.Out -match '(?m)\brun\s+pwsh -NoProfile -File scripts/(?:framework-doctor|docs-sync-check)\.ps1') {
-            $problems.Add('PS5 no-pwsh branch still printed an unavailable pwsh follow-up command') | Out-Null
-        }
         Assert ($problems.Count -eq 0) ($problems -join "`n")
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
@@ -1160,37 +1119,6 @@ It 'B-299 a bracketed target is installed in place, never into the sibling its w
             (Test-B194BytesEqual $claude ([IO.File]::ReadAllBytes($archive)))) "the target's CLAUDE.md was not archived byte-for-byte: $out"
         Assert (@(Get-ChildItem -LiteralPath $sibling -Force).Count -eq 0) "the wildcard-matched sibling was written to: $out"
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-}
-
-# One case on both hosts keeps the CI case-count parity: only Windows PowerShell can take the 5.1
-# fallback, so under pwsh the same fixture asserts the shipped pwsh settings stay in place.
-It 'B-299 without pwsh on PATH a bracketed target gets the hook settings for the installing host' {
-    $root = Join-Path ([IO.Path]::GetTempPath()) ('b299-' + [guid]::NewGuid())
-    $savedPath = $env:PATH
-    try {
-        # Test-Path without -LiteralPath reports a file under repo[b] absent, so the fallback
-        # left settings.json calling a pwsh the machine does not have.
-        $t = Join-Path $root 'repo[b]'
-        [void][IO.Directory]::CreateDirectory($t)
-        $env:PATH = @($savedPath -split ';' | Where-Object {
-            try { $_ -and -not [IO.File]::Exists([IO.Path]::Combine($_, 'pwsh.exe')) } catch { $true }
-        }) -join ';'
-        Assert ($null -eq (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue)) 'calibration: pwsh is still resolvable after removing its directories from PATH'
-        $out = Invoke-Installer -Dist 'dotnet' -Target $t
-        $exit = $LASTEXITCODE
-        Assert ($exit -eq 0) "the bracketed install failed (exit $exit): $out"
-        $settings = [IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.json'))
-        if ($PSVersionTable.PSVersion.Major -ge 7) {
-            Assert ($out -notmatch 'activated Windows PowerShell 5.1 hooks') "a pwsh install took the 5.1 fallback: $out"
-            Assert (Test-B194BytesEqual ([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.claude/settings.json'))) $settings) "settings.json is not the shipped pwsh variant: $out"
-        } else {
-            Assert ($out -match 'activated Windows PowerShell 5.1 hooks') "the 5.1 hook fallback did not run: $out"
-            Assert (Test-B194BytesEqual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.windows.json'))) $settings) "settings.json is not the Windows PowerShell 5.1 variant: $out"
-        }
-    } finally {
-        $env:PATH = $savedPath
-        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
-    }
 }
 
 It 'B-300 the brownfield mode line and adoption marker name each detected path once' {
@@ -1657,8 +1585,8 @@ It 'B-312 a developer''s Claude Code local settings stay out of Git after instal
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
-# One case on both hosts keeps the CI case-count parity: only Windows PowerShell 5.1 returns nothing,
-# instead of throwing, for a missing path under a directory whose name holds brackets.
+# Windows PowerShell 5.1 returned nothing, instead of throwing, for a missing path under a directory whose name
+# holds brackets; the installer keeps the guard that turned that into the same error on both hosts.
 It 'B-301 a bracketed target gets no false CANT-VERIFY line on first install or update' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b301-' + [guid]::NewGuid())
     try {
@@ -2349,9 +2277,9 @@ It 'B-393 an update refuses before any change when both save names for a team''s
 }
 
 # Windows decides once per process whether it may use a path of 260 characters or more (the LongPathsEnabled setting and
-# the program's manifest) and keeps the answer in the process's PEB. Clearing it there makes Windows PowerShell 5.1 on this
-# host behave as on one where the setting is off: it reads a long path as absent and cannot write it. PowerShell 7's .NET
-# handles a long path itself either way. The installer runs in that process, as the root dispatcher runs it.
+# the program's manifest) and keeps the answer in the process's PEB. Clearing it there makes the process behave as on a host
+# where the setting is off. PowerShell 7's .NET handles a long path itself either way. The installer runs in that process,
+# as the root dispatcher runs it.
 $b432Wrapper = @'
 param([string]$Installer, [string]$Target)
 $env:ATL_SOURCE_CHECK = 'off'
@@ -2372,7 +2300,7 @@ Write-Output "B432-LONG-PATHS=$([B432Peb]::RtlAreLongPathsEnabled())"
 & $Installer -Target $Target
 exit $LASTEXITCODE
 '@
-It 'B-432 without Windows long-path support an update on Windows PowerShell 5.1 refuses before any change when a save path reaches 260 characters, naming it and the setting; PowerShell 7 saves it' {
+It 'B-432 without Windows long-path support an update under PowerShell 7 saves the team file at a save path of 260 characters or more' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b432-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
     try {
         # 195 characters: every file the release ships fits below 260, and the team file's save path does not.
@@ -2384,20 +2312,12 @@ It 'B-432 without Windows long-path support an update on Windows PowerShell 5.1 
         Assert ($t.Length -eq 195 -and $save.Length -ge 260 -and ($t.Length + 1 + 52) -lt 260) "calibration: the target is $($t.Length) characters and its save path $($save.Length)"
         $wrapper = Join-Path $root 'b432-wrapper.ps1'
         [IO.File]::WriteAllText($wrapper, $b432Wrapper, [Text.UTF8Encoding]::new($true))
-        $before = Get-B194Fingerprint -Root $t
-        # Read raw: Windows PowerShell 5.1 renders a child's stderr as error records wrapped at the console width.
         $run = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $wrapper, '-Installer', (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), '-Target', $t)
         $out = $run.Out + "`n" + $run.Err
         $exit = $run.Exit
         Assert ($out -match 'B432-LONG-PATHS=0') "calibration: the process still has long-path support: $out"
-        if ($PSVersionTable.PSEdition -eq 'Desktop') {
-            Assert ($exit -eq 3) "the update did not refuse with exit 3 (exit $exit): $out"
-            Assert (($out -replace '\s+', ' ') -match ("ERROR: Refusing update: it must write '" + [regex]::Escape($save.Replace('/', '\')) + "' \($($save.Length) characters\), and Windows PowerShell 5\.1 cannot write a path of 260 characters or more, or create a folder of 248 or more, while Windows long-path support \(the LongPathsEnabled setting\) is off\. Run the installer with PowerShell 7 \(pwsh\), turn that setting on, or move the repository to a shorter path, then re-run\. Nothing was changed\.")) "the refusal did not name the path and the setting: $out"
-            Assert ((Get-B194Fingerprint -Root $t) -ceq $before) "the refused update changed the target: $out"
-        } else {
-            Assert ($exit -eq 0) "the update failed (exit $exit): $out"
-            Assert ((Test-Path -LiteralPath $save -PathType Leaf) -and (Test-B194BytesEqual $gateBytes ([IO.File]::ReadAllBytes($save)))) "the team's file was not saved at its long save path: $out"
-        }
+        Assert ($exit -eq 0) "the update failed (exit $exit): $out"
+        Assert ((Test-Path -LiteralPath $save -PathType Leaf) -and (Test-B194BytesEqual $gateBytes ([IO.File]::ReadAllBytes($save)))) "the team's file was not saved at its long save path: $out"
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -5259,7 +5179,7 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
 }
 # B-486: an update refreshes .claude/settings.json from the release and used to leave only the release's keys, so a deny rule
 # the team had added stopped applying for every teammate. The team's keys the release does not define are carried back in.
-function Get-B486Dist { param([switch]$Windows) return [Text.UTF8Encoding]::new($false).GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot ('dist/dotnet/.claude/' + $(if ($Windows) { 'settings.windows.json' } else { 'settings.json' }))))) }
+function Get-B486Dist { return [Text.UTF8Encoding]::new($false).GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.claude/settings.json'))) }
 # Members written after the last one of Text, as a team adds them by hand and as the installer writes them.
 function Add-B486TopLevel {
     param([string]$Text, [string[]]$Members)
@@ -5430,17 +5350,15 @@ It 'B-486 a key added after a completed carry survives a later update that stops
 It 'B-486 a top-level key the release no longer sets is dropped and named, not carried as the team own' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
     try {
-        # A later release that drops defaultShell: a copy of this dist with the line removed from both settings files.
+        # A later release that drops defaultShell: a copy of this dist with the line removed from its settings file.
         $future = Join-Path $root 'future'
         [void][IO.Directory]::CreateDirectory($root)
         Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $future -Recurse
-        foreach ($name in 'settings.json', 'settings.windows.json') {
-            $path = Join-Path $future ".claude/$name"
-            $text = [IO.File]::ReadAllText($path)
-            $changed = $text -replace '(?m)^\s*"defaultShell":\s*"powershell",\r?\n', ''
-            Assert ($changed -cne $text) "calibration: $name has no defaultShell line to remove"
-            Write-B486Text -Path $path -Text $changed
-        }
+        $path = Join-Path $future '.claude/settings.json'
+        $text = [IO.File]::ReadAllText($path)
+        $changed = $text -replace '(?m)^\s*"defaultShell":\s*"powershell",\r?\n', ''
+        Assert ($changed -cne $text) 'calibration: settings.json has no defaultShell line to remove'
+        Write-B486Text -Path $path -Text $changed
         $stamp = Join-Path $future '.claude/framework-version.json'
         [IO.File]::WriteAllText($stamp, ([IO.File]::ReadAllText($stamp) -replace '"version":\s*"[^"]+"', '"version": "0.99.0"'))
         $t = Join-Path $root 'target'
@@ -5474,18 +5392,40 @@ It 'B-486 env variables that differ only in case do not stop the team keys being
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
-It 'B-486 settings written for the other PowerShell are not reported as values of the team' {
-    $t = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
+# B-506: a machine without pwsh installed the Windows PowerShell 5.1 variant as settings.json, beside the release's
+# settings.windows.json. Under PowerShell 7 the update writes the pwsh file with the team's keys, says the hooks changed
+# interpreter, and retires the variant through the ledger.
+It 'B-506 an update of a repository on the 0.98.6 Windows PowerShell 5.1 settings switches it to pwsh, keeps the team keys, deletes the variant and says so' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b506-' + [guid]::NewGuid())
     try {
-        # A machine without pwsh got the 5.1 variant; the next update, with pwsh, finds hooks the team never edited.
         New-ArchGeneratorTarget -Target $t
-        $settings = Join-Path $t '.claude/settings.json'
-        Write-B486Text -Path $settings -Text (Add-B486TopLevel -Text (Get-B486Dist -Windows) -Members $b486Deny)
+        Set-B486Stamp -Target $t -Version '0.98.6'
+        [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.98.6:dist/dotnet/framework-ownership.json'))
+        $variant = Get-GitBlobBytes -Spec 'v0.98.6:dist/dotnet/.claude/settings.windows.json'
+        $variantText = [Text.UTF8Encoding]::new($false).GetString($variant)
+        Assert ($variantText -match '"command": "powershell -NoProfile -ExecutionPolicy Bypass -File \.claude/hooks/guard\.ps1') 'calibration: the 0.98.6 variant does not run the guard under powershell'
+        [IO.File]::WriteAllBytes((Join-Path $t '.claude/settings.windows.json'), $variant)
+        Write-B486Text -Path (Join-Path $t '.claude/settings.json') -Text (Add-B486TopLevel -Text $variantText -Members $b486Deny)
         $out = Invoke-Installer -Dist 'dotnet' -Target $t
-        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
-        $lines = @(Get-B486Notices -Output $out)
-        Assert ($lines.Count -eq 1 -and $lines[0] -match 'carried your own top-level keys into the refreshed file, unchanged: permissions, model\.$') "the variant switch was reported as the team's values: $($lines -join ' | ')"
-        Assert ([IO.File]::ReadAllText($settings) -ceq (Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny)) 'the refreshed settings are not the release followed by the team keys'
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $LASTEXITCODE): $out"
+        Assert ([IO.File]::ReadAllText((Join-Path $t '.claude/settings.json')) -ceq (Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny)) "settings.json is not the release's pwsh file followed by the team's keys: $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/settings.windows.json'))) "the retired Windows PowerShell 5.1 variant was not deleted: $out"
+        $flat = $out -replace '\s+', ' '
+        $notice = "NOTICE: .claude/settings.json ran the framework's hooks under Windows PowerShell 5.1; it now runs them under PowerShell 7 (pwsh). Every machine and CI agent that uses Claude Code or runs the framework's checks in this repository needs PowerShell 7."
+        Assert ([regex]::Matches($flat, [regex]::Escape($notice)).Count -eq 1) "the switch to PowerShell 7 was not announced once: $out"
+        Assert ($flat -match 'carried your own top-level keys into the refreshed file, unchanged: permissions, model\.') "the team keys were not named as carried: $out"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-506 an update of settings that already run pwsh says nothing about Windows PowerShell 5.1' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b506-' + [guid]::NewGuid())
+    try {
+        New-ArchGeneratorTarget -Target $t
+        # Each entry names Claude Code's shell field "powershell" and runs pwsh: no Windows PowerShell 5.1 registration.
+        Write-B486Text -Path (Join-Path $t '.claude/settings.json') -Text (Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $LASTEXITCODE): $out"
+        Assert ($out -notmatch 'Windows PowerShell 5\.1') "an update of pwsh settings mentioned Windows PowerShell 5.1: $out"
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
@@ -5517,31 +5457,6 @@ It 'B-486 a settings file that is not strict JSON is not carried and the notice 
     }
 }
 
-It 'B-486 without pwsh on PATH the team keys are carried into the Windows PowerShell 5.1 settings' {
-    $t = Join-Path ([IO.Path]::GetTempPath()) ('b486-' + [guid]::NewGuid())
-    $savedPath = $env:PATH
-    try {
-        # Only Windows PowerShell can take the 5.1 fallback; under pwsh the same fixture asserts the shipped pwsh settings stay.
-        New-ArchGeneratorTarget -Target $t
-        $settings = Join-Path $t '.claude/settings.json'
-        Write-B486Text -Path $settings -Text (Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny)
-        $env:PATH = @($savedPath -split ';' | Where-Object {
-            try { $_ -and -not [IO.File]::Exists([IO.Path]::Combine($_, 'pwsh.exe')) } catch { $true }
-        }) -join ';'
-        Assert ($null -eq (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue)) 'calibration: pwsh is still resolvable after removing its directories from PATH'
-        $out = Invoke-Installer -Dist 'dotnet' -Target $t
-        $exit = $LASTEXITCODE
-        Assert ($exit -eq 0) "the update failed (exit $exit): $out"
-        $windows = $PSVersionTable.PSVersion.Major -lt 7
-        if ($windows) { Assert ($out -match 'activated Windows PowerShell 5.1 hooks') "the 5.1 hook fallback did not run: $out" }
-        $expected = Add-B486TopLevel -Text (Get-B486Dist -Windows:$windows) -Members $b486Deny
-        Assert ([IO.File]::ReadAllText($settings) -ceq $expected) "the refreshed settings are not the installing host's variant followed by the team's keys: $out"
-    } finally {
-        $env:PATH = $savedPath
-        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
-    }
-}
-
 It 'B-486 every top-level key a shipped settings file sets is in the installer list of keys no release leaves to the team' {
     # A key a release ships and a later release drops would otherwise be carried as the team's own, because nothing named it.
     $installer = Join-Path $repoRoot 'src/core/scripts/install.ps1'
@@ -5551,8 +5466,7 @@ It 'B-486 every top-level key a shipped settings file sets is in the installer l
     $listed = @($assignment.Right.FindAll({ param($node) $node -is [System.Management.Automation.Language.StringConstantExpressionAst] }, $true) | ForEach-Object { [string]$_.Value })
     Assert ($listed.Count -gt 0) 'calibration: the installer list holds no key'
     $files = @(
-        foreach ($d in 'dotnet', 'angular', 'monorepo') { "dist/$d/.claude/settings.json"; "dist/$d/.claude/settings.windows.json"; "src/stacks/$d/files/.claude/settings.json" }
-        'src/core/.claude/settings.windows.json')
+        foreach ($d in 'dotnet', 'angular', 'monorepo') { "dist/$d/.claude/settings.json"; "src/stacks/$d/files/.claude/settings.json" })
     $unlisted = New-Object System.Collections.Generic.List[string]
     foreach ($relative in $files) {
         $path = Join-Path $repoRoot $relative

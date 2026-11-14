@@ -1,7 +1,6 @@
 name: Template CI
 
-# Deterministic framework self-enforcement on the supported Windows execution surface.
-# PowerShell 7 is primary; native Windows PowerShell 5.1 is the supported fallback.
+# Deterministic framework self-enforcement on the supported Windows execution surface: PowerShell 7.
 
 on:
   pull_request:
@@ -35,30 +34,4 @@ jobs:
         run: |
           $hostPath = (Get-Process -Id $PID).Path
           & $hostPath -NoProfile -File scripts/template-checks.ps1
-          exit $LASTEXITCODE
-
-  windows-ps51:
-    name: windows-ps51
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: powershell
-    steps:
-      - uses: actions/checkout@v5
-      - name: Assert direct Windows PowerShell 5.1 host
-        run: |
-          $hostPath = (Get-Process -Id $PID).Path
-          $hostLeaf = [IO.Path]::GetFileName($hostPath)
-          if ($PSVersionTable.PSEdition -ne 'Desktop' -or $PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1 -or $hostLeaf -notmatch '^powershell(?:\.exe)?$') {
-            throw "Expected direct Windows PowerShell 5.1; observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
-          }
-      - name: Hook test suite
-        run: |
-          $hostPath = (Get-Process -Id $PID).Path
-          & $hostPath -NoProfile -ExecutionPolicy Bypass -File tests/hooks/Invoke-HookTests.ps1
-          exit $LASTEXITCODE
-      - name: Deterministic framework checks
-        run: |
-          $hostPath = (Get-Process -Id $PID).Path
-          & $hostPath -NoProfile -ExecutionPolicy Bypass -File scripts/template-checks.ps1
           exit $LASTEXITCODE

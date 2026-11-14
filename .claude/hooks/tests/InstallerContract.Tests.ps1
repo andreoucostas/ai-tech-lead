@@ -170,6 +170,29 @@ It 'a usage error (target not a directory, target is the template itself) exits 
     } finally { Remove-Item -Force -LiteralPath $errFile -ErrorAction SilentlyContinue }
 }
 
+# Windows PowerShell 5.1 is not supported. Both entry points stay parseable by it so that they refuse there with one line before
+# any Git or file check; this is the one case that runs them under powershell.exe, on purpose.
+It 'under Windows PowerShell 5.1 both entry points refuse with one line naming no path, exit 4 and leave the target unchanged' {
+    $winPs = if ($env:SystemRoot) { Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe' } else { '' }
+    Assert ($winPs -and (Test-Path -LiteralPath $winPs -PathType Leaf)) "calibration: Windows PowerShell 5.1 is not at '$winPs'"
+    $expected = 'This release needs PowerShell 7. Install it (winget install --id Microsoft.PowerShell) and run the same command with pwsh in place of powershell.exe.'
+    $target = New-Target -Mode greenfield -Stack dotnet
+    try {
+        foreach ($entrypoint in @(
+            [pscustomobject]@{ Name = 'root'; Path = (Join-Path $repoRoot 'install.ps1'); Arguments = @($target) },
+            [pscustomobject]@{ Name = 'dist'; Path = (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'); Arguments = @('-Target', $target) }
+        )) {
+            $before = Get-B220TreeFingerprint -Root $target
+            $run = Invoke-RawProcess -FileName $winPs -Arguments (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $entrypoint.Path) + $entrypoint.Arguments)
+            $after = Get-B220TreeFingerprint -Root $target
+            $lines = @(($run.Out + "`n" + $run.Err) -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+            Assert ($run.Exit -eq 4) "$($entrypoint.Name) exited $($run.Exit), not 4: $($lines -join ' | ')"
+            Assert ($lines.Count -eq 1 -and $lines[0] -ceq $expected) "$($entrypoint.Name) did not print exactly the one refusal line: $($lines -join ' | ')"
+            Assert ($after -ceq $before) "$($entrypoint.Name) changed the target under Windows PowerShell 5.1"
+        }
+    } finally { Remove-Item -Recurse -Force -LiteralPath $target -ErrorAction SilentlyContinue }
+}
+
 if (-not $SkipRedTest) {
     It 'a missing contract line makes this suite fail' {
         $target = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'

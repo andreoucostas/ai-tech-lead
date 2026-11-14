@@ -3,8 +3,12 @@
 #
 # Thin dispatcher only: it selects a stack, then delegates to
 # dist/<stack>/scripts/install.ps1, which does all the real work (greenfield / brownfield /
-# update detection, the copy, the pwsh->5.1 settings fallback, ...). This wrapper adds NO
+# update detection, the copy, the settings merge, ...). This wrapper adds NO
 # install logic of its own — stack selection and delegation, nothing more.
+#
+# PowerShell 7 only. Windows PowerShell 5.1 parses a whole script before it runs any of it, so this file must stay
+# parseable by 5.1 for the version check below to refuse there with its one line: no ??, ?:, && or || chains, or other
+# PowerShell 7-only syntax anywhere in it.
 #
 # Stack resolution (first match wins):
 #   1. -Stack flag        explicit; always wins.
@@ -18,7 +22,7 @@
 # Wrapper validation errors exit 2 with an actionable message on stderr. Unknown parameters are
 # rejected by PowerShell parameter binding before the wrapper body runs and retain that host's
 # native nonzero binding error; -Stack / -Target are validated by hand (not via ValidateSet /
-# Mandatory) so known bad input also exits 2 rather than prompting.
+# Mandatory) so known bad input also exits 2 rather than prompting. Under Windows PowerShell 5.1 it exits 4, nothing changed.
 param(
     [Parameter()][string]$Stack,
     [Parameter()][switch]$WhatIf,
@@ -31,6 +35,12 @@ param(
     [Parameter(Position = 0)][string]$Target
 )
 $ErrorActionPreference = 'Stop'
+# First, before any Git or file check, with the stack installer's refuse-before-change exit. The line names no path, so
+# nothing in it can be pasted back as a command.
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    [Console]::Error.WriteLine('This release needs PowerShell 7. Install it (winget install --id Microsoft.PowerShell) and run the same command with pwsh in place of powershell.exe.')
+    exit 4
+}
 
 $usage = 'Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-WhatIf] [-AllowDowngrade] [-AllowDirtyTree] [-AllowOutdated] [-AllowStackChange] [-Reinstall] [-AllowMoveAside] C:\path\to\target-repo'
 # Exit 2 with an actionable message on stderr. Write-Error is avoided on purpose: under

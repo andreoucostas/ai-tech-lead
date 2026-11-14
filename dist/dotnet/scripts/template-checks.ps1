@@ -8,7 +8,6 @@
 # instruction layout (CLAUDE.md is the stub importing AGENTS.md and the framework rules), UTF-8
 # BOM on framework .ps1 files, required PowerShell hook set, PS syntax of framework scripts, and
 # skills-directory policy.
-# 5.1-safe: no pwsh-only syntax.
 $ErrorActionPreference = 'Stop'
 
 # Anchor to the repo this script lives in (scripts/..), not the caller's cwd — running from
@@ -126,7 +125,7 @@ if (-not (Test-Path -LiteralPath (Get-RepoPath 'AGENTS.md') -PathType Leaf)) {
     } else { OK 'AGENTS.md is the project instruction file.' }
 }
 
-# --- 4. Framework .ps1 files carry a UTF-8 BOM (Windows PowerShell 5.1 requirement) -----------
+# --- 4. Framework .ps1 files carry a UTF-8 BOM (byte stability of shipped scripts) -------------
 $scanDirs = @('.claude/hooks','scripts','tests/hooks') | Where-Object { Test-Path -LiteralPath (Get-RepoPath $_) }
 # In a consumer repository scripts/ is shared with the consumer's own scripts, which are not the
 # framework's to police: check only the .ps1 files framework-ownership.json lists. The marked

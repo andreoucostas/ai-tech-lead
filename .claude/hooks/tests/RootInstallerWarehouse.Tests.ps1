@@ -491,8 +491,8 @@ Reset-Tests
         })
     }
 
-    # One case on both hosts keeps the CI case-count parity: only Windows PowerShell 5.1 reads the
-    # call operator's path as a wildcard, and PowerShell 7 must go on running the literal path.
+    # Windows PowerShell 5.1 read the call operator's path as a wildcard; the dispatcher must go on running
+    # the literal path.
     It 'B-302 the root dispatcher in a bracketed clone calls its own stack installer, never a sibling''s' {
         $parent = Join-Path ([IO.Path]::GetTempPath()) ('b302-' + [guid]::NewGuid().ToString('N'))
         try {

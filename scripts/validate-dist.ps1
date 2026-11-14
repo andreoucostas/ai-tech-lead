@@ -8,7 +8,7 @@
 #   5. the dist's OWN template-checks.ps1 suite passes, run from inside the dist dir
 #   6. no meta-dev vocabulary leaks into shipped content (scripts/meta-denylist.txt)
 #   7. every script a shipped *.md tells someone to RUN and every rendered relative inline link resolves
-#   8. exactly 18 PowerShell hook registrations resolve with case-exact paths and required settings,
+#   8. exactly 12 PowerShell hook registrations resolve with case-exact paths and required settings,
 #      on the exact event map (event, matcher, script order, -ExecutionPolicy Bypass, timeout floors)
 #   9. every core @stack marker expands from a non-empty stack snippet into the composed file
 #  10. section-path citations name a heading that exists in the cited shipped file
@@ -794,7 +794,7 @@ if (Test-CheckSelected 'hook-registration') {
 # Bare interpreter names remain intentional team-portable configuration. Runtime resolution is
 # reported by the doctor's `Hook liveness` row; this build-time check proves the configured host,
 # shell routing, cardinality, and case-exact script target.
-$regFiles = @('.claude/settings.json', '.claude/settings.windows.json', '.github/hooks/hooks.json')
+$regFiles = @('.claude/settings.json', '.github/hooks/hooks.json')
 $regProblems = @()
 $regUnreadable = @()
 $regCount = 0
@@ -923,7 +923,7 @@ foreach ($rf in $regFiles) {
     if ($rf -like '.claude/*') {
         if ([string]$json.env.CLAUDE_CODE_USE_POWERSHELL_TOOL -cne '1') { $regProblems += "$rf : CLAUDE_CODE_USE_POWERSHELL_TOOL must be '1'" }
         if ([string]$json.defaultShell -cne 'powershell') { $regProblems += "$rf : defaultShell must be exactly 'powershell'" }
-        $expectedInterpreter = if ($rf -ceq '.claude/settings.json') { 'pwsh' } else { 'powershell' }
+        $expectedInterpreter = 'pwsh'
         foreach ($event in @($json.hooks.PSObject.Properties)) {
             if ($event.Value -isnot [System.Array]) { $regProblems += "$rf : hook event '$($event.Name)' must be an array"; continue }
             foreach ($group in @($event.Value)) {
@@ -986,11 +986,9 @@ foreach ($rf in $regFiles) {
 }
 # The handler counts below are meaningless once a registration file could not be read.
 if (@($regUnreadable).Count -eq 0) {
-    foreach ($rf in @('.claude/settings.json','.claude/settings.windows.json')) {
-        if ([int]$settingsCounts[$rf] -ne 6) { $regProblems += "$rf : expected exactly 6 command hooks, found $([int]$settingsCounts[$rf])" }
-    }
+    if ([int]$settingsCounts['.claude/settings.json'] -ne 6) { $regProblems += ".claude/settings.json : expected exactly 6 command hooks, found $([int]$settingsCounts['.claude/settings.json'])" }
     if ($hookEntries -ne 6) { $regProblems += ".github/hooks/hooks.json : expected exactly 6 PowerShell entries, found $hookEntries" }
-    if ($regCount -ne 18) { $regProblems += "all registration files : expected exactly 18 PowerShell handlers, found $regCount" }
+    if ($regCount -ne 12) { $regProblems += "all registration files : expected exactly 12 PowerShell handlers, found $regCount" }
 }
 if (@($regProblems).Count -gt 0) {
     Fail ("hook registrations reference {0} missing or invalid target(s) in {1}. A registration that cannot start is a hook that silently never runs." -f @($regProblems).Count, $Dist)
@@ -999,7 +997,7 @@ if (@($regProblems).Count -gt 0) {
 if (@($regUnreadable).Count -gt 0) {
     Cant-Examine ("hook registration scan could not read:" + (($regUnreadable | Sort-Object -Unique) -join ' '))
 } elseif (@($regProblems).Count -eq 0) {
-    OK "exactly 18 PowerShell hook registrations resolve (settings.json 6, settings.windows.json 6, hooks.json 6; strict JSON; event map, matchers and timeout floors pinned)"
+    OK "exactly 12 PowerShell hook registrations resolve (settings.json 6, hooks.json 6; strict JSON; event map, matchers and timeout floors pinned)"
 }
 }
 

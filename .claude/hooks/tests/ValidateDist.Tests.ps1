@@ -33,11 +33,10 @@ function New-DistCopy {
     $script:scratch += $root
     $dist = Join-Path $root 'dotnet'
 
-    # dist/ is deliberately not rebuilt by this source-only test change. Overlay the three current
-    # registration sources so focused check-8 fixtures exercise the new 18-handler contract rather
-    # than the previous released twin schema. The final release rebuild proves normal composition.
+    # dist/ is deliberately not rebuilt by this source-only test change. Overlay the two current
+    # registration sources so focused check-8 fixtures exercise the current 12-handler contract rather
+    # than a previous released schema. The final release rebuild proves normal composition.
     Copy-Item -LiteralPath (Join-Path $repo 'src\stacks\dotnet\files\.claude\settings.json') -Destination (Join-Path $dist '.claude\settings.json') -Force
-    Copy-Item -LiteralPath (Join-Path $repo 'src\core\.claude\settings.windows.json') -Destination (Join-Path $dist '.claude\settings.windows.json') -Force
     Copy-Item -LiteralPath (Join-Path $repo 'src\core\.github\hooks\hooks.json') -Destination (Join-Path $dist '.github\hooks\hooks.json') -Force
 
     if ($PowerShellOnly) {
@@ -288,12 +287,11 @@ if ($Only -eq '__driver-boundary-probe__') {
 
 try {
     It 'case 1: settings.json with zero handlers fails check 8' { Assert-Case 'zero-settings' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.json : registration file yields zero handlers' 'hook-registration' }
-    It 'case 2: settings.windows.json with zero handlers fails check 8' { Assert-Case 'zero-windows' { param($d) $p=Join-Path $d '.claude\settings.windows.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,[regex]::Replace($t,'"command"','"commandX"',6)) } 'settings.windows.json : registration file yields zero handlers' 'hook-registration' }
     It 'case 3: an absolute registration fails check 8' { Assert-Case 'absolute' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' 'C:/definitely-missing/session-start.ps1' } 'is an absolute path' 'hook-registration' }
     It 'case 4: a quoted missing -File target fails check 8' { Assert-Case 'quoted-missing' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '\".claude/hooks/definitely missing.ps1\"' } 'does not exist in this dist' 'hook-registration' }
-    It 'case 5: a quoted real -File target stays green' { Assert-Case 'quoted-real' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '\".claude/hooks/session-start.ps1\"' } 'exactly 18 PowerShell hook registrations resolve' 'hook-registration' -Green }
-    It 'case 6: a Copilot entry without its PowerShell command fails check 8' { Assert-Case 'missing-copilot-powershell' { param($d) $p=Join-Path $d '.github\hooks\hooks.json'; $t=[IO.File]::ReadAllText($p); $t=(New-Object regex('\s*"powershell":\s*"[^"]+",?')).Replace($t,'',1); [IO.File]::WriteAllText($p,$t) } 'hook entry must have one non-empty powershell command' 'hook-registration' -AlsoPattern @('expected exactly 6 PowerShell entries, found 5','expected exactly 18 PowerShell handlers, found 17') }
-    It 'case 7: an unrelated command object does not change registration scoping' { Assert-Case 'unrelated-command' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"hooks": {','"unrelated": { "type": "command" },' + [Environment]::NewLine + '  "hooks": {')) } 'exactly 18 PowerShell hook registrations resolve' 'hook-registration' -Green }
+    It 'case 5: a quoted real -File target stays green' { Assert-Case 'quoted-real' { param($d) Replace-Text (Join-Path $d '.claude\settings.json') '.claude/hooks/session-start.ps1' '\".claude/hooks/session-start.ps1\"' } 'exactly 12 PowerShell hook registrations resolve' 'hook-registration' -Green }
+    It 'case 6: a Copilot entry without its PowerShell command fails check 8' { Assert-Case 'missing-copilot-powershell' { param($d) $p=Join-Path $d '.github\hooks\hooks.json'; $t=[IO.File]::ReadAllText($p); $t=(New-Object regex('\s*"powershell":\s*"[^"]+",?')).Replace($t,'',1); [IO.File]::WriteAllText($p,$t) } 'hook entry must have one non-empty powershell command' 'hook-registration' -AlsoPattern @('expected exactly 6 PowerShell entries, found 5','expected exactly 12 PowerShell handlers, found 11') }
+    It 'case 7: an unrelated command object does not change registration scoping' { Assert-Case 'unrelated-command' { param($d) $p=Join-Path $d '.claude\settings.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"hooks": {','"unrelated": { "type": "command" },' + [Environment]::NewLine + '  "hooks": {')) } 'exactly 12 PowerShell hook registrations resolve' 'hook-registration' -Green }
     It 'case 8: a Bash key in a Copilot hook fails check 8' {
         Assert-Case 'copilot-bash-key' {
             param($d)
@@ -311,7 +309,7 @@ try {
             $entry = @($doc.hooks.sessionStart)[0]
             $doc.hooks.sessionStart = @($entry, $entry)
             [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
-        } 'expected exactly 6 PowerShell entries, found 7' 'hook-registration' -AlsoPattern 'expected exactly 18 PowerShell handlers, found 19'
+        } 'expected exactly 6 PowerShell entries, found 7' 'hook-registration' -AlsoPattern 'expected exactly 12 PowerShell handlers, found 13'
     }
     It 'case 8c: removing Claude defaultShell fails the PowerShell contract' {
         Assert-Case 'missing-default-shell' {
@@ -372,7 +370,7 @@ try {
     It 'case 8j: a guard entry without onFailure block fails check 8' {
         Assert-Case 'claude-guard-fails-open' {
             param($d)
-            $path = Join-Path $d '.claude\settings.windows.json'
+            $path = Join-Path $d '.claude\settings.json'
             $doc = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
             @($doc.hooks.PreToolUse)[0].hooks[0].PSObject.Properties.Remove('onFailure')
             [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
@@ -453,9 +451,9 @@ try {
         } 'guard timeout must be at least 10 s, found 2' 'hook-registration'
     }
     It 'case 8m: a registration without -ExecutionPolicy Bypass fails check 8' {
-        Assert-Case 'windows-registration-without-execution-policy' {
+        Assert-Case 'registration-without-execution-policy' {
             param($d)
-            $path = Join-Path $d '.claude\settings.windows.json'
+            $path = Join-Path $d '.claude\settings.json'
             $find = '-NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1'
             Assert ([IO.File]::ReadAllText($path).Contains($find)) 'fixture lacks the session-start registration'
             Replace-Text $path $find '-NoProfile -File .claude/hooks/session-start.ps1'
@@ -490,7 +488,7 @@ try {
         }
     }
     It 'case 12: clean PowerShell topology and registrations stay green together' {
-        Assert-Case 'clean-powershell-contract' { param($d) } 'exactly 18 PowerShell hook registrations resolve' 'powershell-topology,hook-registration' -Green -PowerShellOnly -AlsoPattern 'PowerShell-only topology: \d+ files scanned'
+        Assert-Case 'clean-powershell-contract' { param($d) } 'exactly 12 PowerShell hook registrations resolve' 'powershell-topology,hook-registration' -Green -PowerShellOnly -AlsoPattern 'PowerShell-only topology: \d+ files scanned'
     }
     It 'case 13: an event whose value is not an array fails check 8' { Assert-Case 'bad-event-shape' { param($d) $p=Join-Path $d '.github\hooks\hooks.json'; $t=[IO.File]::ReadAllText($p); [IO.File]::WriteAllText($p,$t.Replace('"sessionStart": [','"sessionStart": {"invalid":"not-an-array"}, "sessionStartX": [')) } "hook event 'sessionStart' must be an array" 'hook-registration' }
     It 'case 14: an unparseable registration file fails check 8 rather than yielding zero handlers' { Assert-Case 'unparseable' { param($d) [IO.File]::WriteAllText((Join-Path $d '.claude\settings.json'), '{"hooks": {"SessionStart": [ THIS IS NOT JSON') } 'unparseable' 'hook-registration' -AlsoPattern '(?m)^FAIL:' }

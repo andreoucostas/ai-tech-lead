@@ -207,8 +207,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 9024,
-          "tok": 2256
+          "chars": 8905,
+          "tok": 2226
         },
         {
           "path": "docs/defaults.md",
@@ -217,28 +217,28 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 45868,
-          "tok": 11467
+          "chars": 45852,
+          "tok": 11463
         },
         {
           "path": "docs/getting-started.md",
-          "chars": 6930,
-          "tok": 1732
+          "chars": 6988,
+          "tok": 1747
         },
         {
           "path": "docs/playbook.md",
-          "chars": 14715,
-          "tok": 3679
+          "chars": 14730,
+          "tok": 3682
         },
         {
           "path": "docs/reference.md",
-          "chars": 11582,
-          "tok": 2896
+          "chars": 11509,
+          "tok": 2877
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 14438,
-          "tok": 3610
+          "chars": 14382,
+          "tok": 3596
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -348,8 +348,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 57239,
-          "tok": 14310
+          "chars": 56994,
+          "tok": 14248
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -378,8 +378,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 22391,
-          "tok": 5598
+          "chars": 22125,
+          "tok": 5531
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -631,8 +631,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 8866,
-          "tok": 2216
+          "chars": 8747,
+          "tok": 2187
         },
         {
           "path": "docs/defaults.md",
@@ -641,28 +641,28 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 45868,
-          "tok": 11467
+          "chars": 45852,
+          "tok": 11463
         },
         {
           "path": "docs/getting-started.md",
-          "chars": 6792,
-          "tok": 1698
+          "chars": 6850,
+          "tok": 1712
         },
         {
           "path": "docs/playbook.md",
-          "chars": 14757,
-          "tok": 3689
+          "chars": 14772,
+          "tok": 3693
         },
         {
           "path": "docs/reference.md",
-          "chars": 11476,
-          "tok": 2869
+          "chars": 11403,
+          "tok": 2851
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 14438,
-          "tok": 3610
+          "chars": 14382,
+          "tok": 3596
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -772,8 +772,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 50840,
-          "tok": 12710
+          "chars": 50595,
+          "tok": 12649
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -802,8 +802,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 21163,
-          "tok": 5291
+          "chars": 20897,
+          "tok": 5224
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1055,8 +1055,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 9092,
-          "tok": 2273
+          "chars": 8973,
+          "tok": 2243
         },
         {
           "path": "docs/defaults.md",
@@ -1065,28 +1065,28 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 45868,
-          "tok": 11467
+          "chars": 45852,
+          "tok": 11463
         },
         {
           "path": "docs/getting-started.md",
-          "chars": 7059,
-          "tok": 1765
+          "chars": 7117,
+          "tok": 1779
         },
         {
           "path": "docs/playbook.md",
-          "chars": 15677,
-          "tok": 3919
+          "chars": 15692,
+          "tok": 3923
         },
         {
           "path": "docs/reference.md",
-          "chars": 11601,
-          "tok": 2900
+          "chars": 11528,
+          "tok": 2882
         },
         {
           "path": "docs/upgrade-checklist.md",
-          "chars": 14438,
-          "tok": 3610
+          "chars": 14382,
+          "tok": 3596
         },
         {
           "path": "docs/wiki/INDEX.md",
@@ -1196,8 +1196,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 66642,
-          "tok": 16660
+          "chars": 66397,
+          "tok": 16599
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1226,8 +1226,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 24638,
-          "tok": 6160
+          "chars": 24372,
+          "tok": 6093
         },
         {
           "path": ".claude/commands/refactor.md#body",

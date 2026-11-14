@@ -46,8 +46,7 @@ Unless `$ARGUMENTS` contains `full`, compare the working tree with the baseline 
 pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Impact
 ```
 
-(Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File
-scripts/bootstrap-baseline.ps1 -Mode Impact`.) Paths `framework-ownership.json` lists never count as changes. Act on
+Paths `framework-ownership.json` lists never count as changes. Act on
 its last line:
 
 - `RESULT stop`: nothing relevant changed since the `BASELINE` date. Report that, quote any bounded
@@ -270,24 +269,18 @@ If any skill was added, removed, or updated, reconcile `AGENTS.md > Common Tasks
 
 ## Deterministic completion gate
 
-Run exactly one host-native framework check from the repository root:
+Run the framework check from the repository root:
 
-PowerShell 7 (`pwsh`, primary):
+PowerShell 7 (`pwsh`; Windows PowerShell 5.1 is not supported):
 
 ```powershell
 pwsh -NoProfile -File scripts/docs-sync-check.ps1
 ```
 
-Windows PowerShell 5.1 fallback (Windows without `pwsh`):
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1
-```
-
 PASS requires exit code 0 and the final line `All AI Tech Lead framework checks passed.`. Repair
 only artifacts this workflow changed, then rerun. If a remaining failure is outside this workflow's
-scope, report it and **do not claim completion**. If neither checker can execute or its result cannot
-be examined, report `CANT-VERIFY` with the reason and **do not claim completion**.
+scope, report it and **do not claim completion**. If the check cannot execute (no `pwsh`, say) or its result
+cannot be examined, report `CANT-VERIFY` with the reason and **do not claim completion**.
 
 ---
 

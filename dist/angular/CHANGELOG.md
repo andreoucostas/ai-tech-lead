@@ -4,8 +4,20 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.98.7 — Unreleased
+## 0.99.0 — Unreleased
 
+- **Windows PowerShell 5.1 is no longer supported: every developer machine and every CI agent that runs the framework's
+  hooks or checks needs PowerShell 7.** Install it (`winget install --id Microsoft.PowerShell`), then open a new terminal so
+  `pwsh` is on `PATH`. Without it, on Claude Code the write guard refuses every `Write`, `Edit` and `NotebookEdit` ("The term
+  'pwsh' is not recognized") and the other hooks do not run, as Copilot already refused every tool call; the installer, run
+  with `powershell.exe`, stops with one line and changes nothing (exit 4), so run the same command with `pwsh`; and
+  `scripts/framework-doctor.ps1` fails its `Wired hook shell` row (exit 1) when `pwsh` is not on `PATH`, and under
+  `powershell.exe` stops with one line (exit 2). A CI job that runs `docs-sync-check` with `shell: powershell` or
+  `powershell.exe` must run it with `pwsh`. If `.claude/settings.json` ran the hooks under Windows PowerShell 5.1, as the
+  installer wrote it on a machine without `pwsh`, the update switches it to PowerShell 7, keeps your own keys (`permissions`,
+  `model` and the like), deletes an unmodified `.claude/settings.windows.json`, and prints a `NOTICE` saying so; its line
+  saying your `hooks` were replaced means the framework's own Windows PowerShell 5.1 entries there. An edited
+  `settings.windows.json` stays, named in a `CANT-VERIFY` line: delete it once nothing of yours in it is needed.
 - **On Copilot, the workflow rules now reach a session's first prompt.** In VS Code's Copilot harness the rules `route-prompt`
   adds to each prompt (the routed workflow's steps, the plan gate and the security-pass reminder) reached every prompt except a
   session's first, whose hook output VS Code replaces with its own workspace listing. `session-start` now reads that first prompt,
@@ -18,12 +30,11 @@
   session's current directory. Once the agent had run `Set-Location` into a subfolder with the PowerShell tool, none of the six
   hooks started, and nothing said so: no write guard, build feedback, prompt rails, Boy Scout nudge or audit line for the rest of
   the session (seen on Claude Code 2.1.312; the `"cwd": "."` on each entry is read by Copilot, not by Claude Code). Each command
-  in `.claude/settings.json` and `.claude/settings.windows.json` now returns to the session root before it runs. Nothing to do:
-  an update rewrites both files.
+  in `.claude/settings.json` now returns to the session root before it runs. Nothing to do: an update rewrites the file.
 - **On Claude Code a write guard that cannot start now refuses the write.** On a machine without PowerShell 7 that uses
   `.claude/settings.json`, the guard's command exited 0 and every write went ahead unchecked. It now exits 2, so `Write`, `Edit`
-  and `NotebookEdit` are refused ("The term 'pwsh' is not recognized") until PowerShell 7 is installed; where it cannot be, copy
-  `.claude/settings.windows.json` over `.claude/settings.json`. The guard entry also sets `"onFailure": "block"`, which Claude
+  and `NotebookEdit` are refused ("The term 'pwsh' is not recognized") until PowerShell 7 is installed (see the first entry).
+  The guard entry also sets `"onFailure": "block"`, which Claude
   Code 2.1.295 and later act on, so a guard script that is missing, or one that times out, refuses the write as well. Copilot
   already stopped in the same case. `docs/enforcement-surfaces.md` ("Before any hook can be guaranteed") has the detail.
 - **The pre-`/bootstrap` defaults instruction is now visible text in `AGENTS.md`.** It sat in an HTML comment, and Claude Code

@@ -57,10 +57,9 @@ The root installer chooses the distribution for you. To install this one directl
 
 ```powershell
 pwsh -NoProfile -File scripts/install.ps1 -Target 'C:\path\to\consumer-repo'
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Target 'C:\path\to\consumer-repo'
 ```
 
-Use the second line only without PowerShell 7, and add `-WhatIf` to preview. If the repository
+It needs PowerShell 7 (Windows PowerShell 5.1 is not supported). Add `-WhatIf` to preview. If the repository
 already has the framework (`.claude/framework-version.json`), this is an update: follow
 [docs/upgrade-checklist.md](docs/upgrade-checklist.md). `CLAUDE.md` and `AGENTS.md` are
 protected consumer paths and are never overwritten; `.github/instructions/framework-rules.instructions.md` is

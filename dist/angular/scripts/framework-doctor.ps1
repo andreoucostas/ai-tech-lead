@@ -1,5 +1,12 @@
-﻿# Developer-machine enforcement diagnostic. Windows PowerShell 5.1 compatible.
+﻿# Developer-machine enforcement diagnostic. PowerShell 7 only: Windows PowerShell 5.1 parses a whole script before it runs
+# any of it, so this file must stay parseable by 5.1 for the version check below to refuse there with its one line (no ??,
+# ?:, && or || chains, or other PowerShell 7-only syntax anywhere in it).
 $ErrorActionPreference = 'SilentlyContinue'
+# First. The line names no path, so nothing in it can be pasted back as a command; exit 2 is "could not examine".
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    [Console]::Error.WriteLine('This release needs PowerShell 7. Install it (winget install --id Microsoft.PowerShell) and run the same command with pwsh in place of powershell.exe.')
+    exit 2
+}
 $root = Split-Path -Parent $PSScriptRoot
 $script:missing = 0
 $script:missingRows = 0
@@ -20,6 +27,21 @@ function RowU($Name, $Detail) {
     Row CANT-VERIFY $Name $Detail
 }
 function Has($Name) { [bool](Get-Command $Name -ErrorAction SilentlyContinue) }
+# PowerShell 7 puts its own folder first on PATH when it starts, so this doctor would always find pwsh there. A hook
+# interpreter is looked up on the PATH the doctor was given: that first folder aside, unless PATH names it again.
+$script:givenPath = @(([string]$env:PATH) -split ';' | ForEach-Object { $_.Trim().Trim('"') } | Where-Object { $_ })
+if ($script:givenPath.Count -gt 0 -and $script:givenPath[0].TrimEnd('\') -ieq ([string]$PSHOME).TrimEnd('\')) { $script:givenPath = @($script:givenPath | Select-Object -Skip 1) }
+function Test-OnGivenPath([string]$Name) {
+    $extensions = @(([string]$env:PATHEXT) -split ';' | Where-Object { $_ })
+    if ($extensions.Count -eq 0) { $extensions = @('.COM', '.EXE', '.BAT', '.CMD') }
+    $candidates = if ([IO.Path]::HasExtension($Name)) { @($Name) } else { @($extensions | ForEach-Object { $Name + $_ }) }
+    foreach ($directory in $script:givenPath) {
+        foreach ($candidate in $candidates) {
+            try { if ([IO.File]::Exists([IO.Path]::Combine($directory, $candidate))) { return $true } } catch { }
+        }
+    }
+    return $false
+}
 # Keep every doctor JSON decision on the strict jq/Python grammar. ConvertFrom-Json alone accepts
 # JavaScript extensions under PowerShell 5.1/7 (comments, single quotes, unquoted keys, trailing
 # commas, NaN/Infinity, and leading-zero numbers).
@@ -442,15 +464,19 @@ if ($settingsReadFailed) {
 } else {
     $missingShells = @()
     $bareShells = @()
+    $unresolvedShells = @()
     $existingShells = @()
     foreach ($shell in $shells) {
         if ($shell -match '^(?:[A-Za-z]:[\\/]|/)') {
             if (Test-Path -LiteralPath $shell -PathType Leaf) { $existingShells += $shell }
             else { $missingShells += $shell }
-        } else { $bareShells += $shell }
+        } elseif (Test-OnGivenPath $shell) { $bareShells += $shell }
+        else { $unresolvedShells += $shell }
     }
     if ($missingShells.Count) {
         Row MISSING 'Wired hook shell' ("the configured machine-specific interpreter path is absent on this machine: {0}. Fix: re-run the installer to restore portable bare-name wiring." -f ($missingShells -join ','))
+    } elseif ($unresolvedShells.Count) {
+        Row MISSING 'Wired hook shell' ("the hook interpreter {0} is not on PATH, so no Claude Code hook starts and the write guard refuses every write. Fix: install PowerShell 7 (winget install --id Microsoft.PowerShell), which puts pwsh on PATH, then open a new terminal and rerun the doctor." -f ($unresolvedShells -join ','))
     } elseif ($bareShells.Count) {
         Row CANT-VERIFY 'Wired hook shell' ("hooks use the portable bare interpreter name {0}; this doctor cannot observe the agent host's PATH. Use Hook liveness and the host canaries below." -f ($bareShells -join ','))
     } else { Row OK 'Wired hook shell' ("wired interpreter paths exist on this machine: {0}." -f ($existingShells -join ',')) }
@@ -616,7 +642,7 @@ if ($copilotValid) {
     # hooks.json invokes pwsh by name, with no Windows PowerShell fallback. Without it the matcher-less
     # preToolUse guard errors and Copilot denies every tool call ("hook errored"), observed on Copilot CLI 1.0.89.
     $copilotNeedsPwsh = [regex]::IsMatch($rawCopilot, '"powershell"\s*:\s*"\s*pwsh(?:\.exe)?\s')
-    if ($copilotNeedsPwsh -and -not (Has pwsh)) {
+    if ($copilotNeedsPwsh -and -not (Test-OnGivenPath 'pwsh')) {
         if (Has copilot) { Row MISSING 'Copilot surface' 'hooks.json is valid and Copilot CLI is available in this doctor process environment, but PowerShell 7 (pwsh) is not: every hooks.json command runs pwsh, so Copilot refuses every tool call ("Denied by preToolUse hook ... (hook errored)"). Fix: install PowerShell 7.' }
         else { Row CANT-VERIFY 'Copilot surface' 'hooks.json is valid; Copilot CLI and PowerShell 7 (pwsh) are absent from this doctor process environment. Every hooks.json command runs pwsh, so Copilot in VS Code or the CLI would refuse every tool call on this machine: install PowerShell 7 before using Copilot here. Claude-only teams need no action.' }
     }
@@ -641,9 +667,7 @@ else {
         # lets the gap persist.
         $hostExe = $null
         try { $hostExe = (Get-Process -Id $PID).Path } catch { $hostExe = $null }
-        if ([string]::IsNullOrEmpty($hostExe)) {
-            $hostExe = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh' } else { 'powershell' }
-        }
+        if ([string]::IsNullOrEmpty($hostExe)) { $hostExe = 'pwsh' }
         $checkRan = $true
         $checkStatus = $null
         try {

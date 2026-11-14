@@ -6,10 +6,7 @@
 # (default: whole repo)
 $ErrorActionPreference = 'SilentlyContinue'
 # A relative scope is the caller's, so it resolves before the cd to the repository root; the whole repository is the default.
-# Windows PowerShell 5.1 cannot start in a folder whose name has [ or ] and falls back to its own install folder; the process
-# working directory still holds the real one.
 $caller = (Get-Location).Path
-if ($PSVersionTable.PSEdition -ne 'Core' -and $caller -eq $PSHOME -and [Environment]::CurrentDirectory -ne $PSHOME) { $caller = [Environment]::CurrentDirectory }
 $root = (git -C $caller rev-parse --show-toplevel 2>$null); if (-not $root) { $root = $caller }
 $scopeLabel = if ($args.Count -gt 0) { $args } else { @('.') }
 $paths = @()

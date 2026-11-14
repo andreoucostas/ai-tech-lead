@@ -418,9 +418,8 @@ finding read, not one suffix. Its kind is `scoped` (true of the files named), `u
 do Y" statement: the glob covering X) or `absence` (a "no X exists" statement: the glob that matches
 nothing); `/rebootstrap` rechecks the last two after any change.
 
-Run `pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Record -ClaimsPath <claims file>`
-(Windows PowerShell 5.1 fallback: `powershell -NoProfile -ExecutionPolicy Bypass -File` with the
-same arguments), then delete the claims file. Exit 0 writes `.claude/bootstrap-baseline.tsv`; commit
+Run `pwsh -NoProfile -File scripts/bootstrap-baseline.ps1 -Mode Record -ClaimsPath <claims file>`,
+then delete the claims file. Exit 0 writes `.claude/bootstrap-baseline.tsv`; commit
 it with the other artifacts. Each `UNCLAIMED` line it prints is a statement no claim covers: add a
 claim for each one a pass finding supports and rerun, and report the rest with why. Each `EMPTY` line
 names a zero-byte file a claim's evidence matched, which evidences nothing and is not recorded: add a
@@ -434,24 +433,18 @@ change `AGENTS.md`, the hazard table or a file `framework-ownership.json` does n
 
 ## Deterministic completion gate
 
-Before Phase 4, run exactly one host-native framework check from the repository root:
+Before Phase 4, run the framework check from the repository root:
 
-PowerShell 7 (`pwsh`, primary):
+PowerShell 7 (`pwsh`; Windows PowerShell 5.1 is not supported):
 
 ```powershell
 pwsh -NoProfile -File scripts/docs-sync-check.ps1
 ```
 
-Windows PowerShell 5.1 fallback (Windows without `pwsh`):
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docs-sync-check.ps1
-```
-
 PASS requires exit code 0 and the final line `All AI Tech Lead framework checks passed.`. If it
 fails, repair only artifacts this workflow generated or owns, then rerun until it passes. If the
 remaining failure is outside this workflow's scope, report it with the failing check and **do not
-claim completion**. If neither checker can be executed or its result cannot be examined, report
+claim completion**. If the check cannot be executed (no `pwsh`, say) or its result cannot be examined, report
 `CANT-VERIFY` with the reason and **do not claim completion**. Include the command and PASS,
 failure, or CANT-VERIFY result in Phase 4.
 
