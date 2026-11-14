@@ -58,6 +58,13 @@ GitHub's hooks reference, which says a command hook's output on that event is dr
 are visible text, since Claude Code's memory page says block HTML comments are stripped from instruction files (not measured for
 an imported `AGENTS.md`; the adversarial review advised against paying for a canary).
 
+`-Reinstall`'s "already exists" refusal no longer says a commit keeps an earlier archive that carries an uncommitted edit (guarded,
+`install.ps1`; escaped in 0.98.5, found by a second session's attack on 12946b74's unattacked message fix). The refusal runs before the
+dirty-tree check and read "held" off tracked-and-not-skipped, so for a tracked `docs/pre-adoption/<name>` with an uncommitted edit it
+printed "delete it, commit that (commit <sha> keeps it)", and the named commit did not hold the edit. It now also compares the file's
+bytes with `git cat-file --filters HEAD:./<path>` (the sweep's own comparison) and, when they differ or cannot be compared, prints the
+untracked case's remedy: move it out of the repository. One case, red first, in `UpdateDelivery.Tests`.
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

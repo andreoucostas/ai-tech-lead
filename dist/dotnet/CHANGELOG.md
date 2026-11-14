@@ -31,6 +31,11 @@
 - **`docs/enforcement-surfaces.md` says two things it did not.** VS Code documents its Local harness as deprecated, to be removed
   in February 2027. And the per-prompt reminders on Copilot are delivered in practice but not by contract: GitHub's hooks
   reference says the output of a prompt hook is dropped, so a later Copilot release may stop delivering them.
+- **`-Reinstall` no longer says a commit keeps an earlier archive you have edited since.** When `docs/pre-adoption/AGENTS.md`
+  or `docs/pre-adoption/CLAUDE.md` was already there, `-Reinstall` stopped, as it should, and told you to move the file or
+  delete it because your last commit kept it. It said that for any file Git tracked, including one with an edit you had not
+  committed, so deleting it as told lost that edit. It now compares the file with the commit and, when they differ, tells
+  you to move the file out of the repository instead. The stop changes nothing in your repository, as before.
 
 ## 0.98.6 — 2026-11-13
 

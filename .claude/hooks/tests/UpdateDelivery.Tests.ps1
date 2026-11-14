@@ -5107,6 +5107,29 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
         } finally { Remove-ReinstallTemp @($fx.Path) }
     }
 
+    It 'reinstall: an earlier archive Git tracks with an uncommitted edit is not said to be in the commit, since deleting it would lose the edit' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            $earlier = Join-Path $t 'docs/pre-adoption/AGENTS.md'
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $earlier) | Out-Null
+            [IO.File]::WriteAllText($earlier, "# an earlier adoption's archive`n", [Text.UTF8Encoding]::new($false))
+            & git -C $t add -A 2>&1 | Out-Null
+            & git -C $t commit -qm earlier-archive 2>&1 | Out-Null
+            Assert ($LASTEXITCODE -eq 0) 'calibration: could not commit the earlier archive'
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 3 -and ($r.Out -replace '\s+', ' ') -match 'keeps it') "calibration: the committed archive, unedited, is not said to be kept by the commit (exit $($r.Exit)): $($r.Out)"
+            [IO.File]::AppendAllText($earlier, "a note the team has not committed`n", [Text.UTF8Encoding]::new($false))
+            $before = Get-ReinstallFingerprint $t
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            $flat = $r.Out -replace '\s+', ' '
+            Assert ($r.Exit -eq 3 -and $flat -match "'docs/pre-adoption/AGENTS\.md', which already exists") "calibration: the reinstall was not refused by the edited archive (exit $($r.Exit)): $($r.Out)"
+            Assert ($flat -notmatch 'keeps it') "the refusal says a commit keeps an archive whose edit no commit holds: $($r.Out)"
+            Assert ($flat -match 'move it out of the repository') "the refusal does not say to move the edited archive out of the repository: $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $t)) "the refused reinstall changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
     # B-481: PowerShell reads U+2019 as a single quote too, so a line that doubles only the ASCII one does not parse.
     It 'reinstall: an archive stop''s restore line, run as printed, restores a target whose path holds a $ and a typographic apostrophe' {
         $fx = New-ReinstallFixture

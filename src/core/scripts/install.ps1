@@ -1476,8 +1476,13 @@ if ($Reinstall) {
             exit 3
         }
         if (Get-Item -Force -LiteralPath $dest -ErrorAction SilentlyContinue) {
-            # Only a file Git tracks is in the commit; deleting any other loses it.
+            # Only a file whose bytes on disk are the commit's is in the commit; deleting any other loses it, an uncommitted edit included.
             $earlierHeld = $reinstallTracked.Contains($rel) -and -not $reinstallSkipped.Contains($rel)
+            if ($earlierHeld) {
+                $earlierCommitted = Invoke-ReinstallGitBytes -Arguments @('-C', $tgt, 'cat-file', '--filters', "HEAD:./$rel")
+                try { $earlierOnDisk = [IO.File]::ReadAllBytes($dest) } catch { $earlierOnDisk = $null }
+                $earlierHeld = $null -ne $earlierCommitted -and $null -ne $earlierOnDisk -and [string]::Equals([Convert]::ToBase64String($earlierCommitted), [Convert]::ToBase64String($earlierOnDisk), [StringComparison]::Ordinal)
+            }
             $earlierRemedy = if ($earlierHeld) { "Move it out of docs/pre-adoption/ or delete it, commit that (commit $reinstallCommit keeps it), then re-run." } else { 'Git does not track it as it is on disk, so no commit holds it: move it out of the repository, then re-run.' }
             [Console]::Error.WriteLine("ERROR: Refusing reinstall: -Reinstall moves the old $name to '$rel', which already exists (an earlier adoption's archive, most likely). $earlierRemedy Nothing was changed.")
             exit 3
