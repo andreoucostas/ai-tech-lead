@@ -188,12 +188,12 @@ It 'every live backlog item has a unique id' {
 # `@AGENTS.md` line and adds Claude-specific notes. This replaced B-82's heading-topology mapping,
 # which its own header admitted was blind to body deletion: with one canonical file there is nothing
 # to mirror. The ceilings are budgets in the WSD-055 sense, applied to the maintainer file: AGENTS.md
-# under 120 lines (WSD-093; the file states the rule itself) and <= 19,500 LF bytes (1.2x the 16,043 measured
+# within 130 lines (WSD-125 raised WSD-093's "under 120"; the file states the rule itself) and <= 19,500 LF bytes (1.2x the 16,043 measured
 # at adoption, 2026-09-16); CLAUDE.md <= 40 lines; AGENTS.md plus a fixed allowance for the parent
 # container's ~1 KB stub stays under Codex's 32 KiB project-document cap (Codex concatenates root ->
 # cwd and silently stops adding files at the cap). Hermetic: the allowance is a constant, not a read
 # of a file outside this repository. Raising a ceiling is a recorded WSD-089 amendment.
-$rootInstructionCeilings = @{ ClaudeMaxLines = 40; AgentsMaxLines = 119; AgentsMaxBytes = 19500; ParentStubAllowanceBytes = 4096; CodexCapBytes = 32768 }
+$rootInstructionCeilings = @{ ClaudeMaxLines = 40; AgentsMaxLines = 130; AgentsMaxBytes = 19500; ParentStubAllowanceBytes = 4096; CodexCapBytes = 32768 }
 
 function Get-RootInstructionTopologyViolations {
     param(
@@ -240,10 +240,10 @@ It 'root CLAUDE.md imports AGENTS.md exactly once, both stay under their ceiling
     Assert ($bad.Count -eq 0) ($bad -join '; ')
 }
 
-It 'a 120-line root AGENTS.md breaks its own "under 120 lines" rule (WSD-093)' {
-    $agents120 = "# canonical`n`n> **YOU ARE IN THE FRAMEWORK AUTHORING REPO, NOT A CONSUMER PROJECT.** banner`n" + ("- clause`n" * 117)
-    $bad = @(Get-RootInstructionTopologyViolations -Claude "# entry`n`n@AGENTS.md`n" -Agents $agents120 -Ceilings $rootInstructionCeilings)
-    Assert (@($bad | Where-Object { $_ -match 'AGENTS\.md is 120 lines' }).Count -eq 1) "a 120-line AGENTS.md was accepted: $($bad -join '; ')"
+It 'a 131-line root AGENTS.md breaks its own "within 130 lines" rule (WSD-125)' {
+    $agents131 = "# canonical`n`n> **YOU ARE IN THE FRAMEWORK AUTHORING REPO, NOT A CONSUMER PROJECT.** banner`n" + ("- clause`n" * 128)
+    $bad = @(Get-RootInstructionTopologyViolations -Claude "# entry`n`n@AGENTS.md`n" -Agents $agents131 -Ceilings $rootInstructionCeilings)
+    Assert (@($bad | Where-Object { $_ -match 'AGENTS\.md is 131 lines' }).Count -eq 1) "a 131-line AGENTS.md was accepted: $($bad -join '; ')"
 }
 
 It 'root topology helper rejects a missing or backticked import, oversize files, a missing banner, stray tokens, and empty input' {

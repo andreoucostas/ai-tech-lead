@@ -4753,3 +4753,16 @@ agent, host or developer; this session's wording); one that could leak a secret 
 B-503 and B-505 close on the test; B-471, B-479, B-500 and B-501 under WSD-106. (4) Project skills ("If we can get it to work properly and have skills
 auto created we are laughing") are a maintainer priority, ranked after B-506, B-509, B-507 and B-498: B-514 to B-517, B-356. Supersedes WSD-093's cap and
 WSD-090's one-item rule; amends WSD-106. **Reopen** (3) if a finding closed on it reaches a consumer.
+
+## WSD-125: change control after the release review: PowerShell 7 only, one bounded attack, one local host, short commit subjects (2026-11-14)
+
+**Context.** A release takes 25 to 36 minutes from push to tag, nearly all of it the CI run (median 7 minutes in August, 28 now); a guarded change
+adds two local host runs, a CP437 leg and an unbounded attack; the 23 releases since v0.86.7 carry 11 to 15 escaped-defect notes, by the search used.
+**Decision (maintainer, in chat 2026-11-14: "let's follow your recommendation", "all", "fine with powershell 7 only", "i dont mind, just find the
+root cause and fix it. when we hit the quota, we'll get an error back", "the leaked secret one").** (1) AGENTS.md may run to 130 lines and gains a
+reporting rule ("functional summaries work best before any technical explanations"). (2) Guarded step 3 runs the touched tests under `pwsh` locally
+and CI is the host matrix; the CP437 leg stays local until CI has one. (3) A step-4 attack is one round of about 30 minutes; a second, on the fix,
+when the first found a defect. (4) A commit subject is the tier, `B-n done` and the functional result in 72 characters. (5) Windows
+PowerShell 5.1 support ends when B-506 lands (amends WSD-073). (6) An agent-facing release is tried with live agent runs before its tag, amending
+WSD-016 (B-521); a release prints four numbers (B-522); CI's target is 15 minutes, then 10 (B-510). (7) B-514's paid measurement needs no fixed stop,
+read as covering B-515's. (8) WSD-124 (3)'s test covers a possible secret leak too; B-478 closes. **Reopen** (3) if a second round would have caught an escape.

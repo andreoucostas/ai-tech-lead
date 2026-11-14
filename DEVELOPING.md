@@ -227,9 +227,9 @@ the gate gap, and not yet the Copilot host — see `meta/BACKLOG.md`): it is mai
 not automatic, and its results are a trend log, not a pass/fail release condition.
 
 - **Exit code = number of failing tests** (0 = green).
-- **Host:** the aggregate runner preserves the host that launched it. Run it directly under both
-  `pwsh` 7 and `powershell.exe` 5.1; each child prints and asserts its major version and the two
-  runs must report equal, non-zero case counts.
+- **Host:** the aggregate runner preserves the host that launched it. Run it directly under
+  `pwsh` 7; CI also runs it under `powershell.exe` 5.1, each child prints and asserts its major
+  version, and CI's parity job requires equal, non-zero case counts from the two hosts (WSD-125).
 
 ### Host resolution and the legacy-host hostile-code-page leg
 
@@ -276,9 +276,9 @@ a release; see the locked design in `.claude/plans/2026-07-17-b41-agent-behavior
 and results in `meta/eval-results.md`.
 
 The runner requires PowerShell 7 and declares it; Windows PowerShell 5.1 refuses at `#Requires`.
-The repository-level obligation to run a representative suite under both PowerShell hosts and a
-hostile code page still applies; use `.claude/hooks/tests/ReleaseCiWatch.Tests.ps1 -SelfTest` for
-that cross-host leg.
+The repository-level obligation to run a representative suite under a hostile code page still
+applies; use `.claude/hooks/tests/ReleaseCiWatch.Tests.ps1 -SelfTest` for that leg. CI is the
+two-host observation (WSD-125).
 
 ```powershell
 # free, no network — proves the harness's own typed-evidence grading on synthetic/adversarial
@@ -488,7 +488,8 @@ red release is detected and left untagged, not stopped.
 **Cross-host test evidence (B-70) is a rule, not a watcher.** The watch tells you *that* CI went red;
 it cannot tell you a new case was reached under both PowerShell hosts. Any test-carrying change must
 be observed under native PowerShell 7 and native Windows PowerShell 5.1 with equal, non-zero case
-counts. The aggregate runners preserve their caller executable; a 5.1 run may not delegate to 7.
+counts; since WSD-125 CI's two host jobs and its parity job are that observation, and the local run
+is under `pwsh` only. The aggregate runners preserve their caller executable; a 5.1 run may not delegate to 7.
 
 **Do not run the gate suites while an implementer session is editing the tree.** A hook suite once
 raced a concurrent run's writes and produced a transient failure that cost a diagnosis cycle. The

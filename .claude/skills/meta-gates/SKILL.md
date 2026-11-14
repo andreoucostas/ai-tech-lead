@@ -46,7 +46,7 @@ tier may be raised, never lowered.
    On a ceiling FAIL, stop and report: raising a ceiling or passing `-AllowCeilingBreach` is the maintainer's call.
 
 **A hook or script**
-1. Its test file, as separate direct runs under `pwsh` and under `powershell.exe`
+1. Its test file, as a direct run under `pwsh` (CI runs it under `powershell.exe` too)
    (`… Invoke-HookTests.ps1 -File <Name>.Tests.ps1`; for a shipped hook, the **dist** copy's runner).
 2. When the change is guarded and a `.ps1` changed: one CP437 leg of the same test file.
 3. Report the red observation (a `Red-first:` trailer's `RED_FIRST PASS` line, or the failing line)

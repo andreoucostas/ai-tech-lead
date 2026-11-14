@@ -10,6 +10,11 @@
 Value to consumers per unit of maintainer attention. Paperwork is free for an agent and costly for
 the maintainer: produce no plan, record, gate, test or file that this file does not require.
 
+**Reporting to the maintainer**, a technical program manager: open with the functional result in plain
+words (what changed for consumers or the project, what was decided, what you need from them); then
+explain in steps that assume no memory of the codebase, naming an id, path or script only after saying
+what it is. Ask when an instruction is unclear or could be read two ways.
+
 ## Two tiers — read them off the changed paths; start the commit subject with the tier
 
 **guarded** — a defect here loses consumer data, leaks a secret, stalls a consumer's agent, or
@@ -20,23 +25,26 @@ reports a false green: `install.ps1`, `src/core/scripts/install.ps1`,
 `scripts/validate-dist.ps1`, `scripts/context-footprint.ps1`, `scripts/meta-denylist.txt`,
 `.claude/scripts/**`, every `Invoke-HookTests.ps1` runner, `.github/**`, and this file.
 Required, in order:
-1. Commit body, at most five lines: the observed harm, the smaller fix you rejected, what could be
-   lost or let through.
+1. Commit body, at most six lines: what changed, the observed harm, the smaller fix you rejected,
+   what could be lost or let through.
 2. A test case seen failing on the unfixed tree: a `Red-first:` trailer plus the
    `.claude/scripts/assert-red-first.ps1` `RED_FIRST PASS` line, or the pasted failing line. A
    text-only edit (message string, comment, this file) has no behaviour to show red; say so.
-3. The touched test files green under `pwsh` and under `powershell.exe`, as separate direct runs,
-   plus one CP437 leg when a `.ps1` changed. CI runs everything else.
+3. The touched test files green under `pwsh`, plus one CP437 leg when a `.ps1` changed. CI runs
+   everything else, on every supported host.
 4. For the two installers, `adoption-archive.ps1`, `guard.ps1`, the retirement and ownership
    policy, and this file: the maintainer reads the diff and says so in their own words, or a fresh
    session that did not implement the change attacks the diff and reports one attack it executed.
-   No agent records the maintainer's approval for them.
+   The attack is one round of about 30 minutes on the diff and its stated risk; a second round, on
+   the fix, when the first found a defect. No agent records the maintainer's approval for them.
 
 **ordinary** — everything else: Markdown, skills, commands, agents, templates, other scripts,
 tests, records. Required: the recipe below for the changed paths is green; commit; push. A `.ps1`
 behaviour change adds or changes one test case, seen red first. No plan, critique, reviewer or RCA.
 
-Anyone may raise a tier; no one lowers one. A batch takes its highest member.
+Anyone may raise a tier; no one lowers one. A batch takes its highest member. A commit subject is
+the tier, `B-n done` for a backlog entry it finishes, and the functional result, in at most 72
+characters; everything else goes in the body.
 
 ## Verification — by changed path; show the command and its result
 
@@ -47,7 +55,7 @@ Anyone may raise a tier; no one lowers one. A batch takes its highest member.
   touch (it does not reach `dist/monorepo` otherwise) → `scripts/build.ps1 <dist>` ×3 → commit the
   resulting `dist/` change in the same commit → `scripts/validate-dist.ps1 <dist>` ×3 →
   `scripts/context-footprint.ps1 -Check` (baseline change: review, `-Update`; ceiling breach: maintainer decides).
-- A hook or script: also its test file on both hosts; test the **dist** copy by piping a fixture
+- A hook or script: also its test file under `pwsh`; test the **dist** copy by piping a fixture
   JSON event and asserting `EXIT=` plus output, on both agent surfaces where it enforces on both.
 - An installer change: greenfield and brownfield smoke installs into temp directories.
 - Capture `$LASTEXITCODE` before piping a gate into anything. Do not run suites while another
@@ -66,15 +74,15 @@ Anyone may raise a tier; no one lowers one. A batch takes its highest member.
 
 ## Scope
 
-- Do the asked change only. An adjacent finding is a `meta/BACKLOG.md` entry if a field report raised it, it could
-  leak a secret, or it is another guarded harm that ordinary use triggers (WSD-124); otherwise one CLOSED line
-  in `meta/BACKLOG-DONE.md` (WSD-106); never an edit.
+- Do the asked change only. An adjacent finding is a `meta/BACKLOG.md` entry if a field report raised it,
+  or it is a guarded harm that ordinary use triggers (WSD-124, WSD-125); otherwise one CLOSED line in
+  `meta/BACKLOG-DONE.md` (WSD-106); never an edit.
 - No new script, test file, gate, record or document unless the task requires it; propose it in
   one line instead. Prefer deleting to adding.
 - An escaped defect — one that reached a tag, or a gate that was green on a wrong artifact — gets
   the case that would have caught it plus at most three sentences in the commit body: cause, why
   no gate caught it, the check added or "none, accepted because …". Nothing else gets an RCA.
-- This file stays under 120 lines; adding a clause means cutting one.
+- This file stays within 130 lines; adding a clause means cutting one.
 
 ## Invariants
 
