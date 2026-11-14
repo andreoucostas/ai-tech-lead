@@ -410,9 +410,24 @@ if ($settingsExists) {
                 else { Walk $p.Value }
             }
         }
-        Walk $settings
+        # Only commands under "hooks" are hook registrations; a statusLine or other setting can run a command too.
+        Walk (Get-ExactJsonPropertyValue $settings 'hooks')
         } catch { $settingsInvalid = $true; $commands = @() }
     }
+}
+# Claude Code runs no hook at all while disableAllHooks is true in either repository settings file.
+$hooksDisabledIn = @()
+if (-not $settingsReadFailed -and -not $settingsInvalid) {
+    $disableAll = Get-ExactJsonPropertyValue $settings 'disableAllHooks'
+    if ($disableAll -is [bool] -and $disableAll) { $hooksDisabledIn += '.claude/settings.json' }
+}
+$localSettingsUnread = $false
+$localSettingsPath = Join-Path $root '.claude/settings.local.json'
+if (Test-Path -LiteralPath $localSettingsPath) {
+    try {
+        $disableAll = Get-ExactJsonPropertyValue (ConvertFrom-StrictJson (Get-Content -Raw -LiteralPath $localSettingsPath -ErrorAction Stop)) 'disableAllHooks'
+        if ($disableAll -is [bool] -and $disableAll) { $hooksDisabledIn += '.claude/settings.local.json' }
+    } catch { $localSettingsUnread = $true }
 }
 $shells = @($commands | ForEach-Object {
     # A registered command may open with the session-root prefix; the interpreter is the token after it.
@@ -513,12 +528,16 @@ $retiredBashRegistration = @($commands | Where-Object {
 if (-not $retiredBashRegistration -and $copilotValid) {
     $retiredBashRegistration = $rawCopilot -match '(?i)"bash"\s*:|\.sh(?:\s|"|$)'
 }
-if ($copilotInvalid) {
+if ($hooksDisabledIn.Count) {
+    Row MISSING 'Hook registration topology' ('"disableAllHooks": true is set in {0}, so Claude Code runs no hook while it is set: none of the framework''s hooks, the write guard included, runs in Claude Code. Fix: remove the key and rerun the doctor.' -f ($hooksDisabledIn -join ' and '))
+} elseif ($copilotInvalid) {
     Row MISSING 'Hook registration topology' '.github/hooks/hooks.json is malformed, so the supported PowerShell registration set cannot be verified. Fix: re-run the installer or correct the file.'
 } elseif ($settingsReadFailed -or $copilotReadFailed) {
     RowU 'Hook registration topology' 'hook registrations could not be completely read, so PowerShell-only registration cannot be verified. Fix read access and rerun the doctor.'
 } elseif ($retiredBashRegistration) {
     Row MISSING 'Hook registration topology' 'a retired Bash hook registration remains. Preserve consumer-owned configuration, replace the obsolete entry with the supported PowerShell registration, and rerun the doctor.'
+} elseif ($localSettingsUnread) {
+    RowU 'Hook registration topology' '.claude/settings.local.json could not be read as strict JSON, so whether it sets "disableAllHooks", which stops Claude Code running any hook, is unknown. Fix the file or its read access and rerun the doctor.'
 } else { Row OK 'Hook registration topology' 'registered framework hooks use the supported PowerShell surface.' }
 
 if ($pending) { Row PENDING 'Stack toolchain' 'not checked until /bootstrap or /adopt completes.' }

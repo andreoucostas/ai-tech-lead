@@ -38,6 +38,14 @@
   you to move the file out of the repository instead. If it cannot read the file, or Git cannot give it the commit's copy,
   it says it could not compare them and exits with code 4, rather than telling you no commit holds the file. The stop changes
   nothing in your repository, as before.
+- **`framework-doctor` now fails while `disableAllHooks` is set, and no longer reads a status line as a hook.** With
+  `"disableAllHooks": true` in `.claude/settings.json` or `.claude/settings.local.json`, Claude Code runs none of the
+  framework's hooks, the write guard included, yet the doctor reported every check OK and exited 0. It now reports
+  `[MISSING] Hook registration topology`, naming the file, and exits 1. A `.claude/settings.local.json` that is not plain JSON
+  (a comment or a trailing comma counts) reads `[CANT-VERIFY]` and exit 2, because whether it disables the hooks is unknown.
+  The doctor also read every `command` in `.claude/settings.json` as a hook, so a `statusLine` that runs `bash` was reported
+  as a retired Bash hook registration, with exit 1, on every run; it now reads only the commands under `hooks`. Nothing to
+  do, unless you set `disableAllHooks` on purpose: then the doctor fails until you remove it.
 
 ## 0.98.6 — 2026-11-13
 

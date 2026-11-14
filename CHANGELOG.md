@@ -69,6 +69,13 @@ committed archive under a read lock that no commit held it (case K; fixed on the
 that amendment sending a staged, never-committed archive to `CANT-VERIFY`, whose remedy could not apply (case C). Three cases, each
 red first, in `UpdateDelivery.Tests`.
 
+`framework-doctor` fails while `disableAllHooks` is set and reads hook commands only under `hooks` (ordinary, `src/core/scripts/`;
+B-498, found by B-486's step-4 attack). Escaped defect, since the doctor read `.claude/settings.json`: with `"disableAllHooks": true`
+it printed `8 ok / 0 missing` and exit 0 while Claude Code ran no hook, a false green; that key in `.claude/settings.json` or
+`.claude/settings.local.json` now reads `[MISSING] Hook registration topology` (exit 1), and a `settings.local.json` that is not strict
+JSON reads `[CANT-VERIFY]` (exit 2). It also walked every `command` property, so a team's `statusLine` running `bash` read as a retired
+Bash registration and exit 1, on every run since B-486 keeps the key across an update. Two cases, red first, in `FrameworkDoctor.Tests`.
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the
