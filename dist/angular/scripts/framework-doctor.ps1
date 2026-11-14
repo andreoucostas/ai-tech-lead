@@ -495,9 +495,9 @@ $copilotLivenessPath = Join-Path $root '.claude/.state/last-session-start-copilo
 try { $copilotLiveness = Get-Content -Raw -LiteralPath $copilotLivenessPath -ErrorAction Stop } catch { $copilotLiveness = $null }
 $copilotLastRun = if ($copilotLiveness) { ($copilotLiveness -split "`n")[0].Trim() } else { '' }
 if ($copilotLastRun) {
-    Row OK 'Copilot hook liveness' ("Copilot ran this repo's hooks most recently at '{0}'. A past run does not mean they run now: VS Code 1.144.1's Copilot harness runs none in a folder VS Code trusts (microsoft/vscode#345931); see docs/enforcement-surfaces.md." -f $copilotLastRun)
+    Row OK 'Copilot hook liveness' ("Copilot ran this repo's hooks most recently at '{0}'. A past run does not mean they run now: VS Code 1.144.1's Copilot harness ran none in a folder VS Code trusts (microsoft/vscode#345931), while 1.146.0's ran them there, so run the write-guard canary below after each VS Code update; see docs/enforcement-surfaces.md." -f $copilotLastRun)
 } else {
-    Row CANT-VERIFY 'Copilot hook liveness' "Copilot has not recorded a run of this repo's hooks here. If you have used Copilot in this folder, its hooks are not running: VS Code 1.144.1's Copilot harness runs none in a folder VS Code trusts (microsoft/vscode#345931), and Copilot CLI runs them only in a folder it trusts. Until then, only the framework's instructions apply; see docs/enforcement-surfaces.md."
+    Row CANT-VERIFY 'Copilot hook liveness' "Copilot has not recorded a run of this repo's hooks here. If you have used Copilot in this folder, its hooks are not running: Copilot CLI runs them only in a folder it trusts, and VS Code 1.144.1's Copilot harness ran none in a folder VS Code trusts (microsoft/vscode#345931), while 1.146.0's ran them there, so update an older VS Code. Until they run, only the framework's instructions apply; see docs/enforcement-surfaces.md."
 }
 
 $legacyHookRetirement = Get-LegacyHookDoctorResult

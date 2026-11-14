@@ -93,6 +93,18 @@ it printed `8 ok / 0 missing` and exit 0 while Claude Code ran no hook, a false 
 JSON reads `[CANT-VERIFY]` (exit 2). It also walked every `command` property, so a team's `statusLine` running `bash` read as a retired
 Bash registration and exit 1, on every run since B-486 keeps the key across an update. Two cases, red first, in `FrameworkDoctor.Tests`.
 
+VS Code 1.146.0's Copilot harness runs repository hooks in a trusted folder; the docs and the doctor's `Copilot hook liveness` row no longer
+say it runs none (guarded, as B-475 filed it, though its paths are ordinary: `docs/enforcement-surfaces.md`, two `framework-doctor.ps1` message
+strings; evidence in `meta/host-certification.md`).
+Run by the coordinator session with the maintainer on 2026-11-14: VS Code 1.146.0, runtime 1.0.108-0, gpt-6.1-sol, a fresh .NET repository
+with 090ffd34's `dist/dotnet` (0.98.6) installed and committed, the folder trusted in VS Code's dialog, two prompts typed in the Chat view in
+Agent mode, one session. The agent host granted the runtime trust for the folder, the journal recorded 20 hook runs on seven events, and
+the guard denied the agent's `apply_patch` of a key it chose (`AKIA` plus 16), with no file created. A key typed into the first prompt was
+masked by VS Code before any hook or the model saw it, so the canary now asks the agent to choose the 16 characters. With B-348's 3 of 3
+script-created sessions (2026-11-13) this settles B-475 for 1.146.0 against 1.144.1's 0 of 7; n = 1 Chat-view session, one model, dotnet
+only. The page keeps 1.144.1's finding (microsoft/vscode#345931) and the advice to read the liveness row and run the canary
+after each VS Code update. Text only: no behaviour to show red; `FrameworkDoctor.Tests` still pins the issue number in the row.
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

@@ -57,6 +57,13 @@
   The doctor also read every `command` in `.claude/settings.json` as a hook, so a `statusLine` that runs `bash` was reported
   as a retired Bash hook registration, with exit 1, on every run; it now reads only the commands under `hooks`. Nothing to
   do, unless you set `disableAllHooks` on purpose: then the doctor fails until you remove it.
+- **On VS Code 1.146.0 your hooks run in Copilot's harness in a folder VS Code trusts.** 0.98.4 told you that VS Code
+  1.144.1's Copilot harness ran none of them in a trusted folder (microsoft/vscode#345931), so it was instruction-only there.
+  On VS Code 1.146.0 they ran in trusted folders, in sessions started from the Chat view and otherwise (checked on 2026-11-13
+  and 2026-11-14 in a .NET repository), and the write guard blocked a key-shaped write. If your VS Code is older, update it.
+  A past run does not promise the next release: after each VS Code update, read the doctor's `Copilot hook liveness` row and
+  run its write-guard canary. Let the agent choose the 16 characters after `AKIA`: VS Code's chat masks a key typed into
+  the prompt, so a pasted key never reaches the hook. `docs/enforcement-surfaces.md` and the doctor row now say this.
 
 ## 0.98.6 — 2026-11-13
 
