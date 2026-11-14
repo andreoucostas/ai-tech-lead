@@ -155,8 +155,8 @@ try {
         Assert (-not (Test-Bom $f)) 'should not have rewritten a .txt'
     }
 
-    # This manifest is the CI equality oracle between direct PS7 and PS5.1 runs. Refuse every
-    # vacuous or ambiguous child shape, and pin its bytes so host encoding cannot forge equality.
+    # This manifest is CI's case-count evidence for each suite leg. Refuse every vacuous or ambiguous
+    # child shape, and pin its bytes so host encoding cannot forge it.
     $cardinalityRoot = Join-Path $tmp 'aggregate-cardinality'
     New-Item -ItemType Directory -Path $cardinalityRoot -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Invoke-HookTests.ps1') -Destination $cardinalityRoot

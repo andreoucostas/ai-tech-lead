@@ -12,11 +12,10 @@
 # Gates (in order): compose all three dists -> validate-dist ×3 + context footprint -> the four meta
 # test files whose subject the release commit changes (B-245). The full root meta suite and the shipped
 # hook suites run in CI: before a normal tag, CI must observe the
-# three-dist hook matrices under both PowerShell 7 and Windows PowerShell 5.1.
+# three-dist hook matrices under PowerShell 7.
 #
 # PowerShell-only by decision (see meta/workspace-decisions.md): release/eval automation requires
-# PowerShell 7. Shipped framework scripts retain their separately tested Windows PowerShell 5.1
-# fallback.
+# PowerShell 7, as every framework script does.
 #Requires -Version 7.0
 param(
     [Parameter(Mandatory)][string]$Version,
@@ -261,7 +260,7 @@ if ($branch -ne 'master') {
 # (13.2s serial, 2026-09-19); CI owns the full meta suite and all shipped-hook coverage on the
 # release commit before the tag. Re-measure before changing the budget or this banner.
 Write-Host "Releasing $Version. Local gates: compose x3 -> validate-dist x3 + context footprint -> release-subject meta files (DocTruth, ReleaseChangelogStamp, GateBudgetConsistency, WorkspaceBom)."
-Write-Host "Before a normal tag, CI must pass all eight Windows contexts: root plus three shipped-hook matrices under PowerShell 7 and Windows PowerShell 5.1."
+Write-Host "Before a normal tag, CI must pass all four Windows contexts: root plus three shipped-hook matrices under PowerShell 7."
 # The interruption promise used to be "nothing has been committed", full stop. After the push that is
 # simply false, and B-88 makes the window longer by adding a multi-minute wait to it. State the three
 # durable states instead; all three are safe to re-run the same command from (step 5 now falls
@@ -759,9 +758,9 @@ if (-not $nothingToCommit) {
     # in the commit body with its owning item, so `git log` alone answers what this release did and
     # did not prove.
     $gateNote = if ($waiversApplied.Count -gt 0) {
-        "Released via .claude/scripts/release.ps1 — local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the four release-subject meta test files) EXCEPT these recorded waivers: $($waiversApplied -join '; '). No shipped dist hook suite runs locally; normal tagging waits for CI's PowerShell 7/5.1 three-dist hook matrices."
+        "Released via .claude/scripts/release.ps1 — local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the four release-subject meta test files) EXCEPT these recorded waivers: $($waiversApplied -join '; '). No shipped dist hook suite runs locally; normal tagging waits for CI's PowerShell 7 three-dist hook matrices."
     } else {
-        'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the four release-subject meta test files). No shipped dist hook suite runs locally; normal tagging waits for CI''s PowerShell 7/5.1 three-dist hook matrices.'
+        'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the four release-subject meta test files). No shipped dist hook suite runs locally; normal tagging waits for CI''s PowerShell 7 three-dist hook matrices.'
     }
     git -C $repo commit -m "v${Version}: $Summary" -m $gateNote
     if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
@@ -859,13 +858,13 @@ if ($existingSha) {
     }
 } else {
     # The annotation carries the CI verdict (B-88). A normal tag means CI observed green, including
-    # its complete PowerShell 7/5.1 × three-dist hook matrices. The two exception paths -- an operator
+    # its complete PowerShell 7 × three-dist hook matrices. The two exception paths -- an operator
     # waiver or a -NoPush local tag -- must say that those matrices were not verified on the artifact.
     # A gate waiver changes what the tag means just as much as an unverified-CI waiver does, so it
     # rides on the same annotation rather than living only in a terminal that scrolls away.
     $tagWaiverNote = if ($waiversApplied.Count -gt 0) { " — gate waivers: $($waiversApplied -join '; ')" } else { '' }
     $ciMatrixNote = if ($ciDecision.Status -eq 'GREEN') {
-        ' — CI verified root meta suites plus shipped hook suites for dotnet, angular, and monorepo under PowerShell 7 and Windows PowerShell 5.1 before tag'
+        ' — CI verified root meta suites plus shipped hook suites for dotnet, angular, and monorepo under PowerShell 7 before tag'
     } else {
         ' — CI full hook matrix not verified (see CI waiver/status)'
     }

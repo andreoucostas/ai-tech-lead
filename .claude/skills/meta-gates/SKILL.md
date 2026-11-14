@@ -2,7 +2,7 @@
 name: meta-gates
 description: Run exactly the verification recipes root AGENTS.md requires for the changed paths, capturing every stage's exit code, and print the tier (guarded or ordinary) computed from those paths for the commit subject. Use before committing a change in this authoring repo.
 argument-hint: guarded|ordinary
-allowed-tools: PowerShell(git *) PowerShell(Test-Path *) PowerShell(Start-Sleep *) PowerShell(pwsh -NoProfile -File scripts/*) PowerShell(pwsh -NoProfile -File .claude/hooks/tests/*) PowerShell(powershell.exe -NoProfile -File .claude/hooks/tests/*) PowerShell(pwsh -NoProfile -File dist/*/tests/hooks/*) PowerShell(powershell.exe -NoProfile -File dist/*/tests/hooks/*)
+allowed-tools: PowerShell(git *) PowerShell(Test-Path *) PowerShell(Start-Sleep *) PowerShell(pwsh -NoProfile -File scripts/*) PowerShell(pwsh -NoProfile -File .claude/hooks/tests/*) PowerShell(pwsh -NoProfile -File dist/*/tests/hooks/*)
 ---
 
 # Gate ladder
@@ -46,9 +46,10 @@ tier may be raised, never lowered.
    On a ceiling FAIL, stop and report: raising a ceiling or passing `-AllowCeilingBreach` is the maintainer's call.
 
 **A hook or script**
-1. Its test file, as a direct run under `pwsh` (CI runs it under `powershell.exe` too)
+1. Its test file, as a direct run under `pwsh`
    (`… Invoke-HookTests.ps1 -File <Name>.Tests.ps1`; for a shipped hook, the **dist** copy's runner).
-2. When the change is guarded and a `.ps1` changed: one CP437 leg of the same test file.
+2. When the change is guarded and a `.ps1` changed: one CP437 leg of the same test file under `pwsh`
+   (`DEVELOPING.md`, "the hostile-code-page leg").
 3. Report the red observation (a `Red-first:` trailer's `RED_FIRST PASS` line, or the failing line)
    unless the edit is text-only; then say it has no behaviour to show red.
 
@@ -56,7 +57,7 @@ tier may be raised, never lowered.
 1. Greenfield and brownfield smoke installs into temp directories (`DEVELOPING.md`, "Install smoke
    test").
 
-CI runs every other suite on both hosts after the push.
+CI runs every other suite after the push.
 
 ## 3. Report
 

@@ -85,7 +85,7 @@ function Assert-CiIndependentProducer([string]$Name, [string]$CasePath, [string]
 
 function Assert-CiParityDecision {
     $job = Get-CiJob 'windows-case-parity'
-    Assert ($job -match '(?m)^\s*needs:\s*\[windows, windows-hooks, windows-ps51, windows-hooks-ps51\]\s*$') 'CI parity no longer waits for all four execution definitions'
+    Assert ($job -match '(?m)^\s*needs:\s*\[windows, windows-hooks\]\s*$') 'CI parity no longer waits for both execution definitions'
     Assert ($job -match '(?m)^\s*if:\s*\$\{\{ always\(\) \}\}\s*$') 'CI parity can be skipped after an upstream failure'
     Assert ($job -match '(?m)^\s*runs-on:\s*windows-latest\s*$') 'CI parity is no longer a same-platform Windows decision'
     Assert ($job -notmatch '(?m)^    continue-on-error\s*:') 'CI parity permits its whole-job failure to be ignored'
@@ -95,9 +95,9 @@ function Assert-CiParityDecision {
     Assert ($job -match '(?m)^\s*merge-multiple:\s*false\s*$') 'CI parity merges artifact directories and erases cardinality evidence'
     Assert ($job.Contains('path: ${{ runner.temp }}/case-count-artifacts')) 'CI parity no longer uses its dedicated download destination'
     $normal = $job.Replace("`r`n", "`n").TrimEnd("`n")
-    $decision = [regex]::Match($normal, '(?ms)^      - name: Require valid equal nonzero PS7 and PS5\.1 semantic case cardinality\n.*\z')
+    $decision = [regex]::Match($normal, '(?ms)^      - name: Require valid nonzero PS7 semantic case cardinality\n.*\z')
     $expectedDecision = @'
-      - name: Require valid equal nonzero PS7 and PS5.1 semantic case cardinality
+      - name: Require valid nonzero PS7 semantic case cardinality
         run: |
           $hostPath = (Get-Process -Id $PID).Path
           & $hostPath -NoProfile -File .claude/scripts/assert-ci-case-parity.ps1 -ArtifactRoot "${{ runner.temp }}/case-count-artifacts"
@@ -142,29 +142,23 @@ It 'the local meta-suite stage runs exactly the four release-subject files, one 
     Assert ($metaStage.Contains('(?m)^RESULT\s+(\S+)\s+(\d+)\s*$')) 'the local meta runs no longer parse per-file RESULT lines'
 }
 
-It 'CI exposes eight independent native-host contexts plus one required parity decision before a normal tag' {
+It 'CI exposes four independent PowerShell 7 contexts plus one required case-count decision before a normal tag' {
     $jobsBody = [regex]::Match($ci, '(?ms)^jobs:\s*\r?\n(?<body>.*)\z')
     Assert $jobsBody.Success 'CI jobs block was not found'
     $jobNames = @([regex]::Matches($jobsBody.Groups['body'].Value, '(?m)^  ([A-Za-z0-9_-]+):\s*$') | ForEach-Object { $_.Groups[1].Value })
-    $expected = @('windows', 'windows-hooks', 'windows-ps51', 'windows-hooks-ps51', 'windows-case-parity')
-    Assert (($jobNames -join ',') -eq ($expected -join ',')) "expected exactly four execution definitions plus parity in release order, found: $($jobNames -join ', ')"
+    $expected = @('windows', 'windows-hooks', 'windows-case-parity')
+    Assert (($jobNames -join ',') -eq ($expected -join ',')) "expected exactly two execution definitions plus the case-count decision in release order, found: $($jobNames -join ', ')"
 
     Assert-CiHookMatrix 'windows-hooks'
-    Assert-CiHookMatrix 'windows-hooks-ps51'
     Assert-CiRootMetaSuite 'windows'
-    Assert-CiRootMetaSuite 'windows-ps51'
     Assert-CiHost 'windows' 'pwsh' 'Core' 7
     Assert-CiHost 'windows-hooks' 'pwsh' 'Core' 7
-    Assert-CiHost 'windows-ps51' 'powershell' 'Desktop' 5
-    Assert-CiHost 'windows-hooks-ps51' 'powershell' 'Desktop' 5
 
-    Assert (@([regex]::Matches($ci, '-CaseCountPath')).Count -eq 4) 'CI must emit one semantic case-count manifest from each execution definition'
-    Assert (@([regex]::Matches($ci, 'actions/upload-artifact@v4')).Count -eq 4) 'CI must contain exactly four independently expanding case-count publishers'
+    Assert (@([regex]::Matches($ci, '-CaseCountPath')).Count -eq 2) 'CI must emit one semantic case-count manifest from each execution definition'
+    Assert (@([regex]::Matches($ci, 'actions/upload-artifact@v4')).Count -eq 2) 'CI must contain exactly two independently expanding case-count publishers'
     Assert (@([regex]::Matches($ci, 'actions/download-artifact@v4')).Count -eq 1) 'CI must contain exactly one downstream artifact download'
     Assert-CiIndependentProducer 'windows' '${{ runner.temp }}/windows-case-counts.txt' 'b219-case-counts-windows'
     Assert-CiIndependentProducer 'windows-hooks' '${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-case-counts.txt' 'b219-case-counts-windows-hooks-${{ matrix.dist }}'
-    Assert-CiIndependentProducer 'windows-ps51' '${{ runner.temp }}/windows-ps51-case-counts.txt' 'b219-case-counts-windows-ps51'
-    Assert-CiIndependentProducer 'windows-hooks-ps51' '${{ runner.temp }}/windows-hooks-ps51-${{ matrix.dist }}-case-counts.txt' 'b219-case-counts-windows-hooks-ps51-${{ matrix.dist }}'
     Assert-CiParityDecision
 }
 
@@ -213,8 +207,8 @@ It 'the job wall-clock emitter survives a job whose times were never set' {
 if (-not $SkipRedTest) {
     It 'an unsupported runner substitution makes the exact Windows topology assertion fail' {
         Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
-            -Find ("  windows-ps51:" + $ciNewline + "    name: windows-ps51" + $ciNewline + "    runs-on: windows-latest") `
-            -Replacement ("  windows-ps51:" + $ciNewline + "    name: windows-ps51" + $ciNewline + "    runs-on: ubuntu-latest") -Command {
+            -Find ("  windows-hooks:" + $ciNewline + "    name: windows-hooks (`${{ matrix.dist }})" + $ciNewline + "    runs-on: windows-latest") `
+            -Replacement ("  windows-hooks:" + $ciNewline + "    name: windows-hooks (`${{ matrix.dist }})" + $ciNewline + "    runs-on: ubuntu-latest") -Command {
                 param($scratchTarget, $scratchRoot)
                 $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
                 $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
@@ -222,7 +216,7 @@ if (-not $SkipRedTest) {
             } | Out-Null
     }
 
-    It 'removing one case-count emission makes the cross-host parity assertion fail' {
+    It 'removing one case-count emission makes the case-count assertion fail' {
         Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
             -Find '-CaseCountPath "${{ runner.temp }}/windows-case-counts.txt"' `
             -Replacement '-CaseCountGone "${{ runner.temp }}/windows-case-counts.txt"' -Command {
@@ -256,8 +250,8 @@ if (-not $SkipRedTest) {
 
     It 'a step-level false condition makes the parity topology assertion fail' {
         Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
-            -Find ("      - name: Require valid equal nonzero PS7 and PS5.1 semantic case cardinality" + $ciNewline + "        run: |") `
-            -Replacement ("      - name: Require valid equal nonzero PS7 and PS5.1 semantic case cardinality" + $ciNewline + '        if: ${{ false }}' + $ciNewline + "        run: |") -Command {
+            -Find ("      - name: Require valid nonzero PS7 semantic case cardinality" + $ciNewline + "        run: |") `
+            -Replacement ("      - name: Require valid nonzero PS7 semantic case cardinality" + $ciNewline + '        if: ${{ false }}' + $ciNewline + "        run: |") -Command {
                 param($scratchTarget, $scratchRoot)
                 $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
                 $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow

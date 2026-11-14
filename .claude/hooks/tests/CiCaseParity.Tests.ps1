@@ -3,10 +3,10 @@
 
 $subject = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path '.claude/scripts/assert-ci-case-parity.ps1'
 $pairs = @(
-    ,@('b219-case-counts-windows', 'windows-case-counts.txt', 'b219-case-counts-windows-ps51', 'windows-ps51-case-counts.txt')
-    ,@('b219-case-counts-windows-hooks-dotnet', 'windows-hooks-dotnet-case-counts.txt', 'b219-case-counts-windows-hooks-ps51-dotnet', 'windows-hooks-ps51-dotnet-case-counts.txt')
-    ,@('b219-case-counts-windows-hooks-angular', 'windows-hooks-angular-case-counts.txt', 'b219-case-counts-windows-hooks-ps51-angular', 'windows-hooks-ps51-angular-case-counts.txt')
-    ,@('b219-case-counts-windows-hooks-monorepo', 'windows-hooks-monorepo-case-counts.txt', 'b219-case-counts-windows-hooks-ps51-monorepo', 'windows-hooks-ps51-monorepo-case-counts.txt')
+    ,@('b219-case-counts-windows', 'windows-case-counts.txt')
+    ,@('b219-case-counts-windows-hooks-dotnet', 'windows-hooks-dotnet-case-counts.txt')
+    ,@('b219-case-counts-windows-hooks-angular', 'windows-hooks-angular-case-counts.txt')
+    ,@('b219-case-counts-windows-hooks-monorepo', 'windows-hooks-monorepo-case-counts.txt')
 )
 $good = "Alpha.Tests.ps1`t2`nBeta.Tests.ps1`t3`nTOTAL`t5`n"
 
@@ -14,11 +14,9 @@ function New-ParityFixture {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('ci-case-parity-' + [guid]::NewGuid().ToString('N'))
     [IO.Directory]::CreateDirectory($root) | Out-Null
     foreach ($pair in $pairs) {
-        foreach ($offset in 0, 2) {
-            $dir = Join-Path $root $pair[$offset]
-            [IO.Directory]::CreateDirectory($dir) | Out-Null
-            [IO.File]::WriteAllText((Join-Path $dir $pair[$offset + 1]), $good, (New-Object Text.UTF8Encoding($false)))
-        }
+        $dir = Join-Path $root $pair[0]
+        [IO.Directory]::CreateDirectory($dir) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $dir $pair[1]), $good, (New-Object Text.UTF8Encoding($false)))
     }
     return $root
 }
@@ -30,7 +28,7 @@ function Invoke-Decision {
 
 Reset-Tests
 
-It 'eight valid nonempty artifacts and four byte-equal pairs pass' {
+It 'four valid nonempty artifacts pass' {
     $root = New-ParityFixture
     try {
         $r = Invoke-Decision $root
@@ -42,10 +40,10 @@ It 'eight valid nonempty artifacts and four byte-equal pairs pass' {
 It 'a missing artifact is wrong rather than CANT-VERIFY' {
     $root = New-ParityFixture
     try {
-        Remove-Item -LiteralPath (Join-Path $root $pairs[3][2]) -Recurse -Force
+        Remove-Item -LiteralPath (Join-Path $root $pairs[3][0]) -Recurse -Force
         $r = Invoke-Decision $root
         Assert ($r.Exit -eq 1) "missing artifact exit $($r.Exit): $($r.Out) $($r.Err)"
-        Assert ($r.Out -match 'expected exactly eight') 'missing artifact diagnostic omitted exact cardinality'
+        Assert ($r.Out -match 'expected exactly four') 'missing artifact diagnostic omitted exact cardinality'
     } finally { Remove-Item -LiteralPath $root -Recurse -Force }
 }
 
@@ -66,14 +64,13 @@ It 'an extra artifact is rejected' {
     } finally { Remove-Item -LiteralPath $root -Recurse -Force }
 }
 
-It 'two identical zero-count manifests cannot pass by equality' {
+It 'a zero-count manifest is rejected' {
     $root = New-ParityFixture
     try {
         $bad = "Alpha.Tests.ps1`t0`nTOTAL`t0`n"
         [IO.File]::WriteAllText((Join-Path (Join-Path $root $pairs[0][0]) $pairs[0][1]), $bad, (New-Object Text.UTF8Encoding($false)))
-        [IO.File]::WriteAllText((Join-Path (Join-Path $root $pairs[0][2]) $pairs[0][3]), $bad, (New-Object Text.UTF8Encoding($false)))
         $r = Invoke-Decision $root
-        Assert ($r.Exit -eq 1) "identical malformed manifests exit $($r.Exit): $($r.Out) $($r.Err)"
+        Assert ($r.Exit -eq 1) "zero-count manifest exit $($r.Exit): $($r.Out) $($r.Err)"
         Assert ($r.Out -match 'malformed suite row') 'zero-count diagnostic was not a manifest-shape failure'
     } finally { Remove-Item -LiteralPath $root -Recurse -Force }
 }
@@ -89,17 +86,6 @@ It 'an incorrect total is rejected' {
     } finally { Remove-Item -LiteralPath $root -Recurse -Force }
 }
 
-It 'a valid but unequal host pair is rejected' {
-    $root = New-ParityFixture
-    try {
-        $different = "Alpha.Tests.ps1`t2`nBeta.Tests.ps1`t4`nTOTAL`t6`n"
-        [IO.File]::WriteAllText((Join-Path (Join-Path $root $pairs[2][2]) $pairs[2][3]), $different, (New-Object Text.UTF8Encoding($false)))
-        $r = Invoke-Decision $root
-        Assert ($r.Exit -eq 1) "unequal pair exit $($r.Exit): $($r.Out) $($r.Err)"
-        Assert ($r.Out -match "'angular'.*differ") 'unequal-pair diagnostic omitted the pair'
-    } finally { Remove-Item -LiteralPath $root -Recurse -Force }
-}
-
 It 'a readable empty manifest is wrong' {
     $root = New-ParityFixture
     try {
@@ -112,7 +98,7 @@ It 'a readable empty manifest is wrong' {
 
 It 'a directory occupying the manifest leaf is wrong rather than CANT-VERIFY' {
     $root = New-ParityFixture
-    $path = Join-Path (Join-Path $root $pairs[3][2]) $pairs[3][3]
+    $path = Join-Path (Join-Path $root $pairs[3][0]) $pairs[3][1]
     try {
         Remove-Item -LiteralPath $path -Force
         [IO.Directory]::CreateDirectory($path) | Out-Null

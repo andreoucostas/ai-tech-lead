@@ -89,8 +89,7 @@ characters; everything else goes in the body.
 1. Author once under `src/`; never hand-edit `dist/` (CI rebuilds and diffs).
 2. Per dist, the shipped `AGENTS.md` is the one instruction file and `CLAUDE.md` a stub importing it
    and the rules carrier; nothing is mirrored; the gate is `validate-dist`.
-3. Framework-owned executables are PowerShell on native Windows: 7 primary, 5.1 fallback; neither
-   host may relaunch the other in a test leg.
+3. Framework-owned executables are PowerShell 7 on native Windows.
 4. Every `.ps1` carries a UTF-8 BOM. The `bom-fix` hook covers Write/Edit; add it by hand otherwise.
 5. Hook output differs per surface: Claude Code blocks with `exit 2` + stderr; Copilot with stdout
    JSON `permissionDecision: deny`. A hook enforcing on both emits both. Copilot CLI `postToolUse`

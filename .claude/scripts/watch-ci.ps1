@@ -2,7 +2,7 @@
 #
 # Usage:  pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha <sha> [-TimeoutSeconds 2400]
 #                [-AppearSeconds 180] [-PollSeconds 20] [-GhPath <path>]
-#                [-ExpectedJobs windows,windows-ps51,...]
+#                [-ExpectedJobs windows,windows-case-parity,...]
 #
 # WHY THIS EXISTS. release.ps1 ran every local gate, refused to commit on failure, pushed, tagged,
 # and exited -- BEFORE CI had an opinion. So "Release complete" was a statement about the
@@ -40,8 +40,7 @@ param(
     # Every job in .github/workflows/ci.yml. A workflow-level `success` does not prove each leg
     # ran -- watching only the aggregate is how a silently-skipped leg would look green.
     # The `*-hooks (<dist>)` entries are the per-dist shipped hook suites, split onto their own
-    # runners at B-113. PowerShell 7 and native Windows PowerShell 5.1 are separate release
-    # evidence, so all eight expanded execution contexts are listed individually and NOT collapsed
+    # runners at B-113. All four expanded execution contexts are listed individually and NOT collapsed
     # to a prefix match. The downstream parity decision is separately required: a workflow could
     # otherwise look green after that decision was removed or conditionally skipped.
     # GitHub names a matrix job "<job> (<value>)" -- if that naming ever changes, this list must
@@ -49,8 +48,6 @@ param(
     [string[]]$ExpectedJobs = @(
         'windows',
         'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
-        'windows-ps51',
-        'windows-hooks-ps51 (dotnet)', 'windows-hooks-ps51 (angular)', 'windows-hooks-ps51 (monorepo)',
         'windows-case-parity'
     )
 )

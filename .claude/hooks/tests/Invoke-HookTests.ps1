@@ -30,8 +30,8 @@ $invokingPsExe = (Get-Process -Id $PID).Path
 $psExe = $invokingPsExe
 
 # Prove the executable we hand to every suite really preserves this runner's host. This is a
-# runtime assertion, not just a source-level assignment: a future resolver or wrapper must not turn
-# an explicit Windows PowerShell 5.1 run into pwsh 7 and silently erase 5.1-only coverage.
+# runtime assertion, not just a source-level assignment: no resolver or wrapper may run a suite under
+# another PowerShell than the one this runner was started with.
 $hostProbeOutput = @(& $psExe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '[Console]::Out.Write((Get-Process -Id $PID).Path)' 2>&1 |
     ForEach-Object { $_.ToString() })
 $hostProbeExit = [int]$LASTEXITCODE
@@ -77,7 +77,6 @@ $expectedTestFiles = @(
     'ReleaseStagingGuard.Tests.ps1',
     'RepositoryPrivacy.Tests.ps1',
     'RootInstallerWarehouse.Tests.ps1',
-    'RunnerHost.Tests.ps1',
     'UpdateDelivery.Tests.ps1',
     'ValidateDist.Tests.ps1',
     'VendorClaims.Tests.ps1',

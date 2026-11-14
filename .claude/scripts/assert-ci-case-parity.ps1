@@ -1,4 +1,5 @@
-﻿# CI-only same-platform semantic case-count decision. Maintainer-only; does not ship.
+﻿# CI-only semantic case-count decision: every PowerShell 7 suite leg published a well-formed manifest with a nonzero
+# count for each suite. Maintainer-only; does not ship.
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$ArtifactRoot)
 
@@ -18,11 +19,11 @@ function Stop-CantVerify {
     exit $EXIT_CANT
 }
 
-$pairs = @(
-    [pscustomobject]@{ Name = 'root'; Ps7Artifact = 'b219-case-counts-windows'; Ps7File = 'windows-case-counts.txt'; Ps51Artifact = 'b219-case-counts-windows-ps51'; Ps51File = 'windows-ps51-case-counts.txt' }
-    [pscustomobject]@{ Name = 'dotnet'; Ps7Artifact = 'b219-case-counts-windows-hooks-dotnet'; Ps7File = 'windows-hooks-dotnet-case-counts.txt'; Ps51Artifact = 'b219-case-counts-windows-hooks-ps51-dotnet'; Ps51File = 'windows-hooks-ps51-dotnet-case-counts.txt' }
-    [pscustomobject]@{ Name = 'angular'; Ps7Artifact = 'b219-case-counts-windows-hooks-angular'; Ps7File = 'windows-hooks-angular-case-counts.txt'; Ps51Artifact = 'b219-case-counts-windows-hooks-ps51-angular'; Ps51File = 'windows-hooks-ps51-angular-case-counts.txt' }
-    [pscustomobject]@{ Name = 'monorepo'; Ps7Artifact = 'b219-case-counts-windows-hooks-monorepo'; Ps7File = 'windows-hooks-monorepo-case-counts.txt'; Ps51Artifact = 'b219-case-counts-windows-hooks-ps51-monorepo'; Ps51File = 'windows-hooks-ps51-monorepo-case-counts.txt' }
+$legs = @(
+    [pscustomobject]@{ Name = 'root'; Artifact = 'b219-case-counts-windows'; File = 'windows-case-counts.txt' }
+    [pscustomobject]@{ Name = 'dotnet'; Artifact = 'b219-case-counts-windows-hooks-dotnet'; File = 'windows-hooks-dotnet-case-counts.txt' }
+    [pscustomobject]@{ Name = 'angular'; Artifact = 'b219-case-counts-windows-hooks-angular'; File = 'windows-hooks-angular-case-counts.txt' }
+    [pscustomobject]@{ Name = 'monorepo'; Artifact = 'b219-case-counts-windows-hooks-monorepo'; File = 'windows-hooks-monorepo-case-counts.txt' }
 )
 
 function Get-ManifestBytes {
@@ -83,9 +84,9 @@ try { $rootEntries = @([IO.Directory]::GetFileSystemEntries($ArtifactRoot)) }
 catch [IO.DirectoryNotFoundException] { Stop-Wrong "artifact root '$ArtifactRoot' is missing" }
 catch { Stop-CantVerify "could not enumerate artifact root '$ArtifactRoot': $($_.Exception.Message)" }
 $actualArtifacts = @($rootEntries | ForEach-Object { [IO.Path]::GetFileName($_) } | Sort-Object)
-$expectedArtifacts = @($pairs | ForEach-Object { $_.Ps7Artifact; $_.Ps51Artifact } | Sort-Object)
+$expectedArtifacts = @($legs | ForEach-Object { $_.Artifact } | Sort-Object)
 if (($actualArtifacts -join "`n") -cne ($expectedArtifacts -join "`n")) {
-    Stop-Wrong "expected exactly eight case-count artifacts. expected=[$($expectedArtifacts -join ', ')]; actual=[$($actualArtifacts -join ', ')]"
+    Stop-Wrong "expected exactly four case-count artifacts. expected=[$($expectedArtifacts -join ', ')]; actual=[$($actualArtifacts -join ', ')]"
 }
 foreach ($artifact in $expectedArtifacts) {
     $artifactPath = Join-Path $ArtifactRoot $artifact
@@ -96,13 +97,7 @@ foreach ($artifact in $expectedArtifacts) {
     }
 }
 
-foreach ($pair in $pairs) {
-    $ps7 = Get-ManifestBytes $pair.Ps7Artifact $pair.Ps7File
-    $ps51 = Get-ManifestBytes $pair.Ps51Artifact $pair.Ps51File
-    if ([Convert]::ToBase64String($ps7) -cne [Convert]::ToBase64String($ps51)) {
-        Stop-Wrong "PS7 and PS5.1 '$($pair.Name)' semantic case cardinality differ"
-    }
-}
+foreach ($leg in $legs) { [void](Get-ManifestBytes $leg.Artifact $leg.File) }
 
-Write-Host 'CI CASE PARITY GREEN: four nonempty, valid PS7/PS5.1 manifest pairs are byte-identical.'
+Write-Host 'CI CASE PARITY GREEN: four nonempty, valid PowerShell 7 case-count manifests.'
 exit 0

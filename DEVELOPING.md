@@ -98,9 +98,8 @@ try {
 ### Red-test the `hook-registration` gate (check 8)
 
 Check 7 covers commands a shipped **doc** gives a human. Check 8 covers wiring the **host** acts on.
-Each dist must contain exactly 18 registrations: six Claude PowerShell 7 commands in
-`.claude/settings.json`, six Windows PowerShell 5.1 commands in `.claude/settings.windows.json`, and
-six Copilot `powershell` commands explicitly invoking `pwsh`. Every registration is relative,
+Each dist must contain exactly 12 registrations: six Claude PowerShell 7 commands in
+`.claude/settings.json` and six Copilot `powershell` commands explicitly invoking `pwsh`. Every registration is relative,
 case-exact, uses `-NoProfile -File`, resolves to a `.ps1`, and has the expected host selector.
 
 ```powershell
@@ -163,8 +162,7 @@ a `DENY` when a legitimate consumer-facing word trips the check.
 
 Dependency-free PowerShell harness (**no Pester** — corporate boxes ship only Pester 3.x). Each
 test pipes a JSON event to a hook and asserts exit code + output shape. Aggregate runners reuse the
-current process executable, so a suite launched under Windows PowerShell 5.1 cannot silently relaunch
-its children under PowerShell 7.
+current process executable, so a suite never relaunches its children under another PowerShell.
 
 ```powershell
 # shipped suites — run against the DIST copies (what ships), one per dist
@@ -228,10 +226,10 @@ not automatic, and its results are a trend log, not a pass/fail release conditio
 
 - **Exit code = number of failing tests** (0 = green).
 - **Host:** the aggregate runner preserves the host that launched it. Run it directly under
-  `pwsh` 7; CI also runs it under `powershell.exe` 5.1, each child prints and asserts its major
-  version, and CI's parity job requires equal, non-zero case counts from the two hosts (WSD-125).
+  `pwsh` 7; CI runs it the same way, and its case-count job requires a well-formed, non-zero case count
+  from every suite leg (WSD-125).
 
-### Host resolution and the legacy-host hostile-code-page leg
+### Host resolution and the hostile-code-page leg
 
 Every agent host on this box resolves by bare name (`pwsh`, `powershell`, `claude`, `codex`, `gh`,
 `node`; verified 2026-09-16 — the corrupted `${PATH}` session artifact recorded here in 2026-07 is
@@ -251,21 +249,13 @@ paths, for scripts that must not depend on `PATH`:
 | pwsh 7 | `C:\Program Files\PowerShell\7\pwsh.exe` |
 | node | `C:\Program Files\nodejs\node.exe` |
 
-**When PowerShell 7 launches Windows PowerShell 5.1 through an intermediate `cmd.exe`, remove
-`PSModulePath` from that child environment.** PowerShell 7 corrects module paths when it starts
-`powershell.exe` directly, but the intermediate process inherits and forwards PowerShell 7's module
-roots. Windows PowerShell can then select incompatible modules and report built-in commands such as
-`Get-FileHash` as missing. This is a broken launcher, not product or test evidence. Microsoft documents
-the boundary and remedy in
-[`about_PSModulePath`](https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_psmodulepath).
-For the required legacy-host hostile-code-page run, use this shape (substitute the focused suite):
+For the required hostile-code-page run, use this shape (substitute the focused suite):
 
 ```powershell
-cmd.exe /d /c "set PSModulePath=&& chcp 437 >nul && powershell.exe -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\tests\<Suite>.Tests.ps1"
+cmd.exe /d /c "chcp 437 >nul && pwsh -NoProfile -File .claude\hooks\tests\<Suite>.Tests.ps1"
 ```
 
-Do not “fix” a resulting false red by hardening one command inside the subject. An unnormalised
-process can break any module-backed cmdlet and would leave the rest of that run untrustworthy.
+Do not “fix” a resulting false red by hardening one command inside the subject.
 
 ### The live agent-behavior harness (B-41 — maintainer-triggered, spends budget, not a gate)
 
@@ -360,10 +350,9 @@ every scenario once and commits the rows itself; the per-release check above tag
 **CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every PR and on
 every push to `master` except one touching only top-level `meta/*.md` records or `.claude/plans/**`
 (`meta/eval-results.md` and `meta/review-ledger.md` still run it); `push-and-check.ps1` skips its watch for those.
-The required execution topology is eight native Windows contexts: `windows`, three `windows-hooks`
-matrix contexts, `windows-ps51`, and three `windows-hooks-ps51` matrix contexts. One additional
-required Windows job compares all four PS7/PS5.1 semantic case-count pairs after those contexts;
-it is a same-platform decision, not another compatibility leg. Fidelity is not a CI step.
+The required execution topology is four PowerShell 7 Windows contexts: `windows` and three
+`windows-hooks` matrix contexts. One additional required Windows job, `windows-case-parity`, checks
+that each of the four published a well-formed, non-zero semantic case count. Fidelity is not a CI step.
 
 Manual one-off (debugging a single hook) — pipe a fixture straight in:
 
@@ -433,8 +422,8 @@ stamp drift twice:
     release-subject meta files: `DocTruth`, `ReleaseChangelogStamp`, `GateBudgetConsistency`,
     `WorkspaceBom`), **refuses to commit on any failure**, appends
     the review row to `meta/review-ledger.md`, then commits to `master`, pushes, **waits for CI**,
-    and tags. A normal tag requires all eight Windows execution contexts, including direct
-    PowerShell 7 and Windows PowerShell 5.1 runs, plus their downstream case-count parity decision.
+    and tags. A normal tag requires all four PowerShell 7 Windows execution contexts plus their
+    downstream case-count decision.
     `-NoPush` provides a dry-ish run.
 
    It **refuses to start** without `-ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`
@@ -485,11 +474,9 @@ pwsh -NoProfile -File .claude/scripts/watch-ci.ps1 -Sha <sha>   # 0 green / 1 re
 directly to master by decision (B-53: releasing on a branch destroyed v0.34.0's release commit), so a
 red release is detected and left untagged, not stopped.
 
-**Cross-host test evidence (B-70) is a rule, not a watcher.** The watch tells you *that* CI went red;
-it cannot tell you a new case was reached under both PowerShell hosts. Any test-carrying change must
-be observed under native PowerShell 7 and native Windows PowerShell 5.1 with equal, non-zero case
-counts; since WSD-125 CI's two host jobs and its parity job are that observation, and the local run
-is under `pwsh` only. The aggregate runners preserve their caller executable; a 5.1 run may not delegate to 7.
+**Test evidence is PowerShell 7 only (WSD-125, B-506).** Windows PowerShell 5.1 is not supported; the one
+deliberate cross-host launch is the installer and doctor refusal cases, which run them under `powershell.exe`
+to see the one-line refusal. The aggregate runners preserve their caller executable.
 
 **Do not run the gate suites while an implementer session is editing the tree.** A hook suite once
 raced a concurrent run's writes and produced a transient failure that cost a diagnosis cycle. The

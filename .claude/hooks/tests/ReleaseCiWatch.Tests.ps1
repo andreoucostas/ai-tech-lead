@@ -80,19 +80,19 @@ function Get-ExpectedJobNames {
 }
 function New-Jobs {
     param(
-        [string]$Pwsh = 'success', [string]$PowerShell = 'success',
-        [string]$Parity = 'success', [switch]$OmitPowerShell, [switch]$OmitParity
+        [string]$Pwsh = 'success', [string]$Hooks = 'success',
+        [string]$Parity = 'success', [switch]$OmitHooks, [switch]$OmitParity
     )
     $id = 91483264876
     $j = @()
     foreach ($name in (Get-ExpectedJobNames)) {
-        if ($name -eq 'windows-ps51' -and $OmitPowerShell) { continue }
+        if ($name -eq 'windows-hooks (dotnet)' -and $OmitHooks) { continue }
         if ($name -eq 'windows-case-parity' -and $OmitParity) { continue }
         # The two root host jobs keep their per-case conclusions; derived matrix legs default to
         # success so a case that says nothing about them is not silently testing a red leg.
         $conclusion = switch ($name) {
             'windows' { $Pwsh }
-            'windows-ps51' { $PowerShell }
+            'windows-hooks (dotnet)' { $Hooks }
             'windows-case-parity' { $Parity }
             default { 'success' }
         }
@@ -183,12 +183,12 @@ $probes = @{
     }
     'legs' = {
         param($w)
-        # The workflow says success; the native Windows PowerShell leg did not run. Watching only the aggregate
+        # The workflow says success; one shipped-hook leg did not run. Watching only the aggregate
         # conclusion cannot see this.
-        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -PowerShell 'skipped')
+        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -Hooks 'skipped')
         $r = Invoke-Watch -Stub $s -Watcher $w
         Assert ($r.Exit -eq 1) "expected EXIT=1 when a leg is not success, got $($r.Exit): $($r.Out)"
-        Assert ($r.Out -match 'windows-ps51=skipped') 'the refusal does not name the offending leg'
+        Assert ($r.Out -match 'windows-hooks \(dotnet\)=skipped') 'the refusal does not name the offending leg'
     }
     'unknown' = {
         param($w)
@@ -210,12 +210,10 @@ $probes = @{
 
 try {
     # ---- the exit contract ----------------------------------------------------------------------
-    It 'the default contract names all eight native execution contexts plus parity exactly' {
+    It 'the default contract names all four execution contexts plus the case-count decision exactly' {
         $expected = @(
             'windows',
             'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
-            'windows-ps51',
-            'windows-hooks-ps51 (dotnet)', 'windows-hooks-ps51 (angular)', 'windows-hooks-ps51 (monorepo)',
             'windows-case-parity'
         )
         $actual = @(Get-ExpectedJobNames)
@@ -313,7 +311,7 @@ try {
     It 'an expected leg that is absent is CANT-VERIFY, not a failure' {
         # ABSENT is not FAILED: a renamed job means this script's expectation is stale, which is a
         # different fact from a leg that ran and failed. B-71/B-85's shared lesson.
-        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -OmitPowerShell)
+        $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -OmitHooks)
         $r = Invoke-Watch -Stub $s
         Assert ($r.Exit -eq 3) "an absent leg must be CANT-VERIFY (3), got $($r.Exit): $($r.Out)"
         Assert ($r.Out -match 'not present') 'did not distinguish absent from failed'

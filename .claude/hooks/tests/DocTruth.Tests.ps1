@@ -473,19 +473,11 @@ It 'root delivery fact helper rejects brittle counts, a shipped licence or notic
     Assert (@(Get-RootDeliveryFactViolations $good $pointers $none $shipped).Count -gt 0) 'a dist shipping the licence was accepted'
 }
 
-# CI and the aggregate runner invoke this complete suite directly under both supported hosts. Keep
-# this case host-local: a PS7 parent relaunching the suite under 5.1 made the PS7 manifest count a
-# case that the direct 5.1 run could only skip, defeating equal/nonzero cardinality.
-It 'the suite executes under the directly selected supported PowerShell host' {
+# CI and the aggregate runner invoke this complete suite directly under PowerShell 7, the one supported host.
+It 'the suite executes under PowerShell 7' {
     $hostLeaf = [IO.Path]::GetFileName((Get-Process -Id $PID).Path)
-    if ($PSVersionTable.PSEdition -eq 'Core') {
-        Assert ($PSVersionTable.PSVersion.Major -ge 7 -and $hostLeaf -match '^pwsh(?:\.exe)?$') `
-            "expected direct PowerShell 7, observed $hostLeaf $($PSVersionTable.PSVersion)"
-    } else {
-        Assert ($PSVersionTable.PSEdition -eq 'Desktop' -and $PSVersionTable.PSVersion.Major -eq 5 -and
-            $PSVersionTable.PSVersion.Minor -eq 1 -and $hostLeaf -match '^powershell(?:\.exe)?$') `
-            "expected direct Windows PowerShell 5.1, observed $hostLeaf $($PSVersionTable.PSVersion)"
-    }
+    Assert ($PSVersionTable.PSEdition -eq 'Core' -and $PSVersionTable.PSVersion.Major -ge 7 -and $hostLeaf -match '^pwsh(?:\.exe)?$') `
+        "expected direct PowerShell 7, observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)"
 }
 
 exit (Write-TestSummary 'DocTruth.Tests (the authoring docs describe the repo that exists)')

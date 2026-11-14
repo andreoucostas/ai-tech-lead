@@ -77,8 +77,8 @@ function Write-TestSummary {
         $mark = switch ($test.State) { 'PASS' {'[ok]'} 'FAIL' {'[FAIL]'} 'SKIP' {'[skip]'} }
         Write-Host ("{0} {1}{2}" -f $mark, $test.Name, $(if ($test.Msg) { " -- $($test.Msg)" } else { '' }))
     }
-    # Skips are deliberately excluded. CI compares this executed-case count between PS7 and PS5.1;
-    # counting a skipped Windows case would let the fallback host look equivalent without running it.
+    # Skips are deliberately excluded: CI requires a nonzero executed-case count from each suite leg,
+    # and counting a skipped case would let a leg that ran nothing look like evidence.
     if ($global:AtlEmitCaseCount) { Write-Host ("CASE_COUNT {0}" -f ($pass + $fail)) }
     Write-Host ("{0}: {1} passed, {2} failed, {3} skipped" -f $Title, $pass, $fail, $skip)
     return $fail
