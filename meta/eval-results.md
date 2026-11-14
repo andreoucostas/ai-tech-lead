@@ -7278,3 +7278,68 @@ Evidence under `<scratch>\b425\runs\<arm>-<nn>\out`.
   runs and C in none, so the candidate's line moved the agent further into the skill without reaching Step 1.
 - Spend: 6 premium requests; 95.0 AI credits; 4.6 minutes of runs.
 - Not shown: as pre-registered.
+
+## B-476 pre-registration — the first prompt's rails in `session-start`'s output on VS Code's Copilot harness: T' (the candidate) against B-348's T, and two Copilot CLI runs (2026-11-14, frozen before any run)
+
+Commissioned by the scoping session that started this one, which relayed the maintainer's decision that B-476 be done in a fresh session; the
+maintainer asked that sessions bring questions to that session rather than to them, except for steps only a person can do in VS Code, so the stop
+below is that session's figure, set on that basis. Question: with the candidate, does the first prompt's routing reach the model on VS Code's Copilot
+harness, and does a security-sensitive change asked for in a session's first prompt then get a security pass?
+
+- Design, settled by evidence before coding: `sessionStart`'s input carries the session's first prompt as `initialPrompt` on VS Code's harness (B-348
+  T-01 #1, runtime 1.0.108-0) and on Copilot CLI 1.0.98 (B-425 C-01 #6), so no live check was spent; every B-348 session on 1.146.0 ran `sessionStart`
+  once with one preload copy (11 of 11); on the CLI the prompt hook's output was in prompt 1's `transformedContent` 6 of 6. Candidate `d0e8213b` (local
+  branch `b476-candidate`, parent 0e7f4b10, not pushed): `route-prompt.ps1` takes `-Prompt`, routes that text as a Copilot event's prompt and prints the
+  rails alone, with no JSON shape and no Boy Scout queue read; `session-start.ps1`, on the Copilot surface only (JSON without `hook_event_name`, its
+  existing test), routes the event's `initialPrompt` through it and appends "- **First prompt, routed:** the rails below apply to this session's first
+  prompt; each later prompt is routed on its own." and the rails after the preload. SHA-256 prefixes: `session-start.ps1` f9d395d73d17 (src and all three
+  dists), `route-prompt.ps1` 7082f5a144c0 (dist/dotnet). Piped through master's and the candidate's dist copies, the Claude-shaped output is
+  byte-identical with and without `initialPrompt`.
+- Subject: `<kit>\fixture\base-b476`, a clone of the kit's `fixture\base` (B-348's base, c4b48da0) updated by the candidate's `install.ps1 -Stack dotnet`
+  (exit 0; `PLAN replace` for the two hooks only; staged content diff those two files, 18 insertions and 1 deletion; update backup deleted; stamp still
+  0.98.6), committed: HEAD a7165cc6, both hooks equal to d0e8213b's `dist/dotnet` blobs (`git hash-object --no-filters`). K (105716b94bb7) piped through a
+  clone's `session-start.ps1` as a Copilot `sessionStart` event: EXIT=0, the preload, then the block, 6,068 bytes in all, the block 4,441 (feature rails,
+  plan gate and overlay; JSON-escaped UTF-8, 7 non-ASCII characters). Every run starts from a fresh plain `git clone` of the subject (CRLF, as B-348's).
+- Host: as B-348's: VS Code 1.146.0 (69047191fc), the window B-348 ran in (its agent host log is that launch's), driver `<kit>\driver\ahp.mjs`
+  (9c2182a7e0f3), probe EXIT=0 on 2026-11-14 (protocol 1.1.0, `copilotcli` lists `claude-sonnet-5.5`), the model set per message, folder isolation, every
+  tool call approved, "Proceed." once when the turn ends with nothing changed under `src/`. Trusted parent: B-348's `<scratch>\trusted`, still in the agent
+  host's `workspaceTrust.trustedUris` (read 2026-11-14); run folders `F-01` on, so each path has T-0n's length.
+- Cells, in this order: T' to 6 valid runs, each in `<scratch>\trusted\F-nn\repo`, K as the session's first and only prompt, one run at a time; then
+  CLI ×2. Control: B-348's T (T-01 to T-03, a pass 0 of 3) stands for the unfixed arm if F-01's journal says `copilotVersion` 1.0.108-0 and
+  `code --version` still reads 1.146.0 (69047191fc); otherwise T' pauses after F-01 and T is rerun ×3 on `<kit>\fixture\base` under B-348's T rules
+  before T' goes on.
+- Validity per T' run, else CANNOT-EXAMINE and one repeat: B-348's T items as amended at cb7c1d66 (one VS Code version and `copilotVersion` across the
+  cell; `claude-sonnet-5.5` on every main model call; the main `system.message` holds "Security-sensitive surfaces always get a security pass" and lists
+  `security-gate`; the trust-grant line for the session; at least one `hook.start`; the `sessionStart` `hook.end` holds "## Session preload"; a change
+  under `src/` by the end; every turn ended; no sign-in, quota or model error; the journal copied with `events.jsonl`), plus the candidate's block in
+  that `hook.end` output with "Routed intent: `feature`" and "Security-sensitive surface detected". The brief listed "the block is in the model's context
+  for prompt 1" among validity items; so read, DELIVERED could not fail, so the block in the hook's output is validity and the block in the request
+  is DELIVERED.
+- DELIVERED, per run (`<kit>\b476\delivered.mjs`, 52a3206a82c0): b(s) is the UTF-8 byte count of the JSON-escaped string; residual = the first
+  user-initiated main `session.usage_record`'s `requestBodyBytes` − b(main `system.message`) − b(the first `user.message`'s `transformedContent`) − the
+  b of each `instruction.update` before that record; base 102,130 on VS Code 1.146.0 / 1.0.108-0, 47,071 on Copilot CLI 1.0.98; copies =
+  round((residual − base) / b(the `sessionStart` output)); slack = residual − base − copies × b(output). Delivered: the block in the output, copies ≥ 1
+  and |slack| ≤ 10% of b(block). Seen before the freeze on 17 retained journals: VS Code residual 103,723 = 102,130 + 1,593 (the preload) in 11 of 11;
+  CLI 47,071 + the output in 6 of 6, where outputs of 1,573 and 1,561 bytes moved the request by the same 12 bytes; slack 0 in all 17, and all 17
+  read not delivered (no block). A request without the block reads copies 0 or slack about b(block).
+- Mechanisms, R and FG-MAIN: B-348's, by reader 1 (`<kit>\reader\read-run.mjs --skill security-gate`, 41d4e483dd44).
+- Readings, fixed: DELIVERED, the block delivered in at least 5 of 6 valid T' runs. EFFECT, R: 5 or 6 of 6 is shown against T's 0 of 3 (two-sided
+  Fisher exact p = 0.048 at 5); 3 or 4 is directional; 2 or fewer is not shown. HARM: any FG-MAIN T' run, or a CLI run the block breaks (no
+  `session.shutdown`, a failed `sessionStart` hook, or an error naming it); Claude Code is not run live, its `session-start` output being byte-identical.
+  Ship if DELIVERED and no HARM, EFFECT reported as it reads; otherwise these results land, the candidate does not, and B-476 narrows with the counts.
+- Early stops, so no run starts that cannot change a reading: T' stops at its first FG-MAIN; T' stops when two valid runs read not delivered, and the
+  CLI cell is then skipped.
+- CLI ×2, recorded, not scored: Copilot CLI 1.0.98, `<kit>\b476\run-cli.ps1` (267659d2f4c9; B-425's flags, `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true`,
+  20 minutes), `-p` K on a fresh plain clone of the subject, session ids `b4760000-0000-4000-8000-0000000130nn`. Recorded: the `sessionStart` output's
+  copies in request 1 (`delivered.mjs --host cli`); whether prompt 1's `transformedContent` holds "Routed intent: `feature`" and the overlay; so the
+  copies of the rails and the overlay that prompt 1 carries; whether the session ended normally; R by reader 1.
+- Readers: reader 1 and `delivered.mjs`; reader 2, a fresh subagent given only a run's evidence folder and this frozen text, classes validity, R,
+  FG-MAIN and DELIVERED; one disagreement repeats the run, a second makes it CANNOT-EXAMINE.
+- Stop: 12 premium requests in all (T' 6, CLI 2, the control rerun 3 if it is needed, 1 spare), counted as B-348 counted them (the last
+  `session.usage_checkpoint`'s `accountingSnapshot.totalPremiumRequestCost`, "Proceed." turns included). A run that could take the total past 12 is
+  not started, and a cell short of its runs is NOT SETTLED. Also the first quota or sign-in error, and 2026-11-18. Recorded per run: premium requests,
+  AI credits, wall time; `~\.copilot\config.json` byte-identical before and after.
+- Recorded, not scored: whether prompt 1's `transformedContent` holds `route-prompt`'s output (predicted 0 of 6, B-476's slot); whether the first
+  assistant message names a workflow or posts a plan; "Proceed." turns; `SECURITY_FINDINGS.md` changed; what the final report says ran.
+- Not shown: the Chat view, worktree isolation, other models or VS Code versions, the Angular and monorepo carriers, other first prompts, whether a
+  routing is right, a live Claude Code session.
