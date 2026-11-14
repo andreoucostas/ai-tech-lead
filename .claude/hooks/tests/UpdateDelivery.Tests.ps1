@@ -5130,6 +5130,52 @@ if (-not (Get-Command git -CommandType Application -ErrorAction SilentlyContinue
         } finally { Remove-ReinstallTemp @($fx.Path) }
     }
 
+    It 'reinstall: an earlier archive the installer cannot read is reported as not compared, not as held by no commit' {
+        $fx = New-ReinstallFixture
+        $handle = $null
+        try {
+            $t = $fx.Path
+            $earlier = Join-Path $t 'docs/pre-adoption/AGENTS.md'
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $earlier) | Out-Null
+            [IO.File]::WriteAllText($earlier, "# an earlier adoption's archive`n", [Text.UTF8Encoding]::new($false))
+            & git -C $t add -A 2>&1 | Out-Null
+            & git -C $t commit -qm earlier-archive 2>&1 | Out-Null
+            Assert ($LASTEXITCODE -eq 0) 'calibration: could not commit the earlier archive'
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            Assert ($r.Exit -eq 3 -and ($r.Out -replace '\s+', ' ') -match 'keeps it') "calibration: the committed archive, readable, is not said to be kept by the commit (exit $($r.Exit)): $($r.Out)"
+            $before = Get-ReinstallFingerprint $t
+            # Commit HEAD holds these exact bytes; only the read fails.
+            $handle = [IO.File]::Open($earlier, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            $handle.Dispose(); $handle = $null
+            $flat = $r.Out -replace '\s+', ' '
+            Assert ($flat -notmatch 'no commit holds it') "the refusal says no commit holds an archive it could not read: $($r.Out)"
+            Assert ($r.Exit -eq 4 -and $flat -match "CANT-VERIFY: -Reinstall could not compare 'docs/pre-adoption/AGENTS\.md'") "expected exit 4 and a CANT-VERIFY naming the archive, got $($r.Exit): $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $t)) "the refused reinstall changed the tree: $($r.Out)"
+        } finally {
+            if ($handle) { $handle.Dispose() }
+            Remove-ReinstallTemp @($fx.Path)
+        }
+    }
+
+    It 'reinstall: an earlier archive staged but never committed is said to be held by no commit, not reported as not compared' {
+        $fx = New-ReinstallFixture
+        try {
+            $t = $fx.Path
+            $earlier = Join-Path $t 'docs/pre-adoption/AGENTS.md'
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $earlier) | Out-Null
+            [IO.File]::WriteAllText($earlier, "# an earlier archive, staged, never committed`n", [Text.UTF8Encoding]::new($false))
+            & git -C $t add -- docs/pre-adoption/AGENTS.md 2>&1 | Out-Null
+            Assert ($LASTEXITCODE -eq 0) 'calibration: could not stage the earlier archive'
+            $before = Get-ReinstallFingerprint $t
+            $r = Invoke-ReinstallInstaller -Target $t -Switches @('-Reinstall')
+            $flat = $r.Out -replace '\s+', ' '
+            Assert ($flat -notmatch 'CANT-VERIFY') "a staged archive HEAD does not hold is reported as not compared: $($r.Out)"
+            Assert ($r.Exit -eq 3 -and $flat -match "'docs/pre-adoption/AGENTS\.md', which already exists" -and $flat -match 'move it out of the repository') "expected exit 3 and the move-out remedy, got $($r.Exit): $($r.Out)"
+            Assert ($before -ceq (Get-ReinstallFingerprint $t)) "the refused reinstall changed the tree: $($r.Out)"
+        } finally { Remove-ReinstallTemp @($fx.Path) }
+    }
+
     # B-481: PowerShell reads U+2019 as a single quote too, so a line that doubles only the ASCII one does not parse.
     It 'reinstall: an archive stop''s restore line, run as printed, restores a target whose path holds a $ and a typographic apostrophe' {
         $fx = New-ReinstallFixture

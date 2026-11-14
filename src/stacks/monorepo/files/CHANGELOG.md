@@ -36,7 +36,9 @@
   or `docs/pre-adoption/CLAUDE.md` was already there, `-Reinstall` stopped, as it should, and told you to move the file or
   delete it because your last commit kept it. It said that for any file Git tracked, including one with an edit you had not
   committed, so deleting it as told lost that edit. It now compares the file with the commit and, when they differ, tells
-  you to move the file out of the repository instead. The stop changes nothing in your repository, as before.
+  you to move the file out of the repository instead. If it cannot read the file, or Git cannot give it the commit's copy,
+  it says it could not compare them and exits with code 4, rather than telling you no commit holds the file. The stop changes
+  nothing in your repository, as before.
 
 ## 0.98.6 — 2026-11-13
 

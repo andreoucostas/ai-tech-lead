@@ -1479,9 +1479,20 @@ if ($Reinstall) {
             # Only a file whose bytes on disk are the commit's is in the commit; deleting any other loses it, an uncommitted edit included.
             $earlierHeld = $reinstallTracked.Contains($rel) -and -not $reinstallSkipped.Contains($rel)
             if ($earlierHeld) {
+                # Tracked is read from the index, but only HEAD's copy is in a commit: a path HEAD lacks (staged, never
+                # committed) or holds as a folder is not held. A lookup or comparison that did not run shows nothing, and
+                # saying no commit holds the file may then be false.
+                $earlierCant = "CANT-VERIFY: -Reinstall could not compare '$rel' with commit $reinstallCommit, so it cannot tell whether that commit keeps the earlier archive there. Repair Git or make the file readable, then re-run. Nothing was changed."
+                $earlierInHead = Invoke-GitRecords -GitPath $reinstallGit -Arguments @('-C', $tgt, 'ls-tree', '-z', 'HEAD', '--', $rel)
+                if ($null -eq $earlierInHead) { [Console]::Error.WriteLine($earlierCant); exit 4 }
+                $earlierBlobPattern = '^[0-7]{6} blob [0-9a-f]+\t' + [regex]::Escape($rel) + '$'
+                $earlierHeld = @($earlierInHead | Where-Object { $_ -cmatch $earlierBlobPattern }).Count -eq 1
+            }
+            if ($earlierHeld) {
                 $earlierCommitted = Invoke-ReinstallGitBytes -Arguments @('-C', $tgt, 'cat-file', '--filters', "HEAD:./$rel")
                 try { $earlierOnDisk = [IO.File]::ReadAllBytes($dest) } catch { $earlierOnDisk = $null }
-                $earlierHeld = $null -ne $earlierCommitted -and $null -ne $earlierOnDisk -and [string]::Equals([Convert]::ToBase64String($earlierCommitted), [Convert]::ToBase64String($earlierOnDisk), [StringComparison]::Ordinal)
+                if ($null -eq $earlierCommitted -or $null -eq $earlierOnDisk) { [Console]::Error.WriteLine($earlierCant); exit 4 }
+                $earlierHeld = [string]::Equals([Convert]::ToBase64String($earlierCommitted), [Convert]::ToBase64String($earlierOnDisk), [StringComparison]::Ordinal)
             }
             $earlierRemedy = if ($earlierHeld) { "Move it out of docs/pre-adoption/ or delete it, commit that (commit $reinstallCommit keeps it), then re-run." } else { 'Git does not track it as it is on disk, so no commit holds it: move it out of the repository, then re-run.' }
             [Console]::Error.WriteLine("ERROR: Refusing reinstall: -Reinstall moves the old $name to '$rel', which already exists (an earlier adoption's archive, most likely). $earlierRemedy Nothing was changed.")

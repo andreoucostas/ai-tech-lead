@@ -62,8 +62,12 @@ an imported `AGENTS.md`; the adversarial review advised against paying for a can
 `install.ps1`; escaped in 0.98.5, found by a second session's attack on 12946b74's unattacked message fix). The refusal runs before the
 dirty-tree check and read "held" off tracked-and-not-skipped, so for a tracked `docs/pre-adoption/<name>` with an uncommitted edit it
 printed "delete it, commit that (commit <sha> keeps it)", and the named commit did not hold the edit. It now also compares the file's
-bytes with `git cat-file --filters HEAD:./<path>` (the sweep's own comparison) and, when they differ or cannot be compared, prints the
-untracked case's remedy: move it out of the repository. One case, red first, in `UpdateDelivery.Tests`.
+bytes with `git cat-file --filters HEAD:./<path>` (the sweep's own comparison) and, when HEAD has no file there (`git ls-tree`: staged,
+never committed) or the bytes differ, prints the untracked case's remedy: move it out of the repository. When Git or the file read
+fails it exits 4 with a `CANT-VERIFY` line instead, as the sweep's held-check does: the step-4 attack showed f759e572 telling a
+committed archive under a read lock that no commit held it (case K; fixed on the maintainer's "ok" in chat), and its re-attack showed
+that amendment sending a staged, never-committed archive to `CANT-VERIFY`, whose remedy could not apply (case C). Three cases, each
+red first, in `UpdateDelivery.Tests`.
 
 ## 0.98.6 — 2026-11-13
 
