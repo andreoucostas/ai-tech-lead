@@ -1,7 +1,9 @@
 # Framework backlog
 
-Open work only, at most 40 entries (`AGENTS.md`, "Records"). Take the first unblocked row of the
-pick-up order, one item per fresh session; the tier is read off the changed paths at work time. An
+Open work only, with no cap on entries (`AGENTS.md`, "Records"; WSD-124). Take unblocked rows of the
+pick-up order from the top; a session may take several; the tier is read off the changed paths at
+work time. A self-found or attack finding inside AGENTS.md's four guarded harms stays here only with a
+trigger ordinary use executes; one that could leak a secret always stays (WSD-124). An
 entry is its heading, filed-against line, priority line and at most three lines of status; the
 evidence lives in the plans and decisions it names. An empty backlog says "No open entries." on its
 own line under Open entries; the hygiene tests refuse that line beside an entry. A session that
@@ -9,7 +11,7 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat: "go ahead with all of the findings this far" of that day's architecture review, its adversarial passes and its decision audit): B-506 to B-513 filed, B-498 raised, B-483 ranked; earlier ranking history is in `git log -p meta/BACKLOG.md`
+## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work at ranks 8, 9, 11 and 12 after B-506, B-509, B-507 and B-498, and seven findings shut; earlier ranking history is in `git log -p meta/BACKLOG.md`
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -20,38 +22,38 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 5 | B-509 | Data-loss class, run: the only test of the installer's retired-path reparse branch is skipped on every Windows host; S |
 | 6 | B-507 | Data-loss class, run: every update drops a team's own `env` variables and hook entries (recoverable from HEAD); guarded |
 | 7 | B-498 | Raised 2026-11-14: a false green (the doctor passes with `disableAllHooks` set), one of the four guarded harms; red-first |
-| 8 | B-510 | CI is at 88% of the watcher's 2,400 s and growing; past it every push and release reads CANT-VERIFY; guarded |
-| 9 | B-469 | Maintainer request: an update's `.claude/framework-update-backup/` copies get forgotten and committed; `-Reinstall` already relies on the last commit instead; guarded |
-| 10 | B-491 | Audit, reproduced: `route-prompt` routes "yes, go ahead" and plain questions as a feature with the plan gate, and "concurrency" gets the security overlay; guarded |
-| 11 | B-493 | Audit, read: `dependency-audit` forbids inferring the read-only scan commands, so it reports every scan as not available; guarded, text-only |
-| 12 | B-425 | A plain-words review runs no reviewer: on Copilot CLI it loads the `review` skill (5 of 6, 2026-11-13) but skips its dispatch step (0 of 6), with or without the candidate; blocked on B-416; the Claude Code leg is about 3 USD |
-| 13 | B-497 | Audit, read: `/review` has no merge, de-duplication or verdict step, and two reviewers give opposite advice on delegation; ordinary |
-| 14 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
-| 15 | B-513 | Needs the maintainer: the 2026-11-14 decision audit's contradiction, unread decisions and stale premises |
-| 16 | B-508 | Where the recent data-loss defects sit has no unit tests; guarded, step 4 |
-| 17 | B-511 | Deletions: release tooling that never fires or only raises its ceiling, and closed eval studies; guarded |
-| 18 | B-512 | Three hand-edited copies kept by a stale ~6-marker cap; guarded (AGENTS.md) |
-| 19 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 20 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
-| 21 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
-| 22 | B-356 | Maintainer idea with no field report; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 23 | B-468 | Measured, not field-raised: 2 of 26 plain bug fixes skipped the regression test, wrongly saying a SQLite test needs a new package; the agent said the fix was untested |
-| 24 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
-| 25 | B-471 | Installer leftovers of the 2026-10-31 attacks, narrowed to two skip-worktree WARNING gaps (a case-mismatched subfolder target, an unchanged flagged file named); guarded, step 4 |
-| 26 | B-477 | Stall class, contrived: the write guard walks a written path twice, so on PowerShell 7 a path of about 400 KB of collapsing segments now outlives Copilot's 10 s; guarded, step 4 |
-| 27 | B-478 | Write-guard leftovers of the 2026-11-04 step-4 attacks: `password` spelt with the long s passes, and a path-less `NotebookEdit` falls through (the host's schema requires the path); guarded, step 4 |
-| 28 | B-479 | B-432's refusal misses one unplanned write: a brownfield at a 197 to 206 character target on 5.1 without long paths stops with the old unnamed-cause message (exit 3, nothing written); guarded, step 4 |
+| 8 | B-514 | Maintainer priority: nothing yet shows an auto-created skill being used (0 of 4 follow-ups called one); the measurement the rest of the skills work hangs on; needs the maintainer's spend stop |
+| 9 | B-515 | Maintainer priority: 3 of 6 measured drafts missed a step their own instances contain; guarded |
+| 10 | B-510 | CI is at 88% of the watcher's 2,400 s and growing; past it every push and release reads CANT-VERIFY; guarded |
+| 11 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review; after B-514; guarded |
+| 12 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 13 | B-469 | Maintainer request: an update's `.claude/framework-update-backup/` copies get forgotten and committed; `-Reinstall` already relies on the last commit instead; guarded |
+| 14 | B-491 | Audit, reproduced: `route-prompt` routes "yes, go ahead" and plain questions as a feature with the plan gate, and "concurrency" gets the security overlay; guarded |
+| 15 | B-493 | Audit, read: `dependency-audit` forbids inferring the read-only scan commands, so it reports every scan as not available; guarded, text-only |
+| 16 | B-425 | A plain-words review runs no reviewer: on Copilot CLI it loads the `review` skill (5 of 6, 2026-11-13) but skips its dispatch step (0 of 6), with or without the candidate; blocked on B-416; the Claude Code leg is about 3 USD |
+| 17 | B-497 | Audit, read: `/review` has no merge, de-duplication or verdict step, and two reviewers give opposite advice on delegation; ordinary |
+| 18 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
+| 19 | B-513 | Needs the maintainer: the 2026-11-14 decision audit's contradiction, unread decisions and stale premises |
+| 20 | B-508 | Where the recent data-loss defects sit has no unit tests; guarded, step 4 |
+| 21 | B-511 | Deletions: release tooling that never fires or only raises its ceiling, and closed eval studies; guarded |
+| 22 | B-512 | Three hand-edited copies kept by a stale ~6-marker cap; guarded (AGENTS.md) |
+| 23 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
+| 24 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
+| 25 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
+| 26 | B-468 | Measured, not field-raised: 2 of 26 plain bug fixes skipped the regression test, wrongly saying a SQLite test needs a new package; the agent said the fix was untested |
+| 27 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
+| 28 | B-478 | Write-guard leftovers of the 2026-11-04 step-4 attacks: `password` spelt with the long s passes, and a path-less `NotebookEdit` falls through (the host's schema requires the path); kept as secret-leak class (WSD-124); guarded, step 4 |
 | 29 | B-484 | Secret-leak class, adjacent to field report #13: a committed credential's hazard row commits its `path:line`, which `/security-gate` forbids; guarded, text-only |
 | 30 | B-499 | Secret-leak class, B-487's step-4 attacks: the guard still passes an auto-property initializer, `NetworkCredential`, URL userinfo and other credential forms; guarded, step 4 |
 | 31 | B-496 | Audit, a sub-session's run: the removal checklist leaves `.claude/settings.json` registering deleted hooks; ordinary |
 | 32 | B-489 | Audit, reproduced: the guard blocks UI labels, vault references and documentation samples with no waiver; needs the maintainer's decision (a WSD) first |
 | 33 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations (the missing-`pwsh` exit 0 is fixed for 0.98.7); needs the maintainer's decision first |
-| 34 | B-500 | Wrong-repository class, read: the outdated-clone advice double-quotes the clone path, so pasted into PowerShell a `$` in it expands and the `checkout` or `pull` runs elsewhere; guarded, step 4 |
-| 35 | B-501 | Wrong-repository class, contrived: the installer writes printed paths in the console's code page, so on CP437 a `’` in a restore line's path arrives as `'` and the pasted line names another folder; guarded, step 4 |
-| 36 | B-502 | Data-loss class, pre-existing, B-480's scope check (run): a disabled skill's exemplar line survives the update that disables it and is dropped by the next one; guarded, step 4 |
-| 37 | B-503 | Data-loss class, pre-existing, B-482's step-4 attack (run): `-Reinstall` replaces an instruction file Git tracks under another letter case without checking it against the commit; guarded, step 4 |
-| 38 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only (a shell on Claude Code, every tool on Copilot); needs the maintainer's decision first |
-| 39 | B-505 | Data-loss class, pre-existing, the 0.98.7 refusal fix's step-4 attack (run): `-Reinstall`'s "keeps it" remedy ignores a staged version of an earlier archive that no commit holds; guarded, step 4 |
+| 34 | B-502 | Data-loss class, pre-existing, B-480's scope check (run): a disabled skill's exemplar line survives the update that disables it and is dropped by the next one; guarded, step 4 |
+| 35 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only (a shell on Claude Code, every tool on Copilot); needs the maintainer's decision first |
+| 36 | B-517 | Maintainer priority, proposed: a Git-history pass to find repeated operations in large repositories; after B-514 and B-515 |
+| 37 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
+| 38 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
+| 39 | B-520 | Six small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
 | 40 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
 
 ## Open entries
@@ -61,7 +63,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 **Priority:** P3 · **Effort:** M to measure, S to change · **Invariants:** #1 #7
 **Status:** Open; raised by the maintainer 2026-10-05, no field report (WSD-109). The candidate bullet shipped unmeasured in carrier §2 (WSD-111).
 Measure it (B-346 method): an extension-point feature, a third instance and a plain CRUD decoy whose false-offer rate decides whether it stays;
-design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B. Its Copilot stage: `.claude/plans/2026-11-13-copilot-window-briefs.md`, "B-356".
+design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B. Its Copilot stage: `.claude/plans/2026-11-13-copilot-window-briefs.md`, "B-356". Part of the project-skills work (WSD-124) with B-514 to B-517: this is how skills keep appearing after `/bootstrap`.
 
 B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 
@@ -130,11 +132,6 @@ bullet's and fix rail's "add no foreign harness", read as forbidding an engine t
 `.claude/framework-update-backup/` (wrappers, unowned files, skills, the layout move) and `.claude/.state/settings.json.pre-update`; consumers forget and commit them.
 Replace each save with the commit id and `git show`/`git checkout` lines, keeping a save only where the copied bytes are not in HEAD (ignored or skip-worktree files). A team's own `hooks` entry, which no update merges, outlives one update in the backup and then only in Git (B-486's step-4 attack).
 
-### B-471 · Installer leftovers of the 2026-10-31 step-4 attacks: stops outside the copy loop, two remedies that fail, and three B-449 warning gaps
-**Filed against:** v0.98.2 (2026-10-31)
-**Priority:** P3 · **Effort:** S · **Invariants:** #7
-**Status:** Narrowed 2026-11-04: (a), (b) and two of (c)'s gaps done. Left, both B-449 WARNING gaps: nothing is listed for a subfolder target whose on-disk case differs from Git's index (`ls-files` run from the target lists nothing; reading from the repository root with an icase pathspec changes the skipped set -Reinstall and the brownfield archive also read), and a flagged file whose bytes this run left unchanged is named too. Guarded, step 4.
-
 ### B-475 · VS Code 1.144.1: repository hooks never load in a folder VS Code trusts, so no framework hook runs in its Copilot harness
 **Filed against:** v0.98.3 (2026-11-03)
 **Priority:** P1 · **Effort:** M · **Invariants:** #5 #7
@@ -142,21 +139,12 @@ Replace each save with the commit id and `git show`/`git checkout` lines, keepin
 (the root cause then: deferral to `sessions.loadDeferredRepoHooks`, which the agent host still never references, so the change is presumably the runtime's). Script-created sessions in folder isolation only; microsoft/vscode#345931 is still open.
 Left: one Chat-view session in a trusted folder on this version, then a guarded change to the docs and the doctor's `Copilot hook liveness` row (0.98.4), which say a trusted folder runs no repository hook. Then a hook-liveness canary run on each new host release: evidence-triggered, so WSD-066 stands (2026-11-14 decision audit: host-release reviews found B-395 and this item).
 
-### B-477 · The write guard walks a written path twice, so on PowerShell 7 a pathological path takes twice as long to decide
-**Filed against:** v0.98.3 (2026-11-04)
-**Priority:** P3 · **Effort:** S · **Invariants:** #3
-**Status:** Open; found by B-472's step-4 attack (executed). `Get-CheckedFileName` and `Get-RepositoryRelativePath` each walk the path's segments, and a UNC path is now walked too: a 1.4 MB `src\x\..\…\Foo.cs` (Node 24 writes it into `Foo.cs`) took 34.0 s on pwsh 7.6.9 against 16.7 s on b1f42438 (1.4 s on 5.1), and a 1.5 MB UNC path 42 s against about 1 s.
-Contrived; about 400 KB of collapsing path now outlives Copilot's 10 s (was about 700 KB). Candidate: derive the checked name from the exemption walk's kept list (one walk), timed red first. Guarded, step 4.
-
 ### B-478 · Write-guard leftovers of the 2026-11-04 step-4 attacks: the long s in `password`, and a path-less `NotebookEdit`
 **Filed against:** v0.98.3 (2026-11-04)
 **Priority:** P3 · **Effort:** S · **Invariants:** #3
 **Status:** Open; pre-existing on b1f42438, executed by the attacks on B-472 and B-474. (a) `pa` U+017F U+017F `word = "…"` passes on pwsh and 5.1, like B-445's Kelvin-sign `k` on 5.1; no culture's casing writes either, so decide both together (a secret-leak finding needs a WSD, not WSD-106).
 (b) A `NotebookEdit` with `notebook_path` absent, empty or null and a key in `new_source` exits 0 where a path-less `Write` blocks (`NotebookEdit` is not in `$knownWrite`); Claude Code's schema requires the path. Guarded, step 4.
-### B-479 · B-432's long-path refusal misses the brownfield marker's temp file
-**Filed against:** v0.98.3 (2026-11-04)
-**Priority:** P3 · **Effort:** S · **Invariants:** #3
-**Status:** Open; found by B-432's step-4 attack (executed on emulated 5.1 without long paths). The marker's `.claude/.adoption-pending-<32 hex>.tmp` is 34 characters longer than the planned marker and is not in the create, replace or archive plan, so for a brownfield target of 197 to 206 characters planning passes and the marker write stops with "could not persist the complete pre-move archive inventory … Could not find a part of the path" (exit 3, tree unchanged, as on b1f42438). Candidate: add the temp path to the length check; red case at a 201-character brownfield. Guarded, step 4.
+Kept by the 2026-11-14 audit: the secret-leak class keeps WSD-106's exclusion from the ordinary-use test until the maintainer says otherwise (WSD-124).
 ### B-483 · `warehouse-map-check` reports `current` for a map whose tables were deleted, or that has no full-pass stamp
 **Filed against:** v0.98.4 (2026-11-05)
 **Priority:** P3 · **Effort:** M · **Invariants:** none
@@ -211,37 +199,17 @@ Candidate: read commands under `hooks` only; report `disableAllHooks: true` as `
 **Priority:** P3 · **Effort:** M · **Invariants:** #3 #5 #7
 **Status:** Open; B-487's step-4 attacks (a sub-session's runs, not re-run). Not read: an auto-property initializer `public string Password { get; set; } = "…"`, Redis `password=`, URL userinfo outside a connection-string key, a backtick string, a `Dictionary` initializer, `new NetworkCredential(…)`, `SetEnvironmentVariable`, `password?:`, a `"""` or `$"` literal, a `??` or `||` fallback, VB; and B-487's stated limits: `string.Join`, `;;`, a quote inside the literal, a JDBC neighbour, a `:` in a neighbouring key, the computed key `['password']:`, a no-break space or vertical tab, a one-pair literal standing alone, a variable between the pieces (`"Server=" + host + ";Password=…"`, the commonest real shape), VB `&`, `+=`, `string.Concat`, `AppendFormat`, `.Add(` or `.push(` pieces, an unkeyed password opening with `@`; and its false blocks on a mask, message or SQL text that is a piece of a longer string.
 Candidate: decide per form whether the guard or CI secret scanning owns it; extending the guard is guarded, step 4, and each form needs its false-block survey (B-487 audited 145 repo and 476 npm files).
-### B-500 · The outdated-clone advice expands a `$` in the clone path when pasted into PowerShell
-**Filed against:** v0.98.5 (2026-11-11)
-**Priority:** P3 · **Effort:** S · **Invariants:** #3
-**Status:** Open; found by B-481's scope check (read, not paste-tested). A clone behind its remote prints `git -C "<clone>" fetch --tags <remote>, then git -C "<clone>" checkout v<x>` or `git -C "<clone>" pull`; with `$x` in the clone path the pasted command fails, or checks out or pulls in a sibling repository at the expanded path. B-495's off-tag clause in the `source:` line prints the same string.
-Candidate: the script-scope `$quote` B-481 added, moved above this check; red case: a `$`-named clone behind its newest tag, the line run as printed. Guarded, step 4.
-### B-501 · A printed path loses its non-code-page characters on the way to the console
-**Filed against:** v0.98.5 (2026-11-11)
-**Priority:** P3 · **Effort:** S to M · **Invariants:** #3
-**Status:** Open; found by B-481's step-4 attack (executed: `[Console]::Error.WriteLine` of U+2019 read back through a pipe as `'` on 5.1, 5.1 under CP437, and 7). The installer writes in the console's code page, so a restore line for a target named `Bob’s` arrives as `Bob's`: pasted, it fails, or names another folder with that spelling.
-Candidate: write the stop lines as UTF-8, or name the path's unprintable characters; the B-481 cases read the output as UTF-8 to step around it. Guarded, step 4.
 ### B-502 · A disabled skill's exemplar line is dropped by the update after the one that disables it
 **Filed against:** v0.98.5 (2026-11-11)
 **Priority:** P3 · **Effort:** S · **Invariants:** #7
 **Status:** Open; found by B-480's scope check (run on dist/dotnet: install, a "For a concrete current instance" line added to `add-warehouse-load`, the skill disabled in LEARNINGS.md; the first update kept the line in `.claude/disabled-skills/add-warehouse-load/SKILL.md`, the second, exit 0, replaced it without the line). The update reads exemplar lines only under `.claude/skills/`.
 Candidate: read a disabled skill's line from `.claude/disabled-skills/<name>/SKILL.md` too; red case from that run. Guarded, step 4.
-### B-503 · `-Reinstall` skips the commit check for `CLAUDE.md` or `AGENTS.md` that Git tracks in another letter case
-**Filed against:** v0.98.5 (2026-11-11)
-**Priority:** P3 · **Effort:** S · **Invariants:** #7
-**Status:** Open; found by B-482's step-4 attack (run on dist/dotnet, adoption pending, the mirror tracked as `agents.md`, then a same-size edit with its write time restored so `git status` stayed empty): exit 0, the edit replaced and in no commit, while the `LAYOUT:` line says the commit holds it; with `AGENTS.md` cased as tracked the same edit stops with exit 4. `$heldCheck` filters the two names through the ordinal `$trackedBlobs`, while `$reinstallTracked` (ignore-case) lets the move through.
-Candidate: look the two names up in `$trackedBlobs` by their tracked spelling; red case from that run. The final `moved:` summary line names the bare commit too. Guarded, step 4.
 ### B-504 · The reviewers are read-only in prose only: a shell on Claude Code, every tool on Copilot
 **Filed against:** v0.98.6 (2026-11-13)
 **Priority:** P2 · **Effort:** S for a tool list, M to drop the shell · **Invariants:** #2 #5 #7
 **Status:** Open, waiting on the maintainer's decision; vendor-guidance audit and its adversarial review (read, not run). The seven `.claude/agents` files list `PowerShell`; the six `.github/agents` wrappers have no `tools:`, which Copilot reads as all tools; both vendors say a tool list is the boundary and an instruction is not.
 Decide: drop the shell (`Read, Grep, Glob`; `["read", "search"]`), which moves the reviewers' hash recompute to the parent in six agents, six wrappers, `review.md` and `security-gate.md`, where `/security-gate` has no parent recompute today; or keep it, add `tools: ["read", "search", "execute"]` to the wrappers and stop saying read-only. Either needs a Copilot host check that a reviewer starts, reads its bundle and has no edit tool.
 Also: VS Code documents that it does not forward `include-custom-instructions`, which four wrappers rely on; not measured.
-### B-505 · `-Reinstall`'s "keeps it" remedy ignores a staged version of an earlier archive that no commit holds
-**Filed against:** v0.98.6 (2026-11-14)
-**Priority:** P3 · **Effort:** S · **Invariants:** #7
-**Status:** Open; found by the step-4 attack on the 0.98.7 "already exists" refusal fix (case E, run on dist/dotnet and re-run): with HEAD holding X, the index a staged Y and the disk back to X (`git status` `MM`), the refusal exits 3, changes nothing and says the commit keeps it; deleting the file and committing that, as told, drops Y, which no commit holds. Pre-existing: the earlier remedy said the same for any tracked file.
-Candidate: also require the index entry to equal HEAD's before printing "keeps it", else print the move-out remedy; red case from that run. Guarded, step 4.
 ### B-506 · 0.98.7's remedy for a machine without PowerShell 7 edits the shared settings file and is reverted by the next update
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P1 · **Effort:** S · **Invariants:** #3 #7
@@ -255,7 +223,7 @@ Candidate: carry `env` per variable and hook entries per inner entry, recognisin
 ### B-508 · The installer's HEAD-comparison and ownership planning has no unit tests, and an edited framework-owned file is replaced unannounced
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** M · **Invariants:** #7
-**Status:** Open; architecture review and decision audit 2026-11-14. WSD-101 asks only that hashes gate retirement and a migration floor is named, not how the installer is structured; WSD-043's noise premise predates WSD-051's per-path digests. f759e572, 03f25b38, B-503 and B-505 all sit in the HEAD-comparison logic, reachable only through end-to-end runs.
+**Status:** Open; architecture review and decision audit 2026-11-14. WSD-101 asks only that hashes gate retirement and a migration floor is named, not how the installer is structured; WSD-043's noise premise predates WSD-051's per-path digests. f759e572, 03f25b38 and two findings shut under WSD-124 (a letter-case mismatch, a staged archive version) all sit in the HEAD-comparison logic, reachable only through end-to-end runs.
 Candidate: extract the pure planning functions with unit cases first; record installed digests at install time, keeping the ledger as the floor for older installs; a NOTICE naming each owned file whose bytes match no released digest, with the commit to recover it from (no backup copy, WSD-117). Also check whether the legacy pre-commit inspection (`install.ps1:936-1200`) and the file-named retired-path messages still serve a reachable install. Guarded, step 4.
 ### B-509 · The retired-path reparse case never runs: its probe expects `Test-Path` to call a dangling link absent
 **Filed against:** v0.98.6 (2026-11-14)
@@ -281,4 +249,39 @@ Candidate: core files with `@stack` markers and byte-identical dist output, addi
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** S · **Invariants:** none
 **Status:** Open; needs the maintainer. Reconcile WSD-116 ("releases follow as soon as work lands") with AGENTS.md's "roughly weekly"; read or ratify WSD-117, WSD-120 and WSD-121 (each says the maintainer has not read it); record WSD-043's carve-outs, retire WSD-012's ~6-marker cap, restate B-157's pin rationale (its Bash oracle is gone) and WSD-105's premise (B-325's A2 arm: MISLEADING 0/6 against 6/6); time-box B-416.
-Then AGENTS.md (guarded, under 120 lines): check reopen triggers whenever eval or field evidence is recorded; under WSD-106 a finding stays open only with a trigger executed through an ordinary agent or host action (B-500 and B-501 to be reclassified); one cost-benefit line when something ships unmeasured; one removal candidate per re-rank. Named anchors for the rules file's numbers, as B-142 suggests.
+Then AGENTS.md (guarded, under 120 lines): check reopen triggers whenever eval or field evidence is recorded; one cost-benefit line when something ships unmeasured; one removal candidate per re-rank. Named anchors for the rules file's numbers, as B-142 suggests. The trigger test for findings and the uncapped backlog landed with WSD-124.
+### B-514 · Measure whether an auto-created project skill is used on the next matching task and changes its outcome
+**Filed against:** v0.98.6 (2026-11-14)
+**Priority:** P2 · **Effort:** M · **Invariants:** none
+**Status:** Open; maintainer direction 2026-11-14 (WSD-124). Drafting is observed on Claude Code (B-346: both planted operations in 3 of 3 runs; the billing fixture's `wire-unity-service` in 2 of 2); use is not: in the one study that looked, none of 4 follow-up tasks called the drafted skill, and the arm with no `/bootstrap` landed the same (3 of 3; `meta/eval-results.md`, the late-fee follow-up). A draft is not in `AGENTS.md > Common Tasks` until approved, and that list is what tells the agent to invoke a skill.
+Design: on `meta/eval-fixtures/b345-bootstrap-skills`, whose operations have steps that are easy to miss (registry line, schema version, flag, GRANT), ask for a new instance with the skill approved, with the draft as `/bootstrap` leaves it, with a Conventions line only, and bare; n = 6 each; graded on a Skill call and on every non-obvious step being present. Pre-register; a driver and grader come first. About 10 to 25 USD: the maintainer sets the stop before any run. A Copilot leg follows (its one run wrote Conventions lines, not skills).
+### B-515 · A drafted project skill can miss a step its own instances contain
+**Filed against:** v0.98.6 (2026-11-14)
+**Priority:** P2 · **Effort:** S to change, M to measure · **Invariants:** #1 #7
+**Status:** Open; maintainer direction 2026-11-14 (WSD-124). B-346, one reviewer's unregistered read: 3 of 6 drafts missed a step. One event draft omits the handler's DI registration (it builds, passes its tests, and faults at the first dispatch), two omit the test step, and no event draft says an unregistered event is not published; 4 of 6 give the reference as a code span, not a link.
+Candidate: 3a-bis checks each draft against every instance it lists before writing it: every file an instance touches maps to a step or is marked unresolved, taking the commit that added an instance as its file list where Git history has one. Measure omitted steps before and after on the B-346 fixture. Guarded (`src/stacks/*/files/.claude/**`, three `bootstrap.md` copies).
+### B-516 · A draft skill becomes active only through two manual edits, and is discoverable before anyone reviews it
+**Filed against:** v0.98.6 (2026-11-14)
+**Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
+**Status:** Open; maintainer direction 2026-11-14 (WSD-124). Approval today is the draft's `## After review` paragraph: add one Common Tasks line to `AGENTS.md` and delete the draft wording, by hand. Meanwhile 3a-bis keeps the draft "immediately discoverable", so an unreviewed draft that misses a step (B-515) can be followed.
+Candidate: one action approves a draft that passed B-515's check (asked to approve it, the agent makes both edits). For the maintainer: whether a checked draft may go live without review (WSD-109 says pending PR review), and whether an unchecked one should sit where no host loads it. After B-514 says whether drafts are used at all. Guarded.
+### B-517 · Discovery reads at most 40 files, so it cannot find repeated operations across a large repository
+**Filed against:** v0.98.6 (2026-11-14)
+**Priority:** P3 · **Effort:** M · **Invariants:** #1 #3 #7
+**Status:** Open; maintainer direction 2026-11-14 (WSD-124); proposed, not designed. A8 read 43 to 60 files against its 40-file budget on a small fixture (B-346), and WSD-074's consumers are very large repositories.
+Candidate: a shipped script that lists commits adding the same shape of files three or more times, with each instance's full file list, for A8 to name and 3a-bis to draft from; it would also give B-515 its ground truth. A new shipped script, so decide after B-514 and B-515, with B-466's sized fixtures as the test bed. Guarded if it ships.
+### B-518 · Consumers are not told which Copilot CLI and VS Code versions are supported, or what 1.0 will promise
+**Filed against:** v0.98.6 (2026-11-14)
+**Priority:** P3 · **Effort:** S · **Invariants:** #7
+**Status:** Open; architecture review 2026-11-14. `docs/enforcement-surfaces.md` states a floor for Claude Code only (2.1.141); nothing is stated for Copilot CLI or VS Code, whose behaviour the maintainer re-measures release by release (`meta/host-certification.md`). The framework has 115 release tags and is at 0.98 with no statement of what a 1.0 guarantees an installed repository.
+Candidate: one support statement per host in `enforcement-surfaces.md`, drawn from `host-certification.md`; a short maintainer decision on what 1.0 promises (update path, ownership classes, hook contract). Ordinary for the docs.
+### B-519 · Trim the always-loaded rules file only where a measurement can go red
+**Filed against:** v0.98.6 (2026-11-14)
+**Priority:** P3 · **Effort:** M · **Invariants:** #1 #7
+**Status:** Open; architecture review 2026-11-14, narrowed by its attack. The carrier is 15.6 KB on every turn; B-411 showed 5.8 KB could go with every measured behaviour holding, but its cells cover about 3 of the file's 38 directives and WSD-107 measured one added sentence doing harm. The ownership sentence stays (WSD-071); the rule numbers are cited across `src/` and their renaming is B-513's.
+Candidate: cut or shorten only text a discriminating cell covers, one group per measurement; B-356's bullet is decided by its own measurement. Ordinary by path; every cut measured.
+### B-520 · Smaller leftovers of the 2026-11-14 reviews
+**Filed against:** v0.98.6 (2026-11-14)
+**Priority:** P3 · **Effort:** S each · **Invariants:** none
+**Status:** Open; each stood its attack in this narrowed form. (1) Headless `/adopt` (about 6.8 KB) into its own file. (2) When a live eval run is hand-checked, keep its scrubbed transcript and verdict as a self-test fixture: grader defects were found by reading transcripts, not by the hand-written fixtures. (3) Time `UpdateDelivery.Tests.ps1` per case, then replace only the setup installs whose result no case asserts.
+(4) One meta case asserting the five `Test-IsLinkEntry` copies are identical and none uses a bare `-band ReparsePoint`, in place of the five per-copy cases. (5) `build.ps1`'s second ownership listing (`:383-390`): the Bash oracle it replaced is gone (B-157), so keep or delete it on purpose. (6) Release tests also run under 5.1, though `release.ps1` needs PowerShell 7.

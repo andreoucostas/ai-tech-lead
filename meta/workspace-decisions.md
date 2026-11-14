@@ -4740,3 +4740,16 @@ which keeps the move. Protected paths, agent tooling and untracked, ignored or n
 namespaced framework folders (largest change: a retirement for every moved path and every command's references; a candidate release);
 Option C, keeping the move with corrected wording and restore lines (the restored file still loses to the next update).
 **Reopen** on a field report of an untracked team file lost this way, or when Option A is planned.
+
+## WSD-124: the backlog is uncapped, a session may take several entries, and a finding needs a trigger ordinary use executes (2026-11-14)
+
+**Context.** The 2026-11-14 architecture review, its adversarial passes and a decision audit ended as B-506 to B-520. WSD-093's cap forced findings
+into unrelated entries, WSD-090's one-item-per-fresh-session rule could not schedule them, and about a third of the ranked rows were attack leftovers.
+**Decision (maintainer, in chat 2026-11-14).** (1) "Remove the cap from the backlog": done; an entry keeps its shape. (2) "Remove the rule that says
+we can't address multiple things in one session": a session may take several entries; step 4 is unchanged. (3) "Audit the backlog and remove anything
+that doesn't fit our new direction", after "go ahead with all of the findings this far" for a list holding "an attack finding should need a plausible
+real-world trigger": inside the four guarded harms a self-found or attack finding is filed, or stays, only with a trigger ordinary use executes (by an
+agent, host or developer; this session's wording); one that could leak a secret keeps WSD-106's exclusion until the maintainer says otherwise. B-477,
+B-503 and B-505 close on the test; B-471, B-479, B-500 and B-501 under WSD-106. (4) Project skills ("If we can get it to work properly and have skills
+auto created we are laughing") are a maintainer priority, ranked after B-506, B-509, B-507 and B-498: B-514 to B-517, B-356. Supersedes WSD-093's cap and
+WSD-090's one-item rule; amends WSD-106. **Reopen** (3) if a finding closed on it reaches a consumer.

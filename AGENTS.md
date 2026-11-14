@@ -66,8 +66,9 @@ Anyone may raise a tier; no one lowers one. A batch takes its highest member.
 
 ## Scope
 
-- Do the asked change only. An adjacent finding is a `meta/BACKLOG.md` entry, or a WSD-106 close if no field
-  report raised it and it is none of the guarded tier's four harms; never an edit.
+- Do the asked change only. An adjacent finding is a `meta/BACKLOG.md` entry if a field report raised it, it could
+  leak a secret, or it is another guarded harm that ordinary use triggers (WSD-124); otherwise one CLOSED line
+  in `meta/BACKLOG-DONE.md` (WSD-106); never an edit.
 - No new script, test file, gate, record or document unless the task requires it; propose it in
   one line instead. Prefer deleting to adding.
 - An escaped defect — one that reached a tag, or a gate that was green on a wrong artifact — gets
@@ -93,8 +94,8 @@ Anyone may raise a tier; no one lowers one. A batch takes its highest member.
 
 ## Records
 
-- `meta/BACKLOG.md`: open work only, at most 40 entries, each a heading, its filed-against line,
-  its priority line and at most three lines. A finished entry is deleted and leaves one line in
+- `meta/BACKLOG.md`: open work only, each entry a heading, its filed-against line, its priority
+  line and at most three lines. A finished entry is deleted and leaves one line in
   `meta/BACKLOG-DONE.md`.
 - `meta/workspace-decisions.md`: a decision you would otherwise re-litigate, at most ten lines,
   indexed by one line in `meta/decisions-index.md`.
