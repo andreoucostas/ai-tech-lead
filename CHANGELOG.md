@@ -11,6 +11,23 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.98.7 — Unreleased
+
+On Copilot, `session-start` carries the rails of the session's first prompt (guarded, `hooks/**`; B-476, filed 2026-11-03, re-measured
+by B-348's VS Code runs). VS Code's Copilot harness keeps one `userPromptSubmitted` output per prompt and gives a chat's first prompt's
+slot to its own `<workspace_info>`, so `route-prompt`'s rails reached 0 of 9 first prompts on VS Code 1.146.0 (6 of 6 second ones).
+`sessionStart`'s input carries that prompt as `initialPrompt` on VS Code's harness and on Copilot CLI 1.0.98 (read in retained journals),
+so `session-start.ps1`, on the Copilot surface only, routes it through `route-prompt.ps1 -Prompt` (the one classifier; the rails alone, no
+JSON shape, no Boy Scout queue read) and appends them after the preload. Pre-registered at 19ffd9ea, VS Code 1.146.0, trusted folder,
+B-348's refund prompt (approved in advance) as the session's first prompt: the block reached the model's first request in 6 of 6 sessions
+(the request grew by exactly the hook's output, read from its size), and the agent ran this framework's security pass in 1 of 6, against
+0 of 3 in B-348's runs without it (not shown); no run chose the built-in reviewer, and each of the other five reports said the
+gate was not run. Accepted, as the 2026-11-03 review's objections: on Copilot CLI 1.0.98, which also delivers the prompt hook there, the
+first prompt carried the rails and the overlay twice (2 of 2 runs, both ending normally); on VS Code 1.146.0 `sessionStart` ran once with
+one copy (17 of 17 sessions), so the both-hook-files doubling was not seen; no cheap de-duplication, since the two hooks start together
+(B-348 T-01: `userPromptSubmitted` #2 starts before `sessionStart` ends #3); the Boy Scout queue stays with the prompt hook (a case).
+Claude Code's `session-start` output is byte-identical with and without `initialPrompt`. One case, red first: `RoutePrompt.Tests`' new `session-start` case.
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

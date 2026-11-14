@@ -290,6 +290,16 @@ if (Test-Path -LiteralPath (Get-RepoPath 'FRAMEWORK-CONTEXT.md')) {
 # unverified; dated CLI evidence is recorded in docs/enforcement-surfaces.md.
 $isCopilot = ($stdinJson -and $stdinJson.TrimStart().StartsWith('{') -and ($stdinJson -notmatch '"hook_event_name"'))
 if ($isCopilot) {
+    # VS Code's Copilot harness keeps one prompt-hook output per prompt and gives a chat's first prompt's slot to its
+    # own <workspace_info>, so that prompt's rails ride here, routed by route-prompt.ps1 itself from the event's
+    # initialPrompt. Copilot CLI also delivers the prompt hook's output, so there the first prompt carries them twice.
+    try {
+        $initialPrompt = [string]($stdinJson | ConvertFrom-Json).initialPrompt
+        if (-not [string]::IsNullOrWhiteSpace($initialPrompt)) {
+            $routed = (& (Join-Path $PSScriptRoot 'route-prompt.ps1') -Prompt $initialPrompt) -join "`n"
+            if ($routed) { $body += "`n- **First prompt, routed:** the rails below apply to this session's first prompt; each later prompt is routed on its own.`n" + $routed }
+        }
+    } catch { }
     $payload = @{
         additionalContext  = $body
         hookSpecificOutput = @{ hookEventName = 'SessionStart'; additionalContext = $body }

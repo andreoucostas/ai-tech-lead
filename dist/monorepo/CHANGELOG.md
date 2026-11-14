@@ -5,6 +5,17 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.98.7 — Unreleased
+
+- **On Copilot, the workflow rules now reach a session's first prompt.** In VS Code's Copilot harness the rules `route-prompt`
+  adds to each prompt (the routed workflow's steps, the plan gate and the security-pass reminder) reached every prompt except a
+  session's first, whose hook output VS Code replaces with its own workspace listing. `session-start` now reads that first prompt,
+  routes it the same way and adds those rules to the session preload; in VS Code 1.146.0, in a .NET repository, they reached the
+  model's first request in 6 of 6 sessions. They did not make the security pass reliable: on a payments change asked for in a
+  first prompt and approved in advance, the agent ran `security-gate` in 1 of 6 sessions, so ask for `security-gate` by name on
+  such a change. On Copilot CLI, which already passed them on, a session's first prompt now carries the rules twice. Claude Code
+  is unchanged.
+
 ## 0.98.6 — 2026-11-13
 
 - **The installer says when your framework clone is not at a release tag, and an update's plan shows which files it changes.**

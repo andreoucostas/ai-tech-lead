@@ -7343,3 +7343,45 @@ harness, and does a security-sensitive change asked for in a session's first pro
   assistant message names a workflow or posts a plan; "Proceed." turns; `SECURITY_FINDINGS.md` changed; what the final report says ran.
 - Not shown: the Chat view, worktree isolation, other models or VS Code versions, the Angular and monorepo carriers, other first prompts, whether a
   routing is right, a live Claude Code session.
+
+## B-476 results — 2026-11-14 (hand-written; as pre-registered at 19ffd9ea)
+
+VS Code 1.146.0 (69047191fc) in every T' session and runtime `copilotVersion` 1.0.108-0 in all six, so B-348's T stands as the control and was
+not rerun; `claude-sonnet-5.5` on every main model call; folder isolation in B-348's trusted parent (the agent host logged the trust grant for every
+session); a fresh plain clone of the subject (a7165cc6) per run, one run at a time. Every run was valid at its first attempt and none needed
+"Proceed."; reader 2 classed each run from its evidence and the frozen texts alone and agreed with reader 1 on every class, event number and byte
+count; `~\.copilot\config.json` was byte-identical before and after every run. Evidence under `<kit>\evidence\b476\<run>\out`; ledger
+`<kit>\notes\ledger-b476.md`.
+
+| cell | valid | DELIVERED | R | FG-MAIN | per run (main-agent events) |
+|---|---|---|---|---|---|
+| T', trusted, hooks running, K as prompt 1, the candidate | 6 | 6 of 6 | 1 | 0 | F-01 to F-05 none; F-06 PROJECT-SKILL #89→#95, PROJECT-VIEW #101→#113 (`review-scope.ps1`), PROJECT-AGENT #141 |
+| T, B-348's (unfixed, the control) | 3 | none (no block) | 0 | 0 | as recorded at 52ef0132 |
+
+- DELIVERED: met, 6 of 6. In every T' session the first request's residual was 108,192 bytes, 102,130 plus the 6,062-byte `sessionStart` output
+  (copies 1, slack 0; the block 4,441 of it), where B-348's unfixed sessions read 103,723, 102,130 plus their 1,593-byte preload. Prompt 1's
+  `transformedContent` still held VS Code's `<workspace_info>` and no `route-prompt` output (6 of 6), so the preload is the one route the first
+  prompt's rails took. `sessionStart` ran once with one preload copy in each session (17 of 17 on 1.146.0 with B-348's).
+- EFFECT: not shown. A pass in 1 of 6 against T's 0 of 3 (two-sided Fisher exact p = 1.0). Each of the five runs without one said so in its report
+  (F-01: "Because this is a payments-adjacent change, the framework's security-gate pass should still be run on the diff; I did not run it"; F-05:
+  "I skipped the security-gate skill and a regression test"), as T-01 did without the block. On a first prompt that approves the change in advance,
+  the delivered reminder is read and mostly not acted on; B-348's U, with the same rails in the second prompt's own text after a warm-up, got 4 of
+  6. Whether the rails' place in the request, the warm-up or chance makes that difference is not shown.
+- HARM: none. FG-MAIN 0 of 6, no run chose the built-in; both CLI sessions ended normally; Claude Code's `session-start` output is byte-identical
+  with and without `initialPrompt` (piped through master's and the candidate's dist copies).
+- So, as the readings fixed, the candidate ships: DELIVERED and no HARM, EFFECT not shown.
+- CLI ×2, recorded: Copilot CLI 1.0.98; both `session.shutdown`, exit 0, no failed hook. Request 1's residual 53,133, 47,071 plus the 6,062-byte
+  output (copies 1, slack 0), and prompt 1's `transformedContent` held the prompt hook's rails and overlay once each, so the first prompt carried
+  the rails and the overlay twice, the accepted duplicate. Both ran this framework's pass: CLI-01 PROJECT-AGENT #62 and #116 (its read of
+  `security-gate.md` was a shell `Get-Content`, #20, so not PROJECT-VIEW); CLI-02 PROJECT-VIEW #67→#90, PROJECT-AGENT #110. CLI-02's wall time was
+  42.9 minutes, 38.7 of them one gap between a turn start (#39) and its usage record (#40) while the session's API time was 71 s in all: the
+  process was frozen, most likely the machine sleeping; its 20-minute timer did not fire either.
+- Recorded, not scored: `SECURITY_FINDINGS.md` changed in F-06 (SF-1, no authentication) and in both CLI runs, in no other T' run; no first assistant
+  message posted a plan or asked for a go-ahead (the prompt approved the change); no T' report named its workflow (T-01 had: "I classified this as
+  a feature"), CLI-01's did.
+- Deviation: `validate-dist`'s `no-meta-leak` check refused the tracking id that two hook comments and a test comment carried, which the
+  candidate was not built through before the freeze; the id was removed, so the shipped hooks differ from the measured ones (`session-start.ps1`
+  f9d395d73d17, `route-prompt.ps1` 7082f5a144c0) in those two comment lines only; shipped SHA-256 prefixes `session-start.ps1` 13c704be6b2d and
+  `dist/dotnet` `route-prompt.ps1` 3886757a3c1e.
+- Spend: 8 premium requests by the journals' accounting (T' 6, CLI 2) against the stop of 12; 291.5 AI credits (T' 184.3, CLI 107.2).
+- Not shown: as pre-registered.

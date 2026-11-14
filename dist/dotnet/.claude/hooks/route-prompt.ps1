@@ -8,8 +8,13 @@
 #
 # Unicode rendered text is intentional. The mandatory UTF-8
 # BOM keeps Windows PowerShell 5.1 decoding these strings correctly.
+#
+# -Prompt is session-start.ps1's call for a Copilot session's first prompt: the text is routed as a
+# Copilot event's prompt and only the rails are printed, with no JSON shape and no Boy Scout queue read.
+param([string]$Prompt)
 
 $ErrorActionPreference = 'SilentlyContinue'
+$fromSessionStart = $PSBoundParameters.ContainsKey('Prompt')
 
 # Emit UTF-8 when captured: consuming harnesses read raw bytes, and the default
 # [Console]::OutputEncoding (the OEM code page on Windows) would mangle ⚠/—/🔴 into '?'.
@@ -118,7 +123,7 @@ Derive all six command categories, but run only safely executable verification. 
 
 # The agents send the event as UTF-8. [Console]::In would decode it with the console's input code page (437, 850 or
 # 1252 on a default Windows console), so the stream is read as UTF-8; [Console]::InputEncoding is left alone, as it is the user's console's.
-$inputJson = (New-Object IO.StreamReader([Console]::OpenStandardInput(), (New-Object Text.UTF8Encoding($false)))).ReadToEnd()
+$inputJson = if ($fromSessionStart) { @{ prompt = $Prompt } | ConvertTo-Json -Compress } else { (New-Object IO.StreamReader([Console]::OpenStandardInput(), (New-Object Text.UTF8Encoding($false)))).ReadToEnd() }
 if ([string]::IsNullOrEmpty($inputJson)) { exit 0 }
 $isClaude = $inputJson -match '"hook_event_name"'
 
@@ -208,6 +213,8 @@ $body = ($parts -join "`n")
 # dated CLI evidence is recorded in docs/enforcement-surfaces.md.
 if ($inputJson -match '"hook_event_name"') {
     Write-Output $body
+} elseif ($fromSessionStart) {
+    if (-not [string]::IsNullOrEmpty($body)) { Write-Output $body }
 } else {
     $candidateRoot = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\..'))
     $repoRoot = (& git -C $candidateRoot rev-parse --show-toplevel 2>$null | Select-Object -First 1)

@@ -293,4 +293,29 @@ It 'route-prompt.ps1 answer-only question -> no rails (both surfaces)' {
         } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+# --- VS Code's Copilot harness drops the prompt hook's output on a session's first prompt, so session-start routes it ---
+It 'session-start.ps1 Copilot initialPrompt -> its rails after the preload, queue left; no initialPrompt or Claude Code -> unchanged' {
+    $fixture = New-RoutePromptFixture
+    $ss = Copy-HookInto (Join-Path $hooks 'session-start.ps1') $fixture.Repo
+    $queue = Join-Path $fixture.Repo '.claude\.state\boy-scout-queue'
+    New-Item -ItemType Directory -Path (Split-Path -Parent $queue) -Force | Out-Null
+    [IO.File]::WriteAllText($queue, 'B476_QUEUE_SENTINEL')
+    $first = 'Add a payment endpoint to CheckoutController'
+    try {
+        $r = Invoke-Hook $ss (@{ source = 'new'; initialPrompt = $first; sessionId = 's'; timestamp = 1 } | ConvertTo-Json -Compress)
+        Assert ($r.Exit -eq 0) "exit $($r.Exit): $($r.Err)"
+        $o = $r.Out | ConvertFrom-Json
+        foreach ($ctx in $o.additionalContext, $o.hookSpecificOutput.additionalContext) {
+            Assert ($ctx.StartsWith('## Session preload')) "the preload must come first: $ctx"
+            Assert ($ctx -match 'Routed intent: `feature`' -and $ctx -match 'Plan gate' -and $ctx -match 'Security-sensitive surface detected') "the first prompt's rails or overlay are missing: $ctx"
+        }
+        Assert ($o.additionalContext -notmatch 'B476_QUEUE_SENTINEL' -and (Test-Path -LiteralPath $queue)) 'session-start took the Boy Scout queue from the prompt hook'
+        $none = Invoke-Hook $ss '{"source":"new","timestamp":1}'
+        Assert (($none.Out | ConvertFrom-Json).additionalContext -notmatch 'Routed intent') 'an event without initialPrompt was routed'
+        $claude = Invoke-Hook $ss (@{ hook_event_name = 'SessionStart'; initialPrompt = $first } | ConvertTo-Json -Compress)
+        $plain = Invoke-Hook $ss '{"hook_event_name":"SessionStart"}'
+        Assert ($claude.Exit -eq 0 -and $claude.Out -eq $plain.Out -and $claude.Out -notmatch 'Routed intent') "Claude Code's output changed: $($claude.Out)"
+    } finally { Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 exit (Write-TestSummary 'RoutePrompt.Tests (surface shapes)')
