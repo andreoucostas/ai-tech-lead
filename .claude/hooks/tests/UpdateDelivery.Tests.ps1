@@ -4110,23 +4110,11 @@ It 'a retired .sh whose .ps1 twin is also retired still gets a migration replace
         Assert ($out -notmatch "replace that reference with: .*scripts/impact-run\.ps1") "a diagnostic directed the reader at the retired .ps1 twin: $out"
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
-$danglingLinkProbeRoot = Join-Path ([IO.Path]::GetTempPath()) ('retired-link-probe-' + [guid]::NewGuid())
-$danglingFileLinksAvailable = $false
-try {
-    New-Item -ItemType Directory -Force -Path $danglingLinkProbeRoot | Out-Null
-    $probeTarget = Join-Path $danglingLinkProbeRoot 'target.txt'
-    $probeLink = Join-Path $danglingLinkProbeRoot 'link.txt'
-    [IO.File]::WriteAllText($probeTarget, 'probe', [Text.UTF8Encoding]::new($false))
-    New-Item -ItemType SymbolicLink -Path $probeLink -Target $probeTarget -ErrorAction Stop | Out-Null
-    Remove-Item -LiteralPath $probeTarget -Force
-    $danglingFileLinksAvailable = ($null -ne (Get-Item -Force -LiteralPath $probeLink -ErrorAction Stop)) -and -not (Test-Path -LiteralPath $probeLink)
-} catch { $danglingFileLinksAvailable = $false }
-finally { Remove-Item -LiteralPath $danglingLinkProbeRoot -Recurse -Force -ErrorAction SilentlyContinue }
 
-if (-not $danglingFileLinksAvailable) {
-    Skip 'a dangling retired-path reparse is CANT-VERIFY and never classified absent' 'host cannot construct an unprivileged dangling file symlink'
-} else {
 It 'a dangling retired-path reparse is CANT-VERIFY and never classified absent' {
+    # A junction needs no privilege on Windows, where a file symlink does (B-509: the old file-symlink
+    # probe skipped this case on every CI host). Test-Path says True for a dangling junction on both
+    # hosts, so the fixture is checked by its reparse attribute and missing target, not by Test-Path.
     $t = Join-Path ([IO.Path]::GetTempPath()) ('retired-dangling-' + [guid]::NewGuid())
     $linkTarget = Join-Path ([IO.Path]::GetTempPath()) ('retired-link-target-' + [guid]::NewGuid())
     try {
@@ -4136,21 +4124,21 @@ It 'a dangling retired-path reparse is CANT-VERIFY and never classified absent' 
         $manifestBytes = Get-GitBlobBytes -Spec 'v0.82.0:dist/dotnet/framework-ownership.json'
         Assert ($manifestBytes.Count -gt 0) 'the v0.82.0 ownership manifest fixture is empty'
         [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), $manifestBytes)
-        [IO.File]::WriteAllText($linkTarget, "retired target`n", [Text.UTF8Encoding]::new($false))
+        New-Item -ItemType Directory -Force -Path $linkTarget | Out-Null
         $link = Join-Path $t 'scripts/wiki-check.sh'
-        New-Item -ItemType SymbolicLink -Path $link -Target $linkTarget -ErrorAction Stop | Out-Null
-        Remove-Item -LiteralPath $linkTarget -Force
+        New-Item -ItemType Junction -Path $link -Target $linkTarget -ErrorAction Stop | Out-Null
+        Remove-Item -LiteralPath $linkTarget -Recurse -Force
         $entry = Get-Item -Force -LiteralPath $link -ErrorAction Stop
-        Assert ($null -ne $entry -and -not (Test-Path -LiteralPath $link)) 'fixture does not distinguish Get-Item from Test-Path'
+        Assert ($null -ne $entry -and ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -and
+            -not [IO.Directory]::Exists($linkTarget)) 'calibration: scripts/wiki-check.sh is not a dangling junction'
         $out = Invoke-Installer -Dist 'dotnet' -Target $t
         Assert ($LASTEXITCODE -eq 0) "installer failed instead of preserving dangling residue: $out"
         Assert ($out -match "CANT-VERIFY: retired path 'scripts/wiki-check\.sh' traverses reparse/symlink") "dangling retired link was not classified CANT-VERIFY: $out"
         Assert ($null -ne (Get-Item -Force -LiteralPath $link -ErrorAction Stop)) 'installer removed the dangling retired link'
     } finally {
         Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath $linkTarget -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $linkTarget -Recurse -Force -ErrorAction SilentlyContinue
     }
-}
 }
 
 It 'licence and notice no longer ship: an update removes the unmodified notice and keeps an edited licence copy instead of refusing' {
