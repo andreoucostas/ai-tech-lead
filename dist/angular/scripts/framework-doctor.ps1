@@ -415,8 +415,10 @@ if ($settingsExists) {
     }
 }
 $shells = @($commands | ForEach-Object {
-    if ($_ -match '^\s*"([^"]+)"') { $matches[1] }
-    elseif ($_ -match '^\s*([^\s]+)') { $matches[1] }
+    # A registered command may open with the session-root prefix; the interpreter is the token after it.
+    $body = $_ -replace '^\s*if \(\$env:CLAUDE_PROJECT_DIR\) \{[^}]*\}\s*;\s*', ''
+    if ($body -match '^\s*"([^"]+)"') { $matches[1] }
+    elseif ($body -match '^\s*([^\s]+)') { $matches[1] }
 } | Select-Object -Unique)
 if ($settingsReadFailed) {
     RowU 'Wired hook shell' '.claude/settings.json exists but could not be read; the wired interpreter is unknown. Fix read access and rerun the doctor.'

@@ -1,5 +1,5 @@
 {
-  "_comment": "Windows PowerShell 5.1 fallback settings. Only when PowerShell 7 is unavailable, copy this over .claude/settings.json (it replaces that file, as the installer does when pwsh is missing); Claude Code runs the hooks of settings.local.json in addition to settings.json's, so a copy there would run every hook twice or fail the pwsh ones. Windows is the supported execution platform. Each hook sets cwd \".\" (the repository root) because Copilot CLI and VS Code's Copilot harness also run this file, and could otherwise start a hook in a subfolder workspace, where its relative script path fails.",
+  "_comment": "Windows PowerShell 5.1 fallback settings. Only when PowerShell 7 is unavailable, copy this over .claude/settings.json (it replaces that file, as the installer does when pwsh is missing); Claude Code runs the hooks of settings.local.json in addition to settings.json's, so a copy there would run every hook twice or fail the pwsh ones. Windows is the supported execution platform. Each hook sets cwd \".\" (the repository root) because Copilot CLI and VS Code's Copilot harness also run this file, and could otherwise start a hook in a subfolder workspace, where its relative script path fails. Claude Code does not read cwd and starts a hook in the session's current directory, so each command first returns to the session root (CLAUDE_PROJECT_DIR); the guard exits 2 when its interpreter is not found and sets onFailure block, so a guard that cannot start refuses the write.",
   "env": {
     "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
   },
@@ -8,14 +8,14 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1", "shell": "powershell", "cwd": "." }
+          { "type": "command", "command": "if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1", "shell": "powershell", "cwd": "." }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1", "shell": "powershell", "cwd": "." }
+          { "type": "command", "command": "if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1", "shell": "powershell", "cwd": "." }
         ]
       }
     ],
@@ -23,7 +23,7 @@
       {
         "matcher": "Write|Edit|NotebookEdit",
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1 ; exit $LASTEXITCODE", "shell": "powershell", "cwd": "." }
+          { "type": "command", "command": "if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1 ; if ($null -eq $LASTEXITCODE) { exit 2 } ; exit $LASTEXITCODE", "shell": "powershell", "onFailure": "block", "cwd": "." }
         ]
       }
     ],
@@ -31,15 +31,15 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1 ; exit $LASTEXITCODE", "shell": "powershell", "timeout": 90, "cwd": "." },
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1", "shell": "powershell", "cwd": "." }
+          { "type": "command", "command": "if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1 ; exit $LASTEXITCODE", "shell": "powershell", "timeout": 90, "cwd": "." },
+          { "type": "command", "command": "if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1", "shell": "powershell", "cwd": "." }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1", "shell": "powershell", "cwd": "." }
+          { "type": "command", "command": "if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1", "shell": "powershell", "cwd": "." }
         ]
       }
     ]

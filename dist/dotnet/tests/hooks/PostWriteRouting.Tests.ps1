@@ -334,16 +334,21 @@ try {
         })
         Assert ($registered.Count -eq 1) "expected exactly one registered post-write command in $registrationRelative, found $($registered.Count)"
         $command = $registered[0]
-        Assert ((($command -split '\s+')[0]) -ceq $expectedInterpreter) "$registrationRelative registers '$((($command -split '\s+')[0]))', not '$expectedInterpreter'; this leg would relaunch the other PowerShell host"
+        $interpreter = (($command -replace '^\s*if \(\$env:CLAUDE_PROJECT_DIR\) \{[^}]*\}\s*;\s*', '') -split '\s+')[0]
+        Assert ($interpreter -ceq $expectedInterpreter) "$registrationRelative registers '$interpreter', not '$expectedInterpreter'; this leg would relaunch the other PowerShell host"
+        # The registered command returns to CLAUDE_PROJECT_DIR when it is set; a run inside an agent session
+        # inherits that session's value, so clear it and launch from the fixture root.
+        $ambientProjectDir = $env:CLAUDE_PROJECT_DIR
         foreach ($world in $worlds) {
             $writeEvent = Reset-BuildWorld $world "@echo simulated build failure 1>&2`r`n@exit /b 1`r`n"
             $oldPath = $env:PATH
             try {
+                $env:CLAUDE_PROJECT_DIR = $null
                 $env:PATH = (Join-Path $tmp 'shim') + [IO.Path]::PathSeparator + $oldPath
                 $result = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-Command', $command) -Stdin $writeEvent
                 Assert ($result.Exit -eq 2) "$($world.Name): failing build exited $($result.Exit) through the outer -Command shell, not 2; the host reads anything but 2 as a non-blocking error and the agent is never told. stderr: $($result.Err.Trim())"
                 Assert ($result.Err -match 'fix before continuing') "$($world.Name): the outer -Command shell lost the failure report on stderr: $($result.Err.Trim())"
-            } finally { $env:PATH = $oldPath }
+            } finally { $env:PATH = $oldPath; $env:CLAUDE_PROJECT_DIR = $ambientProjectDir }
         }
     }
 

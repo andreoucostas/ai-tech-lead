@@ -158,8 +158,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7077,
-          "tok": 1769
+          "chars": 7074,
+          "tok": 1768
         },
         {
           "path": "CLAUDE.md",
@@ -175,8 +175,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7077,
-          "tok": 1769
+          "chars": 7074,
+          "tok": 1768
         },
         {
           "path": "CLAUDE.md",
@@ -217,8 +217,8 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 43150,
-          "tok": 10788
+          "chars": 45868,
+          "tok": 11467
         },
         {
           "path": "docs/getting-started.md",
@@ -582,8 +582,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7833,
-          "tok": 1958
+          "chars": 7828,
+          "tok": 1957
         },
         {
           "path": "CLAUDE.md",
@@ -599,8 +599,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 7833,
-          "tok": 1958
+          "chars": 7828,
+          "tok": 1957
         },
         {
           "path": "CLAUDE.md",
@@ -641,8 +641,8 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 43150,
-          "tok": 10788
+          "chars": 45868,
+          "tok": 11467
         },
         {
           "path": "docs/getting-started.md",
@@ -1006,8 +1006,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 9123,
-          "tok": 2281
+          "chars": 9120,
+          "tok": 2280
         },
         {
           "path": "CLAUDE.md",
@@ -1023,8 +1023,8 @@
         },
         {
           "path": "AGENTS.md",
-          "chars": 9123,
-          "tok": 2281
+          "chars": 9120,
+          "tok": 2280
         },
         {
           "path": "CLAUDE.md",
@@ -1065,8 +1065,8 @@
         },
         {
           "path": "docs/enforcement-surfaces.md",
-          "chars": 43150,
-          "tok": 10788
+          "chars": 45868,
+          "tok": 11467
         },
         {
           "path": "docs/getting-started.md",
@@ -1299,26 +1299,26 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 34575,
-      "static.claude.tok": 8644,
-      "static.copilot.chars": 22976,
-      "static.copilot.tok": 5744,
+      "static.claude.chars": 34572,
+      "static.claude.tok": 8643,
+      "static.copilot.chars": 22973,
+      "static.copilot.tok": 5743,
       "prompt.max.chars": 3993,
       "prompt.max.tok": 998
     },
     "angular": {
-      "static.claude.chars": 32346,
-      "static.claude.tok": 8086,
-      "static.copilot.chars": 23221,
-      "static.copilot.tok": 5805,
+      "static.claude.chars": 32341,
+      "static.claude.tok": 8085,
+      "static.copilot.chars": 23216,
+      "static.copilot.tok": 5804,
       "prompt.max.chars": 3796,
       "prompt.max.tok": 949
     },
     "monorepo": {
-      "static.claude.chars": 38220,
-      "static.claude.tok": 9555,
-      "static.copilot.chars": 25763,
-      "static.copilot.tok": 6441,
+      "static.claude.chars": 38217,
+      "static.claude.tok": 9554,
+      "static.copilot.chars": 25760,
+      "static.copilot.tok": 6440,
       "prompt.max.chars": 4408,
       "prompt.max.tok": 1102
     },

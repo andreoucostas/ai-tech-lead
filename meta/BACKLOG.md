@@ -36,12 +36,13 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 21 | B-499 | Secret-leak class, B-487's step-4 attacks: the guard still passes an auto-property initializer, `NetworkCredential`, URL userinfo and other credential forms; guarded, step 4 |
 | 22 | B-496 | Audit, a sub-session's run: the removal checklist leaves `.claude/settings.json` registering deleted hooks; ordinary |
 | 23 | B-489 | Audit, reproduced: the guard blocks UI labels, vault references and documentation samples with no waiver; needs the maintainer's decision (a WSD) first |
-| 24 | B-490 | Audit, a sub-session's run: with `pwsh` missing the guard's registered command exits 0, and the agent can rewrite the hook registrations; needs the maintainer's decision first |
+| 24 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations (the missing-`pwsh` exit 0 is fixed for 0.98.7); needs the maintainer's decision first |
 | 25 | B-498 | False-green and false-red class, a sub-session's runs: the doctor reads a carried `statusLine` command as a hook and ignores `disableAllHooks`; ordinary |
 | 26 | B-500 | Wrong-repository class, read: the outdated-clone advice double-quotes the clone path, so pasted into PowerShell a `$` in it expands and the `checkout` or `pull` runs elsewhere; guarded, step 4 |
 | 27 | B-501 | Wrong-repository class, contrived: the installer writes printed paths in the console's code page, so on CP437 a `’` in a restore line's path arrives as `'` and the pasted line names another folder; guarded, step 4 |
 | 28 | B-502 | Data-loss class, pre-existing, B-480's scope check (run): a disabled skill's exemplar line survives the update that disables it and is dropped by the next one; guarded, step 4 |
 | 29 | B-503 | Data-loss class, pre-existing, B-482's step-4 attack (run): `-Reinstall` replaces an instruction file Git tracks under another letter case without checking it against the commit; guarded, step 4 |
+| 30 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only (a shell on Claude Code, every tool on Copilot); needs the maintainer's decision first |
 
 ## Open entries
 
@@ -162,11 +163,11 @@ Candidate: such a row names the area without the line and never the value, or th
 **Priority:** P2 · **Effort:** S to change · **Invariants:** #3 #5 #7
 **Status:** Open, waiting on the maintainer's decision; maintainer-requested external audit. Reproduced: an i18n JSON file whose `password` key holds the sentence *Enter your password* exits 2. A sub-session's runs: a label map, a Key Vault reference, a CSS class starting `sk-`, a Cypress login, a `docs/*.md` sample.
 Option A requires a secret-shaped value (lets through a passphrase with spaces); Option B is a PR-reviewed allowlist. A relaxation in the secret-leak class needs a WSD. Guarded, step 4. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
-### B-490 · With `pwsh` missing the guard's registered command exits 0, and the agent can rewrite the hook registrations
+### B-490 · The agent can rewrite the hook registrations, and the doctor passes a wired interpreter that is not on `PATH`
 **Filed against:** v0.98.4 (2026-11-10)
 **Priority:** P2 · **Effort:** S to M · **Invariants:** #3 #5
-**Status:** Open, waiting on the maintainer's decision; maintainer-requested external audit. A sub-session's run, not re-run: the registered `pwsh … guard.ps1 ; exit $LASTEXITCODE` string through `powershell.exe` with PowerShell 7 off `PATH` exits 0 on a key-shaped write. Reproduced: a write of `{ "hooks": {} }` to `.claude/settings.json` exits 0.
-Decide fail closed (stalls a teammate without PowerShell 7) against fail open (a false green), and how narrowly to protect the registrations without stopping `/adopt`. Guarded. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
+**Status:** Open, waiting on the maintainer's decision; maintainer-requested external audit. Part (a) is done for 0.98.7: the maintainer chose fail closed in chat on 2026-11-13, the guard command exits 2 when its interpreter is not found and its entry sets `"onFailure": "block"`. Reproduced: a write of `{ "hooks": {} }` to `.claude/settings.json` exits 0.
+Left: decide how narrowly to protect the registrations without stopping `/adopt`, and make the doctor's `CANT-VERIFY` for an interpreter that is not on `PATH` a failing row. Guarded. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
 ### B-491 · `route-prompt` routes approvals and questions as new work, and matches sensitive terms inside other words
 **Filed against:** v0.98.4 (2026-11-10)
 **Priority:** P2 · **Effort:** S · **Invariants:** #3 #5 #7
@@ -217,3 +218,9 @@ Candidate: read a disabled skill's line from `.claude/disabled-skills/<name>/SKI
 **Priority:** P3 · **Effort:** S · **Invariants:** #7
 **Status:** Open; found by B-482's step-4 attack (run on dist/dotnet, adoption pending, the mirror tracked as `agents.md`, then a same-size edit with its write time restored so `git status` stayed empty): exit 0, the edit replaced and in no commit, while the `LAYOUT:` line says the commit holds it; with `AGENTS.md` cased as tracked the same edit stops with exit 4. `$heldCheck` filters the two names through the ordinal `$trackedBlobs`, while `$reinstallTracked` (ignore-case) lets the move through.
 Candidate: look the two names up in `$trackedBlobs` by their tracked spelling; red case from that run. The final `moved:` summary line names the bare commit too. Guarded, step 4.
+### B-504 · The reviewers are read-only in prose only: a shell on Claude Code, every tool on Copilot
+**Filed against:** v0.98.6 (2026-11-13)
+**Priority:** P2 · **Effort:** S for a tool list, M to drop the shell · **Invariants:** #2 #5 #7
+**Status:** Open, waiting on the maintainer's decision; vendor-guidance audit and its adversarial review (read, not run). The seven `.claude/agents` files list `PowerShell`; the six `.github/agents` wrappers have no `tools:`, which Copilot reads as all tools; both vendors say a tool list is the boundary and an instruction is not.
+Decide: drop the shell (`Read, Grep, Glob`; `["read", "search"]`), which moves the reviewers' hash recompute to the parent in six agents, six wrappers, `review.md` and `security-gate.md`, where `/security-gate` has no parent recompute today; or keep it, add `tools: ["read", "search", "execute"]` to the wrappers and stop saying read-only. Either needs a Copilot host check that a reviewer starts, reads its bundle and has no edit tool.
+Also: VS Code documents that it does not forward `include-custom-instructions`, which four wrappers rely on; not measured.

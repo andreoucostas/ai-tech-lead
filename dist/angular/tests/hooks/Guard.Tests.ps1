@@ -702,11 +702,16 @@ if (-not (Test-Path -LiteralPath (Join-Path $installRoot $registrationRelative) 
     })
     Assert ($registered.Count -eq 1) "expected exactly one registered guard command in $registrationRelative, found $($registered.Count)"
     $command = $registered[0]
-    Assert ((($command -split '\s+')[0]) -ceq $expectedInterpreter) "$registrationRelative registers '$((($command -split '\s+')[0]))', not '$expectedInterpreter'; this leg would relaunch the other PowerShell host"
+    $interpreter = (($command -replace '^\s*if \(\$env:CLAUDE_PROJECT_DIR\) \{[^}]*\}\s*;\s*', '') -split '\s+')[0]
+    Assert ($interpreter -ceq $expectedInterpreter) "$registrationRelative registers '$interpreter', not '$expectedInterpreter'; this leg would relaunch the other PowerShell host"
     # The outgoing-commit guard refuses a literal key shape, so assemble one at run time.
     $keyShaped = 'AKIA' + '1234567890ABCDEF'
+    # The registered command reads CLAUDE_PROJECT_DIR; a test run inside an agent session inherits that
+    # session's value, so every launch below sets or clears it itself.
+    $ambientProjectDir = $env:CLAUDE_PROJECT_DIR
     Push-Location $installRoot
     try {
+        $env:CLAUDE_PROJECT_DIR = $null
         $blocked = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-Command', $command) `
             -Stdin (New-ClaudeEvent 'sample.env' ('AWS_ACCESS_KEY_ID=' + $keyShaped))
         Assert ($blocked.Exit -eq 2) "blocked write exited $($blocked.Exit) through the outer -Command shell, not 2; the host reads anything but 2 as a non-blocking error and writes the file anyway. stderr: $($blocked.Err.Trim())"
@@ -714,7 +719,56 @@ if (-not (Test-Path -LiteralPath (Join-Path $installRoot $registrationRelative) 
         $allowed = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-Command', $command) `
             -Stdin (New-ClaudeEvent 'notes.md' 'nothing to declare here')
         Assert ($allowed.Exit -eq 0) "clean write exited $($allowed.Exit) through the outer -Command shell, not 0; every write would be reported as a hook error. stderr: $($allowed.Err.Trim())"
-    } finally { Pop-Location }
+    } finally { Pop-Location; $env:CLAUDE_PROJECT_DIR = $ambientProjectDir }
+} }
+
+# Claude Code starts a hook in the session's current directory, which the agent's own Set-Location
+# moves, and exports the session root as CLAUDE_PROJECT_DIR. Launched from a subfolder the registered
+# command must still find guard.ps1; a relative -File alone does not, and the write goes ahead.
+$subfolderCase = "registered guard command blocks when the session directory is a subfolder ($registrationRelative)"
+if (-not (Test-Path -LiteralPath (Join-Path $installRoot $registrationRelative) -PathType Leaf)) {
+    Skip $subfolderCase "no $registrationRelative in this tree (authoring source layout); the dist legs launch it"
+} else { It $subfolderCase {
+    $registration = [IO.File]::ReadAllText((Join-Path $installRoot $registrationRelative)) | ConvertFrom-Json
+    $command = [string]@(foreach ($group in @($registration.hooks.PreToolUse)) { foreach ($entry in @($group.hooks)) { if ([string]$entry.command -match 'guard\.ps1') { $entry.command } } })[0]
+    $subfolder = Join-Path $installRoot 'docs'
+    Assert (Test-Path -LiteralPath $subfolder -PathType Container) 'this tree has no docs folder to stand in for the subfolder'
+    $ambientProjectDir = $env:CLAUDE_PROJECT_DIR
+    Push-Location $subfolder
+    try {
+        $env:CLAUDE_PROJECT_DIR = $installRoot
+        $blocked = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-Command', $command) `
+            -Stdin (New-ClaudeEvent 'sample.env' ('AWS_ACCESS_KEY_ID=' + 'AKIA' + '1234567890ABCDEF'))
+        Assert ($blocked.Exit -eq 2) "a blocked write launched from a subfolder exited $($blocked.Exit), not 2: the guard did not start, and the host writes the file. stderr: $($blocked.Err.Trim())"
+        Assert ($blocked.Err -match 'Blocked write to sample\.env') "the guard gave no block reason from a subfolder: $($blocked.Err.Trim())"
+        $allowed = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-Command', $command) `
+            -Stdin (New-ClaudeEvent 'notes.md' 'nothing to declare here')
+        Assert ($allowed.Exit -eq 0) "a clean write launched from a subfolder exited $($allowed.Exit), not 0. stderr: $($allowed.Err.Trim())"
+    } finally { Pop-Location; $env:CLAUDE_PROJECT_DIR = $ambientProjectDir }
+} }
+
+# An interpreter that is not found leaves $LASTEXITCODE null, and `exit $null` is exit 0: the host
+# reads success and writes the file. This is NOT the registered string: its interpreter token is
+# replaced by a name that cannot resolve, the only way either host can reach that branch without
+# relaunching the other one. The event is a clean write, so exit 2 can only come from the command.
+$noInterpreterCase = "registered guard command refuses a write when its interpreter cannot start ($registrationRelative, interpreter name replaced)"
+if (-not (Test-Path -LiteralPath (Join-Path $installRoot $registrationRelative) -PathType Leaf)) {
+    Skip $noInterpreterCase "no $registrationRelative in this tree (authoring source layout); the dist legs launch it"
+} else { It $noInterpreterCase {
+    $registration = [IO.File]::ReadAllText((Join-Path $installRoot $registrationRelative)) | ConvertFrom-Json
+    $command = [string]@(foreach ($group in @($registration.hooks.PreToolUse)) { foreach ($entry in @($group.hooks)) { if ([string]$entry.command -match 'guard\.ps1') { $entry.command } } })[0]
+    $pattern = '(^|;\s*)' + [regex]::Escape($expectedInterpreter) + '(?=\s+-NoProfile)'
+    $unstartable = [regex]::Replace($command, $pattern, '${1}no-such-interpreter-9f3a')
+    Assert ($unstartable -cne $command) "could not replace the interpreter token in: $command"
+    $ambientProjectDir = $env:CLAUDE_PROJECT_DIR
+    Push-Location $installRoot
+    try {
+        $env:CLAUDE_PROJECT_DIR = $null
+        $refused = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-Command', $unstartable) `
+            -Stdin (New-ClaudeEvent 'notes.md' 'nothing to declare here')
+        Assert ($refused.Exit -eq 2) "with an interpreter that cannot start the command exited $($refused.Exit), not 2: the host carries out the write unguarded. stderr: $($refused.Err.Trim())"
+        Assert ($refused.Err -match 'no-such-interpreter-9f3a') "the refusal does not name the interpreter that could not start: $($refused.Err.Trim())"
+    } finally { Pop-Location; $env:CLAUDE_PROJECT_DIR = $ambientProjectDir }
 } }
 
 # Empty stdin and malformed JSON must degrade-safe to ALLOW (exit 0), never crash.

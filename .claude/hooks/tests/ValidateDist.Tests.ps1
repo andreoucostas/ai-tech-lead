@@ -355,6 +355,39 @@ try {
             [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
         } 'Claude-format entry must set "cwd": "."' 'hook-registration'
     }
+    # Claude Code 2.1.312 started no relative -File hook after the agent's Set-Location into a subfolder,
+    # with or without "cwd": ".", and wrote the file: the shipped guard was green here and dead there.
+    It 'case 8i: a Claude-format entry without the session-root prefix fails check 8' {
+        Assert-Case 'claude-missing-root-prefix' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.json'
+            $doc = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            $entry = @($doc.hooks.SessionStart)[0].hooks[0]
+            $entry.command = ([string]$entry.command) -replace '^if \(\$env:CLAUDE_PROJECT_DIR\) \{[^}]*\} ; ', ''
+            [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
+        } 'Claude-format entry must start with the session-root prefix' 'hook-registration'
+    }
+    # A guard that cannot start must refuse the write: Claude Code carries a write out when a hook fails
+    # to start or times out, and an interpreter that is not found exits 0 through a bare `exit $LASTEXITCODE`.
+    It 'case 8j: a guard entry without onFailure block fails check 8' {
+        Assert-Case 'claude-guard-fails-open' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.windows.json'
+            $doc = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            @($doc.hooks.PreToolUse)[0].hooks[0].PSObject.Properties.Remove('onFailure')
+            [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
+        } 'the guard entry must set "onFailure": "block"' 'hook-registration'
+    }
+    It 'case 8k: a guard command without the missing-interpreter exit fails check 8' {
+        Assert-Case 'claude-guard-bare-exit' {
+            param($d)
+            $path = Join-Path $d '.claude\settings.json'
+            $doc = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            $entry = @($doc.hooks.PreToolUse)[0].hooks[0]
+            $entry.command = ([string]$entry.command) -replace ' ; if \(\$null -eq \$LASTEXITCODE\) \{.*\} ; exit \$LASTEXITCODE$', ' ; exit $LASTEXITCODE'
+            [IO.File]::WriteAllText($path, ($doc | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding($false)))
+        } 'the guard command must end with the missing-interpreter exit' 'hook-registration'
+    }
     # B-464 D1: check 8 counted handlers and validated each one's interpreter and target, but never which
     # script sits on which event, the matcher or the timeout. Every mutant below stayed green on the unfixed
     # validator while its hook silently never ran (or ran on the wrong event, or was killed early).
@@ -365,7 +398,7 @@ try {
             param($d)
             $path = Join-Path $d '.claude\settings.json'
             $t = [IO.File]::ReadAllText($path)
-            $m = [regex]::Replace($t, '(?s)("matcher":\s*)"Write\|Edit\|NotebookEdit"(,\s*"hooks":\s*\[\s*\{[^}]*guard\.ps1)', '$1"Write|Edit"$2')
+            $m = [regex]::Replace($t, '(?s)("matcher":\s*)"Write\|Edit\|NotebookEdit"(,\s*"hooks":\s*\[\s*\{\s*"type":\s*"command",\s*"command":\s*"[^"]*guard\.ps1)', '$1"Write|Edit"$2')
             Assert ($m -ne $t) 'fixture did not find the guard group matcher'
             [IO.File]::WriteAllText($path, $m)
         } "PreToolUse matcher must be exactly 'Write|Edit|NotebookEdit', found 'Write|Edit'" 'hook-registration'

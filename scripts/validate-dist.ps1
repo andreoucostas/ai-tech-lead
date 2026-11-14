@@ -800,6 +800,11 @@ $regUnreadable = @()
 $regCount = 0
 $settingsCounts = @{}
 $hookEntries = 0
+$claudeRootPrefix = 'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; '
+# The tail carries no message of its own: PowerShell already writes "The term '<interpreter>' is not recognized"
+# to stderr, and Claude Code echoes the whole command in front of every block reason, so a sentence
+# here would be shown on each ordinary block as well.
+$claudeGuardTail = ' ; if ($null -eq $LASTEXITCODE) { exit 2 } ; exit $LASTEXITCODE'
 function Get-FileArgument {
     param([string]$Command)
     $m = [regex]::Match($Command, '(?i)(?:^|\s)-File\s+(?:"([^"]+)"|(\S+))')
@@ -926,8 +931,22 @@ foreach ($rf in $regFiles) {
                 foreach ($entry in @($group.hooks)) {
                     if ($entry.type -ne 'command' -or [string]::IsNullOrWhiteSpace([string]$entry.command)) { $regProblems += "$rf : hook entry must have type 'command' and a non-empty command"; continue }
                     $handlers++; $regCount++
-                    $cmd = [string]$entry.command; $interp = ($cmd -split '\s+')[0]
+                    $cmd = [string]$entry.command
+                    # Claude Code runs a hook in the session's current directory and does not read "cwd" (observed on
+                    # 2.1.312: after the agent's Set-Location into a subfolder no relative -File hook started, with or
+                    # without "cwd": "."). The pinned prefix returns to the session root, which every measured host
+                    # exports; where the variable is absent the command runs from where it started, as before.
+                    if (-not $cmd.StartsWith($claudeRootPrefix, [StringComparison]::Ordinal)) { $regProblems += "$rf : Claude-format entry must start with the session-root prefix '$($claudeRootPrefix.TrimEnd())'; Claude Code starts a hook in the session's current directory and ignores ""cwd"", so after a directory change a relative -File does not resolve and the hook silently never runs: $cmd" }
+                    else { $cmd = $cmd.Substring($claudeRootPrefix.Length) }
+                    $interp = ($cmd -split '\s+')[0]
                     if ($interp -cne $expectedInterpreter) { $regProblems += "$rf : expected interpreter '$expectedInterpreter', found '$interp' in: $cmd" }
+                    if ($cmd -cmatch '(?:^|\s)-File\s+\.claude/hooks/guard\.ps1(?:\s|$)') {
+                        # A guard that cannot start must refuse the write. An interpreter that is not found leaves
+                        # $LASTEXITCODE null, which a bare `exit $LASTEXITCODE` turns into exit 0; a script path that does
+                        # not resolve or a timeout is a failed hook, which Claude Code lets through unless onFailure blocks.
+                        if (-not $cmd.EndsWith($claudeGuardTail, [StringComparison]::Ordinal)) { $regProblems += "$rf : the guard command must end with the missing-interpreter exit '$claudeGuardTail'; without it an interpreter that is not found exits 0 and the write goes ahead: $cmd" }
+                        if ([string]$entry.onFailure -cne 'block') { $regProblems += "$rf : the guard entry must set ""onFailure"": ""block""; without it Claude Code carries out the write when the guard fails to start or times out: $cmd" }
+                    }
                     if ($cmd -cnotmatch '(?:^|\s)-NoProfile(?:\s|$)') { $regProblems += "$rf : command omits exact -NoProfile: $cmd" }
                     if ($cmd -cnotmatch '(?:^|\s)-ExecutionPolicy\s+Bypass(?:\s|$)') { $regProblems += "$rf : command omits exact -ExecutionPolicy Bypass: $cmd" }
                     if ([string]$entry.shell -cne 'powershell') { $regProblems += "$rf : command hook shell must be exactly 'powershell': $cmd" }

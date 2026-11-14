@@ -15,6 +15,23 @@
   first prompt and approved in advance, the agent ran `security-gate` in 1 of 6 sessions, so ask for `security-gate` by name on
   such a change. On Copilot CLI, which already passed them on, a session's first prompt now carries the rules twice. Claude Code
   is unchanged.
+- **On Claude Code the framework's hooks keep running after the agent changes directory.** Claude Code starts a hook in the
+  session's current directory. Once the agent had run `Set-Location` into a subfolder with the PowerShell tool, none of the six
+  hooks started, and nothing said so: no write guard, build feedback, prompt rails, Boy Scout nudge or audit line for the rest of
+  the session (seen on Claude Code 2.1.312; the `"cwd": "."` on each entry is read by Copilot, not by Claude Code). Each command
+  in `.claude/settings.json` and `.claude/settings.windows.json` now returns to the session root before it runs. Nothing to do:
+  an update rewrites both files.
+- **On Claude Code a write guard that cannot start now refuses the write.** On a machine without PowerShell 7 that uses
+  `.claude/settings.json`, the guard's command exited 0 and every write went ahead unchecked. It now exits 2, so `Write`, `Edit`
+  and `NotebookEdit` are refused ("The term 'pwsh' is not recognized") until PowerShell 7 is installed; where it cannot be, copy
+  `.claude/settings.windows.json` over `.claude/settings.json`. The guard entry also sets `"onFailure": "block"`, which Claude
+  Code 2.1.295 and later act on, so a guard script that is missing, or one that times out, refuses the write as well. Copilot
+  already stopped in the same case. `docs/enforcement-surfaces.md` ("Before any hook can be guaranteed") has the detail.
+- **The pre-`/bootstrap` defaults instruction is now visible text in `AGENTS.md`.** It sat in an HTML comment, and Claude Code
+  strips block comments from instruction files before the model reads them, so it saw only the line saying the defaults apply.
+- **`docs/enforcement-surfaces.md` says two things it did not.** VS Code documents its Local harness as deprecated, to be removed
+  in February 2027. And the per-prompt reminders on Copilot are delivered in practice but not by contract: GitHub's hooks
+  reference says the output of a prompt hook is dropped, so a later Copilot release may stop delivering them.
 
 ## 0.98.6 — 2026-11-13
 

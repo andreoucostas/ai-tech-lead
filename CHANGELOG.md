@@ -28,6 +28,36 @@ one copy (17 of 17 sessions), so the both-hook-files doubling was not seen; no c
 (B-348 T-01: `userPromptSubmitted` #2 starts before `sessionStart` ends #3); the Boy Scout queue stays with the prompt hook (a case).
 Claude Code's `session-start` output is byte-identical with and without `initialPrompt`. One case, red first: `RoutePrompt.Tests`' new `session-start` case.
 
+Claude Code hook registrations survive a directory change, and a guard that cannot start refuses the write (guarded,
+`settings*.json`, `scripts/validate-dist.ps1`; B-490 part (a), fail closed decided by the maintainer in chat on 2026-11-13: "Yes
+let's align them"; found by an audit of the shipped tree against Anthropic's hooks reference and its adversarial review). Escaped
+defect, shipped since the PowerShell tool was turned on: Claude Code starts a hook in the session's current directory and does not
+read `"cwd"`, so after the agent's `Set-Location` into a subfolder no relative `-File` hook started and the write went ahead
+(Claude Code 2.1.312, scratch fixture, `claude -p`: registered the shipped way, with or without `"cwd": "."`, the hook left no log
+line and the file was written; a `$env:CLAUDE_PROJECT_DIR` path ran). No gate caught it because B-437 measured Claude Code from the
+root and from a session started in a subfolder, never one that moved, and check 8 required `"cwd": "."` as if every host read it.
+(1) Every Claude-format command now opens with `if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; `:
+all three hosts export the variable (B-437), and where it is absent the command runs from where it started, as before, which is
+why B-437's rejected `$env:` path form is not used. On 2.1.312 the prefixed hook ran from the root after `Set-Location sub`.
+(2) The guard command ends `; if ($null -eq $LASTEXITCODE) { exit 2 } ; exit $LASTEXITCODE`: an interpreter that is not found left
+`$LASTEXITCODE` null and the command exited 0 on both hosts. The tail carries no message: PowerShell's own "not recognized" line
+is the reason, and Claude Code echoes the whole command before every block reason, so a sentence there showed on ordinary blocks. (3) The guard entry sets `"onFailure": "block"`
+(Claude Code 2.1.295+); on 2.1.312 a registration naming a missing script refused the `Write` and wrote no file. Rejected as
+smaller: the tail alone, which leaves a moved session and a missing script failing open. Check 8 pins the prefix, the tail and the
+key (`ValidateDist` cases 8i, 8j, 8k); `Guard.Tests` launches the registered command from a subfolder and with an interpreter that
+cannot start (its name replaced: neither host may relaunch the other); the doctor reads the interpreter after the prefix
+(`FrameworkDoctor` case). What could be lost: a Claude Code teammate without PowerShell 7 is refused every write; Claude Code
+below 2.1.295 is not documented to act on the key and was not run. On Copilot CLI 1.0.98, with `.github/hooks` removed so this
+file was the only registration, the prefixed session-start hook ran, a clean create was allowed and a `#pragma warning disable`
+write was refused ("Denied by preToolUse hook: hook exited with code 2", no file; the CLI showed the exit code, not the guard's
+reason), one run each. Not run: VS Code's Copilot harness. `PostWriteRouting.Tests` reads the interpreter after the prefix and
+clears `CLAUDE_PROJECT_DIR` for its launch, as `Guard.Tests` does.
+Same commit, ordinary: `docs/enforcement-surfaces.md` now says VS Code documents the Local harness as deprecated (removal February
+2027) and that the per-prompt `userPromptSubmitted` delivery is observed (6 of 6 on second prompts, B-348) but contradicted by
+GitHub's hooks reference, which says a command hook's output on that event is dropped; and the three `defaults-comment` snippets
+are visible text, since Claude Code's memory page says block HTML comments are stripped from instruction files (not measured for
+an imported `AGENTS.md`; the adversarial review advised against paying for a canary).
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the
