@@ -16,7 +16,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team; re-decided on 2026-12-12 if no team has started (WSD-126) |
-| 2 | B-510 | CI is at 88% of the watcher's 2,400 s and growing; past it every push and release reads CANT-VERIFY; guarded |
+| 2 | B-510 | CI at 13 m 16 s after the meta shards (15-minute target met 2026-11-15); the 10-minute stage remains; guarded |
 | 3 | B-521 | Release review: several escaped defects were visible only in a live agent run after the tag; guarded |
 | 4 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review, where B-514 saw it followed as often as an approved skill; guarded |
 | 5 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
@@ -27,7 +27,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 10 | B-497 | Audit, read: `/review` has no merge, de-duplication or verdict step, and two reviewers give opposite advice on delegation; ordinary |
 | 11 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
 | 12 | B-508 | Where the recent data-loss defects sit has no unit tests; guarded, step 4 |
-| 13 | B-511 | Deletions: release tooling that never fires or only raises its ceiling, and closed eval studies; guarded |
+| 13 | B-511 | Deletions: the release time budget that only raises its ceiling, and closed eval studies; guarded |
 | 14 | B-512 | Three hand-edited copies kept by WSD-012's ~6-marker cap, retired by WSD-126; guarded (AGENTS.md) |
 | 15 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
 | 16 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
@@ -199,12 +199,13 @@ Candidate: extract the pure planning functions with unit cases first; record ins
 ### B-510 · CI takes about 32 minutes a push, 88% of the watcher's 2,400 s, and its timing lines break their own format
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** M · **Invariants:** #3
-**Status:** Landed 2026-11-15, awaiting the measured run; delete on a pushed run under 15 minutes. Target (maintainer, 2026-11-14; WSD-125): 15 minutes a push, then 10. Eight green runs: the `windows` job's meta step 1,073 to 2,078 s; `UpdateDelivery.Tests.ps1` 917 to 1,304 s, launched near last at a stale 83.7 s price, and 1,038 s alone locally, so its own job could not meet 15.
-Done: invariant `TIMING` lines; costs are CI medians; the meta suite runs as three `windows-meta` jobs of about 831 measured seconds each, `UpdateDelivery` split in two at its cost midpoint, and parity fails a meta file no shard ran. Expected about 13 minutes, the unchanged `windows-hooks` jobs (up to 774 s) now the floor; 10 needs those sharded too.
-### B-511 · Delete maintainer code that no longer earns its place: the post-release eval prompt, the local gate time budget, finished eval studies
+**Status:** 15 minutes met 2026-11-15 (e40903ee; run 43762925227 green in 13 m 16 s: meta shards 12 m 57 s, 12 m 28 s and 7 m 05 s, hook jobs 9 m 45 s to 10 m 49 s). Target (maintainer, 2026-11-14; WSD-125): 15 minutes a push, then 10.
+Left, the 10-minute stage: on CI the two `UpdateDelivery` halves took 760 s and 730 s (1,490 s against the whole file's 979 s median, so each half carries its own setup), and the `windows-hooks` jobs are the next floor; 10 needs both cut, the hook runner's sharding through the full `src/**` recipe. Guarded.
+### B-511 · Delete maintainer code that no longer earns its place: the local gate time budget, finished eval studies
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** S · **Invariants:** none
-**Status:** Open; maintainer-code review and its attack 2026-11-14. The post-release eval branch (`release.ps1:893-948`) has never fired; it goes with `ReleasePostEvalPrompt.Tests.ps1`, `ci.yml`'s `meta/eval-results.md` re-include, `push-and-check.ps1`'s mirror of it and PushAndCheck case (d), keeping the `review-ledger.md` re-include and `-NoEvals` as an accepted no-op. The time budget refused releases five times and each time its ceiling was raised; its 700 s ceiling sits on a stage of about 30 s: delete it, `-AllowFailingGate` and their cases (about 20), keeping `ReleaseDistGateTiming`'s CI-topology and B-170 cases.
+**Status:** Open; maintainer-code review and its attack 2026-11-14. First item done 2026-11-15: the never-fired post-release eval prompt, its test and the `meta/eval-results.md` CI re-include are gone; PushAndCheck case (d) stays, as it guards the live `ci.yml`/`Test-LightChangePath` pair; `-NoEvals` is a no-op until B-521.
+Left: the time budget refused releases five times and each time its ceiling was raised; its 700 s ceiling sits on a stage of about 30 s: delete it, `-AllowFailingGate` and their cases (about 20), keeping `ReleaseDistGateTiming`'s CI-topology and B-170 cases.
 A finished study's scenarios, graders and fixtures leave `run-agent-evals.ps1` as a unit. Guarded.
 ### B-512 · `adopt.md` and `playbook.md` are kept as three hand-edited copies
 **Filed against:** v0.98.6 (2026-11-14)

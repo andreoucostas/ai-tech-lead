@@ -414,7 +414,7 @@ try {
     # copy) and run it in a child host against a scratch repo, with HEAD moved after the "watch".
     $releaseText = [IO.File]::ReadAllText($release)
     $tagStart  = $releaseText.IndexOf('# ---- 5d.')
-    $tagEnd    = $releaseText.IndexOf('# B-41 behavioral evals')
+    $tagEnd    = $releaseText.IndexOf('Write-Host "`nRelease $Version complete')
     $tagRegion = if ($tagStart -ge 0 -and $tagEnd -gt $tagStart) { $releaseText.Substring($tagStart, $tagEnd - $tagStart) } else { $null }
 
     function New-TagScratchRepo {
@@ -467,7 +467,7 @@ exit 0
     }
 
     It 'the tag step can be extracted from release.ps1, and is neither too small nor too large' {
-        Assert ($null -ne $tagRegion) 'cannot bound step 5d between "# ---- 5d." and "# B-41 behavioral evals"'
+        Assert ($null -ne $tagRegion) 'cannot bound step 5d between "# ---- 5d." and the "Release $Version complete" line'
         foreach ($needle in @('git -C $repo tag -a', 'refs/tags/$tagName^{commit}', 'Refusing to move an existing release tag')) {
             Assert ($tagRegion.Contains($needle)) "extracted tag step is missing '$needle' -- would test nothing"
         }

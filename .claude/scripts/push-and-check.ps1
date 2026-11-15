@@ -123,10 +123,10 @@ if ($outgoingExit -ne 0) {
 }
 
 # A path ci.yml's push `paths:` filter excludes: top-level meta/*.md records and .claude/plans/**,
-# minus the two records release.ps1 watches CI for.
+# minus the record release.ps1 watches CI for.
 function Test-LightChangePath {
     param([string]$Path)
-    if ($Path -ceq 'meta/eval-results.md' -or $Path -ceq 'meta/review-ledger.md') { return $false }
+    if ($Path -ceq 'meta/review-ledger.md') { return $false }
     return ($Path -cmatch '^meta/[^/]+\.md$' -or $Path -cmatch '^\.claude/plans/')
 }
 

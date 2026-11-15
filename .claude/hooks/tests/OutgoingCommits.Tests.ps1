@@ -387,14 +387,13 @@ try {
         Assert ($result.Out -match 'CANT-VERIFY') "cannot-verify verdict missing: $($result.Out)"
     }
 
-    It 'every release and eval push is preceded by the outgoing-commit guard' {
+    It 'every release push is preceded by the outgoing-commit guard' {
         $release = [IO.File]::ReadAllText((Join-Path $repoRoot '.claude/scripts/release.ps1'))
         $pushes = @(
             'git -C $repo push origin "${releaseCommit}:refs/heads/master"',
-            'git -C $repo push origin "refs/tags/$tagName"',
-            'git -C $repo push origin "${evalCommit}:refs/heads/master"'
+            'git -C $repo push origin "refs/tags/$tagName"'
         )
-        Assert ($pushes.Count -eq 3) 'release push contract table is incomplete'
+        Assert ($pushes.Count -eq 2) 'release push contract table is incomplete'
         $previousPush = -1
         foreach ($push in $pushes) {
             $pushIndex = $release.IndexOf($push, [StringComparison]::Ordinal)

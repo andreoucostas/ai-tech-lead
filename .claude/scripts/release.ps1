@@ -21,8 +21,8 @@ param(
     [Parameter(Mandatory)][string]$Version,
     [Parameter(Mandatory)][string]$Summary,
     [switch]$NoPush,
-    # Suppress the post-success optional live-eval prompt. Detached runners should state this intent
-    # explicitly; the stream checks below remain a backstop when they do not.
+    # Accepted and ignored: B-511 deleted the post-success eval prompt it suppressed, which never
+    # fired. AGENTS.md "Ship" still passes it; B-521 gives it a meaning again.
     [switch]$NoEvals,
     # Escape hatch for the branch precondition below. Deliberately named for what it risks, not for
     # what it enables -- releasing off master is how v0.34.0 lost its release commit.
@@ -886,66 +886,5 @@ if (-not $NoPush) {
     Write-Host "Tag $tagName confirmed on origin."
 }
 
-# B-41 behavioral evals are stochastic and consume model budget, so they run only after the
-# deterministic release succeeded and are never a release gate. At this point the runner sees the
-# just-committed distribution, not the previous release or a dirty pre-gate build.
-$agentEvalCommand = 'pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live'
-if (-not $NoEvals -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
-    $runAgentEvals = Read-Host "Release succeeded. Run optional B-41 live agent evals now? [y/N]"
-    if ($runAgentEvals -match '^(?i)y(?:es)?$') {
-        & pwsh -NoProfile -File (Join-Path $repo '.claude/evals/run-agent-evals.ps1') -Live
-        Write-Host "Agent eval exit: $LASTEXITCODE (recorded, never changes release status)."
-        $evalResultsPath = 'meta/eval-results.md'
-        if (git -C $repo status --porcelain -- $evalResultsPath) {
-            git -C $repo add $evalResultsPath
-            git -C $repo commit -m "meta: record v${Version} agent eval results"
-            if ($LASTEXITCODE -ne 0) { Write-Host 'Eval-results commit FAILED; release is shipped but evidence is not persisted.'; exit 1 }
-            if (-not $NoPush) {
-                # Same explicit-commit push + postcondition as the release push above (B-53 d).
-                $evalCommit = (git -C $repo rev-parse HEAD).Trim()
-                & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File `
-                    (Join-Path $repo '.claude/scripts/check-outgoing-commits.ps1') `
-                    -RepoRoot $repo -Remote origin -Revision $evalCommit
-                if ($LASTEXITCODE -ne 0) { Write-Host "Eval-results push REFUSED: outgoing-commit check exited $LASTEXITCODE."; exit $LASTEXITCODE }
-                git -C $repo push origin "${evalCommit}:refs/heads/master"
-                if ($LASTEXITCODE -ne 0) { Write-Host 'Eval-results push FAILED; release is shipped but evidence is only local.'; exit 1 }
-                $remoteAfterEval = (git -C $repo ls-remote origin refs/heads/master | ForEach-Object { ($_ -split '\s+')[0] })
-                if ("$remoteAfterEval".Trim() -ne $evalCommit) {
-                    Write-Host "Eval-results push POSTCONDITION FAILED: origin/master is $remoteAfterEval, expected $evalCommit."
-                    Write-Host 'Release is shipped; the eval evidence is only local.'
-                    exit 1
-                }
-            }
-            $persisted = if ($NoPush) { 'locally (-NoPush)' } else { 'and pushed' }
-            Write-Host "Agent eval evidence committed $persisted."
-            if (-not $NoPush) {
-                # B-91, decided 2026-08-20: watch it, do not merely disclose it. origin/master has
-                # just moved PAST the commit whose CI was watched, so without this the run ends at a
-                # commit nobody observed -- the exact shape of v0.44.0's red streak, where follow-up
-                # commits inherited a break.
-                #
-                # The original decision was to disclose instead, because watching "would add another
-                # multi-minute wait to an interactive prompt". That trade was real when made and is
-                # not real now: reaching this line means the operator just chose to run live agent
-                # evals, which cost far more wall clock than a CI watch, so the marginal wait is
-                # noise. B-150 separately guarantees this branch only runs at an attended console.
-                #
-                # A red result here does NOT retract the release: the tag was placed on the watched
-                # release commit and that commit is still green. What is red is a meta-only evidence
-                # commit sitting on top of it, so this reports and does not exit non-zero.
-                Write-Host ''
-                Write-Host "Watching CI for the eval-evidence commit $($evalCommit.Substring(0,7))..."
-                & pwsh -NoProfile -File (Join-Path $repo '.claude/scripts/watch-ci.ps1') -Sha $evalCommit
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Host ''
-                    Write-Host "WARNING: CI is not green for the eval-evidence commit $($evalCommit.Substring(0,7))."
-                    Write-Host "         Release $Version is unaffected -- it was tagged on $($releaseCommit.Substring(0,7)), which CI verified."
-                    Write-Host "         origin/master now carries a red meta-only commit; fix it forward."
-                }
-            }
-        }
-    } else { Write-Host "Agent evals skipped. Run later: $agentEvalCommand" }
-} elseif ($NoEvals) { Write-Host "Agent evals skipped. Run later: $agentEvalCommand" }
-else { Write-Host "Agent eval reminder (non-interactive; not run): $agentEvalCommand" }
 Write-Host "`nRelease $Version complete$(if ($NoPush) { ' (not pushed: -NoPush)' })."
 exit 0

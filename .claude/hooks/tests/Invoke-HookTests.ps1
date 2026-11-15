@@ -81,7 +81,6 @@ $expectedTestFiles = @(
     'ReleaseCiWatch.Tests.ps1',
     'ReleaseDistGateTiming.Tests.ps1',
     'ReleaseGateWaiver.Tests.ps1',
-    'ReleasePostEvalPrompt.Tests.ps1',
     'ReleaseStagingGuard.Tests.ps1',
     'RepositoryPrivacy.Tests.ps1',
     'RootInstallerWarehouse.Tests.ps1',
@@ -152,7 +151,6 @@ $costHint = @{
     'FinancialCaseOracles.Tests.ps1'     = 5.1
     'VendorClaims.Tests.ps1'             = 2.9
     'PowerShellTopology.Tests.ps1'       = 1.8
-    'ReleasePostEvalPrompt.Tests.ps1'    = 1.6
     'DocClaims.Tests.ps1'                = 1.5
     'ReleaseChangelogStamp.Tests.ps1'    = 1.4
     'WorkspaceBom.Tests.ps1'             = 1.4

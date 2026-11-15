@@ -296,7 +296,7 @@ exit $LASTEXITCODE
         Assert ($r.Out -notmatch [regex]::Escape($skipLine)) "mixed range was classified records-only: $($r.Out)"
         Assert (Test-Path -LiteralPath $h.Log) 'watch-ci did not run for a mixed range'
     }
-    foreach ($heavy in 'meta/eval-results.md', 'meta/review-ledger.md', 'meta/gate-budget.json', 'meta/eval-fixtures/x/README.md') {
+    foreach ($heavy in 'meta/review-ledger.md', 'meta/gate-budget.json', 'meta/eval-fixtures/x/README.md') {
         It "WP2 (c): a range touching $heavy is watched" {
             $g=New-GitStub -Commits @("meta/BACKLOG.md|$heavy"); $h=New-GhStub green; $r=Invoke-Subject $g $h
             Assert ($r.Out -notmatch [regex]::Escape($skipLine)) "$heavy was classified records-only: $($r.Out)"

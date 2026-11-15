@@ -342,14 +342,13 @@ row carries any you add.
 
 `release.ps1` does not run the self-test (B-246 retired that stage: a maintainer-only tool that
 ships nothing must not be able to refuse a consumer release). Run `-SelfTest` yourself after any
-change to the runner and before every `-Live` run. `release.ps1`'s optional post-release prompt runs
-every scenario once and commits the rows itself; the per-release check above tags with `-NoEvals`.
+change to the runner and before every `-Live` run.
 - **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite takes
   ~1–2 min. Expected, not a hang.
 
 **CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every PR and on
 every push to `master` except one touching only top-level `meta/*.md` records or `.claude/plans/**`
-(`meta/eval-results.md` and `meta/review-ledger.md` still run it); `push-and-check.ps1` skips its watch for those.
+(`meta/review-ledger.md` still runs it); `push-and-check.ps1` skips its watch for those.
 The required execution topology is seven PowerShell 7 Windows contexts: `windows` (compose, freshness,
 footprint, validate), three `windows-meta` shards of the meta suite (`Invoke-HookTests.ps1 -ShardCount 3
 -ShardIndex <n>`) and three `windows-hooks` matrix contexts. One additional required Windows job,
