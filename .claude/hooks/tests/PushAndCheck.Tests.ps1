@@ -86,7 +86,7 @@ function New-GhStub {
     $dir = Join-Path ([IO.Path]::GetTempPath()) ('pushcheck-gh-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $script:scratch += $dir
-    $jobs = @('windows','windows-hooks (dotnet)','windows-hooks (angular)','windows-hooks (monorepo)','windows-case-parity' |
+    $jobs = @('windows','windows-meta (1)','windows-meta (2)','windows-meta (3)','windows-hooks (dotnet)','windows-hooks (angular)','windows-hooks (monorepo)','windows-case-parity' |
         ForEach-Object { '{"name":"' + $_ + '","conclusion":"success","status":"completed"}' }) -join ','
     $conclusion = if ($State -eq 'red') { 'failure' } else { 'success' }
     $row = '[{"conclusion":"' + $conclusion + '","databaseId":123,"event":"push","headSha":"@@HEAD@@","status":"completed","url":"https://github.com/owner/repo/actions/runs/123","workflowName":"CI"}]'

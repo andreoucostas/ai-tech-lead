@@ -64,13 +64,26 @@ function Assert-CiRootMetaSuite([string]$Name) {
     Assert ($job -match '(?m)^\s*runs-on:\s*windows-latest\s*$') "CI job '$Name' is no longer direct Windows evidence"
 }
 
+# Every shard 1..N of the meta suite runs, each once: the runner puts each file in exactly one bin, so a
+# shard left out of the matrix is a file that runs nowhere (B-510).
+function Assert-CiMetaShards([string]$Name) {
+    $job = Get-CiJob $Name
+    $matrix = [regex]::Match($job, '(?ms)matrix:\s*\r?\n\s*shard:\s*\[(?<list>[^\]\r\n]*)\]')
+    Assert $matrix.Success "CI job '$Name' no longer declares a shard matrix"
+    $call = [regex]::Matches($job, '-ShardCount (?<n>[1-9]\d*) -ShardIndex \$\{\{ matrix\.shard \}\}')
+    Assert ($call.Count -eq 1) "CI job '$Name' must hand each matrix leg its own shard of the meta suite exactly once"
+    $count = [int]$call[0].Groups['n'].Value
+    $shards = @($matrix.Groups['list'].Value -split ',' | ForEach-Object { $_.Trim() })
+    Assert (($shards -join ',') -ceq ((1..$count) -join ',')) "CI job '$Name' runs shards [$($shards -join ', ')] of $count; every shard 1..$count must run exactly once"
+}
+
 function Assert-CiHost([string]$Name, [string]$Shell, [string]$Edition, [int]$Major) {
     $job = Get-CiJob $Name
     Assert ($job -match "(?m)^\s*shell:\s*$([regex]::Escape($Shell))\s*`$") "CI job '$Name' no longer selects the $Shell runner shell"
     Assert ($job -match '\$hostPath\s*=\s*\(Get-Process -Id \$PID\)\.Path') "CI job '$Name' no longer captures the executable actually hosting the step"
     Assert ($job -match "PSEdition -ne '$([regex]::Escape($Edition))'") "CI job '$Name' no longer asserts PSEdition $Edition"
     Assert ($job -match "PSVersion\.Major -(?:ne|lt) $Major") "CI job '$Name' no longer asserts PowerShell major version $Major"
-    Assert ($job -match '& \$hostPath .*Invoke-HookTests\.ps1') "CI job '$Name' no longer runs its tests through the asserted current executable"
+    Assert ($job -match '& \$hostPath -NoProfile -File [^\r\n]*\.ps1') "CI job '$Name' no longer runs its scripts through the asserted current executable"
 }
 
 function Assert-CiIndependentProducer([string]$Name, [string]$CasePath, [string]$ArtifactName) {
@@ -85,7 +98,7 @@ function Assert-CiIndependentProducer([string]$Name, [string]$CasePath, [string]
 
 function Assert-CiParityDecision {
     $job = Get-CiJob 'windows-case-parity'
-    Assert ($job -match '(?m)^\s*needs:\s*\[windows, windows-hooks\]\s*$') 'CI parity no longer waits for both execution definitions'
+    Assert ($job -match '(?m)^\s*needs:\s*\[windows, windows-meta, windows-hooks\]\s*$') 'CI parity no longer waits for every execution definition'
     Assert ($job -match '(?m)^\s*if:\s*\$\{\{ always\(\) \}\}\s*$') 'CI parity can be skipped after an upstream failure'
     Assert ($job -match '(?m)^\s*runs-on:\s*windows-latest\s*$') 'CI parity is no longer a same-platform Windows decision'
     Assert ($job -notmatch '(?m)^    continue-on-error\s*:') 'CI parity permits its whole-job failure to be ignored'
@@ -142,44 +155,67 @@ It 'the local meta-suite stage runs exactly the four release-subject files, one 
     Assert ($metaStage.Contains('(?m)^RESULT\s+(\S+)\s+(\d+)\s*$')) 'the local meta runs no longer parse per-file RESULT lines'
 }
 
-It 'CI exposes four independent PowerShell 7 contexts plus one required case-count decision before a normal tag' {
+It 'CI runs the dist gates, every meta shard and every dist hook suite as independent PowerShell 7 jobs plus one required case-count decision' {
     $jobsBody = [regex]::Match($ci, '(?ms)^jobs:\s*\r?\n(?<body>.*)\z')
     Assert $jobsBody.Success 'CI jobs block was not found'
     $jobNames = @([regex]::Matches($jobsBody.Groups['body'].Value, '(?m)^  ([A-Za-z0-9_-]+):\s*$') | ForEach-Object { $_.Groups[1].Value })
-    $expected = @('windows', 'windows-hooks', 'windows-case-parity')
-    Assert (($jobNames -join ',') -eq ($expected -join ',')) "expected exactly two execution definitions plus the case-count decision in release order, found: $($jobNames -join ', ')"
+    $expected = @('windows', 'windows-meta', 'windows-hooks', 'windows-case-parity')
+    Assert (($jobNames -join ',') -eq ($expected -join ',')) "expected exactly three execution definitions plus the case-count decision in release order, found: $($jobNames -join ', ')"
 
+    Assert ((Get-CiJob 'windows') -notmatch '(?m)^\s*needs\s*:') "CI job 'windows' is serialized behind another job"
+    Assert ((Get-CiJob 'windows') -match 'scripts/validate-dist\.ps1') "CI job 'windows' no longer validates the dists"
+    Assert-CiMetaShards 'windows-meta'
+    Assert-CiRootMetaSuite 'windows-meta'
     Assert-CiHookMatrix 'windows-hooks'
-    Assert-CiRootMetaSuite 'windows'
     Assert-CiHost 'windows' 'pwsh' 'Core' 7
+    Assert-CiHost 'windows-meta' 'pwsh' 'Core' 7
     Assert-CiHost 'windows-hooks' 'pwsh' 'Core' 7
 
-    Assert (@([regex]::Matches($ci, '-CaseCountPath')).Count -eq 2) 'CI must emit one semantic case-count manifest from each execution definition'
+    Assert (@([regex]::Matches($ci, '-CaseCountPath')).Count -eq 2) 'CI must emit one semantic case-count manifest from each test execution definition'
     Assert (@([regex]::Matches($ci, 'actions/upload-artifact@v4')).Count -eq 2) 'CI must contain exactly two independently expanding case-count publishers'
     Assert (@([regex]::Matches($ci, 'actions/download-artifact@v4')).Count -eq 1) 'CI must contain exactly one downstream artifact download'
-    Assert-CiIndependentProducer 'windows' '${{ runner.temp }}/windows-case-counts.txt' 'b219-case-counts-windows'
+    Assert-CiIndependentProducer 'windows-meta' '${{ runner.temp }}/windows-meta-${{ matrix.shard }}-case-counts.txt' 'b219-case-counts-windows-meta-${{ matrix.shard }}'
     Assert-CiIndependentProducer 'windows-hooks' '${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-case-counts.txt' 'b219-case-counts-windows-hooks-${{ matrix.dist }}'
     Assert-CiParityDecision
 }
 
 It 'every TIMING expression in dist-gates emits a line the RESULT parser cannot swallow' {
-    $emitters = @([regex]::Matches($stage, '(?m)^\s*Write-Host \("(TIMING [^"]+)" -f ([^\r\n]+)\)\s*$'))
+    $emitters = @([regex]::Matches($stage, '(?m)^\s*Write-Host (\([^\r\n]*TIMING [^\r\n]*\))\s*$'))
     Assert ($emitters.Count -ge 3) "expected at least 3 TIMING emitters (dist job, validator, and context-footprint), found $($emitters.Count)"
 
     # Stand-ins for the values the real expressions read, chosen so a formatting bug is visible:
-    # a fractional value that must round to one decimal place.
+    # fractional values that must round to one decimal place, past 1,000 s (a grouping separator,
+    # B-510's `1,013.3`), evaluated under a decimal-comma culture.
     $d = 'monorepo'
-    $result = [pscustomobject]@{ ValidateSeconds = 234.94 }
-    $jobSeconds = 557.81
-    $footprintSeconds = 12.25
+    $result = [pscustomobject]@{ ValidateSeconds = 1234.94 }
+    $jobSeconds = 1557.81
+    $footprintSeconds = 1012.25
 
-    foreach ($emitter in $emitters) {
-        $format = $emitter.Groups[1].Value
-        $argExpr = $emitter.Groups[2].Value
-        $line = & ([scriptblock]::Create("`"$format`" -f $argExpr"))
-        Assert ($line -match $timingPattern) "emitted line is not a parseable TIMING line: '$line'"
-        Assert (-not ($line -match $resultPattern)) "emitted TIMING line is also matched by the RESULT parser: '$line'"
-    }
+    $savedCulture = [cultureinfo]::CurrentCulture
+    try {
+        [cultureinfo]::CurrentCulture = [cultureinfo]::GetCultureInfo('de-DE')
+        foreach ($emitter in $emitters) {
+            $line = & ([scriptblock]::Create($emitter.Groups[1].Value))
+            Assert ($line -match $timingPattern) "emitted line is not a parseable TIMING line: '$line'"
+            Assert (-not ($line -match $resultPattern)) "emitted TIMING line is also matched by the RESULT parser: '$line'"
+        }
+    } finally { [cultureinfo]::CurrentCulture = $savedCulture }
+}
+
+It 'the meta runner writes TIMING in the invariant grammar past 1,000 s under a decimal-comma culture' {
+    # CI printed `TIMING UpdateDelivery.Tests.ps1 1,013.3` (B-510): N1 groups thousands in every culture.
+    $runner = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'Invoke-HookTests.ps1'), [ref]$null, [ref]$null)
+    $emitter = $runner.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Write-FileTiming' }, $true)
+    Assert ($null -ne $emitter) 'the meta runner no longer defines Write-FileTiming'
+    $savedCulture = [cultureinfo]::CurrentCulture
+    try {
+        [cultureinfo]::CurrentCulture = [cultureinfo]::GetCultureInfo('de-DE')
+        . ([scriptblock]::Create($emitter.Extent.Text))
+        $begin = [datetime]::new(2026, 11, 15, 8, 0, 0)
+        $line = (Write-FileTiming 'UpdateDelivery.Tests.ps1' $begin $begin.AddSeconds(1013.34) 6>&1 | Out-String).Trim()
+    } finally { [cultureinfo]::CurrentCulture = $savedCulture }
+    Assert ($line -match $timingPattern) "the meta runner's TIMING line is not parseable: '$line'"
+    Assert ($line -ceq 'TIMING UpdateDelivery.Tests.ps1 1013.3') "the meta runner's TIMING line is not the invariant one-decimal value: '$line'"
 }
 
 It 'a TIMING value appended to a RESULT line would be swallowed -- the reason for the separate line' {
@@ -201,7 +237,7 @@ It 'the job wall-clock emitter survives a job whose times were never set' {
     $job = [pscustomobject]@{ PSBeginTime = $null; PSEndTime = $null }
     $seconds = if ($job.PSEndTime -and $job.PSBeginTime) { ($job.PSEndTime - $job.PSBeginTime).TotalSeconds } else { 0 }
     Assert ($seconds -eq 0) "null job times should yield 0, got '$seconds'"
-    Assert ((("TIMING {0} {1:N1}" -f 'dotnet', $seconds)) -match $timingPattern) 'the null-time fallback does not format as a TIMING line'
+    Assert (([string]::Format([cultureinfo]::InvariantCulture, 'TIMING {0} {1:F1}', 'dotnet', $seconds)) -match $timingPattern) 'the null-time fallback does not format as a TIMING line'
 }
 
 if (-not $SkipRedTest) {
@@ -218,8 +254,18 @@ if (-not $SkipRedTest) {
 
     It 'removing one case-count emission makes the case-count assertion fail' {
         Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
-            -Find '-CaseCountPath "${{ runner.temp }}/windows-case-counts.txt"' `
-            -Replacement '-CaseCountGone "${{ runner.temp }}/windows-case-counts.txt"' -Command {
+            -Find '-CaseCountPath "${{ runner.temp }}/windows-meta-${{ matrix.shard }}-case-counts.txt"' `
+            -Replacement '-CaseCountGone "${{ runner.temp }}/windows-meta-${{ matrix.shard }}-case-counts.txt"' -Command {
+                param($scratchTarget, $scratchRoot)
+                $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
+                $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
+                $global:LASTEXITCODE = $process.ExitCode
+            } | Out-Null
+    }
+
+    It 'a meta shard left out of the matrix makes the topology assertion fail' {
+        Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
+            -Find 'shard: [1, 2, 3]' -Replacement 'shard: [1, 2]' -Command {
                 param($scratchTarget, $scratchRoot)
                 $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
                 $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow

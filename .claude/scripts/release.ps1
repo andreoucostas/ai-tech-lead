@@ -534,8 +534,9 @@ try {
         $jobSeconds = if ($distGateJob.Job.PSEndTime -and $distGateJob.Job.PSBeginTime) {
             ($distGateJob.Job.PSEndTime - $distGateJob.Job.PSBeginTime).TotalSeconds
         } else { 0 }
-        Write-Host ("TIMING {0} {1:N1}" -f $d, $jobSeconds)
-        Write-Host ("TIMING {0}/validate-dist {1:N1}" -f $d, [double]$result.ValidateSeconds)
+        # F1 in the invariant culture: N1 groups thousands, `-f` uses the current culture (B-510).
+        Write-Host ([string]::Format([cultureinfo]::InvariantCulture, 'TIMING {0} {1:F1}', $d, $jobSeconds))
+        Write-Host ([string]::Format([cultureinfo]::InvariantCulture, 'TIMING {0}/validate-dist {1:F1}', $d, [double]$result.ValidateSeconds))
         Gate ($result.ValidateExit -eq 0) "validate-dist $d"
     }
     $footprintJob | Wait-Job | Out-Null
@@ -544,7 +545,7 @@ try {
     $footprintSeconds = if ($footprintJob.PSEndTime -and $footprintJob.PSBeginTime) {
         ($footprintJob.PSEndTime - $footprintJob.PSBeginTime).TotalSeconds
     } else { 0 }
-    Write-Host ("TIMING context-footprint {0:N1}" -f $footprintSeconds)
+    Write-Host ([string]::Format([cultureinfo]::InvariantCulture, 'TIMING context-footprint {0:F1}', $footprintSeconds))
     Gate ($footprintExit -eq 0) 'update context-footprint baseline'
 } finally {
     if ($distGateJobs) {

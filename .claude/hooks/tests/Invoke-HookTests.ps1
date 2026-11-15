@@ -14,16 +14,24 @@
 #
 # -Sequential restores the old one-at-a-time behaviour for diagnosing a file that only fails under
 # concurrency. -File runs a single file, which is what a targeted red-test needs.
+# -ShardCount N -ShardIndex I runs bin I of a longest-first partition of the manifest into N bins by
+# $costHint; every file lands in exactly one bin (CI runs one job per bin, B-510).
 [CmdletBinding()]
 param(
     [string]$File,
     [switch]$Sequential,
     [switch]$FixtureDiscovery,
-    [string]$CaseCountPath
+    [string]$CaseCountPath,
+    [int]$ShardCount = 1,
+    [int]$ShardIndex = 1
 )
 $ErrorActionPreference = 'Stop'
 if ($CaseCountPath -and (Test-Path -LiteralPath $CaseCountPath)) {
     [Console]::Error.WriteLine("CASE CARDINALITY REFUSED: output path already exists: $CaseCountPath")
+    exit 2
+}
+if ($ShardCount -lt 1 -or $ShardIndex -lt 1 -or $ShardIndex -gt $ShardCount -or ($File -and $ShardCount -gt 1)) {
+    [Console]::Error.WriteLine("Invalid shard: -ShardIndex $ShardIndex of -ShardCount $ShardCount$(if ($File) { " with -File $File" })")
     exit 2
 }
 $invokingPsExe = (Get-Process -Id $PID).Path
@@ -78,6 +86,7 @@ $expectedTestFiles = @(
     'RepositoryPrivacy.Tests.ps1',
     'RootInstallerWarehouse.Tests.ps1',
     'UpdateDelivery.Tests.ps1',
+    'UpdateDelivery2.Tests.ps1',
     'ValidateDist.Tests.ps1',
     'VendorClaims.Tests.ps1',
     'WorkspaceBom.Tests.ps1'
@@ -108,6 +117,77 @@ if ($File) {
     }
 }
 
+# MEASURED COST, seconds: each file's median TIMING line over eight green master CI runs on
+# windows-latest (4 vCPU, so 2 outer lanes x 2 inner), 2026-11-14/15. Re-measure from CI's TIMING
+# lines, never from a serial pass: a serial pass runs each file at full internal width, so its costs
+# cannot predict this parallel run (they mispredicted it twice). A HINT for launch order and shard
+# bins, never correctness: a stale entry costs time, not a result. An unlisted file is priced as the
+# dearest listed one, so it launches early; guessing cheap is what left UpdateDelivery.Tests.ps1
+# priced at 83.7 s while it took 917 to 1,304 s (B-510). That file was then split in two at its
+# cost midpoint; its two entries share its 979.0 s median by a local per-case timing (49.3 / 50.7%).
+$costHint = @{
+    'UpdateDelivery.Tests.ps1'           = 482.6
+    'UpdateDelivery2.Tests.ps1'          = 496.4
+    'ValidateDist.Tests.ps1'             = 234.7
+    'GuardPatternErrors.Tests.ps1'       = 207.6
+    'AdoptionArchiveIntegrity.Tests.ps1' = 162.9
+    'InstallerConvergence.Tests.ps1'     = 159.3
+    'ContextFootprint.Tests.ps1'         = 142.2
+    'RootInstallerWarehouse.Tests.ps1'   = 105.6
+    'PushAndCheck.Tests.ps1'             = 74.9
+    'OutgoingCommits.Tests.ps1'          = 74.1
+    'InstallerContract.Tests.ps1'        = 54.3
+    'B215OwnershipBoundary.Tests.ps1'    = 51.8
+    'Composer.Tests.ps1'                 = 44.5
+    'ReleaseDistGateTiming.Tests.ps1'    = 42.4
+    'RepositoryPrivacy.Tests.ps1'        = 30.3
+    'AssertRedFirst.Tests.ps1'           = 22.5
+    'ReleaseCiWatch.Tests.ps1'           = 20.9
+    'DocsSyncCheck.Tests.ps1'            = 15.6
+    'ReleaseStagingGuard.Tests.ps1'      = 15.6
+    'MetaHooks.Tests.ps1'                = 12.3
+    'DocTruth.Tests.ps1'                 = 12.0
+    'CiCaseParity.Tests.ps1'             = 6.0
+    'ReleaseGateWaiver.Tests.ps1'        = 5.2
+    'FinancialCaseOracles.Tests.ps1'     = 5.1
+    'VendorClaims.Tests.ps1'             = 2.9
+    'PowerShellTopology.Tests.ps1'       = 1.8
+    'ReleasePostEvalPrompt.Tests.ps1'    = 1.6
+    'DocClaims.Tests.ps1'                = 1.5
+    'ReleaseChangelogStamp.Tests.ps1'    = 1.4
+    'WorkspaceBom.Tests.ps1'             = 1.4
+    'BacklogHygiene.Tests.ps1'           = 1.3
+    'ClaimTruth.Tests.ps1'               = 1.0
+    'GateBudgetConsistency.Tests.ps1'    = 1.0
+    'OperationSkillAuthority.Tests.ps1'  = 1.0
+}
+$unlistedCost = [double](($costHint.Values | Measure-Object -Maximum).Maximum)
+function Get-FileCost([string]$Name) { if ($costHint.ContainsKey($Name)) { [double]$costHint[$Name] } else { $unlistedCost } }
+$byCost = @(
+    @{ Expression = { Get-FileCost $_.Name }; Descending = $true },
+    @{ Expression = { $_.Name }; Ascending = $true }
+)
+if ($ShardCount -gt 1) {
+    # Longest-processing-time partition: dearest file first, each into the bin with the least cost so
+    # far (ties to the lower bin), cost ties broken by name, so every job computes the same bins and
+    # each file lands in exactly one. assert-ci-case-parity.ps1 checks the bins' union in CI.
+    $load = New-Object double[] $ShardCount
+    $binOf = @{}
+    foreach ($f in @($files | Sort-Object $byCost)) {
+        $target = 0
+        for ($i = 1; $i -lt $ShardCount; $i++) { if ($load[$i] -lt $load[$target]) { $target = $i } }
+        $binOf[$f.Name] = $target + 1
+        $load[$target] += Get-FileCost $f.Name
+    }
+    $files = @($files | Where-Object { $binOf[$_.Name] -eq $ShardIndex })
+    if ($files.Count -eq 0) {
+        [Console]::Error.WriteLine("Shard $ShardIndex of $ShardCount holds no test file")
+        exit 2
+    }
+    Write-Host ("SHARD {0}/{1}: {2} file(s), {3} s measured: {4}" -f $ShardIndex, $ShardCount, $files.Count,
+        [math]::Round($load[$ShardIndex - 1]), (@($files.Name) -join ', '))
+}
+
 # One machine-readable line per file, emitted in every mode. release.ps1 parses these so an
 # operator waiver can name ONE failing file (-AllowFailingGate) instead of the all-or-nothing total.
 # The failing file still RUNS and still reports -- a waiver changes what blocks the release, never
@@ -124,9 +204,12 @@ function Write-FileResult([string]$Name, [int]$Exit) { Write-Host ("RESULT {0} {
 # internal width; the parallel run hands each file $innerLanes instead. The two numbers are not the
 # same measurement, so serial costs can never predict the parallel makespan. Measure the run you
 # actually ship.
+#
+# F1 in the invariant culture, never N1 or `-f`: N1 groups thousands in every culture (CI printed
+# `1,013.3`, B-510) and `-f` writes the current culture's decimal comma. Grammar: ^TIMING \S+ \d+\.\d$
 function Write-FileTiming([string]$Name, $Begin, $End) {
     if ($null -eq $Begin -or $null -eq $End) { return }
-    Write-Host ("TIMING {0} {1:N1}" -f $Name, ($End - $Begin).TotalSeconds)
+    Write-Host ([string]::Format([cultureinfo]::InvariantCulture, 'TIMING {0} {1:F1}', $Name, ($End - $Begin).TotalSeconds))
 }
 
 function Read-CaseCount {
@@ -206,49 +289,10 @@ if ($Sequential -or $files.Count -eq 1) {
     # Worse, the nesting is invisible: ValidateDist.Tests.ps1 parallelises its own 20 cases, so ten
     # outer jobs became ten x N children. VALIDATE_DIST_TESTS_THROTTLE is set below to hand that file
     # a share rather than let it assume it owns the box.
-    # LONGEST-FIRST SCHEDULING. The lanes were never the problem -- the launch ORDER was.
-    # Files were launched in `Sort-Object Name` order, chosen for determinism, which is the worst
-    # possible schedule for makespan: a long job that starts last runs alone at the tail while every
-    # other lane sits idle. Measured serially on the maintainer box (12 cores, idle, 2026-08-19,
-    # 923.6s total across 25 files):
-    #
-    #   GuardPatternErrors.Tests.ps1   418.5s   <- 45% of the entire serial cost, alphabetically 8th
-    #   ValidateDist.Tests.ps1         234.9s   <- alphabetically 23rd, i.e. launched in the LAST wave
-    #   UpdateDelivery.Tests.ps1        83.7s   <- 22nd
-    #   InstallerContract.Tests.ps1     51.3s
-    #   DocsSyncCheck.Tests.ps1         38.6s
-    #   ...every remaining file is under 27s, and 17 of 25 are under 3s.
-    #
-    # MEASURED OUTCOME: this ordering change bought NOTHING. Modelled makespan at 4 lanes was
-    # alphabetical ~(505/4)+418 = 545s vs longest-first ~max(418, 505/4) = 418s. The actual timed
-    # run after the change was 689.2s (0 failures), against 671.5s before it. The model was wrong,
-    # not the arithmetic: it fed SERIAL per-file costs into a PARALLEL schedule, and a serial pass
-    # runs each file with VALIDATE_DIST_TESTS_THROTTLE / HOOKTESTS_THROTTLE unset -- i.e. at full
-    # internal width -- while this loop hands each file only $innerLanes. Files that parallelise
-    # internally are therefore much more expensive here than the serial table says, so the table
-    # cannot predict the makespan and the "floor is the heaviest file" conclusion does not follow.
-    # The TIMING lines above exist so the next diagnosis reads the real per-file parallel cost
-    # instead of re-deriving it from the wrong pass a third time.
-    #
-    # The ordering is KEPT because longest-first is still the correct schedule shape and costs
-    # nothing -- but it is not a fix for the budget, and must not be cited as one.
-    #
-    # The table is a scheduling HINT, never correctness: an unlisted file is scheduled first (a new
-    # file's cost is unknown, and guessing "cheap" is the mistake that created this bug), and ties
-    # break by name so the order stays deterministic and reproducible. A stale entry costs some
-    # runtime, never a wrong result. Re-measure with a serial pass when the suite's shape changes.
-    $costHint = @{
-        'GuardPatternErrors.Tests.ps1'    = 418.5
-        'ValidateDist.Tests.ps1'          = 234.9
-        'UpdateDelivery.Tests.ps1'        = 83.7
-        'InstallerContract.Tests.ps1'     = 51.3
-        'DocsSyncCheck.Tests.ps1'         = 38.6
-        'RootInstallerWarehouse.Tests.ps1'= 26.6
-        'ReleaseCiWatch.Tests.ps1'        = 12.9
-    }
-    $files = @($files | Sort-Object `
-        @{ Expression = { if ($costHint.ContainsKey($_.Name)) { $costHint[$_.Name] } else { [double]::MaxValue } }; Descending = $true }, `
-        @{ Expression = { $_.Name }; Ascending = $true })
+    # LONGEST-FIRST by $costHint, names breaking ties: a long file launched last runs alone at the
+    # tail while the other lanes idle. That is how UpdateDelivery.Tests.ps1, priced at a stale 83.7 s,
+    # started near last and set the CI makespan (B-510).
+    $files = @($files | Sort-Object $byCost)
     $outerLanes = [math]::Max(2, [math]::Min(4, [int]([Environment]::ProcessorCount / 3)))
     $innerLanes = [math]::Max(2, [int]([Environment]::ProcessorCount / $outerLanes))
     $jobs = @()

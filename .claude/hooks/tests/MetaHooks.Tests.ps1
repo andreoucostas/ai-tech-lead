@@ -206,6 +206,43 @@ exit (Write-TestSummary 'skip-only fixture')
         Assert ([Text.Encoding]::UTF8.GetString($a) -ceq "Probe.Tests.ps1`t3`nTOTAL`t3`n") 'manifest format/content differs from its canonical form'
     }
 
+    # CI runs the suite as -ShardCount bins, one job each (B-510): a file in no bin runs nowhere.
+    $shardRoot = Join-Path $tmp 'shards'
+    New-Item -ItemType Directory -Path $shardRoot -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Invoke-HookTests.ps1') -Destination $shardRoot
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot '_HookHarness.ps1') -Destination $shardRoot
+    $shardNames = @('Alpha.Tests.ps1', 'Beta.Tests.ps1', 'Gamma.Tests.ps1', 'UpdateDelivery.Tests.ps1', 'ValidateDist.Tests.ps1')
+    foreach ($name in $shardNames) { [IO.File]::WriteAllText((Join-Path $shardRoot $name), "exit 0`n", (New-Object Text.UTF8Encoding($true))) }
+    function Invoke-ShardFixture {
+        param([string[]]$ShardArgs)
+        $savedErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $shardRoot 'Invoke-HookTests.ps1') -FixtureDiscovery @ShardArgs 2>&1
+            [pscustomobject]@{ Exit = [int]$LASTEXITCODE; Out = (@($out) -join "`n") }
+        } finally { $ErrorActionPreference = $savedErrorActionPreference }
+    }
+
+    It 'the runner puts every discovered file in exactly one of its shards' {
+        $ran = @()
+        foreach ($i in 1..3) {
+            $r = Invoke-ShardFixture @('-ShardCount', '3', '-ShardIndex', "$i")
+            Assert ($r.Exit -eq 0) "shard $i of 3 exited $($r.Exit): $($r.Out)"
+            $names = @([regex]::Matches($r.Out, '(?m)^RESULT (\S+) 0\r?$') | ForEach-Object { $_.Groups[1].Value })
+            Assert ($names.Count -gt 0) "shard $i of 3 ran no file: $($r.Out)"
+            $ran += $names
+        }
+        Assert ((@($ran | Sort-Object) -join ',') -ceq ($shardNames -join ',')) "the shards ran [$(@($ran | Sort-Object) -join ', ')], not each discovered file once"
+    }
+
+    It 'the runner refuses a shard outside 1..ShardCount and a shard combined with -File' {
+        foreach ($shardArgs in @(@('-ShardCount', '3', '-ShardIndex', '4'), @('-ShardCount', '3', '-ShardIndex', '0'), @('-ShardCount', '0'), @('-ShardCount', '2', '-File', 'Alpha.Tests.ps1'))) {
+            $r = Invoke-ShardFixture $shardArgs
+            Assert ($r.Exit -eq 2) "$($shardArgs -join ' ') exited $($r.Exit), not the usage refusal: $($r.Out)"
+            Assert ($r.Out -match 'Invalid shard') "$($shardArgs -join ' ') was not refused as an invalid shard: $($r.Out)"
+        }
+    }
+
     # --- maintainer Claude Code wiring (B-241) ---------------------------------------------------
     It 'settings.json: hook -File targets resolve, plansDirectory exists, auto-memory is boolean false, deny rules present and none inert' {
         $json = Get-Content -Raw (Join-Path $repoRoot '.claude/settings.json')

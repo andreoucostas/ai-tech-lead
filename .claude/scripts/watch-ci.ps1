@@ -40,13 +40,15 @@ param(
     # Every job in .github/workflows/ci.yml. A workflow-level `success` does not prove each leg
     # ran -- watching only the aggregate is how a silently-skipped leg would look green.
     # The `*-hooks (<dist>)` entries are the per-dist shipped hook suites, split onto their own
-    # runners at B-113. All four expanded execution contexts are listed individually and NOT collapsed
+    # runners at B-113; the `windows-meta (<n>)` entries are the meta suite's shards (B-510). All
+    # seven expanded execution contexts are listed individually and NOT collapsed
     # to a prefix match. The downstream parity decision is separately required: a workflow could
     # otherwise look green after that decision was removed or conditionally skipped.
     # GitHub names a matrix job "<job> (<value>)" -- if that naming ever changes, this list must
     # follow, and it failing loudly is the intended direction.
     [string[]]$ExpectedJobs = @(
         'windows',
+        'windows-meta (1)', 'windows-meta (2)', 'windows-meta (3)',
         'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
         'windows-case-parity'
     )

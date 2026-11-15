@@ -66,16 +66,43 @@ jobs:
             & $hostPath -NoProfile -File scripts/validate-dist.ps1 $dist
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-      - name: Meta-hook test suite under the asserted host
+
+  # The meta suite in three bins of about equal measured cost (B-510): run in one job it took 18 to 35
+  # minutes. windows-case-parity checks that the bins together ran every meta test file once.
+  windows-meta:
+    name: windows-meta (${{ matrix.shard }})
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Assert direct PowerShell 7 host
         run: |
           $hostPath = (Get-Process -Id $PID).Path
-          & $hostPath -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1 -CaseCountPath "${{ runner.temp }}/windows-case-counts.txt"
+          $hostLeaf = [IO.Path]::GetFileName($hostPath)
+          if ($PSVersionTable.PSEdition -ne 'Core' -or
+              $PSVersionTable.PSVersion.Major -lt 7 -or
+              $hostLeaf -notmatch '^pwsh(?:\.exe)?$') {
+            throw "Expected direct PowerShell 7 (pwsh); observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
+          }
+      - name: Meta-hook test suite (shard ${{ matrix.shard }} of 3) under the asserted host
+        run: |
+          $hostPath = (Get-Process -Id $PID).Path
+          & $hostPath -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1 -ShardCount 3 -ShardIndex ${{ matrix.shard }} -CaseCountPath "${{ runner.temp }}/windows-meta-${{ matrix.shard }}-case-counts.txt"
           exit $LASTEXITCODE
-      - name: Publish PS7 semantic case cardinality
+      - name: Publish PS7 semantic case cardinality (meta shard ${{ matrix.shard }})
         uses: actions/upload-artifact@v4
         with:
-          name: b219-case-counts-windows
-          path: ${{ runner.temp }}/windows-case-counts.txt
+          name: b219-case-counts-windows-meta-${{ matrix.shard }}
+          path: ${{ runner.temp }}/windows-meta-${{ matrix.shard }}-case-counts.txt
           if-no-files-found: error
           retention-days: 1
 
@@ -118,7 +145,7 @@ jobs:
 
   windows-case-parity:
     name: windows-case-parity
-    needs: [windows, windows-hooks]
+    needs: [windows, windows-meta, windows-hooks]
     if: ${{ always() }}
     runs-on: windows-latest
     defaults:

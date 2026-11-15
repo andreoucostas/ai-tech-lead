@@ -199,8 +199,8 @@ Candidate: extract the pure planning functions with unit cases first; record ins
 ### B-510 · CI takes about 32 minutes a push, 88% of the watcher's 2,400 s, and its timing lines break their own format
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** M · **Invariants:** #3
-**Status:** Open; maintainer-code review and its attack 2026-11-14 (gh run data). The `windows` job's meta step is about 95% of it; `UpdateDelivery.Tests.ps1` (654 to 1,215 s) starts 30th of 34 because `Invoke-HookTests.ps1:241` still prices it at 83.7 s; CI printed `TIMING UpdateDelivery.Tests.ps1 1,013.3` against the `\d+\.\d` grammar; the last reorder's model was wrong (`:221-233`).
-Target (maintainer, 2026-11-14; WSD-125): 15 minutes a push, then 10. Candidate: invariant-culture TIMING lines; order by file size, measured over three or more runs per host; then UpdateDelivery in its own job per host with a check that the shards cover the 33-file manifest (the case-count check cannot see a dropped case), changing `watch-ci.ps1`, `assert-ci-case-parity.ps1` and `ReleaseDistGateTiming.Tests.ps1` with it. Guarded.
+**Status:** Landed 2026-11-15, awaiting the measured run; delete on a pushed run under 15 minutes. Target (maintainer, 2026-11-14; WSD-125): 15 minutes a push, then 10. Eight green runs: the `windows` job's meta step 1,073 to 2,078 s; `UpdateDelivery.Tests.ps1` 917 to 1,304 s, launched near last at a stale 83.7 s price, and 1,038 s alone locally, so its own job could not meet 15.
+Done: invariant `TIMING` lines; costs are CI medians; the meta suite runs as three `windows-meta` jobs of about 831 measured seconds each, `UpdateDelivery` split in two at its cost midpoint, and parity fails a meta file no shard ran. Expected about 13 minutes, the unchanged `windows-hooks` jobs (up to 774 s) now the floor; 10 needs those sharded too.
 ### B-511 · Delete maintainer code that no longer earns its place: the post-release eval prompt, the local gate time budget, finished eval studies
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** S · **Invariants:** none

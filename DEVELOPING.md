@@ -350,9 +350,11 @@ every scenario once and commits the rows itself; the per-release check above tag
 **CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every PR and on
 every push to `master` except one touching only top-level `meta/*.md` records or `.claude/plans/**`
 (`meta/eval-results.md` and `meta/review-ledger.md` still run it); `push-and-check.ps1` skips its watch for those.
-The required execution topology is four PowerShell 7 Windows contexts: `windows` and three
-`windows-hooks` matrix contexts. One additional required Windows job, `windows-case-parity`, checks
-that each of the four published a well-formed, non-zero semantic case count. Fidelity is not a CI step.
+The required execution topology is seven PowerShell 7 Windows contexts: `windows` (compose, freshness,
+footprint, validate), three `windows-meta` shards of the meta suite (`Invoke-HookTests.ps1 -ShardCount 3
+-ShardIndex <n>`) and three `windows-hooks` matrix contexts. One additional required Windows job,
+`windows-case-parity`, checks that each of the six test contexts published a well-formed, non-zero semantic
+case count and that the meta shards together ran every meta test file once. Fidelity is not a CI step.
 
 Manual one-off (debugging a single hook) — pipe a fixture straight in:
 

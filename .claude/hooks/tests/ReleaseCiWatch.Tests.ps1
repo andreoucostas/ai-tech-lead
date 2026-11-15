@@ -210,9 +210,10 @@ $probes = @{
 
 try {
     # ---- the exit contract ----------------------------------------------------------------------
-    It 'the default contract names all four execution contexts plus the case-count decision exactly' {
+    It 'the default contract names all seven execution contexts plus the case-count decision exactly' {
         $expected = @(
             'windows',
+            'windows-meta (1)', 'windows-meta (2)', 'windows-meta (3)',
             'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
             'windows-case-parity'
         )
