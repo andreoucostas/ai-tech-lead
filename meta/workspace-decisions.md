@@ -4770,15 +4770,15 @@ read as covering B-515's. (8) WSD-124 (3)'s test covers a possible secret leak t
 ## WSD-126: after the 2026-11-14 decision audit, releases stay weekly, WSD-117 and WSD-120 stand, B-416 is time-boxed, amendments are recorded (2026-11-14)
 
 **Context.** The 2026-11-14 decision audit (B-513) found WSD-116 contradicting AGENTS.md's release cadence, three decisions the maintainer had not read, WSD-043
-amended without a record, and stale premises. **Decision (maintainer, in chat with the coordinator 2026-11-14).** (1) Releases are "Roughly weekly": AGENTS.md
-"Ship" stands and supersedes WSD-116's "Releases follow as soon as work lands". (2) WSD-117 and WSD-120 are ratified as written; WSD-121 is not (WSD-127).
-(3) B-416 is time-boxed: re-decide it on 2026-12-12 if no consumer team has started. (4) AGENTS.md: check decisions' **Reopen** triggers when eval or field evidence
-is recorded; one cost-benefit line when a change ships unmeasured; one removal candidate per re-rank. (5) Recorded: WSD-043's overwrite and settings refresh have four
-carve-outs: a deleted `docs-sync-check.yml` stays deleted (field report #13); an update carries the team's own settings keys (B-486), `env` variables and hook entries
-(B-507); a brownfield install stops for a team's tracked file on a framework-owned path (WSD-123). WSD-012's ~6-marker cap, a migration rule of thumb, is retired
-(B-512). B-157: `scripts/build.ps1`'s pins replace the retired Bash oracle, so an ownership-policy edit is made in `install.ps1` and the composer together. WSD-105's
-"no run shows captured knowledge changing an outcome" was contradicted on 2026-10-01 by B-325's A2 arm (a record alone: MISLEADING 0/6 against 6/6 in A3 and A4); its decision
-stands, as pre-registered Rule T did not fire (WSD-107). **Reopen** (1) on harm from a ready fix held for the batch; (3) on 2026-12-12; (4) on paperwork that changes nothing.
+amended without a record, and stale premises. **Decision (maintainer, in chat with the coordinator, 2026-11-14 and 2026-11-15).** (1) Releases are "Roughly weekly":
+AGENTS.md "Ship" supersedes WSD-116's "Releases follow as soon as work lands"; a fix for one of the four harms still releases when ready (WSD-106). (2) WSD-117 and
+WSD-120 are ratified as written; WSD-121 is not (WSD-127). (3) B-416 is time-boxed: re-decide it on 2026-12-12 if no consumer team has started. (4) AGENTS.md gains
+two clauses, check the **Reopen** triggers of the decisions indexed on recorded evidence's subject and one cost-benefit line when a change ships unmeasured, the
+cut-one rule waived for them ("Keep all, record waiver"); a third, one removal candidate per re-rank, approved 2026-11-14, was dropped 2026-11-15 ("Drop the rule"). (5) Recorded:
+WSD-043's overwrite and settings refresh have three carve-outs (a deleted `docs-sync-check.yml` stays deleted, field report #13; an update carries the team's settings
+keys, B-486, and `env` variables and hook entries, B-507), and WSD-123 amends its "brownfield behavior is unchanged". WSD-012's ~6-marker cap is retired (B-512).
+B-157: `build.ps1`'s pins replace the retired Bash oracle, so a policy edit goes in `install.ps1` and the composer together. B-325's A2 arm (a record alone: MISLEADING
+0/6 against 6/6 in A3 and A4) contradicts WSD-105's premise; its decision stands, Rule T not firing (WSD-107). **Reopen** (1) if a fix held for the batch harms a consumer.
 
 ## WSD-127: a write-side skill for warehouse reporting views and stored procedures, measured on a fixture before it ships; supersedes WSD-121 (2026-11-14)
 

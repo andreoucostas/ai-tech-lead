@@ -103,9 +103,9 @@ characters; everything else goes in the body.
 
 - `meta/BACKLOG.md`: open work only, each entry a heading, its filed-against line, its priority
   line and at most three lines. A finished entry is deleted and leaves one line in
-  `meta/BACKLOG-DONE.md`. Each re-rank of the pick-up order names one removal candidate.
-- `meta/workspace-decisions.md`: a decision you would otherwise re-litigate, at most ten lines, indexed by one
-  line in `meta/decisions-index.md`. When you record eval or field evidence, check which decisions' **Reopen** triggers it meets.
+  `meta/BACKLOG-DONE.md`.
+- `meta/workspace-decisions.md`: a decision you would otherwise re-litigate, at most ten lines, indexed by one line in
+  `meta/decisions-index.md`. When recording eval or field evidence, check the **Reopen** triggers of the decisions indexed on its subject.
 - Archives — older entries of those files, `meta/review-ledger.md`, `.claude/plans/`: read an entry
   only when a task names it; never required reading.
 

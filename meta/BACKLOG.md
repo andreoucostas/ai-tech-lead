@@ -11,7 +11,7 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124, WSD-125): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work ranked after B-506 and B-507 (now ranks 2, 3, 8 and 9), eight findings shut, and the release review's B-521 and B-522; B-509 and B-498 done the same day, B-507 and B-513 on 2026-11-15, B-466 moved after B-515 (maintainer, in chat), and B-523 filed after B-466 (WSD-127); earlier ranking history is in `git log -p meta/BACKLOG.md`
+## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124, WSD-125): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work ranked after B-506 and B-507 (now ranks 2, 3, 8 and 9), eight findings shut, and the release review's B-521 and B-522; B-509 and B-498 done the same day, B-507 and B-513 on 2026-11-15, B-466 moved after B-515 (maintainer, in chat), and B-523 filed and placed after B-466 by the coordinator (the maintainer set no rank); earlier ranking history is in `git log -p meta/BACKLOG.md`
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -19,7 +19,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 2 | B-514 | Maintainer priority: nothing yet shows an auto-created skill being used (0 of 4 follow-ups called one); the measurement the rest of the skills work hangs on; no fixed spend stop (maintainer) |
 | 3 | B-515 | Maintainer priority: 3 of 6 measured drafts missed a step their own instances contain; guarded |
 | 4 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; pre-registered, its 60 USD stop approved by the maintainer 2026-11-11; runner work and three generations before any run; after the skills measurements (maintainer, 2026-11-14) |
-| 5 | B-523 | Maintainer direction 2026-11-14 (WSD-127): a write-side skill for warehouse reporting views and procedures, measured on a fixture before it ships; guarded |
+| 5 | B-523 | Maintainer direction 2026-11-14 for a write-side skill for warehouse reporting views and procedures, measured on a fixture before it ships; the maintainer set no rank, the coordinator placed it after B-466; guarded |
 | 6 | B-510 | CI is at 88% of the watcher's 2,400 s and growing; past it every push and release reads CANT-VERIFY; guarded |
 | 7 | B-521 | Release review: several escaped defects were visible only in a live agent run after the tag; guarded |
 | 8 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review; after B-514; guarded |
@@ -248,7 +248,7 @@ Also: `enforcement-surfaces.md`'s "Status notes" and Copilot-harness bullet stil
 ### B-519 · Trim the always-loaded rules file only where a measurement can go red
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1 #7
-**Status:** Open; architecture review 2026-11-14, narrowed by its attack. The carrier is 15.6 KB on every turn; B-411 showed 5.8 KB could go with every measured behaviour holding, but its cells cover about 3 of the file's 38 directives and WSD-107 measured one added sentence doing harm. The ownership sentence stays (WSD-071); the rule numbers are cited across `src/`, so before any cut renumbers rules, replace rule numbers with named anchors, as B-142 suggested (2026-11-14 decision audit).
+**Status:** Open; architecture review 2026-11-14, narrowed by its attack. The carrier is 15.6 KB on every turn; B-411 showed 5.8 KB could go with every measured behaviour holding, but its cells cover about 3 of the file's 38 directives and WSD-107 measured one added sentence doing harm. The ownership sentence stays (WSD-071); the rule numbers are cited across `src/`, so before any cut renumbers rules, replace rule numbers with named anchors, which B-142 proposed before it closed as a deliberate non-action on 2026-08-19 (2026-11-14 decision audit).
 Candidate: cut or shorten only text a discriminating cell covers, one group per measurement; B-356's bullet is decided by its own measurement. Ordinary by path; every cut measured.
 ### B-520 · Smaller leftovers of the 2026-11-14 reviews
 **Filed against:** v0.98.6 (2026-11-14)
