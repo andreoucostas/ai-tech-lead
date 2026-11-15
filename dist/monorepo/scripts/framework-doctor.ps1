@@ -548,8 +548,26 @@ if ($copilotInvalid) {
     Row MISSING 'Hook files' 'registration points at a missing file; hooks are silently dead. Fix: re-run the installer. Missing: <no registrations>'
 } else { Row OK 'Hook files' ("{0} registered files are present." -f $hookPaths.Count) }
 
+# A Bash registration is retired only if a framework release shipped it: the Bash commands of install.ps1's
+# SjEverShippedCommands, which FrameworkDoctor.Tests.ps1 pins this list to. An update carries a team's own hook entries,
+# and a Bash one of those is not the framework's. The first word is compared by its name, so a shipped command pointed at
+# a bash.exe by path, which still runs the retired script, is the framework's too.
+$retiredBashCommands = New-Object 'System.Collections.Generic.HashSet[string]' ([string[]]@(
+    'bash -c ''FILE="$CLAUDE_FILE_PATH"; if [[ "$FILE" == *.cs ]] && [[ "$FILE" != *.spec.cs ]] && [[ "$FILE" != *Test*.cs ]]; then PROJ=$(find . -name "*.csproj" -path "$(dirname "$FILE")/*" | head -1); if [ -n "$PROJ" ]; then dotnet build "$PROJ" --no-restore --verbosity quiet 2>&1 | tail -20; else dotnet build --no-restore --verbosity quiet 2>&1 | tail -20; fi; fi''',
+    'bash -c ''FILE="$CLAUDE_FILE_PATH"; if [[ "$FILE" == *Test*.cs ]] || [[ "$FILE" == *Tests*.cs ]]; then PROJ=$(find . -name "*.csproj" -path "$(dirname "$FILE")/*" | head -1); if [ -n "$PROJ" ]; then dotnet test "$PROJ" --no-build --verbosity quiet 2>&1 | tail -20; fi; fi''',
+    'bash -c ''if [[ "$CLAUDE_FILE_PATH" == *.cs ]]; then dotnet build --no-restore --verbosity quiet 2>&1 | tail -20; fi''',
+    'bash -c ''if [[ "$CLAUDE_FILE_PATH" == *.cs ]]; then dotnet build --verbosity quiet 2>&1 | tail -20; fi''',
+    'bash -c ''if [[ "$CLAUDE_FILE_PATH" == *.ts && "$CLAUDE_FILE_PATH" == */src/* ]]; then npx tsc --noEmit --incremental --tsBuildInfoFile .claude-tsbuildinfo 2>&1 | tail -20; fi''',
+    'bash -c ''if [[ "$CLAUDE_FILE_PATH" == *.ts ]]; then npx tsc --noEmit 2>&1 | tail -20; fi''',
+    'bash .claude/hooks/audit-trail.sh',
+    'bash .claude/hooks/boy-scout-check.sh',
+    'bash .claude/hooks/guard.sh',
+    'bash .claude/hooks/post-write.sh',
+    'bash .claude/hooks/route-prompt.sh',
+    'bash .claude/hooks/session-start.sh'
+), [StringComparer]::Ordinal)
 $retiredBashRegistration = @($commands | Where-Object {
-    $_ -match '(?i)(?:^|[\s"''])bash(?:\.exe)?(?=$|[\s"''])|\.sh(?=$|[\s"''])'
+    $retiredBashCommands.Contains(($_ -replace '(?i)^(?:"(?:[^"]*[\\/])?bash(?:\.exe)?"|(?:[^\s"]*[\\/])?bash(?:\.exe)?)(?=\s)', 'bash'))
 }).Count -gt 0
 if (-not $retiredBashRegistration -and $copilotValid) {
     $retiredBashRegistration = $rawCopilot -match '(?i)"bash"\s*:|\.sh(?:\s|"|$)'

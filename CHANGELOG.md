@@ -47,6 +47,14 @@ kept-backup test is now a fixed point: the current file is release-plus-team whe
 the lists to the history (`git log --raw` over those paths) with hostile calibrations. Red first: `UpdateDelivery`'s B-507
 cases, the attack's among them, and three B-486 cases whose expectations encoded the drop.
 
+`framework-doctor` stops failing on a team's own Bash hook (ordinary, `src/core/scripts/`; B-507's adjacent finding, fixed at the
+maintainer's request in chat on 2026-11-15). Since B-507 an update carries the team's hook entries, and the doctor read every
+command under `hooks` that ran `bash` or a `.sh` file as "a retired Bash hook registration remains": `[MISSING] Hook registration
+topology`, exit 1, on every run. The row now fails only for one of the 12 Bash commands a release shipped, the Bash subset of
+`$script:SjEverShippedCommands` (a test pins the two lists), its first word compared by name so a shipped command pointed at a
+`bash.exe` by path still fails; the Copilot-side check of `.github/hooks/hooks.json`, which an update overwrites, is unchanged. Red first:
+`FrameworkDoctor`'s team-owned Bash case.
+
 On Copilot, `session-start` carries the rails of the session's first prompt (guarded, `hooks/**`; B-476, filed 2026-11-03, re-measured
 by B-348's VS Code runs). VS Code's Copilot harness keeps one `userPromptSubmitted` output per prompt and gives a chat's first prompt's
 slot to its own `<workspace_info>`, so `route-prompt`'s rails reached 0 of 9 first prompts on VS Code 1.146.0 (6 of 6 second ones).

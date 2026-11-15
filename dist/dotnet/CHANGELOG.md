@@ -32,6 +32,10 @@
   `.claude/.state/settings.json.pre-update` and your last commit. Make such a change as an entry with a command of your
   own. Nothing to do; if an earlier update dropped yours, copy them back once from
   `git show <commit before that update>:.claude/settings.json`.
+- **`framework-doctor` no longer fails on a Bash hook of your own.** An update now keeps your own hook entries, and the
+  doctor read any of them that runs Bash (`bash .claude/hooks/lint.sh`, say) as a retired framework hook: it reported
+  `[MISSING] Hook registration topology` and exited 1 on every run. The row now fails only for a Bash command that an
+  earlier release of the framework registered, which an update replaces with this release's. Nothing to do.
 - **On Copilot, the workflow rules now reach a session's first prompt.** In VS Code's Copilot harness the rules `route-prompt`
   adds to each prompt (the routed workflow's steps, the plan gate and the security-pass reminder) reached every prompt except a
   session's first, whose hook output VS Code replaces with its own workspace listing. `session-start` now reads that first prompt,
