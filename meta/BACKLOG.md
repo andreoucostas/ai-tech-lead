@@ -125,7 +125,8 @@ Replace each save with the commit id and `git show`/`git checkout` lines, keepin
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** M · **Invariants:** none
 **Status:** Open; decided 2026-11-14 (maintainer, in chat: "all" six revisions of the release review; WSD-125), amending WSD-016's "evals are not a release gate" for these releases. Of the escaped-defect notes since v0.86.7 (11 to 15, by the search used), several were visible only in a live agent run after the tag: v0.97.0 and v0.97.1 "passed InstallerContract while agents committed less; only the live eval after each tag showed it".
-Candidate: before the tag, `release.ps1` runs two or three standing scenarios against the candidate when the release touches the rules carrier, a command, a skill, a hook or the installer's handoff text (about 1 to 3 USD), and stops on a regression against the previous release's rows; `-NoEvals` and AGENTS.md "Ship" change with it, and B-511's deletion of the post-release prompt comes first. Guarded.
+Candidate: before the tag, `release.ps1` runs two or three standing scenarios against the candidate when the release touches the rules carrier, a command, a skill, a hook or the installer's handoff text (about 1 to 3 USD), and stops on a regression against the previous release's rows; `-NoEvals` and AGENTS.md "Ship" change with it; B-511's deletion of the post-release prompt landed first (50c820c2). Guarded.
+Design 2026-11-15: `.claude/plans/2026-11-15-b521-pre-tag-evals.md`; three open questions are with the maintainer before stage 3 builds it.
 ### B-522 · Print four numbers at each release: test-run minutes, days from first change to tag, escaped defects, releases a week
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** S · **Invariants:** none
