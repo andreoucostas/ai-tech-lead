@@ -8062,3 +8062,143 @@ check stopped on none, and on none of the clean rows.
 - **Not shown:** Copilot CLI and VS Code, which both field teams use; other models, tasks and stacks; a real legacy warehouse; a
   stale, silent or wrong record (all three overlays were CORRECT); how repeatable generation is (one per size); interactive use, where
   the framework's scripts prompt instead of being refused; whether the lead grows with size on a task the bare agent passes at S.
+
+## 2026-11-15 14:20:33 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS skill-use-event-approved** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3348; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=12 overlayPatch=approved.patch@20965ff442af op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report-approved** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=2440; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=10 overlayPatch=approved.patch@20965ff442af op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+
+
+## 2026-11-15 14:22:58 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS skill-use-event** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3399; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=12 arm=framework outcome=True op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=12 tokensOut=2348; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=9 arm=framework outcome=True op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+- **SUMMARY skill-use-event** arm=framework outcome=1/1 excluded=0 executor=copilot
+- **SUMMARY skill-use-report** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-11-15 14:25:48 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS skill-use-event-noskill** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=12 tokensOut=3922; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=17 overlayPatch=no-skill.patch@398aa2ea91f7 op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report-noskill** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=12 tokensOut=2438; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=9 overlayPatch=no-skill.patch@398aa2ea91f7 op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+
+
+## 2026-11-15 14:27:01 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: none · scratch: retained=True
+
+- **PASS skill-use-event** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=9595 tokensOut=4622; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=29 arm=none outcome=True op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=6435 tokensOut=3224; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=31 arm=none outcome=True op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+- **SUMMARY skill-use-event** arm=none outcome=1/1 excluded=0 executor=copilot
+- **SUMMARY skill-use-report** arm=none outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-11-15 14:28:24 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: none · scratch: retained=True
+
+- **PASS skill-use-event** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=20 tokensOut=3836; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=15 arm=none outcome=True op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=9322 tokensOut=3225; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=36 arm=none outcome=True op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+- **SUMMARY skill-use-event** arm=none outcome=1/1 excluded=0 executor=copilot
+- **SUMMARY skill-use-report** arm=none outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-11-15 14:30:58 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS skill-use-event** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=16 tokensOut=3663; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=13 arm=framework outcome=True op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=2358; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=9 arm=framework outcome=True op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+- **SUMMARY skill-use-event** arm=framework outcome=1/1 excluded=0 executor=copilot
+- **SUMMARY skill-use-report** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-11-15 14:33:36 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS skill-use-event-noskill** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3501; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=12 overlayPatch=no-skill.patch@398aa2ea91f7 op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report-noskill** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=12 tokensOut=2344; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=9 overlayPatch=no-skill.patch@398aa2ea91f7 op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+
+
+## 2026-11-15 14:36:18 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS skill-use-event-approved** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=16 tokensOut=3415; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=12 overlayPatch=approved.patch@20965ff442af op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report-approved** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=2502; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=10 overlayPatch=approved.patch@20965ff442af op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+
+
+## 2026-11-15 14:38:52 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS skill-use-event-noskill** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=16 tokensOut=3666; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=13 overlayPatch=no-skill.patch@398aa2ea91f7 op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report-noskill** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=10 tokensOut=2383; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=9 overlayPatch=no-skill.patch@398aa2ea91f7 op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+
+
+## 2026-11-15 14:41:15 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS skill-use-event-approved** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3403; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=12 overlayPatch=approved.patch@20965ff442af op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report-approved** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=2427; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=10 overlayPatch=approved.patch@20965ff442af op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+
+
+## 2026-11-15 14:43:41 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **PASS skill-use-event** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3372; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=12 arm=framework outcome=True op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=2392; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=9 arm=framework outcome=True op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+- **SUMMARY skill-use-event** arm=framework outcome=1/1 excluded=0 executor=copilot
+- **SUMMARY skill-use-report** arm=framework outcome=1/1 excluded=0 executor=copilot
+
+
+## 2026-11-15 14:45:04 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bb2f34edda9a18d14d257d5aebb4bf4f0ed0a977)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: none · scratch: retained=True
+
+- **PASS skill-use-event** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=6888 tokensOut=4191; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=29 arm=none outcome=True op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=n/a turns=1
+- **PASS skill-use-report** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=8889 tokensOut=3828; executor=copilot copilotCli=1.0.98 hooksLoaded=False premiumRequests=1 toolCalls=41 arm=none outcome=True op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=n/a turns=1
+- **SUMMARY skill-use-event** arm=none outcome=1/1 excluded=0 executor=copilot
+- **SUMMARY skill-use-report** arm=none outcome=1/1 excluded=0 executor=copilot
+
+
+## B-514 results, Copilot leg — 2026-11-15 (hand-written; the 24 Copilot rows above, `executor=copilot`, are the counted runs)
+
+As amended for Copilot at bb2f34ed (`.claude/plans/2026-11-15-b514-skill-use.md`, "Copilot leg amendment"), before any Copilot run; the
+runs used that commit's runner. Copilot CLI 1.0.98 and `claude-sonnet-5.5` (`session.start`) in all 24 runs; the runner's launch
+(`--allow-all-tools`, no credit cap); the same overlay, patches, prompts, grader and order as the Claude Code leg, on the same
+`dist/dotnet`. 24 of 24 valid, none repeated, no `session.error`, no quota or rate-limit refusal; 12 invocations, 14:18 to 14:45.
+Pre-flight, no model call: `copilot skill list --json` listed both drafts as project skills in the draft and approved trees, neither in
+the no-skill or bare ones.
+
+| arm | valid | Skill call to the draft | complete | P1 registry / version / DI | P2 catalog / flag / GRANT | AI credits | premium requests | mean wall |
+|---|---|---|---|---|---|---|---|---|
+| approved | 6 | 6 | 6 | 3 / 3 / 3 | 3 / 3 / 3 | 96.20 | 6 | 69 s |
+| draft | 6 | 6 | 6 | 3 / 3 / 3 | 3 / 3 / 3 | 91.51 | 6 | 68 s |
+| no-skill (Conventions) | 6 | 0 | 6 | 3 / 3 / 3 | 3 / 3 / 3 | 92.96 | 6 | 73 s |
+| bare (no framework) | 6 | 0 | 6 | 3 / 3 / 3 | 3 / 3 / 3 | 64.80 | 6 | 35 s |
+
+- Readings, as fixed, Copilot alone: DRAFT-USED and APPROVED-USED (6 of 6 each); NO-DIFFERENCE at CEILING; no CONVENTIONS-HELP. The same
+  readings as the Claude Code leg; the hosts are reported side by side, not pooled. In all 12 skill-arm runs Copilot's `skill` tool was
+  its first tool call, and the session logged a matching `skill.invoked`. Every run wrote all three steps, the test row, and the raise (P1)
+  or the view file (P2); all 24 targets build (`dotnet build Orders.sln` exit 0, by hand). No run opened a draft's files with any other tool.
+- Cost: 345.47 AI credits (7.70 to 20.72 a run, from each run's `--usage-output-file` `totalNanoAiu`) and 24 premium requests (1 a run,
+  `totalPremiumRequestCost`); no USD (`costUsd=n/a`). Wall time is `session.start` to `session.shutdown` in each `events.jsonl` (29 to
+  92 s); API time 16 to 26 s a run. The framework arms' wall time includes their hooks (`hooksLoaded=True` in all 18; False in bare).
+- Hand check: the grader's `skill` matched each run's `skill` tool calls and `skill.invoked` events in 24 of 24; no row was not complete.
+- Decision rule, applied to Copilot: as on Claude Code. B-516: an unreviewed draft is followed as often as an approved skill on both hosts.
+  B-515: NO-DIFFERENCE at CEILING, so this fixture cannot show a step check's value. B-356: no measured value on this shape; the decoy
+  decides alone. B-514 is answered on both hosts.
+- Reopen triggers of the decisions indexed on skills and `/bootstrap` (WSD-020, WSD-072, WSD-074, WSD-100, WSD-109, WSD-111, WSD-113,
+  WSD-115, WSD-118, WSD-124): none met, as for the Claude Code leg; WSD-072's premise that Copilot reads `.claude/skills` held here.
+- Not shown: VS Code's Copilot; other CLI versions or models; drafts Copilot itself wrote (its `/bootstrap` writes Conventions lines); a
+  draft that misses a step; a fixture whose code hides a step; interactive use.
