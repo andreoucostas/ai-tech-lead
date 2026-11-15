@@ -1,0 +1,71 @@
+diff --git a/.claude/skills/add-integration-event/SKILL.md b/.claude/skills/add-integration-event/SKILL.md
+index 9ad2b9a..f1f039d 100644
+--- a/.claude/skills/add-integration-event/SKILL.md
++++ b/.claude/skills/add-integration-event/SKILL.md
+@@ -1,7 +1,7 @@
+ ---
+ name: add-integration-event
+ description: >
+-  DRAFT, pending PR review: add a new versioned integration event to the Orders service
++  add a new versioned integration event to the Orders service
+   (event record, handler, EventRegistry entry, JSON schema, DI registration, test). Use when adding
+   or changing an event such as order-placed, order-shipped or invoice-issued, or bumping an event version.
+ origin: discovered
+@@ -9,7 +9,7 @@ origin: discovered
+ 
+ # Add an integration event (draft, pending review)
+ 
+-**Status:** candidate skill, draft pending PR review; not team-approved policy. Derived from the three current
++Derived from the three current
+ first-party instances (`order-placed`, `order-shipped`, `invoice-issued`). It is a lead, not authority:
+ `AGENTS.md > Conventions` wins on any conflict.
+ 
+@@ -41,6 +41,3 @@ first-party instances (`order-placed`, `order-shipped`, `invoice-issued`). It is
+ 
+ **Semantic refresh trigger:** reread `OutboxDispatcher.cs`, `EventRegistry.cs` and `Program.cs` when any changes. Result at creation: sources reread, steps match.
+ 
+-## After review
+-
+-Add to `AGENTS.md > Common Tasks`: `` `add-integration-event` — add a versioned integration event (record, schema, handler, registry, DI, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph).
+diff --git a/.claude/skills/add-report-export/SKILL.md b/.claude/skills/add-report-export/SKILL.md
+index 4a72895..1d2edb0 100644
+--- a/.claude/skills/add-report-export/SKILL.md
++++ b/.claude/skills/add-report-export/SKILL.md
+@@ -1,7 +1,7 @@
+ ---
+ name: add-report-export
+ description: >
+-  DRAFT, pending PR review: add a CSV report export backed by a SQL view in the Orders service
++  add a CSV report export backed by a SQL view in the Orders service
+   (IReportExport class, ReportCatalog entry, rpt view, ReportReader grant, feature flag, test). Use when
+   adding a new report such as monthly-sales, open-orders or overdue-invoices.
+ origin: discovered
+@@ -9,7 +9,7 @@ origin: discovered
+ 
+ # Add a report export (draft, pending review)
+ 
+-**Status:** candidate skill, draft pending PR review; not team-approved policy. Derived from the three current
++Derived from the three current
+ first-party instances (`monthly-sales`, `open-orders`, `overdue-invoices`). It is a lead, not authority:
+ `AGENTS.md > Conventions` wins on any conflict.
+ 
+@@ -37,6 +37,3 @@ first-party instances (`monthly-sales`, `open-orders`, `overdue-invoices`). It i
+ 
+ **Semantic refresh trigger:** reread `ReportCatalog.cs`, `SqlReportReader.cs` and `reporting-grants.sql` when any changes. Result at creation: sources reread, steps match.
+ 
+-## After review
+-
+-Add to `AGENTS.md > Common Tasks`: `` `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph).
+diff --git a/AGENTS.md b/AGENTS.md
+index fb16551..c9a2f5f 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -99,6 +99,8 @@ evidence satisfies the gate:
+ - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review
+ - `enforce-architecture` — wire the deterministic DIP/layering CI gate (NetArchTest)
+ - `enforce-standards` — make warnings, skipped tests, and analyzer findings build-breaking (`TreatWarningsAsErrors` + `.editorconfig` severities)
++- `add-integration-event` — add a versioned integration event (record, schema, handler, registry, DI, test)
++- `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test)
+ 
+ `/bootstrap` drafts a project skill under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, for an operation this repository repeats at least three times; add its line here once the team approves the draft.
+ 

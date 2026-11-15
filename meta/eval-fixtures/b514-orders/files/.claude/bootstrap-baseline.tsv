@@ -1,0 +1,182 @@
+# ai-tech-lead rebootstrap baseline. Written by scripts/bootstrap-baseline.ps1 -Mode Record; do not edit by hand.
+schema	2
+recorded	2026-11-15
+profile	dotnet
+line	0012ec0cc0c9
+line	00b558a82d2e
+line	03e943dd9210
+line	0414fc3f32cc
+line	07999391dda3
+line	09742a8f9b2d
+line	0f0cbea24538
+line	0f835bbfe6ee
+line	15cfe3875386
+line	1a6045758ddd
+line	1f2ee7c2e67b
+line	20e0d037b6f0
+line	22b661b78fbf
+line	22f8196f59f5
+line	25a20b1e013d
+line	28834087d244
+line	3259964d9f34
+line	327910687c42
+line	3285d3834c17
+line	3705388227c1
+line	421524045a9d
+line	44a64f2d40b5
+line	44f872326c43
+line	4636c4fdefd6
+line	4923f61a439a
+line	4a83d7114783
+line	4aee9830c965
+line	4b73eb9e9b05
+line	502fe1b1f630
+line	510c0e3ca6b5
+line	512d68551733
+line	5382d7a059a4
+line	58f6be154d40
+line	5e5907e61ca3
+line	60c0ee992f38
+line	60ffb69dc641
+line	62b67e1f685b
+line	65d91626f0c2
+line	6a8c5ed94005
+line	6d222b99f091
+line	6d506adea9f9
+line	7095c13d88eb
+line	71ab5bb65349
+line	767a1ed3662f
+line	7bd42b77dc37
+line	886e18f2f08a
+line	8892c869582c
+line	9435ac9839ac
+line	94bc863e797c
+line	94c2728ad54a
+line	9d400c4c5c50
+line	9eb8f185a970
+line	a25b4f227992
+line	a3c7ab675f8b
+line	a51c47363a7c
+line	abd710233c08
+line	aeb4b926b026
+line	b13b4103d22d
+line	b3f99450b749
+line	b4a313791c1f
+line	c2a98d8a775b
+line	c619266a2660
+line	cb3f91d54eee
+line	cb9213101ddb
+line	cbd85c7ea471
+line	cdacf8ead1a5
+line	d1382837631b
+line	d1849d10f418
+line	d46264113d45
+line	d462827c3335
+line	d6d3d003b110
+line	dd1e5cd161c7
+line	e0f8e071c23b
+line	e18992ce9cc5
+line	e1b0ff757c1d
+line	e580ce34717e
+line	ea12bbb19fb1
+line	ea93526738cc
+line	f14a9c88adb7
+line	f1b901847390
+line	f1f6a343c027
+line	f3b69f522397
+line	f4a1ddfd8688
+line	f553ce8672a8
+line	fd8b3b637d9f
+area	.	2ec564a115f460f2
+area	.claude/skills/add-integration-event	859c029da4d9ef3d
+area	.claude/skills/add-report-export	2115a5f62272f1c6
+area	config	94872fde0b39244a
+area	contracts/events	4c8f55eed8f17726
+area	db/security	ccb6cd092b4170c0
+area	db/views	6bfe207fe8c60d86
+area	src/Orders.Api	bc5a398e7b01960f
+area	src/Orders.Api/Controllers	bfc4881443baf2b5
+area	src/Orders.Application	57f1d7f76540679d
+area	src/Orders.Application/Contracts	585a5a477188bb16
+area	src/Orders.Application/EventHandlers	ae8649158c084cf5
+area	src/Orders.Application/Jobs	b939174b88d9f065
+area	src/Orders.Application/Orders	96c71c6cf80145f1
+area	src/Orders.Application/Services	51778cf0ce02ac14
+area	src/Orders.Domain	eab0af9107ba2705
+area	src/Orders.Domain/Entities	cd2a52cc18540cbf
+area	src/Orders.Domain/Events	24fbe649376c2b1f
+area	src/Orders.Infrastructure	ecd44002f69acf87
+area	src/Orders.Infrastructure/Messaging	81ff41ed61dc1992
+area	src/Orders.Infrastructure/Persistence	fe666f0a85545d7c
+area	src/Orders.Reporting	48529aabc80a039a
+area	src/Orders.Reporting/Exports	0c9d0b72e3aca17a
+area	tests/Orders.Tests	ae8508eab3e7c790
+workspace	dotnet	Orders.sln	7ac15a8ff98216c6cb6b87ebdea34ef5eb4ad15c
+project	dotnet	src/Orders.Api/Orders.Api.csproj
+project	dotnet	src/Orders.Application/Orders.Application.csproj
+project	dotnet	src/Orders.Domain/Orders.Domain.csproj
+project	dotnet	src/Orders.Infrastructure/Orders.Infrastructure.csproj
+project	dotnet	src/Orders.Reporting/Orders.Reporting.csproj
+project	dotnet	tests/Orders.Tests/Orders.Tests.csproj
+hazard	src/Orders.Api/Controllers/CheckoutController.cs	79a635029f9f6ec9bfb49542ec4f3df94a16a61f
+hazard	src/Orders.Api/Controllers/ReportsController.cs	1a79ccee0a9ba36914b701c6c51d41204c8eadf3
+hazard	src/Orders.Api/Program.cs	780e229d68a9cbd9dac389ffbd6a623fcbab2a3f
+hazard	src/Orders.Infrastructure/Messaging/InMemoryOutbox.cs	b2f0b88b6c260e410a16359c1caffd45e245731c
+hazard	src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs	75b8e1c9fc4134182c4b41dad4197badc79d2a49
+file	config/feature-flags.json	f980ad4db36a7f7c2d0ff602bc0f5c384fa2c6e3
+file	db/security/reporting-grants.sql	ead5130daf648e960c355736d4efcac4cef8da46
+file	src/Orders.Api/Controllers/CheckoutController.cs	79a635029f9f6ec9bfb49542ec4f3df94a16a61f
+file	src/Orders.Api/Controllers/CustomersController.cs	c7b839b996432b54850d11c6486c9d9d8b46a321
+file	src/Orders.Api/Controllers/InvoicesController.cs	1b29b8b9083e33148a69109b6bca3db38ae8df3e
+file	src/Orders.Api/Controllers/OrdersController.cs	50fdee39ce171b1be1ed354df56c3962aa91acf7
+file	src/Orders.Api/Controllers/ProductsController.cs	26c42a5455fa863734f81a019f10eafe80653fa0
+file	src/Orders.Api/Controllers/ReportsController.cs	1a79ccee0a9ba36914b701c6c51d41204c8eadf3
+file	src/Orders.Api/Orders.Api.csproj	94fa7ebbc0da4810d3a984099f7a289e020d887e
+file	src/Orders.Api/Program.cs	780e229d68a9cbd9dac389ffbd6a623fcbab2a3f
+file	src/Orders.Application/Orders.Application.csproj	b5d5c5586aee4d4019b425b34f134746466dfa15
+file	src/Orders.Application/Services/PricingClient.cs	ab62756045ac42295bf0f212850d7ff138b50f4e
+file	src/Orders.Application/Services/ShippingClient.cs	8c08f335280258c5cdb5116a6f38e61498b8fefe
+file	src/Orders.Application/Services/TaxClient.cs	e5a72bf7aed5e863cd6966d922584695bb1b85f0
+file	src/Orders.Domain/Events/EventVersionAttribute.cs	7e6416337f994480228069bc289951c997a01b90
+file	src/Orders.Domain/Events/InvoiceIssuedEvent.cs	5d1be61b5ba70541583760815c3b485468d478e9
+file	src/Orders.Domain/Events/OrderPlacedEvent.cs	cc826a43da7e158540aa53ace550304c6df18055
+file	src/Orders.Domain/Events/OrderShippedEvent.cs	5fbbcc29ac434430e6206284b95977528df346f6
+file	src/Orders.Domain/Orders.Domain.csproj	bfa77a1116215ad2f90d990da1d5f2c903aa263b
+file	src/Orders.Infrastructure/Messaging/EventRegistry.cs	e729b2f8bbdb6f1d3b0abc774617c02f01b21959
+file	src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs	75b8e1c9fc4134182c4b41dad4197badc79d2a49
+file	src/Orders.Infrastructure/Messaging/ServiceBusPublisher.cs	2bdeacb71171e980b87e370ad6e5ea805cf38649
+file	src/Orders.Infrastructure/Orders.Infrastructure.csproj	f4713e61879007db15aa181d9dc3f73f40f43f6f
+file	src/Orders.Infrastructure/Persistence/OrdersDbContext.cs	2fc375e6403d6cacda80a2eeabe71cbaaf77766d
+file	src/Orders.Reporting/IReportReader.cs	350932d627cb3fb8f31abffc576302f9be4dfe2b
+file	src/Orders.Reporting/Orders.Reporting.csproj	33a71b6dce903c0932ee985b87a26233a512ccb9
+file	src/Orders.Reporting/ReportCatalog.cs	7b7294df655dc8dd38b502fcc93e8094056a2c04
+file	tests/Orders.Tests/EventRegistryTests.cs	5ae734c32a796d01509f58b099746c0af4f84a72
+file	tests/Orders.Tests/Orders.Tests.csproj	99746f074746c7d34c541c8a35a58370df49b245
+file	tests/Orders.Tests/ReportCatalogTests.cs	0e06fe334d134760b9d2738b8199c124ec911ad5
+claim	c2ed1699776e	dotnet	A1	scoped	**Architecture**: layered Api/Application/Domain/Infrastructure plus Reporting; dependencies point inward (`Orders.Domain` references nothing). Evidence: `src/*/*.csproj`.
+evidence	c2ed1699776e	src/*/*.csproj
+claim	bcfc1a7dd305	dotnet	A2	scoped	**Data access**: EF Core SqlServer 8.0.10, one `IEntityTypeConfiguration` per entity loaded by `ApplyConfigurationsFromAssembly` (`OrdersDbContext.cs`); no repository layer, controllers use `OrdersDbContext` directly (`OrdersController.cs`). Reporting reads SQL views with raw `SqlClient` as the `ReportReader` login (`SqlReportReader.cs`).
+evidence	bcfc1a7dd305	src/Orders.Infrastructure/Persistence/OrdersDbContext.cs
+evidence	bcfc1a7dd305	src/Orders.Api/Controllers/OrdersController.cs
+evidence	bcfc1a7dd305	src/Orders.Reporting/IReportReader.cs
+claim	313faeac4043	dotnet	A4	scoped	**API**: attribute-routed `[ApiController]`s on `api/<plural>`; domain entities are bound as request bodies, no DTOs or validation in use.
+evidence	313faeac4043	src/Orders.Api/Controllers/*.cs
+claim	19d1cdc1286c	dotnet	A3	scoped	**DI**: manual registration, all in `Program.cs`; every event handler must be registered there because `OutboxDispatcher` resolves it with `GetRequiredService` (`OutboxDispatcher.cs:38`).
+evidence	19d1cdc1286c	src/Orders.Api/Program.cs
+evidence	19d1cdc1286c	src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs
+claim	683fbace587a	dotnet	A8	scoped	**Events**: each event record carries `[EventVersion(n)]`, a schema `contracts/events/<topic>.v<n>.schema.json` whose `v<n>` must equal it, and an `EventRegistry` entry; a mismatch routes to `<topic>.dlq` (`OutboxDispatcher.cs:29-35`).
+evidence	683fbace587a	src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs
+evidence	683fbace587a	src/Orders.Infrastructure/Messaging/EventRegistry.cs
+evidence	683fbace587a	src/Orders.Domain/Events/*.cs
+claim	9cbfaca832d8	dotnet	A8	scoped	**Reports**: an export is visible only if `config/feature-flags.json` has `reports.export.<key>: true` (`ReportCatalog.cs:12-13`); each view needs a `GRANT SELECT … TO ReportReader` in `db/security/reporting-grants.sql`.
+evidence	9cbfaca832d8	src/Orders.Reporting/ReportCatalog.cs
+evidence	9cbfaca832d8	config/feature-flags.json
+evidence	9cbfaca832d8	db/security/reporting-grants.sql
+claim	0ca4e9324496	dotnet	A6	scoped	**Async/null**: `Nullable` and `ImplicitUsings` enabled; `CancellationToken` used in reporting and messaging, not in controllers; `Services/*Client` use sync-over-async `.Result`.
+evidence	0ca4e9324496	src/*/*.csproj
+evidence	0ca4e9324496	src/Orders.Application/Services/*.cs
+claim	ef60fc7854f2	dotnet	A6	scoped	**Logging**: `ILogger<T>` structured templates (`ServiceBusPublisher.cs`); no tracing or metrics export.
+evidence	ef60fc7854f2	src/Orders.Infrastructure/Messaging/ServiceBusPublisher.cs
+claim	756deb65d4df	dotnet	A5	scoped	**Testing**: xunit 2.9.2 on Microsoft.NET.Test.Sdk (`tests/Orders.Tests`); no mocking or assertion library; two theory tests guarding registration lists (`EventRegistryTests.cs`, `ReportCatalogTests.cs`); no integration tests. Target shape: behaviour tests through `OutboxDispatcher` and the controllers.
+evidence	756deb65d4df	tests/Orders.Tests/*.cs
+evidence	756deb65d4df	tests/Orders.Tests/Orders.Tests.csproj
