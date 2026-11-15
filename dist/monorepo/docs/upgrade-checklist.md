@@ -77,10 +77,10 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    it carried: keys, variables by name, hook entries by event and matcher. For a value both define
    (`defaultShell`, an `env` variable the release sets) the release's wins, and a `NOTICE` names
    each one of yours it replaced, an `env` variable by name and never by value. A hook entry that
-   runs a command the framework shipped is the framework's, and the release's entries replace it; a
-   `NOTICE` names its event and matcher when it runs one of this release's commands but differs from
-   this release's entry or sits elsewhere (an edit or copy of yours, say), so make a change of your
-   own as an entry of your own. A key
+   runs a command the framework shipped is the framework's, and the release's entries replace it with
+   your edits in it: one that no release shipped as it is there (a raised timeout, a copy under
+   another matcher) is replaced or removed all the same, and a `NOTICE` names it by event and matcher.
+   Make a change of your own as an entry with a command of your own. A key
    or `env` variable an earlier release set and this one no longer does is dropped, not carried, and
    named. If the installer could not
    read your copy as strict JSON (a comment, a trailing comma, an empty file, two keys that differ

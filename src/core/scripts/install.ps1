@@ -2536,6 +2536,95 @@ $script:SjEverShippedCommands = @(
     'pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1'
 )
 $script:SjFrameworkCommands = New-Object 'System.Collections.Generic.HashSet[string]' ([string[]]$script:SjEverShippedCommands, [StringComparer]::Ordinal)
+# Every hook entry any of those files registered, exactly as it shipped: the digest of its event, its group's matcher and the
+# entry itself (Get-SjEntryDigest). A team's entry that runs one of the commands above but matches none of these is an edit or a
+# copy of the team's: the update still replaces it with this release's registration, and names it. Pinned like the lists above.
+$script:SjEverShippedEntries = @(
+    '015c0cd6cff83a64a98cd9c367a10f302b569e01e7b29cfa148fd0bd1701ac8c',
+    '039d63f87e6805325477e90d066571898c50396bb66f1c3c10ed8add7ad7ec8c',
+    '03e79dae48af5cc18f6a316195ac3429cea0d4d687011961f0d30c5b0195e57e',
+    '0601e36bce2cefa4b8b061f3f973832cea3eeb4fe680bc1cbe6464cdc137d85a',
+    '0663eae743f71d7725d612bff45d4ee955389e97e1d183c9ae70452cf5a33e97',
+    '0a208326c8dd403573580f5d7788870503ff07d714ce68cf514c84d2c0feaf21',
+    '0ba8268c9d0dc8aad3a77afcec6e7cd2e7e952f4de5256eb6913ce690fb91861',
+    '1534038b2f7839cc1bc53cec39851d5687d49ee6f6d44e8cddcc985d00da8120',
+    '170f7dbf0a3e6a3c62f2a936847f88d6a12a7864fa0efe2570f631bb5b374e3c',
+    '18fbc7f76473fa1af1cc74ddfb072e94048d5e2b933b0f9c62b8344863be2227',
+    '1b137f2a15576ab8988b3c1ec627eb314c3ccef5919ded2f83dae45c89bbc11f',
+    '1bdea78a129dd654729eede276aba124c54c304380434050232b7c08f8eb3363',
+    '211ebcf5587aefac3b212d73d2973f4690184036da3259acf30982e0858c98e9',
+    '23d75527dcae5acbea378ff95f0d717de1f7ab188151bf2abc86617a4a1a319b',
+    '243c72b530e804bb4340a1cafdac1d9ef5eecdb77923fb857a51ffefcc486748',
+    '2535bcddf7dd2793cf8d6568e579ff9971de93c5facd7aac835b67bfe39e44ef',
+    '2539549deca8e711f6974535210291b08d235ab09756ece25bd32f5abfcfb6ef',
+    '2ce1f84d6cfba322134e45e5d5f7e49083218b012ae5d9e7925f30589dddff91',
+    '2f5543a82c344d589305603df9b4b91ad1b1b5b17e8f161a861381f6aa11ee60',
+    '3329de4b31996c5b7843daafa7f31c1758f70a2568bb3751ee63b9c9b3d9c6dc',
+    '342a5bbc46bd53636b11bcd29d60ef17735ac4d19cc7d6ef03ea8ab531e9b493',
+    '3744c7329ba1289a182e67f0c528baca17cde488eeeda3b55f223bca1104a24a',
+    '380db4b2867ed1069d1fbb8d2e136114ece6f6993c835dc6f18b8a3a486245af',
+    '43abd104e85ecb65cd5e4781cbe0e9c5b220a06a03615656423c5be080c85a65',
+    '482bb125ee2f200c183ea605bd3da26cf98b480face5080f20992628a80f63c3',
+    '4c1437e3a1fe2fe8867e71edc670b401dd482ba5ff8b7aaffa99bf6a2ae72054',
+    '4ce002526c0cd923d19d69cc6cea145e3f17383a464c11b88a9e9fd5228f3138',
+    '4de9014f87473795722f5469f9229a599b6332770a2fe600c07ed625fd890695',
+    '4eb7363c257d02393f827235172e1ff885093beacdd6ac2dd1a39032a1bf7116',
+    '50fee2cf6eca911444989fe110c981febf5bb12f051e0d5f6730be6bff9563c5',
+    '52277ce3808f1b9028960e18c809d4c74c87684592332d3fee940abaf64506d0',
+    '59d84e979d9ccb4eba8157ff340afc1b5876f01b4c015ab3d084d3ec7ae33a8e',
+    '59e4a024146e063e884968797392b7f1dd79a53e7a9f0dfc1f3ddf2abb9ad2e8',
+    '5cc61885ab21586f9fef792543c2c137b15f90bfb77b51dfe7d8cfed495db67f',
+    '5f08c29e2de3b0d98e176b16fb003ad6fc5dbba06d85d82a2bd5448f1656e208',
+    '62498ef8d0313edf765ba5bdd1d7d777ae859b68230637a29debce745bd27b72',
+    '6a60bd9318d353f1f051646d09f9ae13ff7f54ced2b430fc060318dfb9aa84ad',
+    '6be8787ea6b64de8616d751e17aa9ab3b40a747f0eed7f77263be7586b70afca',
+    '6f011c1c61ce6ebca64184c27c620ad6fe1d5fa0c416ca16eae332da657d91a2',
+    '723deed29e4f030ece8736a07ebb190730919f4a56c6aff5fa3ba5dbc7d43506',
+    '76c7a353e8020ce87b707d521efbbc6e5f3ae6b4897fc7cae7bfff81ef315895',
+    '7ec0b8e2c002f1def0b04be6092b045e65fccad382192bd3bc1f23cbd1b09d0a',
+    '7ee4d66374eee414ea457aaea1c91dccd3eb28bd011701f38d142e8c0b07772f',
+    '8075d60d682f0881ed7f82c696f1b6f2c3ad3ba0bc227126481db43df27a5f2e',
+    '83a732f8fce9a547c8ae158e80e76a280a9c74670dcc1e884e3f59758a2fddcc',
+    '87350cd41b80466e043b1c5f360b19181c63ce4468635544c44ba6987798b97b',
+    '87bd394b9e2fdbc3e04a99c08fed3d75d0bc8fbd34537821ed756a6390c55743',
+    '8ba49f5a16681c080c826b1e160412237f13544d113d6b7f6f829432766832a2',
+    '8feaf984a10b10d8f2c6174085020123e89dd419cfa288ce429a0525064881fd',
+    '9345371f482bf40092f731ec7069ff39d03d81cf072d8c3ed526d1082476dd4f',
+    '9506aaf82896232bccb89bcb80c3311353f1252b1e0783f194d940e3d634d916',
+    '9640037ce619828db52ec0f81e9d5c068dca238e75c13659ae32e2c0da0ff5a2',
+    '979496a61500962eddec87f732dd26884bdb0ec2762eebae9b66ed9a7c35fb9c',
+    '9e6f1e6294f0cc1b732f1c96d4b38e7032ba0d873a84ae3f281fbb0230a90e43',
+    'a4de4811057375a0ede6e6be7386c8ccb1382c6cdacf198a98ca533ce1c2dfb3',
+    'a6ee8b6ec96671f9a79c5894c97d7fce8145a63c32a772030c8f71aa0cb6dd34',
+    'a7dfcda81066e4e25e9109949cec51c2e4be9e63cee472767380f46bc072292f',
+    'ace829e76898b43d8a882b1716f2eb1050600ba6551bb0279a6f7feb7ebc35b7',
+    'aef36139c1b89db8c809a151831c53be84a65eb9939e5d991f3608b9f8d66bd5',
+    'b62804297c817d744627fef3f6feae2e9ab9c61d20a8a4478227a1217f3c4e97',
+    'baca2a81708b4f5a3cf72e2d1ce58a4780889607f92db4c269eec3d38525c828',
+    'c894fc7b333aba7de5ffd7361b530358b340907ce99c42770fdf4ba0372ee2f7',
+    'ccd3a86c63200f8d579a4ee76e344613afd6d31977a568b39417723263332dd0',
+    'da738c73baa4269de4fbce26ec10284325c7e4f2bd866387db7c68575cf542a0',
+    'db85e4472dd92728911518ab835740f062af3576461218f30d20b521750c3650',
+    'e50fc1923e058c2185da8e2e5f804450fcf5024d08636680f4bfbd971e9c7fea',
+    'e72d90c2273fd6fc346a07ee829b73c75e4eb2519f3718afbff42eecf48edcc5',
+    'e750e3c5c778ffeb22f314023837a782a4ae2382bdc0dea2f59b69b8570b0ba2',
+    'ec580999072717743ba6a843ff606b86af9b54df4f25e0fccc0cacf3dc3e2d7b',
+    'ecc16d3ef6cbb85e506bde6784bcfff0e3f225ab93a21311bc9504f025ccc3ff',
+    'f0f20b1f2c503666aaa7a06d8cce8abcec49286b0fe07c2e756539319471fbf7',
+    'f13d3d1dc92eb6a95f9ab7b54e27e357118f18ce8d332acd6b09edc4e168b88d',
+    'f42d08e4f31d001bec2152f82c39962200a4af3e6ace25a462edfd5743539d58',
+    'f6c48010f2403810e9d829c181d185f24b33d16d2f613024640261a0ec7d5e75',
+    'f7a57768b6ffa4976df1c95b73051813b0bcc0b4a237e6ef91adea6e566041b4',
+    'f925861a7a94f888bab5987b45e43e8a38c31c73f3c6b3b6c869272f002f9f74',
+    'fa15d70e5d70ba72f42fc4d8ba691495c5177a8dc632810f37fef592fdff54e4',
+    'fae0adee94a7a34fb24938ffbc47dac8f15f749b8fb1131cda86dd9e4723ae8b',
+    'fb98f0662f619b0160457a8028b3aed6a7f66e0d937f994764b7a11c33e01638',
+    'fbfb38091b8d1cff9e9ae16264c7bf2e8eb56e69991234dea8601bdcf3cb1ee5',
+    'fd849f1dabf4bbb64ccd82ac36f39303c58cfe81275cbeb5babf147a7c26665a',
+    'fe0064c7fdbfff10d023371ba013b56a764ee3e33006ed9942f3cea8f73a26cf',
+    'ffaf9b3c9bdc6db1deb8d73d0caddff9a932b77762e7e8f93cb1bd011d3d2837'
+)
+$script:SjShippedEntries = New-Object 'System.Collections.Generic.HashSet[string]' ([string[]]$script:SjEverShippedEntries, [StringComparer]::Ordinal)
 function Skip-SjSpace {
     $t = $script:SjText; $p = $script:SjPos; $n = $t.Length
     while ($p -lt $n) { $c = $t[$p]; if ($c -ceq ' ' -or $c -ceq "`n" -or $c -ceq "`r" -or $c -ceq "`t") { $p++ } else { break } }
@@ -2688,6 +2777,12 @@ function Get-SjCanonical {
     return [regex]::Replace($Raw, '("(?:[^"\\]|\\.)*")|[ \t\r\n]+', [Text.RegularExpressions.MatchEvaluator]{ param($m) $m.Groups[1].Value })
 }
 function Get-SjSpan { param([string]$Text, $Item) return $Text.Substring($Item.Start, $Item.End - $Item.Start) }
+# What SjEverShippedEntries holds for one hook entry: the SHA-256 of its event, its group's matcher (MatcherKey) and the entry,
+# whitespace removed, one per line.
+function Get-SjEntryDigest {
+    param([string]$Event, [string]$MatcherKey, [string]$Canonical)
+    return (Get-LfSha256 -Bytes ([Text.Encoding]::UTF8.GetBytes("$Event`n$MatcherKey`n$Canonical")))
+}
 # The members of the object, or the elements of the array, whose value starts at Start in Text, each with its position in Text;
 # $null when the value there is neither. Text has been read whole before, so this read does not fail on it.
 function Read-SjAt {
@@ -2846,37 +2941,26 @@ function Get-SjEnvLines {
     return (@($vars.Items | ForEach-Object { "$($_.KeyToken):$(Get-SjCanonical -Raw (Get-SjSpan -Text $Text -Item $_))" }) -join "`r")
 }
 # The team's hook entries beside the release's. An entry whose command one of the releases shipped (SjEverShippedCommands) is the
-# framework's and gives way to this release's set; every other entry is the team's and is carried, unchanged: into this release's
+# framework's and gives way to this release's set, named when no release shipped it as it is there (SjEverShippedEntries); every
+# other entry is the team's and is carried, unchanged: into this release's
 # group of the same event and matcher when there is one, else in the team's own group under that event. Inserts say what goes
 # where in the release's text, Expect the entry lines of the result (Get-SjHookLines). $null when the release's hooks cannot be
 # read so; Expect is $null when the team's cannot.
 function Get-SjHookCarry {
-    param([string]$TheirText, $TheirMember, [string]$ReleaseText, $ReleaseMember, [string]$Nl, [string]$About, [string]$CopyIn)
+    param([string]$TheirText, $TheirMember, [string]$ReleaseText, $ReleaseMember, [string]$Nl, [string]$About, [string]$CopyIn, [string]$Backup)
     $its = Read-SjHooks -Text $ReleaseText -Start $ReleaseMember.Start
     if ($null -eq $its) { return $null }
     $mine = Read-SjHooks -Text $TheirText -Start $TheirMember.Start
     if ($null -eq $mine) {
         return [pscustomobject]@{ Lines = @("NOTICE: ${About}: your 'hooks' is not laid out as Claude Code reads it (events, each an array of matcher groups holding their entries), so none of its entries were carried and it was replaced by this release's$CopyIn"); Total = 0; Inserts = @(); Expect = $null }
     }
-    $releaseCommands = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-    $releaseEntries = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-    # Each command of the release with the event and matcher it sits under.
-    $releaseAt = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-    foreach ($e in $its.Events) {
-        foreach ($g in $e.Groups) {
-            foreach ($entry in $g.Entries) {
-                [void]$releaseEntries.Add($entry.Canonical)
-                if ($null -ne $entry.Command) { [void]$releaseCommands.Add($entry.Command); [void]$releaseAt.Add("$($e.Name)`n$($g.MatcherKey)`n$($entry.Command)") }
-            }
-        }
-    }
     # What the team's file adds to each release group ("event/group") and event, and the events it adds.
     $toGroup = @{}; $toEvent = @{}
     $newEvents = New-Object System.Collections.Generic.List[object]
     $carried = New-Object System.Collections.Generic.List[object]
     $lines = New-Object System.Collections.Generic.List[string]
-    $differed = New-Object System.Collections.Generic.List[string]
-    $moved = New-Object System.Collections.Generic.List[string]
+    # The framework's entries this update replaces that are not as any release shipped them there: the team's edits and copies.
+    $edited = New-Object System.Collections.Generic.List[object]
     $count = 0
     foreach ($te in $mine.Events) {
         $ri = -1; $twin = $null
@@ -2888,19 +2972,21 @@ function Get-SjHookCarry {
         $kept = New-Object System.Collections.Generic.List[object]
         $twinCount = 0
         foreach ($tg in $te.Groups) {
+            # Each framework entry is replaced; one that no release shipped as it is, under this event and matcher, is named.
+            $replaced = @(
+                if ($null -eq $tg.Inner) { if ($null -ne $tg.Own -and $script:SjFrameworkCommands.Contains($tg.Own)) { Get-SjCanonical -Raw (Get-SjSpan -Text $TheirText -Item $tg) } }
+                else { $tg.Entries | Where-Object { $null -ne $_.Command -and $script:SjFrameworkCommands.Contains($_.Command) } | ForEach-Object { $_.Canonical } })
+            $changed = @($replaced | Where-Object { -not $script:SjShippedEntries.Contains((Get-SjEntryDigest -Event $te.Name -MatcherKey $tg.MatcherKey -Canonical $_)) }).Count
+            if ($changed -gt 0) {
+                $seen = @($edited | Where-Object { $_.Label -ceq $tg.Label })
+                if ($seen.Count -gt 0) { $seen[0].N += $changed } else { $edited.Add([pscustomobject]@{ Label = $tg.Label; N = $changed }) }
+            }
             if ($null -eq $tg.Inner) {
                 # The earliest releases' layout: the group is one entry. A group holding nothing carries nothing.
                 if ($null -eq $tg.Own -or $script:SjFrameworkCommands.Contains($tg.Own)) { continue }
                 $keep = @(); $n = 1
             } else {
                 $keep = @($tg.Entries | Where-Object { $null -eq $_.Command -or -not $script:SjFrameworkCommands.Contains($_.Command) })
-                # An entry running one of this release's commands where the release does not put it, or not as the release
-                # writes it, is named: a team's copy or edit of it. An earlier release's entry gives way unnamed.
-                foreach ($entry in $tg.Entries) {
-                    if ($null -eq $entry.Command -or -not $releaseCommands.Contains($entry.Command)) { continue }
-                    if (-not $releaseAt.Contains("$($te.Name)`n$($tg.MatcherKey)`n$($entry.Command)")) { if ($moved -cnotcontains $tg.Label) { $moved.Add($tg.Label) } }
-                    elseif (-not $releaseEntries.Contains($entry.Canonical) -and $differed -cnotcontains $tg.Label) { $differed.Add($tg.Label) }
-                }
                 if ($keep.Count -eq 0) { continue }
                 $n = $keep.Count
             }
@@ -2943,11 +3029,9 @@ function Get-SjHookCarry {
             $newEvents.Add([pscustomobject]@{ Name = $te.Name; Text = $te.KeyToken + ': ' + [regex]::Replace($array, '\r?\n', $Nl); Lines = @($kept | ForEach-Object { $_.Lines }) })
         }
     }
-    foreach ($label in $differed) {
-        $lines.Add("NOTICE: ${About}: your hook entry under $label runs a command this release ships but differed from this release's entry, and was replaced by it$CopyIn")
-    }
-    foreach ($label in $moved) {
-        $lines.Add("NOTICE: ${About}: your hook entry under $label runs a command this release registers only under another event or matcher, and was dropped$CopyIn")
+    foreach ($e in $edited) {
+        $one = $e.N -eq 1
+        $lines.Add("NOTICE: ${About}: your $(if ($one) { 'hook entry' } else { "$($e.N) hook entries" }) under $($e.Label) $(if ($one) { 'runs a framework command but is' } else { 'run a framework command but are' }) not as any release shipped $(if ($one) { 'it' } else { 'them' }) there (an edit or a copy of yours), so this update replaced $(if ($one) { 'it' } else { 'them' }) with this release's registration or removed $(if ($one) { 'it' } else { 'them' }); your version is in $Backup and in your last commit, if you committed it.")
     }
     $inserts = New-Object System.Collections.Generic.List[object]
     $expect = New-Object System.Collections.Generic.List[string]
@@ -3037,7 +3121,7 @@ function Get-SettingsCarryPlan {
         if ((Get-SjCanonical -Raw $mine) -ceq (Get-SjCanonical -Raw $its) -or $m.Key -ceq '_comment') { continue }
         $plan = $null
         if ($m.Key -ceq 'env') { $plan = $envPlan = Get-SjEnvCarry -TheirText $theirs.Text -TheirMember $m -ReleaseText $release.Text -ReleaseMember $releaseByKey[$m.Key] -Nl $nl -About $about -CopyIn $copyIn }
-        elseif ($m.Key -ceq 'hooks') { $plan = $hookPlan = Get-SjHookCarry -TheirText $theirs.Text -TheirMember $m -ReleaseText $release.Text -ReleaseMember $releaseByKey[$m.Key] -Nl $nl -About $about -CopyIn $copyIn }
+        elseif ($m.Key -ceq 'hooks') { $plan = $hookPlan = Get-SjHookCarry -TheirText $theirs.Text -TheirMember $m -ReleaseText $release.Text -ReleaseMember $releaseByKey[$m.Key] -Nl $nl -About $about -CopyIn $copyIn -Backup $BackupRelative }
         if ($null -ne $plan) {
             foreach ($line in $plan.Lines) { $lines.Add($line) }
             foreach ($insert in $plan.Inserts) { $inserts.Add($insert) }

@@ -37,11 +37,15 @@ and a hook entry is the framework's only when its command is in `$script:SjEverS
 `settings.json` and `settings.windows.json` under `dist/`, `legacy/` and `src/` ever registered (5.1 and Bash ones included;
 `$script:SjEverShippedEnv` likewise); every other entry is carried under its event and matcher, into the release's group of
 that matcher or in the team's own. NOTICEs name carried variables and entries (event and matcher, never a command or value),
-replaced overrides, framework commands copied elsewhere and case twins; the "(hook entries of your own are not merged)"
-line goes, which also ends the false claim B-506's attack found for a file equal to a 5.1 variant. The 5.1 NOTICE counts
-framework commands only. The kept-backup test is now a fixed point: the current file is release-plus-team when the carry
-rewrites it to itself. A test pins both lists to the history (`git log --raw` over those paths) with a hostile calibration.
-Red first: `UpdateDelivery`'s six B-507 cases and three B-486 cases whose expectations encoded the drop.
+replaced overrides and case twins; the "(hook entries of your own are not merged)" line goes, which also ends the false claim
+B-506's attack found for a file equal to a 5.1 variant. A framework entry the team edited or copied elsewhere is still
+replaced, and named by event and matcher: it matches none of `$script:SjEverShippedEntries`, the 83 digests of every entry
+those files registered with its event and matcher. The step-4 attack found the first version silent here (a raised
+post-write timeout and a guard copy under `Bash`, both lost with no NOTICE, where afb10904 at least said `hooks` were
+replaced), because 0.99.0's commands match no earlier release's. The 5.1 NOTICE counts framework commands only. The
+kept-backup test is now a fixed point: the current file is release-plus-team when the carry rewrites it to itself. Tests pin
+the lists to the history (`git log --raw` over those paths) with hostile calibrations. Red first: `UpdateDelivery`'s B-507
+cases, the attack's among them, and three B-486 cases whose expectations encoded the drop.
 
 On Copilot, `session-start` carries the rails of the session's first prompt (guarded, `hooks/**`; B-476, filed 2026-11-03, re-measured
 by B-348's VS Code runs). VS Code's Copilot harness keeps one `userPromptSubmitted` output per prompt and gives a chat's first prompt's

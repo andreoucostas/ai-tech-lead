@@ -27,7 +27,10 @@
   `.claude/hooks/`. A `NOTICE` names what was carried: variables by name, never by value, and hook entries by event and
   matcher. The framework's own entries, from any earlier release, its Windows PowerShell 5.1 and Bash ones included, are
   replaced by this release's, and an `env` variable the release sets keeps the release's value, with a `NOTICE` naming
-  yours. Nothing to do; if an earlier update dropped yours, copy them back once from
+  yours. An edit of yours to one of the framework's entries (a raised timeout, say), or a copy of one under another
+  matcher, is replaced too, and a `NOTICE` names it by event and matcher; your version stays in
+  `.claude/.state/settings.json.pre-update` and your last commit. Make such a change as an entry with a command of your
+  own. Nothing to do; if an earlier update dropped yours, copy them back once from
   `git show <commit before that update>:.claude/settings.json`.
 - **On Copilot, the workflow rules now reach a session's first prompt.** In VS Code's Copilot harness the rules `route-prompt`
   adds to each prompt (the routed workflow's steps, the plan gate and the security-pass reminder) reached every prompt except a
