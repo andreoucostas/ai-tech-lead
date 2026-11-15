@@ -113,6 +113,72 @@
       "assertion": "angularUxMirror"
     },
     {
+      "id": "skill-use-event",
+      "measures": "B-514 (pre-registered in .claude/plans/2026-11-15-b514-skill-use.md): is the drafted project skill called with the Skill tool on the next task that matches it, and is every non-obvious step present (EventRegistry line, schema version equal to [EventVersion], concrete handler in DI)? Framework arm: the draft as /bootstrap left it (overlay meta/eval-fixtures/b514-orders); bare arm: fixture v2 alone. Arm-neutral: files and stream, not the final message.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "bareArm": true,
+      "budgetUsd": 3.0,
+      "prompt": "Publish an `order-cancelled` integration event when an order is cancelled: add a POST api/checkout/{orderId}/cancel action to CheckoutController that sets the order's status to \"Cancelled\" and raises the event with the order id and a cancellation reason. Follow this repository's conventions. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.",
+      "assertion": "skillUse"
+    },
+    {
+      "id": "skill-use-event-approved",
+      "measures": "B-514: skill-use-event with the drafts approved as their own After review paragraphs say (Common Tasks line added, draft wording deleted). Framework arm only.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "overlayPatch": "b514-orders/approved.patch",
+      "budgetUsd": 3.0,
+      "prompt": "Publish an `order-cancelled` integration event when an order is cancelled: add a POST api/checkout/{orderId}/cancel action to CheckoutController that sets the order's status to \"Cancelled\" and raises the event with the order id and a cancellation reason. Follow this repository's conventions. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.",
+      "assertion": "skillUse"
+    },
+    {
+      "id": "skill-use-event-noskill",
+      "measures": "B-514: skill-use-event with the drafts deleted and AGENTS.md as /bootstrap wrote it (Conventions only). Framework arm only.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "overlayPatch": "b514-orders/no-skill.patch",
+      "budgetUsd": 3.0,
+      "prompt": "Publish an `order-cancelled` integration event when an order is cancelled: add a POST api/checkout/{orderId}/cancel action to CheckoutController that sets the order's status to \"Cancelled\" and raises the event with the order id and a cancellation reason. Follow this repository's conventions. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.",
+      "assertion": "skillUse"
+    },
+    {
+      "id": "skill-use-report",
+      "measures": "B-514 (pre-registered in .claude/plans/2026-11-15-b514-skill-use.md): is the drafted project skill called with the Skill tool on the next task that matches it, and is every non-obvious step present (ReportCatalog entry, reports.export flag set true, GRANT SELECT to ReportReader)? Framework arm: the draft as /bootstrap left it (overlay meta/eval-fixtures/b514-orders); bare arm: fixture v2 alone. Arm-neutral: files and stream, not the final message.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "bareArm": true,
+      "budgetUsd": 3.0,
+      "prompt": "Add a cancelled-orders CSV report served at api/reports/cancelled-orders: one row per order whose status is \"Cancelled\", with the order id, customer id, placed date and total. Follow this repository's conventions. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.",
+      "assertion": "skillUse"
+    },
+    {
+      "id": "skill-use-report-approved",
+      "measures": "B-514: skill-use-report with the drafts approved as their own After review paragraphs say (Common Tasks line added, draft wording deleted). Framework arm only.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "overlayPatch": "b514-orders/approved.patch",
+      "budgetUsd": 3.0,
+      "prompt": "Add a cancelled-orders CSV report served at api/reports/cancelled-orders: one row per order whose status is \"Cancelled\", with the order id, customer id, placed date and total. Follow this repository's conventions. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.",
+      "assertion": "skillUse"
+    },
+    {
+      "id": "skill-use-report-noskill",
+      "measures": "B-514: skill-use-report with the drafts deleted and AGENTS.md as /bootstrap wrote it (Conventions only). Framework arm only.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "overlayPatch": "b514-orders/no-skill.patch",
+      "budgetUsd": 3.0,
+      "prompt": "Add a cancelled-orders CSV report served at api/reports/cancelled-orders: one row per order whose status is \"Cancelled\", with the order id, customer id, placed date and total. Follow this repository's conventions. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.",
+      "assertion": "skillUse"
+    },
+    {
       "id": "contract-restate",
       "measures": "B-406 S1: on the natural-language path (no slash command), whether the agent posts Done-when criteria with a boundary example before any write and stops for the go-ahead. Gates on CONTRACT: a Done-when or acceptance-criteria section of at least two list lines, one naming a boundary, in main-agent text before the first write, and no file written in the run. It shows the stop, not what follows a go-ahead (no second turn), and not the fix path, Copilot, VS Code, Angular or monorepo.",
       "fixture": "b406-orders",

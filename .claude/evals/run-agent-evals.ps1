@@ -30,6 +30,9 @@ param(
     # the unpatched framework. Framework arm only; the header, every row and the SUMMARY name it.
     # B-402: under -WarehouseMap generated|partial it lands after the bootstrap overlay instead.
     [Parameter(ParameterSetName = 'Live')][string]$TargetPatch,
+    # B-514: the Claude Code child runs in acceptEdits with these allowed-tool rules in place of --dangerously-skip-permissions,
+    # which this host's auto mode refuses (B-470). The header names the list by count and sha256 prefix.
+    [Parameter(ParameterSetName = 'Live')][string[]]$AllowedTools,
     [Parameter(ParameterSetName = 'Live')][ValidateRange(1, 20)][int]$Trials = 1,
     [Parameter(ParameterSetName = 'Live')][ValidateRange(30, 1800)][int]$TimeoutSeconds = 300,
     [Parameter(ParameterSetName = 'Live')][bool]$KeepScratch = $true,
@@ -60,12 +63,13 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','dotnet-notest','angular','angular-ux','b406-orders','b409-orders-ci','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','dotnet-notest','angular','angular-ux','b406-orders','b409-orders-ci','orders-v2','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
-    if ($Stack -in $contractFixtures) {
+    if ($Stack -in @($contractFixtures + 'orders-v2')) {
         # B-406 fixture v2: the frozen B-345 generator (it deletes and recreates $Path itself), then an Orders.sln.
         # The project GUIDs `dotnet sln add` writes are not deterministic, so two builds differ in Orders.sln only.
         # B-409: b409-orders-ci is the same plus .github/workflows/ci.yml in the baseline commit.
+        # B-514: orders-v2 is the same tree with no overlay of its own; a scenario's "overlay" names the one it gets.
         $generator = Join-Path $repo 'meta/eval-fixtures/b345-bootstrap-skills/generate.py'
         $generatorRefusal = Get-B406GeneratorRefusal $generator $Stack
         if ($generatorRefusal) { throw $generatorRefusal }
@@ -1099,12 +1103,155 @@ function Initialize-B406Overlay([string]$Path, [string]$Fixture, [string]$Fixtur
 
 # B-470: a scenario's "overlay" names a frozen /bootstrap overlay under meta/eval-fixtures/, as the warehouse and contract
 # overlays are, copied over the install and committed. Framework arm only: the bare arm installs nothing, so it gets none.
-function Initialize-GeneratedOverlay([string]$Path, [string]$Overlay, [string]$FixturesRoot = (Join-Path $repo 'meta/eval-fixtures')) {
+function Initialize-GeneratedOverlay([string]$Path, [string]$Overlay, [string]$FixturesRoot = (Join-Path $repo 'meta/eval-fixtures'), [string]$Patch) {
     $files = Join-Path $FixturesRoot "$Overlay/files"
     if (-not (Test-Path -LiteralPath $files -PathType Container)) { throw "${Overlay}: $files is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
     Copy-Item -Path (Join-Path $files '*') -Destination $Path -Recurse -Force
+    # B-514: a scenario's "overlayPatch" (an arm of one overlay, cut against it) lands on the copy before the one commit, under
+    # -TargetPatch's checks, so every arm of the overlay shows the same git log and a clean tree.
+    if ($Patch) { Invoke-TargetPatch $Path $Patch | Out-Null }
     git -C $Path add -A
     git -C $Path commit --quiet -m "$Overlay bootstrap overlay"
+}
+
+# B-514: the drafted project skill for an operation, read from the overlay: an `origin: discovered` SKILL.md whose text names the
+# operation's seam (EventRegistry for the integration event, ReportCatalog for the report export).
+function Get-SkillUseSlug([string]$FilesRoot, [ValidateSet('event','report')][string]$Operation) {
+    $seam = if ($Operation -eq 'event') { 'EventRegistry' } else { 'ReportCatalog' }
+    $skills = Join-Path $FilesRoot '.claude/skills'
+    if (-not (Test-Path -LiteralPath $skills -PathType Container)) { return @() }
+    $slugs = foreach ($skill in Get-ChildItem -LiteralPath $skills -Directory | Sort-Object Name) {
+        $file = Join-Path $skill.FullName 'SKILL.md'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
+        $text = [IO.File]::ReadAllText($file)
+        if ($text -match '(?m)^origin:\s*discovered\s*$' -and $text.Contains($seam)) { $skill.Name }
+    }
+    return @($slugs)
+}
+
+# B-514: C# or SQL with its comments removed, so a commented-out step is not a step.
+function Remove-SkillUseComments([string]$Text, [ValidateSet('cs','sql')][string]$Language) {
+    $marker = if ($Language -eq 'cs') { '//' } else { '--' }
+    $Text = [regex]::Replace($Text, '(?s)/\*.*?\*/', '')
+    return (@($Text -split '\r?\n' | ForEach-Object { $at = $_.IndexOf($marker); if ($at -ge 0) { $_.Substring(0, $at) } else { $_ } }) -join "`n")
+}
+
+# B-514 (.claude/plans/2026-11-15-b514-skill-use.md): arm-neutral. From the files the run left against its base commit and from the
+# stream: whether the operation's drafted skill was called (skill), and whether every non-obvious step is present (complete), a step
+# being one whose omission neither the build nor the existing tests catch. Nothing written, or a terminal result that is not
+# success, is not examined.
+function Get-SkillUseGrade([string]$Target, [int]$BeforeCommits, $Evidence, [ValidateSet('event','report')][string]$Operation, [string[]]$Slugs) {
+    $base = @(git -C $Target rev-list --reverse HEAD)[$BeforeCommits - 1]
+    $subtype = [string]$Evidence.Final.subtype
+    if ($Evidence.Final.is_error -or ($subtype -and $subtype -ne 'success')) { return [pscustomobject]@{ Grade = 'ERROR'; Detail = "op=$Operation NOT EXAMINED: terminal result $(if ($subtype) { $subtype } else { 'error' }) " } }
+    $written = @(
+        @(git -C $Target diff --name-only $base)
+        @(git -C $Target ls-files --others --exclude-standard)
+    ) | Where-Object { $_ -match '^(?:src|tests|contracts|db|config)/' -and $_ -notmatch '(?:^|/)(?:bin|obj|TestResults)/' } | Select-Object -Unique
+    if (-not $written) { return [pscustomobject]@{ Grade = 'ERROR'; Detail = "op=$Operation NOT EXAMINED: no write under src, tests, contracts, db or config " } }
+    $skillTools = @($Evidence.Tools | Where-Object { $_.Name -eq 'Skill' })
+    $skillNames = @($skillTools | ForEach-Object { [string]$_.Input.skill } | Where-Object { $_ } | Select-Object -Unique)
+    $skill = [bool]@($skillNames | Where-Object { $name = $_; @($Slugs | Where-Object { $name -eq $_ -or $name.EndsWith(":$_") }).Count } | Select-Object -First 1)
+    $skillRead = [bool]@($Evidence.Tools | Where-Object { $_.Name -eq 'Read' -and $(foreach ($slug in $Slugs) { if ((Get-ToolPath $_) -match "[\\/]\.claude[\\/]skills[\\/]$([regex]::Escape($slug))[\\/]SKILL\.md$") { $true } }) } | Select-Object -First 1)
+    $denied = @($Evidence.Tools | Where-Object { $Evidence.ToolResults.ContainsKey($_.Id) -and $Evidence.ToolResults[$_.Id].is_error -and (Get-ToolResultText $Evidence $_) -match "(?i)requested permissions|haven't granted|permission to use .* (?:was|has been) denied" }).Count
+    $use = "skill=$skill skillRead=$skillRead skillCalls=$($skillNames -join ',') denied=$denied"
+    $code = @{}
+    foreach ($file in @(Get-ChildItem -LiteralPath (Join-Path $Target 'src'), (Join-Path $Target 'tests') -Recurse -File -Filter '*.cs' -ErrorAction SilentlyContinue)) {
+        $relative = [IO.Path]::GetRelativePath($Target, $file.FullName).Replace('\', '/')
+        if ($relative -notmatch '(?:^|/)(?:bin|obj)/') { $code[$relative] = Remove-SkillUseComments ([IO.File]::ReadAllText($file.FullName)) 'cs' }
+    }
+    $src = @($code.Keys | Where-Object { $_ -like 'src/*' } | Sort-Object)
+    $tests = @($code.Keys | Where-Object { $_ -like 'tests/*' } | Sort-Object)
+    $tail = "durationMs=$(Get-B406Duration $Evidence) turns=$(@($Evidence.Results).Count)"
+    if ($Operation -eq 'event') {
+        $shipped = @('OrderPlacedEvent', 'OrderShippedEvent', 'InvoiceIssuedEvent')
+        $declared = foreach ($path in $src) {
+            foreach ($m in [regex]::Matches($code[$path], '(?s)((?:\[[^\]]*\]\s*)*)public\s+(?:(?:sealed|partial|readonly)\s+)*(?:record\s+(?:class\s+|struct\s+)?|class\s+)(\w+)[^{;]*?:[^{;]*?\bIIntegrationEvent\b')) {
+                $version = [regex]::Match($m.Groups[1].Value, 'EventVersion\s*\(\s*(\d+)\s*\)')
+                [pscustomobject]@{ Name = $m.Groups[2].Value; Version = if ($version.Success) { [int]$version.Groups[1].Value } else { $null } }
+            }
+        }
+        $registrations = foreach ($path in @($src | Where-Object { $code[$_] -match '\bclass\s+EventRegistry\b' })) {
+            foreach ($m in [regex]::Matches($code[$path], 'Register\s*<\s*([\w.]+)\s*,\s*([\w.]+)\s*>\s*\(\s*"([^"]*)"\s*,\s*"([^"]*)"\s*\)')) {
+                [pscustomobject]@{ Event = $m.Groups[1].Value.Split('.')[-1]; Handler = $m.Groups[2].Value.Split('.')[-1]; Schema = $m.Groups[4].Value }
+            }
+        }
+        $best = $null
+        foreach ($candidate in @($declared | Where-Object { $_.Name -notin $shipped })) {
+            $name = $candidate.Name
+            $registration = @($registrations | Where-Object { $_.Event -eq $name } | Select-Object -First 1)
+            $handler = if ($registration) { $registration[0].Handler } else {
+                $implementing = foreach ($path in $src) { foreach ($m in [regex]::Matches($code[$path], "(?:class|record)\s+(\w+)[^{;]*?IIntegrationEventHandler\s*<\s*(?:[\w.]+\.)?$name\s*>")) { $m.Groups[1].Value } }
+                [string](@($implementing) | Select-Object -First 1)
+            }
+            $version = $false
+            if ($null -ne $candidate.Version) {
+                if ($registration) {
+                    $schemaPath = $registration[0].Schema.Replace('\', '/') -replace '^\./', ''
+                    $schemaVersion = [regex]::Match($schemaPath, '\.v(\d+)\.schema\.json$')
+                    $version = $schemaVersion.Success -and [int]$schemaVersion.Groups[1].Value -eq $candidate.Version -and $schemaPath -in $written -and (Test-Path -LiteralPath (Join-Path $Target $schemaPath) -PathType Leaf)
+                } else {
+                    $version = [bool]@($written | Where-Object { $_ -match "^contracts/events/.+\.v$($candidate.Version)\.schema\.json$" -and (Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf) } | Select-Object -First 1)
+                }
+            }
+            $di = $false
+            if ($handler) {
+                $h = [regex]::Escape($handler)
+                $di = [bool]@($src | Where-Object { $code[$_] -match "\.(?:Try)?Add(?:Scoped|Transient|Singleton)\s*<\s*(?:[\w.]+\.)?$h\s*>\s*\(|\.(?:Try)?Add(?:Scoped|Transient|Singleton)\s*\(\s*typeof\s*\(\s*(?:[\w.]+\.)?$h\s*\)" } | Select-Object -First 1)
+            }
+            $testRow = [bool]@($tests | Where-Object { $code[$_] -match "typeof\s*\(\s*(?:[\w.]+\.)?$name\s*\)" } | Select-Object -First 1)
+            $raised = [bool]@($src | Where-Object { $code[$_] -match "\bnew\s+(?:[\w.]+\.)?$name\s*\(" } | Select-Object -First 1)
+            $steps = @([bool]$registration, $version, $di) | Where-Object { $_ }
+            $row = [pscustomobject]@{ Steps = @($steps).Count; Registry = [bool]$registration; Version = $version; Di = $di; Name = $name; Handler = $handler; Number = $candidate.Version; TestRow = $testRow; Raised = $raised }
+            if ($null -eq $best -or $row.Steps -gt $best.Steps) { $best = $row }
+        }
+        if ($null -eq $best) { return [pscustomobject]@{ Grade = 'GRADED'; Complete = $false; Detail = "op=event complete=False registry=False version=False di=False $use event=none handler=none version#=none testRow=False raised=False $tail" } }
+        $complete = $best.Registry -and $best.Version -and $best.Di
+        return [pscustomobject]@{ Grade = 'GRADED'; Complete = $complete; Detail = "op=event complete=$complete registry=$($best.Registry) version=$($best.Version) di=$($best.Di) $use event=$($best.Name) handler=$(if ($best.Handler) { $best.Handler } else { 'none' }) version#=$(if ($null -ne $best.Number) { $best.Number } else { 'none' }) testRow=$($best.TestRow) raised=$($best.Raised) $tail" }
+    }
+    $shipped = @('MonthlySalesExport', 'OpenOrdersExport', 'OverdueInvoicesExport')
+    $sql = @{}
+    foreach ($file in @(Get-ChildItem -LiteralPath (Join-Path $Target 'db') -Recurse -File -Filter '*.sql' -ErrorAction SilentlyContinue)) {
+        $sql[[IO.Path]::GetRelativePath($Target, $file.FullName).Replace('\', '/')] = Remove-SkillUseComments ([IO.File]::ReadAllText($file.FullName)) 'sql'
+    }
+    $flags = $null
+    $flagsPath = Join-Path $Target 'config/feature-flags.json'
+    if (Test-Path -LiteralPath $flagsPath -PathType Leaf) { try { $flags = [IO.File]::ReadAllText($flagsPath) | ConvertFrom-Json -AsHashtable } catch { $flags = $null } }
+    $catalogs = @($src | Where-Object { $code[$_] -match '\bclass\s+ReportCatalog\b' })
+    $best = $null
+    foreach ($path in $src) {
+        foreach ($m in [regex]::Matches($code[$path], '(?:class|record)\s+(\w+)[^{;]*?:[^{;]*?\bIReportExport\b[^{;]*\{')) {
+            $class = $m.Groups[1].Value
+            if ($class -in $shipped) { continue }
+            $depth = 1; $i = $m.Index + $m.Length
+            while ($i -lt $code[$path].Length -and $depth -gt 0) { if ($code[$path][$i] -eq '{') { $depth++ } elseif ($code[$path][$i] -eq '}') { $depth-- }; $i++ }
+            $body = $code[$path].Substring($m.Index, $i - $m.Index)
+            $member = { param([string]$Name) $found = [regex]::Match($body, "\b$Name\b\s*(?:=>|\{\s*get\s*;\s*(?:init\s*;\s*)?\}\s*=|\{\s*get\s*\{\s*return|\{\s*get\s*=>)\s*""([^""]*)"""); if ($found.Success) { $found.Groups[1].Value } else { '' } }
+            $key = & $member 'Key'
+            $view = & $member 'ViewName'
+            $c = [regex]::Escape($class)
+            $catalog = [bool]@($catalogs | Where-Object { $code[$_] -match "\bnew\s+(?:[\w.]+\.)?$c\s*\(" } | Select-Object -First 1)
+            $flag = $key -and $null -ne $flags -and $flags.ContainsKey("reports.export.$key") -and $flags["reports.export.$key"] -is [bool] -and $flags["reports.export.$key"]
+            $plainView = $view.Replace('[', '').Replace(']', '')
+            $grantFiles = @(if ($plainView) {
+                foreach ($sqlPath in @($sql.Keys | Sort-Object)) {
+                    foreach ($g in [regex]::Matches($sql[$sqlPath], '(?i)\bGRANT\s+SELECT\s+ON\s+(?:OBJECT\s*::\s*)?([\[\]\w.]+)\s+TO\s+\[?ReportReader\]?')) {
+                        if ($g.Groups[1].Value.Replace('[', '').Replace(']', '') -ieq $plainView) { $sqlPath }
+                    }
+                }
+            })
+            $viewPattern = [regex]::Escape($plainView).Replace('\.', '\]?\.\[?')
+            $viewFile = $plainView -and [bool]@($sql.Keys | Where-Object { $sql[$_] -match "(?i)\bCREATE\s+(?:OR\s+ALTER\s+)?VIEW\s+\[?$viewPattern\]?" } | Select-Object -First 1)
+            $testRow = $key -and [bool]@($tests | Where-Object { $code[$_] -match "InlineData\s*\(\s*""$([regex]::Escape($key))""\s*\)" } | Select-Object -First 1)
+            $grant = $grantFiles.Count -gt 0
+            $steps = @($catalog, $flag, $grant) | Where-Object { $_ }
+            $row = [pscustomobject]@{ Steps = @($steps).Count; Catalog = $catalog; Flag = [bool]$flag; Grant = $grant; GrantFile = [bool]@($grantFiles | Where-Object { $_ -eq 'db/security/reporting-grants.sql' }).Count; Class = $class; Key = $key; View = $view; ViewFile = [bool]$viewFile; TestRow = [bool]$testRow }
+            if ($null -eq $best -or $row.Steps -gt $best.Steps) { $best = $row }
+        }
+    }
+    if ($null -eq $best) { return [pscustomobject]@{ Grade = 'GRADED'; Complete = $false; Detail = "op=report complete=False catalog=False flag=False grant=False $use export=none key=none view=none grantFile=False viewFile=False testRow=False $tail" } }
+    $complete = $best.Catalog -and $best.Flag -and $best.Grant
+    return [pscustomobject]@{ Grade = 'GRADED'; Complete = $complete; Detail = "op=report complete=$complete catalog=$($best.Catalog) flag=$($best.Flag) grant=$($best.Grant) $use export=$($best.Class) key=$(if ($best.Key) { $best.Key } else { 'none' }) view=$(if ($best.View) { $best.View } else { 'none' }) grantFile=$($best.GrantFile) viewFile=$($best.ViewFile) testRow=$($best.TestRow) $tail" }
 }
 
 # B-470: does the page a run wrote mirror the sibling's loading, empty and error handling? Written files only; the report is
@@ -1546,27 +1693,37 @@ function Get-ToolResultText($Evidence, $Tool) {
 # B-330: the target's own CLAUDE.md, .claude/settings*.json, hooks, skills and agents (the framework arm's surface) are
 # the project and local sources; ~/.claude's settings, CLAUDE.md, rules, skills, agents and commands are the user source,
 # which reached both arms. The launching shell's environment still passes through (DEVELOPING.md).
-function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent, [switch]$IncludeHookEvents, [string]$SessionId, [string]$ResumeId) {
+function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent, [switch]$IncludeHookEvents, [string]$SessionId, [string]$ResumeId, [string[]]$AllowedTools) {
     # B-410: a case with a follow-up is two invocations of one session. The first persists it under a session id the runner
     # chose, the second resumes it with the developer's answer; every other case keeps --no-session-persistence, unchanged.
     $session = if ($ResumeId) { @('--resume', $ResumeId) } elseif ($SessionId) { @('--session-id', $SessionId) } else { @('--no-session-persistence') }
-    $arguments = @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions') + $session +
+    # B-514: this host's auto mode refused --dangerously-skip-permissions (B-470, 2026-10-31). -AllowedTools runs the child in
+    # acceptEdits with that allowlist instead, as B-403 and B-467 did by hand; the list goes last, since the option takes many values.
+    $permission = if ($AllowedTools) { @('--permission-mode', 'acceptEdits') } else { @('--dangerously-skip-permissions') }
+    $arguments = @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose') + $permission + $session +
         @('--max-budget-usd', ([string]$Budget), '--setting-sources', 'project,local')
     if ($Agent) { $arguments += @('--agent', $Agent) }
     # B-406: the b406 graders read the SessionStart and UserPromptSubmit hook_response events, which the stream
     # carries only with this flag. Asked for by those cases alone, so every other scenario's arguments are unchanged.
     if ($IncludeHookEvents) { $arguments += '--include-hook-events' }
+    if ($AllowedTools) { $arguments += @('--allowedTools') + $AllowedTools }
     return $arguments
 }
 
-function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [switch]$LiveSourceCheck, [switch]$IncludeHookEvents, [string]$SessionId, [string]$ResumeId) {
+# B-514: what a results header and a pre-registration name an allowlist by.
+function Get-AllowedToolsTag([string[]]$AllowedTools) {
+    $bytes = [Text.UTF8Encoding]::new($false).GetBytes(($AllowedTools -join "`n"))
+    return ([BitConverter]::ToString([Security.Cryptography.SHA256]::HashData($bytes)) -replace '-', '').ToLowerInvariant().Substring(0, 12)
+}
+
+function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [switch]$LiveSourceCheck, [switch]$IncludeHookEvents, [string]$SessionId, [string]$ResumeId, [string[]]$AllowedTools) {
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command claude).Source
     $psi.WorkingDirectory = $WorkingDirectory
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
-    $claudeArgs = @(Get-ClaudeArguments -Prompt $Prompt -ModelId $ModelId -Budget $Budget -Agent $Agent -IncludeHookEvents:$IncludeHookEvents -SessionId $SessionId -ResumeId $ResumeId)
+    $claudeArgs = @(Get-ClaudeArguments -Prompt $Prompt -ModelId $ModelId -Budget $Budget -Agent $Agent -IncludeHookEvents:$IncludeHookEvents -SessionId $SessionId -ResumeId $ResumeId -AllowedTools $AllowedTools)
     # An install from GitHub is the consumer's journey, the installer's own clone check included.
     if ($LiveSourceCheck) { [void]$psi.Environment.Remove('ATL_SOURCE_CHECK') }
     if ($null -ne $psi.ArgumentList) {
@@ -2498,6 +2655,14 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $ux = Get-AngularUxGrade $Target $BeforeCommits
             if ($ux.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $ux.Detail } }
             return [pscustomobject]@{ Status = 'PASS'; Pass = ($ux.Grade -eq 'MIRRORS'); Outcome = ($ux.Grade -eq 'MIRRORS'); Detail = $ux.Detail }
+        }
+        { $_ -like 'skill-use-*' } {
+            # B-514: arm-neutral; the slugs come from the frozen overlay whatever the arm, so a bare or no-skill run is read alike.
+            $operation = if ($Id -like 'skill-use-event*') { 'event' } else { 'report' }
+            $fixturesRoot = if ($script:SkillUseFixtures) { $script:SkillUseFixtures } else { Join-Path $repo 'meta/eval-fixtures' }
+            $grade = Get-SkillUseGrade $Target $BeforeCommits $e $operation @(Get-SkillUseSlug (Join-Path $fixturesRoot 'b514-orders/files') $operation)
+            if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Complete; Outcome = $grade.Complete; Detail = $grade.Detail }
         }
         { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3','warehouse-route-p4') } {
             $successful = @($e.Tools | Where-Object {
@@ -4105,12 +4270,218 @@ export class BillingPageComponent implements OnInit {
     # The live loop applies a scenario's overlay inside the framework-arm block, and -Live refuses a stale one: the runner's own text.
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-AngularUxSelfTest).ScriptBlock.Ast.Extent.Text, '')
     $armBlock = [regex]::Match($selfText, "(?s)if \(\`$Arm -eq 'framework' -and \`$case\.id -notin \`$selfInstallScenarios\) \{.*?\n        \}\n").Value
-    if ($armBlock -notmatch [regex]::Escape('if ($case.overlay) { Initialize-GeneratedOverlay $target ([string]$case.overlay) }')) { throw 'the live loop does not apply a scenario overlay in the framework arm only' }
+    if ($armBlock -notmatch [regex]::Escape('if ($case.overlay) { Initialize-GeneratedOverlay $target ([string]$case.overlay) -Patch $(if ($case.overlayPatch) { Join-Path $repo "meta/eval-fixtures/$($case.overlayPatch)" }) }')) { throw 'the live loop does not apply a scenario overlay in the framework arm only' }
     if ($selfText -notmatch [regex]::Escape('Get-GeneratedFixtureRefusal (Join-Path $repo "meta/eval-fixtures/$overlay/provenance.json") $version $overlay')) { throw '-Live does not refuse a stale scenario overlay before any spend' }
     $uxScenario = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.id -eq 'angular-ux-sibling' })
     $uxPrompt = 'Add an invoices page that lists the current user''s invoices from /api/invoices, following this repository''s conventions. No tests needed. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.'
     if ($uxScenario.Count -ne 1 -or -not ([string]$uxScenario[0].fixture).Equals('angular-ux') -or -not ([string]$uxScenario[0].overlay).Equals('angular-ux-generated') -or $uxScenario[0].stack -ne 'angular' -or $uxScenario[0].bareArm -ne $true -or [string]$uxScenario[0].budgetUsd -ne '1.5' -or $uxScenario[0].assertion -ne 'angularUxMirror' -or $uxScenario[0].prompt -cne $uxPrompt) { throw 'angular-ux-sibling is not the pre-registered B-470 scenario (fixture, overlay, stack, bareArm, budget, assertion or prompt)' }
     Write-Output 'PASS: B-470 angular-ux is the angular tree plus the orders flow; its grader reads MIRRORS for the sibling copied, @switch and templateUrl pages, PARTIAL for alert and a silent empty list, NONE for the planted page, ERROR for no page'
+}
+
+# B-514 (.claude/plans/2026-11-15-b514-skill-use.md): the skill-use scenarios on fixture v2. The real fixture (python and dotnet,
+# as -Live needs them) and a synthetic overlay; nothing here reads the generated b514-orders overlay or runs claude.
+function Invoke-SkillUseSelfTest([string]$Temp) {
+    # Its own folder, removed afterwards: later checks run `git add -A` in $Temp, which an unborn nested repository breaks.
+    $Temp = Join-Path $Temp 'b514-selftest'
+    New-Item -ItemType Directory -Path $Temp | Out-Null
+    try { Invoke-SkillUseSelfTestIn $Temp } finally { Remove-Item -LiteralPath $Temp -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+function Invoke-SkillUseSelfTestIn([string]$Temp) {
+    $fixture = Join-Path $Temp 'b514-orders-v2'
+    New-EvalRepo $fixture orders-v2
+    if ([int](git -C $fixture rev-list --count HEAD) -ne 1 -or -not (Test-Path -LiteralPath (Join-Path $fixture 'Orders.sln')) -or -not (Test-Path -LiteralPath (Join-Path $fixture 'src/Orders.Infrastructure/Messaging/EventRegistry.cs'))) { throw 'orders-v2 is not fixture v2 with its Orders.sln in one commit' }
+    if (Test-Path -LiteralPath (Join-Path $fixture 'AGENTS.md')) { throw 'orders-v2 carries a bootstrap overlay' }
+
+    # A synthetic overlay: one draft per operation as 3a-bis writes them, and a shipped-style skill that names EventRegistry but is not discovered.
+    $fixturesRoot = Join-Path $Temp 'b514-fixtures'
+    $files = Join-Path $fixturesRoot 'b514-orders/files'
+    $put = { param([string]$Root, [string]$Path, [string]$Text)
+        $full = Join-Path $Root $Path
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $full) | Out-Null
+        [IO.File]::WriteAllText($full, $Text) }
+    & $put $files 'AGENTS.md' "# Orders`n`n## Common Tasks`n`nWhen a task matches a skill below, invoke that skill with your skill tool before planning or editing.`n`n- ``add-tests`` - add tests`n`n``/bootstrap`` drafts a project skill under ``.claude/skills/``; add its line here once the team approves the draft.`n"
+    $draft = { param([string]$Slug, [string]$Seam)
+        "---`nname: $Slug`ndescription: >`n  DRAFT, pending PR review: $Slug through $Seam.`norigin: discovered`n---`n`n# $Slug (draft)`n`n**Status: candidate, draft pending PR review.**`n`n1. Add the entry to ``$Seam``.`n`n## After review`n`nAdd one line to ``AGENTS.md > Common Tasks``: ````- ``$Slug`` - add one through $Seam````. Then delete the ``DRAFT, pending PR review:`` wording from the description and the status line above.`n" }
+    & $put $files '.claude/skills/add-integration-event/SKILL.md' (& $draft 'add-integration-event' 'EventRegistry')
+    & $put $files '.claude/skills/add-report-export/SKILL.md' (& $draft 'add-report-export' 'ReportCatalog')
+    & $put $files '.claude/skills/add-report-export/references/project-pattern.md' "# Pattern`n"
+    & $put $files '.claude/skills/add-tests/SKILL.md' "---`nname: add-tests`ndescription: Add tests near EventRegistry.`n---`n`n# add-tests`n"
+    if ((@(Get-SkillUseSlug $files 'event') -join ',') -ne 'add-integration-event' -or (@(Get-SkillUseSlug $files 'report') -join ',') -ne 'add-report-export') { throw "skill-use slugs misread: event '$(@(Get-SkillUseSlug $files 'event') -join ',')', report '$(@(Get-SkillUseSlug $files 'report') -join ',')'" }
+
+    # The two arm patches, cut as the plan says: git diff --output from a scratch repository holding the overlay.
+    $cut = Join-Path $Temp 'b514-cut'
+    New-Item -ItemType Directory -Path $cut | Out-Null
+    git -C $cut init --quiet
+    git -C $cut config core.autocrlf false
+    git -C $cut config user.email 'agent-evals@invalid.local'
+    git -C $cut config user.name 'Agent Evals'
+    Copy-Item -Path (Join-Path $files '*') -Destination $cut -Recurse -Force
+    git -C $cut add -A
+    git -C $cut commit --quiet -m 'overlay'
+    $agentsCut = Join-Path $cut 'AGENTS.md'
+    [IO.File]::WriteAllText($agentsCut, [IO.File]::ReadAllText($agentsCut).Replace("- ``add-tests`` - add tests`n", "- ``add-tests`` - add tests`n- ``add-integration-event`` - add one through EventRegistry`n- ``add-report-export`` - add one through ReportCatalog`n"))
+    foreach ($slug in 'add-integration-event', 'add-report-export') {
+        $skillCut = Join-Path $cut ".claude/skills/$slug/SKILL.md"
+        [IO.File]::WriteAllText($skillCut, [IO.File]::ReadAllText($skillCut).Replace('DRAFT, pending PR review: ', '').Replace("**Status: candidate, draft pending PR review.**`n`n", ''))
+    }
+    $approvedPatch = Join-Path $fixturesRoot 'b514-orders/approved.patch'
+    git -C $cut diff --output=$approvedPatch
+    git -C $cut checkout --quiet -- .
+    Remove-Item -LiteralPath (Join-Path $cut '.claude/skills/add-integration-event'), (Join-Path $cut '.claude/skills/add-report-export') -Recurse -Force
+    $noSkillPatch = Join-Path $fixturesRoot 'b514-orders/no-skill.patch'
+    git -C $cut diff --output=$noSkillPatch
+    # Each patch lands on the copied overlay before its one commit: the tree is clean afterwards and git log is the same in every arm.
+    foreach ($arm in @(@{ Name = 'approved'; Patch = $approvedPatch }, @{ Name = 'no-skill'; Patch = $noSkillPatch }, @{ Name = 'draft'; Patch = '' })) {
+        $armRepo = Join-Path $Temp "b514-arm-$($arm.Name)"
+        New-Item -ItemType Directory -Path $armRepo | Out-Null
+        git -C $armRepo init --quiet
+        git -C $armRepo config user.email 'agent-evals@invalid.local'
+        git -C $armRepo config user.name 'Agent Evals'
+        'base' | Set-Content -LiteralPath (Join-Path $armRepo 'README.md') -Encoding utf8NoBOM
+        git -C $armRepo add -A
+        git -C $armRepo commit --quiet -m 'fixture baseline'
+        Initialize-GeneratedOverlay $armRepo 'b514-orders' $fixturesRoot -Patch $arm.Patch
+        $log = @(git -C $armRepo log --format=%s)
+        if ($log.Count -ne 2 -or $log[0] -cne 'b514-orders bootstrap overlay' -or @(git -C $armRepo status --porcelain).Count) { throw "the $($arm.Name) arm's overlay is not one clean commit: $($log -join ' | ')" }
+        $agentsArm = [IO.File]::ReadAllText((Join-Path $armRepo 'AGENTS.md'))
+        $eventSkill = Join-Path $armRepo '.claude/skills/add-integration-event/SKILL.md'
+        $listed = $agentsArm.Contains("- ``add-integration-event`` - add one through EventRegistry")
+        switch ($arm.Name) {
+            'approved' { if (-not $listed -or [IO.File]::ReadAllText($eventSkill).Contains('DRAFT, pending PR review: ') -or [IO.File]::ReadAllText($eventSkill).Contains('**Status: candidate')) { throw 'the approved arm did not list the draft and drop its draft wording' } }
+            'no-skill' { if ($listed -or (Test-Path -LiteralPath (Split-Path -Parent $eventSkill)) -or (Test-Path -LiteralPath (Join-Path $armRepo '.claude/skills/add-report-export')) -or -not (Test-Path -LiteralPath (Join-Path $armRepo '.claude/skills/add-tests/SKILL.md'))) { throw 'the no-skill arm did not delete exactly the drafts' } }
+            'draft' { if ($listed -or -not [IO.File]::ReadAllText($eventSkill).Contains('DRAFT, pending PR review: ')) { throw 'the draft arm is not the overlay as written' } }
+        }
+    }
+    $staleRepo = Join-Path $Temp 'b514-arm-stale'
+    New-Item -ItemType Directory -Path (Join-Path $fixturesRoot 'b514-stale/files') -Force | Out-Null
+    'another AGENTS.md' | Set-Content -LiteralPath (Join-Path $fixturesRoot 'b514-stale/files/AGENTS.md') -Encoding utf8NoBOM
+    New-Item -ItemType Directory -Path $staleRepo | Out-Null
+    git -C $staleRepo init --quiet
+    git -C $staleRepo config user.email 'agent-evals@invalid.local'
+    git -C $staleRepo config user.name 'Agent Evals'
+    git -C $staleRepo commit --quiet --allow-empty -m 'fixture baseline'
+    $stale = $null
+    try { Initialize-GeneratedOverlay $staleRepo 'b514-stale' $fixturesRoot -Patch $approvedPatch } catch { $stale = $_.Exception.Message }
+    if ($stale -notmatch 'does not apply') { throw "an overlay patch that does not apply was accepted: $stale" }
+
+    # The grader, on hand-made outputs in the real fixture.
+    $edit = { param([string]$Path, [string]$Find, [string]$Replace)
+        $full = Join-Path $fixture $Path
+        $text = [IO.File]::ReadAllText($full)
+        if (-not $text.Contains($Find)) { throw "B-514 self-test anchor missing in ${Path}: $Find" }
+        [IO.File]::WriteAllText($full, $text.Replace($Find, $Replace)) }
+    $event = { param([string]$Registry = 'plain', [int]$Version = 1, [string]$Di = 'concrete')
+        & $put $fixture 'src/Orders.Domain/Events/OrderCancelledEvent.cs' "namespace Orders.Domain.Events;`n`n[EventVersion($Version)]`npublic sealed record OrderCancelledEvent(Guid EventId, Guid OrderId, string Reason) : IIntegrationEvent;`n"
+        & $put $fixture 'src/Orders.Application/EventHandlers/OrderCancelledHandler.cs' "using Orders.Domain.Events;`n`nnamespace Orders.Application.EventHandlers;`n`npublic sealed class OrderCancelledHandler : IIntegrationEventHandler<OrderCancelledEvent>`n{`n    public Task HandleAsync(OrderCancelledEvent @event, CancellationToken cancellationToken) => Task.CompletedTask;`n}`n"
+        & $put $fixture 'contracts/events/order-cancelled.v1.schema.json' "{ `"title`": `"OrderCancelledEvent`" }`n"
+        $line = '        Register<OrderCancelledEvent, OrderCancelledHandler>("order-cancelled", "contracts/events/order-cancelled.v1.schema.json");'
+        $anchor = '        Register<InvoiceIssuedEvent, InvoiceIssuedHandler>("invoice-issued", "contracts/events/invoice-issued.v1.schema.json");'
+        switch ($Registry) {
+            'plain' { & $edit 'src/Orders.Infrastructure/Messaging/EventRegistry.cs' $anchor "$anchor`n$line" }
+            'commented' { & $edit 'src/Orders.Infrastructure/Messaging/EventRegistry.cs' $anchor "$anchor`n        // $($line.Trim())" }
+            'shipped-schema' { & $edit 'src/Orders.Infrastructure/Messaging/EventRegistry.cs' $anchor "$anchor`n$($line.Replace('contracts/events/order-cancelled.v1', 'contracts/events/order-placed.v1'))" }
+        }
+        $diAnchor = 'builder.Services.AddScoped<InvoiceIssuedHandler>();'
+        switch ($Di) { 'concrete' { & $edit 'src/Orders.Api/Program.cs' $diAnchor "$diAnchor`nbuilder.Services.AddScoped<OrderCancelledHandler>();" } 'interface' { & $edit 'src/Orders.Api/Program.cs' $diAnchor "$diAnchor`nbuilder.Services.AddScoped<IIntegrationEventHandler<OrderCancelledEvent>, OrderCancelledHandler>();" } }
+        & $edit 'tests/Orders.Tests/EventRegistryTests.cs' '    [InlineData(typeof(InvoiceIssuedEvent))]' "    [InlineData(typeof(InvoiceIssuedEvent))]`n    [InlineData(typeof(OrderCancelledEvent))]"
+        & $edit 'src/Orders.Application/Orders/OrderLifecycle.cs' '    public void Invoiced(Invoice invoice)' "    public void Cancelled(Order order, string reason)`n        => _outbox.Enqueue(new OrderCancelledEvent(Guid.NewGuid(), order.Id, reason));`n`n    public void Invoiced(Invoice invoice)" }
+    $report = { param([string]$Grant = 'plain', [string]$Flag = 'true', [bool]$Catalog = $true)
+        & $put $fixture 'src/Orders.Reporting/Exports/CancelledOrdersExport.cs' "namespace Orders.Reporting.Exports;`n`npublic sealed class CancelledOrdersExport : IReportExport`n{`n    public string Key => `"cancelled-orders`";`n    public string ViewName => `"rpt.vwCancelledOrders`";`n`n    public Task<Stream> ExportCsvAsync(IReportReader reader, CancellationToken cancellationToken)`n        => reader.ReadCsvAsync(ViewName, cancellationToken);`n}`n"
+        & $put $fixture 'db/views/rpt.vwCancelledOrders.sql' "CREATE OR ALTER VIEW rpt.vwCancelledOrders`nAS`nSELECT o.Id AS OrderId FROM dbo.Orders AS o WHERE o.Status = 'Cancelled';`n"
+        if ($Catalog) { & $edit 'src/Orders.Reporting/ReportCatalog.cs' '        new Exports.OverdueInvoicesExport(),' "        new Exports.OverdueInvoicesExport(),`n        new Exports.CancelledOrdersExport()," }
+        & $edit 'config/feature-flags.json' '"reports.export.overdue-invoices": true,' "`"reports.export.overdue-invoices`": true,`n  `"reports.export.cancelled-orders`": $Flag,"
+        $grantAnchor = 'GRANT SELECT ON rpt.vwOverdueInvoices TO ReportReader;'
+        switch ($Grant) {
+            'plain' { & $edit 'db/security/reporting-grants.sql' $grantAnchor "$grantAnchor`nGRANT SELECT ON rpt.vwCancelledOrders TO ReportReader;" }
+            'bracketed' { & $edit 'db/security/reporting-grants.sql' $grantAnchor "$grantAnchor`nGRANT SELECT ON [rpt].[vwCancelledOrders] TO [ReportReader];" }
+            'commented' { & $edit 'db/security/reporting-grants.sql' $grantAnchor "$grantAnchor`n-- GRANT SELECT ON rpt.vwCancelledOrders TO ReportReader;" }
+            'view-file' { & $edit 'db/views/rpt.vwCancelledOrders.sql' "WHERE o.Status = 'Cancelled';" "WHERE o.Status = 'Cancelled';`nGO`nGRANT SELECT ON rpt.vwCancelledOrders TO ReportReader;" }
+        }
+        & $edit 'tests/Orders.Tests/ReportCatalogTests.cs' '    [InlineData("overdue-invoices")]' "    [InlineData(`"overdue-invoices`")]`n    [InlineData(`"cancelled-orders`")]" }
+    $transcript = { param([object[]]$Tools = @(), [string]$Subtype = 'success')
+        $events = [Collections.Generic.List[object]]::new()
+        $events.Add([pscustomobject]@{ type = 'system'; subtype = 'init'; model = 'claude-sonnet-5-5' })
+        $n = 0
+        foreach ($tool in $Tools) {
+            $n++
+            $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $tool.Parent; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = "b514-$n"; name = $tool.Name; input = $tool.Input }) } })
+            $events.Add([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = "b514-$n"; is_error = [bool]$tool.Error; content = [string]$tool.Result }) } })
+        }
+        $events.Add([pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = 'Done.'; total_cost_usd = 0.5; duration_ms = 61000 })
+        [pscustomobject]@{ Events = $events.ToArray() } }
+    $skillCall = { param([string]$Slug, [string]$Parent) [pscustomobject]@{ Name = 'Skill'; Input = [pscustomobject]@{ skill = $Slug }; Result = "Launching skill: $Slug"; Parent = $Parent } }
+    $readSkill = [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $fixture '.claude\skills\add-integration-event\SKILL.md') }; Result = '# add-integration-event' }
+    $denied = [pscustomobject]@{ Name = 'Bash'; Input = [pscustomobject]@{ command = 'rm -rf obj' }; Result = 'Claude requested permissions to use Bash, but you haven''t granted it yet.'; Error = $true }
+    $cases = @(
+        [pscustomobject]@{ Name = 'a complete event, its draft called'; Id = 'skill-use-event'; Apply = { & $event }; Tools = @((& $skillCall 'add-integration-event')); Pass = $true; Detail = '^op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True ' }
+        [pscustomobject]@{ Name = 'an event with no registry line'; Id = 'skill-use-event-approved'; Apply = { & $event -Registry 'none' }; Tools = @($denied); Pass = $false; Detail = '^op=event complete=False registry=False version=True di=True skill=False skillRead=False skillCalls= denied=1 ' }
+        [pscustomobject]@{ Name = 'an event whose registry line is commented out'; Id = 'skill-use-event'; Apply = { & $event -Registry 'commented' }; Tools = @(); Pass = $false; Detail = '^op=event complete=False registry=False version=True di=True ' }
+        [pscustomobject]@{ Name = 'an event at version 2 with a v1 schema'; Id = 'skill-use-event-noskill'; Apply = { & $event -Version 2 }; Tools = @(); Pass = $false; Detail = '^op=event complete=False registry=True version=False di=True .* version#=2 ' }
+        [pscustomobject]@{ Name = 'a registry line naming a shipped event''s schema'; Id = 'skill-use-event'; Apply = { & $event -Registry 'shipped-schema' }; Tools = @(); Pass = $false; Detail = '^op=event complete=False registry=True version=False di=True ' }
+        [pscustomobject]@{ Name = 'a handler registered only by its interface'; Id = 'skill-use-event'; Apply = { & $event -Di 'interface' }; Tools = @(); Pass = $false; Detail = '^op=event complete=False registry=True version=True di=False ' }
+        [pscustomobject]@{ Name = 'the draft read but not called'; Id = 'skill-use-event'; Apply = { & $event }; Tools = @($readSkill); Pass = $true; Detail = '^op=event complete=True .* skill=False skillRead=True skillCalls= ' }
+        [pscustomobject]@{ Name = 'the draft called by a sub-agent'; Id = 'skill-use-event'; Apply = { & $event }; Tools = @((& $skillCall 'add-integration-event' 'agent-1')); Pass = $true; Detail = ' skill=True skillRead=False skillCalls=add-integration-event ' }
+        [pscustomobject]@{ Name = 'the other operation''s draft called'; Id = 'skill-use-event'; Apply = { & $event }; Tools = @((& $skillCall 'add-report-export')); Pass = $true; Detail = ' skill=False skillRead=False skillCalls=add-report-export ' }
+        [pscustomobject]@{ Name = 'a complete report, its draft called'; Id = 'skill-use-report'; Apply = { & $report }; Tools = @((& $skillCall 'add-report-export')); Pass = $true; Detail = '^op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True ' }
+        [pscustomobject]@{ Name = 'a report with no GRANT'; Id = 'skill-use-report-approved'; Apply = { & $report -Grant 'none' }; Tools = @(); Pass = $false; Detail = '^op=report complete=False catalog=True flag=True grant=False skill=False .* grantFile=False ' }
+        [pscustomobject]@{ Name = 'a report whose GRANT is commented out'; Id = 'skill-use-report'; Apply = { & $report -Grant 'commented' }; Tools = @(); Pass = $false; Detail = '^op=report complete=False catalog=True flag=True grant=False ' }
+        [pscustomobject]@{ Name = 'a bracketed GRANT'; Id = 'skill-use-report-noskill'; Apply = { & $report -Grant 'bracketed' }; Tools = @(); Pass = $true; Detail = '^op=report complete=True catalog=True flag=True grant=True .* grantFile=True ' }
+        [pscustomobject]@{ Name = 'a GRANT in the view file'; Id = 'skill-use-report'; Apply = { & $report -Grant 'view-file' }; Tools = @(); Pass = $true; Detail = '^op=report complete=True .* grant=True .* grantFile=False ' }
+        [pscustomobject]@{ Name = 'a report flag set false'; Id = 'skill-use-report'; Apply = { & $report -Flag 'false' }; Tools = @(); Pass = $false; Detail = '^op=report complete=False catalog=True flag=False grant=True ' }
+        [pscustomobject]@{ Name = 'a report missing from the catalog'; Id = 'skill-use-report'; Apply = { & $report -Catalog $false }; Tools = @(); Pass = $false; Detail = '^op=report complete=False catalog=False flag=True grant=True ' }
+    )
+    $script:SkillUseFixtures = $fixturesRoot
+    $quoted = @{}
+    try {
+        foreach ($case in $cases) {
+            git -C $fixture checkout --quiet -- .
+            git -C $fixture clean --quiet -fdx
+            & $case.Apply
+            $graded = Test-ScenarioEvidence $case.Id $fixture (& $transcript $case.Tools) 1
+            if ($null -eq $graded -or $graded.Status -ne 'PASS' -or $graded.Pass -ne $case.Pass -or [bool]$graded.Outcome -ne $case.Pass -or $graded.Detail -notmatch $case.Detail) {
+                throw "B-514 skill-use misjudged $($case.Name): $(if ($graded) { "$($graded.Status) pass=$($graded.Pass) outcome=$($graded.Outcome) $($graded.Detail)" } else { 'no result' })"
+            }
+            $quoted[$case.Name] = $graded.Detail
+        }
+        # Not examined: nothing written (build output does not count), or a terminal result that is not success (a budget cut).
+        git -C $fixture checkout --quiet -- .
+        git -C $fixture clean --quiet -fdx
+        & $put $fixture 'src/Orders.Api/obj/project.assets.json' '{}'
+        $noWrite = Test-ScenarioEvidence 'skill-use-report' $fixture (& $transcript @()) 1
+        if ($null -eq $noWrite -or $noWrite.Status -ne 'INCONCLUSIVE' -or $noWrite.Pass -or $noWrite.Detail -notmatch '^op=report NOT EXAMINED: no write ') { throw "B-514 skill-use graded a run that wrote nothing: $(if ($noWrite) { "$($noWrite.Status) $($noWrite.Detail)" } else { 'no result' })" }
+        & $event
+        $cut = Test-ScenarioEvidence 'skill-use-event' $fixture (& $transcript @() 'error_max_budget_usd') 1
+        if ($null -eq $cut -or $cut.Status -ne 'INCONCLUSIVE' -or $cut.Pass -or $cut.Detail -notmatch '^op=event NOT EXAMINED: terminal result error_max_budget_usd ') { throw "B-514 skill-use graded a budget-cut run: $(if ($cut) { "$($cut.Status) $($cut.Detail)" } else { 'no result' })" }
+    } finally { $script:SkillUseFixtures = $null }
+
+    # -AllowedTools: acceptEdits with the list in place of --dangerously-skip-permissions, last on the line; without it nothing changes.
+    $plainArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '')
+    $listArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '' -AllowedTools @('Read', 'Bash(git log:*)'))
+    $listWant = @(@($plainArgs | ForEach-Object { if ($_ -eq '--dangerously-skip-permissions') { '--permission-mode'; 'acceptEdits' } else { $_ } }) + @('--allowedTools', 'Read', 'Bash(git log:*)'))
+    if (($listArgs -join [char]0) -cne ($listWant -join [char]0)) { throw "B-514 -AllowedTools arguments are not the default with acceptEdits and the list: $($listArgs -join ' ')" }
+    if ($plainArgs -notcontains '--dangerously-skip-permissions' -or $plainArgs -contains '--allowedTools') { throw 'B-514 the default arguments changed' }
+    if ((Get-AllowedToolsTag @('Read', 'Bash(git log:*)')) -notmatch '^[0-9a-f]{12}$' -or (Get-AllowedToolsTag @('Read')) -eq (Get-AllowedToolsTag @('Read', 'Bash(git log:*)'))) { throw 'B-514 the allowed-tools tag does not identify the list' }
+
+    # The six pre-registered scenarios.
+    $prompts = @{
+        event = 'Publish an `order-cancelled` integration event when an order is cancelled: add a POST api/checkout/{orderId}/cancel action to CheckoutController that sets the order''s status to "Cancelled" and raises the event with the order id and a cancellation reason. Follow this repository''s conventions. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.'
+        report = 'Add a cancelled-orders CSV report served at api/reports/cancelled-orders: one row per order whose status is "Cancelled", with the order id, customer id, placed date and total. Follow this repository''s conventions. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.'
+    }
+    $scenarios = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.id -like 'skill-use-*' })
+    if ((@($scenarios | ForEach-Object { $_.id }) -join ',') -ne 'skill-use-event,skill-use-event-approved,skill-use-event-noskill,skill-use-report,skill-use-report-approved,skill-use-report-noskill') { throw "the skill-use scenarios are not the six pre-registered ones: $(@($scenarios | ForEach-Object { $_.id }) -join ',')" }
+    foreach ($s in $scenarios) {
+        $op = if ($s.id -like 'skill-use-event*') { 'event' } else { 'report' }
+        $variant = ([string]$s.id).Substring("skill-use-$op".Length)
+        $wantPatch = switch ($variant) { '-approved' { 'b514-orders/approved.patch' } '-noskill' { 'b514-orders/no-skill.patch' } default { '' } }
+        if (-not ([string]$s.fixture).Equals('orders-v2') -or -not ([string]$s.overlay).Equals('b514-orders') -or -not ([string]$s.overlayPatch).Equals($wantPatch) -or [bool]$s.bareArm -ne ($variant -eq '') -or [string]$s.budgetUsd -ne '3' -or $s.assertion -ne 'skillUse' -or $s.prompt -cne $prompts[$op] -or $s.stack -ne 'dotnet') { throw "$($s.id) is not the pre-registered B-514 scenario (fixture, overlay, overlayPatch, bareArm, budget, assertion, stack or prompt)" }
+    }
+    # The live loop: the overlay patch lands inside the overlay's commit, multi-turn streams are read for skillUse, and -Live
+    # checks every overlay patch against its overlay before any spend.
+    $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
+    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -eq ''skillUse'')')) { throw 'the live loop does not read a multi-turn stream for the skill-use cases' }
+    if ($selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $preflightOverlay ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
+    Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT'])"
 }
 
 function Invoke-SelfTest {
@@ -4210,7 +4581,8 @@ function Invoke-SelfTest {
         # warehouse-route-p4 joined 2026-09-29: its Outcome reads the written SQL and the final message, what the
         # consumer receives (B-325), so it is arm-neutral.
         # angular-ux-sibling joined 2026-10-31 (B-470): its Outcome reads only the page the run wrote.
-        if (($bareScenarios -join ',') -ne 'route-fix,route-fix-nl,guard-retry,angular-ux-sibling,warehouse-route-p1,warehouse-route-p4,warehouse-bind-sql') { throw "bareArm scenarios changed without a grader Outcome review: $($bareScenarios -join ',')" }
+        # skill-use-event and skill-use-report joined 2026-11-15 (B-514): their Outcome reads only the files the run left.
+        if (($bareScenarios -join ',') -ne 'route-fix,route-fix-nl,guard-retry,angular-ux-sibling,skill-use-event,skill-use-report,warehouse-route-p1,warehouse-route-p4,warehouse-bind-sql') { throw "bareArm scenarios changed without a grader Outcome review: $($bareScenarios -join ',')" }
 
         # B-277 (WSD-097): the Copilot executor reuses these graders only through the events-log
         # converter, so the converter is what has to be exercised. Fixtures are synthetic but shaped
@@ -4743,6 +5115,7 @@ export class UserService {
         Invoke-RiskDesignSelfTest $temp
         Invoke-RouterProbeSelfTest $temp
         Invoke-AngularUxSelfTest $temp
+        Invoke-SkillUseSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
         Write-Output 'PASS: B-410 risk-design grades FULL only when one main-agent text block before the first main-agent write holds options A and B and a recommendation (a subagent''s text, a block after a write, one part alone, and the retained S1-C alternative-as-a-sentence shapes are not), reports where it was, whether the developer was left to answer, the turn-1 question and plan fields and what the second leg did, refuses a second leg whose prompt carried the plan gate or got no hook response, grades the decoy the other way round, merges two legs without a replay, builds the first-leg and resume arguments from the default, and pins both prompts, the follow-up and the dist router''s reading of them'
         Write-Output 'PASS: B-409 the contract fixtures are one list covering b406-orders and b409-orders-ci in the Copilot refusal, the stale and missing overlay refusals, the generator refusal, the overlay helper (copies and commits that fixture''s files, refuses a missing or unknown one) and every live-loop condition; the b409 baseline carries the pinned ci.yml (UTF-8, no BOM, LF) written between the solution and the baseline commit; contract-trace-ci is contract-trace on b409-orders-ci (same prompt, budget, grader, stack) and grades identically on one transcript'
@@ -6521,7 +6894,8 @@ function Invoke-EvalCases($Cases, $Rows) {
             # B-406: the target becomes a repository that ran /bootstrap; before any patch or scenario setup.
             if ($caseFixture -in $contractFixtures) { Initialize-B406Overlay $target $caseFixture }
             # B-470: the bootstrapped repository the scenario names; the bare arm keeps the fixture alone.
-            if ($case.overlay) { Initialize-GeneratedOverlay $target ([string]$case.overlay) }
+            # B-514: an overlayPatch (one arm of that overlay) lands inside the overlay's commit.
+            if ($case.overlay) { Initialize-GeneratedOverlay $target ([string]$case.overlay) -Patch $(if ($case.overlayPatch) { Join-Path $repo "meta/eval-fixtures/$($case.overlayPatch)" }) }
             # Before the scenario setup, which commits the framework files in the warehouse cases:
             # the patch adds no commit, so `git log` (session-start preloads it) matches both arms.
             # B-402: under -WarehouseMap generated|partial it lands inside that setup, after the bootstrap overlay.
@@ -6661,7 +7035,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework')
         } else {
-            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios) -SessionId $legSession
+            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios) -SessionId $legSession -AllowedTools $AllowedTools
         }
         $agentExit = $run.ExitCode
         try {
@@ -6671,7 +7045,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                 if ($copilotMeta.Model) { $caseModel = $copilotMeta.Model }
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
-            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures)
+            # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -eq 'skillUse')
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
                 # tree) and no error. Otherwise the grader sees one leg and says why (wroteT1, or not examined).
@@ -6683,7 +7058,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                     # Whether --max-budget-usd on --resume caps the session or the leg is not known; the follow-up's budget on top of
                     # what the first leg spent holds under either reading, and the stop counts what was spent, not the cap.
                     $legTwoBudget = [decimal]$case.followUpBudgetUsd + [decimal]$legOne.Final.total_cost_usd
-                    $run2 = Invoke-ClaudeProcess $target ([string]$case.followUp) $legTwoPath $caseModel $legTwoBudget $TimeoutSeconds $caseAgent -IncludeHookEvents:($caseFixture -in $contractFixtures) -ResumeId $legSession
+                    $run2 = Invoke-ClaudeProcess $target ([string]$case.followUp) $legTwoPath $caseModel $legTwoBudget $TimeoutSeconds $caseAgent -IncludeHookEvents:($caseFixture -in $contractFixtures) -ResumeId $legSession -AllowedTools $AllowedTools
                     if ($run2.TimedOut) { throw $run2.ErrorText }
                     if ($run2.ExitCode -ne 0) { $agentExit = $run2.ExitCode }
                     $transcript = Merge-ClaudeLegs $transcript (Read-Transcript $legTwoPath -AllowMultiTurn)
@@ -6713,7 +7088,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             # is read once, so each Claude Code row records the host and model its own run reported.
             $init = @($transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
             $claudeDetail = if ($Executor -eq 'claude' -and $init) { "ccVersion=$($init[0].claude_code_version) initModel=$($init[0].model) " } else { '' }
-            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $claudeDetail$copilotDetail$(if ($case.bareArm) { "arm=$Arm outcome=$outcome " })$($evidence.Detail)"
+            $overlayDetail = if ($case.overlayPatch -and $Arm -eq 'framework') { "overlayPatch=$(Get-TargetPatchTag (Join-Path $repo "meta/eval-fixtures/$($case.overlayPatch)")) " } else { '' }
+            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $claudeDetail$copilotDetail$(if ($case.bareArm) { "arm=$Arm outcome=$outcome " })$overlayDetail$($evidence.Detail)"
         } catch { $status = 'ERROR'; $detail = "$(if ($Executor -eq 'copilot') { 'executor=copilot ' })$($_.Exception.Message)" }
         $Rows.Add([pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail; Arm = $Arm; Scored = [bool]$case.bareArm; Outcome = $outcome; Executor = $Executor; Patch = $patchTag })
         Write-Output "$status $($case.id): $detail"
@@ -6726,7 +7102,7 @@ function Save-EvalResults([string]$Path, $Rows, [bool]$Complete) {
     # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
     # the host and the model actually used, and every Copilot row carries executor=copilot.
     $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($Rows | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })" } else { "Claude Code $hostVersion" }
-    $lines = @('', "## $date — framework v$version$(if ($changelogDecision.RootHead) { " (root head $($changelogDecision.RootHead))" }) ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" }) · scratch: retained=$KeepScratch", '')
+    $lines = @('', "## $date — framework v$version$(if ($changelogDecision.RootHead) { " (root head $($changelogDecision.RootHead))" }) ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" })$(if ($AllowedTools) { " · permissions: acceptEdits, $($AllowedTools.Count) allowed-tool rules ($(Get-AllowedToolsTag $AllowedTools))" }) · scratch: retained=$KeepScratch", '')
     foreach ($r in $Rows) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})$(if($r.Patch){"; patch=$($r.Patch)"})) — $(Protect-ResultText $r.Detail)" }
     if (-not $Complete) { $lines += '- **ABORTED** the run stopped before its last case; the rows above are the cases decided before it stopped.' }
     $lines += @(Get-OutcomeSummary $Rows)
@@ -6770,6 +7146,7 @@ if ($Executor -eq 'copilot') {
     $claudeSpecific = @($selected | Where-Object { $_.model -or $_.agent } | ForEach-Object { $_.id } | Select-Object -Unique)
     if ($claudeSpecific) { throw "Refusing -Executor copilot: $($claudeSpecific -join ', ') carry Claude-specific model/agent overrides. Run them under -Executor claude." }
     if ($CopilotModel -eq 'auto') { throw "Refusing -Executor copilot with -CopilotModel auto: 'auto' resolves to a different vendor per run, so trials are not comparable." }
+    if ($AllowedTools) { throw 'Refusing -AllowedTools with -Executor copilot: it sets Claude Code permission rules.' }
     $b406ExecutorRefusal = Get-B406ExecutorRefusal $selected $Executor
     if ($b406ExecutorRefusal) { throw $b406ExecutorRefusal }
 }
@@ -6800,6 +7177,20 @@ foreach ($contractFixture in $contractFixturesUsed) {
 foreach ($overlay in @($selected | Where-Object { $_.overlay } | ForEach-Object { [string]$_.overlay } | Select-Object -Unique)) {
     $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo "meta/eval-fixtures/$overlay/provenance.json") $version $overlay
     if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
+}
+# B-514: each overlay patch must apply to its overlay, checked on a bare copy of the overlay before any spend, as -TargetPatch is.
+foreach ($overlayCase in @($selected | Where-Object { $_.overlayPatch } | Sort-Object id -Unique)) {
+    if (-not $overlayCase.overlay) { throw "Refusing live eval: $($overlayCase.id) names an overlayPatch but no overlay." }
+    if ($Arm -ne 'framework') { continue }
+    $preflightOverlay = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-overlay-preflight-' + [guid]::NewGuid().ToString('N'))
+    try {
+        New-Item -ItemType Directory -Path $preflightOverlay | Out-Null
+        git -C $preflightOverlay init --quiet
+        git -C $preflightOverlay config user.email 'agent-evals@invalid.local'
+        git -C $preflightOverlay config user.name 'Agent Evals'
+        Initialize-GeneratedOverlay $preflightOverlay ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")
+    } catch { throw "Refusing live eval: $($overlayCase.id): $($_.Exception.Message)" }
+    finally { if (Test-Path -LiteralPath $preflightOverlay) { Remove-Item -LiteralPath $preflightOverlay -Recurse -Force } }
 }
 $patchTag = ''
 if ($TargetPatch) {
