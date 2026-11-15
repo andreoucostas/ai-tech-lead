@@ -4766,3 +4766,28 @@ when the first found a defect. (4) A commit subject is the tier, `B-n done` and 
 PowerShell 5.1 support ends when B-506 lands (amends WSD-073). (6) An agent-facing release is tried with live agent runs before its tag, amending
 WSD-016 (B-521); a release prints four numbers (B-522); CI's target is 15 minutes, then 10 (B-510). (7) B-514's paid measurement needs no fixed stop,
 read as covering B-515's. (8) WSD-124 (3)'s test covers a possible secret leak too; B-478 closes. **Reopen** (3) if a second round would have caught an escape.
+
+## WSD-126: after the 2026-11-14 decision audit, releases stay weekly, WSD-117 and WSD-120 stand, B-416 is time-boxed, amendments are recorded (2026-11-14)
+
+**Context.** The 2026-11-14 decision audit (B-513) found WSD-116 contradicting AGENTS.md's release cadence, three decisions the maintainer had not read, WSD-043
+amended without a record, and stale premises. **Decision (maintainer, in chat with the coordinator 2026-11-14).** (1) Releases are "Roughly weekly": AGENTS.md
+"Ship" stands and supersedes WSD-116's "Releases follow as soon as work lands". (2) WSD-117 and WSD-120 are ratified as written; WSD-121 is not (WSD-127).
+(3) B-416 is time-boxed: re-decide it on 2026-12-12 if no consumer team has started. (4) AGENTS.md: check decisions' **Reopen** triggers when eval or field evidence
+is recorded; one cost-benefit line when a change ships unmeasured; one removal candidate per re-rank. (5) Recorded: WSD-043's overwrite and settings refresh have four
+carve-outs: a deleted `docs-sync-check.yml` stays deleted (field report #13); an update carries the team's own settings keys (B-486), `env` variables and hook entries
+(B-507); a brownfield install stops for a team's tracked file on a framework-owned path (WSD-123). WSD-012's ~6-marker cap, a migration rule of thumb, is retired
+(B-512). B-157: `scripts/build.ps1`'s pins replace the retired Bash oracle, so an ownership-policy edit is made in `install.ps1` and the composer together. WSD-105's
+"no run shows captured knowledge changing an outcome" was contradicted on 2026-10-01 by B-325's A2 arm (a record alone: MISLEADING 0/6 against 6/6 in A3 and A4); its decision
+stands, as pre-registered Rule T did not fire (WSD-107). **Reopen** (1) on harm from a ready fix held for the batch; (3) on 2026-12-12; (4) on paperwork that changes nothing.
+
+## WSD-127: a write-side skill for warehouse reporting views and stored procedures, measured on a fixture before it ships; supersedes WSD-121 (2026-11-14)
+
+**Context.** WSD-121 (2026-11-04, a Fable review under the maintainer's mandate, unread by the maintainer) built nothing for a consumer's expectation of
+write-side help with reporting views and procedures (B-459, maintainer relay): an expectation is not an observed error, so B-129's reopen bar stood, and WSD-109
+ships an operation skill only on a field report or a measured outcome. The 2026-11-14 decision audit (B-513) put it to the maintainer. **Decision (maintainer,
+in chat with the coordinator 2026-11-14: "Skill for views/procs").** WSD-121 is not ratified and is superseded: the framework ships a write-side recipe for
+warehouse reporting views and stored procedures, built on the warehouse map's proven joins and measured on a warehouse fixture before it ships, WSD-109's
+measured-outcome route (WSD-109 stands); B-129's reopen bar is set aside for it. Power BI stays out of scope. B-523 carries it: design, a pre-registered
+measurement, then ship (guarded, `src/stacks/*/files/.claude/**`). Until then the consumer CHANGELOG's WSD-121 answer (`map-warehouse`'s Querying rules on the
+map's proven joins) stays true. Rejected: WSD-121 as written. **Reopen** if B-523's pre-registered measurement does not support shipping (the maintainer then
+re-decides), or on a field report asking for Power BI authoring.

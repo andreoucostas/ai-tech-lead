@@ -11,28 +11,28 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124, WSD-125): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work at ranks 5, 6, 10 and 11 after B-506 and B-507, eight findings shut, and the release review's B-521 and B-522; B-509 and B-498 done the same day, B-507 on 2026-11-15, and B-466 moved after B-515 (maintainer, in chat); earlier ranking history is in `git log -p meta/BACKLOG.md`
+## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124, WSD-125): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work ranked after B-506 and B-507 (now ranks 2, 3, 8 and 9), eight findings shut, and the release review's B-521 and B-522; B-509 and B-498 done the same day, B-507 and B-513 on 2026-11-15, B-466 moved after B-515 (maintainer, in chat), and B-523 filed after B-466 (WSD-127); earlier ranking history is in `git log -p meta/BACKLOG.md`
 
 | Rank | Item | Why here |
 |---|---|---|
-| 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team |
+| 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team; re-decided on 2026-12-12 if no team has started (WSD-126) |
 | 2 | B-514 | Maintainer priority: nothing yet shows an auto-created skill being used (0 of 4 follow-ups called one); the measurement the rest of the skills work hangs on; no fixed spend stop (maintainer) |
 | 3 | B-515 | Maintainer priority: 3 of 6 measured drafts missed a step their own instances contain; guarded |
 | 4 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; pre-registered, its 60 USD stop approved by the maintainer 2026-11-11; runner work and three generations before any run; after the skills measurements (maintainer, 2026-11-14) |
-| 5 | B-510 | CI is at 88% of the watcher's 2,400 s and growing; past it every push and release reads CANT-VERIFY; guarded |
-| 6 | B-521 | Release review: several escaped defects were visible only in a live agent run after the tag; guarded |
-| 7 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review; after B-514; guarded |
-| 8 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 9 | B-469 | Maintainer request: an update's `.claude/framework-update-backup/` copies get forgotten and committed; `-Reinstall` already relies on the last commit instead; guarded |
-| 10 | B-491 | Audit, reproduced: `route-prompt` routes "yes, go ahead" and plain questions as a feature with the plan gate, and "concurrency" gets the security overlay; guarded |
-| 11 | B-493 | Audit, read: `dependency-audit` forbids inferring the read-only scan commands, so it reports every scan as not available; guarded, text-only |
-| 12 | B-425 | A plain-words review runs no reviewer: on Copilot CLI it loads the `review` skill (5 of 6, 2026-11-13) but skips its dispatch step (0 of 6), with or without the candidate; blocked on B-416; the Claude Code leg is about 3 USD |
-| 13 | B-497 | Audit, read: `/review` has no merge, de-duplication or verdict step, and two reviewers give opposite advice on delegation; ordinary |
-| 14 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
-| 15 | B-513 | Needs the maintainer: the 2026-11-14 decision audit's contradiction, unread decisions and stale premises |
+| 5 | B-523 | Maintainer direction 2026-11-14 (WSD-127): a write-side skill for warehouse reporting views and procedures, measured on a fixture before it ships; guarded |
+| 6 | B-510 | CI is at 88% of the watcher's 2,400 s and growing; past it every push and release reads CANT-VERIFY; guarded |
+| 7 | B-521 | Release review: several escaped defects were visible only in a live agent run after the tag; guarded |
+| 8 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review; after B-514; guarded |
+| 9 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 10 | B-469 | Maintainer request: an update's `.claude/framework-update-backup/` copies get forgotten and committed; `-Reinstall` already relies on the last commit instead; guarded |
+| 11 | B-491 | Audit, reproduced: `route-prompt` routes "yes, go ahead" and plain questions as a feature with the plan gate, and "concurrency" gets the security overlay; guarded |
+| 12 | B-493 | Audit, read: `dependency-audit` forbids inferring the read-only scan commands, so it reports every scan as not available; guarded, text-only |
+| 13 | B-425 | A plain-words review runs no reviewer: on Copilot CLI it loads the `review` skill (5 of 6, 2026-11-13) but skips its dispatch step (0 of 6), with or without the candidate; blocked on B-416; the Claude Code leg is about 3 USD |
+| 14 | B-497 | Audit, read: `/review` has no merge, de-duplication or verdict step, and two reviewers give opposite advice on delegation; ordinary |
+| 15 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
 | 16 | B-508 | Where the recent data-loss defects sit has no unit tests; guarded, step 4 |
 | 17 | B-511 | Deletions: release tooling that never fires or only raises its ceiling, and closed eval studies; guarded |
-| 18 | B-512 | Three hand-edited copies kept by a stale ~6-marker cap; guarded (AGENTS.md) |
+| 18 | B-512 | Three hand-edited copies kept by WSD-012's ~6-marker cap, retired by WSD-126; guarded (AGENTS.md) |
 | 19 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
 | 20 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
 | 21 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
@@ -68,6 +68,7 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 **Priority:** P1 · **Effort:** S · **Invariants:** none
 **Status:** Open (maintainer, 2026-10-19). Give the first consumer team a six-question observation card (plan opened with `Done when:`; did you correct a line; Option A/B on a risky change and was it real; did the PR carry the lines; did tests run; did a review run: `/review` typed or asked for by name, started by the agent, or none, and did its output name reviewers or "Contract lines pinned"; host and model) and record answers as field reports.
 The only route to whether the lines are correct and used; gates any reviewer-side or auto-review change. On close, decide plan v2 §5 item 5 (the auto-review sentence) and B-425 from the review answer. Review: `.claude/plans/inbox/2026-10-19-open-threads-review.md` T5.
+Time-boxed (maintainer, 2026-11-14; WSD-126): re-decide it on 2026-12-12 if no consumer team has started.
 
 ### B-417 · Measure tests derived from the restated criteria on a prompt that hides a boundary
 **Filed against:** v0.98.0 (2026-10-19)
@@ -216,13 +217,8 @@ A finished study's scenarios, graders and fixtures leave `run-agent-evals.ps1` a
 ### B-512 · `adopt.md` and `playbook.md` are kept as three hand-edited copies
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1
-**Status:** Open; decision audit 2026-11-14: the ~6-marker cap (WSD-012) was a migration rule of thumb, and `src/core/AGENTS.md` (12 markers) and the rules file (9) already exceed it. 23 of 28 commits touching `adopt.md` edited all three copies; the audit counts about 15 differing hunks in `adopt.md`, 11 in `playbook.md` and 44 to 49 in `bootstrap.md`, which stays as it is.
+**Status:** Open; decision audit 2026-11-14: the ~6-marker cap (WSD-012) was a migration rule of thumb, and `src/core/AGENTS.md` (12 markers) and the rules file (9) already exceed it; WSD-126 retires the cap. 23 of 28 commits touching `adopt.md` edited all three copies; the audit counts about 15 differing hunks in `adopt.md`, 11 in `playbook.md` and 44 to 49 in `bootstrap.md`, which stays as it is.
 Candidate: core files with `@stack` markers and byte-identical dist output, adding the core paths to AGENTS.md's guarded list so the tier does not drop; also one copy of `presentation/` (built into all three dists, never installed) and one SHA-256 bullet fewer in the bloat-radar and test-critic Copilot wrappers. Guarded (AGENTS.md).
-### B-513 · Decision-log upkeep after the 2026-11-14 decision audit
-**Filed against:** v0.98.6 (2026-11-14)
-**Priority:** P2 · **Effort:** S · **Invariants:** none
-**Status:** Open; needs the maintainer. Reconcile WSD-116 ("releases follow as soon as work lands") with AGENTS.md's "roughly weekly"; read or ratify WSD-117, WSD-120 and WSD-121 (each says the maintainer has not read it); record WSD-043's carve-outs, retire WSD-012's ~6-marker cap, restate B-157's pin rationale (its Bash oracle is gone) and WSD-105's premise (B-325's A2 arm: MISLEADING 0/6 against 6/6); time-box B-416.
-Then AGENTS.md (guarded, within 130 lines since WSD-125): check reopen triggers whenever eval or field evidence is recorded; one cost-benefit line when something ships unmeasured; one removal candidate per re-rank. Named anchors for the rules file's numbers, as B-142 suggests. The trigger test for findings and the uncapped backlog landed with WSD-124.
 ### B-514 · Measure whether an auto-created project skill is used on the next matching task and changes its outcome
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** M · **Invariants:** none
@@ -248,10 +244,11 @@ Candidate: a shipped script that lists commits adding the same shape of files th
 **Priority:** P3 · **Effort:** S · **Invariants:** #7
 **Status:** Open; architecture review 2026-11-14. `docs/enforcement-surfaces.md` states a floor for Claude Code only (2.1.141); nothing is stated for Copilot CLI or VS Code, whose behaviour the maintainer re-measures release by release (`meta/host-certification.md`). The framework has 115 release tags and is at 0.98 with no statement of what a 1.0 guarantees an installed repository.
 Candidate: one support statement per host in `enforcement-surfaces.md`, drawn from `host-certification.md`; a short maintainer decision on what 1.0 promises (update path, ownership classes, hook contract). Ordinary for the docs.
+Also: `enforcement-surfaces.md`'s "Status notes" and Copilot-harness bullet still say the guard's deny was not observed on VS Code's Copilot harness, stale since 2026-11-03 (understates); refresh them with the per-host statement.
 ### B-519 · Trim the always-loaded rules file only where a measurement can go red
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1 #7
-**Status:** Open; architecture review 2026-11-14, narrowed by its attack. The carrier is 15.6 KB on every turn; B-411 showed 5.8 KB could go with every measured behaviour holding, but its cells cover about 3 of the file's 38 directives and WSD-107 measured one added sentence doing harm. The ownership sentence stays (WSD-071); the rule numbers are cited across `src/` and their renaming is B-513's.
+**Status:** Open; architecture review 2026-11-14, narrowed by its attack. The carrier is 15.6 KB on every turn; B-411 showed 5.8 KB could go with every measured behaviour holding, but its cells cover about 3 of the file's 38 directives and WSD-107 measured one added sentence doing harm. The ownership sentence stays (WSD-071); the rule numbers are cited across `src/`, so before any cut renumbers rules, replace rule numbers with named anchors, as B-142 suggested (2026-11-14 decision audit).
 Candidate: cut or shorten only text a discriminating cell covers, one group per measurement; B-356's bullet is decided by its own measurement. Ordinary by path; every cut measured.
 ### B-520 · Smaller leftovers of the 2026-11-14 reviews
 **Filed against:** v0.98.6 (2026-11-14)
@@ -259,3 +256,8 @@ Candidate: cut or shorten only text a discriminating cell covers, one group per 
 **Status:** Open; each stood its attack in this narrowed form. (1) Headless `/adopt` (about 6.8 KB) into its own file. (2) When a live eval run is hand-checked, keep its scrubbed transcript and verdict as a self-test fixture: grader defects were found by reading transcripts, not by the hand-written fixtures. (3) Time `UpdateDelivery.Tests.ps1` per case, then replace only the setup installs whose result no case asserts.
 (4) One meta case asserting the five `Test-IsLinkEntry` copies are identical and none uses a bare `-band ReparsePoint`, in place of the five per-copy cases. (5) `build.ps1`'s second ownership listing (`:383-390`): the Bash oracle it replaced is gone (B-157), so keep or delete it on purpose.
 (6) `BacklogHygiene.Tests.ps1:206` reads commit subjects only, so a closure recorded in a body under the 72-character subject rule (WSD-125) escapes its open-item check: read bodies too, after checking the last 200. (7) `release.ps1:766` builds `v<version>: <summary>` with no tier and no length bound.
+### B-523 · A write-side skill for warehouse reporting views and stored procedures, measured on a fixture before it ships
+**Filed against:** v0.98.6 (2026-11-15)
+**Priority:** P2 · **Effort:** M · **Invariants:** #1 #7
+**Status:** Open; maintainer direction 2026-11-14 ("Skill for views/procs"; WSD-127, superseding WSD-121): a recipe for writing a reporting view or stored procedure on the warehouse map's proven joins; Power BI stays out of scope.
+Design it, then a measurement pre-registered on a warehouse fixture, then ship it only if that measurement supports it. Guarded (`src/stacks/*/files/.claude/**`).

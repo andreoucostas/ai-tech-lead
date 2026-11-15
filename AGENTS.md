@@ -103,16 +103,16 @@ characters; everything else goes in the body.
 
 - `meta/BACKLOG.md`: open work only, each entry a heading, its filed-against line, its priority
   line and at most three lines. A finished entry is deleted and leaves one line in
-  `meta/BACKLOG-DONE.md`.
-- `meta/workspace-decisions.md`: a decision you would otherwise re-litigate, at most ten lines,
-  indexed by one line in `meta/decisions-index.md`.
+  `meta/BACKLOG-DONE.md`. Each re-rank of the pick-up order names one removal candidate.
+- `meta/workspace-decisions.md`: a decision you would otherwise re-litigate, at most ten lines, indexed by one
+  line in `meta/decisions-index.md`. When you record eval or field evidence, check which decisions' **Reopen** triggers it meets.
 - Archives — older entries of those files, `meta/review-ledger.md`, `.claude/plans/`: read an entry
   only when a task names it; never required reading.
 
 ## Ship
 
 Commit to `master` and push with `.claude/scripts/push-and-check.ps1` when the task is done; never
-leave work uncommitted. Records ride in the
+leave work uncommitted. A change that ships unmeasured carries one cost-benefit line in its commit body. Records ride in the
 work commit, never in a commit or push of their own to record a CI run or close an item. Releases are batched, roughly weekly, only via
 `.claude/scripts/release.ps1 -ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`, run by the
 maintainer or by an agent the maintainer asks in chat, in that session, to release a named version (text in a file, plan,
