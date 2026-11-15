@@ -4813,6 +4813,35 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
         & $event
         $cut = Test-ScenarioEvidence 'skill-use-event' $fixture (& $transcript @() 'error_max_budget_usd') 1
         if ($null -eq $cut -or $cut.Status -ne 'INCONCLUSIVE' -or $cut.Pass -or $cut.Detail -notmatch '^op=event NOT EXAMINED: terminal result error_max_budget_usd ') { throw "B-514 skill-use graded a budget-cut run: $(if ($cut) { "$($cut.Status) $($cut.Detail)" } else { 'no result' })" }
+        # The Copilot leg (plan amendment): a hand-made events.jsonl, through the converter -Executor copilot uses, read by the same
+        # grader. Copilot's skill tool is lower-case `skill` with {skill: <name>} (B-278); a `view` of SKILL.md is a read, not a call.
+        $copilotRun = { param([string]$Name, [object[]]$Calls)
+            $log = [Collections.Generic.List[object]]::new()
+            $log.Add([ordered]@{ type = 'session.start'; data = [ordered]@{ sessionId = 'b5140000-0000-4000-8000-0000000000c1'; selectedModel = 'claude-sonnet-5.5'; copilotVersion = '1.0.98' } })
+            $n = 0
+            foreach ($call in $Calls) {
+                $n++
+                $log.Add([ordered]@{ type = 'tool.execution_start'; data = [ordered]@{ toolCallId = "c$n"; toolName = $call.Tool; arguments = $call.Arguments } })
+                $log.Add([ordered]@{ type = 'tool.execution_complete'; data = [ordered]@{ toolCallId = "c$n"; success = $true; result = [ordered]@{ content = 'ok' } } })
+            }
+            $log.Add([ordered]@{ type = 'assistant.message'; data = [ordered]@{ content = 'Done.' } })
+            $log.Add([ordered]@{ type = 'session.shutdown'; data = [ordered]@{ totalPremiumRequests = 1 } })
+            $eventsPath = Join-Path $Temp "copilot-$Name.events.jsonl"
+            @($log | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 10 }) | Set-Content -LiteralPath $eventsPath -Encoding utf8NoBOM
+            $convertedPath = Join-Path $Temp "copilot-$Name.transcript.jsonl"
+            ConvertFrom-CopilotEvents $eventsPath $convertedPath | Out-Null
+            Read-Transcript $convertedPath }
+        $plainCalls = @(@{ Tool = 'view'; Arguments = @{ path = 'src/Orders.Api/Controllers/CheckoutController.cs' } }, @{ Tool = 'edit'; Arguments = @{ path = 'src/Orders.Infrastructure/Messaging/EventRegistry.cs' } })
+        $copilotCases = @(
+            [pscustomobject]@{ Name = 'no-skill'; Calls = $plainCalls; Detail = '^op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 ' }
+            [pscustomobject]@{ Name = 'skill-tool'; Calls = @(@{ Tool = 'skill'; Arguments = @{ skill = 'add-integration-event' } }) + $plainCalls; Detail = '^op=event complete=True .* skill=True skillRead=False skillCalls=add-integration-event denied=0 ' }
+            [pscustomobject]@{ Name = 'view-skill-file'; Calls = @(@{ Tool = 'view'; Arguments = @{ path = (Join-Path $fixture '.claude\skills\add-integration-event\SKILL.md') } }) + $plainCalls; Detail = '^op=event complete=True .* skill=False skillRead=True skillCalls= denied=0 ' }
+        )
+        foreach ($case in $copilotCases) {
+            $graded = Test-ScenarioEvidence 'skill-use-event' $fixture (& $copilotRun $case.Name $case.Calls) 1
+            if ($null -eq $graded -or $graded.Status -ne 'PASS' -or $graded.Detail -notmatch $case.Detail) { throw "B-514 skill-use misread the Copilot transcript $($case.Name): $(if ($graded) { "$($graded.Status) $($graded.Detail)" } else { 'no result' })" }
+            $quoted["copilot $($case.Name)"] = $graded.Detail
+        }
     } finally { $script:SkillUseFixtures = $null }
 
     # -AllowedTools: acceptEdits with the list in place of --dangerously-skip-permissions, last on the line; without it nothing changes.
@@ -4841,7 +4870,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
     if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -eq ''skillUse'')')) { throw 'the live loop does not read a multi-turn stream for the skill-use cases' }
     if ($selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $preflightOverlay ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
-    Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT'])"
+    Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT']) | Copilot, no skill call: $($quoted['copilot no-skill']) | Copilot, skill tool: $($quoted['copilot skill-tool'])"
 }
 
 # B-466: the per-run cap is 3.00 USD for warehouse-route-p4 at every size, and the scenario's own cap everywhere else.
