@@ -1,0 +1,18 @@
+diff --git a/.claude/commands/bootstrap.md b/.claude/commands/bootstrap.md
+index 5b07de5..6dff25a 100644
+--- a/.claude/commands/bootstrap.md
++++ b/.claude/commands/bootstrap.md
+@@ -241,7 +241,12 @@ owner-routed change, but do not alter it.
+   absent, and never under a slug root `framework-retirements.json` retires or a `LEARNINGS.md`
+   `## Disabled framework skill:` heading names; name it in this repository's vocabulary. Create
+   both files, never one without the other. The focused reference lists every instance path and
+-  names the cleanest as the exemplar. The skill
++  names the cleanest as the exemplar. Before writing a draft, check it against every instance it
++  lists. An instance's files are those of the commit that added it where Git history has one
++  (`git log --diff-filter=A --format=%h -- <instance file>`, then `git show --name-only <commit>`),
++  otherwise every file that names its type, key, or path. Each file maps to a step of the draft or
++  to an unresolved line; a file that maps to neither is a missed step, so add it before writing.
++  The focused reference records where each instance's file list came from. The skill
+   body contains an explicit relative Markdown link to every focused reference; a sibling file's
+   existence is not a link. Do not also create a wiki draft that duplicates the operation; wiki
+   drafts hold independently scoped facts, constraints, gotchas, or failed approaches. Its
