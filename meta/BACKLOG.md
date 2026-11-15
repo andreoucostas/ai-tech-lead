@@ -248,7 +248,7 @@ Also: `enforcement-surfaces.md`'s "Status notes" and Copilot-harness bullet stil
 ### B-519 · Trim the always-loaded rules file only where a measurement can go red
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1 #7
-**Status:** Open; architecture review 2026-11-14, narrowed by its attack. The carrier is 15.6 KB on every turn; B-411 showed 5.8 KB could go with every measured behaviour holding, but its cells cover about 3 of the file's 38 directives and WSD-107 measured one added sentence doing harm. The ownership sentence stays (WSD-071); the rule numbers are cited across `src/`, so before any cut renumbers rules, replace rule numbers with named anchors, which B-142 proposed before it closed as a deliberate non-action on 2026-08-19 (2026-11-14 decision audit).
+**Status:** Open; architecture review 2026-11-14, narrowed by its attack. The carrier is 15.6 KB on every turn; B-411 showed 5.8 KB could go with every measured behaviour holding, but its cells cover about 3 of the file's 38 directives and WSD-107 measured one added sentence doing harm. The ownership sentence stays (WSD-071); the rule numbers are cited across `src/`, so before any cut renumbers rules, replace rule numbers with named anchors, as the 2026-11-14 decision audit proposed (B-142 proposed only a range check and, closing as a deliberate non-action on 2026-08-19, called stable rule identities "a materially larger canonicalisation design").
 Candidate: cut or shorten only text a discriminating cell covers, one group per measurement; B-356's bullet is decided by its own measurement. Ordinary by path; every cut measured.
 ### B-520 · Smaller leftovers of the 2026-11-14 reviews
 **Filed against:** v0.98.6 (2026-11-14)

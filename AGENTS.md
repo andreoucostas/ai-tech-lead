@@ -105,7 +105,8 @@ characters; everything else goes in the body.
   line and at most three lines. A finished entry is deleted and leaves one line in
   `meta/BACKLOG-DONE.md`.
 - `meta/workspace-decisions.md`: a decision you would otherwise re-litigate, at most ten lines, indexed by one line in
-  `meta/decisions-index.md`. When recording eval or field evidence, check the **Reopen** triggers of the decisions indexed on its subject.
+  `meta/decisions-index.md`. When recording eval or field evidence, open the decisions indexed on its subject (an exception to
+  the Archives line) and name any **Reopen** trigger it meets in the same commit.
 - Archives — older entries of those files, `meta/review-ledger.md`, `.claude/plans/`: read an entry
   only when a task names it; never required reading.
 
