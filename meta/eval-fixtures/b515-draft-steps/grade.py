@@ -2,7 +2,7 @@
 instances contain that the draft omits, counted from the instances' files (generate.py's INSTANCE_FILES, which
 `generate.py --check` ties to the fixture's history).
 
-    python grade.py <run label> <target> <stream.jsonl> [<stream.jsonl> ...] [--json <out.json>]
+    python grade.py <run label> <target> <stream.jsonl> [<stream.jsonl> ...] [--fixture v3|l] [--json <out.json>]
     python grade.py --self-test
 
 A draft is a new .claude/skills/<slug>/SKILL.md (a slug framework-ownership.json does not own): the file in the target
@@ -10,6 +10,14 @@ when the write landed, else the last Write payload for that path in the streams 
 .claude/skills/ in acceptEdits, B-514). Its references/*.md are read the same way. A step counts as named when its
 pattern matches the SKILL.md body (frontmatter excluded): a step only the description or the reference names is
 omitted. The grader never reads the agent's final message.
+
+--fixture l (B-515 amendment): B-466's 4,999-file `warehouse-scale-l` tree. Its repeated operation is the generator's
+subject area (Get-WarehouseScaleArea in run-agent-evals.ps1); `l_area_files` lists an area's files by the generator's
+naming, and every file maps to a step of one of three components: a dimension load (`dimension`, `dimload`, `job`), a
+fact load (`staging`, `fact`, `factload`, `job`) and its views (`view`). A draft is graded on the components its name,
+description and title declare (all three for a subject area or when none is declared). 3a-bis routes an operation that
+matches the shipped `add-warehouse-load` to that skill's new `references/project-pattern.md`, so that file, when written,
+is also a draft, graded on its own text.
 """
 import importlib.util
 import json
@@ -54,6 +62,22 @@ STEP_PATTERNS = {
         'deploy': r'deploy-order',
     },
 }
+# --fixture l: the generator's suffix vocabulary (Get-WarehouseScaleVocabulary) and an area's step roles.
+L_FACT_KINDS = ('Movement', 'Snapshot', 'Event')
+L_DIM_KINDS = ('Status', 'Type', 'Channel', 'Segment')
+L_VIEW_KINDS = ('Summary', 'ByMonth', 'Detail', 'Trend')
+L_COMPONENTS = {'dim': ('dimension', 'dimload', 'job'), 'fact': ('staging', 'fact', 'factload', 'job'), 'view': ('view',)}
+L_STEP_PATTERNS = {
+    'staging': r'\bstg\.|Tables/stg|\bStg[A-Z<{]|[Ss]taging table',
+    'dimension': r'\bdim\.Dim|Tables/dim',
+    'fact': r'\bfact\.Fact|Tables/fact',
+    'dimload': r'usp_LoadDim',
+    'factload': r'usp_LoadFact',
+    'view': r'\brpt\.vw|Views/',
+    'job': r'Jobs/|sp_add_jobstep|sp_add_job\b|SQL Agent',
+}
+L_KIND_PATTERNS = {'area': r'subject[- ]?areas?\b|\bareas?\b', 'fact': r'\bfacts?\b', 'dim': r'\bdimensions?\b|\bdims?\b',
+                   'view': r'\bviews?\b|\brpt\.'}
 SKILL_PATH = re.compile(r'(?:^|[\\/])\.claude[\\/]skills[\\/]([^\\/]+)[\\/](SKILL\.md|references[\\/][^\\/]+\.md)$')
 FILE_TOKEN = re.compile(r'(?<![\w/.<>-])((?:[\w.-]+/)*[\w-]+(?:\.[\w-]+)*\.(?:cs|json|sql|txt|bicep|csproj|sln))\b')
 
@@ -155,15 +179,88 @@ def grade_draft(slug, parts):
     return row
 
 
-def grade_run(label, target, stream_paths):
+def l_areas(target):
+    """The subject areas of a warehouse-scale tree: one Jobs/<Area>Daily.sql each (Jobs/NightlyCore.sql is the base's)."""
+    jobs = os.path.join(target, 'Jobs')
+    return sorted(n[:-len('Daily.sql')] for n in os.listdir(jobs) if n.endswith('Daily.sql')) if os.path.isdir(jobs) else []
+
+
+def l_area_files(target, area):
+    """{path: step} for one area, by Get-WarehouseScaleArea's naming: every file the generator writes for it, and no other."""
+    candidates = {f'Tables/dim.Dim{area}.sql': 'dimension', f'StoredProcedures/usp_LoadDim{area}.sql': 'dimload', f'Jobs/{area}Daily.sql': 'job'}
+    for k in L_FACT_KINDS:
+        candidates.update({f'Tables/stg.Stg{area}{k}.sql': 'staging', f'Tables/fact.Fact{area}{k}.sql': 'fact',
+                           f'StoredProcedures/usp_LoadFact{area}{k}.sql': 'factload'})
+    for d in L_DIM_KINDS:
+        candidates.update({f'Tables/dim.Dim{area}{d}.sql': 'dimension', f'StoredProcedures/usp_LoadDim{area}{d}.sql': 'dimload'})
+    for v in L_VIEW_KINDS:
+        candidates[f'Views/rpt.vw{area}{v}.sql'] = 'view'
+    return {p: s for p, s in candidates.items() if os.path.isfile(os.path.join(target, p))}
+
+
+def grade_draft_l(slug, parts, areas, target):
+    """A draft on the L tree: a new SKILL.md, or add-warehouse-load's new references/project-pattern.md (no frontmatter)."""
+    if 'SKILL.md' in parts:
+        text, source = parts['SKILL.md']
+        front, body = split_frontmatter(text)
+        refs = ''.join(t for k, (t, _) in sorted(parts.items()) if k != 'SKILL.md')
+    else:
+        text, source = parts['references/project-pattern.md']
+        front, body, refs = '', text, ''
+    body_n = body.replace('\\', '/')
+    every = body_n + '\n' + refs.replace('\\', '/')
+    title = re.search(r'^#\s+(.+)$', body_n, re.M)
+    declared = ' '.join([slug.replace('-', ' '), front, title.group(1) if title else ''])
+    kinds = [k for k, rx in L_KIND_PATTERNS.items() if re.search(rx, declared, re.I)]
+    components = ['dim', 'fact', 'view'] if 'area' in kinds or not kinds else [k for k in ('dim', 'fact', 'view') if k in kinds]
+    listed = [a for a in areas if a in every]
+    x1_only = not listed and 'usp_LoadFactSales_' in every
+    loads = re.search(r'usp_LoadDim|usp_LoadFact|\bfact\.Fact|\bdim\.Dim', every)
+    op = 'X1' if x1_only else ('P3' if listed or loads else 'other')
+    row = {'slug': slug, 'op': op, 'source': source, 'origin': bool(re.search(r'^origin:\s*discovered\s*$', front, re.M)),
+           'draftPrefix': bool(re.search(r'DRAFT, pending PR review:', front)),
+           'link': bool(re.search(r'\]\((?:\./)?references/[^)\s]+\.md\)', body_n)), 'reference': any(k != 'SKILL.md' for k in parts),
+           'steps': len(re.findall(r'^\s*\d+\.\s', body, re.M)), 'components': components, 'instancesListed': len(listed)}
+    if op != 'P3':
+        row.update({'instances': [], 'contained': [], 'named': [], 'omitted': [], 'extraFiles': []})
+        return row
+    graded = listed or areas
+    wanted = {s for c in components for s in L_COMPONENTS[c]}
+    contained = sorted({s for a in graded for s in l_area_files(target, a).values()} & wanted)
+    named = sorted(s for s in contained if re.search(L_STEP_PATTERNS[s], body_n))
+    row.update({'instances': listed[:6] + (['...'] if len(listed) > 6 else []), 'contained': contained, 'named': named,
+                'omitted': [s for s in contained if s not in named], 'extraFiles': []})
+    return row
+
+
+def parent_context(events):
+    """The parent session's largest prompt (input + cache read + cache creation tokens of one main-agent turn), compactions."""
+    peak = 0
+    for e in events:
+        if e.get('type') == 'assistant' and not e.get('parent_tool_use_id'):
+            u = e.get('message', {}).get('usage') or {}
+            peak = max(peak, sum(int(u.get(k) or 0) for k in ('input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens')))
+    compactions = sum(1 for e in events if e.get('type') == 'system' and 'compact' in str(e.get('subtype', '')))
+    limits = [e.get('rate_limit_info') or {} for e in events if e.get('type') == 'rate_limit_event']
+    return peak, compactions, (limits[-1].get('status'), (limits[-1].get('unifiedWindows') or {}).get('five_hour', {}).get('utilization')) if limits else (None, None)
+
+
+def grade_run(label, target, stream_paths, fixture='v3'):
     events = read_events(stream_paths)
     files, written, shell_writes = collect_drafts(target, events)
     owned = framework_slugs(target)
-    drafts = [grade_draft(slug, parts) for slug, parts in sorted(files.items()) if slug not in owned and 'SKILL.md' in parts]
+    if fixture == 'l':
+        # dist/dotnet ships add-warehouse-load's SKILL.md only, so any references/project-pattern.md under it is a draft.
+        areas = l_areas(target)
+        drafts = [grade_draft_l(slug, parts, areas, target) for slug, parts in sorted(files.items())
+                  if (slug not in owned and 'SKILL.md' in parts) or (slug == 'add-warehouse-load' and 'references/project-pattern.md' in parts)]
+    else:
+        drafts = [grade_draft(slug, parts) for slug, parts in sorted(files.items()) if slug not in owned and 'SKILL.md' in parts]
     results = [e for e in events if e.get('type') == 'result']
     inits = [e for e in events if e.get('type') == 'system' and e.get('subtype') == 'init']
+    peak, compactions, limit = parent_context(events)
     run = {'run': label, 'drafts': len(drafts), 'P1': sum(d['op'] == 'P1' for d in drafts), 'P2': sum(d['op'] == 'P2' for d in drafts),
-           'other': sum(d['op'] == 'other' for d in drafts),
+           'P3': sum(d['op'] == 'P3' for d in drafts), 'other': sum(d['op'] in ('other', 'X1') for d in drafts),
            'omittedTotal': sum(len(d['omitted']) for d in drafts),
            'omittedV2': sum(len([s for s in d['omitted'] if s in V2_STEPS]) for d in drafts),
            'omittedAdded': sum(len([s for s in d['omitted'] if s not in V2_STEPS]) for d in drafts),
@@ -174,7 +271,8 @@ def grade_run(label, target, stream_paths):
            'model': inits[0].get('model') if inits else None, 'ccVersion': inits[0].get('claude_code_version') if inits else None,
            'denials': sum(len(r.get('permission_denials') or []) for r in results),
            'workers': sum(1 for e in events if e.get('type') == 'assistant' for c in e.get('message', {}).get('content', []) or []
-                          if c.get('type') == 'tool_use' and c.get('name') in ('Task', 'Agent'))}
+                          if c.get('type') == 'tool_use' and c.get('name') in ('Task', 'Agent')),
+           'parentPeakContext': peak, 'compactions': compactions, 'rateLimit': f'{limit[0]}@{limit[1]}'}
     return run, drafts
 
 
@@ -183,7 +281,8 @@ def format_rows(run, drafts):
     for d in drafts:
         lines.append(f"DRAFT run={run['run']} slug={d['slug']} op={d['op']} source={d['source']} instances={','.join(d['instances']) or '-'} "
                      f"contained={len(d['contained'])} omitted={','.join(d['omitted']) or '-'} link={d['link']} reference={d['reference']} "
-                     f"origin={d['origin']} draftPrefix={d['draftPrefix']} steps={d['steps']} extraFiles={','.join(d['extraFiles']) or '-'}")
+                     f"origin={d['origin']} draftPrefix={d['draftPrefix']} steps={d['steps']} extraFiles={','.join(d['extraFiles']) or '-'}"
+                     + (f" components={','.join(d['components'])} instancesListed={d['instancesListed']}" if 'components' in d else ''))
     lines.append(' '.join(f'{k}={v}' for k, v in run.items() if k not in ('frameworkSkillWrites',)) +
                  f" frameworkSkillWrites={','.join(run['frameworkSkillWrites']) or '-'}")
     lines[-1] = 'RUN ' + lines[-1]
@@ -317,7 +416,86 @@ def self_test():
             expect('history matches INSTANCE_FILES', _gen.check(repo), [])
         finally:
             os.chdir(cwd)
+        # 7 (--fixture l): two areas named as Get-WarehouseScaleArea names them, the base job and one X1 loader.
+        ltarget = os.path.join(tmp, 'l')
+        for p in L_AREA_TREE:
+            os.makedirs(os.path.dirname(os.path.join(ltarget, p)), exist_ok=True)
+            with open(os.path.join(ltarget, p), 'w', encoding='utf-8') as f:
+                f.write('--\n')
+        lroot = ltarget.replace('/', '\\') + '\\.claude\\skills\\'
+        expect('l areas', l_areas(ltarget), ['CardFacility', 'PayrollOverdraft'])
+        expect('l area files', sorted(l_area_files(ltarget, 'PayrollOverdraft')), sorted(p for p in L_AREA_TREE if 'PayrollOverdraft' in p))
+        no_job = COMPLETE_L.replace('8. Add `Jobs/<Area>Daily.sql`: one `sp_add_jobstep` per loader, dimensions before facts.\n', '')
+        fact_only = COMPLETE_L.replace('name: add-subject-area', 'name: add-fact-load').replace(
+            'add a warehouse subject area (staging, dimensions, facts, loaders, views, job)', 'add a fact load').replace('# Add a subject area', '# Add a fact load')
+        fact_only_no_job = fact_only.replace('8. Add `Jobs/<Area>Daily.sql`: one `sp_add_jobstep` per loader, dimensions before facts.\n', '')
+        s7 = os.path.join(tmp, 's7.jsonl')
+        _stream(s7, [(lroot + 'add-subject-area\\SKILL.md', COMPLETE_L), (lroot + 'no-job\\SKILL.md', no_job),
+                     (lroot + 'add-fact-load\\SKILL.md', fact_only_no_job), (lroot + 'add-warehouse-load\\references\\project-pattern.md', REFERENCE_L),
+                     (lroot + 'sales-variants\\SKILL.md', X1_DECOY)])
+        run, drafts = grade_run('l7', ltarget, [s7], fixture='l')
+        got = {d['slug']: (d['op'], d['components'], d['contained'], d['omitted']) for d in drafts}
+        everything = ['dimension', 'dimload', 'fact', 'factload', 'job', 'staging', 'view']
+        expect('l complete', got.get('add-subject-area'), ('P3', ['dim', 'fact', 'view'], everything, []))
+        expect('l omits the job', got.get('no-job'), ('P3', ['dim', 'fact', 'view'], everything, ['job']))
+        expect('l fact load omits the job', got.get('add-fact-load'), ('P3', ['fact'], ['fact', 'factload', 'job', 'staging'], ['job']))
+        expect('l add-warehouse-load reference', got.get('add-warehouse-load'),
+               ('P3', ['dim', 'fact'], ['dimension', 'dimload', 'fact', 'factload', 'job', 'staging'], []))
+        expect('l X1 decoy', got.get('sales-variants', ('?',))[0], 'X1')
+        expect('l run', (run['drafts'], run['P3'], run['other'], run['omittedTotal'], run['draftsWithOmission']), (5, 4, 1, 2, 2))
+        shown += [r for r in format_rows(run, drafts) if 'no-job' in r or 'add-fact-load' in r]
     return failures, shown
+
+
+L_AREA_TREE = ['Jobs/NightlyCore.sql', 'StoredProcedures/usp_LoadFactSales_v2.sql',
+               'Tables/stg.StgPayrollOverdraftSnapshot.sql', 'Tables/stg.StgPayrollOverdraftEvent.sql', 'Tables/dim.DimPayrollOverdraft.sql',
+               'Tables/dim.DimPayrollOverdraftSegment.sql', 'Tables/dim.DimPayrollOverdraftStatus.sql', 'Tables/fact.FactPayrollOverdraftSnapshot.sql',
+               'Tables/fact.FactPayrollOverdraftEvent.sql', 'StoredProcedures/usp_LoadDimPayrollOverdraft.sql',
+               'StoredProcedures/usp_LoadDimPayrollOverdraftSegment.sql', 'StoredProcedures/usp_LoadDimPayrollOverdraftStatus.sql',
+               'StoredProcedures/usp_LoadFactPayrollOverdraftSnapshot.sql', 'StoredProcedures/usp_LoadFactPayrollOverdraftEvent.sql',
+               'Views/rpt.vwPayrollOverdraftByMonth.sql', 'Jobs/PayrollOverdraftDaily.sql',
+               'Tables/stg.StgCardFacilityMovement.sql', 'Tables/dim.DimCardFacility.sql', 'Tables/fact.FactCardFacilityMovement.sql',
+               'StoredProcedures/usp_LoadDimCardFacility.sql', 'StoredProcedures/usp_LoadFactCardFacilityMovement.sql',
+               'Views/rpt.vwCardFacilitySummary.sql', 'Jobs/CardFacilityDaily.sql']
+COMPLETE_L = '''---
+name: add-subject-area
+description: >
+  DRAFT, pending PR review: add a warehouse subject area (staging, dimensions, facts, loaders, views, job).
+origin: discovered
+---
+
+# Add a subject area
+
+Instances: PayrollOverdraft, CardFacility ([reference](references/project-pattern.md)).
+
+1. Check whether an existing subject area already owns the data.
+2. Add `Tables/stg.Stg<Area><Kind>.sql` with `BatchId`.
+3. Add `Tables/dim.Dim<Area>.sql` and any `dim.Dim<Area><Kind>` lookup dimensions.
+4. Add `Tables/fact.Fact<Area><Kind>.sql` with `LoadRunId`.
+5. Add `usp_LoadDim<Area>`, and one per lookup dimension.
+6. Add `usp_LoadFact<Area><Kind>`, stamping `LoadRunId` from the staging `BatchId`.
+7. Add `Views/rpt.vw<Area><View>.sql`.
+8. Add `Jobs/<Area>Daily.sql`: one `sp_add_jobstep` per loader, dimensions before facts.
+'''
+REFERENCE_L = '''# Project pattern: dimension and fact loads (draft, pending PR review)
+
+Instances: `usp_LoadFactPayrollOverdraftSnapshot`, `usp_LoadFactCardFacilityMovement`, `usp_LoadDimCardFacility`.
+
+1. Stage rows in `stg.Stg<Area><Kind>` with `BatchId`.
+2. Load `dim.Dim<Area>` with `usp_LoadDim<Area>` (MERGE on the business id).
+3. Load `fact.Fact<Area><Kind>` with `usp_LoadFact<Area><Kind>`, `LoadRunId` from `BatchId`.
+4. Add each loader as a step of `Jobs/<Area>Daily.sql`, dimensions first.
+'''
+X1_DECOY = '''---
+name: sales-variants
+description: "DRAFT, pending PR review: add a sales fact loader variant."
+origin: discovered
+---
+
+Instances: `usp_LoadFactSales_v2`, `usp_LoadFactSales_v3`, `usp_LoadFactSales_Audited`.
+
+1. Copy `usp_LoadFactSales` and open a `ctl.LoadRun` row.
+'''
 
 
 if __name__ == '__main__':
@@ -328,17 +506,24 @@ if __name__ == '__main__':
         if failures:
             print('\n'.join('SELF-TEST FAIL: ' + f for f in failures))
             sys.exit(1)
-        print('SELF-TEST PASS: the hand-made drafts that omit a step read omitted=di and omitted=deploy (above); complete drafts read none')
+        print('SELF-TEST PASS: the hand-made drafts that omit a step read omitted=di, omitted=deploy and (L) omitted=job (above); '
+              'complete drafts read none')
         sys.exit(0)
     args = sys.argv[1:]
-    out = None
+    out, fixture = None, 'v3'
     if '--json' in args:
         i = args.index('--json')
         out = args[i + 1]
         del args[i:i + 2]
+    if '--fixture' in args:
+        i = args.index('--fixture')
+        fixture = args[i + 1]
+        del args[i:i + 2]
     if len(args) < 3:
         sys.exit(__doc__)
-    run, drafts = grade_run(args[0], args[1], args[2:])
+    if fixture not in ('v3', 'l'):
+        sys.exit(f'--fixture {fixture}: expected v3 or l')
+    run, drafts = grade_run(args[0], args[1], args[2:], fixture)
     print('\n'.join(format_rows(run, drafts)))
     if out:
         with open(out, 'w', encoding='utf-8') as f:
