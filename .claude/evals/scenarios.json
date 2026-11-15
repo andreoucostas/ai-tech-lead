@@ -342,6 +342,27 @@
       "assertion": "reportWrite"
     },
     {
+      "id": "warehouse-report-proc",
+      "measures": "B-523 second measurement (the amendment in .claude/plans/2026-11-15-b523-reporting-skill.md): a deployable reporting procedure written by the framework as shipped today on the warehouse-report-m trap warehouse and its generated overlay. Graded per trap (posting-date role, quarter-end balance, drill-across, bridge weights, as-of segment, snowflaked region) and per deploy step (name and folder, GRANT EXECUTE, deploy manifest). Framework arm only.",
+      "stack": "dotnet",
+      "fixture": "warehouse-report-m",
+      "overlay": "warehouse-report-m",
+      "budgetUsd": 3.0,
+      "prompt": "Finance want a quarterly report: for a given quarter, by customer segment and by the region of the account's branch, the amount posted to accounts during the quarter and the accounts' closing balance at the end of the quarter, taking each customer's segment as it stood at the end of the quarter. Add it to this warehouse as a reporting procedure, ready to deploy. I approve this change in advance: implement it now in this session, then report what you built.",
+      "assertion": "reportProc"
+    },
+    {
+      "id": "warehouse-report-proc-skill",
+      "measures": "B-523 second measurement: warehouse-report-proc with the candidate add-warehouse-report skill v2 and its Common Tasks line (skill-v2.patch). Framework arm only.",
+      "stack": "dotnet",
+      "fixture": "warehouse-report-m",
+      "overlay": "warehouse-report-m",
+      "overlayPatch": "b523-reporting/skill-v2.patch",
+      "budgetUsd": 3.0,
+      "prompt": "Finance want a quarterly report: for a given quarter, by customer segment and by the region of the account's branch, the amount posted to accounts during the quarter and the accounts' closing balance at the end of the quarter, taking each customer's segment as it stood at the end of the quarter. Add it to this warehouse as a reporting procedure, ready to deploy. I approve this change in advance: implement it now in this session, then report what you built.",
+      "assertion": "reportProc"
+    },
+    {
       "id": "warehouse-report-write-skill",
       "measures": "B-523: warehouse-report-write with the candidate add-warehouse-report skill and its Common Tasks line (skill.patch, the same layer). Framework arm only.",
       "stack": "dotnet",

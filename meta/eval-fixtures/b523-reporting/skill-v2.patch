@@ -1,0 +1,121 @@
+diff --git a/.claude/skills/add-warehouse-report/SKILL.md b/.claude/skills/add-warehouse-report/SKILL.md
+new file mode 100644
+index 0000000..a2d1acf
+--- /dev/null
++++ b/.claude/skills/add-warehouse-report/SKILL.md
+@@ -0,0 +1,103 @@
++---
++name: add-warehouse-report
++description: >
++  SQL data-warehouse repos only — verifies before writing. Add or change a reporting view or
++  reporting stored procedure: start from the warehouse map's proven joins, apply the dimensional
++  rules a report needs (grain, drill-across, semi-additive measures, as-of history joins,
++  role-playing dates, weighted bridges), and deploy it the way the repo's existing reporting
++  objects are: name and folder, permissions, and every list that registers them.
++  USE FOR: a new reporting view, mart view or report procedure; a new column, filter or
++  parameter on an existing one.
++  DO NOT USE FOR: an ad-hoc analytical query that is not deployed (follow map-warehouse's
++  Querying rules), a fact or dimension load (use add-warehouse-load), OLTP queries, Power BI or
++  other BI-tool authoring, tuning a slow query.
++---
++
++# Add a Warehouse Reporting View or Procedure
++
++Match AGENTS.md > Conventions > Data Access. A reporting object fails quietly twice: a wrong join
++or aggregation returns a number, not an error, and a missed deploy step ships an object nobody can
++run. Both halves below are required.
++
++0. **Confirm this repo is a SQL data warehouse with the shared classifier.** Run
++   `pwsh -NoProfile -File scripts/warehouse-map-check.ps1`. Continue when it reports
++   `WAREHOUSE_MAP missing`, `stale`, or `current`. If it reports `WAREHOUSE_MAP not-applicable`,
++   STOP and follow the repo's own data-access pattern. If it exits 2, do not guess; report that
++   applicability could not be determined.
++
++1. **Take the joins from the map, not from names.** Read `docs/warehouse-map.md`: its
++   Relationship edge list, Dimensional semantics, Findings and "Querying this warehouse" section.
++   If the check reported it missing or stale, or it is silent on a table the report reads, run
++   `map-warehouse`'s scoped pass on those objects first. The map is a snapshot: confirm the objects
++   it names still exist, and where it and the code disagree the code wins. Join only on edges
++   labelled `Declared`, `In use` or `Load-derived`. An `UNRESOLVED` or `CONFLICTING` edge, or a
++   column the Findings say no load populates, is a question for the developer, not a join.
++
++2. **Write the report contract before any SQL**, in your plan and the object's header comment:
++   - the output grain: what one row is ("one row per segment per region per quarter");
++   - each fact it reads, with that fact's grain and type (transaction, periodic snapshot,
++     accumulating snapshot);
++   - each attribute, the dimension that owns it, and the whole path to it, every snowflaked hop
++     included (account → branch → region); read the attribute from the table that owns it, not from
++     a same-named column on a table earlier in the path;
++   - each measure and its additivity; each date the report filters or groups on, and its role;
++   - each dimension edge's version resolution; and what the result reconciles to.
++
++3. **Apply the dimensional rules the contract names.**
++   - **Role-playing dates.** A fact with several date keys (transaction, posting, value, month end)
++     joins the date dimension once per role it uses, under an alias named for the role. Take the
++     role from the request's words ("posted", "booked", "settled", "as at"); if they do not settle
++     it, ask.
++   - **Additivity.** A fully additive measure sums freely. A semi-additive one (a balance, a level,
++     a headcount, any snapshot amount) is never summed across time: for a period, take each
++     entity's snapshot at the period's end (or the average, if asked), then sum across the other
++     dimensions. A ratio is the sum of its numerator over the sum of its denominator.
++   - **History (as-of) joins.** A key that names one version (`Pinned at load`) takes no version
++     predicate. A business or durable key into a dimension that keeps history (`Deferred to
++     query`) needs the version valid at the report's date: `ValidFrom <= <date> AND <date> <
++     ValidTo`, or the repository's own boundary and open-end convention, copied from an existing
++     view or load. `IsCurrent = 1` answers "now", not "as at"; use it only when the request asks for
++     the current value. With no version predicate every version row matches and the measure
++     multiplies.
++   - **Bridges and weights.** A many-to-many through a bridge (joint holders, account to customers,
++     product to categories) repeats each fact row once per bridge row. Multiply every measure by
++     the bridge's allocation weight when you attribute it to the far side, or report it unallocated
++     and say that totals across the far side double-count. Check in the bridge's load that one
++     group's weights sum to 1.
++   - **Drill-across (fan and chasm traps).** Never join two facts row to row, or a fact to a
++     one-to-many below its grain, before aggregating. Aggregate each fact on its own to the shared
++     grain over conformed dimensions (CTEs or derived tables), then join or union the aggregates
++     on the shared keys; use a full outer join or a union when either side can have rows the other
++     lacks.
++
++4. **Write the SQL.** Start at each fact and follow step 3. Keep the existing views' treatment of a
++   fact row with no dimension match rather than silently dropping it. For a **procedure**, copy a
++   sibling procedure's shape (parameter names and types, `SET NOCOUNT ON`, header), keep it read
++   only, take dates as parameters and turn a period into a half-open range (`>= start AND < next
++   start`), and build no dynamic SQL from parameters.
++
++5. **Deploy it the way its siblings are deployed.** Pick the one or two closest existing reporting
++   objects of the same kind and search the whole repository, every file type and not only `.sql`,
++   for each of their names. Every file that names a sibling is a place the new object may need to
++   be named too:
++   - schema, object name, file name and folder;
++   - `CREATE` or `CREATE OR ALTER`, header and `SET` options;
++   - permissions: the role the siblings are granted to (`GRANT SELECT` for a view, `GRANT EXECUTE`
++     for a procedure), in the same file;
++   - registration: a non-SDK `.sqlproj` `<Build Include>` list, a deployment list or manifest, a
++     post-deployment script, a report catalog; add the new object in the same form and order.
++   Do not invent a role, grant, schema or deploy step the repository does not evidence; say none
++   was found.
++
++6. **Verify, then report.** Run the repository's evidenced build or validation command (the SQL
++   project build, for example). Check against data only through a data-validation command that
++   `AGENTS.md > Conventions > Verification Commands` lets an agent run; never compose a connection
++   yourself. Report each check that is not available. In the report, state the grain, the edges and
++   date roles used, how each measure was aggregated, and any known gap that changes today's
++   numbers: a placeholder or `Unknown` dimension member, an `UNRESOLVED` edge, a load the map flags.
++
++7. **Record the object in the map, where one exists.** If `docs/warehouse-map.md` carries a
++   `<!-- warehouse-map full pass: … -->` line, add the object to the views each entity feeds
++   (Dimensional semantics) and one dated Coverage line naming it. Add no edge-list row for a join
++   you wrote: your own object is not independent evidence. Leave the full-pass line, Findings and
++   the Querying section as they are. Without that line, do not write to the map.
+diff --git a/AGENTS.md b/AGENTS.md
+index fcbfb7e..d3c807b 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -94,6 +94,7 @@ evidence satisfies the gate:
+ 
+ - `map-warehouse` — map a SQL data-warehouse repo: layers (staging → warehouse → marts), tables, keys and fact → dimension relationships, grain, load orchestration, SCD strategy, partitioning
+ - `add-warehouse-load` — add or extend a warehouse load following the repo's existing patterns: idempotent re-runnable loads, no double-loading, SCD handling, partition alignment. For a concrete current instance, see `StoredProcedures/usp_LoadFactTransaction.sql` — reproduce its **conventions and structure**, not its contents; AGENTS.md > Conventions wins on any conflict.
++- `add-warehouse-report` — add a reporting view or procedure on the warehouse map's proven joins and the dimensional rules a report needs, deployed like the existing reporting objects: naming, permissions, deploy lists
+ - `create-adr` — record a significant architecture decision in Architecture Decisions
+ - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review
+ 

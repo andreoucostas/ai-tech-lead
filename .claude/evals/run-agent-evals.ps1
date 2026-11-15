@@ -65,6 +65,8 @@ $warehouseScaleSizes = [ordered]@{
     M = [pscustomobject]@{ Target = 500; X1 = 2; X2 = 1; Tree = '63c4546206d29a9b349821fdebe05f6be244731793402de7138eaf3ee69191d6'; Overlay = '8fab2e132f942e523d890327b54a5d008531d53d2bf0042ded57848c5459ba14' }
     L = [pscustomobject]@{ Target = 5000; X1 = 20; X2 = 10; Tree = '515bf8d393be48bfc901f18e45ecf12fa43f565287c86bd9813424a39f8c644f'; Overlay = 'f43468aebdd2a3e30ef6adc332aab27f30a8a8d68fd0801bb62ba9d76056e6e6' }
 }
+# B-523 second measurement (the plan's amendment): the trap warehouse's tree digest and its generated overlay's, frozen.
+$b523ReportFixture = [pscustomobject]@{ Name = 'warehouse-report-m'; Tree = 'd331b4d5e7d6614f2d4b6cb498531391efb4f048a1ccb063b0098edb4be46114'; Overlay = '6bea207662f74b832ce1feef2f9877b57775c43815eea5e25e6aed485a5a262b' }
 if (-not $ResultsPath) { $ResultsPath = Join-Path $repo 'meta/eval-results.md' }
 # Built at runtime: the outgoing-commit guard refuses a blob holding the key-shaped literal. The
 # guard-retry prompt the agent receives is unchanged.
@@ -75,8 +77,18 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','dotnet-notest','angular','angular-ux','b406-orders','b409-orders-ci','orders-v2','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict','warehouse-scale-s','warehouse-scale-m','warehouse-scale-l')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','dotnet-notest','angular','angular-ux','b406-orders','b409-orders-ci','orders-v2','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict','warehouse-scale-s','warehouse-scale-m','warehouse-scale-l','warehouse-report-m')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    if ($Stack -eq 'warehouse-report-m') {
+        # B-523: the trap warehouse, one commit.
+        Write-ReportFixtureFiles $Path
+        git -C $Path init --quiet
+        git -C $Path config user.email 'agent-evals@invalid.local'
+        git -C $Path config user.name 'Agent Evals'
+        git -C $Path -c core.safecrlf=false add -A
+        git -C $Path commit --quiet -m 'fixture baseline'
+        return
+    }
     if ($Stack -like 'warehouse-scale-*') {
         # B-466: the 'warehouse' tree, then the size's files, as one commit.
         New-EvalRepo $Path warehouse
@@ -1151,6 +1163,75 @@ function Write-WarehouseScaleFiles([string]$Path, [ValidateSet('S','M','L')][str
     }
 }
 
+# B-523 second measurement: a banking warehouse whose reporting has real traps, padded with B-466's seeded subject areas to about
+# 500 SQL files. Two facts at different grains share conformed dimensions (transaction lines; a month-end balance snapshot); the
+# transaction fact plays the date dimension in two roles; customers keep history (ValidFrom/ValidTo, half-open, with IsCurrent);
+# a joint-holder bridge carries a weight and reaches customers by business key; account -> branch -> region is snowflaked, and
+# DimBranch.RegionName is declared but never loaded. The house pattern: rpt views and one rpt procedure, every rpt object granted
+# in Security/rpt.Permissions.sql and listed in Deploy/reporting.manifest, which nothing in the code references.
+function Write-ReportFixtureFiles([string]$Path) {
+    $files = [ordered]@{}
+    $files['warehouse.sqlproj'] = @('<Project Sdk="Microsoft.Build.Sql/0.2.0" />')
+    $files['Security/Schemas.sql'] = @('CREATE SCHEMA stg;', 'GO', 'CREATE SCHEMA dim;', 'GO', 'CREATE SCHEMA fact;', 'GO', 'CREATE SCHEMA bridge;', 'GO', 'CREATE SCHEMA rpt;')
+    $files['Security/ReportReader.sql'] = @('CREATE ROLE [ReportReader] AUTHORIZATION [dbo];')
+    $files['Tables/stg.StgCustomer.sql'] = @('CREATE TABLE stg.StgCustomer (', '    CustomerId NVARCHAR(50) NOT NULL,', '    CustomerName NVARCHAR(200) NOT NULL,', '    SegmentName NVARCHAR(50) NOT NULL,', '    ExtractDate DATE NOT NULL,', '    BatchId BIGINT NOT NULL', ');')
+    $files['Tables/stg.StgBranch.sql'] = @('CREATE TABLE stg.StgBranch (', '    BranchCode NVARCHAR(20) NOT NULL,', '    BranchName NVARCHAR(100) NOT NULL,', '    RegionCode NVARCHAR(20) NOT NULL,', '    RegionName NVARCHAR(100) NOT NULL,', '    BatchId BIGINT NOT NULL', ');')
+    $files['Tables/stg.StgAccount.sql'] = @('CREATE TABLE stg.StgAccount (', '    AccountId NVARCHAR(50) NOT NULL,', '    AccountType NVARCHAR(50) NOT NULL,', '    BranchCode NVARCHAR(20) NOT NULL,', '    OpenedDate DATE NOT NULL,', '    BatchId BIGINT NOT NULL', ');')
+    $files['Tables/stg.StgAccountHolder.sql'] = @('CREATE TABLE stg.StgAccountHolder (', '    AccountId NVARCHAR(50) NOT NULL,', '    CustomerId NVARCHAR(50) NOT NULL,', '    BatchId BIGINT NOT NULL', ');')
+    $files['Tables/stg.StgTransaction.sql'] = @('CREATE TABLE stg.StgTransaction (', '    TransactionLineId BIGINT NOT NULL,', '    AccountId NVARCHAR(50) NOT NULL,', '    TransactionDate DATE NOT NULL,', '    PostingDate DATE NOT NULL,', '    Amount DECIMAL(18,2) NOT NULL,', '    BatchId BIGINT NOT NULL', ');')
+    $files['Tables/stg.StgAccountBalance.sql'] = @('CREATE TABLE stg.StgAccountBalance (', '    AccountId NVARCHAR(50) NOT NULL,', '    MonthEndDate DATE NOT NULL,', '    ClosingBalance DECIMAL(18,2) NOT NULL,', '    BatchId BIGINT NOT NULL', ');')
+    $files['Tables/dim.DimDate.sql'] = @('CREATE TABLE dim.DimDate (', '    DateKey INT NOT NULL PRIMARY KEY,', '    CalendarDate DATE NOT NULL,', '    CalendarYear SMALLINT NOT NULL,', '    CalendarQuarter TINYINT NOT NULL,', '    CalendarMonth TINYINT NOT NULL,', '    MonthEndDate DATE NOT NULL,', '    IsMonthEnd BIT NOT NULL', ');')
+    $files['Tables/dim.DimRegion.sql'] = @('CREATE TABLE dim.DimRegion (', '    RegionKey INT IDENTITY(1,1) NOT NULL PRIMARY KEY,', '    RegionCode NVARCHAR(20) NOT NULL,', '    RegionName NVARCHAR(100) NOT NULL', ');')
+    $files['Tables/dim.DimBranch.sql'] = @('CREATE TABLE dim.DimBranch (', '    BranchKey INT IDENTITY(1,1) NOT NULL PRIMARY KEY,', '    BranchCode NVARCHAR(20) NOT NULL,', '    BranchName NVARCHAR(100) NOT NULL,', '    RegionKey INT NOT NULL,', '    RegionName NVARCHAR(100) NULL', ');')
+    $files['Tables/dim.DimAccount.sql'] = @('CREATE TABLE dim.DimAccount (', '    AccountKey INT IDENTITY(1,1) NOT NULL PRIMARY KEY,', '    AccountId NVARCHAR(50) NOT NULL,', '    AccountType NVARCHAR(50) NOT NULL,', '    BranchKey INT NOT NULL,', '    OpenedDate DATE NOT NULL', ');')
+    $files['Tables/dim.DimCustomer.sql'] = @('CREATE TABLE dim.DimCustomer (', '    CustomerKey INT IDENTITY(1,1) NOT NULL PRIMARY KEY,', '    CustomerId NVARCHAR(50) NOT NULL,', '    CustomerName NVARCHAR(200) NOT NULL,', '    SegmentName NVARCHAR(50) NOT NULL,', '    ValidFrom DATE NOT NULL,', '    ValidTo DATE NOT NULL,', '    IsCurrent BIT NOT NULL', ');')
+    $files['Tables/bridge.BridgeAccountHolder.sql'] = @('CREATE TABLE bridge.BridgeAccountHolder (', '    AccountKey INT NOT NULL,', '    CustomerId NVARCHAR(50) NOT NULL,', '    HolderWeight DECIMAL(9,6) NOT NULL,', '    CONSTRAINT PK_BridgeAccountHolder PRIMARY KEY (AccountKey, CustomerId)', ');')
+    $files['Tables/fact.FactTransaction.sql'] = @('CREATE TABLE fact.FactTransaction (', '    TransactionLineKey BIGINT NOT NULL PRIMARY KEY,', '    AccountKey INT NOT NULL,', '    TransactionDateKey INT NOT NULL,', '    PostingDateKey INT NOT NULL,', '    Amount DECIMAL(18,2) NOT NULL,', '    LoadRunId BIGINT NOT NULL', ');')
+    $files['Tables/fact.FactAccountBalanceMonthly.sql'] = @('CREATE TABLE fact.FactAccountBalanceMonthly (', '    AccountKey INT NOT NULL,', '    MonthEndDateKey INT NOT NULL,', '    ClosingBalance DECIMAL(18,2) NOT NULL,', '    LoadRunId BIGINT NOT NULL,', '    CONSTRAINT PK_FactAccountBalanceMonthly PRIMARY KEY (AccountKey, MonthEndDateKey)', ');')
+    $files['StoredProcedures/usp_LoadDimDate.sql'] = @('CREATE PROCEDURE dbo.usp_LoadDimDate AS', 'BEGIN', '    SET NOCOUNT ON;', '    DECLARE @FromDate DATE = DATEFROMPARTS(YEAR(SYSUTCDATETIME()) - 10, 1, 1);', '    DECLARE @ToDate DATE = DATEFROMPARTS(YEAR(SYSUTCDATETIME()) + 1, 12, 31);', '    WITH d AS (', '        SELECT @FromDate AS CalendarDate', '        UNION ALL', '        SELECT DATEADD(DAY, 1, CalendarDate) FROM d WHERE CalendarDate < @ToDate', '    )', '    INSERT INTO dim.DimDate (DateKey, CalendarDate, CalendarYear, CalendarQuarter, CalendarMonth, MonthEndDate, IsMonthEnd)', '    SELECT CONVERT(INT, CONVERT(CHAR(8), d.CalendarDate, 112)), d.CalendarDate, YEAR(d.CalendarDate), DATEPART(QUARTER, d.CalendarDate), MONTH(d.CalendarDate),', '           EOMONTH(d.CalendarDate), CASE WHEN d.CalendarDate = EOMONTH(d.CalendarDate) THEN 1 ELSE 0 END', '    FROM d', '    WHERE NOT EXISTS (SELECT 1 FROM dim.DimDate x WHERE x.CalendarDate = d.CalendarDate)', '    OPTION (MAXRECURSION 0);', 'END;')
+    $files['StoredProcedures/usp_LoadDimRegion.sql'] = @('CREATE PROCEDURE dbo.usp_LoadDimRegion AS', 'BEGIN', '    SET NOCOUNT ON;', '    MERGE dim.DimRegion AS target', '    USING (SELECT DISTINCT RegionCode, RegionName FROM stg.StgBranch) AS source', '    ON target.RegionCode = source.RegionCode', '    WHEN MATCHED AND target.RegionName <> source.RegionName THEN UPDATE SET RegionName = source.RegionName', '    WHEN NOT MATCHED THEN INSERT (RegionCode, RegionName) VALUES (source.RegionCode, source.RegionName);', 'END;')
+    $files['StoredProcedures/usp_LoadDimBranch.sql'] = @('CREATE PROCEDURE dbo.usp_LoadDimBranch AS', 'BEGIN', '    SET NOCOUNT ON;', '    MERGE dim.DimBranch AS target', '    USING (', '        SELECT s.BranchCode, s.BranchName, r.RegionKey', '        FROM stg.StgBranch s', '        JOIN dim.DimRegion r ON r.RegionCode = s.RegionCode', '    ) AS source', '    ON target.BranchCode = source.BranchCode', '    WHEN MATCHED THEN UPDATE SET BranchName = source.BranchName, RegionKey = source.RegionKey', '    WHEN NOT MATCHED THEN INSERT (BranchCode, BranchName, RegionKey) VALUES (source.BranchCode, source.BranchName, source.RegionKey);', 'END;')
+    $files['StoredProcedures/usp_LoadDimAccount.sql'] = @('CREATE PROCEDURE dbo.usp_LoadDimAccount AS', 'BEGIN', '    SET NOCOUNT ON;', '    MERGE dim.DimAccount AS target', '    USING (', '        SELECT s.AccountId, s.AccountType, br.BranchKey, s.OpenedDate', '        FROM stg.StgAccount s', '        JOIN dim.DimBranch br ON br.BranchCode = s.BranchCode', '    ) AS source', '    ON target.AccountId = source.AccountId', '    WHEN MATCHED THEN UPDATE SET AccountType = source.AccountType, BranchKey = source.BranchKey', '    WHEN NOT MATCHED THEN INSERT (AccountId, AccountType, BranchKey, OpenedDate) VALUES (source.AccountId, source.AccountType, source.BranchKey, source.OpenedDate);', 'END;')
+    $files['StoredProcedures/usp_LoadDimCustomer.sql'] = @('CREATE PROCEDURE dbo.usp_LoadDimCustomer AS', 'BEGIN', '    SET NOCOUNT ON;', '    BEGIN TRANSACTION;', '    UPDATE c', '    SET c.ValidTo = s.ExtractDate, c.IsCurrent = 0', '    FROM dim.DimCustomer c', '    JOIN stg.StgCustomer s ON s.CustomerId = c.CustomerId', '    WHERE c.IsCurrent = 1 AND (c.SegmentName <> s.SegmentName OR c.CustomerName <> s.CustomerName);', '    INSERT INTO dim.DimCustomer (CustomerId, CustomerName, SegmentName, ValidFrom, ValidTo, IsCurrent)', "    SELECT s.CustomerId, s.CustomerName, s.SegmentName, s.ExtractDate, '9999-12-31', 1", '    FROM stg.StgCustomer s', '    WHERE NOT EXISTS (SELECT 1 FROM dim.DimCustomer c WHERE c.CustomerId = s.CustomerId AND c.IsCurrent = 1);', '    COMMIT TRANSACTION;', 'END;')
+    $files['StoredProcedures/usp_LoadBridgeAccountHolder.sql'] = @('CREATE PROCEDURE dbo.usp_LoadBridgeAccountHolder AS', 'BEGIN', '    SET NOCOUNT ON;', '    BEGIN TRANSACTION;', '    DELETE b', '    FROM bridge.BridgeAccountHolder b', '    JOIN dim.DimAccount a ON a.AccountKey = b.AccountKey', '    WHERE a.AccountId IN (SELECT AccountId FROM stg.StgAccountHolder);', '    INSERT INTO bridge.BridgeAccountHolder (AccountKey, CustomerId, HolderWeight)', '    SELECT a.AccountKey, s.CustomerId, CAST(1.0 / COUNT(*) OVER (PARTITION BY s.AccountId) AS DECIMAL(9,6))', '    FROM stg.StgAccountHolder s', '    JOIN dim.DimAccount a ON a.AccountId = s.AccountId;', '    COMMIT TRANSACTION;', 'END;')
+    $files['StoredProcedures/usp_LoadFactTransaction.sql'] = @('CREATE PROCEDURE dbo.usp_LoadFactTransaction AS', 'BEGIN', '    SET NOCOUNT ON;', '    DECLARE @BatchId BIGINT = (SELECT MAX(BatchId) FROM stg.StgTransaction);', '    BEGIN TRANSACTION;', '    DELETE FROM fact.FactTransaction WHERE LoadRunId = @BatchId;', '    INSERT INTO fact.FactTransaction (TransactionLineKey, AccountKey, TransactionDateKey, PostingDateKey, Amount, LoadRunId)', '    SELECT s.TransactionLineId, a.AccountKey, td.DateKey, pd.DateKey, s.Amount, s.BatchId', '    FROM stg.StgTransaction s', '    JOIN dim.DimAccount a ON a.AccountId = s.AccountId', '    JOIN dim.DimDate td ON td.CalendarDate = s.TransactionDate', '    JOIN dim.DimDate pd ON pd.CalendarDate = s.PostingDate', '    WHERE s.BatchId = @BatchId;', '    COMMIT TRANSACTION;', 'END;')
+    $files['StoredProcedures/usp_LoadFactAccountBalanceMonthly.sql'] = @('CREATE PROCEDURE dbo.usp_LoadFactAccountBalanceMonthly AS', 'BEGIN', '    SET NOCOUNT ON;', '    DECLARE @BatchId BIGINT = (SELECT MAX(BatchId) FROM stg.StgAccountBalance);', '    BEGIN TRANSACTION;', '    DELETE f', '    FROM fact.FactAccountBalanceMonthly f', '    JOIN dim.DimDate d ON d.DateKey = f.MonthEndDateKey', '    WHERE d.CalendarDate IN (SELECT MonthEndDate FROM stg.StgAccountBalance WHERE BatchId = @BatchId);', '    INSERT INTO fact.FactAccountBalanceMonthly (AccountKey, MonthEndDateKey, ClosingBalance, LoadRunId)', '    SELECT a.AccountKey, d.DateKey, s.ClosingBalance, s.BatchId', '    FROM stg.StgAccountBalance s', '    JOIN dim.DimAccount a ON a.AccountId = s.AccountId', '    JOIN dim.DimDate d ON d.CalendarDate = s.MonthEndDate', '    WHERE s.BatchId = @BatchId;', '    COMMIT TRANSACTION;', 'END;')
+    $files['Views/rpt.vwMonthlyPostedAmountByBranch.sql'] = @('CREATE VIEW rpt.vwMonthlyPostedAmountByBranch AS', 'SELECT pd.CalendarYear, pd.CalendarMonth, br.BranchCode, br.BranchName, SUM(f.Amount) AS PostedAmount', 'FROM fact.FactTransaction f', 'JOIN dim.DimDate pd ON pd.DateKey = f.PostingDateKey', 'JOIN dim.DimAccount a ON a.AccountKey = f.AccountKey', 'JOIN dim.DimBranch br ON br.BranchKey = a.BranchKey', 'GROUP BY pd.CalendarYear, pd.CalendarMonth, br.BranchCode, br.BranchName;')
+    $files['Views/rpt.vwMonthEndBalanceByRegion.sql'] = @('CREATE VIEW rpt.vwMonthEndBalanceByRegion AS', 'SELECT me.CalendarDate AS MonthEndDate, r.RegionCode, r.RegionName, SUM(b.ClosingBalance) AS ClosingBalance', 'FROM fact.FactAccountBalanceMonthly b', 'JOIN dim.DimDate me ON me.DateKey = b.MonthEndDateKey', 'JOIN dim.DimAccount a ON a.AccountKey = b.AccountKey', 'JOIN dim.DimBranch br ON br.BranchKey = a.BranchKey', 'JOIN dim.DimRegion r ON r.RegionKey = br.RegionKey', 'GROUP BY me.CalendarDate, r.RegionCode, r.RegionName;')
+    $files['Views/rpt.vwTransactionDetail.sql'] = @('CREATE VIEW rpt.vwTransactionDetail AS', 'SELECT f.TransactionLineKey, a.AccountId, td.CalendarDate AS TransactionDate, pd.CalendarDate AS PostingDate, f.Amount', 'FROM fact.FactTransaction f', 'JOIN dim.DimAccount a ON a.AccountKey = f.AccountKey', 'JOIN dim.DimDate td ON td.DateKey = f.TransactionDateKey', 'JOIN dim.DimDate pd ON pd.DateKey = f.PostingDateKey;')
+    $files['Views/rpt.vwAccountHolders.sql'] = @('CREATE VIEW rpt.vwAccountHolders AS', 'SELECT a.AccountId, c.CustomerId, c.CustomerName, c.SegmentName, h.HolderWeight', 'FROM bridge.BridgeAccountHolder h', 'JOIN dim.DimAccount a ON a.AccountKey = h.AccountKey', 'JOIN dim.DimCustomer c ON c.CustomerId = h.CustomerId AND c.IsCurrent = 1;')
+    $files['StoredProcedures/rpt.usp_BranchBalanceAsAt.sql'] = @('CREATE PROCEDURE rpt.usp_BranchBalanceAsAt', '    @AsAtDate DATE', 'AS', 'BEGIN', '    SET NOCOUNT ON;', '    DECLARE @MonthEndKey INT = (SELECT MAX(d.DateKey) FROM dim.DimDate d WHERE d.IsMonthEnd = 1 AND d.CalendarDate <= @AsAtDate);', '    SELECT br.BranchCode, br.BranchName, SUM(b.ClosingBalance) AS ClosingBalance', '    FROM fact.FactAccountBalanceMonthly b', '    JOIN dim.DimAccount a ON a.AccountKey = b.AccountKey', '    JOIN dim.DimBranch br ON br.BranchKey = a.BranchKey', '    WHERE b.MonthEndDateKey = @MonthEndKey', '    GROUP BY br.BranchCode, br.BranchName;', 'END;')
+    $files['Jobs/NightlyCore.sql'] = Get-WarehouseScaleJob 'Nightly core' @('usp_LoadDimDate', 'usp_LoadDimRegion', 'usp_LoadDimBranch', 'usp_LoadDimAccount', 'usp_LoadDimCustomer', 'usp_LoadBridgeAccountHolder', 'usp_LoadFactTransaction', 'usp_LoadFactAccountBalanceMonthly')
+    # Padding: B-466's seeded subject areas in its order, while the SQL file count stays at or under 500.
+    $vocab = Get-WarehouseScaleVocabulary
+    $count = @($files.Keys | Where-Object { $_ -like '*.sql' }).Count
+    $pairs = [Collections.Generic.List[object]]::new()
+    foreach ($line in $vocab.Lines) { foreach ($subject in $vocab.Subjects) { $pairs.Add([pscustomobject]@{ Line = $line; Subject = $subject }) } }
+    $seed = [Random]::new(466)
+    for ($i = $pairs.Count - 1; $i -gt 0; $i--) { $j = $seed.Next($i + 1); $swap = $pairs[$i]; $pairs[$i] = $pairs[$j]; $pairs[$j] = $swap }
+    for ($i = 0; $i -lt $pairs.Count; $i++) {
+        $area = Get-WarehouseScaleArea $pairs[$i] $i $vocab
+        if ($count + $area.Count -gt 500) { break }
+        foreach ($key in $area.Keys) { $files[$key] = $area[$key] }
+        $count += $area.Count
+    }
+    # The house deploy pattern: every rpt object granted to ReportReader, and listed, views then procedures, in the manifest.
+    $views = [string[]]@($files.Keys | Where-Object { $_ -like 'Views/rpt.*.sql' })
+    [Array]::Sort($views, [StringComparer]::Ordinal)
+    $procedures = [string[]]@($files.Keys | Where-Object { $_ -like 'StoredProcedures/rpt.*.sql' })
+    [Array]::Sort($procedures, [StringComparer]::Ordinal)
+    $grants = @($views | ForEach-Object { $name = [IO.Path]::GetFileNameWithoutExtension($_).Split('.'); "GRANT SELECT ON [$($name[0])].[$($name[1])] TO [ReportReader];" }) + @($procedures | ForEach-Object { $name = [IO.Path]::GetFileNameWithoutExtension($_).Split('.'); "GRANT EXECUTE ON [$($name[0])].[$($name[1])] TO [ReportReader];" })
+    $files['Security/rpt.Permissions.sql'] = $grants
+    $files['Deploy/reporting.manifest'] = @('# Reporting objects the release pipeline deploys to the reporting replica, in this order. One path per line.') + $views + $procedures
+    $utf8 = [Text.UTF8Encoding]::new($false)
+    foreach ($relative in $files.Keys) {
+        $full = Join-Path $Path $relative
+        $directory = Split-Path -Parent $full
+        if (-not (Test-Path -LiteralPath $directory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
+        [IO.File]::WriteAllText($full, ((@($files[$relative]) -join "`n") + "`n"), $utf8)
+    }
+}
+
 # A tree's digest, as the generated overlays' provenance.json states it: sha256 over the lines `<file sha256>  <path>`, sorted by
 # path (ordinal), joined with LF plus a trailing LF. .git is left out.
 function Get-TreeDigest([string]$Root) {
@@ -1696,6 +1777,124 @@ function Get-ReportWriteGrade([string]$Target, [int]$BeforeCommits, $Evidence) {
     if ($null -eq $best) { return [pscustomobject]@{ Grade = 'GRADED'; Ready = $false; Detail = "op=report ready=False good=False deployed=False fact=False path=False pinned=False gap=$gapFinal named=False grant=False | view=none file=none custJoin=False regionJoin=False dead=False month=False gapIn=$(if ($gapFinal) { 'final' } else { 'none' }) grantFile=False mapRow=False $tail" } }
     $b = $best
     return [pscustomobject]@{ Grade = 'GRADED'; Ready = [bool]$b.Ready; Detail = "op=report ready=$($b.Ready) good=$($b.Good) deployed=$($b.Deployed) fact=$($b.Fact) path=$($b.Path) pinned=$($b.Pinned) gap=$($b.Gap) named=$($b.Named) grant=$($b.Grant) | view=$($b.View) file=$($b.File) custJoin=$($b.CustJoin) regionJoin=$($b.RegionJoin) dead=$($b.Dead) month=$($b.Month) gapIn=$($b.GapIn) grantFile=$($b.GrantFile) mapRow=$($b.MapRow) $tail" }
+}
+
+# B-523 second measurement: the FROM/JOIN references to each named table, keyed by the query block that reads them. A block is
+# one SELECT inside one parenthesis group; a parenthesised group (derived table, CTE body) that neither groups nor aggregates is
+# read as part of the block around it, so a row-level derived table does not hide a row-level join.
+function Get-SqlTableBlocks([string]$Text, [string[]]$Tables) {
+    $n = $Text.Length
+    $groupAt = [int[]]::new([Math]::Max($n, 1))
+    $closeOf = @{}
+    $stack = [Collections.Generic.Stack[int]]::new()
+    for ($i = 0; $i -lt $n; $i++) {
+        $current = if ($stack.Count) { $stack.Peek() } else { -1 }
+        $groupAt[$i] = $current
+        if ($Text[$i] -eq '(') { $stack.Push($i) } elseif ($Text[$i] -eq ')' -and $stack.Count) { $closeOf[$stack.Pop()] = $i }
+    }
+    $selects = @{}
+    foreach ($m in [regex]::Matches($Text, '(?i)\bSELECT\b')) { $g = $groupAt[$m.Index]; if (-not $selects.ContainsKey($g)) { $selects[$g] = [Collections.Generic.List[int]]::new() }; $selects[$g].Add($m.Index) }
+    $aggregated = { param([int]$Open) $end = if ($closeOf.ContainsKey($Open)) { $closeOf[$Open] } else { $n - 1 }; $Text.Substring($Open, $end - $Open + 1) -match '(?i)\bGROUP\s+BY\b|\b(?:SUM|COUNT|AVG|MIN|MAX)\s*\(' }
+    $keys = @{}
+    foreach ($table in $Tables) {
+        $keys[$table] = [Collections.Generic.HashSet[string]]::new()
+        foreach ($m in [regex]::Matches($Text, "(?i)\b(?:FROM|JOIN)\s+$([regex]::Escape($table))\b")) {
+            $at = $m.Index; $g = $groupAt[$at]
+            while ($g -ne -1 -and -not (& $aggregated $g)) { $at = $g; $g = $groupAt[$at] }
+            $segment = if ($selects.ContainsKey($g)) { @($selects[$g] | Where-Object { $_ -le $at }).Count } else { 0 }
+            [void]$keys[$table].Add("$g/$segment")
+        }
+    }
+    return $keys
+}
+
+# B-523 second measurement (.claude/plans/2026-11-15-b523-reporting-skill.md, amendment): the reporting procedure a run wrote on
+# the warehouse-report-m tree, arm-neutral. Read: every CREATE VIEW/PROCEDURE/FUNCTION in a .sql file new or changed since the
+# setup commit (a helper view the procedure reads counts with it), comments and brackets stripped. Trap items, each True when
+# the trap was avoided: role (PostingDateKey, never TransactionDateKey); semi (the balance fact restricted to one month end: an
+# equality on MonthEndDateKey or on a date joined to it, or a MAX/ROW_NUMBER/LAST_VALUE pick); drill (no query block reads both
+# facts row to row); bridge (BridgeAccountHolder joined and HolderWeight multiplied into at least two measures); asof
+# (DimCustomer restricted by ValidFrom and ValidTo, and no IsCurrent anywhere); region (DimBranch on DimAccount.BranchKey,
+# DimRegion on DimBranch.RegionKey, the region read from DimRegion, never DimBranch.RegionName). Deploy items: named
+# (rpt.usp* in StoredProcedures/rpt.usp*.sql, as rpt.usp_BranchBalanceAsAt), grant (GRANT EXECUTE on it to ReportReader in
+# any .sql file), manifest (a line of Deploy/reporting.manifest names it). GOOD is all six traps, DEPLOYED all three deploy
+# items, READY both. Reported only: the skill call, a map read, the map row, denied calls.
+function Get-ReportProcGrade([string]$Target, [int]$BeforeCommits, $Evidence) {
+    $base = @(git -C $Target rev-list --reverse HEAD)[$BeforeCommits - 1]
+    $subtype = [string]$Evidence.Final.subtype
+    if ($Evidence.Final.is_error -or ($subtype -and $subtype -ne 'success')) { return [pscustomobject]@{ Grade = 'ERROR'; Detail = "op=proc NOT EXAMINED: terminal result $(if ($subtype) { $subtype } else { 'error' }) " } }
+    $changed = @(@(git -C $Target diff --name-only $base) + @(git -C $Target ls-files --others --exclude-standard) | Select-Object -Unique)
+    $written = @($changed | Where-Object { $_ -like '*.sql' -and (Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf) } | Sort-Object)
+    if (-not $written) { return [pscustomobject]@{ Grade = 'ERROR'; Detail = 'op=proc NOT EXAMINED: no .sql write ' } }
+    $skillNames = @($Evidence.Tools | Where-Object { $_.Name -eq 'Skill' } | ForEach-Object { [string]$_.Input.skill } | Where-Object { $_ } | Select-Object -Unique)
+    $skill = [bool]@($skillNames | Where-Object { $_ -eq 'add-warehouse-report' -or $_.EndsWith(':add-warehouse-report') }).Count
+    $mapRead = [bool]@($Evidence.Tools | Where-Object { ($_.Name -eq 'Read' -and (Get-ToolPath $_).Replace('\', '/') -match '(?i)(?:^|/)docs/warehouse-map\.md$') -or ($_.Name -in @('Bash', 'PowerShell') -and [string]$_.Input.command -match '(?i)docs[\\/]warehouse-map\.md') }).Count
+    $denied = if ($null -ne $Evidence.Final.permission_denials) { @($Evidence.Final.permission_denials).Count } else { 0 }
+    $objects = [Collections.Generic.List[object]]::new()
+    foreach ($path in $written) {
+        $clean = (Remove-SkillUseComments ([IO.File]::ReadAllText((Join-Path $Target $path))) 'sql').Replace('[', '').Replace(']', '')
+        $creates = @([regex]::Matches($clean, '(?i)\bCREATE\s+(?:OR\s+ALTER\s+)?(PROC(?:EDURE)?|VIEW|FUNCTION)\s+([\w.]+)'))
+        for ($k = 0; $k -lt $creates.Count; $k++) {
+            $end = if ($k + 1 -lt $creates.Count) { $creates[$k + 1].Index } else { $clean.Length }
+            $go = [regex]::Match($clean.Substring($creates[$k].Index, $end - $creates[$k].Index), '(?im)^\s*GO\s*$')
+            if ($go.Success) { $end = $creates[$k].Index + $go.Index }
+            $parts = $creates[$k].Groups[2].Value.Split('.')
+            $objects.Add([pscustomobject]@{ Kind = $(if ($creates[$k].Groups[1].Value -match '(?i)^PROC') { 'proc' } else { 'other' }); Schema = $(if ($parts.Count -gt 1) { $parts[-2] } else { 'dbo' }); Name = $parts[-1]; File = $path; Body = $clean.Substring($creates[$k].Index, $end - $creates[$k].Index) })
+        }
+    }
+    $proc = @($objects | Where-Object { $_.Kind -eq 'proc' -and $_.Body -match '(?i)\bFactTransaction\b|\bFactAccountBalanceMonthly\b' } | Select-Object -First 1)
+    if (-not $proc) { $proc = @($objects | Where-Object Kind -eq 'proc' | Select-Object -First 1) }
+    $body = (@($objects | ForEach-Object Body) -join "`n")
+    $alias = @{}
+    foreach ($m in [regex]::Matches($body, '(?i)\b(?:FROM|JOIN)\s+(\w+\.\w+|\w+)(?:\s+(?:AS\s+)?(\w+))?')) {
+        $table = $m.Groups[1].Value.ToLowerInvariant().Split('.')[-1]
+        $name = if ($m.Groups[2].Success -and $m.Groups[2].Value.ToLowerInvariant() -notin @('on', 'where', 'group', 'order', 'inner', 'left', 'right', 'full', 'cross', 'join', 'outer', 'union', 'having', 'with', 'as', 'select', 'option')) { $m.Groups[2].Value.ToLowerInvariant() } else { $table }
+        if (-not $alias.ContainsKey($table)) { $alias[$table] = [Collections.Generic.HashSet[string]]::new() }
+        [void]$alias[$table].Add($name)
+    }
+    $of = { param([string]$Table) if ($alias.ContainsKey($Table)) { @($alias[$Table] | ForEach-Object { [regex]::Escape($_) }) } else { @() } }
+    $edge = { param([string[]]$Left, [string]$LeftColumn, [string[]]$Right, [string]$RightColumn)
+        [bool]@(foreach ($l in $Left) { foreach ($r in $Right) { if ($body -match "(?i)\b$l\.$LeftColumn\s*=\s*$r\.$RightColumn\b" -or $body -match "(?i)\b$r\.$RightColumn\s*=\s*$l\.$LeftColumn\b") { $true } } }).Count }
+    $role = $body -match '(?i)\bPostingDateKey\b' -and $body -notmatch '(?i)\bTransactionDateKey\b'
+    $monthEndAliases = @(foreach ($d in (& $of 'dimdate')) { if ($body -match "(?i)\b$d\.DateKey\s*=\s*\w+\.MonthEndDateKey\b|\b\w+\.MonthEndDateKey\s*=\s*$d\.DateKey\b") { $d } })
+    $single = '\s*=\s*(?!\s*\w+\.\w)'
+    $semi = $body -match '(?i)\bFactAccountBalanceMonthly\b' -and (
+        $body -match "(?i)\bMonthEndDateKey$single" -or $body -match '(?i)(?<![\w.])@\w+\s*=\s*(?:\w+\.)?MonthEndDateKey\b' -or
+        $body -match '(?i)\b(?:ROW_NUMBER|LAST_VALUE|FIRST_VALUE)\s*\(|\bMAX\s*\(\s*(?:\w+\.)?(?:MonthEndDateKey|DateKey|CalendarDate|MonthEndDate)\s*\)' -or
+        [bool]@($monthEndAliases | Where-Object { $body -match "(?i)\b$_\.(?:CalendarDate|DateKey|MonthEndDate)$single" }).Count)
+    $blocks = Get-SqlTableBlocks $body @('fact.FactTransaction', 'fact.FactAccountBalanceMonthly')
+    $drill = $blocks['fact.FactTransaction'].Count -gt 0 -and $blocks['fact.FactAccountBalanceMonthly'].Count -gt 0 -and -not [bool]@($blocks['fact.FactTransaction'] | Where-Object { $blocks['fact.FactAccountBalanceMonthly'].Contains($_) }).Count
+    $weights = [regex]::Matches($body, '(?i)\*\s*\(?\s*(?:\w+\.)?HolderWeight\b|\bHolderWeight\s*\)?\s*\*').Count
+    $bridge = $body -match '(?i)\bBridgeAccountHolder\b' -and $weights -ge 2
+    $customers = @(& $of 'dimcustomer')
+    $asof = [bool]@($customers | Where-Object { $body -match "(?i)\b$_\.ValidFrom\b" -and $body -match "(?i)\b$_\.ValidTo\b" }).Count -and $body -notmatch '(?i)\bIsCurrent\b'
+    $branches = @(& $of 'dimbranch'); $regions = @(& $of 'dimregion'); $accounts = @(& $of 'dimaccount')
+    $deadRegion = [bool]@($branches | Where-Object { $body -match "(?i)\b$_\.RegionName\b" }).Count
+    $region = (& $edge $branches 'BranchKey' $accounts 'BranchKey') -and (& $edge $regions 'RegionKey' $branches 'RegionKey') -and [bool]@($regions | Where-Object { $body -match "(?i)\b$_\.Region(?:Name|Code)\b" }).Count -and -not $deadRegion
+    $named = $false; $grant = $false; $grantFile = $false; $manifest = $false; $procName = 'none'; $procFile = 'none'
+    if ($proc) {
+        $p = $proc[0]; $procName = "$($p.Schema).$($p.Name)"; $procFile = $p.File
+        $named = $p.Schema -ieq 'rpt' -and $p.Name -like 'usp*' -and $p.File -ieq "StoredProcedures/rpt.$($p.Name).sql"
+        foreach ($file in @(Get-ChildItem -LiteralPath $Target -Recurse -File -Filter '*.sql' -Force | Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' })) {
+            $sqlText = Remove-SkillUseComments ([IO.File]::ReadAllText($file.FullName)) 'sql'
+            foreach ($g in [regex]::Matches($sqlText, '(?i)\bGRANT\s+EXECUTE\s+ON\s+(?:OBJECT\s*::\s*)?([\[\]\w.]+)\s+TO\s+\[?ReportReader\]?')) {
+                if ($g.Groups[1].Value.Replace('[', '').Replace(']', '') -ieq $procName) {
+                    $grant = $true
+                    if ([IO.Path]::GetRelativePath($Target, $file.FullName).Replace('\', '/') -eq 'Security/rpt.Permissions.sql') { $grantFile = $true }
+                }
+            }
+        }
+        $manifestPath = Join-Path $Target 'Deploy/reporting.manifest'
+        if (Test-Path -LiteralPath $manifestPath -PathType Leaf) { $manifest = [bool]@([IO.File]::ReadAllLines($manifestPath) | Where-Object { $_ -notmatch '^\s*#' -and $_ -match "(?i)\b$([regex]::Escape($p.Schema))\.$([regex]::Escape($p.Name))\b" }).Count }
+    }
+    $mapPath = Join-Path $Target 'docs/warehouse-map.md'
+    $mapRow = $proc -and 'docs/warehouse-map.md' -in $changed -and (Test-Path -LiteralPath $mapPath) -and [IO.File]::ReadAllText($mapPath) -match "(?i)\b$([regex]::Escape($proc[0].Name))\b"
+    $traps = @($role, $semi, $drill, $bridge, $asof, $region) | Where-Object { $_ }
+    $good = @($traps).Count -eq 6
+    $deployed = [bool]($named -and $grant -and $manifest)
+    $ready = $good -and $deployed
+    $detail = "op=proc ready=$ready good=$good deployed=$deployed traps=$(@($traps).Count)/6 role=$([bool]$role) semi=$([bool]$semi) drill=$([bool]$drill) bridge=$([bool]$bridge) asof=$([bool]$asof) region=$([bool]$region) named=$([bool]$named) grant=$grant manifest=$manifest | proc=$procName file=$procFile objects=$($objects.Count) weights=$weights deadRegion=$deadRegion grantFile=$grantFile mapRow=$([bool]$mapRow) skill=$skill skillCalls=$($skillNames -join ',') mapRead=$mapRead denied=$denied sqlFiles=$($written.Count) durationMs=$(Get-B406Duration $Evidence) turns=$(@($Evidence.Results).Count)"
+    return [pscustomobject]@{ Grade = 'GRADED'; Ready = $ready; Traps = @($traps).Count; Detail = $detail }
 }
 
 # B-470: does the page a run wrote mirror the sibling's loading, empty and error handling? Written files only; the report is
@@ -3108,6 +3307,12 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $grade = Get-SkillUseGrade $Target $BeforeCommits $e $operation @(Get-SkillUseSlug (Join-Path $fixturesRoot 'b514-orders/files') $operation)
             if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Complete; Outcome = $grade.Complete; Detail = $grade.Detail }
+        }
+        { $_ -like 'warehouse-report-proc*' } {
+            # B-523 second measurement: arm-neutral; files only. No SQL written is not examined, never scored False.
+            $grade = Get-ReportProcGrade $Target $BeforeCommits $e
+            if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Ready; Outcome = $grade.Ready; Detail = $grade.Detail }
         }
         { $_ -like 'warehouse-report-write*' } {
             # B-523: arm-neutral; files, plus the final message for the gap only. No SQL written is not examined, never scored False.
@@ -4962,7 +5167,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     # The live loop: the overlay patch lands inside the overlay's commit, multi-turn streams are read for skillUse, and -Live
     # checks every overlay patch against its overlay before any spend.
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report-write cases' }
+    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
     if ($selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $preflightOverlay ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
     Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT']) | Copilot, no skill call: $($quoted['copilot no-skill']) | Copilot, skill tool: $($quoted['copilot skill-tool'])"
 }
@@ -5057,6 +5262,96 @@ function Invoke-ReportWriteSelfTest([string]$Temp) {
     $loopText = (Get-Command Invoke-EvalCases).ScriptBlock.Ast.Extent.Text
     if ($loopText -notmatch [regex]::Escape('$caseSize = if (-not $WarehouseScale -and ([string]$caseFixture).StartsWith(''warehouse-scale-''))') -or $loopText -notmatch [regex]::Escape('if ($caseTree -ne $warehouseScaleSizes[$caseSize].Tree) { throw')) { throw 'B-523 the live loop does not hold a sized scenario fixture to its frozen tree digest' }
     Write-Output "PASS: B-523 control.patch and skill.patch apply to the S overlay (three rpt grants; the skill and its Common Tasks line); the two scenarios are pinned; a sized scenario fixture is held to its tree digest. Grader, ready view: $($quoted['a ready view on the proven joins, its gap named, granted']) | dead columns: $($quoted['region and segment read off the fact''s dead columns']) | no GRANT: $($quoted['no GRANT'])"
+}
+
+# B-523 second measurement: the trap fixture is the frozen tree, and the procedure grader reads a hand-made procedure that avoids
+# every trap as READY and goes red on one hand-made procedure per trap and per deploy step.
+function Invoke-ReportProcSelfTest([string]$Temp) {
+    $root = Join-Path $Temp 'b523-proc'
+    New-EvalRepo $root warehouse-report-m
+    $digest = Get-TreeDigest $root
+    if ($digest -ne $b523ReportFixture.Tree) { throw "B-523 warehouse-report-m builds tree $digest, not the frozen $($b523ReportFixture.Tree)" }
+    if ([int](git -C $root rev-list --count HEAD) -ne 1 -or (git -C $root status --porcelain)) { throw 'B-523 warehouse-report-m is not one clean commit' }
+    $sqlCount = @(git -C $root ls-files '*.sql').Count
+    if ($sqlCount -lt 400 -or $sqlCount -gt 500) { throw "B-523 warehouse-report-m holds $sqlCount SQL files, not 400 to 500" }
+    $manifestLines = @([IO.File]::ReadAllLines((Join-Path $root 'Deploy/reporting.manifest')) | Where-Object { $_ -notmatch '^#' })
+    $rptFiles = @(git -C $root ls-files 'Views/rpt.*.sql' 'StoredProcedures/rpt.*.sql')
+    if ($manifestLines.Count -ne $rptFiles.Count -or @($rptFiles | Where-Object { $_ -notin $manifestLines }).Count) { throw 'B-523 the manifest does not list every rpt object' }
+    if (@(git -C $root grep -l 'reporting.manifest').Count) { throw 'B-523 something in the tree references the manifest' }
+    $grantText = [IO.File]::ReadAllText((Join-Path $root 'Security/rpt.Permissions.sql'))
+    if ($grantText -notmatch 'GRANT EXECUTE ON \[rpt\]\.\[usp_BranchBalanceAsAt\] TO \[ReportReader\];' -or ([regex]::Matches($grantText, 'GRANT SELECT ON')).Count -ne @($rptFiles | Where-Object { $_ -like 'Views/*' }).Count) { throw 'B-523 Security/rpt.Permissions.sql does not grant every rpt object' }
+
+    $proc = { param([string]$Role = 'PostingDateKey', [switch]$SumBalances, [switch]$RowJoin, [switch]$OneWeight, [switch]$Current, [switch]$BranchRegion)
+        $posted = @('    posted AS (', '        SELECT f.AccountKey, SUM(f.Amount) AS PostedAmount', '        FROM fact.FactTransaction f', "        JOIN dim.DimDate pd ON pd.DateKey = f.$Role", '        WHERE pd.CalendarDate >= @QuarterStart AND pd.CalendarDate < @NextQuarterStart', '        GROUP BY f.AccountKey', '    ),')
+        $closing = if ($SumBalances) { @('    closing AS (', '        SELECT b.AccountKey, SUM(b.ClosingBalance) AS ClosingBalance', '        FROM fact.FactAccountBalanceMonthly b', '        JOIN dim.DimDate me ON me.DateKey = b.MonthEndDateKey', '        WHERE me.CalendarDate >= @QuarterStart AND me.CalendarDate < @NextQuarterStart', '        GROUP BY b.AccountKey', '    ),') } else { @('    closing AS (', '        SELECT b.AccountKey, SUM(b.ClosingBalance) AS ClosingBalance', '        FROM fact.FactAccountBalanceMonthly b', '        WHERE b.MonthEndDateKey = @QuarterEndKey', '        GROUP BY b.AccountKey', '    ),') }
+        $accounts = if ($RowJoin) { @('WITH accounts AS (', '        SELECT f.AccountKey, f.Amount AS PostedAmount, b.ClosingBalance', '        FROM fact.FactTransaction f', "        JOIN dim.DimDate pd ON pd.DateKey = f.$Role", '        JOIN fact.FactAccountBalanceMonthly b ON b.AccountKey = f.AccountKey AND b.MonthEndDateKey = @QuarterEndKey', '        WHERE pd.CalendarDate >= @QuarterStart AND pd.CalendarDate < @NextQuarterStart', '    )') } else { @('    WITH') + $posted + $closing + @('    accounts AS (', '        SELECT COALESCE(p.AccountKey, c.AccountKey) AS AccountKey, COALESCE(p.PostedAmount, 0) AS PostedAmount, COALESCE(c.ClosingBalance, 0) AS ClosingBalance', '        FROM posted p', '        FULL OUTER JOIN closing c ON c.AccountKey = p.AccountKey', '    )') }
+        $balance = if ($OneWeight) { 'SUM(x.ClosingBalance) AS ClosingBalance' } else { 'SUM(x.ClosingBalance * h.HolderWeight) AS ClosingBalance' }
+        $regionSelect = if ($BranchRegion) { 'br.RegionName' } else { 'r.RegionName' }
+        $customer = if ($Current) { 'JOIN dim.DimCustomer cu ON cu.CustomerId = h.CustomerId AND cu.IsCurrent = 1' } else { 'JOIN dim.DimCustomer cu ON cu.CustomerId = h.CustomerId AND cu.ValidFrom <= @QuarterEnd AND @QuarterEnd < cu.ValidTo' }
+        $lines = @('-- Quarterly posted amount and quarter-end balance by customer segment and branch region.', 'CREATE PROCEDURE rpt.usp_QuarterlySegmentRegionSummary', '    @Year SMALLINT,', '    @Quarter TINYINT', 'AS', 'BEGIN', '    SET NOCOUNT ON;',
+            '    DECLARE @QuarterStart DATE = DATEFROMPARTS(@Year, (@Quarter - 1) * 3 + 1, 1);', '    DECLARE @NextQuarterStart DATE = DATEADD(MONTH, 3, @QuarterStart);', '    DECLARE @QuarterEnd DATE = DATEADD(DAY, -1, @NextQuarterStart);', '    DECLARE @QuarterEndKey INT = CONVERT(INT, CONVERT(CHAR(8), @QuarterEnd, 112));') +
+            $accounts + @("    SELECT cu.SegmentName, $regionSelect AS RegionName, SUM(x.PostedAmount * h.HolderWeight) AS PostedAmount, $balance", '    FROM accounts x', '    JOIN dim.DimAccount a ON a.AccountKey = x.AccountKey', '    JOIN dim.DimBranch br ON br.BranchKey = a.BranchKey') +
+            @(if (-not $BranchRegion) { '    JOIN dim.DimRegion r ON r.RegionKey = br.RegionKey' }) + @('    JOIN bridge.BridgeAccountHolder h ON h.AccountKey = x.AccountKey', "    $customer", "    GROUP BY cu.SegmentName, $regionSelect;", 'END;')
+        return ($lines -join "`n") + "`n" }
+    $put = { param([string]$Path, [string]$Text) $full = Join-Path $root $Path; New-Item -ItemType Directory -Force -Path (Split-Path -Parent $full) | Out-Null; [IO.File]::WriteAllText($full, $Text) }
+    $deploy = { param([string]$Name = 'rpt.usp_QuarterlySegmentRegionSummary', [switch]$NoGrant, [switch]$NoManifest)
+        $parts = $Name.Split('.')
+        if (-not $NoGrant) { [IO.File]::AppendAllText((Join-Path $root 'Security/rpt.Permissions.sql'), "GRANT EXECUTE ON [$($parts[0])].[$($parts[1])] TO [ReportReader];`n") }
+        if (-not $NoManifest) { [IO.File]::AppendAllText((Join-Path $root 'Deploy/reporting.manifest'), "StoredProcedures/$Name.sql`n") } }
+    $file = 'StoredProcedures/rpt.usp_QuarterlySegmentRegionSummary.sql'
+    $transcript = { param([string]$Subtype = 'success', [object[]]$Tools = @())
+        $events = [Collections.Generic.List[object]]::new()
+        $events.Add([pscustomobject]@{ type = 'system'; subtype = 'init'; model = 'claude-sonnet-5-5' })
+        $n = 0
+        foreach ($tool in $Tools) { $n++; $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = "p$n"; name = $tool.Name; input = $tool.Input }) } }); $events.Add([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = "p$n"; is_error = $false; content = 'ok' }) } }) }
+        $events.Add([pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = 'Added the procedure.'; total_cost_usd = 0.6; duration_ms = 90000 })
+        [pscustomobject]@{ Events = $events.ToArray() } }
+    $skillCall = [pscustomobject]@{ Name = 'Skill'; Input = [pscustomobject]@{ skill = 'add-warehouse-report' } }
+    $cases = @(
+        [pscustomobject]@{ Name = 'a procedure that avoids every trap, granted and listed'; Apply = { & $put $file (& $proc); & $deploy }; Tools = @($skillCall); Ready = $true; Detail = '^op=proc ready=True good=True deployed=True traps=6/6 role=True semi=True drill=True bridge=True asof=True region=True named=True grant=True manifest=True \| proc=rpt\.usp_QuarterlySegmentRegionSummary file=StoredProcedures/rpt\.usp_QuarterlySegmentRegionSummary\.sql objects=1 weights=2 deadRegion=False grantFile=True mapRow=False skill=True skillCalls=add-warehouse-report ' }
+        [pscustomobject]@{ Name = 'role-playing date: the transaction date in place of the posting date'; Apply = { & $put $file (& $proc -Role 'TransactionDateKey'); & $deploy }; Tools = @(); Ready = $false; Detail = '^op=proc ready=False good=False deployed=True traps=5/6 role=False semi=True drill=True bridge=True asof=True region=True ' }
+        [pscustomobject]@{ Name = 'semi-additive: the quarter''s three month-end balances summed'; Apply = { & $put $file (& $proc -SumBalances); & $deploy }; Tools = @(); Ready = $false; Detail = '^op=proc ready=False good=False deployed=True traps=5/6 role=True semi=False drill=True ' }
+        [pscustomobject]@{ Name = 'chasm: transaction lines joined row to row to the balance snapshot'; Apply = { & $put $file (& $proc -RowJoin); & $deploy }; Tools = @(); Ready = $false; Detail = '^op=proc ready=False good=False deployed=True traps=5/6 role=True semi=True drill=False bridge=True ' }
+        [pscustomobject]@{ Name = 'bridge: the balance attributed to every holder unweighted'; Apply = { & $put $file (& $proc -OneWeight); & $deploy }; Tools = @(); Ready = $false; Detail = '^op=proc ready=False good=False deployed=True traps=5/6 .* bridge=False asof=True .* weights=1 ' }
+        [pscustomobject]@{ Name = 'as-of: the current segment by IsCurrent'; Apply = { & $put $file (& $proc -Current); & $deploy }; Tools = @(); Ready = $false; Detail = '^op=proc ready=False good=False deployed=True traps=5/6 .* asof=False region=True ' }
+        [pscustomobject]@{ Name = 'snowflake: the never-loaded DimBranch.RegionName'; Apply = { & $put $file (& $proc -BranchRegion); & $deploy }; Tools = @(); Ready = $false; Detail = '^op=proc ready=False good=False deployed=True traps=5/6 .* region=False .* deadRegion=True ' }
+        [pscustomobject]@{ Name = 'no GRANT EXECUTE'; Apply = { & $put $file (& $proc); & $deploy -NoGrant }; Tools = @(); Ready = $false; Detail = '^op=proc ready=False good=True deployed=False traps=6/6 .* named=True grant=False manifest=True ' }
+        [pscustomobject]@{ Name = 'not in the deploy manifest'; Apply = { & $put $file (& $proc); & $deploy -NoManifest }; Tools = @(); Ready = $false; Detail = '^op=proc ready=False good=True deployed=False traps=6/6 .* named=True grant=True manifest=False ' }
+        [pscustomobject]@{ Name = 'a procedure outside rpt and StoredProcedures/'; Apply = { & $put 'Reports/QuarterlySummary.sql' (& $proc).Replace('rpt.usp_QuarterlySegmentRegionSummary', 'dbo.QuarterlySummary'); & $deploy 'dbo.QuarterlySummary' }; Tools = @(); Ready = $false; Detail = '^op=proc ready=False good=True deployed=False traps=6/6 .* named=False grant=True manifest=True \| proc=dbo\.QuarterlySummary file=Reports/QuarterlySummary\.sql ' }
+    )
+    $quoted = @{}
+    foreach ($case in $cases) {
+        git -C $root checkout --quiet -- .
+        git -C $root clean --quiet -fdx
+        & $case.Apply
+        $graded = Test-ScenarioEvidence 'warehouse-report-proc' $root (& $transcript 'success' $case.Tools) 1
+        if ($null -eq $graded -or $graded.Status -ne 'PASS' -or $graded.Pass -ne $case.Ready -or $graded.Detail -notmatch $case.Detail) { throw "B-523 report-proc misjudged $($case.Name): $(if ($graded) { "$($graded.Status) pass=$($graded.Pass) $($graded.Detail)" } else { 'no result' })" }
+        $quoted[$case.Name] = $graded.Detail
+    }
+    git -C $root checkout --quiet -- .
+    git -C $root clean --quiet -fdx
+    $noWrite = Test-ScenarioEvidence 'warehouse-report-proc-skill' $root (& $transcript) 1
+    if ($null -eq $noWrite -or $noWrite.Status -ne 'INCONCLUSIVE' -or $noWrite.Detail -notmatch '^op=proc NOT EXAMINED: no \.sql write ') { throw "B-523 report-proc graded a run that wrote no SQL: $(if ($noWrite) { $noWrite.Detail })" }
+    & $put $file (& $proc)
+    $cut = Test-ScenarioEvidence 'warehouse-report-proc' $root (& $transcript 'error_max_budget_usd') 1
+    if ($null -eq $cut -or $cut.Status -ne 'INCONCLUSIVE' -or $cut.Detail -notmatch '^op=proc NOT EXAMINED: terminal result error_max_budget_usd ') { throw "B-523 report-proc graded a budget-cut run: $(if ($cut) { $cut.Detail })" }
+    git -C $root checkout --quiet -- .
+    git -C $root clean --quiet -fdx
+    # The two pre-registered scenarios; the frozen overlay; skill-v2.patch lands the frozen candidate v2 and its Common Tasks line.
+    $prompt = 'Finance want a quarterly report: for a given quarter, by customer segment and by the region of the account''s branch, the amount posted to accounts during the quarter and the accounts'' closing balance at the end of the quarter, taking each customer''s segment as it stood at the end of the quarter. Add it to this warehouse as a reporting procedure, ready to deploy. I approve this change in advance: implement it now in this session, then report what you built.'
+    $scenarios = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.id -like 'warehouse-report-proc*' })
+    if ((@($scenarios | ForEach-Object { $_.id }) -join ',') -ne 'warehouse-report-proc,warehouse-report-proc-skill') { throw "the report-proc scenarios are not the two pre-registered ones: $(@($scenarios | ForEach-Object { $_.id }) -join ',')" }
+    foreach ($s in $scenarios) {
+        $wantPatch = if ($s.id -eq 'warehouse-report-proc') { '' } else { 'b523-reporting/skill-v2.patch' }
+        if (-not ([string]$s.fixture).Equals('warehouse-report-m') -or -not ([string]$s.overlay).Equals('warehouse-report-m') -or -not ([string]$s.overlayPatch).Equals($wantPatch) -or $s.bareArm -or [string]$s.budgetUsd -ne '3' -or $s.assertion -ne 'reportProc' -or $s.prompt -cne $prompt -or $s.stack -ne 'dotnet') { throw "$($s.id) is not the pre-registered B-523 scenario (fixture, overlay, overlayPatch, bareArm, budget, assertion, stack or prompt)" }
+    }
+    $overlayDigest = Get-TreeDigest (Join-Path $repo 'meta/eval-fixtures/warehouse-report-m/files')
+    if ($overlayDigest -ne $b523ReportFixture.Overlay) { throw "B-523 the warehouse-report-m overlay is $overlayDigest, not the frozen $($b523ReportFixture.Overlay)" }
+    Initialize-GeneratedOverlay $root 'warehouse-report-m' -Patch (Join-Path $repo 'meta/eval-fixtures/b523-reporting/skill-v2.patch')
+    $landed = Join-Path $root '.claude/skills/add-warehouse-report/SKILL.md'
+    if (-not (Test-Path -LiteralPath $landed) -or (Get-FileHash -LiteralPath $landed -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath (Join-Path $repo 'meta/eval-fixtures/b523-reporting/candidate-v2/SKILL.md') -Algorithm SHA256).Hash) { throw 'B-523 skill-v2.patch does not land the frozen candidate v2 byte for byte' }
+    if ([IO.File]::ReadAllText((Join-Path $root 'AGENTS.md')) -notmatch '(?m)^- `add-warehouse-report` — ' -or -not (Test-Path -LiteralPath (Join-Path $root '.claude/skills/add-reporting-view/SKILL.md'))) { throw 'B-523 the skill arm lacks its Common Tasks line or the generated add-reporting-view draft' }
+    Write-Output "PASS: B-523 warehouse-report-m is the frozen tree $($digest.Substring(0, 12)) ($sqlCount SQL files; every rpt object granted and listed in a manifest nothing references). Grader, ready: $($quoted['a procedure that avoids every trap, granted and listed']) | red per trap: $(@($cases | Select-Object -Skip 1 | ForEach-Object { "$($_.Name): $(([regex]::Match($quoted[$_.Name], 'traps=\S+ .*? manifest=\S+')).Value)" }) -join ' | ')"
 }
 
 # B-466: the per-run cap is 3.00 USD for warehouse-route-p4 at every size, and the scenario's own cap everywhere else.
@@ -5768,6 +6063,7 @@ export class UserService {
         Invoke-BudgetCutSelfTest $temp
         Invoke-WarehouseScaleSelfTest $temp
         Invoke-ReportWriteSelfTest $temp
+        Invoke-ReportProcSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
         Write-Output 'PASS: B-410 risk-design grades FULL only when one main-agent text block before the first main-agent write holds options A and B and a recommendation (a subagent''s text, a block after a write, one part alone, and the retained S1-C alternative-as-a-sentence shapes are not), reports where it was, whether the developer was left to answer, the turn-1 question and plan fields and what the second leg did, refuses a second leg whose prompt carried the plan gate or got no hook response, grades the decoy the other way round, merges two legs without a replay, builds the first-leg and resume arguments from the default, and pins both prompts, the follow-up and the dist router''s reading of them'
         Write-Output 'PASS: B-409 the contract fixtures are one list covering b406-orders and b409-orders-ci in the Copilot refusal, the stale and missing overlay refusals, the generator refusal, the overlay helper (copies and commits that fixture''s files, refuses a missing or unknown one) and every live-loop condition; the b409 baseline carries the pinned ci.yml (UTF-8, no BOM, LF) written between the solution and the baseline commit; contract-trace-ci is contract-trace on b409-orders-ci (same prompt, budget, grader, stack) and grades identically on one transcript'
@@ -7573,6 +7869,10 @@ function Invoke-EvalCases($Cases, $Rows) {
             $caseTree = Get-TreeDigest $target
             if ($caseTree -ne $warehouseScaleSizes[$caseSize].Tree) { throw "${caseFixture}: the built tree is $caseTree, not the frozen $($warehouseScaleSizes[$caseSize].Tree)." }
         }
+        if (([string]$caseFixture).Equals($b523ReportFixture.Name)) {
+            $caseTree = Get-TreeDigest $target
+            if ($caseTree -ne $b523ReportFixture.Tree) { throw "$($b523ReportFixture.Name): the built tree is $caseTree, not the frozen $($b523ReportFixture.Tree)." }
+        }
         $before = [int](git -C $target rev-list --count HEAD)
         if ($Arm -eq 'framework' -and $case.id -notin $selfInstallScenarios) {
             Install-Framework $target $caseStack | Out-Null
@@ -7738,7 +8038,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
-            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite'))
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc'))
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
                 # tree) and no error. Otherwise the grader sees one leg and says why (wroteT1, or not examined).
@@ -7894,6 +8194,10 @@ foreach ($overlay in @($selected | Where-Object { $_.overlay } | ForEach-Object 
         $overlayDigest = Get-TreeDigest (Join-Path $repo "meta/eval-fixtures/$overlay/files")
         $frozenOverlay = $warehouseScaleSizes[$overlay.Substring('warehouse-scale-'.Length).ToUpperInvariant()].Overlay
         if ($overlayDigest -ne $frozenOverlay) { throw "Refusing live eval: ${overlay}: the overlay is $overlayDigest, not the frozen $frozenOverlay." }
+    }
+    if ($overlay -eq $b523ReportFixture.Name) {
+        $overlayDigest = Get-TreeDigest (Join-Path $repo "meta/eval-fixtures/$overlay/files")
+        if (-not $b523ReportFixture.Overlay -or $overlayDigest -ne $b523ReportFixture.Overlay) { throw "Refusing live eval: ${overlay}: the overlay is $overlayDigest, not the frozen '$($b523ReportFixture.Overlay)'." }
     }
 }
 # B-514: each overlay patch must apply to its overlay, checked on a bare copy of the overlay before any spend, as -TargetPatch is.

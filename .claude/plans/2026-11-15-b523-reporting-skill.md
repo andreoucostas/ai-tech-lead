@@ -105,3 +105,82 @@ Comments are stripped first, except where the gap and the month assumption are r
 
 Copilot CLI and VS Code; a reporting procedure (the skill covers both; the task is a view); B-466's M and L trees; other models;
 interactive use; a real warehouse; a repository whose reporting objects evidence a deploy list or a report catalog.
+
+## Second measurement: amendment, frozen before any counted run (2026-11-15, after 85931434)
+
+The pilot above read CEILING and NO-SHIP (`meta/eval-results.md`, "B-523 results, pilot"). The maintainer re-decided under WSD-127
+(in chat, 2026-11-15, relayed by the coordinator): "Test on a harder warehouse". That ceiling came from a 14-file, one-fact tree the
+agent read whole and a task the map already answered. The question is unchanged; the rule below replaces the pilot's for this run.
+
+- **Candidate v2**, frozen at aed28b20 before this fixture or task was designed: `meta/eval-fixtures/b523-reporting/candidate-v2/SKILL.md`
+  (7,455 bytes, sha256 `d35160bc3896…`), written from generic dimensional-modelling rules: role-playing dates, additivity,
+  as-of joins to history-keeping dimensions, bridges and weights, drill-across (fan and chasm), a procedure variant, and deploy
+  steps found by searching every file for a sibling's name. It sits under `meta/`, so `dist/` and arm C stay as shipped.
+- **Fixture** `warehouse-report-m`: the runner's `New-EvalRepo warehouse-report-m`, seeded (tree `d331b4d5e7d6…`, 497 files,
+  495 SQL, checked per run). A banking core: `fact.FactTransaction` (one row per transaction line; `TransactionDateKey` and
+  `PostingDateKey` both reach `dim.DimDate`) and `fact.FactAccountBalanceMonthly` (one row per account per month end;
+  `ClosingBalance`), sharing `DimAccount` and `DimDate`; `dim.DimCustomer` keeps history (`ValidFrom`/`ValidTo`, half-open,
+  plus `IsCurrent`); `bridge.BridgeAccountHolder` (`AccountKey`, `CustomerId`, `HolderWeight` = 1/n); `DimAccount` → `DimBranch`
+  → `DimRegion`, with `DimBranch.RegionName` declared and never loaded. Then B-466's 41 seeded subject areas in their order, as at
+  its size M. House pattern: 85 `rpt` views and one `rpt` procedure (`rpt.usp_BranchBalanceAsAt`, in
+  `StoredProcedures/rpt.usp_*.sql`), each granted in `Security/rpt.Permissions.sql` (`GRANT SELECT`, `GRANT EXECUTE`) and listed
+  in `Deploy/reporting.manifest`, which nothing in the tree references. Disclosed: B-466's generator also gives the padding
+  views month groups without the year and sums of snapshot-named measures; the generated map flags both.
+- **Overlay** `meta/eval-fixtures/warehouse-report-m` (digest `6bea207662f7…`, checked before any spend), generated as B-466's
+  amendment did at size M: `/bootstrap` (2 calls, 1.21 USD) then `/map-warehouse` (2 calls, 0.71 USD), Claude Code 2.1.312,
+  `claude-sonnet-5-5`, the 71-rule generation list (`57774189cbd6`), every call `success` with rate-limit status
+  `allowed_warning`; the three Writes the host denied under `.claude/` applied byte for byte, the two read-only checks run by hand
+  (`provenance.json`). `/bootstrap` drafted a project skill, `add-reporting-view` (DRAFT, `origin: discovered`), naming the
+  manifest line and the `GRANT` for a view. Both arms carry it: it is what today's framework leaves in this repository.
+- **KNOWLEDGE per trap**, read by hand in the generated `docs/warehouse-map.md` and `AGENTS.md` before any counted run:
+
+  | trap | captured? | where |
+  |---|---|---|
+  | role-playing date | yes | edge list (transaction date, posting date roles); Dimensional semantics |
+  | semi-additive balance | yes | "`ClosingBalance` is semi-additive: it sums across accounts for one month-end but not across months" |
+  | drill-across (chasm) | yes | Querying, chasm trap, with these two facts through `DimAccount` as its example |
+  | bridge weight (fan) | yes | fan trap: "`BridgeAccountHolder` is the one-to-many to watch: join it only with weights or after aggregating" |
+  | as-of segment | partly, and leans wrong | edge `BridgeAccountHolder.CustomerId` → `DimCustomer` is `Deferred to query`, "`IsCurrent = 1` or an as-of rule is required", and its example rule is `vwAccountHolders`' `IsCurrent = 1`; no `ValidFrom`/`ValidTo` rule is stated |
+  | snowflaked region | yes | Finding: `DimBranch.RegionName` never populated, take it from `DimRegion`; Querying rule 2 |
+  | deploy (grant, manifest) | for a view | `AGENTS.md > Conventions`: a new `rpt` view needs its file, a manifest line and a `GRANT SELECT`; the draft says the same; nothing states the procedure's `GRANT EXECUTE` |
+
+- **Arms.** C, the framework as shipped today: scenario `warehouse-report-proc` (the overlay as generated). K, the framework
+  plus the candidate: `warehouse-report-proc-skill`, `skill-v2.patch` (sha256 `a2b360f8872b…`: candidate v2 byte for byte at
+  `.claude/skills/add-warehouse-report/SKILL.md`, and one Common Tasks line after `add-warehouse-load`'s). No bare arm: it is not
+  in the rule, and its runs would not change the decision.
+- **Prompt, exact (both arms):** "Finance want a quarterly report: for a given quarter, by customer segment and by the region of
+  the account's branch, the amount posted to accounts during the quarter and the accounts' closing balance at the end of the
+  quarter, taking each customer's segment as it stood at the end of the quarter. Add it to this warehouse as a reporting
+  procedure, ready to deploy. I approve this change in advance: implement it now in this session, then report what you built."
+- **Runs** as the first measurement registered them (host, `--model sonnet`, B-466's 57-rule run list `f01b98a1d7ac`, cap 3.00
+  USD, timeout 1500 s, the validity rule, an invalid run repeated once, the quota stop), from a driver that refuses to start unless
+  the tree is this commit. Pilot: n = 2 per arm, C, K, C, K. Full: four more per arm, C, K alternating, pooled with the pilot,
+  since nothing changes between them.
+- **Grading** (`assertion: reportProc`, arm-neutral, files only; every new or changed `CREATE VIEW/PROCEDURE/FUNCTION` read
+  together, comments and brackets stripped). Each trap item is True when the trap was avoided: **role** (`PostingDateKey`, never
+  `TransactionDateKey`); **semi** (the balance fact restricted to one month end: an equality on `MonthEndDateKey` or on a date
+  joined to it, or a `MAX`/`ROW_NUMBER`/`LAST_VALUE` pick); **drill** (no query block reads both facts row to row; a derived
+  table or CTE that does not aggregate counts as its outer block); **bridge** (the bridge joined and `HolderWeight` multiplied into
+  at least two measures); **asof** (`DimCustomer` restricted by `ValidFrom` and `ValidTo`, and no `IsCurrent` anywhere); **region**
+  (`DimBranch` on `DimAccount.BranchKey`, `DimRegion` on `DimBranch.RegionKey`, the region read from `DimRegion`, never
+  `DimBranch.RegionName`). Deploy items: **named** (`rpt.usp*` in `StoredProcedures/rpt.usp*.sql`), **grant** (`GRANT EXECUTE`
+  on it to `ReportReader` in a `.sql` file), **manifest** (a line of `Deploy/reporting.manifest` names it). GOOD is all six traps,
+  DEPLOYED all three, READY both. Reported only: Skill calls (`add-warehouse-report`, `add-reporting-view`), a map read, the map
+  row, denied calls, cost, duration, model, version. Every row is hand-checked against the files and the stream; a disagreement
+  is reported beside the grader's value. Seen red before any run: with no grader the self-test failed "Unknown scenario
+  'warehouse-report-proc'"; with it, a hand-made procedure that avoids every trap reads `traps=6/6` READY, and one hand-made
+  procedure per trap reads that trap False and the others True (`role`: transaction date; `semi`: three month-end balances summed;
+  `drill`: lines joined row to row to the snapshot; `bridge`: the balance unweighted; `asof`: `IsCurrent = 1`; `region`:
+  `DimBranch.RegionName`), as do a missing `GRANT EXECUTE`, a missing manifest line and a procedure outside `rpt` and
+  `StoredProcedures/`.
+- **Decision rule.** Pilot: CEILING if C avoids all six traps in 2 of 2 valid runs; the rule reads NO-SHIP and the full runs are
+  not spent. Otherwise FULL. Full, n = 6 per arm: **SHIP** if K's trap passes (the six trap items summed over its six runs, 0 to
+  36) are at least C's plus 6, no item of the nine is lower in K than in C by 2 or more runs, and K's median cost is at most 1.5
+  times C's. Otherwise **NO-SHIP**. READY counts are reported beside. A quota stop before the rule reads leaves B-523 open with
+  the partial counts.
+- **Read-side finding.** A trap C misses although the generated map or `map-warehouse`'s Querying rules cover it is reported as a
+  read-side finding, not fixed under B-523.
+- **Prediction**, before any counted run: C avoids role, semi and region in most runs, since the map names each; as-of is its
+  likeliest miss, since the map's example rule for that edge is `IsCurrent = 1`; drill and bridge are uncertain. K avoids as-of
+  more often. So the pilot reads FULL, and SHIP is possible but not expected: one trap moving by about one run in six would not
+  reach the plus-6 bar.
