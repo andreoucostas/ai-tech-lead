@@ -11,7 +11,7 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124, WSD-125): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work ranked after B-506 and B-507 (now ranks 2, 3, 8 and 9), eight findings shut, and the release review's B-521 and B-522; B-509 and B-498 done the same day, B-507 and B-513 on 2026-11-15, B-466 moved after B-515 (maintainer, in chat), and B-523 filed and placed after B-466 by the coordinator (the maintainer set no rank); earlier ranking history is in `git log -p meta/BACKLOG.md`
+## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124, WSD-125): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work ranked after B-506 and B-507 (now ranks 2, 3, 8 and 9), eight findings shut, and the release review's B-521 and B-522; B-509 and B-498 done the same day, B-507 and B-513 on 2026-11-15, B-466 moved after B-515 (maintainer, in chat), and B-523 filed and placed after B-466 by the coordinator (the maintainer set no rank); B-524 to B-527 filed 2026-11-15 from the maintainer-requested review against current Anthropic guidance and placed last by the reviewing session (the maintainer set no rank); earlier ranking history is in `git log -p meta/BACKLOG.md`
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -51,6 +51,10 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 34 | B-520 | Seven small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
 | 35 | B-522 | Release review: nothing tracks how long a release takes or how often a defect escapes; guarded, S |
 | 36 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
+| 37 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
+| 38 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
+| 39 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
+| 40 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
 
 ## Open entries
 
@@ -181,7 +185,7 @@ Same file (2026-11-14 architecture review): `upgrade-checklist.md:111` says a no
 **Filed against:** v0.98.4 (2026-11-10)
 **Priority:** P3 · **Effort:** S to M · **Invariants:** #1 #7
 **Status:** Open; maintainer-requested external audit (a sub-session's reading, noise predicted, not measured). `review.md` has no thresholds or de-duplication where `security-gate.md` has thresholds; `bloat-radar` flags a single-delegation method while `solid-check` flags a controller action that does more than delegate; commented-out code has two thresholds.
-Candidate: a merge on `file:line`, one severity scale and one verdict line; drop the lines-per-file heuristic. Ordinary unless a stack file changes. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
+Candidate: a merge on `file:line`, one severity scale and one verdict line that names the reviewers which returned (2026-11-15 guidance review: B-467's runs lost reviewers to a usage limit and to under-dispatch, and `review.md` has a wait rule but none for a reviewer that errors); drop the lines-per-file heuristic. Ordinary unless a stack file changes. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
 Widened 2026-11-14 (architecture review, maintainer go-ahead): merge the three Haiku reviewers (convention-check, bloat-radar, debt-radar; B-427) into one pass, measured with B-467's 12-defect harness, and do the de-duplication there; align the commented-out-code threshold (`AGENTS.md` more than 1 line, `bloat-radar.md:34` more than 2).
 ### B-499 · Credential forms the write guard still does not read after B-487
 **Filed against:** v0.98.4 (2026-11-10)
@@ -263,3 +267,27 @@ Candidate: cut or shorten only text a discriminating cell covers, one group per 
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #7
 **Status:** Open; maintainer direction 2026-11-14 ("Skill for views/procs"; WSD-127, superseding WSD-121): a recipe for writing a reporting view or stored procedure on the warehouse map's proven joins; Power BI stays out of scope.
 Design it, then a measurement pre-registered on a warehouse fixture, then ship it only if that measurement supports it. Guarded (`src/stacks/*/files/.claude/**`).
+### B-524 · `/bootstrap` and `/adopt` lose their write steps when Claude Code compacts the conversation
+**Filed against:** v0.98.6 (2026-11-15)
+**Priority:** P3 · **Effort:** S · **Invariants:** #1 #7
+**Status:** Open; maintainer-requested review against current Anthropic guidance, 2026-11-15, and its attack (vendor pages read; not observed on a host). Claude Code's skills page: after a compaction it re-attaches only "the first 5,000 tokens" of an invoked command and does not re-read the file. `bootstrap.md` is 57 KB (dotnet) and its write steps, completion gate and report start at byte 23,055; `adopt.md` is 43 KB, and its Phase 7 deletes `.claude/adoption-pending.json` before it runs `/bootstrap`.
+Trigger: both commands pause for the developer, and the best-practices page says a session past about 200K tokens that sits idle is compacted before its one-hour cache expires; a gateway held at 200K or a typed `/compact` does the same. No recorded run reached that size (a headless `/bootstrap` on the fixtures costs 1.10 to 1.20 USD).
+Candidate: first read the parent session's size on B-466's sized repositories; if it nears 200K, one line near the top of `adopt.md` and the three `bootstrap.md` copies (after a compaction, read this file again before the next phase), or the phases as supporting files. Guarded (`src/stacks/*/files/.claude/**`), text-only.
+### B-525 · No standing scenario has run on Fable 5.2, the model Claude Code now moves saved Fable 5.1 sessions to
+**Filed against:** v0.98.6 (2026-11-15)
+**Priority:** P3 · **Effort:** S · **Invariants:** none
+**Status:** Open; same review and attack. `meta/eval-results.md` names Sonnet 5.5 178 times, Opus 5.5 24 times and no Fable model as a run's model; every run in B-425, B-514 and B-515 is Sonnet 5.5. Claude Code 2.1.321 moves a saved `claude-fable-5-1` to Fable 5.2 on Pro, Max and Ultra plans, and `DEVELOPING.md`'s per-release check asks for a rerun when the model changed.
+Anthropic's Fable 5.2 prompting page says a prompt silent on who owns the code makes the model add to existing structure "even when that duplicated existing code": the behaviour Leanness #1 exists to stop, measured on Opus 5.5 only (WSD-104). It also says long turns end early at `medium`, Claude Code's default effort. Not observed here; no field report names the model.
+Candidate: that per-release line once with `-Model fable` (`route-fix`, `warehouse-bind-sql`, `angular-feature-placement`), rows in `meta/eval-results.md`, a backlog line only on its alarm; B-518's support statement then names the models measured. The harness's unpinned effort level stays as B-330 decided.
+### B-526 · Shipped consumer instructions and skills load into maintainer sessions, and root `CLAUDE.md` names two of the four trees they load from
+**Filed against:** v0.98.6 (2026-11-15)
+**Priority:** P3 · **Effort:** S · **Invariants:** none
+**Status:** Open; same review and attack (observed in this review's Claude Code desktop sessions; no harm recorded). Reading a file under `dist/dotnet/` loaded that tree's `CLAUDE.md` and listed its nine skills as invocable; `src/stacks/dotnet/files/` and `src/core/` added nine more. `meta/eval-fixtures/` holds two `CLAUDE.md`, five `AGENTS.md` and seven skills. Root `CLAUDE.md` warns about `src/core/` and `dist/*/` only.
+Candidate: correct that sentence (ordinary). The maintainer decides whether `.claude/settings.json` gains `claudeMdExcludes` with `**/`-anchored patterns, the vendor's documented control for the `CLAUDE.md` files (guarded; only a host run can show it red).
+Nested skills have no documented switch by path (`skillOverrides` goes by skill name, about twenty to keep in step), so they stay a prose warning.
+### B-527 · The maintainer gate's stillness check cannot see another session's uncommitted edits, and the rule it serves names no next step
+**Filed against:** v0.98.6 (2026-11-15)
+**Priority:** P3 · **Effort:** S · **Invariants:** none
+**Status:** Open; same review and attack. `.claude/skills/meta-gates/SKILL.md` step 1 compares `git rev-parse HEAD` three seconds apart. On 2026-11-13 the other session's edits were uncommitted, so HEAD stood still; step 0 would also have read that session's changed paths into this change's tier. `AGENTS.md` ("Do not run suites while another session is editing the tree") says to stop and not what follows: that night a reviewed guarded fix waited until the next morning (9e8dbb28), with no release held up.
+Candidate: step 1 also compares `git status --porcelain` before and after and names the paths this session did not touch (ordinary, the skill file). One clause in `AGENTS.md` for the blocked session (wait a stated time, check once more, then report), with a clause cut and the step-4 attack that file requires.
+Worktrees are not the way out: `push-and-check.ps1` watches `master` only, and worktrees inside the repository left stray entries in v0.42.0 and v0.43.0 (`.gitignore`).
