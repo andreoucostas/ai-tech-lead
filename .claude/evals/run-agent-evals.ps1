@@ -1610,6 +1610,94 @@ function Get-SkillUseGrade([string]$Target, [int]$BeforeCommits, $Evidence, [Val
     return [pscustomobject]@{ Grade = 'GRADED'; Complete = $complete; Detail = "op=report complete=$complete catalog=$($best.Catalog) flag=$($best.Flag) grant=$($best.Grant) $use export=$($best.Class) key=$(if ($best.Key) { $best.Key } else { 'none' }) view=$(if ($best.View) { $best.View } else { 'none' }) grantFile=$($best.GrantFile) viewFile=$($best.ViewFile) testRow=$($best.TestRow) $tail" }
 }
 
+# B-523 (.claude/plans/2026-11-15-b523-reporting-skill.md): the reporting view a run wrote on the S tree, arm-neutral. A view is a
+# CREATE VIEW in a .sql file new or changed since the setup commit; the best-scoring one is graded. GOOD: it reads fact.FactSales
+# and sums NetAmount (fact); reaches DimCustomer on CustomerKey, DimRegion on DimCustomer.RegionKey, takes RegionName from
+# DimRegion and SegmentName from DimCustomer, and reads no dead fact column (path); puts no IsCurrent/EffectiveFrom/EffectiveTo
+# on that pinned edge (pinned); and a comment in its file or the final message ties region, segment or customer to the Unknown
+# or -1 placeholder (gap). DEPLOYED: rpt.vw<Name> in Views/rpt.vw<Name>.sql (named) and an uncommented GRANT SELECT on it to
+# ReportReader in any .sql file (grant). READY is both. Month without its year, the map row, the skill call and the map read are
+# reported, not scored. Comments are stripped before every SQL test except the gap's and the month assumption's.
+function Get-ReportWriteGrade([string]$Target, [int]$BeforeCommits, $Evidence) {
+    $base = @(git -C $Target rev-list --reverse HEAD)[$BeforeCommits - 1]
+    $subtype = [string]$Evidence.Final.subtype
+    if ($Evidence.Final.is_error -or ($subtype -and $subtype -ne 'success')) { return [pscustomobject]@{ Grade = 'ERROR'; Detail = "op=report NOT EXAMINED: terminal result $(if ($subtype) { $subtype } else { 'error' }) " } }
+    $changed = @(@(git -C $Target diff --name-only $base) + @(git -C $Target ls-files --others --exclude-standard) | Select-Object -Unique)
+    $written = @($changed | Where-Object { $_ -like '*.sql' })
+    if (-not $written) { return [pscustomobject]@{ Grade = 'ERROR'; Detail = 'op=report NOT EXAMINED: no .sql write ' } }
+    $skillNames = @($Evidence.Tools | Where-Object { $_.Name -eq 'Skill' } | ForEach-Object { [string]$_.Input.skill } | Where-Object { $_ } | Select-Object -Unique)
+    $skill = [bool]@($skillNames | Where-Object { $_ -eq 'add-warehouse-report' -or $_.EndsWith(':add-warehouse-report') }).Count
+    $mapRead = [bool]@($Evidence.Tools | Where-Object { ($_.Name -eq 'Read' -and (Get-ToolPath $_).Replace('\', '/') -match '(?i)(?:^|/)docs/warehouse-map\.md$') -or ($_.Name -in @('Bash', 'PowerShell') -and [string]$_.Input.command -match '(?i)\b(?:cat|head|tail|less|Get-Content|type)\b[^|;&]*docs[\\/]warehouse-map\.md') }).Count
+    $denied = if ($null -ne $Evidence.Final.permission_denials) { @($Evidence.Final.permission_denials).Count } else { 0 }
+    $sql = @{}
+    foreach ($file in @(Get-ChildItem -LiteralPath $Target -Recurse -File -Filter '*.sql' -Force | Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' })) {
+        $sql[[IO.Path]::GetRelativePath($Target, $file.FullName).Replace('\', '/')] = Remove-SkillUseComments ([IO.File]::ReadAllText($file.FullName)) 'sql'
+    }
+    $finalText = [string]$Evidence.Final.result
+    $gapPattern = { param([string]$Text) [bool]@($Text -split '(?<=[.!?])\s+|\r?\n' | Where-Object { $_ -match '(?i)\b(?:region|segment|customer)' -and $_ -match '(?i)\bunknown\b|placeholder|hard-?coded|(?<![\w-])-1(?!\d)' }).Count }
+    $gapFinal = & $gapPattern $finalText
+    $mapText = if ('docs/warehouse-map.md' -in $changed -and (Test-Path -LiteralPath (Join-Path $Target 'docs/warehouse-map.md'))) { [IO.File]::ReadAllText((Join-Path $Target 'docs/warehouse-map.md')) } else { '' }
+    $keywords = @('on', 'where', 'group', 'order', 'inner', 'left', 'right', 'full', 'cross', 'join', 'outer', 'union', 'having', 'with', 'as', 'select')
+    $best = $null
+    foreach ($path in @($written | Sort-Object)) {
+        $full = Join-Path $Target $path
+        if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
+        $raw = [IO.File]::ReadAllText($full)
+        $clean = $sql[$path]
+        $comments = (@($raw -split '\r?\n' | ForEach-Object { $at = $_.IndexOf('--'); if ($at -ge 0) { $_.Substring($at) } }) + @([regex]::Matches($raw, '(?s)/\*.*?\*/') | ForEach-Object Value)) -join "`n"
+        $creates = @([regex]::Matches($clean, '(?i)\bCREATE\s+(?:OR\s+ALTER\s+)?VIEW\s+([\[\]\w.]+)'))
+        for ($k = 0; $k -lt $creates.Count; $k++) {
+            $parts = $creates[$k].Groups[1].Value.Replace('[', '').Replace(']', '').Split('.')
+            $schema = if ($parts.Count -gt 1) { $parts[-2] } else { 'dbo' }
+            $object = $parts[-1]
+            $end = if ($k + 1 -lt $creates.Count) { $creates[$k + 1].Index } else { $clean.Length }
+            $go = [regex]::Match($clean.Substring($creates[$k].Index, $end - $creates[$k].Index), '(?im)^\s*GO\s*$')
+            if ($go.Success) { $end = $creates[$k].Index + $go.Index }
+            $body = $clean.Substring($creates[$k].Index, $end - $creates[$k].Index).Replace('[', '').Replace(']', '')
+            $alias = @{}
+            foreach ($m in [regex]::Matches($body, '(?i)\b(?:FROM|JOIN)\s+(\w+\.\w+|\w+)(?:\s+(?:AS\s+)?(\w+))?')) {
+                $table = $m.Groups[1].Value.ToLowerInvariant()
+                $name = if ($m.Groups[2].Success -and $m.Groups[2].Value.ToLowerInvariant() -notin $keywords) { $m.Groups[2].Value } else { $table.Split('.')[-1] }
+                $alias[$name] = $table
+            }
+            $named = { param([string]$Table) @($alias.Keys | Where-Object { $alias[$_] -eq $Table -or ($alias[$_] -eq $Table.Split('.')[-1]) } | ForEach-Object { [regex]::Escape($_) }) }
+            $fa = & $named 'fact.factsales'; $ca = & $named 'dim.dimcustomer'; $ra = & $named 'dim.dimregion'
+            $edge = { param([string[]]$Left, [string]$LeftColumn, [string[]]$Right, [string]$RightColumn)
+                [bool]@(foreach ($l in $Left) { foreach ($r in $Right) { if ($body -match "(?i)\b$l\.$LeftColumn\s*=\s*$r\.$RightColumn\b" -or $body -match "(?i)\b$r\.$RightColumn\s*=\s*$l\.$LeftColumn\b") { $true } } }).Count }
+            $fact = $fa.Count -gt 0 -and $body -match '(?i)\bSUM\s*\([^)]*\bNetAmount\b'
+            $custJoin = & $edge $ca 'CustomerKey' $fa 'CustomerKey'
+            $regionJoin = & $edge $ra 'RegionKey' $ca 'RegionKey'
+            $dead = [bool]@($fa | Where-Object { $body -match "(?i)\b$_\.(?:RegionName|SegmentName|CategoryName)\b" }).Count
+            $regionRead = [bool]@($ra | Where-Object { $body -match "(?i)\b$_\.RegionName\b" }).Count
+            $segmentRead = [bool]@($ca | Where-Object { $body -match "(?i)\b$_\.SegmentName\b" }).Count
+            $pathOk = $custJoin -and $regionJoin -and $regionRead -and $segmentRead -and -not $dead
+            $pinned = $body -notmatch '(?i)\b(?:IsCurrent|EffectiveFrom|EffectiveTo)\b'
+            $month = $body -match '(?i)\bYEAR\s*\(|\bDATEPART\s*\(\s*(?:year|yy|yyyy)\b|\bDATEFROMPARTS\s*\(|\bEOMONTH\s*\(|\bDATETRUNC\s*\(|\bFORMAT\s*\([^)]*''[^'']*yyyy|\bCONVERT\s*\(\s*n?(?:var)?char\s*\(\s*[67]\s*\)|\bDATEADD\s*\(\s*(?:month|mm|m)\s*,\s*DATEDIFF' -or ($comments -match '(?i)CalendarMonth' -and $comments -match '(?i)\byear\b|yyyymm')
+            $gapFile = & $gapPattern $comments
+            $gap = $gapFile -or $gapFinal
+            $isNamed = $schema -ieq 'rpt' -and $object -like 'vw*' -and $path -ieq "Views/rpt.$object.sql"
+            $grantFiles = @(foreach ($sqlPath in @($sql.Keys | Sort-Object)) {
+                foreach ($g in [regex]::Matches($sql[$sqlPath], '(?i)\bGRANT\s+SELECT\s+ON\s+(?:OBJECT\s*::\s*)?([\[\]\w.]+)\s+TO\s+\[?ReportReader\]?')) {
+                    $granted = $g.Groups[1].Value.Replace('[', '').Replace(']', '')
+                    if ($granted -ieq "$schema.$object" -or ($schema -ieq 'dbo' -and $granted -ieq $object)) { $sqlPath }
+                }
+            })
+            $grant = $grantFiles.Count -gt 0
+            $good = [bool]($fact -and $pathOk -and $pinned -and $gap)
+            $deployed = [bool]($isNamed -and $grant)
+            $score = @($fact, $pathOk, $pinned, $gap, $isNamed, $grant) | Where-Object { $_ }
+            $row = [pscustomobject]@{ Score = @($score).Count; Ready = $good -and $deployed; Good = $good; Deployed = $deployed; Fact = [bool]$fact; Path = [bool]$pathOk; Pinned = [bool]$pinned; Gap = [bool]$gap; Named = [bool]$isNamed; Grant = $grant
+                View = "$schema.$object"; File = $path; CustJoin = $custJoin; RegionJoin = $regionJoin; Dead = $dead; Month = [bool]$month; GapIn = $(if ($gapFile) { 'file' } elseif ($gapFinal) { 'final' } else { 'none' }); GrantFile = [bool]@($grantFiles | Where-Object { $_ -eq 'Security/rpt.Permissions.sql' }).Count
+                MapRow = [bool]($mapText -and $mapText -match "(?i)\b$([regex]::Escape($object))\b") }
+            if ($null -eq $best -or $row.Score -gt $best.Score) { $best = $row }
+        }
+    }
+    $tail = "skill=$skill skillCalls=$($skillNames -join ',') mapRead=$mapRead denied=$denied sqlFiles=$($written.Count) durationMs=$(Get-B406Duration $Evidence) turns=$(@($Evidence.Results).Count)"
+    if ($null -eq $best) { return [pscustomobject]@{ Grade = 'GRADED'; Ready = $false; Detail = "op=report ready=False good=False deployed=False fact=False path=False pinned=False gap=$gapFinal named=False grant=False | view=none file=none custJoin=False regionJoin=False dead=False month=False gapIn=$(if ($gapFinal) { 'final' } else { 'none' }) grantFile=False mapRow=False $tail" } }
+    $b = $best
+    return [pscustomobject]@{ Grade = 'GRADED'; Ready = [bool]$b.Ready; Detail = "op=report ready=$($b.Ready) good=$($b.Good) deployed=$($b.Deployed) fact=$($b.Fact) path=$($b.Path) pinned=$($b.Pinned) gap=$($b.Gap) named=$($b.Named) grant=$($b.Grant) | view=$($b.View) file=$($b.File) custJoin=$($b.CustJoin) regionJoin=$($b.RegionJoin) dead=$($b.Dead) month=$($b.Month) gapIn=$($b.GapIn) grantFile=$($b.GrantFile) mapRow=$($b.MapRow) $tail" }
+}
+
 # B-470: does the page a run wrote mirror the sibling's loading, empty and error handling? Written files only; the report is
 # not read. The page is every new or changed non-spec .ts/.html under src/ since the run started whose path names an invoice
 # or whose text calls /api/invoices, plus the templateUrl files those name. A state counts only by the sibling's mechanism:
@@ -3020,6 +3108,12 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $grade = Get-SkillUseGrade $Target $BeforeCommits $e $operation @(Get-SkillUseSlug (Join-Path $fixturesRoot 'b514-orders/files') $operation)
             if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Complete; Outcome = $grade.Complete; Detail = $grade.Detail }
+        }
+        { $_ -like 'warehouse-report-write*' } {
+            # B-523: arm-neutral; files, plus the final message for the gap only. No SQL written is not examined, never scored False.
+            $grade = Get-ReportWriteGrade $Target $BeforeCommits $e
+            if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Ready; Outcome = $grade.Ready; Detail = $grade.Detail }
         }
         { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3','warehouse-route-p4') } {
             $successful = @($e.Tools | Where-Object {
@@ -4868,9 +4962,101 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     # The live loop: the overlay patch lands inside the overlay's commit, multi-turn streams are read for skillUse, and -Live
     # checks every overlay patch against its overlay before any spend.
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -eq ''skillUse'')')) { throw 'the live loop does not read a multi-turn stream for the skill-use cases' }
+    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report-write cases' }
     if ($selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $preflightOverlay ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
     Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT']) | Copilot, no skill call: $($quoted['copilot no-skill']) | Copilot, skill tool: $($quoted['copilot skill-tool'])"
+}
+
+# B-523: the report-write grader on hand-made outputs over the S tree with its overlay and control.patch (which must apply, as
+# skill.patch must), the two pinned scenarios, and the live loop's checks of a sized fixture's tree and overlay digests.
+function Invoke-ReportWriteSelfTest([string]$Temp) {
+    $root = Join-Path $Temp 'b523-report'
+    New-EvalRepo $root warehouse-scale-s
+    Initialize-GeneratedOverlay $root 'warehouse-scale-s' -Patch (Join-Path $repo 'meta/eval-fixtures/b523-reporting/control.patch')
+    if ([int](git -C $root rev-list --count HEAD) -ne 2 -or (git -C $root status --porcelain)) { throw 'B-523 the S tree with its overlay and control.patch is not two clean commits' }
+    $grants = Join-Path $root 'Security/rpt.Permissions.sql'
+    if (-not (Test-Path -LiteralPath $grants) -or ([IO.File]::ReadAllText($grants) -split "`n" | Where-Object { $_ -match '^GRANT SELECT ON \[rpt\]\.\[vw\w+\] TO \[ReportReader\];$' }).Count -ne 3) { throw 'B-523 control.patch does not grant the three rpt views to ReportReader in Security/rpt.Permissions.sql' }
+    $skillRoot = Join-Path $Temp 'b523-skill'
+    New-Item -ItemType Directory -Path $skillRoot | Out-Null
+    git -C $skillRoot init --quiet
+    git -C $skillRoot config user.email 'agent-evals@invalid.local'
+    git -C $skillRoot config user.name 'Agent Evals'
+    Initialize-GeneratedOverlay $skillRoot 'warehouse-scale-s' -Patch (Join-Path $repo 'meta/eval-fixtures/b523-reporting/skill.patch')
+    if (-not (Test-Path -LiteralPath (Join-Path $skillRoot '.claude/skills/add-warehouse-report/SKILL.md')) -or [IO.File]::ReadAllText((Join-Path $skillRoot 'AGENTS.md')) -notmatch '(?m)^- `add-warehouse-report` ') { throw 'B-523 skill.patch does not add the skill and its Common Tasks line' }
+    if (-not (Test-Path -LiteralPath (Join-Path $skillRoot 'Security/rpt.Permissions.sql'))) { throw 'B-523 skill.patch does not carry the control layer' }
+
+    $view = 'Views/rpt.vwRevenueByRegionSegmentMonth.sql'
+    $gapLine = '-- Region and segment show only the Unknown member today: usp_LoadDimCustomer stamps CustomerKey -1 and RegionKey -1.'
+    $write = { param([string]$Path, [string]$Text) $full = Join-Path $root $Path; New-Item -ItemType Directory -Force -Path (Split-Path -Parent $full) | Out-Null; [IO.File]::WriteAllText($full, $Text.Replace("`r`n", "`n")) }
+    $report = { param([switch]$Dead, [switch]$Current, [string]$Grant = 'plain', [switch]$Elsewhere, [switch]$NoGap, [switch]$MonthOnly)
+        $month = if ($MonthOnly) { @('d.CalendarMonth', 'd.CalendarMonth') } else { @('YEAR(d.CalendarDate) AS CalendarYear, d.CalendarMonth', 'YEAR(d.CalendarDate), d.CalendarMonth') }
+        $attributes = if ($Dead) { @('f.RegionName, f.SegmentName', 'f.RegionName, f.SegmentName') } else { @('r.RegionName, c.SegmentName', 'r.RegionName, c.SegmentName') }
+        $joins = if ($Dead) { @('JOIN dim.DimDate d ON d.DateKey = f.OrderDateKey') } else { @("JOIN dim.DimCustomer c ON c.CustomerKey = f.CustomerKey$(if ($Current) { ' AND c.IsCurrent = 1' })", 'JOIN dim.DimRegion r ON r.RegionKey = c.RegionKey', 'JOIN dim.DimDate d ON d.DateKey = f.OrderDateKey') }
+        $name = if ($Elsewhere) { 'dbo.RevenueByRegionSegmentMonth' } else { 'rpt.vwRevenueByRegionSegmentMonth' }
+        $lines = @('-- Grain: one row per calendar month, customer region and customer segment.') + @(if (-not $NoGap) { $gapLine }) + @("CREATE VIEW $name AS", "SELECT $($month[0]), $($attributes[0]), SUM(f.NetAmount) AS NetRevenue", 'FROM fact.FactSales f') + $joins + @("GROUP BY $($month[1]), $($attributes[1]);")
+        if ($Grant -eq 'view-file') { $lines += @('GO', "GRANT SELECT ON [rpt].[vwRevenueByRegionSegmentMonth] TO [ReportReader];") }
+        & $write $(if ($Elsewhere) { 'analysis/revenue-by-region-segment.sql' } else { $view }) (($lines -join "`n") + "`n")
+        $grantLine = switch ($Grant) { 'plain' { "GRANT SELECT ON $name TO ReportReader;" } 'commented' { "-- GRANT SELECT ON $name TO ReportReader;" } default { '' } }
+        if ($grantLine) { [IO.File]::AppendAllText($grants, "$grantLine`n") } }
+    $transcript = { param([object[]]$Tools = @(), [string]$Subtype = 'success', [string]$Final = 'Added the view.')
+        $events = [Collections.Generic.List[object]]::new()
+        $events.Add([pscustomobject]@{ type = 'system'; subtype = 'init'; model = 'claude-sonnet-5-5' })
+        $n = 0
+        foreach ($tool in $Tools) {
+            $n++
+            $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = "b523-$n"; name = $tool.Name; input = $tool.Input }) } })
+            $events.Add([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = "b523-$n"; is_error = $false; content = [string]$tool.Result }) } })
+        }
+        $events.Add([pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = $Final; total_cost_usd = 0.4; duration_ms = 52000 })
+        [pscustomobject]@{ Events = $events.ToArray() } }
+    $skillCall = [pscustomobject]@{ Name = 'Skill'; Input = [pscustomobject]@{ skill = 'add-warehouse-report' }; Result = 'Launching skill: add-warehouse-report' }
+    $mapRead = [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root 'docs\warehouse-map.md') }; Result = '# Warehouse map' }
+    $gapFinal = 'Added rpt.vwRevenueByRegionSegmentMonth. Note: every customer currently resolves to the Unknown region, because the customer load hardcodes RegionKey -1.'
+    $cases = @(
+        [pscustomobject]@{ Name = 'a ready view on the proven joins, its gap named, granted'; Apply = { & $report }; Tools = @($mapRead); Ready = $true; Detail = '^op=report ready=True good=True deployed=True fact=True path=True pinned=True gap=True named=True grant=True \| view=rpt\.vwRevenueByRegionSegmentMonth file=Views/rpt\.vwRevenueByRegionSegmentMonth\.sql custJoin=True regionJoin=True dead=False month=True gapIn=file grantFile=True mapRow=False skill=False skillCalls= mapRead=True ' }
+        [pscustomobject]@{ Name = 'region and segment read off the fact''s dead columns'; Apply = { & $report -Dead }; Tools = @(); Ready = $false; Detail = '^op=report ready=False good=False deployed=True fact=True path=False pinned=True gap=True named=True grant=True .* custJoin=False regionJoin=False dead=True ' }
+        [pscustomobject]@{ Name = 'IsCurrent on the pinned customer edge'; Apply = { & $report -Current }; Tools = @(); Ready = $false; Detail = '^op=report ready=False good=False deployed=True fact=True path=True pinned=False ' }
+        [pscustomobject]@{ Name = 'no GRANT'; Apply = { & $report -Grant 'none' }; Tools = @(); Ready = $false; Detail = '^op=report ready=False good=True deployed=False .* grant=False .* grantFile=False ' }
+        [pscustomobject]@{ Name = 'a commented-out GRANT'; Apply = { & $report -Grant 'commented' }; Tools = @(); Ready = $false; Detail = '^op=report ready=False good=True deployed=False .* grant=False ' }
+        [pscustomobject]@{ Name = 'a bracketed GRANT in the view file'; Apply = { & $report -Grant 'view-file' }; Tools = @(); Ready = $true; Detail = '^op=report ready=True .* grant=True .* grantFile=False ' }
+        [pscustomobject]@{ Name = 'a view outside rpt and Views/'; Apply = { & $report -Elsewhere -Grant 'none' }; Tools = @(); Ready = $false; Detail = '^op=report ready=False good=True deployed=False .* named=False grant=False \| view=dbo\.RevenueByRegionSegmentMonth file=analysis/revenue-by-region-segment\.sql ' }
+        [pscustomobject]@{ Name = 'no gap named anywhere'; Apply = { & $report -NoGap }; Tools = @(); Ready = $false; Detail = '^op=report ready=False good=False deployed=True .* gap=False .* gapIn=none ' }
+        [pscustomobject]@{ Name = 'the gap named in the final message only'; Apply = { & $report -NoGap }; Tools = @(); Final = $gapFinal; Ready = $true; Detail = '^op=report ready=True .* gap=True .* gapIn=final ' }
+        [pscustomobject]@{ Name = 'a month bucket without its year (reported, not scored)'; Apply = { & $report -MonthOnly }; Tools = @(); Ready = $true; Detail = '^op=report ready=True .* month=False ' }
+        [pscustomobject]@{ Name = 'the skill called and the map row written'; Apply = { & $report; [IO.File]::AppendAllText((Join-Path $root 'docs/warehouse-map.md'), "`n- 2026-11-15: added rpt.vwRevenueByRegionSegmentMonth (FactSales, DimCustomer, DimRegion, DimDate).`n") }; Tools = @($skillCall); Ready = $true; Detail = '^op=report ready=True .* mapRow=True skill=True skillCalls=add-warehouse-report mapRead=False ' }
+    )
+    $quoted = @{}
+    foreach ($case in $cases) {
+        git -C $root checkout --quiet -- .
+        git -C $root clean --quiet -fdx
+        & $case.Apply
+        $final = if ($case.Final) { $case.Final } else { 'Added the view.' }
+        $graded = Test-ScenarioEvidence 'warehouse-report-write' $root (& $transcript $case.Tools 'success' $final) 2
+        if ($null -eq $graded -or $graded.Status -ne 'PASS' -or $graded.Pass -ne $case.Ready -or $graded.Detail -notmatch $case.Detail) {
+            throw "B-523 report-write misjudged $($case.Name): $(if ($graded) { "$($graded.Status) pass=$($graded.Pass) $($graded.Detail)" } else { 'no result' })"
+        }
+        $quoted[$case.Name] = $graded.Detail
+    }
+    git -C $root checkout --quiet -- .
+    git -C $root clean --quiet -fdx
+    & $write 'notes.md' 'no SQL here'
+    $noWrite = Test-ScenarioEvidence 'warehouse-report-write-skill' $root (& $transcript @()) 2
+    if ($null -eq $noWrite -or $noWrite.Status -ne 'INCONCLUSIVE' -or $noWrite.Pass -or $noWrite.Detail -notmatch '^op=report NOT EXAMINED: no \.sql write ') { throw "B-523 report-write graded a run that wrote no SQL: $(if ($noWrite) { "$($noWrite.Status) $($noWrite.Detail)" } else { 'no result' })" }
+    & $report
+    $cut = Test-ScenarioEvidence 'warehouse-report-write' $root (& $transcript @() 'error_max_budget_usd') 2
+    if ($null -eq $cut -or $cut.Status -ne 'INCONCLUSIVE' -or $cut.Pass -or $cut.Detail -notmatch '^op=report NOT EXAMINED: terminal result error_max_budget_usd ') { throw "B-523 report-write graded a budget-cut run: $(if ($cut) { "$($cut.Status) $($cut.Detail)" } else { 'no result' })" }
+
+    # The two pre-registered scenarios, and the live loop's digest checks for a sized fixture outside -WarehouseScale.
+    $prompt = 'Finance want monthly net revenue by customer region and customer segment. Add it to this warehouse as a reporting view, ready to deploy. I approve this change in advance: implement it now in this session, then report what you built.'
+    $scenarios = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.id -like 'warehouse-report-write*' })
+    if ((@($scenarios | ForEach-Object { $_.id }) -join ',') -ne 'warehouse-report-write,warehouse-report-write-skill') { throw "the report-write scenarios are not the two pre-registered ones: $(@($scenarios | ForEach-Object { $_.id }) -join ',')" }
+    foreach ($s in $scenarios) {
+        $wantPatch = if ($s.id -eq 'warehouse-report-write') { 'b523-reporting/control.patch' } else { 'b523-reporting/skill.patch' }
+        if (-not ([string]$s.fixture).Equals('warehouse-scale-s') -or -not ([string]$s.overlay).Equals('warehouse-scale-s') -or -not ([string]$s.overlayPatch).Equals($wantPatch) -or $s.bareArm -or [string]$s.budgetUsd -ne '3' -or $s.assertion -ne 'reportWrite' -or $s.prompt -cne $prompt -or $s.stack -ne 'dotnet') { throw "$($s.id) is not the pre-registered B-523 scenario (fixture, overlay, overlayPatch, bareArm, budget, assertion, stack or prompt)" }
+    }
+    $loopText = (Get-Command Invoke-EvalCases).ScriptBlock.Ast.Extent.Text
+    if ($loopText -notmatch [regex]::Escape('$caseSize = if (-not $WarehouseScale -and ([string]$caseFixture).StartsWith(''warehouse-scale-''))') -or $loopText -notmatch [regex]::Escape('if ($caseTree -ne $warehouseScaleSizes[$caseSize].Tree) { throw')) { throw 'B-523 the live loop does not hold a sized scenario fixture to its frozen tree digest' }
+    Write-Output "PASS: B-523 control.patch and skill.patch apply to the S overlay (three rpt grants; the skill and its Common Tasks line); the two scenarios are pinned; a sized scenario fixture is held to its tree digest. Grader, ready view: $($quoted['a ready view on the proven joins, its gap named, granted']) | dead columns: $($quoted['region and segment read off the fact''s dead columns']) | no GRANT: $($quoted['no GRANT'])"
 }
 
 # B-466: the per-run cap is 3.00 USD for warehouse-route-p4 at every size, and the scenario's own cap everywhere else.
@@ -5581,6 +5767,7 @@ export class UserService {
         Invoke-WarehouseScaleCapSelfTest
         Invoke-BudgetCutSelfTest $temp
         Invoke-WarehouseScaleSelfTest $temp
+        Invoke-ReportWriteSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
         Write-Output 'PASS: B-410 risk-design grades FULL only when one main-agent text block before the first main-agent write holds options A and B and a recommendation (a subagent''s text, a block after a write, one part alone, and the retained S1-C alternative-as-a-sentence shapes are not), reports where it was, whether the developer was left to answer, the turn-1 question and plan fields and what the second leg did, refuses a second leg whose prompt carried the plan gate or got no hook response, grades the decoy the other way round, merges two legs without a replay, builds the first-leg and resume arguments from the default, and pins both prompts, the follow-up and the dist router''s reading of them'
         Write-Output 'PASS: B-409 the contract fixtures are one list covering b406-orders and b409-orders-ci in the Copilot refusal, the stale and missing overlay refusals, the generator refusal, the overlay helper (copies and commits that fixture''s files, refuses a missing or unknown one) and every live-loop condition; the b409 baseline carries the pinned ci.yml (UTF-8, no BOM, LF) written between the solution and the baseline commit; contract-trace-ci is contract-trace on b409-orders-ci (same prompt, budget, grader, stack) and grades identically on one transcript'
@@ -7380,6 +7567,12 @@ function Invoke-EvalCases($Cases, $Rows) {
         New-EvalRepo $target $caseFixture
         $scaleTree = if ($WarehouseScale) { Get-TreeDigest $target } else { '' }
         if ($WarehouseScale -and $scaleTree -ne $warehouseScaleSizes[$WarehouseScale].Tree) { throw "-WarehouseScale ${WarehouseScale}: the built tree is $scaleTree, not the frozen $($warehouseScaleSizes[$WarehouseScale].Tree)." }
+        # B-523: a scenario whose own fixture is a sized tree is held to that tree's frozen digest too.
+        $caseSize = if (-not $WarehouseScale -and ([string]$caseFixture).StartsWith('warehouse-scale-')) { ([string]$caseFixture).Substring('warehouse-scale-'.Length).ToUpperInvariant() } else { '' }
+        if ($caseSize) {
+            $caseTree = Get-TreeDigest $target
+            if ($caseTree -ne $warehouseScaleSizes[$caseSize].Tree) { throw "${caseFixture}: the built tree is $caseTree, not the frozen $($warehouseScaleSizes[$caseSize].Tree)." }
+        }
         $before = [int](git -C $target rev-list --count HEAD)
         if ($Arm -eq 'framework' -and $case.id -notin $selfInstallScenarios) {
             Install-Framework $target $caseStack | Out-Null
@@ -7545,7 +7738,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
-            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -eq 'skillUse')
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite'))
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
                 # tree) and no error. Otherwise the grader sees one leg and says why (wroteT1, or not examined).
@@ -7696,6 +7889,12 @@ foreach ($contractFixture in $contractFixturesUsed) {
 foreach ($overlay in @($selected | Where-Object { $_.overlay } | ForEach-Object { [string]$_.overlay } | Select-Object -Unique)) {
     $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo "meta/eval-fixtures/$overlay/provenance.json") $version $overlay
     if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
+    # B-523: a sized tree's overlay used as a scenario overlay is held to its frozen digest, as -WarehouseScale holds it.
+    if ($overlay -like 'warehouse-scale-*') {
+        $overlayDigest = Get-TreeDigest (Join-Path $repo "meta/eval-fixtures/$overlay/files")
+        $frozenOverlay = $warehouseScaleSizes[$overlay.Substring('warehouse-scale-'.Length).ToUpperInvariant()].Overlay
+        if ($overlayDigest -ne $frozenOverlay) { throw "Refusing live eval: ${overlay}: the overlay is $overlayDigest, not the frozen $frozenOverlay." }
+    }
 }
 # B-514: each overlay patch must apply to its overlay, checked on a bare copy of the overlay before any spend, as -TargetPatch is.
 foreach ($overlayCase in @($selected | Where-Object { $_.overlayPatch } | Sort-Object id -Unique)) {

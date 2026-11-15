@@ -1,0 +1,16 @@
+diff --git a/Security/ReportReader.sql b/Security/ReportReader.sql
+new file mode 100644
+index 0000000..24ffeca
+--- /dev/null
++++ b/Security/ReportReader.sql
+@@ -0,0 +1 @@
++CREATE ROLE [ReportReader] AUTHORIZATION [dbo];
+diff --git a/Security/rpt.Permissions.sql b/Security/rpt.Permissions.sql
+new file mode 100644
+index 0000000..05ce700
+--- /dev/null
++++ b/Security/rpt.Permissions.sql
+@@ -0,0 +1,3 @@
++GRANT SELECT ON [rpt].[vwExecutiveSummary] TO [ReportReader];
++GRANT SELECT ON [rpt].[vwFinanceExtract] TO [ReportReader];
++GRANT SELECT ON [rpt].[vwOrderDetail] TO [ReportReader];
