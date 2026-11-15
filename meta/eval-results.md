@@ -8202,3 +8202,39 @@ the no-skill or bare ones.
   WSD-115, WSD-118, WSD-124): none met, as for the Claude Code leg; WSD-072's premise that Copilot reads `.claude/skills` held here.
 - Not shown: VS Code's Copilot; other CLI versions or models; drafts Copilot itself wrote (its `/bootstrap` writes Conventions lines); a
   draft that misses a step; a fixture whose code hides a step; interactive use.
+
+## B-515 results, second measurement on the 4,999-file tree — 2026-11-15 (hand-written; no runner rows)
+
+As amended at 5657f8f7 (`.claude/plans/2026-11-15-b515-draft-steps.md`, "Amendment"): four headless `/bootstrap` runs of the current text on
+B-466's `warehouse-scale-l` tree (the runner's `New-EvalRepo`, digest `515bf8d393be…` checked each time), Claude Code 2.1.312 and
+`claude-sonnet-5-5` in all four, acceptEdits with B-514's 51-rule list. Every call exited 0 with a `success` result and every session
+edited `AGENTS.md`: 4 of 4 valid. Deviation: the first driver treated the seven-day window's `allowed_warning` status (75% used; not a
+refusal) as a stop, so L-1 and L-2 ended after call 1; both were resumed in the same session with `proceed` about a minute later, which
+is the registered call rule. No quota or rate-limit refusal occurred (five-hour window at 0.28 after the last call).
+
+| run | arm | drafts | where the subject area went | workers | parent peak context (tokens) | cost USD | wall (call 1 + 2) |
+|---|---|---|---|---|---|---|---|
+| L-1 | current | 0 | debt (DEBT-001 to 003); 2 wiki drafts on `FactSales` | 4 (W1 to W3, A8) | 135,955 | 1.85 | 146 + 176 s |
+| L-2 | current | 0 | debt (DEBT-001); Conventions lines (job step order, `LoadRunId` from `BatchId`); 2 wiki drafts | 4 (W1 to W3, A8) | 135,103 | 1.87 | 150 + 151 s |
+| L-3 | current | 0 | debt (DEBT-001, 003); 1 wiki draft on `ctl.LoadRun` scope | none | 143,887 | 1.21 | 120 + 151 s |
+| L-4 | current | 0 | debt (DEBT-001, 002) | none | 122,124 | 1.00 | 100 + 138 s |
+| candidate | not run | | | | | | |
+
+- Reading, as fixed: NO-MISS, labelled NO-DRAFT. No run wrote a skill draft or an `add-warehouse-load` reference (no Write under
+  `.claude/skills/` in any stream), so no step could be omitted and the candidate, which changes how a draft is written and not whether,
+  was not run; nothing ships. Every run found the operation: L-1's and L-2's A8 workers returned it as an evidenced operation ("add a
+  warehouse domain family", 400-odd instances by grep), and each run's discovery summary names it and routes it by 3a-bis's debt rule
+  (L-2: "the Job → Dim → Fact constellation recurs (432 jobs), but its fact load is flagged as debt (DEBT-001), so it is not canonised").
+  The fixture builds that debt in: every area's dimension loader inserts key `-1` for each new id and every fact loader is a plain
+  insert, so on this tree the rule-following outcome is no draft. B-466's one generation here did the same.
+- So neither measurement observed a draft missing a step: 0 omitted in 8 drafts on the 70-file tree, and no draft written on the
+  4,999-file tree. A size test of the check needs a large repository whose repeated operation is not debt.
+- B-524 (record only): the parent session peaked at 122,124 to 143,887 tokens here, against 118,594 to 156,430 on the 70-file tree; no
+  compaction event in any stream, and the host reported a 1,000,000-token context window for this model. The parent's size did not grow
+  with the repository: it reads a bounded sample either way.
+- Cost: 4 runs 5.94 USD (1.00 to 1.87; the two runs that started workers cost 1.85 and 1.87). Summed `duration_ms` 252,202, 230,238,
+  265,336 and 233,491.
+- Reopen triggers of the decisions indexed on skills and `/bootstrap` (WSD-020, WSD-072, WSD-074, WSD-100, WSD-109, WSD-111, WSD-113,
+  WSD-115, WSD-118, WSD-124, WSD-127): none met. The workers ran on the session's Sonnet with no per-call model, as WSD-115 says.
+- Not shown: the Copilot leg (out of scope); the candidate's own effect; a large repository whose repeated operation is not debt; other
+  models; the angular and monorepo copies; interactive use.
