@@ -16,9 +16,20 @@
   `powershell.exe` stops with one line (exit 2). A CI job that runs `docs-sync-check` with `shell: powershell` or
   `powershell.exe` must run it with `pwsh`. If `.claude/settings.json` ran the hooks under Windows PowerShell 5.1, as the
   installer wrote it on a machine without `pwsh`, the update switches it to PowerShell 7, keeps your own keys (`permissions`,
-  `model` and the like), deletes an unmodified `.claude/settings.windows.json`, and prints a `NOTICE` saying so; its line
-  saying your `hooks` were replaced means the framework's own Windows PowerShell 5.1 entries there. An edited
+  `model` and the like), `env` variables and hook entries, deletes an unmodified `.claude/settings.windows.json`, and
+  prints a `NOTICE` saying so. An edited
   `settings.windows.json` stays, named in a `CANT-VERIFY` line: delete it once nothing of yours in it is needed.
+- **An update keeps your own `env` variables and hook entries in `.claude/settings.json`.** It kept only your own
+  top-level keys (`permissions`, `model` and the like) and replaced `env` and `hooks` whole with the release's, so a
+  variable or a hook you had added was dropped, with one `NOTICE` per key, and was left only in your last commit and
+  the local `.claude/.state/settings.json.pre-update`. Now each `env` variable the release does not set, and each hook
+  entry whose command no release of the framework registered, is carried into the refreshed file unchanged, under its
+  event and matcher (in the release's group of that matcher when it has one), even when its script sits in
+  `.claude/hooks/`. A `NOTICE` names what was carried: variables by name, never by value, and hook entries by event and
+  matcher. The framework's own entries, from any earlier release, its Windows PowerShell 5.1 and Bash ones included, are
+  replaced by this release's, and an `env` variable the release sets keeps the release's value, with a `NOTICE` naming
+  yours. Nothing to do; if an earlier update dropped yours, copy them back once from
+  `git show <commit before that update>:.claude/settings.json`.
 - **On Copilot, the workflow rules now reach a session's first prompt.** In VS Code's Copilot harness the rules `route-prompt`
   adds to each prompt (the routed workflow's steps, the plan gate and the security-pass reminder) reached every prompt except a
   session's first, whose hook output VS Code replaces with its own workspace listing. `session-start` now reads that first prompt,

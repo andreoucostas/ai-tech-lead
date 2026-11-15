@@ -5242,18 +5242,18 @@ It 'B-486 an update names each team value it replaced or dropped, and -WhatIf pr
         $exit = $LASTEXITCODE
         Assert ($exit -eq 0) "the update failed (exit $exit): $out"
         $lines = Get-B486Notices -Output $out
-        # No line for _comment (the release's own note, which the fixture changed), and the backup is named as the file before the update.
+        # No line for _comment (the release's own note, which the fixture changed), none for an event that holds no entry, and the
+        # backup is named as the file before the update. The env variables the release does not set are the team's, carried (B-507).
         $copy = "; the file as it was before this update is saved in $b486Backup."
         $expected = @(
+            "NOTICE: .claude/settings.json: carried your own env variables into the refreshed file beside this release's, unchanged: B486_TEAM_VAR, OTHER.",
             "NOTICE: .claude/settings.json: your env variable 'CLAUDE_CODE_USE_POWERSHELL_TOOL' differed from this release's and was replaced by it$copy",
-            "NOTICE: .claude/settings.json: your env variable 'B486_TEAM_VAR', which this release does not set, was dropped$copy",
-            "NOTICE: .claude/settings.json: your env variable 'OTHER', which this release does not set, was dropped$copy",
-            "NOTICE: .claude/settings.json: your 'defaultShell' differed from this release's and was replaced by it$copy",
-            "NOTICE: .claude/settings.json: your 'hooks' differed from this release's and was replaced by it (hook entries of your own are not merged)$copy")
-        Assert (($lines -join "`n") -ceq ($expected -join "`n")) "the lines for the replaced and dropped values are not the expected ones: $($lines -join ' | ')"
+            "NOTICE: .claude/settings.json: your 'defaultShell' differed from this release's and was replaced by it$copy")
+        Assert (($lines -join "`n") -ceq ($expected -join "`n")) "the lines for the carried and replaced values are not the expected ones: $($lines -join ' | ')"
         Assert ((Get-B486Notices -Output $dry | Out-String) -ceq ($lines | Out-String)) "the dry run printed other lines than the update did: $($dry)"
         Assert ($out -notmatch 'sk-B486-SECRET' -and $dry -notmatch 'sk-B486-SECRET') 'a value of the team''s env was printed'
-        Assert ([IO.File]::ReadAllText($settings) -ceq (Get-B486Dist)) 'a key both files define did not take the release''s value as it shipped'
+        $merged = (Get-B486Dist).Replace('"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1" }', '"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1", "B486_TEAM_VAR": "sk-B486-SECRET", "OTHER": "kept" }')
+        Assert ([IO.File]::ReadAllText($settings) -ceq $merged) 'a key both files define did not take the release''s value as it shipped, beside the team''s own env variables'
         Assert ([IO.File]::ReadAllText((Join-Path $t $b486Backup)) -ceq $team) 'the backup does not hold the team''s values'
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
@@ -5278,7 +5278,7 @@ It 'B-486 an interrupted update leaves the merged settings in place, and its re-
         $stopped = Invoke-Installer -Dist 'dotnet' -Target $t
         Assert ($LASTEXITCODE -eq 3 -and $stopped -match 'Could not copy') "calibration: the held file did not stop the update (exit $LASTEXITCODE): $stopped"
         $handle.Dispose(); $handle = $null
-        $merged = Add-B486TopLevel -Text (Get-B486Dist) -Members $b486Deny
+        $merged = Add-B486TopLevel -Text ((Get-B486Dist).Replace('"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1" }', '"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1", "B486_VAR": "1" }')) -Members $b486Deny
         Assert ([IO.File]::ReadAllText($settings) -ceq $merged) "the stopped update did not leave the release's settings with the team's keys in them: $([IO.File]::ReadAllText($settings))"
         Assert ([IO.File]::ReadAllText($backup) -ceq $original) 'the stopped update did not leave the team''s file in the backup'
         $out = Invoke-Installer -Dist 'dotnet' -Target $t
@@ -5387,8 +5387,10 @@ It 'B-486 env variables that differ only in case do not stop the team keys being
         Write-B486Text -Path $settings -Text (Add-B486TopLevel -Text $team -Members $b486Deny)
         $out = Invoke-Installer -Dist 'dotnet' -Target $t
         Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
-        Assert ([IO.File]::ReadAllText($settings) -ceq (Add-B486TopLevel -Text $dist -Members $b486Deny)) "the case-variant env names stopped the team keys being carried: $out"
-        Assert ($out -match "your env variable 'HTTP_PROXY', which this release does not set, was dropped" -and $out -match "your env variable 'http_proxy', which this release does not set, was dropped") "the dropped env variables were not named: $out"
+        # The first of the two is carried (B-507); the other is not, as PowerShell cannot read both in one file, and says so.
+        $carried = $dist.Replace('"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1" }', '"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1", "HTTP_PROXY": "http://proxy:8080" }')
+        Assert ([IO.File]::ReadAllText($settings) -ceq (Add-B486TopLevel -Text $carried -Members $b486Deny)) "the case-variant env names stopped the team keys being carried: $out"
+        Assert (($out -replace '\s+', ' ') -match "carried your own env variable into the refreshed file beside this release's, unchanged: HTTP_PROXY\." -and $out -match "your env variable 'http_proxy' was not carried, because its name differs from 'HTTP_PROXY' only in case") "the carried and the case-variant env variables were not named: $out"
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
@@ -5498,6 +5500,230 @@ It 'B-486 an update that carries team keys does not need the system temporary fo
         $env:TEMP = $savedTemp; $env:TMP = $savedTmp
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }
+}
+
+# B-507: an update kept the release's env and hooks whole, so the team's own env variables and hook entries were dropped. They
+# are carried beside the release's now; an entry whose command some release shipped is the framework's and gives way.
+function Get-B507Text { param([string]$Spec) return [Text.UTF8Encoding]::new($false).GetString((Get-GitBlobBytes -Spec $Spec)) }
+function Add-B507After {
+    param([string]$Text, [string]$After, [string]$Insert)
+    $at = $Text.IndexOf($After, [StringComparison]::Ordinal)
+    if ($at -lt 0) { throw "calibration: the fixture holds no '$After'" }
+    return $Text.Substring(0, $at + $After.Length) + $Insert + $Text.Substring($at + $After.Length)
+}
+# A repository at 0.98.6 whose .claude/settings.json is Settings.
+function New-B507Target {
+    param([string]$Target, [string]$Settings)
+    New-ArchGeneratorTarget -Target $Target
+    Set-B486Stamp -Target $Target -Version '0.98.6'
+    [IO.File]::WriteAllBytes((Join-Path $Target 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.98.6:dist/dotnet/framework-ownership.json'))
+    Write-B486Text -Path (Join-Path $Target '.claude/settings.json') -Text $Settings
+}
+# Every command under hooks, wherever it sits.
+function Get-B507Commands {
+    param($Value)
+    $found = New-Object System.Collections.Generic.List[string]
+    $pending = New-Object System.Collections.Generic.Stack[object]
+    $pending.Push($Value)
+    while ($pending.Count -gt 0) {
+        $v = $pending.Pop()
+        if ($null -eq $v -or $v -is [string] -or $v -is [ValueType]) { continue }
+        if ($v -is [Array]) { foreach ($item in $v) { $pending.Push($item) }; continue }
+        foreach ($p in $v.PSObject.Properties) { if ($p.Name -ceq 'command' -and $p.Value -is [string]) { $found.Add($p.Value) } else { $pending.Push($p.Value) } }
+    }
+    return $found.ToArray()
+}
+$b507Bash = '{ "type": "command", "command": "pwsh -NoProfile -File .claude/hooks/team-bash-check.ps1", "shell": "powershell" }'
+$b507Post = '{ "type": "command", "command": "powershell -NoProfile -File .claude/hooks/team-audit.ps1", "timeout": 30 }'
+$b507Env = '"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1" }'
+
+It 'B-507 an update of a repository at the prior release keeps the team env variables and hook entries, refreshes the framework entries and names what it carried' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b507-' + [guid]::NewGuid())
+    try {
+        # The reviewer's case: at 0.98.6 the team adds two env variables, a Bash PreToolUse hook and a PostToolUse hook, and commits.
+        $team = (Get-B507Text -Spec 'v0.98.6:dist/dotnet/.claude/settings.json').Replace($b507Env, '"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1", "B507_REGION": "eu-west", "B507_TOKEN": "sk-B507-SECRET" }')
+        $team = Add-B507After -Text $team -After '"PreToolUse": [' -Insert "`n      { `"matcher`": `"Bash`", `"hooks`": [ $b507Bash ] },"
+        $team = Add-B507After -Text $team -After '"PostToolUse": [' -Insert "`n      { `"matcher`": `"Bash`", `"hooks`": [ $b507Post ] },"
+        Assert (($team | ConvertFrom-Json).env.B507_TOKEN -ceq 'sk-B507-SECRET') 'calibration: the team settings do not read as JSON'
+        New-B507Target -Target $t -Settings $team
+        & git -C $t init -q
+        & git -C $t config user.email 'tests@example.invalid'
+        & git -C $t config user.name 'installer tests'
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'team settings' 2>&1 | Out-Null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: could not commit the team settings'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $exit): $out"
+        $settings = Join-Path $t '.claude/settings.json'
+        $after = [IO.File]::ReadAllText($settings)
+        $json = $after | ConvertFrom-Json
+        Assert ($json.env.B507_REGION -ceq 'eu-west' -and $json.env.B507_TOKEN -ceq 'sk-B507-SECRET' -and $json.env.CLAUDE_CODE_USE_POWERSHELL_TOOL -ceq '1') "the team env variables were not kept beside the release's: $after"
+        Assert ($after.Contains($b507Bash) -and $after.Contains($b507Post)) "the team hook entries are not in the refreshed file as the team wrote them: $after"
+        foreach ($event in 'PreToolUse', 'PostToolUse') {
+            $groups = @($json.hooks.$event | Where-Object { $_.matcher -ceq 'Bash' })
+            Assert ($groups.Count -eq 1 -and @($groups[0].hooks).Count -eq 1) "the team entry is not alone in a $event 'Bash' group: $after"
+        }
+        # The framework entries are this release's: no 0.98.6 command is left, and every command of the release is there.
+        $release = @(Get-B507Commands -Value ((Get-B486Dist) | ConvertFrom-Json).hooks)
+        $now = @(Get-B507Commands -Value $json.hooks)
+        Assert ((@($now | Where-Object { $release -cnotcontains $_ } | Sort-Object -CaseSensitive) -join '|') -ceq 'powershell -NoProfile -File .claude/hooks/team-audit.ps1|pwsh -NoProfile -File .claude/hooks/team-bash-check.ps1') "a command other than the release's and the team's two is registered: $($now -join ' | ')"
+        Assert (@($release | Where-Object { $now -cnotcontains $_ }).Count -eq 0) "a hook entry of the release is missing: $after"
+        $flat = $out -replace '\s+', ' '
+        Assert ($flat -match [regex]::Escape("NOTICE: .claude/settings.json: carried your own env variables into the refreshed file beside this release's, unchanged: B507_REGION, B507_TOKEN.")) "the carried env variables were not named: $out"
+        Assert ($flat -match [regex]::Escape("NOTICE: .claude/settings.json: carried your own hook entries into the refreshed file beside this release's, unchanged: 1 under PreToolUse matcher 'Bash', 1 under PostToolUse matcher 'Bash'.")) "the carried hook entries were not named by event and matcher: $out"
+        Assert ($flat -match 'and your own env variables \(B507_REGION, B507_TOKEN\) and 2 hook entries were carried into it') "the Done line does not say what was carried: $out"
+        Assert ($out -notmatch 'sk-B507-SECRET|eu-west|team-bash-check|team-audit') "a team value or command was printed: $out"
+        # The team's own entry runs Windows PowerShell 5.1; the framework's never did here, so the switch to pwsh is not announced.
+        Assert ($out -notmatch 'was dropped|differed from this release|not carried|Windows PowerShell 5\.1') "the update reported a loss or a switch it did not make: $out"
+        Assert ([IO.File]::ReadAllText((Join-Path $t $b486Backup)) -ceq $team) 'the pre-update backup is not the team''s file as it was'
+        # The merged file is what the update writes from itself: a re-run leaves it, and the first backup, as they are.
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'update' 2>&1 | Out-Null
+        $again = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $again -match '(?m)^PLAN unchanged \.claude/settings\.json\r?$') "the re-run did not list the merged settings as unchanged (exit $LASTEXITCODE): $again"
+        Assert ([IO.File]::ReadAllText($settings) -ceq $after) "the re-run changed the merged settings: $again"
+        Assert ([IO.File]::ReadAllText((Join-Path $t $b486Backup)) -ceq $team -and ($again -replace '\s+', ' ') -match 'kept the earlier pre-update settings backup') "the re-run replaced the first backup: $again"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-507 an update of a repository on a former Windows PowerShell 5.1 variant replaces every framework entry, carries none, and claims no hook entries of the team' {
+    foreach ($spec in 'v0.98.6:dist/dotnet/.claude/settings.windows.json', 'v0.90.0:dist/dotnet/.claude/settings.windows.json') {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('b507-' + [guid]::NewGuid())
+        try {
+            $variant = Get-B507Text -Spec $spec
+            Assert ($variant -match '"command": "powershell -NoProfile -ExecutionPolicy Bypass -File \.claude/hooks/guard\.ps1') "calibration: $spec does not run the guard under powershell"
+            New-B507Target -Target $t -Settings $variant
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0 -and $out -match 'Done \(update\)') "${spec}: the update failed (exit $LASTEXITCODE): $out"
+            $after = [IO.File]::ReadAllText((Join-Path $t '.claude/settings.json'))
+            Assert ($after -ceq (Get-B486Dist)) "${spec}: the refreshed file is not the release's own: $after"
+            Assert (@(Get-B507Commands -Value ($after | ConvertFrom-Json).hooks | Where-Object { $_ -match '(?:^|; )powershell ' }).Count -eq 0) "${spec}: a powershell command survived: $after"
+            $notices = @(Get-B486Notices -Output $out)
+            Assert (@($notices | Where-Object { $_ -match "'hooks'|hook entr" }).Count -eq 0) "${spec}: a NOTICE speaks of hook entries of the team, which has none: $($notices -join ' | ')"
+            Assert ($out -notmatch 'carried your own' -and ($out -replace '\s+', ' ') -match "ran the framework's hooks under Windows PowerShell 5\.1") "${spec}: the update carried something, or did not announce the switch to pwsh: $out"
+        } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+It 'B-507 a team entry inside a framework matcher group survives the update, in this release''s group of that matcher or its own' {
+    $teamPost = '{ "type": "command", "command": "pwsh -NoProfile -File .claude/hooks/team-format.ps1" }'
+    $teamPre = '{ "type": "command", "command": "pwsh -NoProfile -File .claude/hooks/guard.ps1 -Team" }'
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b507-' + [guid]::NewGuid())
+    try {
+        # Beside 0.98.6's audit-trail entry in its PostToolUse 'Write|Edit' group: it goes into this release's group of that matcher.
+        $prior = Get-B507Text -Spec 'v0.98.6:dist/dotnet/.claude/settings.json'
+        $audit = '.claude/hooks/audit-trail.ps1", "shell": "powershell", "cwd": "." }'
+        New-B507Target -Target $t -Settings (Add-B507After -Text $prior -After $audit -Insert ",`n          $teamPost")
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $LASTEXITCODE): $out"
+        $expected = Add-B507After -Text (Get-B486Dist) -After $audit -Insert ",`n          $teamPost"
+        Assert ([IO.File]::ReadAllText((Join-Path $t '.claude/settings.json')) -ceq $expected) "the team entry is not after the release's entries in the release's PostToolUse group: $([IO.File]::ReadAllText((Join-Path $t '.claude/settings.json')))"
+        Assert (($out -replace '\s+', ' ') -match [regex]::Escape("unchanged: 1 under PostToolUse matcher 'Write|Edit'.")) "the carried entry was not named by its event and matcher: $out"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b507-' + [guid]::NewGuid())
+    try {
+        # 0.90.0's guard group matched 'Write|Edit', which this release no longer has: the team's entry stays in that group, alone,
+        # though it runs a script of the framework's under .claude/hooks/, because its command is not one any release shipped.
+        $prior = Get-B507Text -Spec 'v0.90.0:dist/dotnet/.claude/settings.json'
+        $guard = '.claude/hooks/guard.ps1 ; exit $LASTEXITCODE", "shell": "powershell" }'
+        New-B507Target -Target $t -Settings (Add-B507After -Text $prior -After $guard -Insert ",`n          $teamPre")
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $LASTEXITCODE): $out"
+        $after = [IO.File]::ReadAllText((Join-Path $t '.claude/settings.json'))
+        $pre = @(($after | ConvertFrom-Json).hooks.PreToolUse)
+        $releasePre = @(((Get-B486Dist) | ConvertFrom-Json).hooks.PreToolUse)
+        Assert ($pre.Count -eq 2 -and ($pre[0] | ConvertTo-Json -Depth 5 -Compress) -ceq ($releasePre[0] | ConvertTo-Json -Depth 5 -Compress)) "the release's PreToolUse group is not first and as shipped: $after"
+        Assert ($pre[1].matcher -ceq 'Write|Edit' -and @($pre[1].hooks).Count -eq 1 -and $pre[1].hooks[0].command -ceq 'pwsh -NoProfile -File .claude/hooks/guard.ps1 -Team') "the team entry is not alone in its own PreToolUse 'Write|Edit' group: $after"
+        Assert (($out -replace '\s+', ' ') -match [regex]::Escape("unchanged: 1 under PreToolUse matcher 'Write|Edit'.")) "the carried entry was not named by its event and matcher: $out"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-507 a team override of an env variable the release sets takes the release value and is named without its value, beside the carried team variables' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b507-' + [guid]::NewGuid())
+    try {
+        New-ArchGeneratorTarget -Target $t
+        $dist = Get-B486Dist
+        $team = $dist.Replace($b507Env, '"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "b507-override-7f3e", "B507_KEY": "sk-B507-KEY-9d1c" }')
+        Assert ($team -cne $dist) 'calibration: the fixture env was not changed'
+        $settings = Join-Path $t '.claude/settings.json'
+        Write-B486Text -Path $settings -Text $team
+        $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+        Assert ($LASTEXITCODE -eq 0 -and $dry -match 'Dry run complete') "calibration: the dry run failed (exit $LASTEXITCODE): $dry"
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $expected = $dist.Replace($b507Env, '"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1", "B507_KEY": "sk-B507-KEY-9d1c" }')
+        Assert ([IO.File]::ReadAllText($settings) -ceq $expected) "the release's value did not win, or the team's variable was not carried after the release's: $([IO.File]::ReadAllText($settings))"
+        $copy = "; the file as it was before this update is saved in $b486Backup."
+        $lines = @(Get-B486Notices -Output $out)
+        $want = @(
+            "NOTICE: .claude/settings.json: carried your own env variable into the refreshed file beside this release's, unchanged: B507_KEY.",
+            "NOTICE: .claude/settings.json: your env variable 'CLAUDE_CODE_USE_POWERSHELL_TOOL' differed from this release's and was replaced by it$copy")
+        Assert (($lines -join "`n") -ceq ($want -join "`n")) "the lines are not the carried variable and the replaced override: $($lines -join ' | ')"
+        Assert ((Get-B486Notices -Output $dry | Out-String) -ceq ($lines | Out-String)) "the dry run printed other lines than the update did: $dry"
+        Assert ($out -notmatch 'b507-override-7f3e|sk-B507-KEY-9d1c' -and $dry -notmatch 'b507-override-7f3e|sk-B507-KEY-9d1c') 'an env value was printed'
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-507 a team copy of this release''s hook entry under another matcher is the framework''s: dropped and named, beside the team''s own entry' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b507-' + [guid]::NewGuid())
+    try {
+        New-ArchGeneratorTarget -Target $t
+        $dist = Get-B486Dist
+        # The team copied the release's guard entry into a Bash group of its own, beside an entry of its own.
+        $guard = @($dist -split "`n" | Where-Object { $_ -match 'hooks/guard\.ps1' })
+        Assert ($guard.Count -eq 1) 'calibration: the release does not register one guard entry'
+        $settings = Join-Path $t '.claude/settings.json'
+        Write-B486Text -Path $settings -Text (Add-B507After -Text $dist -After '"PreToolUse": [' -Insert "`n      { `"matcher`": `"Bash`", `"hooks`": [ $($guard[0].Trim()), $b507Bash ] },")
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $LASTEXITCODE): $out"
+        $bash = @(([IO.File]::ReadAllText($settings) | ConvertFrom-Json).hooks.PreToolUse | Where-Object { $_.matcher -ceq 'Bash' })
+        Assert ($bash.Count -eq 1 -and @($bash[0].hooks).Count -eq 1 -and $bash[0].hooks[0].command -ceq 'pwsh -NoProfile -File .claude/hooks/team-bash-check.ps1') "the Bash group does not hold the team's own entry alone: $([IO.File]::ReadAllText($settings))"
+        $flat = $out -replace '\s+', ' '
+        Assert ($flat -match [regex]::Escape("NOTICE: .claude/settings.json: your hook entry under PreToolUse matcher 'Bash' runs a command this release registers only under another event or matcher, and was dropped; the file as it was before this update is saved in $b486Backup.")) "the dropped copy was not named: $out"
+        Assert ($flat -match [regex]::Escape("unchanged: 1 under PreToolUse matcher 'Bash'.")) "the team's own entry was not named as carried: $out"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'B-507 every env variable and hook command a settings file in this repository''s history registers is in the installer''s ever-shipped lists' {
+    # An entry running a command some release shipped is the framework's; one the list misses would be carried as the team's own,
+    # and run beside this release's (a 5.1 or Bash registration among them).
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'src/core/scripts/install.ps1'), [ref]$null, [ref]$null)
+    $listed = @{}
+    foreach ($name in '$script:SjEverShippedCommands', '$script:SjEverShippedEnv') {
+        $assignment = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and $node.Left.Extent.Text -ceq $name }, $true)
+        Assert ($null -ne $assignment) "calibration: the installer has no $name list"
+        $listed[$name] = @($assignment.Right.FindAll({ param($node) $node -is [System.Management.Automation.Language.StringConstantExpressionAst] }, $true) | ForEach-Object { [string]$_.Value })
+    }
+    # Every settings file the dists, the legacy template repositories and the sources ever held, and the files as they are now.
+    $paths = @('dist/*/.claude/settings.json', 'dist/*/.claude/settings.windows.json', 'legacy/*/.claude/settings.json', 'legacy/*/.claude/settings.windows.json',
+        'src/core/.claude/settings.windows.json', 'src/stacks/*/files/.claude/settings.json')
+    $log = @(& git -C $repoRoot log --raw --no-abbrev --format= HEAD -- @paths)
+    Assert ($LASTEXITCODE -eq 0) "calibration: git log failed: $log"
+    $oids = New-Object 'System.Collections.Generic.HashSet[string]'
+    foreach ($line in $log) {
+        if ($line -match '^:\d+ \d+ ([0-9a-f]{40}) ([0-9a-f]{40}) ') { foreach ($oid in $Matches[1], $Matches[2]) { if ($oid -notmatch '^0+$') { [void]$oids.Add($oid) } } }
+    }
+    Assert ($oids.Count -ge 38) "calibration: the history holds only $($oids.Count) settings files"
+    $files = @(foreach ($oid in $oids) { [pscustomobject]@{ Name = $oid; Text = (Get-B507Text -Spec $oid) } })
+    foreach ($d in 'dotnet', 'angular', 'monorepo') {
+        foreach ($relative in "dist/$d/.claude/settings.json", "src/stacks/$d/files/.claude/settings.json") { $files += [pscustomobject]@{ Name = $relative; Text = [IO.File]::ReadAllText((Join-Path $repoRoot $relative)) } }
+    }
+    $find = {
+        param([string[]]$Commands, [string[]]$Env)
+        foreach ($file in $files) {
+            $json = $file.Text.TrimStart([char]0xFEFF) | ConvertFrom-Json
+            foreach ($command in @(Get-B507Commands -Value $json.hooks)) { if ($Commands -cnotcontains $command) { "$($file.Name) runs '$command'" } }
+            if ($json.env) { foreach ($variable in $json.env.PSObject.Properties.Name) { if ($Env -cnotcontains $variable) { "$($file.Name) sets env '$variable'" } } }
+        }
+    }
+    $unlisted = @(& $find $listed['$script:SjEverShippedCommands'] $listed['$script:SjEverShippedEnv'] | Sort-Object -Unique)
+    Assert ($unlisted.Count -eq 0) "a shipped settings file registers a command or sets a variable the installer does not list (append it there): $($unlisted -join '; ')"
+    # Hostile calibration: the same check, with this release's guard command taken off the list, names it.
+    $guard = @(Get-B507Commands -Value ((Get-B486Dist) | ConvertFrom-Json).hooks | Where-Object { $_ -match 'guard\.ps1' })
+    Assert ($guard.Count -eq 1) 'calibration: the release does not register one guard command'
+    $short = @($listed['$script:SjEverShippedCommands'] | Where-Object { $_ -cne $guard[0] })
+    Assert (@(& $find $short $listed['$script:SjEverShippedEnv'] | Where-Object { $_.EndsWith("runs '$($guard[0])'") }).Count -gt 0) 'taking a listed command off the list did not make the check name it'
 }
 
 # A re-run of the installed release printed a PLAN replace line for each of its 91 files, so the three whose team edits it

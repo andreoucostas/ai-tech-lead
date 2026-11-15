@@ -30,6 +30,19 @@ consumer changelogs is replaced. Red first: `UpdateDelivery`'s B-506 case (an up
 5.1 refusal (both entry points under `powershell.exe`, the one deliberate cross-host launch) and `FrameworkDoctor`'s
 interpreter-not-on-`PATH` case.
 
+An update carries the team's own `env` variables and hook entries in `.claude/settings.json` (guarded, step 4; B-507, the
+2026-11-14 architecture review's run: two variables, a Bash `PreToolUse` and a `PostToolUse` hook, committed, all four dropped
+at exit 0). The release owned `env` and `hooks` whole. Now a variable the release does not set is carried after the release's,
+and a hook entry is the framework's only when its command is in `$script:SjEverShippedCommands`, the 46 commands every
+`settings.json` and `settings.windows.json` under `dist/`, `legacy/` and `src/` ever registered (5.1 and Bash ones included;
+`$script:SjEverShippedEnv` likewise); every other entry is carried under its event and matcher, into the release's group of
+that matcher or in the team's own. NOTICEs name carried variables and entries (event and matcher, never a command or value),
+replaced overrides, framework commands copied elsewhere and case twins; the "(hook entries of your own are not merged)"
+line goes, which also ends the false claim B-506's attack found for a file equal to a 5.1 variant. The 5.1 NOTICE counts
+framework commands only. The kept-backup test is now a fixed point: the current file is release-plus-team when the carry
+rewrites it to itself. A test pins both lists to the history (`git log --raw` over those paths) with a hostile calibration.
+Red first: `UpdateDelivery`'s six B-507 cases and three B-486 cases whose expectations encoded the drop.
+
 On Copilot, `session-start` carries the rails of the session's first prompt (guarded, `hooks/**`; B-476, filed 2026-11-03, re-measured
 by B-348's VS Code runs). VS Code's Copilot harness keeps one `userPromptSubmitted` output per prompt and gives a chat's first prompt's
 slot to its own `<workspace_info>`, so `route-prompt`'s rails reached 0 of 9 first prompts on VS Code 1.146.0 (6 of 6 second ones).

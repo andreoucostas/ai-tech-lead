@@ -2471,8 +2471,9 @@ if ($updateMode -and -not ($Reinstall -and -not $reinstallAdoptionPending)) {
 }
 
 # .claude/settings.json holds the framework's hook registrations beside the team's own top-level keys (permissions, model,
-# statusLine, ...). An update writes the release's file over it, so each key the release does not define is read from the
-# team's pre-update file and spliced back into the refreshed one as the team wrote it. Values are carried as text, never
+# statusLine, ...), env variables and hook entries. An update writes the release's file over it, so each key the release does
+# not define, each env variable it does not set and each hook entry no release registered is read from the team's pre-update
+# file and spliced back into the refreshed one as the team wrote it. Values are carried as text, never
 # serialized again: Windows PowerShell 5.1's ConvertTo-Json rewrites escapes and numbers, collapses a one-element array and
 # cuts nesting at -Depth. The reader below is strict (the grammar framework-doctor.ps1 applies: no comment, no trailing comma,
 # no empty key, no duplicate key, nesting of 32 or less), so both hosts read a file the same way.
@@ -2480,6 +2481,61 @@ if ($updateMode -and -not ($Reinstall -and -not $reinstallAdoptionPending)) {
 $script:SjStop = [char[]](@(0..31) + @(34, 92))
 # Every top-level key any release has shipped; a release that adds one appends it here. One of them is never the team's own.
 $script:SjEverShipped = @('_comment', 'env', 'defaultShell', 'hooks')
+# Every env variable any release has shipped, and every hook command, exactly as written, that any release's settings.json or its
+# Windows PowerShell 5.1 variant registered, the retired Bash ones included. A hook entry running one of these commands is the
+# framework's and gives way to this release's set; any other entry is the team's own and is carried. Never matched by a
+# .claude/hooks/ path, where teams keep scripts of their own. A release that ships a new one appends it here; a test pins both
+# lists to every settings file in the repository's history.
+$script:SjEverShippedEnv = @('CLAUDE_CODE_USE_POWERSHELL_TOOL')
+$script:SjEverShippedCommands = @(
+    'bash -c ''FILE="$CLAUDE_FILE_PATH"; if [[ "$FILE" == *.cs ]] && [[ "$FILE" != *.spec.cs ]] && [[ "$FILE" != *Test*.cs ]]; then PROJ=$(find . -name "*.csproj" -path "$(dirname "$FILE")/*" | head -1); if [ -n "$PROJ" ]; then dotnet build "$PROJ" --no-restore --verbosity quiet 2>&1 | tail -20; else dotnet build --no-restore --verbosity quiet 2>&1 | tail -20; fi; fi''',
+    'bash -c ''FILE="$CLAUDE_FILE_PATH"; if [[ "$FILE" == *Test*.cs ]] || [[ "$FILE" == *Tests*.cs ]]; then PROJ=$(find . -name "*.csproj" -path "$(dirname "$FILE")/*" | head -1); if [ -n "$PROJ" ]; then dotnet test "$PROJ" --no-build --verbosity quiet 2>&1 | tail -20; fi; fi''',
+    'bash -c ''if [[ "$CLAUDE_FILE_PATH" == *.cs ]]; then dotnet build --no-restore --verbosity quiet 2>&1 | tail -20; fi''',
+    'bash -c ''if [[ "$CLAUDE_FILE_PATH" == *.cs ]]; then dotnet build --verbosity quiet 2>&1 | tail -20; fi''',
+    'bash -c ''if [[ "$CLAUDE_FILE_PATH" == *.ts && "$CLAUDE_FILE_PATH" == */src/* ]]; then npx tsc --noEmit --incremental --tsBuildInfoFile .claude-tsbuildinfo 2>&1 | tail -20; fi''',
+    'bash -c ''if [[ "$CLAUDE_FILE_PATH" == *.ts ]]; then npx tsc --noEmit 2>&1 | tail -20; fi''',
+    'bash .claude/hooks/audit-trail.sh',
+    'bash .claude/hooks/boy-scout-check.sh',
+    'bash .claude/hooks/guard.sh',
+    'bash .claude/hooks/post-write.sh',
+    'bash .claude/hooks/route-prompt.sh',
+    'bash .claude/hooks/session-start.sh',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1 ; if ($null -eq $LASTEXITCODE) { exit 2 } ; exit $LASTEXITCODE',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1 ; exit $LASTEXITCODE',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1 ; if ($null -eq $LASTEXITCODE) { exit 2 } ; exit $LASTEXITCODE',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1 ; exit $LASTEXITCODE',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1',
+    'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1 ; exit $LASTEXITCODE',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1 ; exit $LASTEXITCODE',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\audit-trail.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\boy-scout-check.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\guard.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\post-write.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\route-prompt.ps1',
+    'powershell -NoProfile -ExecutionPolicy Bypass -File .claude\hooks\session-start.ps1',
+    'pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/audit-trail.ps1',
+    'pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/boy-scout-check.ps1',
+    'pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1',
+    'pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1 ; exit $LASTEXITCODE',
+    'pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1',
+    'pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1 ; exit $LASTEXITCODE',
+    'pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/route-prompt.ps1',
+    'pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/session-start.ps1'
+)
+$script:SjFrameworkCommands = New-Object 'System.Collections.Generic.HashSet[string]' ([string[]]$script:SjEverShippedCommands, [StringComparer]::Ordinal)
 function Skip-SjSpace {
     $t = $script:SjText; $p = $script:SjPos; $n = $t.Length
     while ($p -lt $n) { $c = $t[$p]; if ($c -ceq ' ' -or $c -ceq "`n" -or $c -ceq "`r" -or $c -ceq "`t") { $p++ } else { break } }
@@ -2545,15 +2601,18 @@ function Read-SjArray {
     param([int]$Depth)
     $t = $script:SjText
     $script:SjPos++
+    $found = New-Object System.Collections.Generic.List[object]
     Skip-SjSpace
-    if ($script:SjPos -lt $t.Length -and $t[$script:SjPos] -ceq ']') { $script:SjPos++; return $true }
+    if ($script:SjPos -lt $t.Length -and $t[$script:SjPos] -ceq ']') { $script:SjPos++; $script:SjLastElements = $found; return $true }
     while ($true) {
         Skip-SjSpace
+        $valueStart = $script:SjPos
         if (-not (Read-SjValue -Depth $Depth)) { return $false }
+        $found.Add([pscustomobject]@{ Start = $valueStart; End = $script:SjPos })
         Skip-SjSpace
         if ($script:SjPos -ge $t.Length) { $script:SjWhy = 'the text ends inside an array'; return $false }
         $c = $t[$script:SjPos]; $script:SjPos++
-        if ($c -ceq ']') { return $true }
+        if ($c -ceq ']') { $script:SjLastElements = $found; return $true }
         if ($c -cne ',') { $script:SjWhy = "an array element at character $($script:SjPos - 1) is not followed by a comma or a closing bracket"; return $false }
     }
 }
@@ -2628,38 +2687,326 @@ function Get-SjCanonical {
     param([string]$Raw)
     return [regex]::Replace($Raw, '("(?:[^"\\]|\\.)*")|[ \t\r\n]+', [Text.RegularExpressions.MatchEvaluator]{ param($m) $m.Groups[1].Value })
 }
-# True when CURRENT holds, for every key the release's file defines, that file's value: the file an earlier run of this
-# update wrote (the release's file with the team's own keys after it), whose backup must be kept for the same reason as above.
-function Test-SettingsAreReleasePlusTeam {
-    param($Current, $Variants)
-    if (-not $Current.Ok) { return $false }
-    $mine = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
-    foreach ($m in $Current.Members) { $mine[$m.Key] = Get-SjCanonical -Raw (Get-SjRaw -Read $Current -Member $m) }
-    foreach ($variant in $Variants) {
-        if (-not $variant.Ok -or $variant.Members.Count -eq 0) { continue }
-        $all = $true
-        foreach ($m in $variant.Members) {
-            if (-not $mine.ContainsKey($m.Key) -or $mine[$m.Key] -cne (Get-SjCanonical -Raw (Get-SjRaw -Read $variant -Member $m))) { $all = $false; break }
-        }
-        # A key an earlier release shipped and this one dropped is not the team's: the file is not this release's plus the team's.
-        foreach ($key in $mine.Keys) { if ($all -and $script:SjEverShipped -ccontains $key -and -not @($variant.Members | Where-Object { $_.Key -ceq $key })) { $all = $false } }
-        if ($all) { return $true }
+function Get-SjSpan { param([string]$Text, $Item) return $Text.Substring($Item.Start, $Item.End - $Item.Start) }
+# The members of the object, or the elements of the array, whose value starts at Start in Text, each with its position in Text;
+# $null when the value there is neither. Text has been read whole before, so this read does not fail on it.
+function Read-SjAt {
+    param([string]$Text, [int]$Start)
+    $script:SjText = $Text; $script:SjPos = $Start; $script:SjWhy = $null; $script:SjFoldTop = $false
+    if ($Start -ge $Text.Length) { return $null }
+    if ($Text[$Start] -ceq '{') {
+        if (Read-SjObject -Depth 2) { return [pscustomobject]@{ IsObject = $true; Open = $Start; End = $script:SjPos; Items = $script:SjLastMembers.ToArray() } }
+    } elseif ($Text[$Start] -ceq '[') {
+        if (Read-SjArray -Depth 2) { return [pscustomobject]@{ IsObject = $false; Open = $Start; End = $script:SjPos; Items = $script:SjLastElements.ToArray() } }
     }
-    return $false
+    return $null
 }
-# What the refresh does to the team's .claude/settings.json: Bytes is the refreshed file with the team's own top-level keys
-# after the release's (null when there are none to carry), Lines say what was carried, replaced or dropped, and Declined says
-# the team's keys could not be read or the result could not be verified, in which case the refreshed file is the release's own.
+# The decoded "command" string of the object whose value starts at Start in Text, or $null.
+function Get-SjCommand {
+    param([string]$Text, [int]$Start)
+    $object = Read-SjAt -Text $Text -Start $Start
+    if ($null -eq $object -or -not $object.IsObject) { return $null }
+    foreach ($m in $object.Items) { if ($m.Key -ceq 'command' -and $Text[$m.Start] -ceq '"') { return (ConvertFrom-SjKey -Token (Get-SjSpan -Text $Text -Item $m)) } }
+    return $null
+}
+# The hooks object whose value starts at Start in Text, read as Claude Code lays it out: events, each an array of matcher groups,
+# each holding its entries in a "hooks" array or, as the earliest releases wrote it, a "command" of its own (Own). $null when the
+# value is not laid out so. An entry is any element of a group's array; its Command is its "command" string, decoded, or $null.
+# A NOTICE names a group by its Label, its event and matcher, never by a command.
+function Read-SjHooks {
+    param([string]$Text, [int]$Start)
+    $top = Read-SjAt -Text $Text -Start $Start
+    if ($null -eq $top -or -not $top.IsObject) { return $null }
+    $events = New-Object System.Collections.Generic.List[object]
+    foreach ($em in $top.Items) {
+        $array = Read-SjAt -Text $Text -Start $em.Start
+        if ($null -eq $array -or $array.IsObject) { return $null }
+        $groups = New-Object System.Collections.Generic.List[object]
+        foreach ($el in $array.Items) {
+            $object = Read-SjAt -Text $Text -Start $el.Start
+            if ($null -eq $object -or -not $object.IsObject) { return $null }
+            $matcher = $null; $list = $null; $plain = $true
+            $head = New-Object System.Collections.Generic.List[string]
+            foreach ($gm in $object.Items) {
+                if ($gm.Key -ceq 'hooks') { $list = $gm; continue }
+                $head.Add($gm.KeyToken + ':' + (Get-SjCanonical -Raw (Get-SjSpan -Text $Text -Item $gm)))
+                if ($gm.Key -ceq 'matcher') { $matcher = $gm } else { $plain = $false }
+            }
+            $inner = $null
+            $entries = New-Object System.Collections.Generic.List[object]
+            if ($null -ne $list) {
+                $inner = Read-SjAt -Text $Text -Start $list.Start
+                if ($null -eq $inner -or $inner.IsObject) { return $null }
+                foreach ($hm in $inner.Items) {
+                    $raw = Get-SjSpan -Text $Text -Item $hm
+                    $entries.Add([pscustomobject]@{ Raw = $raw; Canonical = (Get-SjCanonical -Raw $raw); Command = (Get-SjCommand -Text $Text -Start $hm.Start) })
+                }
+            }
+            $label = "$($em.Key) with no matcher"
+            if ($null -ne $matcher) {
+                $raw = Get-SjSpan -Text $Text -Item $matcher
+                $label = "$($em.Key) matcher '$(if ($raw[0] -ceq '"') { ConvertFrom-SjKey -Token $raw } else { Get-SjCanonical -Raw $raw })'"
+            }
+            $groups.Add([pscustomobject]@{
+                Start = $el.Start; End = $el.End; Head = ($head -join ','); Plain = ($plain -and $null -ne $list); Label = $label
+                MatcherKey = $(if ($null -ne $matcher) { Get-SjCanonical -Raw (Get-SjSpan -Text $Text -Item $matcher) } else { '' })
+                Inner = $inner; Entries = $entries.ToArray(); Own = $(if ($null -eq $list) { Get-SjCommand -Text $Text -Start $el.Start } else { $null })
+            })
+        }
+        $events.Add([pscustomobject]@{ Name = $em.Key; KeyToken = $em.KeyToken; Array = $array; Groups = $groups.ToArray() })
+    }
+    return [pscustomobject]@{ Object = $top; Events = $events.ToArray() }
+}
+# One line per event and per hook entry, in order, naming the event, the group's other members and the entry without whitespace;
+# a group holding no entry has a line of its own. Two hooks values with the same lines hold the same entries in the same groups.
+function Get-SjHookLines {
+    param($Hooks)
+    $lines = New-Object System.Collections.Generic.List[string]
+    foreach ($e in $Hooks.Events) {
+        $lines.Add($e.Name)
+        foreach ($g in $e.Groups) {
+            if ($g.Entries.Count -eq 0) { $lines.Add("$($e.Name)`n$($g.Head)`n") }
+            foreach ($entry in $g.Entries) { $lines.Add("$($e.Name)`n$($g.Head)`n$($entry.Canonical)") }
+        }
+    }
+    return ($lines -join "`r")
+}
+# What goes before one more item after the last one in the container that opens at Open in Text, whose first item starts at
+# FirstStart: a comma and that item's line break and indent when the container spreads over lines, else a comma and a space.
+function Get-SjSeparator {
+    param([string]$Text, [int]$Open, [int]$FirstStart, [string]$Nl)
+    $lead = $Text.Substring($Open + 1, $FirstStart - $Open - 1)
+    $cut = $lead.LastIndexOf("`n")
+    if ($cut -ge 0) { return ',' + $Nl + $lead.Substring($cut + 1) }
+    return ', '
+}
+# The insertion that appends Pieces after the last item of a container read by Read-SjAt (FirstStart: the first item's start, its
+# key for an object member).
+function New-SjAppend {
+    param([string]$Text, $Container, [int]$FirstStart, [string[]]$Pieces, [string]$Nl)
+    if ($Container.Items.Count -eq 0) { return [pscustomobject]@{ At = $Container.Open + 1; Text = ' ' + ($Pieces -join ', ') + ' ' } }
+    $sep = Get-SjSeparator -Text $Text -Open $Container.Open -FirstStart $FirstStart -Nl $Nl
+    return [pscustomobject]@{ At = $Container.Items[$Container.Items.Count - 1].End; Text = $sep + ($Pieces -join $sep) }
+}
+# The array read by Read-SjAt from Text, rewritten to hold Keep (texts) in place of its items, laid out as they were.
+function Format-SjArray {
+    param([string]$Text, $Array, [string[]]$Keep)
+    $items = $Array.Items
+    $last = $items[$items.Count - 1].End
+    $nl = if ($Text.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $sep = Get-SjSeparator -Text $Text -Open $Array.Open -FirstStart $items[0].Start -Nl $nl
+    return '[' + $Text.Substring($Array.Open + 1, $items[0].Start - $Array.Open - 1) + ($Keep -join $sep) + $Text.Substring($last, $Array.End - 1 - $last) + ']'
+}
+# The team's env variables beside the release's: one whose name this release does not set is carried after the release's,
+# unchanged; for one it sets, the release's value wins; one an earlier release set is dropped, not carried as the team's. Lines
+# name variables, never values, which may be secrets. $null when either env is not an object.
+function Get-SjEnvCarry {
+    param([string]$TheirText, $TheirMember, [string]$ReleaseText, $ReleaseMember, [string]$Nl, [string]$About, [string]$CopyIn)
+    $mine = Read-SjAt -Text $TheirText -Start $TheirMember.Start
+    $its = Read-SjAt -Text $ReleaseText -Start $ReleaseMember.Start
+    if ($null -eq $mine -or -not $mine.IsObject -or $null -eq $its -or -not $its.IsObject) { return $null }
+    $itsVars = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    # ConvertFrom-Json, which framework-doctor.ps1 and this installer's check read the file with, refuses two names that differ only in case.
+    $taken = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::OrdinalIgnoreCase)
+    $expect = New-Object System.Collections.Generic.List[string]
+    foreach ($v in $its.Items) {
+        $value = Get-SjCanonical -Raw (Get-SjSpan -Text $ReleaseText -Item $v)
+        $itsVars[$v.Key] = $value; $taken[$v.Key] = $v.Key; $expect.Add("$($v.KeyToken):$value")
+    }
+    $lines = New-Object System.Collections.Generic.List[string]
+    $carried = New-Object System.Collections.Generic.List[string]
+    $pieces = New-Object System.Collections.Generic.List[string]
+    foreach ($v in $mine.Items) {
+        $raw = Get-SjSpan -Text $TheirText -Item $v
+        if ($itsVars.ContainsKey($v.Key)) {
+            if ($itsVars[$v.Key] -cne (Get-SjCanonical -Raw $raw)) { $lines.Add("NOTICE: ${About}: your env variable '$($v.Key)' differed from this release's and was replaced by it$CopyIn") }
+        } elseif ($script:SjEverShippedEnv -ccontains $v.Key) {
+            $lines.Add("NOTICE: ${About}: your env variable '$($v.Key)', which this release does not set, was dropped$CopyIn")
+        } elseif ($taken.ContainsKey($v.Key)) {
+            $lines.Add("NOTICE: ${About}: your env variable '$($v.Key)' was not carried, because its name differs from '$($taken[$v.Key])' only in case, which PowerShell cannot read in one file$CopyIn")
+        } else {
+            $taken[$v.Key] = $v.Key
+            $carried.Add($v.Key)
+            $pieces.Add($v.KeyToken + ': ' + [regex]::Replace($raw, '\r?\n', $Nl))
+            $expect.Add("$($v.KeyToken):$(Get-SjCanonical -Raw $raw)")
+        }
+    }
+    $inserts = @()
+    if ($carried.Count -gt 0) {
+        $lines.Insert(0, "NOTICE: ${About}: carried your own env $(if ($carried.Count -eq 1) { 'variable' } else { 'variables' }) into the refreshed file beside this release's, unchanged: $($carried -join ', ').")
+        $firstKey = if ($its.Items.Count -gt 0) { $its.Items[0].KeyStart } else { 0 }
+        $inserts = @(New-SjAppend -Text $ReleaseText -Container $its -FirstStart $firstKey -Pieces $pieces.ToArray() -Nl $Nl)
+    }
+    return [pscustomobject]@{ Lines = $lines.ToArray(); Carried = $carried.ToArray(); Inserts = $inserts; Expect = ($expect -join "`r") }
+}
+function Get-SjEnvLines {
+    param([string]$Text, [int]$Start)
+    $vars = Read-SjAt -Text $Text -Start $Start
+    if ($null -eq $vars -or -not $vars.IsObject) { return $null }
+    return (@($vars.Items | ForEach-Object { "$($_.KeyToken):$(Get-SjCanonical -Raw (Get-SjSpan -Text $Text -Item $_))" }) -join "`r")
+}
+# The team's hook entries beside the release's. An entry whose command one of the releases shipped (SjEverShippedCommands) is the
+# framework's and gives way to this release's set; every other entry is the team's and is carried, unchanged: into this release's
+# group of the same event and matcher when there is one, else in the team's own group under that event. Inserts say what goes
+# where in the release's text, Expect the entry lines of the result (Get-SjHookLines). $null when the release's hooks cannot be
+# read so; Expect is $null when the team's cannot.
+function Get-SjHookCarry {
+    param([string]$TheirText, $TheirMember, [string]$ReleaseText, $ReleaseMember, [string]$Nl, [string]$About, [string]$CopyIn)
+    $its = Read-SjHooks -Text $ReleaseText -Start $ReleaseMember.Start
+    if ($null -eq $its) { return $null }
+    $mine = Read-SjHooks -Text $TheirText -Start $TheirMember.Start
+    if ($null -eq $mine) {
+        return [pscustomobject]@{ Lines = @("NOTICE: ${About}: your 'hooks' is not laid out as Claude Code reads it (events, each an array of matcher groups holding their entries), so none of its entries were carried and it was replaced by this release's$CopyIn"); Total = 0; Inserts = @(); Expect = $null }
+    }
+    $releaseCommands = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $releaseEntries = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    # Each command of the release with the event and matcher it sits under.
+    $releaseAt = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($e in $its.Events) {
+        foreach ($g in $e.Groups) {
+            foreach ($entry in $g.Entries) {
+                [void]$releaseEntries.Add($entry.Canonical)
+                if ($null -ne $entry.Command) { [void]$releaseCommands.Add($entry.Command); [void]$releaseAt.Add("$($e.Name)`n$($g.MatcherKey)`n$($entry.Command)") }
+            }
+        }
+    }
+    # What the team's file adds to each release group ("event/group") and event, and the events it adds.
+    $toGroup = @{}; $toEvent = @{}
+    $newEvents = New-Object System.Collections.Generic.List[object]
+    $carried = New-Object System.Collections.Generic.List[object]
+    $lines = New-Object System.Collections.Generic.List[string]
+    $differed = New-Object System.Collections.Generic.List[string]
+    $moved = New-Object System.Collections.Generic.List[string]
+    $count = 0
+    foreach ($te in $mine.Events) {
+        $ri = -1; $twin = $null
+        for ($i = 0; $i -lt $its.Events.Count; $i++) {
+            if ($its.Events[$i].Name -ceq $te.Name) { $ri = $i; break }
+            if ($its.Events[$i].Name -ieq $te.Name) { $twin = $its.Events[$i].Name }
+        }
+        if ($ri -ge 0) { $twin = $null }
+        $kept = New-Object System.Collections.Generic.List[object]
+        $twinCount = 0
+        foreach ($tg in $te.Groups) {
+            if ($null -eq $tg.Inner) {
+                # The earliest releases' layout: the group is one entry. A group holding nothing carries nothing.
+                if ($null -eq $tg.Own -or $script:SjFrameworkCommands.Contains($tg.Own)) { continue }
+                $keep = @(); $n = 1
+            } else {
+                $keep = @($tg.Entries | Where-Object { $null -eq $_.Command -or -not $script:SjFrameworkCommands.Contains($_.Command) })
+                # An entry running one of this release's commands where the release does not put it, or not as the release
+                # writes it, is named: a team's copy or edit of it. An earlier release's entry gives way unnamed.
+                foreach ($entry in $tg.Entries) {
+                    if ($null -eq $entry.Command -or -not $releaseCommands.Contains($entry.Command)) { continue }
+                    if (-not $releaseAt.Contains("$($te.Name)`n$($tg.MatcherKey)`n$($entry.Command)")) { if ($moved -cnotcontains $tg.Label) { $moved.Add($tg.Label) } }
+                    elseif (-not $releaseEntries.Contains($entry.Canonical) -and $differed -cnotcontains $tg.Label) { $differed.Add($tg.Label) }
+                }
+                if ($keep.Count -eq 0) { continue }
+                $n = $keep.Count
+            }
+            if ($twin) { $twinCount += $n; continue }
+            $count += $n
+            $seen = @($carried | Where-Object { $_.Label -ceq $tg.Label })
+            if ($seen.Count -gt 0) { $seen[0].N += $n } else { $carried.Add([pscustomobject]@{ Label = $tg.Label; N = $n }) }
+            $rg = -1
+            if ($ri -ge 0 -and $tg.Plain) {
+                $rgs = $its.Events[$ri].Groups
+                for ($j = 0; $j -lt $rgs.Count; $j++) { if ($null -ne $rgs[$j].Inner -and $rgs[$j].MatcherKey -ceq $tg.MatcherKey) { $rg = $j; break } }
+            }
+            if ($rg -ge 0) {
+                $key = "$ri/$rg"
+                if (-not $toGroup.ContainsKey($key)) { $toGroup[$key] = New-Object System.Collections.Generic.List[object] }
+                foreach ($entry in $keep) { $toGroup[$key].Add($entry) }
+                continue
+            }
+            $text = Get-SjSpan -Text $TheirText -Item $tg
+            $groupLines = @("$($te.Name)`n$($tg.Head)`n")
+            if ($null -ne $tg.Inner) {
+                if ($keep.Count -lt $tg.Entries.Count) {
+                    $text = $TheirText.Substring($tg.Start, $tg.Inner.Open - $tg.Start) + (Format-SjArray -Text $TheirText -Array $tg.Inner -Keep @($keep | ForEach-Object { $_.Raw })) + $TheirText.Substring($tg.Inner.End, $tg.End - $tg.Inner.End)
+                }
+                $groupLines = @($keep | ForEach-Object { "$($te.Name)`n$($tg.Head)`n$($_.Canonical)" })
+            }
+            $piece = [pscustomobject]@{ Text = [regex]::Replace($text, '\r?\n', $Nl); Lines = $groupLines; Group = $tg }
+            if ($ri -ge 0) {
+                if (-not $toEvent.ContainsKey($ri)) { $toEvent[$ri] = New-Object System.Collections.Generic.List[object] }
+                $toEvent[$ri].Add($piece)
+            } else { $kept.Add($piece) }
+        }
+        if ($twinCount -gt 0) {
+            $lines.Add("NOTICE: ${About}: your $(if ($twinCount -eq 1) { 'hook entry' } else { "$twinCount hook entries" }) under '$($te.Name)' $(if ($twinCount -eq 1) { 'was' } else { 'were' }) not carried, because that event's name differs from this release's '$twin' only in case, which PowerShell cannot read in one file$CopyIn")
+        }
+        if ($kept.Count -gt 0) {
+            $array = Get-SjSpan -Text $TheirText -Item ([pscustomobject]@{ Start = $te.Array.Open; End = $te.Array.End })
+            $whole = $kept.Count -eq $te.Groups.Count -and @($kept | Where-Object { $_.Text -cne [regex]::Replace((Get-SjSpan -Text $TheirText -Item $_.Group), '\r?\n', $Nl) }).Count -eq 0
+            if (-not $whole) { $array = Format-SjArray -Text $TheirText -Array $te.Array -Keep @($kept | ForEach-Object { $_.Text }) }
+            $newEvents.Add([pscustomobject]@{ Name = $te.Name; Text = $te.KeyToken + ': ' + [regex]::Replace($array, '\r?\n', $Nl); Lines = @($kept | ForEach-Object { $_.Lines }) })
+        }
+    }
+    foreach ($label in $differed) {
+        $lines.Add("NOTICE: ${About}: your hook entry under $label runs a command this release ships but differed from this release's entry, and was replaced by it$CopyIn")
+    }
+    foreach ($label in $moved) {
+        $lines.Add("NOTICE: ${About}: your hook entry under $label runs a command this release registers only under another event or matcher, and was dropped$CopyIn")
+    }
+    $inserts = New-Object System.Collections.Generic.List[object]
+    $expect = New-Object System.Collections.Generic.List[string]
+    for ($i = 0; $i -lt $its.Events.Count; $i++) {
+        $e = $its.Events[$i]
+        $expect.Add($e.Name)
+        for ($j = 0; $j -lt $e.Groups.Count; $j++) {
+            $g = $e.Groups[$j]
+            $added = @()
+            if ($toGroup.ContainsKey("$i/$j")) { $added = $toGroup["$i/$j"].ToArray() }
+            if ($g.Entries.Count + $added.Count -eq 0) { $expect.Add("$($e.Name)`n$($g.Head)`n") }
+            foreach ($entry in @($g.Entries) + $added) { $expect.Add("$($e.Name)`n$($g.Head)`n$($entry.Canonical)") }
+            if ($added.Count -gt 0) {
+                $first = if ($g.Inner.Items.Count -gt 0) { $g.Inner.Items[0].Start } else { 0 }
+                $inserts.Add((New-SjAppend -Text $ReleaseText -Container $g.Inner -FirstStart $first -Pieces @($added | ForEach-Object { [regex]::Replace($_.Raw, '\r?\n', $Nl) }) -Nl $Nl))
+            }
+        }
+        if ($toEvent.ContainsKey($i)) {
+            foreach ($piece in $toEvent[$i]) { foreach ($line in $piece.Lines) { $expect.Add($line) } }
+            $first = if ($e.Array.Items.Count -gt 0) { $e.Array.Items[0].Start } else { 0 }
+            $inserts.Add((New-SjAppend -Text $ReleaseText -Container $e.Array -FirstStart $first -Pieces @($toEvent[$i] | ForEach-Object { $_.Text }) -Nl $Nl))
+        }
+    }
+    foreach ($ne in $newEvents) { $expect.Add($ne.Name); foreach ($line in $ne.Lines) { $expect.Add($line) } }
+    if ($newEvents.Count -gt 0) {
+        $first = if ($its.Object.Items.Count -gt 0) { $its.Object.Items[0].KeyStart } else { 0 }
+        $inserts.Add((New-SjAppend -Text $ReleaseText -Container $its.Object -FirstStart $first -Pieces @($newEvents | ForEach-Object { $_.Text }) -Nl $Nl))
+    }
+    if ($count -gt 0) {
+        $where = @($carried | ForEach-Object { "$($_.N) under $($_.Label)" }) -join ', '
+        $lines.Insert(0, "NOTICE: ${About}: carried your own hook $(if ($count -eq 1) { 'entry' } else { 'entries' }) into the refreshed file beside this release's, unchanged: $where.")
+    }
+    return [pscustomobject]@{ Lines = $lines.ToArray(); Total = $count; Inserts = $inserts.ToArray(); Expect = ($expect -join "`r") }
+}
+# True when CURRENT is what this update writes from it: the release's file with the team's own keys, env variables and hook
+# entries carried into it, as an earlier run of this update wrote it, whose backup must be kept for the same reason as above.
+function Test-SettingsAreReleasePlusTeam {
+    param([AllowNull()][byte[]]$CurrentBytes, [Parameter(Mandatory = $true)][byte[]]$ShippedBytes)
+    $current = Read-SettingsBytes -Bytes $CurrentBytes
+    if (-not $current.Ok) { return $false }
+    $again = Get-SettingsCarryPlan -ConsumerBytes $CurrentBytes -ShippedBytes $ShippedBytes -BackupRelative '-'
+    if ($again.Declined) { return $false }
+    $written = Read-SettingsBytes -Bytes $(if ($null -ne $again.Bytes) { $again.Bytes } else { $ShippedBytes })
+    return ($written.Ok -and (Get-SjCanonical -Raw $written.Text) -ceq (Get-SjCanonical -Raw $current.Text))
+}
+# What the refresh does to the team's .claude/settings.json: Bytes is the refreshed file with the team's own top-level keys after
+# the release's and the team's own env variables and hook entries beside the release's (null when there are none to carry), Lines
+# say what was carried, replaced or dropped, and Declined says the team's file could not be read or the result could not be
+# verified, in which case the refreshed file is the release's own.
 function Get-SettingsCarryPlan {
     param([AllowNull()][byte[]]$ConsumerBytes, [Parameter(Mandatory = $true)][byte[]]$ShippedBytes, [Parameter(Mandatory = $true)][string]$BackupRelative)
     $about = '.claude/settings.json'
     $result = {
-        param($Bytes, [string[]]$Carried, [string[]]$Lines, [bool]$Declined)
-        [pscustomobject]@{ Bytes = $Bytes; Carried = @($Carried); Lines = @($Lines); Declined = $Declined }
+        param($Bytes, [string[]]$Carried, [string[]]$EnvNames, [int]$Hooks, [string[]]$Lines, [bool]$Declined)
+        [pscustomobject]@{ Bytes = $Bytes; Carried = @($Carried | Where-Object { $_ }); CarriedEnv = @($EnvNames | Where-Object { $_ }); CarriedHooks = $Hooks; Lines = @($Lines); Declined = $Declined }
     }
     $declined = {
         param([string]$Why)
-        & $result $null @() @("NOTICE: ${about}: your own top-level keys were not carried into the refreshed file, which holds only this release's keys, because $Why. The file as it was before this update is saved in $BackupRelative; re-add your permissions, env, hooks and any other keys of yours from it.") $true
+        & $result $null @() @() 0 @("NOTICE: ${about}: your own top-level keys were not carried into the refreshed file, which holds only this release's keys, because $Why. The file as it was before this update is saved in $BackupRelative; re-add your permissions, env, hooks and any other keys of yours from it.") $true
     }
     $theirs = Read-SettingsBytes -Bytes $ConsumerBytes
     if (-not $theirs.Ok) { return (& $declined $theirs.Why) }
@@ -2670,7 +3017,10 @@ function Get-SettingsCarryPlan {
     foreach ($m in $release.Members) { $releaseByKey[$m.Key] = $m; [void]$releaseLoose.Add($m.Key) }
     $extras = New-Object System.Collections.Generic.List[object]
     $lines = New-Object System.Collections.Generic.List[string]
+    $inserts = New-Object System.Collections.Generic.List[object]
     $copyIn = "; the file as it was before this update is saved in $BackupRelative."
+    $nl = if ($release.Text.Contains("`r`n")) { "`r`n" } else { "`n" }
+    $envPlan = $null; $hookPlan = $null
     foreach ($m in $theirs.Members) {
         if (-not $releaseByKey.ContainsKey($m.Key) -and $script:SjEverShipped -ccontains $m.Key) {
             # Written by an earlier release, not by the team: this release no longer sets it.
@@ -2685,52 +3035,63 @@ function Get-SettingsCarryPlan {
         $mine = Get-SjRaw -Read $theirs -Member $m
         $its = Get-SjRaw -Read $release -Member $releaseByKey[$m.Key]
         if ((Get-SjCanonical -Raw $mine) -ceq (Get-SjCanonical -Raw $its) -or $m.Key -ceq '_comment') { continue }
-        $named = $false
-        if ($m.Key -ceq 'env') {
-            # Variable names only: a value may be a secret.
-            $theirEnv = Read-SettingsJson -Text $mine -FoldTop $false
-            $itsEnv = Read-SettingsJson -Text $its -FoldTop $false
-            if ($theirEnv.Ok -and $itsEnv.Ok) {
-                $named = $true
-                $itsVars = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
-                foreach ($v in $itsEnv.Members) { $itsVars[$v.Key] = Get-SjCanonical -Raw (Get-SjRaw -Read $itsEnv -Member $v) }
-                foreach ($v in $theirEnv.Members) {
-                    if (-not $itsVars.ContainsKey($v.Key)) { $lines.Add("NOTICE: ${about}: your env variable '$($v.Key)', which this release does not set, was dropped$copyIn") }
-                    elseif ($itsVars[$v.Key] -cne (Get-SjCanonical -Raw (Get-SjRaw -Read $theirEnv -Member $v))) { $lines.Add("NOTICE: ${about}: your env variable '$($v.Key)' differed from this release's and was replaced by it$copyIn") }
-                }
-            }
+        $plan = $null
+        if ($m.Key -ceq 'env') { $plan = $envPlan = Get-SjEnvCarry -TheirText $theirs.Text -TheirMember $m -ReleaseText $release.Text -ReleaseMember $releaseByKey[$m.Key] -Nl $nl -About $about -CopyIn $copyIn }
+        elseif ($m.Key -ceq 'hooks') { $plan = $hookPlan = Get-SjHookCarry -TheirText $theirs.Text -TheirMember $m -ReleaseText $release.Text -ReleaseMember $releaseByKey[$m.Key] -Nl $nl -About $about -CopyIn $copyIn }
+        if ($null -ne $plan) {
+            foreach ($line in $plan.Lines) { $lines.Add($line) }
+            foreach ($insert in $plan.Inserts) { $inserts.Add($insert) }
+            continue
         }
-        if (-not $named) {
-            $merge = if ($m.Key -ceq 'hooks') { ' (hook entries of your own are not merged)' } else { '' }
-            $lines.Add("NOTICE: ${about}: your '$($m.Key)' differed from this release's and was replaced by it$merge$copyIn")
+        $lines.Add("NOTICE: ${about}: your '$($m.Key)' differed from this release's and was replaced by it$copyIn")
+    }
+    if ($extras.Count -gt 0) {
+        # The release's text up to the end of its last value stays as shipped; the team's members go in after it.
+        $first = $release.Members[0]
+        $from = $first.KeyStart
+        while ($from -gt 0 -and ($release.Text[$from - 1] -ceq ' ' -or $release.Text[$from - 1] -ceq "`t")) { $from-- }
+        $indent = if ($from -gt 0 -and $release.Text[$from - 1] -ceq "`n") { $release.Text.Substring($from, $first.KeyStart - $from) } else { '  ' }
+        $insert = New-Object Text.StringBuilder
+        foreach ($m in $extras) {
+            [void]$insert.Append(',').Append($nl).Append($indent).Append($m.KeyToken).Append(': ').Append(([regex]::Replace((Get-SjRaw -Read $theirs -Member $m), '\r?\n', $nl)))
         }
+        $inserts.Add([pscustomobject]@{ At = $release.Members[$release.Members.Count - 1].End; Text = $insert.ToString() })
     }
-    if ($extras.Count -eq 0) { return (& $result $null @() @($lines) $false) }
-    # The release's text up to the end of its last value stays as shipped; the team's members go in after it.
-    $nl = if ($release.Text.Contains("`r`n")) { "`r`n" } else { "`n" }
-    $first = $release.Members[0]
-    $from = $first.KeyStart
-    while ($from -gt 0 -and ($release.Text[$from - 1] -ceq ' ' -or $release.Text[$from - 1] -ceq "`t")) { $from-- }
-    $indent = if ($from -gt 0 -and $release.Text[$from - 1] -ceq "`n") { $release.Text.Substring($from, $first.KeyStart - $from) } else { '  ' }
-    $at = $release.Members[$release.Members.Count - 1].End
-    $insert = New-Object Text.StringBuilder
-    foreach ($m in $extras) {
-        [void]$insert.Append(',').Append($nl).Append($indent).Append($m.KeyToken).Append(': ').Append(([regex]::Replace((Get-SjRaw -Read $theirs -Member $m), '\r?\n', $nl)))
+    $envNames = @()
+    if ($null -ne $envPlan) { $envNames = @($envPlan.Carried) }
+    $hookCount = if ($null -ne $hookPlan) { $hookPlan.Total } else { 0 }
+    if ($inserts.Count -eq 0) { return (& $result $null @() @() 0 @($lines) $false) }
+    # Each insertion goes in from the end of the text back, so the positions before it still hold; at one position, in order.
+    $text = $release.Text
+    $seq = 0
+    foreach ($insert in @($inserts | ForEach-Object { [pscustomobject]@{ At = $_.At; Text = $_.Text; Seq = ($seq++) } } | Sort-Object -Property @{ Expression = 'At'; Descending = $true }, @{ Expression = 'Seq'; Descending = $true })) {
+        $text = $text.Substring(0, $insert.At) + $insert.Text + $text.Substring($insert.At)
     }
-    $text = $release.Text.Substring(0, $at) + $insert.ToString() + $release.Text.Substring($at)
     # Verified before anything is written: this reader and the host's own parser both take the result, it holds the release's
-    # members and then the team's with their values unchanged, and the release's text is intact around the insertion.
+    # members and then the team's with their values unchanged, its env and hooks hold the release's variables and entries with the
+    # team's carried ones beside them, and the release's text is intact before the first insertion and after the last.
+    $low = ($inserts | Measure-Object -Property At -Minimum).Minimum
+    $high = ($inserts | Measure-Object -Property At -Maximum).Maximum
     $back = Read-SettingsJson -Text $text
     $expect = New-Object System.Collections.Generic.List[object]
     foreach ($m in $release.Members) { $expect.Add([pscustomobject]@{ Read = $release; Member = $m }) }
     foreach ($m in $extras) { $expect.Add([pscustomobject]@{ Read = $theirs; Member = $m }) }
     $good = $back.Ok -and $back.Members.Count -eq $expect.Count -and
-        $text.StartsWith($release.Text.Substring(0, $at), [StringComparison]::Ordinal) -and $text.EndsWith($release.Text.Substring($at), [StringComparison]::Ordinal)
+        $text.StartsWith($release.Text.Substring(0, $low), [StringComparison]::Ordinal) -and $text.EndsWith($release.Text.Substring($high), [StringComparison]::Ordinal)
+    $backMembers = @($back.Members)
     for ($i = 0; $good -and $i -lt $expect.Count; $i++) {
-        $good = $back.Members[$i].Key -ceq $expect[$i].Member.Key -and
-            (Get-SjCanonical -Raw (Get-SjRaw -Read $back -Member $back.Members[$i])) -ceq (Get-SjCanonical -Raw (Get-SjRaw -Read $expect[$i].Read -Member $expect[$i].Member))
+        $key = $backMembers[$i].Key
+        $good = $key -ceq $expect[$i].Member.Key
+        if (-not $good) { break }
+        if ($key -ceq 'env' -and $envNames.Count -gt 0) { $good = (Get-SjEnvLines -Text $text -Start $backMembers[$i].Start) -ceq $envPlan.Expect }
+        elseif ($key -ceq 'hooks' -and $hookCount -gt 0) {
+            $read = Read-SjHooks -Text $text -Start $backMembers[$i].Start
+            $good = $null -ne $read -and (Get-SjHookLines -Hooks $read) -ceq $hookPlan.Expect
+        } else {
+            $good = (Get-SjCanonical -Raw (Get-SjRaw -Read $back -Member $backMembers[$i])) -ceq (Get-SjCanonical -Raw (Get-SjRaw -Read $expect[$i].Read -Member $expect[$i].Member))
+        }
     }
-    if (-not $good) { return (& $declined 'the merged file did not read back as this release''s keys followed by yours') }
+    if (-not $good) { return (& $declined 'the merged file did not read back as this release''s settings with yours beside them') }
     try {
         $parsed = $text | ConvertFrom-Json -ErrorAction Stop
         if (@($parsed.PSObject.Properties).Count -ne $expect.Count) { throw 'a top-level key went missing' }
@@ -2739,8 +3100,8 @@ function Get-SettingsCarryPlan {
     $bytes = [byte[]]$encoding.GetBytes($text)
     if ($release.Bom) { $bytes = [byte[]](@([byte]0xEF, [byte]0xBB, [byte]0xBF) + $bytes) }
     $names = @($extras | ForEach-Object { $_.Key })
-    $lines.Insert(0, "NOTICE: ${about}: carried your own top-level $(if ($names.Count -eq 1) { 'key' } else { 'keys' }) into the refreshed file, unchanged: $($names -join ', ').")
-    return (& $result $bytes $names @($lines) $false)
+    if ($names.Count -gt 0) { $lines.Insert(0, "NOTICE: ${about}: carried your own top-level $(if ($names.Count -eq 1) { 'key' } else { 'keys' }) into the refreshed file, unchanged: $($names -join ', ').") }
+    return (& $result $bytes $names $envNames $hookCount @($lines) $false)
 }
 
 $settingsBackupRelative = $null
@@ -2768,7 +3129,7 @@ if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath (Join-Path $tg
     }
     $keepBackup = $backupPresent -and $currentIsRelease
     if ($backupPresent -and -not $currentIsRelease -and $null -ne $currentBytes -and -not ($null -ne $settingsCarry -and $settingsCarry.Declined)) {
-        $keepBackup = Test-SettingsAreReleasePlusTeam -Current (Read-SettingsBytes -Bytes $currentBytes) -Variants @(Read-SettingsBytes -Bytes $shippedBytes)
+        $keepBackup = Test-SettingsAreReleasePlusTeam -CurrentBytes $currentBytes -ShippedBytes $shippedBytes
     }
     if ($keepBackup) {
         $settingsBackupKept = $true
@@ -2790,6 +3151,7 @@ function Test-HooksRunWindowsPowerShell {
     } catch { return $false }
     if ($hooks.Count -ne 1) { return $false }
     # Only a command's interpreter counts: each entry's "shell": "powershell" names Claude Code's shell, not the PowerShell it runs.
+    # Only the framework's commands count: an entry of the team's own, carried as it is, keeps its interpreter.
     $pending = New-Object System.Collections.Generic.Stack[object]
     $pending.Push($hooks[0].Value)
     while ($pending.Count -gt 0) {
@@ -2798,7 +3160,7 @@ function Test-HooksRunWindowsPowerShell {
         if ($value -is [Array]) { foreach ($item in $value) { $pending.Push($item) }; continue }
         foreach ($property in $value.PSObject.Properties) {
             if ($property.Name -ceq 'command' -and $property.Value -is [string]) {
-                if ($property.Value -match '(?i)(?:^|[\s;&|(''"\\/])powershell(?:\.exe)?(?=$|[\s;&|)''"])') { return $true }
+                if ($script:SjFrameworkCommands.Contains($property.Value) -and $property.Value -match '(?i)(?:^|[\s;&|(''"\\/])powershell(?:\.exe)?(?=$|[\s;&|)''"])') { return $true }
             } else { $pending.Push($property.Value) }
         }
     }
@@ -3592,7 +3954,17 @@ if ($updateMode) {
         }
     } else {
         $settingsDone = '.claude/settings.json was backed up and refreshed'
-        if ($null -ne $settingsCarry -and $settingsCarry.Carried.Count -gt 0) { $settingsDone += ", and your own top-level $(if ($settingsCarry.Carried.Count -eq 1) { 'key' } else { 'keys' }) ($($settingsCarry.Carried -join ', ')) $(if ($settingsCarry.Carried.Count -eq 1) { 'was' } else { 'were' }) carried into it" }
+        $carriedParts = @()
+        if ($null -ne $settingsCarry) {
+            if ($settingsCarry.Carried.Count -gt 0) { $carriedParts += "top-level $(if ($settingsCarry.Carried.Count -eq 1) { 'key' } else { 'keys' }) ($($settingsCarry.Carried -join ', '))" }
+            if ($settingsCarry.CarriedEnv.Count -gt 0) { $carriedParts += "env $(if ($settingsCarry.CarriedEnv.Count -eq 1) { 'variable' } else { 'variables' }) ($($settingsCarry.CarriedEnv -join ', '))" }
+            if ($settingsCarry.CarriedHooks -gt 0) { $carriedParts += $(if ($settingsCarry.CarriedHooks -eq 1) { 'hook entry' } else { "$($settingsCarry.CarriedHooks) hook entries" }) }
+        }
+        if ($carriedParts.Count -gt 0) {
+            $carriedOne = $settingsCarry.Carried.Count + $settingsCarry.CarriedEnv.Count + $settingsCarry.CarriedHooks -eq 1
+            $carriedList = if ($carriedParts.Count -eq 1) { $carriedParts[0] } else { (@($carriedParts | Select-Object -First ($carriedParts.Count - 1)) -join ', ') + ' and ' + $carriedParts[-1] }
+            $settingsDone += ", and your own $carriedList $(if ($carriedOne) { 'was' } else { 'were' }) carried into it"
+        }
         elseif ($null -ne $settingsCarry -and $settingsCarry.Declined) { $settingsDone += ', but your own top-level keys were NOT carried into it (see the NOTICE above)' }
         Write-Output "Done (update). Framework-owned machinery refreshed; the listed protected paths were left untouched; $settingsDone."
     }

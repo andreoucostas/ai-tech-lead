@@ -70,12 +70,19 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    was to `.claude/.state/settings.json.pre-update` (Git ignores it, so it exists on one machine
    only), refreshes the file, and carries every top-level
    key of it that the release does not define (`permissions`, `model`, `statusLine` and the like)
-   into it, unchanged and after the release's own keys. A `NOTICE` names the keys it carried. For a
-   key both define (`env`, `defaultShell`, `hooks`) the release's value wins, and a `NOTICE` names
-   each value of yours it replaced or dropped, an `env` variable by name and never by value; so does
-   a key an earlier release set and this one no longer does, which is dropped, not carried. Entries
-   of your own inside `hooks` are not merged, so re-apply those from the backup
-   selectively, never the whole old file over the new hook registrations. If the installer could not
+   into it, unchanged and after the release's own keys. Inside `env` and `hooks` it carries what is
+   yours the same way: each `env` variable the release does not set, and each hook entry whose
+   command no release of the framework registered, kept under its event and matcher (in the
+   release's group of that matcher when it has one, else in your own group). A `NOTICE` names what
+   it carried: keys, variables by name, hook entries by event and matcher. For a value both define
+   (`defaultShell`, an `env` variable the release sets) the release's wins, and a `NOTICE` names
+   each one of yours it replaced, an `env` variable by name and never by value. A hook entry that
+   runs a command the framework shipped is the framework's, and the release's entries replace it; a
+   `NOTICE` names its event and matcher when it runs one of this release's commands but differs from
+   this release's entry or sits elsewhere (an edit or copy of yours, say), so make a change of your
+   own as an entry of your own. A key
+   or `env` variable an earlier release set and this one no longer does is dropped, not carried, and
+   named. If the installer could not
    read your copy as strict JSON (a comment, a trailing comma, an empty file, two keys that differ
    only in case) it carries nothing and says so on a `NOTICE`: re-add your keys from the backup by
    hand. A key you later delete from the file stays deleted, because the next update reads the file
