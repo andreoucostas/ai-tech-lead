@@ -225,7 +225,7 @@ Measured 2026-11-15 (`meta/eval-results.md`, "B-515 results"): NO-MISS, 5.05 USD
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
 **Status:** Open; maintainer direction 2026-11-14 (WSD-124). Approval today is the draft's `## After review` paragraph: add one Common Tasks line to `AGENTS.md` and delete the draft wording, by hand. Meanwhile 3a-bis keeps the draft "immediately discoverable", so an unreviewed draft that misses a step (B-515) can be followed.
 Candidate: one action approves a draft that passed B-515's check (asked to approve it, the agent makes both edits). For the maintainer: whether a checked draft may go live without review (WSD-109 says pending PR review), and whether an unchecked one should sit where no host loads it. Guarded.
-B-514 (2026-11-15, Claude Code and Copilot CLI): an unreviewed draft is called as often as an approved skill (6 of 6 each on each host, first thing, through the host's skill list), so where an unchecked draft sits is the first question; proposed: write a draft that has not passed B-515's check where no host loads it.
+B-514 (2026-11-15, Claude Code and Copilot CLI): an unreviewed draft is called as often as an approved skill (6 of 6 each on each host, first thing, through the host's skill list), so where an unchecked draft sits is the first question; proposed: write a draft that has not passed B-515's check where no host loads it. Maintainer 2026-11-15, after B-515's no-miss result: drafts stay live for now, revisited once B-515 measures a draft on B-466's 4,999-file fixture.
 ### B-517 · Discovery reads at most 40 files, so it cannot find repeated operations across a large repository
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1 #3 #7
