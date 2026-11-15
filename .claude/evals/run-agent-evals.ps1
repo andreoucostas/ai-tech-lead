@@ -1153,7 +1153,9 @@ function Get-SkillUseGrade([string]$Target, [int]$BeforeCommits, $Evidence, [Val
     $skillNames = @($skillTools | ForEach-Object { [string]$_.Input.skill } | Where-Object { $_ } | Select-Object -Unique)
     $skill = [bool]@($skillNames | Where-Object { $name = $_; @($Slugs | Where-Object { $name -eq $_ -or $name.EndsWith(":$_") }).Count } | Select-Object -First 1)
     $skillRead = [bool]@($Evidence.Tools | Where-Object { $_.Name -eq 'Read' -and $(foreach ($slug in $Slugs) { if ((Get-ToolPath $_) -match "[\\/]\.claude[\\/]skills[\\/]$([regex]::Escape($slug))[\\/]SKILL\.md$") { $true } }) } | Select-Object -First 1)
-    $denied = @($Evidence.Tools | Where-Object { $Evidence.ToolResults.ContainsKey($_.Id) -and $Evidence.ToolResults[$_.Id].is_error -and (Get-ToolResultText $Evidence $_) -match "(?i)requested permissions|haven't granted|permission to use .* (?:was|has been) denied" }).Count
+    # The host's own list on the terminal result when it has one: a compound command "requires approval" in words no pattern pins.
+    $denied = if ($null -ne $Evidence.Final.permission_denials) { @($Evidence.Final.permission_denials).Count } else {
+        @($Evidence.Tools | Where-Object { $Evidence.ToolResults.ContainsKey($_.Id) -and $Evidence.ToolResults[$_.Id].is_error -and (Get-ToolResultText $Evidence $_) -match "(?i)requested permissions|haven't granted|requires approval|permission to use .* (?:was|has been) denied" }).Count }
     $use = "skill=$skill skillRead=$skillRead skillCalls=$($skillNames -join ',') denied=$denied"
     $code = @{}
     foreach ($file in @(Get-ChildItem -LiteralPath (Join-Path $Target 'src'), (Join-Path $Target 'tests') -Recurse -File -Filter '*.cs' -ErrorAction SilentlyContinue)) {
@@ -4399,7 +4401,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
             'view-file' { & $edit 'db/views/rpt.vwCancelledOrders.sql' "WHERE o.Status = 'Cancelled';" "WHERE o.Status = 'Cancelled';`nGO`nGRANT SELECT ON rpt.vwCancelledOrders TO ReportReader;" }
         }
         & $edit 'tests/Orders.Tests/ReportCatalogTests.cs' '    [InlineData("overdue-invoices")]' "    [InlineData(`"overdue-invoices`")]`n    [InlineData(`"cancelled-orders`")]" }
-    $transcript = { param([object[]]$Tools = @(), [string]$Subtype = 'success')
+    $transcript = { param([object[]]$Tools = @(), [string]$Subtype = 'success', [object[]]$Denials)
         $events = [Collections.Generic.List[object]]::new()
         $events.Add([pscustomobject]@{ type = 'system'; subtype = 'init'; model = 'claude-sonnet-5-5' })
         $n = 0
@@ -4408,7 +4410,9 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
             $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $tool.Parent; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = "b514-$n"; name = $tool.Name; input = $tool.Input }) } })
             $events.Add([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = "b514-$n"; is_error = [bool]$tool.Error; content = [string]$tool.Result }) } })
         }
-        $events.Add([pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = 'Done.'; total_cost_usd = 0.5; duration_ms = 61000 })
+        $final = [pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = 'Done.'; total_cost_usd = 0.5; duration_ms = 61000 }
+        if ($null -ne $Denials) { $final | Add-Member -NotePropertyName permission_denials -NotePropertyValue $Denials }
+        $events.Add($final)
         [pscustomobject]@{ Events = $events.ToArray() } }
     $skillCall = { param([string]$Slug, [string]$Parent) [pscustomobject]@{ Name = 'Skill'; Input = [pscustomobject]@{ skill = $Slug }; Result = "Launching skill: $Slug"; Parent = $Parent } }
     $readSkill = [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $fixture '.claude\skills\add-integration-event\SKILL.md') }; Result = '# add-integration-event' }
@@ -4422,6 +4426,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
         [pscustomobject]@{ Name = 'a handler registered only by its interface'; Id = 'skill-use-event'; Apply = { & $event -Di 'interface' }; Tools = @(); Pass = $false; Detail = '^op=event complete=False registry=True version=True di=False ' }
         [pscustomobject]@{ Name = 'the draft read but not called'; Id = 'skill-use-event'; Apply = { & $event }; Tools = @($readSkill); Pass = $true; Detail = '^op=event complete=True .* skill=False skillRead=True skillCalls= ' }
         [pscustomobject]@{ Name = 'the draft called by a sub-agent'; Id = 'skill-use-event'; Apply = { & $event }; Tools = @((& $skillCall 'add-integration-event' 'agent-1')); Pass = $true; Detail = ' skill=True skillRead=False skillCalls=add-integration-event ' }
+        [pscustomobject]@{ Name = 'two denials on the terminal result (a compound command needing approval)'; Id = 'skill-use-event'; Apply = { & $event }; Tools = @(); Denials = @([pscustomobject]@{ tool_name = 'Bash'; tool_use_id = 'x1' }, [pscustomobject]@{ tool_name = 'Bash'; tool_use_id = 'x2' }); Pass = $true; Detail = '^op=event complete=True .* skillCalls= denied=2 ' }
         [pscustomobject]@{ Name = 'the other operation''s draft called'; Id = 'skill-use-event'; Apply = { & $event }; Tools = @((& $skillCall 'add-report-export')); Pass = $true; Detail = ' skill=False skillRead=False skillCalls=add-report-export ' }
         [pscustomobject]@{ Name = 'a complete report, its draft called'; Id = 'skill-use-report'; Apply = { & $report }; Tools = @((& $skillCall 'add-report-export')); Pass = $true; Detail = '^op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True ' }
         [pscustomobject]@{ Name = 'a report with no GRANT'; Id = 'skill-use-report-approved'; Apply = { & $report -Grant 'none' }; Tools = @(); Pass = $false; Detail = '^op=report complete=False catalog=True flag=True grant=False skill=False .* grantFile=False ' }
@@ -4438,7 +4443,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
             git -C $fixture checkout --quiet -- .
             git -C $fixture clean --quiet -fdx
             & $case.Apply
-            $graded = Test-ScenarioEvidence $case.Id $fixture (& $transcript $case.Tools) 1
+            $graded = Test-ScenarioEvidence $case.Id $fixture (& $transcript $case.Tools 'success' $case.Denials) 1
             if ($null -eq $graded -or $graded.Status -ne 'PASS' -or $graded.Pass -ne $case.Pass -or [bool]$graded.Outcome -ne $case.Pass -or $graded.Detail -notmatch $case.Detail) {
                 throw "B-514 skill-use misjudged $($case.Name): $(if ($graded) { "$($graded.Status) pass=$($graded.Pass) outcome=$($graded.Outcome) $($graded.Detail)" } else { 'no result' })"
             }

@@ -16,13 +16,13 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team; re-decided on 2026-12-12 if no team has started (WSD-126) |
-| 2 | B-514 | Maintainer priority: nothing yet shows an auto-created skill being used (0 of 4 follow-ups called one); the measurement the rest of the skills work hangs on; no fixed spend stop (maintainer) |
+| 2 | B-514 | Maintainer priority: on Claude Code a draft is called 6 of 6 and changed no outcome on fixture v2 (2026-11-15); the Copilot leg remains; no fixed spend stop (maintainer) |
 | 3 | B-515 | Maintainer priority: 3 of 6 measured drafts missed a step their own instances contain; guarded |
 | 4 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; pre-registered, its 60 USD stop approved by the maintainer 2026-11-11; runner work and three generations before any run; after the skills measurements (maintainer, 2026-11-14) |
 | 5 | B-523 | Maintainer direction 2026-11-14 for a write-side skill for warehouse reporting views and procedures, measured on a fixture before it ships; the maintainer set no rank, the coordinator placed it after B-466; guarded |
 | 6 | B-510 | CI is at 88% of the watcher's 2,400 s and growing; past it every push and release reads CANT-VERIFY; guarded |
 | 7 | B-521 | Release review: several escaped defects were visible only in a live agent run after the tag; guarded |
-| 8 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review; after B-514; guarded |
+| 8 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review, where B-514 saw it followed as often as an approved skill; guarded |
 | 9 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
 | 10 | B-469 | Maintainer request: an update's `.claude/framework-update-backup/` copies get forgotten and committed; `-Reinstall` already relies on the last commit instead; guarded |
 | 11 | B-491 | Audit, reproduced: `route-prompt` routes "yes, go ahead" and plain questions as a feature with the plan gate, and "concurrency" gets the security overlay; guarded |
@@ -57,7 +57,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 ### B-356 · Measure a plan-step offer of a test, Conventions line or project-skill draft when a feature creates a repeatable operation
 **Filed against:** v0.93.0 (2026-10-05)
 **Priority:** P3 · **Effort:** M to measure, S to change · **Invariants:** #1 #7
-**Status:** Open; raised by the maintainer 2026-10-05, no field report (WSD-109). The candidate bullet shipped unmeasured in carrier §2 (WSD-111).
+**Status:** Open; raised by the maintainer 2026-10-05, no field report (WSD-109). The candidate bullet shipped unmeasured in carrier §2 (WSD-111). B-514 (2026-11-15): neither a draft nor a Conventions line changed the outcome on fixture v2 (bare 6 of 6), so the decoy decides alone.
 Measure it (B-346 method): an extension-point feature, a third instance and a plain CRUD decoy whose false-offer rate decides whether it stays;
 design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B. Its Copilot stage: `.claude/plans/2026-11-13-copilot-window-briefs.md`, "B-356". Part of the project-skills work (WSD-124) with B-514 to B-517: this is how skills keep appearing after `/bootstrap`.
 
@@ -222,18 +222,20 @@ Candidate: core files with `@stack` markers and byte-identical dist output, addi
 ### B-514 · Measure whether an auto-created project skill is used on the next matching task and changes its outcome
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** M · **Invariants:** none
-**Status:** Open; maintainer direction 2026-11-14 (WSD-124). Drafting is observed on Claude Code (B-346: both planted operations in 3 of 3 runs; the billing fixture's `wire-unity-service` in 2 of 2); use is not: in the one study that looked, none of 4 follow-up tasks called the drafted skill, and the arm with no `/bootstrap` landed the same (3 of 3; `meta/eval-results.md`, the late-fee follow-up). A draft is not in `AGENTS.md > Common Tasks` until approved, and that list is what tells the agent to invoke a skill.
-Design: on `meta/eval-fixtures/b345-bootstrap-skills`, whose operations have steps that are easy to miss (registry line, schema version, flag, GRANT), ask for a new instance with the skill approved, with the draft as `/bootstrap` leaves it, with a Conventions line only, and bare; n = 6 each; graded on a Skill call and on every non-obvious step being present. Pre-register; a driver and grader come first. No fixed spend stop (maintainer, in chat 2026-11-14: "i dont mind, just find the root cause and fix it. when we hit the quota, we'll get an error back"); record each run's cost. A Copilot leg follows (its one run wrote Conventions lines, not skills).
+**Status:** Open for the Copilot leg only. Claude Code answered 2026-11-15 (`meta/eval-results.md`, "B-514 results"; design `.claude/plans/2026-11-15-b514-skill-use.md`): on fixture v2 the drafted skill was called first thing in 6 of 6 matching tasks as a draft and 6 of 6 once approved, and every arm, bare included, wrote every non-obvious step 6 of 6, so the skill changed no outcome there; 5.56 USD.
+Left: the same four arms and grader on Copilot CLI (`run-agent-evals.ps1` scenarios `skill-use-*`, overlay `b514-orders`); Copilot's one `/bootstrap` wrote Conventions lines, not skills, so its arms run on Claude Code's drafts. No fixed spend stop (maintainer, in chat 2026-11-14).
 ### B-515 · A drafted project skill can miss a step its own instances contain
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** S to change, M to measure · **Invariants:** #1 #7
 **Status:** Open; maintainer direction 2026-11-14 (WSD-124). B-346, one reviewer's unregistered read: 3 of 6 drafts missed a step. One event draft omits the handler's DI registration (it builds, passes its tests, and faults at the first dispatch), two omit the test step, and no event draft says an unregistered event is not published; 4 of 6 give the reference as a code span, not a link.
 Candidate: 3a-bis checks each draft against every instance it lists before writing it: every file an instance touches maps to a step or is marked unresolved, taking the commit that added an instance as its file list where Git history has one. Measure omitted steps before and after on the B-346 fixture, on B-514's spend footing. Guarded (`src/stacks/*/files/.claude/**`, three `bootstrap.md` copies).
+B-514 (2026-11-15): drafts are followed (6 of 6), but on fixture v2 every arm, bare included, wrote every step, so a missed draft step cannot show there; the before-and-after needs a fixture whose instances do not show every step.
 ### B-516 · A draft skill becomes active only through two manual edits, and is discoverable before anyone reviews it
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
 **Status:** Open; maintainer direction 2026-11-14 (WSD-124). Approval today is the draft's `## After review` paragraph: add one Common Tasks line to `AGENTS.md` and delete the draft wording, by hand. Meanwhile 3a-bis keeps the draft "immediately discoverable", so an unreviewed draft that misses a step (B-515) can be followed.
-Candidate: one action approves a draft that passed B-515's check (asked to approve it, the agent makes both edits). For the maintainer: whether a checked draft may go live without review (WSD-109 says pending PR review), and whether an unchecked one should sit where no host loads it. After B-514 says whether drafts are used at all. Guarded.
+Candidate: one action approves a draft that passed B-515's check (asked to approve it, the agent makes both edits). For the maintainer: whether a checked draft may go live without review (WSD-109 says pending PR review), and whether an unchecked one should sit where no host loads it. Guarded.
+B-514 (2026-11-15, Claude Code): an unreviewed draft is called as often as an approved skill (6 of 6 each, first thing, through the host's skill list), so where an unchecked draft sits is the first question; proposed: write a draft that has not passed B-515's check where no host loads it.
 ### B-517 · Discovery reads at most 40 files, so it cannot find repeated operations across a large repository
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1 #3 #7

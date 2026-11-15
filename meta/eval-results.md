@@ -7385,3 +7385,150 @@ count; `~\.copilot\config.json` was byte-identical before and after every run. E
   `dist/dotnet` `route-prompt.ps1` 3886757a3c1e.
 - Spend: 8 premium requests by the journals' accounting (T' 6, CLI 2) against the stop of 12; 291.5 AI credits (T' 184.3, CLI 107.2).
 - Not shown: as pre-registered.
+
+## 2026-11-15 09:41:58 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event-approved** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2303295 tokensIn=20 tokensOut=5086; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=approved.patch@20965ff442af op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=57880 turns=1
+- **PASS skill-use-report-approved** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.19295 tokensIn=16 tokensOut=3895; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=approved.patch@20965ff442af op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=38509 turns=1
+
+
+## 2026-11-15 09:43:45 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2342728 tokensIn=22 tokensOut=5237; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=framework outcome=True op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=49983 turns=1
+- **PASS skill-use-report** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.191799 tokensIn=18 tokensOut=3812; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=framework outcome=True op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=43423 turns=1
+- **SUMMARY skill-use-event** arm=framework outcome=1/1 excluded=0
+- **SUMMARY skill-use-report** arm=framework outcome=1/1 excluded=0
+
+
+## 2026-11-15 09:45:20 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event-noskill** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1964105 tokensIn=14 tokensOut=4549; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=no-skill.patch@398aa2ea91f7 op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=43371 turns=1
+- **PASS skill-use-report-noskill** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1719989 tokensIn=12 tokensOut=3492; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=no-skill.patch@398aa2ea91f7 op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=36856 turns=1
+
+
+## 2026-11-15 09:46:27 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: none · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1292311 tokensIn=14 tokensOut=4322; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=none outcome=True op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=35128 turns=1
+- **PASS skill-use-report** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1111863 tokensIn=10 tokensOut=3093; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=none outcome=True op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=26378 turns=1
+- **SUMMARY skill-use-event** arm=none outcome=1/1 excluded=0
+- **SUMMARY skill-use-report** arm=none outcome=1/1 excluded=0
+
+
+## 2026-11-15 09:48:05 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: none · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1405021 tokensIn=14 tokensOut=4545; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=none outcome=True op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=37460 turns=1
+- **PASS skill-use-report** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1164309 tokensIn=10 tokensOut=2960; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=none outcome=True op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=26855 turns=1
+- **SUMMARY skill-use-event** arm=none outcome=1/1 excluded=0
+- **SUMMARY skill-use-report** arm=none outcome=1/1 excluded=0
+
+
+## 2026-11-15 09:49:43 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.22032 tokensIn=18 tokensOut=5068; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=framework outcome=True op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=47194 turns=1
+- **PASS skill-use-report** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1859206 tokensIn=14 tokensOut=3742; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=framework outcome=True op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=37325 turns=1
+- **SUMMARY skill-use-event** arm=framework outcome=1/1 excluded=0
+- **SUMMARY skill-use-report** arm=framework outcome=1/1 excluded=0
+
+
+## 2026-11-15 09:51:17 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event-noskill** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1960057 tokensIn=14 tokensOut=4517; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=no-skill.patch@398aa2ea91f7 op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=41931 turns=1
+- **PASS skill-use-report-noskill** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.171357 tokensIn=12 tokensOut=3475; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=no-skill.patch@398aa2ea91f7 op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=37773 turns=1
+
+
+## 2026-11-15 09:52:57 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event-approved** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2178707 tokensIn=20 tokensOut=4849; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=approved.patch@20965ff442af op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=44806 turns=1
+- **PASS skill-use-report-approved** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1864838 tokensIn=14 tokensOut=3953; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=approved.patch@20965ff442af op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=39762 turns=1
+
+
+## 2026-11-15 09:54:38 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event-noskill** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2192756 tokensIn=18 tokensOut=5041; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=no-skill.patch@398aa2ea91f7 op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=45776 turns=1
+- **PASS skill-use-report-noskill** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1894839 tokensIn=14 tokensOut=3583; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=no-skill.patch@398aa2ea91f7 op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=39916 turns=1
+
+
+## 2026-11-15 09:56:20 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event-approved** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2280186 tokensIn=18 tokensOut=5133; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=approved.patch@20965ff442af op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=47826 turns=1
+- **PASS skill-use-report-approved** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1765319 tokensIn=12 tokensOut=3590; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=approved.patch@20965ff442af op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=38596 turns=1
+
+
+## 2026-11-15 09:58:07 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2377567 tokensIn=20 tokensOut=5371; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=framework outcome=True op=event complete=True registry=True version=True di=True skill=True skillRead=False skillCalls=add-integration-event denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=52880 turns=1
+- **PASS skill-use-report** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1856653 tokensIn=14 tokensOut=3870; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=framework outcome=True op=report complete=True catalog=True flag=True grant=True skill=True skillRead=False skillCalls=add-report-export denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=40411 turns=1
+- **SUMMARY skill-use-event** arm=framework outcome=1/1 excluded=0
+- **SUMMARY skill-use-report** arm=framework outcome=1/1 excluded=0
+
+
+## 2026-11-15 09:59:27 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9af9c51a3b336d5bc349c2d7f67d64203ace5762)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: none · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-use-event** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1638537 tokensIn=18 tokensOut=6052; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=none outcome=True op=event complete=True registry=True version=True di=True skill=False skillRead=False skillCalls= denied=0 event=OrderCancelledEvent handler=OrderCancelledHandler version#=1 testRow=True raised=True durationMs=42777 turns=1
+- **PASS skill-use-report** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1166424 tokensIn=14 tokensOut=3374; ccVersion=2.1.312 initModel=claude-sonnet-5-5 arm=none outcome=True op=report complete=True catalog=True flag=True grant=True skill=False skillRead=False skillCalls= denied=0 export=CancelledOrdersExport key=cancelled-orders view=rpt.vwCancelledOrders grantFile=True viewFile=True testRow=True durationMs=30048 turns=1
+- **SUMMARY skill-use-event** arm=none outcome=1/1 excluded=0
+- **SUMMARY skill-use-report** arm=none outcome=1/1 excluded=0
+
+
+## B-514 results — 2026-11-15 (hand-written; the 24 runner rows above are the counted runs)
+
+As pre-registered at cf69d670 (`.claude/plans/2026-11-15-b514-skill-use.md`) and amended before any counted run at 9af9c51a, the commit
+every row's header names: the overlay `meta/eval-fixtures/b514-orders` is one headless `/bootstrap` (1.15 USD) whose two skill drafts this
+host refused to write under `.claude/skills/` in acceptEdits, so the drafts are its denied Write payloads written byte for byte and its two
+scripts were run by hand (the plan's amendment and `provenance.json`). Claude Code 2.1.312 and `claude-sonnet-5-5` in all 24 rows;
+acceptEdits with the 37-rule measured list (header tag `a25d241c0177`); 24 of 24 valid, none repeated, no quota or rate-limit error;
+12 invocations, one per arm and round in the registered order, 09:40 to 10:00.
+
+| arm | valid | Skill call to the draft | complete | P1 registry / version / DI | P2 catalog / flag / GRANT | cost USD | mean duration |
+|---|---|---|---|---|---|---|---|
+| approved | 6 | 6 | 6 | 3 / 3 / 3 | 3 / 3 / 3 | 1.23 | 45 s |
+| draft | 6 | 6 | 6 | 3 / 3 / 3 | 3 / 3 / 3 | 1.26 | 45 s |
+| no-skill (Conventions) | 6 | 0 | 6 | 3 / 3 / 3 | 3 / 3 / 3 | 1.14 | 41 s |
+| bare (no framework) | 6 | 0 | 6 | 3 / 3 / 3 | 3 / 3 / 3 | 0.78 | 33 s |
+
+- Readings, as fixed: DRAFT-USED (6 of 6) and APPROVED-USED (6 of 6); NO-DIFFERENCE at CEILING (no-skill and bare 6 of 6); no
+  CONVENTIONS-HELP. The prediction for the draft (at most 1 of 6) was wrong. In all 12 skill-arm runs the Skill call was the first tool
+  call, before any read; the draft reached the model through the host's skill list (`system/init` lists both slugs), since nothing in
+  `AGENTS.md` lists it. On this fixture the skill changed no outcome: every run wrote all three steps, the test row, and the raise (P1) or
+  the view file (P2), and all 24 targets build (`dotnet build Orders.sln` exit 0, by hand after round 3). The skill arms cost 8 to 10% more
+  and ran about 10% longer than no-skill; bare, with no framework context, was cheapest.
+- B-516: DRAFT-USED, so an unreviewed draft is followed on Claude Code as often as an approved one, and where an unchecked draft sits comes
+  first, after B-515's check. B-515: NO-DIFFERENCE at CEILING, and no run that called a draft missed a step (both drafts state every graded
+  step), so this fixture cannot show a step check's value; its before-and-after needs a fixture whose instances do not show every step.
+  B-356: no measured value on this shape; the decoy's false-offer rate decides alone.
+- Not examined: why B-331's late-fee follow-ups called their draft in 0 of 4 runs; that study differs in host (2.1.281), model and task
+  (a late-fee service against `wire-unity-service`).
+- Hand check: the grader's `skill` matched the streams in 24 of 24; no row was not complete. Its secondary `denied` read 0 in every row;
+  each terminal result's `permission_denials` holds 22 (approved 6, draft 8, no-skill 5, bare 3), all compound Bash commands the run redid
+  with allowed tools. The grader now counts that list (a self-test case, seen red first).
+- Cost: 24 runs 4.41 USD (0.11 to 0.24 a run, mean 0.18), plus the 1.15 USD generation: 5.56 USD. Per run cost, model, version and
+  duration are in the rows above (`costUsd`, `initModel`, `ccVersion`, `durationMs`).
+- Reopen triggers of the decisions indexed on skills and `/bootstrap` (WSD-020, WSD-072, WSD-074, WSD-100, WSD-109, WSD-111, WSD-113,
+  WSD-115, WSD-118, WSD-124): none met. WSD-109 reopens on a field report and WSD-111 on B-356's own measurement; WSD-113 and WSD-115
+  concern worker models, and this generation started no worker.
+- Not shown: the Copilot leg (out of scope for this run; B-514 stays open for it); other models or operation shapes; a draft that misses
+  a step; a fixture whose code hides a step; interactive use; a real consumer repository.
