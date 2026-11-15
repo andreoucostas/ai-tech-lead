@@ -28,10 +28,11 @@
   `.claude/hooks/`. A `NOTICE` names what was carried: variables by name, never by value, and hook entries by event and
   matcher. The framework's own entries, from any earlier release, its Windows PowerShell 5.1 and Bash ones included, are
   replaced by this release's, and an `env` variable the release sets keeps the release's value, with a `NOTICE` naming
-  yours. An edit of yours to one of the framework's entries (a raised timeout, say), or a copy of one under another
-  matcher, is replaced too, and a `NOTICE` names it by event and matcher; your version stays in
-  `.claude/.state/settings.json.pre-update` and your last commit. Make such a change as an entry with a command of your
-  own. Nothing to do; if an earlier update dropped yours, copy them back once from
+  yours. A change of yours to the framework's own entries (a raised timeout, a narrowed matcher, a copy under another
+  matcher, a removed group) is replaced too: the update compares them with what the release in
+  `.claude/framework-version.json` shipped and names each event and matcher that differs in a `NOTICE`; your version
+  stays in `.claude/.state/settings.json.pre-update` and your last commit. Make such a change as an entry with a command
+  of your own. Nothing to do; if an earlier update dropped yours, copy them back once from
   `git show <commit before that update>:.claude/settings.json`.
 - **`framework-doctor` no longer fails on a Bash hook of your own.** An update now keeps your own hook entries, and the
   doctor read any of them that runs Bash (`bash .claude/hooks/lint.sh`, say) as a retired framework hook: it reported

@@ -38,14 +38,17 @@ and a hook entry is the framework's only when its command is in `$script:SjEverS
 `$script:SjEverShippedEnv` likewise); every other entry is carried under its event and matcher, into the release's group of
 that matcher or in the team's own. NOTICEs name carried variables and entries (event and matcher, never a command or value),
 replaced overrides and case twins; the "(hook entries of your own are not merged)" line goes, which also ends the false claim
-B-506's attack found for a file equal to a 5.1 variant. A framework entry the team edited or copied elsewhere is still
-replaced, and named by event and matcher: it matches none of `$script:SjEverShippedEntries`, the 83 digests of every entry
-those files registered with its event and matcher. The step-4 attack found the first version silent here (a raised
-post-write timeout and a guard copy under `Bash`, both lost with no NOTICE, where afb10904 at least said `hooks` were
-replaced), because 0.99.0's commands match no earlier release's. The 5.1 NOTICE counts framework commands only. The
-kept-backup test is now a fixed point: the current file is release-plus-team when the carry rewrites it to itself. Tests pin
-the lists to the history (`git log --raw` over those paths) with hostile calibrations. Red first: `UpdateDelivery`'s B-507
-cases, the attack's among them, and three B-486 cases whose expectations encoded the drop.
+B-506's attack found for a file equal to a 5.1 variant. The framework's entries are still replaced, and the team's set of
+them is compared, as a whole, with the set the stamped release shipped (`$script:SjReleaseSets`: 42 rows of template, file and
+first version over 50 entry digests in `$script:SjShippedEntries`, from every tag and this tree's dists), in whichever of its
+two files matches better: each event and matcher that differs (edited, added, moved or missing) gets a NOTICE; a stamp the
+table cannot place gets one general NOTICE. Two step-4 attacks shaped this: the first version named nothing (0.99.0's
+commands match no earlier release's), the second, a per-entry "did any release ship it" check, missed a narrowed matcher, a
+dropped `cwd` and a removed group, each equal to an older release's state, where afb10904 at least said `hooks` were
+replaced. The 5.1 NOTICE counts framework commands only. The kept-backup test is now a fixed point: the current file is
+release-plus-team when the carry rewrites it to itself. Tests pin the command list to the history and the release table to
+every tag, with hostile calibrations. Red first: `UpdateDelivery`'s B-507 cases, both attacks' among them, and three B-486
+cases whose expectations encoded the drop.
 
 `framework-doctor` stops failing on a team's own Bash hook (ordinary, `src/core/scripts/`; B-507's adjacent finding, fixed at the
 maintainer's request in chat on 2026-11-15). Since B-507 an update carries the team's hook entries, and the doctor read every

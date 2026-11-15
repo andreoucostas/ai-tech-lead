@@ -78,9 +78,11 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    (`defaultShell`, an `env` variable the release sets) the release's wins, and a `NOTICE` names
    each one of yours it replaced, an `env` variable by name and never by value. A hook entry that
    runs a command the framework shipped is the framework's, and the release's entries replace it with
-   your edits in it: one that no release shipped as it is there (a raised timeout, a copy under
-   another matcher) is replaced or removed all the same, and a `NOTICE` names it by event and matcher.
-   Make a change of your own as an entry with a command of your own. A key
+   your edits in it. The update compares those entries in your file, as a whole, with the ones the
+   release your `.claude/framework-version.json` names shipped, and a `NOTICE` names each event and
+   matcher where they differ (a raised timeout, a narrowed matcher, a copy, a removed group); when the
+   stamp names no release it knows, one `NOTICE` says they differ. Make a change of your own as an
+   entry with a command of your own. A key
    or `env` variable an earlier release set and this one no longer does is dropped, not carried, and
    named. If the installer could not
    read your copy as strict JSON (a comment, a trailing comma, an empty file, two keys that differ
