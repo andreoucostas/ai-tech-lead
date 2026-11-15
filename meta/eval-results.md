@@ -8308,3 +8308,88 @@ splits the array) and the runner refused its parameters before any setup or mode
 - **Not shown:** Copilot CLI and VS Code (out of scope for this measurement); a reporting procedure; the M and L trees, where the
   agent cannot read every reporting object; a reporting layer whose deploy step is not in a file the agent lists (a non-SDK
   `.sqlproj` list, a catalog); other models; interactive use; a real warehouse.
+
+## 2026-11-15 18:56:27 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9a3da48ccf4a338300164c2f9deb69d5d726c4d2)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 57 allowed-tool rules (f01b98a1d7ac) · scratch: retained=True
+
+- **FAIL warehouse-report-proc** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3187249 tokensIn=16 tokensOut=9742; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=proc ready=False good=False deployed=True traps=5/6 role=True semi=True drill=True bridge=False asof=True region=True named=True grant=True manifest=True | proc=rpt.usp_QuarterlyPostedAndClosingBySegmentRegion file=StoredProcedures/rpt.usp_QuarterlyPostedAndClosingBySegmentRegion.sql objects=1 weights=0 deadRegion=False grantFile=True mapRow=False skill=False skillCalls= mapRead=True denied=2 sqlFiles=2 durationMs=71940 turns=1
+
+
+## 2026-11-15 18:57:58 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (9a3da48ccf4a338300164c2f9deb69d5d726c4d2)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 57 allowed-tool rules (f01b98a1d7ac) · scratch: retained=True
+
+- **FAIL warehouse-report-proc-skill** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3232197 tokensIn=18 tokensOut=9235; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=skill-v2.patch@a2b360f8872b op=proc ready=False good=False deployed=True traps=5/6 role=True semi=True drill=True bridge=False asof=True region=True named=True grant=True manifest=True | proc=rpt.usp_QuarterlySegmentRegionSummary file=StoredProcedures/rpt.usp_QuarterlySegmentRegionSummary.sql objects=1 weights=0 deadRegion=False grantFile=True mapRow=True skill=True skillCalls=add-warehouse-report mapRead=True denied=1 sqlFiles=2 durationMs=66207 turns=1
+
+
+## 2026-11-15 19:00:29 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (18c42ffd9cd0679815d68f50ba7b5b10240835d7)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 57 allowed-tool rules (f01b98a1d7ac) · scratch: retained=True
+
+- **FAIL warehouse-report-proc** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2694606 tokensIn=14 tokensOut=6508; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=proc ready=False good=False deployed=True traps=5/6 role=True semi=True drill=True bridge=False asof=True region=True named=True grant=True manifest=True | proc=rpt.usp_QuarterlyPostedAndClosingBySegmentRegion file=StoredProcedures/rpt.usp_QuarterlyPostedAndClosingBySegmentRegion.sql objects=1 weights=0 deadRegion=False grantFile=True mapRow=False skill=False skillCalls= mapRead=True denied=1 sqlFiles=2 durationMs=52780 turns=1
+
+
+## 2026-11-15 19:02:04 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (18c42ffd9cd0679815d68f50ba7b5b10240835d7)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 57 allowed-tool rules (f01b98a1d7ac) · scratch: retained=True
+
+- **PASS warehouse-report-proc-skill** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3246696 tokensIn=16 tokensOut=9160; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=skill-v2.patch@a2b360f8872b op=proc ready=True good=True deployed=True traps=6/6 role=True semi=True drill=True bridge=True asof=True region=True named=True grant=True manifest=True | proc=rpt.usp_QuarterlySegmentRegionSummary file=StoredProcedures/rpt.usp_QuarterlySegmentRegionSummary.sql objects=1 weights=2 deadRegion=False grantFile=True mapRow=True skill=True skillCalls=add-warehouse-report mapRead=True denied=2 sqlFiles=2 durationMs=68863 turns=1
+
+
+## B-523 results, second measurement on the trap warehouse — 2026-11-15 (hand-written; the four runner rows above, 18:56 to 19:02, are the counted runs)
+
+As amended at 9a3da48c (`.claude/plans/2026-11-15-b523-reporting-skill.md`, "Second measurement"), with the grader's weight pattern
+widened twice before the pilot's reading (18c42ffd, and in this commit; both recorded in the plan). Claude Code 2.1.312 and
+`claude-sonnet-5-5` in all four rows; acceptEdits with B-466's 57-rule run list (`f01b98a1d7ac`); 4 of 4 valid (exit 0, `success`,
+a `.sql` written), none repeated; every run's rate-limit status was `allowed_warning`, never a refusal. The driver checked before
+each run that the frozen paths matched the amendment commit the row names.
+
+| run | arm | traps avoided (regraded) | row as written | role / semi / drill / bridge / asof / region | named / grant / manifest | Skill call | map row | cost USD | duration |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | C, framework today | 6 of 6, READY | FAIL, `bridge=False` | yes / yes / yes / yes / yes / yes | yes / yes / yes | none | no | 0.319 | 71.9 s |
+| 2 | K, plus the skill v2 | 6 of 6, READY | FAIL, `bridge=False` | yes / yes / yes / yes / yes / yes | yes / yes / yes | `add-warehouse-report`, first call | yes | 0.323 | 66.2 s |
+| 3 | C | 6 of 6, READY | FAIL, `bridge=False` | yes / yes / yes / yes / yes / yes | yes / yes / yes | none | no | 0.269 | 52.8 s |
+| 4 | K | 6 of 6, READY | PASS | yes / yes / yes / yes / yes / yes | yes / yes / yes | `add-warehouse-report`, first call | yes | 0.325 | 68.9 s |
+
+Per arm: C avoided each of the six traps in 2 of 2 runs and took all three deploy steps in 2 of 2; so did K.
+
+- **Reading, as fixed: CEILING.** The framework as shipped today avoided all six traps in 2 of 2 runs, so the rule reads
+  **NO-SHIP** and the full runs were not spent. The prediction was wrong: C did not miss the as-of segment. Both C runs joined
+  `DimCustomer` on `CustomerId` with `ValidFrom <= quarter end < ValidTo`, after reading `usp_LoadDimCustomer` (run 1 cites its
+  close-and-open rule), although the map's only example rule for that edge is `IsCurrent = 1`. Median cost 0.294 USD (C) and 0.324 USD (K, 1.10 times).
+- **What today's framework did unprompted, both runs:**
+  - It filtered posting dates by the posting-date role and took the balance at the quarter's last month end only.
+  - It aggregated each fact to account grain in its own CTE, then full-outer-joined them, with a comment naming the multiplication
+    it avoids.
+  - It weighted both measures by the holder weight, renormalised so a joint account's shares sum to 1. It reached the region
+    through `DimBranch.RegionKey` and said why `DimBranch.RegionName` was not used.
+  - It put the procedure in `StoredProcedures/rpt.usp_*.sql`, with a `GRANT EXECUTE` in `Security/rpt.Permissions.sql` and a line
+    at the end of `Deploy/reporting.manifest`.
+  - It told the developer that holders and branches are today's, not as at the quarter.
+  - It never called the `add-reporting-view` draft `/bootstrap` left (0 of 2), which covers views only.
+- **What the skill added, both runs:** a written report contract in the header, and a map row (the procedure in Feeds and a dated
+  Coverage line). Neither is a graded outcome.
+- **Grader.** The registered weight pattern read a weight only when `*` sat directly beside `HolderWeight`. Runs 1 to 3 wrote it as
+  `* COALESCE(h.HolderWeight, 1)` (runs 1 and 2), or as a renormalised `Share` column (run 3), so their rows say `bridge=False`, 5 of
+  6. The hand check found all three; each fix was shown red first on a self-test case in that run's form. All four rows were regraded
+  with the final grader before the reading: 6 of 6 each, which agrees with the hand check in 4 of 4. No other value differs.
+  Denied calls (`denied=` 2, 1, 1, 2) were compound `cd …;` commands and heredoc writes; every denied write was redone with Write,
+  Edit or `Add-Content`. No run or generation call started a sub-agent.
+- **Fixture and overlay.** Building the fixture costs nothing (seeded; tree `d331b4d5e7d6…`). The generated overlay (`/bootstrap`
+  1.21 USD in 2 calls, 395 s; `/map-warehouse` 0.71 USD in 2 calls, 181 s) named five of the six traps. For the as-of segment it
+  leaned wrong, giving `IsCurrent = 1` as the example rule (the plan's KNOWLEDGE table).
+- **Read-side.** C failed no trap, so there is no read-side failure to report. One observation, not a measured harm: on an edge
+  whose only consuming view answers "now", the generated map wrote that view's `IsCurrent = 1` as the as-of rule. That follows
+  `map-warehouse`'s rule 6 ("copied from a reporting view"), but it would mislead an as-at report that does not read the load.
+- **Spend.** Second measurement 3.17 USD: overlay generation 1.93, four runs 1.24. With the first pilot (0.875), B-523 has spent
+  4.04 USD.
+- **Reopen triggers** of the decisions indexed on warehouse, skills and evals (WSD-016, WSD-020, WSD-021, WSD-027, WSD-072,
+  WSD-074, WSD-091, WSD-096, WSD-097, WSD-100, WSD-105, WSD-107, WSD-109, WSD-111, WSD-113, WSD-115, WSD-122, WSD-126, WSD-127).
+  **Met: WSD-127** again: the measurement does not support shipping, so the maintainer re-decides. Not met: WSD-109 and WSD-122
+  reopen on field reports; WSD-107's "a measured wording that beats none" did not happen; WSD-105 needs an arm that isolates
+  captured knowledge, which this run has not; WSD-113 and WSD-115 concern workers, and none started. The rest name no trigger
+  this evidence reaches.
+- **Not shown:** Copilot CLI and VS Code (out of scope); a reporting view on this tree (the first pilot's task was a view, on S);
+  the L tree; other models; interactive use; a real warehouse; whether either arm's procedure runs (no SQL engine here: both were
+  read, not executed).

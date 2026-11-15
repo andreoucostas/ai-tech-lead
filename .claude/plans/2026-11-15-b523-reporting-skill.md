@@ -190,3 +190,8 @@ agent read whole and a task the map already answered. The question is unchanged;
   an expression holding `HolderWeight`, in either order; what `bridge` means is unchanged. Seen red first: a self-test case in
   run 1's form read `weights=0 bridge=False` on the old pattern, and reads `weights=2 bridge=True` now. Every row, these two
   included, is regraded with the fixed grader for the reading; the rows the runner wrote keep their old values.
+- **Second widening, after pilot run 3, before the pilot's reading (2026-11-15).** Run 3 renormalised the weight into a derived
+  `Share` (`HolderWeight / SUM(HolderWeight) OVER (PARTITION BY AccountKey)`) and multiplied both measures by it, which the
+  first fix still read as `weights=0`. `weights` now counts Amount or Balance terms multiplied by any factor, and only when
+  `HolderWeight` is read at all; one weighted measure still reads `bridge=False`. Seen red first on a self-test case in run 3's
+  form. The hand check, not the pattern, is the backstop for a factor that is not the weight.

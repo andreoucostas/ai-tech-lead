@@ -4792,3 +4792,4 @@ measured-outcome route (WSD-109 stands); B-129's reopen bar is set aside for it.
 measurement, then ship (guarded, `src/stacks/*/files/.claude/**`). Until then the consumer CHANGELOG's WSD-121 answer (`map-warehouse`'s Querying rules on the
 map's proven joins) stays true. Rejected: WSD-121 as written. **Reopen** if B-523's pre-registered measurement does not support shipping (the maintainer then
 re-decides), or on a field report asking for Power BI authoring.
+B-523 met the first trigger twice (2026-11-15: no gain on a 14-file and a 497-file trap warehouse); the maintainer dropped the skill: none ships (2026-11-15).
