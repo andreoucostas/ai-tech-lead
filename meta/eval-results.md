@@ -7532,3 +7532,45 @@ acceptEdits with the 37-rule measured list (header tag `a25d241c0177`); 24 of 24
   concern worker models, and this generation started no worker.
 - Not shown: the Copilot leg (out of scope for this run; B-514 stays open for it); other models or operation shapes; a draft that misses
   a step; a fixture whose code hides a step; interactive use; a real consumer repository.
+
+## B-515 results — 2026-11-15 (hand-written; no runner rows)
+
+As pre-registered at 0e68413a (`.claude/plans/2026-11-15-b515-draft-steps.md`), unamended. Claude Code 2.1.312 and `claude-sonnet-5-5`
+in all four runs; acceptEdits with B-514's 51-rule generation list; every call exited 0 with a `success` result and every session
+edited `AGENTS.md`, so 4 of 4 valid. Two calls each (`/bootstrap`, then `proceed`; no run needed a third). This host refused every
+Write under `.claude/skills/` (and the two shell heredocs that tried the same), so all 8 drafts are graded from their Write payloads.
+
+| run | arm | drafts (P1 / P2) | omitted steps | workers | `git log`/`git show` calls | cost USD | wall (call 1 + 2) |
+|---|---|---|---|---|---|---|---|
+| before-1 | current | 1 / 1 | 0 | none | 0 | 0.99 | 67 + 170 s |
+| before-2 | current | 1 / 1 | 0 | none | 3 | 0.88 | 54 + 125 s |
+| before-3 | current | 1 / 1 | 0 | 8 (`bootstrap-pass` A1 to A8) | 0 | 2.27 | 117 + 187 s |
+| before-4 | current | 1 / 1 | 0 | none | 1 | 0.91 | 59 + 141 s |
+| candidate | not run | | | | | | |
+
+- Reading, as fixed: NO-MISS. The current `/bootstrap` omitted none of its listed instances' steps in 8 of 8 drafts: 0 of fixture v2's
+  steps and 0 of the two no code reads (`topic`, `deploy`). So the candidate was not run and does not ship; `src/` is untouched. The
+  prediction (at least 4 omitted) was wrong. Three sessions ran every pass themselves with no worker, as B-514's generation did,
+  reading the 70-file fixture in a few batched `cat` calls; before-2 also took each instance's file list from `git show --stat` of
+  its commit unprompted and cites those commits as provenance; before-3 dispatched all eight passes to workers and still wrote every
+  step.
+- Hand check: the grader's 0 agrees with the payloads in 8 of 8, with one note. before-3's event draft (the worker run) names the raise
+  step only on an Unresolved line ("how events are enqueued (`OrderLifecycle`, `OutboxProcessor` not read)"), which the pre-registered
+  rule and the candidate both count as covered; read as a required numbered step, it is the one omission in 8 drafts. No false
+  positive, no invented step (every numbered step is an operation step, the owner check, or the build and test run; `extraFiles` named
+  only `Orders.sln`, the test `.csproj` and `OutboxDispatcher.cs`, cited as evidence). Format: `origin: discovered`, the `DRAFT` prefix
+  and a reference in 8 of 8.
+- B-346's other observations, on this host: the reference is a Markdown link in 8 of 8 drafts (B-346: 2 of 6), and 3 of 4 event drafts
+  say an unregistered event is dropped (B-346: 0 of 3; before-4's does not). The DI registration and the test step are numbered steps in
+  every draft that could hold them (4 of 4 and 8 of 8).
+- B-515: this fixture cannot show the check's value. B-346's misses do not reproduce on Claude Code 2.1.312 with `claude-sonnet-5-5`,
+  even with two steps no code reads; a session reads a repository this size whole. A before-and-after needs one it cannot read whole
+  (B-466's sized fixtures, B-517), where drafts come from worker summaries; the one worker run here was also the one draft that left a
+  step unresolved rather than stated.
+- Cost: 4 runs 5.05 USD (0.88 to 2.27; the worker run cost 2.3 to 2.6 times the others). Duration per call is in the table; summed
+  `duration_ms` 230,745, 174,406, 259,814 (with background worker turns) and 195,925.
+- Reopen triggers of the decisions indexed on skills and `/bootstrap` (WSD-020, WSD-072, WSD-074, WSD-100, WSD-109, WSD-111, WSD-113,
+  WSD-115, WSD-118, WSD-124, WSD-127): none met. WSD-109 reopens on a field report and WSD-111 on B-356's measurement; before-3's workers
+  ran on the session's Sonnet with no per-call model, as WSD-115 says, and nothing compared them with Opus workers (WSD-113).
+- Not shown: the Copilot leg (out of scope for this run); the candidate's own effect; other models or operation shapes; the angular and
+  monorepo copies; a large repository; interactive use; a real consumer repository.
