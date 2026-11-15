@@ -25,6 +25,9 @@ param(
     # meta/eval-fixtures/warehouse-generated/, replace the simulated bootstrap and the hand-written map.
     # 'partial' is that overlay with every generated document silent on ctl.LoadRun and LoadRunId.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('frozen','omit','enriched','generated','partial')][string]$WarehouseMap = 'frozen',
+    # B-466: warehouse-route-p4 on the sized fixture warehouse-scale-<s>, with its own generated overlay and a 3.00 USD cap; a run
+    # stopped by that cap is scored on what it left.
+    [Parameter(ParameterSetName = 'Live')][ValidateSet('S','M','L')][string]$WarehouseScale,
     # B-253: a unified diff applied to the installed framework right after Install-Framework, so a
     # text variant (a B-255 candidate, a knockout, a probe) runs through the same fixture path as
     # the unpatched framework. Framework arm only; the header, every row and the SUMMARY name it.
@@ -53,6 +56,15 @@ $routerProbeScenarios = @('route-fix', 'route-fix-nl', 'route-fix-notest')
 # The install cases: the agent installs the framework itself, so the runner installs nothing first and -TargetPatch has nothing to patch.
 # B-404: url-install-readme-* are the URL-install cases on the prompt the root README suggests, which asks for the commit.
 $selfInstallScenarios = @('install-handoff', 'archived-redirect', 'url-install-greenfield', 'url-install-brownfield', 'url-install-readme-greenfield', 'url-install-readme-brownfield')
+# B-466 (meta/eval-results.md, "B-466 pre-registration" and its amendment): warehouse-route-p4 at about 14, 500 and 5,000 SQL
+# files. A size is the 'warehouse' tree plus a job file (S), subject areas in its conventions (V) and, beside live code and
+# unlabelled, superseded sales loaders that write ctl.LoadRun and no job calls (X1) and rpt views that inner-join fact.FactSales
+# to ctl.LoadRun (X2). Built from a fixed seed; each size's tree digest and its generated overlay's are frozen here.
+$warehouseScaleSizes = [ordered]@{
+    S = [pscustomobject]@{ Target = 14; X1 = 0; X2 = 0; Tree = '64fd8589eb0f8d50683b7e3f9b33989927a2dd5d3f4e6c6f5a90b5bdcae80cb9'; Overlay = 'a6aa94bd136c465c06c3bf543655e1d478ac7bd2350052bc31fcd818e2413255' }
+    M = [pscustomobject]@{ Target = 500; X1 = 2; X2 = 1; Tree = '63c4546206d29a9b349821fdebe05f6be244731793402de7138eaf3ee69191d6'; Overlay = '8fab2e132f942e523d890327b54a5d008531d53d2bf0042ded57848c5459ba14' }
+    L = [pscustomobject]@{ Target = 5000; X1 = 20; X2 = 10; Tree = '515bf8d393be48bfc901f18e45ecf12fa43f565287c86bd9813424a39f8c644f'; Overlay = 'f43468aebdd2a3e30ef6adc332aab27f30a8a8d68fd0801bb62ba9d76056e6e6' }
+}
 if (-not $ResultsPath) { $ResultsPath = Join-Path $repo 'meta/eval-results.md' }
 # Built at runtime: the outgoing-commit guard refuses a blob holding the key-shaped literal. The
 # guard-retry prompt the agent receives is unchanged.
@@ -63,8 +75,16 @@ function Assert-Bom([string]$Path) {
     return $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
 }
 
-function New-EvalRepo([string]$Path, [ValidateSet('dotnet','dotnet-notest','angular','angular-ux','b406-orders','b409-orders-ci','orders-v2','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict')][string]$Stack = 'dotnet') {
+function New-EvalRepo([string]$Path, [ValidateSet('dotnet','dotnet-notest','angular','angular-ux','b406-orders','b409-orders-ci','orders-v2','warehouse','warehouse-mixed','warehouse-fact-binding','warehouse-schema-compatible','warehouse-schema-incompatible','warehouse-schema-incomplete','warehouse-partition-mismatch','warehouse-health-a','warehouse-health-b','warehouse-health-clean','warehouse-health-convention','warehouse-health-no-trigger','warehouse-health-bridge-ok','warehouse-trace-keyres-pinned','warehouse-trace-keyres-deferred','warehouse-trace-attribute-a','warehouse-trace-attribute-b','warehouse-trace-metric-ratio','warehouse-trace-metric-additive','warehouse-trace-decoy','warehouse-trace-conflict','warehouse-scale-s','warehouse-scale-m','warehouse-scale-l')][string]$Stack = 'dotnet') {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    if ($Stack -like 'warehouse-scale-*') {
+        # B-466: the 'warehouse' tree, then the size's files, as one commit.
+        New-EvalRepo $Path warehouse
+        Write-WarehouseScaleFiles $Path ($Stack.Substring('warehouse-scale-'.Length).ToUpperInvariant())
+        git -C $Path -c core.safecrlf=false add -A
+        git -C $Path commit --quiet --amend --no-edit
+        return
+    }
     if ($Stack -in @($contractFixtures + 'orders-v2')) {
         # B-406 fixture v2: the frozen B-345 generator (it deletes and recreates $Path itself), then an Orders.sln.
         # The project GUIDs `dotnet sln add` writes are not deterministic, so two builds differ in Orders.sln only.
@@ -961,6 +981,340 @@ Write-Output 'PASS: inclusive range'
     git -C $Path commit --quiet -m 'fixture baseline'
 }
 
+# B-466: the sized fixture's vocabulary. Every name outside X is built from these words, synthetic and banking-shaped (accounts,
+# payments, ledger, positions, limits), with no client vocabulary; none holds Sales, Revenue or LoadRun.
+function Get-WarehouseScaleVocabulary {
+    return [pscustomobject]@{
+        Lines = @('Retail', 'Corporate', 'Treasury', 'Custody', 'Card', 'Mortgage', 'Deposit', 'Lending', 'Trade', 'Wealth', 'Brokerage', 'Clearing', 'Escrow', 'Leasing', 'Factoring', 'Remittance', 'Payroll', 'Pension', 'Savings', 'Institutional')
+        Subjects = @('Account', 'Payment', 'Ledger', 'Position', 'Limit', 'Collateral', 'Settlement', 'Exposure', 'Transfer', 'Mandate', 'Fee', 'Accrual', 'Balance', 'Overdraft', 'Guarantee', 'Statement', 'Journal', 'Margin', 'Holding', 'Facility', 'Drawdown', 'Repayment', 'Provision', 'Chargeback', 'Reconciliation')
+        FactKinds = @('Movement', 'Snapshot', 'Event')
+        DimKinds = @('Status', 'Type', 'Channel', 'Segment')
+        ViewKinds = @('Summary', 'ByMonth', 'Detail', 'Trend')
+        Measures = @('PostedAmount', 'BalanceAmount', 'ExposureAmount', 'FeeAmount', 'AccruedAmount', 'SettledAmount', 'LimitAmount', 'GrossAmount')
+        Structural = @('Dim', 'Fact', 'Stg', 'Load', 'vw', 'By', 'Month', 'Summary', 'Detail', 'Trend', 'Daily', 'Nightly', 'Core')
+    }
+}
+
+# B-466 X1 and X2, in the order the sizes take them (M the first 2 and 1, L all 20 and 10).
+function Get-WarehouseScaleX1Names {
+    return @('usp_LoadFactSales_v2', 'usp_LoadFactSalesIncremental', 'usp_LoadFactSales_Audited', 'usp_LoadFactSalesFull', 'usp_LoadFactSales_v3', 'usp_LoadFactSales_Backfill', 'usp_LoadFactSales_Reload', 'usp_LoadFactSales_2019', 'usp_LoadFactSalesDaily', 'usp_LoadFactSales_Tracked', 'usp_LoadFactSales_WithRunLog', 'usp_LoadFactSales_Restartable', 'usp_LoadFactSales_Batch', 'usp_LoadFactSales_Delta', 'usp_LoadFactSales_Merge', 'usp_LoadFactSales_2021', 'usp_LoadFactSalesHourly', 'usp_LoadFactSales_Partitioned', 'usp_LoadFactSales_Retry', 'usp_LoadFactSales_Logged')
+}
+function Get-WarehouseScaleX2Names {
+    return @('vwLoadRunRevenue', 'vwRevenueByLoadRun', 'vwSalesByLoadRun', 'vwLoadRunSalesSummary', 'vwRevenueByRun', 'vwLoadRunNetRevenue', 'vwSalesRunHistory', 'vwDailyRevenueByRun', 'vwLoadRunReconciliation', 'vwSalesLoadAudit')
+}
+
+# X1: a superseded copy of usp_LoadFactSales that opens a ctl.LoadRun row and stamps fact.FactSales.LoadRunId from it.
+function Get-WarehouseScaleX1Text([string]$Name, [int]$Index) {
+    $run = '    DECLARE @LoadRunId BIGINT = (SELECT ISNULL(MAX(LoadRunId), 0) + 1 FROM ctl.LoadRun);'
+    $joins = @('    FROM stg.StgSalesOrder s', '    JOIN dim.DimCustomer c ON c.CustomerId = s.CustomerId AND c.IsCurrent = 1', '    JOIN dim.DimProduct p ON p.ProductId = s.ProductId', '    JOIN dim.DimDate d ON d.CalendarDate = s.OrderDate')
+    $insert = @('    INSERT INTO fact.FactSales (SalesKey, CustomerKey, ProductKey, OrderDateKey, NetAmount, LoadRunId)', '    SELECT s.SalesId, c.CustomerKey, p.ProductKey, d.DateKey, s.NetAmount, @LoadRunId') + $joins
+    $body = switch ($Index % 4) {
+        0 { @($run, '    INSERT INTO ctl.LoadRun (LoadRunId, StartedAt) VALUES (@LoadRunId, SYSUTCDATETIME());') + $insert[0..4] + @($insert[5] + ';') }
+        1 { @($run, '    DECLARE @Watermark DATETIME2 = (SELECT MAX(Watermark) FROM ctl.LoadRun);', '    INSERT INTO ctl.LoadRun (LoadRunId, StartedAt, Watermark) VALUES (@LoadRunId, SYSUTCDATETIME(), @Watermark);') + $insert + @('    WHERE @Watermark IS NULL OR s.OrderDate > @Watermark;', '    UPDATE ctl.LoadRun SET Watermark = (SELECT MAX(OrderDate) FROM stg.StgSalesOrder) WHERE LoadRunId = @LoadRunId;') }
+        2 { @($run, '    INSERT INTO ctl.LoadRun (LoadRunId, StartedAt) VALUES (@LoadRunId, SYSDATETIME());', '    MERGE fact.FactSales AS target', '    USING (', '        SELECT s.SalesId, c.CustomerKey, p.ProductKey, d.DateKey, s.NetAmount') + @($joins | ForEach-Object { "    $_" }) + @('    ) AS source ON target.SalesKey = source.SalesId', '    WHEN NOT MATCHED THEN INSERT (SalesKey, CustomerKey, ProductKey, OrderDateKey, NetAmount, LoadRunId)', '        VALUES (source.SalesId, source.CustomerKey, source.ProductKey, source.DateKey, source.NetAmount, @LoadRunId);') }
+        3 { @($run, '    BEGIN TRY', '    INSERT INTO ctl.LoadRun (LoadRunId, StartedAt) VALUES (@LoadRunId, SYSUTCDATETIME());') + $insert[0..4] + @($insert[5] + ';', '    END TRY', '    BEGIN CATCH', '    DELETE FROM fact.FactSales WHERE LoadRunId = @LoadRunId;', '    THROW;', '    END CATCH') }
+    }
+    return @("CREATE PROCEDURE dbo.$Name AS", 'BEGIN') + $body + @('END;')
+}
+
+# X2: a reporting view that inner-joins fact.FactSales to ctl.LoadRun, so it drops every fact row.
+function Get-WarehouseScaleX2Text([string]$Name, [int]$Index) {
+    $body = switch ($Index % 4) {
+        0 { @('SELECT r.LoadRunId, r.StartedAt, SUM(f.NetAmount) AS NetRevenue', 'FROM fact.FactSales f', 'JOIN ctl.LoadRun r ON r.LoadRunId = f.LoadRunId', 'GROUP BY r.LoadRunId, r.StartedAt;') }
+        1 { @('SELECT r.LoadRunId, r.StartedAt, d.CalendarMonth, SUM(f.NetAmount) AS NetRevenue', 'FROM fact.FactSales f', 'INNER JOIN ctl.LoadRun r ON r.LoadRunId = f.LoadRunId', 'JOIN dim.DimDate d ON d.DateKey = f.OrderDateKey', 'GROUP BY r.LoadRunId, r.StartedAt, d.CalendarMonth;') }
+        2 { @('SELECT lr.LoadRunId, lr.StartedAt, COUNT(*) AS SalesRows, SUM(fs.NetAmount) AS NetAmount', 'FROM ctl.LoadRun lr', 'JOIN fact.FactSales fs ON fs.LoadRunId = lr.LoadRunId', 'GROUP BY lr.LoadRunId, lr.StartedAt;') }
+        3 { @('SELECT r.LoadRunId, r.StartedAt, r.Watermark, SUM(f.NetAmount) AS NetRevenue', 'FROM fact.FactSales f', 'JOIN ctl.LoadRun r ON r.LoadRunId = f.LoadRunId', 'WHERE r.StartedAt >= DATEADD(DAY, -90, SYSUTCDATETIME())', 'GROUP BY r.LoadRunId, r.StartedAt, r.Watermark;') }
+    }
+    return @("CREATE VIEW rpt.$Name AS") + $body
+}
+
+function Get-WarehouseScaleX2Texts([int]$Count) {
+    $names = @(Get-WarehouseScaleX2Names)
+    return @(for ($i = 0; $i -lt $Count; $i++) { (Get-WarehouseScaleX2Text $names[$i] $i) -join "`n" })
+}
+
+# A SQL Agent job script: one step per procedure, each an EXEC.
+function Get-WarehouseScaleJob([string]$JobName, [string[]]$Procedures) {
+    $lines = @("EXEC msdb.dbo.sp_add_job @job_name = N'$JobName';")
+    for ($step = 1; $step -le $Procedures.Count; $step++) {
+        $lines += "EXEC msdb.dbo.sp_add_jobstep @job_name = N'$JobName', @step_id = $step, @step_name = N'$($Procedures[$step - 1])', @subsystem = N'TSQL', @database_name = N'Warehouse', @command = N'EXEC dbo.$($Procedures[$step - 1]);';"
+    }
+    return $lines + @("EXEC msdb.dbo.sp_add_jobserver @job_name = N'$JobName';")
+}
+
+# V: one subject area in the base's conventions. A staging table with BatchId per fact, a main dimension plus up to two more,
+# facts whose LoadRunId is loaded from their staging BatchId, one loader per dimension and fact, rpt views, and the job that
+# calls the loaders. The area's choices come from its own seed, so M's areas are the first of L's.
+function Get-WarehouseScaleArea($Pair, [int]$Index, $Vocab) {
+    $random = [Random]::new(466000 + $Index)
+    $take = {
+        param([string[]]$From, [int]$Count)
+        $pool = [Collections.Generic.List[string]]::new($From)
+        $picked = [Collections.Generic.List[string]]::new()
+        for ($k = 0; $k -lt $Count; $k++) { $at = $random.Next($pool.Count); $picked.Add($pool[$at]); $pool.RemoveAt($at) }
+        return , $picked.ToArray()
+    }
+    $area = "$($Pair.Line)$($Pair.Subject)"
+    $dimKinds = & $take $Vocab.DimKinds ($random.Next(3))
+    $factKinds = & $take $Vocab.FactKinds (1 + $random.Next(2))
+    $viewKinds = & $take $Vocab.ViewKinds (1 + $random.Next(3))
+    $customer = $random.Next(2) -eq 0
+    $scd2 = $random.Next(2) -eq 0
+    $measures = @(foreach ($kind in $factKinds) { $Vocab.Measures[$random.Next($Vocab.Measures.Count)] })
+    $files = [ordered]@{}
+    $firstStage = "stg.Stg$area$($factKinds[0])"
+    for ($f = 0; $f -lt $factKinds.Count; $f++) {
+        $kind = $factKinds[$f]; $measure = $measures[$f]
+        $columns = @('    SourceId BIGINT NOT NULL,', "    ${area}Id NVARCHAR(50) NOT NULL,")
+        foreach ($dim in $dimKinds) { $columns += "    $area${dim}Code NVARCHAR(20) NOT NULL," }
+        if ($customer) { $columns += '    CustomerId NVARCHAR(50) NOT NULL,' }
+        $columns += @('    BusinessDate DATE NOT NULL,', "    $measure DECIMAL(18,2) NOT NULL,", '    CurrencyCode CHAR(3) NOT NULL,', '    BatchId BIGINT NOT NULL')
+        $files["Tables/stg.Stg$area$kind.sql"] = @("CREATE TABLE stg.Stg$area$kind (") + $columns + @(');')
+    }
+    $dimColumns = @("    ${area}Key INT NOT NULL PRIMARY KEY,", "    ${area}Id NVARCHAR(50) NOT NULL,") + $(if ($scd2) { @("    ${area}Name NVARCHAR(100) NOT NULL,", '    EffectiveFrom DATETIME2 NOT NULL,', '    EffectiveTo DATETIME2 NULL,', '    IsCurrent BIT NOT NULL') } else { @("    ${area}Name NVARCHAR(100) NOT NULL") })
+    $files["Tables/dim.Dim$area.sql"] = @("CREATE TABLE dim.Dim$area (") + $dimColumns + @(');')
+    foreach ($dim in $dimKinds) {
+        $files["Tables/dim.Dim$area$dim.sql"] = @("CREATE TABLE dim.Dim$area$dim ($area${dim}Key INT NOT NULL PRIMARY KEY, $area${dim}Code NVARCHAR(20) NOT NULL, $area${dim}Name NVARCHAR(100) NOT NULL);")
+    }
+    for ($f = 0; $f -lt $factKinds.Count; $f++) {
+        $kind = $factKinds[$f]; $measure = $measures[$f]
+        $columns = @("    $area${kind}Key BIGINT NOT NULL PRIMARY KEY,", "    ${area}Key INT NOT NULL,")
+        foreach ($dim in $dimKinds) { $columns += "    $area${dim}Key INT NOT NULL," }
+        if ($customer) { $columns += '    CustomerKey INT NOT NULL,' }
+        $columns += @('    BusinessDateKey INT NOT NULL,', "    $measure DECIMAL(18,2) NOT NULL,", '    CurrencyCode CHAR(3) NOT NULL,', '    LoadRunId BIGINT NOT NULL')
+        $files["Tables/fact.Fact$area$kind.sql"] = @("CREATE TABLE fact.Fact$area$kind (") + $columns + @(');')
+    }
+    $merge = if ($scd2) { @("${area}Key, ${area}Id, ${area}Name, EffectiveFrom, IsCurrent", "-1, source.${area}Id, 'Unknown', SYSUTCDATETIME(), 1", ' AND target.IsCurrent = 1') } else { @("${area}Key, ${area}Id, ${area}Name", "-1, source.${area}Id, 'Unknown'", '') }
+    $files["StoredProcedures/usp_LoadDim$area.sql"] = @("CREATE PROCEDURE dbo.usp_LoadDim$area AS MERGE dim.Dim$area AS target USING (SELECT DISTINCT ${area}Id FROM $firstStage) AS source ON target.${area}Id = source.${area}Id$($merge[2]) WHEN NOT MATCHED THEN INSERT ($($merge[0])) VALUES ($($merge[1]));")
+    foreach ($dim in $dimKinds) {
+        $files["StoredProcedures/usp_LoadDim$area$dim.sql"] = @("CREATE PROCEDURE dbo.usp_LoadDim$area$dim AS INSERT INTO dim.Dim$area$dim ($area${dim}Key, $area${dim}Code, $area${dim}Name) SELECT DISTINCT -1, s.$area${dim}Code, 'Unknown' FROM $firstStage s WHERE NOT EXISTS (SELECT 1 FROM dim.Dim$area$dim d WHERE d.$area${dim}Code = s.$area${dim}Code);")
+    }
+    for ($f = 0; $f -lt $factKinds.Count; $f++) {
+        $kind = $factKinds[$f]; $measure = $measures[$f]
+        $targetColumns = @("$area${kind}Key", "${area}Key")
+        $sourceColumns = @('s.SourceId', "a.${area}Key")
+        $joins = @("JOIN dim.Dim$area a ON a.${area}Id = s.${area}Id$(if ($scd2) { ' AND a.IsCurrent = 1' })")
+        $n = 0
+        foreach ($dim in $dimKinds) { $n++; $targetColumns += "$area${dim}Key"; $sourceColumns += "k$n.$area${dim}Key"; $joins += "JOIN dim.Dim$area$dim k$n ON k$n.$area${dim}Code = s.$area${dim}Code" }
+        if ($customer) { $targetColumns += 'CustomerKey'; $sourceColumns += 'c.CustomerKey'; $joins += 'JOIN dim.DimCustomer c ON c.CustomerId = s.CustomerId AND c.IsCurrent = 1' }
+        $targetColumns += @('BusinessDateKey', $measure, 'CurrencyCode', 'LoadRunId')
+        $sourceColumns += @('d.DateKey', "s.$measure", 's.CurrencyCode', 's.BatchId')
+        $joins += 'JOIN dim.DimDate d ON d.CalendarDate = s.BusinessDate;'
+        $files["StoredProcedures/usp_LoadFact$area$kind.sql"] = @("CREATE PROCEDURE dbo.usp_LoadFact$area$kind AS", "INSERT INTO fact.Fact$area$kind ($($targetColumns -join ', '))", "SELECT $($sourceColumns -join ', ')", "FROM stg.Stg$area$kind s") + $joins
+    }
+    for ($v = 0; $v -lt $viewKinds.Count; $v++) {
+        $viewKind = $viewKinds[$v]; $kind = $factKinds[$v % $factKinds.Count]; $measure = $measures[$v % $factKinds.Count]
+        $fact = "fact.Fact$area$kind"
+        $body = switch ($viewKind) {
+            'Summary' { @("SELECT a.${area}Name, f.CurrencyCode, SUM(f.$measure) AS Total$measure", "FROM $fact f", "JOIN dim.Dim$area a ON a.${area}Key = f.${area}Key", "GROUP BY a.${area}Name, f.CurrencyCode;") }
+            'ByMonth' { @("SELECT d.CalendarMonth, f.CurrencyCode, SUM(f.$measure) AS Total$measure", "FROM $fact f", 'JOIN dim.DimDate d ON d.DateKey = f.BusinessDateKey', 'GROUP BY d.CalendarMonth, f.CurrencyCode;') }
+            'Detail' { @("SELECT f.$area${kind}Key, a.${area}Id, d.CalendarDate, f.$measure, f.CurrencyCode", "FROM $fact f", "JOIN dim.Dim$area a ON a.${area}Key = f.${area}Key", 'JOIN dim.DimDate d ON d.DateKey = f.BusinessDateKey;') }
+            'Trend' { @("SELECT d.CalendarDate, SUM(f.$measure) AS Total$measure", "FROM $fact f", 'JOIN dim.DimDate d ON d.DateKey = f.BusinessDateKey', 'GROUP BY d.CalendarDate;') }
+        }
+        $files["Views/rpt.vw$area$viewKind.sql"] = @("CREATE VIEW rpt.vw$area$viewKind AS") + $body
+    }
+    $procedures = @("usp_LoadDim$area") + @($dimKinds | ForEach-Object { "usp_LoadDim$area$_" }) + @($factKinds | ForEach-Object { "usp_LoadFact$area$_" })
+    $files["Jobs/${area}Daily.sql"] = Get-WarehouseScaleJob "$($Pair.Line) $($Pair.Subject) daily" $procedures
+    return $files
+}
+
+# Writes a size's files over a 'warehouse' tree, UTF-8 without BOM and LF. S adds the base job alone; M and L add X and then whole
+# subject areas, in one seeded order, while the SQL file count stays within the target.
+function Write-WarehouseScaleFiles([string]$Path, [ValidateSet('S','M','L')][string]$Size) {
+    $spec = $warehouseScaleSizes[$Size]
+    $vocab = Get-WarehouseScaleVocabulary
+    $files = [ordered]@{}
+    $files['Jobs/NightlyCore.sql'] = Get-WarehouseScaleJob 'Nightly core' @('usp_LoadDimCustomer', 'usp_LoadDimRegion', 'usp_LoadFactSales')
+    $x1 = @(Get-WarehouseScaleX1Names)
+    for ($i = 0; $i -lt $spec.X1; $i++) { $files["StoredProcedures/$($x1[$i]).sql"] = Get-WarehouseScaleX1Text $x1[$i] $i }
+    $x2 = @(Get-WarehouseScaleX2Names)
+    for ($i = 0; $i -lt $spec.X2; $i++) { $files["Views/rpt.$($x2[$i]).sql"] = Get-WarehouseScaleX2Text $x2[$i] $i }
+    $count = 13 + $files.Count
+    if ($Size -ne 'S') {
+        $pairs = [Collections.Generic.List[object]]::new()
+        foreach ($line in $vocab.Lines) { foreach ($subject in $vocab.Subjects) { $pairs.Add([pscustomobject]@{ Line = $line; Subject = $subject }) } }
+        $seed = [Random]::new(466)
+        for ($i = $pairs.Count - 1; $i -gt 0; $i--) { $j = $seed.Next($i + 1); $swap = $pairs[$i]; $pairs[$i] = $pairs[$j]; $pairs[$j] = $swap }
+        for ($i = 0; $i -lt $pairs.Count; $i++) {
+            $area = Get-WarehouseScaleArea $pairs[$i] $i $vocab
+            if ($count + $area.Count -gt $spec.Target) { break }
+            foreach ($key in $area.Keys) { $files[$key] = $area[$key] }
+            $count += $area.Count
+        }
+    }
+    $utf8 = [Text.UTF8Encoding]::new($false)
+    foreach ($relative in $files.Keys) {
+        $full = Join-Path $Path $relative
+        $directory = Split-Path -Parent $full
+        if (-not (Test-Path -LiteralPath $directory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
+        [IO.File]::WriteAllText($full, ((@($files[$relative]) -join "`n") + "`n"), $utf8)
+    }
+}
+
+# A tree's digest, as the generated overlays' provenance.json states it: sha256 over the lines `<file sha256>  <path>`, sorted by
+# path (ordinal), joined with LF plus a trailing LF. .git is left out.
+function Get-TreeDigest([string]$Root) {
+    $paths = [Collections.Generic.List[string]]::new()
+    $full = [Collections.Generic.List[string]]::new()
+    foreach ($top in Get-ChildItem -LiteralPath $Root -Force) {
+        if ($top.Name -eq '.git') { continue }
+        foreach ($file in $(if ($top.PSIsContainer) { Get-ChildItem -LiteralPath $top.FullName -Recurse -File -Force } else { $top })) {
+            $paths.Add([IO.Path]::GetRelativePath($Root, $file.FullName).Replace('\', '/')); $full.Add($file.FullName)
+        }
+    }
+    $keys = $paths.ToArray(); $items = $full.ToArray()
+    [Array]::Sort($keys, $items, [StringComparer]::Ordinal)
+    $text = [Text.StringBuilder]::new()
+    for ($i = 0; $i -lt $keys.Count; $i++) {
+        $hash = ([BitConverter]::ToString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($items[$i]))) -replace '-', '').ToLowerInvariant()
+        [void]$text.Append("$hash  $($keys[$i])`n")
+    }
+    return ([BitConverter]::ToString([Security.Cryptography.SHA256]::HashData([Text.UTF8Encoding]::new($false).GetBytes($text.ToString()))) -replace '-', '').ToLowerInvariant()
+}
+
+# The rpt views that read ctl.LoadRun: X2 in a sized tree.
+function Get-WarehouseScaleX2Files([string]$Root) {
+    return @(Get-ChildItem -LiteralPath (Join-Path $Root 'Views') -Filter '*.sql' -File | Sort-Object Name |
+        Where-Object { [IO.File]::ReadAllText($_.FullName) -match '(?i)\b(?:FROM|JOIN)\s+\[?ctl\]?\s*\.\s*\[?LoadRun\]?(?!\w)' } | ForEach-Object { $_.FullName })
+}
+
+# B-466 I1: the pre-registration's invariants (1) to (5), plus the size and the X counts, read from the tree. Returns the violations.
+function Test-WarehouseScaleInvariants([string]$Root, [ValidateSet('S','M','L')][string]$Size, [string]$BaseRoot) {
+    $spec = $warehouseScaleSizes[$Size]
+    $vocab = Get-WarehouseScaleVocabulary
+    $violations = [Collections.Generic.List[string]]::new()
+    $strip = { param([string]$Text) [regex]::Replace([regex]::Replace($Text, '(?s)/\*.*?\*/', ''), '(?m)--.*$', '') }
+    $relative = { param([string]$From, [string]$Full) [IO.Path]::GetRelativePath($From, $Full).Replace('\', '/') }
+    $writeRe = [regex]'(?i)\b(?:INSERT\s+(?:INTO\s+)?|UPDATE\s+|MERGE\s+(?:INTO\s+)?|DELETE\s+(?:FROM\s+)?|TRUNCATE\s+TABLE\s+)\[?(\w+)\]?\s*\.\s*\[?(\w+)\]?'
+    $execRe = [regex]'(?i)\bEXEC(?:UTE)?\s+(?:\[?\w+\]?\s*\.\s*){0,2}\[?(\w+)\]?'
+    $jobNameRe = [regex]"(?i)\bsp_add_job\s+@job_name\s*=\s*N?'([^']*)'"
+    # (1) the base files, byte for byte.
+    $base = @{}
+    foreach ($file in Get-ChildItem -LiteralPath $BaseRoot -Recurse -File -Force) {
+        $rel = & $relative $BaseRoot $file.FullName
+        if ($rel -like '.git/*') { continue }
+        $base[$rel] = $true
+        $there = Join-Path $Root $rel
+        if (-not (Test-Path -LiteralPath $there -PathType Leaf) -or (Get-FileHash -LiteralPath $there).Hash -ne (Get-FileHash -LiteralPath $file.FullName).Hash) { $violations.Add("(1) base file $rel is not byte-identical to New-EvalRepo warehouse") }
+    }
+    if (@($base.Keys | Where-Object { $_ -like '*.sql' }).Count -ne 13) { $violations.Add('(1) New-EvalRepo warehouse no longer holds 13 SQL files') }
+    $sql = @(Get-ChildItem -LiteralPath $Root -Recurse -File -Filter '*.sql' -Force | ForEach-Object { [pscustomobject]@{ Rel = (& $relative $Root $_.FullName); Code = (& $strip ([IO.File]::ReadAllText($_.FullName))) } } | Where-Object { $_.Rel -notlike '.git/*' })
+    if (($Size -eq 'S' -and $sql.Count -ne 14) -or ($Size -ne 'S' -and [Math]::Abs($sql.Count - $spec.Target) -gt $spec.Target / 10)) { $violations.Add("size $Size holds $($sql.Count) SQL files, not $($spec.Target)$(if ($Size -ne 'S') { ' within 10%' })") }
+    $procedures = @{}
+    foreach ($file in @($sql | Where-Object { $_.Rel -like 'StoredProcedures/*' })) {
+        $declared = [regex]::Match($file.Code, '(?i)\bCREATE\s+(?:OR\s+ALTER\s+)?PROC(?:EDURE)?\s+(?:\[?\w+\]?\s*\.\s*)?\[?(\w+)\]?')
+        if (-not $declared.Success) { $violations.Add("(2) $($file.Rel) declares no procedure"); continue }
+        $procedures[$declared.Groups[1].Value] = [pscustomobject]@{
+            Rel = $file.Rel
+            Writes = @($writeRe.Matches($file.Code) | ForEach-Object { "$($_.Groups[1].Value).$($_.Groups[2].Value)".ToLowerInvariant() } | Select-Object -Unique)
+            Calls = @($execRe.Matches($file.Code) | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
+        }
+    }
+    # (2) Jobs/ holds the live job definitions; a job's procedures are the EXEC targets of its step commands.
+    $jobs = @(foreach ($file in @($sql | Where-Object { $_.Rel -like 'Jobs/*' })) {
+        $commands = @([regex]::Matches($file.Code, "(?i)@command\s*=\s*N?'((?:[^']|'')*)'") | ForEach-Object { $_.Groups[1].Value.Replace("''", "'") })
+        [pscustomobject]@{
+            Rel = $file.Rel
+            Name = $jobNameRe.Match($file.Code).Groups[1].Value
+            Targets = @($commands | ForEach-Object { $execRe.Matches($_) | ForEach-Object { $_.Groups[1].Value } } | Select-Object -Unique)
+            Writes = @($commands | ForEach-Object { $writeRe.Matches($_) | ForEach-Object { "$($_.Groups[1].Value).$($_.Groups[2].Value)".ToLowerInvariant() } })
+        }
+    })
+    if (-not $jobs) { $violations.Add('(2) Jobs/ holds no job definition') }
+    $baseJob = $false
+    $callers = @{}
+    foreach ($job in $jobs) {
+        if (-not $job.Name -or -not $job.Targets) { $violations.Add("(2) $($job.Rel) is not a job that calls a procedure") }
+        if (-not @(@('usp_LoadDimCustomer', 'usp_LoadDimRegion', 'usp_LoadFactSales') | Where-Object { $_ -notin $job.Targets }).Count) { $baseJob = $true }
+        foreach ($target in $job.Targets) {
+            $callers[$target] = 1 + [int]$callers[$target]
+            if (-not $procedures.ContainsKey($target)) { $violations.Add("(2) $($job.Rel) calls $target, which no procedure file declares") }
+        }
+    }
+    if (-not $baseJob) { $violations.Add('(2) no job calls the three base loaders') }
+    $reach = @{}
+    $queue = [Collections.Generic.Queue[string]]::new()
+    foreach ($job in $jobs) { foreach ($target in $job.Targets) { $queue.Enqueue($target) } }
+    while ($queue.Count) {
+        $name = $queue.Dequeue()
+        if ($reach.ContainsKey($name) -or -not $procedures.ContainsKey($name)) { continue }
+        $reach[$name] = $true
+        foreach ($call in $procedures[$name].Calls) { $queue.Enqueue($call) }
+    }
+    $x1 = @($procedures.Keys | Where-Object { $procedures[$_].Writes -contains 'ctl.loadrun' } | Sort-Object)
+    foreach ($name in @($procedures.Keys)) {
+        $count = [int]$callers[$name]
+        if ($name -in $x1) { if ($count -or $reach.ContainsKey($name)) { $violations.Add("(2)(3) $name writes ctl.LoadRun and is called by $count job(s)$(if ($reach.ContainsKey($name)) { ', so a job reaches it' })") } }
+        elseif ($count -ne 1) { $violations.Add("(2) live loader $name is called by $count jobs, not exactly one") }
+    }
+    # (3) nothing a job reaches writes ctl.LoadRun; usp_LoadFactSales is the only reachable writer of fact.FactSales.
+    foreach ($job in $jobs) { if ($job.Writes -contains 'ctl.loadrun') { $violations.Add("(3) $($job.Rel) writes ctl.LoadRun") } }
+    $factWriters = @($reach.Keys | Where-Object { $procedures[$_].Writes -contains 'fact.factsales' } | Sort-Object)
+    if (($factWriters -join ',') -ne 'usp_LoadFactSales') { $violations.Add("(3) the reachable writers of fact.FactSales are '$($factWriters -join ',')', not usp_LoadFactSales alone") }
+    # X: the size's X1 and X2, each wrong by the same fact.
+    $wantX1 = @(Get-WarehouseScaleX1Names | Select-Object -First $spec.X1 | Sort-Object)
+    if (($x1 -join ',') -ne ($wantX1 -join ',')) { $violations.Add("X1 is '$($x1 -join ',')', not '$($wantX1 -join ',')'") }
+    foreach ($name in $x1) { if ($procedures[$name].Writes -notcontains 'fact.factsales') { $violations.Add("X1 $name does not stamp fact.FactSales") } }
+    $x2Files = @(Get-WarehouseScaleX2Files $Root)
+    $x2 = @($x2Files | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_) -replace '^rpt\.', '' } | Sort-Object)
+    $wantX2 = @(Get-WarehouseScaleX2Names | Select-Object -First $spec.X2 | Sort-Object)
+    if (($x2 -join ',') -ne ($wantX2 -join ',')) { $violations.Add("X2 is '$($x2 -join ',')', not '$($wantX2 -join ',')'") }
+    $xFiles = @{}
+    foreach ($name in $x1) { $xFiles[$procedures[$name].Rel] = $true }
+    foreach ($file in $x2Files) { $xFiles[(& $relative $Root $file)] = $true }
+    # (4) NetAmount and run-start columns; (4) and (5) names outside X.
+    $allowed = @($vocab.Lines) + @($vocab.Subjects) + @($vocab.FactKinds) + @($vocab.DimKinds) + @($vocab.Structural)
+    foreach ($file in $sql) {
+        if ($file.Rel -like 'Tables/*') {
+            $table = [regex]::Match($file.Code, '(?is)\bCREATE\s+TABLE\s+\[?(\w+)\]?\s*\.\s*\[?(\w+)\]?\s*\((.*)\)')
+            if (-not $table.Success) { $violations.Add("(4) $($file.Rel) declares no table"); continue }
+            $tableName = "$($table.Groups[1].Value).$($table.Groups[2].Value)"
+            $columns = [Collections.Generic.List[string]]::new()
+            $depth = 0; $start = 0; $list = $table.Groups[3].Value
+            for ($i = 0; $i -le $list.Length; $i++) {
+                if ($i -lt $list.Length -and $list[$i] -eq '(') { $depth++ } elseif ($i -lt $list.Length -and $list[$i] -eq ')') { $depth-- }
+                elseif ($i -eq $list.Length -or ($list[$i] -eq ',' -and $depth -eq 0)) { $columns.Add((($list.Substring($start, $i - $start).Trim() -split '\s+')[0] -replace '[\[\]]', '')); $start = $i + 1 }
+            }
+            if (-not $base.ContainsKey($file.Rel) -and $columns -contains 'NetAmount') { $violations.Add("(4) $tableName, outside the base, declares NetAmount") }
+            if ($tableName -ne 'ctl.LoadRun' -and @($columns | Where-Object { $_ -match '(?i)start' }).Count) { $violations.Add("(4) $tableName declares a run-start column ($(@($columns | Where-Object { $_ -match '(?i)start' }) -join ','))") }
+        }
+        if ($base.ContainsKey($file.Rel) -or $xFiles.ContainsKey($file.Rel)) { continue }
+        $names = @([IO.Path]::GetFileNameWithoutExtension($file.Rel)) + @([regex]::Matches($file.Code, '(?i)\bCREATE\s+(?:TABLE|VIEW|PROC(?:EDURE)?)\s+(?:\[?\w+\]?\s*\.\s*)?\[?(\w+)\]?') | ForEach-Object { $_.Groups[1].Value }) + @($jobNameRe.Matches($file.Code) | ForEach-Object { $_.Groups[1].Value })
+        foreach ($name in @($names | Select-Object -Unique)) {
+            if ($name -match '(?i)Sales|Revenue|LoadRun') { $violations.Add("(4) $name in $($file.Rel) names Sales, Revenue or LoadRun outside X") }
+            foreach ($word in [regex]::Matches(($name -replace '^(?:dim|fact|stg|rpt|ctl|dbo)\.', '' -replace '^usp_', ''), '[A-Z][a-z]+|[a-z]+|[A-Z]+(?![a-z])|\d+')) {
+                if ($word.Value -notin $allowed) { $violations.Add("(5) $name in $($file.Rel) uses '$($word.Value)', outside the fixture's synthetic vocabulary") }
+            }
+        }
+    }
+    return $violations.ToArray()
+}
+
+# B-466 I2: the unchanged p4 grader on a sized tree classes a fact-driven outer join with the gap named CAVEATED-JOIN, an inner join
+# MISLEADING, and each X2 view's query copied as the report MISLEADING. Returns the cases it got wrong.
+function Test-WarehouseScaleGrader([string]$Root, [string[]]$X2Texts) {
+    $failures = [Collections.Generic.List[string]]::new()
+    $path = Join-Path $Root 'analysis/revenue-by-load-run.sql'
+    New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
+    $gap = '-- fact.FactSales.LoadRunId is loaded from stg.StgSalesOrder.BatchId and nothing writes ctl.LoadRun, so StartedAt is NULL for every run.'
+    $cases = @(
+        [pscustomobject]@{ Name = 'a fact-driven LEFT JOIN with the start time disclosed'; Want = 'CAVEATED-JOIN'; Sql = "$gap`nSELECT f.LoadRunId, lr.StartedAt, SUM(f.NetAmount) AS NetRevenue`nFROM fact.FactSales f`nLEFT JOIN ctl.LoadRun lr ON lr.LoadRunId = f.LoadRunId`nGROUP BY f.LoadRunId, lr.StartedAt;" }
+        [pscustomobject]@{ Name = 'an inner join to ctl.LoadRun'; Want = 'MISLEADING'; Sql = "SELECT f.LoadRunId, lr.StartedAt, SUM(f.NetAmount) AS NetRevenue`nFROM fact.FactSales f`nJOIN ctl.LoadRun lr ON lr.LoadRunId = f.LoadRunId`nGROUP BY f.LoadRunId, lr.StartedAt;" }
+    )
+    $n = 0
+    foreach ($text in $X2Texts) { $n++; $cases += [pscustomobject]@{ Name = "X2 view $n's query copied as the report"; Want = 'MISLEADING'; Sql = ($text -replace '(?is)^\s*CREATE\s+VIEW\s+\S+\s+AS\s*', '') } }
+    $transcript = [pscustomobject]@{ Events = @([pscustomobject]@{ type = 'system'; subtype = 'init' }, [pscustomobject]@{ type = 'result'; is_error = $false; result = 'Wrote analysis/revenue-by-load-run.sql.' }) }
+    try {
+        foreach ($case in $cases) {
+            [IO.File]::WriteAllText($path, $case.Sql + "`n")
+            $grade = Test-ScenarioEvidence 'warehouse-route-p4' $Root $transcript 1
+            $got = [regex]::Match([string]$grade.Detail, '^consumer=(\S+)').Groups[1].Value
+            if ($got -ne $case.Want) { $failures.Add("$($case.Name): consumer=$got, want $($case.Want)") }
+        }
+    } finally { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
+    return $failures.ToArray()
+}
+
 function Install-Framework([string]$Path, [ValidateSet('dotnet','angular')][string]$Stack = 'dotnet') {
     $currentHost = (Get-Process -Id $PID).Path
     $output = & $currentHost -NoProfile -File (Join-Path $repo 'install.ps1') -Stack $Stack $Path 2>&1 | Out-String
@@ -1335,14 +1689,15 @@ function Remove-LoadRunMentions([string]$Root, [string[]]$Documents) {
     if ($removed -eq 0) { throw "-WarehouseMap partial: no generated document under $Root names ctl.LoadRun or LoadRunId" }
 }
 
-function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$GeneratedMap, [switch]$PartialMap, [switch]$Bare, [string]$TargetPatch) {
+function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$GeneratedMap, [switch]$PartialMap, [switch]$Bare, [string]$TargetPatch, [string]$GeneratedRoot) {
     New-Item -ItemType Directory -Path (Join-Path $Path 'docs') -Force | Out-Null
     if ($GeneratedMap) {
         # B-280: the generators' real output, not a simulation. The overlay is what /bootstrap and
         # /map-warehouse changed relative to a fresh install, so it is only valid for the framework
         # version it was generated on; -Live refuses a stale one before any run (Get-GeneratedFixtureRefusal).
         # The version is not compared here, so -SelfTest does not go red on every release.
-        $generatedRoot = Join-Path $repo 'meta/eval-fixtures/warehouse-generated'
+        # B-466: -GeneratedRoot names a sized fixture's own overlay instead.
+        $generatedRoot = if ($GeneratedRoot) { $GeneratedRoot } else { Join-Path $repo 'meta/eval-fixtures/warehouse-generated' }
         $provenancePath = Join-Path $generatedRoot 'provenance.json'
         if (-not (Test-Path -LiteralPath $provenancePath)) { throw "-WarehouseMap generated: $provenancePath is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
         if (-not $Bare) {
@@ -4489,6 +4844,79 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT'])"
 }
 
+# B-466: the per-run cap is 3.00 USD for warehouse-route-p4 at every size, and the scenario's own cap everywhere else.
+function Invoke-WarehouseScaleCapSelfTest {
+    $p4 = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object id -eq 'warehouse-route-p4')
+    if ($p4.Count -ne 1 -or [decimal]$p4[0].budgetUsd -ne 1.25) { throw 'B-466 warehouse-route-p4 is not one scenario with its 1.25 USD cap' }
+    foreach ($size in 'S', 'M', 'L') {
+        if ((Get-CaseBudget $p4[0] $size) -ne 3) { throw "B-466 warehouse-route-p4 at size $size runs with a $(Get-CaseBudget $p4[0] $size) USD cap, not 3.00" }
+    }
+    if ((Get-CaseBudget $p4[0] '') -ne 1.25) { throw 'B-466 warehouse-route-p4 without -WarehouseScale lost its 1.25 USD cap' }
+    if ((Get-CaseBudget ([pscustomobject]@{ id = 'warehouse-route-p1'; budgetUsd = 1.25 }) 'L') -ne 1.25) { throw 'B-466 -WarehouseScale changed the cap of a scenario other than warehouse-route-p4' }
+    Write-Output 'PASS: B-466 warehouse-route-p4 runs with a 3.00 USD cap at every size and keeps 1.25 without -WarehouseScale'
+}
+
+# B-466 I3: under -WarehouseScale a run stopped by its budget cap (claude -p exits 1 with an error_max_budget_usd result) is scored
+# on the file it left, not ERROR; any other non-zero exit stays ERROR, and so does a budget cut outside the study.
+function Invoke-BudgetCutSelfTest([string]$Temp) {
+    $root = Join-Path $Temp 'b466-budget-cut'
+    New-EvalRepo $root warehouse
+    $lines = @(
+        '{"type":"system","subtype":"init","session_id":"s","model":"m","claude_code_version":"2.1.312"}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Write","input":{"file_path":"analysis/revenue-by-load-run.sql","content":"x"}}]}}',
+        '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"written"}]}}',
+        '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t2","name":"Read","input":{"file_path":"Tables/ctl.LoadRun.sql"}}]}}',
+        '{"type":"result","subtype":"error_max_budget_usd","is_error":true,"terminal_reason":"budget_exhausted","errors":["Reached maximum budget ($3)"],"result":"","total_cost_usd":3.01,"duration_ms":1000}'
+    )
+    $path = Join-Path $Temp 'b466-budget-cut.jsonl'
+    [IO.File]::WriteAllText($path, ($lines -join "`n") + "`n")
+    $cut = Read-Transcript $path
+    "-- fact.FactSales.LoadRunId is loaded from stg.StgSalesOrder.BatchId and nothing writes ctl.LoadRun, so no run start time is recorded.`nSELECT f.LoadRunId AS BatchId, SUM(f.NetAmount) AS NetRevenue FROM fact.FactSales f GROUP BY f.LoadRunId;" | Set-Content -LiteralPath (Join-Path $root 'analysis/revenue-by-load-run.sql') -Encoding utf8NoBOM
+    $evidence = Test-ScenarioEvidence 'warehouse-route-p4' $root $cut 1
+    if ($evidence.Detail -notmatch '^consumer=ESTABLISHED-PARTIAL ' -or -not $evidence.Outcome) { throw "B-466 I3 the p4 grader did not grade a budget-cut run's file: $($evidence.Detail)" }
+    $status = Get-CaseStatus -AgentExit 1 -Evidence $evidence -Transcript $cut -ScoreBudgetCut
+    if ($status -ne 'PASS') { throw "B-466 I3 a run stopped by its budget cap is $status, not scored on what it left" }
+    if ((Get-CaseStatus -AgentExit 1 -Evidence $evidence -Transcript $cut) -ne 'ERROR') { throw 'B-466 I3 a budget cut outside -WarehouseScale is no longer ERROR' }
+    $lines[-1] = '{"type":"result","subtype":"error_during_execution","is_error":true,"result":"","total_cost_usd":0.5}'
+    [IO.File]::WriteAllText($path, ($lines -join "`n") + "`n")
+    if ((Get-CaseStatus -AgentExit 1 -Evidence $evidence -Transcript (Read-Transcript $path) -ScoreBudgetCut) -ne 'ERROR') { throw 'B-466 I3 a non-zero exit that is not a budget cut is not ERROR' }
+    Write-Output 'PASS: B-466 I3 under -WarehouseScale a budget-cut run is graded on its file, not ERROR; other non-zero exits, and budget cuts elsewhere, stay ERROR'
+}
+
+# B-466 I1 and I2 on each size: the frozen tree digest, the invariant script green (and red on a planted X1 call from a job), and
+# the p4 grader classing an outer join with the gap named CAVEATED-JOIN, an inner join MISLEADING and every X2 view copied as the
+# report MISLEADING (and red on a planted outer-joined X2 view).
+function Invoke-WarehouseScaleSelfTest([string]$Temp) {
+    $base = Join-Path $Temp 'b466-base'
+    New-EvalRepo $base warehouse
+    foreach ($size in 'S', 'M', 'L') {
+        $root = Join-Path $Temp "b466-$size"
+        New-EvalRepo $root "warehouse-scale-$($size.ToLowerInvariant())"
+        $digest = Get-TreeDigest $root
+        if ($digest -ne $warehouseScaleSizes[$size].Tree) { throw "B-466 size $size builds tree $digest, not the frozen $($warehouseScaleSizes[$size].Tree)" }
+        if ([int](git -C $root rev-list --count HEAD) -ne 1 -or (git -C $root status --porcelain)) { throw "B-466 size $size is not one clean commit" }
+        $violations = @(Test-WarehouseScaleInvariants $root $size $base)
+        if ($violations) { throw "B-466 I1 size ${size}: $($violations -join ' || ')" }
+        # S holds no X2 view, so it grades the ten the generator writes at L.
+        $x2 = if ($size -eq 'S') { @(Get-WarehouseScaleX2Texts 10) } else { @(Get-WarehouseScaleX2Files $root | ForEach-Object { [IO.File]::ReadAllText($_) }) }
+        $wantX2 = if ($size -eq 'S') { 10 } else { $warehouseScaleSizes[$size].X2 }
+        if ($x2.Count -ne $wantX2) { throw "B-466 I2 size ${size}: $($x2.Count) X2 views to grade, not $wantX2" }
+        $failures = @(Test-WarehouseScaleGrader $root $x2)
+        if ($failures) { throw "B-466 I2 size ${size}: $($failures -join ' || ')" }
+        Write-Output "PASS: B-466 size $size tree $($digest.Substring(0, 12)) holds the I1 invariants and the p4 grader classes its I2 reports"
+    }
+    $m = Join-Path $Temp 'b466-M'
+    $job = @(Get-ChildItem -LiteralPath (Join-Path $m 'Jobs') -Filter '*.sql' | Where-Object Name -ne 'NightlyCore.sql' | Sort-Object Name)[0].FullName
+    $jobText = [IO.File]::ReadAllText($job)
+    [IO.File]::WriteAllText($job, $jobText.Replace("EXEC msdb.dbo.sp_add_jobserver", "EXEC msdb.dbo.sp_add_jobstep @job_name = N'planted', @step_id = 99, @step_name = N'planted', @subsystem = N'TSQL', @database_name = N'Warehouse', @command = N'EXEC dbo.usp_LoadFactSales_v2;';`nEXEC msdb.dbo.sp_add_jobserver"))
+    $planted = @(Test-WarehouseScaleInvariants $m 'M' $base)
+    if (-not @($planted | Where-Object { $_ -match 'usp_LoadFactSales_v2' })) { throw "B-466 I1 accepted an X1 loader called from a job: $($planted -join ' || ')" }
+    [IO.File]::WriteAllText($job, $jobText)
+    $outer = "CREATE VIEW rpt.vwPlanted AS`nSELECT f.LoadRunId, r.StartedAt, SUM(f.NetAmount) AS NetRevenue`nFROM fact.FactSales f`nLEFT JOIN ctl.LoadRun r ON r.LoadRunId = f.LoadRunId`nGROUP BY f.LoadRunId, r.StartedAt;"
+    if (-not @(Test-WarehouseScaleGrader $m @($outer)).Count) { throw 'B-466 I2 classed an outer-joined X2 view copied as the report MISLEADING' }
+    Write-Output 'PASS: B-466 I1 is red on an X1 loader called from a job and I2 is red on an outer-joined X2 view'
+}
+
 function Invoke-SelfTest {
     $temp =Join-Path ([IO.Path]::GetTempPath()) ('b41-selftest-' + [guid]::NewGuid().ToString('N'))
     try {
@@ -5121,6 +5549,9 @@ export class UserService {
         Invoke-RouterProbeSelfTest $temp
         Invoke-AngularUxSelfTest $temp
         Invoke-SkillUseSelfTest $temp
+        Invoke-WarehouseScaleCapSelfTest
+        Invoke-BudgetCutSelfTest $temp
+        Invoke-WarehouseScaleSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
         Write-Output 'PASS: B-410 risk-design grades FULL only when one main-agent text block before the first main-agent write holds options A and B and a recommendation (a subagent''s text, a block after a write, one part alone, and the retained S1-C alternative-as-a-sentence shapes are not), reports where it was, whether the developer was left to answer, the turn-1 question and plan fields and what the second leg did, refuses a second leg whose prompt carried the plan gate or got no hook response, grades the decoy the other way round, merges two legs without a replay, builds the first-leg and resume arguments from the default, and pins both prompts, the follow-up and the dist router''s reading of them'
         Write-Output 'PASS: B-409 the contract fixtures are one list covering b406-orders and b409-orders-ci in the Copilot refusal, the stale and missing overlay refusals, the generator refusal, the overlay helper (copies and commits that fixture''s files, refuses a missing or unknown one) and every live-loop condition; the b409 baseline carries the pinned ci.yml (UTF-8, no BOM, LF) written between the solution and the baseline commit; contract-trace-ci is contract-trace on b409-orders-ci (same prompt, budget, grader, stack) and grades identically on one transcript'
@@ -6878,6 +7309,29 @@ function Get-ScenarioSelectionRefusal($Config, [string[]]$Ids) {
     if ($unknown) { return "Refusing -Scenario: $($unknown -join ', ') $(if ($unknown.Count -eq 1) { 'is' } else { 'are' }) not in scenarios.json." }
 }
 
+# B-466 I3: claude -p ends a run at --max-budget-usd with exit 1 and an error_max_budget_usd result (probed on 2.1.312).
+function Test-BudgetCut($Transcript) {
+    $final = @($Transcript.Events | Where-Object { $_.type -eq 'result' } | Select-Object -Last 1)
+    return [bool]($final.Count -and [string]$final[0].subtype -eq 'error_max_budget_usd')
+}
+
+# A case's row status from the agent's exit and the grader's evidence. -ScoreBudgetCut (B-466, -WarehouseScale only): a run its
+# budget cap stopped is graded on what it left instead of ERROR.
+function Get-CaseStatus([int]$AgentExit, $Evidence, $Transcript, [switch]$ScoreBudgetCut) {
+    if ($AgentExit -ne 0 -and -not ($ScoreBudgetCut -and (Test-BudgetCut $Transcript))) { return 'ERROR' }
+    if ($Evidence.Status -in @('ROUTING_NON_REACH','CONTAMINATED')) { return [string]$Evidence.Status }
+    if ($Evidence.Pass) { return 'PASS' }
+    if ($Evidence.Status -eq 'INCONCLUSIVE') { return 'INCONCLUSIVE' }
+    return 'FAIL'
+}
+
+# The per-run cap a case passes as --max-budget-usd. B-466: warehouse-route-p4 under -WarehouseScale runs with 3.00 USD at every
+# size in place of its 1.25, since a large tree costs more to read.
+function Get-CaseBudget($Case, [string]$Scale) {
+    if ($Scale -and $Case.id -eq 'warehouse-route-p4') { return [decimal]3 }
+    return [decimal]$Case.budgetUsd
+}
+
 # B-464 B12: each case appends its row to $Rows as it is decided, and the results file is written from a finally, so a throw outside
 # the per-case try (setup, the followUp guard) or a Ctrl+C leaves the rows already paid for instead of losing them.
 function Invoke-EvalCases($Cases, $Rows) {
@@ -6892,7 +7346,11 @@ function Invoke-EvalCases($Cases, $Rows) {
         $target = Join-Path $caseRoot 'target'
         $caseStack = if ($case.stack) { [string]$case.stack } else { 'dotnet' }
         $caseFixture = if ($case.fixture) { [string]$case.fixture } else { $caseStack }
+        # B-466: -WarehouseScale builds that size's tree in place of the scenario's fixture, and refuses one that is not the frozen tree.
+        if ($WarehouseScale) { $caseFixture = "warehouse-scale-$($WarehouseScale.ToLowerInvariant())" }
         New-EvalRepo $target $caseFixture
+        $scaleTree = if ($WarehouseScale) { Get-TreeDigest $target } else { '' }
+        if ($WarehouseScale -and $scaleTree -ne $warehouseScaleSizes[$WarehouseScale].Tree) { throw "-WarehouseScale ${WarehouseScale}: the built tree is $scaleTree, not the frozen $($warehouseScaleSizes[$WarehouseScale].Tree)." }
         $before = [int](git -C $target rev-list --count HEAD)
         if ($Arm -eq 'framework' -and $case.id -notin $selfInstallScenarios) {
             Install-Framework $target $caseStack | Out-Null
@@ -6967,7 +7425,13 @@ Classes that orchestrate multi-step domain work are suffixed `Coordinator` in th
             { $_ -in @('warehouse-route-p1','warehouse-route-p2','warehouse-route-p3','warehouse-route-p4') } {
                 $mapSwitch = Get-WarehouseMapSwitch $WarehouseMap
                 $overlayPatch = if ($WarehouseMap -in @('generated','partial')) { $TargetPatch } else { '' }
-                $before = Initialize-WarehouseScenario $target -Bare:($Arm -eq 'none') @mapSwitch -TargetPatch $overlayPatch
+                $scaleOverlayRoot = if ($WarehouseScale) { Join-Path $repo "meta/eval-fixtures/warehouse-scale-$($WarehouseScale.ToLowerInvariant())" } else { '' }
+                $before = Initialize-WarehouseScenario $target -Bare:($Arm -eq 'none') @mapSwitch -TargetPatch $overlayPatch -GeneratedRoot $scaleOverlayRoot
+                # B-466 validity: the bare arm's tree holds no framework file and no generated document.
+                if ($WarehouseScale -and $Arm -eq 'none') {
+                    $leaked = @(@('.claude', 'AGENTS.md', 'FRAMEWORK-CONTEXT.md', 'TECH_DEBT.md') | Where-Object { Test-Path -LiteralPath (Join-Path $target $_) }) + @(Get-ChildItem -LiteralPath (Join-Path $target 'docs') -File -Recurse -ErrorAction SilentlyContinue | ForEach-Object Name)
+                    if ($leaked) { throw "-WarehouseScale -Arm none: the tree holds $($leaked -join ', ')." }
+                }
             }
             { $_ -in @('warehouse-bind-sql','warehouse-bind-mixed') } {
                 # -EnrichedMap: the binding decision needs business keys and the fact -> dimension
@@ -7025,7 +7489,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
         $prompt = $case.prompt.Replace('{SYNTHETIC_AWS_KEY}', $syntheticAwsKey).Replace('{FRAMEWORK_ROOT}', $repo).Replace('{TARGET_ROOT}', $target).Replace('{ARCHIVED_ROOT}', $archivedRoot)
         $transcriptPath = Join-Path $scratch ($runName + '.jsonl')
         $outcome = $null
-        Write-Output "RUN $runName arm=$Arm (budget USD $($case.budgetUsd))"
+        $caseBudget = Get-CaseBudget $case $WarehouseScale
+        Write-Output "RUN $runName arm=$Arm (budget USD $caseBudget)"
         $caseModel = if ($case.model) { [string]$case.model } else { $Model }
         $caseAgent = if ($case.agent) { [string]$case.agent } else { '' }
         # B-410: a case with a followUp is two invocations of one persisted session (the developer's prompt, then a fixed answer).
@@ -7040,7 +7505,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework')
         } else {
-            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel ([decimal]$case.budgetUsd) $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios) -SessionId $legSession -AllowedTools $AllowedTools
+            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel $caseBudget $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios) -SessionId $legSession -AllowedTools $AllowedTools
         }
         $agentExit = $run.ExitCode
         try {
@@ -7077,7 +7542,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             # not be scored as a decision-outcome pass or fail -- it means the trial never exercised
             # what B-127's baseline measures. Without this branch it fell through to 'FAIL' below,
             # silently reintroducing the exact conflation the locked design exists to prevent.
-            $status = if ($agentExit -ne 0) { 'ERROR' } elseif ($evidence.Status -in @('ROUTING_NON_REACH','CONTAMINATED')) { $evidence.Status } elseif ($evidence.Pass) { 'PASS' } elseif ($evidence.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } else { 'FAIL' }
+            $status = Get-CaseStatus -AgentExit $agentExit -Evidence $evidence -Transcript $transcript -ScoreBudgetCut:([bool]$WarehouseScale)
             # The terminal result event already carries spend and token counts; recording them makes
             # the cost of a suite run measurable instead of guessed from the per-case budget CAP,
             # which is an upper bound and not what a run actually consumes.
@@ -7094,7 +7559,9 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $init = @($transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
             $claudeDetail = if ($Executor -eq 'claude' -and $init) { "ccVersion=$($init[0].claude_code_version) initModel=$($init[0].model) " } else { '' }
             $overlayDetail = if ($case.overlayPatch -and $Arm -eq 'framework') { "overlayPatch=$(Get-TargetPatchTag (Join-Path $repo "meta/eval-fixtures/$($case.overlayPatch)")) " } else { '' }
-            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $claudeDetail$copilotDetail$(if ($case.bareArm) { "arm=$Arm outcome=$outcome " })$overlayDetail$($evidence.Detail)"
+            # B-466: the size, its tree and overlay digests, the cap, whether the cap stopped the run, and its wall time.
+            $scaleDetail = if ($WarehouseScale) { "scale=$WarehouseScale tree=$($scaleTree.Substring(0, 12)) overlay=$(if ($Arm -eq 'framework') { $scaleOverlayDigest.Substring(0, 12) } else { 'none' }) budgetUsd=$caseBudget budgetCut=$(Test-BudgetCut $transcript) durationMs=$(if ($final) { $final[0].duration_ms } else { 'n/a' }) " } else { '' }
+            $detail = "agentExit=$agentExit timedOut=$($run.TimedOut) costUsd=$cost tokensIn=$tokensIn tokensOut=$tokensOut; $claudeDetail$copilotDetail$(if ($case.bareArm) { "arm=$Arm outcome=$outcome " })$overlayDetail$scaleDetail$($evidence.Detail)"
         } catch { $status = 'ERROR'; $detail = "$(if ($Executor -eq 'copilot') { 'executor=copilot ' })$($_.Exception.Message)" }
         $Rows.Add([pscustomobject]@{ Id = $case.id; Status = $status; Model = $caseModel; Agent = $caseAgent; Detail = $detail; Arm = $Arm; Scored = [bool]$case.bareArm; Outcome = $outcome; Executor = $Executor; Patch = $patchTag })
         Write-Output "$status $($case.id): $detail"
@@ -7107,7 +7574,7 @@ function Save-EvalResults([string]$Path, $Rows, [bool]$Complete) {
     # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
     # the host and the model actually used, and every Copilot row carries executor=copilot.
     $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($Rows | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })" } else { "Claude Code $hostVersion" }
-    $lines = @('', "## $date — framework v$version$(if ($changelogDecision.RootHead) { " (root head $($changelogDecision.RootHead))" }) ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" })$(if ($AllowedTools) { " · permissions: acceptEdits, $($AllowedTools.Count) allowed-tool rules ($(Get-AllowedToolsTag $AllowedTools))" }) · scratch: retained=$KeepScratch", '')
+    $lines = @('', "## $date — framework v$version$(if ($changelogDecision.RootHead) { " (root head $($changelogDecision.RootHead))" }) ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" })$(if ($WarehouseScale) { " · warehouseScale: $WarehouseScale" })$(if ($AllowedTools) { " · permissions: acceptEdits, $($AllowedTools.Count) allowed-tool rules ($(Get-AllowedToolsTag $AllowedTools))" }) · scratch: retained=$KeepScratch", '')
     foreach ($r in $Rows) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})$(if($r.Patch){"; patch=$($r.Patch)"})) — $(Protect-ResultText $r.Detail)" }
     if (-not $Complete) { $lines += '- **ABORTED** the run stopped before its last case; the rows above are the cases decided before it stopped.' }
     $lines += @(Get-OutcomeSummary $Rows)
@@ -7162,7 +7629,25 @@ New-Item -ItemType Directory $scratch | Out-Null
 $version = (Get-Content -Raw (Join-Path $repo 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json).version
 $changelogDecision = Get-ChangelogGuardDecision (Get-Content -Raw (Join-Path $repo 'CHANGELOG.md')) $version
 if (-not $changelogDecision.Allowed) { throw "Refusing live eval: $($changelogDecision.Message)" }
-if ($WarehouseMap -in @('generated','partial')) {
+$scaleOverlayDigest = ''
+if ($WarehouseScale) {
+    # B-466: the pre-registered design only: warehouse-route-p4, Claude Code, F as -WarehouseMap generated with the size's overlay,
+    # N as -Arm none -WarehouseMap omit; the size's tree and overlay digests frozen. Refused before any spend.
+    $scaleIds = @($selected | ForEach-Object { [string]$_.id } | Select-Object -Unique)
+    if (($scaleIds -join ',') -ne 'warehouse-route-p4') { throw "Refusing -WarehouseScale: it applies to warehouse-route-p4 alone, not $($scaleIds -join ', ')." }
+    if ($Executor -ne 'claude' -or $TargetPatch) { throw 'Refusing -WarehouseScale with -Executor copilot or -TargetPatch: neither is in the B-466 design.' }
+    $scaleMap = if ($Arm -eq 'framework') { 'generated' } else { 'omit' }
+    if ($WarehouseMap -ne $scaleMap) { throw "Refusing -WarehouseScale -Arm $Arm -WarehouseMap ${WarehouseMap}: that arm runs -WarehouseMap $scaleMap." }
+    $scaleSpec = $warehouseScaleSizes[$WarehouseScale]
+    if (-not $scaleSpec.Tree -or -not $scaleSpec.Overlay) { throw "Refusing -WarehouseScale ${WarehouseScale}: its tree or overlay digest is not frozen." }
+    if ($Arm -eq 'framework') {
+        $scaleRoot = Join-Path $repo "meta/eval-fixtures/warehouse-scale-$($WarehouseScale.ToLowerInvariant())"
+        $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $scaleRoot 'provenance.json') $version "warehouse-scale-$($WarehouseScale.ToLowerInvariant())"
+        if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
+        $scaleOverlayDigest = Get-TreeDigest (Join-Path $scaleRoot 'files')
+        if ($scaleOverlayDigest -ne $scaleSpec.Overlay) { throw "Refusing -WarehouseScale ${WarehouseScale}: the overlay is $scaleOverlayDigest, not the frozen $($scaleSpec.Overlay)." }
+    }
+} elseif ($WarehouseMap -in @('generated','partial')) {
     $fixtureRefusal = Get-GeneratedFixtureRefusal (Join-Path $repo 'meta/eval-fixtures/warehouse-generated/provenance.json') $version
     if ($fixtureRefusal) { throw "Refusing live eval: $fixtureRefusal" }
 }

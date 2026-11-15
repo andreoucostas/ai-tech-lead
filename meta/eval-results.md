@@ -6428,6 +6428,82 @@ the maintainer approves the stop below before the first paid call.
 - Not shown: Copilot CLI and VS Code, which both field teams use; other models, tasks and stacks; a real legacy warehouse (the growth is synthetic and its decay is of two kinds); a stale record;
   how repeatable generation is (one per size); interactive use; effects on a team over time.
 
+## B-466 amendment — the sized fixture, cap, overlays and I1 to I3, frozen before any counted run (2026-11-15)
+
+Written before the first generation call; the overlay digests, generation costs and KNOWLEDGE were filled in after generation and
+before any counted run. Arms, metric, prediction, n, sizes and readings are unchanged. The maintainer approved the 60 USD stop in chat on
+2026-11-11.
+
+- **Host.** The pre-registration assumed `--dangerously-skip-permissions`, which this host's auto mode refuses (B-470). Every call,
+  generation and runs, runs in acceptEdits with B-514's lists plus 20 rules: runs use the 37-rule measured list, generation B-514's
+  51-rule generation list (the measured list, then `pwsh -NoProfile -File scripts/` in both shells, `git rev-parse|ls-tree|cat-file|branch`
+  in both, `rm` and `mkdir` in Bash, `Remove-Item` and `New-Item` in PowerShell), each followed by `Bash(pwsh -NoProfile -File
+  scripts/<name>.ps1:*)` and `PowerShell(& ./scripts/<name>.ps1:*)` for the ten shipped check scripts (every `scripts/*.ps1` but
+  `install.ps1` and `adoption-archive.ps1`): runs 57 rules, tag `f01b98a1d7ac`, in both arms (the bare tree has no `scripts/`, so the
+  20 rules are inert there); generation 71 rules, tag `57774189cbd6`. Every child starts with every `CLAUDE*` and `ANTHROPIC*`
+  variable removed, `DISABLE_AUTOUPDATER=1` and `ATL_SOURCE_CHECK=off`.
+- **The 20 rules are a correction made after a first generation, before any counted run.** Generation 1 (written rules below, B-514's
+  two lists unchanged, 4.39 USD) showed that a prefix rule ending in `scripts/` matches no script: every framework-script call in all six
+  sessions was denied, so `/map-warehouse` could not run its step-0 gate. At S and M it mapped anyway (first line `full pass: none`, M
+  from a partial read); at L it stopped at the gate three times and wrote no map. That was the host blocking the framework, which the
+  pre-registration's design does not do, and the same block would have met F's runs. A 0.09 USD probe showed one exact rule per script
+  lets `pwsh -NoProfile -File scripts/warehouse-map-check.ps1` run. Generation 1 is discarded whole, all three sizes, and generation 2
+  runs the same rules with the corrected lists; its records stay outside the repository and its spend counts toward the stop.
+- **Sized fixture** (`run-agent-evals.ps1`, `New-EvalRepo warehouse-scale-s|m|l`, one commit). The `warehouse` tree, then
+  `Jobs/NightlyCore.sql`, a SQL Agent job script whose three steps EXEC the three base loaders (S ends here: 14 SQL files). M and L add
+  X, then whole subject areas (V) from one seeded order of the 500 pairs of 20 business lines and 25 banking subjects, while the SQL
+  count stays at or under the target: M 495 files, L 4,999. An area is a staging table per fact with `BatchId`, a main dimension and
+  up to two more, one or two facts whose `LoadRunId` is loaded from their staging `BatchId`, one loader per dimension and fact, one to
+  three `rpt` views and a job calling the loaders. X1 (M 2, L 20): copies of the sales loader that insert a `ctl.LoadRun` row and stamp
+  `LoadRunId` from it (`usp_LoadFactSales_v2`, `usp_LoadFactSalesIncremental`, ...), called by no job. X2 (M 1, L 10): `rpt` views that
+  inner-join `fact.FactSales` to `ctl.LoadRun` (`rpt.vwLoadRunRevenue`, ...). Tree digests, the overlays' formula over the working
+  tree without `.git`: S `64fd8589eb0f…`, M `63c4546206d2…`, L `515bf8d393be…` (full values in the runner, which refuses another tree).
+  Invariant (4) read as checked: the base's `stg.StgSalesOrder` also carries `NetAmount` (it is the fact's source), so no table outside
+  the 13 base files may declare it; a run-start column is any column whose name contains `Start`.
+- **Cap and I3.** `-WarehouseScale <s>` runs `warehouse-route-p4` with a 3.00 USD cap at every size. `claude -p` stopped by its cap
+  exits 1 with an `error_max_budget_usd` result (probed: 0.03 USD, counted in the spend); under `-WarehouseScale` such a run is graded on
+  the file it left, and the row says `budgetCut=True`. Any other non-zero exit stays ERROR.
+- **I1** (`Test-WarehouseScaleInvariants`): invariants (1) to (5) plus the size, the X1 and X2 names and counts, each X1 also writing
+  `fact.FactSales`; (5) as every added name outside X built from the generator's word lists. **I2** (`Test-WarehouseScaleGrader`): the
+  unchanged p4 grader on each sized tree classes a fact-driven LEFT JOIN with the gap named CAVEATED-JOIN, an inner join MISLEADING, and
+  the query of each X2 view (at S, the ten L holds) MISLEADING.
+- **Seen red, then green.** On the unchanged runner the three new self-test cases failed: "warehouse-route-p4 at size S runs with a 1.25
+  USD cap, not 3.00"; "I3 a run stopped by its budget cap is ERROR, not scored on what it left"; and `New-EvalRepo` refused
+  `warehouse-scale-s`. On M with a job step calling `usp_LoadFactSales_v2`, I1 reported "(2)(3) usp_LoadFactSales_v2 writes ctl.LoadRun
+  and is called by 1 job(s), so a job reaches it" and "(3) the reachable writers of fact.FactSales are 'usp_LoadFactSales,
+  usp_LoadFactSales_v2', not usp_LoadFactSales alone"; with M's X2 view made a LEFT JOIN, I2 reported "X2 view 1's query copied as the
+  report: consumer=OTHER, want MISLEADING". Restored, both read 0. `run-agent-evals.ps1 -SelfTest` exit 0 with all three cases.
+- **Generation**, per size, S then M then L, from a scratch driver outside the repository: `New-EvalRepo warehouse-scale-<s>`, then the
+  runner's `Install-Framework dotnet`, committed. Session 1 `claude -p /bootstrap --session-id <id>`, resumed with `proceed` while
+  `AGENTS.md` still holds `BOOTSTRAP_PENDING` after a call that ended `success`, at most four calls; session 2, fresh, `/map-warehouse`,
+  resumed with `Yes, write it.` while `docs/warehouse-map.md` is not written after a `success` call, at most three calls. Each call passes
+  the session's cap (bootstrap 3, 6, 12; map 2, 6, 12 USD) as `--max-budget-usd`; a call its cap stops ends that session, and what it
+  wrote is the overlay. A session's spend is its last call's cumulative `total_cost_usd`. As B-514 did, a Write or Edit this host denies
+  under `.claude/` is applied byte for byte from its payload, and a denied framework-script call is run by hand with the same arguments;
+  each is listed in `provenance.json`. Captured as B-402: every path `git status --porcelain -uall` lists except `.claude/ai-audit.log`
+  and `.claude/.state/`, CRLF normalized to LF.
+- **KNOWLEDGE**, recorded by hand per size as pre-registered; a size whose documents say both a CORRECT and a WRONG thing is recorded
+  CONFLICTING, which is not CORRECT for H.
+- **Overlays (generation 2)**, `meta/eval-fixtures/warehouse-scale-s|m|l`, each with its `provenance.json`; Claude Code 2.1.312 and
+  `claude-sonnet-5-5` on every call; two bootstrap calls and two map calls per size, none stopped by its cap.
+
+  | size | files | overlay digest | bootstrap + map USD | map's first line | KNOWLEDGE |
+  |---|---|---|---|---|---|
+  | S | 6 | `a6aa94bd136c…` | 0.90 + 0.31 | `full pass: 2026-11-15T00:00Z` | CORRECT: `ctl.LoadRun` is unused, `LoadRunId` is filled from `stg.BatchId` |
+  | M | 6 | `8fab2e132f94…` | 1.08 + 1.14 | `full pass: 2026-11-15T11:45Z` | CORRECT: only the unscheduled X1 write `ctl.LoadRun`; the X2 view drops the scheduled load's rows |
+  | L | 8 | `f43468aebdd2…` | 1.91 + 0.45 | `full pass: none` | CORRECT: `LoadRunId` has two meanings; rows the scheduled job loads vanish from the run views |
+
+  At M and L the map's edge list also marks `FactSales.LoadRunId -> ctl.LoadRun` "In use" on the evidence of the X2 views, which is not
+  WRONG by the registered rule. The gate script still ran only from a plain Bash call: every session's PowerShell-tool forms and compound
+  Bash calls were denied, which is why S's and L's first lines are a guess or `none`. Spend before the first counted run: 10.32 USD
+  (generation 1 4.39, generation 2 5.81, two probes 0.12).
+- **Driver and order.** One `run-agent-evals.ps1 -Live -Scenario warehouse-route-p4 -WarehouseScale <s> -Model sonnet -Trials 1
+  -TimeoutSeconds 1800 -AllowedTools <the 57-rule run list>` per invocation, `-Arm framework -WarehouseMap generated` (F) or `-Arm none
+  -WarehouseMap omit` (N), in the registered order, from a scratch driver that refuses to start unless `dist/`, `src/`, `scripts/`,
+  `.claude/evals/` and the three overlays match this commit, and not started if spend so far plus 3.00 would pass 60.
+- **Reported per run, not scored**, from the retained stream: tool calls; X seen (a successful tool result names an X1 or X2 object);
+  a job seen (a result holds `sp_add_jobstep`); the grader's `readLoader` and `investigated`.
+
 ## Sub-agent context results — 2026-10-27 (pre-registered at 7a1278ba)
 
 Claude Code 2.1.312; parent `claude-sonnet-5-5`, reviewers `claude-haiku-5-5` (convention-check, debt-radar, bloat-radar) and `claude-sonnet-5-5` (security-auditor, solid-check, test-critic), as

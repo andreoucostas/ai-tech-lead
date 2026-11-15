@@ -1,0 +1,130 @@
+# ai-tech-lead rebootstrap baseline. Written by scripts/bootstrap-baseline.ps1 -Mode Record; do not edit by hand.
+schema	2
+recorded	2026-11-15
+profile	warehouse
+line	0012ec0cc0c9
+line	00b558a82d2e
+line	03e943dd9210
+line	0414fc3f32cc
+line	09742a8f9b2d
+line	0f0cbea24538
+line	0f835bbfe6ee
+line	19aa3c57db1e
+line	1a6045758ddd
+line	1f2ee7c2e67b
+line	20e0d037b6f0
+line	22b661b78fbf
+line	25a20b1e013d
+line	26e2564e2099
+line	2aadc4b0e771
+line	2b01bf0adf4e
+line	2d1347a81b0d
+line	2fafe09c5740
+line	3259964d9f34
+line	327910687c42
+line	3285d3834c17
+line	3999d1cc727f
+line	3baa96ac68bf
+line	3e935f63d704
+line	44a64f2d40b5
+line	44f872326c43
+line	4636c4fdefd6
+line	473ec46722b4
+line	4923f61a439a
+line	4a83d7114783
+line	4aee9830c965
+line	4b73eb9e9b05
+line	502fe1b1f630
+line	5748e71bed8d
+line	60c0ee992f38
+line	62a807025d0e
+line	62b67e1f685b
+line	65994624c64c
+line	65d51707d132
+line	65d91626f0c2
+line	65f6e36f9cd4
+line	6628a52751f4
+line	6a8c5ed94005
+line	6c53d84de3a4
+line	6d506adea9f9
+line	71ab5bb65349
+line	7371a45e3afc
+line	767a1ed3662f
+line	7bd42b77dc37
+line	80c5410212cc
+line	81c28615b13e
+line	86f323745a02
+line	8892c869582c
+line	8b594843cb9c
+line	8c970d133648
+line	94112d1eefd0
+line	9435ac9839ac
+line	94bc863e797c
+line	9ac0ed01931c
+line	9d400c4c5c50
+line	a25b4f227992
+line	aad36a9cfad1
+line	ac768bc8acc1
+line	b0db5ca21935
+line	b13b4103d22d
+line	b4a313791c1f
+line	b6589f2e81e9
+line	b8b56353a598
+line	bc4124d1067d
+line	c2a98d8a775b
+line	c62837bd7d00
+line	c8ba34daae95
+line	cb3f91d54eee
+line	cb6251dd1881
+line	cb9213101ddb
+line	cbd85c7ea471
+line	d46264113d45
+line	df7d9d599eb8
+line	e18992ce9cc5
+line	e580ce34717e
+line	e918b7daa9b0
+line	ee9c516e919c
+line	f1b901847390
+line	f1f6a343c027
+line	f3b69f522397
+line	f4a1ddfd8688
+line	f991535ba960
+line	fe68f3c2a8b9
+area	.	666e2b6f9f53d7fb
+area	Jobs	15ba3bae9abacbd1
+area	StoredProcedures	a4af7bbceb184735
+area	Tables	cb3ac4217d004f94
+area	Views	a8ebfd22d052aea1
+project	warehouse	warehouse.sqlproj
+hazard	Jobs/NightlyCore.sql	6c8bddba7a27b979d31faf95f451ea3179f3bbef
+hazard	StoredProcedures/usp_LoadDimCustomer.sql	e9c91aba2a425d6eb0dd0fcdc1f29f515fa8bb66
+hazard	StoredProcedures/usp_LoadDimDepositBalance.sql	ebb200484f6ca48fb72a9bbc87bf345125dc7933
+hazard	StoredProcedures/usp_LoadDimRegion.sql	720d391c7ede81483abcd82eeff1e696fdf1b9a2
+hazard	StoredProcedures/usp_LoadFactDepositBalanceMovement.sql	61a2de964a6bd5d6c05761019713dac4f9e7a9c4
+hazard	StoredProcedures/usp_LoadFactSales.sql	fe8c3f62723157e37adf9a102552a925a8114b7a
+hazard	StoredProcedures/usp_LoadFactSalesIncremental.sql	590817ff1801b1e6a8f662edf7ecee2a660562bb
+hazard	Tables/fact.FactSales.sql	a4dae7214a980c2da634ce36860c892d7ad159bc
+file	Jobs/DepositBalanceDaily.sql	e690a63f1df60d10257aca05e19d29ac0da50c5b
+file	Jobs/NightlyCore.sql	6c8bddba7a27b979d31faf95f451ea3179f3bbef
+file	Jobs/TreasuryAccrualDaily.sql	a3fed0210863e55d70c9f37d5f38de165fd746dd
+file	StoredProcedures/usp_LoadDimCustomer.sql	e9c91aba2a425d6eb0dd0fcdc1f29f515fa8bb66
+file	StoredProcedures/usp_LoadDimDepositBalance.sql	ebb200484f6ca48fb72a9bbc87bf345125dc7933
+file	StoredProcedures/usp_LoadDimRegion.sql	720d391c7ede81483abcd82eeff1e696fdf1b9a2
+file	Tables/ctl.LoadRun.sql	3a2bb3048f92dce41bf8f6ccf2acf5c22a120269
+file	Tables/fact.FactDepositBalanceMovement.sql	29093b45cb140e97762bdff6df9dd096e3ef6fbf
+file	Tables/stg.StgDepositBalanceMovement.sql	6c9ea4eea78d22c6c7d7791a3f471655d0aa7d9a
+file	Views/rpt.vwDepositBalanceDetail.sql	778c4bb2ac7f97ac1b9cbb57e9aef3223554c48f
+claim	c17ae9cc97f5	warehouse	W1	scoped	**Layers**: `stg` → `dim`/`fact` → `rpt`; `ctl` holds run control. Reports read only fact/dim (`Views/rpt.vwDepositBalanceDetail.sql`).
+evidence	c17ae9cc97f5	Views/rpt.vwDepositBalanceDetail.sql
+evidence	c17ae9cc97f5	Tables/ctl.LoadRun.sql
+claim	8784da3386b5	warehouse	W2	scoped	**Money**: `DECIMAL(18,2)` with `CurrencyCode CHAR(3)` on fact and staging rows (`Tables/fact.FactDepositBalanceMovement.sql`).
+evidence	8784da3386b5	Tables/fact.FactDepositBalanceMovement.sql
+evidence	8784da3386b5	Tables/stg.StgDepositBalanceMovement.sql
+claim	ab14777266ba	warehouse	W2	scoped	**Dim loads**: all 85 insert only a `-1`/`'Unknown'` row (`usp_LoadDimDepositBalance.sql`); real member loading is absent. Treat as unresolved, see Known Hazard Areas.
+evidence	ab14777266ba	StoredProcedures/usp_LoadDimDepositBalance.sql
+evidence	ab14777266ba	StoredProcedures/usp_LoadDimCustomer.sql
+evidence	ab14777266ba	StoredProcedures/usp_LoadDimRegion.sql
+claim	75e0d792b7f2	warehouse	W2	scoped	**Load ordering**: each `Jobs/<Domain>Daily.sql` lists dim steps before fact steps (`Jobs/TreasuryAccrualDaily.sql`).
+evidence	75e0d792b7f2	Jobs/TreasuryAccrualDaily.sql
+evidence	75e0d792b7f2	Jobs/DepositBalanceDaily.sql
+evidence	75e0d792b7f2	Jobs/NightlyCore.sql

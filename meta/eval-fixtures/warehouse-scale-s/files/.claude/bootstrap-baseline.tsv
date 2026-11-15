@@ -1,0 +1,133 @@
+# ai-tech-lead rebootstrap baseline. Written by scripts/bootstrap-baseline.ps1 -Mode Record; do not edit by hand.
+schema	2
+recorded	2026-11-15
+profile	warehouse
+line	0012ec0cc0c9
+line	00b558a82d2e
+line	0414fc3f32cc
+line	04ac38b36603
+line	0f0cbea24538
+line	0f835bbfe6ee
+line	12e592bf67ef
+line	1a6045758ddd
+line	1d19eb28d764
+line	1f2ee7c2e67b
+line	20e0d037b6f0
+line	22b661b78fbf
+line	31a9172c967b
+line	3259964d9f34
+line	327910687c42
+line	3285d3834c17
+line	32d540ba53e2
+line	3999d1cc727f
+line	44a64f2d40b5
+line	44f872326c43
+line	4636c4fdefd6
+line	474052cc78c0
+line	4923f61a439a
+line	4a83d7114783
+line	4aee9830c965
+line	4b73eb9e9b05
+line	502fe1b1f630
+line	54c00d52489c
+line	5858cad8f354
+line	5dd4bfbf3c1a
+line	60c0ee992f38
+line	62b67e1f685b
+line	65994624c64c
+line	65d91626f0c2
+line	6a8c5ed94005
+line	6c53d84de3a4
+line	6d222b99f091
+line	6d506adea9f9
+line	71ab5bb65349
+line	72f9cbbc2ac2
+line	75a030ccac12
+line	774989d8ce3d
+line	77adba9a045d
+line	7bd42b77dc37
+line	81db6806d0f5
+line	8892c869582c
+line	8d1f9886778b
+line	8e4c85dbb6b6
+line	91e860992ccc
+line	9435ac9839ac
+line	94bc863e797c
+line	9d400c4c5c50
+line	9de84f18e91a
+line	a25b4f227992
+line	a7d0e9e64b6e
+line	ae71927a8a6f
+line	b13b4103d22d
+line	b4a313791c1f
+line	b6589f2e81e9
+line	b929fee78d89
+line	bce7fbfdec11
+line	c15ea7222e8e
+line	c2a98d8a775b
+line	c3bbea3b1ade
+line	cb3f91d54eee
+line	cb9213101ddb
+line	cbd85c7ea471
+line	cd6496ffa60b
+line	d297f6b90e74
+line	d46264113d45
+line	dc2ce3a2bca2
+line	dfab8c1bcb14
+line	e18992ce9cc5
+line	e580ce34717e
+line	ebbfa09da7e0
+line	f1b901847390
+line	f4a1ddfd8688
+line	f553ce8672a8
+line	f66aff3cb255
+line	f7a26760374b
+line	fe716f605cf8
+area	.	666e2b6f9f53d7fb
+area	Jobs	e656aa9ac87378e5
+area	StoredProcedures	729c2219d071b914
+area	Tables	bfce029a944f40bb
+area	Views	8f5b512331fd3ed8
+project	warehouse	warehouse.sqlproj
+hazard	Jobs/NightlyCore.sql	6c8bddba7a27b979d31faf95f451ea3179f3bbef
+hazard	StoredProcedures/usp_LoadDimCustomer.sql	e9c91aba2a425d6eb0dd0fcdc1f29f515fa8bb66
+hazard	StoredProcedures/usp_LoadDimRegion.sql	720d391c7ede81483abcd82eeff1e696fdf1b9a2
+hazard	StoredProcedures/usp_LoadFactSales.sql	fe8c3f62723157e37adf9a102552a925a8114b7a
+hazard	Tables/dim.DimProduct.sql	13a10b6fda8049611780cd0e98ddab58e7187a02
+file	Jobs/NightlyCore.sql	6c8bddba7a27b979d31faf95f451ea3179f3bbef
+file	StoredProcedures/usp_LoadDimCustomer.sql	e9c91aba2a425d6eb0dd0fcdc1f29f515fa8bb66
+file	StoredProcedures/usp_LoadDimRegion.sql	720d391c7ede81483abcd82eeff1e696fdf1b9a2
+file	StoredProcedures/usp_LoadFactSales.sql	fe8c3f62723157e37adf9a102552a925a8114b7a
+file	Tables/ctl.LoadRun.sql	3a2bb3048f92dce41bf8f6ccf2acf5c22a120269
+file	Tables/dim.DimCustomer.sql	adbc24ed609389b61a71c3b6fc138d1faada140e
+file	Tables/dim.DimDate.sql	02045da8b208fb772b2125c2e74bf93651c9ab7c
+file	Tables/dim.DimProduct.sql	13a10b6fda8049611780cd0e98ddab58e7187a02
+file	Tables/dim.DimRegion.sql	bf70f14225c8c0675851d77b7c9ffd1567f0eca5
+file	Tables/fact.FactSales.sql	a4dae7214a980c2da634ce36860c892d7ad159bc
+file	Tables/stg.StgSalesOrder.sql	d3eccfecdae907eeda2fae82b05fc939eeccc786
+file	Views/rpt.vwExecutiveSummary.sql	d7b191647712ba27796e227a352c3d047c116745
+file	Views/rpt.vwFinanceExtract.sql	f7d0183abf4d69e4999847274d407fa5b5482b12
+file	Views/rpt.vwOrderDetail.sql	deca40fda7c1714ed718f81432a012f0c8256d7c
+file	warehouse.sqlproj	d345ba2c1af2895300893aca630ecbac4b13191e
+claim	e53aa3571d27	warehouse	W1	scoped	Tables are `<schema>.<Object>.sql` in `Tables/`; loads are `usp_Load<Dim|Fact><Entity>.sql` in `StoredProcedures/`.
+evidence	e53aa3571d27	Tables/*.sql
+evidence	e53aa3571d27	StoredProcedures/*.sql
+claim	9fba25bfdda7	warehouse	W1	scoped	Layering is stg → dim/fact → rpt; reports read only `fact`/`dim` — `Views/rpt.vwFinanceExtract.sql`.
+evidence	9fba25bfdda7	Views/*.sql
+claim	ed8dad9658f2	warehouse	W2	scoped	Dimensions load before facts; ordering lives only in the job steps — `Jobs/NightlyCore.sql`.
+evidence	ed8dad9658f2	Jobs/NightlyCore.sql
+claim	1358ccf9c09b	warehouse	W2	scoped	Fact grain is one row per `SalesKey` (= staging `SalesId`); facts join dimensions on natural keys, `IsCurrent = 1` for `DimCustomer` — `StoredProcedures/usp_LoadFactSales.sql`.
+evidence	1358ccf9c09b	StoredProcedures/usp_LoadFactSales.sql
+evidence	1358ccf9c09b	Tables/fact.FactSales.sql
+claim	d2bf988990e1	warehouse	W2	scoped	`DimCustomer` carries SCD2-style columns (`EffectiveFrom`/`EffectiveTo`/`IsCurrent`) but `usp_LoadDimCustomer` does not version; do not rely on history. Other dimensions are Type 1 by shape.
+evidence	d2bf988990e1	Tables/dim.DimCustomer.sql
+evidence	d2bf988990e1	StoredProcedures/usp_LoadDimCustomer.sql
+claim	53e899b23028	warehouse	W2	scoped	`ctl.LoadRun` (`LoadRunId`, `Watermark`) exists but no load reads or writes it; `FactSales.LoadRunId` is filled from `stg.BatchId`. No load is rerun-safe yet; a new load must define idempotency explicitly (`add-warehouse-load`).
+evidence	53e899b23028	Tables/ctl.LoadRun.sql
+evidence	53e899b23028	StoredProcedures/*.sql
+claim	1cb4193d9b58	warehouse	W2	scoped	Money is `DECIMAL(18,2)` (`NetAmount`) — `Tables/fact.FactSales.sql`.
+evidence	1cb4193d9b58	Tables/fact.FactSales.sql
+claim	4919a0167ea1	warehouse	W1	scoped	ADR-001 — SQL project (`Microsoft.Build.Sql`) as schema deployment vehicle — 2026-11-15
+evidence	4919a0167ea1	warehouse.sqlproj
+claim	c61b31c1999f	warehouse	W1	scoped	ADR-002 — SQL Agent job step order as sole load orchestration — 2026-11-15
+evidence	c61b31c1999f	Jobs/NightlyCore.sql
