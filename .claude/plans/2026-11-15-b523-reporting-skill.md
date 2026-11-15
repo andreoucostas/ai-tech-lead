@@ -184,3 +184,9 @@ agent read whole and a task the map already answered. The question is unchanged;
   likeliest miss, since the map's example rule for that edge is `IsCurrent = 1`; drill and bridge are uncertain. K avoids as-of
   more often. So the pilot reads FULL, and SHIP is possible but not expected: one trap moving by about one run in six would not
   reach the plus-6 bar.
+- **Grader fix after pilot runs 1 and 2, before the pilot's reading (2026-11-15).** Both runs weighted both measures as
+  `<measure> * COALESCE(h.HolderWeight, 1)`, which the registered pattern (a `*` directly beside `HolderWeight`) read as
+  `weights=0 bridge=False`: a false red the hand check found. The pattern now reads an Amount or Balance term multiplied by
+  an expression holding `HolderWeight`, in either order; what `bridge` means is unchanged. Seen red first: a self-test case in
+  run 1's form read `weights=0 bridge=False` on the old pattern, and reads `weights=2 bridge=True` now. Every row, these two
+  included, is regraded with the fixed grader for the reading; the rows the runner wrote keep their old values.
