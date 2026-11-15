@@ -18,7 +18,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team; re-decided on 2026-12-12 if no team has started (WSD-126) |
 | 2 | B-514 | Maintainer priority: on Claude Code a draft is called 6 of 6 and changed no outcome on fixture v2 (2026-11-15); the Copilot leg remains; no fixed spend stop (maintainer) |
 | 3 | B-515 | Maintainer priority: 3 of 6 measured drafts missed a step their own instances contain; guarded |
-| 4 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; pre-registered, its 60 USD stop approved by the maintainer 2026-11-11; runner work and three generations before any run; after the skills measurements (maintainer, 2026-11-14) |
+| 4 | B-466 | Maintainer request: the first test of whether the framework's lead over the bare agent grows with repository size, the case for large legacy codebases; amended and 9 of 36 runs made 2026-11-15 before the usage limit stopped it; the other 27 cost about 1 USD under the maintainer's 60 USD stop |
 | 5 | B-523 | Maintainer direction 2026-11-14 for a write-side skill for warehouse reporting views and procedures, measured on a fixture before it ships; the maintainer set no rank, the coordinator placed it after B-466; guarded |
 | 6 | B-510 | CI is at 88% of the watcher's 2,400 s and growing; past it every push and release reads CANT-VERIFY; guarded |
 | 7 | B-521 | Release review: several escaped defects were visible only in a live agent run after the tag; guarded |
@@ -108,9 +108,9 @@ First ask the reporter what their Bitbucket host honours, and do it only if the 
 ### B-466 · Measure whether the framework's lead over the bare agent grows with repository size
 **Filed against:** v0.98.2 (2026-10-27)
 **Priority:** P2 · **Effort:** M · **Invariants:** none
-**Status:** Open (maintainer, 2026-10-27): tests the hypothesis that the framework earns its cost in large legacy codebases; every framework-against-bare comparison so far ran on a few to 499 files.
-Pre-registered in `meta/eval-results.md` (B-466 pre-registration): `warehouse-route-p4` at about 14, 500 and 5,000 SQL files, framework against bare, n = 6, with the prediction written down.
-Before any run, an amendment freezes the sized fixture and per-run cap in the runner, three generated overlays and checks I1 to I3; the maintainer approved the 60 USD stop in chat 2026-11-11.
+**Status:** Open (maintainer, 2026-10-27): tests whether the framework earns its cost in large legacy codebases. Pre-registered and amended in `meta/eval-results.md` (`warehouse-route-p4` at 14, 495 and 4,999 SQL files, framework against bare, n = 6; runner `-WarehouseScale`, overlays `meta/eval-fixtures/warehouse-scale-s|m|l`).
+Measured 2026-11-15, partial ("B-466 results"): the account's 5-hour usage limit stopped the series at 9 of 36 runs; framework GOOD 5 of 5, bare 0 of 4, at every size; every reading not settled; 11.40 of the 60 USD stop (maintainer, 2026-11-11) spent.
+Next: the other 27 runs in the registered order from slot 2's S bare run, once the limit resets (about 1 USD at slot 1's costs); no design change.
 
 ### B-467 · Each `/review` reviewer sub-agent carries the main agent's whole instruction chain
 **Filed against:** v0.98.2 (2026-10-27)
