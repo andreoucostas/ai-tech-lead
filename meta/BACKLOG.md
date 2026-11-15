@@ -16,7 +16,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | Rank | Item | Why here |
 |---|---|---|
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team; re-decided on 2026-12-12 if no team has started (WSD-126) |
-| 2 | B-523 | Maintainer direction 2026-11-14 for a write-side skill for warehouse reporting views and procedures, measured on a fixture before it ships; the maintainer set no rank, the coordinator placed it after B-466; guarded |
+| 2 | B-523 | Measured 2026-11-15: the framework as shipped already writes the reporting view right (2 of 2), so the pre-registered pilot read NO-SHIP; blocked on the maintainer's re-decision (WSD-127) |
 | 3 | B-510 | CI is at 88% of the watcher's 2,400 s and growing; past it every push and release reads CANT-VERIFY; guarded |
 | 4 | B-521 | Release review: several escaped defects were visible only in a live agent run after the tag; guarded |
 | 5 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review, where B-514 saw it followed as often as an approved skill; guarded |
@@ -238,8 +238,8 @@ Candidate: cut or shorten only text a discriminating cell covers, one group per 
 ### B-523 · A write-side skill for warehouse reporting views and stored procedures, measured on a fixture before it ships
 **Filed against:** v0.98.6 (2026-11-15)
 **Priority:** P2 · **Effort:** M · **Invariants:** #1 #7
-**Status:** Open; maintainer direction 2026-11-14 ("Skill for views/procs"; WSD-127, superseding WSD-121): a recipe for writing a reporting view or stored procedure on the warehouse map's proven joins; Power BI stays out of scope.
-Design it, then a measurement pre-registered on a warehouse fixture, then ship it only if that measurement supports it. Guarded (`src/stacks/*/files/.claude/**`).
+**Status:** Open, waiting on the maintainer: WSD-127's Reopen trigger was met on 2026-11-15. Pre-registered at 78f2a670 (`.claude/plans/2026-11-15-b523-reporting-skill.md`), the pilot read CEILING, so NO-SHIP: on B-466's 14-file tree with a reporting-security layer, the framework as shipped wrote a correct, granted, map-recorded reporting view in 2 of 2 runs, and so did it plus the candidate `add-warehouse-report` skill (`meta/eval-results.md`, "B-523 results, pilot"; 0.875 USD).
+Nothing shipped; the measured skill text is in `meta/eval-fixtures/b523-reporting/skill.patch`. The maintainer re-decides: drop the skill, or measure where the arms can differ (a procedure, the M or L tree, a deploy list no file names). Copilot was not measured.
 ### B-524 · `/bootstrap` and `/adopt` lose their write steps when Claude Code compacts the conversation
 **Filed against:** v0.98.6 (2026-11-15)
 **Priority:** P3 · **Effort:** S · **Invariants:** #1 #7

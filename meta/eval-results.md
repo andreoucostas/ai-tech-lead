@@ -8238,3 +8238,73 @@ is the registered call rule. No quota or rate-limit refusal occurred (five-hour 
   WSD-115, WSD-118, WSD-124, WSD-127): none met. The workers ran on the session's Sonnet with no per-call model, as WSD-115 says.
 - Not shown: the Copilot leg (out of scope); the candidate's own effect; a large repository whose repeated operation is not debt; other
   models; the angular and monorepo copies; interactive use.
+
+## 2026-11-15 16:43:39 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (78f2a670a90612bd04444d9dffd05749c61275fc)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 57 allowed-tool rules (f01b98a1d7ac) · scratch: retained=True
+
+- **PASS warehouse-report-write** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2152867 tokensIn=12 tokensOut=3303; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=control.patch@264195f79892 op=report ready=True good=True deployed=True fact=True path=True pinned=True gap=True named=True grant=True | view=rpt.vwMonthlyNetRevenueByRegionSegment file=Views/rpt.vwMonthlyNetRevenueByRegionSegment.sql custJoin=True regionJoin=True dead=False month=True gapIn=final grantFile=True mapRow=True skill=False skillCalls= mapRead=True denied=1 sqlFiles=2 durationMs=31294 turns=1
+
+
+## 2026-11-15 16:44:37 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (78f2a670a90612bd04444d9dffd05749c61275fc)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 57 allowed-tool rules (f01b98a1d7ac) · scratch: retained=True
+
+- **PASS warehouse-report-write-skill** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.199321 tokensIn=16 tokensOut=3559; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=skill.patch@4346d36646f6 op=report ready=True good=True deployed=True fact=True path=True pinned=True gap=True named=True grant=True | view=rpt.vwMonthlyNetRevenueByRegionSegment file=Views/rpt.vwMonthlyNetRevenueByRegionSegment.sql custJoin=True regionJoin=True dead=False month=True gapIn=final grantFile=True mapRow=True skill=True skillCalls=add-warehouse-report mapRead=True denied=2 sqlFiles=2 durationMs=31508 turns=1
+
+
+## 2026-11-15 16:45:37 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (78f2a670a90612bd04444d9dffd05749c61275fc)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 57 allowed-tool rules (f01b98a1d7ac) · scratch: retained=True
+
+- **PASS warehouse-report-write** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.223227 tokensIn=14 tokensOut=4349; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=control.patch@264195f79892 op=report ready=True good=True deployed=True fact=True path=True pinned=True gap=True named=True grant=True | view=rpt.vwMonthlyNetRevenue file=Views/rpt.vwMonthlyNetRevenue.sql custJoin=True regionJoin=True dead=False month=True gapIn=final grantFile=True mapRow=True skill=False skillCalls= mapRead=True denied=1 sqlFiles=2 durationMs=36836 turns=1
+
+
+## 2026-11-15 16:46:42 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (78f2a670a90612bd04444d9dffd05749c61275fc)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 57 allowed-tool rules (f01b98a1d7ac) · scratch: retained=True
+
+- **PASS warehouse-report-write-skill** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2378266 tokensIn=18 tokensOut=5601; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=skill.patch@4346d36646f6 op=report ready=True good=True deployed=True fact=True path=True pinned=True gap=True named=True grant=True | view=rpt.vwMonthlyNetRevenueByRegionSegment file=Views/rpt.vwMonthlyNetRevenueByRegionSegment.sql custJoin=True regionJoin=True dead=False month=True gapIn=final grantFile=True mapRow=True skill=True skillCalls=add-warehouse-report mapRead=True denied=3 sqlFiles=2 durationMs=43215 turns=1
+
+
+## B-523 results, pilot — 2026-11-15 (hand-written; the four runner rows above, 16:43 to 16:46, are the counted runs)
+
+As pre-registered at 78f2a670 (`.claude/plans/2026-11-15-b523-reporting-skill.md`), unamended. Claude Code 2.1.312 and
+`claude-sonnet-5-5` in all four rows; acceptEdits with B-466's 57-rule run list (`f01b98a1d7ac`); 4 of 4 valid (exit 0,
+`success`, a `.sql` written), none repeated, no quota or rate-limit refusal. The driver checked before each run that the tree was
+78f2a670 plus the uncommitted draft (sha256 `37e74bc36ea4…`). A first launch of run 1 bound `-AllowedTools` wrongly (`pwsh -File`
+splits the array) and the runner refused its parameters before any setup or model call: no row, no spend.
+
+| run | arm | READY | fact / path / pinned / gap | named / grant | month (reported) | map row | Skill call | cost USD | duration |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | C, framework today | yes | yes / yes / yes / yes | yes / yes | year-safe | yes | none | 0.215 | 31.3 s |
+| 2 | K, plus the skill | yes | yes / yes / yes / yes | yes / yes | year-safe | yes | `add-warehouse-report`, first call | 0.199 | 31.5 s |
+| 3 | C | yes | yes / yes / yes / yes | yes / yes | year-safe | yes | none | 0.223 | 36.8 s |
+| 4 | K | yes | yes / yes / yes / yes | yes / yes | year-safe | yes | `add-warehouse-report`, first call | 0.238 | 43.2 s |
+
+- **Reading, as fixed: CEILING.** Today's framework wrote a READY view in 2 of 2 runs, so the rule reads **NO-SHIP** and the full
+  runs were not spent. The prediction held. The skill arm was READY in 2 of 2 too: nothing got worse, and nothing got better.
+  Median cost 0.219 USD in both arms; the skill arm's runs took 31 and 43 s against 31 and 37 s.
+- **What today's framework already did unprompted, in both runs:** read the map, joined `FactSales` → `DimCustomer` → `DimRegion`
+  as `rpt.vwFinanceExtract` does, said why it skipped the fact's never-populated columns and any `IsCurrent` filter, built the
+  month from `CalendarDate` because `CalendarMonth` has no year, appended the `GRANT` to `Security/rpt.Permissions.sql` (a file
+  `AGENTS.md` never names, found by reading `Security/*.sql`), added the view to the map's consumption list, and told the developer
+  that every row will read `Unknown` until the customer and region loads are fixed. Run 3 used LEFT JOINs with `COALESCE` to
+  `Unknown`, so its totals reconcile with the fact. The skill added a written report contract in the view's header (runs 2 and 4)
+  and a dated Coverage line in the map (runs 2 and 4); no graded outcome moved.
+- **Hand check:** every scored value agrees with the files and streams in 4 of 4. One reported field differs: run 2's header
+  comment also names the `Unknown` gap, but the grader's word test reads `DimRegion` and `DimCustomer` as no region or customer
+  word and records `gapIn=final`; `gap` is True either way. Denied calls (`denied=` in the rows: 1, 2, 1, 3) were compound
+  commands, a heredoc write and one multi-path `Get-Content`, each redone with an allowed tool, except run 2's gate-script call,
+  which it reported as not run; run 4's plain `pwsh -NoProfile -File scripts/warehouse-map-check.ps1` ran and reported the map
+  stale. No run started a sub-agent.
+- **Spend:** 0.875 USD for the four runs; nothing else was paid for.
+- **Reopen triggers** of the decisions indexed on warehouse, skills and evals (WSD-016, WSD-020, WSD-021, WSD-027, WSD-072,
+  WSD-074, WSD-091, WSD-096, WSD-097, WSD-100, WSD-105, WSD-107, WSD-109, WSD-111, WSD-113, WSD-115, WSD-122, WSD-126, WSD-127).
+  **Met: WSD-127**, which reopens "if B-523's pre-registered measurement does not support shipping (the maintainer then
+  re-decides)". The draft is removed from `src/`; its measured text stays in `meta/eval-fixtures/b523-reporting/skill.patch`. Not
+  met: WSD-109 and WSD-122 reopen on field reports; WSD-107's "measured wording that beats none" did not happen; WSD-113 and
+  WSD-115 concern workers, and no run started one. The rest name no trigger this evidence reaches.
+- **Not shown:** Copilot CLI and VS Code (out of scope for this measurement); a reporting procedure; the M and L trees, where the
+  agent cannot read every reporting object; a reporting layer whose deploy step is not in a file the agent lists (a non-SDK
+  `.sqlproj` list, a catalog); other models; interactive use; a real warehouse.
