@@ -21,9 +21,12 @@ evidence, and a warehouse-only repository must not acquire NuGet tooling inciden
 
 Derive each vulnerability, deprecated-package, and outdated-package command from `AGENTS.md >
 Conventions > Verification Commands`, committed CI, scripts, manifests, and configuration. Record
-the exact command and its evidence path before running it. Run only the evidenced form and report
-every unavailable scan category as **not available**; do not infer a `dotnet` command, target, or
-flag.
+the exact command and its evidence path before running it. A repository-evidenced form wins. When
+none is evidenced and the gate above passed, these read-only scans need no recorded row, with the
+`*.csproj` or manifest as evidence: `dotnet list package --vulnerable --include-transitive`,
+`dotnet list package --deprecated`, `dotnet list package --outdated`. Report any scan that cannot
+run as **not available**; do not infer a build, test, restore or install command, or any `dotnet`
+command that writes.
 
 Read the output. For each **vulnerable** or **deprecated** package, note the package, current version, the advisory severity, and the first fixed version.
 

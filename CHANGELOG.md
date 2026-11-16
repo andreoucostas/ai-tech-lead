@@ -153,6 +153,14 @@ file. The maintainer then kept the settings copy, which removes all settings fin
 stays; no third round, by the maintainer's choice. Red first:
 `UpdateDelivery3`'s B-469 case (every other copy site in one committed CRLF target, each printed line run and its bytes compared),
 `UpdateDelivery4`'s B1 and B3 settings cases and its CRLF case, and the reworked B-430 and B-431 cases.
+
+`dependency-audit` scans without a recorded command (guarded, text-only, shipped unmeasured; B-493). Section 1 told the agent to
+run only a scan command the repository already evidenced and not to infer `dotnet` or `npm`, while `/bootstrap` records no
+scan command, so on a typical repository every scan was reported not available. Once the skill's package-evidence gate
+passes, .NET runs `dotnet list package --vulnerable --include-transitive`, `--deprecated` and `--outdated`, and Angular runs
+the audit and outdated commands of the package manager one committed lockfile evidences; a repository-evidenced command
+still wins, and build, test, restore, install and anything that writes stay uninferred. The monorepo copy applies each under
+its own gate.
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

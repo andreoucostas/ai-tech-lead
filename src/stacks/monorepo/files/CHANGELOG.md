@@ -98,6 +98,14 @@
   A past run does not promise the next release: after each VS Code update, read the doctor's `Copilot hook liveness` row and
   run its write-guard canary. Let the agent choose the 16 characters after `AKIA`: VS Code's chat masks a key typed into
   the prompt, so a pasted key never reaches the hook. `docs/enforcement-surfaces.md` and the doctor row now say this.
+- **`dependency-audit` now scans without a command you recorded.** It ran only a scan command your repository already
+  showed and reported every scan as not available otherwise, which on most repositories meant nothing was scanned. Once
+  it has found a `*.csproj` or NuGet manifest, it runs `dotnet list package --vulnerable --include-transitive`,
+  `--deprecated` and `--outdated`; once it has found an npm manifest, it runs the audit and outdated commands of the
+  package manager your one committed lockfile shows (`package-lock.json` means `npm audit` and `npm outdated`). It names
+  the file it relied on, and with no lockfile, or more than one, the npm scans stay not available. These are read-only
+  but may contact your package feed or registry. A scan command your repository already records is still used
+  instead, and the agent still does not guess install, build, test or restore commands.
 
 ## 0.98.6 — 2026-11-13
 

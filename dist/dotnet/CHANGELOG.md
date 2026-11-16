@@ -97,6 +97,12 @@
   A past run does not promise the next release: after each VS Code update, read the doctor's `Copilot hook liveness` row and
   run its write-guard canary. Let the agent choose the 16 characters after `AKIA`: VS Code's chat masks a key typed into
   the prompt, so a pasted key never reaches the hook. `docs/enforcement-surfaces.md` and the doctor row now say this.
+- **`dependency-audit` now scans without a command you recorded.** It ran only a scan command your repository already
+  showed and reported every scan as not available otherwise, which on most repositories meant nothing was scanned. Once
+  it has found a `*.csproj` or NuGet manifest, it runs `dotnet list package --vulnerable --include-transitive`,
+  `dotnet list package --deprecated` and `dotnet list package --outdated`, naming the project file as its evidence. These
+  are read-only but may contact your package feed. A scan command your repository already records or runs in CI is
+  still used instead, and the agent still does not guess build, test or restore commands.
 
 ## 0.98.6 — 2026-11-13
 

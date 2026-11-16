@@ -21,9 +21,13 @@ because this distribution was selected.
 
 Derive each vulnerability, outdated-package, and Angular-migration-preview command from AGENTS.md >
 Conventions > Verification Commands, committed CI, scripts, manifests, and configuration. Record
-the exact command and its evidence path before running it. Run only the evidenced form and report
-every unavailable scan category as **not available**; do not infer `npm audit`, `npm outdated`,
-`npx ng update`, a package manager, or flags (section 4's `ng update` excepted).
+the exact command and its evidence path before running it. A repository-evidenced form wins. When
+none is evidenced and the gate above passed, the vulnerability and outdated-package scans need no
+recorded row: run the audit and outdated commands of the package manager that exactly one committed
+lockfile evidences (`package-lock.json` means `npm audit` and `npm outdated`), naming the lockfile
+as evidence. With no lockfile, or more than one, they are **not available**. Report any other
+unavailable scan category as **not available**; do not infer `npx ng update`, a package manager,
+an install, build or test command, or any command that writes (section 4's `ng update` excepted).
 
 Read the output. For each advisory, note the package, severity, the path that pulls it in (direct vs transitive), and the first fixed version.
 

@@ -25,14 +25,23 @@ evidenced, report this skill as **not applicable** and do not add package-manage
 a `.sln` alone may contain only SSDT/`*.sqlproj` projects and does not qualify. Derive each
 vulnerability, deprecated-package, and outdated-package command from AGENTS.md > Conventions >
 Verification Commands, committed CI, scripts, manifests, and configuration. Record the exact
-command and its evidence path before running it. Run only the evidenced form and report every
-unavailable scan category as **not available**; do not infer a `dotnet` command, target, or flag.
+command and its evidence path before running it. A repository-evidenced form wins. When none is
+evidenced and this gate passed, these read-only scans need no recorded row, with the `*.csproj` or
+manifest as evidence: `dotnet list package --vulnerable --include-transitive`,
+`dotnet list package --deprecated`, `dotnet list package --outdated`. Report any scan that cannot
+run as **not available**; do not infer a build, test, restore or install command, or any `dotnet`
+command that writes.
 
 **Angular/npm** — only when the relevant package manifest and configured targets are evidenced.
 Derive each vulnerability, outdated-package, and Angular-migration-preview command from the same
-evidence inventory. Record the exact command and its evidence path before running it. Run only the
-evidenced form and report every unavailable scan category as **not available**; do not infer `npm`,
-`npx`, an Angular CLI command, or flags (section 4's `ng update` excepted).
+evidence inventory. Record the exact command and its evidence path before running it. A
+repository-evidenced form wins. When none is evidenced and this gate passed, the vulnerability and
+outdated-package scans need no recorded row: run the audit and outdated commands of the package
+manager that exactly one committed lockfile evidences (`package-lock.json` means `npm audit` and
+`npm outdated`), naming the lockfile as evidence. With no lockfile, or more than one, they are
+**not available**. Report any other unavailable scan category as **not available**; do not infer
+`npx`, an Angular CLI command, an install, build or test command, or any command that writes
+(section 4's `ng update` excepted).
 
 Read the output. For each **vulnerable** or **deprecated** package, note the package, current version, the advisory severity, the path that pulls it in (direct vs transitive), and the first fixed version.
 
