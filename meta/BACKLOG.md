@@ -17,7 +17,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 |---|---|---|
 | 1 | B-528 | Maintainer priority (in chat 2026-11-16); its Copilot measurement needs the credit that ends 2026-11-18. Field report #14: no plan carried `Option A:`/`Option B:` in the 9 sessions where the agent started a security pass, and the prompt reminder never names the options; one open reading, so a fixture measurement comes first |
 | 2 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; the first developer's answers came in 2026-11-16 (field report #14), so it waits on the maintainer's two decisions on close |
-| 3 | B-510 | CI at 13 m 16 s after the meta shards (15-minute target met 2026-11-15); the 10-minute stage remains; guarded |
+| 3 | B-510 | 10-minute stage committed 2026-11-16 (hook suites in two shards per dist, meta in four, `Guard` and `UpdateDelivery` split), about 8 minutes expected and unmeasured until pushed; the next pushed run decides; guarded |
 | 4 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review, where B-514 saw it followed as often as an approved skill; guarded |
 | 5 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
 | 6 | B-469 | Maintainer request: an update's `.claude/framework-update-backup/` copies get forgotten and committed; `-Reinstall` already relies on the last commit instead; guarded |
@@ -194,8 +194,9 @@ Candidate: extract the pure planning functions with unit cases first; record ins
 ### B-510 · CI takes about 32 minutes a push, 88% of the watcher's 2,400 s, and its timing lines break their own format
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** M · **Invariants:** #3
-**Status:** 15 minutes met 2026-11-15 (e40903ee; run 43762925227 green in 13 m 16 s: meta shards 12 m 57 s, 12 m 28 s and 7 m 05 s, hook jobs 9 m 45 s to 10 m 49 s). Target (maintainer, 2026-11-14; WSD-125): 15 minutes a push, then 10.
-Left, the 10-minute stage: on CI the two `UpdateDelivery` halves took 760 s and 730 s (1,490 s against the whole file's 979 s median, so each half carries its own setup), and the `windows-hooks` jobs are the next floor; 10 needs both cut, the hook runner's sharding through the full `src/**` recipe. Guarded.
+**Status:** 15 minutes met 2026-11-15 (e40903ee; runs 43762925227 and 43813360411 green in 13 m 16 s and 12 m 56 s). Target (maintainer, 2026-11-14; WSD-125): 15 minutes a push, then 10.
+10-minute stage committed 2026-11-16, unmeasured until pushed: each dist's shipped hook suite runs as two `windows-hooks` shards (runner `-ShardCount/-ShardIndex`, `HOOKTESTS_TIMING` on) and the meta suite as four; `Guard.Tests.ps1`, 553 of a 555 s local monorepo run, is split in two with `Guard2.Tests.ps1` and `UpdateDelivery` in four; parity checks that each dist's shards ran each of its hook test files once.
+Expected about 8 minutes a push (meta shards about 7, hook shards about 5.5; run alone locally, meta shards 1, 3 and 4 took 296 to 335 s, angular hook shard 2 221 s); delete the entry on a pushed run of 10 minutes or less. Guarded.
 ### B-511 · Delete maintainer code that no longer earns its place: the local gate time budget, finished eval studies
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** S · **Invariants:** none

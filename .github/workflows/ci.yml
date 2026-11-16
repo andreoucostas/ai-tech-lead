@@ -66,7 +66,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
-  # The meta suite in three bins of about equal measured cost (B-510): run in one job it took 18 to 35
+  # The meta suite in four bins of about equal measured cost (B-510): run in one job it took 18 to 35
   # minutes. windows-case-parity checks that the bins together ran every meta test file once.
   windows-meta:
     name: windows-meta (${{ matrix.shard }})
@@ -77,7 +77,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -92,10 +92,10 @@ jobs:
               $hostLeaf -notmatch '^pwsh(?:\.exe)?$') {
             throw "Expected direct PowerShell 7 (pwsh); observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
           }
-      - name: Meta-hook test suite (shard ${{ matrix.shard }} of 3) under the asserted host
+      - name: Meta-hook test suite (shard ${{ matrix.shard }} of 4) under the asserted host
         run: |
           $hostPath = (Get-Process -Id $PID).Path
-          & $hostPath -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1 -ShardCount 3 -ShardIndex ${{ matrix.shard }} -CaseCountPath "${{ runner.temp }}/windows-meta-${{ matrix.shard }}-case-counts.txt"
+          & $hostPath -NoProfile -File .claude/hooks/tests/Invoke-HookTests.ps1 -ShardCount 4 -ShardIndex ${{ matrix.shard }} -CaseCountPath "${{ runner.temp }}/windows-meta-${{ matrix.shard }}-case-counts.txt"
           exit $LASTEXITCODE
       - name: Publish PS7 semantic case cardinality (meta shard ${{ matrix.shard }})
         uses: actions/upload-artifact@v4
@@ -105,8 +105,12 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # Each dist's shipped hook suite in two bins of about equal measured cost (B-510): run whole, monorepo's
+  # took 12 to 13 minutes, nearly all of it Guard.Tests.ps1, now split in two. windows-case-parity checks that
+  # each dist's bins together ran each of its hook test files once. HOOKTESTS_TIMING prints each file's
+  # TIMING line, the costs the runner's bins are re-measured from.
   windows-hooks:
-    name: windows-hooks (${{ matrix.dist }})
+    name: windows-hooks (${{ matrix.dist }}, ${{ matrix.shard }})
     runs-on: windows-latest
     defaults:
       run:
@@ -115,6 +119,7 @@ jobs:
       fail-fast: false
       matrix:
         dist: [dotnet, angular, monorepo]
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -129,16 +134,18 @@ jobs:
               $hostLeaf -notmatch '^pwsh(?:\.exe)?$') {
             throw "Expected direct PowerShell 7 (pwsh); observed $hostLeaf $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)."
           }
-      - name: Hook test suite (${{ matrix.dist }}) under the asserted host
+      - name: Hook test suite (${{ matrix.dist }}, shard ${{ matrix.shard }} of 2) under the asserted host
+        env:
+          HOOKTESTS_TIMING: '1'
         run: |
           $hostPath = (Get-Process -Id $PID).Path
-          & $hostPath -NoProfile -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1 -CaseCountPath "${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-case-counts.txt"
+          & $hostPath -NoProfile -File dist/${{ matrix.dist }}/tests/hooks/Invoke-HookTests.ps1 -ShardCount 2 -ShardIndex ${{ matrix.shard }} -CaseCountPath "${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-${{ matrix.shard }}-case-counts.txt"
           exit $LASTEXITCODE
-      - name: Publish PS7 semantic case cardinality (${{ matrix.dist }})
+      - name: Publish PS7 semantic case cardinality (${{ matrix.dist }}, shard ${{ matrix.shard }})
         uses: actions/upload-artifact@v4
         with:
-          name: b219-case-counts-windows-hooks-${{ matrix.dist }}
-          path: ${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-case-counts.txt
+          name: b219-case-counts-windows-hooks-${{ matrix.dist }}-${{ matrix.shard }}
+          path: ${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-${{ matrix.shard }}-case-counts.txt
           if-no-files-found: error
           retention-days: 1
 

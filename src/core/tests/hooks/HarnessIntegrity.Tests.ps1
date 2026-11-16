@@ -156,6 +156,36 @@ exit (Write-TestSummary 'skip-only fixture')
         Assert (-not (Test-Path -LiteralPath $r.Manifest)) 'duplicate markers produced a manifest'
     }
 
+    # A suite run as -ShardCount bins, one run per bin: a file in no bin runs nowhere.
+    $shardRoot = Join-Path $sandbox 'shards'
+    New-Item -ItemType Directory -Path $shardRoot -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Invoke-HookTests.ps1') -Destination $shardRoot
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot '_HookHarness.ps1') -Destination $shardRoot
+    $shardNames = @('Alpha.Tests.ps1', 'Beta.Tests.ps1', 'Gamma.Tests.ps1', 'Guard.Tests.ps1', 'RoutePrompt.Tests.ps1')
+    foreach ($name in $shardNames) {
+        [IO.File]::WriteAllText((Join-Path $shardRoot $name), "Write-Host 'ran $name'`nexit 0`n", [Text.UTF8Encoding]::new($true))
+    }
+
+    It 'the runner puts every discovered file in exactly one of its shards' {
+        $ran = @()
+        foreach ($i in 1..3) {
+            $r = Invoke-Child -Path (Join-Path $shardRoot 'Invoke-HookTests.ps1') -Arguments @('-FixtureDiscovery', '-ShardCount', '3', '-ShardIndex', "$i")
+            Assert ($r.Exit -eq 0) "shard $i of 3 exited $($r.Exit): $($r.Out)"
+            $names = @([regex]::Matches($r.Out, '(?m)^ran (\S+)\r?$') | ForEach-Object { $_.Groups[1].Value })
+            Assert ($names.Count -gt 0) "shard $i of 3 ran no file: $($r.Out)"
+            $ran += $names
+        }
+        Assert ((@($ran | Sort-Object) -join ',') -ceq ($shardNames -join ',')) "the shards ran [$(@($ran | Sort-Object) -join ', ')], not each discovered file once"
+    }
+
+    It 'the runner refuses a shard outside 1..ShardCount' {
+        foreach ($shardArgs in @(@('-ShardCount', '3', '-ShardIndex', '4'), @('-ShardCount', '3', '-ShardIndex', '0'), @('-ShardCount', '0'))) {
+            $r = Invoke-Child -Path (Join-Path $shardRoot 'Invoke-HookTests.ps1') -Arguments (@('-FixtureDiscovery') + $shardArgs)
+            Assert ($r.Exit -eq 2) "$($shardArgs -join ' ') exited $($r.Exit), not the usage refusal: $($r.Out)"
+            Assert ($r.Out -match 'Invalid shard') "$($shardArgs -join ' ') was not refused as an invalid shard: $($r.Out)"
+        }
+    }
+
     It 'the semantic case manifest is deterministic UTF-8 without BOM' {
         $body = "Write-Host 'CASE_COUNT 3'`nexit 0`n"
         $first = Invoke-CardinalityRunnerFixture -Body $body -Name 'valid-first'

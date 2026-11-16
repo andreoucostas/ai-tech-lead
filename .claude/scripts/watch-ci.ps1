@@ -39,17 +39,19 @@ param(
     [string]$RepoRoot,
     # Every job in .github/workflows/ci.yml. A workflow-level `success` does not prove each leg
     # ran -- watching only the aggregate is how a silently-skipped leg would look green.
-    # The `*-hooks (<dist>)` entries are the per-dist shipped hook suites, split onto their own
-    # runners at B-113; the `windows-meta (<n>)` entries are the meta suite's shards (B-510). All
-    # seven expanded execution contexts are listed individually and NOT collapsed
-    # to a prefix match. The downstream parity decision is separately required: a workflow could
-    # otherwise look green after that decision was removed or conditionally skipped.
-    # GitHub names a matrix job "<job> (<value>)" -- if that naming ever changes, this list must
+    # The `*-hooks (<dist>, <n>)` entries are the per-dist shipped hook suites, split onto their own
+    # runners at B-113 and into two shards each at B-510; the `windows-meta (<n>)` entries are the
+    # meta suite's shards (B-510). All eleven expanded execution contexts are listed individually and
+    # NOT collapsed to a prefix match. The downstream parity decision is separately required: a
+    # workflow could otherwise look green after that decision was removed or conditionally skipped.
+    # ci.yml names each matrix job "<job> (<values>)" -- if that naming ever changes, this list must
     # follow, and it failing loudly is the intended direction.
     [string[]]$ExpectedJobs = @(
         'windows',
-        'windows-meta (1)', 'windows-meta (2)', 'windows-meta (3)',
-        'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
+        'windows-meta (1)', 'windows-meta (2)', 'windows-meta (3)', 'windows-meta (4)',
+        'windows-hooks (dotnet, 1)', 'windows-hooks (dotnet, 2)',
+        'windows-hooks (angular, 1)', 'windows-hooks (angular, 2)',
+        'windows-hooks (monorepo, 1)', 'windows-hooks (monorepo, 2)',
         'windows-case-parity'
     )
 )

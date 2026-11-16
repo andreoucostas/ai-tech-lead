@@ -2,17 +2,19 @@
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 
 $subject = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path '.claude/scripts/assert-ci-case-parity.ps1'
+# The legs ci.yml runs: four meta shards, then two hook shards for each dist.
+$metaNames = @('Alpha.Tests.ps1', 'Beta.Tests.ps1', 'Gamma.Tests.ps1', 'Epsilon.Tests.ps1')
+$dists = @('dotnet', 'angular', 'monorepo')
 $pairs = @(
-    ,@('b219-case-counts-windows-meta-1', 'windows-meta-1-case-counts.txt')
-    ,@('b219-case-counts-windows-meta-2', 'windows-meta-2-case-counts.txt')
-    ,@('b219-case-counts-windows-meta-3', 'windows-meta-3-case-counts.txt')
-    ,@('b219-case-counts-windows-hooks-dotnet', 'windows-hooks-dotnet-case-counts.txt')
-    ,@('b219-case-counts-windows-hooks-angular', 'windows-hooks-angular-case-counts.txt')
-    ,@('b219-case-counts-windows-hooks-monorepo', 'windows-hooks-monorepo-case-counts.txt')
+    for ($i = 1; $i -le $metaNames.Count; $i++) { ,@("b219-case-counts-windows-meta-$i", "windows-meta-$i-case-counts.txt") }
+    foreach ($dist in $dists) {
+        foreach ($i in 1, 2) { ,@("b219-case-counts-windows-hooks-$dist-$i", "windows-hooks-$dist-$i-case-counts.txt") }
+    }
 )
-$good = "Alpha.Tests.ps1`t2`nBeta.Tests.ps1`t3`nTOTAL`t5`n"
-# The meta shards split the fixture's meta test directory (Alpha, Beta, Gamma) between them.
-$metaGood = @("Alpha.Tests.ps1`t2`nTOTAL`t2`n", "Beta.Tests.ps1`t3`nTOTAL`t3`n", "Gamma.Tests.ps1`t1`nTOTAL`t1`n")
+# Each meta shard runs one of the fixture's meta test files; each dist's two hook shards split its
+# Alpha, Beta and Gamma between them.
+$hookGood = @("Alpha.Tests.ps1`t2`nBeta.Tests.ps1`t3`nTOTAL`t5`n", "Gamma.Tests.ps1`t1`nTOTAL`t1`n")
+$utf8 = New-Object Text.UTF8Encoding($false)
 
 function New-ParityFixture {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('ci-case-parity-' + [guid]::NewGuid().ToString('N'))
@@ -20,37 +22,65 @@ function New-ParityFixture {
     for ($i = 0; $i -lt $pairs.Count; $i++) {
         $dir = Join-Path $root $pairs[$i][0]
         [IO.Directory]::CreateDirectory($dir) | Out-Null
-        $text = if ($i -lt $metaGood.Count) { $metaGood[$i] } else { $good }
-        [IO.File]::WriteAllText((Join-Path $dir $pairs[$i][1]), $text, (New-Object Text.UTF8Encoding($false)))
+        $text = if ($i -lt $metaNames.Count) { "$($metaNames[$i])`t$($i + 1)`nTOTAL`t$($i + 1)`n" } else { $hookGood[($i - $metaNames.Count) % 2] }
+        [IO.File]::WriteAllText((Join-Path $dir $pairs[$i][1]), $text, $utf8)
     }
-    # Outside the artifact root: the decision must not mistake it for an artifact.
+    # Outside the artifact root: the decision must not mistake either tree for an artifact.
     $meta = "$root-meta"
     [IO.Directory]::CreateDirectory($meta) | Out-Null
-    foreach ($name in 'Alpha.Tests.ps1', 'Beta.Tests.ps1', 'Gamma.Tests.ps1', '_HookHarness.ps1') {
+    foreach ($name in @($metaNames) + '_HookHarness.ps1') {
         [IO.File]::WriteAllText((Join-Path $meta $name), "exit 0`n", (New-Object Text.UTF8Encoding($true)))
+    }
+    foreach ($dist in $dists) {
+        $hooks = Join-Path "$root-dist" "$dist\tests\hooks"
+        [IO.Directory]::CreateDirectory($hooks) | Out-Null
+        foreach ($name in 'Alpha.Tests.ps1', 'Beta.Tests.ps1', 'Gamma.Tests.ps1', '_HookHarness.ps1', 'Invoke-HookTests.ps1') {
+            [IO.File]::WriteAllText((Join-Path $hooks $name), "exit 0`n", (New-Object Text.UTF8Encoding($true)))
+        }
     }
     return $root
 }
 
 function Remove-ParityFixture {
     param([string]$Root)
-    Remove-Item -LiteralPath $Root, "$Root-meta" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $Root, "$Root-meta", "$Root-dist" -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 function Invoke-Decision {
     param([string]$Root)
-    Invoke-RawProcess -FileName (Get-Process -Id $PID).Path -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $subject, '-ArtifactRoot', $Root, '-MetaTestRoot', "$Root-meta")
+    Invoke-RawProcess -FileName (Get-Process -Id $PID).Path -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $subject, '-ArtifactRoot', $Root, '-MetaTestRoot', "$Root-meta", '-DistRoot', "$Root-dist")
 }
 
 Reset-Tests
 
-It 'six valid nonempty artifacts whose meta shards cover the meta test files pass' {
+It 'valid nonempty artifacts whose shards cover the meta and every dist''s hook test files pass' {
     $root = New-ParityFixture
     try {
         $r = Invoke-Decision $root
         Assert ($r.Exit -eq 0) "valid decision exit $($r.Exit): $($r.Out) $($r.Err)"
-        Assert ($r.Out -match 'six nonempty, valid') 'valid decision omitted its checked cardinality'
-        Assert ($r.Out -match 'each of the 3 meta test files exactly once') 'valid decision omitted its shard coverage'
+        Assert ($r.Out -match "GREEN: $($pairs.Count) nonempty, valid") 'valid decision omitted its checked cardinality'
+        Assert ($r.Out -match "$($metaNames.Count) meta, 3 dotnet hook, 3 angular hook, 3 monorepo hook") 'valid decision omitted its shard coverage'
+    } finally { Remove-ParityFixture $root }
+}
+
+It 'a shipped hook test file that ran in no shard of its dist is wrong' {
+    $root = New-ParityFixture
+    try {
+        [IO.File]::WriteAllText((Join-Path "$root-dist" 'monorepo\tests\hooks\Delta.Tests.ps1'), "exit 0`n", (New-Object Text.UTF8Encoding($true)))
+        $r = Invoke-Decision $root
+        Assert ($r.Exit -eq 1) "unsharded hook file exit $($r.Exit): $($r.Out) $($r.Err)"
+        Assert ($r.Out -match 'monorepo hook test file\(s\) ran in no shard: Delta\.Tests\.ps1') 'unsharded hook file diagnostic did not name the dist and the file'
+    } finally { Remove-ParityFixture $root }
+}
+
+It 'a shipped hook test file that ran in both shards of its dist is wrong' {
+    $root = New-ParityFixture
+    try {
+        $second = $pairs[$metaNames.Count + 1]
+        [IO.File]::WriteAllText((Join-Path (Join-Path $root $second[0]) $second[1]), "Beta.Tests.ps1`t3`nGamma.Tests.ps1`t1`nTOTAL`t4`n", $utf8)
+        $r = Invoke-Decision $root
+        Assert ($r.Exit -eq 1) "twice-run hook file exit $($r.Exit): $($r.Out) $($r.Err)"
+        Assert ($r.Out -match "dotnet hook suite 'Beta\.Tests\.ps1' ran in both dotnet-1 and dotnet-2") 'twice-run hook diagnostic did not name the file and both shards'
     } finally { Remove-ParityFixture $root }
 }
 
@@ -90,7 +120,7 @@ It 'a missing artifact is wrong rather than CANT-VERIFY' {
         Remove-Item -LiteralPath (Join-Path $root $pairs[5][0]) -Recurse -Force
         $r = Invoke-Decision $root
         Assert ($r.Exit -eq 1) "missing artifact exit $($r.Exit): $($r.Out) $($r.Err)"
-        Assert ($r.Out -match 'expected exactly six') 'missing artifact diagnostic omitted exact cardinality'
+        Assert ($r.Out -match "expected exactly $($pairs.Count) case-count artifacts") 'missing artifact diagnostic omitted exact cardinality'
     } finally { Remove-ParityFixture $root }
 }
 

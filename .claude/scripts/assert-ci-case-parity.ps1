@@ -1,12 +1,14 @@
 ﻿# CI-only semantic case-count decision: every PowerShell 7 suite leg published a well-formed manifest with a nonzero
-# count for each suite, and the meta suite's shards together ran each of its test files exactly once. Maintainer-only;
-# does not ship.
+# count for each suite, the meta suite's shards together ran each of its test files exactly once, and each dist's hook
+# shards together ran each of that dist's shipped hook test files exactly once. Maintainer-only; does not ship.
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$ArtifactRoot,
     # The meta suite's test files; the shards' manifests must name each exactly once. Case counts alone cannot see a
     # file that ran in no shard (B-510).
-    [string]$MetaTestRoot = (Join-Path $PSScriptRoot '..\hooks\tests')
+    [string]$MetaTestRoot = (Join-Path $PSScriptRoot '..\hooks\tests'),
+    # The composed dists; each dist's tests/hooks files must be named exactly once by that dist's hook shards.
+    [string]$DistRoot = (Join-Path $PSScriptRoot '..\..\dist')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,13 +27,24 @@ function Stop-CantVerify {
     exit $EXIT_CANT
 }
 
+# The shard counts ci.yml's two matrices run; a leg either side adds or drops is an artifact set that differs.
+$metaShardCount = 4
+$hookShardCount = 2
+$dists = @('dotnet', 'angular', 'monorepo')
+# Each group is one suite whose shards must together name each of its test files once.
+$groups = [ordered]@{ meta = [pscustomobject]@{ Label = 'meta'; Root = $MetaTestRoot } }
+foreach ($dist in $dists) {
+    $groups[$dist] = [pscustomobject]@{ Label = "$dist hook"; Root = (Join-Path (Join-Path $DistRoot $dist) 'tests\hooks') }
+}
 $legs = @(
-    [pscustomobject]@{ Name = 'meta-1'; Artifact = 'b219-case-counts-windows-meta-1'; File = 'windows-meta-1-case-counts.txt'; Meta = $true }
-    [pscustomobject]@{ Name = 'meta-2'; Artifact = 'b219-case-counts-windows-meta-2'; File = 'windows-meta-2-case-counts.txt'; Meta = $true }
-    [pscustomobject]@{ Name = 'meta-3'; Artifact = 'b219-case-counts-windows-meta-3'; File = 'windows-meta-3-case-counts.txt'; Meta = $true }
-    [pscustomobject]@{ Name = 'dotnet'; Artifact = 'b219-case-counts-windows-hooks-dotnet'; File = 'windows-hooks-dotnet-case-counts.txt'; Meta = $false }
-    [pscustomobject]@{ Name = 'angular'; Artifact = 'b219-case-counts-windows-hooks-angular'; File = 'windows-hooks-angular-case-counts.txt'; Meta = $false }
-    [pscustomobject]@{ Name = 'monorepo'; Artifact = 'b219-case-counts-windows-hooks-monorepo'; File = 'windows-hooks-monorepo-case-counts.txt'; Meta = $false }
+    foreach ($i in 1..$metaShardCount) {
+        [pscustomobject]@{ Name = "meta-$i"; Artifact = "b219-case-counts-windows-meta-$i"; File = "windows-meta-$i-case-counts.txt"; Group = 'meta' }
+    }
+    foreach ($dist in $dists) {
+        foreach ($i in 1..$hookShardCount) {
+            [pscustomobject]@{ Name = "$dist-$i"; Artifact = "b219-case-counts-windows-hooks-$dist-$i"; File = "windows-hooks-$dist-$i-case-counts.txt"; Group = $dist }
+        }
+    }
 )
 
 # Returns the suite names the manifest lists.
@@ -95,7 +108,7 @@ catch { Stop-CantVerify "could not enumerate artifact root '$ArtifactRoot': $($_
 $actualArtifacts = @($rootEntries | ForEach-Object { [IO.Path]::GetFileName($_) } | Sort-Object)
 $expectedArtifacts = @($legs | ForEach-Object { $_.Artifact } | Sort-Object)
 if (($actualArtifacts -join "`n") -cne ($expectedArtifacts -join "`n")) {
-    Stop-Wrong "expected exactly six case-count artifacts. expected=[$($expectedArtifacts -join ', ')]; actual=[$($actualArtifacts -join ', ')]"
+    Stop-Wrong "expected exactly $($legs.Count) case-count artifacts. expected=[$($expectedArtifacts -join ', ')]; actual=[$($actualArtifacts -join ', ')]"
 }
 foreach ($artifact in $expectedArtifacts) {
     $artifactPath = Join-Path $ArtifactRoot $artifact
@@ -106,25 +119,32 @@ foreach ($artifact in $expectedArtifacts) {
     }
 }
 
-$metaShardOf = @{}
+$shardOf = @{}
+foreach ($groupName in $groups.Keys) { $shardOf[$groupName] = @{} }
 foreach ($leg in $legs) {
     $suites = Get-ManifestSuites $leg.Artifact $leg.File
-    if (-not $leg.Meta) { continue }
+    $seen = $shardOf[$leg.Group]
     foreach ($suite in $suites) {
-        if ($metaShardOf.ContainsKey($suite)) { Stop-Wrong "meta suite '$suite' ran in both $($metaShardOf[$suite]) and $($leg.Name)" }
-        $metaShardOf[$suite] = $leg.Name
+        if ($seen.ContainsKey($suite)) { Stop-Wrong "$($groups[$leg.Group].Label) suite '$suite' ran in both $($seen[$suite]) and $($leg.Name)" }
+        $seen[$suite] = $leg.Name
     }
 }
 
-try {
-    $metaFiles = @([IO.Directory]::GetFiles([IO.Path]::GetFullPath($MetaTestRoot)) | ForEach-Object { [IO.Path]::GetFileName($_) } |
-        Where-Object { $_.EndsWith('.Tests.ps1', [StringComparison]::Ordinal) } | Sort-Object)
-} catch { Stop-CantVerify "could not list the meta test files in '$MetaTestRoot': $($_.Exception.Message)" }
-if ($metaFiles.Count -eq 0) { Stop-CantVerify "no meta test files in '$MetaTestRoot' to compare the shards with" }
-$inNoShard = @($metaFiles | Where-Object { -not $metaShardOf.ContainsKey($_) })
-if ($inNoShard.Count -gt 0) { Stop-Wrong "meta test file(s) ran in no shard: $($inNoShard -join ', ')" }
-$notInRoot = @($metaShardOf.Keys | Where-Object { $metaFiles -cnotcontains $_ } | Sort-Object)
-if ($notInRoot.Count -gt 0) { Stop-Wrong "meta shards ran suite(s) that are not in '$MetaTestRoot': $($notInRoot -join ', ')" }
+$covered = @()
+foreach ($groupName in $groups.Keys) {
+    $group = $groups[$groupName]
+    $seen = $shardOf[$groupName]
+    try {
+        $testFiles = @([IO.Directory]::GetFiles([IO.Path]::GetFullPath($group.Root)) | ForEach-Object { [IO.Path]::GetFileName($_) } |
+            Where-Object { $_.EndsWith('.Tests.ps1', [StringComparison]::Ordinal) } | Sort-Object)
+    } catch { Stop-CantVerify "could not list the $($group.Label) test files in '$($group.Root)': $($_.Exception.Message)" }
+    if ($testFiles.Count -eq 0) { Stop-CantVerify "no $($group.Label) test files in '$($group.Root)' to compare the shards with" }
+    $inNoShard = @($testFiles | Where-Object { -not $seen.ContainsKey($_) })
+    if ($inNoShard.Count -gt 0) { Stop-Wrong "$($group.Label) test file(s) ran in no shard: $($inNoShard -join ', ')" }
+    $notInRoot = @($seen.Keys | Where-Object { $testFiles -cnotcontains $_ } | Sort-Object)
+    if ($notInRoot.Count -gt 0) { Stop-Wrong "$($group.Label) shards ran suite(s) that are not in '$($group.Root)': $($notInRoot -join ', ')" }
+    $covered += "$($testFiles.Count) $($group.Label)"
+}
 
-Write-Host "CI CASE PARITY GREEN: six nonempty, valid PowerShell 7 case-count manifests; the meta shards ran each of the $($metaFiles.Count) meta test files exactly once."
+Write-Host "CI CASE PARITY GREEN: $($legs.Count) nonempty, valid PowerShell 7 case-count manifests; each suite's shards ran each of its test files exactly once ($($covered -join ', '))."
 exit 0

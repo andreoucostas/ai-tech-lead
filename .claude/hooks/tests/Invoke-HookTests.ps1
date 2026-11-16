@@ -86,6 +86,8 @@ $expectedTestFiles = @(
     'RootInstallerWarehouse.Tests.ps1',
     'UpdateDelivery.Tests.ps1',
     'UpdateDelivery2.Tests.ps1',
+    'UpdateDelivery3.Tests.ps1',
+    'UpdateDelivery4.Tests.ps1',
     'ValidateDist.Tests.ps1',
     'VendorClaims.Tests.ps1',
     'WorkspaceBom.Tests.ps1'
@@ -122,11 +124,14 @@ if ($File) {
 # cannot predict this parallel run (they mispredicted it twice). A HINT for launch order and shard
 # bins, never correctness: a stale entry costs time, not a result. An unlisted file is priced as the
 # dearest listed one, so it launches early; guessing cheap is what left UpdateDelivery.Tests.ps1
-# priced at 83.7 s while it took 917 to 1,304 s (B-510). That file was then split in two at its
-# cost midpoint; its two entries share its 979.0 s median by a local per-case timing (49.3 / 50.7%).
+# priced at 83.7 s while it took 917 to 1,304 s (B-510). That file was then split in four at its cost
+# quarters; the four entries share the mean of its halves' sum on the two sharded CI runs (1,490.0 and
+# 1,259.1 s, 2026-11-15/16) by a local per-case timing (28.1 / 25.3 / 23.7 / 22.9%).
 $costHint = @{
-    'UpdateDelivery.Tests.ps1'           = 482.6
-    'UpdateDelivery2.Tests.ps1'          = 496.4
+    'UpdateDelivery4.Tests.ps1'          = 385.8
+    'UpdateDelivery2.Tests.ps1'          = 347.5
+    'UpdateDelivery3.Tests.ps1'          = 326.4
+    'UpdateDelivery.Tests.ps1'           = 314.9
     'ValidateDist.Tests.ps1'             = 234.7
     'GuardPatternErrors.Tests.ps1'       = 207.6
     'AdoptionArchiveIntegrity.Tests.ps1' = 162.9

@@ -343,17 +343,20 @@ row carries any you add.
 `release.ps1` does not run the self-test (B-246 retired that stage: a maintainer-only tool that
 ships nothing must not be able to refuse a consumer release). Run `-SelfTest` yourself after any
 change to the runner and before every `-Live` run.
-- **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite takes
-  ~1–2 min. Expected, not a hang.
+- **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite took
+  about 9 minutes at 4 lanes (2026-11-16). Expected, not a hang. `-ShardCount 2 -ShardIndex <n>`
+  runs one of the two halves CI runs.
 
 **CI** — `.github/workflows/ci.yml` runs compose→freshness→validate→hook suites on every PR and on
 every push to `master` except one touching only top-level `meta/*.md` records or `.claude/plans/**`
 (`meta/review-ledger.md` still runs it); `push-and-check.ps1` skips its watch for those.
-The required execution topology is seven PowerShell 7 Windows contexts: `windows` (compose, freshness,
-footprint, validate), three `windows-meta` shards of the meta suite (`Invoke-HookTests.ps1 -ShardCount 3
--ShardIndex <n>`) and three `windows-hooks` matrix contexts. One additional required Windows job,
-`windows-case-parity`, checks that each of the six test contexts published a well-formed, non-zero semantic
-case count and that the meta shards together ran every meta test file once. Fidelity is not a CI step.
+The required execution topology is eleven PowerShell 7 Windows contexts: `windows` (compose, freshness,
+footprint, validate), four `windows-meta` shards of the meta suite (`Invoke-HookTests.ps1 -ShardCount 4
+-ShardIndex <n>`) and six `windows-hooks` contexts, two shards of each dist's shipped hook suite
+(`dist/<dist>/tests/hooks/Invoke-HookTests.ps1 -ShardCount 2 -ShardIndex <n>`, with `HOOKTESTS_TIMING`
+set so each file's cost can be re-measured). One additional required Windows job, `windows-case-parity`,
+checks that each of the ten test contexts published a well-formed, non-zero semantic case count and that
+each suite's shards together ran each of its test files once. Fidelity is not a CI step.
 
 Manual one-off (debugging a single hook) — pipe a fixture straight in:
 

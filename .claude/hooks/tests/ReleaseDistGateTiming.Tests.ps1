@@ -64,14 +64,15 @@ function Assert-CiRootMetaSuite([string]$Name) {
     Assert ($job -match '(?m)^\s*runs-on:\s*windows-latest\s*$') "CI job '$Name' is no longer direct Windows evidence"
 }
 
-# Every shard 1..N of the meta suite runs, each once: the runner puts each file in exactly one bin, so a
-# shard left out of the matrix is a file that runs nowhere (B-510).
-function Assert-CiMetaShards([string]$Name) {
+# Every shard 1..N of a sharded suite runs, each once: the runner puts each file in exactly one bin, so a
+# shard left out of the matrix is a file that runs nowhere (B-510). The meta suite and each dist's hook
+# suite are sharded this way.
+function Assert-CiShards([string]$Name) {
     $job = Get-CiJob $Name
-    $matrix = [regex]::Match($job, '(?ms)matrix:\s*\r?\n\s*shard:\s*\[(?<list>[^\]\r\n]*)\]')
+    $matrix = [regex]::Match($job, '(?m)^\s*shard:\s*\[(?<list>[^\]\r\n]*)\]')
     Assert $matrix.Success "CI job '$Name' no longer declares a shard matrix"
     $call = [regex]::Matches($job, '-ShardCount (?<n>[1-9]\d*) -ShardIndex \$\{\{ matrix\.shard \}\}')
-    Assert ($call.Count -eq 1) "CI job '$Name' must hand each matrix leg its own shard of the meta suite exactly once"
+    Assert ($call.Count -eq 1) "CI job '$Name' must hand each matrix leg its own shard of its suite exactly once"
     $count = [int]$call[0].Groups['n'].Value
     $shards = @($matrix.Groups['list'].Value -split ',' | ForEach-Object { $_.Trim() })
     Assert (($shards -join ',') -ceq ((1..$count) -join ',')) "CI job '$Name' runs shards [$($shards -join ', ')] of $count; every shard 1..$count must run exactly once"
@@ -164,9 +165,10 @@ It 'CI runs the dist gates, every meta shard and every dist hook suite as indepe
 
     Assert ((Get-CiJob 'windows') -notmatch '(?m)^\s*needs\s*:') "CI job 'windows' is serialized behind another job"
     Assert ((Get-CiJob 'windows') -match 'scripts/validate-dist\.ps1') "CI job 'windows' no longer validates the dists"
-    Assert-CiMetaShards 'windows-meta'
+    Assert-CiShards 'windows-meta'
     Assert-CiRootMetaSuite 'windows-meta'
     Assert-CiHookMatrix 'windows-hooks'
+    Assert-CiShards 'windows-hooks'
     Assert-CiHost 'windows' 'pwsh' 'Core' 7
     Assert-CiHost 'windows-meta' 'pwsh' 'Core' 7
     Assert-CiHost 'windows-hooks' 'pwsh' 'Core' 7
@@ -175,7 +177,7 @@ It 'CI runs the dist gates, every meta shard and every dist hook suite as indepe
     Assert (@([regex]::Matches($ci, 'actions/upload-artifact@v4')).Count -eq 2) 'CI must contain exactly two independently expanding case-count publishers'
     Assert (@([regex]::Matches($ci, 'actions/download-artifact@v4')).Count -eq 1) 'CI must contain exactly one downstream artifact download'
     Assert-CiIndependentProducer 'windows-meta' '${{ runner.temp }}/windows-meta-${{ matrix.shard }}-case-counts.txt' 'b219-case-counts-windows-meta-${{ matrix.shard }}'
-    Assert-CiIndependentProducer 'windows-hooks' '${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-case-counts.txt' 'b219-case-counts-windows-hooks-${{ matrix.dist }}'
+    Assert-CiIndependentProducer 'windows-hooks' '${{ runner.temp }}/windows-hooks-${{ matrix.dist }}-${{ matrix.shard }}-case-counts.txt' 'b219-case-counts-windows-hooks-${{ matrix.dist }}-${{ matrix.shard }}'
     Assert-CiParityDecision
 }
 
@@ -218,6 +220,26 @@ It 'the meta runner writes TIMING in the invariant grammar past 1,000 s under a 
     Assert ($line -ceq 'TIMING UpdateDelivery.Tests.ps1 1013.3') "the meta runner's TIMING line is not the invariant one-decimal value: '$line'"
 }
 
+It 'each shipped hook runner writes TIMING in the invariant grammar past 1,000 s under a decimal-comma culture' {
+    # CI prints these lines (HOOKTESTS_TIMING) and the runner's shard bins are re-measured from them (B-510).
+    foreach ($dist in 'dotnet', 'angular', 'monorepo') {
+        $runner = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot "dist/$dist/tests/hooks/Invoke-HookTests.ps1"), [ref]$null, [ref]$null)
+        $emitters = @($runner.FindAll({ param($n)
+            $n -is [System.Management.Automation.Language.CommandAst] -and $n.GetCommandName() -eq 'Write-Host' -and $n.Extent.Text -match 'TIMING'
+        }, $true))
+        Assert ($emitters.Count -eq 1) "the $dist hook runner has $($emitters.Count) TIMING emitters; expected one"
+        $f = [pscustomobject]@{ Name = 'Guard.Tests.ps1' }
+        $begin = [datetime]::new(2026, 11, 16, 8, 0, 0)
+        $result = [pscustomobject]@{ Begin = $begin; End = $begin.AddSeconds(1013.34) }
+        $savedCulture = [cultureinfo]::CurrentCulture
+        try {
+            [cultureinfo]::CurrentCulture = [cultureinfo]::GetCultureInfo('de-DE')
+            $line = (& ([scriptblock]::Create($emitters[0].Extent.Text)) 6>&1 | Out-String).Trim()
+        } finally { [cultureinfo]::CurrentCulture = $savedCulture }
+        Assert ($line -ceq 'TIMING Guard.Tests.ps1 1013.3') "the $dist hook runner's TIMING line is not the invariant one-decimal value: '$line'"
+    }
+}
+
 It 'a TIMING value appended to a RESULT line would be swallowed -- the reason for the separate line' {
     # The failure mode this design avoids, demonstrated rather than asserted in prose: a third field
     # on RESULT does not degrade to "ignored", it stops matching at all.
@@ -243,8 +265,8 @@ It 'the job wall-clock emitter survives a job whose times were never set' {
 if (-not $SkipRedTest) {
     It 'an unsupported runner substitution makes the exact Windows topology assertion fail' {
         Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
-            -Find ("  windows-hooks:" + $ciNewline + "    name: windows-hooks (`${{ matrix.dist }})" + $ciNewline + "    runs-on: windows-latest") `
-            -Replacement ("  windows-hooks:" + $ciNewline + "    name: windows-hooks (`${{ matrix.dist }})" + $ciNewline + "    runs-on: ubuntu-latest") -Command {
+            -Find ("  windows-hooks:" + $ciNewline + "    name: windows-hooks (`${{ matrix.dist }}, `${{ matrix.shard }})" + $ciNewline + "    runs-on: windows-latest") `
+            -Replacement ("  windows-hooks:" + $ciNewline + "    name: windows-hooks (`${{ matrix.dist }}, `${{ matrix.shard }})" + $ciNewline + "    runs-on: ubuntu-latest") -Command {
                 param($scratchTarget, $scratchRoot)
                 $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
                 $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
@@ -265,7 +287,17 @@ if (-not $SkipRedTest) {
 
     It 'a meta shard left out of the matrix makes the topology assertion fail' {
         Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
-            -Find 'shard: [1, 2, 3]' -Replacement 'shard: [1, 2]' -Command {
+            -Find 'shard: [1, 2, 3, 4]' -Replacement 'shard: [1, 2, 3]' -Command {
+                param($scratchTarget, $scratchRoot)
+                $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
+                $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow
+                $global:LASTEXITCODE = $process.ExitCode
+            } | Out-Null
+    }
+
+    It 'a hook shard left out of the matrix makes the topology assertion fail' {
+        Invoke-MutationRedTest -TargetFile $ciPath -ScratchSourceRoot $repoRoot `
+            -Find 'shard: [1, 2]' -Replacement 'shard: [1]' -Command {
                 param($scratchTarget, $scratchRoot)
                 $test = Join-Path $scratchRoot '.claude/hooks/tests/ReleaseDistGateTiming.Tests.ps1'
                 $process = Start-Process -FilePath (Get-PsExe) -ArgumentList @('-NoProfile','-File',$test,'-SkipRedTest') -Wait -PassThru -NoNewWindow

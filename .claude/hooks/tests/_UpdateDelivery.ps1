@@ -1,5 +1,5 @@
-﻿# Definitions shared by UpdateDelivery.Tests.ps1 and UpdateDelivery2.Tests.ps1, which dot-source this file; it runs
-# no test. One file was split in two so CI runs the halves in parallel (B-510). Does NOT ship.
+﻿# Definitions shared by UpdateDelivery.Tests.ps1 and UpdateDelivery2, 3 and 4.Tests.ps1, which dot-source this file;
+# it runs no test. One file was split in four so CI runs the quarters in parallel (B-510). Does NOT ship.
 . (Join-Path $PSScriptRoot '_HookHarness.ps1')
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 

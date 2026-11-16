@@ -63,7 +63,7 @@ function New-Row {
 #
 # Deriving the list means the next person to widen ExpectedJobs cannot break these cases by omission.
 # The naming shape itself ('<job> (<value>)' for matrix legs) is guarded by the real workflow
-# topology test. This fixture derives the current eight expanded Windows host contexts.
+# topology test. This fixture derives the current twelve expanded Windows host contexts.
 function Get-ExpectedJobNames {
     $watchPath = Join-Path $repoRoot '.claude/scripts/watch-ci.ps1'
     $errors = $null
@@ -86,13 +86,13 @@ function New-Jobs {
     $id = 91483264876
     $j = @()
     foreach ($name in (Get-ExpectedJobNames)) {
-        if ($name -eq 'windows-hooks (dotnet)' -and $OmitHooks) { continue }
+        if ($name -eq 'windows-hooks (dotnet, 1)' -and $OmitHooks) { continue }
         if ($name -eq 'windows-case-parity' -and $OmitParity) { continue }
         # The two root host jobs keep their per-case conclusions; derived matrix legs default to
         # success so a case that says nothing about them is not silently testing a red leg.
         $conclusion = switch ($name) {
             'windows' { $Pwsh }
-            'windows-hooks (dotnet)' { $Hooks }
+            'windows-hooks (dotnet, 1)' { $Hooks }
             'windows-case-parity' { $Parity }
             default { 'success' }
         }
@@ -188,7 +188,7 @@ $probes = @{
         $s = New-GhStub -ListResponses @('[' + (New-Row) + ']') -JobsResponse (New-Jobs -Hooks 'skipped')
         $r = Invoke-Watch -Stub $s -Watcher $w
         Assert ($r.Exit -eq 1) "expected EXIT=1 when a leg is not success, got $($r.Exit): $($r.Out)"
-        Assert ($r.Out -match 'windows-hooks \(dotnet\)=skipped') 'the refusal does not name the offending leg'
+        Assert ($r.Out -match 'windows-hooks \(dotnet, 1\)=skipped') 'the refusal does not name the offending leg'
     }
     'unknown' = {
         param($w)
@@ -210,11 +210,13 @@ $probes = @{
 
 try {
     # ---- the exit contract ----------------------------------------------------------------------
-    It 'the default contract names all seven execution contexts plus the case-count decision exactly' {
+    It 'the default contract names all eleven execution contexts plus the case-count decision exactly' {
         $expected = @(
             'windows',
-            'windows-meta (1)', 'windows-meta (2)', 'windows-meta (3)',
-            'windows-hooks (dotnet)', 'windows-hooks (angular)', 'windows-hooks (monorepo)',
+            'windows-meta (1)', 'windows-meta (2)', 'windows-meta (3)', 'windows-meta (4)',
+            'windows-hooks (dotnet, 1)', 'windows-hooks (dotnet, 2)',
+            'windows-hooks (angular, 1)', 'windows-hooks (angular, 2)',
+            'windows-hooks (monorepo, 1)', 'windows-hooks (monorepo, 2)',
             'windows-case-parity'
         )
         $actual = @(Get-ExpectedJobNames)

@@ -57,9 +57,10 @@ It 'all distributions retain the suite but exclude it from consumer ownership' {
         $suite = @(Get-ChildItem -LiteralPath (Join-Path $dist 'tests/hooks') -File -Recurse)
         # Live inventory of the retained suite: 22 after the architecture generator's test retired
         # with it, 23 since BootstrapBaseline.Tests.ps1 joined, 24 since B-395's guard-patch-cases.ps1
-        # fixture, 25 since B-421's SessionStartTestEntryPoints.Tests.ps1. Distinct from the frozen 23
-        # below, which counts what v0.80.0 actually installed.
-        Assert ($suite.Count -eq 25) "$stack dist does not retain all 25 hook-test files"
+        # fixture, 25 since B-421's SessionStartTestEntryPoints.Tests.ps1, 26 since B-510 split
+        # Guard.Tests.ps1 in two with Guard2.Tests.ps1. Distinct from the frozen 23 below, which
+        # counts what v0.80.0 actually installed.
+        Assert ($suite.Count -eq 26) "$stack dist does not retain all 26 hook-test files"
         Assert (@($suite | Where-Object { $_.Name -ceq 'ReviewScope.Tests.ps1' }).Count -eq 1) "$stack dist omitted ReviewScope.Tests.ps1 from the retained hook-test inventory"
         $manifest = Get-Content -Raw -LiteralPath (Join-Path $dist 'framework-ownership.json') | ConvertFrom-Json
         $installed = @($manifest.paths | Where-Object { $_.path.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) })
