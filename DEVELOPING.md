@@ -16,7 +16,7 @@ number and never restates them. Paths assume cwd = the repo root.
 | `install.ps1` | root installer | detect stack, auto-detect mixed → monorepo, delegate to dist installer |
 | `.claude/hooks/` | meta-dev `bom-fix.ps1` hook | auto-adds the UTF-8 BOM to written `.ps1`; does not ship |
 | `.claude/hooks/_fixtures/` | JSON event fixtures for testing the hooks | see below |
-| `.claude/scripts/release.ps1` | release automation [#7] | run by the maintainer, or by an agent the maintainer asks in chat to release a named version (AGENTS.md › Ship); runs live agent runs before an agent-facing release's commit (B-521); requires PowerShell 7 |
+| `.claude/scripts/release.ps1` | release automation [#7] | run by the maintainer, or by an agent the maintainer asks in chat to release a named version (with `-NoEvals`; AGENTS.md › Ship); requires PowerShell 7 |
 | `.claude/scripts/watch-ci.ps1` | watches GitHub Actions for a commit; 0 green / 1 red / 3 cannot-verify | used by `release.ps1` step 5c, runnable by hand |
 | `.claude/scripts/_ci-decision.ps1` | the publish decision table (tag / exit code) as a callable function | dot-sourced by `release.ps1` and by its tests |
 | `.claude/plans/` | plans [Conventions] | includes the locked B-21/B-22/B-27 design specs |
@@ -222,8 +222,7 @@ for the full case list and `.claude/plans/2026-09-18-mechanical-red-first-check.
 real agent driven end-to-end and API/subscription spend, so it is deliberately not wired into any
 of the suites above. B-41's live harness below closes the evidence gap for the Claude host (not
 the gate gap, and not yet the Copilot host — see `meta/BACKLOG.md`): it is maintainer-triggered,
-and its results are a trend log, except the scenario `release.ps1` runs before an agent-facing
-release's commit (B-521), whose regression withholds the release.
+not automatic, and its results are a trend log, not a pass/fail release condition.
 
 - **Exit code = number of failing tests** (0 = green).
 - **Host:** the aggregate runner preserves the host that launched it. Run it directly under
@@ -258,14 +257,13 @@ cmd.exe /d /c "chcp 437 >nul && pwsh -NoProfile -File .claude\hooks\tests\<Suite
 
 Do not “fix” a resulting false red by hardening one command inside the subject.
 
-### The live agent-behavior harness (B-41 — spends budget; three of its scenarios run before an agent-facing tag)
+### The live agent-behavior harness (B-41 — maintainer-triggered, spends budget, not a gate)
 
 `.claude/evals/run-agent-evals.ps1` drives the installed `claude` CLI through fixture scenarios in
 disposable temp repos and grades **typed, observable** evidence — matched `tool_use`/`tool_result`
-events, git state, file bytes — never transcript prose alone. It never runs in CI. Since B-521,
-`release.ps1` runs one of its scenarios before committing a release that changes what agents are
-told (see "Release process"); otherwise it is maintainer-triggered. See the locked design in
-`.claude/plans/2026-07-17-b41-agent-behavior-harness-design.md` and results in `meta/eval-results.md`.
+events, git state, file bytes — never transcript prose alone. It never runs in CI and never gates
+a release; see the locked design in `.claude/plans/2026-07-17-b41-agent-behavior-harness-design.md`
+and results in `meta/eval-results.md`.
 
 The runner requires PowerShell 7 and declares it; Windows PowerShell 5.1 refuses at `#Requires`.
 The repository-level obligation to run a representative suite under a hostile code page still
@@ -282,9 +280,8 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -SelfTest
 # CHANGELOG head) with no local diff
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-fix] [-Model sonnet]
 
-# Per-release check after each tag, never a gate (WSD-016, WSD-096): the Copilot line below; rows ride in the next work
-# commit. Claude Code's guard-retry now runs before the tag (release.ps1 step 5b, B-521).
-# Alarm: any row without a PreToolUse-blocked write -> one -Trials 6 rerun -> a BACKLOG line
+# Per-release check, never a gate (WSD-016, WSD-096): after each tag (release.ps1 -NoEvals), run both lines below; rows
+# ride in the next work commit. Alarm: any row without a PreToolUse-blocked write -> one -Trials 6 rerun -> a BACKLOG line
 # only if a rerun row repeats it. Only when the model or a batch's carrier changed (not a host patch alone, WSD-066):
 # -Scenario route-fix,warehouse-bind-sql, then with -Arm none (carriers: the Bug fix bullet and rail, meta/rail-sync.json;
 # add-warehouse-load, map-warehouse), and -Scenario angular-feature-placement -Model opus (Leanness #1, the Feature rail,
@@ -292,8 +289,8 @@ pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live [-Scenario route-f
 # the cold prefix write. Copilot CLI is both reporting teams' host (2026-10-01): its guard-retry line runs every batch (two
 # premium requests; the env opt-in stands in for folder trust). Its alarm: hooksLoaded=False, a key on disk, or neither row
 # blocked (a placeholder written with no attempt is not a block), then the same rerun rule. Other Copilot scenarios: model change only.
+pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Arm framework -Trials 2 -Scenario guard-retry
 pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Executor copilot -Arm framework -Trials 2 -Scenario guard-retry -TimeoutSeconds 600
-# B-521: -FrameworkRoot <checkout> measures another tree (a previous release's worktree) under this checkout's runner and graders.
 # B-280: -WarehouseMap omit|enriched swaps the warehouse-route scenarios' frozen map (route scenarios only).
 # -WarehouseMap generated is the consumer journey instead of the simulation: it overlays
 # meta/eval-fixtures/warehouse-generated/files/. Regenerate that per framework version (the runner
@@ -343,10 +340,9 @@ every row so far, that includes your settings' `env` block and the session's hos
 session-state the runner reads; on 2026-10-03 `~/.copilot` held no personal skill, instruction, MCP server or plugin, so a Copilot
 row carries any you add.
 
-`release.ps1` does not run the self-test (B-246 retired that stage, WSD-096). Its pre-tag agent runs
-(B-521) do use the runner's graders, so a broken grader can hold an agent-facing release; it reads
-"could not examine" (exit 3) when it fails the previous release too, and `-WaiveAgentRuns` lifts it.
-Run `-SelfTest` yourself after any change to the runner and before every `-Live` run.
+`release.ps1` does not run the self-test (B-246 retired that stage: a maintainer-only tool that
+ships nothing must not be able to refuse a consumer release). Run `-SelfTest` yourself after any
+change to the runner and before every `-Live` run.
 - **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite takes
   ~1–2 min. Expected, not a hang.
 
@@ -426,34 +422,14 @@ stamp drift twice:
     dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the four
     release-subject meta files: `DocTruth`, `ReleaseChangelogStamp`, `GateBudgetConsistency`,
     `WorkspaceBom`), **refuses to commit on any failure**, appends
-    the review row to `meta/review-ledger.md`, runs the pre-tag agent runs below, then commits to
-    `master`, pushes, **waits for CI**, and tags. A normal tag requires all four PowerShell 7 Windows
-    execution contexts plus their downstream case-count decision.
-    `-NoPush` provides a dry-ish run (the agent runs still spend; waive them for a dry run).
+    the review row to `meta/review-ledger.md`, then commits to `master`, pushes, **waits for CI**,
+    and tags. A normal tag requires all four PowerShell 7 Windows execution contexts plus their
+    downstream case-count decision.
+    `-NoPush` provides a dry-ish run.
 
    It **refuses to start** without `-ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`
    (AGENTS.md "Ship"), which it records verbatim in the ledger; `reviewer none` is a legitimate answer.
-   It refuses `-NoEvals` (B-521) and names `-WaiveAgentRuns "<reason>"` instead.
 4. Append to `LEARNINGS.md` if there's a lesson.
-
-### Pre-tag agent runs (B-521, WSD-125 (6); design `.claude/plans/2026-11-15-b521-pre-tag-evals.md`)
-
-Step 5b, after the staged-set guard and before the commit. The staged tree becomes a commit object no
-branch points to; if any path changed since the previous release's tag (the newest dated root CHANGELOG
-head below this one) is one agents are told — per dist `AGENTS.md`, `CLAUDE.md`, `.github/instructions/`,
-`.claude/workflow.md`, commands, skills, agents, hooks, `settings*.json`, `dist/*/scripts/install.ps1`; the root
-`install.ps1` and `README.md` — the candidate's own runner runs `guard-retry` on Claude Code (`sonnet`,
-acceptEdits with whole Read/Edit/Write/Glob/Grep/Bash/PowerShell, no `CLAUDE*`/`ANTHROPIC*` variables) in temporary worktrees, in parallel rounds of one run per scenario.
-3 of 3 is green; a FAIL adds 3 candidate runs and 3 runs of the previous release (its stored pre-tag rows
-when made on the same Claude Code version and model); 2 or more candidate failures against a 3-of-3
-baseline is REGRESSION (exit 1); a baseline failure, a third unread run, a quota or rate-limit refusal
-(not `allowed_warning`), or a round that could pass 6 USD is "could not examine" (exit 3). Either leaves
-nothing committed and the rows in `meta/eval-results.md`; green rows ride in the release commit. Both the
-commit and the tag record the outcome; `-WaiveAgentRuns "<reason>"` skips the runs and is recorded the same way.
-`route-fix` and `install-handoff` were built in and dropped: their known-bad candidates (the bug-fix rail's
-failing-test sentence removed; v0.97.1's installer wording) stayed green, so neither had been seen red
-(`meta/eval-results.md`, "B-521 red check"). A scenario joins only after passing 6 of 6 on the current
-release and being seen to stop a known-bad candidate (exit 1).
 
 ### The CI watch — a tag means CI-verified green (B-88, WSD-028)
 

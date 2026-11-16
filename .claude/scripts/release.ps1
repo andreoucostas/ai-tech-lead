@@ -10,9 +10,8 @@
 # just root) and the working tree contains exactly the release changes.
 #
 # Gates (in order): compose all three dists -> validate-dist ×3 + context footprint -> the four meta
-# test files whose subject the release commit changes (B-245) -> before the commit, live agent runs
-# on the candidate when it changes what agents are told (B-521, step 5b). The full root meta suite
-# and the shipped hook suites run in CI: before a normal tag, CI must observe the
+# test files whose subject the release commit changes (B-245). The full root meta suite and the shipped
+# hook suites run in CI: before a normal tag, CI must observe the
 # three-dist hook matrices under PowerShell 7.
 #
 # PowerShell-only by decision (see meta/workspace-decisions.md): release/eval automation requires
@@ -22,13 +21,9 @@ param(
     [Parameter(Mandatory)][string]$Version,
     [Parameter(Mandatory)][string]$Summary,
     [switch]$NoPush,
-    # Refused (B-521): weeks of "pass -NoEvals" would otherwise switch the pre-tag agent runs off
-    # silently. Declared only so the refusal below can name the replacement instead of a binding error.
+    # Accepted and ignored: B-511 deleted the post-success eval prompt it suppressed, which never
+    # fired. AGENTS.md "Ship" still passes it; B-521 gives it a meaning again.
     [switch]$NoEvals,
-    # Waiver for the pre-tag agent runs at step 5b (B-521), named for what it risks: the release is
-    # tagged without live agent runs on what it tells agents. The reason is written into the release
-    # commit and the tag annotation, like -AllowUnverifiedCi.
-    [string]$WaiveAgentRuns,
     # Escape hatch for the branch precondition below. Deliberately named for what it risks, not for
     # what it enables -- releasing off master is how v0.34.0 lost its release commit.
     [switch]$AllowNonMasterHead,
@@ -66,10 +61,6 @@ param(
     [string[]]$AllowFailingGate
 )
 $ErrorActionPreference = 'Stop'
-if ($NoEvals) {
-    [Console]::Error.WriteLine('FATAL: -NoEvals was removed (B-521): the pre-tag agent runs are part of the release; to skip them pass -WaiveAgentRuns "<reason>", which the tag records. Nothing was stamped or committed.')
-    exit 2
-}
 
 $repo  = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 $dists = @('dotnet', 'angular', 'monorepo')
@@ -83,313 +74,6 @@ function Test-ReleaseReviewRecord {
         [Parameter(Mandatory)][string]$Version
     )
     return [regex]::IsMatch($Text, "(?m)^\| v$([regex]::Escape($Version)) \|")
-}
-
-# ---- B-521 pre-tag agent runs: what step 5b calls ----------------------------------------------
-# When the release changes what agents are told, the standing scenarios below run live against the
-# exact candidate before it is committed (.claude/plans/2026-11-15-b521-pre-tag-evals.md; WSD-125 (6)).
-# Exits mirror the CI watch (WSD-029): 0 green; 1 REGRESSION, the candidate is worse than the
-# previous release; 3 could not examine (runs the host refused, errored or timed out on, a quota or
-# rate-limit refusal, the 6 USD stop, a baseline that failed too). ReleaseCiWatch.Tests.ps1 lifts
-# these functions by AST and calls them, Invoke-AgentRunStage with a stub runner.
-# Only a scenario seen red on a known-bad candidate counts (meta/eval-results.md, "B-521 red check",
-# 2026-11-16): guard-retry stopped the guard's removal (exit 1). route-fix stayed green with the bug-fix
-# rail's failing-test sentence removed and install-handoff with v0.97.1's installer wording, each 3 of 3
-# and 6 of 6 at calibration, so the design drops both until a known-bad they see is found.
-$agentRunScenarios = @('guard-retry')
-# acceptEdits with this list replaces --dangerously-skip-permissions, which this host's auto mode
-# refused (B-470; B-514 measured in the same mode). The shell tools are whole: the scenarios run the
-# installer, git and the fixture's tests, and a narrower list would score a denied command as FAIL.
-$agentRunAllowedTools = @('Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash', 'PowerShell')
-$agentRunSpendStopUsd = [decimal]6
-
-# git with its output read as UTF-8 whatever the console code page (the CHANGELOG heads carry an em
-# dash, and a CP437 console would garble it).
-function Invoke-AgentRunGit {
-    param([Parameter(Mandatory)][string]$Repo, [Parameter(Mandatory)][string[]]$Arguments)
-    $psi = [Diagnostics.ProcessStartInfo]::new('git')
-    foreach ($a in @('-C', $Repo) + $Arguments) { $psi.ArgumentList.Add($a) }
-    $psi.UseShellExecute = $false
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
-    $p = [Diagnostics.Process]::Start($psi)
-    $out = $p.StandardOutput.ReadToEndAsync()
-    $err = $p.StandardError.ReadToEndAsync()
-    $p.WaitForExit()
-    return [pscustomobject]@{ Exit = $p.ExitCode; Out = $out.GetAwaiter().GetResult(); Err = $err.GetAwaiter().GetResult() }
-}
-
-# The previous release: the newest dated root CHANGELOG head that is not this one.
-function Get-AgentRunPreviousVersion {
-    param([Parameter(Mandatory)][AllowEmptyString()][string]$ChangelogText, [Parameter(Mandatory)][string]$Version)
-    $emDash = [string][char]0x2014
-    foreach ($line in ($ChangelogText -split '\r?\n')) {
-        $m = [regex]::Match($line, "^## (\d+\.\d+\.\d+) $emDash \d{4}-\d{2}-\d{2}\s*$")
-        if ($m.Success -and $m.Groups[1].Value -ne $Version) { return $m.Groups[1].Value }
-    }
-    return $null
-}
-
-# What agents are told: the instruction files, the rules carrier, workflow, commands, skills, agents,
-# hooks and their wiring, and the installer's handoff text; at the root, the installer and README.
-function Test-AgentRunTriggerPath {
-    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
-    return [regex]::IsMatch($Path, '^(?:install\.ps1|README\.md|dist/[^/]+/(?:AGENTS\.md|CLAUDE\.md|\.github/instructions/.+|\.claude/workflow\.md|\.claude/commands/.+|\.claude/skills/.+|\.claude/agents/.+|\.github/agents/.+|\.claude/hooks/.+|\.github/hooks/.+|\.claude/settings[^/]*\.json|scripts/install\.ps1))$')
-}
-
-# The range, from repository content only: the candidate's CHANGELOG names the previous release, its
-# tag is the base, and the paths changed between them decide whether the runs happen. Anything that
-# cannot be read is "could not examine" (exit 3), never "nothing to run".
-function Get-AgentRunRange {
-    param([Parameter(Mandatory)][string]$Repo, [Parameter(Mandatory)][string]$Version, [Parameter(Mandatory)][string]$CandidateSha)
-    $changelog = Invoke-AgentRunGit -Repo $Repo -Arguments @('show', "${CandidateSha}:CHANGELOG.md")
-    if ($changelog.Exit -ne 0) { return [pscustomobject]@{ Exit = 3; Message = 'could not examine: the candidate has no readable root CHANGELOG.md.' } }
-    $previous = Get-AgentRunPreviousVersion -ChangelogText $changelog.Out -Version $Version
-    if (-not $previous) { return [pscustomobject]@{ Exit = 3; Message = "could not examine: the root CHANGELOG has no dated head below $Version to compare with." } }
-    $base = Invoke-AgentRunGit -Repo $Repo -Arguments @('rev-parse', '-q', '--verify', "refs/tags/v$previous^{commit}")
-    if ($base.Exit -ne 0 -or -not $base.Out.Trim()) { return [pscustomobject]@{ Exit = 3; Message = "could not examine: tag v$previous, the previous release, is not in this clone (git fetch --tags)." } }
-    $baseSha = $base.Out.Trim()
-    $diff = Invoke-AgentRunGit -Repo $Repo -Arguments @('-c', 'core.quotepath=false', 'diff', '--name-only', '-z', $baseSha, $CandidateSha)
-    if ($diff.Exit -ne 0) { return [pscustomobject]@{ Exit = 3; Message = "could not examine: git diff v$previous..candidate failed: $($diff.Err.Trim())" } }
-    $paths = @($diff.Out -split [char]0 | Where-Object { $_ })
-    return [pscustomobject]@{ Exit = 0; Message = ''; Previous = $previous; BaseSha = $baseSha; Changed = $paths.Count; Trigger = @($paths | Where-Object { Test-AgentRunTriggerPath $_ }) }
-}
-
-# One runner row. PASS and FAIL were examined by the grader: an agent that read the framework's text
-# and declined, asked instead of acting or called it an injection is FAIL, what a consumer meets.
-# Everything else is UNREAD (could not examine): the host refused before the agent acted, an API or
-# host error, a timeout, a broken transcript, INCONCLUSIVE. Quota marks a quota or rate-limit refusal,
-# which stops the stage; an allowed_warning rate-limit status is not one.
-function ConvertFrom-AgentRunRow {
-    param([Parameter(Mandatory)][AllowEmptyString()][string]$Line)
-    $m = [regex]::Match($Line, "^- \*\*(?<status>[A-Z_]+) (?<id>[A-Za-z0-9-]+)\*\* \((?<meta>[^)]*)\) $([char]0x2014) (?<detail>.*)$")
-    if (-not $m.Success) { return $null }
-    $status = $m.Groups['status'].Value
-    $detail = $m.Groups['detail'].Value
-    $class = if ($status -eq 'PASS') { 'PASS' } elseif ($status -eq 'FAIL') { 'FAIL' } else { 'UNREAD' }
-    $cost = [regex]::Match($detail, '(?:^|\s)costUsd=(\d+(?:\.\d+)?)')
-    $quota = $class -eq 'UNREAD' -and ($detail -match 'rateLimit=rejected|apiErrorStatus=429' -or
-        $detail -match '(?i)usage limit|hit your limit|rate[ _-]?limit|quota|credit balance|billing')
-    # The grader's facts (after the first ';'), for naming what a FAIL row differs on from a PASS row.
-    $facts = [ordered]@{}
-    if ($detail.Contains(';')) {
-        foreach ($f in [regex]::Matches(($detail -split ';', 2)[1], '(?:^|\s)(\w+)=(\S+)')) {
-            if ($f.Groups[1].Value -notin @('ccVersion', 'initModel', 'durationMs', 'budgetUsd')) { $facts[$f.Groups[1].Value] = $f.Groups[2].Value }
-        }
-    }
-    $side = [regex]::Match($m.Groups['meta'].Value, '(?:^|;\s*)pretag=([\w.-]+)')
-    return [pscustomobject]@{
-        Status    = $status
-        Scenario  = $m.Groups['id'].Value
-        Class     = $class
-        CostUsd   = if ($cost.Success) { [decimal]$cost.Groups[1].Value } else { $null }
-        Quota     = [bool]$quota
-        CcVersion = [regex]::Match($detail, '\bccVersion=(\S+)').Groups[1].Value
-        Model     = [regex]::Match($detail, '\binitModel=(\S+)').Groups[1].Value
-        Facts     = $facts
-        Side      = if ($side.Success) { $side.Groups[1].Value } else { '' }
-    }
-}
-
-# The rule, per scenario, from the classes so far. Stage A: 3 examined candidate runs, all PASS is
-# green. A FAIL opens stage B: up to 6 candidate runs and 3 baseline runs of the previous release.
-# REGRESSION when the candidate fails 2 or more while the baseline passes 3 of 3; BASELINE_MOVED
-# when the baseline fails a run (the host or model shifted under both); green on exactly 1 failure.
-# A third UNREAD run on either side is CANT_VERIFY. Stops early once more runs cannot change it.
-function Get-AgentRunDecision {
-    param([string[]]$Candidate = @(), [string[]]$Baseline = @())
-    $done = { param($Verdict, $Exit, $Message) [pscustomobject]@{ Done = $true; Verdict = $Verdict; Exit = $Exit; Message = $Message; NeedCandidate = $false; NeedBaseline = $false } }
-    $need = { param($Candidate, $Baseline) [pscustomobject]@{ Done = $false; Verdict = ''; Exit = $null; Message = ''; NeedCandidate = [bool]$Candidate; NeedBaseline = [bool]$Baseline } }
-    $cand = @($Candidate | Where-Object { $_ -in @('PASS', 'FAIL') })
-    $base = @($Baseline | Where-Object { $_ -in @('PASS', 'FAIL') })
-    $candUnread = @($Candidate | Where-Object { $_ -eq 'UNREAD' }).Count
-    $baseUnread = @($Baseline | Where-Object { $_ -eq 'UNREAD' }).Count
-    $fails = @($cand | Where-Object { $_ -eq 'FAIL' }).Count
-    $baseFails = @($base | Where-Object { $_ -eq 'FAIL' }).Count
-    if ($candUnread -gt 2) { return & $done 'CANT_VERIFY' 3 "could not examine: $candUnread candidate runs could not be read" }
-    if ($fails -eq 0) {
-        if ($cand.Count -ge 3) { return & $done 'GREEN' 0 "green: the candidate passed $($cand.Count) of $($cand.Count)" }
-        return & $need $true $false
-    }
-    if ($baseUnread -gt 2) { return & $done 'CANT_VERIFY' 3 "could not examine: $baseUnread baseline runs could not be read" }
-    if ($baseFails -gt 0) { return & $done 'BASELINE_MOVED' 3 "could not examine (baseline moved): the previous release also failed $baseFails of $($base.Count) here, so the host or model shifted under both" }
-    $needBase = $base.Count -lt 3
-    if ($fails -ge 2) {
-        if (-not $needBase) { return & $done 'REGRESSION' 1 "REGRESSION: the candidate failed $fails of $($cand.Count) while the previous release passed 3 of 3" }
-        return & $need $false $true
-    }
-    if ($cand.Count -lt 6 -or $needBase) { return & $need ($cand.Count -lt 6) $needBase }
-    return & $done 'GREEN' 0 "green: the candidate failed 1 of 6 and the previous release passed 3 of 3"
-}
-
-# The previous release's own pre-tag rows, as its release commit stored them: usable as the baseline
-# only when made on the same Claude Code version and model and all of at least three examined PASS.
-function Get-StoredAgentRunBaseline {
-    param([AllowEmptyString()][string]$ResultsText, [Parameter(Mandatory)][string]$Version, [Parameter(Mandatory)][string]$Scenario,
-        [AllowEmptyString()][string]$CcVersion, [AllowEmptyString()][string]$Model)
-    if (-not $ResultsText -or -not $CcVersion -or -not $Model) { return $null }
-    $heading = "$([char]0x2014) pre-tag agent runs, v$Version candidate (B-521)"
-    $inSection = $false
-    $classes = @()
-    foreach ($line in ($ResultsText -split '\r?\n')) {
-        if ($line.StartsWith('## ')) { $inSection = $line.EndsWith($heading); continue }
-        if (-not $inSection) { continue }
-        $row = ConvertFrom-AgentRunRow $line
-        if (-not $row -or $row.Scenario -ne $Scenario -or $row.Side -ne 'candidate' -or $row.Class -eq 'UNREAD') { continue }
-        if ($row.CcVersion -ne $CcVersion -or $row.Model -ne $Model) { continue }
-        $classes += $row.Class
-    }
-    if ($classes.Count -ge 3 -and @($classes | Where-Object { $_ -ne 'PASS' }).Count -eq 0) { return @('PASS', 'PASS', 'PASS') }
-    return $null
-}
-
-# One live run, through the runner's own -Live path, in a child whose environment carries no CLAUDE*
-# or ANTHROPIC* variable (a launching Claude Code session's would nest the child; B-514's practice).
-function Start-AgentRun {
-    param([Parameter(Mandatory)][string]$RunnerPath, [Parameter(Mandatory)][string]$Scenario, [Parameter(Mandatory)][string]$FrameworkRoot,
-        [Parameter(Mandatory)][string]$ResultsPath, [string[]]$AllowedTools = @(), [int]$TimeoutSeconds = 600)
-    $q = { param($s) "'" + ([string]$s).Replace("'", "''") + "'" }
-    $tools = if (@($AllowedTools).Count) { ' -AllowedTools @(' + ((@($AllowedTools) | ForEach-Object { & $q $_ }) -join ',') + ')' } else { '' }
-    $command = "& $(& $q $RunnerPath) -Live -Scenario $(& $q $Scenario) -Model sonnet -Trials 1 -TimeoutSeconds $TimeoutSeconds -FrameworkRoot $(& $q $FrameworkRoot) -ResultsPath $(& $q $ResultsPath)$tools; exit `$LASTEXITCODE"
-    $psi = [Diagnostics.ProcessStartInfo]::new((Get-Process -Id $PID).Path)
-    foreach ($a in @('-NoProfile', '-NonInteractive', '-EncodedCommand', [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command)))) { $psi.ArgumentList.Add($a) }
-    $psi.UseShellExecute = $false
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    foreach ($name in @($psi.Environment.Keys)) { if ($name -match '^(?i:CLAUDE|ANTHROPIC)') { [void]$psi.Environment.Remove($name) } }
-    $psi.Environment['DISABLE_AUTOUPDATER'] = '1'
-    $p = [Diagnostics.Process]::Start($psi)
-    return [pscustomobject]@{ Process = $p; Out = $p.StandardOutput.ReadToEndAsync(); Err = $p.StandardError.ReadToEndAsync() }
-}
-
-# The stage: rounds of single runs, one per scenario and side still needed, in parallel. Before each
-# round the worst case (every run at its budget cap) must stay within the spend stop; a run with no
-# recorded cost counts at its cap. A quota or rate-limit refusal ends the stage at once.
-function Invoke-AgentRunStage {
-    param(
-        [Parameter(Mandatory)][string]$Repo,
-        [Parameter(Mandatory)][string]$CandidateSha,
-        [Parameter(Mandatory)][string]$BaseSha,
-        [Parameter(Mandatory)][string]$BaseVersion,
-        [Parameter(Mandatory)][string[]]$Scenarios,
-        [AllowEmptyString()][string]$StoredResultsText = '',
-        # Default: the candidate's own runner, so its graders score the candidate and the baseline alike.
-        [string]$RunnerPath,
-        [decimal]$SpendStopUsd = 6,
-        [string[]]$AllowedTools = @(),
-        [int]$RunTimeoutSeconds = 600
-    )
-    $state = [ordered]@{}
-    foreach ($s in $Scenarios) { $state[$s] = [pscustomobject]@{ Candidate = [Collections.Generic.List[string]]::new(); Baseline = [Collections.Generic.List[string]]::new(); Source = ''; Decision = $null; PassFacts = $null; FailFacts = [Collections.Generic.List[object]]::new(); CcVersion = ''; Model = '' } }
-    $rowLines = [Collections.Generic.List[string]]::new()
-    $spent = [decimal]0
-    $stop = ''
-    $temp = Join-Path ([IO.Path]::GetTempPath()) ('atl-pretag-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
-    $roots = @{}
-    [void](New-Item -ItemType Directory -Path $temp)
-    try {
-        $add = Invoke-AgentRunGit -Repo $Repo -Arguments @('worktree', 'add', '--detach', (Join-Path $temp 'candidate'), $CandidateSha)
-        if ($add.Exit -ne 0) { $stop = "could not examine: the candidate worktree failed: $($add.Err.Trim())" } else { $roots.candidate = Join-Path $temp 'candidate' }
-        if (-not $RunnerPath -and $roots.candidate) { $RunnerPath = Join-Path $roots.candidate '.claude/evals/run-agent-evals.ps1' }
-        $budgets = @{}
-        if (-not $stop) {
-            $scenarioFile = Join-Path (Split-Path -Parent $RunnerPath) 'scenarios.json'
-            try { foreach ($c in @((Get-Content -Raw -LiteralPath $scenarioFile | ConvertFrom-Json).scenarios)) { $budgets[[string]$c.id] = [decimal]$c.budgetUsd } }
-            catch { $stop = "could not examine: $scenarioFile is unreadable." }
-            foreach ($s in $Scenarios) { if (-not $stop -and -not $budgets.ContainsKey($s)) { $stop = "could not examine: scenario $s is not in $scenarioFile." } }
-        }
-        $round = 0
-        while (-not $stop) {
-            $round++
-            $runs = @()
-            foreach ($s in $Scenarios) {
-                $st = $state[$s]
-                if ($st.Decision) { continue }
-                $d = Get-AgentRunDecision -Candidate @($st.Candidate) -Baseline @($st.Baseline)
-                if ($d.NeedBaseline -and -not $st.Source) {
-                    $stored = Get-StoredAgentRunBaseline -ResultsText $StoredResultsText -Version $BaseVersion -Scenario $s -CcVersion $st.CcVersion -Model $st.Model
-                    if ($stored) {
-                        $st.Baseline.AddRange([string[]]$stored)
-                        $st.Source = 'stored'
-                        # The stored PASS row's facts name what a FAIL differs on, as a fresh baseline's would.
-                        foreach ($line in ($StoredResultsText -split '\r?\n')) {
-                            $r = ConvertFrom-AgentRunRow $line
-                            if ($r -and -not $st.PassFacts -and $r.Scenario -eq $s -and $r.Class -eq 'PASS' -and $r.CcVersion -eq $st.CcVersion -and $r.Model -eq $st.Model) { $st.PassFacts = $r.Facts }
-                        }
-                    } else { $st.Source = 'fresh' }
-                    $d = Get-AgentRunDecision -Candidate @($st.Candidate) -Baseline @($st.Baseline)
-                }
-                if ($d.Done) { $st.Decision = $d; continue }
-                if ($d.NeedCandidate) { $runs += [pscustomobject]@{ Scenario = $s; Side = 'candidate' } }
-                if ($d.NeedBaseline) { $runs += [pscustomobject]@{ Scenario = $s; Side = 'baseline' } }
-            }
-            if (-not $runs) { break }
-            $worst = [decimal]0
-            foreach ($r in $runs) { $worst += $budgets[$r.Scenario] }
-            if ($spent + $worst -gt $SpendStopUsd) { $stop = "could not examine: the next round could take spend to $($spent + $worst) USD, past the $SpendStopUsd USD stop"; break }
-            if (@($runs | Where-Object Side -eq 'baseline').Count -and -not $roots.baseline) {
-                $add = Invoke-AgentRunGit -Repo $Repo -Arguments @('worktree', 'add', '--detach', (Join-Path $temp 'baseline'), $BaseSha)
-                if ($add.Exit -ne 0) { $stop = "could not examine: the baseline worktree failed: $($add.Err.Trim())"; break }
-                $roots.baseline = Join-Path $temp 'baseline'
-            }
-            $handles = foreach ($r in $runs) {
-                $resultsPath = Join-Path $temp "round$round-$($r.Side)-$($r.Scenario).md"
-                $h = Start-AgentRun -RunnerPath $RunnerPath -Scenario $r.Scenario -FrameworkRoot $roots[$r.Side] -ResultsPath $resultsPath -AllowedTools $AllowedTools -TimeoutSeconds $RunTimeoutSeconds
-                [pscustomobject]@{ Run = $r; Handle = $h; ResultsPath = $resultsPath }
-            }
-            $deadline = [DateTime]::UtcNow.AddSeconds($RunTimeoutSeconds + 300)
-            foreach ($x in @($handles)) {
-                $left = [int][Math]::Max(1000, ($deadline - [DateTime]::UtcNow).TotalMilliseconds)
-                $killed = -not $x.Handle.Process.WaitForExit($left)
-                if ($killed) { try { $x.Handle.Process.Kill($true) } catch { } ; [void]$x.Handle.Process.WaitForExit(10000) }
-                $st = $state[$x.Run.Scenario]
-                $row = $null
-                if (Test-Path -LiteralPath $x.ResultsPath) {
-                    foreach ($line in [IO.File]::ReadAllLines($x.ResultsPath)) { $parsed = ConvertFrom-AgentRunRow $line; if ($parsed) { $row = $parsed; $rowLine = $line; break } }
-                }
-                $sideTag = if ($x.Run.Side -eq 'baseline') { "baseline-v$BaseVersion" } else { 'candidate' }
-                $sideList = $st.Candidate
-                if ($x.Run.Side -eq 'baseline') { $sideList = $st.Baseline }
-                if (-not $row) {
-                    $spent += $budgets[$x.Run.Scenario]
-                    if ($killed) {
-                        $sideList.Add('UNREAD')
-                        $rowLines.Add("- **ERROR $($x.Run.Scenario)** (pretag=$sideTag) $([char]0x2014) the runner exceeded $($RunTimeoutSeconds + 300)s and was stopped")
-                        continue
-                    }
-                    $tail = (@(($x.Handle.Out.GetAwaiter().GetResult() + "`n" + $x.Handle.Err.GetAwaiter().GetResult()) -split '\r?\n' | Where-Object { $_.Trim() }) | Select-Object -Last 2) -join ' | '
-                    if (-not $stop) { $stop = "could not examine: the runner wrote no row for $($x.Run.Side) $($x.Run.Scenario) (exit $($x.Handle.Process.ExitCode)): $tail" }
-                    continue
-                }
-                $runCost = if ($null -ne $row.CostUsd) { $row.CostUsd } else { $budgets[$x.Run.Scenario] }
-                $spent += $runCost
-                $rowLines.Add(($rowLine -replace '^(- \*\*[A-Z_]+ [A-Za-z0-9-]+\*\* \([^)]*)\)', "`$1; pretag=$sideTag)"))
-                $sideList.Add($row.Class)
-                if ($row.Class -eq 'PASS' -and -not $st.PassFacts) { $st.PassFacts = $row.Facts }
-                if ($x.Run.Side -eq 'candidate') {
-                    if ($row.CcVersion) { $st.CcVersion = $row.CcVersion; $st.Model = $row.Model }
-                    if ($row.Class -eq 'FAIL') { $st.FailFacts.Add($row.Facts) }
-                }
-                if ($row.Quota -and -not $stop) { $stop = "could not examine: a quota or rate-limit refusal on $($x.Run.Side) $($x.Run.Scenario)" }
-            }
-        }
-    } finally {
-        foreach ($root in @($roots.Values)) { [void](Invoke-AgentRunGit -Repo $Repo -Arguments @('worktree', 'remove', '--force', $root)) }
-        [void](Invoke-AgentRunGit -Repo $Repo -Arguments @('worktree', 'prune'))
-        Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    $lines = foreach ($s in $Scenarios) {
-        $st = $state[$s]
-        if (-not $st.Decision) { $st.Decision = [pscustomobject]@{ Done = $true; Verdict = 'CANT_VERIFY'; Exit = 3; Message = $(if ($stop) { $stop } else { 'could not examine: the stage ended before this scenario was decided' }) } }
-        # What the candidate's FAIL rows differ on from the first PASS row seen (either side).
-        $checks = @(foreach ($ff in $st.FailFacts) { if ($st.PassFacts) { foreach ($k in $ff.Keys) { if ($st.PassFacts.Contains($k) -and $st.PassFacts[$k] -cne $ff[$k]) { "$k=$($ff[$k])" } } } }) | Select-Object -Unique
-        "${s}: $($st.Decision.Message) (candidate $(@($st.Candidate | Where-Object { $_ -eq 'PASS' }).Count) PASS of $($st.Candidate.Count) run$(if ($st.Baseline.Count) { "; baseline v$BaseVersion $(@($st.Baseline | Where-Object { $_ -eq 'PASS' }).Count) PASS of $($st.Baseline.Count), $($st.Source)" })$(if ($checks) { "; failing: $($checks -join ', ')" }))"
-    }
-    $verdicts = @($Scenarios | ForEach-Object { $state[$_].Decision })
-    $exit = if (@($verdicts | Where-Object Exit -eq 1).Count) { 1 } elseif (@($verdicts | Where-Object Exit -eq 3).Count) { 3 } else { 0 }
-    $verdict = switch ($exit) { 0 { 'GREEN' } 1 { 'REGRESSION' } default { 'COULD NOT EXAMINE' } }
-    return [pscustomobject]@{ Exit = $exit; Verdict = $verdict; SpentUsd = $spent; RowLines = @($rowLines); Lines = @($lines); Stop = $stop }
 }
 
 # ---- Gate time budget -------------------------------------------------------------------------
@@ -576,14 +260,13 @@ if ($branch -ne 'master') {
 # (13.2s serial, 2026-09-19); CI owns the full meta suite and all shipped-hook coverage on the
 # release commit before the tag. Re-measure before changing the budget or this banner.
 Write-Host "Releasing $Version. Local gates: compose x3 -> validate-dist x3 + context footprint -> release-subject meta files (DocTruth, ReleaseChangelogStamp, GateBudgetConsistency, WorkspaceBom)."
-Write-Host "Before the commit, when the release changes what agents are told: live agent runs on the candidate (B-521; measured at about 0.30 USD and 2 minutes; -WaiveAgentRuns `"<reason>`" skips them and the tag records it)."
 Write-Host "Before a normal tag, CI must pass all four Windows contexts: root plus three shipped-hook matrices under PowerShell 7."
 # The interruption promise used to be "nothing has been committed", full stop. After the push that is
 # simply false, and B-88 makes the window longer by adding a multi-minute wait to it. State the three
 # durable states instead; all three are safe to re-run the same command from (step 5 now falls
 # through to the publish phase rather than exiting when there is nothing left to stage).
 Write-Host "If interrupted, you are in exactly one of three states, and re-running the same command as-is is safe in all of them:"
-Write-Host "  before 'Staged manifest'         -> nothing committed (also during the pre-tag agent runs that follow it)."
+Write-Host "  before 'Staged manifest'         -> nothing committed."
 Write-Host "  after  'origin/master confirmed' -> the release is on master but UNTAGGED (CI unverified)."
 Write-Host "  after  'Tag ... confirmed'       -> released; a re-run is a no-op."
 
@@ -1069,59 +752,7 @@ The index has been reset; nothing was committed.
         exit 2
     }
 }
-# ---- 5b. Pre-tag agent runs (B-521), then commit -- both skipped when resuming a release whose commit already exists ----
-# The staged tree becomes a commit object no branch points to; Invoke-AgentRunStage checks it out in
-# a temporary worktree and runs the candidate's own runner there. Its rows ride in the release commit,
-# whose tree is asserted to be the evaluated one but for those rows. On exit 1 or 3 the index is reset
-# and nothing is committed, pushed or tagged; the rows stay in the working tree.
-$agentRunNote = ''
-if (-not $nothingToCommit -and $WaiveAgentRuns) {
-    $agentRunNote = "WAIVED (-WaiveAgentRuns): $($WaiveAgentRuns -replace '\r?\n', ' ')"
-    Write-Host ''
-    Write-Host "Pre-tag agent runs: $agentRunNote"
-} elseif (-not $nothingToCommit) {
-    Write-Host ''
-    $tree = Invoke-AgentRunGit -Repo $repo -Arguments @('write-tree')
-    $candidate = if ($tree.Exit -eq 0) { Invoke-AgentRunGit -Repo $repo -Arguments @('commit-tree', $tree.Out.Trim(), '-p', 'HEAD', '-m', "B-521 pre-tag candidate v$Version") } else { $tree }
-    $range = if ($candidate.Exit -eq 0) { Get-AgentRunRange -Repo $repo -Version $Version -CandidateSha $candidate.Out.Trim() } else { [pscustomobject]@{ Exit = 3; Message = "could not examine: the candidate commit could not be made: $($candidate.Err.Trim())" } }
-    if ($range.Exit -ne 0) {
-        git -C $repo reset --quiet
-        Write-Host "Pre-tag agent runs: $($range.Message)"
-        Write-Host "`nRelease REFUSED (exit 3, could not examine). Nothing was committed; the index has been reset. Fix it and re-run the same command, or pass -WaiveAgentRuns `"<reason>`"."
-        exit 3
-    }
-    if (-not $range.Trigger.Count) {
-        $agentRunNote = "not triggered: none of the $($range.Changed) path(s) changed since v$($range.Previous) is one agents are told"
-        Write-Host "Pre-tag agent runs: $agentRunNote."
-    } else {
-        Write-Host "Pre-tag agent runs: $($range.Trigger.Count) of $($range.Changed) path(s) changed since v$($range.Previous) are ones agents are told; running $($agentRunScenarios -join ', ') against the candidate (stop at $agentRunSpendStopUsd USD)..."
-        $stored = Invoke-AgentRunGit -Repo $repo -Arguments @('show', "$($range.BaseSha):meta/eval-results.md")
-        $stage = Invoke-AgentRunStage -Repo $repo -CandidateSha $candidate.Out.Trim() -BaseSha $range.BaseSha -BaseVersion $range.Previous `
-            -Scenarios $agentRunScenarios -StoredResultsText $(if ($stored.Exit -eq 0) { $stored.Out } else { '' }) -SpendStopUsd $agentRunSpendStopUsd -AllowedTools $agentRunAllowedTools
-        $record = @('', "## $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss K') $([char]0x2014) pre-tag agent runs, v$Version candidate (B-521)", '',
-            "Base v$($range.Previous) ($($range.BaseSha.Substring(0, 8))) · candidate tree $($tree.Out.Trim().Substring(0, 8)) · trigger: $($range.Trigger.Count) of $($range.Changed) changed paths · allowed tools: $($agentRunAllowedTools -join ' ') · verdict: $($stage.Verdict) (exit $($stage.Exit)) · spent $($stage.SpentUsd) USD", '') +
-            @($stage.RowLines) + @($stage.Lines | ForEach-Object { "- $_" }) + @('')
-        Add-Content -LiteralPath (Join-Path $repo 'meta/eval-results.md') -Value ($record -join "`n") -Encoding utf8NoBOM
-        foreach ($line in $stage.Lines) { Write-Host "  $line" }
-        Write-Host "Pre-tag agent runs: $($stage.Verdict) (exit $($stage.Exit)); spent $($stage.SpentUsd) USD; rows in meta/eval-results.md."
-        if ($stage.Exit -ne 0) {
-            git -C $repo reset --quiet
-            $what = if ($stage.Exit -eq 1) { 'the candidate does worse than the previous release' } else { 'the runs could not be examined' }
-            Write-Host "`nRelease REFUSED (exit $($stage.Exit)): $what. Nothing was committed; the index has been reset and the rows stay in meta/eval-results.md."
-            Write-Host "Fix it and re-run the same command, or pass -WaiveAgentRuns `"<reason>`", which the release commit and tag record."
-            exit $stage.Exit
-        }
-        git -C $repo add -- meta/eval-results.md
-        $committedTree = Invoke-AgentRunGit -Repo $repo -Arguments @('write-tree')
-        $drift = if ($committedTree.Exit -eq 0) { Invoke-AgentRunGit -Repo $repo -Arguments @('diff-tree', '-r', '--name-only', $tree.Out.Trim(), $committedTree.Out.Trim()) } else { $committedTree }
-        if ($drift.Exit -ne 0 -or (@($drift.Out -split '\r?\n' | Where-Object { $_ }) -join ',') -cne 'meta/eval-results.md') {
-            git -C $repo reset --quiet
-            [Console]::Error.WriteLine("FATAL: the tree to commit is not the evaluated candidate plus its rows ($(@($drift.Out -split '\r?\n' | Where-Object { $_ }) -join ', ')); nothing was committed.")
-            exit 2
-        }
-        $agentRunNote = "$($stage.Verdict) against v$($range.Previous), spent $($stage.SpentUsd) USD: $($stage.Lines -join '; ')"
-    }
-}
+# ---- 5b. Commit -- skipped when resuming a release whose commit already exists ----
 if (-not $nothingToCommit) {
     Write-Host ''
     # "all gates green" must stop being said the moment it stops being true. A waived gate is named
@@ -1132,9 +763,7 @@ if (-not $nothingToCommit) {
     } else {
         'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the four release-subject meta test files). No shipped dist hook suite runs locally; normal tagging waits for CI''s PowerShell 7 three-dist hook matrices.'
     }
-    $commitNotes = @('-m', $gateNote)
-    if ($agentRunNote) { $commitNotes += @('-m', "Pre-tag agent runs (B-521): $agentRunNote") }
-    git -C $repo commit -m "v${Version}: $Summary" @commitNotes
+    git -C $repo commit -m "v${Version}: $Summary" -m $gateNote
     if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
 }
 # Bound OUTSIDE the -NoPush branch below: step 5c needs it in every mode, and a variable that
@@ -1240,12 +869,7 @@ if ($existingSha) {
     } else {
         ' — CI full hook matrix not verified (see CI waiver/status)'
     }
-    # B-521: the pre-tag agent runs' line, read back from the release commit so a resumed run (which
-    # made no commit) records it too; a -WaiveAgentRuns waiver is the case that matters most.
-    $releaseBody = @(git -C $repo log -1 --format=%B $releaseSha)
-    $agentRunLine = @($releaseBody | Where-Object { $_ -like 'Pre-tag agent runs (B-521): *' } | Select-Object -First 1)
-    $tagAgentRunNote = if ($agentRunLine) { " — $($agentRunLine[0])" } else { '' }
-    git -C $repo tag -a $tagName -m "ai-tech-lead $tagName$($ciDecision.TagNote)$ciMatrixNote$tagWaiverNote$tagAgentRunNote" $releaseSha
+    git -C $repo tag -a $tagName -m "ai-tech-lead $tagName$($ciDecision.TagNote)$ciMatrixNote$tagWaiverNote" $releaseSha
     if ($LASTEXITCODE -ne 0) { Write-Host "Tag FAILED: could not create $tagName."; exit 1 }
     Write-Host "Tagged $tagName at $($releaseSha.Substring(0,7))."
 }

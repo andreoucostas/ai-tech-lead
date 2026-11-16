@@ -4438,7 +4438,6 @@ before every `-Live` run. Exposure if the recipe is skipped is bounded and reach
 maintainer budget on a run scored by a broken grader. Wiring into the manifest was rejected: B-132's
 dual-host exception holds only while the wrapper stays out of a host-leg suite. B-98's "do not build
 a second one" stands; revisit only on B-253's first report.
-**Partly undone by B-521 (2026-11-16), for the maintainer to confirm:** the self-test stays a recipe, but release.ps1's pre-tag agent runs score an agent-facing release with the runner's graders, so a grader regression can again hold a consumer release (exit 3 when it fails the previous release too; `-WaiveAgentRuns` lifts it).
 
 ## WSD-097: after B-253's first report — knowledge rows held; a Copilot eval spike is approved (2026-09-21)
 
@@ -4765,9 +4764,9 @@ root cause and fix it. when we hit the quota, we'll get an error back", "the lea
 reporting rule ("functional summaries work best before any technical explanations"). (2) Guarded step 3 runs the touched tests under `pwsh` locally
 and CI is the host matrix; the CP437 leg stays local until CI has one. (3) A step-4 attack is one round of about 30 minutes; a second, on the fix,
 when the first found a defect. (4) A commit subject is the tier, `B-n done` and the functional result in 72 characters. (5) Windows
-PowerShell 5.1 support ends when B-506 lands (amends WSD-073). (6) An agent-facing release is tried with live agent runs before its tag, amending
-WSD-016 (B-521); a release prints four numbers (B-522); CI's target is 15 minutes, then 10 (B-510). (7) B-514's paid measurement needs no fixed stop,
-read as covering B-515's. (8) WSD-124 (3)'s test covers a possible secret leak too; B-478 closes. **Reopen** (3) if a second round would have caught an escape.
+PowerShell 5.1 support ends when B-506 lands (amends WSD-073). (6) An agent-facing release is tried with live agent runs before its tag, amending WSD-016 (B-521; closed unbuilt
+2026-11-16, no live check caught an escape CI misses); a release prints four numbers (B-522); CI's target is 15 minutes, then 10 (B-510). (7) B-514's paid measurement needs no
+fixed stop, read as covering B-515's. (8) WSD-124 (3)'s test covers a possible secret leak too; B-478 closes. **Reopen** (3) if a second round would have caught an escape.
 
 ## WSD-126: after the 2026-11-14 decision audit, releases stay weekly, WSD-117 and WSD-120 stand, B-416 is time-boxed, amendments are recorded (2026-11-14)
 

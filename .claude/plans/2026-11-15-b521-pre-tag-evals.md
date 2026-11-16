@@ -162,3 +162,21 @@ stop. The stop is now checked before every launch, counting each run in flight a
 two of v0.97.1's three brownfield failures were asks ("want me to commit?"). The host and the model have also changed since October.
 
 **Stop:** at the first hard quota or rate-limit refusal; `allowed_warning` is not one. Each run's cost is recorded.
+
+## Not shipped (2026-11-16)
+The gate described above was built at f0fdd4c1 and is reverted in the closing commit, before any push. `release.ps1`, AGENTS.md "Ship",
+DEVELOPING.md's release recipe, the runner and their tests are back to their state before f0fdd4c1, and `-NoEvals` is an accepted no-op
+again. The design, the amendment and the rows stay (`meta/eval-results.md`, "B-521 red check and calibration" and "B-521 one more try").
+
+Why it closed, under the amendment's decision rule:
+- **The one more try did not catch v0.97.1.** The gate's own rule read "could not examine" (baseline moved): v0.97.1 failed 0 of 2 and
+  v0.96.1 0 of 1.
+- **The scenario does not calibrate.** Master's dist passed 0 of 6.
+- **The cause was the same on all three versions.** Each install was right and was left uncommitted. Each run ended with an offer ("Say the
+  word and I'll commit them") that B-404's ask rule does not read as an ask.
+- **The gate as first built added nothing CI misses.** Its only check that went red, `guard-retry`, caught a removal that `validate-dist`'s
+  hook-registration check already refuses.
+
+**Spend:** 36 runs, 3.68 USD in all (2.82 USD for the first red check and calibration, 0.86 USD for the one more try).
+
+**Reopen** on a live check that catches a known escape CI misses.
