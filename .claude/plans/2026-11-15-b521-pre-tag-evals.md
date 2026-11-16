@@ -113,3 +113,52 @@ at 6 USD. About 9 USD a month at weekly releases; about 10 USD (45 runs) once fo
   bug-fix path stay unwatched until a known-bad case that a scenario can see is found.
 - **Spend:** about 0.10 USD a run on this host, a third of the medians assumed above. A triggered release costs about 0.30 USD and
   2 minutes. AGENTS.md keeps this note's "about 2 USD" wording, as the coordinator asked.
+
+## Amendment, 2026-11-16: one more try, the URL install served locally (pre-registered before any paid run)
+The maintainer chose "One more try" in chat on 2026-11-16, for two reasons. First, `guard-retry`'s catch duplicates `validate-dist`'s
+hook-registration check, so the gate as built showed nothing CI misses. Second, the escape B-521 exists for, v0.97.0 and v0.97.1, went
+uncaught, because `install-handoff`'s prompt says "Follow the installer output exactly".
+
+**The scenario is `url-install-brownfield`, unchanged.** Its id, prompt ("Install this into my repo:
+https://github.com/andreoucostas/ai-tech-lead"), fixture (the dotnet fixture plus a committed team `CLAUDE.md`), 2.50 USD cap and grader
+all stay as they are. The grader is the url-install branch of `Test-ScenarioEvidence`, including B-404's rule that an ask before
+committing passes. It expects the dotnet stack and `/adopt`.
+
+**How the candidate is served (a new runner `-LocalSource` switch, which the stage always passes):**
+- The run's scratch directory gets a bare mirror. Its master branch and an annotated tag `v<dist version>` point at the candidate commit,
+  and it also carries every older `v*` tag.
+- The Claude Code child gets `GIT_CONFIG_COUNT` settings that rewrite `https://github.com/andreoucostas/ai-tech-lead` and the same URL
+  with `.git` to that mirror (`url.<mirror>.insteadOf`). So the agent's clone, fetch and ls-remote, and the installer's clone check,
+  all reach the candidate. A free check confirmed this: a clone of v0.97.1's mirror described `v0.97.1`.
+- The grader's reference is that tag and the candidate's own dist files, where it used to be GitHub's newest tag.
+
+**How faithful it is.** The prompt and the grader are the same. Five things differ:
+1. Only git is redirected. WebFetch is not in the gate's tool list, so it is denied, and a `curl` or `gh api` call would reach the
+   published repository.
+2. `git remote get-url` shows the `file://` mirror.
+3. Runs use acceptEdits with the gate's tool list instead of skip-permissions.
+4. The host and model are Claude Code 2.1.312 with `claude-sonnet-5-5`, where October's runs used 2.1.281 with `claude-sonnet-5`.
+5. The shared `C:\src\ai-tech-lead` clone that the current README names is handled by the runner: if it exists before a run, the run is
+   refused (could not examine); if the run's agent creates it, it is removed afterwards. A2 removed it by hand. The stage never runs two
+   URL installs at once.
+
+**Red check.** The stage's own rule (`Invoke-AgentRunStage`) with v0.97.1 as the candidate and a fresh v0.96.1 baseline, under the 6 USD
+stop. The stop is now checked before every launch, counting each run in flight at its cap.
+
+**Calibration.** The current candidate, master's dist, served as `v0.98.6`, run 6 times; it must reach 6 of 6. Calibration runs first.
+
+**Decision rule** (the coordinator's, 2026-11-16):
+- **It ships** if the red check reads REGRESSION (exit 1) and calibration reaches 6 of 6. The gate then runs `url-install-brownfield` and
+  `guard-retry`, and AGENTS.md's cost wording becomes the measured cost.
+  - `guard-retry` is kept on this evidence: under B-275, from v0.83.0 to v0.88.0, the host read a registered guard's block as a
+    non-blocking error. `validate-dist` and every hook test passed; only a live `guard-retry` run showed it.
+- **Otherwise B-521 closes**, without tuning:
+  - `release.ps1`, AGENTS.md and DEVELOPING.md's release recipe return to their behaviour before f0fdd4c1;
+  - the unused runner additions go;
+  - the WSD-096 line goes;
+  - the rows stay, and this note gains a "Not shipped" section.
+
+**Prediction, written before any run: probably not caught.** B-404 (0.98.1) made an ask before committing pass under this prompt, and
+two of v0.97.1's three brownfield failures were asks ("want me to commit?"). The host and the model have also changed since October.
+
+**Stop:** at the first hard quota or rate-limit refusal; `allowed_warning` is not one. Each run's cost is recorded.
