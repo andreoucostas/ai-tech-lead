@@ -4438,6 +4438,7 @@ before every `-Live` run. Exposure if the recipe is skipped is bounded and reach
 maintainer budget on a run scored by a broken grader. Wiring into the manifest was rejected: B-132's
 dual-host exception holds only while the wrapper stays out of a host-leg suite. B-98's "do not build
 a second one" stands; revisit only on B-253's first report.
+**Partly undone by B-521 (2026-11-16), for the maintainer to confirm:** the self-test stays a recipe, but release.ps1's pre-tag agent runs score an agent-facing release with the runner's graders, so a grader regression can again hold a consumer release (exit 3 when it fails the previous release too; `-WaiveAgentRuns` lifts it).
 
 ## WSD-097: after B-253's first report — knowledge rows held; a Copilot eval spike is approved (2026-09-21)
 

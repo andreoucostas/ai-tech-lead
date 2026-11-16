@@ -1,7 +1,9 @@
 # B-521 design: live agent runs before tagging a release that changes what agents are told (2026-11-15, design only, nothing built)
 
-**Status:** for the maintainer's review; decided 2026-11-14 (WSD-125 (6), amending WSD-016 for these releases); B-511's first item, the
-prerequisite, landed at 50c820c2. Stage 3 builds it once the open questions are answered: guarded, step 4 (AGENTS.md "Ship" changes).
+**Status:** built 2026-11-16 (stage 3, guarded, step 4 after the commit); decided 2026-11-14 (WSD-125 (6), amending WSD-016 for these
+releases); B-511's first item, the prerequisite, landed at 50c820c2. **The maintainer answered the three open questions in chat on
+2026-11-16, each as recommended:** (1) the runs happen before the push; (2) `-NoEvals` is refused and `-WaiveAgentRuns "<reason>"`,
+recorded, replaces it; (3) Claude Code only, no Copilot leg. Where the build departs from the text below, "As built" says so.
 
 **In plain words.** When a release changes text or hooks agents act on, `release.ps1` runs three short live agent tasks on the candidate
 before committing it, and stops if it does clearly worse than the last release or the runs could not be examined (saying which). A typical
@@ -76,7 +78,7 @@ A triggered release: 9 runs, about 2.1 USD at the medians; at about 2 minutes a 
 the push, so a release goes from 25–36 to about 32–44 minutes. Stage B adds up to 6 runs per failing scenario (about 1.5 USD, 8 minutes); stop
 at 6 USD. About 9 USD a month at weekly releases; about 10 USD (45 runs) once for stage 3's red check and calibration.
 
-## Open questions for the maintainer
+## Open questions for the maintainer (answered 2026-11-16: all three as recommended)
 1. Run before the push (nothing public on a regression, 6 to 8 more minutes) or alongside the CI watch (no added time; a regression leaves the
    release commit untagged on master, where an agent installing from master gets it)? **Recommendation:** before the push.
 2. Refuse `-NoEvals` and add `-WaiveAgentRuns "<reason>"`, or keep `-NoEvals` as the waiver? **Recommendation:** refuse and rename, so a stale
@@ -84,3 +86,30 @@ at 6 USD. About 9 USD a month at weekly releases; about 10 USD (45 runs) once fo
 3. Claude Code only, or also `guard-retry` on Copilot CLI when a hook changes (3 premium requests)? **Recommendation:** Claude Code only; the
    Copilot rows are noisier (at v0.89.0 one of two framework runs wrote a placeholder with no blocked attempt), so add that leg only if a
    Copilot-only escape is recorded.
+
+## As built (2026-11-16)
+- **No `-SelfTest` in the stage.** The coordinator asked for a design that keeps WSD-096; the self-test stays a recipe. The runner's graders
+  still decide an agent-facing release, so WSD-096 is partly undone anyway (one line there, for the maintainer).
+- **P** is the newest dated root CHANGELOG head other than the release's own, read from the candidate commit.
+- **Rounds:** each round runs at most one run per scenario and side, all in parallel. Before a round starts, every one of its runs at its
+  `budgetUsd` cap must fit under 6 USD. A run that records no cost counts at its cap.
+- **Child processes:** they run without `CLAUDE*` or `ANTHROPIC*` variables (B-514's practice) and with `DISABLE_AUTOUPDATER=1`, in
+  acceptEdits with whole Read, Edit, Write, Glob, Grep, Bash and PowerShell. Runs time out at 600 s; a runner the stage has to stop is
+  UNREAD; a runner that writes no row stops the stage (exit 3).
+- **Runner changes:**
+  - `-FrameworkRoot`, so one runner and one set of graders score both releases;
+  - unique scratch directories, so runs can go in parallel;
+  - `rateLimit=`, `apiErrorStatus=` and `hostError=` on rows, which give the quota stop.
+- **Records:** rows ride in the release commit under "pre-tag agent runs, v<X> candidate (B-521)", marked `pretag=candidate` or
+  `pretag=baseline-v<P>`. A stored baseline is read from the base tag's own `meta/eval-results.md`. The failing check is what a FAIL row's
+  grader facts differ on from the first PASS row's.
+- **Red check and calibration, 2026-11-16** (`meta/eval-results.md`, "B-521 red check and calibration"; 27 runs, 2.82 USD):
+  - Calibration: all three scenarios passed 6 of 6.
+  - Caught: the guard-removal candidate stopped with exit 1 (`guard-retry` 0 of 2).
+  - Not caught: v0.97.1's installer wording (`install-handoff` 3 of 3; agents committed it under this scenario's prompt) and the bug-fix
+    failing-test sentence removed from the router rail and the rules carrier (`route-fix` 3 of 3).
+
+  Under the rule above, both of those scenarios are dropped. **Only `guard-retry` runs before the tag.** Installer-handoff wording and the
+  bug-fix path stay unwatched until a known-bad case that a scenario can see is found.
+- **Spend:** about 0.10 USD a run on this host, a third of the medians assumed above. A triggered release costs about 0.30 USD and
+  2 minutes. AGENTS.md keeps this note's "about 2 USD" wording, as the coordinator asked.
