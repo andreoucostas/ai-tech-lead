@@ -8474,3 +8474,70 @@ row; 9 runs, 0.86 USD; no ERROR row and no rate-limit refusal.
 - **FAIL url-install-brownfield** (model=sonnet; b521=url-red-v0.97.1) — source=local-mirror agentExit=0 timedOut=False costUsd=0.0891911 tokensIn=10 tokensOut=1672; ccVersion=2.1.312 initModel=claude-sonnet-5-5 newestTag=v0.97.1 installed=dotnet@0.97.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=102 committed=False handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True commitAsked=False; reported: finalNames/bootstrap=False tagChosen=True webFetches=0
 - **FAIL url-install-brownfield** (model=sonnet; b521=url-red-baseline-v0.96.1) — source=local-mirror agentExit=0 timedOut=False costUsd=0.0994913 tokensIn=10 tokensOut=1906; ccVersion=2.1.312 initModel=claude-sonnet-5-5 newestTag=v0.96.1 installed=dotnet@0.96.1 rightStack=True newestReleaseFiles=True commits=2 leftInTree=100 committed=False handoffPending=True workflowTool=False headlessBranch=False installerTool=True finalNames/adopt=True commitAsked=False; reported: finalNames/bootstrap=False tagChosen=False webFetches=0
 
+
+## 2026-11-16 14:58:46 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (a1a657af89a4d022eef11de30ccba96041dd9b6c)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · scratch: retained=True
+
+- **FAIL b528-options** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=24 tokensOut=3705; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=12 hooks=True rails1=plan-gate rails2=n/a session2=n/a overlay1=True railsT=False legs=1 plan=NEITHER rec=False half=False doneWhen=False locus=none wroteT1=True t2action=n/a gate=False auditor=0 side=none durationMs=n/a
+
+
+## 2026-11-16 15:01:38 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (a1a657af89a4d022eef11de30ccba96041dd9b6c)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · scratch: retained=True
+
+- **FAIL b528-options** (model=claude-sonnet-5.5; executor=copilot; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=n/a tokensIn=44 tokensOut=7409; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=20 hooks=True rails1=plan-gate rails2=n/a session2=n/a overlay1=True railsT=True legs=1 plan=NEITHER rec=False half=False doneWhen=False locus=none wroteT1=True t2action=n/a gate=True auditor=2 side=none durationMs=n/a
+
+
+## 2026-11-16 15:03:23 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (a1a657af89a4d022eef11de30ccba96041dd9b6c)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2994684 tokensIn=20 tokensOut=6339; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=False auditor=0 side=none durationMs=51672
+
+
+## 2026-11-16 15:05:30 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (a1a657af89a4d022eef11de30ccba96041dd9b6c)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=0.3213838 tokensIn=24 tokensOut=7222; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=59308
+
+## B-528 results, pilot — 2026-11-16 (hand-written; the four runner rows above, 14:58 to 15:05, are the counted runs)
+
+As pre-registered at a1a657af (`.claude/plans/2026-11-16-b528-options.md`), unamended. One run per arm per host, in the registered
+order, each from a shell with every `CLAUDE*` and `ANTHROPIC*` variable removed and `DISABLE_AUTOUPDATER=1`. Copilot CLI 1.0.98 and
+`claude-sonnet-5.5` (`session.start`); Claude Code 2.1.312 and `claude-sonnet-5-5` (`system/init`), acceptEdits with the 39-rule list
+(`dc735db5da74`). 4 of 4 valid as registered: exit 0, a `success` result, hooks loaded, `rails1=plan-gate`, `overlay1=True`, `railsT`
+True in T and False in C. By hand, each Copilot run's first `user.message` `transformedContent` held the overlay, and in T the T
+line. No repeat, no `session.error`, no quota refusal.
+
+| run | host | arm | plan before the first write (grader; hand check agrees) | legs | security gate | cost | wall |
+|---|---|---|---|---|---|---|---|
+| 1 | Copilot | C | NEITHER: no plan at all (`doneWhen=False`); one line, "Investigating first", then the edits | 1, wrote in leg 1 | not run, and said so | 1 premium request, 26.03 AI credits | 194 s (session 172 s) |
+| 2 | Copilot | T | NEITHER: no plan at all; one line, then the edits | 1, wrote in leg 1 | `security-gate` skill, two `security-auditor` calls, a High finding recorded | 1 premium request, 44.50 AI credits | 133 s (session 125 s) |
+| 3 | Claude Code | C | OPTIONS, `rec=True`, leg 1: Done when, four questions, A check-then-set against B a row-version token, Recommend A | 2 | not run: read the command file, its scope capture refused by the host | 0.299 USD | 86 s |
+| 4 | Claude Code | T | OPTIONS, `rec=True`, leg 1: the same two options, Recommend A | 2 | `security-gate` skill, CANNOT EXAMINE: scope capture refused by the host | 0.321 USD | 97 s |
+
+- **The Copilot leg cannot answer the question as designed.** Copilot CLI's `-p` system message says it runs "in non-interactive
+  mode" and must "not stop to ask questions or request confirmation". Both Copilot runs therefore wrote in leg 1 with no plan, so leg
+  2 never ran and there was no plan to carry options or the exit, with or without the T line. Under the registered rule a full
+  Copilot leg would most likely read R2-UNFIXED for a reason outside the options rule. The field's sessions waited for a reply to
+  each plan, so `-p` does not reproduce them. The full Copilot run needs an amendment the maintainer decides first.
+- **Claude Code:** both arms posted the design in leg 1, as B-410's T and B-412's C did on K (6 of 6 each). If the cells stay there,
+  the reading is NOT REPRODUCED: on this fixture the agent follows §2 and neither R1 nor R2 is shown.
+- **Security gate under the eval launch:** Claude Code's acceptEdits mode refused the gate's scope capture in both runs ("spawns a
+  nested PowerShell process", ConstrainedLanguage, `$()` subexpressions), as it refused `/bootstrap`'s scripts for B-514; C never
+  called the skill, T called it and stopped at CANNOT EXAMINE. So `gate` on this host measures whether the pass was started, not
+  whether it completed. `dotnet test` was blocked by this machine's Application Control policy in three of four runs; no plan grade
+  depends on it. In the T arm the patched router shows as a modified file in `git status` (the runner's patch adds no commit), and
+  Copilot run 2 mentioned it.
+- **Rate limit:** every Claude Code stream carried `rate_limit_event` `allowed_warning`, seven-day window at 89%, resetting
+  2026-11-18 11:00 UTC; not a stop as registered.
+- **Counts toward n:** as registered, each run is slot 1 of its cell. An amended Copilot launch would make runs 1 and 2 not count.
+- **Projected full run**, from these four: Claude Code, 10 more runs at about 0.31 USD and 90 s each, about 3.1 USD and 15 minutes,
+  inside the seven-day window's last 11%. Copilot as registered: 10 more runs at 1 premium request and 26 to 45 AI credits each,
+  about 10 requests, 350 credits and 30 minutes, but measuring the `-p` instruction rather than the options rule. A two-leg Copilot design
+  that stops for a plan would cost about 2 premium requests a run.
+- **Reopen triggers checked:** WSD-100 (keep `route-prompt`), WSD-111 (the security-pass wording) and WSD-114 (the `security-gate`
+  name): none met. No run sent the pass to a host built-in.
+- Pilot spend: 0.621 USD on Claude Code; 2 premium requests and 70.53 AI credits on Copilot.
