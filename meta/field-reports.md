@@ -428,7 +428,7 @@ no real alternative, which the script does not count, and whether the 3 plans ar
 machine), not on these runtime versions, though the `security-gate` count comes through the same record type; (g) the
 Local-agent row is the first real session that reader has parsed, unchecked.
 
-**Outcome:** no change to the tree. B-416 stays open for the two decisions it names on close, the auto-review sentence
+**Outcome:** no change to the tree. B-528 files the options gap (maintainer, in chat 2026-11-16). B-416 stays open for the two decisions it names on close, the auto-review sentence
 and B-425, which are the maintainer's. The reopen conditions of WSD-111 (the security-pass wording) and WSD-114 (the
 `security-gate` name) were checked against this report and are not met: no harm is reported, and nothing shows the pass
 sent to a host built-in.
