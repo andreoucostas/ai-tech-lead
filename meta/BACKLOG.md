@@ -49,7 +49,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 32 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
 | 33 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
 | 34 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
-| 35 | B-528 | Field report #14: `Option A:`/`Option B:` in 3 plans against 9 security passes the agent started; not yet shown to be a miss, so its first step settles two open readings |
+| 35 | B-528 | Field report #14: no plan carried `Option A:`/`Option B:` in the 9 sessions where the agent started a security pass, and the prompt reminder never names the options; one open reading, so a fixture measurement comes first |
 
 ## Open entries
 
@@ -67,7 +67,7 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 **Priority:** P1 · **Effort:** S · **Invariants:** none
 **Status:** Open (maintainer, 2026-10-19). Give the first consumer team a six-question observation card (plan opened with `Done when:`; did you correct a line; Option A/B on a risky change and was it real; did the PR carry the lines; did tests run; did a review run: `/review` typed or asked for by name, started by the agent, or none, and did its output name reviewers or "Contract lines pinned"; host and model) and record answers as field reports.
 The only route to whether the lines are correct and used; gates any reviewer-side or auto-review change. On close, decide plan v2 §5 item 5 (the auto-review sentence) and B-425 from the review answer. Review: `.claude/plans/inbox/2026-10-19-open-threads-review.md` T5.
-First answers 2026-11-16, one developer, mostly on 0.98.2 (`meta/field-reports.md` #14): the lines before code in 28 of 39 sessions and judged right, no review run in any, options in 3 plans against 9 agent-started security passes. A team has started, so WSD-126's 2026-12-12 re-decision does not apply; left: the two decisions above.
+First answers 2026-11-16, one developer, mostly on 0.98.2 (`meta/field-reports.md` #14): the lines before code in 28 of 39 sessions and judged right, no review run in any, options in 3 plans and in none of the 9 sessions with an agent-started security pass (B-528). A team has started, so WSD-126's 2026-12-12 re-decision does not apply; left: the two decisions above.
 
 ### B-417 · Measure tests derived from the restated criteria on a prompt that hides a boundary
 **Filed against:** v0.98.0 (2026-10-19)
@@ -255,9 +255,9 @@ Nested skills have no documented switch by path (`skillOverrides` goes by skill 
 Candidate: step 1 also compares `git status --porcelain` before and after and names the paths this session did not touch (ordinary, the skill file). One clause in `AGENTS.md` for the blocked session (wait a stated time, check once more, then report), with a clause cut and the step-4 attack that file requires.
 Worktrees are not the way out: `push-and-check.ps1` watches `master` only, and worktrees inside the repository left stray entries in v0.42.0 and v0.43.0 (`.gitignore`).
 
-### B-528 · A risk change's `Option A:`/`Option B:` design appears in a third of the sessions where the agent starts a security pass
+### B-528 · No plan carries `Option A:`/`Option B:` in the sessions where the agent starts a security pass
 **Filed against:** v0.98.6 (2026-11-16)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
-**Status:** Open (maintainer, in chat 2026-11-16). Field report #14, one developer, mostly on 0.98.2: the agent started the security pass in 9 sessions, none asked for, and `Option A:`/`Option B:` appeared in 3 plans, though carrier §2 counts a security-sensitive surface as a risk change that gets options.
-Not yet shown to be a miss: §2 lets the agent say in one line that there is no real alternative, which the observation script does not count, and whether the 3 plans are among the 9 sessions was not captured.
-First step, before any wording change: settle both from the developer's per-session rows, or measure a security-sensitive change on a fixture.
+**Status:** Open (maintainer, in chat 2026-11-16). Field report #14, one developer, mostly on 0.98.2: the agent started the security pass in 9 sessions, none asked for; `Option A:`/`Option B:` appeared in 3 plans, none of them in those 9, though carrier §2 counts a security-sensitive surface as a risk change that gets options. The prompt reminder's security overlay reached 24 of the 40 sessions.
+One open reading: §2 lets the agent say in one line that there is no real alternative, which the observation script does not count. Candidate cause, unmeasured: `route-prompt.ps1`'s plan gate and security overlay name the file-list plan and the end-of-work security pass, never the options.
+First step, before any wording change: measure a security-sensitive change on a fixture, counting the one-line exit, with and without the options named in the reminder.
