@@ -134,32 +134,25 @@ only. The page keeps 1.144.1's finding (microsoft/vscode#345931) and the advice 
 after each VS Code update. Text only: no behaviour to show red; `FrameworkDoctor.Tests` still pins the issue number in the row.
 
 A plain update copies a team file it replaces or removes only when the target's last commit does not hold its bytes (guarded, step 4;
-B-469, the maintainer's request filed 2026-10-28 with `-Reinstall`; WSD-128 amends WSD-043's settings copy). It copied each such file
-below `.claude/framework-update-backup/`, and `.claude/settings.json` to `.claude/.state/settings.json.pre-update`, though HEAD held
-them, and teams forgot the copies and committed them. Now one `ls-tree` of HEAD below the target, a blob hash of the bytes on disk and,
-failing that, `cat-file --filters` (the bytes a checkout writes) decide per file: a held file is not copied, its NOTICE or LAYOUT line
-names the commit and `git -C <target> show <commit>:./<path>`, and one `recover from Git:` line gives `git diff --stat <commit>` and
-`git checkout <commit> -- <path>`. Sites: the `.agents/skills` wrappers, files the previous manifest does not list (and the
-no-manifest summary), the one-time skill backup, disabled-skill saves, a framework `.gitignore` with dropped lines, the layout move
-and the settings copy. Everything else is copied as before, as WSD-117 says: no Git or no commit, untracked or ignored, skip-worktree
-or assume-unchanged (always copied: a checkout skips their paths), an uncommitted edit, a clean filter. A team hook entry no update
-carries (B-486's attack) is now named by a commit id, which a later update does not overwrite as it overwrote the pre-update copy.
-Copies an older release left are not touched. `Invoke-GitRecords` reads through a new `Invoke-GitBytes`, which `-Reinstall`'s byte
-reads now share. Red first: the B-469 cases in `UpdateDelivery3` (every copy site in one committed target, an uncommitted edit and
-an ignored skill file still copied) and `UpdateDelivery4` (settings, the commit's line read after a later update), and the reworked
-B-430 and B-431 cases (one committed and one uncommitted leg each).
-
-B-469's first step-4 round (a fresh session on 7f4bd58d) found two defects, both fixed (guarded). (1) A re-run before committing
-kept an older update's `.claude/.state/settings.json.pre-update`, which the first run had left because it named the commit
-instead, called it "the earlier pre-update settings backup" and said the settings were "backed up"; the copy lacked the team's
-edit, a regression against 9e85d419. The kept copy is now called the backup only when this update writes the current file from
-it and the last commit holds no settings it could have written them from; otherwise the line names the commit (`git checkout`),
-and the copy as an older one or, when both fit, each with its condition. The Done line says "backed up" only when this run copied.
-(2) A file held only as a checkout writes it (CRLF under `core.autocrlf`) was named with `git show`, which prints the blob's LF;
-it is now named with `git -C <target> checkout <commit> -- <path>`, which put the 2,839 bytes back where `git show` gave 2,794.
-`docs/upgrade-checklist.md` no longer sends a removal to the pre-update copy for the settings. Red first: `UpdateDelivery4`'s two
-B-469 attack cases and `UpdateDelivery3`'s B-469 case, which now runs each printed line and compares the bytes it gives back.
-
+B-469, the maintainer's request filed 2026-10-28 with `-Reinstall`; WSD-128). It copied each such file below
+`.claude/framework-update-backup/` though HEAD held them, and teams forgot the copies and committed them. Now one `ls-tree` of HEAD
+below the target, a blob hash of the bytes on disk and, failing that, `cat-file --filters` (the bytes a checkout writes) decide per
+file: a held file is not copied, and its NOTICE or LAYOUT line names the commit with `git -C <target> show <commit>:./<path>`, or
+with `git -C <target> checkout <commit> -- <path>` where only a checkout gives the bytes back (CRLF under `core.autocrlf`), and one
+`recover from Git:` line gives `git diff --stat <commit>` and `git checkout <commit> -- <path>`. Sites: the `.agents/skills`
+wrappers, files the previous manifest does not list (and the no-manifest summary), the one-time skill backup, disabled-skill saves,
+a framework `.gitignore` with dropped lines and the layout move. Everything else is copied as before, as WSD-117 says: no Git or no
+commit, untracked or ignored, skip-worktree or assume-unchanged (always copied: a checkout skips their paths), an uncommitted edit,
+a clean filter. `.claude/settings.json` keeps 0.98.6's copy to `.claude/.state/settings.json.pre-update` on every update that
+replaces it, with that release's keep rule, messages and Done line (the maintainer, 2026-11-16: "Settings keep their copy"). Copies
+an older release left are not touched. `Invoke-GitRecords` reads through a new `Invoke-GitBytes`, which `-Reinstall`'s byte reads
+now share. Step 4: round 1 (a fresh session on 7f4bd58d) found a re-run calling an older settings copy the backup, and `git show`
+missing a CRLF file's bytes; round 2 (on af6d945c) found the settings fix misnaming copies (the only copy of an uncommitted edit
+called "not the file this update replaced"; an older copy again called the backup) and its checkout line writing CRLF over an LF
+file. The maintainer then kept the settings copy, which removes all settings findings; the `checkout` line for other CRLF files
+stays; no third round, by the maintainer's choice. Red first:
+`UpdateDelivery3`'s B-469 case (every other copy site in one committed CRLF target, each printed line run and its bytes compared),
+`UpdateDelivery4`'s B1 and B3 settings cases and its CRLF case, and the reworked B-430 and B-431 cases.
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

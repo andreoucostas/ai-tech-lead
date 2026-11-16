@@ -4794,13 +4794,14 @@ map's proven joins) stays true. Rejected: WSD-121 as written. **Reopen** if B-52
 re-decides), or on a field report asking for Power BI authoring.
 B-523 met the first trigger twice (2026-11-15: no gain on a 14-file and a 497-file trap warehouse); the maintainer dropped the skill: none ships (2026-11-15).
 
-## WSD-128: an update copies a team file only when the last commit does not hold its bytes, and names that commit otherwise (2026-11-16)
+## WSD-128: an update copies a team file below the backup folder only when the last commit does not hold its bytes, and names that commit otherwise; the settings copy is unchanged (2026-11-16)
 
 **Context.** B-469 (maintainer request, filed 2026-10-28 with `-Reinstall`, which copies nothing and names its commit): a plain update copied every
-team file it replaced or removed below `.claude/framework-update-backup/`, and the settings to `.claude/.state/settings.json.pre-update` (WSD-043),
-even when the last commit held them; teams forgot the copies and committed them. **Decision (the maintainer's request as filed, built 2026-11-16).**
-A file whose bytes on disk hash to the blob HEAD holds at its path, or equal that blob as a checkout writes it, is not copied: the update prints the
-commit id and a `git show <commit>:./<path>` line for it, and one line with `git diff --stat` and `git checkout <commit> -- <path>`. Every other copy
-(no Git or no commit, untracked or ignored, skip-worktree or assume-unchanged, an uncommitted edit, a clean filter) is made as before, as WSD-117
-says; WSD-043's settings copy stays for those. Copies an older release left are never deleted. Rejected: deleting the old folder (a data-loss
-decision); deciding from `git status` (a clean filter or a racy edit hides bytes). **Reopen** if a team loses a file the named commit was said to hold.
+team file it replaced or removed below `.claude/framework-update-backup/`, even when the last commit held them; teams forgot the copies and committed them.
+**Decision (the maintainer's request as filed, built 2026-11-16).** A file whose bytes on disk hash to the blob HEAD holds at its path, or equal that blob
+as a checkout writes it, is not copied: the update prints the commit id and `git show <commit>:./<path>`, or `git checkout <commit> -- <path>` where only
+a checkout gives the bytes back, and one line with `git diff --stat` and `git checkout`. Every other copy is made as before, as WSD-117 says.
+`.claude/settings.json` keeps WSD-043's copy to `.claude/.state/settings.json.pre-update` on every update that replaces it: the maintainer's decision of
+2026-11-16 ("Settings keep their copy"), after B-469's second step-4 round showed that skipping it let a re-run misname the copy it kept. Copies an
+older release left are never deleted. Rejected: deciding from `git status` (a clean filter or a racy edit hides bytes); deleting the old folder (a
+data-loss decision). **Reopen** if a team loses a file the named commit was said to hold.

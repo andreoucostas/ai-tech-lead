@@ -603,7 +603,7 @@ It 'B-393 no saved file can load as a live skill, command, agent or instruction:
 
 # B-469: an update copied every file of yours it replaced, the ones the last commit already held included, and teams forgot the
 # copies and committed them. A file that commit holds as it is on disk is named by the commit instead, with a line that prints it.
-It 'B-469 an update copies no file of yours the last commit holds: each line about one names that commit and gives the file back as it was on disk, and a file the commit does not hold is still copied' {
+It 'B-469 an update copies no file of yours the last commit holds, the settings aside: each line about one names that commit and gives the file back as it was on disk, and a file the commit does not hold is still copied' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b469-' + [guid]::NewGuid())
     try {
         # 0.93.0: before the wrappers, and before 0.95.0 first shipped security-gate.md, docs/reference.md and docs/getting-started.md.
@@ -643,7 +643,7 @@ It 'B-469 an update copies no file of yours the last commit holds: each line abo
         $wrapper = [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.agents/skills/fix/SKILL.md'))
         Assert ($flat -match 'moved: CLAUDE\.md -> AGENTS\.md' -and (Test-B194BytesEqual $wrapper ([IO.File]::ReadAllBytes((Join-Path $t '.agents/skills/fix/SKILL.md'))))) "calibration: the update did not replace the wrapper and move the layout: $out"
         $lines = @{}
-        foreach ($relative in '.claude/commands/security-gate.md', 'docs/reference.md', '.agents/skills/fix/SKILL.md', 'CLAUDE.md', 'AGENTS.md', '.claude/settings.json') {
+        foreach ($relative in '.claude/commands/security-gate.md', 'docs/reference.md', '.agents/skills/fix/SKILL.md', 'CLAUDE.md', 'AGENTS.md') {
             $escaped = [regex]::Escape($relative)
             $lines[$relative] = [regex]::Match($flat, "in commit ${head}: (git -C '[^']+' (?:show ${head}:\./$escaped|checkout ${head} -- $escaped)) (prints it|puts it back)")
             Assert $lines[$relative].Success "no line names commit $head and a line that gives back $relative`: $out"
@@ -651,7 +651,10 @@ It 'B-469 an update copies no file of yours the last commit holds: each line abo
         $copies = @(Get-ChildItem -LiteralPath (Join-Path $t '.claude/framework-update-backup') -Recurse -File -Force | ForEach-Object { $_.FullName.Substring($t.Length + 1).Replace('\', '/') })
         $expected = @('.claude/framework-update-backup/.gitignore', '.claude/framework-update-backup/files/docs/getting-started.md', '.claude/framework-update-backup/skills/my-deploy/token.txt')
         Assert ((@($copies | Sort-Object -CaseSensitive) -join ' | ') -ceq ($expected -join ' | ')) "the update copied a file the commit holds, or missed one it does not: $($copies -join ' | ')"
-        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/.state/settings.json.pre-update'))) "committed settings were copied to .claude/.state/settings.json.pre-update: $out"
+        # The settings keep their own copy whatever the commit holds (the maintainer's choice after B-469's second attack round).
+        $settingsCopy = Join-Path $t '.claude/.state/settings.json.pre-update'
+        Assert ((Test-Path -LiteralPath $settingsCopy -PathType Leaf) -and (Test-B194BytesEqual $onDisk['.claude/settings.json'] ([IO.File]::ReadAllBytes($settingsCopy)))) "the settings were not copied to .claude/.state/settings.json.pre-update as they were on disk: $out"
+        Assert ($flat -match 'the file as it was before this update is saved in \.claude/\.state/settings\.json\.pre-update\.' -and $flat -notmatch '\.claude/settings\.json (puts it back|prints it)') "a NOTICE names a commit, not the copy, for the settings: $out"
         # What no commit holds is still copied byte for byte, out of Git.
         Assert ([IO.File]::ReadAllText((Join-Path $t '.claude/framework-update-backup/files/docs/getting-started.md')) -ceq $dirty) "the uncommitted edit was not copied as it was: $out"
         Assert ([IO.File]::ReadAllText((Join-Path $t '.claude/framework-update-backup/skills/my-deploy/token.txt')) -ceq "sk-live-FX-B469`n") "the ignored skill file was not copied as it was: $out"

@@ -66,8 +66,9 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    `.claude/` are deleted with the rest; restore the ones you want from that commit. It refuses a
    tree with uncommitted changes and cannot be combined with `-AllowDirtyTree`.
 
-6. **Reconcile your settings.** `.claude/settings.json` is shared: the update refreshes the file
-   and carries every top-level
+6. **Reconcile your settings.** `.claude/settings.json` is shared: the update saves the file as it
+   was to `.claude/.state/settings.json.pre-update` (Git ignores it, so it exists on one machine
+   only), refreshes the file, and carries every top-level
    key of it that the release does not define (`permissions`, `model`, `statusLine` and the like)
    into it, unchanged and after the release's own keys. Inside `env` and `hooks` it carries what is
    yours the same way: each `env` variable the release does not set, and each hook entry whose
@@ -85,13 +86,14 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    or `env` variable an earlier release set and this one no longer does is dropped, not carried, and
    named. If the installer could not
    read your copy as strict JSON (a comment, a trailing comma, an empty file, two keys that differ
-   only in case) it carries nothing and says so on a `NOTICE`: re-add your keys by hand from the
-   file as it was, which that `NOTICE` names. A key you later delete from the file stays deleted, because the next update reads the file
-   as it then is. Commit the result: your teammates get the carried keys from your commit.
+   only in case) it carries nothing and says so on a `NOTICE`: re-add your keys from the backup by
+   hand. A key you later delete from the file stays deleted, because the next update reads the file
+   as it then is. Commit the result: your teammates get the carried keys from your commit, not from
+   the backup.
 
-   **Where your old files are.** An update saves no copy of a file your last commit holds as it is
-   on disk. Each `NOTICE` about a file it replaced (your settings, a file of yours at a path the
-   framework now owns, a skill, the moved `CLAUDE.md`) names that commit and the line that gives
+   **Where your other old files are.** Except for the settings, an update saves no copy of a file
+   your last commit holds as it is on disk. Each `NOTICE` about such a file it replaced (a file of
+   yours at a path the framework now owns, a skill, the moved `CLAUDE.md`) names that commit and the line that gives
    the file back: `git -C <repo> show <commit>:./<path>` prints it, or, where Git writes the file
    with other line endings than it stores (`core.autocrlf`), `git -C <repo> checkout <commit> -- <path>`
    puts it back as it was. A `recover from Git:` line
@@ -99,8 +101,7 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    (`git checkout <commit> -- <path>`). Only a file that commit does not hold is copied: one you
    gitignored, one Git is told not to see the changes of (skip-worktree or assume-unchanged), one
    with uncommitted edits (`-AllowDirtyTree`), or any file in a folder without Git. Those copies go
-   to `.claude/framework-update-backup/` (the settings file to
-   `.claude/.state/settings.json.pre-update`), which Git ignores. Copies an older release left there
+   to `.claude/framework-update-backup/`, which Git ignores. Copies an older release left there
    stay until you delete them; keep what you need first.
 
 7. **Copy the version into `AGENTS.md`.** Copy `version` and `applied` from
@@ -232,9 +233,7 @@ The installer wrote only inside your repository and changed no Git configuration
 - **Otherwise,** delete every path that `framework-ownership.json` marks
   `framework-owned/overwritten`; the list includes both manifests and `.claude/framework-version.json`.
   Paths marked `consumer-owned/protected` are yours to keep or delete; they may still hold template
-  text. `.claude/settings.json` is shared: delete it, or restore the version you want from your Git
-  history (`git log -- .claude/settings.json` lists the commits that changed it). A
-  `.claude/.state/settings.json.pre-update` holds only what an update copied when no commit held the
-  file, and may be older than your last change. A brownfield install moved
+  text. `.claude/settings.json` is shared: delete it, or restore your copy from
+  `.claude/.state/settings.json.pre-update` if that local backup exists. A brownfield install moved
   your earlier files to `docs/pre-adoption/`; move back what you want.
   `.claude/framework-update-backup/` holds an update's backups for review and is not needed after.
