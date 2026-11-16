@@ -8567,3 +8567,34 @@ PASS). The probe ran from 07908a1d plus that change, which this commit holds: ar
   mode; the help says it combines with `--mode autopilot` to approve the plan itself) and an interactive session (`-i`, which
   needs a terminal driver). Whether either matches the field's interactive sessions, which waited for a reply to each plan, is
   the maintainer's call.
+
+## 2026-11-16 15:35:28 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (0348b0c3ca9db040dba96cfe319c95037b98d7af)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan · arm: framework · scratch: retained=True
+
+- **FAIL b528-options** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=3767; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=12 hooks=True rails1=plan-gate rails2=n/a session2=n/a overlay1=True railsT=False legs=1 plan=NEITHER rec=False half=False doneWhen=False locus=none wroteT1=True t2action=n/a gate=False auditor=0 side=none durationMs=n/a
+
+## B-528 Copilot plan-mode probe — 2026-11-16 (hand-written; the runner row above, 15:35, is the probe's first leg, not a counted run)
+
+The maintainer chose to probe Copilot's plan mode (relayed by the coordinator). One uncounted run, arm C, `-CopilotMode plan`,
+from 0348b0c3; Copilot CLI 1.0.98, `claude-sonnet-5.5`.
+
+- **Where 1.0.98's plan mode puts the plan.** Read first in the CLI's own changelog and event schema: plan mode blocks built-in
+  tools that would modify the workspace, allows planning artifacts in the session folder, and keeps the plan in `plan.md` there;
+  `exit_plan_mode.requested` (the approval request carrying the plan) is ephemeral and not in the events log. In the run: the CLI
+  logged `session.mode_changed` interactive to plan, prefixed the prompt with `[[PLAN]]` and its plan-mode notice, and the agent
+  read the code, created `plan.md` in the session folder (3,221 bytes: Done when, evidence, `## Option A` and `## Option B` each
+  with a cost, "Recommend: A", files, five questions), stored its todos in the session database, and ended with a summary that
+  asks for "go". No repository file changed (`git status` clean after leg 1), and it never called `exit_plan_mode`.
+- **What the registered grader made of it:** `plan=NEITHER`, `wroteT1=True`, `legs=1` (the runner row). The converter turned the
+  `plan.md` create into a Write, so it was the first "code write", the plan's text was not read, and leg 2 did not run. The summary
+  alone labels its choices "A (recommended)" and "B", which `$designOpt` does not match.
+- **Leg 2 by hand**, the runner's Copilot launch on the same session with the scenario's follow-up and `--mode interactive`: the
+  session logged `session.mode_changed` plan to interactive, said "Go-ahead received; implementing Option A.", edited
+  `Invoice.cs` and `CheckoutController.cs`, called the `security-gate` skill, captured the scope bundle twice, and dispatched
+  `security-auditor`.
+- Cost: 2 premium requests and 70.78 AI credits for both legs (leg 1, 1 and 22.92); leg 1 59 s and leg 2 about 2 minutes of
+  session time. B-528's Copilot spend so far: 5 premium requests, 162.52 AI credits.
+- Outcome: the condition holds once the grader reads plan mode's plan. A plan was posted and no repository file was edited before
+  it. The Copilot leg amendment in `.claude/plans/2026-11-16-b528-options.md` makes that grader change, seen red first, and runs
+  leg 2 in interactive mode.

@@ -19,6 +19,8 @@ param(
     # B-528 (Copilot leg amendment): the CLI's documented --mode for both legs' launches; omitted, the launch is unchanged. Under -p the CLI
     # tells the model it is non-interactive and must not stop for confirmation, so a plan gate is never reached.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('interactive','plan','autopilot')][string]$CopilotMode,
+    # B-528 Copilot leg amendment: the second leg's --mode when it differs (plan mode cannot edit, so the go-ahead leaves it).
+    [Parameter(ParameterSetName = 'Live')][ValidateSet('interactive','plan','autopilot')][string]$CopilotFollowUpMode,
     # B-253: 'none' skips the framework install so the same prompt and fixture run bare. Only
     # scenarios marked "bareArm" in scenarios.json carry an arm-neutral Outcome and may run bare.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('framework','none')][string]$Arm = 'framework',
@@ -2422,6 +2424,11 @@ function Get-CopilotArguments([string]$WorkingDirectory, [string]$Prompt, [strin
     if ($Mode) { $arguments += @('--mode', $Mode) }
     return $arguments
 }
+# B-528 Copilot leg amendment: the second leg's mode is -CopilotFollowUpMode when given, else the first leg's.
+function Get-CopilotLegTwoMode([string]$Mode, [string]$FollowUpMode) {
+    if ($FollowUpMode) { return $FollowUpMode }
+    return $Mode
+}
 function Invoke-CopilotProcess([string]$WorkingDirectory, [string]$Prompt, [string]$StdoutPath, [string]$ModelId, [int]$MaxAiCredits, [int]$Timeout, [string]$SessionId, [string]$UsagePath, [bool]$LoadRepoHooks, [string]$Mode) {
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command copilot).Source
@@ -2522,10 +2529,22 @@ function ConvertFrom-CopilotEvents([string]$EventsPath, [string]$TranscriptPath,
     $resulted = @{}
     $finalText = ''
     # B-528: a subagent's events carry parentToolCallId; it becomes parent_tool_use_id, so Sidechain marks them as in a Claude stream.
+    # B-528 Copilot leg amendment: plan mode writes its plan to plan.md in the session's own folder (the events log's folder). Such a
+    # write is a session artifact, not a repository write: it becomes the tool `SessionFile`, and the text it writes follows it as
+    # assistant text, where the risk-design graders read a plan.
+    $sessionDir = [IO.Path]::GetFullPath((Split-Path -Parent $EventsPath)).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
     $addToolUse = {
         param([string]$Id, [string]$ToolName, $Arguments, [string]$Parent)
         $shape = Get-CopilotToolShape $ToolName $Arguments
-        $lines.Add(([ordered]@{ type='assistant'; parent_tool_use_id=$(if ($Parent) { $Parent } else { $null }); message=[ordered]@{ content=@([ordered]@{ type='tool_use'; id=$Id; name=$shape.Name; input=$shape.Input }) } } | ConvertTo-Json -Compress -Depth 30))
+        $path = [string]$shape.Input.file_path
+        $sessionText = $null
+        if ($shape.Name -in @('Write', 'Edit') -and $path -and [IO.Path]::IsPathRooted($path) -and [IO.Path]::GetFullPath($path).StartsWith($sessionDir, [StringComparison]::OrdinalIgnoreCase)) {
+            $shape = [pscustomobject]@{ Name = 'SessionFile'; Input = $shape.Input }
+            $sessionText = foreach ($key in 'content', 'new_str', 'patch') { if ([string]$shape.Input.$key) { [string]$shape.Input.$key; break } }
+        }
+        $parentId = if ($Parent) { $Parent } else { $null }
+        $lines.Add(([ordered]@{ type='assistant'; parent_tool_use_id=$parentId; message=[ordered]@{ content=@([ordered]@{ type='tool_use'; id=$Id; name=$shape.Name; input=$shape.Input }) } } | ConvertTo-Json -Compress -Depth 30))
+        if ($sessionText) { $lines.Add(([ordered]@{ type='assistant'; parent_tool_use_id=$parentId; message=[ordered]@{ content=@([ordered]@{ type='text'; text=[string]$sessionText }) } } | ConvertTo-Json -Compress -Depth 30)) }
         $emitted[$Id] = $true
     }
     foreach ($event in $events) {
@@ -4760,7 +4779,9 @@ function Invoke-OptionsPlanSelfTest([string]$Temp) {
         $stop = [ordered]@{ type = 'session.shutdown'; data = [ordered]@{ totalPremiumRequests = 1 } }
         $first = @($start) + $hooks + @($Leg1) + @($stop)
         $second = @([ordered]@{ type = 'session.resume'; data = [ordered]@{ selectedModel = 'claude-sonnet-5.5'; eventCount = $first.Count } }, [ordered]@{ type = 'hook.start'; data = [ordered]@{ hookType = 'userPromptSubmitted' } }, [ordered]@{ type = 'hook.end'; data = [ordered]@{ hookType = 'userPromptSubmitted'; success = $true; output = [ordered]@{ additionalContext = $overlay } } }) + @($Leg2) + @([ordered]@{ type = 'session.shutdown'; data = [ordered]@{ totalPremiumRequests = 2 } })
-        $path = Join-Path $Temp "b528-copilot-$Name.events.jsonl"
+        $sessionDir = Join-Path $Temp "b528-session-$Name"
+        New-Item -ItemType Directory -Path $sessionDir -Force | Out-Null
+        $path = Join-Path $sessionDir 'events.jsonl'
         @($first | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 10 }) | Set-Content -LiteralPath $path -Encoding utf8NoBOM
         $legOne = ConvertFrom-CopilotEvents $path (Join-Path $Temp "b528-copilot-$Name.leg1.jsonl")
         if ($legOne.Lines -ne $first.Count) { throw "B-528 the Copilot converter counted $($legOne.Lines) lines in a $($first.Count)-line first leg" }
@@ -4774,6 +4795,14 @@ function Invoke-OptionsPlanSelfTest([string]$Temp) {
     $copilotLeg2 = @(& $message $go) + @(& $tool 'c-w1' 'edit' @{ path = 'src/CheckoutController.cs' }) + @(& $tool 'c-s1' 'skill' @{ skill = 'security-gate' }) + @(& $tool 'c-a1' 'task' @{ agent_type = 'security-auditor'; prompt = 'audit' })
     $quoted['copilot options'] = & $check 'Copilot: options in a main-agent message' (& $copilotLog 'options' @(& $message $options) $copilotLeg2) 'PASS' 'rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True .*gate=True auditor=1 '
     $quoted['copilot subagent'] = & $check 'Copilot: options in a subagent message only' (& $copilotLog 'subagent' (@(& $tool 'c-sub' 'task' @{ agent_type = 'explore' }) + @(& $message $options 'c-sub') + @(& $message $neither)) $copilotLeg2) 'FAIL' 'legs=2 plan=NEITHER rec=False half=False doneWhen=True'
+    # Copilot leg amendment: plan mode writes the plan to plan.md in the session's own folder and then summarises it. That write is the
+    # plan, not the first code write, and its text is plan text; a plan.md written anywhere else is still a write.
+    $planFile = Join-Path (Join-Path $Temp 'b528-session-plan-mode') 'plan.md'
+    $planSummary = "I've written a plan to plan.md.`n- **A (recommended):** inline.`n- **B:** a service.`n`nReply go to implement A."
+    $planLeg1 = @(& $message 'Routed as feature (plan mode, so no repo edits).') + @(& $tool 'c-plan' 'create' @{ path = $planFile; file_text = $options }) + @(& $message $planSummary)
+    $quoted['copilot plan mode'] = & $check 'Copilot: the plan in the session folder''s plan.md' (& $copilotLog 'plan-mode' $planLeg1 $copilotLeg2) 'PASS' 'legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True'
+    $planElsewhere = Join-Path (Join-Path $Temp 'b528-not-session') 'plan.md'
+    & $check 'Copilot: a plan.md outside the session folder is a write' (& $copilotLog 'plan-elsewhere' (@(& $message 'Routed.') + @(& $tool 'c-plan2' 'create' @{ path = $planElsewhere; file_text = $options })) $copilotLeg2) 'FAIL' 'plan=NEITHER .*wroteT1=True' | Out-Null
     # A second leg that did not resume the session cannot be examined.
     $notResumed = Join-Path $Temp 'b528-copilot-not-resumed.events.jsonl'
     @(@([ordered]@{ type = 'session.start'; data = [ordered]@{ sessionId = 'x'; selectedModel = 'm' } }, [ordered]@{ type = 'session.shutdown'; data = @{} }, [ordered]@{ type = 'session.start'; data = [ordered]@{ sessionId = 'y'; selectedModel = 'm' } }, [ordered]@{ type = 'session.shutdown'; data = @{} }) | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 5 }) | Set-Content -LiteralPath $notResumed -Encoding utf8NoBOM
@@ -6264,7 +6293,7 @@ export class UserService {
         Invoke-ReportWriteSelfTest $temp
         Invoke-ReportProcSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
-        Write-Output "PASS: B-528 the options-plan grader reads, before the first main-agent write and across both legs, Option A and Option B as OPTIONS, the one-line exit as EXIT and anything else as NEITHER (a subagent's text, text after a write and a part alone are not options); reports the security gate, its auditor and the T line; refuses an unexaminable run; the Copilot converter keeps main-agent text in order, flags a subagent's, converts a resumed second leg and refuses one that did not resume; the scenario and the T patch are pinned. Neither: $($b528Quoted.neither) | Options: $($b528Quoted.options) | Exit: $($b528Quoted.exit) | Copilot options: $($b528Quoted['copilot options']) | Copilot subagent: $($b528Quoted['copilot subagent'])"
+        Write-Output "PASS: B-528 the options-plan grader reads, before the first main-agent write and across both legs, Option A and Option B as OPTIONS, the one-line exit as EXIT and anything else as NEITHER (a subagent's text, text after a write and a part alone are not options); reports the security gate, its auditor and the T line; refuses an unexaminable run; the Copilot converter keeps main-agent text in order, flags a subagent's, reads plan mode's plan.md in the session folder as plan text and not a write, converts a resumed second leg and refuses one that did not resume; the scenario and the T patch are pinned. Neither: $($b528Quoted.neither) | Options: $($b528Quoted.options) | Exit: $($b528Quoted.exit) | Copilot options: $($b528Quoted['copilot options']) | Copilot subagent: $($b528Quoted['copilot subagent']) | Copilot plan mode: $($b528Quoted['copilot plan mode'])"
         Write-Output 'PASS: B-410 risk-design grades FULL only when one main-agent text block before the first main-agent write holds options A and B and a recommendation (a subagent''s text, a block after a write, one part alone, and the retained S1-C alternative-as-a-sentence shapes are not), reports where it was, whether the developer was left to answer, the turn-1 question and plan fields and what the second leg did, refuses a second leg whose prompt carried the plan gate or got no hook response, grades the decoy the other way round, merges two legs without a replay, builds the first-leg and resume arguments from the default, and pins both prompts, the follow-up and the dist router''s reading of them'
         Write-Output 'PASS: B-409 the contract fixtures are one list covering b406-orders and b409-orders-ci in the Copilot refusal, the stale and missing overlay refusals, the generator refusal, the overlay helper (copies and commits that fixture''s files, refuses a missing or unknown one) and every live-loop condition; the b409 baseline carries the pinned ci.yml (UTF-8, no BOM, LF) written between the solution and the baseline commit; contract-trace-ci is contract-trace on b409-orders-ci (same prompt, budget, grader, stack) and grades identically on one transcript'
         Write-Output 'PASS: B-406 the transcript parser keeps text blocks and sidechain flags, reads the real hook-event stream, and reads a multi-turn stream only with -AllowMultiTurn (several system/init events of one session, a result per turn, Final the last, Results all) while still rejecting the malformed shapes (command_lifecycle may follow the last result); contract-restate classes CONTRACT, PARTIAL and NONE over main-agent text with a file write meaning a Write-type tool or a snapshot change (shell command text is never read); sections end at the first non-list line; contract-trace judges TRACE per candidate (one post-write result or main-agent text block must hold all four parts), TESTS-AT-BOUNDARY and SIDE CHECK against the same snapshot; SIDE CHECK is EXAMINED, REFUSED (a report that begins CANNOT EXAMINE), UNREAD or none from tool_result and task_notification reports; both need the first SessionStart and UserPromptSubmit responses to have succeeded hook_response events and report rails=; --include-hook-events is passed to b406 cases only; the frozen generator, overlay version and Claude-only executor are enforced; the live version guard looks through an Unreleased root head above the dist version to the released head'
@@ -7962,9 +7991,13 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         $modeAt = [Array]::IndexOf($modeArgs, '--mode')
         $modeRest = @($modeArgs | Select-Object -First ([Math]::Max($modeAt, 0))) + @($modeArgs | Select-Object -Skip ($modeAt + 2))
         if ($modeAt -lt 0 -or $modeArgs[$modeAt + 1] -cne 'interactive' -or ($modeRest -join [char]0) -cne ($uncappedArgs -join [char]0)) { throw "B-528: -CopilotMode interactive did not add exactly --mode interactive: $($modeArgs -join ' ')" }
-        $modeCalls = [regex]::Matches((Get-Content -Raw -LiteralPath $PSCommandPath), '(?m)^\s*\$run2? = Invoke-CopilotProcess [^\r\n]* -Mode \$CopilotMode\r?$').Count
-        if ($modeCalls -ne 2) { throw "B-528: $modeCalls of the live loop's two Copilot launches pass -Mode `$CopilotMode" }
-        Write-Output 'PASS: B-528 -CopilotMode adds exactly --mode <mode> to both Copilot legs'' launches, and without it the launch is unchanged'
+        $selfSource = Get-Content -Raw -LiteralPath $PSCommandPath
+        $legOneCalls = [regex]::Matches($selfSource, '(?m)^\s*\$run = Invoke-CopilotProcess [^\r\n]* -Mode \$CopilotMode\r?$').Count
+        $legTwoCalls = [regex]::Matches($selfSource, '(?m)^\s*\$run2 = Invoke-CopilotProcess [^\r\n]* -Mode \(Get-CopilotLegTwoMode \$CopilotMode \$CopilotFollowUpMode\)\r?$').Count
+        if ($legOneCalls -ne 1 -or $legTwoCalls -ne 1) { throw "B-528: the Copilot launches pass -Mode in $legOneCalls first and $legTwoCalls second legs, expected 1 each" }
+        # Copilot leg amendment: plan mode in leg 1, the follow-up mode in leg 2; without a follow-up mode leg 2 keeps leg 1's.
+        if ((Get-CopilotLegTwoMode 'plan' 'interactive') -cne 'interactive' -or (Get-CopilotLegTwoMode 'plan' '') -cne 'plan' -or (Get-CopilotLegTwoMode '' '') -cne '') { throw 'B-528: the second leg''s Copilot mode is not -CopilotFollowUpMode, else -CopilotMode' }
+        Write-Output 'PASS: B-528 -CopilotMode adds exactly --mode <mode> to the first Copilot leg and, unless -CopilotFollowUpMode names another, to the second; without it the launch is unchanged'
         # B-330: the Claude child loads only the target's project and local settings, and tokensOut counts every model
         # in modelUsage (the shape below is a retained 2.1.281 opus run whose haiku subagent result.usage left out).
         $sourceArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '')
@@ -8261,7 +8294,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                     if ($Executor -eq 'copilot') {
                         # B-528: Copilot resumes the session under the same --session-id and appends to its log; leg 2 is the lines after
                         # leg 1's. The shutdown totals are the session's, so leg 2's premium requests are the run's.
-                        $run2 = Invoke-CopilotProcess $target ([string]$case.followUp) (Join-Path $scratch ($runName + '-leg2.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '-leg2.copilot-usage.json')) ($Arm -eq 'framework') -Mode $CopilotMode
+                        $run2 = Invoke-CopilotProcess $target ([string]$case.followUp) (Join-Path $scratch ($runName + '-leg2.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '-leg2.copilot-usage.json')) ($Arm -eq 'framework') -Mode (Get-CopilotLegTwoMode $CopilotMode $CopilotFollowUpMode)
                         if ($run2.TimedOut) { throw $run2.ErrorText }
                         if ($run2.ExitCode -ne 0) { $agentExit = $run2.ExitCode }
                         $copilotLegTwo = ConvertFrom-CopilotEvents $eventsPath $legTwoPath -Skip $copilotMeta.Lines
@@ -8316,7 +8349,7 @@ function Save-EvalResults([string]$Path, $Rows, [bool]$Complete) {
     $date = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
     # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
     # the host and the model actually used, and every Copilot row carries executor=copilot.
-    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($Rows | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })$(if ($CopilotMode) { " · mode: $CopilotMode" })" } else { "Claude Code $hostVersion" }
+    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($Rows | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })$(if ($CopilotMode) { " · mode: $CopilotMode$(if ($CopilotFollowUpMode -and $CopilotFollowUpMode -ne $CopilotMode) { ", then $CopilotFollowUpMode" })" })" } else { "Claude Code $hostVersion" }
     $lines = @('', "## $date — framework v$version$(if ($changelogDecision.RootHead) { " (root head $($changelogDecision.RootHead))" }) ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" })$(if ($WarehouseScale) { " · warehouseScale: $WarehouseScale" })$(if ($AllowedTools) { " · permissions: acceptEdits, $($AllowedTools.Count) allowed-tool rules ($(Get-AllowedToolsTag $AllowedTools))" }) · scratch: retained=$KeepScratch", '')
     foreach ($r in $Rows) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})$(if($r.Patch){"; patch=$($r.Patch)"})) — $(Protect-ResultText $r.Detail)" }
     if (-not $Complete) { $lines += '- **ABORTED** the run stopped before its last case; the rows above are the cases decided before it stopped.' }
@@ -8364,8 +8397,8 @@ if ($Executor -eq 'copilot') {
     if ($AllowedTools) { throw 'Refusing -AllowedTools with -Executor copilot: it sets Claude Code permission rules.' }
     $b406ExecutorRefusal = Get-B406ExecutorRefusal $selected $Executor
     if ($b406ExecutorRefusal) { throw $b406ExecutorRefusal }
-} elseif ($CopilotMode) {
-    throw 'Refusing -CopilotMode with -Executor claude: it sets the Copilot CLI agent mode.'
+} elseif ($CopilotMode -or $CopilotFollowUpMode) {
+    throw 'Refusing -CopilotMode and -CopilotFollowUpMode with -Executor claude: they set the Copilot CLI agent mode.'
 }
 $selected = @($selected | ForEach-Object { $repeated = $_; 1..$Trials | ForEach-Object { $repeated } })
 $trialOf = @{}
