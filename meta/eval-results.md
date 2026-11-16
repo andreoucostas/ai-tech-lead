@@ -8541,3 +8541,29 @@ line. No repeat, no `session.error`, no quota refusal.
 - **Reopen triggers checked:** WSD-100 (keep `route-prompt`), WSD-111 (the security-pass wording) and WSD-114 (the `security-gate`
   name): none met. No run sent the pass to a host built-in.
 - Pilot spend: 0.621 USD on Claude Code; 2 premium requests and 70.53 AI credits on Copilot.
+
+## 2026-11-16 15:23:13 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (07908a1d6e55199883809880aa826ab87e656ad3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: interactive · arm: framework · scratch: retained=True
+
+- **FAIL b528-options** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=14 tokensOut=2825; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=1 toolCalls=11 hooks=True rails1=plan-gate rails2=n/a session2=n/a overlay1=True railsT=False legs=1 plan=NEITHER rec=False half=False doneWhen=False locus=none wroteT1=True t2action=n/a gate=False auditor=0 side=none durationMs=n/a
+
+## B-528 Copilot probe — 2026-11-16 (hand-written; the runner row above, 15:23, is the probe, not a counted run)
+
+The maintainer's choice, relayed by the coordinator: probe Copilot first; the Claude Code leg waits for its seven-day limit to reset
+(2026-11-18 11:00 UTC). The smallest documented way to make Copilot stop for confirmation is `--mode interactive`, which `copilot
+--help` (1.0.98) lists as "Set the initial agent mode [possible values: interactive, plan, autopilot]". The runner's new
+`-CopilotMode` passes `--mode <mode>` to both legs' launches and changes nothing without it (self-test case seen red first,
+"Cannot bind parameter because parameter 'ModelId' is specified more than once", before the parameter existed; then EXIT=0, 57
+PASS). The probe ran from 07908a1d plus that change, which this commit holds: arm C, one run, the registered launch otherwise.
+
+- **Copilot still does not stop for a plan.** With `--mode interactive` the `-p` system message still says it runs "in
+  non-interactive mode" and must "not stop to ask questions or request confirmation". The only main-agent text before the first
+  edit was one line ("Routed as feature (money-sensitive). Exploring first."); it then edited `Invoice.cs` and `CheckoutController.cs`
+  in leg 1: `plan=NEITHER`, `doneWhen=False`, `legs=1`, as in the two `-p` pilot runs. The hand check agrees. Hooks loaded and the
+  overlay reached the prompt (`transformedContent`). It did not run the security gate and said so.
+- Cost: 1 premium request, 21.21 AI credits; 74 s (session 67 s). B-528's Copilot spend so far: 3 premium requests, 91.74 AI credits.
+- As the coordinator set it, no Copilot leg amendment is written and no counted Copilot run follows. Not tried: `--plan` (plan
+  mode; the help says it combines with `--mode autopilot` to approve the plan itself) and an interactive session (`-i`, which
+  needs a terminal driver). Whether either matches the field's interactive sessions, which waited for a reply to each plan, is
+  the maintainer's call.

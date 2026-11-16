@@ -16,6 +16,9 @@ param(
     # B-305: 0 runs uncapped. Copilot shows the model its remaining credits each turn, so a cap reads as
     # a budget to economise against; the results header records any cap a run used.
     [Parameter(ParameterSetName = 'Live')][ValidateScript({ $_ -eq 0 -or ($_ -ge 30 -and $_ -le 500) })][int]$CopilotMaxAiCredits = 0,
+    # B-528 (Copilot leg amendment): the CLI's documented --mode for both legs' launches; omitted, the launch is unchanged. Under -p the CLI
+    # tells the model it is non-interactive and must not stop for confirmation, so a plan gate is never reached.
+    [Parameter(ParameterSetName = 'Live')][ValidateSet('interactive','plan','autopilot')][string]$CopilotMode,
     # B-253: 'none' skips the framework install so the same prompt and fixture run bare. Only
     # scenarios marked "bareArm" in scenarios.json carry an arm-neutral Outcome and may run bare.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('framework','none')][string]$Arm = 'framework',
@@ -2411,21 +2414,22 @@ function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [strin
 # vendor per run, which is not a measurable arm. Repo hooks are deferred in prompt mode unless the
 # folder is trusted; `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS` is the CLI's own non-interactive
 # opt-in, so the framework arm never has to write to the user's ~/.copilot/config.json.
-function Get-CopilotArguments([string]$WorkingDirectory, [string]$Prompt, [string]$ModelId, [int]$MaxAiCredits, [string]$SessionId, [string]$UsagePath) {
+function Get-CopilotArguments([string]$WorkingDirectory, [string]$Prompt, [string]$ModelId, [int]$MaxAiCredits, [string]$SessionId, [string]$UsagePath, [string]$Mode) {
     $arguments = @('-p', $Prompt, '-C', $WorkingDirectory, '--model', $ModelId, '--allow-all-tools',
         '--no-ask-user', '--no-remote', '--no-remote-export', '--no-color', '--no-auto-update',
         '--session-id', $SessionId, '--usage-output-file', $UsagePath)
     if ($MaxAiCredits -gt 0) { $arguments += @('--max-ai-credits', ([string]$MaxAiCredits)) }
+    if ($Mode) { $arguments += @('--mode', $Mode) }
     return $arguments
 }
-function Invoke-CopilotProcess([string]$WorkingDirectory, [string]$Prompt, [string]$StdoutPath, [string]$ModelId, [int]$MaxAiCredits, [int]$Timeout, [string]$SessionId, [string]$UsagePath, [bool]$LoadRepoHooks) {
+function Invoke-CopilotProcess([string]$WorkingDirectory, [string]$Prompt, [string]$StdoutPath, [string]$ModelId, [int]$MaxAiCredits, [int]$Timeout, [string]$SessionId, [string]$UsagePath, [bool]$LoadRepoHooks, [string]$Mode) {
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command copilot).Source
     $psi.WorkingDirectory = $WorkingDirectory
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
-    $copilotArgs = Get-CopilotArguments -WorkingDirectory $WorkingDirectory -Prompt $Prompt -ModelId $ModelId -MaxAiCredits $MaxAiCredits -SessionId $SessionId -UsagePath $UsagePath
+    $copilotArgs = Get-CopilotArguments -WorkingDirectory $WorkingDirectory -Prompt $Prompt -ModelId $ModelId -MaxAiCredits $MaxAiCredits -SessionId $SessionId -UsagePath $UsagePath -Mode $Mode
     # The runner declares #Requires -Version 7.0, so ArgumentList is always present here.
     foreach ($arg in $copilotArgs) { [void]$psi.ArgumentList.Add($arg) }
     if ($LoadRepoHooks) { $psi.Environment['GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS'] = 'true' }
@@ -7951,6 +7955,16 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         $modelAt = [Array]::IndexOf($defaultArgs, '--model')
         if ($modelAt -lt 0 -or $defaultArgs[$modelAt + 1] -cne 'claude-sonnet-5.5') { throw 'B-414: the default Copilot model does not reach --model' }
         Write-Output 'PASS: B-414 the Copilot executor defaults to claude-sonnet-5.5 and passes it as --model'
+        # B-528 (Copilot leg amendment): under -p the CLI tells the model it is non-interactive and must not stop for confirmation.
+        # -CopilotMode passes the CLI's documented --mode to both legs' launches; without it the launch is exactly what it was.
+        if ($uncappedArgs -contains '--mode') { throw 'B-528: a run without -CopilotMode passed --mode' }
+        $modeArgs = @(Get-CopilotArguments -WorkingDirectory 'w' -Prompt 'p' -ModelId 'm' -MaxAiCredits 0 -SessionId 's' -UsagePath 'u' -Mode 'interactive')
+        $modeAt = [Array]::IndexOf($modeArgs, '--mode')
+        $modeRest = @($modeArgs | Select-Object -First ([Math]::Max($modeAt, 0))) + @($modeArgs | Select-Object -Skip ($modeAt + 2))
+        if ($modeAt -lt 0 -or $modeArgs[$modeAt + 1] -cne 'interactive' -or ($modeRest -join [char]0) -cne ($uncappedArgs -join [char]0)) { throw "B-528: -CopilotMode interactive did not add exactly --mode interactive: $($modeArgs -join ' ')" }
+        $modeCalls = [regex]::Matches((Get-Content -Raw -LiteralPath $PSCommandPath), '(?m)^\s*\$run2? = Invoke-CopilotProcess [^\r\n]* -Mode \$CopilotMode\r?$').Count
+        if ($modeCalls -ne 2) { throw "B-528: $modeCalls of the live loop's two Copilot launches pass -Mode `$CopilotMode" }
+        Write-Output 'PASS: B-528 -CopilotMode adds exactly --mode <mode> to both Copilot legs'' launches, and without it the launch is unchanged'
         # B-330: the Claude child loads only the target's project and local settings, and tokensOut counts every model
         # in modelUsage (the shape below is a retained 2.1.281 opus run whose haiku subagent result.usage left out).
         $sourceArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '')
@@ -8222,7 +8236,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $sessionId = [guid]::NewGuid().ToString()
             $copilotHome = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.copilot' }
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
-            $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework')
+            $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework') -Mode $CopilotMode
         } else {
             $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel $caseBudget $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios -or $case.assertion -eq 'optionsPlan') -SessionId $legSession -AllowedTools $AllowedTools
         }
@@ -8247,7 +8261,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                     if ($Executor -eq 'copilot') {
                         # B-528: Copilot resumes the session under the same --session-id and appends to its log; leg 2 is the lines after
                         # leg 1's. The shutdown totals are the session's, so leg 2's premium requests are the run's.
-                        $run2 = Invoke-CopilotProcess $target ([string]$case.followUp) (Join-Path $scratch ($runName + '-leg2.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '-leg2.copilot-usage.json')) ($Arm -eq 'framework')
+                        $run2 = Invoke-CopilotProcess $target ([string]$case.followUp) (Join-Path $scratch ($runName + '-leg2.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '-leg2.copilot-usage.json')) ($Arm -eq 'framework') -Mode $CopilotMode
                         if ($run2.TimedOut) { throw $run2.ErrorText }
                         if ($run2.ExitCode -ne 0) { $agentExit = $run2.ExitCode }
                         $copilotLegTwo = ConvertFrom-CopilotEvents $eventsPath $legTwoPath -Skip $copilotMeta.Lines
@@ -8302,7 +8316,7 @@ function Save-EvalResults([string]$Path, $Rows, [bool]$Complete) {
     $date = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
     # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
     # the host and the model actually used, and every Copilot row carries executor=copilot.
-    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($Rows | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })" } else { "Claude Code $hostVersion" }
+    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($Rows | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })$(if ($CopilotMode) { " · mode: $CopilotMode" })" } else { "Claude Code $hostVersion" }
     $lines = @('', "## $date — framework v$version$(if ($changelogDecision.RootHead) { " (root head $($changelogDecision.RootHead))" }) ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" })$(if ($WarehouseScale) { " · warehouseScale: $WarehouseScale" })$(if ($AllowedTools) { " · permissions: acceptEdits, $($AllowedTools.Count) allowed-tool rules ($(Get-AllowedToolsTag $AllowedTools))" }) · scratch: retained=$KeepScratch", '')
     foreach ($r in $Rows) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})$(if($r.Patch){"; patch=$($r.Patch)"})) — $(Protect-ResultText $r.Detail)" }
     if (-not $Complete) { $lines += '- **ABORTED** the run stopped before its last case; the rows above are the cases decided before it stopped.' }
@@ -8350,6 +8364,8 @@ if ($Executor -eq 'copilot') {
     if ($AllowedTools) { throw 'Refusing -AllowedTools with -Executor copilot: it sets Claude Code permission rules.' }
     $b406ExecutorRefusal = Get-B406ExecutorRefusal $selected $Executor
     if ($b406ExecutorRefusal) { throw $b406ExecutorRefusal }
+} elseif ($CopilotMode) {
+    throw 'Refusing -CopilotMode with -Executor claude: it sets the Copilot CLI agent mode.'
 }
 $selected = @($selected | ForEach-Object { $repeated = $_; 1..$Trials | ForEach-Object { $repeated } })
 $trialOf = @{}
