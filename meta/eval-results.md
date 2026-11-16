@@ -8598,3 +8598,130 @@ from 0348b0c3; Copilot CLI 1.0.98, `claude-sonnet-5.5`.
 - Outcome: the condition holds once the grader reads plan mode's plan. A plan was posted and no repository file was edited before
   it. The Copilot leg amendment in `.claude/plans/2026-11-16-b528-options.md` makes that grader change, seen red first, and runs
   leg 2 in interactive mode.
+
+## 2026-11-16 15:51:29 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=52 tokensOut=10381; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=31 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=True doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 15:54:24 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=n/a tokensIn=46 tokensOut=9190; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=26 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=False auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 15:57:28 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=52 tokensOut=9985; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=32 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=False half=True doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 16:00:04 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=n/a tokensIn=44 tokensOut=8952; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=24 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 16:02:31 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=44 tokensOut=8445; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=24 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 16:05:45 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=n/a tokensIn=48 tokensOut=10400; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=28 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=False auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 16:08:31 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=46 tokensOut=10279; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=26 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 16:12:11 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=n/a tokensIn=58 tokensOut=12966; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=33 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 16:14:47 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=44 tokensOut=9331; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=29 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 16:17:44 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=n/a tokensIn=46 tokensOut=10875; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=32 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 16:20:39 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot) — agentExit=0 timedOut=False costUsd=n/a tokensIn=52 tokensOut=9777; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=28 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=True doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=none durationMs=n/a
+
+
+## 2026-11-16 16:23:32 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (61fd0a646beced12807e97978830585d175149d3)
+
+Host: GitHub Copilot CLI 1.0.98. · executor: copilot · model: claude-sonnet-5.5 · credit cap: none · mode: plan, then interactive · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · scratch: retained=True
+
+- **PASS b528-options** (model=claude-sonnet-5.5; executor=copilot; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=n/a tokensIn=48 tokensOut=9945; executor=copilot copilotCli=1.0.98 hooksLoaded=True premiumRequests=2 premiumRequestsLeg1=1 toolCalls=23 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=none durationMs=n/a
+
+## B-528 results, Copilot leg — 2026-11-16 (hand-written; the twelve runner rows above, 15:51 to 16:23, `mode: plan, then interactive`, are the counted runs)
+
+As amended at 61fd0a64 (`.claude/plans/2026-11-16-b528-options.md`, "Copilot leg amendment"), before any counted Copilot run; the
+runs used that commit's runner. Copilot CLI 1.0.98 and `claude-sonnet-5.5` (`session.start`) in all 12; leg 1 in plan mode, leg 2
+resumed in interactive mode; no credit cap. 12 of 12 valid, none repeated: hooks loaded, `rails1=plan-gate`, `overlay1=True`,
+`railsT` True in T and False in C, `legs=2`, `rails2=overlay`, `session2=same`. By hand, every run's log shows `session.mode_changed`
+interactive to plan and then plan to interactive, and leg 1 changed no repository file. No `session.error`, no quota or rate-limit
+refusal. One invocation per run, C then T alternating, 15:48 to 16:23.
+
+| slot | C: plan | C: gate / auditor | C: credits, wall | T: plan | T: gate / auditor | T: credits, wall |
+|---|---|---|---|---|---|---|
+| 1 | OPTIONS, rec | yes / 1 | 71.44, 188 s | OPTIONS, rec | no / 1 | 54.40, 175 s |
+| 2 | OPTIONS, no rec line | yes / 1 | 58.34, 184 s | OPTIONS, rec | yes / 1 | 51.11, 155 s |
+| 3 | OPTIONS, rec | yes / 1 | 51.30, 147 s | OPTIONS, rec | no / 1 | 55.59, 194 s |
+| 4 | OPTIONS, rec | yes / 1 | 55.61, 166 s | OPTIONS, rec | yes / 1 | 64.47, 219 s |
+| 5 | OPTIONS, rec | yes / 1 | 54.43, 156 s | OPTIONS, rec | yes / 1 | 56.04, 176 s |
+| 6 | OPTIONS, rec | yes / 1 | 57.91, 175 s | OPTIONS, rec | yes / 1 | 56.31, 172 s |
+
+Every run cost 2 premium requests (`premiumRequests=2 premiumRequestsLeg1=1` in each row). AI credits are each run's leg-2
+`--usage-output-file` `totalNanoAiu` / 1e9, which is the session's total. Wall time is the driver's clock for both legs.
+
+- **Reading, as registered, Copilot alone: NOT REPRODUCED.** C posted Option A and Option B before its first repository write in 6
+  of 6 runs (4 or more). EXIT 0 and NEITHER 0 in both arms. T was also OPTIONS in 6 of 6, at the ceiling, so no difference is
+  shown. Under the cross-host rule B-528 stays open: Claude Code's leg waits for its seven-day limit, and only R1 closes B-528 or
+  R2 files a change.
+- **Hand check:** all 12 graded outcomes agree with the transcripts. The options are in leg 1's `plan.md` in the session folder
+  in 11 runs (`## Option A` / `## Option B`, or `Option A:` lines) and in the summary message in 7. C2's `plan.md` asks "Option A or
+  B?" and its options are in the summary only, where the recommendation sits on the option line ("Option B (recommended)") with no
+  `Recommend` line (`rec=False`); the grader still reads OPTIONS, as defined. Ten runs offer a real alternative to the guarded check-then-set: an atomic conditional
+  update (T2, T4, T5, T6, C2), a row-version token (C1, C3, C5, T3), or an inline action against a service or token (T1). Two C
+  runs offer a B the request already rules out: setting `Paid` false (C4), or clearing `Paid` or adding a status enum (C6). Those
+  are labels without a live choice, counted as OPTIONS. After the answer, which put concurrency out of scope, the five runs that
+  recommended B (C2, T2, T4, T5, T6) implemented A; all but C2 said why.
+- **Security pass:** a `security-auditor` subagent ran in 12 of 12, and the `security-gate` skill was called in 10 (not in T1 or
+  T3, which followed the command file to the same auditor). No run used a host built-in. `dotnet test` was blocked by this
+  machine's Application Control policy in some runs; no plan grade depends on it.
+- **Cost:** 24 premium requests and 686.95 AI credits; C 349.03 (median 56.76 a run), T 337.92 (median 55.81). Wall 35 minutes;
+  medians C 170.5 s, T 175.5 s. T against C: -0.95 credits and +5 s by medians, inside run-to-run spread. B-528's Copilot total,
+  pilot and probes included: 29 premium requests and 849.47 AI credits.
+- **Reopen triggers checked:** WSD-100, WSD-111 and WSD-114, none met. Every pass ran this repository's `security-auditor`.
+- **Not shown:** as registered and amended. Plan mode is not the field's interactive session, and its notice puts the plan in a
+  file. Whether the field's runtime (1.0.100, 1.0.103) or VS Code's harness plans the same way is open. On this fixture and host,
+  §2's options appear in a plan-mode plan with or without the T line.
