@@ -39,7 +39,9 @@
   `.claude/framework-update-backup/` a file at a path the framework now owns, your skills, a disabled skill's files and
   the `CLAUDE.md` and `AGENTS.md` the layout move replaced. Those copies were easy to forget and to commit. Now, when
   your last commit holds a file exactly as it is on disk, the update copies nothing: the `NOTICE` or `LAYOUT` line about
-  that file names the commit and the `git -C <your repo> show <commit>:./<path>` command that prints your version, and
+  that file names the commit and the `git -C <your repo> show <commit>:./<path>` command that prints your version (or,
+  where Git writes the file with other line endings than it stores, as with `core.autocrlf`, the
+  `git -C <your repo> checkout <commit> -- <path>` command that puts it back as it was), and
   one `recover from Git:` line gives `git diff --stat <commit>` to list what the update changed and
   `git checkout <commit> -- <path>` to restore a file. A file that commit does not hold is still copied as before, to
   a folder Git ignores: one you gitignored, one Git is told not to see the changes of (skip-worktree or

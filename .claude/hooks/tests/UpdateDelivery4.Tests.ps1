@@ -1201,6 +1201,77 @@ It 'B-469 an update of committed settings names the commit that holds a replaced
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# B-469's first attack round. (1) Settings the last commit holds, beside an older update's settings.json.pre-update: the update
+# names the commit and copies nothing; a re-run before committing then kept the older copy, called it the earlier backup, and
+# said the settings were backed up, though that copy lacked the team's edit and nothing was saved.
+It 'B-469 attack: a re-run over settings an earlier run named by their commit never calls an older update''s copy their backup, names the commit, and says no copy was saved' {
+    foreach ($leg in 'unrelated', 'pristine') {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ("b469-stale-$leg-" + [guid]::NewGuid())
+        try {
+            $team = (Get-B507Text -Spec 'v0.98.6:dist/dotnet/.claude/settings.json').Replace('"timeout": 90', '"timeout": 469')
+            New-B507Target -Target $t -Settings $team
+            # 0.98.6's .claude/.gitignore, which keeps .claude/.state/ out of Git.
+            [IO.File]::WriteAllBytes((Join-Path $t '.claude/.gitignore'), (Get-GitBlobBytes -Spec 'v0.98.6:dist/dotnet/.claude/.gitignore'))
+            & git -C $t init -q
+            & git -C $t config user.email 'tests@example.invalid'
+            & git -C $t config user.name 'installer tests'
+            & git -C $t add -A 2>&1 | Out-Null
+            & git -C $t commit -qm 'team edit of a framework entry' 2>&1 | Out-Null
+            $head = (& git -C $t rev-parse HEAD | Out-String).Trim()
+            # The older copy: one this update could not have replaced the current file from, or 0.98.6's own file, which it could.
+            $older = if ($leg -eq 'unrelated') { "{ `"stale`": `"an older update's copy`" }`n" } else { Get-B507Text -Spec 'v0.98.6:dist/dotnet/.claude/settings.json' }
+            $backup = Join-Path $t $b486Backup
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backup) | Out-Null
+            Write-B486Text -Path $backup -Text $older
+            Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String).Trim() -eq '') "${leg}: calibration: the older copy is not ignored"
+            $first = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "${leg}: the update failed (exit $LASTEXITCODE): $first"
+            $again = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+            $flat = $again -replace '\s+', ' '
+            Assert ($LASTEXITCODE -eq 0) "${leg}: the re-run failed (exit $LASTEXITCODE): $again"
+            Assert ([IO.File]::ReadAllText($backup) -ceq $older) "${leg}: the older copy was changed"
+            Assert ($flat -notmatch 'kept the earlier pre-update settings backup') "${leg}: the re-run called the older copy the backup of the settings it replaced: $again"
+            Assert ($flat -notmatch 'backed up' -and $flat -match 'Done \(update\).*\.claude/settings\.json was refreshed, and this run saved no copy of it') "${leg}: the Done line does not say that no copy was saved: $again"
+            $line = [regex]::Match($flat, "As it was before this update it is in commit ${head}: (git -C '[^']+' checkout ${head} -- \.claude/settings\.json) puts it back")
+            Assert $line.Success "${leg}: the re-run does not name the commit that holds the team's settings: $again"
+            $what = if ($leg -eq 'unrelated') { '\.claude/\.state/settings\.json\.pre-update is an older copy, not the file this update replaced\.' } else { 'puts it back if you had committed it then, or in \.claude/\.state/settings\.json\.pre-update if an earlier run of this update saved it there\.' }
+            Assert ($flat -match $what) "${leg}: the re-run does not say what the older copy can be: $again"
+            $null = Invoke-B469Printed -Line $line.Groups[1].Value
+            Assert (([IO.File]::ReadAllText((Join-Path $t '.claude/settings.json')) -replace '\r\n', "`n") -ceq $team) "${leg}: the printed checkout did not put the team's settings back"
+        } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+# (2) With core.autocrlf the settings on disk hold CRLF and their blob LF: the line naming the commit printed git show, which
+# gives the blob's LF bytes, not the file the update replaced. A file held only as a checkout writes it is named with a checkout.
+It 'B-469 attack: in a target below the repository root checked out with core.autocrlf, the line naming the commit that holds the team''s settings puts them back byte for byte' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b469-crlf-' + [guid]::NewGuid())
+    try {
+        [void][IO.Directory]::CreateDirectory($root)
+        & git -C $root init -q
+        & git -C $root config user.email 'tests@example.invalid'
+        & git -C $root config user.name 'installer tests'
+        & git -C $root config core.autocrlf true
+        $t = Join-Path $root 'sub'
+        New-B507Target -Target $t -Settings ((Get-B507Text -Spec 'v0.98.6:dist/dotnet/.claude/settings.json').Replace('"timeout": 90', '"timeout": 469'))
+        & git -C $root add -A 2>&1 | Out-Null
+        & git -C $root commit -qm 'team edit of a framework entry' 2>&1 | Out-Null
+        $head = (& git -C $root rev-parse HEAD | Out-String).Trim()
+        & git -C $root rm -r -q --cached . 2>&1 | Out-Null
+        & git -C $root reset -q --hard 2>&1 | Out-Null
+        $before = [IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.json'))
+        Assert ([Text.Encoding]::UTF8.GetString($before).Contains("`r`n") -and (& git -C $root status --porcelain | Out-String).Trim() -eq '') 'calibration: the checkout did not write CRLF settings, or left the tree dirty'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $LASTEXITCODE): $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t $b486Backup))) "the update copied settings the last commit holds: $out"
+        $line = [regex]::Match(($out -replace '\s+', ' '), "your version is in commit ${head}: (git -C '[^']+' checkout ${head} -- \.claude/settings\.json) puts it back\.")
+        Assert $line.Success "the NOTICE does not name the checkout that puts the settings back as they were on disk: $out"
+        $null = Invoke-B469Printed -Line $line.Groups[1].Value
+        $after = [IO.File]::ReadAllBytes((Join-Path $t '.claude/settings.json'))
+        Assert (Test-B194BytesEqual $before $after) "the printed line, run as printed, did not put the settings back byte for byte ($($after.Length) bytes against $($before.Length))"
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 It 'B-507 an unedited file of an earlier release names no framework entry, on every stack' {
     # The 5.1 variants are the case above; these are the pwsh files of 0.80.0, 0.90.0 (its guard on 'Write|Edit') and 0.98.6.
     foreach ($version in '0.80.0', '0.90.0', '0.98.6') {

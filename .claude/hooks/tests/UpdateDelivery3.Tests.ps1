@@ -603,7 +603,7 @@ It 'B-393 no saved file can load as a live skill, command, agent or instruction:
 
 # B-469: an update copied every file of yours it replaced, the ones the last commit already held included, and teams forgot the
 # copies and committed them. A file that commit holds as it is on disk is named by the commit instead, with a line that prints it.
-It 'B-469 an update copies no file of yours the last commit holds: each line about one names that commit and prints it, and a file the commit does not hold is still copied' {
+It 'B-469 an update copies no file of yours the last commit holds: each line about one names that commit and gives the file back as it was on disk, and a file the commit does not hold is still copied' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b469-' + [guid]::NewGuid())
     try {
         # 0.93.0: before the wrappers, and before 0.95.0 first shipped security-gate.md, docs/reference.md and docs/getting-started.md.
@@ -642,13 +642,11 @@ It 'B-469 an update copies no file of yours the last commit holds: each line abo
         Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
         $wrapper = [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.agents/skills/fix/SKILL.md'))
         Assert ($flat -match 'moved: CLAUDE\.md -> AGENTS\.md' -and (Test-B194BytesEqual $wrapper ([IO.File]::ReadAllBytes((Join-Path $t '.agents/skills/fix/SKILL.md'))))) "calibration: the update did not replace the wrapper and move the layout: $out"
+        $lines = @{}
         foreach ($relative in '.claude/commands/security-gate.md', 'docs/reference.md', '.agents/skills/fix/SKILL.md', 'CLAUDE.md', 'AGENTS.md', '.claude/settings.json') {
-            $show = [regex]::Match($flat, "in commit ${head}: (git -C '[^']+' show (${head}:\./$([regex]::Escape($relative)))) prints it")
-            Assert $show.Success "no line names commit $head and the git show line for $relative`: $out"
-            $marker = [regex]::Match($held[$relative], 'B469 [A-Z ]+[a-z ]*').Value
-            $back = Invoke-B469Printed -Line $show.Groups[1].Value
-            Assert ($marker -and $back.Contains($marker)) "the printed line for $relative, run as printed, does not print the committed file: $($show.Groups[1].Value) / $back"
-            Assert (Test-B194BytesEqual $utf8.GetBytes($held[$relative]) (Get-B469ShowBytes -Target $t -Spec $show.Groups[2].Value)) "git show $($show.Groups[2].Value) does not print $relative byte for byte as the team committed it"
+            $escaped = [regex]::Escape($relative)
+            $lines[$relative] = [regex]::Match($flat, "in commit ${head}: (git -C '[^']+' (?:show ${head}:\./$escaped|checkout ${head} -- $escaped)) (prints it|puts it back)")
+            Assert $lines[$relative].Success "no line names commit $head and a line that gives back $relative`: $out"
         }
         $copies = @(Get-ChildItem -LiteralPath (Join-Path $t '.claude/framework-update-backup') -Recurse -File -Force | ForEach-Object { $_.FullName.Substring($t.Length + 1).Replace('\', '/') })
         $expected = @('.claude/framework-update-backup/.gitignore', '.claude/framework-update-backup/files/docs/getting-started.md', '.claude/framework-update-backup/skills/my-deploy/token.txt')
@@ -659,9 +657,24 @@ It 'B-469 an update copies no file of yours the last commit holds: each line abo
         Assert ([IO.File]::ReadAllText((Join-Path $t '.claude/framework-update-backup/skills/my-deploy/token.txt')) -ceq "sk-live-FX-B469`n") "the ignored skill file was not copied as it was: $out"
         Assert ($flat -match "'docs/getting-started\.md' is not a file the framework wrote \(the previous framework-ownership\.json does not list it\), so the update saves it to \.claude/framework-update-backup/files/docs/getting-started\.md") "the copy of the uncommitted edit was not reported: $out"
         Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String) -notmatch 'framework-update-backup/') 'a copy is committable'
+        # Each line, run as printed from outside the repository, gives back the bytes that were on disk, CRLF line endings
+        # included: what a git show prints, sent to a file, or the file a checkout puts back.
+        foreach ($relative in @($lines.Keys | Sort-Object)) {
+            $line = $lines[$relative]
+            if ($line.Groups[2].Value -ceq 'prints it') {
+                $dump = Join-Path $root 'printed.bin'
+                $null = Invoke-B469Printed -Line "$($line.Groups[1].Value) > '$dump'"
+                $back = [IO.File]::ReadAllBytes($dump)
+            } else {
+                $null = Invoke-B469Printed -Line $line.Groups[1].Value
+                $back = [IO.File]::ReadAllBytes((Join-Path $t $relative))
+            }
+            Assert (Test-B194BytesEqual $onDisk[$relative] $back) "the line for $relative, run as printed, does not give back the file as it was on disk ($($back.Length) bytes against $($onDisk[$relative].Length)): $($line.Groups[1].Value)"
+        }
         # One line says how to list and restore the rest; its checkout, run as printed, restores a replaced file.
         $recover = [regex]::Match($flat, "recover from Git: .*?commit ${head}, HEAD when it ran.*? (git -C '[^']+' checkout ${head} -- )<path>")
         Assert $recover.Success "no recover from Git line names commit $head and the checkout that restores a file: $out"
+        [IO.File]::WriteAllText((Join-Path $t 'docs/reference.md'), "overwritten`n", $utf8)
         $null = Invoke-B469Printed -Line ($recover.Groups[1].Value + 'docs/reference.md')
         Assert (Test-B194BytesEqual $onDisk['docs/reference.md'] ([IO.File]::ReadAllBytes((Join-Path $t 'docs/reference.md')))) 'the printed checkout did not restore the replaced docs/reference.md byte for byte'
     } finally {

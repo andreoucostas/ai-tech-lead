@@ -149,6 +149,17 @@ reads now share. Red first: the B-469 cases in `UpdateDelivery3` (every copy sit
 an ignored skill file still copied) and `UpdateDelivery4` (settings, the commit's line read after a later update), and the reworked
 B-430 and B-431 cases (one committed and one uncommitted leg each).
 
+B-469's first step-4 round (a fresh session on 7f4bd58d) found two defects, both fixed (guarded). (1) A re-run before committing
+kept an older update's `.claude/.state/settings.json.pre-update`, which the first run had left because it named the commit
+instead, called it "the earlier pre-update settings backup" and said the settings were "backed up"; the copy lacked the team's
+edit, a regression against 9e85d419. The kept copy is now called the backup only when this update writes the current file from
+it and the last commit holds no settings it could have written them from; otherwise the line names the commit (`git checkout`),
+and the copy as an older one or, when both fit, each with its condition. The Done line says "backed up" only when this run copied.
+(2) A file held only as a checkout writes it (CRLF under `core.autocrlf`) was named with `git show`, which prints the blob's LF;
+it is now named with `git -C <target> checkout <commit> -- <path>`, which put the 2,839 bytes back where `git show` gave 2,794.
+`docs/upgrade-checklist.md` no longer sends a removal to the pre-update copy for the settings. Red first: `UpdateDelivery4`'s two
+B-469 attack cases and `UpdateDelivery3`'s B-469 case, which now runs each printed line and compares the bytes it gives back.
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

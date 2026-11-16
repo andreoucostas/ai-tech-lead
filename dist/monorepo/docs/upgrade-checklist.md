@@ -91,8 +91,10 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
 
    **Where your old files are.** An update saves no copy of a file your last commit holds as it is
    on disk. Each `NOTICE` about a file it replaced (your settings, a file of yours at a path the
-   framework now owns, a skill, the moved `CLAUDE.md`) names that commit and the
-   `git -C <repo> show <commit>:./<path>` line that prints the file, and a `recover from Git:` line
+   framework now owns, a skill, the moved `CLAUDE.md`) names that commit and the line that gives
+   the file back: `git -C <repo> show <commit>:./<path>` prints it, or, where Git writes the file
+   with other line endings than it stores (`core.autocrlf`), `git -C <repo> checkout <commit> -- <path>`
+   puts it back as it was. A `recover from Git:` line
    says how to list what changed (`git diff --stat <commit>`) and restore a file
    (`git checkout <commit> -- <path>`). Only a file that commit does not hold is copied: one you
    gitignored, one Git is told not to see the changes of (skip-worktree or assume-unchanged), one
@@ -230,7 +232,9 @@ The installer wrote only inside your repository and changed no Git configuration
 - **Otherwise,** delete every path that `framework-ownership.json` marks
   `framework-owned/overwritten`; the list includes both manifests and `.claude/framework-version.json`.
   Paths marked `consumer-owned/protected` are yours to keep or delete; they may still hold template
-  text. `.claude/settings.json` is shared: delete it, or restore your copy from
-  `.claude/.state/settings.json.pre-update` if that local backup exists. A brownfield install moved
+  text. `.claude/settings.json` is shared: delete it, or restore the version you want from your Git
+  history (`git log -- .claude/settings.json` lists the commits that changed it). A
+  `.claude/.state/settings.json.pre-update` holds only what an update copied when no commit held the
+  file, and may be older than your last change. A brownfield install moved
   your earlier files to `docs/pre-adoption/`; move back what you want.
   `.claude/framework-update-backup/` holds an update's backups for review and is not needed after.

@@ -24,8 +24,8 @@
 #                replaces that path, so the team's file could not come back. -AllowMoveAside moves it.
 #   update     — target already carries .claude/framework-version.json. Consumer-owned protected
 #                paths are restored; framework-owned machinery is overwritten; mixed-ownership
-#                .claude/settings.json is backed up and refreshed, and the
-#                team's own top-level keys (permissions, ...) are carried back into it. An older
+#                .claude/settings.json is refreshed (copied first only when the last commit does not
+#                hold it), and the team's own top-level keys (permissions, ...) are carried back into it. An older
 #                instruction layout (project text in CLAUDE.md) is moved once into AGENTS.md. A deleted
 #                .github/workflows/docs-sync-check.yml stays deleted.
 #
@@ -898,7 +898,7 @@ function Get-GitKeptOutFiles {
     return , $kept
 }
 # A plain update saves no copy of a file whose bytes the target's last commit holds; it names that commit and the
-# line that prints the file from it, as -Reinstall does. Held: the bytes on disk hash to the blob that commit holds at the
+# line that gives the file back from it (Format-HeadHeld), as -Reinstall does. Held: the bytes on disk hash to the blob that commit holds at the
 # path (git show prints them as they are), or equal that blob as a checkout writes it through the target's filters and
 # line endings (git checkout puts them back as they are). Anything else is saved below the backup folder as before: no
 # Git or no commit, a file Git does not track or ignores, an uncommitted edit (-AllowDirtyTree), a clean filter that keeps
@@ -926,7 +926,9 @@ function Get-HeadState {
     $script:HeadState = [pscustomobject]@{ Commit = $head.Output; Blobs = $blobs; GitPath = $gitPath }
     return $script:HeadState
 }
-# The commit that holds $Bytes at $Relative (target-relative, matched by exact case as Git's trees are), or $null.
+# The commit that holds $Bytes at $Relative (target-relative, matched by exact case as Git's trees are), or $null. How it
+# holds them is kept for Format-HeadHeld: as the blob ('blob'), or only as a checkout writes the blob ('checkout').
+$script:HeadHeldAs = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
 function Get-HeadHeldCommit {
     param([Parameter(Mandatory = $true)][string]$Relative, [AllowNull()][byte[]]$Bytes)
     if ($null -eq $Bytes) { return $null }
@@ -942,19 +944,29 @@ function Get-HeadHeldCommit {
         [void]$hash.TransformFinalBlock($Bytes, 0, $Bytes.Length)
         $raw = ([BitConverter]::ToString($hash.Hash)).Replace('-', '').ToLowerInvariant()
     } finally { $hash.Dispose() }
-    if ($raw -ceq $blob) { return $state.Commit }
+    if ($raw -ceq $blob) { $script:HeadHeldAs[$Relative] = 'blob'; return $state.Commit }
     $checkedOut = Invoke-GitBytes -GitPath $state.GitPath -Arguments @('-C', $tgt, 'cat-file', '--filters', "$($state.Commit):./$Relative")
-    if ($null -ne $checkedOut -and [string]::Equals([Convert]::ToBase64String($checkedOut), [Convert]::ToBase64String($Bytes), [StringComparison]::Ordinal)) { return $state.Commit }
+    if ($null -ne $checkedOut -and [string]::Equals([Convert]::ToBase64String($checkedOut), [Convert]::ToBase64String($Bytes), [StringComparison]::Ordinal)) { $script:HeadHeldAs[$Relative] = 'checkout'; return $state.Commit }
     return $null
 }
-# "in commit <id>:  git -C '<target>' show <id>:./<path>  prints it", pasted into PowerShell from any folder.
+# Where a file is in a commit and the line, pasted into PowerShell from any folder, that gives its bytes back. Held as the blob:
+# "in commit <id>:  git -C '<target>' show <id>:./<path>  prints it". Held only as a checkout writes it (a core.autocrlf
+# checkout's CRLF, say), whose blob git show prints with other line endings, or with -Restore:
+# "in commit <id>:  git -C '<target>' checkout <id> -- <path>  puts it back".
 function Format-HeadHeld {
-    param([Parameter(Mandatory = $true)][string]$Relative, [Parameter(Mandatory = $true)][string]$Commit)
+    param([Parameter(Mandatory = $true)][string]$Relative, [Parameter(Mandatory = $true)][string]$Commit, [switch]$Restore)
     # Single-quoted with each quote doubled, U+2018 to U+201B among them, which PowerShell also reads as single quotes.
     $quoted = { param([string]$Text) "'" + ($Text -replace ('[''' + [char]0x2018 + [char]0x2019 + [char]0x201A + [char]0x201B + ']'), '$0$0') + "'" }
+    $target = & $quoted $tgt
+    if ($Restore -or ($script:HeadHeldAs.ContainsKey($Relative) -and $script:HeadHeldAs[$Relative] -ceq 'checkout')) {
+        # A pathspec: a glob character in the name is read literally only with :(literal).
+        $pathspec = if ($Relative -match '[\[\]*?\\]' -or $Relative.StartsWith(':')) { ":(literal)$Relative" } else { $Relative }
+        if ($pathspec -cnotmatch '^[A-Za-z0-9_./-]+$') { $pathspec = & $quoted $pathspec }
+        return "in commit ${Commit}:  git -C $target checkout $Commit -- $pathspec  puts it back"
+    }
     $spec = "${Commit}:./$Relative"
     if ($spec -cnotmatch '^[A-Za-z0-9_./:-]+$') { $spec = & $quoted $spec }
-    return "in commit ${Commit}:  git -C $(& $quoted $tgt) show $spec  prints it"
+    return "in commit ${Commit}:  git -C $target show $spec  prints it"
 }
 # The dirty-tree refusal says "Commit", which would take an earlier update's leftovers too, so before it they are kept
 # out of Git: the list's '*' is that refusal's one write, to the framework's own file. Returns the line it adds.
@@ -3295,6 +3307,16 @@ function Test-SettingsAreReleasePlusTeam {
     $written = Read-SettingsBytes -Bytes $(if ($null -ne $again.Bytes) { $again.Bytes } else { $ShippedBytes })
     return ($written.Ok -and (Get-SjCanonical -Raw $written.Text) -ceq (Get-SjCanonical -Raw $current.Text))
 }
+# True when this update, run over the settings FromBytes, writes CurrentBytes (layout aside), as it would had FromBytes been the
+# file an earlier run of it replaced; settings it cannot carry from give the release's own.
+function Test-SettingsWrittenFrom {
+    param([AllowNull()][byte[]]$FromBytes, [AllowNull()][byte[]]$CurrentBytes, [Parameter(Mandatory = $true)][byte[]]$ShippedBytes)
+    $current = Read-SettingsBytes -Bytes $CurrentBytes
+    if ($null -eq $FromBytes -or -not $current.Ok) { return $false }
+    $plan = Get-SettingsCarryPlan -ConsumerBytes $FromBytes -ShippedBytes $ShippedBytes -Before ([pscustomobject]@{ Is = '-'; Yours = '-' })
+    $written = Read-SettingsBytes -Bytes $(if ($null -ne $plan.Bytes) { $plan.Bytes } else { $ShippedBytes })
+    return ($written.Ok -and (Get-SjCanonical -Raw $written.Text) -ceq (Get-SjCanonical -Raw $current.Text))
+}
 # What the refresh does to the team's .claude/settings.json: Bytes is the refreshed file with the team's own top-level keys after
 # the release's and the team's own env variables and hook entries beside the release's (null when there are none to carry), Lines
 # say what was carried, replaced or dropped, and Declined says the team's file could not be read or the result could not be
@@ -3458,6 +3480,17 @@ if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath (Join-Path $tg
     } elseif ($keepBackup) {
         $settingsBackupKept = $true
         $settingsKeptWithTeam = -not $currentIsRelease
+        # The kept copy is the file an earlier run of this update replaced only if this update writes the current file from it.
+        # And where the last commit holds other settings this update would write the current file from, that run may have
+        # named the commit and copied nothing, so the copy may be an older update's: both are then named, neither as certain.
+        $settingsKeptFits = $false
+        try { $settingsKeptFits = Test-SettingsWrittenFrom -FromBytes ([IO.File]::ReadAllBytes((Join-Path $tgt $settingsBackupAt))) -CurrentBytes $currentBytes -ShippedBytes $shippedBytes } catch { $settingsKeptFits = $false }
+        $settingsKeptCommit = $null
+        $headSettings = Get-HeadState
+        if ($null -ne $headSettings.Commit -and $headSettings.Blobs.ContainsKey('.claude/settings.json')) {
+            $committedSettings = Invoke-GitBytes -GitPath $headSettings.GitPath -Arguments @('-C', $tgt, 'cat-file', '--filters', "$($headSettings.Commit):./.claude/settings.json")
+            if (Test-SettingsWrittenFrom -FromBytes $committedSettings -CurrentBytes $currentBytes -ShippedBytes $shippedBytes) { $settingsKeptCommit = $headSettings.Commit }
+        }
     } else {
         $settingsBackupRelative = $settingsBackupAt
         [void](Add-PlannedWrite -Relative $settingsBackupRelative)
@@ -3822,7 +3855,16 @@ if ($settingsBackupRelative) {
     Copy-Item -Force -LiteralPath (Join-Path $tgt '.claude/settings.json') -Destination $settingsBackup
     Write-Output "  saved pre-update settings: $settingsBackupRelative"
 } elseif ($settingsBackupKept) {
-    Write-Output "  kept the earlier pre-update settings backup: .claude/.state/settings.json.pre-update (.claude/settings.json is already this framework's own$(if ($settingsKeptWithTeam) { ', beside the keys of yours an earlier run carried into it' }))."
+    $settingsOwn = ".claude/settings.json is already this framework's own$(if ($settingsKeptWithTeam) { ', beside the keys of yours an earlier run carried into it' })"
+    if ($settingsKeptFits -and -not $settingsKeptCommit) {
+        Write-Output "  kept the earlier pre-update settings backup: .claude/.state/settings.json.pre-update ($settingsOwn)."
+    } else {
+        $settingsAt = if ($settingsKeptCommit) { Format-HeadHeld -Relative '.claude/settings.json' -Commit $settingsKeptCommit -Restore } else { $null }
+        $settingsWas = if ($settingsKeptCommit -and $settingsKeptFits) { "As it was before this update it is $settingsAt if you had committed it then, or in .claude/.state/settings.json.pre-update if an earlier run of this update saved it there." }
+            elseif ($settingsKeptCommit) { "As it was before this update it is $settingsAt; .claude/.state/settings.json.pre-update is an older copy, not the file this update replaced." }
+            else { '.claude/.state/settings.json.pre-update is not the file this update replaced.' }
+        Write-Output "  $settingsOwn, so this run replaces nothing of yours in it and saves no copy. $settingsWas This update leaves .claude/.state/settings.json.pre-update as it is."
+    }
 }
 # The folder's '*' is written before the first copy into it, the skill backup's included; a linked list never is.
 if ($savesIntoBackup -and $backupKeepOut.State -eq 'write') {
@@ -4289,7 +4331,9 @@ if ($updateMode) {
             Write-Output "  Kept $($reinstallKept.Count) file(s) Git does not track under the cleared folders (ignored or untracked, so not in commit ${reinstallCommit}): $keptShown."
         }
     } else {
-        $settingsDone = if ($settingsHeldIn) { ".claude/settings.json was refreshed (commit $settingsHeldIn holds it as it was)" } else { '.claude/settings.json was backed up and refreshed' }
+        $settingsDone = if ($settingsBackupRelative) { '.claude/settings.json was backed up and refreshed' }
+            elseif ($settingsHeldIn) { ".claude/settings.json was refreshed (commit $settingsHeldIn holds it as it was)" }
+            else { '.claude/settings.json was refreshed, and this run saved no copy of it' }
         $carriedParts = @()
         if ($null -ne $settingsCarry) {
             if ($settingsCarry.Carried.Count -gt 0) { $carriedParts += "top-level $(if ($settingsCarry.Carried.Count -eq 1) { 'key' } else { 'keys' }) ($($settingsCarry.Carried -join ', '))" }
