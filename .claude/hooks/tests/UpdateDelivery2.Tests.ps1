@@ -78,20 +78,22 @@ function New-B430Target {
     return $t
 }
 
-It 'B-430 a team''s own skill at a disabled framework skill''s path, and a team file at its .claude/disabled-skills path, are saved out of Git before the update writes over them, once across re-runs' {
+It 'B-430 a team''s own skill at a disabled framework skill''s path, and a team file at its .claude/disabled-skills path, are kept before the update writes over them: named by the last commit that holds one, saved out of Git where no commit does, once across re-runs' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b430-' + [guid]::NewGuid())
     try {
         # B-393's attack: the team's own perf skill was carried to .claude/disabled-skills/perf/, the release's copy went over it,
-        # and the active folder was deleted, so its text was left only in Git HEAD.
+        # and the active folder was deleted. Committed, the skill is named by that commit (B-469); the notes' uncommitted edit is saved.
         $t = New-B430Target -Root $root -Skill 'perf'
         $utf8 = [Text.UTF8Encoding]::new($false)
         $teamSkill = $utf8.GetBytes("---`nname: perf`ndescription: our own load-test checklist`n---`nTEAM PERF RECIPE`n")
-        $olderNotes = $utf8.GetBytes("team notes v1`n")
+        $olderNotes = $utf8.GetBytes("team notes v1, edited`n")
         Write-B429Files -Folder $t -Files ([ordered]@{ '.claude/skills/perf/notes.md' = "team notes v2`n"; '.claude/disabled-skills/perf/notes.md' = "team notes v1`n" })
         [IO.File]::WriteAllBytes((Join-Path $t '.claude/skills/perf/SKILL.md'), $teamSkill)
         & git -C $t add -A
         & git -C $t commit -qm 'team perf skill'
-        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $head = (& git -C $t rev-parse HEAD | Out-String).Trim()
+        [IO.File]::WriteAllBytes((Join-Path $t '.claude/disabled-skills/perf/notes.md'), $olderNotes)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
         $flat = $out -replace '\s+', ' '
         Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
         Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/skills/perf'))) "the disabled skill's active copy was left in place: $out"
@@ -99,9 +101,11 @@ It 'B-430 a team''s own skill at a disabled framework skill''s path, and a team 
         Assert ([IO.File]::ReadAllText((Join-Path $t '.claude/disabled-skills/perf/notes.md')) -ceq "team notes v2`n") "the active folder's notes.md was not carried: $out"
         $skillSave = '.claude/framework-update-backup/files/_.claude/skills/perf/SKILL.md'
         $notesSave = '.claude/framework-update-backup/files/_.claude/disabled-skills/perf/notes.md'
-        Assert ((Test-Path -LiteralPath (Join-Path $t $skillSave) -PathType Leaf) -and (Test-B194BytesEqual $teamSkill ([IO.File]::ReadAllBytes((Join-Path $t $skillSave))))) "the team's own .claude/skills/perf/SKILL.md was not saved byte-identical at $skillSave before the release's copy went over it: $out"
-        Assert ((Test-Path -LiteralPath (Join-Path $t $notesSave) -PathType Leaf) -and (Test-B194BytesEqual $olderNotes ([IO.File]::ReadAllBytes((Join-Path $t $notesSave))))) "the team's .claude/disabled-skills/perf/notes.md was not saved byte-identical at $notesSave before the carry went over it: $out"
-        Assert ($flat -match "NOTICE: LEARNINGS\.md disables the framework skill 'perf', so the update moves \.claude/skills/perf/ to \.claude/disabled-skills/perf/, where this release's copy replaces '\.claude/skills/perf/SKILL\.md', which differs from it: the update first saves it to $([regex]::Escape($skillSave))\.") "the save of the team's skill was not reported: $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t $skillSave))) "the team's own .claude/skills/perf/SKILL.md, which the last commit holds, was copied to $skillSave`: $out"
+        $show = [regex]::Match($flat, "NOTICE: LEARNINGS\.md disables the framework skill 'perf', so the update moves \.claude/skills/perf/ to \.claude/disabled-skills/perf/, where this release's copy replaces '\.claude/skills/perf/SKILL\.md', which differs from it: your version is in commit ${head}: (git -C '[^']+' show (${head}:\./\.claude/skills/perf/SKILL\.md)) prints it, so no copy is saved\.")
+        Assert $show.Success "the commit that holds the team's skill was not named with the line that prints it: $out"
+        Assert ((Invoke-B469Printed -Line $show.Groups[1].Value).Contains('TEAM PERF RECIPE') -and (Test-B194BytesEqual $teamSkill (Get-B469ShowBytes -Target $t -Spec $show.Groups[2].Value))) "the printed line does not print the team's skill as committed: $($show.Groups[1].Value)"
+        Assert ((Test-Path -LiteralPath (Join-Path $t $notesSave) -PathType Leaf) -and (Test-B194BytesEqual $olderNotes ([IO.File]::ReadAllBytes((Join-Path $t $notesSave))))) "the team's uncommitted .claude/disabled-skills/perf/notes.md was not saved byte-identical at $notesSave before the carry went over it: $out"
         Assert ($flat -match "NOTICE: '\.claude/disabled-skills/perf/notes\.md' differs from the file this update writes there, so the update first saves it to $([regex]::Escape($notesSave))\.") "the save of the team's disabled-skills file was not reported: $out"
         $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
         Assert ($status -notmatch 'framework-update-backup/') "a saved copy is committable: $status"
@@ -109,7 +113,7 @@ It 'B-430 a team''s own skill at a disabled framework skill''s path, and a team 
         $again = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
         Assert ($LASTEXITCODE -eq 0) "the second update failed (exit $LASTEXITCODE): $again"
         Assert (($again -replace '\s+', ' ') -notmatch 'first saves it to') "the second update saved again a file the first one handled: $again"
-        Assert (@(Get-ChildItem -LiteralPath (Join-Path $t '.claude/framework-update-backup/files') -Recurse -File -Force).Count -eq 2) "the second update added a save: $again"
+        Assert (@(Get-ChildItem -LiteralPath (Join-Path $t '.claude/framework-update-backup/files') -Recurse -File -Force).Count -eq 1) "the second update added a save: $again"
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }

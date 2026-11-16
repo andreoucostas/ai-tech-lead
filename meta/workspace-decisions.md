@@ -4793,3 +4793,14 @@ measurement, then ship (guarded, `src/stacks/*/files/.claude/**`). Until then th
 map's proven joins) stays true. Rejected: WSD-121 as written. **Reopen** if B-523's pre-registered measurement does not support shipping (the maintainer then
 re-decides), or on a field report asking for Power BI authoring.
 B-523 met the first trigger twice (2026-11-15: no gain on a 14-file and a 497-file trap warehouse); the maintainer dropped the skill: none ships (2026-11-15).
+
+## WSD-128: an update copies a team file only when the last commit does not hold its bytes, and names that commit otherwise (2026-11-16)
+
+**Context.** B-469 (maintainer request, filed 2026-10-28 with `-Reinstall`, which copies nothing and names its commit): a plain update copied every
+team file it replaced or removed below `.claude/framework-update-backup/`, and the settings to `.claude/.state/settings.json.pre-update` (WSD-043),
+even when the last commit held them; teams forgot the copies and committed them. **Decision (the maintainer's request as filed, built 2026-11-16).**
+A file whose bytes on disk hash to the blob HEAD holds at its path, or equal that blob as a checkout writes it, is not copied: the update prints the
+commit id and a `git show <commit>:./<path>` line for it, and one line with `git diff --stat` and `git checkout <commit> -- <path>`. Every other copy
+(no Git or no commit, untracked or ignored, skip-worktree or assume-unchanged, an uncommitted edit, a clean filter) is made as before, as WSD-117
+says; WSD-043's settings copy stays for those. Copies an older release left are never deleted. Rejected: deleting the old folder (a data-loss
+decision); deciding from `git status` (a clean filter or a racy edit hides bytes). **Reopen** if a team loses a file the named commit was said to hold.

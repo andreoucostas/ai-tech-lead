@@ -357,6 +357,31 @@ function Get-GitBlobBytes {
     }
 }
 
+# B-469: a line an update prints to recover a file from a commit, run as printed in PowerShell from outside the repository.
+function Invoke-B469Printed {
+    param([Parameter(Mandatory)][string]$Line)
+    Push-Location ([IO.Path]::GetTempPath())
+    try { return (& (Get-PsExe) -NoProfile -Command $Line 2>&1 | Out-String) } finally { Pop-Location }
+}
+# The bytes git show prints for Spec in Target, read raw: a pipe into PowerShell decodes them with the console's code page.
+function Get-B469ShowBytes {
+    param([Parameter(Mandatory)][string]$Target, [Parameter(Mandatory)][string]$Spec)
+    $start = New-Object Diagnostics.ProcessStartInfo
+    $start.FileName = (Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+    $start.Arguments = "-C `"$Target`" show $Spec"
+    $start.UseShellExecute = $false; $start.CreateNoWindow = $true
+    $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
+    $process = [Diagnostics.Process]::Start($start)
+    $memory = New-Object IO.MemoryStream
+    try {
+        $process.StandardOutput.BaseStream.CopyTo($memory)
+        [void]$process.StandardError.ReadToEnd()
+        $process.WaitForExit()
+        if ($process.ExitCode -ne 0) { throw "git show $Spec failed (exit $($process.ExitCode))" }
+        return , $memory.ToArray()
+    } finally { $memory.Dispose(); $process.Dispose() }
+}
+
 function New-ArchGeneratorTarget {
     param([Parameter(Mandatory)][string]$Target)
     New-Item -ItemType Directory -Force -Path (Join-Path $Target '.claude') | Out-Null

@@ -689,7 +689,8 @@ function ConvertTo-NativeArgument {
     if ($Value.Length -gt 0 -and $Value -notmatch '[\s"]') { return $Value }
     return '"' + [regex]::Replace($Value, '(\\*)("|$)', [Text.RegularExpressions.MatchEvaluator]{ param($m) $m.Groups[1].Value * 2 + $(if ($m.Groups[2].Value) { '\"' } else { '' }) }) + '"'
 }
-function Invoke-GitRecords {
+# The raw stdout bytes; Invoke-GitRecords splits them into -z records.
+function Invoke-GitBytes {
     param([Parameter(Mandatory = $true)][string]$GitPath, [Parameter(Mandatory = $true)][string[]]$Arguments, [int[]]$SuccessCodes = @(0))
     $start = New-Object Diagnostics.ProcessStartInfo
     $start.FileName = $GitPath
@@ -708,7 +709,13 @@ function Invoke-GitRecords {
         [void]$stderr.Result
         if ($SuccessCodes -notcontains $process.ExitCode) { return $null }
     } catch { return $null }
-    return , @([Text.UTF8Encoding]::new($false).GetString($bytes.ToArray()).Split([char]0) | Where-Object { $_.Length -gt 0 })
+    return , $bytes.ToArray()
+}
+function Invoke-GitRecords {
+    param([Parameter(Mandatory = $true)][string]$GitPath, [Parameter(Mandatory = $true)][string[]]$Arguments, [int[]]$SuccessCodes = @(0))
+    $bytes = Invoke-GitBytes -GitPath $GitPath -Arguments $Arguments -SuccessCodes $SuccessCodes
+    if ($null -eq $bytes) { return $null }
+    return , @([Text.UTF8Encoding]::new($false).GetString($bytes).Split([char]0) | Where-Object { $_.Length -gt 0 })
 }
 
 # Every copy an update saves goes below .claude/framework-update-backup/, kept out of Git by a '*' line
@@ -889,6 +896,65 @@ function Get-GitKeptOutFiles {
     $under = if ($Folder -eq '.') { '' } else { $Folder.TrimEnd('/') + '/' }
     foreach ($path in $skipped) { if ($path.StartsWith($under, [StringComparison]::OrdinalIgnoreCase)) { [void]$kept.Add($path) } }
     return , $kept
+}
+# A plain update saves no copy of a file whose bytes the target's last commit holds; it names that commit and the
+# line that prints the file from it, as -Reinstall does. Held: the bytes on disk hash to the blob that commit holds at the
+# path (git show prints them as they are), or equal that blob as a checkout writes it through the target's filters and
+# line endings (git checkout puts them back as they are). Anything else is saved below the backup folder as before: no
+# Git or no commit, a file Git does not track or ignores, an uncommitted edit (-AllowDirtyTree), a clean filter that keeps
+# part of the file out of Git, and a tracked file Git is told not to see the changes of (skip-worktree or
+# assume-unchanged), whose path a checkout skips. Read once: HEAD, and the blobs below the target under each first folder
+# of a shipped path (ls-tree reads its paths literally, relative to the target). Commit stays $null when Git cannot say.
+$script:HeadState = $null
+function Get-HeadState {
+    if ($null -ne $script:HeadState) { return $script:HeadState }
+    $script:HeadState = [pscustomobject]@{ Commit = $null; Blobs = $null; GitPath = $null }
+    if (-not $updateMode -or $Reinstall) { return $script:HeadState }
+    $gitPath = Get-WorkTreeGit
+    if (-not $gitPath) { return $script:HeadState }
+    $head = Invoke-GitText -GitPath $gitPath -Arguments @('-C', $tgt, 'rev-parse', '--verify', '--quiet', 'HEAD^{commit}')
+    if (-not ($head.Started -and $head.ExitCode -eq 0 -and $head.Output -cmatch '^(?:[0-9a-f]{40}|[0-9a-f]{64})$')) { return $script:HeadState }
+    $roots = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($relative in $incomingPaths) { [void]$roots.Add($relative.Split('/')[0]) }
+    $records = Invoke-GitRecords -GitPath $gitPath -Arguments (@('-C', $tgt, 'ls-tree', '-r', '-z', $head.Output, '--') + @($roots))
+    if ($null -eq $records) { return $script:HeadState }
+    $blobs = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    foreach ($record in @($records)) {
+        $entry = [regex]::Match($record, '^100(?:644|755) blob ([0-9a-f]+)\t(.+)$', [Text.RegularExpressions.RegexOptions]::Singleline)
+        if ($entry.Success) { $blobs[$entry.Groups[2].Value] = $entry.Groups[1].Value }
+    }
+    $script:HeadState = [pscustomobject]@{ Commit = $head.Output; Blobs = $blobs; GitPath = $gitPath }
+    return $script:HeadState
+}
+# The commit that holds $Bytes at $Relative (target-relative, matched by exact case as Git's trees are), or $null.
+function Get-HeadHeldCommit {
+    param([Parameter(Mandatory = $true)][string]$Relative, [AllowNull()][byte[]]$Bytes)
+    if ($null -eq $Bytes) { return $null }
+    $state = Get-HeadState
+    if ($null -eq $state.Commit -or -not $state.Blobs.ContainsKey($Relative)) { return $null }
+    $skipped = Get-GitSkippedFiles
+    if ($null -eq $skipped -or $skipped.Contains($Relative)) { return $null }
+    $blob = $state.Blobs[$Relative]
+    $hash = if ($blob.Length -eq 64) { [Security.Cryptography.SHA256]::Create() } else { [Security.Cryptography.SHA1]::Create() }
+    try {
+        $header = [Text.Encoding]::ASCII.GetBytes("blob $($Bytes.Length)`0")
+        [void]$hash.TransformBlock($header, 0, $header.Length, $null, 0)
+        [void]$hash.TransformFinalBlock($Bytes, 0, $Bytes.Length)
+        $raw = ([BitConverter]::ToString($hash.Hash)).Replace('-', '').ToLowerInvariant()
+    } finally { $hash.Dispose() }
+    if ($raw -ceq $blob) { return $state.Commit }
+    $checkedOut = Invoke-GitBytes -GitPath $state.GitPath -Arguments @('-C', $tgt, 'cat-file', '--filters', "$($state.Commit):./$Relative")
+    if ($null -ne $checkedOut -and [string]::Equals([Convert]::ToBase64String($checkedOut), [Convert]::ToBase64String($Bytes), [StringComparison]::Ordinal)) { return $state.Commit }
+    return $null
+}
+# "in commit <id>:  git -C '<target>' show <id>:./<path>  prints it", pasted into PowerShell from any folder.
+function Format-HeadHeld {
+    param([Parameter(Mandatory = $true)][string]$Relative, [Parameter(Mandatory = $true)][string]$Commit)
+    # Single-quoted with each quote doubled, U+2018 to U+201B among them, which PowerShell also reads as single quotes.
+    $quoted = { param([string]$Text) "'" + ($Text -replace ('[''' + [char]0x2018 + [char]0x2019 + [char]0x201A + [char]0x201B + ']'), '$0$0') + "'" }
+    $spec = "${Commit}:./$Relative"
+    if ($spec -cnotmatch '^[A-Za-z0-9_./:-]+$') { $spec = & $quoted $spec }
+    return "in commit ${Commit}:  git -C $(& $quoted $tgt) show $spec  prints it"
 }
 # The dirty-tree refusal says "Commit", which would take an earlier update's leftovers too, so before it they are kept
 # out of Git: the list's '*' is that refusal's one write, to the framework's own file. Returns the line it adds.
@@ -1382,21 +1448,9 @@ if ($Reinstall) {
     # checking out the commit writes: its raw bytes hash to the blob, or they equal the blob as the checkout filters it.
     function Invoke-ReinstallGitBytes {
         param([Parameter(Mandatory = $true)][string[]]$Arguments)
-        $start = New-Object Diagnostics.ProcessStartInfo
-        $start.FileName = $reinstallGit
-        $start.Arguments = @($Arguments | ForEach-Object { ConvertTo-NativeArgument -Value $_ }) -join ' '
-        $start.UseShellExecute = $false; $start.CreateNoWindow = $true
-        $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
-        foreach ($name in $script:GitPathspecSwitches) { [void]$start.EnvironmentVariables.Remove($name) }
-        try {
-            $process = [Diagnostics.Process]::Start($start)
-            $stderr = $process.StandardError.ReadToEndAsync()
-            $bytes = New-Object IO.MemoryStream
-            $process.StandardOutput.BaseStream.CopyTo($bytes)
-            $process.WaitForExit(); [void]$stderr.Result
-            if ($process.ExitCode -ne 0) { return $null }
-        } catch { return $null }
-        return , $bytes.ToArray()
+        $bytes = Invoke-GitBytes -GitPath $reinstallGit -Arguments $Arguments
+        if ($null -eq $bytes) { return $null }
+        return , $bytes
     }
     $heldCheck = @($reinstallSweep) + @(@('CLAUDE.md', 'AGENTS.md') | Where-Object { $trackedBlobs.ContainsKey($_) -and -not (Get-ReparsePointAncestor -Path (Get-ContainedTargetPath -Relative $_)) -and (Test-Path -LiteralPath (Get-ContainedTargetPath -Relative $_) -PathType Leaf) })
     $reinstallDiffers = New-Object System.Collections.Generic.List[string]
@@ -1527,6 +1581,8 @@ if ($Reinstall) {
 $teamSkillPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
 # Every file this update saves before replacing it: wrappers below, other files the framework did not write further down.
 $updateBackups = New-Object System.Collections.Generic.List[object]
+# Every file it would have saved that the last commit holds as it is on disk, so it saves no copy (Get-HeadHeldCommit).
+$headHeldSaves = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
 $priorManifest = if (Test-Path -LiteralPath 'variable:previous') { $previous } else { $null }
 $runName = if ($updateMode) { 'update' } else { 'install' }
 # A link at the backup path, symbolic or hard, may be the file itself, so it never counts as a save.
@@ -1627,6 +1683,13 @@ foreach ($relative in $incomingPaths) {
     $incomingText = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $src $relative)))
     if ([string]::Equals($existingText.Replace("`r`n", "`n"), $incomingText.Replace("`r`n", "`n"), [StringComparison]::Ordinal)) { continue }
     if ($null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative)) { continue }
+    $unowned = if ($null -eq $priorManifest) { 'there is no usable previous framework-ownership.json' } else { 'the previous framework-ownership.json does not list it' }
+    $heldIn = Get-HeadHeldCommit -Relative $relative -Bytes $existingBytes
+    if ($heldIn) {
+        [void]$headHeldSaves.Add($relative)
+        $reconciliationMessages.Add("NOTICE: '$relative' holds the framework's /$workflow text, but $unowned, so the update installs the wrapper there; your version is $(Format-HeadHeld -Relative $relative -Commit $heldIn), so no copy is saved. Keep any change you need in AGENTS.md or a project skill.")
+        continue
+    }
     $backup = Find-UpdateBackup -Preferred ".claude/framework-update-backup/agents-skills/$workflow/SKILL.md" -Bytes $existingBytes
     if ($backup.State -eq 'saved') {
         $reconciliationMessages.Add("NOTICE: '$relative' is already saved at $($backup.Relative), so the update installs the framework's /$workflow wrapper there. Keep any change you need in AGENTS.md or a project skill.")
@@ -1637,7 +1700,6 @@ foreach ($relative in $incomingPaths) {
         exit 3
     }
     $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative })
-    $unowned = if ($null -eq $priorManifest) { 'there is no usable previous framework-ownership.json' } else { 'the previous framework-ownership.json does not list it' }
     $reconciliationMessages.Add("NOTICE: '$relative' holds the framework's /$workflow text, but $unowned, so the update saves it to $($backup.Relative), then installs the wrapper. Keep any change you need in AGENTS.md or a project skill.")
 }
 
@@ -2121,7 +2183,9 @@ if ($updateMode) {
 $backupSkillsRoot = Join-Path $tgt '.claude/framework-update-backup/skills'
 $backupIncompleteRelative = '.claude/framework-update-backup/skills-backup-incomplete'
 # Each copy's path is mapped by ConvertTo-SavedRelative, so no copy loads as a live skill or is a live repository, and
-# moved beside a path Git tracks (Get-UntrackedSaveRelative).
+# moved beside a path Git tracks (Get-UntrackedSaveRelative). A file the last commit holds as it is on disk is not copied
+# (Get-HeadHeldCommit), so a backup with nothing to copy writes nothing, and the next update asks again.
+$skillHeld = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
 if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath $activeSkillsRoot -PathType Container) -and
     (-not (Test-Path -LiteralPath $backupSkillsRoot) -or (Test-Path -LiteralPath (Join-Path $tgt $backupIncompleteRelative) -PathType Leaf))) {
     [void](Assert-SafeTargetMutation -Relative $backupIncompleteRelative)
@@ -2129,6 +2193,10 @@ if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath $activeSkillsR
         $underSkills = $file.FullName.Substring($activeSkillsRoot.Length).TrimStart('\', '/') -replace '\\', '/'
         # A retired skill file is known framework content that the retirement loop deletes first.
         if ($deletePlan -contains ".claude/skills/$underSkills") { continue }
+        # A file that cannot be read here is copied, so the copy reports it.
+        $skillBytes = $null
+        try { $skillBytes = [IO.File]::ReadAllBytes($file.FullName) } catch { $skillBytes = $null }
+        if (Get-HeadHeldCommit -Relative ".claude/skills/$underSkills" -Bytes $skillBytes) { [void]$skillHeld.Add(".claude/skills/$underSkills"); continue }
         $relative = Get-UntrackedSaveRelative -Relative ('.claude/framework-update-backup/skills/' + (ConvertTo-SavedRelative -Relative $underSkills)) -Source $file.FullName
         [void](Add-PlannedWrite -Relative $relative -ForceCreate)
         $skillBackupPlan.Add([pscustomobject]@{ Source = $file.FullName; Relative = $relative; SourceRelative = ".claude/skills/$underSkills" })
@@ -2200,7 +2268,8 @@ if ($updateMode -and -not $Reinstall) {
     $savedElsewhere = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
     [void]$savedElsewhere.Add('.claude/settings.json')
     foreach ($entry in $skillBackupPlan) { [void]$savedElsewhere.Add($entry.SourceRelative) }
-    $additiveSaves = 0; $additiveAlready = 0
+    foreach ($relative in $skillHeld) { [void]$savedElsewhere.Add($relative) }
+    $additiveSaves = 0; $additiveAlready = 0; $additiveHeld = 0
     foreach ($relative in $ordinaryApplyPaths) {
         if ($savedElsewhere.Contains($relative) -or $relative -match '^\.agents/skills/[a-z0-9-]+/SKILL\.md$' -or
             ($null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative))) { continue }
@@ -2213,6 +2282,13 @@ if ($updateMode -and -not $Reinstall) {
             exit 4
         }
         if ((Get-LfSha256 -Bytes $existingBytes) -ceq (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Join-Path $src $relative))))) { continue }
+        $heldIn = Get-HeadHeldCommit -Relative $relative -Bytes $existingBytes
+        if ($heldIn) {
+            [void]$headHeldSaves.Add($relative)
+            if ($null -eq $priorManifest) { $additiveHeld++ }
+            else { $saveMessages.Add("NOTICE: '$relative' is not a file the framework wrote (the previous framework-ownership.json does not list it), so the update installs the framework's file there; your version is $(Format-HeadHeld -Relative $relative -Commit $heldIn), so no copy is saved. Keep what you need from it under another path.") }
+            continue
+        }
         $preferred = "$savesRelative/" + (ConvertTo-SavedRelative -Relative $relative)
         $backup = Find-UpdateBackup -Preferred $preferred -Bytes $existingBytes
         if ($backup.State -eq 'taken') {
@@ -2266,20 +2342,29 @@ if ($updateMode -and -not $Reinstall) {
             exit 4
         }
         if ($save.Final -and (Get-LfSha256 -Bytes $existingBytes) -ceq (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes($save.Final)))) { continue }
-        $preferred = "$savesRelative/" + (ConvertTo-SavedRelative -Relative $save.Relative)
-        $backup = Find-UpdateBackup -Preferred $preferred -Bytes $existingBytes
-        if ($backup.State -eq 'taken') {
-            [Console]::Error.WriteLine("ERROR: Refusing update: '$($save.Relative)' must be saved before this update writes over or removes it, and both $preferred and $($backup.Relative) already hold other content. Move them out of $savesRelative/, then re-run the update. Nothing was changed.")
-            exit 3
+        # A hidden file's bytes are kept out of commits, so no commit holds them.
+        $heldIn = if ($save.Kind -eq 'hidden') { $null } else { Get-HeadHeldCommit -Relative $save.Relative -Bytes $existingBytes }
+        $backup = $null
+        if ($heldIn) {
+            [void]$headHeldSaves.Add($save.Relative)
+            $saving = "your version is $(Format-HeadHeld -Relative $save.Relative -Commit $heldIn), so no copy is saved"
+        } else {
+            $preferred = "$savesRelative/" + (ConvertTo-SavedRelative -Relative $save.Relative)
+            $backup = Find-UpdateBackup -Preferred $preferred -Bytes $existingBytes
+            if ($backup.State -eq 'taken') {
+                [Console]::Error.WriteLine("ERROR: Refusing update: '$($save.Relative)' must be saved before this update writes over or removes it, and both $preferred and $($backup.Relative) already hold other content. Move them out of $savesRelative/, then re-run the update. Nothing was changed.")
+                exit 3
+            }
+            $saving = if ($backup.State -eq 'saved') { "it is already saved at $($backup.Relative)" } else { "the update first saves it to $($backup.Relative)" }
         }
-        $saving = if ($backup.State -eq 'saved') { "it is already saved at $($backup.Relative)" } else { "the update first saves it to $($backup.Relative)" }
+        $keep = if ($heldIn) { 'Keep what you need from that version under another path.' } else { 'Keep what you need from the saved copy under another path.' }
         if ($save.Kind -eq 'hidden') { $hiddenSaved.Add([pscustomobject]@{ Relative = $save.Relative; At = $backup.Relative }) }
         elseif ($save.Kind -eq 'replaced') {
-            $saveMessages.Add("NOTICE: LEARNINGS.md disables the framework skill '$($save.Name)', so the update moves .claude/skills/$($save.Name)/ to .claude/disabled-skills/$($save.Name)/, where this release's copy replaces '$($save.Relative)', which differs from it: $saving. Keep what you need from the saved copy under another path.")
+            $saveMessages.Add("NOTICE: LEARNINGS.md disables the framework skill '$($save.Name)', so the update moves .claude/skills/$($save.Name)/ to .claude/disabled-skills/$($save.Name)/, where this release's copy replaces '$($save.Relative)', which differs from it: $saving. $keep")
         } else {
-            $saveMessages.Add("NOTICE: '$($save.Relative)' differs from the file this update writes there, so $saving. Keep what you need from the saved copy under another path.")
+            $saveMessages.Add("NOTICE: '$($save.Relative)' differs from the file this update writes there$(if ($heldIn) { '; ' } else { ', so ' })$saving. $keep")
         }
-        if ($backup.State -eq 'saved') { continue }
+        if ($heldIn -or $backup.State -eq 'saved') { continue }
         [void](Add-PlannedWrite -Relative $backup.Relative -ForceCreate)
         $updateBackups.Add([pscustomobject]@{ Source = $save.Path; Relative = $backup.Relative; SourceRelative = $save.Relative })
     }
@@ -2291,10 +2376,19 @@ if ($updateMode -and -not $Reinstall) {
         $saveMessages.Add("NOTICE: Git keeps $(if ($one) { '1 file' } else { "$($hiddenSaved.Count) files" }) in the active copy of a disabled skill out of commits (ignored, or tracked with local changes Git is told not to see), so the update does not move $(if ($one) { 'it' } else { 'them' }) to .claude/disabled-skills/, where Git could commit $(if ($one) { 'it' } else { 'them' }): $($named -join ', '). $(if ($one) { 'That copy is' } else { 'Those copies are' }) below .claude/framework-update-backup/, which Git ignores, and the active copy is removed; keep what you need under a path Git ignores.")
     }
     $additiveTotal = $additiveSaves + $additiveAlready
+    $additiveParts = @()
     if ($additiveTotal -gt 0) {
         $differ = if ($additiveTotal -eq 1) { '1 file that differs' } else { "$additiveTotal files that differ" }
         $already = if ($additiveAlready -gt 0) { " $additiveAlready of them $(if ($additiveAlready -eq 1) { 'was' } else { 'were' }) already saved there by an earlier run." } else { '' }
-        $saveMessages.Add("NOTICE: there is no usable previous framework-ownership.json, so the update cannot tell which files the framework wrote: it saves the $differ from this release under $savesRelative/, each at its own path (a name starting with '.' or '_' gains a leading '_', and a SHA-256 suffix where an older save holds that name), then replaces them.$already Keep what you need from the saved copies under other paths, then delete them.")
+        $additiveParts += "it saves the $differ from this release under $savesRelative/, each at its own path (a name starting with '.' or '_' gains a leading '_', and a SHA-256 suffix where an older save holds that name), then replaces them.$already Keep what you need from the saved copies under other paths, then delete them."
+    }
+    if ($additiveHeld -gt 0) {
+        $heldCommit = (Get-HeadState).Commit
+        $heldDiffer = if ($additiveHeld -eq 1) { '1 file that differs' } else { "$additiveHeld files that differ" }
+        $additiveParts += "$(if ($additiveTotal -gt 0) { 'It replaces' } else { 'it replaces' }) the $heldDiffer from this release that commit $heldCommit holds as $(if ($additiveHeld -eq 1) { 'it is' } else { 'they are' }) on disk, so no copy is saved:  git -C $(& $quote $tgt) diff --stat $heldCommit  lists what the update changed, and  git -C $(& $quote $tgt) checkout $heldCommit -- <path>  restores a file."
+    }
+    if ($additiveParts.Count -gt 0) {
+        $saveMessages.Add("NOTICE: there is no usable previous framework-ownership.json, so the update cannot tell which files the framework wrote: $($additiveParts -join ' ')")
     }
 }
 
@@ -2332,12 +2426,14 @@ if ($updateMode -or $adoptMode) {
         $section = @(if ($at -ge 0 -and $at -lt $oldLines.Count - 1) { $oldLines[($at + 1)..($oldLines.Count - 1)] })
         # Git reads a line empty once its trailing spaces are trimmed as blank, and one starting with '#' as a comment.
         $dropped = @($body | Where-Object { $_.TrimEnd([char]32).Length -gt 0 -and -not $_.StartsWith('#', [StringComparison]::Ordinal) -and $releaseLines -cnotcontains $_ })
-        $savedAt = $null
+        $savedAt = $null; $ignoreHeldIn = $null
         if ($adoptMode -and $archiveSources.Contains($relative)) { $savedAt = @(@($archivePlan | Where-Object { $_.OriginalRelative -ceq $relative })[0].Relative) }
         elseif ($updateMode -and -not $Reinstall -and $dropped.Count -gt 0) {
             # The save above for files the previous manifest does not list may already have taken it.
             $savedAt = @($updateBackups | Where-Object { $_.SourceRelative -ceq $relative } | ForEach-Object { $_.Relative } | Select-Object -First 1)
-            if ($savedAt.Count -eq 0) {
+            if ($savedAt.Count -eq 0) { $ignoreHeldIn = Get-HeadHeldCommit -Relative $relative -Bytes $teamBytes }
+            if ($ignoreHeldIn) { [void]$headHeldSaves.Add($relative) }
+            elseif ($savedAt.Count -eq 0) {
                 $preferred = "$savesRelative/" + (ConvertTo-SavedRelative -Relative $relative)
                 $backup = Find-UpdateBackup -Preferred $preferred -Bytes $teamBytes
                 if ($backup.State -eq 'taken') {
@@ -2357,7 +2453,7 @@ if ($updateMode -or $adoptMode) {
             $saveMessages.Add("CANT-VERIFY: '$relative' ends with the line '$ignoreMarker' and no line below it, as an update that stopped between its last two writes leaves it, so a file your version before that update ignored may now be committable, and this $runName cannot tell which. Compare git status with that version (in your Git history, or saved under $savesRelative/) before you commit.")
         }
         $folder = if ($relative.Contains('/')) { $relative.Substring(0, $relative.LastIndexOf('/')) } else { '.' }
-        $ignoreRewrites.Add([pscustomobject]@{ Relative = $relative; Folder = $folder; Dropped = $dropped; Section = $section; SavedAt = $(if ($savedAt) { $savedAt[0] } else { $null }); TeamBytes = $teamBytes })
+        $ignoreRewrites.Add([pscustomobject]@{ Relative = $relative; Folder = $folder; Dropped = $dropped; Section = $section; SavedAt = $(if ($savedAt) { $savedAt[0] } else { $null }); HeldIn = $ignoreHeldIn; TeamBytes = $teamBytes })
     }
 }
 
@@ -2444,17 +2540,31 @@ if ($updateMode -and -not ($Reinstall -and -not $reinstallAdoptionPending)) {
             if ($layoutUnheld) {
                 $layoutMessage = "LAYOUT: commit $reinstallCommit does not hold CLAUDE.md or AGENTS.md as they are on disk (Git ignores one, or is told not to see its changes), and -Reinstall writes no backup, so both were left as they are. Merge CLAUDE.md into AGENTS.md by hand and make CLAUDE.md the two-import stub (docs/upgrade-checklist.md)."
             } elseif (-not $agentsEntry -or $agentsIsMirror) {
+                # An original the last commit holds as it is on disk is not copied (Get-HeadHeldCommit); -Reinstall's commit holds both.
+                $claudeHeld = if ($Reinstall) { $null } else { Get-HeadHeldCommit -Relative 'CLAUDE.md' -Bytes $claudeBytes }
+                $agentsHeld = $null
+                if ($agentsEntry -and -not $Reinstall) { try { $agentsHeld = Get-HeadHeldCommit -Relative 'AGENTS.md' -Bytes ([IO.File]::ReadAllBytes($agentsTarget)) } catch { $agentsHeld = $null } }
                 $layoutMove = [pscustomobject]@{
                     AgentsText = ConvertTo-AgentsInstructionText -Text $claudeText
                     HasBom = $claudeHasBom
                     # Under -Reinstall the clean-tree commit holds both originals, so no copy is written.
-                    BackupAgents = ([bool]$agentsEntry -and -not $Reinstall)
-                    ClaudeBackup = $(if ($Reinstall) { $null } else { Get-UntrackedSaveRelative -Relative '.claude/framework-update-backup/instruction-files/CLAUDE.md' -Source $claudeTarget })
-                    AgentsBackup = $(if ($agentsEntry -and -not $Reinstall) { Get-UntrackedSaveRelative -Relative '.claude/framework-update-backup/instruction-files/AGENTS.md' -Source $agentsTarget } else { $null })
+                    BackupAgents = ([bool]$agentsEntry -and -not $Reinstall -and -not $agentsHeld)
+                    ClaudeBackup = $(if ($Reinstall -or $claudeHeld) { $null } else { Get-UntrackedSaveRelative -Relative '.claude/framework-update-backup/instruction-files/CLAUDE.md' -Source $claudeTarget })
+                    AgentsBackup = $(if ($agentsEntry -and -not $Reinstall -and -not $agentsHeld) { Get-UntrackedSaveRelative -Relative '.claude/framework-update-backup/instruction-files/AGENTS.md' -Source $agentsTarget } else { $null })
+                    ClaudeHeld = $claudeHeld
+                    AgentsHeld = $agentsHeld
                 }
                 foreach ($relative in @(@($layoutMove.ClaudeBackup, 'CLAUDE.md', 'AGENTS.md') | Where-Object { $_ })) { [void](Add-PlannedWrite -Relative $relative) }
                 if ($layoutMove.BackupAgents) { [void](Add-PlannedWrite -Relative $layoutMove.AgentsBackup) }
                 $layoutMessage = 'LAYOUT: moving the project instructions from CLAUDE.md into AGENTS.md (replacing the generated mirror) and writing the CLAUDE.md import stub; both originals, including any hand edits to the mirror, go to .claude/framework-update-backup/instruction-files/. Review AGENTS.md before committing.'
+                if ($claudeHeld -or $agentsHeld) {
+                    $originals = @()
+                    if ($claudeHeld) { [void]$headHeldSaves.Add('CLAUDE.md'); $originals += "the original CLAUDE.md is $(Format-HeadHeld -Relative 'CLAUDE.md' -Commit $claudeHeld)" }
+                    if ($agentsHeld) { [void]$headHeldSaves.Add('AGENTS.md'); $originals += "the replaced AGENTS.md, with any hand edits to the mirror, is $(Format-HeadHeld -Relative 'AGENTS.md' -Commit $agentsHeld)" }
+                    $copied = @(@(if ($layoutMove.ClaudeBackup) { 'CLAUDE.md' }) + @(if ($layoutMove.BackupAgents) { 'AGENTS.md' }))
+                    if ($copied.Count -gt 0) { $originals += "the original $($copied -join ' and ') goes to .claude/framework-update-backup/instruction-files/" }
+                    $layoutMessage = "LAYOUT: moving the project instructions from CLAUDE.md into AGENTS.md (replacing the generated mirror) and writing the CLAUDE.md import stub; $($originals -join '; '). Review AGENTS.md before committing."
+                }
                 # No backup under -Reinstall: a hand edit to the replaced mirror is held only by the commit, so say so and how to read it.
                 if ($Reinstall -and $agentsEntry) {
                     # Git's tree paths are case-sensitive and relative to the repository root: name the tracked spelling,
@@ -2875,7 +2985,7 @@ function Compare-SjSets {
 # template's releases shipped, and named as a whole. None when Mine is this release's own set (Release).
 function Get-SjEditNotices {
     param($Mine, $Release, $Reference, [string]$About, [string]$Backup)
-    $tail = "; your version is in $Backup and in your last commit, if you committed it."
+    $tail = "; your version is $Backup."
     $key = Get-SjSetKey -Set $Mine
     if ($key -ceq (Get-SjSetKey -Set $Release)) { return @() }
     $candidates = @()
@@ -3180,7 +3290,7 @@ function Test-SettingsAreReleasePlusTeam {
     param([AllowNull()][byte[]]$CurrentBytes, [Parameter(Mandatory = $true)][byte[]]$ShippedBytes)
     $current = Read-SettingsBytes -Bytes $CurrentBytes
     if (-not $current.Ok) { return $false }
-    $again = Get-SettingsCarryPlan -ConsumerBytes $CurrentBytes -ShippedBytes $ShippedBytes -BackupRelative '-'
+    $again = Get-SettingsCarryPlan -ConsumerBytes $CurrentBytes -ShippedBytes $ShippedBytes -Before ([pscustomobject]@{ Is = '-'; Yours = '-' })
     if ($again.Declined) { return $false }
     $written = Read-SettingsBytes -Bytes $(if ($null -ne $again.Bytes) { $again.Bytes } else { $ShippedBytes })
     return ($written.Ok -and (Get-SjCanonical -Raw $written.Text) -ceq (Get-SjCanonical -Raw $current.Text))
@@ -3190,7 +3300,7 @@ function Test-SettingsAreReleasePlusTeam {
 # say what was carried, replaced or dropped, and Declined says the team's file could not be read or the result could not be
 # verified, in which case the refreshed file is the release's own.
 function Get-SettingsCarryPlan {
-    param([AllowNull()][byte[]]$ConsumerBytes, [Parameter(Mandatory = $true)][byte[]]$ShippedBytes, [Parameter(Mandatory = $true)][string]$BackupRelative, $Reference)
+    param([AllowNull()][byte[]]$ConsumerBytes, [Parameter(Mandatory = $true)][byte[]]$ShippedBytes, [Parameter(Mandatory = $true)]$Before, $Reference)
     $about = '.claude/settings.json'
     $result = {
         param($Bytes, [string[]]$Carried, [string[]]$EnvNames, [int]$Hooks, [string[]]$Lines, [bool]$Declined)
@@ -3198,7 +3308,7 @@ function Get-SettingsCarryPlan {
     }
     $declined = {
         param([string]$Why)
-        & $result $null @() @() 0 @("NOTICE: ${about}: your own top-level keys were not carried into the refreshed file, which holds only this release's keys, because $Why. The file as it was before this update is saved in $BackupRelative; re-add your permissions, env, hooks and any other keys of yours from it.") $true
+        & $result $null @() @() 0 @("NOTICE: ${about}: your own top-level keys were not carried into the refreshed file, which holds only this release's keys, because $Why. The file as it was before this update is $($Before.Is); re-add your permissions, env, hooks and any other keys of yours from it.") $true
     }
     $theirs = Read-SettingsBytes -Bytes $ConsumerBytes
     if (-not $theirs.Ok) { return (& $declined $theirs.Why) }
@@ -3210,7 +3320,7 @@ function Get-SettingsCarryPlan {
     $extras = New-Object System.Collections.Generic.List[object]
     $lines = New-Object System.Collections.Generic.List[string]
     $inserts = New-Object System.Collections.Generic.List[object]
-    $copyIn = "; the file as it was before this update is saved in $BackupRelative."
+    $copyIn = "; the file as it was before this update is $($Before.Is)."
     $nl = if ($release.Text.Contains("`r`n")) { "`r`n" } else { "`n" }
     $envPlan = $null; $hookPlan = $null
     foreach ($m in $theirs.Members) {
@@ -3229,7 +3339,7 @@ function Get-SettingsCarryPlan {
         if ((Get-SjCanonical -Raw $mine) -ceq (Get-SjCanonical -Raw $its) -or $m.Key -ceq '_comment') { continue }
         $plan = $null
         if ($m.Key -ceq 'env') { $plan = $envPlan = Get-SjEnvCarry -TheirText $theirs.Text -TheirMember $m -ReleaseText $release.Text -ReleaseMember $releaseByKey[$m.Key] -Nl $nl -About $about -CopyIn $copyIn }
-        elseif ($m.Key -ceq 'hooks') { $plan = $hookPlan = Get-SjHookCarry -TheirText $theirs.Text -TheirMember $m -ReleaseText $release.Text -ReleaseMember $releaseByKey[$m.Key] -Nl $nl -About $about -CopyIn $copyIn -Backup $BackupRelative -Reference $Reference }
+        elseif ($m.Key -ceq 'hooks') { $plan = $hookPlan = Get-SjHookCarry -TheirText $theirs.Text -TheirMember $m -ReleaseText $release.Text -ReleaseMember $releaseByKey[$m.Key] -Nl $nl -About $about -CopyIn $copyIn -Backup $Before.Yours -Reference $Reference }
         if ($null -ne $plan) {
             foreach ($line in $plan.Lines) { $lines.Add($line) }
             foreach ($insert in $plan.Inserts) { $inserts.Add($insert) }
@@ -3241,7 +3351,7 @@ function Get-SettingsCarryPlan {
     if ($releaseByKey.ContainsKey('hooks') -and -not @($theirs.Members | Where-Object { $_.Key -ceq 'hooks' })) {
         $itsHooks = Read-SjHooks -Text $release.Text -Start $releaseByKey['hooks'].Start
         if ($null -ne $itsHooks) {
-            foreach ($line in (Get-SjEditNotices -Mine @() -Release (Get-SjFrameworkEntries -Hooks $itsHooks -Text $release.Text) -Reference $Reference -About $about -Backup $BackupRelative)) { $lines.Add($line) }
+            foreach ($line in (Get-SjEditNotices -Mine @() -Release (Get-SjFrameworkEntries -Hooks $itsHooks -Text $release.Text) -Reference $Reference -About $about -Backup $Before.Yours)) { $lines.Add($line) }
         }
     }
     if ($extras.Count -gt 0) {
@@ -3306,6 +3416,7 @@ function Get-SettingsCarryPlan {
 $settingsBackupRelative = $null
 $settingsBackupKept = $false
 $settingsKeptWithTeam = $false
+$settingsHeldIn = $null
 $settingsCarry = $null
 $settingsMessages = New-Object System.Collections.Generic.List[string]
 if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath (Join-Path $tgt '.claude/settings.json') -PathType Leaf)) {
@@ -3314,12 +3425,18 @@ if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath (Join-Path $tg
     # consumer's settings in the existing backup. So are the settings an earlier run wrote with the team's own keys
     # carried into them, unless carrying them again would not keep all of them. Unreadable settings are backed up as before.
     # The team's keys are read from the file as it is, never from the backup, which may belong to another branch or an earlier run.
+    # Settings the last commit holds as they are on disk are named by that commit, and no backup is written or read (Get-HeadHeldCommit).
     $settingsBackupAt = '.claude/.state/settings.json.pre-update'
     try { $currentBytes = [IO.File]::ReadAllBytes((Join-Path $tgt '.claude/settings.json')); $currentSettings = Get-LfSha256 -Bytes $currentBytes }
     catch { $currentBytes = $null; $currentSettings = $null }
     $shippedBytes = [IO.File]::ReadAllBytes((Join-Path $src '.claude/settings.json'))
     $backupPresent = Test-Path -LiteralPath (Join-Path $tgt $settingsBackupAt) -PathType Leaf
     $currentIsRelease = [bool]$currentSettings -and ($currentSettings -ceq (Get-LfSha256 -Bytes $shippedBytes))
+    $settingsHeldIn = Get-HeadHeldCommit -Relative '.claude/settings.json' -Bytes $currentBytes
+    $settingsBefore = if ($settingsHeldIn) {
+        $atCommit = Format-HeadHeld -Relative '.claude/settings.json' -Commit $settingsHeldIn
+        [pscustomobject]@{ Is = $atCommit; Yours = $atCommit }
+    } else { [pscustomobject]@{ Is = "saved in $settingsBackupAt"; Yours = "in $settingsBackupAt and in your last commit, if you committed it" } }
     # Settings equal to the release's own hold nothing of the team's. Any other file is merged with the release's;
     # that merge is the one write of the file, so an interrupted run leaves the old file or the merged one.
     if (-not $currentIsRelease -and $ordinaryApplyPaths.Contains('.claude/settings.json')) {
@@ -3328,14 +3445,17 @@ if ($updateMode -and -not $Reinstall -and (Test-Path -LiteralPath (Join-Path $tg
             Template = $(if ($installedStamp.template -is [string] -and $installedStamp.template.Length -gt 0) { $installedStamp.template } else { [string]$incomingStamp.template })
             Version = $installedVersion; Known = ((Compare-ReleaseVersion -Left $installedVersion -Right $incomingVersion) -le 0)
         }
-        $settingsCarry = Get-SettingsCarryPlan -ConsumerBytes $currentBytes -ShippedBytes $shippedBytes -BackupRelative $settingsBackupAt -Reference $settingsReference
+        $settingsCarry = Get-SettingsCarryPlan -ConsumerBytes $currentBytes -ShippedBytes $shippedBytes -Before $settingsBefore -Reference $settingsReference
         foreach ($line in $settingsCarry.Lines) { $settingsMessages.Add($line) }
     }
     $keepBackup = $backupPresent -and $currentIsRelease
-    if ($backupPresent -and -not $currentIsRelease -and $null -ne $currentBytes -and -not ($null -ne $settingsCarry -and $settingsCarry.Declined)) {
+    if (-not $settingsHeldIn -and $backupPresent -and -not $currentIsRelease -and $null -ne $currentBytes -and -not ($null -ne $settingsCarry -and $settingsCarry.Declined)) {
         $keepBackup = Test-SettingsAreReleasePlusTeam -CurrentBytes $currentBytes -ShippedBytes $shippedBytes
     }
-    if ($keepBackup) {
+    if ($settingsHeldIn) {
+        # Nothing is saved, and an earlier update's backup, if there is one, stays as it is.
+        if (-not $currentIsRelease) { [void]$headHeldSaves.Add('.claude/settings.json') }
+    } elseif ($keepBackup) {
         $settingsBackupKept = $true
         $settingsKeptWithTeam = -not $currentIsRelease
     } else {
@@ -3411,8 +3531,8 @@ if ($adoptMode) {
 }
 $archiveIgnoreRelative = 'docs/pre-adoption/.gitignore'
 if ($keptOutEntries.Count -gt 0) { [void](Add-PlannedWrite -Relative $archiveIgnoreRelative) }
-# Every copy an update saves goes below .claude/framework-update-backup/, and none needs committing: a tracked original
-# is in history already, and an ignored one must not leak. Deciding per copy what Git may see lost three times (a
+# Every copy an update saves goes below .claude/framework-update-backup/, and none needs committing: a file the last
+# commit holds as it is on disk is not copied (Get-HeadHeldCommit), and an ignored one must not leak. Deciding per copy what Git may see lost three times (a
 # copied '!' rule, the console's code page, an attribute filter), so the folder's .gitignore ends with '*' (Get-BackupKeepOut),
 # and Git is asked after the last copy whether anything there is still committable. A file Git already tracks there stays
 # tracked, so it is counted on every update. The copies an earlier update left where Git could commit them are the
@@ -3430,7 +3550,7 @@ if ($updateMode -and -not $Reinstall) {
     # The list is the keep-out, not a copy.
     $trackedSet = Get-BackupTracked
     $backupTracked = @($trackedSet | Where-Object { $_ -ine $backupIgnoreRelative }).Count
-    $savesIntoBackup = ($updateBackups.Count + $skillBackupPlan.Count + $backupResidue.Count) -gt 0 -or $null -ne $layoutMove
+    $savesIntoBackup = ($updateBackups.Count + $skillBackupPlan.Count + $backupResidue.Count) -gt 0 -or ($null -ne $layoutMove -and ($layoutMove.ClaudeBackup -or $layoutMove.BackupAgents))
     if ($savesIntoBackup) {
         $backupKeepOut = Get-BackupKeepOut
         # Found here, before any change, so this refusal's "Nothing was changed" is true.
@@ -3767,7 +3887,7 @@ function Stop-IncompleteCopy {
     $stampNote = ''
     if ($stampLast) { $stampNote = ' and the version stamp, which an update writes last, was not' }
     # A brownfield re-run with no stamp reads the files copied so far as an existing setup and archives them. A greenfield one is a
-    # greenfield again: the manifest puts the stamp before every adoption signal (UpdateDelivery.Tests.ps1, D4), so a plain re-run is the remedy.
+    # greenfield again: the manifest puts the stamp before every adoption signal (UpdateDelivery2.Tests.ps1, D4), so a plain re-run is the remedy.
     $stampWritten = $stampLast -or (Test-Path -LiteralPath (Get-ContainedTargetPath -Relative $stampRelative) -PathType Leaf)
     $again = if ($stampWritten) { $rerun }
         elseif ($greenfield) { "re-run the installer$(if ($rerunOverrides) { " with$rerunOverrides" })" }
@@ -3894,6 +4014,11 @@ if ($layoutMove) {
         Copy-Item -Force -LiteralPath (Join-Path $src 'CLAUDE.md') -Destination (Get-ContainedTargetPath -Relative 'CLAUDE.md') -ErrorAction Stop
     } catch { Stop-IncompleteCopy -Relative $layoutAt -Reason $_.Exception.Message -Written $applyWritten }
     if ($Reinstall) { Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in commit $reinstallCommit)." }
+    elseif ($layoutMove.ClaudeHeld -or $layoutMove.AgentsHeld) {
+        $heldOriginals = @(@(if ($layoutMove.ClaudeHeld) { 'CLAUDE.md' }) + @(if ($layoutMove.AgentsHeld) { 'AGENTS.md' }))
+        $copiedOriginals = @(@(if ($layoutMove.ClaudeBackup) { 'CLAUDE.md' }) + @(if ($layoutMove.BackupAgents) { 'AGENTS.md' }))
+        Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (original $($heldOriginals -join ' and ') in commit $(@($layoutMove.ClaudeHeld, $layoutMove.AgentsHeld) | Where-Object { $_ } | Select-Object -First 1)$(if ($copiedOriginals.Count -gt 0) { ", original $($copiedOriginals -join ' and ') in $backupRoot/" }))."
+    }
     else { Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in $backupRoot/)." }
 }
 # Asked after the last copy: only Git can say none is committable. A target without Git has no commit to keep them from.
@@ -3933,6 +4058,11 @@ if ($savesIntoBackup) {
             Write-Output "  NOTICE: $(if ($one) { '1 copy' } else { "$($copies.Count) copies" }) this update saved $(if ($one) { 'holds' } else { 'hold' }) local changes Git was told not to see (skip-worktree or assume-unchanged), which no commit holds: $($copies -join ', '). Git treats an ignored file as expendable, so checking out a branch that tracks the same path overwrites $(if ($one) { 'it' } else { 'them' }) without a warning: move $(if ($one) { 'it' } else { 'them' }) out of the repository before you switch branches."
         }
     }
+}
+# The files an update once copied below the backup folder that the last commit holds as they were on disk.
+if ($headHeldSaves.Count + $skillHeld.Count -gt 0) {
+    $headCommit = (Get-HeadState).Commit
+    Write-Output "  recover from Git: this update saves no copy of a file of yours it replaces or removes when commit $headCommit, HEAD when it ran, holds that file as it was on disk:  git -C $(& $quote $tgt) diff --stat $headCommit  lists what it changed, and  git -C $(& $quote $tgt) checkout $headCommit -- <path>  restores a file."
 }
 if ($backupTracked -gt 0) {
     Write-Output "  NOTICE: Git tracks $(if ($backupTracked -eq 1) { '1 file' } else { "$backupTracked files" }) under $backupRelative/, which may hold copies of files you had gitignored; '*' hides only what Git does not track yet. Review them, then untrack them with  git rm -r --cached $backupRelative  and commit that. A secret once committed there stays in your Git history: rotate it, or rewrite that history."
@@ -3982,7 +4112,9 @@ foreach ($rewrite in $ignoreRewrites) {
     # A brownfield install cannot be re-run over its own archive, so its remedy is that write by hand.
     $finish = if ($updateMode) { 're-run the update with -AllowDirtyTree' } else { "copy the framework's file ($(Join-Path $src $rewrite.Relative)) over it by hand, then give each file git status shows $where that you had kept out of Git a line in the root .gitignore before you commit" }
     $again = if ($updateMode) { 'Re-run the update with -AllowDirtyTree once Git answers.' } else { "Once Git answers, $finish." }
-    $yours = if ($rewrite.SavedAt) { "your version is saved at $($rewrite.SavedAt) and in your Git history" } else { 'your version is in your Git history' }
+    $yours = if ($rewrite.SavedAt) { "your version is saved at $($rewrite.SavedAt) and in your Git history" }
+        elseif ($rewrite.HeldIn) { "your version is $(Format-HeadHeld -Relative $rewrite.Relative -Commit $rewrite.HeldIn)" }
+        else { 'your version is in your Git history' }
     $anchors = @(); $warning = $null
     # Not asked without Git, where there is no commit to keep a file out of.
     $asked = $ignoredBefore.ContainsKey($rewrite.Relative)
@@ -4035,7 +4167,7 @@ foreach ($rewrite in $ignoreRewrites) {
     $added = @($anchors | Where-Object { $rewrite.Section -cnotcontains $_ })
     $parts = @()
     if ($rewrite.Dropped.Count -gt 0) {
-        $parts += "Your version had lines this release's version lacks ($(@($rewrite.Dropped | ForEach-Object { "'$_'" }) -join ', ')), which no longer apply there; $(if ($rewrite.SavedAt) { "it is saved at $($rewrite.SavedAt)" } else { 'it was not saved' })."
+        $parts += "Your version had lines this release's version lacks ($(@($rewrite.Dropped | ForEach-Object { "'$_'" }) -join ', ')), which no longer apply there; $(if ($rewrite.SavedAt) { "it is saved at $($rewrite.SavedAt)" } elseif ($rewrite.HeldIn) { "it is $(Format-HeadHeld -Relative $rewrite.Relative -Commit $rewrite.HeldIn)" } else { 'it was not saved' })."
     }
     if ($added.Count -gt 0) {
         $many = $anchors.Count -gt 1
@@ -4157,7 +4289,7 @@ if ($updateMode) {
             Write-Output "  Kept $($reinstallKept.Count) file(s) Git does not track under the cleared folders (ignored or untracked, so not in commit ${reinstallCommit}): $keptShown."
         }
     } else {
-        $settingsDone = '.claude/settings.json was backed up and refreshed'
+        $settingsDone = if ($settingsHeldIn) { ".claude/settings.json was refreshed (commit $settingsHeldIn holds it as it was)" } else { '.claude/settings.json was backed up and refreshed' }
         $carriedParts = @()
         if ($null -ne $settingsCarry) {
             if ($settingsCarry.Carried.Count -gt 0) { $carriedParts += "top-level $(if ($settingsCarry.Carried.Count -eq 1) { 'key' } else { 'keys' }) ($($settingsCarry.Carried -join ', '))" }

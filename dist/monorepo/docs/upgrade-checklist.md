@@ -66,9 +66,8 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    `.claude/` are deleted with the rest; restore the ones you want from that commit. It refuses a
    tree with uncommitted changes and cannot be combined with `-AllowDirtyTree`.
 
-6. **Reconcile your settings.** `.claude/settings.json` is shared: the update saves the file as it
-   was to `.claude/.state/settings.json.pre-update` (Git ignores it, so it exists on one machine
-   only), refreshes the file, and carries every top-level
+6. **Reconcile your settings.** `.claude/settings.json` is shared: the update refreshes the file
+   and carries every top-level
    key of it that the release does not define (`permissions`, `model`, `statusLine` and the like)
    into it, unchanged and after the release's own keys. Inside `env` and `hooks` it carries what is
    yours the same way: each `env` variable the release does not set, and each hook entry whose
@@ -86,11 +85,21 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    or `env` variable an earlier release set and this one no longer does is dropped, not carried, and
    named. If the installer could not
    read your copy as strict JSON (a comment, a trailing comma, an empty file, two keys that differ
-   only in case) it carries nothing and says so on a `NOTICE`: re-add your keys from the backup by
-   hand. A key you later delete from the file stays deleted, because the next update reads the file
-   as it then is. Commit the result: your teammates get the carried keys from your commit, not from
-   the backup. `.claude/framework-update-backup/` holds an update's other backups for review; it is
-   not a fresh snapshot of every update.
+   only in case) it carries nothing and says so on a `NOTICE`: re-add your keys by hand from the
+   file as it was, which that `NOTICE` names. A key you later delete from the file stays deleted, because the next update reads the file
+   as it then is. Commit the result: your teammates get the carried keys from your commit.
+
+   **Where your old files are.** An update saves no copy of a file your last commit holds as it is
+   on disk. Each `NOTICE` about a file it replaced (your settings, a file of yours at a path the
+   framework now owns, a skill, the moved `CLAUDE.md`) names that commit and the
+   `git -C <repo> show <commit>:./<path>` line that prints the file, and a `recover from Git:` line
+   says how to list what changed (`git diff --stat <commit>`) and restore a file
+   (`git checkout <commit> -- <path>`). Only a file that commit does not hold is copied: one you
+   gitignored, one Git is told not to see the changes of (skip-worktree or assume-unchanged), one
+   with uncommitted edits (`-AllowDirtyTree`), or any file in a folder without Git. Those copies go
+   to `.claude/framework-update-backup/` (the settings file to
+   `.claude/.state/settings.json.pre-update`), which Git ignores. Copies an older release left there
+   stay until you delete them; keep what you need first.
 
 7. **Copy the version into `AGENTS.md`.** Copy `version` and `applied` from
    `.claude/framework-version.json` into the header comment at the top of `AGENTS.md`. Do not replace
@@ -198,7 +207,8 @@ Most updates need none of these. Do each only when its condition holds.
 
 - **Instructions still in `CLAUDE.md`.** When `AGENTS.md` is still the generated copy, the first
   update to this layout moves `CLAUDE.md`'s text into `AGENTS.md` and writes the `CLAUDE.md` stub,
-  keeping both originals under `.claude/framework-update-backup/instruction-files/`; review the moved
+  and the `LAYOUT:` line names the commit that holds both originals (an original that commit does
+  not hold as it is on disk is kept under `.claude/framework-update-backup/instruction-files/`); review the moved
   `AGENTS.md`'s opening note. If the `LAYOUT:` line reported a hand-written `AGENTS.md`, merge
   `CLAUDE.md`'s content into it and replace `CLAUDE.md` with the template stub. Give the merged
   `AGENTS.md` the template's **Framework rules** line as the second line of its opening note, so agents

@@ -601,6 +601,74 @@ It 'B-393 no saved file can load as a live skill, command, agent or instruction:
     }
 }
 
+# B-469: an update copied every file of yours it replaced, the ones the last commit already held included, and teams forgot the
+# copies and committed them. A file that commit holds as it is on disk is named by the commit instead, with a line that prints it.
+It 'B-469 an update copies no file of yours the last commit holds: each line about one names that commit and prints it, and a file the commit does not hold is still copied' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b469-' + [guid]::NewGuid())
+    try {
+        # 0.93.0: before the wrappers, and before 0.95.0 first shipped security-gate.md, docs/reference.md and docs/getting-started.md.
+        $t = New-B309GitTarget -Root $root -Name 'target' -Ignore "/.claude/skills/my-deploy/`n"
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+        [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), '{"version":"0.93.0","template":"dotnet"}', $utf8)
+        [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.93.0:dist/dotnet/framework-ownership.json'))
+        $held = [ordered]@{
+            '.claude/commands/security-gate.md' = "# Team security gate`nB469 TEAM GATE`n"
+            'docs/reference.md' = "# Team reference`nB469 TEAM REFERENCE`n"
+            '.claude/skills/team-notes/SKILL.md' = "---`nname: team-notes`ndescription: shared notes`n---`nB469 TEAM NOTES`n"
+            'CLAUDE.md' = "# Acme`n`n## Conventions`n`nB469 CONSUMER RULE.`n"
+            'AGENTS.md' = "<!-- GENERATED FILE - do not edit by hand. -->`n# Agent Instructions`n`nB469 MIRROR HAND EDIT`n"
+            '.claude/settings.json' = "{`n  `"defaultShell`": `"bash`",`n  `"b469Team`": `"B469 SETTINGS`"`n}`n"
+        }
+        $held['.agents/skills/fix/SKILL.md'] = $utf8.GetString([byte[]]($utf8.GetBytes("---`nname: fix`ndescription: converted`n---`n") + (Get-GitBlobBytes -Spec 'v0.93.0:dist/dotnet/.github/prompts/fix.prompt.md') + $utf8.GetBytes("B469 TEAM EDIT to fix`n")))
+        Write-B429Files -Folder $t -Files $held
+        Write-B429Files -Folder $t -Files ([ordered]@{ 'docs/getting-started.md' = "# Team onboarding`n"; '.claude/skills/my-deploy/token.txt' = "sk-live-FX-B469`n" })
+        & git -C $t add -A
+        & git -C $t commit -qm 'team files'
+        $head = (& git -C $t rev-parse HEAD | Out-String).Trim()
+        # Checked out again as a Windows clone writes them, with CRLF line endings: the committed blobs hold LF, so each file is
+        # held as a checkout writes it, not byte for byte.
+        & git -C $t config core.autocrlf true
+        foreach ($relative in $held.Keys) { Remove-Item -LiteralPath (Join-Path $t $relative) -Force }
+        & git -C $t checkout -q -- .
+        $onDisk = @{}
+        foreach ($relative in $held.Keys) { $onDisk[$relative] = [IO.File]::ReadAllBytes((Join-Path $t $relative)) }
+        Assert ([Text.Encoding]::ASCII.GetString($onDisk['docs/reference.md']).Contains("`r`n") -and (& git -C $t status --porcelain | Out-String).Trim() -eq '') 'calibration: the checkout did not write CRLF, or left the tree dirty'
+        # Bytes no commit holds: an uncommitted edit, and a file Git ignores.
+        $dirty = "# Team onboarding`nB469 UNCOMMITTED EDIT`n"
+        [IO.File]::WriteAllText((Join-Path $t 'docs/getting-started.md'), $dirty, $utf8)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
+        $wrapper = [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.agents/skills/fix/SKILL.md'))
+        Assert ($flat -match 'moved: CLAUDE\.md -> AGENTS\.md' -and (Test-B194BytesEqual $wrapper ([IO.File]::ReadAllBytes((Join-Path $t '.agents/skills/fix/SKILL.md'))))) "calibration: the update did not replace the wrapper and move the layout: $out"
+        foreach ($relative in '.claude/commands/security-gate.md', 'docs/reference.md', '.agents/skills/fix/SKILL.md', 'CLAUDE.md', 'AGENTS.md', '.claude/settings.json') {
+            $show = [regex]::Match($flat, "in commit ${head}: (git -C '[^']+' show (${head}:\./$([regex]::Escape($relative)))) prints it")
+            Assert $show.Success "no line names commit $head and the git show line for $relative`: $out"
+            $marker = [regex]::Match($held[$relative], 'B469 [A-Z ]+[a-z ]*').Value
+            $back = Invoke-B469Printed -Line $show.Groups[1].Value
+            Assert ($marker -and $back.Contains($marker)) "the printed line for $relative, run as printed, does not print the committed file: $($show.Groups[1].Value) / $back"
+            Assert (Test-B194BytesEqual $utf8.GetBytes($held[$relative]) (Get-B469ShowBytes -Target $t -Spec $show.Groups[2].Value)) "git show $($show.Groups[2].Value) does not print $relative byte for byte as the team committed it"
+        }
+        $copies = @(Get-ChildItem -LiteralPath (Join-Path $t '.claude/framework-update-backup') -Recurse -File -Force | ForEach-Object { $_.FullName.Substring($t.Length + 1).Replace('\', '/') })
+        $expected = @('.claude/framework-update-backup/.gitignore', '.claude/framework-update-backup/files/docs/getting-started.md', '.claude/framework-update-backup/skills/my-deploy/token.txt')
+        Assert ((@($copies | Sort-Object -CaseSensitive) -join ' | ') -ceq ($expected -join ' | ')) "the update copied a file the commit holds, or missed one it does not: $($copies -join ' | ')"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/.state/settings.json.pre-update'))) "committed settings were copied to .claude/.state/settings.json.pre-update: $out"
+        # What no commit holds is still copied byte for byte, out of Git.
+        Assert ([IO.File]::ReadAllText((Join-Path $t '.claude/framework-update-backup/files/docs/getting-started.md')) -ceq $dirty) "the uncommitted edit was not copied as it was: $out"
+        Assert ([IO.File]::ReadAllText((Join-Path $t '.claude/framework-update-backup/skills/my-deploy/token.txt')) -ceq "sk-live-FX-B469`n") "the ignored skill file was not copied as it was: $out"
+        Assert ($flat -match "'docs/getting-started\.md' is not a file the framework wrote \(the previous framework-ownership\.json does not list it\), so the update saves it to \.claude/framework-update-backup/files/docs/getting-started\.md") "the copy of the uncommitted edit was not reported: $out"
+        Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String) -notmatch 'framework-update-backup/') 'a copy is committable'
+        # One line says how to list and restore the rest; its checkout, run as printed, restores a replaced file.
+        $recover = [regex]::Match($flat, "recover from Git: .*?commit ${head}, HEAD when it ran.*? (git -C '[^']+' checkout ${head} -- )<path>")
+        Assert $recover.Success "no recover from Git line names commit $head and the checkout that restores a file: $out"
+        $null = Invoke-B469Printed -Line ($recover.Groups[1].Value + 'docs/reference.md')
+        Assert (Test-B194BytesEqual $onDisk['docs/reference.md'] ([IO.File]::ReadAllBytes((Join-Path $t 'docs/reference.md')))) 'the printed checkout did not restore the replaced docs/reference.md byte for byte'
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'B-429 the one-time skill backup keeps out of Git the copy of every skill file Git ignores, a name Git would read as a pattern included, and says so in one line' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b429-' + [guid]::NewGuid())
     try {
@@ -610,7 +678,7 @@ It 'B-429 the one-time skill backup keeps out of Git the copy of every skill fil
         New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude/skills/my-deploy'), (Join-Path $t '.claude/skills/team-notes') | Out-Null
         $secrets = @{ 'SKILL.md' = "---`nname: my-deploy`ndescription: personal deploy`n---`nUse token.txt`n"; 'token.txt' = "sk-live-FX-SECRET`n"; 'keys[prod].txt' = "PROD-FIXTURE-KEY`n" }
         foreach ($name in $secrets.Keys) { [IO.File]::WriteAllText((Join-Path $t ".claude/skills/my-deploy/$name"), $secrets[$name], $utf8) }
-        # A team skill Git tracks: its copy stays committable, which also shows git status reads the backup.
+        # A team skill Git tracks unchanged: the last commit holds it, so it is not copied (B-469).
         [IO.File]::WriteAllText((Join-Path $t '.claude/skills/team-notes/SKILL.md'), "---`nname: team-notes`ndescription: shared notes`n---`n", $utf8)
         & git -C $t add -A
         & git -C $t commit -qm 'team skills'
@@ -621,9 +689,10 @@ It 'B-429 the one-time skill backup keeps out of Git the copy of every skill fil
             $copy = Join-Path $t ".claude/framework-update-backup/skills/my-deploy/$name"
             Assert ((Test-Path -LiteralPath $copy -PathType Leaf) -and [IO.File]::ReadAllText($copy) -ceq $secrets[$name]) "the skill backup did not copy my-deploy/$name byte-identical: $out"
         }
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-update-backup/skills/team-notes'))) "the skill backup copied a skill the last commit holds: $out"
         $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
         Assert ($status -notmatch 'framework-update-backup/skills/my-deploy/') "a gitignored skill file's backup copy is committable: $status"
-        Assert ((& git -C $t status --porcelain --ignored --untracked-files=all | Out-String) -match '!! \.claude/framework-update-backup/skills/team-notes/SKILL\.md') "calibration: Git does not list the tracked team skill's copy as ignored, so git status is not reading the backup: $status"
+        Assert ((& git -C $t status --porcelain --ignored --untracked-files=all | Out-String) -match '!! \.claude/framework-update-backup/skills/my-deploy/token\.txt') "calibration: Git does not list the copy of token.txt as ignored, so git status is not reading the backup: $status"
         Assert (($out -replace '\s+', ' ') -match $b429BlanketLine) "the handoff does not say the backup folder is kept out of Git: $out"
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
@@ -661,7 +730,8 @@ It 'B-429 an update keeps out of Git the saved copy of a tracked file whose loca
         $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
         Assert ($status -notmatch [regex]::Escape($referenceCopy)) "the saved copy of a skip-worktree file is committable: $status"
         Assert ($status -notmatch [regex]::Escape($configCopy)) "the backup copy of an assume-unchanged skill file is committable: $status"
-        Assert ((& git -C $t status --porcelain --ignored --untracked-files=all | Out-String) -match '!! \.claude/framework-update-backup/skills/team-tool/SKILL\.md') "calibration: Git does not list the tracked team skill's copy as ignored, so git status is not reading the backup: $status"
+        Assert ((& git -C $t status --porcelain --ignored --untracked-files=all | Out-String) -match '!! \.claude/framework-update-backup/skills/team-tool/config\.json') "calibration: Git does not list the assume-unchanged skill file's copy as ignored, so git status is not reading the backup: $status"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-update-backup/skills/team-tool/SKILL.md'))) "the skill backup copied a skill file the last commit holds: $out"
         Assert (($out -replace '\s+', ' ') -match $b429BlanketLine) "the handoff does not say the backup folder is kept out of Git: $out"
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
@@ -690,8 +760,10 @@ It 'B-440 an update names each saved copy of a file whose local changes Git was 
         Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
         $referenceCopy = '.claude/framework-update-backup/files/docs/reference.md'
         $configCopy = '.claude/framework-update-backup/skills/team-tool/config.json'
+        # The team-tool SKILL.md is tracked unchanged: the last commit holds it, so it is not copied (B-469), nor named.
         $skillCopy = '.claude/framework-update-backup/skills/team-tool/SKILL.md'
-        foreach ($copy in $referenceCopy, $configCopy, $skillCopy) { Assert (Test-Path -LiteralPath (Join-Path $t $copy) -PathType Leaf) "calibration: the update did not save $copy : $out" }
+        foreach ($copy in $referenceCopy, $configCopy) { Assert (Test-Path -LiteralPath (Join-Path $t $copy) -PathType Leaf) "calibration: the update did not save $copy : $out" }
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t $skillCopy))) "the update copied a skill file the last commit holds: $out"
         $notice = [regex]::Match($out, "(?m)^\s*NOTICE: [^\r\n]*told not to see[^\r\n]*")
         Assert $notice.Success "no NOTICE names the saved copies of files Git was told not to see: $out"
         Assert ($notice.Value.Contains("$referenceCopy, $configCopy") -and $notice.Value -match 'checking out a branch that tracks' -and $notice.Value -match 'before you switch branches') "the NOTICE does not name both copies and the checkout that can overwrite them: $($notice.Value)"
@@ -1062,7 +1134,9 @@ It 'B-429 blanket keep-out: a team list whose ! lines after its * re-include cop
     try {
         $t = New-B429ReincludeTarget -Root $root
         Write-B429Files -Folder (Join-Path $t '.claude/framework-update-backup') -Files ([ordered]@{ '.gitignore' = "*`n" + $b429ReincludeList })
-        & git -C $t add -A -f
+        # The list is forced in past its own '*'; the team's file stays ignored, so no commit holds it and the update copies it (B-469).
+        & git -C $t add -A
+        & git -C $t add -f -- .claude/framework-update-backup/.gitignore
         & git -C $t commit -qm 'framework state, team list'
         $out = Invoke-Installer -Dist 'dotnet' -Target $t
         Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
@@ -1270,34 +1344,46 @@ function Get-B431Expected {
 }
 function Get-B431Text { param([string]$Target) return [IO.File]::ReadAllText((Join-Path $Target '.claude/.gitignore')) }
 
-It 'B-431 status: a file a team''s own line in .claude/.gitignore ignored stays ignored by one anchored line after the release''s bytes, the update says so and saves the team''s version out of Git, and a re-run changes nothing' {
-    $root = Join-Path ([IO.Path]::GetTempPath()) ('b431-' + [guid]::NewGuid())
-    try {
-        # The first attacking session's fixture: one line for a local MCP config holding a token.
-        $team = [Text.UTF8Encoding]::new($false).GetBytes(((Get-B431ReleaseLines) + 'mcp.local.json' -join "`n") + "`n")
-        $t = New-B431Target -Root $root -Ignore $team -Local ([ordered]@{ '.claude/mcp.local.json' = "{`"token`":`"sk-live-FX-SECRET`"}`n" })
-        Assert ((Get-B431Committable $t).Count -eq 0) 'calibration: the token file is committable before the update'
-        $out = Invoke-Installer -Dist 'dotnet' -Target $t
-        $flat = $out -replace '\s+', ' '
-        Assert ($LASTEXITCODE -eq 0) "the update failed (exit $LASTEXITCODE): $out"
-        $committable = Get-B431Committable $t
-        Assert ($committable -notcontains '.claude/mcp.local.json') "the team's ignore line was dropped, so its token file is committable: $($committable -join ', ')"
-        Assert (Test-B194BytesEqual (Get-B431Expected @('/mcp.local.json')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "the update did not write the release's bytes, the marker, then one anchored line for the token file: $(Get-B431Text $t)"
-        Assert ($flat -match ($b431Notice + " Your version had lines this release's version lacks \('mcp\.local\.json'\), which no longer apply there; it is saved at " + [regex]::Escape($b431Save) + "\. Git ignored 1 file below \.claude/ before this update that the release's version does not ignore, so the update keeps it ignored with one line below the line '" + [regex]::Escape($b431Marker) + "': /mcp\.local\.json\. Such a line names one file: a folder or wildcard rule of yours no longer covers a file created later\. Put rules of your own in the root \.gitignore: \.claude/\.gitignore is the framework's file, and every update rewrites it\.")) "the dropped line, the save and the anchored file were not reported in one NOTICE: $out"
-        Assert ((Test-Path -LiteralPath (Join-Path $t $b431Save) -PathType Leaf) -and (Test-B194BytesEqual $team ([IO.File]::ReadAllBytes((Join-Path $t $b431Save))))) "the team's version was not saved byte-identical at $b431Save`: $out"
-        Assert (@($committable | Where-Object { $_ -match 'framework-update-backup/' }).Count -eq 0) "the saved version is committable: $($committable -join ', ')"
-        Assert ($flat -notmatch 'CANT-VERIFY') "the update reported CANT-VERIFY: $out"
-        $kept = [IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore'))
-        $again = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
-        Assert ($LASTEXITCODE -eq 0) "the second update failed (exit $LASTEXITCODE): $again"
-        Assert (Test-B194BytesEqual $kept ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "a re-run changed the anchored section: $(Get-B431Text $t)"
-        Assert (($again -replace '\s+', ' ') -notmatch "NOTICE: [^.]*\.claude/\.gitignore") "a re-run reported the section again: $again"
-        Assert ((Get-B431Committable $t) -notcontains '.claude/mcp.local.json') "after a re-run the token file is committable: $again"
-    } finally {
-        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+It 'B-431 status: a file a team''s own line in .claude/.gitignore ignored stays ignored by one anchored line after the release''s bytes, the update says so and where the team''s version is, a commit or a copy out of Git, and a re-run changes nothing' {
+    # B-469: the team's version the last commit holds is named by that commit; one with uncommitted lines is copied out of Git.
+    foreach ($leg in 'committed', 'uncommitted') {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ("b431-$leg-" + [guid]::NewGuid())
+        try {
+            # The first attacking session's fixture: one line for a local MCP config holding a token.
+            $team = [Text.UTF8Encoding]::new($false).GetBytes(((Get-B431ReleaseLines) + 'mcp.local.json' -join "`n") + "`n")
+            $committed = if ($leg -eq 'committed') { $team } else { [Text.UTF8Encoding]::new($false).GetBytes(((Get-B431ReleaseLines) -join "`n") + "`n") }
+            $t = New-B431Target -Root $root -Ignore $committed -Local ([ordered]@{ '.claude/mcp.local.json' = "{`"token`":`"sk-live-FX-SECRET`"}`n" })
+            $head = (& git -C $t rev-parse HEAD | Out-String).Trim()
+            if ($leg -eq 'uncommitted') { [IO.File]::WriteAllBytes((Join-Path $t '.claude/.gitignore'), $team) }
+            Assert ((Get-B431Committable $t).Count -eq 0) "${leg}: calibration: the token file is committable before the update"
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree:($leg -eq 'uncommitted')
+            $flat = $out -replace '\s+', ' '
+            Assert ($LASTEXITCODE -eq 0) "${leg}: the update failed (exit $LASTEXITCODE): $out"
+            $committable = Get-B431Committable $t
+            Assert ($committable -notcontains '.claude/mcp.local.json') "${leg}: the team's ignore line was dropped, so its token file is committable: $($committable -join ', ')"
+            Assert (Test-B194BytesEqual (Get-B431Expected @('/mcp.local.json')) ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "${leg}: the update did not write the release's bytes, the marker, then one anchored line for the token file: $(Get-B431Text $t)"
+            $where = if ($leg -eq 'committed') { "it is in commit ${head}: (git -C '[^']+' show (${head}:\./\.claude/\.gitignore)) prints it" } else { 'it is saved at ' + [regex]::Escape($b431Save) }
+            $notice = [regex]::Match($flat, ($b431Notice + " Your version had lines this release's version lacks \('mcp\.local\.json'\), which no longer apply there; $where\. Git ignored 1 file below \.claude/ before this update that the release's version does not ignore, so the update keeps it ignored with one line below the line '" + [regex]::Escape($b431Marker) + "': /mcp\.local\.json\. Such a line names one file: a folder or wildcard rule of yours no longer covers a file created later\. Put rules of your own in the root \.gitignore: \.claude/\.gitignore is the framework's file, and every update rewrites it\."))
+            Assert $notice.Success "${leg}: the dropped line, where the team's version is and the anchored file were not reported in one NOTICE: $out"
+            if ($leg -eq 'committed') {
+                Assert (-not (Test-Path -LiteralPath (Join-Path $t $b431Save))) "${leg}: the team's version, which the last commit holds, was copied to $b431Save`: $out"
+                Assert (Test-B194BytesEqual $team (Get-B469ShowBytes -Target $t -Spec $notice.Groups[2].Value)) "${leg}: the line the NOTICE prints does not print the team's version byte for byte: $($notice.Groups[1].Value)"
+            } else {
+                Assert ((Test-Path -LiteralPath (Join-Path $t $b431Save) -PathType Leaf) -and (Test-B194BytesEqual $team ([IO.File]::ReadAllBytes((Join-Path $t $b431Save))))) "${leg}: the team's version was not saved byte-identical at $b431Save`: $out"
+            }
+            Assert (@($committable | Where-Object { $_ -match 'framework-update-backup/' }).Count -eq 0) "${leg}: the saved version is committable: $($committable -join ', ')"
+            Assert ($flat -notmatch 'CANT-VERIFY') "${leg}: the update reported CANT-VERIFY: $out"
+            $kept = [IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore'))
+            $again = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+            Assert ($LASTEXITCODE -eq 0) "${leg}: the second update failed (exit $LASTEXITCODE): $again"
+            Assert (Test-B194BytesEqual $kept ([IO.File]::ReadAllBytes((Join-Path $t '.claude/.gitignore')))) "${leg}: a re-run changed the anchored section: $(Get-B431Text $t)"
+            Assert (($again -replace '\s+', ' ') -notmatch "NOTICE: [^.]*\.claude/\.gitignore") "${leg}: a re-run reported the section again: $again"
+            Assert ((Get-B431Committable $t) -notcontains '.claude/mcp.local.json') "${leg}: after a re-run the token file is committable: $again"
+        } finally {
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
-
 # GIT_LITERAL_PATHSPECS=1 makes Git read a ':(literal)' or ':(icase)' prefix as part of the file name, so the question
 # "what does Git ignore below .claude/" matched nothing and the token file lost its ignore line without a word.
 It 'B-461 a caller''s GIT_LITERAL_PATHSPECS around an update still keeps a file a team''s own .claude/.gitignore line ignored' {

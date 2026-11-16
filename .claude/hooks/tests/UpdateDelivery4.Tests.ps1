@@ -613,8 +613,8 @@ It 'B-486 an update carries the top-level settings keys of the team into the ref
         Assert (($json.PSObject.Properties.Name -join ',') -ceq '_comment,env,defaultShell,hooks,permissions,model') "the keys are not the release's followed by the team's, in the team's order: $(($json.PSObject.Properties.Name -join ','))"
         $dist = Get-B486Dist
         Assert ($after -ceq (Add-B486TopLevel -Text $dist -Members $b486Deny)) 'the refreshed file is not the release''s own bytes followed by the team''s members'
-        $kept = [IO.File]::ReadAllText((Join-Path $t $b486Backup))
-        Assert ($kept -ceq $team) 'the pre-update backup is not the team''s file as it was'
+        # The last commit holds the team's file as it was, so no pre-update copy is written (B-469).
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t $b486Backup))) "the update copied settings the last commit holds to $b486Backup"
         Assert ((($out -replace '\s+', ' ') -match 'carried your own top-level keys into the refreshed file, unchanged: permissions, model') -and ($out -match 'and your own top-level keys \(permissions, model\) were carried into it')) "the update did not say which keys it carried: $out"
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
@@ -933,9 +933,12 @@ $b507Bash = '{ "type": "command", "command": "pwsh -NoProfile -File .claude/hook
 $b507Post = '{ "type": "command", "command": "powershell -NoProfile -File .claude/hooks/team-audit.ps1", "timeout": 30 }'
 $b507Env = '"env": { "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1" }'
 # How the update names an event and matcher where the team's framework entries differ from the stamped release's, or lack them.
-function Get-B507Differs { param([string]$Label, [string]$Version = '0.98.6') return "NOTICE: .claude/settings.json: the framework's hook entries under $Label in your file are not as release $Version registered them (an edit, a copy or a move of yours), so this update replaced them with this release's registration; your version is in $b486Backup and in your last commit, if you committed it." }
-function Get-B507Lacks { param([string]$Label, [string]$Version = '0.98.6') return "NOTICE: .claude/settings.json: your file lacks the framework's hook entries release $Version registered under $Label (a removal of yours), so this update wrote the framework's entries as this release ships them; your version is in $b486Backup and in your last commit, if you committed it." }
-# A v0.98.6 install whose settings the team changed (Change) and committed, updated; the NOTICEs of the update about hook entries.
+# Yours says where the team's version is: the commit that holds the file (Invoke-B507Edit writes it so), or the backup.
+$b486Yours = "in $b486Backup and in your last commit, if you committed it"
+function Get-B507Differs { param([string]$Label, [string]$Version = '0.98.6', [string]$Yours = 'in the commit') return "NOTICE: .claude/settings.json: the framework's hook entries under $Label in your file are not as release $Version registered them (an edit, a copy or a move of yours), so this update replaced them with this release's registration; your version is $Yours." }
+function Get-B507Lacks { param([string]$Label, [string]$Version = '0.98.6', [string]$Yours = 'in the commit') return "NOTICE: .claude/settings.json: your file lacks the framework's hook entries release $Version registered under $Label (a removal of yours), so this update wrote the framework's entries as this release ships them; your version is $Yours." }
+# A v0.98.6 install whose settings the team changed (Change) and committed, updated; the NOTICEs of the update about hook entries,
+# each "in commit <id>:  git -C ... show <id>:./.claude/settings.json  prints it" written "in the commit" once that line is checked.
 function Invoke-B507Edit {
     param([string]$Target, [scriptblock]$Change)
     $prior = Get-B507Text -Spec 'v0.98.6:dist/dotnet/.claude/settings.json'
@@ -948,12 +951,19 @@ function Invoke-B507Edit {
     & git -C $Target add -A 2>&1 | Out-Null
     & git -C $Target commit -qm 'team edits' 2>&1 | Out-Null
     Assert ($LASTEXITCODE -eq 0) 'calibration: could not commit the team settings'
+    $head = (& git -C $Target rev-parse HEAD | Out-String).Trim()
     $out = Invoke-Installer -Dist 'dotnet' -Target $Target
     Assert ($LASTEXITCODE -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $LASTEXITCODE): $out"
-    # Replacement stays: the refreshed file is the release's own, and the team's version is in the backup the NOTICE names.
+    # Replacement stays: the refreshed file is the release's own, and the team's version is in the commit the NOTICE names,
+    # so no pre-update copy is written (B-469).
     Assert ([IO.File]::ReadAllText((Join-Path $Target '.claude/settings.json')) -ceq (Get-B486Dist)) "the refreshed file is not the release's own: $out"
-    Assert ([IO.File]::ReadAllText((Join-Path $Target $b486Backup)) -ceq $team) 'the backup the NOTICE names does not hold the team''s file'
+    Assert (-not (Test-Path -LiteralPath (Join-Path $Target $b486Backup))) "the update copied settings the last commit holds to $b486Backup"
     $notices = @(Get-B486Notices -Output $out | Where-Object { $_ -match 'hook entr' })
+    $at = "in commit ${head}:  (git -C '[^']+' show (${head}:\./\.claude/settings\.json))  prints it"
+    $show = [regex]::Match(($notices -join "`n"), $at)
+    Assert $show.Success "no NOTICE names commit $head with the line that prints the team's file: $($notices -join ' | ')"
+    Assert ((Invoke-B469Printed -Line $show.Groups[1].Value).Contains('hooks/guard.ps1') -and (Test-B194BytesEqual ([Text.UTF8Encoding]::new($false).GetBytes($team)) (Get-B469ShowBytes -Target $Target -Spec $show.Groups[2].Value))) "the printed line does not print the team's file as committed: $($show.Groups[1].Value)"
+    $notices = @($notices | ForEach-Object { [regex]::Replace($_, $at, 'in the commit') })
     Assert (@($notices | Where-Object { $_ -match 'pwsh|powershell -|\.ps1|guard|post-write|timeout|cwd' }).Count -eq 0) "a NOTICE holds command text: $($notices -join ' | ')"
     return , $notices
 }
@@ -997,14 +1007,15 @@ It 'B-507 an update of a repository at the prior release keeps the team env vari
         Assert ($out -notmatch 'sk-B507-SECRET|eu-west|team-bash-check|team-audit') "a team value or command was printed: $out"
         # The team's own entry runs Windows PowerShell 5.1; the framework's never did here, so the switch to pwsh is not announced.
         Assert ($out -notmatch 'was dropped|differed from this release|not carried|Windows PowerShell 5\.1') "the update reported a loss or a switch it did not make: $out"
-        Assert ([IO.File]::ReadAllText((Join-Path $t $b486Backup)) -ceq $team) 'the pre-update backup is not the team''s file as it was'
-        # The merged file is what the update writes from itself: a re-run leaves it, and the first backup, as they are.
+        # The last commit holds the team's file as it was, so no pre-update copy is written (B-469).
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t $b486Backup))) "the update copied settings the last commit holds to $b486Backup"
+        # The merged file is what the update writes from itself: a re-run leaves it as it is, and copies nothing.
         & git -C $t add -A 2>&1 | Out-Null
         & git -C $t commit -qm 'update' 2>&1 | Out-Null
         $again = Invoke-Installer -Dist 'dotnet' -Target $t
         Assert ($LASTEXITCODE -eq 0 -and $again -match '(?m)^PLAN unchanged \.claude/settings\.json\r?$') "the re-run did not list the merged settings as unchanged (exit $LASTEXITCODE): $again"
         Assert ([IO.File]::ReadAllText($settings) -ceq $after) "the re-run changed the merged settings: $again"
-        Assert ([IO.File]::ReadAllText((Join-Path $t $b486Backup)) -ceq $team -and ($again -replace '\s+', ' ') -match 'kept the earlier pre-update settings backup') "the re-run replaced the first backup: $again"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t $b486Backup)) -and $again -notmatch 'pre-update') "the re-run copied the merged settings or spoke of a backup: $again"
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
@@ -1101,7 +1112,7 @@ It 'B-507 a team copy of this release''s hook entry under another matcher is the
         $bash = @(([IO.File]::ReadAllText($settings) | ConvertFrom-Json).hooks.PreToolUse | Where-Object { $_.matcher -ceq 'Bash' })
         Assert ($bash.Count -eq 1 -and @($bash[0].hooks).Count -eq 1 -and $bash[0].hooks[0].command -ceq 'pwsh -NoProfile -File .claude/hooks/team-bash-check.ps1') "the Bash group does not hold the team's own entry alone: $([IO.File]::ReadAllText($settings))"
         $notices = @(Get-B486Notices -Output $out | Where-Object { $_ -match "release 0\.98\.6" })
-        Assert (($notices -join "`n") -ceq (Get-B507Differs -Label "PreToolUse matcher 'Bash'")) "the dropped copy was not the one pair named: $($notices -join ' | ')"
+        Assert (($notices -join "`n") -ceq (Get-B507Differs -Label "PreToolUse matcher 'Bash'" -Yours $b486Yours)) "the dropped copy was not the one pair named: $($notices -join ' | ')"
         Assert (($out -replace '\s+', ' ') -match [regex]::Escape("unchanged: 1 under PreToolUse matcher 'Bash'.")) "the team's own entry was not named as carried: $out"
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
@@ -1146,6 +1157,47 @@ It 'B-507 a framework group the team removed is written back and named' {
     try {
         $notices = Invoke-B507Edit -Target $t -Change { param($prior) [regex]::Replace($prior, ',\s*"Stop": \[[\s\S]*?\]\s*\}\s*\]', '') }
         Assert (($notices -join "`n") -ceq (Get-B507Lacks -Label 'Stop with no matcher')) "the removed Stop group was not named: $($notices -join ' | ')"
+    } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# B-469, from B-486's attack: an edit of the team's to a framework hook entry, which no update carries, outlived one update in the
+# pre-update backup and was then only in Git. The update names the commit that holds it instead, and the line it prints still
+# prints it after that update is committed and the next one runs. Settings with an uncommitted edit, which no commit holds, are copied.
+It 'B-469 an update of committed settings names the commit that holds a replaced hook entry of the team, whose line still prints it after a later update, and copies settings no commit holds' {
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b469-settings-' + [guid]::NewGuid())
+    try {
+        $team = (Get-B507Text -Spec 'v0.98.6:dist/dotnet/.claude/settings.json').Replace('"timeout": 90', '"timeout": 469')
+        Assert ($team.Contains('"timeout": 469')) 'calibration: 0.98.6 has no 90-second timeout'
+        New-B507Target -Target $t -Settings $team
+        & git -C $t init -q
+        & git -C $t config user.email 'tests@example.invalid'
+        & git -C $t config user.name 'installer tests'
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'team edit of a framework entry' 2>&1 | Out-Null
+        $head = (& git -C $t rev-parse HEAD | Out-String).Trim()
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0 -and $out -match 'Done \(update\)') "the update failed (exit $LASTEXITCODE): $out"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t $b486Backup))) "the update copied settings the last commit holds to $b486Backup`: $out"
+        $show = [regex]::Match(($out -replace '\s+', ' '), "under PostToolUse matcher 'Write\|Edit' in your file are not as release 0\.98\.6 registered them [^.]*; your version is in commit ${head}: (git -C '[^']+' show (${head}:\./\.claude/settings\.json)) prints it\.")
+        Assert $show.Success "the replaced entry was not named with the commit that holds it and the line that prints it: $out"
+        # Committed and updated again: the edit is in neither HEAD nor the working file, and the first update's line still prints it.
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'update' 2>&1 | Out-Null
+        $again = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the second update failed (exit $LASTEXITCODE): $again"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t $b486Backup))) "the second update copied settings: $again"
+        Assert (-not (& git -C $t show 'HEAD:.claude/settings.json' | Out-String).Contains('"timeout": 469') -and -not [IO.File]::ReadAllText((Join-Path $t '.claude/settings.json')).Contains('"timeout": 469')) 'calibration: the edit is still in HEAD or the working file'
+        Assert ((Invoke-B469Printed -Line $show.Groups[1].Value).Contains('"timeout": 469')) "the first update's line no longer prints the team's edit: $($show.Groups[1].Value)"
+        Assert (Test-B194BytesEqual ([Text.UTF8Encoding]::new($false).GetBytes($team)) (Get-B469ShowBytes -Target $t -Spec $show.Groups[2].Value)) "the commit the first update named does not hold the team's file byte for byte"
+        # An uncommitted edit, which no commit holds, is copied, and the NOTICE names the copy.
+        $dirty = Add-B486TopLevel -Text ([IO.File]::ReadAllText((Join-Path $t '.claude/settings.json'))) -Members @('"defaultShell": "bash"')
+        $dirty = $dirty.Replace('"defaultShell": "powershell",', '')
+        Assert (@([regex]::Matches($dirty, '"defaultShell"')).Count -eq 1 -and $null -ne ($dirty | ConvertFrom-Json)) 'calibration: the edit does not leave one defaultShell'
+        Write-B486Text -Path (Join-Path $t '.claude/settings.json') -Text $dirty
+        $third = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        Assert ($LASTEXITCODE -eq 0) "the update over uncommitted settings failed (exit $LASTEXITCODE): $third"
+        Assert ((Test-Path -LiteralPath (Join-Path $t $b486Backup)) -and [IO.File]::ReadAllText((Join-Path $t $b486Backup)) -ceq $dirty) "the uncommitted settings were not copied as they were to $b486Backup`: $third"
+        Assert (($third -replace '\s+', ' ') -match "your 'defaultShell' differed from this release's and was replaced by it; the file as it was before this update is saved in $([regex]::Escape($b486Backup))\.") "the NOTICE does not name the copy of the uncommitted settings: $third"
     } finally { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }
 }
 

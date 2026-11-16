@@ -133,6 +133,22 @@ script-created sessions (2026-11-13) this settles B-475 for 1.146.0 against 1.14
 only. The page keeps 1.144.1's finding (microsoft/vscode#345931) and the advice to read the liveness row and run the canary
 after each VS Code update. Text only: no behaviour to show red; `FrameworkDoctor.Tests` still pins the issue number in the row.
 
+A plain update copies a team file it replaces or removes only when the target's last commit does not hold its bytes (guarded, step 4;
+B-469, the maintainer's request filed 2026-10-28 with `-Reinstall`; WSD-128 amends WSD-043's settings copy). It copied each such file
+below `.claude/framework-update-backup/`, and `.claude/settings.json` to `.claude/.state/settings.json.pre-update`, though HEAD held
+them, and teams forgot the copies and committed them. Now one `ls-tree` of HEAD below the target, a blob hash of the bytes on disk and,
+failing that, `cat-file --filters` (the bytes a checkout writes) decide per file: a held file is not copied, its NOTICE or LAYOUT line
+names the commit and `git -C <target> show <commit>:./<path>`, and one `recover from Git:` line gives `git diff --stat <commit>` and
+`git checkout <commit> -- <path>`. Sites: the `.agents/skills` wrappers, files the previous manifest does not list (and the
+no-manifest summary), the one-time skill backup, disabled-skill saves, a framework `.gitignore` with dropped lines, the layout move
+and the settings copy. Everything else is copied as before, as WSD-117 says: no Git or no commit, untracked or ignored, skip-worktree
+or assume-unchanged (always copied: a checkout skips their paths), an uncommitted edit, a clean filter. A team hook entry no update
+carries (B-486's attack) is now named by a commit id, which a later update does not overwrite as it overwrote the pre-update copy.
+Copies an older release left are not touched. `Invoke-GitRecords` reads through a new `Invoke-GitBytes`, which `-Reinstall`'s byte
+reads now share. Red first: the B-469 cases in `UpdateDelivery3` (every copy site in one committed target, an uncommitted edit and
+an ignored skill file still copied) and `UpdateDelivery4` (settings, the commit's line read after a later update), and the reworked
+B-430 and B-431 cases (one committed and one uncommitted leg each).
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

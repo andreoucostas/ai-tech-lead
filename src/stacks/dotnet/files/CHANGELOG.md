@@ -29,10 +29,22 @@
   replaced by this release's, and an `env` variable the release sets keeps the release's value, with a `NOTICE` naming
   yours. A change of yours to the framework's own entries (a raised timeout, a narrowed matcher, a copy under another
   matcher, a removed group) is replaced too: the update compares them with what the release in
-  `.claude/framework-version.json` shipped and names each event and matcher that differs in a `NOTICE`; your version
-  stays in `.claude/.state/settings.json.pre-update` and your last commit. Make such a change as an entry with a command
+  `.claude/framework-version.json` shipped and names each event and matcher that differs in a `NOTICE`, which also says
+  where your version is (see the next entry). Make such a change as an entry with a command
   of your own. Nothing to do; if an earlier update dropped yours, copy them back once from
   `git show <commit before that update>:.claude/settings.json`.
+- **An update no longer copies a file of yours that your last commit already holds.** It saved a copy of every file of
+  yours it replaced or removed: `.claude/settings.json` to `.claude/.state/settings.json.pre-update`, and below
+  `.claude/framework-update-backup/` a file at a path the framework now owns, your skills, a disabled skill's files and
+  the `CLAUDE.md` and `AGENTS.md` the layout move replaced. Those copies were easy to forget and to commit. Now, when
+  your last commit holds a file exactly as it is on disk, the update copies nothing: the `NOTICE` or `LAYOUT` line about
+  that file names the commit and the `git -C <your repo> show <commit>:./<path>` command that prints your version, and
+  one `recover from Git:` line gives `git diff --stat <commit>` to list what the update changed and
+  `git checkout <commit> -- <path>` to restore a file. A file that commit does not hold is still copied as before, to
+  a folder Git ignores: one you gitignored, one Git is told not to see the changes of (skip-worktree or
+  assume-unchanged), one with uncommitted edits (an update with `-AllowDirtyTree`), and every file in a folder without
+  Git. Copies and a `settings.json.pre-update` an earlier update left are not touched: keep what you need from them,
+  then delete them.
 - **`framework-doctor` no longer fails on a Bash hook of your own.** An update now keeps your own hook entries, and the
   doctor read any of them that runs Bash (`bash .claude/hooks/lint.sh`, say) as a retired framework hook: it reported
   `[MISSING] Hook registration topology` and exited 1 on every run. The row now fails only for a Bash command that an
