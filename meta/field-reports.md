@@ -388,6 +388,53 @@ The version stamp was again not captured (intake gap 4).
 
 ---
 
+## Report #14 — the first observation card: plan lines in most sessions, no review run
+
+| | |
+|---|---|
+| **Date received** | 2026-11-16 |
+| **Stack / repo shape** | not captured: the report's `framework:` line names the template, and the relayed digest left it out |
+| **Framework installed** | yes: stamp 0.98.3. Version in each session's own instructions: 0.98.2 in 33, 0.98.3 in 3, 0.23.0 in 3, not read in 1 (the VS Code Local-agent row, where the script reads no version) |
+| **Host / IDE** | Copilot agent runtime 1.0.100-1 (13 sessions) and 1.0.103-unstable (26), which does not say Copilot CLI or VS Code's harness; VS Code Local agent (1). Models: mostly Claude Sonnet, Claude Opus in 3; model versions not captured |
+| **What misfired** | (1) No session loaded the `review` skill: not typed, not asked for, not started by the agent, in 39 sessions that changed files. (2) `Option A:` and `Option B:` appeared in 3 plans, while the agent started the security pass in 9 sessions (the maintainer: the developer asked for none), and carrier §2 counts a security-sensitive surface as a risk change that gets options. (3) Of the 28 plans with `Done when:` before code, 8 had it in the first 400 characters |
+| **What fired** | `Done when:` before the first file change in 28 of 39 coding sessions (27 or 28 of the 35 on 0.98.x); each of the 29 plans got a developer reply before code, none marked "did not wait"; the agent ran tests in 34; the project's `security-gate` skill loaded in 9, each started by the agent |
+| **What got ignored** | 11 sessions changed files with no `Done when:` line. 3 ran 0.23.0, which has none; whether the other 7 or 8 were the trivial changes §2 lets skip the plan, not captured (the intent column was not relayed) |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | one developer on the first consumer team ran B-416's observation prompt on their own machine; the maintainer relayed its totals and column tallies in chat, typed by hand |
+
+**The card's other answers.** Reply to the plan, over 29 plans: go-ahead 8, changed scope 1, other 20; no reply was classed
+as adding, removing or rewording a line or fixing an edge case. The developer's own answers: the `Done when:` lines said
+the right thing in all sessions with a plan; where options appeared both were real choices; all pull requests carried the
+lines.
+
+**How it was read.** B-416's card ran as one pasted prompt carrying a PowerShell script (not shipped; fingerprint
+`dbdbdaacd282`, which the maintainer says the report showed). The script reads the machine's Copilot session journals and
+VS Code chat session files for the one repository, since its branch first carried 0.98.0 or later, and prints counts only.
+Sessions: scanned 79, in the window 65, in the repository 54, with work to report 43, newest 40 shown (39 changed files,
+1 was a plan with no code); observation runs left out 0.
+
+**Epistemic status.** One developer on one machine, relayed as hand-typed tallies: the per-session rows, their dates, the
+window line and the intent and sensitive columns were not captured. Almost all of it describes 0.98.2. The script was
+tested on three real sessions on the maintainer's machine before it went out, and its limits bear on every line above:
+(a) it admits a session by its record's last write and starts the window at the update commit's date, so the three
+0.23.0 sessions are most likely chats from before the update reached this checkout (the maintainer's reading; the dates
+that would show it were not relayed); (b) "first 400 characters" is the script author's cutoff, checked on one real
+plan; (c) "other" is 20 of 29 replies because the fixed class list does not fit them, and the reply text never leaves
+the developer's machine, so what they were is unknown; (d) the script did not recognise its own session, which may
+therefore be one of the 39; (e) the options gap has two open readings: §2 lets the agent say in one line that there is
+no real alternative, which the script does not count, and whether the 3 plans are among the 9 sessions was not captured;
+(f) the `review` reading has been seen positive only on Copilot CLI 1.0.98 journals (5 sessions on the maintainer's
+machine), not on these runtime versions, though the `security-gate` count comes through the same record type; (g) the
+Local-agent row is the first real session that reader has parsed, unchecked.
+
+**Outcome:** no change to the tree. B-416 stays open for the two decisions it names on close, the auto-review sentence
+and B-425, which are the maintainer's. The reopen conditions of WSD-111 (the security-pass wording) and WSD-114 (the
+`security-gate` name) were checked against this report and are not met: no harm is reported, and nothing shows the pass
+sent to a host built-in.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.

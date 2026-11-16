@@ -15,7 +15,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; needs the maintainer and the first consumer team; re-decided on 2026-12-12 if no team has started (WSD-126) |
+| 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; the first developer's answers came in 2026-11-16 (field report #14), so it waits on the maintainer's two decisions on close |
 | 2 | B-510 | CI at 13 m 16 s after the meta shards (15-minute target met 2026-11-15); the 10-minute stage remains; guarded |
 | 3 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review, where B-514 saw it followed as often as an approved skill; guarded |
 | 4 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
@@ -66,7 +66,7 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 **Priority:** P1 · **Effort:** S · **Invariants:** none
 **Status:** Open (maintainer, 2026-10-19). Give the first consumer team a six-question observation card (plan opened with `Done when:`; did you correct a line; Option A/B on a risky change and was it real; did the PR carry the lines; did tests run; did a review run: `/review` typed or asked for by name, started by the agent, or none, and did its output name reviewers or "Contract lines pinned"; host and model) and record answers as field reports.
 The only route to whether the lines are correct and used; gates any reviewer-side or auto-review change. On close, decide plan v2 §5 item 5 (the auto-review sentence) and B-425 from the review answer. Review: `.claude/plans/inbox/2026-10-19-open-threads-review.md` T5.
-Time-boxed (maintainer, 2026-11-14; WSD-126): re-decide it on 2026-12-12 if no consumer team has started.
+First answers 2026-11-16, one developer, mostly on 0.98.2 (`meta/field-reports.md` #14): the lines before code in 28 of 39 sessions and judged right, no review run in any, options in 3 plans against 9 agent-started security passes. A team has started, so WSD-126's 2026-12-12 re-decision does not apply; left: the two decisions above.
 
 ### B-417 · Measure tests derived from the restated criteria on a prompt that hides a boundary
 **Filed against:** v0.98.0 (2026-10-19)
