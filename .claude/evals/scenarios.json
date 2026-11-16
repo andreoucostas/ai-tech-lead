@@ -610,6 +610,18 @@
       "agent": "debt-radar",
       "prompt": "Find debt relevant to src/Calculator.cs.",
       "assertion": "haikuDebtFinding"
+    },
+    {
+      "id": "b528-options",
+      "measures": "B-528 (pre-registered in .claude/plans/2026-11-16-b528-options.md): on prompt K stated without approval, a security-sensitive risk change, does the plan before the first file change carry Option A and Option B (and Recommend), carrier section 2's one-line no-real-alternative exit, or neither? Two invocations of one session on either executor: K (B-406 S1's prompt), then B-410's fixed answer with a go-ahead. Framework arm only: install plus the b514-orders overlay as /bootstrap left it. Whether the security-gate skill ran is reported. It does not show whether the options are good, other prompts or fixtures, VS Code, Angular or monorepo.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "budgetUsd": 1.0,
+      "followUpBudgetUsd": 2.5,
+      "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid.",
+      "followUp": "A second refund on an invoice that is already refunded is a 409 too. Paid stays true; Refunded is an extra flag on top. This only marks the invoice: no event, no payment-provider call, no money moves. I apply the new Refunded column to the database myself, so no script is needed. Two simultaneous refunds are out of scope for now. Go ahead.",
+      "assertion": "optionsPlan"
     }
   ]
 }

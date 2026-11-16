@@ -1,0 +1,13 @@
+diff --git a/.claude/hooks/route-prompt.ps1 b/.claude/hooks/route-prompt.ps1
+index 460c079..1cd30bb 100644
+--- a/.claude/hooks/route-prompt.ps1
++++ b/.claude/hooks/route-prompt.ps1
+@@ -103,6 +103,8 @@ Output: APPROVE or REQUEST CHANGES with a severity-tagged issues table.
+ $railsSecurity = @'
+ ## Security-sensitive surface detected
+ 
++Before writing code, plan it as a risk change (framework rules §2): `Option A:` and `Option B:`, each with its cost, then `Recommend:`; if there is no real alternative, say so in one line.
++
+ This prompt touches a security- or money-sensitive area (auth, payments, balances, ledgers, idempotency, secrets). DORA's evidence is that AI amplifies existing weaknesses fastest here, so this overlay applies ON TOP OF any workflow rails above. Before presenting the change as complete:
+ 1. Run this repository's security-gate skill (.claude/commands/security-gate.md; on Copilot CLI, not the CLI's built-in security agent) on the diff before presenting it as complete — it captures the scope bundle and runs the security-auditor on it; the auditor refuses a bare diff request. Do not self-certify.
+ 2. Financial logic: establish the applicable invariant, tolerance, and preconditions from policy, implementation, tests, or executable evidence; preserve demonstrated negative-amount, duplicate-effect, precision/rounding, and temporal controls. A type or mechanism name alone is not a verdict.
