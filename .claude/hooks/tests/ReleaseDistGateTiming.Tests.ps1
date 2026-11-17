@@ -33,16 +33,15 @@ It 'maintainer release automation declares its PowerShell 7 boundary' {
         'release.ps1 can start under Windows PowerShell 5.1 despite invoking PowerShell-7-only maintainer tooling'
 }
 
-# `release.ps1:~549` parses per-file results with '(?m)^RESULT\s+(\S+)\s+(\d+)\s*$', anchored at BOTH
-# ends. That anchoring is why TIMING must be its own line: a third field on RESULT matches nothing,
-# $fileResults comes back empty, and -AllowFailingGate then refuses a waiver that is actually valid.
+# `release.ps1` parses per-file results with '(?m)^RESULT\s+(\S+)\s+(\d+)\s*$', anchored at BOTH
+# ends. That anchoring is why TIMING must be its own line: a third field on RESULT matches nothing.
 $resultPattern = '(?m)^RESULT\s+(\S+)\s+(\d+)\s*$'
 $timingPattern = '^TIMING \S+ \d+\.\d$'
 
 $start = $text.IndexOf("Measure-Stage 'dist-gates'")
 $end = $text.IndexOf("Measure-Stage 'meta-suite'", $start)
 $stage = if ($start -ge 0 -and $end -gt $start) { $text.Substring($start, $end - $start) } else { '' }
-$metaEnd = $text.IndexOf("Assert-GateBudget", $end)
+$metaEnd = $text.IndexOf('Release REFUSED: fix the failing gate(s)', $end)
 $metaStage = if ($end -ge 0 -and $metaEnd -gt $end) { $text.Substring($end, $metaEnd - $end) } else { '' }
 
 function Get-CiJob([string]$Name) {
@@ -138,22 +137,18 @@ It 'local dist-gates validate all three dists but invoke zero shipped hook suite
     Assert ($stage -notmatch 'TIMING \{0\}/hook-suite ') 'dist-gates still attributes a retired local hook-suite run'
 }
 
-It 'the local meta-suite stage runs exactly the four release-subject files, one -File run each, with RESULT and waiver parsing' {
+It 'the local meta-suite stage runs exactly the three release-subject files, one -File run each' {
     Assert ($metaStage -ne '') 'could not extract the meta-suite stage from release.ps1'
     $list = [regex]::Match($metaStage, '(?s)\$localMetaFiles\s*=\s*@\((?<body>[^)]*)\)')
     Assert $list.Success 'the meta-suite stage no longer declares its $localMetaFiles subset'
     $names = @([regex]::Matches($list.Groups['body'].Value, "'([^']+)'") | ForEach-Object { $_.Groups[1].Value } | Sort-Object)
-    $expected = @('DocTruth.Tests.ps1', 'GateBudgetConsistency.Tests.ps1', 'ReleaseChangelogStamp.Tests.ps1', 'WorkspaceBom.Tests.ps1')
+    $expected = @('DocTruth.Tests.ps1', 'ReleaseChangelogStamp.Tests.ps1', 'WorkspaceBom.Tests.ps1')
     Assert (($names -join ',') -ceq ($expected -join ',')) "local meta subset is [$($names -join ', ')], expected [$($expected -join ', ')]"
     foreach ($name in $names) { Assert (Test-Path -LiteralPath (Join-Path $PSScriptRoot $name)) "local meta subset names '$name', which is not a meta test file" }
     $runs = @([regex]::Matches($metaStage, 'Invoke-HookTests\.ps1'))
     Assert ($runs.Count -eq 1) "expected one runner invocation inside the subset loop, found $($runs.Count)"
     Assert ($metaStage -match 'foreach\s*\(\$metaFile\s+in\s+\$localMetaFiles\)') 'the runner is no longer looped over the local subset'
     Assert ($metaStage -match 'Invoke-HookTests\.ps1''\) -File \$metaFile \*> \$metaLog') 'the runner no longer receives one -File per subset file'
-    Assert ($metaStage -match '\$metaText\s*\+=') 'per-file runner output is no longer concatenated into one $metaText'
-    Assert ($metaStage -match 'Resolve-GateWaiverOutcome') 'the local meta runs bypassed waiver parsing'
-    Assert ($metaStage -match '-ManifestFiles') 'the waiver decision no longer receives the manifest, so a CI-only file reads as a typo'
-    Assert ($metaStage.Contains('(?m)^RESULT\s+(\S+)\s+(\d+)\s*$')) 'the local meta runs no longer parse per-file RESULT lines'
 }
 
 It 'CI runs the dist gates, every meta shard and every dist hook suite as independent PowerShell 7 jobs plus one required case-count decision' {

@@ -422,8 +422,8 @@ stamp drift twice:
 3. From PowerShell 7, run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
    -ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`.
    It stamps `src/core/AGENTS.md` + the three `framework-version.json` files, rebuilds all three
-    dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the four
-    release-subject meta files: `DocTruth`, `ReleaseChangelogStamp`, `GateBudgetConsistency`,
+    dists, runs local gates (freshness, validate-dist ×3 plus the footprint update, and the three
+    release-subject meta files: `DocTruth`, `ReleaseChangelogStamp`,
     `WorkspaceBom`), **refuses to commit on any failure**, appends
     the review row to `meta/review-ledger.md`, then commits to `master`, pushes, **waits for CI**,
     and tags. A normal tag requires all four PowerShell 7 Windows execution contexts plus their

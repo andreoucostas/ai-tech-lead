@@ -9,7 +9,7 @@
 # "Unreleased" on any of them is stamped with the release date -- B-54: all four are mandatory, not
 # just root) and the working tree contains exactly the release changes.
 #
-# Gates (in order): compose all three dists -> validate-dist ×3 + context footprint -> the four meta
+# Gates (in order): compose all three dists -> validate-dist ×3 + context footprint -> the three meta
 # test files whose subject the release commit changes (B-245). The full root meta suite and the shipped
 # hook suites run in CI: before a normal tag, CI must observe the
 # three-dist hook matrices under PowerShell 7.
@@ -41,24 +41,7 @@ param(
     # tagged without anyone having observed CI. This is a WAIVER, deliberately not the same fact as
     # CANT-VERIFY -- it is recorded in the tag's own annotation so the waiver travels with the
     # artifact whose meaning it changes.
-    [switch]$AllowUnverifiedCi,
-    # Escape hatch for ONE named meta-suite file that is known-broken for a reason already filed.
-    # Format: -AllowFailingGate 'DocTruth.Tests.ps1=B-113' (one or more, comma-separated).
-    #
-    # Why this exists: v0.49.0 was blocked by five stale stubs in the CI-watch tests while shipping a
-    # documentation-only skill change. An all-or-nothing gate set means any red anywhere stops
-    # everything, which is how a suite stops being a safety net and starts being a hostage.
-    #
-    # What it deliberately is NOT: a skip. The waived file still RUNS, still reports, and its output
-    # still appears in the transcript -- only its power to block is suspended. And it is not silent:
-    # the backlog id is mandatory (a bare filename is refused), and the waiver is written into the
-    # release commit message AND the tag annotation, so it travels with the artifact whose meaning it
-    # changes, exactly like -AllowUnverifiedCi.
-    #
-    # What it cannot do: waive a dist gate (validate-dist or a shipped hook suite). Those gate what
-    # consumers receive. This covers the maintainer-only meta suite only, and only the files
-    # release.ps1 runs locally; a file that runs in CI only is refused (B-245).
-    [string[]]$AllowFailingGate
+    [switch]$AllowUnverifiedCi
 )
 $ErrorActionPreference = 'Stop'
 
@@ -76,104 +59,12 @@ function Test-ReleaseReviewRecord {
     return [regex]::IsMatch($Text, "(?m)^\| v$([regex]::Escape($Version)) \|")
 }
 
-# ---- Gate time budget -------------------------------------------------------------------------
-# The suite grew by accretion until releasing became impractical -- every RCA added a gate and
-# nothing ever measured what the set cost. Static context had the identical failure mode and was
-# fixed by declaring a ceiling and making it fail (B-110); this is that pattern applied to time.
-# Ceilings live in meta/gate-budget.json, which also records the honest limit: seconds are
-# host-dependent, so ceilings sit at roughly 2x the maintainer-box observation. This catches a stage
-# growing several-fold. It is not meant to police a busy box, which is why nothing here is tight.
-# The waiver map is parsed HERE, before any gate runs, so a malformed -AllowFailingGate is refused in
-# seconds rather than after several minutes of green gates. A bare filename with no backlog id is
-# rejected on purpose: "this is broken and someone owns it" is the whole difference between a waiver
-# and a shrug, and the owning id is the only part of that a script can actually check.
-$gateWaivers = @{}
-foreach ($spec in @($AllowFailingGate | ForEach-Object { $_ -split ',' } | Where-Object { $_ })) {
-    $parts = $spec.Trim() -split '=', 2
-    if ($parts.Count -ne 2 -or -not $parts[0].Trim() -or -not $parts[1].Trim()) {
-        Write-Host "Release REFUSED: -AllowFailingGate expects '<File.Tests.ps1>=<backlog-id>', got '$spec'."
-        Write-Host "  A waiver without an owning item is a silent skip. Example: -AllowFailingGate 'DocTruth.Tests.ps1=B-113'"
-        exit 2
-    }
-    $gateWaivers[$parts[0].Trim()] = $parts[1].Trim()
-}
-
-# Pure decision function: given per-file meta-suite results and the operator's waivers, decide what
-# still blocks the release. Kept side-effect-free and free of $repo/$script state ON PURPOSE, so
-# ReleaseGateWaiver.Tests.ps1 can lift it out by AST and drive every branch without running a
-# release. A mechanism whose whole job is to SUPPRESS failures is the last one that should be
-# shipped untested.
-function Resolve-GateWaiverOutcome {
-    param(
-        [Parameter(Mandatory)][hashtable]$FileResults,
-        [Parameter(Mandatory)][hashtable]$Waivers,
-        [int]$TotalExit = 0,
-        # Every meta test file the runner knows. A waiver naming one of these that the local subset
-        # did not run is refused as CI-only, not mistaken for a typo.
-        [string[]]$ManifestFiles = @()
-    )
-    $messages = @(); $waived = @(); $blocking = 0; $refused = $false
-
-    if ($FileResults.Count -eq 0) {
-        # No per-file data. Fall back to the summed total, and refuse to honour a waiver against it:
-        # waiving a number you cannot attribute is waiving everything.
-        if ($Waivers.Count -gt 0) {
-            $messages += 'GATE FAIL: -AllowFailingGate was passed but the meta suite emitted no per-file RESULT lines; refusing to waive a total.'
-            $refused = $true
-        }
-        return [pscustomobject]@{ Messages = $messages; Waived = $waived; BlockingFailures = $TotalExit; Refused = $refused; GateLabel = 'meta-hook test suite' }
-    }
-
-    foreach ($name in ($FileResults.Keys | Sort-Object)) {
-        if ($FileResults[$name] -eq 0) { continue }
-        if ($Waivers.ContainsKey($name)) {
-            $waived += "$name ($($FileResults[$name]) failure(s), waived under $($Waivers[$name]))"
-            $messages += "GATE WAIVED: meta-suite $name -- $($FileResults[$name]) failure(s), owned by $($Waivers[$name]). It still ran; only its power to block is suspended."
-        } else {
-            $blocking += $FileResults[$name]
-        }
-    }
-    # A waiver naming a file that PASSED, or that did not run at all, is stale. Refuse it -- otherwise
-    # the flag outlives the breakage it was granted for and silently covers the next one.
-    foreach ($name in ($Waivers.Keys | Sort-Object)) {
-        if (-not $FileResults.ContainsKey($name) -and $ManifestFiles -contains $name) {
-            $messages += "GATE FAIL: -AllowFailingGate names '$name', which runs in CI only; release.ps1 does not run it locally, so there is nothing to waive."
-            $refused = $true
-        } elseif (-not $FileResults.ContainsKey($name)) {
-            $messages += "GATE FAIL: -AllowFailingGate names '$name', which the meta suite did not run. Check the filename."
-            $refused = $true
-        } elseif ($FileResults[$name] -eq 0) {
-            $messages += "GATE FAIL: -AllowFailingGate names '$name', but it PASSED. Remove the stale waiver."
-            $refused = $true
-        }
-    }
-    $label = if ($waived.Count -gt 0) { 'meta-hook test suite (excluding recorded waivers)' } else { 'meta-hook test suite' }
-    return [pscustomobject]@{ Messages = $messages; Waived = $waived; BlockingFailures = $blocking; Refused = $refused; GateLabel = $label }
-}
-
-$gateBudgetPath = Join-Path $repo 'meta/gate-budget.json'
-$gateBudget = if (Test-Path -LiteralPath $gateBudgetPath) { Get-Content -Raw -LiteralPath $gateBudgetPath | ConvertFrom-Json } else { $null }
-$stageTimings = [ordered]@{}
+# Stage timing is printed for the maintainer to read; no stage time refuses a release.
 function Measure-Stage([string]$Name, [scriptblock]$Body) {
     $sw = [Diagnostics.Stopwatch]::StartNew()
     try { & $Body } finally {
         $sw.Stop()
-        $script:stageTimings[$Name] = [math]::Round($sw.Elapsed.TotalSeconds, 1)
         Write-Host ("TIME  {0,-18} {1,7:N1}s" -f $Name, $sw.Elapsed.TotalSeconds)
-    }
-}
-function Assert-GateBudget {
-    if (-not $gateBudget) { Write-Host 'GATE FAIL: meta/gate-budget.json is missing -- the runtime ceiling cannot be enforced.'; $script:fatal = $true; return }
-    $total = 0.0
-    foreach ($name in $stageTimings.Keys) {
-        $total += $stageTimings[$name]
-        $ceiling = $gateBudget.'ceilings-seconds'.$name
-        if ($null -eq $ceiling) { continue }
-        Gate ($stageTimings[$name] -le $ceiling) ("gate budget: $name took $($stageTimings[$name])s, ceiling ${ceiling}s")
-    }
-    $totalCeiling = $gateBudget.'ceilings-seconds'.'total-local-gates'
-    if ($null -ne $totalCeiling) {
-        Gate ($total -le $totalCeiling) ("gate budget: local gates took $([math]::Round($total,1))s, ceiling ${totalCeiling}s")
     }
 }
 
@@ -256,10 +147,10 @@ if ($branch -ne 'master') {
 # Runtime is dominated by process creation, not CPU: the hook suites spawn a fresh PowerShell
 # process per assertion. The attempted representative sequential suite
 # was functionally green (20 files, 0 failures) but took 924.1s and made dist-gates 1004.0s, so it
-# is not a useful local gate. Since B-245 the local meta suite is the four release-subject files
-# (13.2s serial, 2026-09-19); CI owns the full meta suite and all shipped-hook coverage on the
-# release commit before the tag. Re-measure before changing the budget or this banner.
-Write-Host "Releasing $Version. Local gates: compose x3 -> validate-dist x3 + context footprint -> release-subject meta files (DocTruth, ReleaseChangelogStamp, GateBudgetConsistency, WorkspaceBom)."
+# is not a useful local gate. Since B-245 the local meta suite is the release-subject files
+# (13.2s serial for four, 2026-09-19); CI owns the full meta suite and all shipped-hook coverage on the
+# release commit before the tag. Re-measure before changing this banner.
+Write-Host "Releasing $Version. Local gates: compose x3 -> validate-dist x3 + context footprint -> release-subject meta files (DocTruth, ReleaseChangelogStamp, WorkspaceBom)."
 Write-Host "Before a normal tag, CI must pass all four Windows contexts: root plus three shipped-hook matrices under PowerShell 7."
 # The interruption promise used to be "nothing has been committed", full stop. After the push that is
 # simply false, and B-88 makes the window longer by adding a multi-minute wait to it. State the three
@@ -487,7 +378,7 @@ if ($fatal) {
 }
 
 # ---- 4. Deterministic gates: validate-dist per dist and the context-footprint baseline, then the
-# four meta test files whose subject the release commit changes.
+# three meta test files whose subject the release commit changes.
 #
 # The footprint re-measure (which must run after the version stamps have flowed into dist, and whose
 # baseline lands in the release commit) is independent of the validators: it writes
@@ -528,7 +419,7 @@ try {
         Write-Host -NoNewline ([System.IO.File]::ReadAllText($distGateJob.Log))
         $d = $distGateJob.Dist
         # Keep timing on its own line: RESULT parsing is anchored at both ends (B-151).
-        # The job wall clock is what the stage budget spends, while the inner measurement isolates
+        # The job wall clock is what the stage spends, while the inner measurement isolates
         # the validator. They will not be equal: job scheduling and pwsh startup sit outside the
         # stopwatch, and that gap is evidence rather than arithmetic to hide.
         $jobSeconds = if ($distGateJob.Job.PSEndTime -and $distGateJob.Job.PSBeginTime) {
@@ -556,15 +447,13 @@ try {
     if ($footprintLog) { Remove-Item -LiteralPath $footprintLog -Force -ErrorAction SilentlyContinue }
 }
 }
-$waiversApplied = @()
 Measure-Stage 'meta-suite' {
 $metaLog = [System.IO.Path]::GetTempFileName()
 try {
     # B-245: locally, only the files whose subject the release commit itself changes -- version
-    # stamps and changelog heads, the gate budget, new .ps1 bytes. CI runs the whole suite on the
-    # release commit, and the tag still waits for that run. -File is single-valued, so one run each;
-    # their output is concatenated so RESULT parsing and waivers see one transcript.
-    $localMetaFiles = @('DocTruth.Tests.ps1', 'ReleaseChangelogStamp.Tests.ps1', 'GateBudgetConsistency.Tests.ps1', 'WorkspaceBom.Tests.ps1')
+    # stamps and changelog heads, new .ps1 bytes. CI runs the whole suite on the
+    # release commit, and the tag still waits for that run. -File is single-valued, so one run each.
+    $localMetaFiles = @('DocTruth.Tests.ps1', 'ReleaseChangelogStamp.Tests.ps1', 'WorkspaceBom.Tests.ps1')
     $metaExit = 0; $metaText = ''
     foreach ($metaFile in $localMetaFiles) {
         & pwsh -NoProfile -File (Join-Path $repo '.claude/hooks/tests/Invoke-HookTests.ps1') -File $metaFile *> $metaLog
@@ -572,28 +461,11 @@ try {
         $metaText += [System.IO.File]::ReadAllText($metaLog)
     }
     Write-Host -NoNewline $metaText
-    # Per-file results, so a waiver can name one file instead of the summed total. If any local
-    # file emitted no RESULT line (a runner refusal exits 2 without one), attribute nothing: an
-    # empty map falls back to the summed total, which blocks and refuses every waiver.
-    $fileResults = @{}
-    foreach ($m in [regex]::Matches($metaText, '(?m)^RESULT\s+(\S+)\s+(\d+)\s*$')) {
-        $fileResults[$m.Groups[1].Value] = [int]$m.Groups[2].Value
-    }
-    if (@($localMetaFiles | Where-Object { -not $fileResults.ContainsKey($_) }).Count -gt 0) { $fileResults = @{} }
-    $manifestFiles = @(Get-ChildItem -LiteralPath (Join-Path $repo '.claude/hooks/tests') -Filter *.Tests.ps1 | ForEach-Object Name)
-    $outcome = Resolve-GateWaiverOutcome -FileResults $fileResults -Waivers $gateWaivers -TotalExit $metaExit -ManifestFiles $manifestFiles
-    foreach ($line in $outcome.Messages) { Write-Host $line }
-    # $script: is load-bearing -- this runs inside Measure-Stage's scriptblock, which is a child
-    # scope, so a bare assignment would land on a local copy and the commit and tag would claim
-    # "all gates green" while a waiver was in force.
-    $script:waiversApplied += $outcome.Waived
-    if ($outcome.Refused) { $script:fatal = $true }
-    Gate ($outcome.BlockingFailures -eq 0) $outcome.GateLabel
+    Gate ($metaExit -eq 0) 'meta-hook test suite'
 } finally {
     Remove-Item -LiteralPath $metaLog -Force -ErrorAction SilentlyContinue
 }
 }
-Assert-GateBudget
 
 if ($fatal) {
     Write-Host "`nRelease REFUSED: fix the failing gate(s) and re-run. Nothing was committed."
@@ -755,14 +627,9 @@ The index has been reset; nothing was committed.
 # ---- 5b. Commit -- skipped when resuming a release whose commit already exists ----
 if (-not $nothingToCommit) {
     Write-Host ''
-    # "all gates green" must stop being said the moment it stops being true. A waived gate is named
-    # in the commit body with its owning item, so `git log` alone answers what this release did and
-    # did not prove.
-    $gateNote = if ($waiversApplied.Count -gt 0) {
-        "Released via .claude/scripts/release.ps1 — local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the four release-subject meta test files) EXCEPT these recorded waivers: $($waiversApplied -join '; '). No shipped dist hook suite runs locally; normal tagging waits for CI's PowerShell 7 three-dist hook matrices."
-    } else {
-        'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the four release-subject meta test files). No shipped dist hook suite runs locally; normal tagging waits for CI''s PowerShell 7 three-dist hook matrices.'
-    }
+    # "all gates green" must stop being said the moment it stops being true; the commit body names
+    # exactly what this release did and did not prove.
+    $gateNote = 'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the three release-subject meta test files). No shipped dist hook suite runs locally; normal tagging waits for CI''s PowerShell 7 three-dist hook matrices.'
     git -C $repo commit -m "v${Version}: $Summary" -m $gateNote
     if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
 }
@@ -861,15 +728,12 @@ if ($existingSha) {
     # The annotation carries the CI verdict (B-88). A normal tag means CI observed green, including
     # its complete PowerShell 7 × three-dist hook matrices. The two exception paths -- an operator
     # waiver or a -NoPush local tag -- must say that those matrices were not verified on the artifact.
-    # A gate waiver changes what the tag means just as much as an unverified-CI waiver does, so it
-    # rides on the same annotation rather than living only in a terminal that scrolls away.
-    $tagWaiverNote = if ($waiversApplied.Count -gt 0) { " — gate waivers: $($waiversApplied -join '; ')" } else { '' }
     $ciMatrixNote = if ($ciDecision.Status -eq 'GREEN') {
         ' — CI verified root meta suites plus shipped hook suites for dotnet, angular, and monorepo under PowerShell 7 before tag'
     } else {
         ' — CI full hook matrix not verified (see CI waiver/status)'
     }
-    git -C $repo tag -a $tagName -m "ai-tech-lead $tagName$($ciDecision.TagNote)$ciMatrixNote$tagWaiverNote" $releaseSha
+    git -C $repo tag -a $tagName -m "ai-tech-lead $tagName$($ciDecision.TagNote)$ciMatrixNote" $releaseSha
     if ($LASTEXITCODE -ne 0) { Write-Host "Tag FAILED: could not create $tagName."; exit 1 }
     Write-Host "Tagged $tagName at $($releaseSha.Substring(0,7))."
 }

@@ -68,7 +68,6 @@ $expectedTestFiles = @(
     'DocsSyncCheck.Tests.ps1',
     'DocTruth.Tests.ps1',
     'FinancialCaseOracles.Tests.ps1',
-    'GateBudgetConsistency.Tests.ps1',
     'GuardPatternErrors.Tests.ps1',
     'InstallerContract.Tests.ps1',
     'InstallerConvergence.Tests.ps1',
@@ -80,7 +79,6 @@ $expectedTestFiles = @(
     'ReleaseChangelogStamp.Tests.ps1',
     'ReleaseCiWatch.Tests.ps1',
     'ReleaseDistGateTiming.Tests.ps1',
-    'ReleaseGateWaiver.Tests.ps1',
     'ReleaseStagingGuard.Tests.ps1',
     'RepositoryPrivacy.Tests.ps1',
     'RootInstallerWarehouse.Tests.ps1',
@@ -152,7 +150,6 @@ $costHint = @{
     'MetaHooks.Tests.ps1'                = 12.3
     'DocTruth.Tests.ps1'                 = 12.0
     'CiCaseParity.Tests.ps1'             = 6.0
-    'ReleaseGateWaiver.Tests.ps1'        = 5.2
     'FinancialCaseOracles.Tests.ps1'     = 5.1
     'VendorClaims.Tests.ps1'             = 2.9
     'PowerShellTopology.Tests.ps1'       = 1.8
@@ -161,7 +158,6 @@ $costHint = @{
     'WorkspaceBom.Tests.ps1'             = 1.4
     'BacklogHygiene.Tests.ps1'           = 1.3
     'ClaimTruth.Tests.ps1'               = 1.0
-    'GateBudgetConsistency.Tests.ps1'    = 1.0
     'OperationSkillAuthority.Tests.ps1'  = 1.0
 }
 $unlistedCost = [double](($costHint.Values | Measure-Object -Maximum).Maximum)
@@ -191,16 +187,11 @@ if ($ShardCount -gt 1) {
         [math]::Round($load[$ShardIndex - 1]), (@($files.Name) -join ', '))
 }
 
-# One machine-readable line per file, emitted in every mode. release.ps1 parses these so an
-# operator waiver can name ONE failing file (-AllowFailingGate) instead of the all-or-nothing total.
-# The failing file still RUNS and still reports -- a waiver changes what blocks the release, never
-# what gets measured.
+# One machine-readable line per file, emitted in every mode, so a transcript names which file failed.
 function Write-FileResult([string]$Name, [int]$Exit) { Write-Host ("RESULT {0} {1}" -f $Name, $Exit) }
 
-# Per-file wall time, on its OWN line and never appended to RESULT: release.ps1:549 parses
-# `^RESULT\s+(\S+)\s+(\d+)\s*$` anchored at BOTH ends, so a third field would not merely be ignored
-# -- it would match nothing, and the -AllowFailingGate path would report "emitted no per-file RESULT
-# lines" and refuse a waiver that is actually valid. A silent break, so: separate line.
+# Per-file wall time, on its OWN line and never appended to RESULT: a parser anchored at both ends
+# (`^RESULT\s+(\S+)\s+(\d+)\s*$`) would match nothing on a third field. A silent break, so: separate line.
 #
 # This exists because a gate-budget breach was diagnosed twice from a SERIAL per-file pass, and both
 # diagnoses were wrong. A serial pass runs each file with the throttle env vars UNSET, i.e. at full

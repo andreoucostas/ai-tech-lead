@@ -367,4 +367,34 @@ try {
     }
 }
 
+It 'a gate stage that runs past the old 700 s ceiling does not refuse the release' {
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($release, [ref]$null, [ref]$null)
+    $statements = @($ast.EndBlock.Statements)
+    $defs = @($statements | Where-Object {
+        ($_ -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -in 'Gate', 'Measure-Stage', 'Assert-GateBudget') -or
+        ($_ -is [System.Management.Automation.Language.AssignmentStatementAst] -and $_.Left.Extent.Text -in '$gateBudgetPath', '$gateBudget', '$stageTimings')
+    })
+    $calls = @($statements | Where-Object { $_.Extent.Text.Trim() -eq 'Assert-GateBudget' })
+    Assert (@($statements | Where-Object { $_ -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -eq 'Measure-Stage' }).Count -eq 1) 'release.ps1 no longer defines Measure-Stage'
+    $lines = @(
+        '$ErrorActionPreference = ''Stop''',
+        ('$repo = ''' + $repoRoot.Replace("'", "''") + ''''),
+        '$fatal = $false'
+    ) + @($defs | ForEach-Object { $_.Extent.Text }) + @(
+        "Measure-Stage 'probe' { Start-Sleep -Milliseconds 50 }",
+        # Stand-in for every stage having run 701 s, one second past the retired dist-gates ceiling.
+        '$stageTimings = [ordered]@{ compose = 701; ''dist-gates'' = 701; ''meta-suite'' = 701 }'
+    ) + @($calls | ForEach-Object { $_.Extent.Text }) + @(
+        'if ($fatal) { Write-Output ''SLOW_STAGE_REFUSED''; exit 1 }',
+        'Write-Output ''SLOW_STAGE_ALLOWED''',
+        'exit 0'
+    )
+    $path = Join-Path ([IO.Path]::GetTempPath()) ('release-slow-stage-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    try {
+        [IO.File]::WriteAllText($path, ($lines -join "`n"), (New-Object Text.UTF8Encoding($true)))
+        $run = Invoke-RawProcess -FileName (Get-PsExe) -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $path)
+    } finally { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
+    Assert ($run.Exit -eq 0 -and $run.Out -match 'SLOW_STAGE_ALLOWED') "a stage past the old ceiling refused the release: EXIT=$($run.Exit); OUT=$($run.Out); ERR=$($run.Err)"
+}
+
 exit (Write-TestSummary 'ReleaseStagingGuard.Tests (B-80 staged-set guard)')

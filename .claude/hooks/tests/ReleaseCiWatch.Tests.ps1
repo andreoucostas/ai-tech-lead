@@ -59,7 +59,7 @@ function New-Row {
 # the watcher correctly reported CANT-VERIFY and five cases that test WATCHER LOGIC -- pull_request
 # runs not deciding a release, re-runs superseding, polling to terminal, query scoping -- failed for
 # a reason none of them is about. That red then blocked every release, including a documentation-only
-# one, which is what -AllowFailingGate now exists for.
+# one.
 #
 # Deriving the list means the next person to widen ExpectedJobs cannot break these cases by omission.
 # The naming shape itself ('<job> (<value>)' for matrix legs) is guarded by the real workflow
