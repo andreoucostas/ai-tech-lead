@@ -122,6 +122,10 @@
   password or connection string found in the repository names only its folder, with the kind of credential and the action
   (rotate it, remove it from history, load it from configuration); the file, line and value are told to you in chat only.
   A credential in a file at the repository root gets no row, only the chat message and the run's final report.
+- **Removing the framework by hand no longer leaves hook calls behind.** `docs/upgrade-checklist.md` now lists the steps:
+  delete the framework-owned paths, remove the framework's hooks from `.claude/settings.json`, remove its import from
+  `CLAUDE.md`, delete `.claude/.state/` and the audit log, then check that `git grep ".claude/hooks/"` prints nothing. It
+  also says what installer exits 2, 3 and 4 mean, and that an exit 3 can come after files were written.
 
 ## 0.98.6 — 2026-11-13
 

@@ -129,8 +129,11 @@ rather than deleting its marker.
 - **`CANT-VERIFY`**: the installer could not examine something it needed to. Resolve it and re-run.
 - **`NOTICE`**: advice. Some notices are valid to keep, such as a dependency you intend to keep:
   record the uncertainty rather than deleting files to silence it.
-- **A non-zero exit** is a refusal: resolve its cause before retrying. A collision with a legal file
-  can refuse a preview or an update; follow its message rather than changing ownership markers.
+- **A non-zero exit:** 2 means the target is not a directory or is the framework's own repository; 4 means a
+  check stopped it, usually before any change; 3 is a refusal or a copy that stopped part-way. Read the
+  message: if it says files were written or "every other step is done", the tree changed, so follow its
+  re-run line. Otherwise resolve the cause before retrying. A collision with a legal file can refuse a
+  preview or an update; follow its message rather than changing ownership markers.
 - **`LAYOUT:`** reports how the instruction files were arranged; see the migrations below.
 
 ## Migrations from older installs
@@ -228,12 +231,22 @@ Most updates need none of these. Do each only when its condition holds.
 
 The installer wrote only inside your repository and changed no Git configuration.
 
-- **If nothing has been committed on top of the install** (no `/bootstrap`, `/adopt` or update yet),
-  revert the install commit and delete the ignored `.claude/.state/` folder.
-- **Otherwise,** delete every path that `framework-ownership.json` marks
-  `framework-owned/overwritten`; the list includes both manifests and `.claude/framework-version.json`.
-  Paths marked `consumer-owned/protected` are yours to keep or delete; they may still hold template
-  text. `.claude/settings.json` is shared: delete it, or restore your copy from
-  `.claude/.state/settings.json.pre-update` if that local backup exists. A brownfield install moved
-  your earlier files to `docs/pre-adoption/`; move back what you want.
-  `.claude/framework-update-backup/` holds an update's backups for review and is not needed after.
+1. **Nothing changed since the install (or update) commit?** Revert that commit and stop. It leaves
+   `.claude/ai-audit.log`, and `.claude/.state/` if present, for you to delete by hand.
+2. **Otherwise,** delete every path that `framework-ownership.json` (at the repository root) marks
+   `framework-owned/overwritten`; the list includes both manifests, `.claude/framework-version.json`,
+   `.claude/.gitignore` and `.github/hooks/hooks.json`. Paths marked `consumer-owned/protected` are yours
+   to keep or delete; they may still hold template text. A brownfield install moved your earlier files
+   to `docs/pre-adoption/`; move back what you want. `.claude/framework-update-backup/` holds an
+   update's backups and is not needed after.
+3. In `.claude/settings.json` (shared with you), remove every entry under `hooks` whose command names
+   `.claude/hooks/`, and the framework's `_comment`, `env` and `defaultShell` unless you use them; keep keys of
+   your own, and delete the file if nothing of yours is left. If you added your own hooks to
+   `.github/hooks/hooks.json`, restore the file from Git and remove only the entries naming `.claude\hooks\`.
+4. In `CLAUDE.md`, remove the framework's import lines, `@.github/instructions/framework-rules.instructions.md`
+   (and `@AGENTS.md` only if you delete `AGENTS.md` as well).
+5. Delete `.claude/.state/` and `.claude/ai-audit.log`, then any directory left empty.
+6. Check: `git grep -n ".claude/hooks/"` (PowerShell: `git grep -n '.claude/hooks/'`) prints nothing.
+
+`.claude/.state/settings.json.pre-update` still holds the framework's hook registrations, so restoring it
+brings them back; copy only your own entries from it.

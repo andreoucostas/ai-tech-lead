@@ -181,6 +181,9 @@ Its hazard row names the containing directory with a trailing `/`, which `hazard
 (rotate, remove from history, load from configuration); the file, line and value go to the developer in chat only, and a
 credential in a file at the repository root gets no row.
 
+"Remove the framework" in `docs/upgrade-checklist.md` is now six steps that leave no hook registration or import behind, and its
+exit-code line says what exits 2, 3 and 4 mean (text-only, shipped unmeasured; B-496). The installer `-Uninstall` stays unfiled.
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the
