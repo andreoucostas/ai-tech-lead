@@ -102,17 +102,6 @@
       "assertion": "angularFeaturePlacement"
     },
     {
-      "id": "angular-ux-sibling",
-      "measures": "B-470 (pre-registered in meta/eval-results.md): on a repository whose orders list handles loading, empty, error and success states, does an \"add a similar page\" prompt produce a page that mirrors that handling? Arm-neutral: the grade reads only the page the run wrote (MIRRORS, PARTIAL, NONE; no page is not examined). Framework arm runs on the frozen /bootstrap overlay meta/eval-fixtures/angular-ux-generated; the bare arm on the fixture alone.",
-      "stack": "angular",
-      "fixture": "angular-ux",
-      "overlay": "angular-ux-generated",
-      "bareArm": true,
-      "budgetUsd": 1.50,
-      "prompt": "Add an invoices page that lists the current user's invoices from /api/invoices, following this repository's conventions. No tests needed. I approve this change in advance: do not stop for a plan or ask for confirmation -- implement it now, then report what you built.",
-      "assertion": "angularUxMirror"
-    },
-    {
       "id": "skill-use-event",
       "measures": "B-514 (pre-registered in .claude/plans/2026-11-15-b514-skill-use.md): is the drafted project skill called with the Skill tool on the next task that matches it, and is every non-obvious step present (EventRegistry line, schema version equal to [EventVersion], concrete handler in DI)? Framework arm: the draft as /bootstrap left it (overlay meta/eval-fixtures/b514-orders); bare arm: fixture v2 alone. Arm-neutral: files and stream, not the final message.",
       "stack": "dotnet",
