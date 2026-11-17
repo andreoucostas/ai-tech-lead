@@ -4812,8 +4812,9 @@ data-loss decision). **Reopen** if a team loses a file the named commit was said
 committed one was overwritten unannounced.
 **Decision (the maintainer's, in chat 2026-11-17).** A framework file whose bytes on disk HEAD does not hold is copied below the backup folder as WSD-117
 and WSD-128 copy team files, and named. One HEAD holds is named, with `git show <HEAD>:./<path>`, when its blob in HEAD differs from its blob in the last
-commit that changed `.claude/framework-version.json`. No Git or no commit: no copy (every changed file would look edited). No such install commit, or a
-path it lacks: no guess either. Each says in one line that edits could not be checked.
-Rejected: recording released digests at build time and naming files that match none (B-508's candidate); the maintainer chose the cheaper heuristic, which
-needs no new shipped data. Known limit: an edit committed together with the install, or an install committed in parts, is not seen or is misnamed.
+commit that changed `.claude/framework-version.json`. No Git or no commit: no copy (every changed file would look edited). No such install commit, a path it
+lacks, or a shallow clone: no guess either. Each says in one line that edits could not be checked. A framework file the update cannot read, even
+sharing its open handle, stops it (exit 4) rather than being replaced uncopied. Rejected: recording released digests at build time and naming
+files that match none (B-508's candidate); the maintainer chose the cheaper heuristic, which needs no new shipped data. Known limit: an edit
+committed together with the install, or an install committed in parts, is not seen or is misnamed.
 **Reopen** if a team reports a framework-file edit replaced without a notice, or a notice on a file it did not edit.

@@ -979,6 +979,12 @@ function Get-InstallState {
     $head = Get-HeadState
     $script:InstallState = [pscustomobject]@{ Commit = $null; Blobs = $null; Reason = 'the target has no Git commit to compare them with' }
     if ($null -eq $head.Commit) { return $script:InstallState }
+    # A shallow clone's boundary commit holds every file it was cloned with, so it would pass for the install.
+    $shallow = Invoke-GitText -GitPath $head.GitPath -Arguments @('-C', $tgt, 'rev-parse', '--is-shallow-repository')
+    if (-not ($shallow.Started -and $shallow.ExitCode -eq 0 -and $shallow.Output -ceq 'false')) {
+        $script:InstallState.Reason = $(if ($shallow.Output -ceq 'true') { 'the clone is shallow, so its history may not reach the last framework install' } else { 'Git could not say whether the clone holds its whole history' })
+        return $script:InstallState
+    }
     $log = Invoke-GitText -GitPath $head.GitPath -Arguments @('-C', $tgt, 'log', '-1', '--format=%H', $head.Commit, '--', '.claude/framework-version.json')
     if (-not ($log.Started -and $log.ExitCode -eq 0 -and $log.Output -cmatch '^(?:[0-9a-f]{40}|[0-9a-f]{64})$')) {
         $script:InstallState.Reason = "no commit in HEAD's history changed .claude/framework-version.json, so the last framework install is not known"
@@ -2335,7 +2341,8 @@ if ($updateMode -and -not $Reinstall) {
     $savedElsewhere = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
     [void]$savedElsewhere.Add('.claude/settings.json')
     foreach ($entry in $skillBackupPlan) { [void]$savedElsewhere.Add($entry.SourceRelative) }
-    foreach ($relative in $skillHeld) { [void]$savedElsewhere.Add($relative) }
+    # A framework skill file the last commit holds still gets the install-commit check below.
+    foreach ($relative in $skillHeld) { if (-not ($null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative))) { [void]$savedElsewhere.Add($relative) } }
     $additiveSaves = 0; $additiveAlready = 0; $additiveHeld = 0
     $uncheckedOwned = New-Object System.Collections.Generic.List[string]
     foreach ($relative in $ordinaryApplyPaths) {
@@ -2346,10 +2353,11 @@ if ($updateMode -and -not $Reinstall) {
         # Add-PlannedWrite above has already refused a link on this path and a folder at it.
         $destination = Get-ContainedTargetPath -Relative $relative
         if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) { continue }
-        try { $existingBytes = [IO.File]::ReadAllBytes($destination) }
-        catch {
-            # A framework file no process lets this one read is one the replace below cannot write either: it stops there.
-            if ($owned) { continue }
+        # Read beside another program's open handle; one that still denies the read can still let the replace write, so stop.
+        try {
+            $stream = [IO.File]::Open($destination, [IO.FileMode]::Open, [IO.FileAccess]::Read, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+            try { $buffer = New-Object IO.MemoryStream; $stream.CopyTo($buffer); $existingBytes = $buffer.ToArray() } finally { $stream.Dispose() }
+        } catch {
             [Console]::Error.WriteLine("CANT-VERIFY: '$relative' could not be read to decide whether this update must save it before replacing it. Make it readable or move it aside, then re-run. Nothing was changed.")
             exit 4
         }
@@ -2371,14 +2379,20 @@ if ($updateMode -and -not $Reinstall) {
                 [Console]::Error.WriteLine("ERROR: Refusing update: '$relative' must be saved before this release's file replaces it, and both $preferred and $($backup.Relative) already hold other content. Move them out of $savesRelative/, then re-run the update. Nothing was changed.")
                 exit 3
             }
+            $ignored = $false
+            if (-not (Get-HeadState).Blobs.ContainsKey($relative)) {
+                $probe = Invoke-GitText -GitPath (Get-HeadState).GitPath -Arguments @('-C', $tgt, 'check-ignore', '-q', '--', $relative)
+                $ignored = $probe.Started -and $probe.ExitCode -eq 0
+            }
+            $why = $(if ($ignored) { 'Git ignores, so no commit holds it' } else { 'your last commit does not hold as it is on disk' })
             if ($backup.State -eq 'saved') {
-                $saveMessages.Add("NOTICE: '$relative' is a framework file your last commit does not hold as it is on disk, and it is already saved at $($backup.Relative), so the update installs this release's file there. Keep what you need from the saved copy under another path.")
+                $saveMessages.Add("NOTICE: '$relative' is a framework file $why, and it is already saved at $($backup.Relative), so the update installs this release's file there. Keep what you need from the saved copy under another path.")
             } else {
-                $saveMessages.Add("NOTICE: '$relative' is a framework file your last commit does not hold as it is on disk (an edit not yet committed, say), so the update saves it to $($backup.Relative), then installs this release's file there. Keep what you need from the saved copy under another path.")
+                $saveMessages.Add("NOTICE: '$relative' is a framework file $why$(if (-not $ignored) { ' (an edit not yet committed, say)' }), so the update saves it to $($backup.Relative), then installs this release's file there. Keep what you need from the saved copy under another path.")
             }
             if ($backup.State -eq 'saved') { continue }
             [void](Add-PlannedWrite -Relative $backup.Relative -ForceCreate)
-            $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative })
+            $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative; Bytes = $existingBytes })
             continue
         }
         if ($heldIn) {
@@ -2402,7 +2416,7 @@ if ($updateMode -and -not $Reinstall) {
         }
         if ($backup.State -eq 'saved') { continue }
         [void](Add-PlannedWrite -Relative $backup.Relative -ForceCreate)
-        $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative })
+        $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative; Bytes = $existingBytes })
     }
     # The same save for a disabled skill: its active folder is carried to .claude/disabled-skills/<name>/ and deleted,
     # and the release's copy then goes over what was carried. No manifest lists a .claude/disabled-skills/ path, and an
@@ -3950,7 +3964,11 @@ foreach ($entry in $updateBackups) {
     try {
         $destination = Get-ContainedTargetPath -Relative $entry.Relative
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-        Copy-Item -LiteralPath $entry.Source -Destination $destination -ErrorAction Stop
+        # A framework file read beside another program's handle is written from the bytes read; Copy-Item would not share.
+        if ($null -ne $entry.PSObject.Properties['Bytes']) {
+            $stream = [IO.File]::Open($destination, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+            try { $stream.Write($entry.Bytes, 0, $entry.Bytes.Length) } finally { $stream.Dispose() }
+        } else { Copy-Item -LiteralPath $entry.Source -Destination $destination -ErrorAction Stop }
     } catch {
         [Console]::Error.WriteLine("ERROR: Could not save '$($entry.Relative)' before replacing the file it copies: $($_.Exception.Message)")
         [Console]::Error.WriteLine('  That file was not overwritten. Resolve the cause above, then re-run the installer; in a Git target add -AllowDirtyTree, since the changes Git now shows are this run''s own.')

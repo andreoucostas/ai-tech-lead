@@ -1229,4 +1229,89 @@ It 'B-508 an update of a target with no Git says edits to framework files could 
     }
 }
 
+It 'B-508 an update never replaces an uncommitted framework-file edit another program holds open without a copy of it' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b508l-' + [guid]::NewGuid())
+    try {
+        $t = New-B508Install -Root $root
+        $edited = '.claude/commands/review.md'
+        $path = Join-Path $t $edited
+        $editedBytes = [byte[]]([IO.File]::ReadAllBytes($path) + [Text.UTF8Encoding]::new($false).GetBytes("`nB508 HELD TEAM EDIT`n"))
+        [IO.File]::WriteAllBytes($path, $editedBytes)
+        $copy = '.claude/framework-update-backup/files/_.claude/commands/review.md'
+        # A holder that denies every read: the update stops before any change.
+        $handle = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, ([IO.FileShare]::Write -bor [IO.FileShare]::Delete))
+        try { $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree; $code = $LASTEXITCODE } finally { $handle.Dispose() }
+        Assert-BytesEqual $editedBytes ([IO.File]::ReadAllBytes($path)) "an update that could not read the held $edited replaced it (exit $code): $out"
+        Assert ($code -eq 4 -and $out -match "CANT-VERIFY: '$([regex]::Escape($edited))' could not be read") "the update did not stop with CANT-VERIFY naming $edited (exit $code): $out"
+        # A holder that shares reads and writes: the update reads beside it, saves the edit and replaces the file.
+        $handle = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+        try { $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree; $code = $LASTEXITCODE } finally { $handle.Dispose() }
+        $kept = Test-Path -LiteralPath (Join-Path $t $copy) -PathType Leaf
+        Assert ($kept -or [Convert]::ToBase64String([IO.File]::ReadAllBytes($path)) -ceq [Convert]::ToBase64String($editedBytes)) "the update replaced the held $edited and kept no copy (exit $code): $out"
+        Assert ($code -eq 0 -and $kept) "the update did not save the held $edited before replacing it (exit $code): $out"
+        Assert-BytesEqual $editedBytes ([IO.File]::ReadAllBytes((Join-Path $t $copy))) 'the copy does not hold the uncommitted edit byte for byte'
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-508 an update names a framework skill file the team edited and committed when it takes the one-time skill backup, but not an exemplar line' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b508s-' + [guid]::NewGuid())
+    try {
+        $t = New-B508Install -Root $root
+        $edited = '.claude/skills/perf/SKILL.md'
+        $exemplar = '.claude/skills/add-tests/SKILL.md'
+        [IO.File]::AppendAllText((Join-Path $t $edited), "`nB508 COMMITTED SKILL EDIT`n")
+        [IO.File]::AppendAllText((Join-Path $t $exemplar), "`nFor a concrete current instance in this repo, see tests/Example.Tests.cs`n")
+        & git -C $t commit -qam 'team edits to skills'
+        $head = (& git -C $t rev-parse HEAD | Out-String).Trim()
+        Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-update-backup/skills'))) 'calibration: the skill backup folder already exists'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0 -and $out -match "(?m)^PLAN replace $([regex]::Escape($edited))\r?$") "calibration: the update failed or did not replace $edited (exit $LASTEXITCODE): $out"
+        Assert ($flat -match "NOTICE: '$([regex]::Escape($edited))' is a framework file your team changed and committed after the last framework install .*?your version is in commit ${head}:") "no NOTICE names the committed skill edit: $out"
+        Assert ($flat -notmatch "'$([regex]::Escape($exemplar))' is a framework file") "the update named a skill whose only change is the /bootstrap exemplar line: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-508 an update of a shallow clone says edits to framework files could not be checked' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b508h-' + [guid]::NewGuid())
+    try {
+        $origin = New-B508Install -Root $root
+        [IO.File]::AppendAllText((Join-Path $origin '.claude/commands/review.md'), "`nB508 COMMITTED TEAM EDIT`n")
+        & git -C $origin commit -qam 'team edit to review'
+        $t = Join-Path $root 'shallow'
+        & git clone -q --depth 1 ('file:///' + ($origin -replace '\\', '/')) $t 2>$null
+        Assert ((& git -C $t rev-parse --is-shallow-repository | Out-String).Trim() -ceq 'true') 'calibration: the clone is not shallow'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0 -and $out -match '(?m)^PLAN replace \.claude/commands/review\.md\r?$') "calibration: the update failed or did not replace review.md (exit $LASTEXITCODE): $out"
+        Assert ($flat -match 'edits to framework files could not be checked \(the clone is shallow') "the update did not say a shallow clone's edits could not be checked: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-508 an update says a framework file Git ignores has no commit, not that it holds an uncommitted edit, and still saves it' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b508g-' + [guid]::NewGuid())
+    try {
+        $t = New-B508Install -Root $root
+        $ignored = '.claude/commands/review.md'
+        [IO.File]::AppendAllText((Join-Path $t '.gitignore'), "`n/$ignored`n")
+        & git -C $t rm -q --cached -- $ignored
+        & git -C $t add -- .gitignore
+        & git -C $t commit -qm 'ignore review.md'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0 -and $out -match "(?m)^PLAN replace $([regex]::Escape($ignored))\r?$") "calibration: the update failed or did not replace $ignored (exit $LASTEXITCODE): $out"
+        Assert ($flat -match "NOTICE: '$([regex]::Escape($ignored))' is a framework file Git ignores, so no commit holds it, so the update saves it to ") "no NOTICE says Git ignores $ignored`: $out"
+        Assert ($flat -notmatch 'an edit not yet committed') "the update called an ignored, untouched file an uncommitted edit: $out"
+        Assert ((Get-B508Copies -Target $t) -ccontains '.claude/framework-update-backup/files/_.claude/commands/review.md') "the update kept no copy of the ignored file: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 exit (Write-TestSummary 'UpdateDelivery2.Tests')
