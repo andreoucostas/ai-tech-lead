@@ -161,6 +161,12 @@ passes, .NET runs `dotnet list package --vulnerable --include-transitive`, `--de
 the audit and outdated commands of the package manager one committed lockfile evidences; a repository-evidenced command
 still wins, and build, test, restore, install and anything that writes stay uninferred. The monorepo copy applies each under
 its own gate.
+
+`route-prompt` stops loading the plan gate for an approval or a plain question, and the security overlay for words that only
+contain a sensitive one (guarded, shipped unmeasured; B-491). "yes, go ahead and implement the plan" and "What does the build
+pipeline do?" routed as a feature; in a question an imperative now counts only as the first word or after `please`, `can you`
+or `could you`. `currency`, `token` and `balance` are word-bound: `concurrency`, `CancellationToken` and `balancer` no longer
+match; `tokens`, `balances`, `access_token` and `id_token` still do, `accesstoken` and `tokenizer` no longer do.
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

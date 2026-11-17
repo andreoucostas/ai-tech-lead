@@ -105,6 +105,8 @@
   scan command your repository already records or runs in CI is still used instead, and the agent still does not guess
   install, build or test commands.
 
+- **An approval or a question no longer loads the feature plan gate, and common words no longer load the security rails.** `yes, go ahead and implement the plan` and `What does the build pipeline do?` were routed as a new feature and injected the plan gate into the agent's context; in a question, an action word now counts only as the first word or after `please`, `can you` or `could you`. `concurrency`, `CancellationToken` and `load balancer` no longer match `currency`, `token` and `balance`; `token`, `tokens`, `access_token` and `id_token` still do.
+
 ## 0.98.6 — 2026-11-13
 
 - **The installer says when your framework clone is not at a release tag, and an update's plan shows which files it changes.**

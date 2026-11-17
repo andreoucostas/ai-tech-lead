@@ -205,6 +205,42 @@ It 'route-prompt.ps1 answer-only question -> no rails (both surfaces)' {
     }
 }
 
+# --- An approval or a plain question is not new work; a sensitive word inside another word is not a sensitive surface ---
+It 'route-prompt.ps1 approval opening -> no routed intent (both surfaces)' {
+    foreach ($evt in (New-ClaudePrompt 'yes, go ahead and implement the plan'), (New-CopilotPrompt 'yes, go ahead and implement the plan')) {
+        $r = Invoke-Hook $rpPs $evt
+        Assert ($r.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($r.Out)) "an approval must be a no-op, got exit $($r.Exit) output: $($r.Out)"
+    }
+}
+It 'route-prompt.ps1 question with an imperative word mid-sentence -> no routed intent' {
+    $r = Invoke-Hook $rpPs (New-ClaudePrompt 'What does the build pipeline do?')
+    Assert ($r.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($r.Out)) "a question must be a no-op, got exit $($r.Exit) output: $($r.Out)"
+}
+It 'route-prompt.ps1 concurrency does not match currency -> no security overlay' {
+    $r = Invoke-Hook $rpPs (New-ClaudePrompt 'fix the concurrency bug in the cache')
+    Assert ($r.Exit -eq 0 -and $r.Out -match '## Routed intent: `fix`') 'the fix prompt stopped routing'
+    Assert ($r.Out -notmatch 'Security-sensitive surface detected') 'concurrency got the security overlay'
+}
+It 'route-prompt.ps1 CancellationToken does not match token -> no security overlay' {
+    $r = Invoke-Hook $rpPs (New-ClaudePrompt 'add a CancellationToken to GetOrdersAsync')
+    Assert ($r.Exit -eq 0 -and $r.Out -notmatch 'Security-sensitive surface detected') 'CancellationToken got the security overlay'
+}
+It 'route-prompt.ps1 load balancer does not match balance -> no security overlay' {
+    $r = Invoke-Hook $rpPs (New-ClaudePrompt 'why is the load balancer health check red?')
+    Assert ($r.Exit -eq 0 -and $r.Out -notmatch 'Security-sensitive surface detected') 'load balancer got the security overlay'
+}
+It 'route-prompt.ps1 imperative after can you still routes with the overlay' {
+    $r = Invoke-Hook $rpPs (New-ClaudePrompt 'can you fix the login bug?')
+    Assert ($r.Exit -eq 0 -and $r.Out -match '## Routed intent: `fix`') 'a polite fix request stopped routing'
+    Assert ($r.Out -match 'Security-sensitive surface detected') 'the login prompt lost the security overlay'
+}
+It 'route-prompt.ps1 token, tokens and access_token still get the security overlay' {
+    foreach ($q in 'rotate the refresh token', 'expire the tokens after an hour', 'validate the access_token claim', 'validate the id_token') {
+        $r = Invoke-Hook $rpPs (New-ClaudePrompt $q)
+        Assert ($r.Exit -eq 0 -and $r.Out -match 'Security-sensitive surface detected') "no security overlay for: $q"
+    }
+}
+
 # --- Copilot single-entry composition drains Boy Scout delivery behind the surface gate ---
     It 'route-prompt.ps1 Copilot routing + queue -> one payload, routing first, queue consumed once' {
         $fixture = New-RoutePromptFixture

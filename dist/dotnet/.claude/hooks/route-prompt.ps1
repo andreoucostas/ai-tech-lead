@@ -167,12 +167,16 @@ elseif ($lc -match '(\badd\b|\bimplement\b|\bcreate\b|\bbuild\b|new (feature|end
 # ceremony. Clearing $intent suppresses the rails + plan-gate; the security overlay
 # below still fires if the question touches a sensitive surface.
 $isQuestion = ($lc -match "^\s*(why|what|what'?s|how come|when|where|which|who|is|are|does|do|can|could|would|should)\b") -or ($prompt.TrimEnd() -match '\?$')
-$hasImperative = $lc -match '\b(add|fix|implement|create|build|make|change|update|modify|remove|delete|refactor|rename|extract|write|test|review|clean\s?up|migrate|wire|integrate|introduce)\b'
+# An imperative counts only as the first word or after please / can you / could you; "build" in "what does the build do?" is a noun.
+$hasImperative = $lc -match '^\W*((please|can you|could you)\W+)*(add|fix|implement|create|build|make|change|update|modify|remove|delete|refactor|rename|extract|write|test|review|clean\s?up|migrate|wire|integrate|introduce)\b'
 if ($isQuestion -and -not $hasImperative -and $intent -in @('fix','feature','refactor','test','debt')) { $intent = '' }
+
+# An approval of work already planned ("yes, go ahead and implement the plan") is not a new request.
+if ($lc -match '^\W*(yes|ok|okay|go ahead|proceed|looks good|approved|lgtm)\b') { $intent = '' }
 
 # Security overlay fires IN ADDITION to any workflow intent -- it is not an
 # exclusive intent, so a security-relevant feature still gets the feature rails.
-$sensitive = $lc -match '(payment|balance|ledger|transaction|transfer|\bdebit\b|\bcredit\b|refund|settle|idempotenc|reconcil|\bauth\b|authenticat|authori[sz]|login|password|secret|token|credential|permission|\brole\b|encrypt|decrypt|money|currency|api[ _-]?key|(?<![\w.])40[13]s?\b|forbid|access[ _-]?control|jwt|oauth|openid|\boidc|oidc\b|\bsso\b|saml|hmac|\bmfa|mfa\b|2fa\b|two[ _-]?factor)'
+$sensitive = $lc -match '(payment|(?<![a-z])balances?(?![a-z])|ledger|transaction|transfer|\bdebit\b|\bcredit\b|refund|settle|idempotenc|reconcil|\bauth\b|authenticat|authori[sz]|login|password|secret|(?<![a-z])tokens?(?![a-z])|credential|permission|\brole\b|encrypt|decrypt|money|(?<![a-z])currenc(?:y|ies)(?![a-z])|api[ _-]?key|(?<![\w.])40[13]s?\b|forbid|access[ _-]?control|jwt|oauth|openid|\boidc|oidc\b|\bsso\b|saml|hmac|\bmfa|mfa\b|2fa\b|two[ _-]?factor)'
 
 if ([string]::IsNullOrEmpty($intent) -and -not $sensitive -and $isClaude) { exit 0 }
 
