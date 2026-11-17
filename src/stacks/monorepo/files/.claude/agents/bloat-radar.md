@@ -22,7 +22,7 @@ For each added or modified file, evaluate:
 
 **2. Shallow wrappers**
 
-- **.NET:** A new public method whose body is a single `return _other.Something(args);` or `await _other.SomethingAsync(args, ct);` with no transformation. Flag as `high`. A new class whose every method delegates to a single injected dependency. Flag the class as `high`.
+- **.NET:** A new public method whose body is a single `return _other.Something(args);` or `await _other.SomethingAsync(args, ct);` with no transformation. Flag as `high`. A new class whose every method delegates to a single injected dependency. Flag the class as `high`. A controller or endpoint that only delegates to an application service is the expected shape, not a finding; a wrapper is a finding only when it adds a layer with one consumer and no behaviour.
 - **Angular:** A new service method whose body is a single `return this.http.<verb><T>(url, ...)` with no transformation, error handling, or composition. Flag as `high` — one new service per resource is enough. A new component that wraps a single child component and forwards inputs/outputs without adding behavior. Flag as `high`. A new service whose every method delegates to a single injected service. Flag the class as `high`.
 
 **3. Parallel implementations**
@@ -33,7 +33,7 @@ For each added or modified file, evaluate:
 **4. Comment debris**
 - Public methods with multi-line XML doc / JSDoc that restates the method name and parameter names/types. Flag as `low`.
 - Comment lines that paraphrase the next line of code (`// increment counter` above `counter++`). Flag the file as `low` if it has 3+.
-- Commented-out code blocks (more than 2 contiguous lines). Flag as `medium` — version control already preserves this.
+- Commented-out code blocks (more than 1 contiguous line). Flag as `medium` — version control already preserves this.
 
 **5. Defensive over-coding**
 
@@ -45,15 +45,12 @@ For each added or modified file, evaluate:
 - **.NET:** New tests asserting only that a property returns the value the constructor set, or that a method invokes a mocked dependency exactly once with no other behavior. Flag as `medium`. Test method names matching the implementation method name 1:1 (e.g., `Constructor_SetsId`). Flag as `low`.
 - **Angular:** New tests asserting only that an `@Input`, `input()` or `model()` value is held in a property, or that a method invokes a mocked HttpClient exactly once with no behavior. Flag as `medium`. New tests that mirror Angular framework behavior (e.g., that `Router.navigate` was called when the test itself stubs `Router`). Flag as `medium`.
 
-**7. Net-LOC sanity**
-- If the total net LOC added across in-scope non-test files is more than ~3× the count of changed non-test files (heuristic), flag as `medium`: "high net-LOC density, verify scope". Skip this check for `/feature` workflows where /design has set a budget.
-
-**8. Re-export / barrel drift**
+**7. Re-export / barrel drift**
 
 - **.NET:** New `using` re-exports in `GlobalUsings.cs` for symbols only used in one file. Flag as `low`. Public surface added (`public` modifier on previously `internal` types) without a documented external consumer. Flag as `medium`.
 - **Angular:** New entries in an `index.ts` barrel for symbols used only in adjacent files within the same feature folder. Flag as `low`. New `export` on a previously file-local symbol without a documented external consumer. Flag as `medium`.
 
-**9. Template bloat** (Angular)
+**8. Template bloat** (Angular)
 - Complex expression in a template (multiple chained operators, arithmetic, conditional logic) that should move to a `computed()`, else a pipe, else a component member. Flag the template as `medium`.
 - A static `style="..."` attribute in a template when component styles already exist. Flag as `low`; leave `[style.x]` and `[class.x]` bindings alone.
 

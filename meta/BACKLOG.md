@@ -20,7 +20,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 3 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review, where B-514 saw it followed as often as an approved skill; guarded |
 | 4 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
 | 5 | B-425 | A plain-words review runs no reviewer: on Copilot CLI it loads the `review` skill (5 of 6, 2026-11-13) but skips its dispatch step (0 of 6), with or without the candidate; blocked on B-416; the Claude Code leg is about 3 USD |
-| 6 | B-497 | Audit, read: `/review` has no merge, de-duplication or verdict step, and two reviewers give opposite advice on delegation; ordinary |
+| 6 | B-497 | Merge the three Haiku reviewers into one pass, measured with B-467's 12-defect harness (the `/review` merge, verdict and delegation parts shipped 2026-11-17); guarded |
 | 7 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
 | 8 | B-508 | Where the recent data-loss defects sit has no unit tests; guarded, step 4 |
 | 9 | B-511 | Deletions: the release time budget that only raises its ceiling, and closed eval studies; guarded |
@@ -147,9 +147,8 @@ Same file (2026-11-14 architecture review): `upgrade-checklist.md:111` says a no
 ### B-497 · `/review` hands back six reviewers' findings with no merge, de-duplication or verdict rule
 **Filed against:** v0.98.4 (2026-11-10)
 **Priority:** P3 · **Effort:** S to M · **Invariants:** #1 #7
-**Status:** Open; maintainer-requested external audit (a sub-session's reading, noise predicted, not measured). `review.md` has no thresholds or de-duplication where `security-gate.md` has thresholds; `bloat-radar` flags a single-delegation method while `solid-check` flags a controller action that does more than delegate; commented-out code has two thresholds.
-Candidate: a merge on `file:line`, one severity scale and one verdict line that names the reviewers which returned (2026-11-15 guidance review: B-467's runs lost reviewers to a usage limit and to under-dispatch, and `review.md` has a wait rule but none for a reviewer that errors); drop the lines-per-file heuristic. Ordinary unless a stack file changes. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
-Widened 2026-11-14 (architecture review, maintainer go-ahead): merge the three Haiku reviewers (convention-check, bloat-radar, debt-radar; B-427) into one pass, measured with B-467's 12-defect harness, and do the de-duplication there; align the commented-out-code threshold (`AGENTS.md` more than 1 line, `bloat-radar.md:34` more than 2).
+**Status:** Open. Shipped 2026-11-17 for 0.99.0: `/review` merges findings on one `file:line`, maps every reviewer's scale to blocker, should-fix or note, ends with one verdict line naming the blocker count and the reviewers returned or missing, and names a reviewer that errors as missing; `bloat-radar` and `solid-check` agree on delegation, the lines-per-file heuristic is gone, and the commented-out-code threshold is one line everywhere.
+Remaining: merge the three Haiku reviewers (convention-check, bloat-radar, debt-radar; B-427) into one pass, measured with B-467's 12-defect harness, and do the de-duplication there. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
 ### B-499 · Credential forms the write guard still does not read after B-487
 **Filed against:** v0.98.4 (2026-11-10)
 **Priority:** P3 · **Effort:** M · **Invariants:** #3 #5 #7

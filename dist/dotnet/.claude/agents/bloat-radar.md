@@ -22,7 +22,7 @@ For each added or modified file, evaluate:
 
 **2. Shallow wrappers**
 - A new public method whose body is a single `return _other.Something(args);` or `await _other.SomethingAsync(args, ct);` with no transformation. Flag as `high`.
-- A new class whose every method delegates to a single injected dependency. Flag the class as `high`.
+- A new class whose every method delegates to a single injected dependency. Flag the class as `high`. A controller or endpoint that only delegates to an application service is the expected shape, not a finding; a wrapper is a finding only when it adds a layer with one consumer and no behaviour.
 
 **3. Parallel implementations**
 - A new method whose name and signature closely match an existing method in an adjacent file (`Helpers.cs`, `Util.cs`, `Extensions.cs`). Use `Grep` for the method name across the project. Flag duplicates as `medium`.
@@ -31,7 +31,7 @@ For each added or modified file, evaluate:
 **4. Comment debris**
 - Public methods with multi-line XML doc that restates the method name and parameter names. Flag as `low`.
 - Comment lines that paraphrase the next line of code (`// increment counter` above `counter++`). Flag the file as `low` if it has 3+.
-- Commented-out code blocks (more than 2 contiguous lines). Flag as `medium` — version control already preserves this.
+- Commented-out code blocks (more than 1 contiguous line). Flag as `medium` — version control already preserves this.
 
 **5. Defensive over-coding**
 - New `try/catch` that catches `Exception` and either re-throws unchanged or logs and swallows. Flag as `medium`.
@@ -42,10 +42,7 @@ For each added or modified file, evaluate:
 - New tests asserting only that a property returns the value the constructor set, or that a method invokes a mocked dependency exactly once with no other behavior. Flag as `medium`.
 - Test method names matching the implementation method name 1:1 (e.g., `Constructor_SetsId`). Flag as `low`.
 
-**7. Net-LOC sanity**
-- If the total net LOC added across in-scope files is more than ~3× the count of changed *non-test* files (heuristic), flag as `medium`: "high net-LOC density, verify scope". Skip this check for `/feature` workflows where /design has set a budget.
-
-**8. Re-export drift**
+**7. Re-export drift**
 - New `using` re-exports in `GlobalUsings.cs` for symbols only used in one file. Flag as `low`.
 - Public surface added (`public` modifier on previously `internal` types) without a documented external consumer. Flag as `medium`.
 

@@ -308,8 +308,8 @@
       "ondemand-info": [
         {
           "path": ".claude/agents/bloat-radar.md#body",
-          "chars": 4972,
-          "tok": 1243
+          "chars": 4893,
+          "tok": 1223
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
@@ -388,8 +388,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 10815,
-          "tok": 2704
+          "chars": 11497,
+          "tok": 2874
         },
         {
           "path": ".claude/commands/security-gate.md#body",
@@ -732,8 +732,8 @@
       "ondemand-info": [
         {
           "path": ".claude/agents/bloat-radar.md#body",
-          "chars": 5588,
-          "tok": 1397
+          "chars": 5340,
+          "tok": 1335
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
@@ -812,8 +812,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 10819,
-          "tok": 2705
+          "chars": 11501,
+          "tok": 2875
         },
         {
           "path": ".claude/commands/security-gate.md#body",
@@ -1156,8 +1156,8 @@
       "ondemand-info": [
         {
           "path": ".claude/agents/bloat-radar.md#body",
-          "chars": 7758,
-          "tok": 1940
+          "chars": 7672,
+          "tok": 1918
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#body",
@@ -1236,8 +1236,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 10884,
-          "tok": 2721
+          "chars": 11566,
+          "tok": 2892
         },
         {
           "path": ".claude/commands/security-gate.md#body",

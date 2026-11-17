@@ -70,7 +70,7 @@ and refuses a Claude Code alias. This saves cost only: Step 3 weighs every findi
 - `security-auditor` — dispatch only when the frozen selection makes its repository-evidenced
   security review applicable; give it the same bundle and retain its restricted finding rules.
 
-Wait for every dispatched participant to return structured output. Use those findings as the spine of the review — do not redo the scans yourself.
+Wait for every dispatched participant to return structured output. Use those findings as the spine of the review — do not redo the scans yourself. A participant that errors or never returns is **missing**: name it in the verdict line, do not redo its scan, and do not APPROVE a change its scope covers without saying that coverage is missing.
 
 ### Step 2 — Verify applicable evidence-backed checks yourself
 Derive exact **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands from `AGENTS.md`, committed CI, scripts, manifests, and configuration. Run only commands supported by that evidence for the reviewed area; a .NET profile establishes only profile applicability, so use any command, project, configuration, runner, or flags only when that exact full form is explicitly recorded in the evidence. Do not trust that the code being reviewed already passes. Record unavailable verification categories as **not available** and applicable-command failures as high-severity issues.
@@ -108,6 +108,11 @@ or any content differs, report `CANNOT EXAMINE` and stop rather than approving a
 only the two private bundles and private path-list file after review; never delete a caller-supplied
 bundle.
 
+Then merge every reviewer's findings and your own into one Issues table. Rows on the same `file:line`
+become one row that names every reviewer who raised it and keeps the highest severity. Map each
+reviewer's own scale onto one: `critical` and `high` become `blocker`, `medium` becomes `should-fix`,
+`low` becomes `note`. Any `blocker` means REQUEST CHANGES.
+
 If any required manifest, captured byte, scanner result, or equality comparison cannot be read or
 verified, return `CANNOT EXAMINE` with the reason and no approval/request-changes verdict.
 
@@ -116,11 +121,11 @@ verified, return `CANNOT EXAMINE` with the reason and no approval/request-change
 ```
 ## Review: [scope]
 
-### Verdict: APPROVE | REQUEST CHANGES
+### Verdict: APPROVE | REQUEST CHANGES — <n> blockers; reviewers returned: <names>; missing: <names or none>
 
 ### Issues
-| # | Severity | File:line | Issue | Suggestion |
-|---|----------|-----------|-------|------------|
+| # | Severity (blocker / should-fix / note) | File:line | Raised by | Issue | Suggestion |
+|---|----------|-----------|-----------|-------|------------|
 
 ### Test Quality & Coverage
 - Would-fail-if-broken: <from test-critic — N would catch a regression, N would pass against broken code>
