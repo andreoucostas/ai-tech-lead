@@ -229,10 +229,11 @@ When writing or changing a row, keep the Status cell as bare text with no Markdo
 and require `Area / file(s)` to include at least one repository-root-relative path that resolves.
 
 For a credential committed to the repository (a key, token, password, connection string holding a secret, or private
-key in tracked content), `Area / file(s)` names only the **containing directory**, never the file or line, and the
-Hazard cell names the kind of credential and the action (rotate it, remove it from history, load it from
+key in tracked content), `Area / file(s)` names only the **containing directory** with a trailing `/` (`config/`, `src/Api/`), never the file or line,
+and the Hazard cell names the kind of credential and the action (rotate it, remove it from history, load it from
 configuration), never the value, file, line or any fragment of it. Give the exact location to the developer in chat
-and in the question only; never write it to a file.
+and in the question only; never write it to a file. A credential in a file at the repository root gets no row: give
+it in chat and in the question only, and list it in the final report as not recorded in `Known Hazard Areas`.
 
 **Do not upgrade an `[UNVERIFIED]` row yourself** — only the developer can, and only by answering its question. Never re-date a row the developer did not answer: `Reviewed` is the day the row was added, or a person last confirmed or dismissed it, and a fresh date on a row nobody answered manufactures precisely the false confidence this table exists to prevent. Keep the table tight (≤ ~12 rows); deeper items belong in TECH_DEBT.md.
 

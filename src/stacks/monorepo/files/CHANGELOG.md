@@ -121,6 +121,7 @@
 - **`/bootstrap` and `/rebootstrap` no longer write where a committed credential sits.** The hazard row for a key, token,
   password or connection string found in the repository names only its folder, with the kind of credential and the action
   (rotate it, remove it from history, load it from configuration); the file, line and value are told to you in chat only.
+  A credential in a file at the repository root gets no row, only the chat message and the run's final report.
 
 ## 0.98.6 — 2026-11-13
 
