@@ -160,8 +160,8 @@ Guarded, step 4.
 ### B-512 · `presentation/` and a wrapper SHA-256 bullet are still kept as duplicates
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** S · **Invariants:** #1
-**Status:** Open; `adopt.md` and `playbook.md` are single core files with stack markers, dist byte-identical, shipped 2026-11-17 (WSD-126 retired the marker cap); `bootstrap.md` stays as three copies.
-Remaining: one copy of `presentation/` (built into all three dists, never installed) and one SHA-256 bullet fewer in the bloat-radar and test-critic Copilot wrappers. Guarded (AGENTS.md).
+**Status:** Open; `adopt.md` and `playbook.md` are single core files with stack markers, dist byte-identical, shipped 2026-11-17 (WSD-126 retired the marker cap); `bootstrap.md` stays as three copies. Attack round 1: a missing monorepo snippet now fails validate-dist.
+Remaining: one copy of `presentation/` (built into all three dists, never installed) and one SHA-256 bullet fewer in the bloat-radar and test-critic Copilot wrappers. Guarded (AGENTS.md). Composer gaps the attack found, pre-existing: a snippet's trailing blank lines pass validate; a stack line typed into the core file ships to every stack; a marker only one stack supplies drops silently from the others; a restored `files/` whole file silently wins over the core file.
 ### B-516 · A draft skill becomes active only through two manual edits, and is discoverable before anyone reviews it
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #7

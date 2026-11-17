@@ -10,7 +10,8 @@
 #   7. every script a shipped *.md tells someone to RUN and every rendered relative inline link resolves
 #   8. exactly 12 PowerShell hook registrations resolve with case-exact paths and required settings,
 #      on the exact event map (event, matcher, script order, -ExecutionPolicy Bypass, timeout floors)
-#   9. every core @stack marker expands from a non-empty stack snippet into the composed file
+#   9. every core @stack marker expands from a non-empty stack snippet into the composed file; a
+#      monorepo marker may not fall back to dotnet+angular when its file has monorepo snippets
 #  10. section-path citations name a heading that exists in the cited shipped file
 #  11. CLAUDE.md imports exactly AGENTS.md and the shipped framework-rules carrier, and no other
 #      always-loaded instruction file ships
@@ -267,6 +268,16 @@ foreach ($coreFile in (Get-ChildItem -Recurse -File -Force -LiteralPath $coreRoo
                 foreach ($fallbackStack in @('dotnet','angular')) {
                     $candidate = Join-Path $RepoRoot (("src/stacks/{0}/snippets/{1}/{2}" -f $fallbackStack, $coreRel, $name) -replace '/', [IO.Path]::DirectorySeparatorChar)
                     if (Test-Path -LiteralPath $candidate -PathType Leaf) { $snippetPaths += $candidate }
+                }
+                # A core file whose monorepo stack authors other snippets has opted out of the
+                # dotnet+angular fallback; concatenating both stacks' text for one of its markers
+                # is a deleted monorepo snippet, not a design (it shipped two contradictory
+                # paragraphs). One-stack fallbacks stay allowed: they cannot contradict.
+                $monoDir = Join-Path $RepoRoot (("src/stacks/monorepo/snippets/{0}" -f $coreRel) -replace '/', [IO.Path]::DirectorySeparatorChar)
+                if ($snippetPaths.Count -eq 2 -and (Test-Path -LiteralPath $monoDir -PathType Container) -and
+                    @(Get-ChildItem -LiteralPath $monoDir -File -Force).Count -gt 0) {
+                    $expansionProblems += "monorepo : $coreRel @stack:$name has no src/stacks/monorepo/snippets/$coreRel/$name although the monorepo stack supplies other snippets for this file; the build would concatenate the dotnet and angular snippets"
+                    continue
                 }
             }
         } else {

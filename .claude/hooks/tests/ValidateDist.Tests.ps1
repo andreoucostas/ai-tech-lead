@@ -549,6 +549,35 @@ try {
         Assert ($text.Contains('[marker-expansion] dotnet : src/stacks/dotnet/snippets/AGENTS.md/zz-orphan-snippet no core marker consumes')) "orphan snippet not named with its stack and path: $text"
         Assert ($text.Contains('[marker-expansion] angular : src/stacks/angular/snippets/no-such-core-file.md/zz-orphan-too no core marker consumes')) "snippet of a core file that does not exist not named: $text"
     }
+    It 'case 20d: a monorepo marker missing its snippet in a file with other monorepo snippets fails; a fallback-only file passes' {
+        $isolated = New-ValidatorRepoCopy
+        Copy-Item -LiteralPath (Join-Path $repo 'dist\monorepo') -Destination (Join-Path $isolated 'dist') -Recurse
+        $dist = Join-Path $isolated 'dist'
+        $put = { param($rel, $text) $p = Join-Path $isolated $rel; [void][IO.Directory]::CreateDirectory((Split-Path -Parent $p)); [IO.File]::WriteAllText($p, $text) }
+        # Guard: no monorepo snippet at all, so the dotnet+angular concatenation is the intended text.
+        & $put 'src\core\zz-fallback.md' "# F`n<!-- @stack:zz-c -->`n"
+        & $put 'src\stacks\dotnet\snippets\zz-fallback.md\zz-c' "dotnet c`n"
+        & $put 'src\stacks\angular\snippets\zz-fallback.md\zz-c' "angular c`n"
+        & $put 'dist\monorepo\zz-fallback.md' "# F`ndotnet c`nangular c`n"
+        # Defect: monorepo authors zz-a but its zz-b snippet is missing, so zz-b concatenates both stacks.
+        & $put 'src\core\zz-opted.md' "# O`n<!-- @stack:zz-a -->`n<!-- @stack:zz-b -->`n"
+        foreach ($s in 'dotnet','angular','monorepo') { & $put "src\stacks\$s\snippets\zz-opted.md\zz-a" "$s a`n" }
+        foreach ($s in 'dotnet','angular') { & $put "src\stacks\$s\snippets\zz-opted.md\zz-b" "$s b`n" }
+        & $put 'dist\monorepo\zz-opted.md' "# O`nmonorepo a`ndotnet b`nangular b`n"
+        $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $isolated 'scripts\validate-dist.ps1') monorepo $dist -Check marker-expansion 2>&1
+        $code = $LASTEXITCODE
+        $text = $out -join "`n"
+        Write-Host "[ValidateDist powershell missing-monorepo-snippet] EXIT=$code"; Write-Host $text
+        Assert ($code -ne 0) 'a monorepo marker missing its snippet in an opted-in file should be red'
+        Assert ($text.Contains('[marker-expansion] monorepo : zz-opted.md @stack:zz-b has no src/stacks/monorepo/snippets/zz-opted.md/zz-b')) "missing monorepo snippet not named with file and marker: $text"
+        Assert (-not $text.Contains('zz-fallback.md')) "the fallback-only file was wrongly reported: $text"
+        Assert (-not $text.Contains('@stack:zz-a ')) "the authored monorepo marker was wrongly reported: $text"
+        & $put 'src\stacks\monorepo\snippets\zz-opted.md\zz-b' "dotnet b`nangular b`n"
+        $out = & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File (Join-Path $isolated 'scripts\validate-dist.ps1') monorepo $dist -Check marker-expansion 2>&1
+        $code = $LASTEXITCODE
+        Write-Host "[ValidateDist powershell monorepo-snippets-complete] EXIT=$code"
+        Assert ($code -eq 0) "with every monorepo snippet authored and a fallback-only file, marker expansion should pass: $($out -join "`n")"
+    }
     It 'case 48: a shipped file whose name holds brackets is scanned by no-meta-leak' {
         Assert-Case 'bracket-name-leak' {
             param($d)
