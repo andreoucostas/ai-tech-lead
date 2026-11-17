@@ -35,6 +35,7 @@
     { "path": ".claude/commands/security-gate.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/commands/test.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/framework-version.json", "ownership": "framework-owned/overwritten" },
+    { "path": ".claude/guard-allowlist.txt", "ownership": "consumer-owned/protected" },
     { "path": ".claude/hooks/audit-trail.ps1", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/hooks/boy-scout-check.ps1", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/hooks/guard.ps1", "ownership": "framework-owned/overwritten" },

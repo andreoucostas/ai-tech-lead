@@ -461,4 +461,111 @@ It 'guard: a test file under a repository folder with a non-ASCII name is exempt
     } finally { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# --- The team's allowlist (.claude/guard-allowlist.txt) waives the secret checks for the paths it lists ---
+# Label text and samples that only look like credentials are written to listed paths; every other check still runs
+# there, the waiver reaches no path the list does not match, and the agent cannot write the list itself.
+$allowlistText = "# team-reviewed`r`nsrc/assets/i18n/*.json`r`n./src/app/shared/labels.ts`r`n/src/styles/**`r`ndocs/guides/`r`n"
+$i18nText = '{"login":{"password":"Enter your password","title":"Sign in"}}'
+$labelText = "export const labels = {`n  password: 'Password',`n  user: 'User name'`n};`n"
+$cssText = ".sk-navigation-drawer-expanded-panel { display: block; }`n"
+function New-AllowlistedRoot([ref]$Base, [string]$Text) {
+    $Base.Value = Join-Path ([IO.Path]::GetTempPath()) ('guard-allow-' + [guid]::NewGuid().ToString('N'))
+    $root = Join-Path $Base.Value 'shop'
+    $hook = Copy-HookInto $guardPs $root
+    if ($null -ne $Text) { [IO.File]::WriteAllText((Join-Path $root '.claude\guard-allowlist.txt'), $Text, (New-Object System.Text.UTF8Encoding($false))) }
+    return $hook
+}
+function New-SurfaceEvent([string]$Surface, [string]$File, [string]$Text) {
+    if ($Surface -eq 'Claude') { New-ClaudeEvent $File $Text } else { New-CopilotEvent $File $Text }
+}
+
+It 'guard: a path listed in the team allowlist is not checked for secrets (i18n text, a label map, a css class)' {
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) $allowlistText
+        $root = Join-Path $base 'shop'
+        $writes = @(
+            @{ f = "$root\src\assets\i18n\en.json";      t = $i18nText;  n = 'an i18n file matched by *' }
+            @{ f = 'src/assets/i18n/de.json';             t = $i18nText;  n = 'a relative i18n path' }
+            @{ f = "$root\src\app\shared\labels.ts";      t = $labelText; n = 'a label map listed with ./' }
+            @{ f = "$root\src\styles\theme\drawer.css";   t = $cssText;   n = 'a css file matched by /src/styles/**' }
+            @{ f = "$root\docs\guides\setup.md";         t = 'Set `password = "hunter2hunter2"` in your local settings.'; n = 'a sample under a listed folder/' }
+        )
+        foreach ($write in $writes) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                Assert-Decision (Invoke-Hook $hook (New-SurfaceEvent $surface $write.f $write.t)) 'ALLOW' "$($write.n) ($surface)"
+            }
+        }
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+It 'guard: the allowlist waives no path it does not list, and a missing allowlist waives nothing' {
+    $base = $null; $bare = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) $allowlistText
+        $root = Join-Path $base 'shop'
+        $bareHook = New-AllowlistedRoot ([ref]$bare) $null
+        $bareRoot = Join-Path $bare 'shop'
+        $writes = @(
+            @{ h = $hook;     f = "$root\src\app\login\labels.ts";            t = $labelText; n = 'an unlisted label map' }
+            @{ h = $hook;     f = "$root\src\assets\i18n\legacy\en.json";     t = $i18nText;  n = 'a file one folder below a * entry' }
+            @{ h = $hook;     f = "$root\vendor\src\assets\i18n\en.json";     t = $i18nText;  n = 'a path that only ends like a listed one' }
+            @{ h = $hook;     f = "$root\src\assets\i18n\..\..\app\Auth.cs";  t = 'var password = "hunter2hunter2";'; n = 'a .. out of a listed folder' }
+            @{ h = $bareHook; f = "$bareRoot\src\assets\i18n\en.json";        t = $i18nText;  n = 'a repository without an allowlist' }
+        )
+        foreach ($write in $writes) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                $expected = if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }
+                Assert-Decision (Invoke-Hook $write.h (New-SurfaceEvent $surface $write.f $write.t)) $expected "$($write.n) ($surface)"
+            }
+        }
+    } finally {
+        foreach ($b in $base, $bare) { if ($b) { Remove-Item -LiteralPath $b -Recurse -Force -ErrorAction SilentlyContinue } }
+    }
+}
+
+It 'guard: a path listed in the team allowlist is still checked for suppressions and skipped tests' {
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) "src/**`r`n"
+        $root = Join-Path $base 'shop'
+        $writes = @(
+            @{ f = "$root\src\Auth.cs";            t = "#pragma warning disable CS0618`nvar password = `"hunter2hunter2`";"; r = 'pragma warning disable' }
+            @{ f = "$root\src\app\labels.ts";      t = "// @ts-ignore`nexport const password = 'Password';"; r = '@ts-ignore' }
+            @{ f = "$root\src\app\login.spec.ts";  t = "it.only('signs in', () => { login('hunter2hunter2'); });"; r = 'focused test' }
+        )
+        foreach ($write in $writes) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                $result = Invoke-Hook $hook (New-SurfaceEvent $surface $write.f $write.t)
+                Assert-Decision $result $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "$($write.f) ($surface)"
+                $said = if ($surface -eq 'Claude') { $result.Err } else { $result.Out }
+                Assert ($said.Contains($write.r)) "$($write.f) ($surface): expected the reason '$($write.r)', got: $said"
+            }
+        }
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+It 'guard: the agent cannot write the team allowlist itself, by Write, Edit or a patch' {
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) $allowlistText
+        $root = Join-Path $base 'shop'
+        $list = "$root\.claude\guard-allowlist.txt"
+        $events = @(
+            @{ s = 'Claude';  e = (New-ClaudeEvent $list "src/**`n");                                  n = 'a Claude Write' }
+            @{ s = 'Copilot'; e = (New-CopilotEvent '.claude/guard-allowlist.txt' "src/**`n");          n = 'a Copilot create' }
+            @{ s = 'Claude';  e = (New-ClaudeEditEvent $list 'docs/guides/' "docs/guides/`nsrc/**");  n = 'a Claude Edit' }
+            @{ s = 'Copilot'; e = (New-CopilotEditEvent $list 'docs/guides/' "docs/guides/`nsrc/**"); n = 'a Copilot edit' }
+            @{ s = 'Claude';  e = (New-ClaudeEvent "$root\.claude\GUARD-~1.TXT" "src/**`n");          n = 'a Claude Write to the 8.3 short name' }
+            @{ s = 'Copilot'; e = (New-PatchEvent 'hooks.json' "*** Begin Patch`n*** Update File: src/list.txt`n*** Move to: .claude/guard-allowlist.txt`n*** End Patch`n"); n = 'an apply_patch move onto the allowlist' }
+        )
+        foreach ($case in $events) {
+            $result = Invoke-Hook $hook $case.e
+            Assert-Decision $result $(if ($case.s -eq 'Claude') { 'BLOCK' } else { 'DENY' }) $case.n
+            $said = if ($case.s -eq 'Claude') { $result.Err } else { $result.Out }
+            Assert ($said.Contains('reviewed in a pull request')) "$($case.n): expected the team-review reason, got: $said"
+        }
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
 exit (Write-TestSummary 'Guard.Tests (PowerShell)')

@@ -11,7 +11,7 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124, WSD-125): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work ranked after B-506 and B-507 (now ranks 4 and 5), eight findings shut, and the release review's B-521 and B-522; B-509 and B-498 done the same day, B-507 and B-513 on 2026-11-15, B-466 moved after B-515 (maintainer, in chat) and done the same day, B-514 done the same day, B-515 and B-517 closed the same day (maintainer, in chat), B-523 closed the same day after two NO-SHIP measurements (maintainer, in chat), and B-523 filed and placed after B-466 by the coordinator (the maintainer set no rank); B-521 closed 2026-11-16; B-524 to B-527 filed 2026-11-15 from the maintainer-requested review against current Anthropic guidance and placed last by the reviewing session (the maintainer set no rank); B-528 filed 2026-11-16 from field report #14 and put at rank 1 the same day (maintainer, in chat), the rows below one rank down; B-510 done 2026-11-16; B-469 done 2026-11-16; B-493 done 2026-11-16; B-491 done 2026-11-17; B-484 done 2026-11-17; B-496 done 2026-11-17; B-511 done 2026-11-17; B-529 filed 2026-11-17 by the maintainer in chat, placed last by the coordinator (the maintainer set no rank); earlier ranking history is in `git log -p meta/BACKLOG.md`
+## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124, WSD-125): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work ranked after B-506 and B-507 (now ranks 4 and 5), eight findings shut, and the release review's B-521 and B-522; B-509 and B-498 done the same day, B-507 and B-513 on 2026-11-15, B-466 moved after B-515 (maintainer, in chat) and done the same day, B-514 done the same day, B-515 and B-517 closed the same day (maintainer, in chat), B-523 closed the same day after two NO-SHIP measurements (maintainer, in chat), and B-523 filed and placed after B-466 by the coordinator (the maintainer set no rank); B-521 closed 2026-11-16; B-524 to B-527 filed 2026-11-15 from the maintainer-requested review against current Anthropic guidance and placed last by the reviewing session (the maintainer set no rank); B-528 filed 2026-11-16 from field report #14 and put at rank 1 the same day (maintainer, in chat), the rows below one rank down; B-510 done 2026-11-16; B-469 done 2026-11-16; B-493 done 2026-11-16; B-491 done 2026-11-17; B-484 done 2026-11-17; B-496 done 2026-11-17; B-511 done 2026-11-17; B-489 done 2026-11-17; B-529 filed 2026-11-17 by the maintainer in chat, placed last by the coordinator (the maintainer set no rank); earlier ranking history is in `git log -p meta/BACKLOG.md`
 
 | Rank | Item | Why here |
 |---|---|---|
@@ -30,20 +30,19 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 13 | B-468 | Measured, not field-raised: 2 of 26 plain bug fixes skipped the regression test, wrongly saying a SQLite test needs a new package; the agent said the fix was untested |
 | 14 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
 | 15 | B-499 | Secret-leak class, B-487's step-4 attacks: the guard still passes an auto-property initializer, `NetworkCredential`, URL userinfo and other credential forms; guarded, step 4 |
-| 16 | B-489 | Audit, reproduced: the guard blocks UI labels, vault references and documentation samples with no waiver; the maintainer chose a reviewed path allowlist 2026-11-14, its WSD written with the change; guarded, step 4 |
-| 17 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations (the missing-`pwsh` exit 0 and the doctor's interpreter row are fixed for 0.99.0); needs the maintainer's decision first |
-| 18 | B-502 | Data-loss class, pre-existing, B-480's scope check (run): a disabled skill's exemplar line survives the update that disables it and is dropped by the next one; guarded, step 4 |
-| 19 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only (a shell on Claude Code, every tool on Copilot); needs the maintainer's decision first |
-| 20 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
-| 21 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
-| 22 | B-520 | Seven small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
-| 23 | B-522 | Release review: nothing tracks how long a release takes or how often a defect escapes; guarded, S |
-| 24 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
-| 25 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
-| 26 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
-| 27 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
-| 28 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
-| 29 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
+| 16 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations (the missing-`pwsh` exit 0 and the doctor's interpreter row are fixed for 0.99.0); needs the maintainer's decision first |
+| 17 | B-502 | Data-loss class, pre-existing, B-480's scope check (run): a disabled skill's exemplar line survives the update that disables it and is dropped by the next one; guarded, step 4 |
+| 18 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only (a shell on Claude Code, every tool on Copilot); needs the maintainer's decision first |
+| 19 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
+| 20 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
+| 21 | B-520 | Seven small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
+| 22 | B-522 | Release review: nothing tracks how long a release takes or how often a defect escapes; guarded, S |
+| 23 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
+| 24 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
+| 25 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
+| 26 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
+| 27 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
+| 28 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
 
 ## Open entries
 
@@ -119,12 +118,6 @@ Candidate: `release.ps1` prints the four from `git` and `gh` when a release ends
 **Status:** Open; found by the fresh-session review of WSD-122's design and re-run (executed on scratch fixtures with the shipped check). It compares file write times only: deleting a mapped table's SQL leaves `WAREHOUSE_MAP current`, exit 0 (a rename too, in the review's run), and one row appended to a stale map with no full-pass line turned it `current` (exit 1 to 0), which the scoped pass can still do. `add-warehouse-load` step 1 prefers a `current` map; its "confirm the entities still exist" is the only backstop.
 The same clock reads `stale` in a fresh clone of an unchanged commit (executed), so the answer depends on who cloned when.
 Candidate: the check prints a digest of the warehouse artifacts' paths and contents, a full pass copies it into the stamp line, a map is current when the digests match and stale without one; red cases: the three runs above. e003c8c8 rejected parsing the Coverage line, and the review's runs showed git commit time wrong in both directions.
-### B-489 · The guard blocks UI labels, vault references and documentation samples, with no waiver
-**Filed against:** v0.98.4 (2026-11-10)
-**Priority:** P2 · **Effort:** S to change · **Invariants:** #3 #5 #7
-**Status:** Open; maintainer-requested external audit. Reproduced: an i18n JSON file whose `password` key holds the sentence *Enter your password* exits 2. A sub-session's runs: a label map, a Key Vault reference, a CSS class starting `sk-`, a Cypress login, a `docs/*.md` sample.
-Option A requires a secret-shaped value (lets through a passphrase with spaces); Option B is a PR-reviewed allowlist. A relaxation in the secret-leak class needs a WSD. Guarded, step 4. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
-Decided 2026-11-14 (maintainer, in chat: "go ahead with all of the findings this far"): Option B, a PR-reviewed path allowlist, its WSD written with the change. Same change: root `README.md` calls a required CI build with secret scanning "the gate" while `ci-integration.md` (the "Recommended alongside" section) says secret scanning is "not part of the required build"; make them agree.
 ### B-490 · The agent can rewrite the hook registrations
 **Filed against:** v0.98.4 (2026-11-10)
 **Priority:** P2 · **Effort:** S to M · **Invariants:** #3 #5

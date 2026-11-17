@@ -27,6 +27,8 @@
 # matches a closer pattern (a string included) counting as a closer, and, because the key runs to the end of the
 # line, an edit to the code after a directive on the same line counting as a new directive. Old text the guard
 # cannot get counts as none, so the write is read as it always was.
+# Team waiver: a path listed in .claude/guard-allowlist.txt skips the secret and credential checks only; the agent's
+# own writes to that list are blocked (see Get-AllowlistPatterns).
 $ErrorActionPreference = 'SilentlyContinue'
 # Case-insensitive patterns fold case culture-invariantly ($ci) and string comparisons are ordinal:
 # under tr-TR the current culture folds 'I' to a dotless i (U+0131), so a culture-following (?i)
@@ -173,8 +175,10 @@ if ($isPatch) {
     # An update's old text is the lines it removes, all its hunks together, against all the lines it adds; an added
     # file's is the file on disk, if it exists. A section that moves its file has none: its removed lines belong to
     # the source file, not to the path it writes.
+    # A section that adds no line is skipped, unless it moves a file: a move onto the guard allowlist's name would
+    # replace the team's list with a file the agent wrote unchecked, so the write loop below must see its paths.
     $writes = @(foreach ($section in $sections) {
-        if ($section.Lines.Count -eq 0) { continue }
+        if ($section.Lines.Count -eq 0 -and -not $section.Moved) { continue }
         $text = $section.Lines -join "`n"
         $sectionUnits = if ($section.Moved) {
             @(New-WriteUnit $text $null $false)
@@ -384,6 +388,56 @@ function Get-CheckedFileName([string]$Path) {
     return $name.TrimEnd(' ', '.')
 }
 
+# The team's waiver for the secret checks: .claude/guard-allowlist.txt under the repository, one repository-root path
+# or glob per line (/ between folders; * within one folder name, ** across folders, ? one character; a line ending in
+# / covers that folder; # starts a comment). A write to a path it lists is not checked for a key format or a credential
+# literal; every other check still applies. The file is the team's, changed by hand and reviewed in a pull request, so
+# the agent's own writes to it are blocked (by its name, in any folder, and by its 8.3 short name). A missing,
+# unreadable or oversized file, or a line naming a drive, a ':' or a '..' segment, waives nothing.
+$allowlistName = 'guard-allowlist.txt'
+$maxAllowlistBytes = 64KB
+$script:allowlistPatterns = $null
+function Get-AllowlistPatterns {
+    if ($null -ne $script:allowlistPatterns) { return ,$script:allowlistPatterns }
+    $patterns = New-Object System.Collections.Generic.List[regex]
+    try {
+        $file = if ($repoRoot) { New-Object IO.FileInfo((Join-Path $repoRoot ".claude\$allowlistName")) }
+        if ($file -and $file.Exists -and $file.Length -le $maxAllowlistBytes) {
+            foreach ($line in [IO.File]::ReadAllLines($file.FullName)) {
+                $entry = $line.Trim().Replace('\', '/')
+                if ($entry.Length -eq 0 -or $entry.StartsWith('#', $ordinal)) { continue }
+                while ($entry.StartsWith('./', $ordinal)) { $entry = $entry.Substring(2) }
+                $entry = $entry.TrimStart('/')
+                if ($entry.EndsWith('/', $ordinal)) { $entry += '**' }
+                if ($entry.Length -eq 0 -or $entry.IndexOf(':') -ge 0 -or [regex]::IsMatch($entry, '(^|/)\.\.(/|$)')) { continue }
+                $builder = New-Object System.Text.StringBuilder '^'
+                for ($i = 0; $i -lt $entry.Length; $i++) {
+                    $ch = $entry[$i]
+                    if ($ch -eq '*' -and $i + 1 -lt $entry.Length -and $entry[$i + 1] -eq '*') {
+                        if ($i + 2 -lt $entry.Length -and $entry[$i + 2] -eq '/') { [void]$builder.Append('(?:[^/]*/)*'); $i += 2 }
+                        else { [void]$builder.Append('.*'); $i += 1 }
+                    } elseif ($ch -eq '*') { [void]$builder.Append('[^/]*') }
+                    elseif ($ch -eq '?') { [void]$builder.Append('[^/]') }
+                    else { [void]$builder.Append([regex]::Escape([string]$ch)) }
+                }
+                [void]$builder.Append('$')
+                $patterns.Add((New-Object regex($builder.ToString(), $ci)))
+            }
+        }
+    } catch { $patterns.Clear() }
+    $script:allowlistPatterns = $patterns
+    return ,$patterns
+}
+function Test-AllowlistedPath([string]$Relative) {
+    if (-not $Relative) { return $false }
+    $path = $Relative.Replace('\', '/')
+    foreach ($pattern in (Get-AllowlistPatterns)) { if ($pattern.IsMatch($path)) { return $true } }
+    return $false
+}
+function Test-AllowlistFileName([string]$Name) {
+    return [string]::Equals($Name, $allowlistName, $ordinalIgnoreCase) -or [regex]::IsMatch($Name, '^GUARD-~[0-9]+\.TXT$', $ci)
+}
+
 # A write that holds more password values than this is blocked, not checked: each one costs about 0.1 ms in
 # Test-CredentialMatch, so an unbounded count outlasts the hook's time limit. The unit is a password value, counted once
 # for the whole event wherever it is read: a value that two passes reach, or a match reaches again through its pairs, is
@@ -398,6 +452,10 @@ foreach ($write in $writes) {
     $writeUnits = @($write.Units)
     $reasons = @()
     $fileName = Get-CheckedFileName ([string]$fp)
+    $relativePath = if ($fp) { Get-RepositoryRelativePath ([string]$fp) }
+    $waived = Test-AllowlistedPath $relativePath
+
+    if (Test-AllowlistFileName $fileName) { $reasons += "changes the guard allowlist (.claude/$allowlistName), the team's list of paths the secret checks skip — an agent may not change it; a teammate edits it by hand and the change is reviewed in a pull request" }
 
     if ([regex]::IsMatch($fileName, '\.cs$', $ci)) {
         if (Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression' -Adds -Closer '#pragma\s+warning\s+restore') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
@@ -442,7 +500,8 @@ foreach ($write in $writes) {
     }
 
     $secretKind = $null
-    if     (Test-GuardPattern '-----BEGIN [A-Z ]*PRIVATE KEY-----' 'secret')   { $secretKind = 'a private key block' }
+    if     ($waived) { }
+    elseif (Test-GuardPattern '-----BEGIN [A-Z ]*PRIVATE KEY-----' 'secret')   { $secretKind = 'a private key block' }
     elseif (Test-GuardPattern 'AKIA[0-9A-Z]{16}' 'secret')                     { $secretKind = 'an AWS access key id (AKIA…)' }
     elseif (Test-GuardPattern 'gh[oprsu]_[A-Za-z0-9]{36}' 'secret')            { $secretKind = 'a classic GitHub token (gh*_…)' }
     elseif (Test-GuardPattern 'github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59,}' 'secret') { $secretKind = 'a fine-grained GitHub token (github_pat_…)' }
@@ -469,9 +528,8 @@ foreach ($write in $writes) {
     # the repository is read (see Get-RepositoryRelativePath): the folders a checkout sits in, such as
     # C:\Projects\test\repo, and a '..' that leaves a test folder decide nothing, and a path outside the
     # repository is never exempt.
-    $credentialExempt = $false
-    $relativePath = if ($fp) { Get-RepositoryRelativePath ([string]$fp) }
-    if ($relativePath) {
+    $credentialExempt = $waived
+    if ($relativePath -and -not $credentialExempt) {
         $segments = @($relativePath -split '[\\/]' | Where-Object { $_ })
         for ($i = 0; $i -lt $segments.Count; $i++) {
             $segment = $segments[$i]

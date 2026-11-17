@@ -4818,3 +4818,14 @@ sharing its open handle, stops it (exit 4) rather than being replaced uncopied. 
 files that match none (B-508's candidate); the maintainer chose the cheaper heuristic, which needs no new shipped data. Known limit: an edit
 committed together with the install, or an install committed in parts, is not seen or is misnamed.
 **Reopen** if a team reports a framework-file edit replaced without a notice, or a notice on a file it did not edit.
+
+## WSD-130: a team-reviewed path allowlist waives the write guard's secret and credential checks (2026-11-17)
+
+**Context.** B-489: the guard blocked, with no waiver, text that only looks like a credential (an i18n `password` label, a label map, a Key Vault
+reference, a CSS class starting `sk-`, a Cypress login, a docs sample); the shell is unguarded, so a false block teaches the agent to go round it.
+**Decision (the maintainer's, in chat 2026-11-14).** Option B: `.claude/guard-allowlist.txt`, consumer-owned (shipped with comments only, created once,
+never replaced), one repository-root path or anchored glob per line. A listed path skips the key-format and credential checks only; the guard blocks
+the agent's own write, edit or patch move onto the file on both surfaces, so a teammate edits it and a pull request reviews it. Missing or unreadable: no waiver.
+Rejected: Option A, blocking only a secret-shaped value, which lets a passphrase with spaces through everywhere. Let through: a real secret written to a
+listed path, and any change to the list made through the shell. The README now calls the guard a local backstop, not the gate.
+**Reopen** if a team reports a secret committed through a listed path, or an agent changing the list without a reviewed pull request.

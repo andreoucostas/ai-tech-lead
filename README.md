@@ -97,9 +97,11 @@ a first reviewed fix; every installed guide is listed in your distribution's REA
   write that adds `#pragma warning disable`, `eslint-disable`, `@ts-ignore` or `@ts-nocheck`, a
   skipped or focused test (`[Fact(Skip=…)]`, `[Ignore]`, `xit`, `.skip`, `.only`) or a credential in
   one of the formats `docs/enforcement-surfaces.md` lists is blocked, and a compile error is shown to
-  the agent. Any other suppression syntax, test-skipping form or secret shape passes the guard; a
-  required CI build with secret scanning is the gate for those. Writes made by shell commands are not
-  inspected, and the Copilot cloud coding agent runs no hooks.
+  the agent. Any other suppression syntax, test-skipping form or secret shape passes the guard, as
+  does any secret in a file your team lists in its guard allowlist (`guard-allowlist.txt` in the
+  installed `.claude/` folder). The guard is a local backstop, not the gate: `docs/ci-integration.md`
+  recommends secret scanning on every push, alongside the required build. Writes made by shell
+  commands are not inspected, and the Copilot cloud coding agent runs no hooks.
 - **Instructed everywhere else:** planning first, verifying before referencing, a failing test
   before a fix, reviewing its own work. The agent is told to; it can still skip an instruction.
 - **The one gate for every person and tool** is a required build in your CI; each distribution's

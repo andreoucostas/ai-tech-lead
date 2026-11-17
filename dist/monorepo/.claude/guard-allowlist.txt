@@ -1,0 +1,24 @@
+# Guard allowlist: files the write guard does not check for secrets or credential literals.
+#
+# The write guard (.claude/hooks/guard.ps1) blocks an AI agent's write that looks like it holds a key or a password.
+# Some files only look that way: a translation file whose "password" key holds "Enter your password", a label map, a
+# Key Vault reference, a CSS class that starts with sk-. List such files here, and the guard stops checking them for
+# secrets. It still checks them for suppressed warnings, skipped or focused tests and tautological assertions.
+#
+# This file belongs to your team. Edit it by hand and review every change in a pull request: the guard refuses an
+# agent's write to it, and a framework update never replaces it.
+#
+# A real secret written to a listed path is NOT blocked. List label, sample and fixture files only, never a settings
+# file, and keep secret scanning in your CI build.
+#
+# Format: one path per line, relative to the repository root, with / between folders. # starts a comment.
+#   *   any characters within one folder or file name
+#   **  any characters across folders
+#   ?   one character
+#   a line ending in / covers everything under that folder
+#
+# Examples (remove the leading # to use one):
+# src/assets/i18n/*.json
+# src/app/shared/labels.ts
+# cypress/e2e/**
+# docs/samples/

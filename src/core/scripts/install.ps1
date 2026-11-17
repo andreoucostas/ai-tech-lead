@@ -387,7 +387,7 @@ $excludedFromInstall = @('.git', '.template-repo', 'README.md', 'CHANGELOG.md', 
 # archives them unless the copy-if-absent policy below keeps the live path for in-place screening.
 $protected = @('CLAUDE.md', 'AGENTS.md', 'TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md',
     'FRAMEWORK-CONTEXT.md', '.github/copilot-instructions.md', 'docs/ARCHITECTURE.md',
-    'docs/architecture-decisions.md', 'docs/wiki/INDEX.md')
+    'docs/architecture-decisions.md', 'docs/wiki/INDEX.md', '.claude/guard-allowlist.txt')
 # Persistent state is copied only when absent. The composer reads this policy from both installer
 # PowerShell installer authority and emits it as consumer-owned/protected in framework-ownership.json.
 $persistentCopyIfAbsent = @(
@@ -397,7 +397,7 @@ $persistentCopyIfAbsent = @(
 # ownership manifest lists them. The audit entry remains the separately composer-verified
 # persistent policy above.
 $copyIfAbsent = $persistentCopyIfAbsent + @(
-    'docs/wiki/INDEX.md', 'docs/ARCHITECTURE.md', 'docs/architecture-decisions.md'
+    'docs/wiki/INDEX.md', 'docs/ARCHITECTURE.md', 'docs/architecture-decisions.md', '.claude/guard-allowlist.txt'
 )
 # Only GitHub Actions runs this workflow, and no other framework file reads it, so a team on other CI (Bitbucket with
 # Bamboo or Jenkins) may delete it. An update leaves it deleted when the previous manifest says the framework wrote it.
@@ -2126,7 +2126,7 @@ else { Write-Output "  NOTE: could not check that this framework copy is up to d
 foreach ($message in $reconciliationMessages) { Write-Output "  $message" }
 
 if ($Reinstall) {
-    Write-Output "  REINSTALL: deletes every file Git tracks under .claude/ (except .claude/ai-audit.log and .claude/adoption-pending.json), .github/instructions/, .github/chatmodes/, .github/skills/, .agents/skills/ and tests/hooks/, and every other file this release or its retirement ledger names, then copies this release. Commit $reinstallCommit holds all of it; no backup is written."
+    Write-Output "  REINSTALL: deletes every file Git tracks under .claude/ (except .claude/ai-audit.log, .claude/adoption-pending.json and your .claude/guard-allowlist.txt), .github/instructions/, .github/chatmodes/, .github/skills/, .agents/skills/ and tests/hooks/, and every other file this release or its retirement ledger names, then copies this release. Commit $reinstallCommit holds all of it; no backup is written."
 } elseif ($updateMode) {
     Write-Output "  UPDATE PREFLIGHT: This update replaces framework-owned files, including .claude/settings.json."
     Write-Output "  Ensure any local edits to those files were committed, stashed, or copied first."

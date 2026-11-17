@@ -331,6 +331,34 @@ $powerShellExtension = 'ps1'
 
 $powerShellExtension = 'ps1'
 & {
+    It "install creates the team's guard allowlist once and an update keeps the team's edit ($powerShellExtension)" {
+        $t = Join-Path ([IO.Path]::GetTempPath()) ('guard-allowlist-' + [guid]::NewGuid())
+        [void][IO.Directory]::CreateDirectory($t)
+        $list = Join-Path $t '.claude/guard-allowlist.txt'
+        try {
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $code = $LASTEXITCODE
+            Assert ($code -eq 0) "greenfield install exited ${code}: $out"
+            Assert (Test-Path -LiteralPath $list -PathType Leaf) "greenfield install did not create .claude/guard-allowlist.txt. Output:`n$out"
+            Assert-BytesEqual -Expected ([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/.claude/guard-allowlist.txt'))) -Actual ([IO.File]::ReadAllBytes($list)) -Message 'the created allowlist is not the shipped template'
+            $entries = @([IO.File]::ReadAllLines($list) | Where-Object { $_.Trim() -and -not $_.Trim().StartsWith('#') })
+            Assert ($entries.Count -eq 0) "the shipped template lists a path: $($entries -join ', ')"
+            $manifest = Get-Content -LiteralPath (Join-Path $t 'framework-ownership.json') -Raw | ConvertFrom-Json
+            $entry = @($manifest.paths | Where-Object { $_.path -ceq '.claude/guard-allowlist.txt' })
+            Assert ($entry.Count -eq 1 -and $entry[0].ownership -ceq 'consumer-owned/protected') "the ownership manifest does not mark the allowlist consumer-owned: $($entry | ConvertTo-Json -Compress)"
+
+            $edited = [Text.UTF8Encoding]::new($false).GetBytes("# reviewed in PR 42`r`nsrc/assets/i18n/*.json`r`n")
+            [IO.File]::WriteAllBytes($list, $edited)
+            $updateOut = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+            $updateCode = $LASTEXITCODE
+            Assert ($updateCode -eq 0) "update exited ${updateCode}: $updateOut"
+            Assert-BytesEqual -Expected $edited -Actual ([IO.File]::ReadAllBytes($list)) -Message "an update replaced the team's edited allowlist. Output:`n$updateOut"
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+}
+
+$powerShellExtension = 'ps1'
+& {
     It "brownfield leaves mature architecture and ADRs active and unarchived for in-place screening ($powerShellExtension)" {
         $t = Join-Path ([IO.Path]::GetTempPath()) ('no-loss-architecture-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Force -Path (Join-Path $t 'docs') | Out-Null

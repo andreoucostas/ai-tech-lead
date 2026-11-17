@@ -191,6 +191,12 @@ last commit that changed `.claude/framework-version.json`; with no Git, no commi
 partial clone does not store locally (no fetch is made), one line says edits could not be checked. Limit: an edit committed with the
 install is not seen. Remaining: unit cases for the planning functions.
 
+A team can now waive the write guard's secret and credential checks for paths it lists in `.claude/guard-allowlist.txt` (guarded,
+step 4; B-489; WSD-130). The file ships with comments only, is consumer-owned (created once, never replaced by an update or
+`-Reinstall`), and the guard blocks the agent's own Write, Edit or patch move onto it on both surfaces. Suppression, skip, focus and
+tautology checks still run at listed paths. The README no longer calls a CI build with secret scanning "the gate"; the guard is a local
+backstop and `docs/ci-integration.md`'s "Recommended alongside" is the authority. Limit: a real secret written to a listed path passes.
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the
