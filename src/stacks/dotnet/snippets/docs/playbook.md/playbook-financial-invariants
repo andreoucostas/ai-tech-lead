@@ -1,0 +1,4 @@
+- **Financial-domain invariants:** decimal precision, idempotency, check-then-act races and rounding
+  are treated as always possible, even in internal code.
+
+---

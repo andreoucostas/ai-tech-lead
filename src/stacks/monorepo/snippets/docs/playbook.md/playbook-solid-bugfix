@@ -1,0 +1,5 @@
+- **SOLID:** single responsibility and the rest, with each stack's injected-service boundary derived
+  from project evidence and correctness needs; the framework requires no interface, abstraction,
+  token or DI container, and data carriers are exempt.
+- **Bug-fix scope:** every edit serves the requested outcome, compatibility or verification; moving a
+  component off eager change detection is an explicit, verified change.

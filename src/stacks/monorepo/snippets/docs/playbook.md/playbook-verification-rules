@@ -1,0 +1,3 @@
+- **Verification Rules:** never invent APIs or selectors, checking the version this repo
+  pins (in Angular, Signal Forms, `resource`, `Eager` and `@Service()` are version-gated); failures
+  are signals, never silenced with `#pragma warning disable`, `@ts-ignore` or `as any`.

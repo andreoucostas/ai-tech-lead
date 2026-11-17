@@ -1,0 +1,2 @@
+- Re-run bootstrap's Git-root evidence scan and propagate its selected profile(s) into Phase 7; a warehouse-SQL repo is valid here even with no .NET or Angular workspace, and no absent-profile command may be invented
+- Fill any AGENTS.md sections still empty (use the bootstrap analysis passes)

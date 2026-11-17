@@ -1,0 +1,1 @@
+3. **Locate the repository root** — use the Git root. `angular.json` (or `nx.json`/`project.json` for Nx) is Angular evidence when present, not the root selector. All paths are relative to the Git root.

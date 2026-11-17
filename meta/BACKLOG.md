@@ -23,7 +23,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 6 | B-497 | Merge the three Haiku reviewers into one pass, measured with B-467's 12-defect harness (the `/review` merge, verdict and delegation parts shipped 2026-11-17); guarded |
 | 7 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
 | 8 | B-508 | Extract the installer's pure planning functions with unit cases; the copy and the install-commit notice shipped 2026-11-17; guarded, step 4 |
-| 9 | B-512 | Three hand-edited copies kept by WSD-012's ~6-marker cap, retired by WSD-126; guarded (AGENTS.md) |
+| 9 | B-512 | `presentation/` single copy and the wrapper SHA-256 bullet remain (`adopt.md`/`playbook.md` shipped 2026-11-17); guarded (AGENTS.md) |
 | 10 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
 | 11 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
 | 12 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
@@ -157,11 +157,11 @@ Also: VS Code documents that it does not forward `include-custom-instructions`, 
 **Status:** Open. The copy of an uncommitted framework-file edit and the notice for a committed one (HEAD against the last install commit) shipped 2026-11-17 for 0.99.0 (WSD-129); attack rounds 1 and 2 fixed (round 2: a false notice in an offline partial clone).
 Remaining: extract the pure planning functions with unit cases. Pre-existing: a framework file held open with share Read only gives a half-applied update (exit 3, "62 of 90 framework files were written", nothing lost), and the `.gitignore` and disabled-skill loops read with `ReadAllBytes` and stop with exit 4 on a held file. Keep the legacy pre-commit inspection: updates accept 0.76.0, the helpers it protects retired in 0.83.0, and `InstallerConvergence` exercises it.
 Guarded, step 4.
-### B-512 · `adopt.md` and `playbook.md` are kept as three hand-edited copies
+### B-512 · `presentation/` and a wrapper SHA-256 bullet are still kept as duplicates
 **Filed against:** v0.98.6 (2026-11-14)
-**Priority:** P3 · **Effort:** M · **Invariants:** #1
-**Status:** Open; decision audit 2026-11-14: the ~6-marker cap (WSD-012) was a migration rule of thumb, and `src/core/AGENTS.md` (12 markers) and the rules file (9) already exceed it; WSD-126 retires the cap. 23 of 28 commits touching `adopt.md` edited all three copies; the audit counts about 15 differing hunks in `adopt.md`, 11 in `playbook.md` and 44 to 49 in `bootstrap.md`, which stays as it is.
-Candidate: core files with `@stack` markers and byte-identical dist output, adding the core paths to AGENTS.md's guarded list so the tier does not drop; also one copy of `presentation/` (built into all three dists, never installed) and one SHA-256 bullet fewer in the bloat-radar and test-critic Copilot wrappers. Guarded (AGENTS.md).
+**Priority:** P3 · **Effort:** S · **Invariants:** #1
+**Status:** Open; `adopt.md` and `playbook.md` are single core files with stack markers, dist byte-identical, shipped 2026-11-17 (WSD-126 retired the marker cap); `bootstrap.md` stays as three copies.
+Remaining: one copy of `presentation/` (built into all three dists, never installed) and one SHA-256 bullet fewer in the bloat-radar and test-critic Copilot wrappers. Guarded (AGENTS.md).
 ### B-516 · A draft skill becomes active only through two manual edits, and is discoverable before anyone reviews it
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #7

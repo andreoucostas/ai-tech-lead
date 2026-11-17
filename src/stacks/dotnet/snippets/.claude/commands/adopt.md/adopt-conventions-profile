@@ -1,0 +1,1 @@
+1. Categorise into a AGENTS.md Conventions subsection for an evidenced profile: .NET (Architecture, Naming, DI, Data Access, API Design, Async, Null Handling, Logging, Testing) or warehouse-SQL (schema/layer boundaries, grains/keys, load ordering/idempotency, deployment, validation/testing). Do not force warehouse rules into an absent application profile.

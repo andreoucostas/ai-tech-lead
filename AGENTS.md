@@ -21,7 +21,8 @@ what it is. Ask when an instruction is unclear or could be read two ways.
 reports a false green: `install.ps1`, `src/core/scripts/install.ps1`,
 `src/core/scripts/adoption-archive.ps1`, `src/core/framework-retirements.json`, any
 `framework-ownership.json` source, licence and notice files, `src/core/.claude/hooks/**`,
-`src/stacks/*/files/.claude/**`, any `settings*.json`, `scripts/build.ps1`,
+`src/stacks/*/files/.claude/**`, `src/core/.claude/commands/adopt.md`,
+`src/stacks/*/snippets/.claude/commands/adopt.md/**`, any `settings*.json`, `scripts/build.ps1`,
 `scripts/validate-dist.ps1`, `scripts/context-footprint.ps1`, `scripts/meta-denylist.txt`,
 `.claude/scripts/**`, every `Invoke-HookTests.ps1` runner, `.github/**`, and this file.
 Required, in order:

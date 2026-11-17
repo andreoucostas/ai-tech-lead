@@ -1,0 +1,2 @@
+- Project/folder layout for the evidenced profiles, and a dependency diagram between layers or projects of at most ten lines
+- Evidenced layering strategy: application layers, Angular feature boundaries, and/or warehouse schema/load layers

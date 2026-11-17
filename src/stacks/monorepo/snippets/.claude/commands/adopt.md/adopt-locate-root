@@ -1,0 +1,1 @@
+3. **Locate the repo root** — use the Git root. Locate `.sln` when the .NET side is an application, and `angular.json` (or `nx.json`/`project.json`) for Angular; a SQL/SSDT/dbt side need not have a solution file. All paths are relative to that root.

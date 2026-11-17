@@ -1,4 +1,4 @@
-# How AI Tech Lead works, and why (.NET)
+<!-- @stack:playbook-title -->
 
 For a tech lead deciding whether to adopt AI Tech Lead, and for anyone who wants to know why it
 behaves as it does: the problem, the approach, what is guaranteed, what it costs, its limits, and how
@@ -7,11 +7,11 @@ list of commands and files, [reference.md](reference.md).
 
 ## The problem this solves
 
-Teams that adopt AI coding tools without a framework hit the same wall after a few months. The AI is fast, but it's generic. It doesn't know that your team wraps EF Core queries in the service layer, not the controller. It doesn't know that you use FluentValidation, not DataAnnotations. It doesn't know about the tech debt in the payments module that you've been carefully routing around. It doesn't know that the last three PRs introduced async voids that nobody caught in review.
+<!-- @stack:playbook-problem-knows -->
 
-The result: the AI accelerates you in the wrong direction. Code quality drifts. Conventions fragment. Junior developers adopt whatever the AI suggests, which is the average of the internet, not the average of your best engineers.
+<!-- @stack:playbook-problem-result -->
 
-The deeper problem is that AI tools are additive by default. They add code, add abstractions, add interfaces "for testability", add comments to explain what they just wrote. Left unchecked, this produces a codebase that's larger, more complex, and harder to reason about than the one you started with — all while passing tests.
+<!-- @stack:playbook-additive-examples -->
 
 This framework is the counterweight.
 
@@ -46,7 +46,7 @@ Purpose-built workflows invoked via `/command` in either Claude Code or Copilot 
 ### Automated Verification (Hooks)
 **File**: `.claude/settings.json`
 
-In a repository with an evidenced .NET application, hooks fire automatically after Claude Code writes `.cs` files. They run incremental `dotnet build` against the nearest solution, or the nearest project when no solution exists, to catch compilation errors immediately. A warehouse-only repository has no `.cs` write or application build to trigger. Tests are run explicitly within command workflows, not as hooks — full test suites are too slow for per-file-write execution.
+<!-- @stack:playbook-build-hook -->
 
 ---
 
@@ -66,26 +66,19 @@ Developer types: "add export button to dashboard"
                     │
                     ▼ (after each file write)
          Hooks (settings.json)
-         applicable post-write build → catch compilation errors → self-correct
+<!-- @stack:playbook-flow-check -->
 ```
 
 ---
 
 ## The rules the instruction files encode
 
-- **Verification Rules:** never invent APIs, checking the version this repo pins;
-  failures are signals, never silenced.
+<!-- @stack:playbook-verification-rules -->
 - **Leanness:** the counterweight to Boy Scout cleanups; no abstraction over data or for speculation.
-- **SOLID:** single responsibility and the rest, with any injected-service boundary derived from
-  project evidence and correctness needs; the framework requires no interface or DI container, and
-  data carriers are exempt.
-- **Bug-fix scope:** every edit serves the requested outcome, compatibility or verification.
+<!-- @stack:playbook-solid-bugfix -->
 - **Trojan Horse:** nearby debt rides along with feature and fix work, so quality compounds without
   debt sprints.
-- **Financial-domain invariants:** decimal precision, idempotency, check-then-act races and rounding
-  are treated as always possible, even in internal code.
-
----
+<!-- @stack:playbook-financial-invariants -->
 
 ## What is guaranteed, and what is only instructed
 
@@ -211,8 +204,7 @@ Anthropic-API consumers (Claude Code, in-house tooling, eval harness) can dramat
 The framework is structured so the cache-friendly prefix is large and stable:
 
 1. **`AGENTS.md` is mostly stable.** Conventions, architecture decisions, common tasks, agentic workflow, boy-scout rules — these change at human pace, not per-session. Treat the whole file as one cache prefix candidate.
-2. **`FRAMEWORK-CONTEXT.md` is mostly stable.** Maintainer-curated sections rarely change between sessions. The auto-populated "Detected Framework Packages" table changes when csproj/Directory.Packages.props change — usually rare.
-3. **Volatile content lives in hooks, not in `AGENTS.md`.** `SessionStart` injects branch + recent commits + debt heat at session start; `UserPromptSubmit` injects routed-intent rails; `PostToolUse` injects build output. All of these append AFTER the AGENTS.md prefix, preserving cache integrity.
+<!-- @stack:playbook-cache-stable-volatile -->
 
 When you author or extend `AGENTS.md`:
 
@@ -227,7 +219,7 @@ For tools built on the Anthropic SDK, place the explicit `cache_control` breakpo
 ## Measuring Progress
 
 - **Tech debt register length**: should trend down over time
-- **Build/test pass rate**: hooks should catch regressions early
+<!-- @stack:playbook-metrics-pass-rate -->
 - **Boy Scout compliance**: are touched files improving?
 - **Done-when lines in PR descriptions**: does each non-trivial PR carry its approved `Done when:` lines, each pinned by a test? A plain-words request follows the method as fully as a command.
 - **LEARNINGS.md entries**: is the team recording what works?

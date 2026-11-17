@@ -1,0 +1,1 @@
+The deeper problem is that AI tools are additive by default. They add code, add abstractions, add `Subject`s and `BehaviorSubject`s "for flexibility", add comments to explain what they just wrote. Left unchecked, this produces a codebase that's larger, more complex, and harder to reason about than the one you started with — all while passing tests.

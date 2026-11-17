@@ -1,0 +1,4 @@
+- **SOLID:** single responsibility and the rest, with any injected-service boundary derived from
+  project evidence and correctness needs; the framework requires no interface or DI container, and
+  data carriers are exempt.
+- **Bug-fix scope:** every edit serves the requested outcome, compatibility or verification.

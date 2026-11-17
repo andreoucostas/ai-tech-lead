@@ -1,0 +1,1 @@
+3. **Locate the repository root** — use the Git root. Locate `*.csproj` when .NET application evidence exists; a `.sln` alone may contain only SQL/SSDT projects and does not identify an application repository. Pure SQL/SSDT/dbt repositories need no solution file. All paths are relative to the Git root.
