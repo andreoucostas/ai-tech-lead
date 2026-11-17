@@ -169,7 +169,11 @@ $hasImperative = $lc -match '^\W*((please|can you|could you)\W+)*(add|fix|implem
 if ($isQuestion -and -not $hasImperative -and $intent -in @('fix','feature','refactor','test','debt')) { $intent = '' }
 
 # An approval of work already planned ("yes, go ahead and implement the plan") is not a new request.
-if ($lc -match '^\W*(yes|ok|okay|go ahead|proceed|looks good|approved|lgtm)\b') { $intent = '' }
+# It clears the intent only if, after the approval words, nothing but filler and plan references remains;
+# "ok, now add an endpoint" is a new request and keeps its routing.
+$approvalOpen = '^\W*(?:(?:yes|ok|okay|go ahead|proceed|looks good|approved|lgtm)\b\W*)+'
+$approvalRest = '\b(?:and|then|now|please|sure|thanks|go ahead|proceed|continue|carry on|do\s+(?:it|that|this)|(?:implement|apply|execute|build|start)\s+(?:it|that|this|the\s+plan|the\s+changes|as\s+planned))\b'
+if ($lc -match $approvalOpen -and (($lc -replace $approvalOpen, '') -replace $approvalRest, ' ') -notmatch '\w') { $intent = '' }
 
 # Security overlay fires IN ADDITION to any workflow intent -- it is not an
 # exclusive intent, so a security-relevant feature still gets the feature rails.

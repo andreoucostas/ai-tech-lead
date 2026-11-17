@@ -212,6 +212,29 @@ It 'route-prompt.ps1 approval opening -> no routed intent (both surfaces)' {
         Assert ($r.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($r.Out)) "an approval must be a no-op, got exit $($r.Exit) output: $($r.Out)"
     }
 }
+It 'route-prompt.ps1 approval followed by a new request keeps its routing (both surfaces)' {
+    $cases = @(
+        @{ P = 'ok, now add an endpoint that returns orders'; I = 'feature'; Overlay = $false },
+        @{ P = 'proceed with the refactor of OrderService'; I = 'refactor'; Overlay = $false },
+        @{ P = 'looks good, now write tests for the payment service'; I = 'test'; Overlay = $true },
+        @{ P = 'go ahead and add a field to Customer'; I = 'feature'; Overlay = $false }
+    )
+    foreach ($c in $cases) {
+        foreach ($evt in (New-ClaudePrompt $c.P), (New-CopilotPrompt $c.P)) {
+            $r = Invoke-Hook $rpPs $evt
+            Assert ($r.Exit -eq 0 -and $r.Out -match ('## Routed intent: `' + $c.I + '`')) "expected intent $($c.I) for: $($c.P); got exit $($r.Exit) output: $($r.Out)"
+            if ($c.Overlay) { Assert ($r.Out -match 'Security-sensitive surface detected') "no security overlay for: $($c.P)" }
+        }
+    }
+}
+It 'route-prompt.ps1 bare approvals and plan references stay no-ops (both surfaces)' {
+    foreach ($p in 'yes', 'ok, do it', 'lgtm, proceed', 'yes, go ahead and implement the plan') {
+        foreach ($evt in (New-ClaudePrompt $p), (New-CopilotPrompt $p)) {
+            $r = Invoke-Hook $rpPs $evt
+            Assert ($r.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($r.Out)) "an approval must be a no-op for: $p; got exit $($r.Exit) output: $($r.Out)"
+        }
+    }
+}
 It 'route-prompt.ps1 question with an imperative word mid-sentence -> no routed intent' {
     $r = Invoke-Hook $rpPs (New-ClaudePrompt 'What does the build pipeline do?')
     Assert ($r.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($r.Out)) "a question must be a no-op, got exit $($r.Exit) output: $($r.Out)"

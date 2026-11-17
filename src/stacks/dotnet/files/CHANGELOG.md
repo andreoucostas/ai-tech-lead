@@ -103,8 +103,12 @@
   `dotnet list package --deprecated` and `dotnet list package --outdated`, naming the project file as its evidence. These
   are read-only but may contact your package feed. A scan command your repository already records or runs in CI is
   still used instead, and the agent still does not guess build, test or restore commands.
-
-- **An approval or a question no longer loads the feature plan gate, and common words no longer load the security rails.** `yes, go ahead and implement the plan` and `What does the build pipeline do?` were routed as a new feature and injected the plan gate into the agent's context; in a question, an action word now counts only as the first word or after `please`, `can you` or `could you`. `concurrency`, `CancellationToken` and `load balancer` no longer match `currency`, `token` and `balance`; `token`, `tokens`, `access_token` and `id_token` still do.
+- **An approval or a question no longer loads the feature plan gate, and common words no longer load the security rails.**
+  `yes, go ahead and implement the plan` and `What does the build pipeline do?` were routed as a new feature and injected
+  the plan gate into the agent's context. A bare approval now gets none, but a new request after one (for example
+  `ok, now add an endpoint that returns orders`) still gets its guidance. In a question, an action word now counts only as
+  the first word or after `please`, `can you` or `could you`. `concurrency`, `CancellationToken` and `load balancer` no
+  longer match `currency`, `token` and `balance`; `token`, `tokens`, `access_token` and `id_token` still do.
 
 ## 0.98.6 — 2026-11-13
 
