@@ -2275,6 +2275,10 @@ foreach ($relative in $retirementPreserve) { [void]$preservePlan.Add($relative) 
 # called new, so every file that differs from this release is saved, summed up in one line instead of one each.
 # Settings and the skills this run backs up already have their own save. Below files/ each path is mapped by
 # ConvertTo-SavedRelative, so no saved copy is live.
+# A file the previous manifest lists is the framework's, but its bytes on disk may hold an edit the target's last commit
+# does not (one not yet committed, under -AllowDirtyTree): it is saved the same way and named one line each. One that
+# commit holds is not saved, nor any where there is no commit to compare with (every file a release changes would look
+# edited). Its ignore files are left to the ignore-file save below, which saves one whose rules the release drops.
 $saveMessages = New-Object System.Collections.Generic.List[string]
 $savesRelative = '.claude/framework-update-backup/files'
 if ($updateMode -and -not $Reinstall) {
@@ -2284,18 +2288,40 @@ if ($updateMode -and -not $Reinstall) {
     foreach ($relative in $skillHeld) { [void]$savedElsewhere.Add($relative) }
     $additiveSaves = 0; $additiveAlready = 0; $additiveHeld = 0
     foreach ($relative in $ordinaryApplyPaths) {
-        if ($savedElsewhere.Contains($relative) -or $relative -match '^\.agents/skills/[a-z0-9-]+/SKILL\.md$' -or
-            ($null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative))) { continue }
+        $owned = $null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative)
+        if ($savedElsewhere.Contains($relative) -or ($owned -and $relative -match '(^|/)\.gitignore$') -or
+            (-not $owned -and $relative -match '^\.agents/skills/[a-z0-9-]+/SKILL\.md$') -or
+            ($owned -and $null -eq (Get-HeadState).Commit)) { continue }
         # Add-PlannedWrite above has already refused a link on this path and a folder at it.
         $destination = Get-ContainedTargetPath -Relative $relative
         if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) { continue }
         try { $existingBytes = [IO.File]::ReadAllBytes($destination) }
         catch {
+            # A framework file no process lets this one read is one the replace below cannot write either: it stops there.
+            if ($owned) { continue }
             [Console]::Error.WriteLine("CANT-VERIFY: '$relative' could not be read to decide whether this update must save it before replacing it. Make it readable or move it aside, then re-run. Nothing was changed.")
             exit 4
         }
         if ((Get-LfSha256 -Bytes $existingBytes) -ceq (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Join-Path $src $relative))))) { continue }
         $heldIn = Get-HeadHeldCommit -Relative $relative -Bytes $existingBytes
+        if ($owned) {
+            if ($heldIn) { continue }
+            $preferred = "$savesRelative/" + (ConvertTo-SavedRelative -Relative $relative)
+            $backup = Find-UpdateBackup -Preferred $preferred -Bytes $existingBytes
+            if ($backup.State -eq 'taken') {
+                [Console]::Error.WriteLine("ERROR: Refusing update: '$relative' must be saved before this release's file replaces it, and both $preferred and $($backup.Relative) already hold other content. Move them out of $savesRelative/, then re-run the update. Nothing was changed.")
+                exit 3
+            }
+            if ($backup.State -eq 'saved') {
+                $saveMessages.Add("NOTICE: '$relative' is a framework file your last commit does not hold as it is on disk, and it is already saved at $($backup.Relative), so the update installs this release's file there. Keep what you need from the saved copy under another path.")
+            } else {
+                $saveMessages.Add("NOTICE: '$relative' is a framework file your last commit does not hold as it is on disk (an edit not yet committed, say), so the update saves it to $($backup.Relative), then installs this release's file there. Keep what you need from the saved copy under another path.")
+            }
+            if ($backup.State -eq 'saved') { continue }
+            [void](Add-PlannedWrite -Relative $backup.Relative -ForceCreate)
+            $updateBackups.Add([pscustomobject]@{ Source = $destination; Relative = $backup.Relative; SourceRelative = $relative })
+            continue
+        }
         if ($heldIn) {
             [void]$headHeldSaves.Add($relative)
             if ($null -eq $priorManifest) { $additiveHeld++ }

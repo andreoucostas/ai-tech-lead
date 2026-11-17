@@ -1124,4 +1124,72 @@ It 'B-471 a greenfield install stopped before the version stamp names the overri
     }
 }
 
+# B-508: a team's edit to a framework-owned file was replaced by an update with no copy and no message, so an edit not
+# yet committed was lost. The fixture is the v0.98.6 release installed and committed, so this tree's update replaces
+# files the team never touched as well as the one it edits.
+function New-B508Install {
+    param([Parameter(Mandatory)][string]$Root, [switch]$NoGit)
+    $old = Join-Path $Root 'v0.98.6'
+    $zip = Join-Path $Root 'v0.98.6.zip'
+    [void][IO.Directory]::CreateDirectory($Root)
+    & git -C $repoRoot archive --format=zip -o $zip v0.98.6 dist/dotnet
+    Assert ($LASTEXITCODE -eq 0) 'calibration: git archive could not read the v0.98.6 tag'
+    Expand-Archive -LiteralPath $zip -DestinationPath $old
+    $t = Join-Path $Root 'target'
+    [void][IO.Directory]::CreateDirectory($t)
+    if (-not $NoGit) {
+        & git -C $t init -q
+        & git -C $t config user.email 'tests@example.invalid'
+        & git -C $t config user.name 'installer tests'
+    }
+    $out = & (Get-PsExe) -NoProfile -File (Join-Path $old 'dist/dotnet/scripts/install.ps1') -Target $t 2>&1 | Out-String
+    Assert ($LASTEXITCODE -eq 0) "calibration: the v0.98.6 install failed (exit $LASTEXITCODE): $out"
+    if (-not $NoGit) {
+        & git -C $t add -A 2>$null
+        & git -C $t commit -qm 'framework install'
+    }
+    return $t
+}
+function Get-B508Copies {
+    param([Parameter(Mandatory)][string]$Target)
+    $folder = Join-Path $Target '.claude/framework-update-backup/files'
+    if (-not (Test-Path -LiteralPath $folder)) { return @() }
+    return @(Get-ChildItem -LiteralPath $folder -Recurse -File -Force | ForEach-Object { $_.FullName.Substring($Target.Length + 1).Replace('\', '/') })
+}
+
+It 'B-508 an update saves a copy of an uncommitted edit to a framework file before replacing it, and names the file and the copy' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b508c-' + [guid]::NewGuid())
+    try {
+        $t = New-B508Install -Root $root
+        $edited = '.claude/commands/review.md'
+        $editedBytes = [byte[]]([IO.File]::ReadAllBytes((Join-Path $t $edited)) + [Text.UTF8Encoding]::new($false).GetBytes("`nB508 UNCOMMITTED TEAM EDIT`n"))
+        [IO.File]::WriteAllBytes((Join-Path $t $edited), $editedBytes)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0 -and $out -match "(?m)^PLAN replace $([regex]::Escape($edited))\r?$") "calibration: the update failed or did not replace $edited (exit $LASTEXITCODE): $out"
+        Assert-BytesEqual ([IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/dotnet/$edited"))) ([IO.File]::ReadAllBytes((Join-Path $t $edited))) "the update did not install the release's $edited"
+        $copy = '.claude/framework-update-backup/files/_.claude/commands/review.md'
+        Assert (((Get-B508Copies -Target $t) -join ' | ') -ceq $copy) "the update did not copy the edited framework file, and only it, to $copy`: $((Get-B508Copies -Target $t) -join ' | ') $out"
+        Assert-BytesEqual $editedBytes ([IO.File]::ReadAllBytes((Join-Path $t $copy))) 'the copy does not hold the uncommitted edit byte for byte'
+        Assert ($flat -match "NOTICE: '$([regex]::Escape($edited))' is a framework file your last commit does not hold as it is on disk .*?so the update saves it to $([regex]::Escape($copy)), then installs this release's file there\.") "no NOTICE names the edited file and its copy: $out"
+        Assert ((& git -C $t status --porcelain --untracked-files=all | Out-String) -notmatch 'framework-update-backup/') 'the copy is committable'
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-508 an update of a committed install the team did not edit saves no copy of a framework file and names none' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b508u-' + [guid]::NewGuid())
+    try {
+        $t = New-B508Install -Root $root
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0 -and $out -match '(?m)^PLAN replace \.claude/commands/review\.md\r?$') "calibration: the update failed or replaced no framework file (exit $LASTEXITCODE): $out"
+        Assert ((Get-B508Copies -Target $t).Count -eq 0) "the update copied a framework file the team did not edit: $((Get-B508Copies -Target $t) -join ' | ')"
+        Assert ($flat -notmatch "is a framework file") "the update named a framework file the team did not edit: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 exit (Write-TestSummary 'UpdateDelivery2.Tests')

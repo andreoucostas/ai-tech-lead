@@ -398,8 +398,10 @@ It 'B-393 an update saves a team''s own file at a path the previous manifest doe
         $startedBytes = $utf8.GetBytes("# Team onboarding`nClone, build, run.`n")
         [IO.File]::WriteAllBytes((Join-Path $t 'docs/reference.md'), $referenceBytes)
         [IO.File]::WriteAllBytes((Join-Path $t 'docs/getting-started.md'), $startedBytes)
-        # A file the previous manifest owns is the framework's: replaced as before, never saved.
-        [IO.File]::WriteAllBytes((Join-Path $t 'docs/defaults.md'), (Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/docs/defaults.md') + $utf8.GetBytes("edited`n"))
+        # A file the previous manifest owns is the framework's; an edit to it that no commit holds is saved before the
+        # release's file replaces it (B-508).
+        $defaultsBytes = [byte[]]((Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/docs/defaults.md') + $utf8.GetBytes("edited`n"))
+        [IO.File]::WriteAllBytes((Join-Path $t 'docs/defaults.md'), $defaultsBytes)
         # reference.md's save path holds an older, different save; getting-started.md's holds this very file, as after a re-run.
         New-Item -ItemType Directory -Force -Path (Join-Path $t "$backups/docs") | Out-Null
         $olderReference = $utf8.GetBytes("OLDER SAVE of docs/reference.md`n")
@@ -420,7 +422,8 @@ It 'B-393 an update saves a team''s own file at a path the previous manifest doe
         Assert ($flat -match "so the update saves it to $([regex]::Escape($referenceSave))") "the save beside the older one was not reported: $out"
         Assert ($flat -match "NOTICE: 'docs/getting-started\.md' is already saved at \.claude/framework-update-backup/files/docs/getting-started\.md") "the earlier run's save was not recognised: $out"
         Assert (@(Get-ChildItem -LiteralPath (Join-Path $t "$backups/docs") -File -Filter 'getting-started*').Count -eq 1) "an earlier run's identical save was copied again: $out"
-        Assert (-not (Test-Path -LiteralPath (Join-Path $t "$backups/docs/defaults.md"))) "a file the previous manifest owns was saved: $out"
+        Assert ((Test-Path -LiteralPath (Join-Path $t "$backups/docs/defaults.md") -PathType Leaf) -and (Test-B194BytesEqual $defaultsBytes ([IO.File]::ReadAllBytes((Join-Path $t "$backups/docs/defaults.md"))))) "the uncommitted edit to a file the previous manifest owns was not saved: $out"
+        Assert ($flat -match "NOTICE: 'docs/defaults\.md' is a framework file your last commit does not hold as it is on disk .*?so the update saves it to \.claude/framework-update-backup/files/docs/defaults\.md") "the save of the edited framework file was not reported: $out"
         # The team had gitignored security-gate.md, so its saved copy must not become committable.
         $status = (& git -C $t status --porcelain --untracked-files=all | Out-String)
         Assert ($status -notmatch 'framework-update-backup/files/_\.claude/commands/security-gate\.md') "the gitignored file's saved copy is committable: $status"
