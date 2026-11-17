@@ -22,7 +22,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 5 | B-425 | A plain-words review runs no reviewer: on Copilot CLI it loads the `review` skill (5 of 6, 2026-11-13) but skips its dispatch step (0 of 6), with or without the candidate; blocked on B-416; the Claude Code leg is about 3 USD |
 | 6 | B-497 | Merge the three Haiku reviewers into one pass, measured with B-467's 12-defect harness (the `/review` merge, verdict and delegation parts shipped 2026-11-17); guarded |
 | 7 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
-| 8 | B-508 | Where the recent data-loss defects sit has no unit tests; guarded, step 4 |
+| 8 | B-508 | Extract the installer's pure planning functions with unit cases; the copy and the install-commit notice shipped 2026-11-17; guarded, step 4 |
 | 9 | B-511 | Deletions: the release time budget that only raises its ceiling, and closed eval studies; guarded |
 | 10 | B-512 | Three hand-edited copies kept by WSD-012's ~6-marker cap, retired by WSD-126; guarded (AGENTS.md) |
 | 11 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
@@ -155,8 +155,9 @@ Also: VS Code documents that it does not forward `include-custom-instructions`, 
 ### B-508 · The installer's HEAD-comparison and ownership planning has no unit tests, and an edited framework-owned file is replaced unannounced
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** M · **Invariants:** #7
-**Status:** Open; architecture review and decision audit 2026-11-14. WSD-101 asks only that hashes gate retirement and a migration floor is named, not how the installer is structured; WSD-043's noise premise predates WSD-051's per-path digests. f759e572, 03f25b38 and two findings shut under WSD-124 (a letter-case mismatch, a staged archive version) all sit in the HEAD-comparison logic, reachable only through end-to-end runs.
-Candidate: extract the pure planning functions with unit cases first; record installed digests at install time, keeping the ledger as the floor for older installs; a NOTICE naming each owned file whose bytes match no released digest, with the commit to recover it from (no backup copy, WSD-117). Also check whether the legacy pre-commit inspection (`install.ps1:936-1200`) and the file-named retired-path messages still serve a reachable install. Guarded, step 4.
+**Status:** Open. The copy of an uncommitted framework-file edit and the notice for a committed one (HEAD against the last install commit) shipped 2026-11-17 for 0.99.0 (WSD-129).
+Remaining: extract the pure planning functions with unit cases. Keep the legacy pre-commit inspection: updates accept 0.76.0, the helpers it protects retired in 0.83.0, and `InstallerConvergence` exercises it.
+Guarded, step 4.
 ### B-511 · Delete maintainer code that no longer earns its place: the local gate time budget, finished eval studies
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** S · **Invariants:** none

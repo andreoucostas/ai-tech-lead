@@ -184,6 +184,12 @@ credential in a file at the repository root gets no row.
 "Remove the framework" in `docs/upgrade-checklist.md` is now six steps that leave no hook registration or import behind, and its
 exit-code line says what exits 2, 3 and 4 mean (text-only, shipped unmeasured; B-496). The installer `-Uninstall` stays unfiled.
 
+An update no longer replaces an edited framework-owned file unannounced (guarded, step 4; B-508, partial; WSD-129). An edit the last
+commit does not hold (uncommitted, under `-AllowDirtyTree`) is copied below `.claude/framework-update-backup/files/` as WSD-117 copies are
+made, and named with its copy. A committed one is named, with `git show <HEAD>:./<path>`, when HEAD's blob differs from the blob in the
+last commit that changed `.claude/framework-version.json`; with no Git, no commit, no such install commit or a path it lacks, one line
+says edits could not be checked. Limit: an edit committed with the install is not seen. Remaining: unit cases for the planning functions.
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

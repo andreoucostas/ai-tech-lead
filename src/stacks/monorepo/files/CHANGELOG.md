@@ -126,6 +126,11 @@
   delete the framework-owned paths, remove the framework's hooks from `.claude/settings.json`, remove its import from
   `CLAUDE.md`, delete `.claude/.state/` and the audit log, then check that `git grep ".claude/hooks/"` prints nothing. It
   also says what installer exits 2, 3 and 4 mean, and that an exit 3 can come after files were written.
+- **An update no longer replaces your edit to a framework file unannounced.** An edit not yet committed (an update run with
+  `-AllowDirtyTree`) is copied below `.claude/framework-update-backup/files/` first, and the update names the file and the
+  copy. An edit your team committed after the last framework install is named with the `git show` line that prints your
+  version back. An edit committed together with the install is not seen, and a repository with no Git commit gets one line
+  saying edits could not be checked, and no copy.
 
 ## 0.98.6 — 2026-11-13
 

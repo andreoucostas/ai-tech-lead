@@ -1187,6 +1187,43 @@ It 'B-508 an update of a committed install the team did not edit saves no copy o
         Assert ($LASTEXITCODE -eq 0 -and $out -match '(?m)^PLAN replace \.claude/commands/review\.md\r?$') "calibration: the update failed or replaced no framework file (exit $LASTEXITCODE): $out"
         Assert ((Get-B508Copies -Target $t).Count -eq 0) "the update copied a framework file the team did not edit: $((Get-B508Copies -Target $t) -join ' | ')"
         Assert ($flat -notmatch "is a framework file") "the update named a framework file the team did not edit: $out"
+        Assert ($flat -notmatch 'could not be checked') "the update said it could not check a committed install for edits: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-508 an update names a framework file the team edited and committed after the install, and the line that gives that version back' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b508k-' + [guid]::NewGuid())
+    try {
+        $t = New-B508Install -Root $root
+        $edited = '.claude/commands/review.md'
+        [IO.File]::AppendAllText((Join-Path $t $edited), "`nB508 COMMITTED TEAM EDIT`n")
+        & git -C $t commit -qam 'team edit to review'
+        $head = (& git -C $t rev-parse HEAD | Out-String).Trim()
+        $install = (& git -C $t rev-parse HEAD~1 | Out-String).Trim()
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0 -and $out -match "(?m)^PLAN replace $([regex]::Escape($edited))\r?$") "calibration: the update failed or did not replace $edited (exit $LASTEXITCODE): $out"
+        Assert ($flat -match "NOTICE: '$([regex]::Escape($edited))' is a framework file your team changed and committed after the last framework install \(commit $install\), so the update replaces your committed version with this release's file; your version is in commit ${head}: git -C '$([regex]::Escape($t))' show ${head}:\./$([regex]::Escape($edited)) prints it\.") "no NOTICE names the committed edit and the line that gives it back: $out"
+        Assert ($flat -notmatch "'(?!$([regex]::Escape($edited))')[^']+' is a framework file your team changed") "the update named a framework file the team did not change: $out"
+        Assert ((Get-B508Copies -Target $t).Count -eq 0) "the update copied a file its last commit holds: $((Get-B508Copies -Target $t) -join ' | ')"
+        Assert ((& git -C $t show "${head}:./$edited" | Out-String) -match 'B508 COMMITTED TEAM EDIT') 'calibration: the named line does not give the committed version back'
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-508 an update of a target with no Git says edits to framework files could not be checked and names none' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b508n-' + [guid]::NewGuid())
+    try {
+        $t = New-B508Install -Root $root -NoGit
+        [IO.File]::AppendAllText((Join-Path $t '.claude/commands/review.md'), "`nB508 TEAM EDIT`n")
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0 -and $out -match '(?m)^PLAN replace \.claude/commands/review\.md\r?$') "calibration: the update failed or did not replace review.md (exit $LASTEXITCODE): $out"
+        Assert (([regex]::Matches($flat, 'edits to framework files could not be checked')).Count -eq 1) "the update did not say, once, that edits to framework files could not be checked: $out"
+        Assert ($flat -notmatch 'is a framework file') "the update named a framework file it could not check: $out"
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }

@@ -969,6 +969,54 @@ function Format-HeadHeld {
     if ($spec -cnotmatch '^[A-Za-z0-9_./:-]+$') { $spec = & $quoted $spec }
     return "in commit ${Commit}:  git -C $target show $spec  prints it"
 }
+# The target's last framework install: the last commit in HEAD's history that changed .claude/framework-version.json, and
+# its blobs under the same first folders as Get-HeadState. A framework file whose blob in HEAD differs from its blob there
+# is one the team changed and committed since; an edit committed together with the install is not seen. Commit stays
+# $null, and Reason says why, when there is no such commit to compare with.
+$script:InstallState = $null
+function Get-InstallState {
+    if ($null -ne $script:InstallState) { return $script:InstallState }
+    $head = Get-HeadState
+    $script:InstallState = [pscustomobject]@{ Commit = $null; Blobs = $null; Reason = 'the target has no Git commit to compare them with' }
+    if ($null -eq $head.Commit) { return $script:InstallState }
+    $log = Invoke-GitText -GitPath $head.GitPath -Arguments @('-C', $tgt, 'log', '-1', '--format=%H', $head.Commit, '--', '.claude/framework-version.json')
+    if (-not ($log.Started -and $log.ExitCode -eq 0 -and $log.Output -cmatch '^(?:[0-9a-f]{40}|[0-9a-f]{64})$')) {
+        $script:InstallState.Reason = "no commit in HEAD's history changed .claude/framework-version.json, so the last framework install is not known"
+        return $script:InstallState
+    }
+    $roots = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($relative in $incomingPaths) { [void]$roots.Add($relative.Split('/')[0]) }
+    $records = Invoke-GitRecords -GitPath $head.GitPath -Arguments (@('-C', $tgt, 'ls-tree', '-r', '-z', $log.Output, '--') + @($roots))
+    if ($null -eq $records) {
+        $script:InstallState.Reason = "Git could not list the files of the last framework install, commit $($log.Output)"
+        return $script:InstallState
+    }
+    $blobs = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    foreach ($record in @($records)) {
+        $entry = [regex]::Match($record, '^100(?:644|755) blob ([0-9a-f]+)\t(.+)$', [Text.RegularExpressions.RegexOptions]::Singleline)
+        if ($entry.Success) { $blobs[$entry.Groups[2].Value] = $entry.Groups[1].Value }
+    }
+    $script:InstallState = [pscustomobject]@{ Commit = $log.Output; Blobs = $blobs; Reason = $null }
+    return $script:InstallState
+}
+# Whether HEAD holds a framework file at $Relative other than as the last framework install left it: $true, $false, or
+# $null when that install does not hold the path. A framework skill's SKILL.md is compared without the exemplar line
+# /bootstrap appends, which every update carries forward.
+function Test-ChangedSinceInstall {
+    param([Parameter(Mandatory = $true)][string]$Relative)
+    $head = Get-HeadState
+    $install = Get-InstallState
+    if ($null -eq $install.Commit -or -not $install.Blobs.ContainsKey($Relative) -or -not $head.Blobs.ContainsKey($Relative)) { return $null }
+    if ($head.Blobs[$Relative] -ceq $install.Blobs[$Relative]) { return $false }
+    if ($Relative -notmatch '^\.claude/skills/[^/]+/SKILL\.md$') { return $true }
+    $texts = New-Object System.Collections.Generic.List[string]
+    foreach ($blob in @($head.Blobs[$Relative], $install.Blobs[$Relative])) {
+        $bytes = Invoke-GitBytes -GitPath $head.GitPath -Arguments @('-C', $tgt, 'cat-file', 'blob', $blob)
+        if ($null -eq $bytes) { return $true }
+        $texts.Add(([regex]::Replace([Text.Encoding]::UTF8.GetString($bytes).Replace("`r`n", "`n"), '(?m)^For a concrete current instance in this repo, see .+\n?', '')).TrimEnd())
+    }
+    return -not [string]::Equals($texts[0], $texts[1], [StringComparison]::Ordinal)
+}
 # The dirty-tree refusal says "Commit", which would take an earlier update's leftovers too, so before it they are kept
 # out of Git: the list's '*' is that refusal's one write, to the framework's own file. Returns the line it adds.
 function Protect-BackupResidue {
@@ -2276,9 +2324,11 @@ foreach ($relative in $retirementPreserve) { [void]$preservePlan.Add($relative) 
 # Settings and the skills this run backs up already have their own save. Below files/ each path is mapped by
 # ConvertTo-SavedRelative, so no saved copy is live.
 # A file the previous manifest lists is the framework's, but its bytes on disk may hold an edit the target's last commit
-# does not (one not yet committed, under -AllowDirtyTree): it is saved the same way and named one line each. One that
-# commit holds is not saved, nor any where there is no commit to compare with (every file a release changes would look
-# edited). Its ignore files are left to the ignore-file save below, which saves one whose rules the release drops.
+# does not (one not yet committed, under -AllowDirtyTree): it is saved the same way and named one line each. None is
+# saved where there is no commit to compare with (every file a release changes would look
+# edited). One that commit holds is replaced without a copy; it is named, with the line that gives it back, when its blob
+# there differs from the last framework install's (Test-ChangedSinceInstall). Its ignore files are left to the ignore-file
+# save below, which saves one whose rules the release drops.
 $saveMessages = New-Object System.Collections.Generic.List[string]
 $savesRelative = '.claude/framework-update-backup/files'
 if ($updateMode -and -not $Reinstall) {
@@ -2287,6 +2337,7 @@ if ($updateMode -and -not $Reinstall) {
     foreach ($entry in $skillBackupPlan) { [void]$savedElsewhere.Add($entry.SourceRelative) }
     foreach ($relative in $skillHeld) { [void]$savedElsewhere.Add($relative) }
     $additiveSaves = 0; $additiveAlready = 0; $additiveHeld = 0
+    $uncheckedOwned = New-Object System.Collections.Generic.List[string]
     foreach ($relative in $ordinaryApplyPaths) {
         $owned = $null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative)
         if ($savedElsewhere.Contains($relative) -or ($owned -and $relative -match '(^|/)\.gitignore$') -or
@@ -2305,7 +2356,15 @@ if ($updateMode -and -not $Reinstall) {
         if ((Get-LfSha256 -Bytes $existingBytes) -ceq (Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes((Join-Path $src $relative))))) { continue }
         $heldIn = Get-HeadHeldCommit -Relative $relative -Bytes $existingBytes
         if ($owned) {
-            if ($heldIn) { continue }
+            if ($heldIn) {
+                $changed = Test-ChangedSinceInstall -Relative $relative
+                if ($null -eq $changed -and $null -ne (Get-InstallState).Commit) { $uncheckedOwned.Add($relative) }
+                elseif ($changed) {
+                    [void]$headHeldSaves.Add($relative)
+                    $saveMessages.Add("NOTICE: '$relative' is a framework file your team changed and committed after the last framework install (commit $((Get-InstallState).Commit)), so the update replaces your committed version with this release's file; your version is $(Format-HeadHeld -Relative $relative -Commit $heldIn). Keep what you need from it under another path.")
+                }
+                continue
+            }
             $preferred = "$savesRelative/" + (ConvertTo-SavedRelative -Relative $relative)
             $backup = Find-UpdateBackup -Preferred $preferred -Bytes $existingBytes
             if ($backup.State -eq 'taken') {
@@ -2428,6 +2487,12 @@ if ($updateMode -and -not $Reinstall) {
     }
     if ($additiveParts.Count -gt 0) {
         $saveMessages.Add("NOTICE: there is no usable previous framework-ownership.json, so the update cannot tell which files the framework wrote: $($additiveParts -join ' ')")
+    }
+    # One line, never a guess, where the last framework install gives nothing to compare a framework file with.
+    if ($null -ne $priorManifest -and $null -ne (Get-InstallState).Reason) {
+        $saveMessages.Add("NOTICE: edits to framework files could not be checked ($((Get-InstallState).Reason)), so the update names none your team may have made to a file it replaces. Keep any change you need in AGENTS.md or a project skill.")
+    } elseif ($uncheckedOwned.Count -gt 0) {
+        $saveMessages.Add("NOTICE: edits to framework files could not be checked for $($uncheckedOwned -join ', ') (the last framework install, commit $((Get-InstallState).Commit), does not hold $(if ($uncheckedOwned.Count -eq 1) { 'it' } else { 'them' })), so the update names none your team may have made there. Keep any change you need in AGENTS.md or a project skill.")
     }
 }
 
