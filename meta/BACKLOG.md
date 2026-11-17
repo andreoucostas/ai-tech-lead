@@ -155,8 +155,8 @@ Also: VS Code documents that it does not forward `include-custom-instructions`, 
 ### B-508 · The installer's HEAD-comparison and ownership planning has no unit tests, and an edited framework-owned file is replaced unannounced
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P2 · **Effort:** M · **Invariants:** #7
-**Status:** Open. The copy of an uncommitted framework-file edit and the notice for a committed one (HEAD against the last install commit) shipped 2026-11-17 for 0.99.0 (WSD-129); attack round 1 fixed.
-Remaining: extract the pure planning functions with unit cases. Keep the legacy pre-commit inspection: updates accept 0.76.0, the helpers it protects retired in 0.83.0, and `InstallerConvergence` exercises it.
+**Status:** Open. The copy of an uncommitted framework-file edit and the notice for a committed one (HEAD against the last install commit) shipped 2026-11-17 for 0.99.0 (WSD-129); attack rounds 1 and 2 fixed (round 2: a false notice in an offline partial clone).
+Remaining: extract the pure planning functions with unit cases. Pre-existing: a framework file held open with share Read only gives a half-applied update (exit 3, "62 of 90 framework files were written", nothing lost), and the `.gitignore` and disabled-skill loops read with `ReadAllBytes` and stop with exit 4 on a held file. Keep the legacy pre-commit inspection: updates accept 0.76.0, the helpers it protects retired in 0.83.0, and `InstallerConvergence` exercises it.
 Guarded, step 4.
 ### B-511 · Delete maintainer code that no longer earns its place: the local gate time budget, finished eval studies
 **Filed against:** v0.98.6 (2026-11-14)

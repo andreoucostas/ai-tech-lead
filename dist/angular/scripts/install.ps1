@@ -973,9 +973,26 @@ function Format-HeadHeld {
 # its blobs under the same first folders as Get-HeadState. A framework file whose blob in HEAD differs from its blob there
 # is one the team changed and committed since; an edit committed together with the install is not seen. Commit stays
 # $null, and Reason says why, when there is no such commit to compare with.
+# The git calls of this check run with prompts and lazy fetches off (Enter-GitNoFetch), so a partial clone never reaches
+# its remote: an object it does not store locally is not available.
+function Enter-GitNoFetch {
+    $prior = @{}
+    foreach ($name in @('GIT_TERMINAL_PROMPT', 'GIT_NO_LAZY_FETCH')) { $prior[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+    [Environment]::SetEnvironmentVariable('GIT_TERMINAL_PROMPT', '0', 'Process')
+    [Environment]::SetEnvironmentVariable('GIT_NO_LAZY_FETCH', '1', 'Process')
+    return $prior
+}
+function Exit-GitNoFetch {
+    param([Parameter(Mandatory = $true)][hashtable]$Prior)
+    foreach ($name in $Prior.Keys) { [Environment]::SetEnvironmentVariable($name, $Prior[$name], 'Process') }
+}
 $script:InstallState = $null
 function Get-InstallState {
     if ($null -ne $script:InstallState) { return $script:InstallState }
+    $prior = Enter-GitNoFetch
+    try { return Read-InstallState } finally { Exit-GitNoFetch -Prior $prior }
+}
+function Read-InstallState {
     $head = Get-HeadState
     $script:InstallState = [pscustomobject]@{ Commit = $null; Blobs = $null; Reason = 'the target has no Git commit to compare them with' }
     if ($null -eq $head.Commit) { return $script:InstallState }
@@ -1006,22 +1023,27 @@ function Get-InstallState {
     return $script:InstallState
 }
 # Whether HEAD holds a framework file at $Relative other than as the last framework install left it: $true, $false, or
-# $null when that install does not hold the path. A framework skill's SKILL.md is compared without the exemplar line
-# /bootstrap appends, which every update carries forward.
+# $null when that install does not hold the path or a copy to compare cannot be read (one a partial clone does not store
+# locally; the path goes into InstallCopyUnreadable). A framework skill's SKILL.md is compared without the exemplar line
+# /bootstrap appends, which every update carries forward. Its git calls run as Get-InstallState's do.
+$script:InstallCopyUnreadable = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
 function Test-ChangedSinceInstall {
     param([Parameter(Mandatory = $true)][string]$Relative)
-    $head = Get-HeadState
-    $install = Get-InstallState
-    if ($null -eq $install.Commit -or -not $install.Blobs.ContainsKey($Relative) -or -not $head.Blobs.ContainsKey($Relative)) { return $null }
-    if ($head.Blobs[$Relative] -ceq $install.Blobs[$Relative]) { return $false }
-    if ($Relative -notmatch '^\.claude/skills/[^/]+/SKILL\.md$') { return $true }
-    $texts = New-Object System.Collections.Generic.List[string]
-    foreach ($blob in @($head.Blobs[$Relative], $install.Blobs[$Relative])) {
-        $bytes = Invoke-GitBytes -GitPath $head.GitPath -Arguments @('-C', $tgt, 'cat-file', 'blob', $blob)
-        if ($null -eq $bytes) { return $true }
-        $texts.Add(([regex]::Replace([Text.Encoding]::UTF8.GetString($bytes).Replace("`r`n", "`n"), '(?m)^For a concrete current instance in this repo, see .+\n?', '')).TrimEnd())
-    }
-    return -not [string]::Equals($texts[0], $texts[1], [StringComparison]::Ordinal)
+    $prior = Enter-GitNoFetch
+    try {
+        $head = Get-HeadState
+        $install = Get-InstallState
+        if ($null -eq $install.Commit -or -not $install.Blobs.ContainsKey($Relative) -or -not $head.Blobs.ContainsKey($Relative)) { return $null }
+        if ($head.Blobs[$Relative] -ceq $install.Blobs[$Relative]) { return $false }
+        if ($Relative -notmatch '^\.claude/skills/[^/]+/SKILL\.md$') { return $true }
+        $texts = New-Object System.Collections.Generic.List[string]
+        foreach ($blob in @($head.Blobs[$Relative], $install.Blobs[$Relative])) {
+            $bytes = Invoke-GitBytes -GitPath $head.GitPath -Arguments @('-C', $tgt, 'cat-file', 'blob', $blob)
+            if ($null -eq $bytes) { [void]$script:InstallCopyUnreadable.Add($Relative); return $null }
+            $texts.Add(([regex]::Replace([Text.Encoding]::UTF8.GetString($bytes).Replace("`r`n", "`n"), '(?m)^For a concrete current instance in this repo, see .+\n?', '')).TrimEnd())
+        }
+        return -not [string]::Equals($texts[0], $texts[1], [StringComparison]::Ordinal)
+    } finally { Exit-GitNoFetch -Prior $prior }
 }
 # The dirty-tree refusal says "Commit", which would take an earlier update's leftovers too, so before it they are kept
 # out of Git: the list's '*' is that refusal's one write, to the framework's own file. Returns the line it adds.
@@ -2345,6 +2367,7 @@ if ($updateMode -and -not $Reinstall) {
     foreach ($relative in $skillHeld) { if (-not ($null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative))) { [void]$savedElsewhere.Add($relative) } }
     $additiveSaves = 0; $additiveAlready = 0; $additiveHeld = 0
     $uncheckedOwned = New-Object System.Collections.Generic.List[string]
+    $unreadableOwned = New-Object System.Collections.Generic.List[string]
     foreach ($relative in $ordinaryApplyPaths) {
         $owned = $null -ne $priorManifest -and $priorManifest.ByPath.ContainsKey($relative)
         if ($savedElsewhere.Contains($relative) -or ($owned -and $relative -match '(^|/)\.gitignore$') -or
@@ -2366,7 +2389,8 @@ if ($updateMode -and -not $Reinstall) {
         if ($owned) {
             if ($heldIn) {
                 $changed = Test-ChangedSinceInstall -Relative $relative
-                if ($null -eq $changed -and $null -ne (Get-InstallState).Commit) { $uncheckedOwned.Add($relative) }
+                if ($null -eq $changed -and $script:InstallCopyUnreadable.Contains($relative)) { $unreadableOwned.Add($relative) }
+                elseif ($null -eq $changed -and $null -ne (Get-InstallState).Commit) { $uncheckedOwned.Add($relative) }
                 elseif ($changed) {
                     [void]$headHeldSaves.Add($relative)
                     $saveMessages.Add("NOTICE: '$relative' is a framework file your team changed and committed after the last framework install (commit $((Get-InstallState).Commit)), so the update replaces your committed version with this release's file; your version is $(Format-HeadHeld -Relative $relative -Commit $heldIn). Keep what you need from it under another path.")
@@ -2505,8 +2529,11 @@ if ($updateMode -and -not $Reinstall) {
     # One line, never a guess, where the last framework install gives nothing to compare a framework file with.
     if ($null -ne $priorManifest -and $null -ne (Get-InstallState).Reason) {
         $saveMessages.Add("NOTICE: edits to framework files could not be checked ($((Get-InstallState).Reason)), so the update names none your team may have made to a file it replaces. Keep any change you need in AGENTS.md or a project skill.")
-    } elseif ($uncheckedOwned.Count -gt 0) {
-        $saveMessages.Add("NOTICE: edits to framework files could not be checked for $($uncheckedOwned -join ', ') (the last framework install, commit $((Get-InstallState).Commit), does not hold $(if ($uncheckedOwned.Count -eq 1) { 'it' } else { 'them' })), so the update names none your team may have made there. Keep any change you need in AGENTS.md or a project skill.")
+    } elseif ($uncheckedOwned.Count -gt 0 -or $unreadableOwned.Count -gt 0) {
+        $uncheckedWhy = @()
+        if ($uncheckedOwned.Count -gt 0) { $uncheckedWhy += "$($uncheckedOwned -join ', ') (the last framework install, commit $((Get-InstallState).Commit), does not hold $(if ($uncheckedOwned.Count -eq 1) { 'it' } else { 'them' }))" }
+        if ($unreadableOwned.Count -gt 0) { $uncheckedWhy += "$($unreadableOwned -join ', ') (a copy to compare, in commit $((Get-InstallState).Commit) or HEAD, is not available locally, as in a partial clone)" }
+        $saveMessages.Add("NOTICE: edits to framework files could not be checked for $($uncheckedWhy -join ' and '), so the update names none your team may have made there. Keep any change you need in AGENTS.md or a project skill.")
     }
 }
 

@@ -1294,6 +1294,30 @@ It 'B-508 an update of a shallow clone says edits to framework files could not b
     }
 }
 
+It 'B-508 an update of a partial clone whose remote is gone says a skill it cannot compare could not be checked, and names no edit' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b508p-' + [guid]::NewGuid())
+    try {
+        $origin = New-B508Install -Root $root
+        $skill = '.claude/skills/perf/SKILL.md'
+        [IO.File]::AppendAllText((Join-Path $origin $skill), "`nFor a concrete current instance in this repo, see src/Smoke/Budget.cs`n")
+        & git -C $origin commit -qam 'bootstrap exemplar'
+        & git -C $origin config uploadpack.allowFilter true
+        $t = Join-Path $root 'partial'
+        & git -c core.autocrlf=false clone -q --filter=blob:none ('file:///' + ($origin -replace '\\', '/')) $t 2>$null
+        Assert ($LASTEXITCODE -eq 0) 'calibration: the partial clone failed'
+        Rename-Item -LiteralPath $origin -NewName 'origin-gone'
+        & git -C $t cat-file -e "HEAD~1:$skill" 2>$null
+        Assert ($LASTEXITCODE -ne 0) 'calibration: the install commit copy of the skill is stored locally'
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0) "calibration: the update failed (exit $LASTEXITCODE): $out"
+        Assert ($flat -notmatch "'$([regex]::Escape($skill))' is a framework file your team changed") "the update named a skill whose only change is the /bootstrap exemplar line: $out"
+        Assert (([regex]::Matches($flat, "edits to framework files could not be checked for .*?$([regex]::Escape($skill)) \(a copy to compare[^)]*not available locally")).Count -eq 1) "the update did not say, once, that $skill could not be checked: $out"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 It 'B-508 an update says a framework file Git ignores has no commit, not that it holds an uncommitted edit, and still saves it' {
     $root = Join-Path ([IO.Path]::GetTempPath()) ('b508g-' + [guid]::NewGuid())
     try {
