@@ -111,7 +111,10 @@ bundle.
 Then merge every reviewer's findings and your own into one Issues table. Rows on the same `file:line`
 become one row that names every reviewer who raised it and keeps the highest severity. Map each
 reviewer's own scale onto one: `critical` and `high` become `blocker`, `medium` becomes `should-fix`,
-`low` becomes `note`. Any `blocker` means REQUEST CHANGES.
+`low` becomes `note`. Any `blocker` means REQUEST CHANGES. `debt-radar`'s entries are context, not
+findings on the diff: they go to Architecture Notes, never into the Issues table, and never count as
+blockers. A high `bloat-radar` finding the developer justifies with a documented second consumer or
+planned next change becomes a `note`.
 
 If any required manifest, captured byte, scanner result, or equality comparison cannot be read or
 verified, return `CANNOT EXAMINE` with the reason and no approval/request-changes verdict.
@@ -143,7 +146,7 @@ verified, return `CANNOT EXAMINE` with the reason and no approval/request-change
 Summarise convention-check findings (link IDs to issue rows above).
 
 ### Bloat
-Summarise bloat-radar findings. For each high-severity finding (single-consumer abstraction, shallow wrapper, parallel implementation): does the developer have a documented second consumer or planned next change that justifies it? If not, REQUEST CHANGES to remove or inline.
+Summarise bloat-radar findings. For each high-severity finding (single-consumer abstraction, shallow wrapper, parallel implementation): does the developer have a documented second consumer or planned next change that justifies it? If not, it is a blocker: remove or inline.
 ```
 
 Be direct. Do not praise code for meeting baseline expectations. Only call out what's good if it's genuinely above the bar.

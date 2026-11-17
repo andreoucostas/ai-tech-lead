@@ -115,8 +115,9 @@
 - **`/review` merges duplicate findings, uses one severity scale and names any reviewer that did not return.** Findings on
   the same `file:line` become one row naming every reviewer; severities read `blocker`, `should-fix` or `note`, and the
   verdict line gives the blocker count, the reviewers that returned and those missing, so a lost reviewer is never an
-  unspoken approval. The bloat check no longer flags a controller that only delegates to a service, no longer flags a
-  change for adding many lines per file, and flags commented-out code at more than one line, as your `AGENTS.md` says.
+  unspoken approval. Existing debt entries and justified bloat do not block. The bloat check no longer flags a controller
+  that only delegates to a service, no longer flags a change for adding many lines per file, and flags commented-out code
+  at more than one line, as your `AGENTS.md` says.
 
 ## 0.98.6 — 2026-11-13
 

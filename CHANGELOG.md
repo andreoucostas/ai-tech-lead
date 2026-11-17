@@ -172,7 +172,7 @@ routes as a feature.
 
 `/review` merges findings and names the reviewers that did not return (guarded, text-only, shipped unmeasured; B-497, partial).
 Findings on one `file:line` become one row with every reviewer named and the highest severity; every reviewer's scale maps to
-`blocker`, `should-fix` or `note`, and the verdict line gives the blocker count, the reviewers returned and those missing.
+`blocker`, `should-fix` or `note`, and the verdict line gives the blocker count, the reviewers returned and those missing; existing `TECH_DEBT.md` entries and bloat the developer justifies do not block.
 `bloat-radar` no longer flags a controller that only delegates, drops its lines-per-file heuristic, and uses the rules file's one-line
 commented-out threshold. Open: merging the three Haiku reviewers into one pass, to be measured with B-467's harness.
 

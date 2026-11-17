@@ -147,7 +147,7 @@ Same file (2026-11-14 architecture review): `upgrade-checklist.md:111` says a no
 ### B-497 · `/review` hands back six reviewers' findings with no merge, de-duplication or verdict rule
 **Filed against:** v0.98.4 (2026-11-10)
 **Priority:** P3 · **Effort:** S to M · **Invariants:** #1 #7
-**Status:** Open. Shipped 2026-11-17 for 0.99.0: `/review` merges findings on one `file:line`, maps every reviewer's scale to blocker, should-fix or note, ends with one verdict line naming the blocker count and the reviewers returned or missing, and names a reviewer that errors as missing; `bloat-radar` and `solid-check` agree on delegation, the lines-per-file heuristic is gone, and the commented-out-code threshold is one line everywhere.
+**Status:** Open. Shipped 2026-11-17 for 0.99.0: `/review` merges findings on one `file:line`, maps every reviewer's scale to blocker, should-fix or note, ends with one verdict line naming the blocker count and the reviewers returned or missing, and names a reviewer that errors as missing; existing debt entries and justified bloat do not block; `bloat-radar` and `solid-check` agree on delegation, the lines-per-file heuristic is gone, and the commented-out-code threshold is one line everywhere.
 Remaining: merge the three Haiku reviewers (convention-check, bloat-radar, debt-radar; B-427) into one pass, measured with B-467's 12-defect harness, and do the de-duplication there. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
 ### B-499 · Credential forms the write guard still does not read after B-487
 **Filed against:** v0.98.4 (2026-11-10)
