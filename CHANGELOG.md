@@ -176,6 +176,10 @@ Findings on one `file:line` become one row with every reviewer named and the hig
 `bloat-radar` no longer flags a controller that only delegates, drops its lines-per-file heuristic, and uses the rules file's one-line
 commented-out threshold. Open: merging the three Haiku reviewers into one pass, to be measured with B-467's harness.
 
+`/bootstrap` and `/rebootstrap` no longer write where a committed credential sits (guarded, text-only, shipped unmeasured; B-484).
+Its hazard row names the containing directory, which `hazard-check` still resolves, and the kind of credential with the action
+(rotate, remove from history, load from configuration); the file, line and value go to the developer in chat only.
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

@@ -232,7 +232,7 @@ The pass reports are your only view of the code, and a worker can misread it. Be
 the evidence each of these findings cites: every Tier-1 architectural risk, every .NET A7
 financial-domain finding, and every finding you will propose as a hazard in 3d-bis. Read the cited
 lines yourself; do not dispatch a worker. Keep a finding its evidence shows, and carry the exact
-`path:line` range you reread into its Phase 2b or 3d-bis question and, for a hazard, its Hazard cell.
+`path:line` range you reread into its Phase 2b or 3d-bis question and, for a hazard, its Hazard cell (except a committed credential, see 3d-bis).
 Drop a finding its evidence contradicts or does not show, and list it in Phase 4 with the reason.
 This recheck establishes what the code shows, not whether the risk matters in this system: it never
 sets or upgrades a hazard's status, which only the developer's answer does. Recheck no other findings.
@@ -467,6 +467,11 @@ Map each answer to a row status:
 
 Then write the `## Known Hazard Areas` table to FRAMEWORK-CONTEXT.md with the answered statuses. One row per hazard: `Area / file(s)` · `Hazard` (the specific risk, plus the `path:line` range Phase 2a reread for it) · `Status` · `Reviewed`. `Reviewed` is the day the row was added, or a person last confirmed or dismissed it, in ISO `YYYY-MM-DD`; nothing else changes it, and `Status`, not the date, says whether a person confirmed it. So a row this run adds gets today's date, `[UNVERIFIED]` included, and a row already in the table keeps its status and date unless the developer answers it (a) or (b).
 
+- For a credential committed to the repository (a key, token, password, connection string holding a secret, or private
+  key in tracked content), `Area / file(s)` names only the **containing directory**, never the file or line, and the
+  Hazard cell names the kind of credential and the action (rotate it, remove it from history, load it from
+  configuration), never the value, file, line or any fragment of it. Give the exact location to the developer in chat
+  and in this question only; never write it to a file.
 - Write the Status cell as **bare text**, never inside Markdown code delimiters/backticks. Its complete
   value must be one accepted token: `[VERIFIED]`, `[SUSPECTED]`, `[UNVERIFIED]`, or
   `[REVIEWED: not a hazard — YYYY-MM-DD]`.

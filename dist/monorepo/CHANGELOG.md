@@ -118,6 +118,9 @@
   unspoken approval. Existing debt entries and justified bloat do not block. The bloat check no longer flags a controller
   that only delegates to a service, no longer flags a change for adding many lines per file, and flags commented-out code
   at more than one line, as your `AGENTS.md` says.
+- **`/bootstrap` and `/rebootstrap` no longer write where a committed credential sits.** The hazard row for a key, token,
+  password or connection string found in the repository names only its folder, with the kind of credential and the action
+  (rotate it, remove it from history, load it from configuration); the file, line and value are told to you in chat only.
 
 ## 0.98.6 — 2026-11-13
 
