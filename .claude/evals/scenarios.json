@@ -611,6 +611,40 @@
       "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid.",
       "followUp": "A second refund on an invoice that is already refunded is a 409 too. Paid stays true; Refunded is an extra flag on top. This only marks the invoice: no event, no payment-provider call, no money moves. I apply the new Refunded column to the database myself, so no script is needed. Two simultaneous refunds are out of scope for now. Go ahead.",
       "assertion": "optionsPlan"
+    },
+    {
+      "id": "b356-decoy-supplier",
+      "measures": "B-356 (pre-registered in .claude/plans/2026-11-18-b356-decoy.md): on a plain new CRUD resource (the fifth, no easy-to-miss step), does carrier section 2's record bullet make the plan or the diff carry an unneeded record (a plan offer, an AGENTS.md convention, a project skill or wiki draft, an enumerating test)? Two invocations of one session: the request, then a fixed answer with a go-ahead. Run with and without the knockout patch (the bullet deleted from the installed carrier). Framework arm only: install plus the b514-orders overlay as /bootstrap left it. The row's candidate is a mechanical flag; the hand read of the transcript decides. It does not show whether the bullet acts when it should, other fixtures, Copilot, Angular or monorepo.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "budgetUsd": 1.0,
+      "followUpBudgetUsd": 2.0,
+      "prompt": "Add a Supplier resource with a name and a contact email: list, get by id and create, through the API like the existing resources. Follow this repository's conventions.",
+      "followUp": "I make the table in the database myself, so no migration or script is needed. Same shape as the existing resources: no DTOs, validation or paging. Go ahead.",
+      "assertion": "recordOffer"
+    },
+    {
+      "id": "b356-decoy-warehouse",
+      "measures": "B-356: b356-decoy-supplier with the noun changed (a Warehouse with a code and a city), so the decoy does not rest on one prompt.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "budgetUsd": 1.0,
+      "followUpBudgetUsd": 2.0,
+      "prompt": "Add a Warehouse resource with a code and a city: list, get by id and create, through the API like the existing resources. Follow this repository's conventions.",
+      "followUp": "I make the table in the database myself, so no migration or script is needed. Same shape as the existing resources: no DTOs, validation or paging. Go ahead.",
+      "assertion": "recordOffer"
+    },
+    {
+      "id": "b356-seam",
+      "measures": "B-356 (active-bullet check, reported only): a request that adds a real extension point with a flag step nothing in the repository records. Leg 1 only: does the plan name a record for that step? Run with and without the knockout patch. Framework arm only, as b356-decoy-supplier.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "budgetUsd": 1.0,
+      "prompt": "Add order-shipped notifications through pluggable channels. Ship an email channel and a webhook channel now; other teams will add their own channels to this repository later. Each channel is switched on by a `notifications.channel.<key>` flag in config/feature-flags.json, and a channel without its flag stays off. Follow this repository's conventions.",
+      "assertion": "recordOffer"
     }
   ]
 }

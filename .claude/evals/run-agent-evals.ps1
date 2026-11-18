@@ -58,6 +58,8 @@ $contractFixtures = @('b406-orders', 'b409-orders-ci')
 # Carrier trim: the route graders report whether the router's rails reached the prompt (routerFired), read from the UserPromptSubmit hook_response,
 # which Claude Code carries only with --include-hook-events. Asked for by these two scenarios as well as the contract fixtures.
 $routerProbeScenarios = @('route-fix', 'route-fix-nl', 'route-fix-notest')
+# B-528 and B-356: the plan graders read hook events and a merged two-leg stream (a followUp), on the framework arm with an overlay.
+$planAssertions = @('optionsPlan', 'recordOffer')
 # The install cases: the agent installs the framework itself, so the runner installs nothing first and -TargetPatch has nothing to patch.
 # B-404: url-install-readme-* are the URL-install cases on the prompt the root README suggests, which asks for the commit.
 $selfInstallScenarios = @('install-handoff', 'archived-redirect', 'url-install-greenfield', 'url-install-brownfield', 'url-install-readme-greenfield', 'url-install-readme-brownfield')
@@ -2863,6 +2865,46 @@ function Get-OptionsPlan($Evidence, [int]$Boundary) {
     [pscustomobject]@{ Class = $class; Rec = $rec; Half = $half; DoneWhen = $doneWhen; Locus = $locus; Exit = $exitText }
 }
 
+# B-356 (.claude/plans/2026-11-18-b356-decoy.md), frozen with it: carrier §2's record bullet ("name the one record you will add for that
+# step") on a plain new resource, where nothing is easy to miss. Mechanical flags only; the hand read of the transcript decides each run.
+#   planOffer / planNone  main-agent text before the first main-agent write, both legs: wording that offers a record, or says none is needed
+#   skillWrites / skillFiles  Write, Edit or MultiEdit calls (any outcome: the host denies some) and changed paths under .claude/skills/ or docs/wiki/
+#   agentsEdits / agentsCue  edits of AGENTS.md, and whether their new text reads as a convention or recipe rather than an inventory line
+#   enumTest  a changed test file that walks assemblies or models (a test over every instance)
+#   cand  FALSE when any of the four is set, else NONE. bullet: the installed carrier holds the bullet (the shipped arm) or not (the knockout)
+$b356Bullet = 'adding the next instance has a step that is easy to miss'
+$b356Offer = '(?i)\bconventions line\b|AGENTS\.md\s*(?:>|›|→|-)+\s*Conventions|\bskill draft\b|\b(?:add|write|create|draft)(?:ing)? (?:an?|one|the) (?:\w+ ){0,2}skill\b|\b(?:test|check) (?:that|which) (?:fails|goes red|breaks) when\b|\bname the one record\b|\bone record\b'
+$b356None = '(?i)\bno (?:further |extra |new |other |additional )?(?:record|convention|skill)s?\b|\beasy[- ]to[- ]miss\b|\bone already exists\b|\balready (?:records?|documents?|covers?|exists)\b|\badd none\b'
+$b356SkillPath = '(?i)(?:^|[\\/])(?:\.claude[\\/]skills|docs[\\/]wiki)[\\/]'
+$b356AgentsCue = '(?i)\bconventions\b|\bcommon tasks\b|\bwhen adding\b|\brecipe\b|\bchecklist\b|\b(?:every|each) new\b|\bnext (?:resource|instance|channel)\b'
+$b356EnumTest = 'GetTypes\(|GetExportedTypes|GetEntityTypes|GetControllers|ApiDescription|ApplicationPart'
+function Get-RecordOffer($Evidence, [string]$Target) {
+    $firstWrite = @($Evidence.Tools | Where-Object { -not $_.Sidechain -and (Test-B406Write $_) } | Select-Object -First 1)
+    $cutoff = if ($firstWrite) { [int]$firstWrite[0].Index } else { [int]::MaxValue }
+    $texts = @($Evidence.Texts | Where-Object { -not $_.Sidechain -and $_.Index -lt $cutoff })
+    $offer = ''; $none = ''
+    foreach ($text in $texts) {
+        if (-not $offer) { $m = [regex]::Match($text.Text, $b356Offer); if ($m.Success) { $offer = $m.Value } }
+        if (-not $none) { $m = [regex]::Match($text.Text, $b356None); if ($m.Success) { $none = $m.Value } }
+    }
+    $writes = @($Evidence.Tools | Where-Object { Test-B406Write $_ })
+    $pathOf = { param($Tool) [string]$(if ($Tool.Input.file_path) { $Tool.Input.file_path } else { $Tool.Input.path }) }
+    $newText = { param($Tool) [string]$Tool.Input.new_string + [string]$Tool.Input.content + (@($Tool.Input.edits | ForEach-Object { [string]$_.new_string }) -join ' ') }
+    $skillWrites = @($writes | Where-Object { (& $pathOf $_) -match $b356SkillPath }).Count
+    $agentsEdits = @($writes | Where-Object { (& $pathOf $_) -match '(?i)(?:^|[\\/])AGENTS\.md$' })
+    $agentsCue = [bool]@($agentsEdits | Where-Object { (& $newText $_) -match $b356AgentsCue }).Count
+    $changed = @(Get-B406Changes $Target)
+    $skillFiles = @($changed | Where-Object { $_ -match $b356SkillPath }).Count
+    $testFiles = @($changed | Where-Object { $_ -match '^tests/.*\.cs$' -and (Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf) })
+    $enumTest = [bool]@($testFiles | Where-Object { [IO.File]::ReadAllText((Join-Path $Target $_)) -match $b356EnumTest }).Count
+    $carrier = Join-Path $Target '.github/instructions/framework-rules.instructions.md'
+    $bullet = (Test-Path -LiteralPath $carrier -PathType Leaf) -and ([IO.File]::ReadAllText($carrier).Contains($b356Bullet))
+    $cand = if ($offer -or $skillWrites -or $skillFiles -or $agentsCue -or $enumTest) { 'FALSE' } else { 'NONE' }
+    [pscustomobject]@{ Offer = $offer; None = $none; DoneWhen = [bool]@($texts | Where-Object { $_.Text -match $b406Label }).Count; SkillWrites = $skillWrites; SkillFiles = $skillFiles
+        AgentsEdits = $agentsEdits.Count; AgentsCue = $agentsCue; AgentsChanged = ($changed -contains 'AGENTS.md'); TestFiles = $testFiles.Count; EnumTest = $enumTest
+        Changed = $changed.Count; Bullet = $bullet; Cand = $cand }
+}
+
 # The first reply: how many numbered questions, how many say what the agent would otherwise assume, whether a plan sits in the
 # same text and which comes first.
 function Get-RiskTurnOne([string]$Text) {
@@ -4218,6 +4260,33 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             if ($why) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: $why" } }
             return [pscustomobject]@{ Status = 'PASS'; Pass = ($plan.Class -ne 'NEITHER'); Detail = $fields }
         }
+        # B-356 (.claude/plans/2026-11-18-b356-decoy.md): did carrier §2's record bullet leave a record on a plain new resource (the two
+        # decoys, two legs) or in the plan for a real extension point (b356-seam, one leg)? Get-RecordOffer's flags; the hand read decides.
+        # Pass: a decoy with no candidate false offer; the seam plan with an offer. The plan gate must have reached the first prompt, the
+        # security overlay must not have, and the second leg must carry no rails.
+        { $_ -in @('b356-decoy-supplier', 'b356-decoy-warehouse', 'b356-seam') } {
+            $seam = $Id -eq 'b356-seam'
+            $boundary = if ($Transcript.LegEnds) { [int]@($Transcript.LegEnds)[0] } else { 0 }
+            $legs = if ($boundary -gt 0) { 2 } else { 1 }
+            $hooks = Get-RiskHooks $Transcript $boundary
+            if (-not $hooks.Loaded) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "hooks=False no successful SessionStart and UserPromptSubmit hook_response in the transcript, so the framework did not load durationMs=$(Get-B406Duration $e)" } }
+            $record = Get-RecordOffer $e $Target
+            $legOneEvents = @($Transcript.Events | Select-Object -First $(if ($boundary -gt 0) { $boundary } else { @($Transcript.Events).Count }))
+            $overlay1 = [bool]@($legOneEvents | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'hook_response' -and $_.hook_event -eq 'UserPromptSubmit' -and [string]$_.stdout -cmatch 'Security-sensitive surface detected' }).Count
+            $leg1Write = @($e.Tools | Where-Object { (Test-B406Write $_) -and ($boundary -eq 0 -or $_.Index -le $boundary) }).Count -gt 0
+            $wroteT1 = if ($legs -eq 1) { -not (Test-B406NoFileWrite $e $Target) } else { $leg1Write }
+            $offerField = if ($record.Offer) { " offer=`"$($record.Offer)`"" } else { '' }
+            $noneField = if ($record.None) { " none=`"$($record.None)`"" } else { '' }
+            $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) session2=$($hooks.Session2) overlay1=$overlay1 legs=$legs bullet=$($record.Bullet) cand=$($record.Cand) planOffer=$([bool]$record.Offer)$offerField planNone=$([bool]$record.None)$noneField doneWhen=$($record.DoneWhen) skillWrites=$($record.SkillWrites) skillFiles=$($record.SkillFiles) agentsEdits=$($record.AgentsEdits) agentsCue=$($record.AgentsCue) agentsChanged=$($record.AgentsChanged) testFiles=$($record.TestFiles) enumTest=$($record.EnumTest) changed=$($record.Changed) wroteT1=$wroteT1 testRun=$(Get-RiskTestRun $e) durationMs=$(Get-B406Duration $e)"
+            $why = if ($hooks.Rails -ne 'plan-gate') { "the first prompt's hook carried $($hooks.Rails), not the plan gate" }
+                elseif ($overlay1) { 'the first prompt tripped the security overlay' }
+                elseif ($seam -and $legs -ne 1) { 'the seam case is one leg and ran two' }
+                elseif (-not $seam -and $legs -eq 2 -and $hooks.Rails2 -ne 'none') { "the second leg's UserPromptSubmit response is $($hooks.Rails2), not an answer-turn hook with no rails" }
+                elseif (-not $seam -and $legs -eq 1 -and -not $wroteT1) { 'the first leg wrote nothing and the second leg did not run' }
+                else { '' }
+            if ($why) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: $why" } }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $(if ($seam) { [bool]$record.Offer } else { $record.Cand -eq 'NONE' }); Detail = $fields }
+        }
         default { throw "Unknown scenario '$Id'." }
     }
 }
@@ -4627,6 +4696,108 @@ function Invoke-OptionsPlanSelfTest([string]$Temp) {
     return $quoted
 }
 
+# B-356 (.claude/plans/2026-11-18-b356-decoy.md): the record-offer grader on hand-made transcripts and trees, the scenario pins, the dist router's
+# reading of the three prompts and the answer, and the knockout patch. Synthetic events and the dist router only; nothing here runs an agent.
+function Invoke-RecordOfferSelfTest([string]$Temp) {
+    $carrierRel = '.github/instructions/framework-rules.instructions.md'
+    $newRepo = { param([string]$Name, [bool]$Bullet)
+        $dir = Join-Path $Temp "b356-$Name"
+        if (Test-Path -LiteralPath $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
+        New-Item -ItemType Directory -Path (Join-Path $dir 'src'), (Join-Path $dir 'tests'), (Join-Path $dir '.github/instructions') -Force | Out-Null
+        'public class Customer { }' | Set-Content (Join-Path $dir 'src/Customer.cs') -Encoding utf8NoBOM
+        "# Orders`nControllers: Customers, Orders`n## Conventions`n- Reports need a flag.`n" | Set-Content (Join-Path $dir 'AGENTS.md') -Encoding utf8NoBOM
+        "- Evidenced validation`n$(if ($Bullet) { "- If the change adds an extension point, and $b356Bullet, name the one record you will add.`n" })- Your assumptions`n" | Set-Content (Join-Path $dir $carrierRel) -Encoding utf8NoBOM
+        $dir
+    }
+    $say = { param([string]$Text, [string]$Parent) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $(if ($Parent) { $Parent } else { $null }); message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'text'; text = $Text }) } } }
+    $use = { param([string]$ToolId, [string]$Name, $ToolInput) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = $ToolId; name = $Name; input = [pscustomobject]$ToolInput }) } } }
+    $hook = { param([string]$HookEvent, [string]$Stdout) [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_event = $HookEvent; output = $Stdout; stdout = $Stdout; stderr = ''; exit_code = 0; outcome = 'success' } }
+    $init = { [pscustomobject]@{ type = 'system'; subtype = 'init'; session_id = 'S1' } }
+    $done = { param([string]$Text) [pscustomobject]@{ type = 'result'; is_error = $false; result = $Text; duration_ms = 1234 } }
+    $kRails = "## Routed intent: ``feature```n## Plan gate (ask -> plan -> confirm)"
+    $overlay = "## Security-sensitive surface detected`n`nThis prompt touches a security- or money-sensitive area."
+    $twoLegs = { param($First, $Second, [string]$Leg1Hook, [string]$Leg2Hook)
+        $leg1 = [pscustomobject]@{ Events = @(& $hook 'SessionStart' '## Session preload') + @(& $hook 'UserPromptSubmit' $(if ($Leg1Hook) { $Leg1Hook } else { $kRails })) + @(& $init) + @($First) + @(& $done 'leg one') }
+        if ($null -eq $Second) { return $leg1 }
+        Merge-ClaudeLegs $leg1 ([pscustomobject]@{ Events = @(& $hook 'UserPromptSubmit' $Leg2Hook) + @(& $init) + @($Second) + @(& $done 'leg two') })
+    }
+    $quoted = [ordered]@{}
+    $check = { param([string]$Name, [string]$CaseId, $Transcript, [string]$Status, [string]$Detail, [scriptblock]$Mutate, [bool]$Bullet = $true)
+        $dir = & $newRepo ($Name -replace '\W', '-') $Bullet
+        $script:B406Snapshot = Get-TreeHashes $dir
+        if ($Mutate) { & $Mutate $dir }
+        $result = Test-ScenarioEvidence $CaseId $dir $Transcript 1
+        $label = if ($null -eq $result) { 'none' } elseif ($result.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } elseif ($result.Pass) { 'PASS' } else { 'FAIL' }
+        if ($null -eq $result -or $label -ne $Status -or $result.Detail -notmatch $Detail) { throw "B-356 $Name misjudged: $(if ($result) { "$label $($result.Detail)" } else { 'no result' })" }
+        $result.Detail
+    }
+    $supplier = 'b356-decoy-supplier'
+    $doneWhen = "Done when:`n- GET api/suppliers lists suppliers`n- GET api/suppliers/{id} returns 404 when absent`n- POST creates one and returns 201"
+    $plain = "$doneWhen`n`nFiles: 1. Supplier.cs 2. SupplierConfiguration.cs 3. SuppliersController.cs 4. OrdersDbContext.cs`nI'll wait for your go-ahead."
+    $offers = "$doneWhen`n`nRecord: I will add one ``AGENTS.md > Conventions`` line: every new resource needs an entity, a configuration and a controller.`nFiles: 1. Supplier.cs"
+    $none = "$doneWhen`n`nNo record needed: adding a resource has no step that is skipped silently.`nFiles: 1. Supplier.cs"
+    $go = 'Implementing as planned.'
+    $edit = { param([string]$Id, [string]$Path, [string]$New) & $use $Id 'Edit' @{ file_path = $Path; old_string = 'x'; new_string = $New } }
+    $writeSrc = { param($Dir) 'public class Supplier { }' | Set-Content (Join-Path $Dir 'src/Supplier.cs') -Encoding utf8NoBOM }
+    $impl = @((& $say $go), (& $use 'w1' 'Edit' @{ file_path = 'src/Supplier.cs'; old_string = 'x'; new_string = 'y' }))
+    # The decoy: a plan with no record, an offer, a none-needed line; then what the second leg and the disk carry.
+    $quoted.plain = & $check 'a plain resource and no record' $supplier (& $twoLegs @(& $say $plain) $impl) 'PASS' 'legs=2 bullet=True cand=NONE planOffer=False planNone=False doneWhen=True skillWrites=0 skillFiles=0 agentsEdits=0 agentsCue=False agentsChanged=False testFiles=0 enumTest=False changed=1 wroteT1=False' $writeSrc
+    $quoted.offers = & $check 'a plan that offers a Conventions line' $supplier (& $twoLegs @(& $say $offers) $impl) 'FAIL' 'cand=FALSE planOffer=True offer="AGENTS.md > Conventions"' $writeSrc
+    $quoted.none = & $check 'a plan that says no record is needed' $supplier (& $twoLegs @(& $say $none) $impl) 'PASS' 'cand=NONE planOffer=False planNone=True none="No record"' $writeSrc
+    & $check 'an offer after the first write is not a plan offer' $supplier (& $twoLegs @(& $say $plain) @((& $use 'w1' 'Edit' @{ file_path = 'src/Supplier.cs'; old_string = 'x'; new_string = 'y' }), (& $say $offers))) 'PASS' 'cand=NONE planOffer=False' $writeSrc | Out-Null
+    & $check 'a subagent''s offer never counts' $supplier (& $twoLegs @((& $say $offers 'toolu_sub'), (& $say $plain)) $impl) 'PASS' 'cand=NONE planOffer=False' $writeSrc | Out-Null
+    $quoted.skill = & $check 'a denied write under .claude/skills counts' $supplier (& $twoLegs @(& $say $plain) @((& $say $go), (& $use 'w1' 'Write' @{ file_path = '.claude/skills/add-resource/SKILL.md'; content = '# add a resource' }), (& $use 'w2' 'Edit' @{ file_path = 'src/Supplier.cs'; old_string = 'x'; new_string = 'y' }))) 'FAIL' 'cand=FALSE planOffer=False .*skillWrites=1 skillFiles=0' $writeSrc
+    & $check 'a wiki draft on disk counts' $supplier (& $twoLegs @(& $say $plain) $impl) 'FAIL' 'cand=FALSE .*skillWrites=0 skillFiles=1' { param($Dir) New-Item -ItemType Directory -Path (Join-Path $Dir 'docs/wiki') -Force | Out-Null; 'steps' | Set-Content (Join-Path $Dir 'docs/wiki/add-resource.md') -Encoding utf8NoBOM } | Out-Null
+    $quoted.agents = & $check 'an AGENTS.md convention counts' $supplier (& $twoLegs @(& $say $plain) @((& $say $go), (& $edit 'w1' 'AGENTS.md' "## Conventions`n- Every new resource needs an entity, a configuration and a controller."))) 'FAIL' 'cand=FALSE planOffer=False .*agentsEdits=1 agentsCue=True' $writeSrc
+    $quoted.inventory = & $check 'an AGENTS.md inventory line does not' $supplier (& $twoLegs @(& $say $plain) @((& $say $go), (& $edit 'w1' 'AGENTS.md' 'Controllers: Customers, Orders, Suppliers'))) 'PASS' 'cand=NONE planOffer=False .*agentsEdits=1 agentsCue=False' $writeSrc
+    $quoted['enumerating test'] = & $check 'a test over every controller counts' $supplier (& $twoLegs @(& $say $plain) $impl) 'FAIL' 'cand=FALSE .*testFiles=1 enumTest=True' { param($Dir) 'public void EveryControllerHasARoute() { typeof(Program).Assembly.GetTypes(); }' | Set-Content (Join-Path $Dir 'tests/ControllerTests.cs') -Encoding utf8NoBOM }
+    & $check 'the resource''s own test does not' $supplier (& $twoLegs @(& $say $plain) $impl) 'PASS' 'cand=NONE .*testFiles=1 enumTest=False' { param($Dir) 'public void CreatesSupplier() { }' | Set-Content (Join-Path $Dir 'tests/SupplierTests.cs') -Encoding utf8NoBOM } | Out-Null
+    $quoted.knockout = & $check 'the knockout carrier has no bullet' $supplier (& $twoLegs @(& $say $plain) $impl) 'PASS' 'legs=2 bullet=False cand=NONE' $writeSrc $false
+    & $check 'a leg 1 that wrote is one leg, graded before its write' $supplier (& $twoLegs @((& $say $offers), (& $use 'w1' 'Edit' @{ file_path = 'src/Supplier.cs'; old_string = 'x'; new_string = 'y' })) $null) 'FAIL' 'legs=1 .*cand=FALSE planOffer=True .*wroteT1=True' $writeSrc | Out-Null
+    # The seam, one leg: an offer is the pass, none is not, and a stopped leg is the expected shape.
+    $seamOffer = "$doneWhen`n`nRecord: one test that fails when a channel is registered without its flag.`nFiles: 1. INotificationChannel.cs"
+    $quoted['seam offer'] = & $check 'the seam plan names a record' 'b356-seam' (& $twoLegs @(& $say $seamOffer) $null) 'PASS' 'legs=1 bullet=True cand=FALSE planOffer=True offer="test that fails when" planNone=False .*wroteT1=False'
+    & $check 'the seam plan names none' 'b356-seam' (& $twoLegs @(& $say $plain) $null) 'FAIL' 'legs=1 bullet=True cand=NONE planOffer=False .*wroteT1=False' | Out-Null
+    # Not examined.
+    & $check 'a first prompt without the plan gate' $supplier (& $twoLegs @(& $say $plain) $impl 'Routed intent: nothing') 'INCONCLUSIVE' 'NOT EXAMINED: the first prompt''s hook carried none, not the plan gate' $writeSrc | Out-Null
+    & $check 'a first prompt that tripped the security overlay' $supplier (& $twoLegs @(& $say $plain) $impl "$kRails`n$overlay") 'INCONCLUSIVE' 'NOT EXAMINED: the first prompt tripped the security overlay' $writeSrc | Out-Null
+    & $check 'a stopped leg 1 with no leg 2' $supplier (& $twoLegs @(& $say $plain) $null) 'INCONCLUSIVE' 'NOT EXAMINED: the first leg wrote nothing and the second leg did not run' | Out-Null
+    & $check 'a leg 2 that got the plan gate' $supplier (& $twoLegs @(& $say $plain) $impl '' $kRails) 'INCONCLUSIVE' 'NOT EXAMINED: the second leg''s UserPromptSubmit response is plan-gate, not an answer-turn hook with no rails' $writeSrc | Out-Null
+    & $check 'a seam run that went on to a second leg' 'b356-seam' (& $twoLegs @(& $say $seamOffer) $impl) 'INCONCLUSIVE' 'NOT EXAMINED: the seam case is one leg and ran two' $writeSrc | Out-Null
+
+    # The scenarios: the pre-registered cases, and the dist router's reading of each prompt and the answer.
+    $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
+    $routerHook = Join-Path $repo 'dist/dotnet/.claude/hooks/route-prompt.ps1'
+    $route = { param([string]$Prompt) (@{ hook_event_name = 'UserPromptSubmit'; prompt = $Prompt } | ConvertTo-Json -Compress) | & pwsh -NoProfile -File $routerHook | Out-String }
+    $answer = 'I make the table in the database myself, so no migration or script is needed. Same shape as the existing resources: no DTOs, validation or paging. Go ahead.'
+    $prompts = [ordered]@{
+        'b356-decoy-supplier'  = "Add a Supplier resource with a name and a contact email: list, get by id and create, through the API like the existing resources. Follow this repository's conventions."
+        'b356-decoy-warehouse' = "Add a Warehouse resource with a code and a city: list, get by id and create, through the API like the existing resources. Follow this repository's conventions."
+        'b356-seam'            = 'Add order-shipped notifications through pluggable channels. Ship an email channel and a webhook channel now; other teams will add their own channels to this repository later. Each channel is switched on by a `notifications.channel.<key>` flag in config/feature-flags.json, and a channel without its flag stays off. Follow this repository''s conventions.'
+    }
+    foreach ($caseId in $prompts.Keys) {
+        $matched = @($scenarios | Where-Object { $_.id -eq $caseId })
+        if ($matched.Count -ne 1) { throw "B-356 scenarios.json has $($matched.Count) $caseId entries, expected 1" }
+        $case = $matched[0]
+        $oneLeg = $caseId -eq 'b356-seam'
+        if (-not ([string]$case.fixture).Equals('orders-v2') -or -not ([string]$case.overlay).Equals('b514-orders') -or $case.overlayPatch -or $case.bareArm -or $case.stack -ne 'dotnet' -or $case.assertion -ne 'recordOffer' -or [decimal]$case.budgetUsd -ne 1 -or ($oneLeg -and $case.followUp) -or (-not $oneLeg -and ($case.followUp -cne $answer -or [decimal]$case.followUpBudgetUsd -ne 2))) { throw "B-356 $caseId is not the pre-registered case (fixture, overlay, stack, assertion, budgets or answer)" }
+        if ($case.prompt -cne $prompts[$caseId]) { throw "B-356 $caseId does not use its pre-registered prompt exactly" }
+        if ((& $route ([string]$case.prompt)) -notmatch 'Routed intent: `feature`[\s\S]*Plan gate' -or (& $route ([string]$case.prompt)) -match 'Security-sensitive surface detected') { throw "B-356 $caseId's prompt does not route feature with the plan gate and no security overlay" }
+    }
+    if ((& $route $answer).Trim()) { throw "B-356 the answer carries router output: $(& $route $answer)" }
+    # The knockout: one patch naming the installed carrier alone, deleting exactly the bullet line, which dist/dotnet's carrier holds.
+    $patch = Join-Path $repo 'meta/eval-fixtures/target-patches/b356-bullet-knockout.patch'
+    if ((@(Get-TargetPatchPaths $patch) -join ',') -ne $carrierRel) { throw 'B-356 the knockout patch does not name the installed carrier alone' }
+    # Hunk lines only: the bullet is a list item, so its removed line starts `-- ` like a `--- a/` header.
+    $patchLines = @([IO.File]::ReadAllLines($patch))
+    $hunk = @($patchLines | Select-Object -Skip ([Math]::Max(0, [Array]::FindIndex([string[]]$patchLines, [Predicate[string]]{ param($l) $l.StartsWith('@@') }) + 1)))
+    $removed = @($hunk | Where-Object { $_.StartsWith('-') })
+    $added = @($hunk | Where-Object { $_.StartsWith('+') })
+    if ($removed.Count -ne 1 -or $added.Count -ne 0 -or $removed[0] -notmatch [regex]::Escape($b356Bullet)) { throw "B-356 the knockout patch does not delete exactly the one bullet line: $($removed -join ' | ')" }
+    if (@([IO.File]::ReadAllLines((Join-Path $repo "dist/dotnet/$carrierRel")) | Where-Object { $_ -ceq $removed[0].Substring(1) }).Count -ne 1) { throw 'B-356 the dist carrier does not hold the knockout patch''s removed line exactly once' }
+    return $quoted
+}
+
 # Carrier trim: route-fix-nl is route-fix on a bug report the router does not match, so the carrier holds the only copy of the red-first rule
 # the agent can see; contract-trace-ci-cap is contract-trace-ci under a higher cap. The route graders say whether the router's rails reached
 # the prompt (routerFired), read from the first UserPromptSubmit hook_response. Synthetic events and the dist router only; nothing here runs claude.
@@ -4793,7 +4964,7 @@ function Invoke-RouterProbeSelfTest([string]$Temp) {
     # The live loop asks Claude Code for hook events on these two scenarios, as it does for the contract fixtures: the runner's own text.
     if (($routerProbeScenarios -join ',') -ne 'route-fix,route-fix-nl,route-fix-notest') { throw "carrier-trim the router-probe scenarios are '$($routerProbeScenarios -join ',')', expected route-fix,route-fix-nl,route-fix-notest" }
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-RouterProbeSelfTest).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('-IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios -or $case.assertion -eq ''optionsPlan'') -SessionId $legSession')) { throw 'carrier-trim the live loop does not request hook events for the router-probe scenarios' }
+    if ($selfText -notmatch [regex]::Escape('-IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios -or $case.assertion -in $planAssertions) -SessionId $legSession')) { throw 'carrier-trim the live loop does not request hook events for the router-probe scenarios' }
 }
 
 # Pins the live loop wiring of a scenario overlay: applied in the framework arm only, and a stale one refused before any spend.
@@ -5037,7 +5208,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     # The live loop: the overlay patch lands inside the overlay's commit, multi-turn streams are read for skillUse, and -Live
     # checks every overlay patch against its overlay before any spend.
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
+    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
     if ($selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $preflightOverlay ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
     Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT']) | Copilot, no skill call: $($quoted['copilot no-skill']) | Copilot, skill tool: $($quoted['copilot skill-tool'])"
 }
@@ -5929,6 +6100,7 @@ export class UserService {
         Invoke-ContractFixtureSelfTest $temp
         Invoke-RiskDesignSelfTest $temp
         $b528Quoted = Invoke-OptionsPlanSelfTest $temp
+        $b356Quoted = Invoke-RecordOfferSelfTest $temp
         Invoke-RouterProbeSelfTest $temp
         Invoke-OverlayWiringSelfTest $temp
         Invoke-SkillUseSelfTest $temp
@@ -5938,6 +6110,7 @@ export class UserService {
         Invoke-ReportWriteSelfTest $temp
         Invoke-ReportProcSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
+        Write-Output "PASS: B-356 the record-offer grader flags, before the first main-agent write and across both legs, a plan that offers a record, and on disk or in a denied call a skill or wiki draft, an AGENTS.md convention and a test over every instance, but not an AGENTS.md inventory line, the resource's own test, an offer after the first write or a subagent's; reads the shipped carrier and the knockout; refuses a first prompt without the plan gate or with the security overlay, a second leg with rails, a stopped decoy and a two-leg seam; the three scenarios, their routing and the knockout patch are pinned. Plain: $($b356Quoted.plain) | Offers: $($b356Quoted.offers) | None: $($b356Quoted.none) | Skill: $($b356Quoted.skill) | AGENTS.md: $($b356Quoted.agents) | Inventory: $($b356Quoted.inventory) | Enumerating test: $($b356Quoted['enumerating test']) | Knockout: $($b356Quoted.knockout) | Seam offer: $($b356Quoted['seam offer'])"
         Write-Output "PASS: B-528 the options-plan grader reads, before the first main-agent write and across both legs, Option A and Option B as OPTIONS, the one-line exit as EXIT and anything else as NEITHER (a subagent's text, text after a write and a part alone are not options); reports the security gate, its auditor and the T line; refuses an unexaminable run; the Copilot converter keeps main-agent text in order, flags a subagent's, reads plan mode's plan.md in the session folder as plan text and not a write, converts a resumed second leg and refuses one that did not resume; the scenario and the T patch are pinned. Neither: $($b528Quoted.neither) | Options: $($b528Quoted.options) | Exit: $($b528Quoted.exit) | Copilot options: $($b528Quoted['copilot options']) | Copilot subagent: $($b528Quoted['copilot subagent']) | Copilot plan mode: $($b528Quoted['copilot plan mode'])"
         Write-Output 'PASS: B-410 risk-design grades FULL only when one main-agent text block before the first main-agent write holds options A and B and a recommendation (a subagent''s text, a block after a write, one part alone, and the retained S1-C alternative-as-a-sentence shapes are not), reports where it was, whether the developer was left to answer, the turn-1 question and plan fields and what the second leg did, refuses a second leg whose prompt carried the plan gate or got no hook response, grades the decoy the other way round, merges two legs without a replay, builds the first-leg and resume arguments from the default, and pins both prompts, the follow-up and the dist router''s reading of them'
         Write-Output 'PASS: B-409 the contract fixtures are one list covering b406-orders and b409-orders-ci in the Copilot refusal, the stale and missing overlay refusals, the generator refusal, the overlay helper (copies and commits that fixture''s files, refuses a missing or unknown one) and every live-loop condition; the b409 baseline carries the pinned ci.yml (UTF-8, no BOM, LF) written between the solution and the baseline commit; contract-trace-ci is contract-trace on b409-orders-ci (same prompt, budget, grader, stack) and grades identically on one transcript'
@@ -7895,7 +8068,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
         }
         # B-406: what the agent finds is the install, the overlay, any patch and the scenario setup; its own writes are what differs from this.
-        $script:B406Snapshot = if ($caseFixture -in $contractFixtures -or $case.id -eq 'route-fix-notest' -or $case.assertion -eq 'optionsPlan') { Get-TreeHashes $target } else { $null }
+        $script:B406Snapshot = if ($caseFixture -in $contractFixtures -or $case.id -eq 'route-fix-notest' -or $case.assertion -in $planAssertions) { Get-TreeHashes $target } else { $null }
         $prompt = $case.prompt.Replace('{SYNTHETIC_AWS_KEY}', $syntheticAwsKey).Replace('{FRAMEWORK_ROOT}', $repo).Replace('{TARGET_ROOT}', $target).Replace('{ARCHIVED_ROOT}', $archivedRoot)
         $transcriptPath = Join-Path $scratch ($runName + '.jsonl')
         $outcome = $null
@@ -7906,7 +8079,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
         # B-410: a case with a followUp is two invocations of one persisted session (the developer's prompt, then a fixed answer).
         $legSession = if ($case.followUp) { [guid]::NewGuid().ToString() } else { '' }
         # B-528: the optionsPlan cases are two legs too, on either executor.
-        if ($legSession -and $caseFixture -notin $contractFixtures -and $case.assertion -ne 'optionsPlan') { throw "$($case.id): a followUp is read only for the contract fixtures and the optionsPlan cases, whose graders take a merged two-leg transcript." }
+        if ($legSession -and $caseFixture -notin $contractFixtures -and $case.assertion -notin $planAssertions) { throw "$($case.id): a followUp is read only for the contract fixtures and the optionsPlan and recordOffer cases, whose graders take a merged two-leg transcript." }
         $copilotMeta = $null
         if ($Executor -eq 'copilot') {
             $caseModel = $CopilotModel
@@ -7916,7 +8089,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework') -Mode $CopilotMode
         } else {
-            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel $caseBudget $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios -or $case.assertion -eq 'optionsPlan') -SessionId $legSession -AllowedTools $AllowedTools
+            $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel $caseBudget $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios -or $case.assertion -in $planAssertions) -SessionId $legSession -AllowedTools $AllowedTools
         }
         $agentExit = $run.ExitCode
         try {
@@ -7927,7 +8100,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
-            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan'))
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer'))
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
                 # tree) and no error. Otherwise the grader sees one leg and says why (wroteT1, or not examined).
@@ -7948,7 +8121,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                         # Whether --max-budget-usd on --resume caps the session or the leg is not known; the follow-up's budget on top of
                         # what the first leg spent holds under either reading, and the stop counts what was spent, not the cap.
                         $legTwoBudget = [decimal]$case.followUpBudgetUsd + [decimal]$legOne.Final.total_cost_usd
-                        $run2 = Invoke-ClaudeProcess $target ([string]$case.followUp) $legTwoPath $caseModel $legTwoBudget $TimeoutSeconds $caseAgent -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.assertion -eq 'optionsPlan') -ResumeId $legSession -AllowedTools $AllowedTools
+                        $run2 = Invoke-ClaudeProcess $target ([string]$case.followUp) $legTwoPath $caseModel $legTwoBudget $TimeoutSeconds $caseAgent -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.assertion -in $planAssertions) -ResumeId $legSession -AllowedTools $AllowedTools
                         if ($run2.TimedOut) { throw $run2.ErrorText }
                         if ($run2.ExitCode -ne 0) { $agentExit = $run2.ExitCode }
                     }
