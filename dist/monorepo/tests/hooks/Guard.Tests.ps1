@@ -475,8 +475,12 @@ function New-AllowlistedRoot([ref]$Base, [string]$Text) {
     if ($null -ne $Text) { [IO.File]::WriteAllText((Join-Path $root '.claude\guard-allowlist.txt'), $Text, (New-Object System.Text.UTF8Encoding($false))) }
     return $hook
 }
-function New-SurfaceEvent([string]$Surface, [string]$File, [string]$Text) {
-    if ($Surface -eq 'Claude') { New-ClaudeEvent $File $Text } else { New-CopilotEvent $File $Text }
+# $Cwd is the event's top-level cwd, the folder Claude Code and Copilot CLI say the tool runs in.
+function New-SurfaceEvent([string]$Surface, [string]$File, [string]$Text, [string]$Cwd) {
+    $e = if ($Surface -eq 'Claude') { @{ tool_name = 'Write'; tool_input = @{ file_path = $File; content = $Text } } }
+         else { @{ toolName = 'create'; toolArgs = @{ path = $File; file_text = $Text } } }
+    if ($Cwd) { $e.cwd = $Cwd }
+    $e | ConvertTo-Json -Compress -Depth 6
 }
 
 It 'guard: a path listed in the team allowlist is not checked for secrets (i18n text, a label map, a css class)' {
@@ -486,14 +490,14 @@ It 'guard: a path listed in the team allowlist is not checked for secrets (i18n 
         $root = Join-Path $base 'shop'
         $writes = @(
             @{ f = "$root\src\assets\i18n\en.json";      t = $i18nText;  n = 'an i18n file matched by *' }
-            @{ f = 'src/assets/i18n/de.json';             t = $i18nText;  n = 'a relative i18n path' }
+            @{ f = 'src/assets/i18n/de.json';             t = $i18nText;  n = 'a relative i18n path from the root'; c = $root }
             @{ f = "$root\src\app\shared\labels.ts";      t = $labelText; n = 'a label map listed with ./' }
             @{ f = "$root\src\styles\theme\drawer.css";   t = $cssText;   n = 'a css file matched by /src/styles/**' }
             @{ f = "$root\docs\guides\setup.md";         t = 'Set `password = "hunter2hunter2"` in your local settings.'; n = 'a sample under a listed folder/' }
         )
         foreach ($write in $writes) {
             foreach ($surface in 'Claude', 'Copilot') {
-                Assert-Decision (Invoke-Hook $hook (New-SurfaceEvent $surface $write.f $write.t)) 'ALLOW' "$($write.n) ($surface)"
+                Assert-Decision (Invoke-Hook $hook (New-SurfaceEvent $surface $write.f $write.t $write.c)) 'ALLOW' "$($write.n) ($surface)"
             }
         }
     } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
@@ -626,6 +630,119 @@ if (-not $shortName -or $shortName -eq 'guard-allowlist.txt' -or $shortName -not
     }
 }
 Remove-Item -LiteralPath $shortBase -Recurse -Force -ErrorAction SilentlyContinue
+
+# An event can name its file in more than one field (file_path, filePath, path, notebook_path), and a tool may write the
+# one the guard did not read first: the waiver needs every one listed, and the list is blocked through any one of them.
+$waiverSecret = '{"k":"sk-live0123456789abcdefghijklmn"}'
+function ConvertTo-EventJson($Event) { $Event | ConvertTo-Json -Compress -Depth 6 }
+function Get-SurfaceBlock([string]$Surface) { if ($Surface -eq 'Claude') { 'BLOCK' } else { 'DENY' } }
+It 'guard: the allowlist waives a write only when it lists every path field the event names' {
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) $allowlistText
+        $root = Join-Path $base 'shop'
+        $listed = "$root\docs\guides\a.md"; $target = "$root\src\Api\appsettings.json"; $list = "$root\.claude\guard-allowlist.txt"; $decoy = "$root\docs\notes.md"
+        $events = @(
+            @{ s = 'Copilot'; x = 'DENY';  n = 'a Copilot create {filePath: listed, path: unlisted} with a secret'
+               e = @{ toolName = 'create'; toolArgs = @{ filePath = $listed; path = $target; file_text = $waiverSecret } } }
+            @{ s = 'Copilot'; x = 'DENY';  n = 'a Copilot edit {filePath: listed, path: unlisted} with a secret'
+               e = @{ toolName = 'edit'; toolArgs = @{ filePath = $listed; path = $target; old_str = 'x'; new_str = $waiverSecret } } }
+            @{ s = 'Claude';  x = 'BLOCK'; n = 'a Claude NotebookEdit {file_path: listed, notebook_path: unlisted} with a secret'
+               e = @{ tool_name = 'NotebookEdit'; tool_input = @{ file_path = $listed; notebook_path = $target; new_source = $waiverSecret; edit_mode = 'replace' } } }
+            @{ s = 'Copilot'; x = 'DENY';  n = 'a Copilot create {filePath: decoy, path: the list}'
+               e = @{ toolName = 'create'; toolArgs = @{ filePath = $decoy; path = $list; file_text = "**`n" } } }
+            @{ s = 'Claude';  x = 'BLOCK'; n = 'a Claude NotebookEdit {file_path: decoy, notebook_path: the list}'
+               e = @{ tool_name = 'NotebookEdit'; tool_input = @{ file_path = $decoy; notebook_path = $list; new_source = '**'; edit_mode = 'replace' } } }
+            @{ s = 'Copilot'; x = 'ALLOW'; n = 'a Copilot create whose two path fields are both listed'
+               e = @{ toolName = 'create'; cwd = $root; toolArgs = @{ filePath = $listed; path = 'docs/guides/a.md'; file_text = $waiverSecret } } }
+        )
+        foreach ($case in $events) { Assert-Decision (Invoke-Hook $hook (ConvertTo-EventJson $case.e)) $case.x $case.n }
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+# A tool resolves a relative path against its working directory, the event's cwd, not the repository's root.
+It 'guard: a relative path is waived only as the event''s working directory resolves it' {
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) "docs/guides/`nfixtures/`nsrc/assets/i18n/*.json`n"
+        $root = Join-Path $base 'shop'
+        $app = "$root\src\app"
+        $patch = { param($Path, $Cwd) $e = @{ toolName = 'apply_patch'; toolArgs = "*** Begin Patch`n*** Add File: $Path`n+$waiverSecret`n*** End Patch`n" }; if ($Cwd) { $e.cwd = $Cwd }; ConvertTo-EventJson $e }
+        $cases = @(
+            @{ x = 'DENY';  n = 'a patch adding fixtures/k.json from src\app (writes the unlisted src\app\fixtures\k.json)'; j = (& $patch 'fixtures/k.json' $app) }
+            @{ x = 'ALLOW'; n = 'a patch adding ../../fixtures/k.json from src\app';                                       j = (& $patch '../../fixtures/k.json' $app) }
+            @{ x = 'DENY';  n = 'a patch adding fixtures/k.json with no working directory';                                  j = (& $patch 'fixtures/k.json' $null) }
+        )
+        foreach ($surface in 'Claude', 'Copilot') {
+            $cases += @{ x = (Get-SurfaceBlock $surface); n = "fixtures/k.json from src\app ($surface)";                j = (New-SurfaceEvent $surface 'fixtures/k.json' $waiverSecret $app) }
+            $cases += @{ x = (Get-SurfaceBlock $surface); n = "fixtures/k.json with no working directory ($surface)";   j = (New-SurfaceEvent $surface 'fixtures/k.json' $waiverSecret) }
+            $cases += @{ x = (Get-SurfaceBlock $surface); n = "fixtures/k.json from a folder outside the repository ($surface)"; j = (New-SurfaceEvent $surface 'fixtures/k.json' $waiverSecret $base) }
+            $cases += @{ x = 'ALLOW'; n = "fixtures/k.json from the root ($surface)";                                     j = (New-SurfaceEvent $surface 'fixtures/k.json' $waiverSecret $root) }
+            $cases += @{ x = 'ALLOW'; n = "i18n/fr.json from src\assets ($surface)";                                      j = (New-SurfaceEvent $surface 'i18n/fr.json' $i18nText "$root\src\assets") }
+        }
+        foreach ($case in $cases) { Assert-Decision (Invoke-Hook $hook $case.j) $case.x $case.n }
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+# A read of the list, and an ordinary name with '~' and a digit that is not where the list is or could not be its 8.3
+# alias, are not writes to the list.
+It 'guard: a view of the allowlist and ordinary names with ~ and a digit are not blocked as the allowlist' {
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) $allowlistText
+        $root = Join-Path $base 'shop'
+        $list = "$root\.claude\guard-allowlist.txt"
+        $otherDrive = if ($root.Substring(0, 1) -eq 'D') { 'E' } else { 'D' }
+        $view = @{ tool_name = 'str_replace_editor'; tool_input = @{ command = 'view'; path = $list } }
+        Assert-Decision (Invoke-Hook $hook (ConvertTo-EventJson $view)) 'ALLOW' 'a str_replace_editor view of the list'
+        $create = @{ tool_name = 'str_replace_editor'; tool_input = @{ command = 'create'; path = $list; file_text = "**`n" } }
+        Assert-Decision (Invoke-Hook $hook (ConvertTo-EventJson $create)) 'DENY' 'a str_replace_editor create of the list'
+        $undo = @{ tool_name = 'str_replace_editor'; tool_input = @{ command = 'undo_edit'; path = $list } }
+        Assert-Decision (Invoke-Hook $hook (ConvertTo-EventJson $undo)) 'DENY' 'a str_replace_editor undo_edit of the list'
+        $names = @("${otherDrive}:\elsewhere\REPORT~1.TXT", '\\nonexistent-host-b489\share\a~1.md', '~1.md', "$root\.claude\notes~1.md", "$root\.claude\backup~2.json")
+        foreach ($name in $names) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                Assert-Decision (Invoke-Hook $hook (New-SurfaceEvent $surface $name "hello`n" $root)) 'ALLOW' "$name ($surface)"
+            }
+        }
+        foreach ($name in "$root\.claude\GU1A2B~1.TXT", "$root\.claude\guard~12.txt", '\\nonexistent-host-b489\share\GU1A2B~1.TXT') {
+            foreach ($surface in 'Claude', 'Copilot') {
+                Assert-Decision (Invoke-Hook $hook (New-SurfaceEvent $surface $name "**`n" $root)) (Get-SurfaceBlock $surface) "$name, a possible alias of the list ($surface)"
+            }
+        }
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+It 'guard: the allowlist stays blocked through every path field and from a subfolder, and a secret elsewhere stays blocked' {
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) $allowlistText
+        $root = Join-Path $base 'shop'
+        $list = "$root\.claude\guard-allowlist.txt"; $app = "$root\src\app"
+        $events = @(
+            @{ s = 'Claude';  e = @{ tool_name = 'Write'; tool_input = @{ file_path = $list; content = "**`n" } } }
+            @{ s = 'Claude';  e = @{ tool_name = 'NotebookEdit'; tool_input = @{ notebook_path = $list; new_source = '**'; edit_mode = 'replace' } } }
+            @{ s = 'Copilot'; e = @{ toolName = 'create'; toolArgs = @{ path = $list; file_text = "**`n" } } }
+            @{ s = 'Copilot'; e = @{ toolName = 'edit'; toolArgs = @{ filePath = $list; old_str = 'docs/guides/'; new_str = '**' } } }
+            @{ s = 'Copilot'; e = @{ toolName = 'edit'; toolArgs = @{ file_path = $list; old_str = 'docs/guides/'; new_str = '**' } } }
+            @{ s = 'Claude';  e = @{ tool_name = 'Write'; cwd = $app; tool_input = @{ file_path = '..\..\.claude\guard-allowlist.txt'; content = "**`n" } } }
+            @{ s = 'Copilot'; e = @{ toolName = 'create'; cwd = $app; toolArgs = @{ path = '../../.claude/GUARD-~1.TXT'; file_text = "**`n" } } }
+            @{ s = 'Copilot'; e = @{ toolName = 'apply_patch'; cwd = $app; toolArgs = "*** Begin Patch`n*** Update File: ../../.claude/guard-allowlist.txt`n@@`n-docs/guides/`n+**`n*** End Patch`n" } }
+        )
+        foreach ($case in $events) {
+            $result = Invoke-Hook $hook (ConvertTo-EventJson $case.e)
+            Assert-Decision $result (Get-SurfaceBlock $case.s) ($case.e | ConvertTo-Json -Compress -Depth 4)
+            $said = if ($case.s -eq 'Claude') { $result.Err } else { $result.Out }
+            Assert ($said.Contains('reviewed in a pull request')) "$($case.e | ConvertTo-Json -Compress -Depth 4): expected the team-review reason, got: $said"
+        }
+        foreach ($surface in 'Claude', 'Copilot') {
+            foreach ($cwd in $root, $app) {
+                Assert-Decision (Invoke-Hook $hook (New-SurfaceEvent $surface 'appsettings.json' $waiverSecret $cwd)) (Get-SurfaceBlock $surface) "a secret to an unlisted relative path from $cwd ($surface)"
+            }
+            Assert-Decision (Invoke-Hook $hook (New-SurfaceEvent $surface "$root\src\Api\appsettings.json" $waiverSecret $app)) (Get-SurfaceBlock $surface) "a secret to an unlisted absolute path ($surface)"
+        }
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
 
 It 'guard: a list line built to backtrack answers within 2 s and waives nothing it does not match' {
     $secret = '{"k":"sk-live0123456789abcdefghijklmn"}'

@@ -194,7 +194,8 @@ install is not seen. Remaining: unit cases for the planning functions.
 A team can now waive the write guard's secret and credential checks for paths it lists in `.claude/guard-allowlist.txt` (guarded,
 step 4; B-489; WSD-130). The file ships with comments only and is consumer-owned (never replaced by an update or `-Reinstall`;
 install or an update writes the template again only when it is missing). The guard blocks every agent write to it on both surfaces:
-Write, Edit or patch, an empty edit, a patch deletion and an 8.3 short name such as `GUC529~1.TXT` included. List globs are matched
+Write, Edit or patch, an empty edit, a patch deletion and an 8.3 short name such as `GUC529~1.TXT` included. A write is waived only
+when the list matches every path field it names, a relative path read from the event's working directory. List globs are matched
 without backtracking, with a 100 ms timeout per match and a 2 s budget for the list, so no list line can hold the guard past the hosts'
 10 s limit; a match that runs out waives nothing. Suppression, skip, focus and tautology checks still run at listed paths. The README no longer calls a CI build with secret scanning "the gate"; the guard is a local
 backstop and `docs/ci-integration.md`'s "Recommended alongside" is the authority. Limit: a real secret written to a listed path passes.

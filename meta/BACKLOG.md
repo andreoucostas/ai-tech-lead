@@ -11,38 +11,37 @@ finds an adjacent defect outside AGENTS.md's four guarded harms, which no field 
 closes it per WSD-106 with one CLOSED line in `meta/BACKLOG-DONE.md` instead of filing it here.
 Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
-## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124, WSD-125): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work ranked after B-506 and B-507 (now ranks 4 and 5), eight findings shut, and the release review's B-521 and B-522; B-509 and B-498 done the same day, B-507 and B-513 on 2026-11-15, B-466 moved after B-515 (maintainer, in chat) and done the same day, B-514 done the same day, B-515 and B-517 closed the same day (maintainer, in chat), B-523 closed the same day after two NO-SHIP measurements (maintainer, in chat), and B-523 filed and placed after B-466 by the coordinator (the maintainer set no rank); B-521 closed 2026-11-16; B-524 to B-527 filed 2026-11-15 from the maintainer-requested review against current Anthropic guidance and placed last by the reviewing session (the maintainer set no rank); B-528 filed 2026-11-16 from field report #14 and put at rank 1 the same day (maintainer, in chat), the rows below one rank down; B-510 done 2026-11-16; B-469 done 2026-11-16; B-493 done 2026-11-16; B-491 done 2026-11-17; B-484 done 2026-11-17; B-496 done 2026-11-17; B-511 done 2026-11-17; B-489 done 2026-11-17; B-529 filed 2026-11-17 by the maintainer in chat, placed last by the coordinator (the maintainer set no rank); earlier ranking history is in `git log -p meta/BACKLOG.md`
+## Pick-up order — re-ranked 2026-11-14 (maintainer, in chat; WSD-124, WSD-125): the architecture review filed as B-506 to B-513, then B-514 to B-520, with the project-skills work ranked after B-506 and B-507 (now ranks 4 and 5), eight findings shut, and the release review's B-521 and B-522; B-509 and B-498 done the same day, B-507 and B-513 on 2026-11-15, B-466 moved after B-515 (maintainer, in chat) and done the same day, B-514 done the same day, B-515 and B-517 closed the same day (maintainer, in chat), B-523 closed the same day after two NO-SHIP measurements (maintainer, in chat), and B-523 filed and placed after B-466 by the coordinator (the maintainer set no rank); B-521 closed 2026-11-16; B-524 to B-527 filed 2026-11-15 from the maintainer-requested review against current Anthropic guidance and placed last by the reviewing session (the maintainer set no rank); B-528 filed 2026-11-16 from field report #14 and put at rank 1 the same day (maintainer, in chat), the rows below one rank down; B-510 done 2026-11-16; B-469 done 2026-11-16; B-493 done 2026-11-16; B-491 done 2026-11-17; B-484 done 2026-11-17; B-496 done 2026-11-17; B-511 done 2026-11-17; B-489 done 2026-11-17; B-529 filed 2026-11-17 by the maintainer in chat, placed last by the coordinator (the maintainer set no rank); B-528 closed 2026-11-18 as not reproduced (maintainer, in chat); earlier ranking history is in `git log -p meta/BACKLOG.md`
 
 | Rank | Item | Why here |
 |---|---|---|
-| 1 | B-528 | Maintainer priority (in chat 2026-11-16). Field report #14: no plan carried `Option A:`/`Option B:` in the 9 sessions where the agent started a security pass; measured 2026-11-18 NOT REPRODUCED on both hosts, so it waits on the maintainer's decision |
-| 2 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; the first developer's answers came in 2026-11-16 (field report #14), so it waits on the maintainer's two decisions on close |
-| 3 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review, where B-514 saw it followed as often as an approved skill; guarded |
-| 4 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 5 | B-425 | A plain-words review runs no reviewer: on Copilot CLI it loads the `review` skill (5 of 6, 2026-11-13) but skips its dispatch step (0 of 6), with or without the candidate; blocked on B-416; the Claude Code leg is about 3 USD |
-| 6 | B-497 | Merge the three Haiku reviewers into one pass, measured with B-467's 12-defect harness (the `/review` merge, verdict and delegation parts shipped 2026-11-17); guarded |
-| 7 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
-| 8 | B-508 | Extract the installer's pure planning functions with unit cases; the copy and the install-commit notice shipped 2026-11-17; guarded, step 4 |
-| 9 | B-512 | `presentation/` single copy and the wrapper SHA-256 bullet remain (`adopt.md`/`playbook.md` shipped 2026-11-17); guarded (AGENTS.md) |
-| 10 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 11 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
-| 12 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
-| 13 | B-468 | Measured, not field-raised: 2 of 26 plain bug fixes skipped the regression test, wrongly saying a SQLite test needs a new package; the agent said the fix was untested |
-| 14 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
-| 15 | B-499 | Secret-leak class, B-487's step-4 attacks: the guard still passes an auto-property initializer, `NetworkCredential`, URL userinfo and other credential forms; guarded, step 4 |
-| 16 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations (the missing-`pwsh` exit 0 and the doctor's interpreter row are fixed for 0.99.0); needs the maintainer's decision first |
-| 17 | B-502 | Data-loss class, pre-existing, B-480's scope check (run): a disabled skill's exemplar line survives the update that disables it and is dropped by the next one; guarded, step 4 |
-| 18 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only (a shell on Claude Code, every tool on Copilot); needs the maintainer's decision first |
-| 19 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
-| 20 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
-| 21 | B-520 | Seven small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
-| 22 | B-522 | Release review: nothing tracks how long a release takes or how often a defect escapes; guarded, S |
-| 23 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
-| 24 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
-| 25 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
-| 26 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
-| 27 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
-| 28 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
+| 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; the first developer's answers came in 2026-11-16 (field report #14), so it waits on the maintainer's two decisions on close |
+| 2 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review, where B-514 saw it followed as often as an approved skill; guarded |
+| 3 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
+| 4 | B-425 | A plain-words review runs no reviewer: on Copilot CLI it loads the `review` skill (5 of 6, 2026-11-13) but skips its dispatch step (0 of 6), with or without the candidate; blocked on B-416; the Claude Code leg is about 3 USD |
+| 5 | B-497 | Merge the three Haiku reviewers into one pass, measured with B-467's 12-defect harness (the `/review` merge, verdict and delegation parts shipped 2026-11-17); guarded |
+| 6 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
+| 7 | B-508 | Extract the installer's pure planning functions with unit cases; the copy and the install-commit notice shipped 2026-11-17; guarded, step 4 |
+| 8 | B-512 | `presentation/` single copy and the wrapper SHA-256 bullet remain (`adopt.md`/`playbook.md` shipped 2026-11-17); guarded (AGENTS.md) |
+| 9 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
+| 10 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
+| 11 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
+| 12 | B-468 | Measured, not field-raised: 2 of 26 plain bug fixes skipped the regression test, wrongly saying a SQLite test needs a new package; the agent said the fix was untested |
+| 13 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
+| 14 | B-499 | Secret-leak class, B-487's step-4 attacks: the guard still passes an auto-property initializer, `NetworkCredential`, URL userinfo and other credential forms; guarded, step 4 |
+| 15 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations (the missing-`pwsh` exit 0 and the doctor's interpreter row are fixed for 0.99.0); needs the maintainer's decision first |
+| 16 | B-502 | Data-loss class, pre-existing, B-480's scope check (run): a disabled skill's exemplar line survives the update that disables it and is dropped by the next one; guarded, step 4 |
+| 17 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only (a shell on Claude Code, every tool on Copilot); needs the maintainer's decision first |
+| 18 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
+| 19 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
+| 20 | B-520 | Seven small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
+| 21 | B-522 | Release review: nothing tracks how long a release takes or how often a defect escapes; guarded, S |
+| 22 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
+| 23 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
+| 24 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
+| 25 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
+| 26 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
+| 27 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
 
 ## Open entries
 
@@ -123,6 +122,7 @@ Candidate: the check prints a digest of the warehouse artifacts' paths and conte
 **Priority:** P2 · **Effort:** S to M · **Invariants:** #3 #5
 **Status:** Open, waiting on the maintainer's decision; maintainer-requested external audit. Done for 0.99.0: part (a), fail closed (maintainer, in chat 2026-11-13: the guard command exits 2 when its interpreter is not found, its entry sets `"onFailure": "block"`), and, with B-506, the doctor's `Wired hook shell` row is `MISSING` for an interpreter not on `PATH`. Reproduced: a write of `{ "hooks": {} }` to `.claude/settings.json` exits 0.
 Left: decide how narrowly to protect the registrations without stopping `/adopt`. Guarded. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
+B-489's round-2 attack: the guard does not refuse a Write to `.claude/settings.json` or `.claude/hooks/guard.ps1` on either surface (settings.json run; guard.ps1 by the same logic, not run).
 ### B-497 · `/review` hands back six reviewers' findings with no merge, de-duplication or verdict rule
 **Filed against:** v0.98.4 (2026-11-10)
 **Priority:** P3 · **Effort:** S to M · **Invariants:** #1 #7
@@ -133,6 +133,7 @@ Remaining: merge the three Haiku reviewers (convention-check, bloat-radar, debt-
 **Priority:** P3 · **Effort:** M · **Invariants:** #3 #5 #7
 **Status:** Open; B-487's step-4 attacks (a sub-session's runs, not re-run). Not read: an auto-property initializer `public string Password { get; set; } = "…"`, Redis `password=`, URL userinfo outside a connection-string key, a backtick string, a `Dictionary` initializer, `new NetworkCredential(…)`, `SetEnvironmentVariable`, `password?:`, a `"""` or `$"` literal, a `??` or `||` fallback, VB; and B-487's stated limits: `string.Join`, `;;`, a quote inside the literal, a JDBC neighbour, a `:` in a neighbouring key, the computed key `['password']:`, a no-break space or vertical tab, a one-pair literal standing alone, a variable between the pieces (`"Server=" + host + ";Password=…"`, the commonest real shape), VB `&`, `+=`, `string.Concat`, `AppendFormat`, `.Add(` or `.push(` pieces, an unkeyed password opening with `@`; and its false blocks on a mask, message or SQL text that is a piece of a longer string.
 Candidate: decide per form whether the guard or CI secret scanning owns it; extending the guard is guarded, step 4, and each form needs its false-block survey (B-487 audited 145 repo and 476 npm files).
+B-489's round-2 attack (pre-existing, not re-run against a host): a tool-input JSON PowerShell cannot parse (keys differing only in case, an empty key) makes the guard exit 0 on both surfaces (`guard.ps1` around lines 48 and 55; host normalisation unverified); VS Code agent-mode `insert_edit_into_file`, `edit_notebook_file` and `multi_replace_string_in_file` are not read as writes; a U+FEFF before a second patch header and a repeated `*** Move to:` are read differently from a JavaScript parser (unverified against a host).
 ### B-502 · A disabled skill's exemplar line is dropped by the update after the one that disables it
 **Filed against:** v0.98.5 (2026-11-11)
 **Priority:** P3 · **Effort:** S · **Invariants:** #7
@@ -202,13 +203,6 @@ Nested skills have no documented switch by path (`skillOverrides` goes by skill 
 **Status:** Open; same review and attack. `.claude/skills/meta-gates/SKILL.md` step 1 compares `git rev-parse HEAD` three seconds apart. On 2026-11-13 the other session's edits were uncommitted, so HEAD stood still; step 0 would also have read that session's changed paths into this change's tier. `AGENTS.md` ("Do not run suites while another session is editing the tree") says to stop and not what follows: that night a reviewed guarded fix waited until the next morning (9e8dbb28), with no release held up.
 Candidate: step 1 also compares `git status --porcelain` before and after and names the paths this session did not touch (ordinary, the skill file). One clause in `AGENTS.md` for the blocked session (wait a stated time, check once more, then report), with a clause cut and the step-4 attack that file requires.
 Worktrees are not the way out: `push-and-check.ps1` watches `master` only, and worktrees inside the repository left stray entries in v0.42.0 and v0.43.0 (`.gitignore`).
-
-### B-528 · No plan carries `Option A:`/`Option B:` in the sessions where the agent starts a security pass
-**Filed against:** v0.98.6 (2026-11-16)
-**Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
-**Status:** Open (maintainer, in chat 2026-11-16). Field report #14, one developer, mostly on 0.98.2: the agent started the security pass in 9 sessions, none asked for; `Option A:`/`Option B:` appeared in 3 plans, none of them in those 9, though carrier §2 counts a security-sensitive surface as a risk change that gets options. The prompt reminder's security overlay reached 24 of the 40 sessions.
-One open reading: §2 lets the agent say in one line that there is no real alternative, which the observation script does not count. Candidate cause, unmeasured: `route-prompt.ps1`'s plan gate and security overlay name the file-list plan and the end-of-work security pass, never the options.
-Measured as pre-registered (`.claude/plans/2026-11-16-b528-options.md`; `meta/eval-results.md`, "B-528 results, Copilot leg" and "B-528 results, Claude Code leg"): NOT REPRODUCED on both hosts, C and T OPTIONS 6 of 6 each, no EXIT; the rule neither closes it (R1) nor files the reminder change (R2), so the maintainer decides: close as not reproduced on this fixture, or a fixture nearer the field's sessions.
 
 ### B-529 · Explore a model-call fallback for `route-prompt` when its keyword rules cannot tell the intent
 **Filed against:** v0.98.6 (2026-11-17)

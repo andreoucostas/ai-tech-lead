@@ -27,8 +27,9 @@
 # matches a closer pattern (a string included) counting as a closer, and, because the key runs to the end of the
 # line, an edit to the code after a directive on the same line counting as a new directive. Old text the guard
 # cannot get counts as none, so the write is read as it always was.
-# Team waiver: a path listed in .claude/guard-allowlist.txt skips the secret and credential checks only; every agent
-# write to that list, an empty edit and a deletion included, is blocked (see Test-AllowlistTarget).
+# Team waiver: a path listed in .claude/guard-allowlist.txt skips the secret and credential checks only, when every path
+# field of the event is listed; every agent write to that list through any of them, an empty edit and a deletion
+# included, is blocked (see Test-AllowlistTarget).
 $ErrorActionPreference = 'SilentlyContinue'
 # Case-insensitive patterns fold case culture-invariantly ($ci) and string comparisons are ordinal:
 # under tr-TR the current culture folds 'I' to a dotless i (U+0131), so a culture-following (?i)
@@ -61,6 +62,17 @@ if ($ta -is [string]) { try { $ta = $ta | ConvertFrom-Json } catch { $ta = $null
 # writes no source, so its new_source is not read.
 $fp = $null
 foreach ($v in @($ti.file_path, $ti.filePath, $ti.path, $ti.notebook_path, $ta.filePath, $ta.file_path, $ta.path)) { if ($v) { $fp = $v; break } }
+# Every path the event names, in any of those fields on either object: a tool may write the one the guard did not pick
+# for $fp, so each is checked as a write to the guard allowlist, and the allowlist waives the event only when it lists
+# every one of them.
+$pathFields = @(@(foreach ($o in @($ti, $ta)) {
+    if ($null -eq $o -or $o -is [string]) { continue }
+    foreach ($field in 'file_path', 'filePath', 'path', 'notebook_path') { $v = $o.$field; if ($null -ne $v -and [string]$v) { [string]$v } }
+}) | Select-Object -Unique)
+# The working directory the event says the tool runs in (Claude Code's and Copilot CLI's top-level cwd), which a tool
+# resolves a relative path against; $null unless it is an absolute path.
+$eventCwd = $null
+if ($d.cwd -is [string] -and [regex]::IsMatch($d.cwd, '^(?:[A-Za-z]:[\\/]|[\\/]{2}[^\\/])')) { $eventCwd = $d.cwd.Replace('/', '\').TrimEnd('\') + '\' }
 $cellSource = if (-not [string]::Equals([string]$ti.edit_mode, 'delete', $ordinalIgnoreCase)) { $ti.new_source }
 # Each text the event writes, beside the text it replaces, which the suppression and skip checks below read
 # (Test-GuardPattern -Adds): an edit's old_string, oldString or old_str beside its new_string, newString or
@@ -186,8 +198,8 @@ if ($isPatch) {
         } elseif ([string]::Equals($section.Kind, 'update', $ordinal)) {
             @(New-WriteUnit $text ($section.Removed -join "`n") $false)
         } else { @(New-WriteUnit $text $null ([string]::Equals($section.Kind, 'add', $ordinal))) }
-        if ($section.Paths.Count -eq 0) { [pscustomobject]@{ Path = $null; Content = $text; Units = $sectionUnits } }
-        foreach ($path in $section.Paths) { [pscustomobject]@{ Path = $path; Content = $text; Units = $sectionUnits } }
+        if ($section.Paths.Count -eq 0) { [pscustomobject]@{ Path = $null; Content = $text; Units = $sectionUnits; Paths = @() } }
+        foreach ($path in $section.Paths) { [pscustomobject]@{ Path = $path; Content = $text; Units = $sectionUnits; Paths = @($path) } }
     })
 } else {
     # Gate on whether this is an inspectable write, independent of surface: Claude sends
@@ -201,11 +213,14 @@ if ($isPatch) {
     # that adds text. Write-shaped is a known file-writing tool name or any field that carries a write's text; a
     # read (Copilot's view) carries neither.
     $writeFields = @('content', 'new_string', 'newString', 'file_text', 'new_str', 'text', 'new_source', 'edits', 'old_string', 'oldString', 'old_str')
-    $writeTools = @('MultiEdit', 'NotebookEdit', 'str_replace', 'str_replace_editor', 'insert')
-    $writeShaped = $knownWrite -or @($writeTools | Where-Object { [string]::Equals([string]$tool, $_, $ordinalIgnoreCase) }).Count -gt 0 -or
+    # str_replace_editor writes only through its create, str_replace, insert and undo_edit commands; its view reads.
+    $writeTools = @('MultiEdit', 'NotebookEdit', 'str_replace', 'insert')
+    $editorWrite = [string]::Equals([string]$tool, 'str_replace_editor', $ordinalIgnoreCase) -and
+                   @(foreach ($o in @($ti, $ta)) { if ($null -ne $o -and $o -isnot [string]) { foreach ($c in 'create', 'str_replace', 'insert', 'undo_edit') { if ([string]::Equals([string]$o.command, $c, $ordinalIgnoreCase)) { $c } } } }).Count -gt 0
+    $writeShaped = $knownWrite -or $editorWrite -or @($writeTools | Where-Object { [string]::Equals([string]$tool, $_, $ordinalIgnoreCase) }).Count -gt 0 -or
                    @(foreach ($o in @($ti, $ta)) { if ($null -ne $o -and $o -isnot [string]) { @($o.PSObject.Properties.Name) | Where-Object { $writeFields -contains $_ } } }).Count -gt 0
-    $targets = if ($fp -and $writeShaped) { @([string]$fp) } else { @() }
-    $writes = if (($knownWrite -or ($fp -and $content)) -and $content) { @([pscustomobject]@{ Path = $fp; Content = $content; Units = $units }) } else { @() }
+    $targets = if ($writeShaped) { @($pathFields) } else { @() }
+    $writes = if (($knownWrite -or ($fp -and $content)) -and $content) { @([pscustomobject]@{ Path = $fp; Content = $content; Units = $units; Paths = @($pathFields) }) } else { @() }
 }
 
 # The text of the file at $Path on disk, '' when it cannot be read as the file the write replaces: a path that
@@ -369,8 +384,25 @@ function Get-RepositoryRelativePath([string]$Path) {
     $rest = $kept -join '\'
     if (-not $drive) { return $rest }
     $full = $drive + $rest
+    if ($rest) { $full += '\' }
     if (-not $full.StartsWith($repoRoot, $ordinalIgnoreCase)) { return $null }
-    return $full.Substring($repoRoot.Length)
+    return $full.Substring($repoRoot.Length).TrimEnd('\')
+}
+
+# The working directory's place under the repository ('' at its root), or $null when the event names none or it lies
+# outside the repository.
+$cwdRelative = if ($eventCwd) { Get-RepositoryRelativePath $eventCwd }
+
+# The path the allowlist is matched against: a relative path is the tool's to resolve against the event's working
+# directory, so it is read under that folder, and gets no waiver when the event names no working directory inside the
+# repository (a host may run the tool anywhere, and a path read from the repository's root could name another file).
+function Get-WaiverRelativePath([string]$Path) {
+    if (-not $Path) { return $null }
+    $p = $Path.Replace('/', '\')
+    if ([regex]::IsMatch($p, '^(?:\\\\|[A-Za-z]:)')) { return Get-RepositoryRelativePath $Path }
+    if ($p.StartsWith('\', $ordinal) -or $p.StartsWith('~', $ordinal) -or $null -eq $cwdRelative) { return $null }
+    if ($cwdRelative) { $p = $cwdRelative + '\' + $p }
+    return Get-RepositoryRelativePath $p
 }
 
 # The name the extension checks read: the last segment left once '.' and '..' collapse and empty segments drop,
@@ -465,44 +497,58 @@ function Test-AllowlistedPath([string]$Relative) {
 function Test-AllowlistFileName([string]$Name) {
     return [string]::Equals($Name, $allowlistName, $ordinalIgnoreCase) -or [regex]::IsMatch($Name, '^GUARD-~[0-9]+\.TXT$', $ci)
 }
+# Whether $Name could be an 8.3 short name Windows gives the list: TXT, and before the '~' either a prefix of GUARD-
+# (GUARD-~1, GUAR~100) or the two letters and four hex digits of a hash-style alias (GUC529~1), ignoring case.
+function Test-AllowlistAliasName([string]$Name) {
+    $m = [regex]::Match($Name, '^(?<stem>[^~]{1,6})~[0-9]+\.TXT$', $ci)
+    if (-not $m.Success) { return $false }
+    $stem = $m.Groups['stem'].Value
+    return 'GUARD-'.StartsWith($stem, $ordinalIgnoreCase) -or [regex]::IsMatch($stem, '^GU[0-9A-F]{4}$', $ci)
+}
 # Whether a write to $Path changes the guard allowlist. By name: the list's name in any folder, or GUARD-~N.TXT. By
 # what Windows resolves it to: an 8.3 short name need not look like the list's (GUC529~1.TXT once four guard-*.txt
 # files share the folder), so a path with a '~' is resolved to its long name (GetFullPath expands each existing 8.3
-# segment through the file system) and compared, ignoring case, with the list's path; when its last segment holds '~'
-# and a digit and names no file, its folder resolved is compared with the list's folder. Only a path on the
-# repository's drive, or a relative one (taken under the repository), is resolved: another drive, or a UNC host, may be
-# unreachable and outlast the hook's time limit, so a short-looking name there is refused unresolved. Any error while
-# resolving refuses the write.
+# segment through the file system) and compared, ignoring case, with the list's path; when its last segment names no
+# file, could be an alias of the list's name (Test-AllowlistAliasName) and its folder resolved is the list's folder, it
+# is refused too. A relative path is resolved against the event's working directory when that lies in the repository,
+# and against both that directory and the repository otherwise; when the event names none, against the repository, and
+# it is refused whenever its name could be an alias of the list's, since its folder is unknown. A path
+# that resolves outside the repository on the repository's drive is never the list. One that cannot be resolved here
+# (another drive or a UNC host, which may be unreachable and outlast the hook's time limit, a drive-relative or rooted
+# path, a leading '~') is refused when its name could be an alias of the list's. Any error while resolving refuses the write.
 function Test-AllowlistTarget([string]$Path) {
     if (-not $Path) { return $false }
     $name = Get-CheckedFileName $Path
     if (Test-AllowlistFileName $name) { return $true }
     if ($Path.IndexOf('~') -lt 0) { return $false }
-    $shortLooking = [regex]::IsMatch($name, '~[0-9]')
     try {
-        if (-not $repoRoot) { return $shortLooking }
+        if (-not $repoRoot) { return [regex]::IsMatch($name, '~[0-9]') }
         $p = $Path.Replace('/', '\')
-        if ([regex]::IsMatch($p, '^\\\\\?\\[A-Za-z]:\\')) { $p = $p.Substring(4) }
-        if (-not [regex]::IsMatch($p, '^[A-Za-z]:\\')) {
-            if ($p.StartsWith('\', $ordinal) -or $p.StartsWith('~', $ordinal) -or [regex]::IsMatch($p, '^[A-Za-z]:')) { return $shortLooking }
-            $p = $repoRoot + $p
-        }
-        if (-not [string]::Equals($p.Substring(0, 2), $repoRoot.Substring(0, 2), $ordinalIgnoreCase)) { return $shortLooking }
-        # As Windows opens it: a stream suffix on the last segment and a trailing dot or space on any segment drop.
-        $segments = $p.Split([char]'\')
-        $last = $segments.Length - 1
-        $colon = $segments[$last].IndexOf(':')
-        if ($colon -ge 0 -and $last -gt 0) { $segments[$last] = $segments[$last].Substring(0, $colon) }
-        for ($i = 1; $i -lt $segments.Length; $i++) {
-            if (-not ([string]::Equals($segments[$i], '.', $ordinal) -or [string]::Equals($segments[$i], '..', $ordinal))) { $segments[$i] = $segments[$i].TrimEnd(' ', '.') }
-        }
-        $full = [IO.Path]::GetFullPath(($segments -join '\')).TrimEnd('\')
-        $listFolder = [IO.Path]::GetFullPath($repoRoot + '.claude').TrimEnd('\')
-        if ([string]::Equals($full, $listFolder + '\' + $allowlistName, $ordinalIgnoreCase)) { return $true }
-        if ($shortLooking -and -not ([IO.File]::Exists($full) -or [IO.Directory]::Exists($full)) -and
-            [string]::Equals([IO.Path]::GetDirectoryName($full), $listFolder, $ordinalIgnoreCase)) { return $true }
+        if ([regex]::IsMatch($p, '^(?:\\\\|[A-Za-z]:)')) { return Test-AllowlistResolvedTarget $p $name }
+        if ($p.StartsWith('\', $ordinal) -or $p.StartsWith('~', $ordinal)) { return Test-AllowlistAliasName $name }
+        if (-not $eventCwd -and (Test-AllowlistAliasName $name)) { return $true }
+        $bases = if ($null -ne $cwdRelative) { @($eventCwd) } elseif ($eventCwd) { @($eventCwd, $repoRoot) } else { @($repoRoot) }
+        foreach ($base in $bases) { if (Test-AllowlistResolvedTarget ($base + $p) $name) { return $true } }
         return $false
     } catch { return $true }
+}
+function Test-AllowlistResolvedTarget([string]$p, [string]$name) {
+    if ([regex]::IsMatch($p, '^\\\\\?\\[A-Za-z]:\\')) { $p = $p.Substring(4) }
+    $local = [regex]::IsMatch($p, '^[A-Za-z]:\\') -and [string]::Equals($p.Substring(0, 2), $repoRoot.Substring(0, 2), $ordinalIgnoreCase)
+    if (-not ($local -or $p.StartsWith($repoRoot, $ordinalIgnoreCase))) { return Test-AllowlistAliasName $name }
+    # As Windows opens it: a stream suffix on the last segment and a trailing dot or space on any segment drop.
+    $segments = $p.Split([char]'\')
+    $last = $segments.Length - 1
+    $colon = $segments[$last].IndexOf(':')
+    if ($colon -ge 0 -and $last -gt 0) { $segments[$last] = $segments[$last].Substring(0, $colon) }
+    for ($i = 1; $i -lt $segments.Length; $i++) {
+        if (-not ([string]::Equals($segments[$i], '.', $ordinal) -or [string]::Equals($segments[$i], '..', $ordinal))) { $segments[$i] = $segments[$i].TrimEnd(' ', '.') }
+    }
+    $full = [IO.Path]::GetFullPath(($segments -join '\')).TrimEnd('\')
+    $listFolder = [IO.Path]::GetFullPath($repoRoot + '.claude').TrimEnd('\')
+    if ([string]::Equals($full, $listFolder + '\' + $allowlistName, $ordinalIgnoreCase)) { return $true }
+    return (Test-AllowlistAliasName $name) -and -not ([IO.File]::Exists($full) -or [IO.Directory]::Exists($full)) -and
+        [string]::Equals([IO.Path]::GetDirectoryName($full), $listFolder, $ordinalIgnoreCase)
 }
 
 foreach ($target in $targets) {
@@ -527,7 +573,9 @@ foreach ($write in $writes) {
     $reasons = @()
     $fileName = Get-CheckedFileName ([string]$fp)
     $relativePath = if ($fp) { Get-RepositoryRelativePath ([string]$fp) }
-    $waived = Test-AllowlistedPath $relativePath
+    # Waived only when the list matches every path the write names, each read from the event's working directory.
+    $waived = @($write.Paths).Count -gt 0
+    foreach ($path in @($write.Paths)) { if (-not (Test-AllowlistedPath (Get-WaiverRelativePath ([string]$path)))) { $waived = $false; break } }
 
     if ([regex]::IsMatch($fileName, '\.cs$', $ci)) {
         if (Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression' -Adds -Closer '#pragma\s+warning\s+restore') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }

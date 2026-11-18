@@ -4825,8 +4825,9 @@ committed together with the install, or an install committed in parts, is not se
 reference, a CSS class starting `sk-`, a Cypress login, a docs sample); the shell is unguarded, so a false block teaches the agent to go round it.
 **Decision (the maintainer's, in chat 2026-11-14).** Option B: `.claude/guard-allowlist.txt`, consumer-owned (shipped with comments only, never replaced,
 written again only when missing), one repository-root path or anchored glob per line. A listed path skips the key-format and credential checks only; the
-guard blocks every agent write to the file on both surfaces, an empty edit and a deletion included, and resolves an 8.3 short name before comparing, so a
-teammate edits it and a pull request reviews it. Globs match without backtracking (100 ms a match, 2 s in all; a timeout waives nothing). Missing or unreadable: no waiver.
+guard blocks every agent write to the file through any path field on both surfaces, an empty edit and a deletion included, and resolves an 8.3 short name
+first (only a possible alias of the list's name blocks as one), so a teammate edits it and a pull request reviews it. The waiver needs every path field
+listed, a relative one read from the event's `cwd` (none, or outside the repository: no waiver). Globs match without backtracking (100 ms a match, 2 s in all; a timeout waives nothing). Missing or unreadable: no waiver.
 Rejected: Option A, blocking only a secret-shaped value, which lets a passphrase with spaces through everywhere. Let through: a real secret written to a
 listed path, and any change to the list made through the shell. The README now calls the guard a local backstop, not the gate.
 **Reopen** if a team reports a secret committed through a listed path, or an agent changing the list without a reviewed pull request.
