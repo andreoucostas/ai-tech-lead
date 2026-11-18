@@ -27,8 +27,8 @@
 # matches a closer pattern (a string included) counting as a closer, and, because the key runs to the end of the
 # line, an edit to the code after a directive on the same line counting as a new directive. Old text the guard
 # cannot get counts as none, so the write is read as it always was.
-# Team waiver: a path listed in .claude/guard-allowlist.txt skips the secret and credential checks only; the agent's
-# own writes to that list are blocked (see Get-AllowlistPatterns).
+# Team waiver: a path listed in .claude/guard-allowlist.txt skips the secret and credential checks only; every agent
+# write to that list, an empty edit and a deletion included, is blocked (see Test-AllowlistTarget).
 $ErrorActionPreference = 'SilentlyContinue'
 # Case-insensitive patterns fold case culture-invariantly ($ci) and string comparisons are ordinal:
 # under tr-TR the current culture folds 'I' to a dotless i (U+0131), so a culture-following (?i)
@@ -175,10 +175,11 @@ if ($isPatch) {
     # An update's old text is the lines it removes, all its hunks together, against all the lines it adds; an added
     # file's is the file on disk, if it exists. A section that moves its file has none: its removed lines belong to
     # the source file, not to the path it writes.
-    # A section that adds no line is skipped, unless it moves a file: a move onto the guard allowlist's name would
-    # replace the team's list with a file the agent wrote unchecked, so the write loop below must see its paths.
+    # A section that adds no line is not checked for content. Every section's paths, a deletion's, a move's and one
+    # that only removes lines included, are checked against the guard allowlist ($targets).
+    $targets = @(foreach ($section in $sections) { foreach ($path in $section.Paths) { $path } })
     $writes = @(foreach ($section in $sections) {
-        if ($section.Lines.Count -eq 0 -and -not $section.Moved) { continue }
+        if ($section.Lines.Count -eq 0) { continue }
         $text = $section.Lines -join "`n"
         $sectionUnits = if ($section.Moved) {
             @(New-WriteUnit $text $null $false)
@@ -195,9 +196,16 @@ if ($isPatch) {
     # carries a file path + content (the real signal). $fp/$content were extracted above.
     $knownWrite = [string]::Equals($tool, 'Write', $ordinalIgnoreCase) -or [string]::Equals($tool, 'Edit', $ordinalIgnoreCase) -or
                   [string]::Equals($tool, 'create', $ordinalIgnoreCase) -or $emptyTool
-    if (-not ($knownWrite -or ($fp -and $content))) { exit 0 }
-    if (-not $content) { exit 0 }
-    $writes = @([pscustomobject]@{ Path = $fp; Content = $content; Units = $units })
+    # The path of any write-shaped event is checked against the guard allowlist before its text is: a write that
+    # empties a file, an edit whose new text is empty and a deleted notebook cell change the list as surely as one
+    # that adds text. Write-shaped is a known file-writing tool name or any field that carries a write's text; a
+    # read (Copilot's view) carries neither.
+    $writeFields = @('content', 'new_string', 'newString', 'file_text', 'new_str', 'text', 'new_source', 'edits', 'old_string', 'oldString', 'old_str')
+    $writeTools = @('MultiEdit', 'NotebookEdit', 'str_replace', 'str_replace_editor', 'insert')
+    $writeShaped = $knownWrite -or @($writeTools | Where-Object { [string]::Equals([string]$tool, $_, $ordinalIgnoreCase) }).Count -gt 0 -or
+                   @(foreach ($o in @($ti, $ta)) { if ($null -ne $o -and $o -isnot [string]) { @($o.PSObject.Properties.Name) | Where-Object { $writeFields -contains $_ } } }).Count -gt 0
+    $targets = if ($fp -and $writeShaped) { @([string]$fp) } else { @() }
+    $writes = if (($knownWrite -or ($fp -and $content)) -and $content) { @([pscustomobject]@{ Path = $fp; Content = $content; Units = $units }) } else { @() }
 }
 
 # The text of the file at $Path on disk, '' when it cannot be read as the file the write replaces: a path that
@@ -390,13 +398,29 @@ function Get-CheckedFileName([string]$Path) {
 
 # The team's waiver for the secret checks: .claude/guard-allowlist.txt under the repository, one repository-root path
 # or glob per line (/ between folders; * within one folder name, ** across folders, ? one character; a line ending in
-# / covers that folder; # starts a comment). A write to a path it lists is not checked for a key format or a credential
-# literal; every other check still applies. The file is the team's, changed by hand and reviewed in a pull request, so
-# the agent's own writes to it are blocked (by its name, in any folder, and by its 8.3 short name). A missing,
-# unreadable or oversized file, or a line naming a drive, a ':' or a '..' segment, waives nothing.
+# / covers that folder; a line starting with # is a comment, and a # after a path is part of it). A write to a path it
+# lists is not checked for a key format or a credential literal; every other check still applies. The file is the
+# team's, changed by hand and reviewed in a pull request, so every agent write to it is blocked, an empty edit and a
+# deletion included (Test-AllowlistTarget). A missing, unreadable or oversized file, or a line naming a drive, a ':' or
+# a '..' segment, waives nothing.
+# A glob is matched by a regex built without backtracking (RegexOptions.NonBacktracking: linear in the path, however
+# the line nests its **), with a match timeout of $allowlistMatchTimeout; a runtime without that option backtracks
+# within the same timeout. A match that times out waives nothing, and once $allowlistBudgetMs is spent on the list no
+# further path is waived, so no list line can hold the guard past the hosts' 10 s limit: it only leaves the checks on.
 $allowlistName = 'guard-allowlist.txt'
 $maxAllowlistBytes = 64KB
+$allowlistMatchTimeout = [TimeSpan]::FromMilliseconds(100)
+$allowlistBudgetMs = 2000
+$allowlistOptions = $ci
+if ([enum]::GetNames([Text.RegularExpressions.RegexOptions]) -contains 'NonBacktracking') {
+    $allowlistOptions = $ci -bor [Text.RegularExpressions.RegexOptions]'NonBacktracking'
+}
+$script:allowlistClock = $null
 $script:allowlistPatterns = $null
+function Test-AllowlistBudgetSpent {
+    if ($null -eq $script:allowlistClock) { $script:allowlistClock = [Diagnostics.Stopwatch]::StartNew() }
+    return $script:allowlistClock.ElapsedMilliseconds -ge $allowlistBudgetMs
+}
 function Get-AllowlistPatterns {
     if ($null -ne $script:allowlistPatterns) { return ,$script:allowlistPatterns }
     $patterns = New-Object System.Collections.Generic.List[regex]
@@ -404,6 +428,7 @@ function Get-AllowlistPatterns {
         $file = if ($repoRoot) { New-Object IO.FileInfo((Join-Path $repoRoot ".claude\$allowlistName")) }
         if ($file -and $file.Exists -and $file.Length -le $maxAllowlistBytes) {
             foreach ($line in [IO.File]::ReadAllLines($file.FullName)) {
+                if (Test-AllowlistBudgetSpent) { $patterns.Clear(); break }
                 $entry = $line.Trim().Replace('\', '/')
                 if ($entry.Length -eq 0 -or $entry.StartsWith('#', $ordinal)) { continue }
                 while ($entry.StartsWith('./', $ordinal)) { $entry = $entry.Substring(2) }
@@ -421,7 +446,7 @@ function Get-AllowlistPatterns {
                     else { [void]$builder.Append([regex]::Escape([string]$ch)) }
                 }
                 [void]$builder.Append('$')
-                $patterns.Add((New-Object regex($builder.ToString(), $ci)))
+                $patterns.Add((New-Object regex($builder.ToString(), $allowlistOptions, $allowlistMatchTimeout)))
             }
         }
     } catch { $patterns.Clear() }
@@ -431,12 +456,61 @@ function Get-AllowlistPatterns {
 function Test-AllowlistedPath([string]$Relative) {
     if (-not $Relative) { return $false }
     $path = $Relative.Replace('\', '/')
-    foreach ($pattern in (Get-AllowlistPatterns)) { if ($pattern.IsMatch($path)) { return $true } }
+    foreach ($pattern in (Get-AllowlistPatterns)) {
+        if (Test-AllowlistBudgetSpent) { return $false }
+        try { if ($pattern.IsMatch($path)) { return $true } } catch { }
+    }
     return $false
 }
 function Test-AllowlistFileName([string]$Name) {
     return [string]::Equals($Name, $allowlistName, $ordinalIgnoreCase) -or [regex]::IsMatch($Name, '^GUARD-~[0-9]+\.TXT$', $ci)
 }
+# Whether a write to $Path changes the guard allowlist. By name: the list's name in any folder, or GUARD-~N.TXT. By
+# what Windows resolves it to: an 8.3 short name need not look like the list's (GUC529~1.TXT once four guard-*.txt
+# files share the folder), so a path with a '~' is resolved to its long name (GetFullPath expands each existing 8.3
+# segment through the file system) and compared, ignoring case, with the list's path; when its last segment holds '~'
+# and a digit and names no file, its folder resolved is compared with the list's folder. Only a path on the
+# repository's drive, or a relative one (taken under the repository), is resolved: another drive, or a UNC host, may be
+# unreachable and outlast the hook's time limit, so a short-looking name there is refused unresolved. Any error while
+# resolving refuses the write.
+function Test-AllowlistTarget([string]$Path) {
+    if (-not $Path) { return $false }
+    $name = Get-CheckedFileName $Path
+    if (Test-AllowlistFileName $name) { return $true }
+    if ($Path.IndexOf('~') -lt 0) { return $false }
+    $shortLooking = [regex]::IsMatch($name, '~[0-9]')
+    try {
+        if (-not $repoRoot) { return $shortLooking }
+        $p = $Path.Replace('/', '\')
+        if ([regex]::IsMatch($p, '^\\\\\?\\[A-Za-z]:\\')) { $p = $p.Substring(4) }
+        if (-not [regex]::IsMatch($p, '^[A-Za-z]:\\')) {
+            if ($p.StartsWith('\', $ordinal) -or $p.StartsWith('~', $ordinal) -or [regex]::IsMatch($p, '^[A-Za-z]:')) { return $shortLooking }
+            $p = $repoRoot + $p
+        }
+        if (-not [string]::Equals($p.Substring(0, 2), $repoRoot.Substring(0, 2), $ordinalIgnoreCase)) { return $shortLooking }
+        # As Windows opens it: a stream suffix on the last segment and a trailing dot or space on any segment drop.
+        $segments = $p.Split([char]'\')
+        $last = $segments.Length - 1
+        $colon = $segments[$last].IndexOf(':')
+        if ($colon -ge 0 -and $last -gt 0) { $segments[$last] = $segments[$last].Substring(0, $colon) }
+        for ($i = 1; $i -lt $segments.Length; $i++) {
+            if (-not ([string]::Equals($segments[$i], '.', $ordinal) -or [string]::Equals($segments[$i], '..', $ordinal))) { $segments[$i] = $segments[$i].TrimEnd(' ', '.') }
+        }
+        $full = [IO.Path]::GetFullPath(($segments -join '\')).TrimEnd('\')
+        $listFolder = [IO.Path]::GetFullPath($repoRoot + '.claude').TrimEnd('\')
+        if ([string]::Equals($full, $listFolder + '\' + $allowlistName, $ordinalIgnoreCase)) { return $true }
+        if ($shortLooking -and -not ([IO.File]::Exists($full) -or [IO.Directory]::Exists($full)) -and
+            [string]::Equals([IO.Path]::GetDirectoryName($full), $listFolder, $ordinalIgnoreCase)) { return $true }
+        return $false
+    } catch { return $true }
+}
+
+foreach ($target in $targets) {
+    if (Test-AllowlistTarget ([string]$target)) {
+        Exit-Blocked "Blocked write to ${target}: it changes the guard allowlist (.claude/$allowlistName), the team's list of paths the secret checks skip. An agent may not write, edit or delete it, not even to remove a line; a teammate edits it by hand and the change is reviewed in a pull request."
+    }
+}
+if ($writes.Count -eq 0) { exit 0 }
 
 # A write that holds more password values than this is blocked, not checked: each one costs about 0.1 ms in
 # Test-CredentialMatch, so an unbounded count outlasts the hook's time limit. The unit is a password value, counted once
@@ -454,8 +528,6 @@ foreach ($write in $writes) {
     $fileName = Get-CheckedFileName ([string]$fp)
     $relativePath = if ($fp) { Get-RepositoryRelativePath ([string]$fp) }
     $waived = Test-AllowlistedPath $relativePath
-
-    if (Test-AllowlistFileName $fileName) { $reasons += "changes the guard allowlist (.claude/$allowlistName), the team's list of paths the secret checks skip — an agent may not change it; a teammate edits it by hand and the change is reviewed in a pull request" }
 
     if ([regex]::IsMatch($fileName, '\.cs$', $ci)) {
         if (Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression' -Adds -Closer '#pragma\s+warning\s+restore') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }

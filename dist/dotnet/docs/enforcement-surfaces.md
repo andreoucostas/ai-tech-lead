@@ -280,7 +280,7 @@ organization enforces.
 > docker-compose); other key formats, such as Stripe's `sk_live_`; ConnectionStrings entries after a
 > brace in a JSON comment or after a nested object; and anything the edit and shell caveats above
 > exclude.
-> **Team waiver:** a path listed in `.claude/guard-allowlist.txt` skips the key-format and credential checks (a real secret written there passes), not the suppression and test checks; the agent's own writes to that file are blocked, so your team edits it by hand and reviews it in a pull request.
+> **Team waiver:** a path listed in `.claude/guard-allowlist.txt` skips the key-format and credential checks (a real secret written there passes), not the suppression and test checks; every agent write to that file, an empty edit, a patch deletion and an 8.3 short name included, is blocked, so your team edits it by hand and reviews it in a pull request (a shell command that edits it is not seen).
 
 ## Why the differences (the load-bearing facts)
 - **Claude Code** consumes `UserPromptSubmit` stdout and honours `PreToolUse` `exit 2`. `route-prompt` detects this surface (Claude events carry `hook_event_name`) and emits plain stdout there.

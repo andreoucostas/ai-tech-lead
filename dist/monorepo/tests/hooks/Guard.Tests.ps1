@@ -568,4 +568,93 @@ It 'guard: the agent cannot write the team allowlist itself, by Write, Edit or a
     } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
 }
 
+It 'guard: the agent cannot shorten or delete the team allowlist (an empty edit, an emptying write, a patch deletion)' {
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) $allowlistText
+        $root = Join-Path $base 'shop'
+        $list = "$root\.claude\guard-allowlist.txt"
+        $events = @(
+            @{ s = 'Claude';  e = (New-ClaudeEditEvent $list "# team-reviewed`r`n" '');  n = 'a Claude Edit whose new_string is empty' }
+            @{ s = 'Copilot'; e = (New-CopilotEditEvent $list "# team-reviewed`r`n" ''); n = 'a Copilot edit whose new_str is empty' }
+            @{ s = 'Claude';  e = (New-ClaudeEvent $list '');                             n = 'a Claude Write that empties the list' }
+            @{ s = 'Copilot'; e = (New-PatchEvent 'hooks.json' "*** Begin Patch`n*** Update File: .claude/guard-allowlist.txt`n@@`n-# team-reviewed`n*** End Patch`n"); n = 'an apply_patch that only removes a line' }
+            @{ s = 'Copilot'; e = (New-PatchEvent 'hooks.json' "*** Begin Patch`n*** Delete File: .claude/guard-allowlist.txt`n*** End Patch`n"); n = 'an apply_patch that deletes the list' }
+        )
+        foreach ($case in $events) {
+            $result = Invoke-Hook $hook $case.e
+            Assert-Decision $result $(if ($case.s -eq 'Claude') { 'BLOCK' } else { 'DENY' }) $case.n
+            $said = if ($case.s -eq 'Claude') { $result.Err } else { $result.Out }
+            Assert ($said.Contains('reviewed in a pull request')) "$($case.n): expected the team-review reason, got: $said"
+        }
+        $view = @{ toolName = 'view'; toolArgs = @{ path = $list } } | ConvertTo-Json -Compress -Depth 6
+        Assert-Decision (Invoke-Hook $hook $view) 'ALLOW' 'a Copilot view of the list'
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+# An 8.3 short name need not look like the list's: with four other guard-*.txt files in .claude\, Windows gives the list a
+# hash-style alias (GUC529~1.TXT). The alias is read back from the volume; a volume with 8.3 names off has none to test.
+$shortBase = Join-Path ([IO.Path]::GetTempPath()) ('guard-short-' + [guid]::NewGuid().ToString('N'))
+$shortRoot = Join-Path $shortBase 'shop'
+$shortHook = Copy-HookInto $guardPs $shortRoot
+foreach ($decoy in 'aaaaa', 'bbbbb', 'ccccc', 'ddddd') { [IO.File]::WriteAllText("$shortRoot\.claude\guard-$decoy.txt", "x`n") }
+[IO.File]::WriteAllText("$shortRoot\.claude\guard-allowlist.txt", "docs/guides/`n")
+$shortName = $null; $shortFolder = $null
+try {
+    $fso = New-Object -ComObject Scripting.FileSystemObject
+    $shortName = $fso.GetFile("$shortRoot\.claude\guard-allowlist.txt").ShortName
+    $shortFolder = $fso.GetFolder("$shortRoot\.claude").ShortName
+} catch { }
+$shortCase = 'guard: the agent cannot write the team allowlist through an 8.3 short name that does not look like it'
+if (-not $shortName -or $shortName -eq 'guard-allowlist.txt' -or $shortName -notmatch '~[0-9]') {
+    Skip $shortCase "8.3 short names are disabled on the volume holding $shortBase (short name read back: '$shortName')"
+} else {
+    It $shortCase {
+        $events = @(
+            @{ s = 'Claude';  e = (New-ClaudeEvent "$shortRoot\.claude\$shortName" "**`n");                 n = "a Claude Write to .claude\$shortName" }
+            @{ s = 'Copilot'; e = (New-CopilotEvent "$shortRoot\.claude\$shortName" "**`n");                n = "a Copilot create to .claude\$shortName" }
+            @{ s = 'Copilot'; e = (New-CopilotEvent ".claude/$shortName" "**`n");                            n = "a relative Copilot create to .claude/$shortName" }
+            @{ s = 'Copilot'; e = (New-CopilotEvent "$shortRoot\$shortFolder\$shortName" "**`n");           n = "a Copilot create to $shortFolder\$shortName" }
+            @{ s = 'Claude';  e = (New-ClaudeEditEvent "$shortRoot\.claude\$shortName" 'docs/guides/' '**'); n = "a Claude Edit of .claude\$shortName" }
+            @{ s = 'Copilot'; e = (New-CopilotEvent "$shortRoot\.claude\GUD777~1.TXT" "**`n");              n = 'a Copilot create to a short-looking name not yet on disk in .claude' }
+        )
+        foreach ($case in $events) {
+            $result = Invoke-Hook $shortHook $case.e
+            Assert-Decision $result $(if ($case.s -eq 'Claude') { 'BLOCK' } else { 'DENY' }) $case.n
+        }
+        Assert-Decision (Invoke-Hook $shortHook (New-CopilotEvent "$shortRoot\docs\NOTES~1.md" "notes`n")) 'ALLOW' 'a clean write to a short-looking name outside .claude'
+    }
+}
+Remove-Item -LiteralPath $shortBase -Recurse -Force -ErrorAction SilentlyContinue
+
+It 'guard: a list line built to backtrack answers within 2 s and waives nothing it does not match' {
+    $secret = '{"k":"sk-live0123456789abcdefghijklmn"}'
+    $cases = @(
+        @{ l = "**/fixtures/**/samples/**/*.json`n"; p = ((@('fixtures\samples') * 600) -join '\') + '\appsettings.cs' }
+        @{ l = "**/**/**/**/**/**/**/**/x.json`n";   p = ((@('a') * 40) -join '\') + '\appsettings.cs' }
+    )
+    foreach ($case in $cases) {
+        $base = $null
+        try {
+            $hook = New-AllowlistedRoot ([ref]$base) $case.l
+            $path = (Join-Path $base 'shop') + '\src\' + $case.p
+            foreach ($surface in 'Claude', 'Copilot') {
+                $clock = [Diagnostics.Stopwatch]::StartNew()
+                $result = Invoke-Hook $hook (New-SurfaceEvent $surface $path $secret)
+                $ms = $clock.ElapsedMilliseconds
+                Assert-Decision $result $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "$($case.l.Trim()) on a $($path.Length)-character path ($surface)"
+                Assert ($ms -lt 2000) "$($case.l.Trim()) on a $($path.Length)-character path ($surface): the guard took $ms ms, expected under 2000"
+            }
+        } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+    }
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) "**/fixtures/**/samples/**/*.json`n"
+        $path = (Join-Path $base 'shop') + '\src\fixtures\login\samples\en\users.json'
+        foreach ($surface in 'Claude', 'Copilot') {
+            Assert-Decision (Invoke-Hook $hook (New-SurfaceEvent $surface $path $secret)) 'ALLOW' "a matching path is still waived ($surface)"
+        }
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
 exit (Write-TestSummary 'Guard.Tests (PowerShell)')

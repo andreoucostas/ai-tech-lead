@@ -135,7 +135,8 @@
   `.claude/guard-allowlist.txt`, one path or glob per line (a translation file whose `password` key says "Enter your
   password", a label map, a Key Vault reference): the guard no longer checks them for keys or credential literals, but still
   blocks suppressed warnings and skipped or focused tests there. Install creates the file with comments only, and an update
-  never replaces it. The agent cannot edit it, so your team changes it by hand and reviews it in a pull request. A real
+  never replaces it (it writes the comments-only copy again only if the file is missing). The agent cannot write, edit or
+  delete it, not even to remove a line, so your team changes it by hand and reviews it in a pull request. A real
   secret written to a listed path is not blocked, so keep secret scanning on every push.
 
 ## 0.98.6 — 2026-11-13

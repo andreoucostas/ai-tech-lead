@@ -5,13 +5,15 @@
 # Key Vault reference, a CSS class that starts with sk-. List such files here, and the guard stops checking them for
 # secrets. It still checks them for suppressed warnings, skipped or focused tests and tautological assertions.
 #
-# This file belongs to your team. Edit it by hand and review every change in a pull request: the guard refuses an
-# agent's write to it, and a framework update never replaces it.
+# This file belongs to your team. Edit it by hand and review every change in a pull request: the guard refuses every
+# agent write to it, an edit that only removes text and a deletion included. A framework update never replaces it; if
+# the file is missing, install and update write this comments-only copy again.
 #
 # A real secret written to a listed path is NOT blocked. List label, sample and fixture files only, never a settings
 # file, and keep secret scanning in your CI build.
 #
-# Format: one path per line, relative to the repository root, with / between folders. # starts a comment.
+# Format: one path per line, relative to the repository root, with / between folders. A line that starts with # is a
+# comment; a # after a path is part of the path, so put a note on its own line.
 #   *   any characters within one folder or file name
 #   **  any characters across folders
 #   ?   one character
