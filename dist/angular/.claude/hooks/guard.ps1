@@ -61,7 +61,7 @@ $guardContentKeys = New-NameSet @('content', 'new_string', 'newString', 'file_te
 $guardEditorCommands = New-NameSet @('create', 'str_replace', 'insert', 'undo_edit')
 $guardToolKeys = New-NameSet @('tool_name', 'toolName')
 $guardArgKeys = New-NameSet @('tool_input', 'toolArgs')
-$guardPatchLike = '\*\*\* Begin Patch|\*\*\* (?:Add|Update|Delete) File:'
+$guardPatchLike = '\*\*\* (?:Add|Update|Delete) File:'
 # Whether a call's arguments (a table parsed with -AsHashtable, or a string that is one as JSON text or else a patch)
 # make it a write. $Editor: the tool is str_replace_editor.
 function Test-WriteArgs($ArgsValue, [bool]$Editor) {
@@ -72,16 +72,16 @@ function Test-WriteArgs($ArgsValue, [bool]$Editor) {
         $ArgsValue = $inner
     }
     if ($ArgsValue -isnot [System.Collections.IDictionary]) { return $false }
-    $hasPath = $false; $hasText = $false
+    $hasPath = $false; $hasText = $false; $patchInput = $false
     foreach ($k in @($ArgsValue.Keys)) {
         $key = [string]$k
         if ($guardContentKeys.Contains($key)) { return $true }
         if ($guardPathKeys.Contains($key)) { $hasPath = $true }
         elseif ([string]::Equals($key, 'text', $ordinalIgnoreCase)) { $hasText = $true }
-        elseif ($Editor -and [string]::Equals($key, 'command', $ordinalIgnoreCase) -and $ArgsValue[$k] -is [string] -and $guardEditorCommands.Contains($ArgsValue[$k])) { return $true }
-        elseif ([string]::Equals($key, 'input', $ordinalIgnoreCase) -and $ArgsValue[$k] -is [string] -and [regex]::IsMatch($ArgsValue[$k], $guardPatchLike, $ci)) { return $true }
+        elseif ($Editor -and [string]::Equals($key, 'command', $ordinalIgnoreCase) -and $guardEditorCommands.Contains([string]$ArgsValue[$k])) { return $true }
+        elseif ([string]::Equals($key, 'input', $ordinalIgnoreCase) -and $ArgsValue[$k] -is [string] -and [regex]::IsMatch($ArgsValue[$k], $guardPatchLike, $ci)) { $patchInput = $true }
     }
-    return $hasText -and $hasPath
+    return ($hasText -and $hasPath) -or ($patchInput -and -not $hasPath)
 }
 # ConvertFrom-Json refuses JSON whose keys differ only in case, or that has an empty key, and a call it cannot parse
 # would be let through unread. Such a call is re-read with -AsHashtable, only to classify it: the tool name it names (the
@@ -280,7 +280,9 @@ if ($isPatch) {
     # A section that adds no line is not checked for content. Every section's paths, a deletion's, a move's and one
     # that only removes lines included, are checked against the guard allowlist ($targets).
     $targets = @(foreach ($section in $sections) { foreach ($path in $section.Paths) { $path } })
+    $groupId = 0
     $writes = @(foreach ($section in $sections) {
+        $groupId++
         if ($section.Lines.Count -eq 0) { continue }
         $text = $section.Lines -join "`n"
         $sectionUnits = if ($section.Moved) {
@@ -288,8 +290,8 @@ if ($isPatch) {
         } elseif ([string]::Equals($section.Kind, 'update', $ordinal)) {
             @(New-WriteUnit $text ($section.Removed -join "`n") $false)
         } else { @(New-WriteUnit $text $null ([string]::Equals($section.Kind, 'add', $ordinal))) }
-        if ($section.Paths.Count -eq 0) { [pscustomobject]@{ Path = $null; Content = $text; Units = $sectionUnits; Paths = @() } }
-        foreach ($path in $section.Paths) { [pscustomobject]@{ Path = $path; Content = $text; Units = $sectionUnits; Paths = @($path) } }
+        if ($section.Paths.Count -eq 0) { [pscustomobject]@{ Group = $groupId; Path = $null; Content = $text; Units = $sectionUnits; Paths = @() } }
+        foreach ($path in $section.Paths) { [pscustomobject]@{ Group = $groupId; Path = $path; Content = $text; Units = $sectionUnits; Paths = @($path) } }
     })
 } else {
     # Gate on whether this is an inspectable write, independent of surface: Claude sends
@@ -310,7 +312,7 @@ if ($isPatch) {
     $writeShaped = $knownWrite -or $editorWrite -or @($writeTools | Where-Object { [string]::Equals([string]$tool, $_, $ordinalIgnoreCase) }).Count -gt 0 -or
                    @(foreach ($o in @($ti, $ta)) { if ($null -ne $o -and $o -isnot [string]) { @($o.PSObject.Properties.Name) | Where-Object { $writeFields -contains $_ } } }).Count -gt 0
     $targets = if ($writeShaped) { @($pathFields) } else { @() }
-    $writes = if (($knownWrite -or ($fp -and $content)) -and $content) { @([pscustomobject]@{ Path = $fp; Content = $content; Units = $units; Paths = @($pathFields) }) } else { @() }
+    $writes = if (($knownWrite -or ($fp -and $content)) -and $content) { @([pscustomobject]@{ Group = 0; Path = $fp; Content = $content; Units = $units; Paths = @($pathFields) }) } else { @() }
 }
 
 # The text of the file at $Path on disk, '' when it cannot be read as the file the write replaces: a path that
@@ -656,6 +658,11 @@ if ($writes.Count -eq 0) { exit 0 }
 $maxCredentialMatches = 500
 $credentialExamined = 0
 $blocked = New-Object System.Collections.Generic.List[object]
+# A section's added text is scanned once, however many paths it names (its own and each 'Move to:' target): what the scans
+# decide depends on the text and on the path only through the extension rules, the waiver and the test-path exemption, so
+# each result is kept by section and by those path facts (a whole-file text is read against its own path's file on disk).
+$scanCache = New-Object Collections.Hashtable([StringComparer]::Ordinal)
+$reportedReasons = New-Object Collections.Hashtable([StringComparer]::Ordinal)
 foreach ($write in $writes) {
     $fp = $write.Path
     $content = $write.Content
@@ -666,6 +673,11 @@ foreach ($write in $writes) {
     # Waived only when the list matches every path the write names, each read from the event's working directory.
     $waived = @($write.Paths).Count -gt 0
     foreach ($path in @($write.Paths)) { if (-not (Test-AllowlistedPath (Get-WaiverRelativePath ([string]$path)))) { $waived = $false; break } }
+    $diskPath = if (@($writeUnits | Where-Object { $_.Whole }).Count -gt 0) { [string]$fp } else { '' }
+    $extKey = 'ext|' + $write.Group + '|' + [regex]::IsMatch($fileName, '\.cs$', $ci) + '|' + [regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci) + '|' +
+        [regex]::IsMatch($fileName, '(\.(spec|test|cy)|~[0-9]+)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci) + '|' + $diskPath
+    $extStart = @($reasons).Count
+    if ($scanCache.ContainsKey($extKey)) { $reasons += $scanCache[$extKey] } else {
 
     if ([regex]::IsMatch($fileName, '\.cs$', $ci)) {
         if (Test-GuardPattern '#pragma\s+warning\s+disable' 'test-defeat/suppression' -Adds -Closer '#pragma\s+warning\s+restore') { $reasons += "adds '#pragma warning disable' — Verification Rule #7: failures are signals, fix the cause" }
@@ -708,9 +720,13 @@ foreach ($write in $writes) {
             (Test-GuardPattern '\b(test\.(skip|fixme)|context\.skip)\s*(\.[A-Za-z_$]|\(\s*([''"`][^\n]{0,200}?[''"`]\s*,|true\b\s*[,)]|[A-Za-z_$][\w$]*\.name\s*,))' 'test-defeat/suppression' -Adds)) { $reasons += "skips a test (xit/xdescribe/.skip) — don't skip; fix the test or record it in TECH_DEBT.md (Verification Rule #5)" }
         if ((Test-GuardPattern 'expect\(\s*true\s*\)\.toBe\(\s*true\s*\)' 'test-defeat/suppression') -or (Test-GuardPattern 'expect\(\s*false\s*\)\.toBe\(\s*false\s*\)' 'test-defeat/suppression')) { $reasons += "adds a tautological assertion (expect(true).toBe(true)) — assert observable behaviour, not a constant (Test leanness #15)" }
     }
+    $scanCache[$extKey] = @($reasons | Select-Object -Skip $extStart)
+    }
 
+    $secretKey = 'secret|' + $write.Group + '|' + $waived + '|' + $diskPath
     $secretKind = $null
-    if     ($waived) { }
+    if     ($scanCache.ContainsKey($secretKey)) { $secretKind = $scanCache[$secretKey] }
+    elseif ($waived) { }
     elseif (Test-GuardPattern '-----BEGIN [A-Z ]*PRIVATE KEY-----' 'secret')   { $secretKind = 'a private key block' }
     elseif (Test-GuardPattern 'AKIA[0-9A-Z]{16}' 'secret')                     { $secretKind = 'an AWS access key id (AKIA…)' }
     elseif (Test-GuardPattern 'gh[oprsu]_[A-Za-z0-9]{36}' 'secret')            { $secretKind = 'a classic GitHub token (gh*_…)' }
@@ -729,6 +745,7 @@ foreach ($write in $writes) {
     # form's signature run is atomic: the text after it accepts the same characters, so giving some back only
     # rescanned that text from every shorter length.
     elseif (Test-GuardPattern '\bsv=\d{4}-\d{2}-\d{2}&(?:(?!\bsv=\d{4}-\d{2}-\d{2}&)[^\s"''])*?\bsig=[A-Za-z0-9%+/]{40,}|\bsig=(?>[A-Za-z0-9%+/]{40,})(?:(?!\bsig=[A-Za-z0-9%+/]{40,})[^\s"''])*?&sv=\d{4}-\d{2}-\d{2}' 'secret') { $secretKind = 'an Azure SAS token signature (sv=…&sig=…)' }
+    $scanCache[$secretKey] = $secretKind
     if ($secretKind) { $reasons += "contains $secretKind — secrets must not be committed; use user-secrets / env vars / a vault" }
 
     # Test and sample paths are exempt from the credential heuristic only when a path segment carries
@@ -750,7 +767,10 @@ foreach ($write in $writes) {
             }
         }
     }
-    if (-not $credentialExempt) {
+    $credKey = 'credential|' + $write.Group + '|' + $diskPath
+    if (-not $credentialExempt -and $scanCache.ContainsKey($credKey)) { $reasons += $scanCache[$credKey] }
+    elseif (-not $credentialExempt) {
+        $credStart = @($reasons).Count
         # A placeholder word anywhere in the matched text exempts it, as it always has. <...> is written so that its
         # content holds no '<' except as its last character: that finds the same matches (a '<' inside the content
         # starts a match of its own, except one right before the '>'), and a long run of '<' is no longer rescanned
@@ -869,14 +889,31 @@ foreach ($write in $writes) {
         if ($credentialHit) {
             $reasons += "assigns a hardcoded credential literal — move it to user-secrets / env vars / a vault"
         }
+        $scanCache[$credKey] = @($reasons | Select-Object -Skip $credStart)
     }
 
-    if ($reasons.Count -gt 0) { $blocked.Add([pscustomobject]@{ Path = $fp; Reasons = $reasons }) }
+    # Paths of one section that fail for the same reasons are reported together, in one sentence naming each.
+    if ($reasons.Count -gt 0) {
+        $reportKey = [string]$write.Group + '|' + ($reasons -join '|')
+        if ($reportedReasons.ContainsKey($reportKey)) { $reportedReasons[$reportKey].Paths.Add([string]$fp) }
+        else {
+            $entry = [pscustomobject]@{ Paths = (New-Object System.Collections.Generic.List[string]); Reasons = $reasons }
+            $entry.Paths.Add([string]$fp)
+            $reportedReasons[$reportKey] = $entry
+            $blocked.Add($entry)
+        }
+    }
 }
 if ($blocked.Count -eq 0) { exit 0 }
 
+# One sentence per path, as each is a write the agent may need to fix; the paths of one section that fail alike past the first
+# 20 are counted, not listed, so a section with hundreds of move targets does not make a message of hundreds of sentences.
 $msg = @($blocked | ForEach-Object {
-    $target = if ($_.Path) { $_.Path } else { 'the target file' }
-    "Blocked write to ${target}: it " + ($_.Reasons -join '; ') + '.'
+    $entry = $_
+    $named = @($entry.Paths | Where-Object { $_ } | Select-Object -Unique)
+    if ($named.Count -eq 0) { $named = @('the target file') }
+    $sentences = @($named | Select-Object -First 20 | ForEach-Object { "Blocked write to ${_}: it " + ($entry.Reasons -join '; ') + '.' })
+    if ($named.Count -gt 20) { $sentences += "The other $($named.Count - 20) paths of that patch section fail the same way." }
+    $sentences
 }) -join ' '
 Exit-Blocked $msg

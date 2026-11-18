@@ -870,4 +870,29 @@ It 'guard: a read or search call that will not parse is allowed, and a write one
     Assert-Decision (Invoke-Hook $guardPs $denied) 'DENY' $denied
 }
 
+It 'guard: one section with 399 Move to targets and 100 KB of added text is decided under 5 s, and its secret still denied' {
+    $line = "+  const value = compute(input, 'password', options); // it should work`n"
+    $added = $line * [int](100KB / $line.Length)
+    $moves = ((1..399) | ForEach-Object { "*** Move to: src/t$_.spec.ts`n" }) -join ''
+    $secret = "+const k = `"sk-" + "live0123456789abcdefghijklmn`";`n"   # assembled at run time, as the outgoing-commit guard asks
+    foreach ($case in @(@{ n = 'clean'; t = $added; d = 'ALLOW' }, @{ n = 'with a secret line'; t = $added + $secret; d = 'DENY' })) {
+        $patch = "*** Begin Patch`n*** Update File: src/a.spec.ts`n$moves$($case.t)*** End Patch`n"
+        $clock = [Diagnostics.Stopwatch]::StartNew()
+        $result = Invoke-Hook $guardPs (Get-PatchSurfaceEvent 'Copilot' $patch)
+        $ms = $clock.ElapsedMilliseconds
+        Assert-Decision $result $case.d "399 targets, 100 KB, $($case.n)"
+        Assert ($ms -lt 5000) "399 targets, 100 KB, $($case.n): the guard took $ms ms, expected under 5000"
+    }
+}
+
+It 'guard: a str_replace_editor undo_edit whose command is an array is read as a write when the call will not parse' {
+    $e = '{"toolName":"str_replace_editor","toolArgs":{"command":["undo_edit"],"path":".claude/guard-allowlist.txt","zz":1,"ZZ":1}}'
+    Assert-Decision (Invoke-Hook $guardPs $e) 'DENY' $e
+}
+
+It 'guard: a bash call that quotes a patch marker in its input and will not parse is allowed' {
+    $e = '{"toolName":"bash","toolArgs":{"input":"grep -n \"*** Begin Patch\" notes.md","zz":1,"ZZ":1}}'
+    Assert-Decision (Invoke-Hook $guardPs $e) 'ALLOW' $e
+}
+
 exit (Write-TestSummary 'Guard.Tests (PowerShell)')
