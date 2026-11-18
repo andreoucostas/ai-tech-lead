@@ -17,42 +17,32 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 |---|---|---|
 | 1 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; the first developer's answers came in 2026-11-16 (field report #14), so it waits on the maintainer's two decisions on close |
 | 2 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review, where B-514 saw it followed as often as an approved skill; guarded |
-| 3 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
-| 4 | B-425 | A plain-words review runs no reviewer: on Copilot CLI it loads the `review` skill (5 of 6, 2026-11-13) but skips its dispatch step (0 of 6), with or without the candidate; blocked on B-416; the Claude Code leg is about 3 USD |
-| 5 | B-497 | Merge the three Haiku reviewers into one pass, measured with B-467's 12-defect harness (the `/review` merge, verdict and delegation parts shipped 2026-11-17); guarded |
-| 6 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
-| 7 | B-508 | Extract the installer's pure planning functions with unit cases; the copy and the install-commit notice shipped 2026-11-17; guarded, step 4 |
-| 8 | B-512 | `presentation/` single copy and the wrapper SHA-256 bullet remain (`adopt.md`/`playbook.md` shipped 2026-11-17); guarded (AGENTS.md) |
-| 9 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
-| 10 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
-| 11 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
-| 12 | B-468 | Measured, not field-raised: 2 of 26 plain bug fixes skipped the regression test, wrongly saying a SQLite test needs a new package; the agent said the fix was untested |
-| 13 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
-| 14 | B-499 | Secret-leak class, B-487's step-4 attacks: the guard still passes an auto-property initializer, `NetworkCredential`, URL userinfo and other credential forms; guarded, step 4 |
-| 15 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations (the missing-`pwsh` exit 0 and the doctor's interpreter row are fixed for 0.99.0); needs the maintainer's decision first |
-| 16 | B-502 | Data-loss class, pre-existing, B-480's scope check (run): a disabled skill's exemplar line survives the update that disables it and is dropped by the next one; guarded, step 4 |
-| 17 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only (a shell on Claude Code, every tool on Copilot); needs the maintainer's decision first |
-| 18 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
-| 19 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
-| 20 | B-520 | Seven small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
-| 21 | B-522 | Release review: nothing tracks how long a release takes or how often a defect escapes; guarded, S |
-| 22 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
-| 23 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
-| 24 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
-| 25 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
-| 26 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
-| 27 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
+| 3 | B-425 | A plain-words review runs no reviewer: on Copilot CLI it loads the `review` skill (5 of 6, 2026-11-13) but skips its dispatch step (0 of 6), with or without the candidate; blocked on B-416; the Claude Code leg is about 3 USD |
+| 4 | B-497 | Merge the three Haiku reviewers into one pass, measured with B-467's 12-defect harness (the `/review` merge, verdict and delegation parts shipped 2026-11-17); guarded |
+| 5 | B-467 | Measured 2026-11-04: omitClaudeMd cuts each reviewer's first request by about 9,200 tokens; the findings comparison was not settled under the eval harness, so a re-run decides shipping |
+| 6 | B-508 | Extract the installer's pure planning functions with unit cases; the copy and the install-commit notice shipped 2026-11-17; guarded, step 4 |
+| 7 | B-512 | `presentation/` single copy and the wrapper SHA-256 bullet remain (`adopt.md`/`playbook.md` shipped 2026-11-17); guarded (AGENTS.md) |
+| 8 | B-417 | Improvement to 0.98.0's core: B-412 saw no downstream difference because prompt K states every outcome; about 10 USD |
+| 9 | B-420 | The fix path's restated criterion, unchanged since 0.97; about 8 USD; better after B-416's field answers |
+| 10 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
+| 11 | B-468 | Measured, not field-raised: 2 of 26 plain bug fixes skipped the regression test, wrongly saying a SQLite test needs a new package; the agent said the fix was untested |
+| 12 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
+| 13 | B-499 | Secret-leak class, B-487's step-4 attacks: the guard still passes an auto-property initializer, `NetworkCredential`, URL userinfo and other credential forms; guarded, step 4 |
+| 14 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations (the missing-`pwsh` exit 0 and the doctor's interpreter row are fixed for 0.99.0); needs the maintainer's decision first |
+| 15 | B-502 | Data-loss class, pre-existing, B-480's scope check (run): a disabled skill's exemplar line survives the update that disables it and is dropped by the next one; guarded, step 4 |
+| 16 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only (a shell on Claude Code, every tool on Copilot); needs the maintainer's decision first |
+| 17 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
+| 18 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
+| 19 | B-520 | Seven small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
+| 20 | B-522 | Release review: nothing tracks how long a release takes or how often a defect escapes; guarded, S |
+| 21 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
+| 22 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
+| 23 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
+| 24 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
+| 25 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
+| 26 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
 
 ## Open entries
-
-### B-356 · Measure a plan-step offer of a test, Conventions line or project-skill draft when a feature creates a repeatable operation
-**Filed against:** v0.93.0 (2026-10-05)
-**Priority:** P3 · **Effort:** M to measure, S to change · **Invariants:** #1 #7
-**Status:** Open; raised by the maintainer 2026-10-05, no field report (WSD-109). The candidate bullet shipped unmeasured in carrier §2 (WSD-111). B-514 (2026-11-15): neither a draft nor a Conventions line changed the outcome on fixture v2 on either host (bare 6 of 6), so the decoy decides alone.
-Measure it (B-346 method): an extension-point feature, a third instance and a plain CRUD decoy whose false-offer rate decides whether it stays;
-design: `.claude/plans/2026-10-08-b348-b356-plan-v2.md` Part B. Its Copilot stage: `.claude/plans/2026-11-13-copilot-window-briefs.md`, "B-356". Part of the project-skills work (WSD-124) with B-516: this is how skills keep appearing after `/bootstrap`.
-
-B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 
 ### B-416 · Observe 0.98.0 at the first consumer: do the restated criteria and Option A/B designs help, and are they right
 **Filed against:** v0.98.0 (2026-10-19)
@@ -61,6 +51,8 @@ B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 The only route to whether the lines are correct and used; gates any reviewer-side or auto-review change. On close, decide plan v2 §5 item 5 (the auto-review sentence) and B-425 from the review answer. Review: `.claude/plans/inbox/2026-10-19-open-threads-review.md` T5.
 First answers 2026-11-16, one developer, mostly on 0.98.2 (`meta/field-reports.md` #14): the lines before code in 28 of 39 sessions and judged right, no review run in any, options in 3 plans and in none of the 9 sessions with an agent-started security pass (B-528). A team has started, so WSD-126's 2026-12-12 re-decision does not apply; left: the two decisions above.
 
+
+B-225 and B-254 — see `meta/BACKLOG-DONE.md`.
 ### B-417 · Measure tests derived from the restated criteria on a prompt that hides a boundary
 **Filed against:** v0.98.0 (2026-10-19)
 **Priority:** P2 · **Effort:** M · **Invariants:** #7 if it ships
@@ -172,7 +164,7 @@ Also: `enforcement-surfaces.md`'s "Status notes" and Copilot-harness bullet stil
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** M · **Invariants:** #1 #7
 **Status:** Open; architecture review 2026-11-14, narrowed by its attack. The carrier is 15.6 KB on every turn; B-411 showed 5.8 KB could go with every measured behaviour holding, but its cells cover about 3 of the file's 38 directives and WSD-107 measured one added sentence doing harm. The ownership sentence stays (WSD-071); the rule numbers are cited across `src/`, so before any cut renumbers rules, replace rule numbers with named anchors, as the 2026-11-14 decision audit proposed (B-142 proposed only a range check and, closing as a deliberate non-action on 2026-08-19, called stable rule identities "a materially larger canonicalisation design").
-Candidate: cut or shorten only text a discriminating cell covers, one group per measurement; B-356's bullet is decided by its own measurement. Ordinary by path; every cut measured.
+Candidate: cut or shorten only text a discriminating cell covers, one group per measurement; B-356's bullet was measured 2026-11-18 and stays (`meta/eval-results.md`). Ordinary by path; every cut measured.
 ### B-520 · Smaller leftovers of the 2026-11-14 reviews
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** S each · **Invariants:** none

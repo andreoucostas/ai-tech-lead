@@ -8862,3 +8862,135 @@ Cost is the row's `costUsd`, cumulative over both legs; wall is the driver's clo
   name): none met. No run sent the pass to a host built-in, and no measurement here compares the shipped security-pass wording.
 - **Not shown:** as registered. Interactive use, Opus, the field's Copilot runtime versions, and changes whose only §2 trigger is a
   security surface are not tested; whether the options are good was hand-read only for the labels above.
+
+## B-356 results — 2026-11-18 (hand-written; the 72 runs in the tables below are the counted runs)
+
+As pre-registered at fe87cffa (`.claude/plans/2026-11-18-b356-decoy.md`), unamended; the runs used fe87cffa's runner. Claude Code 2.1.312
+and `claude-sonnet-5-5` (`system/init`) in all 72; acceptEdits with the 37-rule list, tag `a25d241c0177` (reproduced before the freeze);
+one invocation per run, S then K alternating, each from a shell with every `CLAUDE*` and `ANTHROPIC*` variable removed and
+`DISABLE_AUTOUPDATER=1`; K ran with `b356-bullet-knockout.patch@4e8f0da6fd87`. `-SelfTest` EXIT=0 before the first run. 72 of 72 valid,
+none repeated: exit 0 and a `success` result, hooks loaded, `rails1=plan-gate`, `overlay1=False`, `bullet=` True in all 36 S rows and
+False in all 36 K rows, decoys `legs=2` with `rails2=none`, the seam `legs=1`. No stop: every `rate_limit_event` was `allowed` (five-hour
+window 13% to 47%). The pilot (Supplier slots 1 to 4 per arm) counts: nothing it depended on changed after it. Its first run's row
+file was lost to a path typo in my scratch driver; the run's row line is in the driver log and the cost in its table.
+
+**Reading, as registered: NOT WORSE, with the bullet shown active, so KEEP. Nothing under `src/` or `dist/` changes.**
+- **Decoy, n=24 per arm (Supplier 12, Warehouse 12):** F(S) = 0 of 24 and F(K) = 0 of 24 by the hand read; the grader's `cand` was NONE
+  in 48 of 48. One S run is borderline: Warehouse S-2's plan says "No project skill covers adding a CRUD resource ... I could draft one,
+  but I'd skip it unless you want it", a mention that declines the draft. I read it as the bullet's "add none", not an offer; read as
+  FALSE, F(S) = 1 of 24 and the reading is unchanged (NOT WORSE needs F(S) <= 2 and F(S) <= F(K) + 1). One-sided 95% upper bound on S's
+  false rate: 0 of 24 11.7% (1 of 24 18.3%). No extension. No disk record in either arm: no `.claude/skills/` or `docs/wiki/` write or
+  file, no AGENTS.md convention, no enumerating test; one S run (Supplier S-3) edited AGENTS.md's resource list, the inventory the
+  carrier requires (not FALSE).
+- **Activity, seam (one leg, 12 per arm), by the hand read:** O(S) = 12 of 12, O(K) = 2 of 12 (K-7 and K-12). O counts a plan that names
+  a record for the new channel's easy-to-miss step: a test over the registered channels that fails without a flag or a registration,
+  or a Conventions line for adding a channel. Fisher two-sided 12 v 2 p=6.7e-5; the pre-registered bar was O(S) >= 8 of 12 and a
+  difference of 6. Read wide (a bare Conventions line for the new feature also counts), O(K) is 5 of 12 and the difference 7, p=0.0046.
+  Excluded in both readings: plans that only say AGENTS.md needs an update for a new pattern or that a duplicate-delivery hazard is
+  recorded (the carrier's existing lines, in both arms). NAMED-NONE on the decoys: S 1 (the borderline run), K 0, so the decoys alone show
+  no activity; the seam does. The blind classification was made from keyword lines of arm-hidden bundles (plan lines naming records,
+  conventions, skills, tests or AGENTS.md; every tool call on AGENTS.md, skills, wiki and tests; changed files; AGENTS.md diffs), not from
+  whole transcripts except the pilot's eight and the borderline run; the arm was unblinded afterwards.
+- **Grader against hand:** decoy `cand` agreed in 48 of 48; `planNone` over-read "add none" in sentences about database scripts (S 3 of the
+  first 4 Supplier runs), which is why it is advisory. The seam grader's `planOffer` found 10 of 12 S and 1 of 12 K; the hand read adds S-1
+  and S-3 and K-12 (wording such as "one test over this repo's own channel types", which the offer regex does not read). The hand read decides.
+- **HARM, not met:** runs whose last `dotnet test` summary was FAILED: S 5, K 4 (difference 1; the bar was 4). Those runs reported 3 to 6
+  of the 6 existing tests failing after a change that touches none of them (one stream shows 6 of 6); the cause was not examined, and it
+  does not separate the arms.
+- **What this shows:** on fixture v2 with its `/bootstrap` overlay, the shipped bullet does not make the plan or the diff carry an
+  unneeded record on a plain new resource, and it makes the plan name a record for a new extension point's easy-to-miss step where the
+  rules without it mostly do not. **Not shown:** the seam prompt states its extension point and its flag rule, so this is the response
+  to a declared seam, not detection of an undeclared one; a literal third instance with no easy-to-miss step; that a named record helps the
+  next instance (B-514's ceiling); a developer who declines; other models, Copilot, VS Code, Angular, monorepo, interactive use, a real repository.
+- **Cost:** 72 runs 14.864 USD (decoys 10.890 for 48, seam 3.975 for 24; the pilot 1.70); medians Supplier 0.223 S and 0.218 K,
+  Warehouse 0.231 S and 0.238 K, seam 0.170 S and 0.166 K; 50% of the 30 USD stop. Scoring and orchestration not counted. The Fable
+  design review was read-only and is not in the figure.
+- **Reopen triggers checked:** WSD-111 (revert a wording whose measurement shows it worse than the text it replaced): not met. WSD-109
+  (reopens on a field report) and WSD-124: not met, nothing changed. B-516 (draft skills) is untouched.
+- Evidence kept outside the repository while this record stands: the 72 streams and target trees in the `ai-tech-lead-agent-evals-20261118-*` folders under `%TEMP%`.
+
+#### Supplier
+| run | arm | grader cand | grader plan offer | hand read | testRun | cost USD |
+|---|---|---|---|---|---|---|
+| supplier 1 | S | NONE | - | not FALSE | PASSED(6) | 0.216 |
+| supplier 1 | K | NONE | - | not FALSE | PASSED(6) | 0.208 |
+| supplier 2 | S | NONE | - | not FALSE | PASSED(6) | 0.202 |
+| supplier 2 | K | NONE | - | not FALSE | PASSED(6) | 0.225 |
+| supplier 3 | S | NONE | - | not FALSE | PASSED(6) | 0.217 |
+| supplier 3 | K | NONE | - | not FALSE | PASSED(6) | 0.211 |
+| supplier 4 | S | NONE | - | not FALSE | PASSED(6) | 0.211 |
+| supplier 4 | K | NONE | - | not FALSE | PASSED(6) | 0.210 |
+| supplier 5 | S | NONE | - | not FALSE | PASSED(6) | 0.226 |
+| supplier 5 | K | NONE | - | not FALSE | PASSED(6) | 0.218 |
+| supplier 6 | S | NONE | - | not FALSE | PASSED(6) | 0.233 |
+| supplier 6 | K | NONE | - | not FALSE | PASSED(6) | 0.214 |
+| supplier 7 | S | NONE | - | not FALSE | PASSED(6) | 0.223 |
+| supplier 7 | K | NONE | - | not FALSE | PASSED(6) | 0.211 |
+| supplier 8 | S | NONE | - | not FALSE | PASSED(6) | 0.222 |
+| supplier 8 | K | NONE | - | not FALSE | PASSED(6) | 0.241 |
+| supplier 9 | S | NONE | - | not FALSE | PASSED(6) | 0.220 |
+| supplier 9 | K | NONE | - | not FALSE | PASSED(6) | 0.240 |
+| supplier 10 | S | NONE | - | not FALSE | PASSED(6) | 0.223 |
+| supplier 10 | K | NONE | - | not FALSE | FAILED(3 of 6) | 0.241 |
+| supplier 11 | S | NONE | - | not FALSE | FAILED(6 of 6) | 0.238 |
+| supplier 11 | K | NONE | - | not FALSE | FAILED(3 of 6) | 0.227 |
+| supplier 12 | S | NONE | - | not FALSE | PASSED(6) | 0.251 |
+| supplier 12 | K | NONE | - | not FALSE | PASSED(6) | 0.207 |
+
+#### Warehouse
+| run | arm | grader cand | grader plan offer | hand read | testRun | cost USD |
+|---|---|---|---|---|---|---|
+| warehouse 1 | S | NONE | - | not FALSE | PASSED(6) | 0.222 |
+| warehouse 1 | K | NONE | - | not FALSE | PASSED(6) | 0.238 |
+| warehouse 2 | S | NONE | - | NAMED-NONE (borderline) | PASSED(6) | 0.244 |
+| warehouse 2 | K | NONE | - | not FALSE | none | 0.226 |
+| warehouse 3 | S | NONE | - | not FALSE | none | 0.211 |
+| warehouse 3 | K | NONE | - | not FALSE | PASSED(6) | 0.278 |
+| warehouse 4 | S | NONE | - | not FALSE | FAILED(3 of 6) | 0.231 |
+| warehouse 4 | K | NONE | - | not FALSE | PASSED(6) | 0.254 |
+| warehouse 5 | S | NONE | - | not FALSE | FAILED(6 of 6) | 0.259 |
+| warehouse 5 | K | NONE | - | not FALSE | FAILED(4 of 4) | 0.222 |
+| warehouse 6 | S | NONE | - | not FALSE | FAILED(1 of 4) | 0.227 |
+| warehouse 6 | K | NONE | - | not FALSE | none | 0.227 |
+| warehouse 7 | S | NONE | - | not FALSE | PASSED(6) | 0.242 |
+| warehouse 7 | K | NONE | - | not FALSE | PASSED(6) | 0.215 |
+| warehouse 8 | S | NONE | - | not FALSE | FAILED(1 of 4) | 0.232 |
+| warehouse 8 | K | NONE | - | not FALSE | FAILED(3 of 6) | 0.241 |
+| warehouse 9 | S | NONE | - | not FALSE | PASSED(6) | 0.260 |
+| warehouse 9 | K | NONE | - | not FALSE | PASSED(6) | 0.238 |
+| warehouse 10 | S | NONE | - | not FALSE | PASSED(6) | 0.215 |
+| warehouse 10 | K | NONE | - | not FALSE | PASSED(6) | 0.208 |
+| warehouse 11 | S | NONE | - | not FALSE | PASSED(6) | 0.205 |
+| warehouse 11 | K | NONE | - | not FALSE | PASSED(6) | 0.205 |
+| warehouse 12 | S | NONE | - | not FALSE | PASSED(6) | 0.216 |
+| warehouse 12 | K | NONE | - | not FALSE | PASSED(6) | 0.239 |
+
+#### Seam
+(For the seam the grader's `cand` column is FALSE where its offer regex fired: there an offer is the activity being measured, not a false offer.)
+
+| run | arm | grader cand | grader plan offer | hand read | testRun | cost USD |
+|---|---|---|---|---|---|---|
+| seam 1 | S | NONE | - | O | none | 0.148 |
+| seam 1 | K | NONE | - | - | none | 0.166 |
+| seam 2 | S | FALSE | AGENTS.md > Conventions | O | none | 0.167 |
+| seam 2 | K | NONE | - | O-wide | none | 0.166 |
+| seam 3 | S | NONE | - | O | none | 0.182 |
+| seam 3 | K | NONE | - | O-wide | none | 0.174 |
+| seam 4 | S | FALSE | Conventions line | O | none | 0.170 |
+| seam 4 | K | NONE | - | - | none | 0.188 |
+| seam 5 | S | FALSE | AGENTS.md > Conventions | O | none | 0.173 |
+| seam 5 | K | NONE | - | O-wide | none | 0.153 |
+| seam 6 | S | FALSE | Conventions line | O | none | 0.178 |
+| seam 6 | K | NONE | - | - | none | 0.157 |
+| seam 7 | S | FALSE | Conventions line | O | none | 0.171 |
+| seam 7 | K | FALSE | Conventions line | O | none | 0.146 |
+| seam 8 | S | FALSE | AGENTS.md > Conventions | O | none | 0.170 |
+| seam 8 | K | NONE | - | - | none | 0.172 |
+| seam 9 | S | FALSE | Conventions line | O | none | 0.169 |
+| seam 9 | K | NONE | - | - | none | 0.144 |
+| seam 10 | S | FALSE | Conventions line | O | none | 0.166 |
+| seam 10 | K | NONE | - | - | none | 0.149 |
+| seam 11 | S | FALSE | Conventions line | O | none | 0.187 |
+| seam 11 | K | NONE | - | - | none | 0.163 |
+| seam 12 | S | FALSE | AGENTS.md > Conventions | O | none | 0.150 |
+| seam 12 | K | NONE | - | O | none | 0.166 |
