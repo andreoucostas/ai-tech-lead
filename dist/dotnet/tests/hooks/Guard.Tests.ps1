@@ -818,4 +818,56 @@ It 'guard: a non-write Copilot call whose arguments repeat a key in another case
     foreach ($e in $events) { Assert-Decision (Invoke-Hook $guardPs $e) 'ALLOW' $e }
 }
 
+It 'guard: a section repeating one Move to target is decided under 5 s, and a patch with more than 400 different targets is blocked' {
+    $secret = 'var k = "sk-' + 'live0123456789abcdefghijklmn";'   # assembled at run time, as the outgoing-commit guard asks
+    $moves = "*** Move to: m.cs`n" * 4000
+    $patch = "*** Begin Patch`n*** Update File: src/x.cs`n$moves@@`n-a`n+$secret`n*** End Patch`n"
+    foreach ($surface in 'Claude', 'Copilot') {
+        $clock = [Diagnostics.Stopwatch]::StartNew()
+        $result = Invoke-Hook $guardPs (Get-PatchSurfaceEvent $surface $patch)
+        $ms = $clock.ElapsedMilliseconds
+        Assert-Decision $result (Get-SurfaceDecision $surface) "4000 Move to lines and a secret ($surface)"
+        Assert ($ms -lt 5000) "4000 Move to lines ($surface): the guard took $ms ms, expected under 5000"
+    }
+    $many = ((1..500) | ForEach-Object { "*** Move to: m$_.txt`n" }) -join ''
+    $capped = "*** Begin Patch`n*** Update File: src/x.txt`n$many*** End Patch`n"
+    foreach ($surface in 'Claude', 'Copilot') {
+        $result = Invoke-Hook $guardPs (Get-PatchSurfaceEvent $surface $capped)
+        Assert-Decision $result (Get-SurfaceDecision $surface) "500 different Move to targets ($surface)"
+    }
+}
+
+It 'guard: an unparseable call with 50,000 keys is decided under 5 s' {
+    $keys = (@(0..50000 | ForEach-Object { "`"k$_`":1" }) -join ',')
+    $json = '{"toolName":"create","toolArgs":{' + $keys + ',"path":"a","Path":"b","file_text":"x"}}'
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $result = Invoke-Hook $guardPs $json
+    $ms = $clock.ElapsedMilliseconds
+    Assert-Decision $result 'DENY' 'a create with 50,000 keys and a repeated one'
+    Assert ($ms -lt 5000) "the guard took $ms ms, expected under 5000"
+}
+
+It 'guard: a patch carried in an input field of a call that will not parse is read as a write' {
+    $patch = "*** Begin Patch`n*** Add File: .claude/guard-allowlist.txt`n+src/**`n*** End Patch`n"
+    $inputJson = ConvertTo-Json -InputObject $patch -Compress
+    $events = @(
+        @{ s = 'Copilot'; n = 'an unknown tool, toolArgs.input patch beside Input'; e = '{"toolName":"patcher","toolArgs":{"input":' + $inputJson + ',"Input":"x"}}' }
+        @{ s = 'Claude';  n = 'an unknown tool, tool_input.input patch beside Input'; e = '{"tool_name":"Patcher","tool_input":{"input":' + $inputJson + ',"Input":"x"}}' }
+    )
+    # Neither tool name is Write or Edit, so both denials arrive as the JSON deny (the guard's answer for any other tool).
+    foreach ($case in $events) { Assert-Decision (Invoke-Hook $guardPs $case.e) 'DENY' $case.n }
+}
+
+It 'guard: a read or search call that will not parse is allowed, and a write one still is not' {
+    $allowed = @(
+        '{"toolName":"view","toolArgs":{"path":"src/a.cs","Path":"src/b.cs"}}'
+        '{"toolName":"mcp-search","toolArgs":{"text":"foo","Text":"bar"}}'
+        '{"toolName":"grep","toolArgs":"{\"pattern\":\"x\",\"Pattern\":\"y\",\"path\":\"src\"}"}'
+        '{"toolName":"str_replace_editor","toolArgs":{"command":"view","path":"a","Path":"b"}}'
+    )
+    foreach ($e in $allowed) { Assert-Decision (Invoke-Hook $guardPs $e) 'ALLOW' $e }
+    $denied = '{"toolName":"str_replace_editor","toolArgs":{"command":"create","path":"a","Path":"b","file_text":"x"}}'
+    Assert-Decision (Invoke-Hook $guardPs $denied) 'DENY' $denied
+}
+
 exit (Write-TestSummary 'Guard.Tests (PowerShell)')

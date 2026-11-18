@@ -46,45 +46,65 @@ $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
 $stdin = New-Object IO.StreamReader([Console]::OpenStandardInput(), (New-Object Text.UTF8Encoding($false)))
 $raw = $stdin.ReadToEnd()
 if (-not $raw) { exit 0 }
-# A tool call this guard treats as a write, and the fields it reads in one: the name and field lists a call that
-# will not parse is classified by (below). Names compare ignoring case, ordinally.
-$guardWriteTools = @('Write', 'Edit', 'create', 'MultiEdit', 'NotebookEdit', 'str_replace', 'insert', 'str_replace_editor', 'apply_patch')
-$guardWriteKeys = @('file_path', 'filePath', 'path', 'notebook_path', 'content', 'new_string', 'newString', 'file_text', 'new_str', 'text', 'new_source', 'edits', 'old_string', 'oldString', 'old_str')
-function Test-NameIn([string]$Name, [string[]]$Names) {
-    foreach ($n in $Names) { if ([string]::Equals($Name, $n, $ordinalIgnoreCase)) { return $true } }
-    return $false
+# What a tool call that will not parse is classified by (below). A call is a write when it would be one if it were read
+# normally: a write tool's name (str_replace_editor only through the commands that write), a field that carries the
+# text a write puts in a file, a `text` field beside a path, or a patch. A bare path is not a write (a view carries one).
+# Names compare ignoring case, ordinally, by set lookup: a call can hold tens of thousands of keys.
+function New-NameSet([string[]]$Names) {
+    $set = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($n in $Names) { [void]$set.Add($n) }
+    return ,$set
 }
-# Whether a table parsed with -AsHashtable holds a write field under any casing of its key.
-function Test-WriteKeys($Table) {
-    if ($Table -isnot [System.Collections.IDictionary]) { return $false }
-    foreach ($k in @($Table.Keys)) { if (Test-NameIn ([string]$k) $guardWriteKeys) { return $true } }
-    return $false
+$guardWriteTools = New-NameSet @('Write', 'Edit', 'create', 'MultiEdit', 'NotebookEdit', 'str_replace', 'insert', 'apply_patch')
+$guardPathKeys = New-NameSet @('file_path', 'filePath', 'path', 'notebook_path')
+$guardContentKeys = New-NameSet @('content', 'new_string', 'newString', 'file_text', 'new_str', 'new_source', 'edits', 'old_string', 'oldString', 'old_str')
+$guardEditorCommands = New-NameSet @('create', 'str_replace', 'insert', 'undo_edit')
+$guardToolKeys = New-NameSet @('tool_name', 'toolName')
+$guardArgKeys = New-NameSet @('tool_input', 'toolArgs')
+$guardPatchLike = '\*\*\* Begin Patch|\*\*\* (?:Add|Update|Delete) File:'
+# Whether a call's arguments (a table parsed with -AsHashtable, or a string that is one as JSON text or else a patch)
+# make it a write. $Editor: the tool is str_replace_editor.
+function Test-WriteArgs($ArgsValue, [bool]$Editor) {
+    if ($ArgsValue -is [string]) {
+        $inner = $null
+        try { $inner = ConvertFrom-Json -InputObject $ArgsValue -AsHashtable -ErrorAction Stop } catch { }
+        if ($inner -isnot [System.Collections.IDictionary]) { return [regex]::IsMatch($ArgsValue, $guardPatchLike, $ci) }
+        $ArgsValue = $inner
+    }
+    if ($ArgsValue -isnot [System.Collections.IDictionary]) { return $false }
+    $hasPath = $false; $hasText = $false
+    foreach ($k in @($ArgsValue.Keys)) {
+        $key = [string]$k
+        if ($guardContentKeys.Contains($key)) { return $true }
+        if ($guardPathKeys.Contains($key)) { $hasPath = $true }
+        elseif ([string]::Equals($key, 'text', $ordinalIgnoreCase)) { $hasText = $true }
+        elseif ($Editor -and [string]::Equals($key, 'command', $ordinalIgnoreCase) -and $ArgsValue[$k] -is [string] -and $guardEditorCommands.Contains($ArgsValue[$k])) { return $true }
+        elseif ([string]::Equals($key, 'input', $ordinalIgnoreCase) -and $ArgsValue[$k] -is [string] -and [regex]::IsMatch($ArgsValue[$k], $guardPatchLike, $ci)) { return $true }
+    }
+    return $hasText -and $hasPath
 }
 # ConvertFrom-Json refuses JSON whose keys differ only in case, or that has an empty key, and a call it cannot parse
 # would be let through unread. Such a call is re-read with -AsHashtable, only to classify it: the tool name it names (the
-# first write tool's, else the first name) and whether it is a write -- a write tool, or a write field in tool_input
-# or toolArgs, or a patch. $null when it cannot be read that way either, or is no write.
+# first write tool's, else the first name) and whether it is a write. $null when it cannot be read that way either, or is
+# no write.
 function Get-UnreadableCall([string]$Json) {
     $table = $null
     try { $table = ConvertFrom-Json -InputObject $Json -AsHashtable -ErrorAction Stop } catch { return $null }
     if ($table -isnot [System.Collections.IDictionary]) { return $null }
-    $name = $null; $write = $false; $hasInput = $false
+    $names = @(); $write = $false; $editor = $false; $hasInput = $false; $inputs = @()
     foreach ($k in @($table.Keys)) {
         $v = $table[$k]
-        if (Test-NameIn ([string]$k) @('tool_name', 'toolName')) {
+        if ($guardToolKeys.Contains([string]$k)) {
             if ($v -is [string]) {
-                if (Test-NameIn $v $guardWriteTools) { $write = $true; $name = $v } elseif ($null -eq $name) { $name = $v }
+                $names += $v
+                if ($guardWriteTools.Contains($v)) { $write = $true }
+                if ([string]::Equals($v, 'str_replace_editor', $ordinalIgnoreCase)) { $editor = $true }
             }
-        } elseif (Test-NameIn ([string]$k) @('tool_input', 'toolArgs')) {
-            $hasInput = $true
-            if ($v -is [string]) {
-                $inner = $null
-                try { $inner = ConvertFrom-Json -InputObject $v -AsHashtable -ErrorAction Stop } catch { }
-                if ($inner -is [System.Collections.IDictionary]) { if (Test-WriteKeys $inner) { $write = $true } }
-                elseif ([regex]::IsMatch($v, '\*\*\* (?:Add|Update|Delete) File:', $ci)) { $write = $true }
-            } elseif (Test-WriteKeys $v) { $write = $true }
-        }
+        } elseif ($guardArgKeys.Contains([string]$k)) { $hasInput = $true; $inputs += , $v }
     }
+    $name = @($names | Where-Object { $guardWriteTools.Contains($_) })[0]
+    if ($null -eq $name) { $name = $names[0] }
+    foreach ($v in $inputs) { if (-not $write -and (Test-WriteArgs $v $editor)) { $write = $true } }
     if (-not $write) { return $null }
     if ($null -eq $name -and $hasInput) { $name = '' }
     return [pscustomobject]@{ Tool = $name }
@@ -109,7 +129,7 @@ if ($ta -is [string]) {
         # An object that will not parse as one is unreadable; a string that is no JSON object is a patch, read below.
         $inner = $null
         try { $inner = ConvertFrom-Json -InputObject $taText -AsHashtable -ErrorAction Stop } catch { }
-        if ($inner -is [System.Collections.IDictionary] -and ((Test-NameIn ([string]$tool) $guardWriteTools) -or (Test-WriteKeys $inner))) { $unreadable = $true }
+        if ($inner -is [System.Collections.IDictionary] -and (($tool -is [string] -and $guardWriteTools.Contains($tool)) -or (Test-WriteArgs $inner ([string]::Equals([string]$tool, 'str_replace_editor', $ordinalIgnoreCase))))) { $unreadable = $true }
     }
 }
 
@@ -189,6 +209,7 @@ if ($unreadable) { Exit-Blocked $unreadableMessage }
 # its new path when it moves. An apply_patch call the guard cannot read, or one with more sections
 # than it checks within its time limit, is blocked rather than passed.
 $maxPatchSections = 200
+$maxPatchPaths = 2 * $maxPatchSections
 $patchText = $null
 foreach ($v in @($ta.input, $ti.input, $ta, $ti)) { if ($v -is [string]) { $patchText = $v; break } }
 if ($null -eq $patchText -and $taText -is [string] -and $null -eq $ta) { $patchText = $taText }
@@ -200,8 +221,9 @@ $isPatch = $namedPatch -or (-not ($fp -or $content) -and [regex]::IsMatch([strin
 # costs nothing), belongs to the section above it. Removed ('-') and context (' ') lines, '@@'
 # anchors and the patch markers are not new content, and inside an update an indented header is a
 # context line to both hosts. Comparisons are ordinal: a culture-aware StartsWith skips ignorable
-# characters such as a soft hyphen. Returns $null past $Max sections.
-function Get-PatchSections([string]$Patch, [int]$Max) {
+# characters such as a soft hyphen. Returns $null past $Max sections or $MaxPaths paths (a section's own path and each
+# different 'Move to:' target; a target repeated within a section is one path) or 20 times $MaxPaths 'Move to:' lines, so a patch cannot hold the hook past its time limit.
+function Get-PatchSections([string]$Patch, [int]$Max, [int]$MaxPaths = [int]::MaxValue) {
     # Self-contained: audit-trail.ps1 and post-write.ps1 load this function alone from this file.
     $ordinal = [StringComparison]::Ordinal
     $ci = [Text.RegularExpressions.RegexOptions]::IgnoreCase -bor [Text.RegularExpressions.RegexOptions]::CultureInvariant
@@ -211,6 +233,7 @@ function Get-PatchSections([string]$Patch, [int]$Max) {
     $sections = New-Object System.Collections.Generic.List[object]
     $current = [pscustomobject]@{ Kind = ''; Paths = New-Object System.Collections.Generic.List[string]; Moved = $false; Lines = New-Object System.Collections.Generic.List[string]; Removed = New-Object System.Collections.Generic.List[string] }
     $sections.Add($current)
+    $pathCount = 0; $moveLines = 0
     # Lines end at LF only, as both hosts split them; a lone CR stays inside its line.
     foreach ($line in ($Patch -split '\r?\n')) {
         # Trimmed as JavaScript's trim() does, which drops a byte-order mark (U+FEFF) too; .NET's Trim() keeps it.
@@ -220,9 +243,15 @@ function Get-PatchSections([string]$Patch, [int]$Max) {
             if ($sections.Count -gt $Max) { return $null }
             $current = [pscustomobject]@{ Kind = $header.Groups[1].Value.ToLowerInvariant(); Paths = New-Object System.Collections.Generic.List[string]; Moved = $false; Lines = New-Object System.Collections.Generic.List[string]; Removed = New-Object System.Collections.Generic.List[string] }
             $current.Paths.Add($header.Groups[2].Value.Trim())
+            if (++$pathCount -gt $MaxPaths) { return $null }
             $sections.Add($current)
         } elseif (($move = [regex]::Match($marker, '^\*\*\* Move to:\s*(.+)$', $ci)).Success -and $current.Paths.Count -gt 0) {
-            $current.Paths.Add($move.Groups[1].Value.Trim())
+            if ($MaxPaths -lt [int]::MaxValue -and ++$moveLines -gt 20 * $MaxPaths) { return $null }
+            $target = $move.Groups[1].Value.Trim()
+            if (-not $current.Paths.Contains($target)) {
+                if (++$pathCount -gt $MaxPaths) { return $null }
+                $current.Paths.Add($target)
+            }
             $current.Moved = $true
         } elseif ($line.StartsWith('+', $ordinal)) {
             $current.Lines.Add($line.Substring(1))
@@ -237,9 +266,9 @@ function Get-PatchSections([string]$Patch, [int]$Max) {
 }
 
 if ($isPatch) {
-    $sections = Get-PatchSections ([string]$patchText) $maxPatchSections
+    $sections = Get-PatchSections ([string]$patchText) $maxPatchSections $maxPatchPaths
     if ($null -eq $sections) {
-        Exit-Blocked "Blocked write to every file in this apply_patch call: it has more than $maxPatchSections file sections, more than the write guard checks in one call, so it checked none of them. Split it into patches of at most $maxPatchSections files."
+        Exit-Blocked "Blocked write to every file in this apply_patch call: it has more than $maxPatchSections file sections or more than $maxPatchPaths file paths (each section's own and each different '*** Move to:' target) or more than $(20 * $maxPatchPaths) '*** Move to:' lines, more than the write guard checks in one call, so it checked none of them. Split it into patches of at most $maxPatchSections files."
     }
     if (-not ($sections | Where-Object { $_.Paths.Count -gt 0 })) {
         if (-not $namedPatch) { exit 0 }

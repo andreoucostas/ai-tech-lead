@@ -195,7 +195,7 @@ organization enforces.
 > edits passes both times, because neither fragment matches on its own. An `apply_patch` patch is
 > read the same way: the lines it adds to each file, checked against that file's path (and its new
 > path when the patch moves it), never its context lines; a patch with more than 200 file
-> sections, or an `apply_patch` call the guard cannot read, is blocked. A suppression (`#pragma
+> sections or 400 paths (its own and each different `*** Move to:` target) or 8000 `*** Move to:` lines, or an `apply_patch` call the guard cannot read, is blocked. A suppression (`#pragma
 > warning disable`, `eslint-disable`, `@ts-ignore`) or a skipped test (`[Fact(Skip=…)]`, `[Ignore]`,
 > `xit`, `.skip`) is the exception: it is compared with the text the write replaces (an edit's old
 > text, the lines a patch section removes, the file on disk under a whole-file write). A directive is
