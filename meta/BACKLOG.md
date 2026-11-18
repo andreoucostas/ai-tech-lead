@@ -15,7 +15,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 
 | Rank | Item | Why here |
 |---|---|---|
-| 1 | B-528 | Maintainer priority (in chat 2026-11-16); its Copilot measurement needs the credit that ends 2026-11-18. Field report #14: no plan carried `Option A:`/`Option B:` in the 9 sessions where the agent started a security pass, and the prompt reminder never names the options; one open reading, so a fixture measurement comes first |
+| 1 | B-528 | Maintainer priority (in chat 2026-11-16). Field report #14: no plan carried `Option A:`/`Option B:` in the 9 sessions where the agent started a security pass; measured 2026-11-18 NOT REPRODUCED on both hosts, so it waits on the maintainer's decision |
 | 2 | B-416 | P1: the only route to whether 0.98.0's restated criteria and Option A/B designs are right and used, and it gates B-417 to B-419's shipping changes; the first developer's answers came in 2026-11-16 (field report #14), so it waits on the maintainer's two decisions on close |
 | 3 | B-516 | Maintainer priority: approval is two manual edits and a draft is live before review, where B-514 saw it followed as often as an approved skill; guarded |
 | 4 | B-356 | Project-skills work: how skills keep appearing after `/bootstrap`; its bullet shipped unmeasured (WSD-111), so the decoy's false-offer rate decides whether it stays |
@@ -83,7 +83,7 @@ Next, the maintainer's choice: a boundary the agent meets in the code it reads, 
 ### B-425 · Plain-words "review my changes" names no reviewer: a carrier Review bullet and `$railsReview` in `$railsSecurity`'s shape
 **Filed against:** v0.98.1 (2026-10-19)
 **Priority:** P2 · **Effort:** S to change, S to measure · **Invariants:** #5 #7
-**Status:** Blocked on B-416's review answer (maintainer, 2026-10-19, on Fable's advice). Copilot leg measured 2026-11-13 on CLI 1.0.98 (`meta/eval-results.md`, pre-registered at 873bb161): "Review my changes." on a 12-line refund diff loaded the `review` skill 2 of 3 as installed and 3 of 3 with the candidate below, but no run started a reviewer (0 of 6), so the candidate is not shown to help there.
+**Status:** Blocked on B-416's review answer (maintainer, 2026-10-19, on Fable's advice); blocked: Copilot access ended 2026-11-18. Copilot leg measured 2026-11-13 on CLI 1.0.98 (`meta/eval-results.md`, pre-registered at 873bb161): "Review my changes." on a 12-line refund diff loaded the `review` skill 2 of 3 as installed and 3 of 3 with the candidate below, but no run started a reviewer (0 of 6), so the candidate is not shown to help there.
 On Copilot CLI the gap is the skill's Step 1, not the routing: 5 of 6 said they read the small diff directly instead of dispatching, which `review.md` does not allow, and one gave its verdict without saying so; the candidate moved scope capture from 0 of 3 to 2 of 3.
 Candidate as filed: a §1 Review bullet plus `$railsReview` in `$railsSecurity`'s shape (run this repository's `review` skill, by name on Copilot CLI; a verdict given without reviewers says so); guarded (`hooks/**`), `rail-sync` re-recorded. Left: the Claude Code leg (about 3 USD), and whether the next candidate targets Step 1.
 
@@ -215,7 +215,7 @@ Worktrees are not the way out: `push-and-check.ps1` watches `master` only, and w
 **Priority:** P2 · **Effort:** S · **Invariants:** #1 #7
 **Status:** Open (maintainer, in chat 2026-11-16). Field report #14, one developer, mostly on 0.98.2: the agent started the security pass in 9 sessions, none asked for; `Option A:`/`Option B:` appeared in 3 plans, none of them in those 9, though carrier §2 counts a security-sensitive surface as a risk change that gets options. The prompt reminder's security overlay reached 24 of the 40 sessions.
 One open reading: §2 lets the agent say in one line that there is no real alternative, which the observation script does not count. Candidate cause, unmeasured: `route-prompt.ps1`'s plan gate and security overlay name the file-list plan and the end-of-work security pass, never the options.
-First step, before any wording change: measure a security-sensitive change on a fixture, counting the one-line exit, with and without the options named in the reminder. Pre-registered 2026-11-16 (`.claude/plans/2026-11-16-b528-options.md`); its four-run pilot ran the same day (`meta/eval-results.md`, "B-528 results, pilot"); Copilot under `-p` writes with no plan ("B-528 Copilot probe"), so its leg was amended to plan mode and read NOT REPRODUCED, C and T OPTIONS 6 of 6 each ("B-528 results, Copilot leg"); the Claude Code leg waits for its limit.
+Measured as pre-registered (`.claude/plans/2026-11-16-b528-options.md`; `meta/eval-results.md`, "B-528 results, Copilot leg" and "B-528 results, Claude Code leg"): NOT REPRODUCED on both hosts, C and T OPTIONS 6 of 6 each, no EXIT; the rule neither closes it (R1) nor files the reminder change (R2), so the maintainer decides: close as not reproduced on this fixture, or a fixture nearer the field's sessions.
 
 ### B-529 · Explore a model-call fallback for `route-prompt` when its keyword rules cannot tell the intent
 **Filed against:** v0.98.6 (2026-11-17)

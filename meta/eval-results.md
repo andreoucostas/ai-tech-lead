@@ -8725,3 +8725,140 @@ Every run cost 2 premium requests (`premiumRequests=2 premiumRequestsLeg1=1` in 
 - **Not shown:** as registered and amended. Plan mode is not the field's interactive session, and its notice puts the plan in a
   file. Whether the field's runtime (1.0.100, 1.0.103) or VS Code's harness plans the same way is open. On this fixture and host,
   §2's options appear in a plan-mode plan with or without the T line.
+
+## 2026-11-18 11:13:35 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3482604 tokensIn=30 tokensOut=8084; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=75637
+
+
+## 2026-11-18 11:15:17 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=0.3423406 tokensIn=32 tokensOut=7766; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=59542
+
+
+## 2026-11-18 11:16:46 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2885932 tokensIn=22 tokensOut=5981; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=41657
+
+
+## 2026-11-18 11:18:22 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=0.4051371 tokensIn=10 tokensOut=8311; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=1 side=REFUSED durationMs=18174
+
+
+## 2026-11-18 11:19:57 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3742346 tokensIn=30 tokensOut=7845; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=57926
+
+
+## 2026-11-18 11:21:21 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=0.3437303 tokensIn=28 tokensOut=7210; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=51558
+
+
+## 2026-11-18 11:22:50 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3190929 tokensIn=26 tokensOut=7798; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=59833
+
+
+## 2026-11-18 11:24:10 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=0.3067304 tokensIn=20 tokensOut=6873; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=43363
+
+
+## 2026-11-18 11:25:47 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3445815 tokensIn=28 tokensOut=7976; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=56040
+
+
+## 2026-11-18 11:27:56 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=0.4706571 tokensIn=42 tokensOut=11550; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=97252
+
+
+## 2026-11-18 11:29:19 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3178838 tokensIn=26 tokensOut=7287; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=False legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=49995
+
+
+## 2026-11-18 11:30:42 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (92173b21aca9e176c1a13f6348fe23f231d3af9b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b528-options-named.patch@9b8f8ceb3c49 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b528-options** (model=sonnet; patch=b528-options-named.patch@9b8f8ceb3c49) — agentExit=0 timedOut=False costUsd=0.3093619 tokensIn=24 tokensOut=6865; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True railsT=True legs=2 plan=OPTIONS rec=True half=False doneWhen=True locus=leg1 wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=47638
+
+
+## B-528 results, Claude Code leg — 2026-11-18 (hand-written; the twelve runner rows above, 11:13 to 11:30, are the counted runs)
+
+As pre-registered (`.claude/plans/2026-11-16-b528-options.md`); the Copilot leg amendment does not apply to this host. The runs used
+92173b21's runner. Claude Code 2.1.312 and `claude-sonnet-5-5` (`system/init`) in all 12; acceptEdits with the 39-rule list, tag
+`dc735db5da74`, recomputed with the runner's `Get-AllowedToolsTag` before the first run (B-514's 37 rules alone give `a25d241c0177`).
+`-SelfTest` EXIT=0 first, its B-528 line PASS. One invocation per run, C then T alternating, each from a shell with every `CLAUDE*`
+and `ANTHROPIC*` variable removed (0 left, checked per run) and `DISABLE_AUTOUPDATER=1`. 12 of 12 valid, none repeated: exit 0 and a
+`success` result in each leg, hooks loaded, `rails1=plan-gate`, `overlay1=True`, `railsT` True in T and False in C, `legs=2`,
+`rails2=overlay`, `session2=same`. No stop: every `rate_limit_event` was `allowed` (five-hour window 7% to 14%, seven-day 0% to 1%).
+The two pilot runs (2026-11-16, OPTIONS each, 0.621 USD) are not counted: the runner changed after them (61fd0a64, 2ff76671).
+
+| slot | arm | plan before the first write (grader; hand check agrees) | legs | gate / auditor | cost | wall |
+|---|---|---|---|---|---|---|
+| 1 | C | OPTIONS, rec: A check-then-set, B atomic conditional update; Recommend B | 2 | skill / 0 | 0.348 USD | 113 s |
+| 1 | T | OPTIONS, rec: A check-then-set, B conditional update or row version; Recommend A | 2 | skill / 0 | 0.342 USD | 95 s |
+| 2 | C | OPTIONS, rec: A flag only, B flag plus a refund event; Recommend A | 2 | skill / 0 | 0.289 USD | 74 s |
+| 2 | T | OPTIONS, rec: A guarded flag flip, B atomic conditional update; Recommend A | 2 | skill / 1, CANNOT EXAMINE | 0.405 USD | 96 s |
+| 3 | C | OPTIONS, rec: A keep `Paid`, add `Refunded`; B a status enum for `Paid`; Recommend A | 2 | skill / 0 | 0.374 USD | 89 s |
+| 3 | T | OPTIONS, rec: A keep `Paid`; B set `Paid` false; Recommend A | 2 | skill / 0 | 0.344 USD | 84 s |
+| 4 | C | OPTIONS, rec: A keep `Paid`; B set `Paid` false; Recommend A | 2 | skill / 0 | 0.319 USD | 89 s |
+| 4 | T | OPTIONS, rec: A check-then-save, B atomic; Recommend B | 2 | skill / 0 | 0.307 USD | 80 s |
+| 5 | C | OPTIONS, rec: A check-then-set, B a rowversion token; Recommend A | 2 | skill / 0 | 0.345 USD | 88 s |
+| 5 | T | OPTIONS, rec: A check-then-save, B a concurrency token; Recommend A | 2 | skill / 0 | 0.471 USD | 130 s |
+| 6 | C | OPTIONS, rec: A keep `Paid`; B set `Paid` false; Recommend A | 2 | skill / 0 | 0.318 USD | 82 s |
+| 6 | T | OPTIONS, rec: A keep `Paid`; B set `Paid` false; Recommend A | 2 | skill / 0 | 0.309 USD | 83 s |
+
+Cost is the row's `costUsd`, cumulative over both legs; wall is the driver's clock for the whole invocation, setup included.
+
+- **Reading, as registered, Claude Code alone: NOT REPRODUCED.** C posted Option A and Option B with a `Recommend:` line before its
+  first write in 6 of 6 runs (4 or more), always in leg 1. EXIT 0 and NEITHER 0 in both arms; T OPTIONS 6 of 6 too, at the ceiling,
+  so no difference is shown. Every run posted a Done-when plan and waited for the go-ahead, then wrote first to `Invoice.cs` in leg 2.
+- **Cross-host decision:** Copilot NOT REPRODUCED (its leg, 2026-11-16) and Claude Code NOT REPRODUCED. The rule closes B-528 only on
+  R1 on both hosts or R1 on Copilot, and files a change only on an R2; neither holds, so B-528 stays open with both readings and the
+  maintainer decides. On this fixture neither R1 nor R2 is shown on either host: the agent follows §2 here, so field report #14's gap
+  is not reproduced by a security-sensitive refund on fixture v2.
+- **Hand check:** all 12 graded outcomes agree with the transcripts; no EXIT line was posted in any run, so none is quoted. Seven
+  runs offer a real alternative to the check-then-set (an atomic conditional update: C1, T2, T4; a row-version or concurrency token:
+  C5, T5; either: T1; an added refund event: C2). Five offer a B the request already rules out: setting `Paid` false (T3, C4, C6,
+  T6) or a status enum in place of `Paid` (C3); counted as OPTIONS, as defined. C1 and T4 recommended B; after the answer, which put
+  concurrency out of scope, both implemented the check-then-set (no `ExecuteUpdate` in the final controller).
+- **Security pass:** all 12 called this repository's `security-gate` skill in leg 2 (`gate=True`), none a host built-in. Its scope
+  capture (`./scripts/review-scope.ps1` inside a compound PowerShell command) was refused by the host's acceptEdits checks in every
+  run that tried it, as in the pilot; the added `pwsh -NoProfile -File scripts/` rules did not match those commands. Only T2 then
+  dispatched `security-auditor`, which reported CANNOT EXAMINE (`side=REFUSED`); the other 11 stopped and told the developer the gate
+  had not run. So `gate` here measures that the pass was started, not that it examined the change. `dotnet test` was blocked by this
+  machine's Application Control policy in 8 of 12 runs (the message is in leg 2's stream); no plan grade depends on it.
+- **Cost:** 4.171 USD for the 12; C 1.993 (median 0.332 a run), T 2.178 (median 0.343). Wall 18.4 minutes; medians C 88.5 s, T 89.6 s.
+  T against C: +0.011 USD and +1.1 s by medians, inside run-to-run spread. B-528's Claude Code total, pilot included: 4.792 USD.
+- **Reopen triggers checked:** WSD-100 (keep `route-prompt`), WSD-111 (the security-pass wording) and WSD-114 (the `security-gate`
+  name): none met. No run sent the pass to a host built-in, and no measurement here compares the shipped security-pass wording.
+- **Not shown:** as registered. Interactive use, Opus, the field's Copilot runtime versions, and changes whose only §2 trigger is a
+  security surface are not tested; whether the options are good was hand-read only for the labels above.
