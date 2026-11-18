@@ -7,6 +7,8 @@
 
 ## 0.99.0 — Unreleased
 
+- **The write guard now refuses a write it cannot fully read, instead of letting it through.** A tool call whose JSON repeats a key in a different letter case or has an empty key, an `apply_patch` section header behind a byte-order mark (U+FEFF), and a patch section with a second `*** Move to:` line used to pass unchecked; the guard now blocks them, and the agent resends the call cleanly. Calls that are not writes are unaffected.
+
 - **Windows PowerShell 5.1 is no longer supported: every developer machine and every CI agent that runs the framework's
   hooks or checks needs PowerShell 7.** Install it (`winget install --id Microsoft.PowerShell`), then open a new terminal so
   `pwsh` is on `PATH`. Without it, on Claude Code the write guard refuses every `Write`, `Edit` and `NotebookEdit` ("The term

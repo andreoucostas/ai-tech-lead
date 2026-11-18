@@ -46,14 +46,72 @@ $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
 $stdin = New-Object IO.StreamReader([Console]::OpenStandardInput(), (New-Object Text.UTF8Encoding($false)))
 $raw = $stdin.ReadToEnd()
 if (-not $raw) { exit 0 }
-try { $d = $raw | ConvertFrom-Json } catch { exit 0 }
+# A tool call this guard treats as a write, and the fields it reads in one: the name and field lists a call that
+# will not parse is classified by (below). Names compare ignoring case, ordinally.
+$guardWriteTools = @('Write', 'Edit', 'create', 'MultiEdit', 'NotebookEdit', 'str_replace', 'insert', 'str_replace_editor', 'apply_patch')
+$guardWriteKeys = @('file_path', 'filePath', 'path', 'notebook_path', 'content', 'new_string', 'newString', 'file_text', 'new_str', 'text', 'new_source', 'edits', 'old_string', 'oldString', 'old_str')
+function Test-NameIn([string]$Name, [string[]]$Names) {
+    foreach ($n in $Names) { if ([string]::Equals($Name, $n, $ordinalIgnoreCase)) { return $true } }
+    return $false
+}
+# Whether a table parsed with -AsHashtable holds a write field under any casing of its key.
+function Test-WriteKeys($Table) {
+    if ($Table -isnot [System.Collections.IDictionary]) { return $false }
+    foreach ($k in @($Table.Keys)) { if (Test-NameIn ([string]$k) $guardWriteKeys) { return $true } }
+    return $false
+}
+# ConvertFrom-Json refuses JSON whose keys differ only in case, or that has an empty key, and a call it cannot parse
+# would be let through unread. Such a call is re-read with -AsHashtable, only to classify it: the tool name it names (the
+# first write tool's, else the first name) and whether it is a write -- a write tool, or a write field in tool_input
+# or toolArgs, or a patch. $null when it cannot be read that way either, or is no write.
+function Get-UnreadableCall([string]$Json) {
+    $table = $null
+    try { $table = ConvertFrom-Json -InputObject $Json -AsHashtable -ErrorAction Stop } catch { return $null }
+    if ($table -isnot [System.Collections.IDictionary]) { return $null }
+    $name = $null; $write = $false; $hasInput = $false
+    foreach ($k in @($table.Keys)) {
+        $v = $table[$k]
+        if (Test-NameIn ([string]$k) @('tool_name', 'toolName')) {
+            if ($v -is [string]) {
+                if (Test-NameIn $v $guardWriteTools) { $write = $true; $name = $v } elseif ($null -eq $name) { $name = $v }
+            }
+        } elseif (Test-NameIn ([string]$k) @('tool_input', 'toolArgs')) {
+            $hasInput = $true
+            if ($v -is [string]) {
+                $inner = $null
+                try { $inner = ConvertFrom-Json -InputObject $v -AsHashtable -ErrorAction Stop } catch { }
+                if ($inner -is [System.Collections.IDictionary]) { if (Test-WriteKeys $inner) { $write = $true } }
+                elseif ([regex]::IsMatch($v, '\*\*\* (?:Add|Update|Delete) File:', $ci)) { $write = $true }
+            } elseif (Test-WriteKeys $v) { $write = $true }
+        }
+    }
+    if (-not $write) { return $null }
+    if ($null -eq $name -and $hasInput) { $name = '' }
+    return [pscustomobject]@{ Tool = $name }
+}
+$unreadableMessage = 'Blocked write: the write guard cannot read this tool call (its JSON repeats a key in a different letter case, or has an empty key), so it checked none of it. Resend the call without duplicate or empty keys.'
+$unreadable = $false
+try { $d = $raw | ConvertFrom-Json } catch {
+    $call = Get-UnreadableCall $raw
+    if ($null -eq $call) { exit 0 }
+    $unreadable = $true
+    $d = [pscustomobject]@{ tool_name = $call.Tool }
+}
 
 $tool = $d.tool_name; if (-not $tool) { $tool = $d.toolName }
 $emptyTool = $tool -is [string] -and $tool.Length -eq 0   # a missing ($null) tool name is not the empty one
 $ti = $d.tool_input
 $ta = $d.toolArgs
 $taText = $ta
-if ($ta -is [string]) { try { $ta = $ta | ConvertFrom-Json } catch { $ta = $null } }
+if ($ta -is [string]) {
+    try { $ta = $ta | ConvertFrom-Json } catch {
+        $ta = $null
+        # An object that will not parse as one is unreadable; a string that is no JSON object is a patch, read below.
+        $inner = $null
+        try { $inner = ConvertFrom-Json -InputObject $taText -AsHashtable -ErrorAction Stop } catch { }
+        if ($inner -is [System.Collections.IDictionary] -and ((Test-NameIn ([string]$tool) $guardWriteTools) -or (Test-WriteKeys $inner))) { $unreadable = $true }
+    }
+}
 
 # Field names vary by surface: Claude (file_path/content/new_string), Copilot CLI (filePath/
 # newString), and VS Code agent mode's text-editor tools (path + file_text on `create`, new_str
@@ -119,6 +177,8 @@ function Exit-Blocked([string]$Message) {
     exit 0
 }
 
+if ($unreadable) { Exit-Blocked $unreadableMessage }
+
 # apply_patch, the file tool GPT models use on Copilot CLI and in VS Code, carries one V4A patch:
 # '*** Begin Patch', then sections '*** Add File: <path>', '*** Update File: <path>' (optionally
 # moved by '*** Move to: <path>') and '*** Delete File: <path>', then '*** End Patch'. Copilot CLI
@@ -153,14 +213,15 @@ function Get-PatchSections([string]$Patch, [int]$Max) {
     $sections.Add($current)
     # Lines end at LF only, as both hosts split them; a lone CR stays inside its line.
     foreach ($line in ($Patch -split '\r?\n')) {
-        $marker = $line.Trim()
+        # Trimmed as JavaScript's trim() does, which drops a byte-order mark (U+FEFF) too; .NET's Trim() keeps it.
+        $marker = [regex]::Replace($line, '^[\s\uFEFF]+|[\s\uFEFF]+$', '')
         if (($header = [regex]::Match($marker, '^\*\*\* (Add|Update|Delete) File:\s*(.+)$', $ci)).Success -and
             -not ([string]::Equals($current.Kind, 'update', $ordinal) -and [char]::IsWhiteSpace($line, 0))) {
             if ($sections.Count -gt $Max) { return $null }
             $current = [pscustomobject]@{ Kind = $header.Groups[1].Value.ToLowerInvariant(); Paths = New-Object System.Collections.Generic.List[string]; Moved = $false; Lines = New-Object System.Collections.Generic.List[string]; Removed = New-Object System.Collections.Generic.List[string] }
             $current.Paths.Add($header.Groups[2].Value.Trim())
             $sections.Add($current)
-        } elseif (($move = [regex]::Match($marker, '^\*\*\* Move to:\s*(.+)$', $ci)).Success -and $current.Paths.Count -gt 0 -and -not $current.Moved) {
+        } elseif (($move = [regex]::Match($marker, '^\*\*\* Move to:\s*(.+)$', $ci)).Success -and $current.Paths.Count -gt 0) {
             $current.Paths.Add($move.Groups[1].Value.Trim())
             $current.Moved = $true
         } elseif ($line.StartsWith('+', $ordinal)) {

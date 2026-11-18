@@ -3743,6 +3743,8 @@ of `docs/enforcement-surfaces.md`, naming the CLI version and date observed.
 
 ## 0.58.0 — 2026-08-17
 
+- **The write guard now refuses a write it cannot fully read, instead of letting it through.** A tool call whose JSON repeats a key in a different letter case or has an empty key, an `apply_patch` section header behind a byte-order mark (U+FEFF), and a patch section with a second `*** Move to:` line used to pass unchecked; the guard now blocks them, and the agent resends the call cleanly. Calls that are not writes are unaffected.
+
 - B-77: added the read-only `hazard-check` PowerShell/bash gate and wired it into
   `docs-sync-check` so malformed hazard status/date cells and dangling named paths block CI. Until
   now `session-start` measured only a hazard row's *age*, so a `[VERIFIED]` row pointing at a

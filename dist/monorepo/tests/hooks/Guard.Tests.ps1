@@ -774,4 +774,48 @@ It 'guard: a list line built to backtrack answers within 2 s and waives nothing 
     } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
 }
 
+# --- A write the guard cannot fully read is refused, not let through ---
+$bomMark = [string][char]0xFEFF
+function Get-SurfaceDecision([string]$Surface) { if ($Surface -eq 'Claude') { 'BLOCK' } else { 'DENY' } }
+function Get-PatchSurfaceEvent([string]$Surface, [string]$Patch) { New-PatchEvent $(if ($Surface -eq 'Claude') { '.claude/settings.json' } else { 'hooks.json' }) $Patch }
+
+It 'guard: a patch header preceded by a byte-order mark is still read as a header (the allowlist behind U+FEFF)' {
+    $patch = "*** Begin Patch`n*** Add File: docs/a.txt`n+one`n${bomMark}*** Add File: .claude/guard-allowlist.txt`n+src/**`n*** End Patch`n"
+    foreach ($surface in 'Claude', 'Copilot') {
+        Assert-Decision (Invoke-Hook $guardPs (Get-PatchSurfaceEvent $surface $patch)) (Get-SurfaceDecision $surface) "an Add File of the allowlist after U+FEFF ($surface)"
+    }
+}
+
+It 'guard: a section with two Move to lines checks both targets (the allowlist as the second)' {
+    $patch = "*** Begin Patch`n*** Update File: src/list.txt`n*** Move to: docs/x.txt`n*** Move to: .claude/guard-allowlist.txt`n*** End Patch`n"
+    foreach ($surface in 'Claude', 'Copilot') {
+        Assert-Decision (Invoke-Hook $guardPs (Get-PatchSurfaceEvent $surface $patch)) (Get-SurfaceDecision $surface) "a second Move to onto the allowlist ($surface)"
+    }
+}
+
+It 'guard: a write whose JSON the guard cannot parse (keys differing only in case, an empty key) is blocked' {
+    $events = @(
+        @{ s = 'Claude';  n = 'a Write with a repeated key in another case'; e = '{"tool_name":"Write","tool_input":{"file_path":"docs/a.txt","File_Path":"docs/b.txt","content":"x"}}' }
+        @{ s = 'Claude';  n = 'a Write to the allowlist with an empty key'; e = '{"tool_name":"Write","tool_input":{"file_path":".claude/guard-allowlist.txt","":"y","content":"src/**"}}' }
+        @{ s = 'Copilot'; n = 'a create with a repeated key in another case'; e = '{"toolName":"create","toolArgs":{"path":"docs/a.txt","Path":"docs/b.txt","file_text":"x"}}' }
+        @{ s = 'Copilot'; n = 'a create whose toolArgs string has a repeated key'; e = '{"toolName":"create","toolArgs":"{\"path\":\"docs/a.txt\",\"Path\":\"docs/b.txt\",\"file_text\":\"x\"}"}' }
+        @{ s = 'Copilot'; n = 'an unknown tool carrying a content field with a repeated key'; e = '{"toolName":"writeIt","toolArgs":{"filePath":"docs/a.txt","FILEPATH":"docs/b.txt","content":"x"}}' }
+    )
+    foreach ($case in $events) {
+        $result = Invoke-Hook $guardPs $case.e
+        Assert-Decision $result (Get-SurfaceDecision $case.s) $case.n
+        $said = if ($case.s -eq 'Claude') { $result.Err } else { $result.Out }
+        Assert ($said.Contains('without duplicate or empty keys')) "$($case.n): expected the resend reason, got: $said"
+    }
+}
+
+It 'guard: a non-write Copilot call whose arguments repeat a key in another case is allowed' {
+    $events = @(
+        '{"toolName":"bash","toolArgs":{"command":"ls","Command":"dir"}}'
+        '{"toolName":"bash","toolArgs":"{\"command\":\"ls\",\"Command\":\"dir\",\"\":\"x\"}"}'
+        '{"toolName":"some-mcp-search","toolArgs":{"query":"a","Query":"b"}}'
+    )
+    foreach ($e in $events) { Assert-Decision (Invoke-Hook $guardPs $e) 'ALLOW' $e }
+}
+
 exit (Write-TestSummary 'Guard.Tests (PowerShell)')
