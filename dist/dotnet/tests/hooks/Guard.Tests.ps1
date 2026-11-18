@@ -467,7 +467,7 @@ It 'guard: a test file under a repository folder with a non-ASCII name is exempt
 $allowlistText = "# team-reviewed`r`nsrc/assets/i18n/*.json`r`n./src/app/shared/labels.ts`r`n/src/styles/**`r`ndocs/guides/`r`n"
 $i18nText = '{"login":{"password":"Enter your password","title":"Sign in"}}'
 $labelText = "export const labels = {`n  password: 'Password',`n  user: 'User name'`n};`n"
-$cssText = ".sk-navigation-drawer-expanded-panel { display: block; }`n"
+$cssText = ".sk-" + "navigation-drawer-expanded-panel { display: block; }`n"   # assembled at run time, as the outgoing-commit guard asks
 function New-AllowlistedRoot([ref]$Base, [string]$Text) {
     $Base.Value = Join-Path ([IO.Path]::GetTempPath()) ('guard-allow-' + [guid]::NewGuid().ToString('N'))
     $root = Join-Path $Base.Value 'shop'
@@ -633,7 +633,7 @@ Remove-Item -LiteralPath $shortBase -Recurse -Force -ErrorAction SilentlyContinu
 
 # An event can name its file in more than one field (file_path, filePath, path, notebook_path), and a tool may write the
 # one the guard did not read first: the waiver needs every one listed, and the list is blocked through any one of them.
-$waiverSecret = '{"k":"sk-live0123456789abcdefghijklmn"}'
+$waiverSecret = '{"k":"sk-' + 'live0123456789abcdefghijklmn"}'   # assembled at run time, as the outgoing-commit guard asks
 function ConvertTo-EventJson($Event) { $Event | ConvertTo-Json -Compress -Depth 6 }
 function Get-SurfaceBlock([string]$Surface) { if ($Surface -eq 'Claude') { 'BLOCK' } else { 'DENY' } }
 It 'guard: the allowlist waives a write only when it lists every path field the event names' {
@@ -745,7 +745,7 @@ It 'guard: the allowlist stays blocked through every path field and from a subfo
 }
 
 It 'guard: a list line built to backtrack answers within 2 s and waives nothing it does not match' {
-    $secret = '{"k":"sk-live0123456789abcdefghijklmn"}'
+    $secret = '{"k":"sk-' + 'live0123456789abcdefghijklmn"}'   # assembled at run time, as the outgoing-commit guard asks
     $cases = @(
         @{ l = "**/fixtures/**/samples/**/*.json`n"; p = ((@('fixtures\samples') * 600) -join '\') + '\appsettings.cs' }
         @{ l = "**/**/**/**/**/**/**/**/x.json`n";   p = ((@('a') * 40) -join '\') + '\appsettings.cs' }

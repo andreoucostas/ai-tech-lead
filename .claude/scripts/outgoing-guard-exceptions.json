@@ -95,6 +95,106 @@
       "path": "meta/eval-results.md",
       "sha256": "5711CD74097FA0948F25E2F8D159A16BC6AF5722C4C4A343601D720C4430DD84",
       "reason": "Frozen B-379 pre-registration (e5c35e72) quoted the eval runner's synthetic AWS example whole; the following commit writes it as {SYNTHETIC_AWS_KEY}."
+    },
+    {
+      "path": "src/core/.claude/guard-allowlist.txt",
+      "sha256": "9D76AB5D7553652AEB6B3CA4C8E247AAB9521201F998DC89ADE0838D5AB1ED59",
+      "reason": "B-489 comments-only guard-allowlist template as first committed (2ccd4727); the guard blocks any file named guard-allowlist.txt, and only a person edits a live list."
+    },
+    {
+      "path": "dist/dotnet/.claude/guard-allowlist.txt",
+      "sha256": "9D76AB5D7553652AEB6B3CA4C8E247AAB9521201F998DC89ADE0838D5AB1ED59",
+      "reason": "B-489 comments-only guard-allowlist template as first committed (2ccd4727); the guard blocks any file named guard-allowlist.txt, and only a person edits a live list."
+    },
+    {
+      "path": "dist/angular/.claude/guard-allowlist.txt",
+      "sha256": "9D76AB5D7553652AEB6B3CA4C8E247AAB9521201F998DC89ADE0838D5AB1ED59",
+      "reason": "B-489 comments-only guard-allowlist template as first committed (2ccd4727); the guard blocks any file named guard-allowlist.txt, and only a person edits a live list."
+    },
+    {
+      "path": "dist/monorepo/.claude/guard-allowlist.txt",
+      "sha256": "9D76AB5D7553652AEB6B3CA4C8E247AAB9521201F998DC89ADE0838D5AB1ED59",
+      "reason": "B-489 comments-only guard-allowlist template as first committed (2ccd4727); the guard blocks any file named guard-allowlist.txt, and only a person edits a live list."
+    },
+    {
+      "path": "src/core/.claude/guard-allowlist.txt",
+      "sha256": "1136813C8214AB104AA99A78169E5A36D77D4A55DCD70236B2D5217B00A8E904",
+      "reason": "B-489 comments-only guard-allowlist template as revised by the attack fixes (26f9fcc6, 0a97ff88); the guard blocks any file named guard-allowlist.txt, and only a person edits a live list."
+    },
+    {
+      "path": "dist/dotnet/.claude/guard-allowlist.txt",
+      "sha256": "1136813C8214AB104AA99A78169E5A36D77D4A55DCD70236B2D5217B00A8E904",
+      "reason": "B-489 comments-only guard-allowlist template as revised by the attack fixes (26f9fcc6, 0a97ff88); the guard blocks any file named guard-allowlist.txt, and only a person edits a live list."
+    },
+    {
+      "path": "dist/angular/.claude/guard-allowlist.txt",
+      "sha256": "1136813C8214AB104AA99A78169E5A36D77D4A55DCD70236B2D5217B00A8E904",
+      "reason": "B-489 comments-only guard-allowlist template as revised by the attack fixes (26f9fcc6, 0a97ff88); the guard blocks any file named guard-allowlist.txt, and only a person edits a live list."
+    },
+    {
+      "path": "dist/monorepo/.claude/guard-allowlist.txt",
+      "sha256": "1136813C8214AB104AA99A78169E5A36D77D4A55DCD70236B2D5217B00A8E904",
+      "reason": "B-489 comments-only guard-allowlist template as revised by the attack fixes (26f9fcc6, 0a97ff88); the guard blocks any file named guard-allowlist.txt, and only a person edits a live list."
+    },
+    {
+      "path": "src/core/tests/hooks/Guard.Tests.ps1",
+      "sha256": "DE0D44CAFB51243102C5B2E02F3F1B5E673EE9D0F23DCBD289AE3D27FE3B912F",
+      "reason": "Canonical guard test as committed in 2ccd4727; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/Guard.Tests.ps1",
+      "sha256": "DE0D44CAFB51243102C5B2E02F3F1B5E673EE9D0F23DCBD289AE3D27FE3B912F",
+      "reason": "Generated copy of the canonical guard test as committed in 2ccd4727; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "dist/angular/tests/hooks/Guard.Tests.ps1",
+      "sha256": "DE0D44CAFB51243102C5B2E02F3F1B5E673EE9D0F23DCBD289AE3D27FE3B912F",
+      "reason": "Generated copy of the canonical guard test as committed in 2ccd4727; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/Guard.Tests.ps1",
+      "sha256": "DE0D44CAFB51243102C5B2E02F3F1B5E673EE9D0F23DCBD289AE3D27FE3B912F",
+      "reason": "Generated copy of the canonical guard test as committed in 2ccd4727; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "src/core/tests/hooks/Guard.Tests.ps1",
+      "sha256": "AE1A5E614B6E05AAD8FEC06C14E24FA82F10792E643956891A450128C672E83F",
+      "reason": "Canonical guard test as committed in 26f9fcc6; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/Guard.Tests.ps1",
+      "sha256": "AE1A5E614B6E05AAD8FEC06C14E24FA82F10792E643956891A450128C672E83F",
+      "reason": "Generated copy of the canonical guard test as committed in 26f9fcc6; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "dist/angular/tests/hooks/Guard.Tests.ps1",
+      "sha256": "AE1A5E614B6E05AAD8FEC06C14E24FA82F10792E643956891A450128C672E83F",
+      "reason": "Generated copy of the canonical guard test as committed in 26f9fcc6; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/Guard.Tests.ps1",
+      "sha256": "AE1A5E614B6E05AAD8FEC06C14E24FA82F10792E643956891A450128C672E83F",
+      "reason": "Generated copy of the canonical guard test as committed in 26f9fcc6; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "src/core/tests/hooks/Guard.Tests.ps1",
+      "sha256": "3F9786E8E4E2A1DB3C191B606ADA129E9518ED21D908C5778BD46142763732A8",
+      "reason": "Canonical guard test as committed in 0a97ff88; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/Guard.Tests.ps1",
+      "sha256": "3F9786E8E4E2A1DB3C191B606ADA129E9518ED21D908C5778BD46142763732A8",
+      "reason": "Generated copy of the canonical guard test as committed in 0a97ff88; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "dist/angular/tests/hooks/Guard.Tests.ps1",
+      "sha256": "3F9786E8E4E2A1DB3C191B606ADA129E9518ED21D908C5778BD46142763732A8",
+      "reason": "Generated copy of the canonical guard test as committed in 0a97ff88; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/Guard.Tests.ps1",
+      "sha256": "3F9786E8E4E2A1DB3C191B606ADA129E9518ED21D908C5778BD46142763732A8",
+      "reason": "Generated copy of the canonical guard test as committed in 0a97ff88; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
     }
   ]
 }
