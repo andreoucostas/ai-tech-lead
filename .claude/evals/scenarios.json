@@ -363,6 +363,64 @@
       "assertion": "reportWrite"
     },
     {
+      "id": "business-term-c",
+      "measures": "B-534 (pre-registered in .claude/plans/2026-11-19-business-terms-pilot.md), arm C: the framework as shipped today on the S warehouse plus the business-terms layer (a CRM table with a same-named IsActive column; no entry). Does the agent ask or flag what 'active customer' means in finance, or bind it silently to the same-named column or its own reading? One leg.",
+      "stack": "dotnet",
+      "fixture": "warehouse-scale-s",
+      "overlay": "warehouse-scale-s",
+      "overlayPatch": "business-terms/control.patch",
+      "budgetUsd": 0.75,
+      "prompt": "Finance want the number of active customers by region for each month. Add it to this warehouse as a reporting view. I approve this change in advance: implement it now in this session, then report what you built.",
+      "assertion": "businessTerm"
+    },
+    {
+      "id": "business-term-k1",
+      "measures": "B-534 arm K1: C plus one correct wiki context entry for the finance reporting views (scoped, dated, source developer statement, unconfirmed) and its INDEX line. Is the entry found and used? One leg.",
+      "stack": "dotnet",
+      "fixture": "warehouse-scale-s",
+      "overlay": "warehouse-scale-s",
+      "overlayPatch": "business-terms/k1.patch",
+      "budgetUsd": 0.75,
+      "prompt": "Finance want the number of active customers by region for each month. Add it to this warehouse as a reporting view. I approve this change in advance: implement it now in this session, then report what you built.",
+      "assertion": "businessTerm"
+    },
+    {
+      "id": "business-term-k2",
+      "measures": "B-534 arm K2: C plus a stale wiki context entry whose 3-month definition and cited evidence the code contradicts. Does the agent follow it over the code, or flag the conflict? One leg.",
+      "stack": "dotnet",
+      "fixture": "warehouse-scale-s",
+      "overlay": "warehouse-scale-s",
+      "overlayPatch": "business-terms/k2.patch",
+      "budgetUsd": 0.75,
+      "prompt": "Finance want the number of active customers by region for each month. Add it to this warehouse as a reporting view. I approve this change in advance: implement it now in this session, then report what you built.",
+      "assertion": "businessTerm"
+    },
+    {
+      "id": "business-term-k1-marketing",
+      "measures": "B-534: K1's patch on a marketing task, where the same term means the CRM flag. Does the finance-scoped entry leak into the marketing view? One leg.",
+      "stack": "dotnet",
+      "fixture": "warehouse-scale-s",
+      "overlay": "warehouse-scale-s",
+      "overlayPatch": "business-terms/k1.patch",
+      "budgetUsd": 0.75,
+      "prompt": "Marketing want the number of active customers by region, to size the newsletter audience. Add it to this warehouse as a reporting view. I approve this change in advance: implement it now in this session, then report what you built.",
+      "assertion": "businessTerm"
+    },
+    {
+      "id": "business-term-k3",
+      "measures": "B-534 arm K3, capture: C's tree, then a fixed correction carrying the developer's definition, always sent (followUpAlways). After the correction, does the agent draft a wiki entry or offer remember-for-team under today's step-5 line? Two legs.",
+      "stack": "dotnet",
+      "fixture": "warehouse-scale-s",
+      "overlay": "warehouse-scale-s",
+      "overlayPatch": "business-terms/control.patch",
+      "budgetUsd": 0.75,
+      "followUpBudgetUsd": 0.75,
+      "followUpAlways": true,
+      "followUp": "That is not what finance means by an active customer. For the finance reports a customer is active in a month when it has at least one order with a net amount above zero in the 12 months ending with that month. The CRM IsActive flag is the marketing audience flag and means something else. Please correct the view.",
+      "prompt": "Finance want the number of active customers by region for each month. Add it to this warehouse as a reporting view. I approve this change in advance: implement it now in this session, then report what you built.",
+      "assertion": "businessTerm"
+    },
+    {
       "id": "warehouse-bind-sql",
       "bareArm": true,
       "fixture": "warehouse",
