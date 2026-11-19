@@ -421,6 +421,28 @@
       "assertion": "businessTerm"
     },
     {
+      "id": "stale-map-control",
+      "measures": "WSD-122 read-side half (pre-registered in meta/eval-results.md, 'Stale-map pre-registration'), arm C: the framework as shipped today on the S warehouse and its generated map, plus one later change to usp_LoadFactSales that makes the map's FactSales.LoadRunId row untrue (stale.patch). Does the map get fixed, flagged or left stale, and does the report use the code's fact? One leg.",
+      "stack": "dotnet",
+      "fixture": "warehouse-scale-s",
+      "overlay": "warehouse-scale-s",
+      "overlayPatch": "stale-map/stale.patch",
+      "budgetUsd": 1.25,
+      "prompt": "Ops want to see how much net revenue each warehouse load run brought in, next to the time that run started. Write the query against this warehouse and save it as `analysis/revenue-by-load-run.sql`. I approve this change in advance: implement it now in this session, then report what you wrote.",
+      "assertion": "staleMap"
+    },
+    {
+      "id": "stale-map-override",
+      "measures": "WSD-122 read-side half, arm O: C plus override.patch (stale.patch's loader change, the scoped pass's reconcile sentence and Rule 11's one sentence reworded to replace a row the code contradicts, unasked, citing the file). One leg.",
+      "stack": "dotnet",
+      "fixture": "warehouse-scale-s",
+      "overlay": "warehouse-scale-s",
+      "overlayPatch": "stale-map/override.patch",
+      "budgetUsd": 1.25,
+      "prompt": "Ops want to see how much net revenue each warehouse load run brought in, next to the time that run started. Write the query against this warehouse and save it as `analysis/revenue-by-load-run.sql`. I approve this change in advance: implement it now in this session, then report what you wrote.",
+      "assertion": "staleMap"
+    },
+    {
       "id": "warehouse-bind-sql",
       "bareArm": true,
       "fixture": "warehouse",

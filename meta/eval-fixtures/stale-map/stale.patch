@@ -1,0 +1,13 @@
+diff --git a/StoredProcedures/usp_LoadFactSales.sql b/StoredProcedures/usp_LoadFactSales.sql
+index 57c3b93..eb662e0 100644
+--- a/StoredProcedures/usp_LoadFactSales.sql
++++ b/StoredProcedures/usp_LoadFactSales.sql
+@@ -1,6 +1,7 @@
+ CREATE PROCEDURE dbo.usp_LoadFactSales AS
+ INSERT INTO fact.FactSales (SalesKey, CustomerKey, ProductKey, OrderDateKey, NetAmount, LoadRunId)
+-SELECT s.SalesId, c.CustomerKey, p.ProductKey, d.DateKey, s.NetAmount, s.BatchId
++SELECT s.SalesId, c.CustomerKey, p.ProductKey, d.DateKey, s.NetAmount, r.LoadRunId
+ FROM stg.StgSalesOrder s
++CROSS JOIN (SELECT TOP (1) LoadRunId FROM ctl.LoadRun ORDER BY StartedAt DESC) r
+ JOIN dim.DimCustomer c ON c.CustomerId = s.CustomerId AND c.IsCurrent = 1
+ JOIN dim.DimProduct p ON p.ProductId = s.ProductId

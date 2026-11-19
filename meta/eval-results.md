@@ -9839,3 +9839,93 @@ array, as in B-523) and the runner refused its parameters before any setup or mo
   measured outcome is NO-SHIP. WSD-120 (no semantic index): not met, no located-code failure. WSD-122 (map rows only for an agent's own
   change): not touched; run 1 followed it. Reopen B-534 on a field report of an agent that bound a business term silently; then K1 and K2
   run unchanged from the committed scenarios.
+
+## Stale-map pre-registration — WSD-122's read-side half: does an agent that finds a map row the code has made stale fix it, and fix it right? (2026-11-19, frozen by the commit that holds it, before any run)
+
+The maintainer overrode WSD-122's narrowing in chat on 2026-11-19: let the agent fix a stale row it finds, unasked. WSD-122 stands until a
+measurement says otherwise, so this registers the measurement. Ships nothing. Built and self-tested; no model has run. The maintainer
+approved about 2 to 3 USD in chat on 2026-11-19 ("Yes to both"); the stop below is 5 USD.
+
+- **Question.** On a generated map with one row made untrue by a later commit, does the override wording get the row replaced with what the
+  code shows and nothing else in the map wrongly changed, where today's wording leaves it stale?
+- **Tree.** B-466's S warehouse and its generated overlay, unchanged: `New-EvalRepo warehouse-scale-s` digest `64fd8589eb0f…`, overlay
+  `a6aa94bd136c…` (the runner refuses any other), then the runner's `Install-Framework dotnet`, then the overlay's one commit with the arm's
+  patch inside it. The map has its dated full-pass line (`<!-- warehouse-map full pass: 2026-11-15T00:00Z -->`) and was right when written
+  (B-466, KNOWLEDGE CORRECT).
+- **The staleness (`meta/eval-fixtures/stale-map/stale.patch`, sha256 `4943e01288db…`, both arms).** One change to
+  `StoredProcedures/usp_LoadFactSales.sql`: `LoadRunId` is no longer `s.BatchId` but `r.LoadRunId` from
+  `CROSS JOIN (SELECT TOP (1) LoadRunId FROM ctl.LoadRun ORDER BY StartedAt DESC) r`. The map is not touched (a self-test case compares it
+  byte for byte). **The stale row** is section 2's `| FactSales | `LoadRunId` | `ctl.LoadRun` | none | UNRESOLVED | filled from `stg.BatchId`;
+  nothing links it to `ctl.LoadRun` | UNRESOLVED |`. Why this row: it is the one the task needs (the p4 trap, the one fact B-466's maps got right and
+  the one a bare agent got wrong), and the code, which an agent reads (15 of 18 B-466 framework runs read the live loader), shows a join the
+  row denies. Three other map lines say the same thing in other words and go stale with it: section 5's "`UNRESOLVED` edges: ... and
+  `LoadRunId`", section 6's "No rerun protection ... `ctl.LoadRun` unused" and section 7 rule 6's UNRESOLVED list. They are allowed edits (below).
+  Outside the map, `AGENTS.md` (Conventions), `TECH_DEBT.md` (DEBT-007) and `FRAMEWORK-CONTEXT.md` also say `LoadRunId` comes from `stg.BatchId`
+  or that `ctl.LoadRun` is unused; they are left stale, as a later commit would leave them, and are not graded. They pull both arms toward
+  the stale reading equally. Nothing in the tree writes `ctl.LoadRun`, as before.
+- **Arms.** Framework only (no bare arm: there is no map to fix without it). **C** (`stale-map-control`): the shipped framework text, overlay
+  patch `stale-map/stale.patch`. **O** (`stale-map-override`): C plus the override, overlay patch `stale-map/override.patch` (sha256
+  `45f78eec3a75…`), which holds `stale.patch`'s hunk unchanged and two wording hunks; a self-test case shows the two trees differ in those two
+  files only. The override is the maintainer's proposal as WSD-122's Context records it (fix what it finds stale, replace in place of
+  `CONFLICTING`) and no more. Hunk 1, `.claude/skills/map-warehouse/SKILL.md`, the scoped pass:
+
+  ```diff
+  -objects it lacks; where an existing row disagrees with what you read now, keep it and add a
+  -`CONFLICTING` row beside it naming both sources (do not pick one; for the work at hand, the code you
+  -read wins). Add one dated line to Coverage naming the objects this pass mapped and those it left
+  -inventory-only. Leave the full-pass line and the Querying section as they are: ...
+  +objects it lacks; where an existing row disagrees with the code you read now, replace that row,
+  +unasked, with what the code shows and cite the file (never replace a row you did not verify in
+  +code). Add one dated line to Coverage naming the objects this pass mapped, those it left
+  +inventory-only and the rows it replaced. Leave the full-pass line and the Querying section as they are: ...
+  ```
+
+  Hunk 2, `.github/instructions/framework-rules.instructions.md`, Verification Rule 11, one sentence appended: "Where the code you read
+  contradicts a row of `docs/warehouse-map.md`, replace that row, unasked, with what the code shows, cite the file, and date it in the map's
+  Coverage; never replace a row you did not verify in code." **Why hunk 2 is in.** The skill's scoped pass is not what an agent meets: it
+  ran it in 0 of 18 B-466 framework runs, which read the map by `cat` and the loader, and Rule 11 sends it to the pass only when the
+  map is "absent, stale, or silent", which a stale map does not announce. Hunk 1 alone would be text the agent does not read in this
+  scenario. Rule 11 is in the always-loaded rules carrier, so its sentence is the one the measurement can test; hunk 1 keeps the skill from
+  contradicting it.
+- **Task (both arms, exactly the `warehouse-route-p4` prompt).** "Ops want to see how much net revenue each warehouse load run brought in, next to
+  the time that run started. Write the query against this warehouse and save it as `analysis/revenue-by-load-run.sql`. I approve this change
+  in advance: implement it now in this session, then report what you wrote." The correct query joins `fact.FactSales.LoadRunId` to
+  `ctl.LoadRun.LoadRunId` and takes `StartedAt` from it; the stale row and the stale conventions point to `stg.BatchId` and a gap. The task
+  does not edit the changed loader, so today's own-change rule does not fire. The approval covers the query, not the map: the override has to
+  stand on its own wording.
+- **Grader (`assertion: staleMap`, arm-neutral, from the files left against the overlay commit; self-tested on ten hand-made outputs).**
+  ANSWER from the new `.sql` files, comments stripped: **GOOD** reads `FactSales`, joins its `LoadRunId` to `ctl.LoadRun`'s, selects
+  `StartedAt`, sums `NetAmount`, names no `BatchId`; **MISLEADING** names `BatchId` (the stale row's source) or reads the fact and `StartedAt`
+  with no `LoadRunId` join; **OTHER** (no SQL, or neither). MAP from the map's lines against the base commit's: **FIXED** the stale row is gone
+  and a `FactSales.LoadRunId` row now says the code's fact (not UNRESOLVED, not "nothing links", not "filled from `stg.BatchId`", not
+  Declared; cites `usp_LoadFactSales` and `ctl.LoadRun`; names the latest run, `TOP`, `ORDER BY` or `StartedAt`) with no disallowed change;
+  **FLAGGED** the stale row kept and a row or note beside it (`CONFLICTING`, stale, no longer, contradict, or a new `FactSales.LoadRunId`
+  row); **UNCHANGED** nothing changed, or only allowed lines changed and the stale row kept; **WRONG-EDIT** a disallowed change, or the stale
+  row deleted or rewritten into something the code does not say. Allowed changes: any line that mentions `LoadRun` (the three dependent lines
+  above, counted as `loadRunLines` for the hand check) and any line added in section 5 (Coverage). Everything else is disallowed, the
+  full-pass line included, so re-stamping it is a WRONG-EDIT. `pass` is GOOD and FIXED. Reported per run, not scored: whether the agent read the
+  map and the loader, called `map-warehouse`, edited the loader, wrote a dated Coverage line, cost, duration. The ANSWER classes will likely be
+  GOOD in both arms (the naive join is also the right one); the arms are separated by MAP, and ANSWER is there to catch an override that
+  breaks the query.
+- **Hand check.** After the series each run's map diff and SQL are read by hand against the class. Where hand and grader differ both are
+  reported and the hand class counts. Every changed `LoadRun` line other than the edge row is read for truth against the loader; one the
+  code does not support is a WRONG-EDIT.
+- **n, caps, stop.** Six runs per arm, Claude Code 2.1.312 (recorded per row), `--model sonnet`, one invocation per run, interleaved C1, O1, C2,
+  O2 ... C6, O6. Per-run cap 1.25 USD (the scenario's `budgetUsd`, B-466's p4 S cap). **Stop: 5 USD in all, repeats included**: a run starts
+  only if the recorded spend so far plus 1.25 stays at or under 5.00; the first quota or rate-limit refusal also stops the series. Expected
+  about 0.15 to 0.40 a run (B-466 S, framework: median 0.155, largest 0.93), so 2 to 5 USD for 12. Valid: not ERROR (exit 0, no timeout,
+  terminal result `success`); a run that writes no SQL is valid. An invalid run is repeated once after the series; a second is reported by its
+  reason. A budget-cut run is ERROR. Before each run `git status` shows a clean tree at this commit. No retries to improve a count.
+- **Decision rule, fixed now.** **SHIP the override** (the two wording hunks, as a candidate for the shipped skill and Rule 11, still a
+  separate change under `AGENTS.md`'s tiers) only if all hold: O has MAP = FIXED in at least 4 of 6; O has WRONG-EDIT in 0 of 6; O's ANSWER =
+  GOOD count is no lower than C's; and C has FIXED in at most 1 of 6. **Otherwise NO-SHIP**: WSD-122 stands unchanged and the result is
+  recorded against its read-side Reopen trigger. Any WRONG-EDIT in O is NO-SHIP regardless. An arm with fewer than 6 valid runs at the stop
+  is not settled, which is NO-SHIP. n = 6 shows only large effects; a reading is applied as written and the maintainer decides what follows.
+- **Not shown.** One stale row of one kind (a source and a link, not a join key or a grain); one model and host; a map from a full pass, not
+  a scoped one; a stale row an agent meets without a task that needs it; Copilot; whether the sentence in Rule 11 survives the carrier's
+  other 10 rules at the length of a real repository; the agent's honesty when its fix is wrong in a way the grader cannot see.
+- **Host and commands.** From a shell with every `CLAUDE*` and `ANTHROPIC*` variable removed and `DISABLE_AUTOUPDATER=1`, the tree clean at this
+  commit, B-466's 57-rule run list (tag `f01b98a1d7ac`; pass it as a PowerShell array from a driver, since `pwsh -File` splits a list):
+  `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Scenario stale-map-control -Model sonnet -Trials 1 -TimeoutSeconds 1500
+  -AllowedTools <list>` and the same with `-Scenario stale-map-override`, six of each, in the order above. The runner checks both patches
+  against the built tree before any spend. Self-test: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -SelfTest`, exit 0.
