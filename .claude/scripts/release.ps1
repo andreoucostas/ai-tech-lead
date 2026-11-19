@@ -68,6 +68,100 @@ function Measure-Stage([string]$Name, [scriptblock]$Body) {
     }
 }
 
+# Delivery numbers (B-522, WSD-125 (6)): a REPORT printed after the tag, never a gate. Each of the four
+# is a number or "unknown (why)"; "could not examine" is never printed as zero and never fails a release.
+# The escaped-defect count is the commits in the range whose body has a line starting "Escaped defect"
+# (AGENTS.md "Scope"), searched as `git log --grep='^Escaped defect' -i <previous tag>..<tag>`.
+function Get-EscapedDefectCount {
+    param([string[]]$Bodies)
+    $n = 0
+    foreach ($b in @($Bodies)) { if ($b -match '(?im)^escaped defect\b') { $n++ } }
+    return $n
+}
+
+# Tags dated in the 28 days up to and including $Now, divided by 4 weeks.
+function Get-ReleasesPerWeek {
+    param([DateTimeOffset[]]$TagDates, [DateTimeOffset]$Now)
+    $from = $Now.AddDays(-28)
+    $n = @($TagDates | Where-Object { $_ -gt $from -and $_ -le $Now }).Count
+    return [math]::Round($n / 4, 2)
+}
+
+# $In keys: RunStart, RunEnd, FirstChange, TagDate ([DateTimeOffset] or $null), Bodies ([string[]]
+# or $null; an empty array is a real zero), TagDates ([DateTimeOffset[]] or $null), Why (hashtable of
+# reasons per metric: Run, Days, Escaped, Cadence). A missing input gives Value $null, never 0.
+function Get-ReleaseDeliveryNumbers {
+    param([Parameter(Mandatory)][hashtable]$In)
+    $why = if ($In.Why) { $In.Why } else { @{} }
+    $row = {
+        param($value, $reason)
+        if ($null -ne $value) { return [pscustomobject]@{ Value = $value; Text = "$value" } }
+        $r = if ($reason) { $reason } else { 'input missing' }
+        return [pscustomobject]@{ Value = $null; Text = "unknown ($r)" }
+    }
+    $run = $null
+    if ($In.RunStart -and $In.RunEnd) { $run = [math]::Round(($In.RunEnd - $In.RunStart).TotalMinutes, 1) }
+    $days = $null
+    if ($In.FirstChange -and $In.TagDate) { $days = [math]::Round(($In.TagDate - $In.FirstChange).TotalDays, 1) }
+    $esc = $null
+    if ($null -ne $In.Bodies) { $esc = Get-EscapedDefectCount -Bodies $In.Bodies }
+    $cad = $null
+    if ($null -ne $In.TagDates -and $In.TagDate) { $cad = Get-ReleasesPerWeek -TagDates $In.TagDates -Now $In.TagDate }
+    return [ordered]@{
+        'test-run minutes (CI run for the released commit)' = (& $row $run $why.Run)
+        'days from first change to tag'                    = (& $row $days $why.Days)
+        'escaped defects in the release'                   = (& $row $esc $why.Escaped)
+        'releases a week (tags in the last 28 days / 4)'   = (& $row $cad $why.Cadence)
+    }
+}
+
+function Format-ReleaseDeliveryLines {
+    param([Parameter(Mandatory)]$Current, [Parameter(Mandatory)]$Previous, [string]$PreviousName)
+    $prevLabel = if ($PreviousName) { $PreviousName } else { 'previous' }
+    foreach ($k in $Current.Keys) {
+        "  {0}: {1}   ({2}: {3})" -f $k, $Current[$k].Text, $prevLabel, $Previous[$k].Text
+    }
+}
+
+# Reads git and gh for one release; every failure becomes a null input plus a reason.
+function Get-ReleaseDeliveryInput {
+    param([string]$Repo, [string]$Tag, [string]$PrevTag, [DateTimeOffset[]]$TagDates)
+    $inv = [Globalization.CultureInfo]::InvariantCulture
+    $in = @{ Why = @{}; TagDates = $TagDates }
+    $tagDate = $null
+    $sha = (git -C $Repo rev-parse -q --verify "refs/tags/$Tag^{commit}" 2>$null)
+    if (-not $sha) { $in.Why.Run = $in.Why.Days = $in.Why.Escaped = $in.Why.Cadence = "tag $Tag not found"; return $in }
+    $sha = $sha.Trim()
+    $td = (git -C $Repo for-each-ref --format='%(creatordate:iso-strict)' "refs/tags/$Tag" 2>$null)
+    if ($td) { $in.TagDate = [DateTimeOffset]::Parse($td.Trim(), $inv) } else { $in.Why.Days = $in.Why.Cadence = "no date for $Tag" }
+    if (-not $PrevTag) {
+        $in.Why.Days = $in.Why.Escaped = 'no earlier tag'
+    } else {
+        $first = @(git -C $Repo log --reverse --format=%aI "$PrevTag..$sha" 2>$null)
+        if ($first.Count -gt 0) { $in.FirstChange = [DateTimeOffset]::Parse($first[0].Trim(), $inv) } else { $in.Why.Days = "no commits after $PrevTag" }
+        $raw = (git -C $Repo log --format='%B%x00' "$PrevTag..$sha" 2>$null) -join "`n"
+        if ($LASTEXITCODE -eq 0) { $in.Bodies = @($raw -split "`0" | Where-Object { $_.Trim() }) } else { $in.Why.Escaped = 'git log failed' }
+    }
+    $gh = Get-Command gh -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $gh) {
+        $in.Why.Run = 'gh not installed'
+    } else {
+        try {
+            $out = (& $gh.Source run list --commit $sha --json event,status,conclusion,startedAt,updatedAt --limit 20 2>&1) -join "`n"
+            if ($LASTEXITCODE -ne 0) { throw "gh exited $LASTEXITCODE" }
+            $runs = @($out | ConvertFrom-Json | Where-Object { $_.event -eq 'push' -and $_.status -eq 'completed' })
+            if ($runs.Count -eq 0) { throw 'no completed push run for the commit' }
+            $best = $runs | Sort-Object { ([DateTimeOffset]::Parse($_.updatedAt, $inv) - [DateTimeOffset]::Parse($_.startedAt, $inv)).TotalMinutes } -Descending | Select-Object -First 1
+            $in.RunStart = [DateTimeOffset]::Parse($best.startedAt, $inv)
+            $in.RunEnd = [DateTimeOffset]::Parse($best.updatedAt, $inv)
+        } catch {
+            $in.Why.Run = ("$($_.Exception.Message)" -replace '\s+', ' ')
+            if ($in.Why.Run.Length -gt 80) { $in.Why.Run = $in.Why.Run.Substring(0, 80) }
+        }
+    }
+    return $in
+}
+
 # ---- 0. Reject a path-expanded -Summary (B-73) -----------------------------------------------
 # A leading slash-command was once rewritten to a filesystem path before PowerShell received it;
 # v0.40.0 shipped that path in its commit subject. Keep the input invariant even though the
@@ -748,6 +842,25 @@ if (-not $NoPush) {
     $remoteTag = (git -C $repo ls-remote --tags origin "refs/tags/$tagName")
     if (-not $remoteTag) { Write-Host "Tag push reported success but origin has no $tagName."; exit 1 }
     Write-Host "Tag $tagName confirmed on origin."
+}
+
+# ---- 6. Delivery numbers (B-522): a report beside the previous release's; never fails the release ----
+try {
+    $allTags = @(git -C $repo for-each-ref --format='%(refname:short) %(creatordate:iso-strict)' 'refs/tags/v*' 2>$null)
+    $tagDates = @($allTags | ForEach-Object { [DateTimeOffset]::Parse(($_ -split ' ', 2)[1], [Globalization.CultureInfo]::InvariantCulture) })
+    $prevTag = (git -C $repo describe --tags --abbrev=0 --match 'v*' "$releaseSha^" 2>$null)
+    $prevTag = if ($prevTag) { $prevTag.Trim() } else { $null }
+    $prevPrev = $null
+    if ($prevTag) {
+        $pp = (git -C $repo describe --tags --abbrev=0 --match 'v*' "$prevTag^" 2>$null)
+        if ($pp) { $prevPrev = $pp.Trim() }
+    }
+    $nowIn  = Get-ReleaseDeliveryInput -Repo $repo -Tag $tagName -PrevTag $prevTag -TagDates $tagDates
+    $prevIn = if ($prevTag) { Get-ReleaseDeliveryInput -Repo $repo -Tag $prevTag -PrevTag $prevPrev -TagDates $tagDates } else { @{ Why = @{ Run = 'no earlier tag'; Days = 'no earlier tag'; Escaped = 'no earlier tag'; Cadence = 'no earlier tag' } } }
+    Write-Host "`nDelivery numbers for $tagName (report only; 'unknown' means it could not be computed, not zero):"
+    foreach ($line in (Format-ReleaseDeliveryLines -Current (Get-ReleaseDeliveryNumbers -In $nowIn) -Previous (Get-ReleaseDeliveryNumbers -In $prevIn) -PreviousName $(if ($prevTag) { $prevTag } else { 'previous' }))) { Write-Host $line }
+} catch {
+    Write-Host "`nDelivery numbers: unknown (could not be computed: $($_.Exception.Message))"
 }
 
 Write-Host "`nRelease $Version complete$(if ($NoPush) { ' (not pushed: -NoPush)' })."

@@ -34,13 +34,12 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 17 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
 | 18 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
 | 19 | B-520 | Seven small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
-| 20 | B-522 | Release review: nothing tracks how long a release takes or how often a defect escapes; guarded, S |
-| 21 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
-| 22 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
-| 23 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
-| 24 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
-| 25 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
-| 26 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
+| 20 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
+| 21 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
+| 22 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
+| 23 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
+| 24 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
+| 25 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
 
 ## Open entries
 
@@ -98,11 +97,6 @@ Left: re-run R2 with the eval harness's hook also covering cmdlet aliases (test-
 "a new package" and harness; the provider already reached the test project through its reference to the API, and 21 other runs used it without touching a `.csproj`. Suspected carrier: the Bug-fix
 bullet's and fix rail's "add no foreign harness", read as forbidding an engine the code under test already uses. n = 2: measure (about 0.25 USD a run) before any wording change.
 
-### B-522 · Print four numbers at each release: test-run minutes, days from first change to tag, escaped defects, releases a week
-**Filed against:** v0.98.6 (2026-11-14)
-**Priority:** P3 · **Effort:** S · **Invariants:** none
-**Status:** Open; decided 2026-11-14 (maintainer, in chat; WSD-125). Measured by hand that day: push to tag 25 to 36 minutes, the CI run's median 28 minutes (7 in August), and 23 releases with 11 to 15 escaped-defect notes since v0.86.7, by the search used. Nothing tracks them; WSD-093's own measure was retired unread (B-288) for naming no baseline.
-Candidate: `release.ps1` prints the four from `git` and `gh` when a release ends, beside the previous release's values; no new file and no gate. Guarded (`.claude/scripts/**`).
 ### B-483 · `warehouse-map-check` reports `current` for a map whose tables were deleted, or that has no full-pass stamp
 **Filed against:** v0.98.4 (2026-11-05)
 **Priority:** P3 · **Effort:** M · **Invariants:** none
