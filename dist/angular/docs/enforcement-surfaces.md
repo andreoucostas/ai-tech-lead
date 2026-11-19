@@ -277,7 +277,7 @@ organization enforces.
 > with a space; a `;;` between pairs; a quote of the other kind or an escaped quote inside the literal; a
 > JDBC neighbour with no `=`; a `:` in a neighbouring key; a no-break space or vertical tab before the key;
 > a password that opens with `@`; an interpolated `$"{base};Password=…"` piece, a ternary `: ";Password=…"` piece, an
-> interpolated raw string `$"""…"""`, a URL with an empty user (`redis://:pw@host`) or a password that opens with `%`, and
+> interpolated raw string `$"""…"""`, a URL with an empty user (`redis://:pw@host`) or a password that opens with `%`, a URL password that holds a raw `#` or `?`, a `NetworkCredential` first argument broken across lines, and
 > a multi-line auto-property (`Password` / `{ get; set; }` / `= "…"`); a one-pair literal on its own, a connection string that
 > spans lines, and a `??` or `||` fallback (`password ?? "…"`); the computed key `{ ['password']: '…' }`; a
 > name that does not end in one of the words above (`SecretKey`); an `appSettings`

@@ -926,7 +926,8 @@ foreach ($write in $writes) {
         # NetworkCredential password that opens with {, is a variable, an interpolation hole or a placeholder, not a literal;
         # a URL password that is only pass, password, passwd, pwd, pw or secret is a README's illustration, not a credential.
         $valueHoles = '(?!(?:\{[^{}"'']*\})+["''])'
-        $valueOpener = '(?:@?["''](?<v>[^"'']{8,})["''](?!\s*\|)' +
+        $unionGuard = if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) { '(?![^\S\r\n]*\|(?!\|))' } else { '' }
+        $valueOpener = '(?:@?["''](?<v>[^"'']{8,})["'']' + $unionGuard +
             '|(?:\$@?|@\$)["'']' + $valueHoles + '(?<v>[^"'']{8,})["'']' +
             '|"""\s*(?<v>[^"\s][^"]{7,})"""' +
             $(if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) { '|`(?<v>(?=[^`\s]{8})(?>(?:(?!\$\{)[^`\s])+))`' } else { '' }) + ')'
@@ -934,10 +935,11 @@ foreach ($write in $writes) {
         # or any other character, 200 items at most, all disjoint and atomic, so a long run of blanks cannot be re-split).
         $ncArg = '(?:[^,"''()\r\n;]|"[^"\r\n]{0,200}"|''[^''\r\n]{0,200}''|\([^()\r\n]{0,60}\))'
         $urlOpen = if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) { '["''`]' } else { '["'']' }
-        $keyedPattern = '(password|passwd|pwd|secret|ap[i\u0130\u0131][_-]?key|access[_-]?key|client[_-]?secret)(?>["'' ]*)(?>\??)(?:=>|(?>\][^\S\r\n]*)=|(?>\{[^{}\r\n]{0,80}\}[^\S\r\n]*)=|(?::[^\S\r\n]*' + $type + '(?:[^\S\r\n]*\|[^\S\r\n]*' + $type + ')*[^\S\r\n]*)?[:=])\s*' + $valueOpener +
+        $credName = '(?:password|passwd|pwd|secret|ap[i\u0130\u0131][_-]?key|access[_-]?key|client[_-]?secret)'
+        $keyedPattern = '(?:(?<=[\w>?\]][^\S\r\n]+)' + $credName + '(?>["'' ]*)(?>\??)=>|' + $credName + '(?>["'' ]*)(?>\??)(?:(?>\][^\S\r\n]*)=|(?>\{[^{}\r\n]{0,80}\}[^\S\r\n]*)=|(?::[^\S\r\n]*' + $type + '(?:[^\S\r\n]*\|[^\S\r\n]*' + $type + ')*[^\S\r\n]*)?[:=]))\s*' + $valueOpener +
             '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']' +
             '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']' +
-            '|NetworkCredential\s*\((?>\s*)(?>' + $ncArg + '{0,200})' + ',\s*[$@]{0,2}["''](?!\{)(?<strict>)(?<v>[^"''\r\n]{4,})["'']\s*[,)]' +
+            '|NetworkCredential\s*\((?>\s*)(?>' + $ncArg + '{0,200})' + ',\s*[$@]{0,2}["''](?!\{)(?<strict>)(?<v>[^"''\r\n]{4,})["'']' +
             '|' + $urlOpen + '[A-Za-z][A-Za-z0-9+.\-]{0,20}://(?>(?<u>[^/\s:@"''`?#]+)):(?![${<%])(?<strict>)(?<v>[^/\s@"''`?#]+)@'
         $tooManyValues = $false
         foreach ($m in [regex]::Matches($content, $keyedPattern, $ci)) {
