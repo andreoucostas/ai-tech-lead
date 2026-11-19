@@ -2347,7 +2347,7 @@ function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log
     if ($class -eq 'none') {
         $message = 'This run does not grant that permission.'
         if ($CompleteReview -and $BundleRoot) {
-            $message = "Not approved. This run approves only single commands with literal paths, one per call, no variables, chaining or pipes, and only under $BundleRoot : pwsh -NoProfile -File scripts/review-scope.ps1 ... -OutputPath <a new folder under $BundleRoot>; pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -ScopePath <the bundle>; Get-FileHash -LiteralPath <file under $BundleRoot>; Remove-Item -LiteralPath <path under $BundleRoot>; Read, Glob and Grep under $BundleRoot."
+            $message = "This request is not approved. Commands the session's allow list covers still run as before. For a review bundle this run also approves, as single commands with literal paths, one per call, no variables, chaining or pipes, only under $BundleRoot : pwsh -NoProfile -File scripts/review-scope.ps1 ... -OutputPath <a new folder under $BundleRoot>; pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -ScopePath <the bundle>; Get-FileHash -LiteralPath <file under $BundleRoot>; Remove-Item -LiteralPath <path under $BundleRoot>; Read, Glob and Grep under $BundleRoot."
         }
         return [pscustomobject]@{ behavior = 'deny'; message = $message }
     }
@@ -5409,7 +5409,7 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     $denyOff = Get-DialogAnswer $pushRequest 'review' -BundleRoot $root -ScratchRoot $scratchFake
     $denyNoRoot = Get-DialogAnswer $pushRequest 'review' -CompleteReview
     if ($denyOff.message -cne $oldText -or $denyNoRoot.message -cne $oldText) { throw "B-416 dialog the opt-in off denial message is not the old text: $($denyOff.message)" }
-    if (-not $denyOn.message.Contains($root) -or $denyOn.message.Length -gt 700 -or $denyOn.message -cnotmatch 'review-scope\.ps1' -or $denyOn.message -cnotmatch 'test-weakening-scan\.ps1' -or $denyOn.message -cnotmatch 'Get-FileHash -LiteralPath' -or $denyOn.message -cnotmatch 'Remove-Item -LiteralPath' -or $denyOn.message -cnotmatch 'no variables, chaining or pipes') { throw "B-416 dialog the opt-in on denial message does not name the bundle root and what is approved: $($denyOn.message)" }
+    if (-not $denyOn.message.Contains($root) -or $denyOn.message.Length -gt 800 -or $denyOn.message -cnotmatch 'allow list covers still run' -or $denyOn.message -cnotmatch 'review-scope\.ps1' -or $denyOn.message -cnotmatch 'test-weakening-scan\.ps1' -or $denyOn.message -cnotmatch 'Get-FileHash -LiteralPath' -or $denyOn.message -cnotmatch 'Remove-Item -LiteralPath' -or $denyOn.message -cnotmatch 'no variables, chaining or pipes') { throw "B-416 dialog the opt-in on denial message does not name the bundle root and what is approved: $($denyOn.message)" }
     # 8.3 short names: the root is on its long form; a request in short form is refused unless it is the root's own form.
     if ([OperatingSystem]::IsWindows()) {
         $longDir = Join-Path $tempDir 'B416SelfTestLongFolderName'
