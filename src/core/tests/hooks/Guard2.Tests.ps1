@@ -90,6 +90,11 @@ $formStallCases = @(
     @{ n = 'a credential name and an unclosed C# raw string of 250000 characters';          f = 'src/Foo.cs'; c = ('var password = """' + ('a' * 250000)); exit = 0 }
     @{ n = 'a credential name and an unclosed interpolated string of 85000 holes';         f = 'src/Foo.cs'; c = ('var password = $"' + ('{a}' * 85000)); exit = 0 }
     @{ n = 'a credential name and an unclosed TypeScript template of 250000 characters';    f = 'src/db.ts';  c = ('const password = `' + ('a' * 250000)); exit = 0 }
+    @{ n = '2000 NetworkCredential( openings, each with a 100-character first argument'; f = 'src/Foo.cs'; c = (('new NetworkCredential(' + ('a' * 100) + ' ') * 2000); exit = 0 }
+    @{ n = '12000 NetworkCredential(a, openings with no literal after the comma';       f = 'src/Foo.cs'; c = ('NetworkCredential(a, ' * 12000); exit = 0 }
+    @{ n = 'a quoted URL whose user name runs on for 250000 characters';                f = 'src/Foo.cs'; c = ('var u = "http://' + ('a' * 250000)); exit = 0 }
+    @{ n = 'a quoted URL whose password runs on for 250000 characters, with no @';      f = 'src/Foo.cs'; c = ('var u = "http://a:' + ('b' * 250000)); exit = 0 }
+    @{ n = '15000 quoted URLs with a user and an empty password';                       f = 'src/Foo.cs'; c = ('"http://aaaaaaaa:' * 15000); exit = 0 }
     @{ n = '20000 literals that open with ; and hold no password pair, beside one pair';    f = 'src/Foo.cs'; c = ('var q = "SET Password=ab"; ' + ('"; aaaaaaaaa' * 20000)); exit = 0 }
 )
 foreach ($stall in $formStallCases) {

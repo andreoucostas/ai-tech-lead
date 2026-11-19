@@ -6,6 +6,8 @@
 
 ## 0.99.0 — Unreleased
 
+- **The write guard now reads a `NetworkCredential` password and a URL password.** `new NetworkCredential("svc", "…")` and a quoted URL such as `"amqp://svc:…@host"` with a password in it are refused like any hardcoded password; a README-style `user:pass@` or `user:password@` and a URL whose password is a variable or a placeholder stay allowed. The forms the guard leaves to your CI secret scanning (a `Dictionary` initializer, `SetEnvironmentVariable`, VB, `string.Join`, a `??` fallback and others) are now listed once in `docs/enforcement-surfaces.md`, and `docs/ci-integration.md` points to that list.
+
 - **The write guard now reads a property, raw-string, template and piece password.** A hardcoded password written as `public string Password { get; set; } = "…"`, `var password = $"…"`, a C# raw string `"""…"""`, a TypeScript `password?: "…"` or backtick template, or as `";Password=…"` joined after a variable (`"Server=" + host + ";Password=…"`) is now refused like a plain `password = "…"`. A message, a mask, an interpolation of variables only (`$"{config.Secret}"`) and a Markdown code span stay allowed.
 
 - **The write guard no longer blocks a masked connection string.** A `"Password=****;"`, `xxxx`, `NULL` or `redacted` piece joined to another quoted literal was read as a real password and refused the write; a password value that is only asterisks (three or more), only `x` (three or more), `NULL` or `redacted` is now treated as a mask. A real password beside a mask is still refused.

@@ -131,7 +131,9 @@ feeds the required-builds merge check.
 ## Recommended alongside (not part of the required build)
 
 - **Native secret scanning** — Bitbucket DC 8.12+ ships push-time secret scanning; a project
-  admin can enable blocking mode. Zero custom code; covers every push including `--no-verify`.
+  admin can enable blocking mode. Zero custom code; covers every push including `--no-verify`. The write
+  guard reads only the commonest hardcoded-password shapes; the forms it leaves to this scanner are listed
+  under "What the secrets floor matches" in `docs/enforcement-surfaces.md`.
 - **Code Insights** — optionally publish leg 1/leg 2 verdicts to the PR view via the REST API
   (`/rest/insights/1.0/...`). Cosmetic on top of required builds, not a substitute.
 - **Renovate / Semgrep or SonarQube** — dependency and SAST scanning, each only for the ecosystems and

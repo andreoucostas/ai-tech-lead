@@ -4860,3 +4860,14 @@ tool; both vendors say a tool list is the boundary and an instruction is not.
 tools, and the shipped text stops saying read-only. Rejected: dropping the shell, which moves the bundle-hash recompute to the parent across six agents,
 six wrappers, `review.md` and `security-gate.md`. Waits for Copilot access: the change needs a host check that a reviewer starts and reads its bundle.
 **Reopen** if a reviewer is seen changing a file or running a command that changes the tree.
+## WSD-134: the write guard owns a credential form only when four things hold; the rest is left to CI secret scanning (2026-11-19)
+
+**Context.** B-499: B-487's attacks listed credential forms the guard passed, and a mask (`Password=****` joined to a literal) it blocked.
+**Decision (the maintainer's, in chat 2026-11-19; design by a Fable review).** The guard owns a form only when (1) a credential name or an unambiguous
+constructor sits beside a quoted literal on one line, (2) an agent writes it by accident in C# or TypeScript, (3) it matches in linear time, (4) a survey of real files
+shows no unexplained false block. Owned: an auto-property initializer, a keyed `$"`, `"""` or (.ts/.js only) backtick value and `password?:`, a connection-string piece that
+opens with `;` after `+ = ( ,`, `new NetworkCredential(x, "…")`, URL userinfo in a quoted literal (a password of only pass/password/secret is a README's), and a mask
+(`***`, `xxx`, NULL, redacted) is no password. Left to CI: Dictionary initializer, `SetEnvironmentVariable`, Redis `,password=`, VB, `string.Join`/`Concat`, `AppendFormat`, `.Add`/`.push`,
+`;;`, a quote inside the literal, JDBC, a no-break space, an `@`-opening password, a one-pair literal alone, `??`/`||` fallbacks. Rejected: an entropy rule (hardcoded passwords are
+low-entropy; it blocks hashes and GUIDs). The guard fails closed only for a write-shaped event it cannot parse: failing closed on every unparseable call stalls the agent's other tools.
+**Reopen** on a field report of a leaked owned-class form or of a false block from these forms.

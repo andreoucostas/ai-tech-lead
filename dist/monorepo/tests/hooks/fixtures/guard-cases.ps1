@@ -361,6 +361,22 @@ $GuardCases = @(
     @{ n='Password: label in a message string (allow)'; f='src/Db.cs'; c='var label = "Password: ";'; block=$false }
     @{ n='masked ;Password= piece removed from a message (allow)'; f='src/Db.cs'; c='var m = s.Replace(";Password=****", "");'; block=$false }
     @{ n='message that starts with a semicolon and a password word (allow)'; f='src/Db.cs'; c='Log("; password expired for the user");'; block=$false }
+    # NetworkCredential and URL userinfo.
+    @{ n='NetworkCredential constructed with a password literal'; f='src/Db.cs'; c="var c = new NetworkCredential(`"svc`", `"$sqlPassword`");"; block=$true }
+    @{ n='NetworkCredential constructed with a variable user and a password literal'; f='src/Db.cs'; c="var c = new NetworkCredential(user, `"$sqlPassword`");"; block=$true }
+    @{ n='NetworkCredential constructed with two variables (allow)'; f='src/Db.cs'; c='var c = new NetworkCredential(user, password);'; block=$false }
+    @{ n='NetworkCredential constructed with an empty password (allow)'; f='src/Db.cs'; c='var c = new NetworkCredential("svc", "");'; block=$false }
+    @{ n='NetworkCredential constructed with an interpolated variable (allow)'; f='src/Db.cs'; c='var c = new NetworkCredential("svc", $"{secret}");'; block=$false }
+    @{ n='NetworkCredential constructed with a placeholder (allow)'; f='src/Db.cs'; c='var c = new NetworkCredential("svc", "<from-vault>");'; block=$false }
+    @{ n='quoted amqp URL with a user and a password'; f='src/Bus.cs'; c="var uri = `"amqp://svc:$sqlPassword@mq.host`";"; block=$true }
+    @{ n='TypeScript single-quoted postgres URL with a user and a password'; f='src/db.ts'; c="const url = 'postgres://app:$sqlPassword@db.host/app';"; block=$true }
+    @{ n='quoted URL with a user and no password (allow)'; f='src/Bus.cs'; c='var uri = "amqp://svc@mq.host";'; block=$false }
+    @{ n='README illustration of a URL whose password is the word pass (allow)'; f='src/Bus.cs'; c='var uri = "https://user:pass@host";'; block=$false }
+    @{ n='README illustration of a URL whose password is the word password (allow)'; f='src/Bus.cs'; c='var uri = "http://username:password@host/db";'; block=$false }
+    @{ n='quoted URL with an interpolated password (allow)'; f='src/Bus.cs'; c='var uri = $"amqp://svc:{secret}@mq.host";'; block=$false }
+    @{ n='quoted URL with a placeholder password (allow)'; f='src/Bus.cs'; c='var uri = "amqp://svc:<password>@mq.host";'; block=$false }
+    @{ n='quoted URL with a port and an at sign in the query (allow)'; f='src/Bus.cs'; c='var uri = "https://api.host:8080/x?mail=a@b.c";'; block=$false }
+    @{ n='URL with a password in a code comment, outside a literal (allow)'; f='src/Bus.cs'; c="// the broker lives at amqp://svc:$sqlPassword@mq.host"; block=$false }
 )
 
 # The edit events of the two surfaces, for the cases that carry o: Claude Code's Edit (file_path, old_string, new_string)

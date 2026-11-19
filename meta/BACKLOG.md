@@ -27,21 +27,20 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 10 | B-419 | Improvement with no field report; starts with a hand-read of the retained security passes |
 | 11 | B-468 | Measured, not field-raised: 2 of 26 plain bug fixes skipped the regression test, wrongly saying a SQLite test needs a new package; the agent said the fix was untested |
 | 12 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
-| 13 | B-499 | Secret-leak class, B-487's step-4 attacks: the guard still passes an auto-property initializer, `NetworkCredential`, URL userinfo and other credential forms; guarded, step 4 |
-| 14 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations; decided 2026-11-19: the guard refuses a settings write that drops its own registration and any write to the hook files; guarded, step 4 |
-| 15 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only; decided 2026-11-19: keep the shell, give the Copilot wrappers a tool list and stop saying read-only; blocked on Copilot access for the host check |
-| 16 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
-| 17 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
-| 18 | B-520 | One small leftover of the 2026-11-14 reviews: move headless `/adopt` into its own file; needs a maintainer decision first |
-| 19 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
-| 20 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
-| 21 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
-| 22 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
-| 23 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
-| 24 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
-| 25 | B-531 | Maintainer request: a full implementation plan, each put through an adversarial review, for the items decided 2026-11-19 (the review line's shipping change, B-490, B-504, B-530); after B-416's measurement |
-| 26 | B-532 | Maintainer request: re-read current Claude Code, Copilot CLI and VS Code guidance for what the framework ships that is now outdated or can be deleted, such as `CLAUDE.md` if every host reads `AGENTS.md` |
-| 27 | B-533 | Maintainer request: review the testing strategy, whether end-to-end tests belong in it, and what published practice says about releasing fast; report before any change |
+| 13 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations; decided 2026-11-19: the guard refuses a settings write that drops its own registration and any write to the hook files; guarded, step 4 |
+| 14 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only; decided 2026-11-19: keep the shell, give the Copilot wrappers a tool list and stop saying read-only; blocked on Copilot access for the host check |
+| 15 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
+| 16 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
+| 17 | B-520 | One small leftover of the 2026-11-14 reviews: move headless `/adopt` into its own file; needs a maintainer decision first |
+| 18 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
+| 19 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
+| 20 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
+| 21 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
+| 22 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
+| 23 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
+| 24 | B-531 | Maintainer request: a full implementation plan, each put through an adversarial review, for the items decided 2026-11-19 (the review line's shipping change, B-490, B-504, B-530); after B-416's measurement |
+| 25 | B-532 | Maintainer request: re-read current Claude Code, Copilot CLI and VS Code guidance for what the framework ships that is now outdated or can be deleted, such as `CLAUDE.md` if every host reads `AGENTS.md` |
+| 26 | B-533 | Maintainer request: review the testing strategy, whether end-to-end tests belong in it, and what published practice says about releasing fast; report before any change |
 
 ## Open entries
 
@@ -116,12 +115,6 @@ B-489's round-2 attack: the guard does not refuse a Write to `.claude/settings.j
 **Priority:** P3 · **Effort:** S to M · **Invariants:** #1 #7
 **Status:** Open. Shipped 2026-11-17 for 0.99.0: `/review` merges findings on one `file:line`, maps every reviewer's scale to blocker, should-fix or note, ends with one verdict line naming the blocker count and the reviewers returned or missing, and names a reviewer that errors as missing; existing debt entries and justified bloat do not block; `bloat-radar` and `solid-check` agree on delegation, the lines-per-file heuristic is gone, and the commented-out-code threshold is one line everywhere.
 Remaining: merge the three Haiku reviewers (convention-check, bloat-radar, debt-radar; B-427) into one pass, measured with B-467's 12-defect harness, and do the de-duplication there. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
-### B-499 · Credential forms the write guard still does not read after B-487
-**Filed against:** v0.98.4 (2026-11-10)
-**Priority:** P3 · **Effort:** M · **Invariants:** #3 #5 #7
-**Status:** Open; B-487's step-4 attacks (a sub-session's runs, not re-run). Not read: an auto-property initializer `public string Password { get; set; } = "…"`, Redis `password=`, URL userinfo outside a connection-string key, a backtick string, a `Dictionary` initializer, `new NetworkCredential(…)`, `SetEnvironmentVariable`, `password?:`, a `"""` or `$"` literal, a `??` or `||` fallback, VB; and B-487's stated limits: `string.Join`, `;;`, a quote inside the literal, a JDBC neighbour, a `:` in a neighbouring key, the computed key `['password']:`, a no-break space or vertical tab, a one-pair literal standing alone, a variable between the pieces (`"Server=" + host + ";Password=…"`, the commonest real shape), VB `&`, `+=`, `string.Concat`, `AppendFormat`, `.Add(` or `.push(` pieces, an unkeyed password opening with `@`; and its false blocks on a mask, message or SQL text that is a piece of a longer string.
-Candidate: decide per form whether the guard or CI secret scanning owns it; extending the guard is guarded, step 4, and each form needs its false-block survey (B-487 audited 145 repo and 476 npm files).
-B-489's round-2 attack: the patch (U+FEFF header, repeated `*** Move to:`) and unparseable-input gaps are fixed (B-499 part 1); VS Code agent-mode `insert_edit_into_file`, `edit_notebook_file`, `multi_replace_string_in_file` and Claude Code's `MultiEdit` items are now read, with every path field of an item deciding (checked against the VS Code 1.146 package schema, not a live hook event; two attack rounds run on it). Open from those attacks: an item path under an unknown key such as `uri`, a non-string path, and `code` under an unknown tool name without `explanation`. Round 2 left, pre-existing: a `toolArgs` array, `str_replace_based_edit_tool`, an unknown tool with a string `tool_input`, and a nested `input:{input}` are not read as writes.
 ### B-504 · The reviewers are read-only in prose only: a shell on Claude Code, every tool on Copilot
 **Filed against:** v0.98.6 (2026-11-13)
 **Priority:** P2 · **Effort:** S for a tool list, M to drop the shell · **Invariants:** #2 #5 #7

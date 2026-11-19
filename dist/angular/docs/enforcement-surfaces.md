@@ -237,7 +237,13 @@ organization enforces.
 > fixture, example, sample and `Development` paths, also a quoted value of 8 or more characters
 > assigned to a name ending in password, secret, API key, access key or client secret (the name may
 > end an indexer key such as `config["Password"]`, may carry a type annotation as in
-> `password: string = "…"`, and the value may be a verbatim `@"…"` string), and a connection string
+> `password: string = "…"`, a C# accessor block as in `public string Password { get; set; } = "…"`
+> or a TypeScript `?` as in `password?: "…"`, and the value may be a verbatim `@"…"`, an interpolated
+> `$"…"` that holds more than variables, a C# raw `"""…"""` or, in a `.ts` or `.js` file, a backtick
+> string), a `new NetworkCredential(user, "…")` whose second argument is a literal of 4 or more
+> characters, a quoted URL that starts with a scheme and holds `user:password@`
+> (`"amqp://svc:<password>@host"`), unless its password is only `pass`, `password`, `passwd`, `pwd`, `pw` or
+> `secret` (a README's illustration), and a connection string
 > with a password of 4 or more characters or a `user:password@` address, whether under a
 > `connectionString` key, in a quoted `"ConnectionStrings": { … }` object such as
 > `appsettings.json`'s, or with no key before it (passed to `UseSqlServer`, `new SqlConnection` or a
@@ -251,7 +257,8 @@ organization enforces.
 > one pair, with or without a trailing `;`, as a piece of a longer string: the argument of
 > `.Append(` or `.AppendLine(`, or joined by `+` (blanks and newlines allowed) to the next or the
 > previous quoted literal when that literal holds a `key=value` pair (`"Server=db;" + "User Id=app;"
-> + "Password=…"`). A literal of one such pair on its own (a regex or a mask, a log or exception
+> + "Password=…"`), or opens with `;` after a `+`, `=`, `(` or `,` (`"Server=" + host + ";Password=…"`,
+> `cs += ";Password=…"`). A literal of one such pair on its own (a regex or a mask, a log or exception
 > message, SQL text, a flag) is not read. A value that opens with `{` or `$` (an interpolation hole
 > or a variable) or `@` (a SQL parameter) is not read as a password, the Service Bus emulator's
 > published key value `SAS_KEY_VALUE` is never read as one, wherever it stands, and the placeholder
@@ -260,28 +267,28 @@ organization enforces.
 > it in parts, because the hook could not check them inside its time limit; a value counts once
 > however many passes and matches read it (500 token values in a `ConnectionStrings` object pass,
 > the 501st blocks).
-> **Not matched:** an unquoted generic value (an `.env` line or a YAML scalar) unless it has one of
-> the key formats above; a connection string literal that spans lines, holds one pair that is not a
-> piece of a longer string, or is built by `string.Join(";", …)` or a TypeScript `.join(';')`, or a
-> piece joined to a neighbour that holds no `key=value` pair (a variable between the pieces, as in
-> `"Server=" + host + ";Password=…"`), joined by VB `&`, F# `^` or across a comment line, added by
-> `+=`, `string.Concat`, `AppendFormat`, `.Add(` or `.push(`, or passed to `.Append (` with a space;
-> a `;;` between
-> pairs, a quote of the other kind or an escaped quote inside the literal, a JDBC neighbour with no
-> `=`, a `:` in a neighbouring key, a no-break space or vertical tab before the key; the computed key
-> `{ ['password']: '…' }`. **False blocks:** compact code with no spaces between two literals
-> (`u.Name="bob";u.Password=Hash(p);…`), and a message or SQL text that is one piece of a longer
-> string: an `.Append(` or `.AppendLine(` of `Password=[REDACTED]`, a `Password=required;` message
-> joined to an `Email=required;` piece, or a `SET Password=NULL WHERE Id=1` piece. A password value
-> that is only asterisks (three or more), only `x` (three or more), `NULL` or `redacted` is a mask,
-> not read as a password. Also not matched: a
-> name that does not end in one of those words (`SecretKey`); an `appSettings`
-> `<add key="DbPassword" value="…" />`; flat
-> `ConnectionStrings:Main` or `ConnectionStrings__Main` keys (user secrets, `launchSettings.json`,
-> docker-compose); other key formats, such as Stripe's `sk_live_`; ConnectionStrings entries after a
-> brace in a JSON comment or after a nested object; and anything the edit and shell caveats above
-> exclude.
-> **Team waiver:** a path listed in `.claude/guard-allowlist.txt` skips the key-format and credential checks (a real secret written there passes), not the suppression and test checks; every agent write to that file, an empty edit, a patch deletion and an 8.3 short name included, is blocked, so your team edits it by hand and reviews it in a pull request (a shell command that edits it is not seen).
+> **Left to CI secret scanning (not matched):** an unquoted generic value (an `.env` line or a YAML
+> scalar) unless it has one of the key formats above; a `Dictionary` initializer; `SetEnvironmentVariable`;
+> a Redis `,password=` pair; VB (`&`) and F# (`^`) joins; `string.Join(";", …)`, a TypeScript `.join(';')`,
+> `string.Concat`, `AppendFormat`, and a piece added by `.Add(` or `.push(`; a piece joined to a neighbour
+> that holds no `key=value` pair, unless the piece opens with `;`; a join across a comment line; `.Append (`
+> with a space; a `;;` between pairs; a quote of the other kind or an escaped quote inside the literal; a
+> JDBC neighbour with no `=`; a `:` in a neighbouring key; a no-break space or vertical tab before the key;
+> a password that opens with `@`; a one-pair literal on its own, a connection string that
+> spans lines, and a `??` or `||` fallback (`password ?? "…"`); the computed key `{ ['password']: '…' }`; a
+> name that does not end in one of the words above (`SecretKey`); an `appSettings`
+> `<add key="DbPassword" value="…" />`; flat `ConnectionStrings:Main` or `ConnectionStrings__Main` keys
+> (user secrets, `launchSettings.json`, docker-compose); other key formats, such as Stripe's `sk_live_`;
+> ConnectionStrings entries after a brace in a JSON comment or after a nested object; a URL password
+> outside a quoted literal; and anything the edit and shell caveats above exclude. The guard owns a form only
+> when a credential name or constructor sits beside a quoted literal on one line, an agent writes it by
+> accident in C# or TypeScript, it matches in linear time, and a survey of real files finds no false block; a
+> generic high-entropy rule was rejected because hardcoded passwords are low-entropy and it blocks hashes and
+> GUIDs. **False blocks:** compact code with no spaces between two literals (`u.Name="bob";u.Password=Hash(p);…`),
+> and a message or SQL text that is one piece of a longer string: an `.Append(` or `.AppendLine(` of
+> `Password=[REDACTED]`, or a `Password=required;` message joined to an `Email=required;` piece. A password value
+> that is only asterisks (three or more), only `x` (three or more), `NULL` or `redacted` is a mask, not read as a
+> password.> **Team waiver:** a path listed in `.claude/guard-allowlist.txt` skips the key-format and credential checks (a real secret written there passes), not the suppression and test checks; every agent write to that file, an empty edit, a patch deletion and an 8.3 short name included, is blocked, so your team edits it by hand and reviews it in a pull request (a shell command that edits it is not seen).
 
 ## Why the differences (the load-bearing facts)
 - **Claude Code** consumes `UserPromptSubmit` stdout and honours `PreToolUse` `exit 2`. `route-prompt` detects this surface (Claude events carry `hook_event_name`) and emits plain stdout there.

@@ -908,8 +908,13 @@ foreach ($write in $writes) {
         # name and the "=" are atomic or disjoint, so a long run of spaces or quotes cannot be re-split.
         $type = '[A-Za-z_$][\w$.]*(?:\[\])*'
         # The value after the "=": a quoted string of 8 or more characters, opened by a plain quote, a verbatim @"...", an
-        # interpolated $"..." (not one that holds only {holes}), a C# raw """...""" or, in a .ts or .js file only (Markdown code spans use backticks), a backtick template. The
-        # name may also be followed by a C# accessor block (Password { get; set; } = "...") or a TypeScript "?" (password?: "...").
+        # interpolated $"..." (not one that holds only {holes}), a C# raw """...""" or, in a .ts or .js file only (a Markdown
+        # code span uses backticks), a backtick template. The name may also be followed by a C# accessor block
+        # (Password { get; set; } = "...") or a TypeScript "?" (password?: "..."). Two forms need no name: the second argument
+        # of new NetworkCredential(user, "...") when it is a literal of 4 or more characters, and a quoted URL that starts
+        # with a scheme and holds user:password@ ("amqp://svc:...@host"). A URL password that opens with $, {, < or %, and a
+        # NetworkCredential password that opens with {, is a variable, an interpolation hole or a placeholder, not a literal;
+        # a URL password that is only pass, password, passwd, pwd, pw or secret is a README's illustration, not a credential.
         $valueHoles = '(?!(?:\{[^{}"'']*\})+["''])'
         $valueOpener = '(?:@?["''](?<v>[^"'']{8,})["'']' +
             '|(?:\$@?|@\$)["'']' + $valueHoles + '(?<v>[^"'']{8,})["'']' +
@@ -917,7 +922,9 @@ foreach ($write in $writes) {
             $(if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) { '|`(?<v>[^`]{8,})`' } else { '' }) + ')'
         $keyedPattern = '(password|passwd|pwd|secret|ap[i\u0130\u0131][_-]?key|access[_-]?key|client[_-]?secret)(?>["'' ]*)(?>\??)(?:(?>\][^\S\r\n]*)=|(?>\{[^{}\r\n]{0,80}\}[^\S\r\n]*)=|(?::[^\S\r\n]*' + $type + '(?:[^\S\r\n]*\|[^\S\r\n]*' + $type + ')*[^\S\r\n]*)?[:=])\s*' + $valueOpener +
             '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']' +
-            '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']'
+            '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']' +
+            '|NetworkCredential\s*\(\s*(?>[^,()"''\r\n]{1,100}|"[^"\r\n]*"|''[^''\r\n]*'')\s*,\s*[$@]{0,2}["''](?!\{)(?<v>[^"''\r\n]{4,})["'']' +
+            '|["''`][A-Za-z][A-Za-z0-9+.\-]{0,20}://(?>[^/\s:@"''`]+):(?![${<%])(?!(?:pass(?:w(?:or)?d)?|pwd|pw|secret)@)(?<v>[^/\s@"''`]+)@'
         $tooManyValues = $false
         foreach ($m in [regex]::Matches($content, $keyedPattern, $ci)) {
             if (Test-CredentialMatch $m 0) { $credentialHit = $true; break }
