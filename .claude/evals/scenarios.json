@@ -742,7 +742,7 @@
     },
     {
       "id": "b416-dialog-go",
-      "measures": "B-416 part 2 (.claude/plans/2026-11-19-b416-review-offer.md, 'Part 2'): the clickable form on prompt K. One process on the control channel, where the host lists its question tool; the runner clicks the option without review when the agent asks, and types b416-review-go's reply when the first turn ends with nothing written. With the candidate patch (b416-review-question.patch): is the go-ahead asked as a question that offers 'with review', and does a click on 'Go ahead' start no review? Without the patch it is the control. It counts the review skill call, not a completed review.",
+      "measures": "B-416 part 2 (.claude/plans/2026-11-19-b416-review-offer.md, 'Part 2'): the clickable form on prompt K. One process on the control channel, where the host lists its question tool; the runner clicks the option without review when the agent asks, and types b416-review-go's reply when the first turn ends with nothing written. Since the ship the shipped carrier holds the measured wording, so a run without a target patch is the T5 arm (b416-review-question.patch is kept as the record of the measured candidate and no longer applies): is the go-ahead asked as a question that offers 'with review', and does a click on 'Go ahead' start no review? It counts the review skill call, not a completed review.",
       "stack": "dotnet",
       "fixture": "orders-v2",
       "overlay": "b514-orders",
@@ -755,7 +755,7 @@
     },
     {
       "id": "b416-dialog-asked-plain",
-      "measures": "B-416 part 2: the clickable form on a plain new resource (b416-review-asked-plain's prompt and typed reply). The runner clicks the option that says 'with review' when the agent asks: is this repository's review skill called after the first file change? Run with the candidate patch only. It counts the review skill call, not a completed review.",
+      "measures": "B-416 part 2: the clickable form on a plain new resource (b416-review-asked-plain's prompt and typed reply). The runner clicks the option that says 'with review' when the agent asks: is this repository's review skill called after the first file change? Since the ship the shipped carrier holds the measured wording, so a run without a target patch is the T5 arm (the patch is kept as the record of the measured candidate and no longer applies). It counts the review skill call, not a completed review.",
       "stack": "dotnet",
       "fixture": "orders-v2",
       "overlay": "b514-orders",
@@ -768,7 +768,7 @@
     },
     {
       "id": "b416-dialog-asked",
-      "measures": "B-416 amendment 4: the clickable form on prompt K (b416-review-asked's prompt and typed reply), with the click on 'with review': on a security-sensitive change, does the security gate run first, and the review not in its place? Run with the candidate patch only. It shows the gate's call and order, not a completed review.",
+      "measures": "B-416 amendment 4: the clickable form on prompt K (b416-review-asked's prompt and typed reply), with the click on 'with review': on a security-sensitive change, does the security gate run first, and the review not in its place? Since the ship the shipped carrier holds the measured wording, so a run without a target patch is the T5 arm (the patch is kept as the record of the measured candidate and no longer applies). It shows the gate's call and order, not a completed review.",
       "stack": "dotnet",
       "fixture": "orders-v2",
       "overlay": "b514-orders",
@@ -781,7 +781,7 @@
     },
     {
       "id": "b416-dialog-asked-full",
-      "measures": "B-416 amendment 5: prompt K, the click on 'with review' (b416-dialog-asked's prompt and typed reply), with the runner allowing the scope capture, the weakening scan and bundle reads on the control channel (completeReview), so the security gate and the review can reach verdicts. It shows whether they did, read by hand: the permission requests are in the transcript's .permissions.jsonl. Run with the candidate patch only.",
+      "measures": "B-416 amendment 5: prompt K, the click on 'with review' (b416-dialog-asked's prompt and typed reply), with the runner allowing the scope capture, the weakening scan and bundle reads on the control channel (completeReview), so the security gate and the review can reach verdicts. It shows whether they did, read by hand: the permission requests are in the transcript's .permissions.jsonl. Since the ship the shipped carrier holds the measured wording: run without a patch (the candidate patch is kept as the record and no longer applies).",
       "stack": "dotnet",
       "fixture": "orders-v2",
       "overlay": "b514-orders",

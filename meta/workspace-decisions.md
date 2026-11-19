@@ -4883,3 +4883,24 @@ opens with `;` after `+ = ( ,`, `new NetworkCredential(x, "…")`, URL userinfo 
 `;;`, a quote inside the literal, JDBC, a no-break space, an `@`-opening password, a one-pair literal alone, `??`/`||` fallbacks. Rejected: an entropy rule (hardcoded passwords are
 low-entropy; it blocks hashes and GUIDs). The guard fails closed only for a write-shaped event it cannot parse: failing closed on every unparseable call stalls the agent's other tools.
 **Reopen** on a field report of a leaked owned-class form or of a false block from these forms.
+
+## WSD-136: on a risk change the go-ahead question lists the review option first, marked recommended, and keeps a third option for the other design (2026-11-19)
+
+**Context.** WSD-134 chose the go-ahead question and did not take up a second question for Option A or B on a risk change. B-416 amendment 5 measured the wording that carries the order.
+**Decision (the maintainer's, in chat 2026-11-19: "Do all of them 2&3 too", answering the architect's recommendations, among them listing the review option first and marking it recommended, and keeping a third option for the design not recommended).** On a risk change the question lists `Go ahead, with review (Recommended)` first and adds a third option for the design the agent did not recommend. This amends WSD-134's "Not taken up" sentence: the third option for the other design is now kept, in the same question, not a second question. The rest of WSD-134 stands.
+**Evidence.** ORDER 6 of 6 and ORDER-PLAIN 2 of 3 (`meta/eval-results.md`, "B-416 amendment 5 results").
+**Reopen** if developers report reviews running on changes that did not need one.
+
+## WSD-137: on a security-sensitive change a review asked for runs after the security gate, never in its place, and the agent may ask before it (2026-11-19)
+
+**Context.** B-416: the maintainer chose the review option; on a security-sensitive change the security gate already runs, and the order and the pause were open.
+**Decision (the architect's recommendation; the maintainer, in chat 2026-11-19: "It all sounds sensible to me", then "Do all of them 2&3 too"; on the pause question, "Accept the pause (Recommended)").** The security gate runs first and the review after it, never in its place. After a gate verdict that asks for changes the agent may ask the developer before running the review.
+**Evidence.** GATE FIRST 3 of 3 and COMPLETED 3 of 3, each completed review after one confirmation (`meta/eval-results.md`, "B-416 amendment 5 results", amendment 5a).
+**Reopen** if developers report the pause as a stall, or a review skipped after a gate verdict.
+
+## WSD-138: roles in this workspace, and where paid eval runs start (2026-11-19)
+
+**Context.** Set by the maintainer during B-416's measurement.
+**Decision (the maintainer's, in chat 2026-11-19: "you should be delegating coordination and supervision to opus and he can have sonnet implementing. Your job is that of architecture at all levels.").** Architecture stays with the main session, coordination and supervision go to an Opus agent, implementation to Sonnet agents.
+**Paid eval runs.** They are started from the main session: the permission system refused one from a subagent, and the maintainer said "Run it here."
+**Reopen** if the permission system allows a subagent to start a paid run, or the split costs more than it saves.
