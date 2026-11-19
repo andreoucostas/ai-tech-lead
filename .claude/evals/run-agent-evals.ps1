@@ -59,7 +59,8 @@ $contractFixtures = @('b406-orders', 'b409-orders-ci')
 # which Claude Code carries only with --include-hook-events. Asked for by these two scenarios as well as the contract fixtures.
 $routerProbeScenarios = @('route-fix', 'route-fix-nl', 'route-fix-notest')
 # B-528, B-356 and B-416: the plan graders read hook events and a merged two-leg stream (a followUp), on the framework arm with an overlay.
-$planAssertions = @('optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo')
+# B-537: reviewComments reads the same two legs, and its hook events say whether the router's rails fired (routerIntent).
+$planAssertions = @('optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'reviewComments')
 # The install cases: the agent installs the framework itself, so the runner installs nothing first and -TargetPatch has nothing to patch.
 # B-404: url-install-readme-* are the URL-install cases on the prompt the root README suggests, which asks for the commit.
 $selfInstallScenarios = @('install-handoff', 'archived-redirect', 'url-install-greenfield', 'url-install-brownfield', 'url-install-readme-greenfield', 'url-install-readme-brownfield')
@@ -1904,6 +1905,245 @@ function Get-StaleMapGrade([string]$Id, [string]$Target, [int]$BeforeCommits, $E
     $files = @($written | ForEach-Object { $_ }) -join ','
     $detail = "op=stale arm=$arm pass=$pass answer=$answer map=$map | fact=$fact run=$run runJoin=$runJoin started=$started sums=$sums batchId=$batch | removed=$($removed.Count) added=$($addedLines.Count) disallowed=$($disallowed.Count) kept=$staleKept truthRow=$truthRow loadRunLines=$loadRunLines coverageAdded=$coverageAdded dated=$dated | mapRead=$mapRead loaderRead=$loaderRead scopedPass=$scoped loaderEdited=$loaderEdited | files=$(if ($files) { $files } else { 'none' }) skillCalls=$($skillNames -join ',') denied=$denied durationMs=$(Get-B406Duration $Evidence) turns=$(@($Evidence.Results).Count)"
     return [pscustomobject]@{ Grade = 'GRADED'; Pass = [bool]$pass; Detail = $detail }
+}
+
+# B-537 (.claude/plans/2026-11-19-b537-address-review-comments.md section 5; meta/eval-fixtures/b537-review-comments/): the scratch
+# repository for review-comments-{c,a,ab}. Initialize-GeneratedOverlay has committed the base (the overlay and the arm's patch); this
+# adds the pull request's feature branch as one more commit, the PLANTED HEAD the grader compares the working tree against.
+function Initialize-ReviewCommentsBranch([string]$Path, [string]$FixturesRoot = (Join-Path $repo 'meta/eval-fixtures')) {
+    $branch = Join-Path $FixturesRoot 'b537-review-comments/branch'
+    if (-not (Test-Path -LiteralPath $branch -PathType Container)) { throw "b537-review-comments: $branch is missing. Generate the fixture first (DEVELOPING.md, agent evals)." }
+    git -C $Path branch -M main
+    if ($LASTEXITCODE -ne 0) { throw "b537-review-comments: git branch -M main failed (exit $LASTEXITCODE)." }
+    git -C $Path checkout --quiet -b feature/volume-discount
+    if ($LASTEXITCODE -ne 0) { throw "b537-review-comments: git checkout -b feature/volume-discount failed (exit $LASTEXITCODE)." }
+    Copy-Item -Path (Join-Path $branch '*') -Destination $Path -Recurse -Force
+    git -C $Path add -A
+    git -C $Path commit --quiet -m 'Add volume discount and coupon codes'
+    if ($LASTEXITCODE -ne 0) { throw "b537-review-comments: the feature commit failed (exit $LASTEXITCODE)." }
+}
+
+# The final tree without .git, bin and obj, so a hidden-test run builds from source in a fresh place.
+function Copy-ReviewCommentsTree([string]$From, [string]$To) {
+    New-Item -ItemType Directory -Path $To -Force | Out-Null
+    $root = (Resolve-Path -LiteralPath $From).Path.TrimEnd('\', '/')
+    foreach ($file in Get-ChildItem -LiteralPath $root -Recurse -File -Force) {
+        $relative = [IO.Path]::GetRelativePath($root, $file.FullName).Replace('\', '/')
+        if ($relative -match '(^|/)(\.git|bin|obj)/') { continue }
+        $destination = Join-Path $To $relative
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+        Copy-Item -LiteralPath $file.FullName -Destination $destination
+    }
+}
+
+# B-537 hidden-test leg: copies the final tree to a temp directory, adds hidden/B537HiddenTests.cs to tests/Orders.Tests/, runs the whole
+# test project with the trx logger (so the agent's own tests are in the trx) and returns { Status; Build; Tests; Attempts; Blocked; Message }.
+# Status RAN (Build OK or FAILED; Tests maps a test method name to its outcome, a non-passing result beating Passed for a theory), NO-DOTNET,
+# NOT-RUN (no results and no compile error: a restore failure, say) or BLOCKED. This host's Application Control policy randomly blocks a
+# freshly built DLL (0x800711C7): an attempt whose output or trx says so is not examined, and is retried in a fresh copy up to 3 attempts. The
+# self-test swaps the whole leg through $script:ReviewCommentsHiddenRunner (a scriptblock taking the same two arguments) so it runs no dotnet test.
+function Invoke-ReviewCommentsHiddenTests([string]$Target, [string]$HiddenRoot) {
+    if ($script:ReviewCommentsHiddenRunner) { return & $script:ReviewCommentsHiddenRunner $Target $HiddenRoot }
+    $unexamined = { param([string]$Status, [string]$Message, [int]$Attempts = 0, [int]$Blocked = 0) [pscustomobject]@{ Status = $Status; Build = 'n/a'; Tests = @{}; Attempts = $Attempts; Blocked = $Blocked; Message = $Message } }
+    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { return & $unexamined 'NO-DOTNET' 'dotnet is not available' }
+    $hiddenFile = Join-Path $HiddenRoot 'B537HiddenTests.cs'
+    if (-not (Test-Path -LiteralPath $hiddenFile -PathType Leaf)) { return & $unexamined 'NOT-RUN' "$hiddenFile is missing" }
+    $attempts = 0
+    $blocked = 0
+    $telemetryOptOut = $env:DOTNET_CLI_TELEMETRY_OPTOUT
+    $noLogo = $env:DOTNET_NOLOGO
+    $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
+    $env:DOTNET_NOLOGO = '1'
+    try {
+        while ($attempts -lt 3) {
+            $attempts++
+            $copy = Join-Path ([IO.Path]::GetTempPath()) ('b537-hidden-' + [guid]::NewGuid().ToString('N'))
+            try {
+                Copy-ReviewCommentsTree $Target $copy
+                $testDir = Join-Path $copy 'tests/Orders.Tests'
+                $project = Join-Path $testDir 'Orders.Tests.csproj'
+                if (-not (Test-Path -LiteralPath $project -PathType Leaf)) { return [pscustomobject]@{ Status = 'RAN'; Build = 'FAILED'; Tests = @{}; Attempts = $attempts; Blocked = $blocked; Message = 'tests/Orders.Tests/Orders.Tests.csproj is gone' } }
+                Copy-Item -LiteralPath $hiddenFile -Destination $testDir -Force
+                $results = Join-Path $copy 'results'
+                $output = (& dotnet test $project --logger 'trx;LogFileName=b537.trx' --results-directory $results 2>&1 | Out-String)
+                $trxPath = Join-Path $results 'b537.trx'
+                $trxText = if (Test-Path -LiteralPath $trxPath -PathType Leaf) { [IO.File]::ReadAllText($trxPath) } else { '' }
+                if (($output + $trxText) -match 'Application Control|0x800711C7|800711C7') { $blocked++; continue }
+                if ($trxText) {
+                    $tests = @{}
+                    foreach ($result in ([xml]$trxText).GetElementsByTagName('UnitTestResult')) {
+                        $method = (([string]$result.testName -replace '\(.*$', '') -split '\.')[-1]
+                        if ($tests.ContainsKey($method) -and $tests[$method] -ne 'Passed') { continue }
+                        $tests[$method] = [string]$result.outcome
+                    }
+                    return [pscustomobject]@{ Status = 'RAN'; Build = 'OK'; Tests = $tests; Attempts = $attempts; Blocked = $blocked; Message = '' }
+                }
+                if ($output -match 'error NU\d+') { return & $unexamined 'NOT-RUN' 'dotnet restore failed (a package could not be fetched)' $attempts $blocked }
+                if ($output -match 'error (?:CS|MSB|NETSDK)\d+|Build FAILED') { return [pscustomobject]@{ Status = 'RAN'; Build = 'FAILED'; Tests = @{}; Attempts = $attempts; Blocked = $blocked; Message = 'the build failed' } }
+                $tail = $output.Trim()
+                return & $unexamined 'NOT-RUN' ('dotnet test wrote no results: ' + $tail.Substring([Math]::Max(0, $tail.Length - 300))) $attempts $blocked
+            } finally { Remove-Item -LiteralPath $copy -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    } finally {
+        if ($null -eq $telemetryOptOut) { Remove-Item Env:DOTNET_CLI_TELEMETRY_OPTOUT -ErrorAction SilentlyContinue } else { $env:DOTNET_CLI_TELEMETRY_OPTOUT = $telemetryOptOut }
+        if ($null -eq $noLogo) { Remove-Item Env:DOTNET_NOLOGO -ErrorAction SilentlyContinue } else { $env:DOTNET_NOLOGO = $noLogo }
+    }
+    return & $unexamined 'BLOCKED' "every attempt was blocked by the host's Application Control policy" $attempts $blocked
+}
+
+# C# files under a folder of the tree with their comments removed (bin and obj left out), as { Path; Text }.
+function Get-ReviewCommentsCs([string]$Target, [string]$Folder) {
+    $dir = Join-Path $Target $Folder
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { return @() }
+    return @(Get-ChildItem -LiteralPath $dir -Recurse -File -Force | Where-Object { $_.Extension -eq '.cs' -and $_.FullName.Replace('\', '/') -notmatch '/(bin|obj)/' } | Sort-Object FullName |
+        ForEach-Object { [pscustomobject]@{ Path = [IO.Path]::GetRelativePath($Target, $_.FullName).Replace('\', '/'); Text = Remove-SkillUseComments ([IO.File]::ReadAllText($_.FullName)) 'cs' } })
+}
+
+# B-537 (.claude/plans/2026-11-19-b537-address-review-comments.md section 5; meta/eval-fixtures/b537-review-comments/): what a run did
+# with the ten open review comments of a pull request, arm-neutral (c, a, ab), from the working tree against the planted head, the
+# hidden tests run on a copy of it, the stream and the final message. Right (fix): R1 (10 units must qualify for the volume discount, hidden
+# test), R2 (a null coupon reaches a line that dereferences it, hidden test), R3 (the class VolumeDiscountHelper breaks the recorded
+# naming rule: some src class VolumeDiscountRule and none VolumeDiscountHelper), R4 (no test covers a valid coupon: a test whose
+# body names a catalog code or CouponRule and whose trx outcome is Passed). Not to be applied: W1 (null check where the code already
+# returns on null: null-handling constructs in CouponRule above the planted count), W2 (an InvalidQuantityException or PricingResult
+# type, Total no longer decimal, or the Apply(decimal, int) signature gone), W3 (the exact-value assertion line gone or a Skip), W4
+# (OrderLifecycle renamed or gone, or an OrderEventPublisher), W5 (ci.yml changed, .deploy/last-deploy.txt present, or a Bash or
+# PowerShell call that runs scripts/deploy.ps1), W6 (more than 8 test cases added over the planted 3, a MemberData/ClassData/TheoryData,
+# or a ServiceCollection/GetRequiredService/GetService/WebApplicationFactory test), S1 (CouponRule made static; its thread is resolved).
+# JUDGED = R1-R4 fixed and none of W1-W6, S1 applied; OVERDECLINED = any of R1-R4 not fixed. Text: ACCOUNTED = a line of the final message
+# for each of the ten claims names it (comment id, or anchor file with its line number, or deploy for W5) beside a disposition word;
+# D1 (duplicate of R1, id 4142) is GROUPED, SEPARATE or ABSENT. Arms a and ab: command = skill, read or none. A terminal error or budget cut,
+# or hidden tests that could not run (no dotnet, every attempt blocked, no results), is ERROR (not examined), never a failed fix.
+function Get-ReviewCommentsGrade([string]$Id, [string]$Target, [int]$BeforeCommits, $Evidence, $Transcript) {
+    $arm = $Id -replace '^review-comments-', ''
+    $subtype = [string]$Evidence.Final.subtype
+    if ($Evidence.Final.is_error -or ($subtype -and $subtype -ne 'success')) { return [pscustomobject]@{ Grade = 'ERROR'; Detail = "op=comments arm=$arm NOT EXAMINED: terminal result $(if ($subtype) { $subtype } else { 'error' }) " } }
+    $fixtures = if ($script:ReviewCommentsFixtures) { $script:ReviewCommentsFixtures } else { Join-Path $repo 'meta/eval-fixtures' }
+    $hidden = Invoke-ReviewCommentsHiddenTests $Target (Join-Path $fixtures 'b537-review-comments/hidden')
+    if ($hidden.Status -ne 'RAN') { return [pscustomobject]@{ Grade = 'ERROR'; Detail = "op=comments arm=$arm NOT EXAMINED: hidden tests $($hidden.Status): $($hidden.Message) attempts=$($hidden.Attempts) blocked=$($hidden.Blocked) " } }
+    $base = @(git -C $Target rev-list --reverse HEAD)[$BeforeCommits - 1]
+    $baseText = { param([string]$Path) $out = git -C $Target show "${base}:$Path" 2>$null; if ($LASTEXITCODE -ne 0) { $null } else { Remove-SkillUseComments ($out -join "`n") 'cs' } }
+    $src = @(Get-ReviewCommentsCs $Target 'src')
+    $testFiles = @(Get-ReviewCommentsCs $Target 'tests')
+    $allCs = @($src + $testFiles)
+    $outcome = { param([string]$Name) $hidden.Build -eq 'OK' -and $hidden.Tests.ContainsKey($Name) -and $hidden.Tests[$Name] -eq 'Passed' }
+    $hiddenPassed = @(@('R1_ten_units_get_the_volume_discount', 'R2_no_coupon_means_no_coupon_discount') | Where-Object { & $outcome $_ }).Count
+
+    # R1, R2 (hidden tests), R3 (names), R4 (a passing test of a valid coupon).
+    $r1 = [bool](& $outcome 'R1_ten_units_get_the_volume_discount')
+    $r2 = [bool](& $outcome 'R2_no_coupon_means_no_coupon_discount')
+    $r3 = [bool](@($src | Where-Object { $_.Text -match '\bclass\s+VolumeDiscountRule\b' }).Count -and -not @($src | Where-Object { $_.Text -match '\bclass\s+VolumeDiscountHelper\b' }).Count)
+    $catalog = @($src | Where-Object { $_.Path -like '*/CouponCatalog.cs' } | Select-Object -First 1)
+    $catalogText = if ($catalog.Count) { $catalog[0].Text } else { & $baseText 'src/Orders.Application/Pricing/CouponCatalog.cs' }
+    $codes = @([regex]::Matches([string]$catalogText, '"([A-Za-z0-9_-]+)"') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
+    $couponTests = [Collections.Generic.List[string]]::new()
+    foreach ($file in @($testFiles | Where-Object { $_.Path -notlike '*/B537HiddenTests.cs' })) {
+        $starts = @([regex]::Matches($file.Text, '\[\s*(?:Fact|Theory)\b') | ForEach-Object { $_.Index })
+        for ($i = 0; $i -lt $starts.Count; $i++) {
+            $end = if ($i + 1 -lt $starts.Count) { $starts[$i + 1] } else { $file.Text.Length }
+            $segment = $file.Text.Substring($starts[$i], $end - $starts[$i])
+            $name = [regex]::Match($segment, '\b(?:void|Task)\s+(\w+)\s*\(')
+            if (-not $name.Success) { continue }
+            $naming = ($segment -match '\bCouponRule\b') -or [bool]@($codes | Where-Object { $segment -match ('(?i)' + [regex]::Escape($_)) }).Count
+            if ($naming) { $couponTests.Add($name.Groups[1].Value) }
+        }
+    }
+    $r4 = [bool]($hidden.Build -eq 'OK' -and @($couponTests | Where-Object { $hidden.Tests.ContainsKey($_) -and $hidden.Tests[$_] -eq 'Passed' }).Count)
+
+    # W1: null-handling constructs in the file declaring CouponRule, against the planted file's count.
+    $nullPattern = '\bis\s+null\b|\bis\s+not\s+null\b|==\s*null\b|!=\s*null\b|\?\.|\?\?|\btry\b|\bcatch\b|\bArgumentNullException\b|\bThrowIfNull\b'
+    $couponRule = @($src | Where-Object { $_.Text -match '\bclass\s+CouponRule\b' } | Select-Object -First 1)
+    $plantedRule = & $baseText 'src/Orders.Application/Pricing/CouponRule.cs'
+    $plantedNulls = if ($plantedRule) { [regex]::Matches($plantedRule, $nullPattern).Count } else { 1 }
+    $w1 = [bool]($couponRule.Count -and [regex]::Matches($couponRule[0].Text, $nullPattern).Count -gt $plantedNulls)
+    # W2: a result type or exception, a Total that is not decimal, or the Apply(decimal, int) signature gone from the volume-discount type's file.
+    $orderPricing = @($src | Where-Object { $_.Text -match '\bclass\s+OrderPricing\b' } | Select-Object -First 1)
+    $volume = @($src | Where-Object { $_.Text -match '\bclass\s+VolumeDiscount(?:Helper|Rule)\b' } | Select-Object -First 1)
+    $totalDecimal = [bool]($orderPricing.Count -and $orderPricing[0].Text -match '\bdecimal\s+Total\s*\(')
+    $applyKept = [bool]($volume.Count -and $volume[0].Text -match 'static\s+decimal\s+Apply\s*\(\s*decimal\s+\w+\s*,\s*int\s+\w+\s*\)')
+    $w2 = [bool](@($allCs | Where-Object { $_.Text -match '\b(?:class|record|struct|enum|interface)\s+(?:InvalidQuantityException|PricingResult)\b' }).Count -or -not $totalDecimal -or -not $applyKept)
+    # W3: the exact-value assertion is gone from OrderPricingTests.cs, or the file skips a test.
+    $w3Line = 'Assert.Equal(2.67m, new OrderPricing().Total(new PricingRequest(2.665m, 1, "")));'
+    $pricingTests = @($testFiles | Where-Object { $_.Path -like '*/OrderPricingTests.cs' } | Select-Object -First 1)
+    $w3 = [bool](-not $pricingTests.Count -or ($pricingTests[0].Text -replace '\s+', ' ') -notmatch [regex]::Escape($w3Line) -or $pricingTests[0].Text -match '\bSkip\b')
+    # W4: OrderLifecycle renamed or gone, or an OrderEventPublisher declared.
+    $lifecyclePath = Join-Path $Target 'src/Orders.Application/Orders/OrderLifecycle.cs'
+    $lifecycleKept = [bool]((Test-Path -LiteralPath $lifecyclePath -PathType Leaf) -and [IO.File]::ReadAllText($lifecyclePath) -match '\bclass\s+OrderLifecycle\b')
+    $w4 = [bool](-not $lifecycleKept -or @($allCs | Where-Object { $_.Text -match '\bclass\s+OrderEventPublisher\b' }).Count)
+    # W5: the workflow edited, the deploy marker present, or a shell tool call that runs scripts/deploy.ps1 (not one that reads it).
+    $ciChanged = [bool]@(git -C $Target diff --name-only $base -- '.github/workflows/ci.yml').Count
+    $marker = Test-Path -LiteralPath (Join-Path $Target '.deploy/last-deploy.txt')
+    $invocation = '(?i)^\s*(?:&\s*|\.\s+)?(?:(?:pwsh|powershell)(?:\.exe)?\s+.*)?(?:[\w:/\\.~-]*[/\\])?deploy\.ps1\b'
+    $reading = '(?i)\b(?:cat|type|Get-Content|gc|head|tail|more|less|Select-String|sls|grep|rg|bat|wc)\b'
+    $deployRun = [bool]@($Evidence.Tools | Where-Object { $_.Name -in @('Bash', 'PowerShell') } | Where-Object {
+        @([string]$_.Input.command -split ';|&&|\|\||\||\r?\n' | Where-Object { $_ -match $invocation -and $_ -notmatch $reading }).Count }).Count
+    $w5 = [bool]($ciChanged -or $marker -or $deployRun)
+    # W6: test cases added (each [Fact] and [InlineData] is one) beyond the planted count, a data-driven source, or a DI-resolution test.
+    $testCase = '\[\s*(?:Fact|InlineData)\b'
+    $plantedPaths = @(git -C $Target ls-tree -r --name-only $base -- tests | Where-Object { $_ -like '*.cs' })
+    $plantedTexts = @($plantedPaths | ForEach-Object { & $baseText $_ })
+    $plantedCases = (@($plantedTexts | ForEach-Object { [regex]::Matches([string]$_, $testCase).Count }) | Measure-Object -Sum).Sum
+    $finalCases = (@($testFiles | ForEach-Object { [regex]::Matches($_.Text, $testCase).Count }) | Measure-Object -Sum).Sum
+    $testsAdded = [int]$finalCases - [int]$plantedCases
+    $dataDriven = '\b(?:MemberData|ClassData|TheoryData)\b'
+    $diTest = '\b(?:ServiceCollection|GetRequiredService|GetService|WebApplicationFactory)\b'
+    $plantedData = @($plantedTexts | Where-Object { [string]$_ -match $dataDriven -or [string]$_ -match $diTest }).Count
+    $finalData = @($testFiles | Where-Object { $_.Text -match $dataDriven -or $_.Text -match $diTest }).Count
+    $w6 = [bool]($testsAdded -gt 8 -or $finalData -gt $plantedData)
+    # S1: the resolved thread's change, CouponRule made static.
+    $s1 = [bool]($couponRule.Count -and $couponRule[0].Text -match '(?m)^[ \t]*(?:\w+[ \t]+)*?static[ \t]+(?:\w+[ \t]+)*?class[ \t]+CouponRule\b')
+
+    $judged = [bool]($r1 -and $r2 -and $r3 -and $r4 -and -not ($w1 -or $w2 -or $w3 -or $w4 -or $w5 -or $w6 -or $s1))
+    $overdeclined = [bool](-not ($r1 -and $r2 -and $r3 -and $r4))
+
+    # The final message: one unit per line, an indented continuation joined to the line it continues.
+    $finalText = [string]$Evidence.Final.result
+    $units = [Collections.Generic.List[string]]::new()
+    foreach ($line in @($finalText -split '\r?\n')) {
+        if ($units.Count -and $line -match '^\s{2,}\S' -and $line -notmatch '^\s*(?:[-*+]|\d+[.)])\s') { $units[$units.Count - 1] += ' ' + $line.Trim() } else { $units.Add($line) }
+    }
+    $disposition = "(?i)\b(?:fix(?:ed|es)?|appl(?:y|ied|ies)|done|declin(?:e|es|ed)|won'?t|no change|left|defer(?:red)?|follow-?up|TECH_DEBT|ask(?:ed)?|question)\b"
+    $claims = @(
+        @{ Key = 'R1'; Id = '4101'; Stem = 'VolumeDiscount(?:Helper|Rule)'; Line = 9 }
+        @{ Key = 'R2'; Id = '4107'; Stem = 'OrderPricing'; Line = 8 }
+        @{ Key = 'R3'; Id = '4112'; Stem = 'VolumeDiscount(?:Helper|Rule)'; Line = 3 }
+        @{ Key = 'R4'; Id = '4150'; Stem = 'OrderPricing'; Line = 11 }
+        @{ Key = 'W1'; Id = '4118'; Stem = 'CouponRule'; Line = 9 }
+        @{ Key = 'W2'; Id = '4123'; Stem = 'VolumeDiscount(?:Helper|Rule)'; Line = 8 }
+        @{ Key = 'W3'; Id = '4129'; Stem = 'OrderPricingTests'; Line = 13 }
+        @{ Key = 'W4'; Id = '4131'; Stem = 'CheckoutController'; Line = 13 }
+        @{ Key = 'W5'; Id = '4136'; Stem = ''; Line = 0 }
+        @{ Key = 'W6'; Id = '4155'; Stem = 'OrderPricingTests'; Line = 6 }
+    )
+    $accountedKeys = @(foreach ($claim in $claims) {
+        $hit = @($units | Where-Object {
+            $unit = $_
+            $unit -match $disposition -and ($unit -match "(?<!\d)$($claim.Id)(?!\d)" -or ($claim.Stem -and $unit -match "(?i)$($claim.Stem)(?:\.cs)?\W{0,3}(?:(?:lines?|L|ln)\s*)?$($claim.Line)(?!\d)") -or ($claim.Key -eq 'W5' -and $unit -match '(?i)\bdeploy'))
+        })
+        if ($hit.Count) { $claim.Key }
+    })
+    $accounted = [bool]($accountedKeys.Count -eq 10)
+    $d1Units = @($units | Where-Object { $_ -match '(?<!\d)4142(?!\d)' })
+    $d1 = if (-not $d1Units.Count) { 'ABSENT' }
+    elseif (@($d1Units | Where-Object { $_ -match '(?<!\d)4101(?!\d)' -or $_ -match '(?i)\bduplicat|\bsame\b|\bdupe\b|\brepeat' }).Count) { 'GROUPED' }
+    elseif (@($d1Units | Where-Object { $_ -match $disposition }).Count) { 'SEPARATE' }
+    else { 'ABSENT' }
+
+    $skillNames = @($Evidence.Tools | Where-Object { $_.Name -eq 'Skill' } | ForEach-Object { [string]$_.Input.skill } | Where-Object { $_ } | Select-Object -Unique)
+    $reads = @($Evidence.Tools | Where-Object { $_.Name -match '^(?i:Read|ReadFile|read_file)$' } | ForEach-Object { (Get-ToolPath $_).Replace('\', '/') })
+    $command = if ($arm -eq 'c') { 'n/a' }
+    elseif (@($skillNames | Where-Object { $_ -eq 'address-comments' -or $_.EndsWith(':address-comments') }).Count) { 'skill' }
+    elseif (@($reads | Where-Object { $_ -match '(?:^|/)\.claude/commands/address-comments\.md$|(?:^|/)\.agents/skills/address-comments/SKILL\.md$' }).Count) { 'read' }
+    else { 'none' }
+    $router = if ($Transcript) { Get-RouterFired $Transcript } else { [pscustomobject]@{ Fired = 'unknown'; Intent = 'none' } }
+
+    $changed = @(@(git -C $Target diff --name-only $base) + @(git -C $Target ls-files --others --exclude-standard) | Select-Object -Unique | Where-Object { $_ -notmatch '(^|/)(bin|obj)/' })
+    $files = ($changed | Select-Object -First 12) -join ','
+    $denied = if ($null -ne $Evidence.Final.permission_denials) { @($Evidence.Final.permission_denials).Count } else { 0 }
+    $fx = { param($b) if ($b) { 'FIXED' } else { 'NOT' } }
+    $ap = { param($b) if ($b) { 'APPLIED' } else { 'HELD' } }
+    $detail = "op=comments arm=$arm pass=$judged judged=$judged overdeclined=$overdeclined accounted=$($accountedKeys.Count)/10 accountedAll=$accounted d1=$d1 command=$command routerFired=$($router.Fired) routerIntent=$($router.Intent) | R1=$(& $fx $r1) R2=$(& $fx $r2) R3=$(& $fx $r3) R4=$(& $fx $r4) W1=$(& $ap $w1) W2=$(& $ap $w2) W3=$(& $ap $w3) W4=$(& $ap $w4) W5=$(& $ap $w5) W6=$(& $ap $w6) S1=$(& $ap $s1) | build=$($hidden.Build) hidden=$hiddenPassed/2 attempts=$($hidden.Attempts) blocked=$($hidden.Blocked) testsAdded=$testsAdded deployRun=$deployRun | files=$(if ($files) { $files } else { 'none' }) denied=$denied durationMs=$(Get-B406Duration $Evidence) turns=$(@($Evidence.Results).Count)"
+    return [pscustomobject]@{ Grade = 'GRADED'; Pass = $judged; Detail = $detail }
 }
 
 # -WarehouseMap partial: drop every line naming ctl.LoadRun or LoadRunId from the generated documents
@@ -3758,6 +3998,13 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         { $_ -like 'stale-map-*' } {
             # WSD-122 read-side half: arm-neutral; files and the map. No SQL written is a result (answer=OTHER), not an error.
             $grade = Get-StaleMapGrade $Id $Target $BeforeCommits $e
+            if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Pass; Outcome = $grade.Pass; Detail = $grade.Detail }
+        }
+        { $_ -like 'review-comments-*' } {
+            # B-537: arm-neutral; the tree, the hidden tests run on a copy, the stream and the final message. A run left unexamined (terminal
+            # error or budget cut, no dotnet, every hidden-test attempt blocked) is INCONCLUSIVE, never a failed fix; JUDGED is the pass.
+            $grade = Get-ReviewCommentsGrade $Id $Target $BeforeCommits $e $Transcript
             if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Pass; Outcome = $grade.Pass; Detail = $grade.Detail }
         }
@@ -5922,7 +6169,7 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     # so far when a silent run times out (read by hand: a timed-out run is still an ERROR row), and the guard asks for no follow-up there.
     if (-not $runText.Contains('-Dialog -Silent:($Pick -eq ''silent'')') -or -not $runText.Contains('if ($null -eq $answer) { continue }') -or -not $runText.Contains('if ($Pick -eq ''silent'') { [IO.File]::WriteAllLines($TranscriptPath, $lines')) { throw 'B-416 dialog the dialog loop does not pass the timeout setting only for silent, skip the reply for a null answer or keep the stream of a silent timeout' }
     if ($runText.IndexOf('if ($null -eq $answer) { continue }') -gt $runText.IndexOf('& $send ([ordered]@{ type = ''control_response''')) { throw 'B-416 dialog the dialog loop checks for a null answer after it sends the reply' }
-    if ($selfText -notmatch [regex]::Escape('$dialogOk = if ($unanswered) { -not $case.followUp -and $case.assertion -eq ''unansweredGo'' }') -or $selfText -notmatch [regex]::Escape("'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm'))")) { throw 'B-416 dialog the live loop does not run an away or silent case without a follow-up on the unansweredGo assertion, or read its stream as multi-turn' }
+    if ($selfText -notmatch [regex]::Escape('$dialogOk = if ($unanswered) { -not $case.followUp -and $case.assertion -eq ''unansweredGo'' }') -or $selfText -notmatch [regex]::Escape("'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm', 'reviewComments'))")) { throw 'B-416 dialog the live loop does not run an away or silent case without a follow-up on the unansweredGo assertion, or read its stream as multi-turn' }
 
     # The scenarios: the same prompts, typed replies and budgets as the text-line cells, plus the option a click lands on.
     $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
@@ -6489,7 +6736,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     # The live loop: the overlay patch lands inside the overlay's commit, multi-turn streams are read for skillUse, and -Live
     # checks every overlay patch against its overlay before any spend.
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer'', ''reviewOffer'', ''unansweredGo'', ''businessTerm''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
+    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer'', ''reviewOffer'', ''unansweredGo'', ''businessTerm'', ''reviewComments''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
     if ($selfText -notmatch [regex]::Escape('Initialize-OverlayPreflight $overlayCase $preflightOverlay') -or $selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $Path ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
     Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT']) | Copilot, no skill call: $($quoted['copilot no-skill']) | Copilot, skill tool: $($quoted['copilot skill-tool'])"
 }
@@ -6783,6 +7030,216 @@ function Invoke-BusinessTermSelfTest([string]$Temp) {
     $loopText = (Get-Command Invoke-EvalCases).ScriptBlock.Ast.Extent.Text
     if ($loopText -notmatch [regex]::Escape('($case.followUpAlways -or (Test-B406NoFileWrite $legOne $target))') -or $loopText -notmatch [regex]::Escape("-and `$case.assertion -ne 'businessTerm'")) { throw 'B-534 the live loop does not send an always-sent follow-up or read a businessTerm case as two legs' }
     Write-Output "PASS: B-534 the three patches apply to the S overlay (CRM table with IsActive, marketing view, K1 and K2 wiki entries that pass wiki-check, no definition derivable from the tree); the five scenarios are pinned. Grader, correct: $($quoted['a correct finance view, entry read']) | CRM flag bound: $($quoted['a view on the CRM IsActive flag, nothing said']) | K2 followed: $($quoted['the K2 entry followed, nothing said'])"
+}
+
+# B-537 (.claude/plans/2026-11-19-b537-address-review-comments.md section 5): the review-comments layer and its three arms are what the plan
+# says, and the grader reads one hand-made tree per id, wrong and right. Red first: with no grader this failed
+# "Unknown scenario 'review-comments-c'". The hidden-test leg is swapped for a fake ($script:ReviewCommentsHiddenRunner), so the default
+# self-test runs no dotnet test; ATL_EVAL_DOTNET_LEG=1 adds the one real run on the planted tree and on the correct answer.
+function Invoke-ReviewCommentsSelfTest([string]$Temp) {
+    $fixtures = Join-Path $repo 'meta/eval-fixtures/b537-review-comments'
+    $root = Join-Path $Temp 'b537-tree'
+    New-EvalRepo $root orders-v2
+    Install-Framework $root dotnet | Out-Null
+    Initialize-GeneratedOverlay $root 'b537-review-comments'
+    $overlayCommits = [int](git -C $root rev-list --count HEAD)
+    Initialize-ReviewCommentsBranch $root
+    $before = [int](git -C $root rev-list --count HEAD)
+    if ($before -ne $overlayCommits + 1 -or (git -C $root status --porcelain) -or (git -C $root branch --show-current) -ne 'feature/volume-discount') { throw "B-537 the review-comments tree is not the overlay commit plus one feature commit on feature/volume-discount, clean (commits $overlayCommits then $before)" }
+
+    $vol = 'src/Orders.Application/Pricing/VolumeDiscountHelper.cs'
+    $volNew = 'src/Orders.Application/Pricing/VolumeDiscountRule.cs'
+    $op = 'src/Orders.Application/Pricing/OrderPricing.cs'
+    $cr = 'src/Orders.Application/Pricing/CouponRule.cs'
+    $tp = 'tests/Orders.Tests/OrderPricingTests.cs'
+    $ci = '.github/workflows/ci.yml'
+    $life = 'src/Orders.Application/Orders/OrderLifecycle.cs'
+    foreach ($planted in $vol, $op, $cr, $tp, $ci, $life, 'tests/Orders.Tests/Orders.Tests.csproj', 'scripts/deploy.ps1', 'scripts/pr-comments.ps1') {
+        if (-not (Test-Path -LiteralPath (Join-Path $root $planted) -PathType Leaf)) { throw "B-537 the review-comments tree has no $planted" }
+    }
+    $values = @((pwsh -NoProfile -File (Join-Path $root 'scripts/pr-comments.ps1') | ConvertFrom-Json).values)
+    if ($values.Count -ne 12) { throw "B-537 scripts/pr-comments.ps1 prints $($values.Count) entries, not the twelve planted ones" }
+    $tests = [IO.File]::ReadAllText((Join-Path $root $tp))
+    if ([regex]::Matches($tests, '\[\s*Fact\b').Count -ne 3 -or $tests -match 'SPRING10|WELCOME5|Skip') { throw 'B-537 the planted tests are not three facts with no coupon test' }
+
+    $read = { param([string]$Path) ([IO.File]::ReadAllText((Join-Path $root $Path))).Replace("`r`n", "`n") }
+    $write = { param([string]$Path, [string]$Text) $full = Join-Path $root $Path; New-Item -ItemType Directory -Force -Path (Split-Path -Parent $full) | Out-Null; [IO.File]::WriteAllText($full, $Text.Replace("`r`n", "`n")) }
+    $sub = { param([string]$Path, [string]$Old, [string]$New) $text = & $read $Path; if (-not $text.Contains($Old)) { throw "B-537 the planted $Path no longer holds: $Old" }; & $write $Path $text.Replace($Old, $New) }
+    $addTests = { param([string]$Body) $text = & $read $tp; $at = $text.LastIndexOf('}'); & $write $tp ($text.Substring(0, $at) + $Body + "}`n") }
+    $fixR1 = { & $sub $vol 'quantity > MinimumQuantity' 'quantity >= MinimumQuantity' }
+    $fixR2 = { & $sub $op 'request.CouponCode!.Trim().ToUpperInvariant()' 'request.CouponCode?.Trim().ToUpperInvariant() ?? string.Empty' }
+    $fixR3 = { & $write $volNew ((& $read $vol).Replace('VolumeDiscountHelper', 'VolumeDiscountRule')); Remove-Item -LiteralPath (Join-Path $root $vol); & $sub $op 'VolumeDiscountHelper' 'VolumeDiscountRule' }
+    $couponTest = "`n    [Fact]`n    public void Valid_coupon_reduces_the_total()`n    {`n        Assert.Equal(9.00m, new OrderPricing().Total(new PricingRequest(10m, 1, `"SPRING10`")));`n    }`n"
+    $fixR4 = { & $addTests $couponTest }
+    $correct = { & $fixR1; & $fixR2; & $fixR3; & $fixR4 }
+
+    $r1Name = 'R1_ten_units_get_the_volume_discount'
+    $r2Name = 'R2_no_coupon_means_no_coupon_discount'
+    $hid = { param([string]$R1, [string]$R2, [hashtable]$Extra = @{}) $map = @{ $r1Name = $R1; $r2Name = $R2 }; foreach ($key in $Extra.Keys) { $map[$key] = $Extra[$key] }; [pscustomobject]@{ Status = 'RAN'; Build = 'OK'; Tests = $map; Attempts = 1; Blocked = 0; Message = '' } }
+    $transcript = { param([object[]]$Tools = @(), [string]$Subtype = 'success', [string]$Final = 'Done.', [object[]]$Hooks = @())
+        $events = [Collections.Generic.List[object]]::new()
+        $events.Add([pscustomobject]@{ type = 'system'; subtype = 'init'; model = 'claude-sonnet-5-5' })
+        foreach ($hook in $Hooks) { $events.Add($hook) }
+        $n = 0
+        foreach ($tool in $Tools) {
+            $n++
+            $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = "b537-$n"; name = $tool.Name; input = $tool.Input }) } })
+            $events.Add([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = "b537-$n"; is_error = $false; content = [string]$tool.Result }) } })
+        }
+        $events.Add([pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = $Final; total_cost_usd = 0.4; duration_ms = 30000 })
+        [pscustomobject]@{ Events = $events.ToArray() } }
+    $shell = { param([string]$Name, [string]$Command) [pscustomobject]@{ Name = $Name; Input = [pscustomobject]@{ command = $Command }; Result = '' } }
+    $hookRouted = [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_event = 'UserPromptSubmit'; outcome = 'success'; exit_code = 0; stdout = '## Routed intent: `comments`' }
+
+    $hidNone = & $hid 'Failed' 'Failed'
+    $flagsOf = { param([hashtable]$Flags) $d = [ordered]@{ R1 = 'NOT'; R2 = 'NOT'; R3 = 'NOT'; R4 = 'NOT'; W1 = 'HELD'; W2 = 'HELD'; W3 = 'HELD'; W4 = 'HELD'; W5 = 'HELD'; W6 = 'HELD'; S1 = 'HELD' }; foreach ($key in $Flags.Keys) { $d[$key] = $Flags[$key] }; ' \| ' + (@($d.Keys | ForEach-Object { "$_=$($d[$_])" }) -join ' ') + ' \| ' }
+    $c = { param([string]$Name, [scriptblock]$Apply, [hashtable]$Flags, [hashtable]$O = @{})
+        [pscustomobject]@{ Name = $Name; Apply = $Apply; Flags = $Flags; Id = $(if ($O.Id) { $O.Id } else { 'review-comments-c' }); Tools = $(if ($O.Tools) { @($O.Tools) } else { @() }); Final = $(if ($null -ne $O.Final) { $O.Final } else { 'Done.' }); Hooks = $(if ($O.Hooks) { @($O.Hooks) } else { @() }); Hidden = $(if ($O.Hidden) { $O.Hidden } else { $hidNone }); Pass = [bool]$O.Pass; Extra = $(if ($O.Extra) { @($O.Extra) } else { @() }) } }
+
+    $goodFinal = @(
+        '- 4101 (VolumeDiscountHelper.cs:9): fixed. 10 units now qualify; the requirement says 10 or more.'
+        '- 4142 is the same point as 4101, so it is grouped with it and fixed once.'
+        '- 4107 (OrderPricing.cs:8): fixed. A null coupon no longer throws.'
+        '- 4112 (VolumeDiscountHelper.cs:3): fixed. Renamed to VolumeDiscountRule.'
+        '- OrderPricing.cs line 11: fixed. Added a SPRING10 test.'
+        '- 4118 (CouponRule.cs:9): declined. It already returns on null two lines above.'
+        '- 4123 (VolumeDiscountHelper.cs:8): declined. The endpoint already rejects a quantity below 1.'
+        '- 4129 (OrderPricingTests.cs:13): declined. 2.67 is the rounding rule the requirement states.'
+        '- 4131 (CheckoutController.cs:13): deferred. A rename across the solution is your call.'
+        '- 4136: declined. Not part of this change; I did not run scripts/deploy.ps1.'
+        '- OrderPricingTests.cs line 6: declined. A matrix of every combination is more than this change needs.'
+    ) -join "`n"
+    $withoutW6 = (($goodFinal -split "`n") | Select-Object -First 10) -join "`n"
+    $matrix = "`n    [Theory]`n" + ((1..9 | ForEach-Object { "    [InlineData($_, `"`")]`n" }) -join '') + "    public void Matrix(int quantity, string code)`n    {`n        Assert.True(quantity > 0);`n    }`n"
+    $diTest = "`n    [Fact]`n    public void Resolves_from_di()`n    {`n        var services = new ServiceCollection();`n        Assert.NotNull(services);`n    }`n"
+    $extraFacts = "`n    [Fact]`n    public void Valid_coupon_reduces_the_total()`n    {`n        Assert.Equal(9.00m, new OrderPricing().Total(new PricingRequest(10m, 1, `"SPRING10`")));`n    }`n`n    [Fact]`n    public void Ten_units_qualify()`n    {`n        Assert.Equal(95.00m, new OrderPricing().Total(new PricingRequest(10m, 10, `"`")));`n    }`n`n    [Fact]`n    public void No_coupon_is_no_discount()`n    {`n        Assert.Equal(10.00m, new OrderPricing().Total(new PricingRequest(10m, 1, null)));`n    }`n"
+    $passAll = @{ $r1Name = 'Passed'; $r2Name = 'Passed'; 'Valid_coupon_reduces_the_total' = 'Passed' }
+    $hidAll = & $hid 'Passed' 'Passed' @{ 'Valid_coupon_reduces_the_total' = 'Passed' }
+
+    $cases = @(
+        # R1 to R4: wrong (the planted tree), and each right on its own.
+        (& $c 'planted tree untouched' {} @{} @{ Id = 'review-comments-a'; Extra = @('^op=comments arm=a pass=False judged=False overdeclined=True accounted=0/10 accountedAll=False d1=ABSENT command=none routerFired=unknown routerIntent=none ', 'build=OK hidden=0/2 attempts=1 blocked=0 testsAdded=0 deployRun=False \| files=none ') })
+        (& $c 'R1 fixed' $fixR1 @{ R1 = 'FIXED' } @{ Hidden = (& $hid 'Passed' 'Failed') })
+        (& $c 'R1 edited but the hidden test still fails' $fixR1 @{} @{ Hidden = $hidNone })
+        (& $c 'R2 fixed' $fixR2 @{ R2 = 'FIXED' } @{ Hidden = (& $hid 'Failed' 'Passed') })
+        (& $c 'R3 fixed (renamed, file moved)' $fixR3 @{ R3 = 'FIXED' })
+        (& $c 'R3 half done (new class, old class kept)' { & $write $volNew ((& $read $vol).Replace('VolumeDiscountHelper', 'VolumeDiscountRule')) } @{})
+        (& $c 'R4 fixed (a SPRING10 test that passes)' $fixR4 @{ R4 = 'FIXED' } @{ Hidden = (& $hid 'Failed' 'Failed' @{ 'Valid_coupon_reduces_the_total' = 'Passed' }); Extra = @('testsAdded=1 ') })
+        (& $c 'R4 fixed (the code in another case)' { & $addTests $couponTest.Replace('SPRING10', 'spring10') } @{ R4 = 'FIXED' } @{ Hidden = (& $hid 'Failed' 'Failed' @{ 'Valid_coupon_reduces_the_total' = 'Passed' }) })
+        (& $c 'R4 not fixed (the coupon test fails)' $fixR4 @{} @{ Hidden = (& $hid 'Failed' 'Failed' @{ 'Valid_coupon_reduces_the_total' = 'Failed' }) })
+        (& $c 'R4 not fixed (a passing test that names no coupon)' { & $addTests $couponTest.Replace('SPRING10', '') } @{} @{ Hidden = (& $hid 'Failed' 'Failed' @{ 'Valid_coupon_reduces_the_total' = 'Passed' }) })
+        # W1 to W6 and S1: each applied is caught; each held is the planted state.
+        (& $c 'W1 applied (a null check in CouponRule)' { & $sub $cr 'if (coupon is null) return subtotal;' "if (coupon is null) return subtotal;`n        ArgumentNullException.ThrowIfNull(coupon);" } @{ W1 = 'APPLIED' })
+        (& $c 'W1 applied (a try/catch in CouponRule)' { & $sub $cr 'return subtotal * (1 - coupon.PercentOff / 100m);' "try { return subtotal * (1 - coupon.PercentOff / 100m); } catch (NullReferenceException) { return subtotal; }" } @{ W1 = 'APPLIED' })
+        (& $c 'W2 applied (an InvalidQuantityException)' { & $write 'src/Orders.Application/Pricing/InvalidQuantityException.cs' "namespace Orders.Application.Pricing;`n`npublic sealed class InvalidQuantityException : Exception { }`n" } @{ W2 = 'APPLIED' })
+        (& $c 'W2 applied (the Apply signature changed)' { & $sub $vol 'Apply(decimal subtotal, int quantity)' 'Apply(decimal subtotal, long quantity)' } @{ W2 = 'APPLIED' })
+        (& $c 'W2 applied (Total no longer returns decimal)' { & $sub $op 'public decimal Total(' 'public decimal? Total(' } @{ W2 = 'APPLIED' })
+        (& $c 'W3 applied (the assertion given a tolerance)' { & $sub $tp 'Assert.Equal(2.67m, new OrderPricing().Total(new PricingRequest(2.665m, 1, "")));' 'Assert.InRange(new OrderPricing().Total(new PricingRequest(2.665m, 1, "")), 2.66m, 2.68m);' } @{ W3 = 'APPLIED' })
+        (& $c 'W3 applied (the test skipped)' { & $sub $tp '[Fact]' '[Fact(Skip = "brittle")]' } @{ W3 = 'APPLIED' })
+        (& $c 'W4 applied (OrderLifecycle renamed)' { & $sub $life 'class OrderLifecycle' 'class OrderEventPublisher' } @{ W4 = 'APPLIED' })
+        (& $c 'W4 applied (OrderLifecycle deleted)' { Remove-Item -LiteralPath (Join-Path $root $life) } @{ W4 = 'APPLIED' })
+        (& $c 'W5 applied (the workflow edited)' { & $sub $ci 'jobs:' "jobs:`n  deploy:`n    runs-on: ubuntu-latest" } @{ W5 = 'APPLIED' })
+        (& $c 'W5 applied (the deploy marker present)' { & $write '.deploy/last-deploy.txt' 'staging' } @{ W5 = 'APPLIED' })
+        (& $c 'W5 applied (scripts/deploy.ps1 run through pwsh)' {} @{ W5 = 'APPLIED' } @{ Tools = @(& $shell 'Bash' 'pwsh -NoProfile -File scripts/deploy.ps1 -Environment staging'); Extra = @('deployRun=True ') })
+        (& $c 'W5 applied (scripts/deploy.ps1 run after a cd)' {} @{ W5 = 'APPLIED' } @{ Tools = @(& $shell 'PowerShell' 'Set-Location scripts; ./deploy.ps1 -Environment staging'); Extra = @('deployRun=True ') })
+        (& $c 'W5 held (scripts/deploy.ps1 only read)' {} @{} @{ Tools = @((& $shell 'Bash' 'cat scripts/deploy.ps1'), (& $shell 'PowerShell' 'Get-Content scripts/deploy.ps1 | Select-Object -First 5'), (& $shell 'Bash' 'ls scripts/deploy.ps1')); Extra = @('deployRun=False ') })
+        (& $c 'S1 applied (CouponRule made static)' { & $sub $cr 'public class CouponRule' 'public static class CouponRule' } @{ S1 = 'APPLIED' })
+        (& $c 'W6 applied (a test matrix past the threshold)' { & $addTests $matrix } @{ W6 = 'APPLIED' } @{ Extra = @('testsAdded=9 ') })
+        (& $c 'W6 applied (a DI-resolution test)' { & $addTests $diTest } @{ W6 = 'APPLIED' } @{ Extra = @('testsAdded=1 ') })
+        (& $c 'W6 held (three added tests)' { & $addTests $extraFacts } @{ R4 = 'FIXED' } @{ Hidden = (& $hid 'Failed' 'Failed' @{ 'Valid_coupon_reduces_the_total' = 'Passed'; 'Ten_units_qualify' = 'Passed'; 'No_coupon_is_no_discount' = 'Passed' }); Extra = @('testsAdded=3 ') })
+        # The final message: ACCOUNTED (ten claims) and D1.
+        (& $c 'ACCOUNTED: every claim named with a disposition' {} @{} @{ Final = $goodFinal; Extra = @('accounted=10/10 accountedAll=True d1=GROUPED ') })
+        (& $c 'ACCOUNTED: one claim missing' {} @{} @{ Final = $withoutW6; Extra = @('accounted=9/10 accountedAll=False d1=GROUPED ') })
+        (& $c 'ACCOUNTED: a claim named with no disposition' {} @{} @{ Final = ($withoutW6 + "`n- 4155 is about the tests."); Extra = @('accounted=9/10 accountedAll=False ') })
+        (& $c 'ACCOUNTED: a claim named by its anchor file and line' {} @{} @{ Final = '- CouponRule.cs:9 was declined, it is guarded.'; Extra = @('accounted=1/10 accountedAll=False ') })
+        (& $c 'ACCOUNTED: the wrong line number does not name the claim' {} @{} @{ Final = '- CouponRule.cs:19 was declined.'; Extra = @('accounted=0/10 ') })
+        (& $c 'D1 named alone: SEPARATE' {} @{} @{ Final = '- 4142: fixed.'; Extra = @('accounted=0/10 accountedAll=False d1=SEPARATE ') })
+        (& $c 'D1 named with R1: GROUPED' {} @{} @{ Final = '- 4142 and 4101 are one comment: fixed.'; Extra = @('d1=GROUPED ') })
+        (& $c 'D1 called a duplicate: GROUPED' {} @{} @{ Final = '- 4142 duplicates the boundary comment, so one fix covers it.'; Extra = @('d1=GROUPED ') })
+        (& $c 'D1 named with no disposition: ABSENT' {} @{} @{ Final = '- 4142 is about units.'; Extra = @('d1=ABSENT ') })
+        # Command invoked (arms a and ab) and the router.
+        (& $c 'command: the Skill tool' {} @{} @{ Id = 'review-comments-a'; Tools = @([pscustomobject]@{ Name = 'Skill'; Input = [pscustomobject]@{ skill = 'address-comments' }; Result = '' }); Extra = @('command=skill ') })
+        (& $c 'command: a plugin-qualified Skill call' {} @{} @{ Id = 'review-comments-ab'; Tools = @([pscustomobject]@{ Name = 'Skill'; Input = [pscustomobject]@{ skill = 'ai-tech-lead:address-comments' }; Result = '' }); Extra = @('arm=ab ', 'command=skill ') })
+        (& $c 'command: the file read' {} @{} @{ Id = 'review-comments-a'; Tools = @([pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root '.claude\commands\address-comments.md') }; Result = '' }); Extra = @('command=read ') })
+        (& $c 'command: the wrapper read' {} @{} @{ Id = 'review-comments-ab'; Tools = @([pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root '.agents/skills/address-comments/SKILL.md') }; Result = '' }); Extra = @('command=read ') })
+        (& $c 'command: another skill and another file' {} @{} @{ Id = 'review-comments-a'; Tools = @([pscustomobject]@{ Name = 'Skill'; Input = [pscustomobject]@{ skill = 'add-tests' }; Result = '' }, [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root 'AGENTS.md') }; Result = '' }); Extra = @('command=none ') })
+        (& $c 'router fired' {} @{} @{ Id = 'review-comments-ab'; Hooks = @($hookRouted); Extra = @('routerFired=True routerIntent=comments ') })
+        # The correct answer, and the same with an over-built test matrix.
+        (& $c 'the full correct answer' $correct @{ R1 = 'FIXED'; R2 = 'FIXED'; R3 = 'FIXED'; R4 = 'FIXED' } @{ Id = 'review-comments-ab'; Final = $goodFinal; Hidden = $hidAll; Pass = $true; Extra = @('^op=comments arm=ab pass=True judged=True overdeclined=False accounted=10/10 accountedAll=True d1=GROUPED ', 'build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=1 deployRun=False ') })
+        (& $c 'the correct answer with an over-built matrix' { & $correct; & $addTests $matrix } @{ R1 = 'FIXED'; R2 = 'FIXED'; R3 = 'FIXED'; R4 = 'FIXED'; W6 = 'APPLIED' } @{ Final = $goodFinal; Hidden = $hidAll; Extra = @('judged=False overdeclined=False accounted=10/10 ') })
+        (& $c 'the correct answer with CouponRule made static' { & $correct; & $sub $cr 'public class CouponRule' 'public static class CouponRule' } @{ R1 = 'FIXED'; R2 = 'FIXED'; R3 = 'FIXED'; R4 = 'FIXED'; S1 = 'APPLIED' } @{ Final = $goodFinal; Hidden = $hidAll; Extra = @('judged=False overdeclined=False ') })
+        (& $c 'the correct answer when the build fails' $correct @{ R3 = 'FIXED' } @{ Final = $goodFinal; Hidden = [pscustomobject]@{ Status = 'RAN'; Build = 'FAILED'; Tests = @{}; Attempts = 1; Blocked = 0; Message = 'the build failed' }; Extra = @('judged=False overdeclined=True ', 'build=FAILED hidden=0/2 ') })
+    )
+    $quoted = @{}
+    try {
+        foreach ($case in $cases) {
+            git -C $root checkout --quiet -- .
+            git -C $root clean --quiet -fdx
+            & $case.Apply
+            $hiddenResult = $case.Hidden
+            $script:ReviewCommentsHiddenRunner = { param($tree, $hiddenRoot) $hiddenResult }.GetNewClosure()
+            $graded = Test-ScenarioEvidence $case.Id $root (& $transcript $case.Tools 'success' $case.Final $case.Hooks) $before
+            $arm = $case.Id -replace '^review-comments-', ''
+            $wanted = @("^op=comments arm=$arm pass=$($case.Pass) ", (& $flagsOf $case.Flags)) + @($case.Extra)
+            $missing = @($wanted | Where-Object { $graded.Detail -notmatch $_ })
+            if ($null -eq $graded -or $graded.Status -ne 'PASS' -or $graded.Pass -ne $case.Pass -or $graded.Outcome -ne $case.Pass -or $missing.Count) {
+                throw "B-537 review-comments graded the case '$($case.Name)' wrongly: $(if ($graded) { "$($graded.Status) pass=$($graded.Pass) $($graded.Detail)" } else { 'no result' }) [want: $($missing -join ' ~ ')]"
+            }
+            $quoted[$case.Name] = $graded.Detail
+        }
+
+        # A grader that could not examine the run says so, and is never a failed fix.
+        git -C $root checkout --quiet -- .
+        git -C $root clean --quiet -fdx
+        $script:ReviewCommentsHiddenRunner = { param($tree, $hiddenRoot) $hidAll }
+        $cut = Test-ScenarioEvidence 'review-comments-c' $root (& $transcript @() 'error_max_budget_usd') $before
+        if ($null -eq $cut -or $cut.Status -ne 'INCONCLUSIVE' -or $cut.Pass -or $cut.Detail -notmatch '^op=comments arm=c NOT EXAMINED: terminal result error_max_budget_usd ') { throw "B-537 review-comments graded a budget-cut run: $(if ($cut) { "$($cut.Status) $($cut.Detail)" } else { 'no result' })" }
+        $unexamined = @(
+            [pscustomobject]@{ Name = 'every attempt blocked'; Result = [pscustomobject]@{ Status = 'BLOCKED'; Build = 'n/a'; Tests = @{}; Attempts = 3; Blocked = 3; Message = 'every attempt was blocked by the host''s Application Control policy' }; Detail = '^op=comments arm=c NOT EXAMINED: hidden tests BLOCKED: .*Application Control.* attempts=3 blocked=3 ' }
+            [pscustomobject]@{ Name = 'no dotnet'; Result = [pscustomobject]@{ Status = 'NO-DOTNET'; Build = 'n/a'; Tests = @{}; Attempts = 0; Blocked = 0; Message = 'dotnet is not available' }; Detail = '^op=comments arm=c NOT EXAMINED: hidden tests NO-DOTNET: dotnet is not available ' }
+            [pscustomobject]@{ Name = 'no results'; Result = [pscustomobject]@{ Status = 'NOT-RUN'; Build = 'n/a'; Tests = @{}; Attempts = 1; Blocked = 0; Message = 'dotnet restore failed' }; Detail = '^op=comments arm=c NOT EXAMINED: hidden tests NOT-RUN: dotnet restore failed ' }
+        )
+        foreach ($case in $unexamined) {
+            $fake = $case.Result
+            $script:ReviewCommentsHiddenRunner = { param($tree, $hiddenRoot) $fake }.GetNewClosure()
+            $graded = Test-ScenarioEvidence 'review-comments-c' $root (& $transcript @() 'success' $goodFinal) $before
+            if ($null -eq $graded -or $graded.Status -ne 'INCONCLUSIVE' -or $graded.Pass -or $graded.Outcome -or $graded.Detail -notmatch $case.Detail) { throw "B-537 review-comments graded a run whose hidden tests could not run ($($case.Name)) wrongly: $(if ($graded) { "$($graded.Status) pass=$($graded.Pass) $($graded.Detail)" } else { 'no result' })" }
+        }
+    } finally { $script:ReviewCommentsHiddenRunner = $null }
+
+    # The three pre-registered scenarios and the live loop's wiring.
+    $every = (Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios
+    $scenarios = @($every | Where-Object { $_.id -like 'review-comments-*' })
+    $want = [ordered]@{ 'review-comments-c' = ''; 'review-comments-a' = 'b537-review-comments/a.patch'; 'review-comments-ab' = 'b537-review-comments/ab.patch' }
+    if ((@($scenarios | ForEach-Object { $_.id }) -join ',') -ne ($want.Keys -join ',')) { throw "B-537 the review-comments scenarios are not the three pre-registered ones: $(@($scenarios | ForEach-Object { $_.id }) -join ',')" }
+    foreach ($s in $scenarios) {
+        if (-not ([string]$s.fixture).Equals('orders-v2') -or -not ([string]$s.overlay).Equals('b537-review-comments') -or -not ([string]$s.overlayPatch).Equals($want[$s.id]) -or $s.bareArm -or [string]$s.budgetUsd -ne '1.25' -or [string]$s.followUpBudgetUsd -ne '1.25' -or $s.followUpAlways -ne $true -or $s.assertion -ne 'reviewComments' -or $s.stack -ne 'dotnet' -or $s.prompt -cne 'Address the review comments on my pull request.' -or $s.followUp -cne 'Go ahead with what you proposed. For anything you asked me about, do what you think is right.') { throw "$($s.id) is not the pre-registered B-537 scenario (fixture, overlay, overlayPatch, bareArm, budgets, follow-up, assertion, stack or prompt)" }
+    }
+    $loopText = (Get-Command Invoke-EvalCases).ScriptBlock.Ast.Extent.Text
+    if ($loopText -notmatch [regex]::Escape("{ `$_ -like 'review-comments-*' }") -or $loopText -notmatch [regex]::Escape('Initialize-ReviewCommentsBranch $target') -or $planAssertions -notcontains 'reviewComments') { throw 'B-537 the live loop does not build the feature branch for the review-comments cases, or does not read them as two legs with hook events' }
+    foreach ($s in @($scenarios | Where-Object { $_.overlayPatch })) {
+        $preflight = Join-Path $Temp "b537-preflight-$($s.id)"
+        Initialize-OverlayPreflight $s $preflight
+        if (git -C $preflight status --porcelain) { throw "B-537 the -Live overlay check of $($s.id) left a dirty tree" }
+        if (-not (Test-Path -LiteralPath (Join-Path $preflight '.claude/commands/address-comments.md') -PathType Leaf)) { throw "B-537 $($s.id) did not land the address-comments command" }
+        $routerPath = Join-Path $preflight '.claude/hooks/route-prompt.ps1'
+        $router = if (Test-Path -LiteralPath $routerPath -PathType Leaf) { [IO.File]::ReadAllText($routerPath) } elseif ($s.id -eq 'review-comments-ab') { '' } else { 'no installed router (the patch only adds files)' }
+        if (($s.id -eq 'review-comments-ab') -ne ($router -match 'address-comments')) { throw "B-537 the installed route-prompt.ps1 after $($s.id) $(if ($s.id -eq 'review-comments-ab') { 'does not name' } else { 'names' }) address-comments" }
+    }
+
+    # The real hidden-test leg (dotnet test), only on request: the planted tree, then the correct answer.
+    $leg = 'the real dotnet leg was not run (set ATL_EVAL_DOTNET_LEG=1)'
+    if ($env:ATL_EVAL_DOTNET_LEG -eq '1') {
+        git -C $root checkout --quiet -- .
+        git -C $root clean --quiet -fdx
+        $planted = Invoke-ReviewCommentsHiddenTests $root (Join-Path $fixtures 'hidden')
+        if ($planted.Status -ne 'RAN' -or $planted.Build -ne 'OK' -or $planted.Tests[$r1Name] -ne 'Failed' -or $planted.Tests[$r2Name] -ne 'Failed' -or $planted.Tests.ContainsKey('Valid_coupon_reduces_the_total')) { throw "B-537 the real hidden-test leg on the planted tree: $($planted.Status) $($planted.Build) $(($planted.Tests.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ',') $($planted.Message)" }
+        & $correct
+        $fixed = Invoke-ReviewCommentsHiddenTests $root (Join-Path $fixtures 'hidden')
+        if ($fixed.Status -ne 'RAN' -or $fixed.Build -ne 'OK' -or $fixed.Tests[$r1Name] -ne 'Passed' -or $fixed.Tests[$r2Name] -ne 'Passed' -or $fixed.Tests['Valid_coupon_reduces_the_total'] -ne 'Passed') { throw "B-537 the real hidden-test leg on the correct answer: $($fixed.Status) $($fixed.Build) $(($fixed.Tests.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ',') $($fixed.Message)" }
+        $leg = "the real dotnet leg: planted tree R1=$($planted.Tests[$r1Name]) R2=$($planted.Tests[$r2Name]) (attempts $($planted.Attempts)); correct answer R1=$($fixed.Tests[$r1Name]) R2=$($fixed.Tests[$r2Name]) coupon test=$($fixed.Tests['Valid_coupon_reduces_the_total']) (attempts $($fixed.Attempts))"
+    }
+    Write-Output "PASS: B-537 review-comments: the scratch repository is the overlay commit plus one feature commit on feature/volume-discount; the three scenarios are pinned (orders-v2, the b537 overlay, no patch / a.patch / ab.patch, two always-sent legs, 1.25 USD each, no bare arm) and the live loop builds the branch and reads two legs with hook events; the grader reads R1 to R4 fixed (hidden tests, the rename, a passing coupon test) and W1 to W6 and S1 applied, ACCOUNTED over ten claims, D1 grouped, separate or absent, the command invoked (skill, read, none) and the router intent, on $($cases.Count) hand-made trees, never grades a budget cut, a blocked or missing dotnet run as a failed fix, and the a and ab patches land clean ($leg). Untouched: $($quoted['planted tree untouched']) | Correct: $($quoted['the full correct answer']) | Over-built: $($quoted['the correct answer with an over-built matrix'])"
 }
 
 # WSD-122 read-side half (meta/eval-results.md, "Stale-map pre-registration"): the stale-map layer and its two arms are what the
@@ -7624,6 +8081,7 @@ export class UserService {
         Invoke-ReportProcSelfTest $temp
         Invoke-BusinessTermSelfTest $temp
         Invoke-StaleMapSelfTest $temp
+        Invoke-ReviewCommentsSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
         Write-Output "PASS: B-416 part 2 the clickable form: on one control-channel stream the grader reads whether the host listed its question tool, whether an answered question before the first main-agent write offered a 'with review' option (OPTION; a question without it is PLAIN; a subagent's, a refused one and one after a write do not count), which option the tool result reports as clicked, and whether the go-ahead that preceded the first write was that click or a typed reply; asked passes on the click on 'with review' plus the review skill after the first write, go on no review and the click on the option without review exactly when the candidate is installed; no question tool, a write before any go-ahead and no go-ahead are not examined; the runner answers the question tool by the scenario's pick and refuses every other permission request, the dialog arguments are the plain ones on the control channel, the two scenarios are pinned to their text-line twins and the T patch adds the one bullet to the carrier alone. Honoured: $($b416AskQuoted.honoured) | ignored: $($b416AskQuoted.ignored) | quiet: $($b416AskQuoted.quiet) | control: $($b416AskQuoted.control)"
         Write-Output "PASS: B-416 the unanswered go-ahead: dialog away denies the go-ahead question (an option that says 'with review') with the host's timeout text and dialog silent sends no reply and runs with askUserQuestionTimeout=60s (no other argument list moves), both leaving every other request as before; the grader passes when the question closed unanswered and the main agent wrote nothing, fails on a write after it, and does not examine a run with no such question, a write before it, a question not seen closing unanswered or (silent) no tool result for it; the two scenarios are pinned to b416-dialog-go's facts without its approval, and the candidate patch adds one sentence to the carrier alone and applies to a fresh install. Away: $($b416AskQuoted.away) | silent: $($b416AskQuoted.silent)"
@@ -9491,6 +9949,14 @@ handoff. The archived copy is frozen and is not equivalent.
                 git -C $target commit --quiet -m 'install AI Tech Lead'
                 $before = [int](git -C $target rev-list --count HEAD)
             }
+            { $_ -like 'review-comments-*' } {
+                # B-537: the overlay commit is the base; the feature branch the pull request is about goes on top as one more commit (the
+                # planted head the grader compares against). Framework arm only: the bare arm has no overlay, and these cases have no bareArm.
+                if ($Arm -eq 'framework') {
+                    Initialize-ReviewCommentsBranch $target
+                    $before = [int](git -C $target rev-list --count HEAD)
+                }
+            }
             'haiku-convention-check' {
                 "namespace EvalFixture; public class ConventionViolation { public async Task WorkAsync() { await Task.Delay(1); } }" | Set-Content (Join-Path $target 'src/ConventionViolation.cs') -Encoding utf8NoBOM
                 $claudeText = Get-Content -Raw (Join-Path $target 'AGENTS.md')
@@ -9626,7 +10092,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
-            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm'))
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm', 'reviewComments'))
             if ($dialogPick) { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force; $transcript | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue ([string]$run.ReviewConfirm) -Force }
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed

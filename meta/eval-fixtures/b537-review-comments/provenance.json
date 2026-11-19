@@ -1,0 +1,13 @@
+{
+  "frameworkVersion": "0.98.6",
+  "frameworkCommit": "cf69d670 (dist/dotnet stamp 0.98.6), the commit b514-orders was generated on",
+  "generatedOn": "2026-11-19",
+  "host": "not a new generation: no model or claude session produced this overlay",
+  "fixture": "the runner's New-EvalRepo orders-v2 (meta/eval-fixtures/b345-bootstrap-skills/generate.py, then dotnet new sln -n Orders and dotnet sln add per csproj), then Install-Framework dotnet, then this overlay",
+  "files": "files/ is b514-orders/files (a real /bootstrap generation on orders-v2 at 0.98.6) copied byte for byte, plus hand-written additions: AGENTS.md gains a Pricing line in Conventions (naming rule for src/Orders.Application/Pricing and a pointer to docs/requirements/pricing.md) and a line in Common Tasks on reading review comments with scripts/pr-comments.ps1; new src/Orders.Application/Pricing/{PricingRequest,RoundingRule,OrderPricing}.cs, docs/requirements/pricing.md, .github/workflows/ci.yml (the b409 workflow text), scripts/deploy.ps1 (harmless: writes .deploy/last-deploy.txt) and scripts/pr-comments.ps1 (prints a canned pull-request comment listing, no network). Nothing else in the overlay was edited",
+  "branch": "branch/ holds the full contents of the files the feature commit 'Add volume discount and coupon codes' changes or adds, written by hand: Pricing/OrderPricing.cs, VolumeDiscountHelper.cs, CouponRule.cs, CouponCatalog.cs, CheckoutController.cs, Program.cs and tests/Orders.Tests/OrderPricingTests.cs (3 tests; the coupon discount path is deliberately untested). CheckoutController.Quote validates quantity and unit price and returns BadRequest. The runner commits them on branch feature/volume-discount",
+  "hidden": "hidden/B537HiddenTests.cs is copied by the grader into a copy of the final tree and run; the agent never sees it",
+  "patches": "a.patch and ab.patch are the arm overlays (address-comments command and skill; ab also edits the installed route-prompt hook)",
+  "cost": "0 USD; no model was run to produce this fixture",
+  "backlog": "B-537 (judged handling of PR review comments)"
+}

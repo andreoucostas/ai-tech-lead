@@ -1,0 +1,25 @@
+using Microsoft.EntityFrameworkCore;
+using Orders.Application.EventHandlers;
+using Orders.Application.Orders;
+using Orders.Application.Pricing;
+using Orders.Infrastructure.Messaging;
+using Orders.Infrastructure.Persistence;
+using Orders.Reporting;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllers();
+builder.Services.AddDbContext<OrdersDbContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("Orders")));
+builder.Services.AddSingleton<EventRegistry>();
+builder.Services.AddSingleton<IMessagePublisher, ServiceBusPublisher>();
+builder.Services.AddSingleton<IOutbox, InMemoryOutbox>();
+builder.Services.AddScoped<OrderLifecycle>();
+builder.Services.AddSingleton<OrderPricing>();
+builder.Services.AddScoped<OutboxDispatcher>();
+builder.Services.AddHostedService<OutboxProcessor>();
+builder.Services.AddScoped<OrderPlacedHandler>();
+builder.Services.AddScoped<OrderShippedHandler>();
+builder.Services.AddScoped<InvoiceIssuedHandler>();
+builder.Services.AddSingleton<IReportReader>(_ => new SqlReportReader(builder.Configuration.GetConnectionString("Reporting")!));
+var app = builder.Build();
+app.MapControllers();
+app.Run();
