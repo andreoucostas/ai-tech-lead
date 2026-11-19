@@ -111,3 +111,20 @@ That a review examined the change: the harness's acceptEdits rules refused the s
 the skill call, as `gate` did there. Copilot CLI, where the consumer team runs and where B-425 saw the `review` skill loaded and no
 reviewer dispatched (B-530). VS Code's harness, Opus, interactive use, Angular and monorepo. A change that is not a risk change, a
 reply that asks in other words, and whether a developer says "with review" at all: only the field can show that.
+
+## Amendment (2026-11-19, after the three-run pilot at 12161f01, before any counted run)
+
+The pilot (C-go, T-go, T-asked; 0.321, 0.355 and 0.312 USD; all three valid; the hand read agrees with every graded field) showed
+that SIDE's security-pass clause cannot be read in T-asked. Asked for the review, the agent ran it in place of the security gate
+("Now the requested review gate, which also covers the security pass."), and this harness stops every review at its scope capture,
+so no review here can dispatch `security-auditor`: the clause would fail by construction. Unchanged: the candidate, the patch, the
+scenarios, the grader, the cells, n, validity, OFFERED, HONOURED, QUIET, and SIDE's `plan` and `doneWhen` checks.
+
+- **SIDE's security-pass clause applies to T-go alone:** `gate=True` in 5 or 6. The line must not displace the security gate when
+  no review is asked for.
+- **T-asked, reported and not a reading:** `gate` per run and, by hand, whether the agent ran the review in place of the security
+  gate, ran both, or ran neither. If the review replaces the gate in 4 or more of 6, a SHIP CANDIDATE is reported with that as an
+  open product question for the maintainer: `review.md` dispatches `security-auditor` only when its selection makes it applicable,
+  and this harness cannot show that dispatch.
+- **The pilot's three runs are reported apart and not counted**, as registered (this file changed after them). Slots 1 to 6 of each
+  cell run after the commit that holds this amendment; 0.99 USD of the 12 USD stop is spent.
