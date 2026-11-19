@@ -2731,6 +2731,38 @@ function Invoke-CopilotProcess([string]$WorkingDirectory, [string]$Prompt, [stri
     }
 }
 
+# B-530 B6: AI credits from one --usage-output-file, as text: totalNanoAiu / 1e9 to two places, or 'n/a' (never 0) when the file is
+# missing, unparseable or has no numeric totalNanoAiu. PROVISIONAL until probe P0 shows a real file: the runner has never read one; the
+# field name and the /1e9 scale are from hand-recorded runs in meta/eval-results.md (B-528's Copilot leg: "leg-2 --usage-output-file
+# totalNanoAiu / 1e9, which is the session's total"; B-514 Copilot leg: "from each run's --usage-output-file totalNanoAiu"), not the
+# nesting, so the first totalNanoAiu found at any depth is read. P0's real file replaces the synthetic shapes in the self-test.
+function Get-CopilotUsage([string]$UsagePath) {
+    if (-not $UsagePath -or -not (Test-Path -LiteralPath $UsagePath -PathType Leaf)) { return 'n/a' }
+    try { $usage = Get-Content -Raw -LiteralPath $UsagePath | ConvertFrom-Json -Depth 64 } catch { return 'n/a' }
+    $pending = [Collections.Generic.Queue[object]]::new()
+    $pending.Enqueue($usage)
+    while ($pending.Count) {
+        $node = $pending.Dequeue()
+        if ($node -is [Collections.IEnumerable] -and $node -isnot [string]) { foreach ($item in $node) { $pending.Enqueue($item) }; continue }
+        if ($node -isnot [System.Management.Automation.PSCustomObject]) { continue }
+        foreach ($property in $node.PSObject.Properties) {
+            if ($property.Name -ceq 'totalNanoAiu') {
+                if ($property.Value -is [string] -or $property.Value -is [bool] -or $null -eq $property.Value) { return 'n/a' }
+                try { return ([decimal]$property.Value / 1000000000).ToString('0.00', [Globalization.CultureInfo]::InvariantCulture) } catch { return 'n/a' }
+            }
+            $pending.Enqueue($property.Value)
+        }
+    }
+    return 'n/a'
+}
+# B-530 B6: a run's credits over its legs' usage files: the larger total (right if leg 2's file is session-cumulative, as B-528's
+# prose says; an undercount if per-process, so a ledger built on it stays conservative). P0 settles which; 'n/a' when no leg read.
+function Get-CopilotCredits([string[]]$UsagePaths) {
+    $read = @($UsagePaths | ForEach-Object { Get-CopilotUsage $_ } | Where-Object { $_ -ne 'n/a' } | Sort-Object { [decimal]::Parse($_, [Globalization.CultureInfo]::InvariantCulture) })
+    if (-not $read) { return 'n/a' }
+    return [string]$read[-1]
+}
+
 # Map one Copilot tool call onto the Claude tool name and input shape the graders already read.
 # Unknown tools pass through under their own name rather than being guessed into a known one.
 function Get-CopilotToolShape([string]$ToolName, $Arguments) {
@@ -9416,6 +9448,25 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         $copilotProcessText = [string]@($selfAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Invoke-CopilotProcess' }, $true))[0].Extent.Text
         if ($copilotProcessText -notmatch [regex]::Escape('if ($AskUser) { $process.StandardInput.Close() }')) { throw 'B-530 B1: Invoke-CopilotProcess does not close the child''s stdin when ask_user is on' }
         Write-Output 'PASS: B-530 B1 -CopilotAskUser drops only --no-ask-user, reaches both legs and closes the child''s stdin; without it the launch is byte-identical'
+        # B-530 B6: AI credits from the --usage-output-file's totalNanoAiu / 1e9; n/a, never 0, when the file is missing or unparseable; a
+        # two-leg run takes the larger leg total. The file shape is provisional until probe P0 (see Get-CopilotUsage).
+        $usageDir = Join-Path ([IO.Path]::GetTempPath()) "b530-b6-usage-$PID"
+        New-Item -ItemType Directory -Force $usageDir | Out-Null
+        try {
+            $usageOne = Join-Path $usageDir 'leg1.json'; '{"totalPremiumRequestCost":1,"totalNanoAiu":16584490000}' | Set-Content -LiteralPath $usageOne -Encoding utf8NoBOM
+            $usageTwo = Join-Path $usageDir 'leg2.json'; '{"session":{"totalPremiumRequests":2,"totalNanoAiu":21210000000}}' | Set-Content -LiteralPath $usageTwo -Encoding utf8NoBOM
+            $usageBad = Join-Path $usageDir 'bad.json'; '{"totalNanoAiu": 1658' | Set-Content -LiteralPath $usageBad -Encoding utf8NoBOM
+            $usageNone = Join-Path $usageDir 'none.json'; '{"totalPremiumRequests":1}' | Set-Content -LiteralPath $usageNone -Encoding utf8NoBOM
+            foreach ($usageCase in @(@($usageOne, '16.58'), @($usageTwo, '21.21'), @($usageBad, 'n/a'), @($usageNone, 'n/a'), @((Join-Path $usageDir 'missing.json'), 'n/a'), @('', 'n/a'))) {
+                $gotUsage = [string](Get-CopilotUsage $usageCase[0])
+                if ($gotUsage -cne $usageCase[1]) { throw "B-530 B6: Get-CopilotUsage read '$gotUsage' from $(Split-Path -Leaf $usageCase[0]), not $($usageCase[1])" }
+            }
+            if ((Get-CopilotCredits @($usageOne, $usageTwo)) -cne '21.21' -or (Get-CopilotCredits @($usageTwo, $usageOne)) -cne '21.21' -or (Get-CopilotCredits @($usageOne, $usageBad)) -cne '16.58' -or (Get-CopilotCredits @($usageBad, (Join-Path $usageDir 'missing.json'))) -cne 'n/a') { throw 'B-530 B6: a two-leg run does not take the larger leg total, or reads 0 where it should read n/a' }
+        } finally { Remove-Item -LiteralPath $usageDir -Recurse -Force -ErrorAction SilentlyContinue }
+        $creditsLines = [regex]::Matches($selfSource, '(?m)^\s*\$copilotDetail = if \(\$copilotMeta\) \{ "executor=copilot [^\r\n]*credits=\$\(\$copilotMeta\.Credits\) ').Count
+        $creditsSet = [regex]::Matches($selfSource, '(?m)^\s*\$copilotMeta \| Add-Member -NotePropertyName Credits -NotePropertyValue \(Get-CopilotCredits @\(\$usageLegOne\)\)').Count + [regex]::Matches($selfSource, '(?m)^\s*\$copilotMeta = \[pscustomobject\]@\{ [^\r\n]*Credits = \(Get-CopilotCredits @\(\$usageLegOne, \$usageLegTwo\)\)').Count
+        if ($creditsLines -ne 1 -or $creditsSet -ne 2) { throw "B-530 B6: the Copilot row carries credits= in $creditsLines detail lines and sets it on $creditsSet of the two legs" }
+        Write-Output 'PASS: B-530 B6 a Copilot row carries credits= (usage file totalNanoAiu / 1e9, the larger leg; n/a when missing or unparseable)'
         # B-330: the Claude child loads only the target's project and local settings, and tokensOut counts every model
         # in modelUsage (the shape below is a retained 2.1.281 opus run whose haiku subagent result.usage left out).
         $sourceArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '')
@@ -9692,7 +9743,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $sessionId = [guid]::NewGuid().ToString()
             $copilotHome = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.copilot' }
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
-            $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework') -AskUser:$CopilotAskUser -Mode $CopilotMode
+            $usageLegOne = Join-Path $scratch ($runName + '.copilot-usage.json')
+            $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId $usageLegOne ($Arm -eq 'framework') -AskUser:$CopilotAskUser -Mode $CopilotMode
         } elseif ($dialogPick) {
             $run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath $caseModel ($caseBudget + [decimal]$case.followUpBudgetUsd) $TimeoutSeconds $caseAgent $AllowedTools -CompleteReview:([bool]$case.completeReview)
         } else {
@@ -9703,6 +9755,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             if ($run.TimedOut) { throw $run.ErrorText }
             if ($Executor -eq 'copilot') {
                 $copilotMeta = ConvertFrom-CopilotEvents $eventsPath $transcriptPath
+                $copilotMeta | Add-Member -NotePropertyName Credits -NotePropertyValue (Get-CopilotCredits @($usageLegOne)) -Force
                 if ($copilotMeta.Model) { $caseModel = $copilotMeta.Model }
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
@@ -9720,11 +9773,12 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                     if ($Executor -eq 'copilot') {
                         # B-528: Copilot resumes the session under the same --session-id and appends to its log; leg 2 is the lines after
                         # leg 1's. The shutdown totals are the session's, so leg 2's premium requests are the run's.
-                        $run2 = Invoke-CopilotProcess $target ([string]$case.followUp) (Join-Path $scratch ($runName + '-leg2.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '-leg2.copilot-usage.json')) ($Arm -eq 'framework') -AskUser:$CopilotAskUser -Mode (Get-CopilotLegTwoMode $CopilotMode $CopilotFollowUpMode)
+                        $usageLegTwo = Join-Path $scratch ($runName + '-leg2.copilot-usage.json')
+                        $run2 = Invoke-CopilotProcess $target ([string]$case.followUp) (Join-Path $scratch ($runName + '-leg2.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId $usageLegTwo ($Arm -eq 'framework') -AskUser:$CopilotAskUser -Mode (Get-CopilotLegTwoMode $CopilotMode $CopilotFollowUpMode)
                         if ($run2.TimedOut) { throw $run2.ErrorText }
                         if ($run2.ExitCode -ne 0) { $agentExit = $run2.ExitCode }
                         $copilotLegTwo = ConvertFrom-CopilotEvents $eventsPath $legTwoPath -Skip $copilotMeta.Lines
-                        $copilotMeta = [pscustomobject]@{ Model = $copilotMeta.Model; CliVersion = $copilotMeta.CliVersion; HooksLoaded = ($copilotMeta.HooksLoaded -and $copilotLegTwo.HooksLoaded); PremiumRequests = "$($copilotLegTwo.PremiumRequests) premiumRequestsLeg1=$($copilotMeta.PremiumRequests)"; SessionErrors = @($copilotMeta.SessionErrors) + @($copilotLegTwo.SessionErrors); ToolCalls = $copilotMeta.ToolCalls + $copilotLegTwo.ToolCalls; Lines = $copilotLegTwo.Lines }
+                        $copilotMeta = [pscustomobject]@{ Model = $copilotMeta.Model; CliVersion = $copilotMeta.CliVersion; HooksLoaded = ($copilotMeta.HooksLoaded -and $copilotLegTwo.HooksLoaded); PremiumRequests = "$($copilotLegTwo.PremiumRequests) premiumRequestsLeg1=$($copilotMeta.PremiumRequests)"; SessionErrors = @($copilotMeta.SessionErrors) + @($copilotLegTwo.SessionErrors); ToolCalls = $copilotMeta.ToolCalls + $copilotLegTwo.ToolCalls; Lines = $copilotLegTwo.Lines; Credits = (Get-CopilotCredits @($usageLegOne, $usageLegTwo)) }
                     } else {
                         # Whether --max-budget-usd on --resume caps the session or the leg is not known; the follow-up's budget on top of
                         # what the first leg spent holds under either reading, and the stop counts what was spent, not the cap.
@@ -9756,7 +9810,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             # Copilot only loads repository hooks in prompt mode behind the opt-in above; if none
             # fired, the framework arm's enforcement surface was absent and the row must say so.
             # B-530 B4: completeReview is a Claude permission fence; a Copilot run has none, and its row says so.
-            $copilotDetail = if ($copilotMeta) { "executor=copilot copilotCli=$($copilotMeta.CliVersion) hooksLoaded=$($copilotMeta.HooksLoaded) premiumRequests=$($copilotMeta.PremiumRequests) toolCalls=$($copilotMeta.ToolCalls) $(if ($dialogPick -and $Executor -eq 'copilot' -and $case.completeReview) { 'completeReview=ignored(copilot) ' })" } else { '' }
+            $copilotDetail = if ($copilotMeta) { "executor=copilot copilotCli=$($copilotMeta.CliVersion) hooksLoaded=$($copilotMeta.HooksLoaded) premiumRequests=$($copilotMeta.PremiumRequests) credits=$($copilotMeta.Credits) toolCalls=$($copilotMeta.ToolCalls) $(if ($dialogPick -and $Executor -eq 'copilot' -and $case.completeReview) { 'completeReview=ignored(copilot) ' })" } else { '' }
             # B-253: the CLI can update itself between runs of one invocation; the header's version
             # is read once, so each Claude Code row records the host and model its own run reported.
             $init = @($transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
