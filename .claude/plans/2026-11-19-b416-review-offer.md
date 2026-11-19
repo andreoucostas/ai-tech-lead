@@ -420,3 +420,25 @@ security-sensitive change, the security gate runs to a verdict and the review th
   sums `costUsd` over this amendment's logs and stops if the next run could pass the stop, assuming the cell's highest observed
   cost, and 3.50 USD for a full run until one has completed. It also stops on a quota, sign-in or rate-limit refusal.
 - **Not shown:** a person at the terminal; Copilot CLI and VS Code; other models and stacks; n = 3 a cell.
+
+**Amendment 5a (2026-11-19, after the third uncounted pilot, before any counted run).** Pilot 3 (0.713 USD, run by the architect,
+row `gate=True gateFirst=True gateSub=True perms=9/3`): the input held through the background auditor, the security gate reached a
+verdict (REQUEST CHANGES, two findings recorded), and both bundles were removed. The agent then ended its turn asking whether to
+run the review now ("you asked for it, but I haven't run it yet"), the runner closed, and no review ran. **Decided by the
+maintainer in chat**, on the architect's question, answer "Accept the pause (Recommended)": the agent may ask before reviewing a
+change the security gate wants changed; the harness answers yes, and the runs measure that the review then completes; the
+spending stop rises from 7 to 10 USD. Changes to the registration above:
+- **Harness.** With the opt-in only: at a successful result with no background task listed, when the clicked go-ahead option was
+  the review option, `gateSub` over the stream so far is `True`, no main-agent `review` Skill call has been seen, and no
+  confirmation was sent yet, the runner types one user message, `Yes, run the review now.`, and keeps reading (holding for
+  background work as before). At most one per run; every other case is unchanged, and with the opt-in off nothing changes (pinned).
+  Report-only row field `reviewConfirm=sent|none` (`n/a` where the live loop did not supply it); no pass expression changes.
+  Red, 2026-11-19: `-SelfTest` on a copy that never confirms, EXIT=1, "the confirmation: the pilot-3 shape with the opt-in on gave
+  hold,close,close, not hold,confirm,close"; as committed EXIT=0, 60 PASS lines.
+- **COMPLETED** now reads: in T5-asked-k-full the security gate reaches a verdict; the `review` skill is called after it, unasked
+  or after the one typed confirmation (each kind counted); the review reaches a verdict; the agent reports it. At least 2 of 3, by
+  hand; if the money stop prevents the third full run, 2 of 2.
+- **Registered check:** one more uncounted pilot of the full cell (the fourth), run by the architect, before the counted runs; if
+  it shows a review still cannot reach a verdict, the counted runs do not start and this amendment is amended first.
+- **Money:** stop at 10 USD for this amendment including all pilots (1.550 USD spent: 0.272, 0.565, 0.713). The series' estimate
+  for a full run is now the highest observed full-cell cost (pilots 3 and 4 and counted runs), 3.50 USD before one exists.

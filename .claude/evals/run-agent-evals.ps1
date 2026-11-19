@@ -2371,15 +2371,25 @@ function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log
 # closed and the stream is read to its end. The transcript is the stream without the control requests, the shape plain -p prints.
 # With -CompleteReview the input is held open at a successful result while background_tasks_changed still lists running tasks, so a
 # background agent's later turn keeps getting its permission requests answered; the run timeout stays the ceiling (Get-DialogResultAction).
+# Also opt-in: when the review was clicked, the security gate started by substance and the agent ended its turn asking to run the review,
+# the runner types one 'Yes, run the review now.' (Get-DialogResultAction 'confirm').
 function Get-DialogBackgroundCount([int]$Count, $Event) {
     if ($Event.type -eq 'system' -and $Event.subtype -eq 'background_tasks_changed') { return $(if ($null -eq $Event.tasks) { 0 } else { @($Event.tasks).Count }) }
     $Count
 }
-# 'follow' (send the typed follow-up; $CanFollow is evaluated lazily), 'hold' (opt-in, no error, background work unfinished), or 'close'.
-function Get-DialogResultAction($Result, [scriptblock]$CanFollow, [int]$Pending, [switch]$CompleteReview) {
+# 'follow' (send the typed follow-up; $CanFollow is evaluated lazily), 'hold' (opt-in, no error, background work unfinished),
+# 'confirm' (opt-in, no error, no background work, and the lazily evaluated $CanConfirm says the review is still owed), or 'close'.
+function Get-DialogResultAction($Result, [scriptblock]$CanFollow, [int]$Pending, [switch]$CompleteReview, [scriptblock]$CanConfirm) {
     if (& $CanFollow) { return 'follow' }
     if ($CompleteReview -and -not $Result.is_error -and $Pending -gt 0) { return 'hold' }
+    if ($CompleteReview -and -not $Result.is_error -and $CanConfirm -and (& $CanConfirm)) { return 'confirm' }
     'close'
+}
+# Is the review still owed? The gate started by substance (Get-GateSubstance True) and the main agent has not called the review skill.
+function Test-DialogReviewOwed($Events) {
+    $e = Get-TranscriptEvidence ([pscustomobject]@{ Events = $Events })
+    if ((Get-GateSubstance $e) -cne 'True') { return $false }
+    -not @($e.Tools | Where-Object { -not $_.Sidechain -and $_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'review' }).Count
 }
 # Report-only: did the security gate start by substance? G = the earliest of the first main-agent security-gate Skill call and the later
 # of (first main-agent review-scope.ps1 capture whose result exists and is not an error, first main-agent security-auditor Agent/Task call).
@@ -2427,7 +2437,8 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
     & $say $Prompt
     $lines = [Collections.Generic.List[string]]::new()
     $deadline = [DateTime]::UtcNow.AddSeconds($Timeout)
-    $followed = $false; $wrote = $false; $closed = $false; $timedOut = $false; $pending = 0
+    $followed = $false; $wrote = $false; $closed = $false; $timedOut = $false; $pending = 0; $clickedReview = $false; $confirmed = $false
+    $parsed = [Collections.Generic.List[object]]::new()
     while ($true) {
         $read = $process.StandardOutput.ReadLineAsync()
         if (-not $read.Wait([int][Math]::Max(0, ($deadline - [DateTime]::UtcNow).TotalMilliseconds))) { $timedOut = $true; break }
@@ -2437,16 +2448,23 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
         $event = $null
         try { $event = $line | ConvertFrom-Json -Depth 100 } catch { $lines.Add($line); continue }
         if ($event.type -eq 'control_request') {
-            if (-not $closed) { & $send ([ordered]@{ type = 'control_response'; response = [ordered]@{ subtype = 'success'; request_id = $event.request_id; response = (Get-DialogAnswer $event.request $Pick -CompleteReview:$CompleteReview -Log $permissions -BundleRoot $BundleRoot -ScratchRoot $ScratchRoot) } }) }
+            if (-not $closed) {
+                $answer = Get-DialogAnswer $event.request $Pick -CompleteReview:$CompleteReview -Log $permissions -BundleRoot $BundleRoot -ScratchRoot $ScratchRoot
+                # The go-ahead click was the review option: some answered label matches $b416Loose.
+                if ($answer.PSObject.Properties['updatedInput'] -and $answer.updatedInput.PSObject.Properties['answers'] -and @($answer.updatedInput.answers.PSObject.Properties | Where-Object { [string]$_.Value -match $b416Loose }).Count) { $clickedReview = $true }
+                & $send ([ordered]@{ type = 'control_response'; response = [ordered]@{ subtype = 'success'; request_id = $event.request_id; response = $answer } })
+            }
             continue
         }
         $lines.Add($line)
+        if ($CompleteReview) { $parsed.Add($event) }
         $pending = Get-DialogBackgroundCount $pending $event
         if ($event.type -eq 'assistant') {
             foreach ($content in @($event.message.content)) { if ($content.type -eq 'tool_use' -and (Test-B406Write $content)) { $wrote = $true } }
         } elseif ($event.type -eq 'result' -and -not $closed) {
-            $action = Get-DialogResultAction $event { -not $followed -and $FollowUp -and -not $event.is_error -and -not $wrote -and @(Get-B406Changes $WorkingDirectory).Count -eq 0 } $pending -CompleteReview:$CompleteReview
+            $action = Get-DialogResultAction $event { -not $followed -and $FollowUp -and -not $event.is_error -and -not $wrote -and @(Get-B406Changes $WorkingDirectory).Count -eq 0 } $pending -CompleteReview:$CompleteReview -CanConfirm { -not $confirmed -and $clickedReview -and (Test-DialogReviewOwed $parsed) }
             if ($action -eq 'follow') { $followed = $true; & $say $FollowUp }
+            elseif ($action -eq 'confirm') { $confirmed = $true; & $say 'Yes, run the review now.' }
             elseif ($action -eq 'close') { $process.StandardInput.Close(); $closed = $true }
         }
     }
@@ -2467,6 +2485,7 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
         TimedOut = $timedOut
         ErrorText = $errorText
         Permissions = @($permissions)
+        ReviewConfirm = $(if ($confirmed) { 'sent' } else { 'none' })
     }
 }
 
@@ -4666,7 +4685,8 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 $allowedN = @($permsAt | Where-Object { $_.decision -eq 'allow' }).Count
                 $classes = if ($permsAt.Count) { (@($permsAt | Group-Object { [string]$_.class } | Sort-Object Name | ForEach-Object { "$($_.Name):$($_.Count)" }) -join ',') } else { 'none' }
                 "perms=$allowedN/$($permsAt.Count - $allowedN) permClasses=$classes" }
-            $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) overlay1=$overlay1 askBullet=$($ask.Bullet) qtool=$($ask.QTool) ask=$($ask.Ask) asks=$($ask.Asks) goAhead=$($ask.GoAhead) picked=$($ask.Picked) offer=$($review.Offer) review=$($review.Reviews) reviewWhen=$($review.When) builtin=$($review.Builtin) reviewers=$($review.Reviewers) plan=$($plan.Class) doneWhen=$($plan.DoneWhen) wrote=$wrote gate=$gate gateFirst=$gateFirst reviewAfterGate=$reviewAfterGate reviewFirst=$($ask.ReviewFirst) reviewRec=$($ask.ReviewRec) $permsField gateSub=$gateSub auditor=$auditor side=$((Get-B406Side $e).Class) durationMs=$(Get-B406Duration $e)"
+            $confirmAt = if ($Transcript.PSObject.Properties['ReviewConfirm'] -and $Transcript.ReviewConfirm) { [string]$Transcript.ReviewConfirm } else { 'n/a' }
+            $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) overlay1=$overlay1 askBullet=$($ask.Bullet) qtool=$($ask.QTool) ask=$($ask.Ask) asks=$($ask.Asks) goAhead=$($ask.GoAhead) picked=$($ask.Picked) offer=$($review.Offer) review=$($review.Reviews) reviewWhen=$($review.When) builtin=$($review.Builtin) reviewers=$($review.Reviewers) plan=$($plan.Class) doneWhen=$($plan.DoneWhen) wrote=$wrote gate=$gate gateFirst=$gateFirst reviewAfterGate=$reviewAfterGate reviewFirst=$($ask.ReviewFirst) reviewRec=$($ask.ReviewRec) $permsField gateSub=$gateSub auditor=$auditor reviewConfirm=$confirmAt side=$((Get-B406Side $e).Class) durationMs=$(Get-B406Duration $e)"
             $why = if ($hooks.Rails -ne 'plan-gate') { "the first prompt's hook carried $($hooks.Rails), not the plan gate" }
                 elseif ($plainChange -and $overlay1) { 'the first prompt tripped the security overlay' }
                 elseif (-not $plainChange -and -not $overlay1) { "the first prompt's hook carried no security overlay" }
@@ -5318,6 +5338,11 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     & $check 'kasked: the registered order' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'picked=review .*gateFirst=True .*reviewFirst=False reviewRec=False ' | Out-Null
     & $check 'go: the review option first, the click on Go ahead' $goId $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $reviewFirstOrder 'Go ahead') + @(& $edit)) $null) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=go .*reviewFirst=True reviewRec=True ' | Out-Null
     & $check 'go: no question, no option order' $goId $cRepo (& $stream @(& $say $plan) (@(& $say $go) + @(& $edit)) -Rails2 $overlay) 'PASS' 'picked=n/a .*reviewFirst=n/a reviewRec=n/a ' | Out-Null
+    # reviewConfirm (report-only): sent|none from the live loop, n/a without it.
+    $withConfirm = { param($Stream, [string]$Value) $Stream | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue $Value -Force; $Stream }
+    & $check 'kfull: the confirmation sent' 'b416-dialog-asked-full' $tRepo (& $withConfirm (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) 'sent') 'PASS' 'auditor=0 reviewConfirm=sent side=' | Out-Null
+    & $check 'kfull: no confirmation' 'b416-dialog-asked-full' $tRepo (& $withConfirm (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) 'none') 'PASS' 'auditor=0 reviewConfirm=none side=' | Out-Null
+    & $check 'kfull: no confirmation information' 'b416-dialog-asked-full' $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'auditor=0 reviewConfirm=n/a side=' | Out-Null
     # b416-dialog-asked-full: graded as b416-dialog-asked, plus reviewAfterGate and the permission counts the live loop attaches.
     $kFull = 'b416-dialog-asked-full'
     $withPerms = { param($Stream, $Records) $Stream | Add-Member -NotePropertyName Permissions -NotePropertyValue @($Records) -Force; $Stream }
@@ -5368,6 +5393,39 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     if ($heldErr -cne 'close') { throw "B-416 dialog the opt-in on, an error result with a background task running was $heldErr, not close" }
     if ($heldFollow -cne 'follow') { throw "B-416 dialog the follow-up did not come before a hold ($heldFollow)" }
     if ($heldNone -cne 'close') { throw "B-416 dialog the opt-in on with no background task did not close ($heldNone)" }
+    # The confirmation (A5): pilot-3 shape, the review clicked, the gate by substance (capture + auditor), a background task, then results.
+    $replay2 = { param($Events, [bool]$On, [bool]$Clicked)
+        $pending = 0; $seen = [Collections.Generic.List[object]]::new(); $actions = [Collections.Generic.List[string]]::new(); $confirmed = $false
+        foreach ($ev in $Events) {
+            $seen.Add($ev)
+            $pending = Get-DialogBackgroundCount $pending $ev
+            if ($ev.type -eq 'result') {
+                $a = Get-DialogResultAction $ev { $false } $pending -CompleteReview:$On -CanConfirm { -not $confirmed -and $Clicked -and (Test-DialogReviewOwed $seen) }
+                if ($a -eq 'confirm') { $confirmed = $true }
+                $actions.Add($a)
+            }
+        }
+        $actions -join ','
+    }
+    $gateByCapture = @(& $edit) + @(& $capture 'c1') + @(& $auditorCall)
+    $pilot3 = $gateByCapture + @(& $bgChange @($bgTask)) + @(& $done 0) + @(& $bgChange @()) + @(& $done 1) + @(& $done 2)
+    $confOn = & $replay2 $pilot3 $true $true
+    $confOff = & $replay2 $pilot3 $false $true
+    $confViaSkill = & $replay2 (@(& $edit) + @(& $skill 'security-gate') + @(& $done 0)) $true $true
+    $confReviewed = & $replay2 (@(& $edit) + @(& $skill 'security-gate') + @(& $skill 'review') + @(& $done 0)) $true $true
+    $confNoGate = & $replay2 (@(& $edit) + @(& $capture 'c1') + @(& $done 0)) $true $true
+    $confPickedGo = & $replay2 $pilot3 $true $false
+    $confErr = & $replay2 (@(& $edit) + @(& $skill 'security-gate') + @($errResult)) $true $true
+    $confBusy = & $replay2 (@(& $edit) + @(& $skill 'security-gate') + @(& $bgChange @($bgTask)) + @(& $done 0)) $true $true
+    if ($confOn -cne 'hold,confirm,close') { throw "B-416 dialog the confirmation: the pilot-3 shape with the opt-in on gave $confOn, not hold,confirm,close" }
+    if ($confOff -cne 'close,close,close') { throw "B-416 dialog the confirmation: the opt-in off gave $confOff, not close,close,close" }
+    if ($confViaSkill -cne 'confirm') { throw "B-416 dialog the confirmation: a security-gate skill call gave $confViaSkill, not confirm" }
+    if ($confReviewed -cne 'close') { throw "B-416 dialog the confirmation: a review skill already called gave $confReviewed, not close" }
+    if ($confNoGate -cne 'close') { throw "B-416 dialog the confirmation: a capture without the auditor gave $confNoGate, not close" }
+    if ($confPickedGo -cne 'hold,close,close') { throw "B-416 dialog the confirmation: the go option picked gave $confPickedGo, not hold,close,close" }
+    if ($confErr -cne 'close') { throw "B-416 dialog the confirmation: an error result gave $confErr, not close" }
+    if ($confBusy -cne 'hold') { throw "B-416 dialog the confirmation: a background task running gave $confBusy, not hold" }
+    if ((Get-Command Invoke-ClaudeDialogRun).ScriptBlock.Ast.Extent.Text -notmatch [regex]::Escape("elseif (`$action -eq 'confirm') { `$confirmed = `$true; & `$say 'Yes, run the review now.' }")) { throw 'B-416 dialog the loop does not send exactly "Yes, run the review now." on the confirm action' }
     if ((Get-DialogBackgroundCount 2 (& $say 'x')) -ne 2 -or (Get-DialogBackgroundCount 2 (& $bgChange @())) -ne 0 -or (Get-DialogBackgroundCount 0 (& $bgChange @($bgTask, $bgTask))) -ne 2) { throw 'B-416 dialog the background task count is not the latest background_tasks_changed list' }
 
     # Not examined.
@@ -8975,7 +9033,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
             $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer'))
-            if ($dialogPick) { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force }
+            if ($dialogPick) { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force; $transcript | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue ([string]$run.ReviewConfirm) -Force }
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
                 # tree) and no error. Otherwise the grader sees one leg and says why (wroteT1, or not examined).
