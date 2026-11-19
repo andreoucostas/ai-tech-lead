@@ -4728,7 +4728,7 @@ file and `stale` in a depth-1 clone (the review's runs, not repeated), and e003c
 **Decision (user, 2026-11-05: "Yes" to the narrowed design).** `add-warehouse-load` step 11 is the one unprompted writer: rows for objects the change created, cells it made
 untrue, a dated Coverage line, only in a map that carries a full-pass line, never the stamp, Findings or Querying. The scoped pass keeps offering and keeps `CONFLICTING`.
 Rejected: doing nothing (a load added through the recipe stayed unmapped). **Reopen** the read-side half on B-466's result or a field report of a map that misled by silence.
-B-466 met the first trigger (2026-11-15: maps right at 14, 495 and 4,999 files, framework 6 of 6 at each, scoped pass never run); kept unchanged (maintainer, 2026-11-15).
+B-466 met the first trigger (2026-11-15: maps right at 14, 495 and 4,999 files, framework 6 of 6 at each, scoped pass never run); kept unchanged (maintainer, 2026-11-15). Met again 2026-11-19 by the stale-map eval (`meta/eval-results.md`, "Stale-map results"): the override fixed a stale row 6 of 6 with no wrong edit (hand class), today's rule 0 of 6; maintainer decides.
 
 ## WSD-123: a brownfield install stops for a team's tracked file on a framework-owned path (2026-11-11)
 

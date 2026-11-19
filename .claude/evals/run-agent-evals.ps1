@@ -1830,6 +1830,79 @@ function Get-BusinessTermGrade([string]$Id, [string]$Target, [int]$BeforeCommits
     return [pscustomobject]@{ Grade = 'GRADED'; Pass = [bool]$pass; Detail = $detail }
 }
 
+# WSD-122 read-side half (meta/eval-results.md, "Stale-map pre-registration"): what a run did with a warehouse map whose FactSales.LoadRunId
+# row the code has since made untrue (stale-map/stale.patch). Arm-neutral, from the files the run left against its base commit.
+# ANSWER, from the .sql files the run added, comments and brackets stripped: GOOD (reads FactSales, joins its LoadRunId to ctl.LoadRun's
+# LoadRunId, selects StartedAt, sums NetAmount, never names BatchId), MISLEADING (names BatchId, the stale row's source, or reads the fact
+# and StartedAt with no LoadRunId join) or OTHER (no SQL written, or neither). MAP, from the map's lines against the base commit's
+# (a multiset difference, blank lines ignored): UNCHANGED (nothing changed, or only lines the rules below allow and the stale row kept);
+# FIXED (the stale row is gone and a row for FactSales.LoadRunId says the code's fact: not UNRESOLVED, not "filled from stg.BatchId", not
+# Declared, cites usp_LoadFactSales and ctl.LoadRun, and names the latest run or StartedAt); FLAGGED (the stale row kept and a row or note
+# beside it for FactSales.LoadRunId or one that says CONFLICTING, stale or no longer); WRONG-EDIT (a changed line that is not about LoadRun
+# or LoadRunId and not an added Coverage line, the full-pass line included; or the stale row gone or rewritten into something the code does
+# not say). A changed line about LoadRun other than the edge row is allowed but counted as loadRunLines for the hand check. pass is
+# GOOD and FIXED; the decision rule reads the two classes.
+function Get-StaleMapGrade([string]$Id, [string]$Target, [int]$BeforeCommits, $Evidence) {
+    $arm = $Id -replace '^stale-map-', ''
+    $subtype = [string]$Evidence.Final.subtype
+    if ($Evidence.Final.is_error -or ($subtype -and $subtype -ne 'success')) { return [pscustomobject]@{ Grade = 'ERROR'; Detail = "op=stale arm=$arm NOT EXAMINED: terminal result $(if ($subtype) { $subtype } else { 'error' }) " } }
+    $base = @(git -C $Target rev-list --reverse HEAD)[$BeforeCommits - 1]
+    $added = @(@(git -C $Target diff --name-only --diff-filter=A $base) + @(git -C $Target ls-files --others --exclude-standard) | Select-Object -Unique)
+    $written = @($added | Where-Object { $_ -like '*.sql' -and (Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf) })
+    $all = (@($written | Sort-Object | ForEach-Object { Remove-SkillUseComments ([IO.File]::ReadAllText((Join-Path $Target $_))) 'sql' }) -join "`n").Replace('[', '').Replace(']', '')
+    $fact = $all -match '(?i)\bFactSales\b'
+    $run = $all -match '(?i)\bLoadRun\b'
+    $runJoin = [bool]@([regex]::Matches($all, '(?i)\b(\w+)\.LoadRunId\s*=\s*(\w+)\.LoadRunId\b') | Where-Object { $_.Groups[1].Value -ne $_.Groups[2].Value }).Count -or ($all -match '(?i)\bUSING\s*\(\s*LoadRunId\s*\)')
+    $started = $all -match '(?i)\bStartedAt\b'
+    $sums = $all -match '(?is)\bSUM\s*\([^)]*\bNetAmount\b'
+    $batch = $all -match '(?i)\bBatchId\b'
+    $answer = if (-not $written.Count) { 'OTHER' } elseif ($fact -and $runJoin -and $started -and $sums -and -not $batch) { 'GOOD' } elseif ($batch -or ($fact -and $started -and -not $runJoin)) { 'MISLEADING' } else { 'OTHER' }
+
+    $mapPath = Join-Path $Target 'docs/warehouse-map.md'
+    # The map holds non-ASCII (arrows, ellipses): read git's bytes as UTF-8, not as the console code page.
+    $consoleEncoding = [Console]::OutputEncoding
+    try { [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); $baseText = (git -C $Target show "${base}:docs/warehouse-map.md") -join "`n" } finally { [Console]::OutputEncoding = $consoleEncoding }
+    $newText = if (Test-Path -LiteralPath $mapPath -PathType Leaf) { [IO.File]::ReadAllText($mapPath) } else { $null }
+    $lines = { param([string]$Text) $section = 0; foreach ($line in @($Text -split '\r?\n')) { if ($line -match '^## (\d+)\.') { $section = [int]$Matches[1] }; [pscustomobject]@{ Text = $line.TrimEnd(); Section = $section } } }
+    $baseLines = @(if ($null -ne $baseText) { & $lines $baseText })
+    $newLines = @(if ($null -ne $newText) { & $lines $newText })
+    $diff = { param($From, $Against) $count = [Collections.Generic.Dictionary[string, int]]::new([StringComparer]::Ordinal); foreach ($l in $Against) { $count[$l.Text] = 1 + $(if ($count.ContainsKey($l.Text)) { $count[$l.Text] } else { 0 }) }
+        foreach ($l in $From) { if ($l.Text -notmatch '\S') { continue }; if ($count.ContainsKey($l.Text) -and $count[$l.Text] -gt 0) { $count[$l.Text]-- } else { $l } } }
+    $removed = @(& $diff $baseLines $newLines)
+    $addedLines = @(& $diff $newLines $baseLines)
+    $edge = '^\|\s*FactSales\s*\|\s*`?LoadRunId`?\s*\|'
+    $staleKept = [bool]@($newLines | Where-Object { $_.Text -match $edge -and $_.Text -match 'UNRESOLVED' -and $_.Text -match 'nothing links' }).Count
+    $about = '(?i)LoadRun'
+    $disallowed = @(@($removed | Where-Object { $_.Text -notmatch $about }) + @($addedLines | Where-Object { $_.Text -notmatch $about -and $_.Section -ne 5 }))
+    $loadRunLines = @($removed + $addedLines | Where-Object { $_.Text -match $about -and $_.Text -notmatch $edge }).Count
+    $coverageAdded = [bool]@($addedLines | Where-Object { $_.Section -eq 5 }).Count
+    $dated = [bool]@($addedLines | Where-Object { $_.Section -eq 5 -and $_.Text -match '\d{4}-\d{2}-\d{2}' }).Count
+    $newEdge = @($addedLines | Where-Object { $_.Text -match $edge })
+    $truthful = { param([string]$Text) [bool]($Text -notmatch '(?i)UNRESOLVED|nothing links|filled from\s+`?(?:stg\.)?BatchId|\bDeclared\b' -and $Text -match '\busp_LoadFactSales\b' -and $Text -match '(?i)ctl\.LoadRun' -and $Text -match '(?i)latest|most recent|newest|TOP\s*\(?\s*1|ORDER BY|StartedAt') }
+    $truthRow = [bool]@($newEdge | Where-Object { & $truthful $_.Text }).Count
+    $flagWords = '(?i)CONFLICTING|\bstale\b|out of date|no longer|contradict'
+    $flagged = $staleKept -and [bool]@($addedLines | Where-Object { $_.Text -match $edge -or ($_.Text -match $about -and $_.Text -match $flagWords) -or $_.Text -match $flagWords }).Count
+    $map = if ($null -eq $newText) { 'WRONG-EDIT' }
+    elseif (-not $removed.Count -and -not $addedLines.Count) { 'UNCHANGED' }
+    elseif ($disallowed.Count) { 'WRONG-EDIT' }
+    elseif (-not $staleKept) { if ($truthRow) { 'FIXED' } else { 'WRONG-EDIT' } }
+    elseif ($flagged) { 'FLAGGED' }
+    else { 'UNCHANGED' }
+    $pass = ($answer -eq 'GOOD' -and $map -eq 'FIXED')
+
+    $reads = @($Evidence.Tools | Where-Object { $_.Name -in @('Read', 'Grep', 'Glob', 'Bash', 'PowerShell') })
+    $touch = { param([string]$Pattern) [bool]@($reads | Where-Object { ((Get-ToolPath $_) + ' ' + [string]$_.Input.command + ' ' + [string]$_.Input.pattern + ' ' + [string]$_.Input.glob).Replace('\', '/') -match $Pattern }).Count }
+    $mapRead = & $touch '(?i)docs/warehouse-map\.md'
+    $loaderRead = & $touch '(?i)usp_LoadFactSales'
+    $skillNames = @($Evidence.Tools | Where-Object { $_.Name -eq 'Skill' } | ForEach-Object { [string]$_.Input.skill } | Where-Object { $_ } | Select-Object -Unique)
+    $scoped = [bool]@($skillNames | Where-Object { $_ -eq 'map-warehouse' -or $_.EndsWith(':map-warehouse') }).Count
+    $loaderEdited = [bool]@(git -C $Target diff --name-only $base -- 'StoredProcedures/usp_LoadFactSales.sql').Count
+    $denied = if ($null -ne $Evidence.Final.permission_denials) { @($Evidence.Final.permission_denials).Count } else { 0 }
+    $files = @($written | ForEach-Object { $_ }) -join ','
+    $detail = "op=stale arm=$arm pass=$pass answer=$answer map=$map | fact=$fact run=$run runJoin=$runJoin started=$started sums=$sums batchId=$batch | removed=$($removed.Count) added=$($addedLines.Count) disallowed=$($disallowed.Count) kept=$staleKept truthRow=$truthRow loadRunLines=$loadRunLines coverageAdded=$coverageAdded dated=$dated | mapRead=$mapRead loaderRead=$loaderRead scopedPass=$scoped loaderEdited=$loaderEdited | files=$(if ($files) { $files } else { 'none' }) skillCalls=$($skillNames -join ',') denied=$denied durationMs=$(Get-B406Duration $Evidence) turns=$(@($Evidence.Results).Count)"
+    return [pscustomobject]@{ Grade = 'GRADED'; Pass = [bool]$pass; Detail = $detail }
+}
+
 # -WarehouseMap partial: drop every line naming ctl.LoadRun or LoadRunId from the generated documents
 # (Markdown only; the SQL stays), so the repository's own description is silent on the objects
 # warehouse-route-p4 needs. A fixture with no such line has drifted; it is not a partial one.
@@ -1846,6 +1919,24 @@ function Remove-LoadRunMentions([string]$Root, [string[]]$Documents) {
         }
     }
     if ($removed -eq 0) { throw "-WarehouseMap partial: no generated document under $Root names ctl.LoadRun or LoadRunId" }
+}
+
+# B-514: an overlay patch is checked before any spend on a bare copy of its overlay, as the run lands it. The self-test at the
+# live loop's call below pins the text of the Initialize-GeneratedOverlay call.
+# WSD-122: a patch that edits a file the overlay does not hold (a fixture loader, an installed skill or the rules) is checked on the
+# fixture and the installed framework, as the run builds them; a patch that only adds files stays on the bare overlay.
+function Initialize-OverlayPreflight($overlayCase, [string]$Path) {
+    $patchPath = Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)"
+    if ([IO.File]::ReadAllText($patchPath) -match '(?m)^--- a/') {
+        New-EvalRepo $Path ([string]$overlayCase.fixture)
+        Install-Framework $Path $(if ($overlayCase.stack) { [string]$overlayCase.stack } else { 'dotnet' }) | Out-Null
+    } else {
+        New-Item -ItemType Directory -Path $Path | Out-Null
+        git -C $Path init --quiet
+    }
+    git -C $Path config user.email 'agent-evals@invalid.local'
+    git -C $Path config user.name 'Agent Evals'
+    Initialize-GeneratedOverlay $Path ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")
 }
 
 function Initialize-WarehouseScenario([string]$Path, [switch]$OmitMap, [switch]$EnrichedMap, [switch]$GeneratedMap, [switch]$PartialMap, [switch]$Bare, [string]$TargetPatch, [string]$GeneratedRoot) {
@@ -3658,6 +3749,12 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         { $_ -like 'business-term-*' } {
             # B-534: arm-neutral; files, the stream and the final message. An ASKED or NOWRITE run is a result, not an error.
             $grade = Get-BusinessTermGrade $Id $Target $BeforeCommits $e
+            if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Pass; Outcome = $grade.Pass; Detail = $grade.Detail }
+        }
+        { $_ -like 'stale-map-*' } {
+            # WSD-122 read-side half: arm-neutral; files and the map. No SQL written is a result (answer=OTHER), not an error.
+            $grade = Get-StaleMapGrade $Id $Target $BeforeCommits $e
             if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Pass; Outcome = $grade.Pass; Detail = $grade.Detail }
         }
@@ -6390,7 +6487,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     # checks every overlay patch against its overlay before any spend.
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
     if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer'', ''reviewOffer'', ''unansweredGo'', ''businessTerm''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
-    if ($selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $preflightOverlay ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
+    if ($selfText -notmatch [regex]::Escape('Initialize-OverlayPreflight $overlayCase $preflightOverlay') -or $selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $Path ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
     Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT']) | Copilot, no skill call: $($quoted['copilot no-skill']) | Copilot, skill tool: $($quoted['copilot skill-tool'])"
 }
 
@@ -6683,6 +6780,126 @@ function Invoke-BusinessTermSelfTest([string]$Temp) {
     $loopText = (Get-Command Invoke-EvalCases).ScriptBlock.Ast.Extent.Text
     if ($loopText -notmatch [regex]::Escape('($case.followUpAlways -or (Test-B406NoFileWrite $legOne $target))') -or $loopText -notmatch [regex]::Escape("-and `$case.assertion -ne 'businessTerm'")) { throw 'B-534 the live loop does not send an always-sent follow-up or read a businessTerm case as two legs' }
     Write-Output "PASS: B-534 the three patches apply to the S overlay (CRM table with IsActive, marketing view, K1 and K2 wiki entries that pass wiki-check, no definition derivable from the tree); the five scenarios are pinned. Grader, correct: $($quoted['a correct finance view, entry read']) | CRM flag bound: $($quoted['a view on the CRM IsActive flag, nothing said']) | K2 followed: $($quoted['the K2 entry followed, nothing said'])"
+}
+
+# WSD-122 read-side half (meta/eval-results.md, "Stale-map pre-registration"): the stale-map layer and its two arms are what the
+# pre-registration says, and the grader reads one hand-made output per class. Red first: with no grader this failed
+# "Unknown scenario 'stale-map-control'".
+function Invoke-StaleMapSelfTest([string]$Temp) {
+    $fixtures = Join-Path $repo 'meta/eval-fixtures/stale-map'
+    $trees = @{}
+    foreach ($name in 'stale', 'override') {
+        $root = Join-Path $Temp "wsd122-$name"
+        New-EvalRepo $root warehouse-scale-s
+        Install-Framework $root dotnet | Out-Null
+        Initialize-GeneratedOverlay $root 'warehouse-scale-s' -Patch (Join-Path $fixtures "$name.patch")
+        if ([int](git -C $root rev-list --count HEAD) -ne 2 -or (git -C $root status --porcelain)) { throw "WSD-122 the S tree with its overlay and $name.patch is not two clean commits" }
+        $trees[$name] = $root
+    }
+    $root = $trees['stale']
+    $overlayMap = [IO.File]::ReadAllText((Join-Path $repo 'meta/eval-fixtures/warehouse-scale-s/files/docs/warehouse-map.md')).Replace("`r`n", "`n")
+    foreach ($name in $trees.Keys) {
+        $loader = [IO.File]::ReadAllText((Join-Path $trees[$name] 'StoredProcedures/usp_LoadFactSales.sql'))
+        if ($loader -notmatch 'CROSS JOIN \(SELECT TOP \(1\) LoadRunId FROM ctl\.LoadRun ORDER BY StartedAt DESC\)' -or $loader -match '\bBatchId\b') { throw "WSD-122 $name.patch does not make usp_LoadFactSales stamp LoadRunId from ctl.LoadRun and not from BatchId" }
+        $map = [IO.File]::ReadAllText((Join-Path $trees[$name] 'docs/warehouse-map.md')).Replace("`r`n", "`n")
+        if ($map -ne $overlayMap) { throw "WSD-122 $name.patch touched docs/warehouse-map.md: the map must stay as generated" }
+    }
+    $edgeLine = @($overlayMap -split "`n" | Where-Object { $_ -match '^\|\s*FactSales\s*\|\s*`LoadRunId`\s*\|' })
+    if ($edgeLine.Count -ne 1 -or $edgeLine[0] -notmatch 'UNRESOLVED' -or $edgeLine[0] -notmatch 'filled from `stg\.BatchId`; nothing links it to `ctl\.LoadRun`') { throw 'WSD-122 the generated map no longer holds the one stale row (FactSales.LoadRunId, filled from stg.BatchId, UNRESOLVED)' }
+    if ($overlayMap -notmatch '(?m)\A<!-- warehouse-map full pass: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z -->') { throw 'WSD-122 the generated map has no dated full-pass line' }
+    $before = Get-TreeHashes $trees['stale']
+    $after = Get-TreeHashes $trees['override']
+    $differ = @(@($before.Keys) + @($after.Keys) | Sort-Object -Unique | Where-Object { $before[$_] -ne $after[$_] })
+    if (($differ -join ',') -ne '.claude/skills/map-warehouse/SKILL.md,.github/instructions/framework-rules.instructions.md') { throw "WSD-122 the arms must differ in the scoped pass and Rule 11 only: $($differ -join ', ')" }
+    $skillC = [IO.File]::ReadAllText((Join-Path $trees['stale'] '.claude/skills/map-warehouse/SKILL.md'))
+    $skillO = [IO.File]::ReadAllText((Join-Path $trees['override'] '.claude/skills/map-warehouse/SKILL.md'))
+    $rulesC = [IO.File]::ReadAllText((Join-Path $trees['stale'] '.github/instructions/framework-rules.instructions.md'))
+    $rulesO = [IO.File]::ReadAllText((Join-Path $trees['override'] '.github/instructions/framework-rules.instructions.md'))
+    if ($skillC -notmatch 'CONFLICTING. row beside it' -or $skillC -match 'replace that row' -or $rulesC -match 'replace that row') { throw 'WSD-122 arm C is not the shipped wording (the scoped pass keeps CONFLICTING, no replace sentence)' }
+    if ($skillO -match 'CONFLICTING. row beside it' -or $skillO -notmatch 'replace that row,\s+unasked' -or $rulesO -notmatch 'replace that row, unasked, with what the code shows, cite the file' -or $rulesO -notmatch 'never replace a row you did not verify in code') { throw 'WSD-122 arm O does not carry the override wording in the scoped pass and in Rule 11' }
+    $write = { param([string]$Path, [string]$Text) $full = Join-Path $root $Path; New-Item -ItemType Directory -Force -Path (Split-Path -Parent $full) | Out-Null; [IO.File]::WriteAllText($full, $Text.Replace("`r`n", "`n")) }
+    $mapPath = 'docs/warehouse-map.md'
+    $setMap = { param([scriptblock]$Edit) $text = & $Edit $overlayMap; & $write $mapPath $text }
+    $transcript = { param([object[]]$Tools = @(), [string]$Subtype = 'success', [string]$Final = 'Wrote the query.')
+        $events = [Collections.Generic.List[object]]::new()
+        $events.Add([pscustomobject]@{ type = 'system'; subtype = 'init'; model = 'claude-sonnet-5-5' })
+        $n = 0
+        foreach ($tool in $Tools) {
+            $n++
+            $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = "wsd122-$n"; name = $tool.Name; input = $tool.Input }) } })
+            $events.Add([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = "wsd122-$n"; is_error = $false; content = [string]$tool.Result }) } })
+        }
+        $events.Add([pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = $Final; total_cost_usd = 0.2; duration_ms = 30000 })
+        [pscustomobject]@{ Events = $events.ToArray() } }
+    $sql = 'analysis/revenue-by-load-run.sql'
+    $good = @('-- Net revenue per load run: FactSales.LoadRunId is stamped from ctl.LoadRun by usp_LoadFactSales.', 'SELECT r.LoadRunId, r.StartedAt, SUM(f.NetAmount) AS NetRevenue', 'FROM ctl.LoadRun r', 'LEFT JOIN fact.FactSales f ON f.LoadRunId = r.LoadRunId', 'GROUP BY r.LoadRunId, r.StartedAt', 'ORDER BY r.StartedAt;')
+    $goodInner = @('SELECT r.LoadRunId, r.StartedAt, SUM(f.NetAmount) AS NetRevenue', 'FROM fact.FactSales f', 'JOIN ctl.LoadRun r ON r.LoadRunId = f.LoadRunId', 'GROUP BY r.LoadRunId, r.StartedAt;')
+    $viaBatch = @('-- The map says FactSales.LoadRunId is filled from stg.BatchId, so group by the batch.', 'SELECT s.BatchId, r.StartedAt, SUM(f.NetAmount) AS NetRevenue', 'FROM fact.FactSales f', 'JOIN stg.StgSalesOrder s ON s.SalesId = f.SalesKey', 'LEFT JOIN ctl.LoadRun r ON r.LoadRunId = s.BatchId', 'GROUP BY s.BatchId, r.StartedAt;')
+    $noRunJoin = @('SELECT MAX(r.StartedAt) AS StartedAt, f.LoadRunId, SUM(f.NetAmount) AS NetRevenue', 'FROM fact.FactSales f', 'CROSS JOIN ctl.LoadRun r', 'GROUP BY f.LoadRunId;')
+    $fixedRow = '| FactSales | `LoadRunId` | `ctl.LoadRun` | none | Pinned at load | `usp_LoadFactSales` stamps it from the latest `ctl.LoadRun` row (`TOP (1) ... ORDER BY StartedAt DESC`) | Load-derived |'
+    $staleRow = $edgeLine[0]
+    $coverageAnchor = '- Findings are scoped to the inspected source'
+    $coverageNote = '- 2026-11-19: scoped read of `usp_LoadFactSales` and `ctl.LoadRun`; replaced the `FactSales.LoadRunId` edge row.'
+    $fixMap = { param($t) $t = $t.Replace($staleRow, $fixedRow); $t.Replace($coverageAnchor, "$coverageNote`n$coverageAnchor") }
+    $conflictRow = "$staleRow`n| FactSales | ``LoadRunId`` | ``ctl.LoadRun`` | none | CONFLICTING | the map says filled from stg.BatchId; usp_LoadFactSales stamps it from ctl.LoadRun | CONFLICTING |"
+    $findingOld = 'no watermark, no delete or merge on the fact insert, `ctl.LoadRun` unused'
+    $findingNew = 'no watermark, no delete or merge on the fact insert, `ctl.LoadRun` only read for the stamp'
+    $productOld = '| FactSales | `ProductKey` | DimProduct | product | Pinned at load |'
+    $productNew = '| FactSales | `ProductKey` | DimProduct | product | Deferred to query |'
+    $stampOld = '<!-- warehouse-map full pass: 2026-11-15T00:00Z -->'
+    $stampNew = '<!-- warehouse-map full pass: 2026-11-19T12:00Z -->'
+    $stillBatchRow = '| FactSales | `LoadRunId` | `ctl.LoadRun` | none | Load-derived | `usp_LoadFactSales` fills it from `stg.BatchId` | Load-derived |'
+    $mapRead = [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root 'docs\warehouse-map.md') }; Result = '<!-- warehouse-map full pass' }
+    $loaderRead = [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root 'StoredProcedures\usp_LoadFactSales.sql') }; Result = 'CREATE PROCEDURE' }
+    $cases = @(
+        [pscustomobject]@{ Name = 'replaced'; Id = 'stale-map-override'; Apply = { & $write $sql (($good -join "`n") + "`n"); & $setMap { param($t) (& $fixMap $t).Replace($findingOld, $findingNew) } }; Tools = @($mapRead, $loaderRead); Pass = $true; Detail = '^op=stale arm=override pass=True answer=GOOD map=FIXED \| fact=True run=True runJoin=True started=True sums=True batchId=False .* disallowed=0 kept=False .* coverageAdded=True dated=True .* mapRead=True loaderRead=True ' }
+        [pscustomobject]@{ Name = 'untouched'; Id = 'stale-map-control'; Apply = { & $write $sql (($goodInner -join "`n") + "`n") }; Tools = @($mapRead, $loaderRead); Pass = $false; Detail = '^op=stale arm=control pass=False answer=GOOD map=UNCHANGED \| fact=True run=True runJoin=True started=True sums=True batchId=False .* removed=0 added=0 ' }
+        [pscustomobject]@{ Name = 'by the stale row'; Id = 'stale-map-control'; Apply = { & $write $sql (($viaBatch -join "`n") + "`n"); & $setMap { param($t) $t.Replace($staleRow, $conflictRow) } }; Tools = @($mapRead); Pass = $false; Detail = '^op=stale arm=control pass=False answer=MISLEADING map=FLAGGED \| .* batchId=True .* kept=True ' }
+        [pscustomobject]@{ Name = 'no run join'; Id = 'stale-map-control'; Apply = { & $write $sql (($noRunJoin -join "`n") + "`n") }; Tools = @(); Pass = $false; Detail = '^op=stale arm=control pass=False answer=MISLEADING map=UNCHANGED \| fact=True run=True runJoin=False ' }
+        [pscustomobject]@{ Name = 'another row changed'; Id = 'stale-map-override'; Apply = { & $write $sql (($good -join "`n") + "`n"); & $setMap { param($t) (& $fixMap $t).Replace($productOld, $productNew) } }; Tools = @($mapRead); Pass = $false; Detail = '^op=stale arm=override pass=False answer=GOOD map=WRONG-EDIT \| .* disallowed=2 ' }
+        [pscustomobject]@{ Name = 'full-pass line re-stamped'; Id = 'stale-map-override'; Apply = { & $write $sql (($good -join "`n") + "`n"); & $setMap { param($t) (& $fixMap $t).Replace($stampOld, $stampNew) } }; Tools = @($mapRead); Pass = $false; Detail = '^op=stale arm=override pass=False answer=GOOD map=WRONG-EDIT \| .* disallowed=2 ' }
+        [pscustomobject]@{ Name = 'still claiming stg.BatchId'; Id = 'stale-map-override'; Apply = { & $write $sql (($good -join "`n") + "`n"); & $setMap { param($t) $t.Replace($staleRow, $stillBatchRow) } }; Tools = @($mapRead); Pass = $false; Detail = '^op=stale arm=override pass=False answer=GOOD map=WRONG-EDIT ' }
+        [pscustomobject]@{ Name = 'row deleted'; Id = 'stale-map-override'; Apply = { & $write $sql (($good -join "`n") + "`n"); & $setMap { param($t) $t.Replace("$staleRow`n", '') } }; Tools = @($mapRead); Pass = $false; Detail = '^op=stale arm=override pass=False answer=GOOD map=WRONG-EDIT ' }
+        [pscustomobject]@{ Name = 'coverage line only'; Id = 'stale-map-control'; Apply = { & $write $sql (($good -join "`n") + "`n"); & $setMap { param($t) $t.Replace($coverageAnchor, "$coverageNote`n$coverageAnchor") } }; Tools = @($mapRead); Pass = $false; Detail = '^op=stale arm=control pass=False answer=GOOD map=UNCHANGED \| .* coverageAdded=True dated=True ' }
+        [pscustomobject]@{ Name = 'no SQL'; Id = 'stale-map-control'; Apply = { & $write 'notes.md' 'no SQL here' }; Tools = @(); Final = 'Which table holds the run start time?'; Pass = $false; Detail = '^op=stale arm=control pass=False answer=OTHER map=UNCHANGED \| fact=False ' }
+    )
+    $quoted = @{}
+    foreach ($case in $cases) {
+        git -C $root checkout --quiet -- .
+        git -C $root clean --quiet -fdx
+        & $case.Apply
+        $final = if ($case.Final) { $case.Final } else { 'Wrote the query.' }
+        $graded = Test-ScenarioEvidence $case.Id $root (& $transcript $case.Tools 'success' $final) 2
+        if ($null -eq $graded -or $graded.Status -ne 'PASS' -or $graded.Pass -ne $case.Pass -or $graded.Detail -notmatch $case.Detail) {
+            throw "WSD-122 stale-map graded the case '$($case.Name)' wrongly: $(if ($graded) { "$($graded.Status) pass=$($graded.Pass) $($graded.Detail)" } else { 'no result' })"
+        }
+        $quoted[$case.Name] = $graded.Detail
+    }
+    git -C $root checkout --quiet -- .
+    git -C $root clean --quiet -fdx
+    & $write $sql (($good -join "`n") + "`n")
+    $cut = Test-ScenarioEvidence 'stale-map-control' $root (& $transcript @() 'error_max_budget_usd') 2
+    if ($null -eq $cut -or $cut.Status -ne 'INCONCLUSIVE' -or $cut.Pass -or $cut.Detail -notmatch '^op=stale arm=control NOT EXAMINED: terminal result error_max_budget_usd ') { throw "WSD-122 stale-map graded a budget-cut run: $(if ($cut) { "$($cut.Status) $($cut.Detail)" } else { 'no result' })" }
+
+    # The two pre-registered scenarios.
+    $every = (Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios
+    $p4Prompt = [string]@($every | Where-Object id -eq 'warehouse-route-p4')[0].prompt
+    $scenarios = @($every | Where-Object { $_.id -like 'stale-map-*' })
+    $want = [ordered]@{ 'stale-map-control' = 'stale.patch'; 'stale-map-override' = 'override.patch' }
+    if ((@($scenarios | ForEach-Object { $_.id }) -join ',') -ne ($want.Keys -join ',')) { throw "the stale-map scenarios are not the two pre-registered ones: $(@($scenarios | ForEach-Object { $_.id }) -join ',')" }
+    foreach ($s in $scenarios) {
+        if (-not ([string]$s.fixture).Equals('warehouse-scale-s') -or -not ([string]$s.overlay).Equals('warehouse-scale-s') -or -not ([string]$s.overlayPatch).Equals("stale-map/$($want[$s.id])") -or $s.bareArm -or [string]$s.budgetUsd -ne '1.25' -or $s.assertion -ne 'staleMap' -or $s.prompt -cne $p4Prompt -or $s.stack -ne 'dotnet' -or $s.followUp) { throw "$($s.id) is not the pre-registered WSD-122 scenario (fixture, overlay, overlayPatch, bareArm, budget, assertion, stack, prompt or follow-up)" }
+    }
+    # -Live checks each overlay patch before any spend (Initialize-OverlayPreflight): these two edit files the overlay does not hold (the
+    # loader, an installed skill and the rules), so the check must build the fixture and the installed framework; a patch that only adds
+    # files (business-term-c) stays on the bare overlay. Red first: on the bare overlay this failed "patch does not apply".
+    foreach ($s in @($scenarios) + @($every | Where-Object id -eq 'business-term-c')) {
+        $preflight = Join-Path $Temp "wsd122-preflight-$($s.id)"
+        Initialize-OverlayPreflight $s $preflight
+        if (git -C $preflight status --porcelain) { throw "WSD-122 the -Live overlay check of $($s.id) left a dirty tree" }
+        if ($s.id -like 'stale-map-*' -and [IO.File]::ReadAllText((Join-Path $preflight 'StoredProcedures/usp_LoadFactSales.sql')) -notmatch 'CROSS JOIN \(SELECT TOP \(1\) LoadRunId') { throw "WSD-122 the -Live overlay check of $($s.id) did not land the loader change" }
+    }
+    Write-Output "PASS: WSD-122 stale-map: stale.patch changes usp_LoadFactSales to stamp LoadRunId from ctl.LoadRun and leaves the generated map byte for byte (one stale row, FactSales.LoadRunId 'filled from stg.BatchId'); override.patch adds the same change and differs from arm C in the scoped pass and Rule 11 only; the two scenarios are pinned to p4's prompt and the 1.25 USD cap. Grader, row replaced: $($quoted['replaced']) | untouched: $($quoted['untouched']) | by the stale row: $($quoted['by the stale row']) | another row changed: $($quoted['another row changed'])"
 }
 
 function Invoke-WarehouseScaleCapSelfTest {
@@ -7398,6 +7615,7 @@ export class UserService {
         Invoke-ReportWriteSelfTest $temp
         Invoke-ReportProcSelfTest $temp
         Invoke-BusinessTermSelfTest $temp
+        Invoke-StaleMapSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
         Write-Output "PASS: B-416 part 2 the clickable form: on one control-channel stream the grader reads whether the host listed its question tool, whether an answered question before the first main-agent write offered a 'with review' option (OPTION; a question without it is PLAIN; a subagent's, a refused one and one after a write do not count), which option the tool result reports as clicked, and whether the go-ahead that preceded the first write was that click or a typed reply; asked passes on the click on 'with review' plus the review skill after the first write, go on no review and the click on the option without review exactly when the candidate is installed; no question tool, a write before any go-ahead and no go-ahead are not examined; the runner answers the question tool by the scenario's pick and refuses every other permission request, the dialog arguments are the plain ones on the control channel, the two scenarios are pinned to their text-line twins and the T patch adds the one bullet to the carrier alone. Honoured: $($b416AskQuoted.honoured) | ignored: $($b416AskQuoted.ignored) | quiet: $($b416AskQuoted.quiet) | control: $($b416AskQuoted.control)"
         Write-Output "PASS: B-416 the unanswered go-ahead: dialog away denies the go-ahead question (an option that says 'with review') with the host's timeout text and dialog silent sends no reply and runs with askUserQuestionTimeout=60s (no other argument list moves), both leaving every other request as before; the grader passes when the question closed unanswered and the main agent wrote nothing, fails on a write after it, and does not examine a run with no such question, a write before it, a question not seen closing unanswered or (silent) no tool result for it; the two scenarios are pinned to b416-dialog-go's facts without its approval, and the candidate patch adds one sentence to the carrier alone and applies to a fresh install. Away: $($b416AskQuoted.away) | silent: $($b416AskQuoted.silent)"
@@ -9581,11 +9799,7 @@ foreach ($overlayCase in @($selected | Where-Object { $_.overlayPatch } | Sort-O
     if ($Arm -ne 'framework') { continue }
     $preflightOverlay = Join-Path ([IO.Path]::GetTempPath()) ('ai-tech-lead-overlay-preflight-' + [guid]::NewGuid().ToString('N'))
     try {
-        New-Item -ItemType Directory -Path $preflightOverlay | Out-Null
-        git -C $preflightOverlay init --quiet
-        git -C $preflightOverlay config user.email 'agent-evals@invalid.local'
-        git -C $preflightOverlay config user.name 'Agent Evals'
-        Initialize-GeneratedOverlay $preflightOverlay ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")
+        Initialize-OverlayPreflight $overlayCase $preflightOverlay
     } catch { throw "Refusing live eval: $($overlayCase.id): $($_.Exception.Message)" }
     finally { if (Test-Path -LiteralPath $preflightOverlay) { Remove-Item -LiteralPath $preflightOverlay -Recurse -Force } }
 }
