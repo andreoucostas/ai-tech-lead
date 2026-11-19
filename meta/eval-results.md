@@ -7357,6 +7357,13 @@ Evidence under `<scratch>\b425\runs\<arm>-<nn>\out`.
 - Spend: 6 premium requests; 95.0 AI credits; 4.6 minutes of runs.
 - Not shown: as pre-registered.
 
+**B-530 re-read of the six B-425 journals (2026-11-19, by hand, no new run).** Five of six read `review.md`, each after the `skill` call that loaded
+the wrapper `.agents/skills/review/SKILL.md`: C-01, C-02 and T-03 with `Get-Content`, T-01 and T-02 with `view`. C-03 loaded no skill and never
+opened `review.md`. None of the six started a reviewer (0 of 6); T-01 and T-02 ran `review-scope.ps1` and still dispatched nobody. Five of six said
+they reviewed directly (all but C-03), but only three gave the diff's size as the reason (C-02, T-01, T-03); C-01 and T-02 said only that they did
+not run the reviewers. So the line above, "5 of 6 said they reviewed the 12-line diff directly because it was small", overstates the stated reasons
+by two: 5 of 6 disclosed, 3 of 6 gave size. The hop that fails is after the skill is read: `review.md` reached, no reviewer started.
+
 ## B-476 pre-registration — the first prompt's rails in `session-start`'s output on VS Code's Copilot harness: T' (the candidate) against B-348's T, and two Copilot CLI runs (2026-11-14, frozen before any run)
 
 Commissioned by the scoping session that started this one, which relayed the maintainer's decision that B-476 be done in a fresh session; the

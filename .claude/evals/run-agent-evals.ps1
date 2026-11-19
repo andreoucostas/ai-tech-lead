@@ -21,6 +21,8 @@ param(
     [Parameter(ParameterSetName = 'Live')][ValidateSet('interactive','plan','autopilot')][string]$CopilotMode,
     # B-528 Copilot leg amendment: the second leg's --mode when it differs (plan mode cannot edit, so the go-ahead leaves it).
     [Parameter(ParameterSetName = 'Live')][ValidateSet('interactive','plan','autopilot')][string]$CopilotFollowUpMode,
+    # B-530 B1: leave the CLI's ask_user tool on (no --no-ask-user) and close the child's stdin; omitted, the launch is unchanged.
+    [Parameter(ParameterSetName = 'Live')][switch]$CopilotAskUser,
     # B-253: 'none' skips the framework install so the same prompt and fixture run bare. Only
     # scenarios marked "bareArm" in scenarios.json carry an arm-neutral Outcome and may run bare.
     [Parameter(ParameterSetName = 'Live')][ValidateSet('framework','none')][string]$Arm = 'framework',
@@ -2677,9 +2679,11 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
 # vendor per run, which is not a measurable arm. Repo hooks are deferred in prompt mode unless the
 # folder is trusted; `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS` is the CLI's own non-interactive
 # opt-in, so the framework arm never has to write to the user's ~/.copilot/config.json.
-function Get-CopilotArguments([string]$WorkingDirectory, [string]$Prompt, [string]$ModelId, [int]$MaxAiCredits, [string]$SessionId, [string]$UsagePath, [string]$Mode) {
-    $arguments = @('-p', $Prompt, '-C', $WorkingDirectory, '--model', $ModelId, '--allow-all-tools',
-        '--no-ask-user', '--no-remote', '--no-remote-export', '--no-color', '--no-auto-update',
+# B-530 B1: -AskUser (the runner's -CopilotAskUser) leaves the CLI's ask_user tool on by dropping only --no-ask-user.
+function Get-CopilotArguments([string]$WorkingDirectory, [string]$Prompt, [string]$ModelId, [int]$MaxAiCredits, [string]$SessionId, [string]$UsagePath, [string]$Mode, [switch]$AskUser) {
+    $arguments = @('-p', $Prompt, '-C', $WorkingDirectory, '--model', $ModelId, '--allow-all-tools')
+    if (-not $AskUser) { $arguments += '--no-ask-user' }
+    $arguments += @('--no-remote', '--no-remote-export', '--no-color', '--no-auto-update',
         '--session-id', $SessionId, '--usage-output-file', $UsagePath)
     if ($MaxAiCredits -gt 0) { $arguments += @('--max-ai-credits', ([string]$MaxAiCredits)) }
     if ($Mode) { $arguments += @('--mode', $Mode) }
@@ -2690,20 +2694,23 @@ function Get-CopilotLegTwoMode([string]$Mode, [string]$FollowUpMode) {
     if ($FollowUpMode) { return $FollowUpMode }
     return $Mode
 }
-function Invoke-CopilotProcess([string]$WorkingDirectory, [string]$Prompt, [string]$StdoutPath, [string]$ModelId, [int]$MaxAiCredits, [int]$Timeout, [string]$SessionId, [string]$UsagePath, [bool]$LoadRepoHooks, [string]$Mode) {
+function Invoke-CopilotProcess([string]$WorkingDirectory, [string]$Prompt, [string]$StdoutPath, [string]$ModelId, [int]$MaxAiCredits, [int]$Timeout, [string]$SessionId, [string]$UsagePath, [bool]$LoadRepoHooks, [switch]$AskUser, [string]$Mode) {
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command copilot).Source
     $psi.WorkingDirectory = $WorkingDirectory
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
-    $copilotArgs = Get-CopilotArguments -WorkingDirectory $WorkingDirectory -Prompt $Prompt -ModelId $ModelId -MaxAiCredits $MaxAiCredits -SessionId $SessionId -UsagePath $UsagePath -Mode $Mode
+    # B-530 B1: with ask_user on, the child's stdin is a closed pipe, so a question cannot wait on a terminal that is not there.
+    if ($AskUser) { $psi.RedirectStandardInput = $true }
+    $copilotArgs = Get-CopilotArguments -WorkingDirectory $WorkingDirectory -Prompt $Prompt -ModelId $ModelId -MaxAiCredits $MaxAiCredits -SessionId $SessionId -UsagePath $UsagePath -Mode $Mode -AskUser:$AskUser
     # The runner declares #Requires -Version 7.0, so ArgumentList is always present here.
     foreach ($arg in $copilotArgs) { [void]$psi.ArgumentList.Add($arg) }
     if ($LoadRepoHooks) { $psi.Environment['GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS'] = 'true' }
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $psi
     [void]$process.Start()
+    if ($AskUser) { $process.StandardInput.Close() }
     $stdout = $process.StandardOutput.ReadToEndAsync()
     $stderr = $process.StandardError.ReadToEndAsync()
     $timedOut = -not $process.WaitForExit($Timeout * 1000)
@@ -2722,6 +2729,38 @@ function Invoke-CopilotProcess([string]$WorkingDirectory, [string]$Prompt, [stri
         TimedOut = $timedOut
         ErrorText = $errorText
     }
+}
+
+# B-530 B6: AI credits from one --usage-output-file, as text: totalNanoAiu / 1e9 to two places, or 'n/a' (never 0) when the file is
+# missing, unparseable or has no numeric totalNanoAiu. PROVISIONAL until probe P0 shows a real file: the runner has never read one; the
+# field name and the /1e9 scale are from hand-recorded runs in meta/eval-results.md (B-528's Copilot leg: "leg-2 --usage-output-file
+# totalNanoAiu / 1e9, which is the session's total"; B-514 Copilot leg: "from each run's --usage-output-file totalNanoAiu"), not the
+# nesting, so the first totalNanoAiu found at any depth is read. P0's real file replaces the synthetic shapes in the self-test.
+function Get-CopilotUsage([string]$UsagePath) {
+    if (-not $UsagePath -or -not (Test-Path -LiteralPath $UsagePath -PathType Leaf)) { return 'n/a' }
+    try { $usage = Get-Content -Raw -LiteralPath $UsagePath | ConvertFrom-Json -Depth 64 } catch { return 'n/a' }
+    $pending = [Collections.Generic.Queue[object]]::new()
+    $pending.Enqueue($usage)
+    while ($pending.Count) {
+        $node = $pending.Dequeue()
+        if ($node -is [Collections.IEnumerable] -and $node -isnot [string]) { foreach ($item in $node) { $pending.Enqueue($item) }; continue }
+        if ($node -isnot [System.Management.Automation.PSCustomObject]) { continue }
+        foreach ($property in $node.PSObject.Properties) {
+            if ($property.Name -ceq 'totalNanoAiu') {
+                if ($property.Value -is [string] -or $property.Value -is [bool] -or $null -eq $property.Value) { return 'n/a' }
+                try { return ([decimal]$property.Value / 1000000000).ToString('0.00', [Globalization.CultureInfo]::InvariantCulture) } catch { return 'n/a' }
+            }
+            $pending.Enqueue($property.Value)
+        }
+    }
+    return 'n/a'
+}
+# B-530 B6: a run's credits over its legs' usage files: the larger total (right if leg 2's file is session-cumulative, as B-528's
+# prose says; an undercount if per-process, so a ledger built on it stays conservative). P0 settles which; 'n/a' when no leg read.
+function Get-CopilotCredits([string[]]$UsagePaths) {
+    $read = @($UsagePaths | ForEach-Object { Get-CopilotUsage $_ } | Where-Object { $_ -ne 'n/a' } | Sort-Object { [decimal]::Parse($_, [Globalization.CultureInfo]::InvariantCulture) })
+    if (-not $read) { return 'n/a' }
+    return [string]$read[-1]
 }
 
 # Map one Copilot tool call onto the Claude tool name and input shape the graders already read.
@@ -3118,6 +3157,22 @@ function Test-B406NoFileWrite($Evidence, [string]$Target) {
 
 # B-406: the b406 graders read Claude Code transcripts (SessionStart hook_response, subagent flags), so a
 # Copilot run of one is refused before any spend.
+# B-416/B-530 B4: whether a dialog case may launch. The scenario shape is checked on both executors. Claude Code needs -AllowedTools (the
+# control channel answers permissions from that list). On Copilot the dialog is ignored (no control channel; the pick is typed as the
+# second leg), -AllowedTools is not required, and completeReview is ignored, not refused: there is no fence to opt in to.
+function Get-DialogLaunchRefusal($Case, [string]$Executor, [string[]]$AllowedTools) {
+    $pick = [string]$Case.dialog
+    if (-not $pick) { return $null }
+    $dialogOk = if ($pick -in @('away', 'silent')) { -not $Case.followUp -and $Case.assertion -eq 'unansweredGo' } else { $pick -in @('go', 'review') -and $Case.followUp -and $Case.assertion -eq 'reviewOffer' }
+    $shape = "either dialog 'go' or 'review' with a followUp and the reviewOffer assertion, or dialog 'away' or 'silent' with no followUp and the unansweredGo assertion."
+    if ($Executor -eq 'copilot') {
+        if (-not $dialogOk) { return "$($Case.id): a dialog case has $shape" }
+        return $null
+    }
+    if ($Executor -ne 'claude' -or -not $dialogOk -or -not $AllowedTools) { return "$($Case.id): a dialog case runs on -Executor claude with -AllowedTools, and $shape" }
+    return $null
+}
+
 function Get-B406ExecutorRefusal($Selected, [string]$Executor) {
     if ($Executor -ne 'copilot') { return $null }
     $ids = @($Selected | Where-Object { $_.fixture -in $contractFixtures } | ForEach-Object { $_.id } | Select-Object -Unique)
@@ -3374,10 +3429,22 @@ function Get-ReviewAsk($Evidence, $Transcript, [string]$Target) {
     $labelsOf = { param($Tool) @($Tool.Input.questions | ForEach-Object { $_.options } | ForEach-Object { [string]$_.label }) }
     $option = @($asks | Where-Object { @(& $labelsOf $_ | Where-Object { $_ -match $b416Loose }).Count } | Select-Object -First 1)
     $ask = if ($option) { 'OPTION' } elseif ($asks.Count) { 'PLAIN' } else { 'NONE' }
-    $picked = 'n/a'
+    $picked = 'n/a'; $goQuestion = @()
     if ($option) {
+        # B-530 Part A: the go-ahead question is the LAST in the call with an option saying "with review" and one without (it comes
+        # after any clarifying question); with none, the first with a "with review" option. Ask=OPTION above is unchanged.
+        $reviewLabels = { param($Question) @($Question.options | Where-Object { [string]$_.label -match $b416Loose }).Count }
+        $questions = @($option[0].Input.questions)
+        $goQuestion = @($questions | Where-Object { (& $reviewLabels $_) -and (& $reviewLabels $_) -lt @($_.options).Count } | Select-Object -Last 1)
+        if (-not $goQuestion) { $goQuestion = @($questions | Where-Object { & $reviewLabels $_ } | Select-Object -First 1) }
+        # The pick is that question's own answer: anchored to "<question text>"= when the result carries it, else its labels anywhere.
         $answer = Get-ToolResultText $Evidence $option[0]
-        $chosen = @(& $labelsOf $option[0] | Where-Object { $answer.Contains('="' + $_ + '"') -or $answer.Contains('=\"' + $_ + '\"') } | Sort-Object Length -Descending | Select-Object -First 1)
+        $labels = @($goQuestion[0].options | ForEach-Object { [string]$_.label })
+        $text = [string]$goQuestion[0].question
+        $anchor = @(@('"' + $text + '"=', '\"' + $text + '\"=') | Where-Object { $text -and $answer.Contains($_) } | Select-Object -First 1)
+        $after = if ($anchor) { $answer.Substring($answer.IndexOf($anchor[0]) + $anchor[0].Length) } else { '' }
+        $chosen = @($labels | Where-Object { if ($anchor) { $after.StartsWith('"' + $_ + '"') -or $after.StartsWith('\"' + $_ + '\"') } else { $answer.Contains('="' + $_ + '"') -or $answer.Contains('=\"' + $_ + '\"') } } |
+            Sort-Object Length -Descending | Select-Object -First 1)
         $picked = if (-not $chosen) { 'other' } elseif ($chosen[0] -match $b416Loose) { 'review' } else { 'go' }
     }
     $clickAt = if ($asks.Count) { [int]$asks[-1].Index } else { 0 }
@@ -3387,7 +3454,6 @@ function Get-ReviewAsk($Evidence, $Transcript, [string]$Target) {
     # The go-ahead question's option order: is the review option first, and does it say recommended (label or description)?
     $reviewFirst = 'n/a'; $reviewRec = 'n/a'
     if ($option) {
-        $goQuestion = @($option[0].Input.questions | Where-Object { @($_.options | Where-Object { [string]$_.label -match $b416Loose }).Count } | Select-Object -First 1)
         $reviewOption = @($goQuestion[0].options | Where-Object { [string]$_.label -match $b416Loose } | Select-Object -First 1)
         $reviewFirst = [string]([string]@($goQuestion[0].options)[0].label -match $b416Loose)
         $reviewRec = [string](([string]$reviewOption[0].label + ' ' + [string]$reviewOption[0].description) -match '(?i)recommended')
@@ -5517,6 +5583,15 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
         if ($Refused) { $content | Add-Member -NotePropertyName is_error -NotePropertyValue $true }
         @($call, [pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @($content) } })
     }
+    # B-530 Part A: one call holding a clarifying question and then the go-ahead question, answered in Claude's wording.
+    $questionPair = { param([string]$ToolId, [string[]]$FirstLabels, [string]$FirstPicked, [string[]]$Labels, [string]$Picked)
+        $toOptions = { param([string[]]$Names) @($Names | ForEach-Object { [pscustomobject]@{ label = $_; description = 'what it does' } }) }
+        $questions = @([pscustomobject]@{ question = 'Which shape?'; header = 'Shape'; multiSelect = $false; options = (& $toOptions $FirstLabels) },
+            [pscustomobject]@{ question = 'Go ahead with this plan?'; header = 'Go-ahead'; multiSelect = $false; options = (& $toOptions $Labels) })
+        $call = & $use $ToolId 'AskUserQuestion' @{ questions = $questions }
+        $content = [pscustomobject]@{ type = 'tool_result'; tool_use_id = $ToolId; content = "Your questions have been answered: `"Which shape?`"=`"$FirstPicked`", `"Go ahead with this plan?`"=`"$Picked`". You can now continue with these answers in mind." }
+        @($call, [pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @($content) } })
+    }
     $overlay = "## Security-sensitive surface detected`n`nThis prompt touches a security- or money-sensitive area."
     $kRails = "## Routed intent: ``feature```n## Plan gate (ask -> plan -> confirm)`n$overlay"
     $plainRails = "## Routed intent: ``feature```n## Plan gate (ask -> plan -> confirm)"
@@ -5574,6 +5649,17 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     & $check 'kasked: the registered order' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'picked=review .*gateFirst=True .*reviewFirst=False reviewRec=False ' | Out-Null
     & $check 'go: the review option first, the click on Go ahead' $goId $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $reviewFirstOrder 'Go ahead') + @(& $edit)) $null) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=go .*reviewFirst=True reviewRec=True ' | Out-Null
     & $check 'go: no question, no option order' $goId $cRepo (& $stream @(& $say $plan) (@(& $say $go) + @(& $edit)) -Rails2 $overlay) 'PASS' 'picked=n/a .*reviewFirst=n/a reviewRec=n/a ' | Out-Null
+    # B-530 Part A: one call holding a clarifying question and the go-ahead question. The pick and the option order are read from the
+    # go-ahead question (the last with a "with review" option and one without), never from a longer clarifying label.
+    $shape = @('Keep the existing shape, endpoint only', 'Add paging')
+    & $check 'pair: a long clarifying label, the click on with review' $asked $tRepo (& $stream (@(& $say $plan) + @(& $questionPair 'q1' $shape $shape[0] $both 'Go ahead, with review') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=review ' | Out-Null
+    & $check 'pair: a long clarifying label, the click on Go ahead' $goId $tRepo (& $stream (@(& $say $plan) + @(& $questionPair 'q1' $shape $shape[0] $both 'Go ahead') + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=go ' | Out-Null
+    & $check 'pair: the go-ahead answered in free text' $asked $tRepo (& $stream (@(& $say $plan) + @(& $questionPair 'q1' $shape $shape[0] $both 'Yes, and review it when done') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'FAIL' 'ask=OPTION asks=1 goAhead=click picked=other ' | Out-Null
+    & $check 'pair: a clarifying option saying with review comes first' $kAsked $tRepo (& $stream (@(& $say $plan) + @(& $questionPair 'q1' @('Ship schema with review later', 'Ship schema now') 'Ship schema now' $both 'Go ahead, with review') + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'picked=review .*gateFirst=True .*reviewFirst=False reviewRec=False ' | Out-Null
+    & $check 'pair: a clarifying question with both kinds of label' $kAsked $tRepo (& $stream (@(& $say $plan) + @(& $questionPair 'q1' @('Ship now', 'Ship schema with review later') 'Ship now' $both 'Go ahead, with review') + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'picked=review .*gateFirst=True .*reviewFirst=False reviewRec=False ' | Out-Null
+    # Amendment 5's meaning of OPTION is kept: any option saying "with review", whatever the other label says.
+    & $check 'option: Proceed or Proceed with review' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' @('Proceed', 'Proceed with review') 'Proceed with review') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=review ' | Out-Null
+    & $check 'option: Yes, go ahead or Go ahead, with review' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' @('Yes, go ahead', 'Go ahead, with review') 'Go ahead, with review') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=review ' | Out-Null
     # reviewConfirm (report-only): sent|none from the live loop, n/a without it.
     $withConfirm = { param($Stream, [string]$Value) $Stream | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue $Value -Force; $Stream }
     & $check 'kfull: the confirmation sent' 'b416-dialog-asked-full' $tRepo (& $withConfirm (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) 'sent') 'PASS' 'auditor=0 reviewConfirm=sent side=' | Out-Null
@@ -5914,15 +6000,33 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     $silentWant = @($dialogArgs | Select-Object -First $toolsAt) + @('--settings', '{"askUserQuestionTimeout":"60s"}') + @($dialogArgs | Select-Object -Skip $toolsAt)
     if ($toolsAt -lt 1 -or ($silentArgs -join [char]0) -cne ($silentWant -join [char]0) -or $silentArgs[-1] -ne 'Read' -or $dialogArgs -contains '--settings' -or $plainArgs -contains '--settings') { throw "B-416 dialog the silent arguments are not the dialog ones plus --settings before --allowedTools, or --settings leaked into another case: $($silentArgs -join ' ')" }
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-ReviewAskSelfTest).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('$run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath') -or $selfText -notmatch [regex]::Escape('$legSession = if ($case.followUp -and -not $dialogPick)')) { throw 'B-416 dialog the live loop does not run a dialog case as one process' }
+    if ($selfText -notmatch [regex]::Escape('$run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath') -or $selfText -notmatch [regex]::Escape('$legSession = if ($case.followUp -and (-not $dialogPick -or $Executor -eq ''copilot''))')) { throw 'B-416 dialog the live loop does not run a dialog case as one process' }
     $runText = (Get-Command Invoke-ClaudeDialogRun).ScriptBlock.Ast.Extent.Text
     if (-not $runText.Contains('$pending = Get-DialogBackgroundCount $pending $event') -or -not $runText.Contains('Get-DialogResultAction $event {') -or -not $runText.Contains('$pending -CompleteReview:$CompleteReview')) { throw 'B-416 dialog the dialog loop does not decide a result through Get-DialogBackgroundCount and Get-DialogResultAction' }
     if ($selfText -notmatch [regex]::Escape('$AllowedTools -CompleteReview:([bool]$case.completeReview)')) { throw 'B-416 dialog the live loop does not pass the scenario''s completeReview to the dialog' }
+    # B-530 B4: the launch guard by executor. Claude keeps its rules (a dialog case needs -AllowedTools); on Copilot the dialog is ignored
+    # (the pick is the typed second leg), -AllowedTools is not required and completeReview is ignored, not refused.
+    $b4Plain = [pscustomobject]@{ id = 'b4'; dialog = 'review'; followUp = 'Go ahead, with review'; assertion = 'reviewOffer' }
+    $b4Full = [pscustomobject]@{ id = 'b4'; dialog = 'review'; followUp = 'Go ahead, with review'; assertion = 'reviewOffer'; completeReview = $true }
+    foreach ($cell in @(
+            @('claude', @('Read'), $b4Plain, $false), @('claude', @(), $b4Plain, $true), @('claude', @('Read'), $b4Full, $false), @('claude', @(), $b4Full, $true),
+            @('copilot', @('Read'), $b4Plain, $false), @('copilot', @(), $b4Plain, $false), @('copilot', @('Read'), $b4Full, $false), @('copilot', @(), $b4Full, $false))) {
+        $b4Refusal = [string](Get-DialogLaunchRefusal $cell[2] $cell[0] ([string[]]$cell[1]))
+        if ([bool]$b4Refusal -ne $cell[3]) { throw "B-530 B4: $($cell[0]) with $(if ($cell[1].Count) { '-AllowedTools' } else { 'no -AllowedTools' })$(if ($cell[2].completeReview) { ' and completeReview' }) was $(if ($b4Refusal) { "refused ($b4Refusal)" } else { 'launched' }), expected $(if ($cell[3]) { 'refused' } else { 'launched' })" }
+        if ($b4Refusal -and $b4Refusal -notmatch [regex]::Escape('a dialog case runs on -Executor claude with -AllowedTools')) { throw "B-530 B4: the Claude refusal changed: $b4Refusal" }
+    }
+    if (Get-DialogLaunchRefusal ([pscustomobject]@{ id = 'b4' }) 'claude' @()) { throw 'B-530 B4: a case with no dialog was refused' }
+    if (-not (Get-DialogLaunchRefusal ([pscustomobject]@{ id = 'b4'; dialog = 'review'; assertion = 'reviewOffer' }) 'copilot' @())) { throw 'B-530 B4: a review dialog with no followUp launched on Copilot' }
+    # The live loop: the guard is that function, a Copilot dialog case gets its second leg, and only the Claude dialog attaches Permissions.
+    if ($selfText -notmatch [regex]::Escape('$dialogRefusal = Get-DialogLaunchRefusal $case $Executor $AllowedTools') -or $selfText -match [regex]::Escape('if ($dialogPick -and ($Executor -ne ''claude''')) { throw 'B-530 B4: the live loop does not decide a dialog launch through Get-DialogLaunchRefusal' }
+    if ($selfText -notmatch [regex]::Escape('$legSession = if ($case.followUp -and (-not $dialogPick -or $Executor -eq ''copilot''))')) { throw 'B-530 B4: the live loop gives a Copilot dialog case no second leg, so the pick is never typed' }
+    if ($selfText -notmatch [regex]::Escape('if ($dialogPick -and $Executor -eq ''claude'') { $transcript | Add-Member -NotePropertyName Permissions')) { throw 'B-530 B4: the live loop attaches Permissions and ReviewConfirm to a Copilot dialog case (perms=0/0 where the truth is n/a)' }
+    if ($selfText -notmatch [regex]::Escape('$(if ($dialogPick -and $Executor -eq ''copilot'' -and $case.completeReview) { ''completeReview=ignored(copilot) '' })')) { throw 'B-530 B4: a Copilot row does not say completeReview=ignored(copilot)' }
     # The unanswered go-ahead: the loop passes the settings pair only for silent, sends nothing for a null answer, keeps the stream read
     # so far when a silent run times out (read by hand: a timed-out run is still an ERROR row), and the guard asks for no follow-up there.
     if (-not $runText.Contains('-Dialog -Silent:($Pick -eq ''silent'')') -or -not $runText.Contains('if ($null -eq $answer) { continue }') -or -not $runText.Contains('if ($Pick -eq ''silent'') { [IO.File]::WriteAllLines($TranscriptPath, $lines')) { throw 'B-416 dialog the dialog loop does not pass the timeout setting only for silent, skip the reply for a null answer or keep the stream of a silent timeout' }
     if ($runText.IndexOf('if ($null -eq $answer) { continue }') -gt $runText.IndexOf('& $send ([ordered]@{ type = ''control_response''')) { throw 'B-416 dialog the dialog loop checks for a null answer after it sends the reply' }
-    if ($selfText -notmatch [regex]::Escape('$dialogOk = if ($unanswered) { -not $case.followUp -and $case.assertion -eq ''unansweredGo'' }') -or $selfText -notmatch [regex]::Escape("'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm'))")) { throw 'B-416 dialog the live loop does not run an away or silent case without a follow-up on the unansweredGo assertion, or read its stream as multi-turn' }
+    if ($selfText -notmatch [regex]::Escape('$dialogOk = if ($pick -in @(''away'', ''silent'')) { -not $Case.followUp -and $Case.assertion -eq ''unansweredGo'' }') -or $selfText -notmatch [regex]::Escape("'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm'))")) { throw 'B-416 dialog the live loop does not run an away or silent case without a follow-up on the unansweredGo assertion, or read its stream as multi-turn' }
 
     # The scenarios: the same prompts, typed replies and budgets as the text-line cells, plus the option a click lands on.
     $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
@@ -9334,6 +9438,35 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         # Copilot leg amendment: plan mode in leg 1, the follow-up mode in leg 2; without a follow-up mode leg 2 keeps leg 1's.
         if ((Get-CopilotLegTwoMode 'plan' 'interactive') -cne 'interactive' -or (Get-CopilotLegTwoMode 'plan' '') -cne 'plan' -or (Get-CopilotLegTwoMode '' '') -cne '') { throw 'B-528: the second leg''s Copilot mode is not -CopilotFollowUpMode, else -CopilotMode' }
         Write-Output 'PASS: B-528 -CopilotMode adds exactly --mode <mode> to the first Copilot leg and, unless -CopilotFollowUpMode names another, to the second; without it the launch is unchanged'
+        # B-530 B1: -CopilotAskUser leaves the CLI's ask_user tool on by dropping only --no-ask-user; without it the launch is today's, byte for byte.
+        $askOffPinned = @('-p', 'p', '-C', 'w', '--model', 'm', '--allow-all-tools', '--no-ask-user', '--no-remote', '--no-remote-export', '--no-color', '--no-auto-update', '--session-id', 's', '--usage-output-file', 'u')
+        if (($uncappedArgs -join [char]0) -cne ($askOffPinned -join [char]0)) { throw "B-530 B1: the default Copilot launch changed: $($uncappedArgs -join ' ')" }
+        $askOnArgs = @(Get-CopilotArguments -WorkingDirectory 'w' -Prompt 'p' -ModelId 'm' -MaxAiCredits 0 -SessionId 's' -UsagePath 'u' -AskUser)
+        if (($askOnArgs -join [char]0) -cne (@($askOffPinned | Where-Object { $_ -cne '--no-ask-user' }) -join [char]0)) { throw "B-530 B1: -AskUser did not drop exactly --no-ask-user: $($askOnArgs -join ' ')" }
+        $askLaunches = [regex]::Matches($selfSource, '(?m)^\s*\$run2? = Invoke-CopilotProcess [^\r\n]* -AskUser:\$CopilotAskUser -Mode ').Count
+        if ($askLaunches -ne 2) { throw "B-530 B1: $askLaunches of the two Copilot launches pass -AskUser:`$CopilotAskUser" }
+        $copilotProcessText = [string]@($selfAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Invoke-CopilotProcess' }, $true))[0].Extent.Text
+        if ($copilotProcessText -notmatch [regex]::Escape('if ($AskUser) { $process.StandardInput.Close() }')) { throw 'B-530 B1: Invoke-CopilotProcess does not close the child''s stdin when ask_user is on' }
+        Write-Output 'PASS: B-530 B1 -CopilotAskUser drops only --no-ask-user, reaches both legs and closes the child''s stdin; without it the launch is byte-identical'
+        # B-530 B6: AI credits from the --usage-output-file's totalNanoAiu / 1e9; n/a, never 0, when the file is missing or unparseable; a
+        # two-leg run takes the larger leg total. The file shape is provisional until probe P0 (see Get-CopilotUsage).
+        $usageDir = Join-Path ([IO.Path]::GetTempPath()) "b530-b6-usage-$PID"
+        New-Item -ItemType Directory -Force $usageDir | Out-Null
+        try {
+            $usageOne = Join-Path $usageDir 'leg1.json'; '{"totalPremiumRequestCost":1,"totalNanoAiu":16584490000}' | Set-Content -LiteralPath $usageOne -Encoding utf8NoBOM
+            $usageTwo = Join-Path $usageDir 'leg2.json'; '{"session":{"totalPremiumRequests":2,"totalNanoAiu":21210000000}}' | Set-Content -LiteralPath $usageTwo -Encoding utf8NoBOM
+            $usageBad = Join-Path $usageDir 'bad.json'; '{"totalNanoAiu": 1658' | Set-Content -LiteralPath $usageBad -Encoding utf8NoBOM
+            $usageNone = Join-Path $usageDir 'none.json'; '{"totalPremiumRequests":1}' | Set-Content -LiteralPath $usageNone -Encoding utf8NoBOM
+            foreach ($usageCase in @(@($usageOne, '16.58'), @($usageTwo, '21.21'), @($usageBad, 'n/a'), @($usageNone, 'n/a'), @((Join-Path $usageDir 'missing.json'), 'n/a'), @('', 'n/a'))) {
+                $gotUsage = [string](Get-CopilotUsage $usageCase[0])
+                if ($gotUsage -cne $usageCase[1]) { throw "B-530 B6: Get-CopilotUsage read '$gotUsage' from $(Split-Path -Leaf $usageCase[0]), not $($usageCase[1])" }
+            }
+            if ((Get-CopilotCredits @($usageOne, $usageTwo)) -cne '21.21' -or (Get-CopilotCredits @($usageTwo, $usageOne)) -cne '21.21' -or (Get-CopilotCredits @($usageOne, $usageBad)) -cne '16.58' -or (Get-CopilotCredits @($usageBad, (Join-Path $usageDir 'missing.json'))) -cne 'n/a') { throw 'B-530 B6: a two-leg run does not take the larger leg total, or reads 0 where it should read n/a' }
+        } finally { Remove-Item -LiteralPath $usageDir -Recurse -Force -ErrorAction SilentlyContinue }
+        $creditsLines = [regex]::Matches($selfSource, '(?m)^\s*\$copilotDetail = if \(\$copilotMeta\) \{ "executor=copilot [^\r\n]*credits=\$\(\$copilotMeta\.Credits\) ').Count
+        $creditsSet = [regex]::Matches($selfSource, '(?m)^\s*\$copilotMeta \| Add-Member -NotePropertyName Credits -NotePropertyValue \(Get-CopilotCredits @\(\$usageLegOne\)\)').Count + [regex]::Matches($selfSource, '(?m)^\s*\$copilotMeta = \[pscustomobject\]@\{ [^\r\n]*Credits = \(Get-CopilotCredits @\(\$usageLegOne, \$usageLegTwo\)\)').Count
+        if ($creditsLines -ne 1 -or $creditsSet -ne 2) { throw "B-530 B6: the Copilot row carries credits= in $creditsLines detail lines and sets it on $creditsSet of the two legs" }
+        Write-Output 'PASS: B-530 B6 a Copilot row carries credits= (usage file totalNanoAiu / 1e9, the larger leg; n/a when missing or unparseable)'
         # B-330: the Claude child loads only the target's project and local settings, and tokensOut counts every model
         # in modelUsage (the shape below is a retained 2.1.281 opus run whose haiku subagent result.usage left out).
         $sourceArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -Agent '')
@@ -9597,11 +9730,10 @@ Issue: Boundary behavior lacks a direct compiled unit test.
         # B-410: a case with a followUp is two invocations of one persisted session (the developer's prompt, then a fixed answer).
         # B-416 part 2: a dialog case is one process that takes the click or the typed reply itself, so it has no second invocation.
         $dialogPick = [string]$case.dialog
-        # B-416 (unanswered go-ahead): dialog 'away' and 'silent' type nothing after the question closes, so they take no followUp and grade as unansweredGo.
-        $unanswered = $dialogPick -in @('away', 'silent')
-        $dialogOk = if ($unanswered) { -not $case.followUp -and $case.assertion -eq 'unansweredGo' } else { $dialogPick -in @('go', 'review') -and $case.followUp -and $case.assertion -eq 'reviewOffer' }
-        if ($dialogPick -and ($Executor -ne 'claude' -or -not $dialogOk -or -not $AllowedTools)) { throw "$($case.id): a dialog case runs on -Executor claude with -AllowedTools, and either dialog 'go' or 'review' with a followUp and the reviewOffer assertion, or dialog 'away' or 'silent' with no followUp and the unansweredGo assertion." }
-        $legSession = if ($case.followUp -and -not $dialogPick) { [guid]::NewGuid().ToString() } else { '' }
+        $dialogRefusal = Get-DialogLaunchRefusal $case $Executor $AllowedTools
+        if ($dialogRefusal) { throw $dialogRefusal }
+        # B-530 B4: on Copilot a dialog case is two legs, its followUp typed as the second (B-528's path); no control channel exists there.
+        $legSession = if ($case.followUp -and (-not $dialogPick -or $Executor -eq 'copilot')) { [guid]::NewGuid().ToString() } else { '' }
         # B-528: the optionsPlan cases are two legs too, on either executor.
         if ($legSession -and $caseFixture -notin $contractFixtures -and $case.assertion -notin $planAssertions -and $case.assertion -ne 'businessTerm') { throw "$($case.id): a followUp is read only for the contract fixtures and the optionsPlan, recordOffer and reviewOffer cases, whose graders take a merged two-leg transcript." }
         $copilotMeta = $null
@@ -9611,7 +9743,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $sessionId = [guid]::NewGuid().ToString()
             $copilotHome = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.copilot' }
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
-            $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework') -Mode $CopilotMode
+            $usageLegOne = Join-Path $scratch ($runName + '.copilot-usage.json')
+            $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId $usageLegOne ($Arm -eq 'framework') -AskUser:$CopilotAskUser -Mode $CopilotMode
         } elseif ($dialogPick) {
             $run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath $caseModel ($caseBudget + [decimal]$case.followUpBudgetUsd) $TimeoutSeconds $caseAgent $AllowedTools -CompleteReview:([bool]$case.completeReview)
         } else {
@@ -9622,12 +9755,13 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             if ($run.TimedOut) { throw $run.ErrorText }
             if ($Executor -eq 'copilot') {
                 $copilotMeta = ConvertFrom-CopilotEvents $eventsPath $transcriptPath
+                $copilotMeta | Add-Member -NotePropertyName Credits -NotePropertyValue (Get-CopilotCredits @($usageLegOne)) -Force
                 if ($copilotMeta.Model) { $caseModel = $copilotMeta.Model }
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
             $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm'))
-            if ($dialogPick) { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force; $transcript | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue ([string]$run.ReviewConfirm) -Force }
+            if ($dialogPick -and $Executor -eq 'claude') { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force; $transcript | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue ([string]$run.ReviewConfirm) -Force }
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
                 # tree) and no error. Otherwise the grader sees one leg and says why (wroteT1, or not examined).
@@ -9639,11 +9773,12 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                     if ($Executor -eq 'copilot') {
                         # B-528: Copilot resumes the session under the same --session-id and appends to its log; leg 2 is the lines after
                         # leg 1's. The shutdown totals are the session's, so leg 2's premium requests are the run's.
-                        $run2 = Invoke-CopilotProcess $target ([string]$case.followUp) (Join-Path $scratch ($runName + '-leg2.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '-leg2.copilot-usage.json')) ($Arm -eq 'framework') -Mode (Get-CopilotLegTwoMode $CopilotMode $CopilotFollowUpMode)
+                        $usageLegTwo = Join-Path $scratch ($runName + '-leg2.copilot-usage.json')
+                        $run2 = Invoke-CopilotProcess $target ([string]$case.followUp) (Join-Path $scratch ($runName + '-leg2.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId $usageLegTwo ($Arm -eq 'framework') -AskUser:$CopilotAskUser -Mode (Get-CopilotLegTwoMode $CopilotMode $CopilotFollowUpMode)
                         if ($run2.TimedOut) { throw $run2.ErrorText }
                         if ($run2.ExitCode -ne 0) { $agentExit = $run2.ExitCode }
                         $copilotLegTwo = ConvertFrom-CopilotEvents $eventsPath $legTwoPath -Skip $copilotMeta.Lines
-                        $copilotMeta = [pscustomobject]@{ Model = $copilotMeta.Model; CliVersion = $copilotMeta.CliVersion; HooksLoaded = ($copilotMeta.HooksLoaded -and $copilotLegTwo.HooksLoaded); PremiumRequests = "$($copilotLegTwo.PremiumRequests) premiumRequestsLeg1=$($copilotMeta.PremiumRequests)"; SessionErrors = @($copilotMeta.SessionErrors) + @($copilotLegTwo.SessionErrors); ToolCalls = $copilotMeta.ToolCalls + $copilotLegTwo.ToolCalls; Lines = $copilotLegTwo.Lines }
+                        $copilotMeta = [pscustomobject]@{ Model = $copilotMeta.Model; CliVersion = $copilotMeta.CliVersion; HooksLoaded = ($copilotMeta.HooksLoaded -and $copilotLegTwo.HooksLoaded); PremiumRequests = "$($copilotLegTwo.PremiumRequests) premiumRequestsLeg1=$($copilotMeta.PremiumRequests)"; SessionErrors = @($copilotMeta.SessionErrors) + @($copilotLegTwo.SessionErrors); ToolCalls = $copilotMeta.ToolCalls + $copilotLegTwo.ToolCalls; Lines = $copilotLegTwo.Lines; Credits = (Get-CopilotCredits @($usageLegOne, $usageLegTwo)) }
                     } else {
                         # Whether --max-budget-usd on --resume caps the session or the leg is not known; the follow-up's budget on top of
                         # what the first leg spent holds under either reading, and the stop counts what was spent, not the cap.
@@ -9674,7 +9809,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             if ($case.bareArm) { $outcome = [bool]$evidence.Outcome }
             # Copilot only loads repository hooks in prompt mode behind the opt-in above; if none
             # fired, the framework arm's enforcement surface was absent and the row must say so.
-            $copilotDetail = if ($copilotMeta) { "executor=copilot copilotCli=$($copilotMeta.CliVersion) hooksLoaded=$($copilotMeta.HooksLoaded) premiumRequests=$($copilotMeta.PremiumRequests) toolCalls=$($copilotMeta.ToolCalls) " } else { '' }
+            # B-530 B4: completeReview is a Claude permission fence; a Copilot run has none, and its row says so.
+            $copilotDetail = if ($copilotMeta) { "executor=copilot copilotCli=$($copilotMeta.CliVersion) hooksLoaded=$($copilotMeta.HooksLoaded) premiumRequests=$($copilotMeta.PremiumRequests) credits=$($copilotMeta.Credits) toolCalls=$($copilotMeta.ToolCalls) $(if ($dialogPick -and $Executor -eq 'copilot' -and $case.completeReview) { 'completeReview=ignored(copilot) ' })" } else { '' }
             # B-253: the CLI can update itself between runs of one invocation; the header's version
             # is read once, so each Claude Code row records the host and model its own run reported.
             $init = @($transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
@@ -9694,7 +9830,7 @@ function Save-EvalResults([string]$Path, $Rows, [bool]$Complete) {
     $date = Get-Date -Format 'yyyy-MM-dd HH:mm:ss K'
     # Copilot CLI and Claude Code numbers are never compared with each other, so the header names
     # the host and the model actually used, and every Copilot row carries executor=copilot.
-    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($Rows | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })$(if ($CopilotMode) { " · mode: $CopilotMode$(if ($CopilotFollowUpMode -and $CopilotFollowUpMode -ne $CopilotMode) { ", then $CopilotFollowUpMode" })" })" } else { "Claude Code $hostVersion" }
+    $hostLabel = if ($Executor -eq 'copilot') { "$hostVersion · executor: copilot · model: $(@($Rows | ForEach-Object { $_.Model } | Select-Object -Unique) -join ',') · credit cap: $(if ($CopilotMaxAiCredits -gt 0) { $CopilotMaxAiCredits } else { 'none' })$(if ($CopilotMode) { " · mode: $CopilotMode$(if ($CopilotFollowUpMode -and $CopilotFollowUpMode -ne $CopilotMode) { ", then $CopilotFollowUpMode" })" })$(if ($CopilotAskUser) { ' · ask_user: on' })" } else { "Claude Code $hostVersion" }
     $lines = @('', "## $date — framework v$version$(if ($changelogDecision.RootHead) { " (root head $($changelogDecision.RootHead))" }) ($frameworkCommit)", '', "Host: $hostLabel · arm: $Arm$(if ($patchTag) { " · patch: $patchTag" })$(if ($WarehouseMap -ne 'frozen') { " · warehouseMap: $WarehouseMap" })$(if ($WarehouseScale) { " · warehouseScale: $WarehouseScale" })$(if ($AllowedTools) { " · permissions: acceptEdits, $($AllowedTools.Count) allowed-tool rules ($(Get-AllowedToolsTag $AllowedTools))" }) · scratch: retained=$KeepScratch", '')
     foreach ($r in $Rows) { $lines += "- **$($r.Status) $($r.Id)** (model=$($r.Model)$(if($r.Agent){"; agent=$($r.Agent)"})$(if($r.Executor -eq 'copilot'){'; executor=copilot'})$(if($r.Patch){"; patch=$($r.Patch)"})) — $(Protect-ResultText $r.Detail)" }
     if (-not $Complete) { $lines += '- **ABORTED** the run stopped before its last case; the rows above are the cases decided before it stopped.' }
@@ -9744,6 +9880,8 @@ if ($Executor -eq 'copilot') {
     if ($b406ExecutorRefusal) { throw $b406ExecutorRefusal }
 } elseif ($CopilotMode -or $CopilotFollowUpMode) {
     throw 'Refusing -CopilotMode and -CopilotFollowUpMode with -Executor claude: they set the Copilot CLI agent mode.'
+} elseif ($CopilotAskUser) {
+    throw 'Refusing -CopilotAskUser with -Executor claude: it sets the Copilot CLI ask_user tool.'
 }
 $selected = @($selected | ForEach-Object { $repeated = $_; 1..$Trials | ForEach-Object { $repeated } })
 $trialOf = @{}
