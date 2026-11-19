@@ -9234,3 +9234,214 @@ Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: explore-a.pa
 
 - **PASS b416-dialog-asked-plain** (model=sonnet; patch=explore-a.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.2746354 tokensIn=26 tokensOut=6355; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=False askBullet=False qtool=True ask=OPTION asks=1 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=False auditor=0 side=none durationMs=76693
 
+
+## 2026-11-19 07:49:00 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.272896 tokensIn=16 tokensOut=6345; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay overlay1=True askBullet=False qtool=True ask=NONE asks=0 goAhead=text picked=n/a offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=48430
+
+
+## 2026-11-19 07:50:33 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.2995718 tokensIn=28 tokensOut=7100; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=True askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=go offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=81102
+
+
+## 2026-11-19 07:51:53 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-plain** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.2625855 tokensIn=26 tokensOut=6335; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=False askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=False auditor=0 side=none durationMs=68580
+
+
+## 2026-11-19 07:53:46 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2990286 tokensIn=16 tokensOut=5891; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay overlay1=True askBullet=False qtool=True ask=NONE asks=0 goAhead=text picked=n/a offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=45937
+
+
+## 2026-11-19 07:55:23 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.337167 tokensIn=32 tokensOut=7835; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=go offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=87007
+
+
+## 2026-11-19 07:56:40 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-plain** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.2690918 tokensIn=22 tokensOut=6304; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=False askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=NEITHER doneWhen=False wrote=True gate=False auditor=0 side=none durationMs=64660
+
+
+## 2026-11-19 07:58:07 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2964851 tokensIn=16 tokensOut=6410; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay overlay1=True askBullet=False qtool=True ask=NONE asks=0 goAhead=text picked=n/a offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=50925
+
+
+## 2026-11-19 08:01:05 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.3283261 tokensIn=26 tokensOut=8119; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=go offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=147888
+
+
+## 2026-11-19 08:03:35 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-plain** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.3082646 tokensIn=28 tokensOut=6591; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=False askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=NEITHER doneWhen=False wrote=True gate=False auditor=0 side=none durationMs=137703
+
+
+## 2026-11-19 08:05:32 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2618343 tokensIn=16 tokensOut=5299; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay overlay1=True askBullet=False qtool=True ask=NONE asks=0 goAhead=text picked=n/a offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=62051
+
+
+## 2026-11-19 08:07:54 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.3221819 tokensIn=28 tokensOut=7578; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=go offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=111485
+
+
+## 2026-11-19 08:09:39 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-plain** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.2763739 tokensIn=22 tokensOut=6761; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=False askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=False auditor=0 side=none durationMs=72450
+
+
+## 2026-11-19 08:11:09 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2985491 tokensIn=18 tokensOut=6387; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay overlay1=True askBullet=False qtool=True ask=NONE asks=0 goAhead=text picked=n/a offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=53827
+
+
+## 2026-11-19 08:12:39 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.301219 tokensIn=26 tokensOut=6491; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=True askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=go offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=78395
+
+
+## 2026-11-19 08:13:59 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-plain** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.2807573 tokensIn=30 tokensOut=6257; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=False askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=NEITHER doneWhen=True wrote=True gate=False auditor=0 side=none durationMs=68812
+
+
+## 2026-11-19 08:15:18 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2778832 tokensIn=14 tokensOut=5496; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay overlay1=True askBullet=False qtool=True ask=NONE asks=0 goAhead=text picked=n/a offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=False auditor=0 side=none durationMs=40141
+
+
+## 2026-11-19 08:17:01 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.3082872 tokensIn=28 tokensOut=6846; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=True askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=go offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True auditor=0 side=none durationMs=91645
+
+
+## 2026-11-19 08:18:54 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-plain** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.3676326 tokensIn=40 tokensOut=8669; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=False askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=EXIT doneWhen=True wrote=True gate=False auditor=0 side=none durationMs=102713
+
+
+## 2026-11-19 08:20:39 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.3331721 tokensIn=24 tokensOut=6693; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=60357
+
+
+## 2026-11-19 08:22:51 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.3755483 tokensIn=34 tokensOut=9390; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=89130
+
+
+## 2026-11-19 08:25:27 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (bd381c2adac6d6e0b9663b411bbe37cb2843895b)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@c48c411d7735 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet; patch=b416-review-question.patch@c48c411d7735) — agentExit=0 timedOut=False costUsd=0.346601 tokensIn=30 tokensOut=8293; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=113381
+
+## B-416 part 2 results — 2026-11-19: the clickable form (hand-written; the 25 runner rows above, 07:36 to 08:25, are the pilot's three, one exploration run, the 18 counted runs and three fallback runs)
+
+As pre-registered and amended once (`.claude/plans/2026-11-19-b416-review-offer.md`, "Part 2", frozen at db792211; amendment 3 at
+bd381c2a, before any counted run). Claude Code 2.1.312 and `claude-sonnet-5-5` (`system/init`) in all 25; acceptEdits with the 39-rule
+list, tag `dc735db5da74`, recomputed before every run; one invocation per run through a driver that removes every `CLAUDE*` and
+`ANTHROPIC*` variable and sets `DISABLE_AUTOUPDATER=1` (its per-run "0 left" line was kept for round 1 only); `-SelfTest` EXIT=0
+before each commit. Dialog runs are one process on the control channel (`Invoke-ClaudeDialog`): the host listed its question tool
+in all 22 (`qtool=True`, 43 tools), and the runner clicked an option whenever the agent used it. 18 of 18 counted runs valid, none
+repeated: `rails1=plan-gate`, `overlay1` True on K and False on the plain change, a go-ahead before the first write in each,
+`askBullet` True in T3 and False in C2. No quota, sign-in or rate-limit stop.
+
+| cell | n | go-ahead asked as a question with the review option | how the go-ahead arrived | `review` skill called | host built-in | `plan=OPTIONS` | `doneWhen` | `gate` | cost, median | agent time, median |
+|---|---|---|---|---|---|---|---|---|---|---|
+| C2-go (shipped carrier, K) | 6 | 0 | typed reply, 6 | 0 | 0 | 6 | 6 | 5 | 0.287 USD | 77 s |
+| T3-go (candidate, K, click on "Go ahead") | 6 | 6 | click, 6 | 0 | 0 | 6 | 6 | 6 | 0.315 USD | 89 s |
+| T3-asked-plain (candidate, Supplier, click on "Go ahead, with review") | 6 | 6 | click, 6 | 6, each after the first write | 0 | n/a (not a risk change) | 4 | n/a (no overlay) | 0.279 USD | 71 s |
+| T3-fallback, reported (candidate, K, part 1's channel: no question tool) | 3 | n/a | typed reply, 3 | 0 | 0 | 3 | 3 | 3 | 0.347 USD | 89 s |
+
+- **ASKED: holds.** 12 of 12 T3 runs asked for the go-ahead through the question tool with the options `Go ahead` and `Go ahead,
+  with review` before the first write, and the click was the go-ahead (10 needed); 0 of 6 C2-go runs did (at most 1). The control
+  never used the question tool at all (`asks=0` in 6 of 6): it typed its questions and waited.
+- **HONOURED: holds.** T3-asked-plain: the click landed on "Go ahead, with review" and this repository's `review` skill was called
+  after the first write in 6 of 6 (5 needed); no host `code-review` in any run.
+- **QUIET: holds.** No review of either kind in 6 of 6 T3-go and 6 of 6 C2-go.
+- **SIDE: does not hold, by one run in one cell.** T3-go against C2-go: `plan=OPTIONS` 6 against 6, `doneWhen` 6 against 6,
+  `gate=True` 6 of 6 (5 needed; C2-go 5 of 6, the sixth tried the scope capture without calling the skill). By hand, the plan posted
+  as text before the question: 6 of 6 in T3-go, **4 of 6 in T3-asked-plain** (5 needed). In slots 2 and 3 the agent put the whole
+  plan (the Done-when lines, the files, the assumptions) inside the question's text and posted no plan message; the grader's
+  `doneWhen=False` on those two rows is the same fact.
+- **Reading, as registered: NOT SETTLED.** Three readings hold and SIDE misses by one. The cause is in the candidate's own words
+  ("do not end your turn on the plan: call the tool"), which do not say the plan is a message first. Nothing ships from this
+  measurement; the next wording, and whether to spend on it, is the maintainer's.
+- **The first wording (T2), dropped at the pilot:** "With a question tool, ask one question with the options …". The host listed
+  the tool and neither T2 run used it: one typed "Reply **Go ahead** or **Go ahead, with review**", the other closed with the
+  fallback line verbatim. T3 was then tried on one uncounted run (the question, the click, the review after the write) and frozen.
+- **Reported, not readings:**
+  - A click carries only its option. Both scenarios' typed replies also answer the plan's open questions; after a click the agent
+    went ahead without those answers in all 12 T3 runs, on what its plan or its own clarifying questions had settled.
+  - With the candidate installed the agent also moved its clarifying questions into the tool, before the plan: T3-go slots 2, 3
+    and 4 (three or four questions each) and T3-asked-plain slots 3 and 6 (two each); the runner clicked the first option, which the
+    agent had marked recommended in most. The control typed such questions under its plan in 6 of 6.
+  - On K, three T3-go go-ahead questions carried a third option for the other design ("Option A instead", "Use Option B instead");
+    the other three, asked after clarifying clicks, offered the two registered options. One (slot 1) folded a second question, where
+    the column script should live, into the go-ahead question.
+  - A click passes no UserPromptSubmit hook (`rails2=absent` in 12 of 12 T3 runs; `overlay` on the control's typed reply in 6 of
+    6), so the security overlay is not repeated on the go-ahead. The security gate was still called in 6 of 6 T3-go runs.
+  - Fallback, on part 1's channel where the host lists no question tool: the plan closed with the text line and a plain go-ahead
+    started no review in 3 of 3 (`offer=LINE review=0`, valid by part 1's rules).
+  - T3-go against C2-go by medians: +0.028 USD and +12 s of agent time, inside run-to-run spread at n = 6. The bullet is 724 bytes
+    on a 15,633-byte carrier (part 1's line: 396).
+- **Hand check:** the question, click, offer-line, review and gate fields of all 25 rows agree with the transcripts, and the plan and
+  Done-when fields were read by hand in the 12 T3 dialog runs. As in part 1, every review and every security gate
+  that started stopped at `scripts/review-scope.ps1` (`reviewers=0`, `auditor=0` in all 25); each run said so and asked for the
+  approval. `review` counts the skill call, not a completed review.
+- **Cost:** 7.588 USD of this part's 8 USD stop: pilot 0.889, exploration 0.275, counted 5.369 (C2-go 1.707, T3-go 1.897,
+  T3-asked-plain 1.765), fallback 1.055. Three channel probes before the freeze, 0.30 USD, are outside the stop. B-416 in all: 15.45 USD.
+- **Changes from the registration:** amendment 3 (T3 for T2), in the plan file with its reason and committed before the counted
+  runs. The pilot's three runs and the exploration run are not counted.
+- **Reopen triggers checked:** WSD-100, WSD-111, WSD-114, WSD-131, WSD-134: none met. No run sent a review or the security pass to a
+  host built-in. WSD-134's trigger (a dialog hiding the plan) is a field trigger; the two runs with the plan inside the question
+  are the nearest thing seen here and are flagged above.
+- **Not shown:** as registered. A person at Claude Code's terminal (the click is the runner's answer on the control channel);
+  Copilot CLI's `ask_user` (B-530) and VS Code's question tool (B-532); a completed review; a review asked for on a
+  security-sensitive change; Opus, Angular, monorepo; n = 6 a cell on one fixture and two prompts.
