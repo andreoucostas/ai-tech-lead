@@ -45,10 +45,12 @@ function Assert-OpenHeadings {
 }
 
 function Assert-DecisionsRecordedInBacklog {
-    param([string]$BacklogText, [string[]]$Subjects)
+    param([string]$BacklogText, [string[]]$Subjects, [switch]$ClosureOnly)
     if (@($Subjects).Count -eq 0) { throw 'git log yielded zero commit subjects -- decision check is vacuous' }
     $openIds = @((Get-BacklogRecords $BacklogText) | ForEach-Object Id | Sort-Object -Unique)
-    $verb = '(?:REJECT|REJECTED|ACCEPTED|DECIDED|CLOSED|DONE)'
+    # A body often records a design decision on an item that stays open ("B-490 decided as the narrow block"), so a
+    # body is read for closure words only; a subject keeps the full list.
+    $verb = if ($ClosureOnly) { '(?:REJECT|REJECTED|CLOSED|DONE)' } else { '(?:REJECT|REJECTED|ACCEPTED|DECIDED|CLOSED|DONE)' }
     foreach ($subject in $Subjects) {
         $ids = @()
         foreach ($match in [regex]::Matches($subject,
@@ -204,13 +206,23 @@ It 'recent commit decisions name no ids that remain open in the backlog' {
     Push-Location $repoRoot
     try {
         # Subjects and bodies: WSD-125 keeps the subject at 72 characters, so a closure can sit in the body.
-        $subjects = @(& git log -200 '--format=%s%n%b' 2>&1)
+        $subjects = @(& git log -200 '--format=%s' 2>&1)
         $gitExit = $LASTEXITCODE
+        $bodies = @(& git log -200 '--format=%b' 2>&1 | Where-Object { "$_".Trim() })
+        $bodyExit = $LASTEXITCODE
     } finally { Pop-Location }
-    Assert ($gitExit -eq 0) "git log failed with exit $gitExit"
-    Assert-DecisionsRecordedInBacklog `
-        ([IO.File]::ReadAllText((Join-Path $repoRoot 'meta/BACKLOG.md'), [Text.Encoding]::UTF8)) `
-        $subjects
+    Assert ($gitExit -eq 0 -and $bodyExit -eq 0) "git log failed with exit $gitExit / $bodyExit"
+    $backlog = [IO.File]::ReadAllText((Join-Path $repoRoot 'meta/BACKLOG.md'), [Text.Encoding]::UTF8)
+    Assert-DecisionsRecordedInBacklog $backlog $subjects
+    if (@($bodies).Count -gt 0) { Assert-DecisionsRecordedInBacklog $backlog $bodies -ClosureOnly }
+}
+
+It 'a commit body closing an open item is refused, and one recording a decision on it is not' {
+    $open = "## Open entries`n`n### B-900 · Example`n**Filed against:** v0.1.0 (2026-01-01)`nBody.`n"
+    Assert-DecisionsRecordedInBacklog $open @('B-900 decided as the narrow wiring block') -ClosureOnly
+    $threw = $false
+    try { Assert-DecisionsRecordedInBacklog $open @('B-900 closed by decision') -ClosureOnly } catch { $threw = $_.Exception.Message -match 'B-900' }
+    Assert $threw 'a body closing open item B-900 was accepted'
 }
 
 It 'archive pointers resolve to archived ids' {
