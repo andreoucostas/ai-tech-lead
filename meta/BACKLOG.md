@@ -37,9 +37,8 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 20 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
 | 21 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
 | 22 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
-| 23 | B-531 | Maintainer request: a full implementation plan, each put through an adversarial review, for the items decided 2026-11-19 (the review line's shipping change, B-490, B-504, B-530); after B-416's measurement |
-| 24 | B-532 | Maintainer request: re-read current Claude Code, Copilot CLI and VS Code guidance for what the framework ships that is now outdated or can be deleted, such as `CLAUDE.md` if every host reads `AGENTS.md` |
-| 25 | B-533 | Maintainer request: review the testing strategy, whether end-to-end tests belong in it, and what published practice says about releasing fast; report before any change |
+| 23 | B-532 | Maintainer request: re-read current Claude Code, Copilot CLI and VS Code guidance for what the framework ships that is now outdated or can be deleted, such as `CLAUDE.md` if every host reads `AGENTS.md` |
+| 24 | B-533 | Maintainer request: review the testing strategy, whether end-to-end tests belong in it, and what published practice says about releasing fast; report before any change |
 
 ## Open entries
 
@@ -65,7 +64,7 @@ Next, the maintainer's choice: a boundary the agent meets in the code it reads, 
 ### B-530 · Measure the plan's opt-in review line on Copilot CLI, where the `review` skill loads and dispatches no reviewer
 **Filed against:** v0.98.6 (2026-11-19)
 **Priority:** P2 · **Effort:** S to measure, S to M to change · **Invariants:** #5 #7
-**Status:** Blocked: Copilot access ended 2026-11-18 (maintainer, in chat 2026-11-19; WSD-131). Run B-416's pre-registered cells (`.claude/plans/2026-11-19-b416-review-offer.md`, and Part 2's clickable cells with `ask_user` left on) on Copilot CLI in plan mode, as B-528's Copilot leg did: the consumer team runs on Copilot, and the Claude Code reading does not carry over. The runs use the shipped wording (the bullet now in the rules file, no patch) and include the risk-change order (review option first, recommended) and a completed review (the `b416-dialog-asked-full` harness). First, before any Copilot run, the grader fix: `picked` misreads when a clarifying question and the go-ahead question share one tool call (`Get-ReviewAsk`), with a red-first case.
+**Status:** Blocked: Copilot access ended 2026-11-18 (maintainer, in chat 2026-11-19; WSD-131). Run B-416's pre-registered cells (`.claude/plans/2026-11-19-b416-review-offer.md`, and Part 2's clickable cells with `ask_user` left on) on Copilot CLI in plan mode, as B-528's Copilot leg did: the consumer team runs on Copilot, and the Claude Code reading does not carry over. The runs use the shipped wording (the bullet now in the rules file, no patch) and include the risk-change order (review option first, recommended) and a completed review (the `b416-dialog-asked-full` harness). First, before any Copilot run, the grader fix: `picked` misreads when a clarifying question and the go-ahead question share one tool call (`Get-ReviewAsk`), with a red-first case. Plan, adversarially reviewed: `.claude/plans/2026-11-19-b530-copilot-go-ahead-measurement.md`.
 Carries B-425's finding (2026-11-13, CLI 1.0.98, `meta/eval-results.md`): "Review my changes." loaded the `review` skill in 5 of 6 runs and started a reviewer in 0 of 6; five said they read the small diff directly instead of dispatching, which `review.md` Step 1 does not allow. A review asked for through the plan line may load the skill there and still run no reviewer.
 Next candidate if that reproduces: `review.md` Step 1's wording, not the routing; B-425's `$railsReview` candidate was not shown to help and is dropped.
 
@@ -100,7 +99,7 @@ Candidate: the check prints a digest of the warehouse artifacts' paths and conte
 **Filed against:** v0.98.4 (2026-11-10)
 **Priority:** P2 · **Effort:** S to M · **Invariants:** #3 #5
 **Status:** Open; maintainer-requested external audit. Done for 0.99.0: part (a), fail closed (maintainer, in chat 2026-11-13: the guard command exits 2 when its interpreter is not found, its entry sets `"onFailure": "block"`), and, with B-506, the doctor's `Wired hook shell` row is `MISSING` for an interpreter not on `PATH`. Reproduced: a write of `{ "hooks": {} }` to `.claude/settings.json` exits 0.
-Decided 2026-11-19 (maintainer, in chat; WSD-132), the narrow block: the guard refuses a settings write whose result no longer registers `guard.ps1`, and any agent write to `.claude/hooks/*.ps1` or `.github/hooks/hooks.json`; `/adopt` and the upgrade checklist keep editing other settings. Left: implement it, guarded, step 4. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`.
+Decided 2026-11-19 (maintainer, in chat; WSD-132), the narrow block: the guard refuses a settings write whose result no longer registers `guard.ps1`, and any agent write to `.claude/hooks/*.ps1` or `.github/hooks/hooks.json`; `/adopt` and the upgrade checklist keep editing other settings. Left: implement it, guarded, step 4. Brief: `.claude/plans/2026-11-10-external-audit-briefs.md`. Plan, adversarially reviewed: `.claude/plans/2026-11-19-b490-guard-wiring-block.md`.
 B-489's round-2 attack: the guard does not refuse a Write to `.claude/settings.json` or `.claude/hooks/guard.ps1` on either surface (settings.json run; guard.ps1 by the same logic, not run).
 ### B-497 · `/review` hands back six reviewers' findings with no merge, de-duplication or verdict rule
 **Filed against:** v0.98.4 (2026-11-10)
@@ -111,7 +110,7 @@ Remaining: merge the three Haiku reviewers (convention-check, bloat-radar, debt-
 **Filed against:** v0.98.6 (2026-11-13)
 **Priority:** P2 · **Effort:** S for a tool list, M to drop the shell · **Invariants:** #2 #5 #7
 **Status:** Open; vendor-guidance audit and its adversarial review (read, not run). The seven `.claude/agents` files list `PowerShell`; the six `.github/agents` wrappers have no `tools:`, which Copilot reads as all tools; both vendors say a tool list is the boundary and an instruction is not.
-Decided 2026-11-19 (maintainer, in chat; WSD-133): keep the shell. The six wrappers get `tools: ["read", "search", "execute"]` and the shipped text stops calling the reviewers read-only; dropping the shell (the hash recompute moved to the parent in six agents, six wrappers, `review.md` and `security-gate.md`) is rejected. Blocked: Copilot access ended 2026-11-18, and the change needs a host check that a reviewer starts, reads its bundle and has no edit tool.
+Decided 2026-11-19 (maintainer, in chat; WSD-133): keep the shell. The six wrappers get `tools: ["read", "search", "execute"]` and the shipped text stops calling the reviewers read-only; dropping the shell (the hash recompute moved to the parent in six agents, six wrappers, `review.md` and `security-gate.md`) is rejected. Blocked: Copilot access ended 2026-11-18, and the change needs a host check that a reviewer starts, reads its bundle and has no edit tool. Plan, adversarially reviewed: `.claude/plans/2026-11-19-b504-reviewer-tool-lists.md`.
 Also: VS Code documents that it does not forward `include-custom-instructions`, which four wrappers rely on; not measured.
 ### B-508 · The installer's HEAD-comparison and ownership planning has no unit tests, and an edited framework-owned file is replaced unannounced
 **Filed against:** v0.98.6 (2026-11-14)
@@ -176,12 +175,6 @@ Worktrees are not the way out: `push-and-check.ps1` watches `master` only, and w
 **Priority:** P3 · **Effort:** M to explore · **Invariants:** #3 #5
 **Status:** Open; raised by the maintainer in chat 2026-11-17 while reviewing B-491, no field report. B-491's keyword rules mis-routed approvals, questions and words inside other words, and each narrowing trades one miss for another.
 Explore, in a Fable 5.2 session, whether asking a small model for the intent only when the rules are unsure is a quick fallback a prompt hook can afford: latency, cost per prompt, what happens with no network or key, and both surfaces. Report before any change.
-
-### B-531 · Full implementation plans, each adversarially reviewed, for the items decided on 2026-11-19
-**Filed against:** v0.98.6 (2026-11-19)
-**Priority:** P2 · **Effort:** M · **Invariants:** none
-**Status:** Open; maintainer request in chat 2026-11-19, to start once B-416's measurement is reported and the tree is clear. One plan each for the review line's shipping change (if the maintainer says ship; WSD-131), the guard's narrow wiring block (B-490, WSD-132), the reviewers' tool lists and wording (B-504, WSD-133) and the Copilot measurement (B-530).
-Each plan names the files, the red-first case, the verification recipe and what could be let through, and goes through one adversarial review by a session that did not write it, with the review's executed attack recorded in the plan.
 
 ### B-532 · Re-read current host guidance for what the framework ships that is now outdated or can be deleted
 **Filed against:** v0.98.6 (2026-11-19)
