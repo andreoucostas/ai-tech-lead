@@ -9636,3 +9636,17 @@ before the first write in each, `askBullet=True`. No quota, sign-in or rate-limi
 - **Not shown:** as registered and amended. The review reached after a gate that ran; a person at Claude Code's terminal reading
   the plan above the dialog; Copilot CLI's `ask_user` (B-530) and VS Code's question tool; a completed review; Opus, Angular,
   monorepo; n = 6 a cell on one fixture and two prompts.
+
+## 2026-11-19 11:45:58 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (57affa8bfe8716a3f12ddadb6576085c4fe5f000)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9c0ba9d55a5e · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **FAIL b416-dialog-asked-full** (model=sonnet; patch=b416-review-question.patch@9c0ba9d55a5e) — agentExit=0 timedOut=False costUsd=0.2716556 tokensIn=22 tokensOut=6824; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=review offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=False gateFirst=none reviewAfterGate=False reviewFirst=True reviewRec=False perms=2/1 permClasses=none:1,question:2 auditor=0 side=none durationMs=76994
+
+
+## 2026-11-19 13:11:20 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (6a1b0b692d2af458194159b10b19f4bdc85a7b25)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9101bbd6e4bb · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **FAIL b416-dialog-asked-full** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=0.5653635 tokensIn=6 tokensOut=12105; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=review offer=NONE review=0 reviewWhen=none builtin=0 reviewers=1 plan=OPTIONS doneWhen=True wrote=True gate=False gateFirst=none reviewAfterGate=False reviewFirst=True reviewRec=True perms=5/3 permClasses=hash:2,none:3,question:2,scope-capture:1 auditor=1 side=EXAMINED durationMs=42333
+

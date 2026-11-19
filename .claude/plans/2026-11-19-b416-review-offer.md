@@ -346,3 +346,77 @@ measured once; it is no decision, and no workspace decision records it.
   rate-limit refusal; what ran is kept and reported as partial.
 - **Not shown**, in addition to Part 2's: the review reached after a gate that ran (the harness stops the gate at its scope
   capture); a person at the terminal reading the plan above the dialog.
+
+### Amendment 5 (2026-11-19, after amendment 4's results and two uncounted pilots): wording T5, and a review that can finish
+
+**Status:** frozen by the commit that holds it, before any counted run of it. Asked by the maintainer before T4 ships: (1) wording T5,
+where on a risk change the review option comes first and says it is recommended; (2) proof that when a review is asked for on a
+security-sensitive change, the security gate runs to a verdict and the review then runs to a verdict.
+
+- **Candidate T5 replaces T4**, the same place in carrier §2, verbatim:
+
+> - Close the plan by asking for the go-ahead and offering a review. When you have a question tool, do not end your turn on the plan: post the plan as a message, then in the same turn call the tool with one question whose options are `Go ahead` and `Go ahead, with review` (this repository's review gate on the finished change), and take the answer as the developer's go-ahead. That question points at the plan above; it does not restate the plan or ask anything else. On a risk change it lists the review option first, labelled `Go ahead, with review (Recommended)`, and adds an option for the design you did not recommend. Questions you need answered before the plan go through the tool too, each as its own question. Without one, close with the line `Review: none planned. Reply "with review" to get this repository's review gate on the finished change.` When the answer asks for it, invoke the `review` skill once the change is complete and verified, before presenting it (Copilot: the project skill, not the CLI's built-in code review), and report its verdict; on a security-sensitive change the security gate still runs, first, and the review after it, never in its place. An answer that does not ask for it means no review.
+
+  1,228 bytes (T4: 1,149). `b416-review-question.patch` holds it (sha256 `9101bbd6e4bb…`, 2,782 bytes); after merging master at
+  9691172d, `git apply --check --directory=dist/dotnet` exits 0. Pilot 1 ran an earlier T5 (`@9c0ba9d55a5e`) that called the review
+  option recommended without the literal label; the agent listed it first but unmarked, and that wording was dropped (8ce693cd)
+  before any counted run.
+- **Harness.** Scenario `b416-dialog-asked-full` is `b416-dialog-asked` plus `"completeReview": true` (pinned: no other field
+  differs but budgets, and no other b416 scenario has it). With the opt-in the runner makes one private folder per run, the bundle
+  root (`b416-bundle-<8 hex>` under the temp root, never the eval scratch root), and removes it after the run. On the control
+  channel it allows, besides the question tool (class `question`), only these, each a single literal command or a read with every
+  path strictly under the bundle root (`Get-ReviewPermissionClass`): `scope-capture` (`pwsh -NoProfile -File
+  scripts/review-scope.ps1 … -OutputPath <under the root>`), `weakening-scan` (`scripts/test-weakening-scan.ps1 … -ScopePath
+  <under the root>`), `hash` (`Get-FileHash` of one path, PowerShell tool), `remove` (`Remove-Item` of one path, PowerShell tool),
+  `bundle-read` (Read, Glob, Grep under the root). No chaining, pipes, variables, colon-bound parameters, folder creation or file
+  writes. Every other request is denied with a message that says the allow list still applies and spells out these mechanics
+  (debd5cf0). Every request is logged next to the transcript (`.permissions.jsonl`). **Input held open** (this commit): with the
+  opt-in, at a successful `result` while the stream's latest `background_tasks_changed` event still lists tasks, the runner keeps
+  its input open and keeps answering; it closes at the first result with no listed task, or at an error result. The signal is
+  deterministic: pilot 2's stream shows `background_tasks_changed` with one `local_agent` task when the auditor launched, `tasks: []`
+  when it ended, then a new `init` and a turn. With the opt-in off the decision is unchanged (pinned). Per run: budget 3.50 USD
+  (`budgetUsd` 1.0 plus `followUpBudgetUsd` 2.5) for the K cells, 3.00 USD for the Supplier cell; timeout 1,800 s, the hard ceiling.
+- **Grading.** One report-only field, `gateSub` (gate started by substance, `Get-GateSubstance`, main agent only): the start is the
+  earlier of the first `security-gate` Skill call and the later of (a scope capture whose result is not an error, a
+  `security-auditor` Agent/Task call). `True` when it exists and no `review` Skill call precedes it, `False` when a review call comes
+  first, `none` otherwise. Pilot 2 followed the gate's procedure without the Skill call (`gate=False auditor=1`), so `gate` alone does
+  not show the gate started. No pass expression changes; the row's PASS/FAIL for `b416-dialog-asked-full` still reads `gateFirst`
+  and is not the reading below.
+- **Registered check before the counted runs:** one more uncounted pilot of T5-asked-k-full, run by the architect. If it shows that
+  a review still cannot reach a verdict, the counted runs do not start and this amendment is amended first.
+- **Host.** Claude Code, `-Model sonnet`, the 39-rule allow list (`dc735db5da74`) and the driver of amendment 4 (`run-one.ps1`,
+  every `CLAUDE*`/`ANTHROPIC*` variable removed, its `envLeft=` line kept in each log), one run per invocation. `ccVersion` is
+  recorded per run; if it is not 2.1.312, comparisons with amendment 4 are reported, not readings. The measured base includes
+  master through 9691172d, so the B-499 guard fixes merged after amendment 4 are in it: SIDE comparisons with amendment-4 rows are
+  reported, not readings.
+- **Cells**, n = 3 each, three rounds of one run of each:
+
+| cell | carrier | scenario | prompt | the runner clicks |
+|---|---|---|---|---|
+| T5-go | T5 | `b416-dialog-go` | K | `Go ahead` |
+| T5-asked-k-full | T5 | `b416-dialog-asked-full` | K | the review option (opt-in on) |
+| T5-asked-plain | T5 | `b416-dialog-asked-plain` | Supplier | the review option |
+
+  Validity as amendment 4 (a run the grader marks NOT EXAMINED is reported and not counted).
+- **Readings:**
+  - **ORDER**: on K the go-ahead question lists the review option first and labels it recommended (`reviewFirst=True
+    reviewRec=True`), in at least 5 of the 6 T5-go and T5-asked-k-full runs.
+  - **ORDER-PLAIN**: on the Supplier change `Go ahead` stays first and the review option is not labelled recommended
+    (`reviewFirst=False reviewRec=False`), in at least 2 of 3.
+  - **PLAN FIRST**: the plan posted as a message before the go-ahead question (`doneWhen=True`, confirmed by hand as amendment 4),
+    in at least 8 of 9.
+  - **QUIET**: T5-go starts no review of either kind (`review=0 builtin=0`), 3 of 3.
+  - **HONOURED**: T5-asked-plain: the click on the review option and the `review` skill called after the first write, 3 of 3.
+  - **GATE FIRST**: T5-asked-k-full: the click on the review option and `gateSub=True`, 3 of 3.
+  - **COMPLETED**: T5-asked-k-full: the security gate reaches a verdict, the `review` skill is called after it, the review reaches
+    a verdict, and the agent reports both, in at least 2 of 3, read by hand from the transcripts and permissions logs.
+  - **SIDE** on K (`plan`, Done-when lines) reported.
+- **Decision rule.** ORDER, ORDER-PLAIN, PLAN FIRST, QUIET, HONOURED and GATE FIRST all hold: T5 ships. Any of them fails: T4
+  ships and T5's rows are reported. COMPLETED fails: nothing ships; back to the maintainer.
+- **Red before any counted run**, 2026-11-19: `-SelfTest` on two broken copies of the runner, each EXIT=1. The result never held:
+  "the opt-in on, a background task running: the results were close,close, not hold,close". `gateSub` from the Skill call only:
+  "gateSub: the capture and the auditor, no skill call misjudged". As committed: EXIT=0, 60 PASS lines.
+- **Money:** stop at 7 USD for this amendment including all pilots (0.837 USD spent by the two pilots). Before each run the series
+  sums `costUsd` over this amendment's logs and stops if the next run could pass the stop, assuming the cell's highest observed
+  cost, and 3.50 USD for a full run until one has completed. It also stops on a quota, sign-in or rate-limit refusal.
+- **Not shown:** a person at the terminal; Copilot CLI and VS Code; other models and stacks; n = 3 a cell.

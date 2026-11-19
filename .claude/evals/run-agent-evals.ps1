@@ -2369,6 +2369,36 @@ function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log
 # One process, one session: the prompt, then either a click (the agent called its question tool; Get-DialogAnswer) or, when the first
 # turn ends with nothing written, the typed reply as a second user message. After the turn that follows the go-ahead the input is
 # closed and the stream is read to its end. The transcript is the stream without the control requests, the shape plain -p prints.
+# With -CompleteReview the input is held open at a successful result while background_tasks_changed still lists running tasks, so a
+# background agent's later turn keeps getting its permission requests answered; the run timeout stays the ceiling (Get-DialogResultAction).
+function Get-DialogBackgroundCount([int]$Count, $Event) {
+    if ($Event.type -eq 'system' -and $Event.subtype -eq 'background_tasks_changed') { return $(if ($null -eq $Event.tasks) { 0 } else { @($Event.tasks).Count }) }
+    $Count
+}
+# 'follow' (send the typed follow-up; $CanFollow is evaluated lazily), 'hold' (opt-in, no error, background work unfinished), or 'close'.
+function Get-DialogResultAction($Result, [scriptblock]$CanFollow, [int]$Pending, [switch]$CompleteReview) {
+    if (& $CanFollow) { return 'follow' }
+    if ($CompleteReview -and -not $Result.is_error -and $Pending -gt 0) { return 'hold' }
+    'close'
+}
+# Report-only: did the security gate start by substance? G = the earliest of the first main-agent security-gate Skill call and the later
+# of (first main-agent review-scope.ps1 capture whose result exists and is not an error, first main-agent security-auditor Agent/Task call).
+# 'True' when G exists and no main-agent review Skill call precedes it, 'False' when a review call comes first or there is no G, else 'none'.
+function Get-GateSubstance($Evidence) {
+    $main = @($Evidence.Tools | Where-Object { -not $_.Sidechain } | Sort-Object { [int]$_.Index })
+    $starts = [Collections.Generic.List[int]]::new()
+    $gateCall = @($main | Where-Object { $_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'security-gate' } | Select-Object -First 1)
+    if ($gateCall) { $starts.Add([int]$gateCall[0].Index) }
+    $capture = @($main | Where-Object { $_.Name -in @('Bash', 'PowerShell') -and ([string]$_.Input.command).Contains('scripts/review-scope.ps1') -and $Evidence.ToolResults.ContainsKey($_.Id) -and -not $Evidence.ToolResults[$_.Id].is_error } | Select-Object -First 1)
+    $auditor = @($main | Where-Object { $_.Name -in @('Agent', 'Task') -and [string]$_.Input.subagent_type -eq 'security-auditor' } | Select-Object -First 1)
+    if ($capture -and $auditor) { $starts.Add([Math]::Max([int]$capture[0].Index, [int]$auditor[0].Index)) }
+    $review = @($main | Where-Object { $_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'review' } | Select-Object -First 1)
+    if ($starts.Count) {
+        $g = ($starts | Measure-Object -Minimum).Minimum
+        return $(if (-not $review -or [int]$review[0].Index -gt $g) { 'True' } else { 'False' })
+    }
+    if ($review) { 'False' } else { 'none' }
+}
 function Invoke-ClaudeDialog([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview) {
     # With the opt-in the run gets one private bundle root, made here and removed here once the transcript and the permissions log are written.
     $scratchRoot = Split-Path -Parent $TranscriptPath
@@ -2397,7 +2427,7 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
     & $say $Prompt
     $lines = [Collections.Generic.List[string]]::new()
     $deadline = [DateTime]::UtcNow.AddSeconds($Timeout)
-    $followed = $false; $wrote = $false; $closed = $false; $timedOut = $false
+    $followed = $false; $wrote = $false; $closed = $false; $timedOut = $false; $pending = 0
     while ($true) {
         $read = $process.StandardOutput.ReadLineAsync()
         if (-not $read.Wait([int][Math]::Max(0, ($deadline - [DateTime]::UtcNow).TotalMilliseconds))) { $timedOut = $true; break }
@@ -2411,11 +2441,13 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
             continue
         }
         $lines.Add($line)
+        $pending = Get-DialogBackgroundCount $pending $event
         if ($event.type -eq 'assistant') {
             foreach ($content in @($event.message.content)) { if ($content.type -eq 'tool_use' -and (Test-B406Write $content)) { $wrote = $true } }
         } elseif ($event.type -eq 'result' -and -not $closed) {
-            if (-not $followed -and $FollowUp -and -not $event.is_error -and -not $wrote -and @(Get-B406Changes $WorkingDirectory).Count -eq 0) { $followed = $true; & $say $FollowUp }
-            else { $process.StandardInput.Close(); $closed = $true }
+            $action = Get-DialogResultAction $event { -not $followed -and $FollowUp -and -not $event.is_error -and -not $wrote -and @(Get-B406Changes $WorkingDirectory).Count -eq 0 } $pending -CompleteReview:$CompleteReview
+            if ($action -eq 'follow') { $followed = $true; & $say $FollowUp }
+            elseif ($action -eq 'close') { $process.StandardInput.Close(); $closed = $true }
         }
     }
     if ($timedOut) {
@@ -4626,6 +4658,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $firstGate = @($skillCalls | Where-Object { [string]$_.Input.skill -eq 'security-gate' } | Select-Object -First 1)
             $firstReview = @($skillCalls | Where-Object { [string]$_.Input.skill -eq 'review' } | Select-Object -First 1)
             $gateFirst = if ($firstGate -and (-not $firstReview -or [int]$firstReview[0].Index -gt [int]$firstGate[0].Index)) { 'True' } elseif ($firstReview) { 'False' } else { 'none' }
+            $gateSub = Get-GateSubstance $e
             $reviewAfterGate = [bool]($firstGate -and @($skillCalls | Where-Object { [string]$_.Input.skill -eq 'review' -and [int]$_.Index -gt [int]$firstGate[0].Index }).Count)
             $permsAt = $null
             if ($Transcript.PSObject.Properties['Permissions']) { $permsAt = @(@($Transcript.Permissions) | Where-Object { $null -ne $_ }) }
@@ -4633,7 +4666,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 $allowedN = @($permsAt | Where-Object { $_.decision -eq 'allow' }).Count
                 $classes = if ($permsAt.Count) { (@($permsAt | Group-Object { [string]$_.class } | Sort-Object Name | ForEach-Object { "$($_.Name):$($_.Count)" }) -join ',') } else { 'none' }
                 "perms=$allowedN/$($permsAt.Count - $allowedN) permClasses=$classes" }
-            $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) overlay1=$overlay1 askBullet=$($ask.Bullet) qtool=$($ask.QTool) ask=$($ask.Ask) asks=$($ask.Asks) goAhead=$($ask.GoAhead) picked=$($ask.Picked) offer=$($review.Offer) review=$($review.Reviews) reviewWhen=$($review.When) builtin=$($review.Builtin) reviewers=$($review.Reviewers) plan=$($plan.Class) doneWhen=$($plan.DoneWhen) wrote=$wrote gate=$gate gateFirst=$gateFirst reviewAfterGate=$reviewAfterGate reviewFirst=$($ask.ReviewFirst) reviewRec=$($ask.ReviewRec) $permsField auditor=$auditor side=$((Get-B406Side $e).Class) durationMs=$(Get-B406Duration $e)"
+            $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) overlay1=$overlay1 askBullet=$($ask.Bullet) qtool=$($ask.QTool) ask=$($ask.Ask) asks=$($ask.Asks) goAhead=$($ask.GoAhead) picked=$($ask.Picked) offer=$($review.Offer) review=$($review.Reviews) reviewWhen=$($review.When) builtin=$($review.Builtin) reviewers=$($review.Reviewers) plan=$($plan.Class) doneWhen=$($plan.DoneWhen) wrote=$wrote gate=$gate gateFirst=$gateFirst reviewAfterGate=$reviewAfterGate reviewFirst=$($ask.ReviewFirst) reviewRec=$($ask.ReviewRec) $permsField gateSub=$gateSub auditor=$auditor side=$((Get-B406Side $e).Class) durationMs=$(Get-B406Duration $e)"
             $why = if ($hooks.Rails -ne 'plan-gate') { "the first prompt's hook carried $($hooks.Rails), not the plan gate" }
                 elseif ($plainChange -and $overlay1) { 'the first prompt tripped the security overlay' }
                 elseif (-not $plainChange -and -not $overlay1) { "the first prompt's hook carried no security overlay" }
@@ -5293,6 +5326,50 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     & $check 'kfull: no permission requests recorded' $kFull $tRepo (& $withPerms (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) @()) 'PASS' 'gateFirst=True reviewAfterGate=False .*perms=0/0 permClasses=none ' | Out-Null
     & $check 'kfull: the review before the gate' $kFull $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'review') + @(& $skill 'security-gate')) $null) 'FAIL' 'gateFirst=False reviewAfterGate=False .*perms=n/a permClasses=n/a ' | Out-Null
     & $check 'kfull: the click landed on Go ahead' $kFull $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead') + @(& $edit) + @(& $skill 'security-gate') + @(& $skill 'review')) $null) 'FAIL' 'picked=go .*gateFirst=True reviewAfterGate=True ' | Out-Null
+    # gateSub (report-only, no pass expression reads it): the gate started by substance, a security-gate Skill call or the scope capture
+    # (result present, not an error) plus the security-auditor call, the later of those two; True unless a review Skill call came first.
+    $captureCmd = 'pwsh -NoProfile -File scripts/review-scope.ps1 -Mode Uncommitted -OutputPath C:/t/b416-bundle-0a1b2c3d/bundle'
+    $capture = { param([string]$ToolId, [switch]$Denied)
+        $content = [pscustomobject]@{ type = 'tool_result'; tool_use_id = $ToolId; content = $(if ($Denied) { 'Permission denied.' } else { 'Wrote the bundle.' }) }
+        if ($Denied) { $content | Add-Member -NotePropertyName is_error -NotePropertyValue $true }
+        @((& $use $ToolId 'Bash' @{ command = $captureCmd }), [pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @($content) } })
+    }
+    $auditorCall = { & $use 'a1' 'Agent' @{ subagent_type = 'security-auditor'; prompt = 'audit the bundle' } }
+    & $check 'gateSub: the gate skill call' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'gateFirst=True .*gateSub=True auditor=0 ' | Out-Null
+    & $check 'gateSub: the capture and the auditor, no skill call' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $capture 'c1') + @(& $auditorCall)) $null) 'FAIL' 'gate=False gateFirst=none .*gateSub=True auditor=1 ' | Out-Null
+    & $check 'gateSub: the auditor, then the capture' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $auditorCall) + @(& $capture 'c1')) $null) 'FAIL' 'gateSub=True auditor=1 ' | Out-Null
+    & $check 'gateSub: the review skill before any start' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'review') + @(& $capture 'c1') + @(& $auditorCall)) $null) 'FAIL' 'gateFirst=False .*gateSub=False auditor=1 ' | Out-Null
+    & $check 'gateSub: the review skill and no start' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'review')) $null) 'FAIL' 'gateSub=False auditor=0 ' | Out-Null
+    & $check 'gateSub: the capture allowed, no auditor' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $capture 'c1')) $null) 'FAIL' 'gateSub=none auditor=0 ' | Out-Null
+    & $check 'gateSub: a denied capture and the auditor' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $capture 'c1' -Denied) + @(& $auditorCall)) $null) 'FAIL' 'gateSub=none auditor=1 ' | Out-Null
+    & $check 'gateSub: no gate, no review' $kAsked $tRepo (& $stream ($clickReview + @(& $edit)) $null) 'FAIL' 'gateSub=none auditor=0 ' | Out-Null
+
+    # The held input (A1): a pilot-2-shaped stream replayed through the functions the live loop calls. With the opt-in the first result,
+    # with a background task still running, holds; the result after the task ended closes. Without it the first result closes (the old decision).
+    $bgChange = { param($Tasks) [pscustomobject]@{ type = 'system'; subtype = 'background_tasks_changed'; tasks = @($Tasks) } }
+    $bgTask = [pscustomobject]@{ id = 'task-1'; task_type = 'local_agent'; status = 'running' }
+    $errResult = [pscustomobject]@{ type = 'result'; is_error = $true; result = 'failed' }
+    $replay = { param($Events, [bool]$On, [scriptblock]$CanFollow)
+        $pending = 0; $actions = [Collections.Generic.List[string]]::new()
+        foreach ($ev in $Events) {
+            $pending = Get-DialogBackgroundCount $pending $ev
+            if ($ev.type -eq 'result') { $actions.Add((Get-DialogResultAction $ev $CanFollow $pending -CompleteReview:$On)) }
+        }
+        $actions -join ','
+    }
+    $pilot2 = @(& $edit) + @(& $bgChange @($bgTask)) + @(& $done 0) + @(& $bgChange @()) + @(& $init $true) + @(& $say 'The review finished.') + @(& $done 1)
+    $heldOn = & $replay $pilot2 $true { $false }
+    $heldOff = & $replay $pilot2 $false { $false }
+    $heldErr = & $replay (@(& $edit) + @(& $bgChange @($bgTask)) + @($errResult)) $true { $false }
+    $heldFollow = & $replay (@(& $edit) + @(& $bgChange @($bgTask)) + @(& $done 0)) $true { $true }
+    $heldNone = & $replay (@(& $edit) + @(& $done 0)) $true { $false }
+    if ($heldOn -cne 'hold,close') { throw "B-416 dialog the opt-in on, a background task running: the results were $heldOn, not hold,close" }
+    if ($heldOff -cne 'close,close') { throw "B-416 dialog the opt-in off: the first result was not closed whatever the background count ($heldOff)" }
+    if ($heldErr -cne 'close') { throw "B-416 dialog the opt-in on, an error result with a background task running was $heldErr, not close" }
+    if ($heldFollow -cne 'follow') { throw "B-416 dialog the follow-up did not come before a hold ($heldFollow)" }
+    if ($heldNone -cne 'close') { throw "B-416 dialog the opt-in on with no background task did not close ($heldNone)" }
+    if ((Get-DialogBackgroundCount 2 (& $say 'x')) -ne 2 -or (Get-DialogBackgroundCount 2 (& $bgChange @())) -ne 0 -or (Get-DialogBackgroundCount 0 (& $bgChange @($bgTask, $bgTask))) -ne 2) { throw 'B-416 dialog the background task count is not the latest background_tasks_changed list' }
+
     # Not examined.
     & $check 'no question tool on the channel' $asked $tRepo (& $stream @(& $say $line) (@(& $edit) + @(& $skill 'review')) -Plain -NoTool) 'INCONCLUSIVE' 'qtool=False .*NOT EXAMINED: the host listed no question tool on this channel' | Out-Null
     & $check 'a write before any go-ahead' $asked $tRepo (& $stream (@(& $say $plan) + @(& $edit) + @(& $question 'q1' $both 'Go ahead, with review')) $null -Plain) 'INCONCLUSIVE' 'ask=NONE asks=0 goAhead=none .*NOT EXAMINED: the agent wrote before any go-ahead reached it' | Out-Null
@@ -5455,6 +5532,8 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     if (($dialogArgs -join [char]0) -cne ($dialogWant -join [char]0) -or $plainArgs[0] -ne '-p' -or $plainArgs[1] -ne 'p') { throw "B-416 dialog the control-channel arguments are not the plain ones without the prompt: $($dialogArgs -join ' ')" }
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-ReviewAskSelfTest).ScriptBlock.Ast.Extent.Text, '')
     if ($selfText -notmatch [regex]::Escape('$run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath') -or $selfText -notmatch [regex]::Escape('$legSession = if ($case.followUp -and -not $dialogPick)')) { throw 'B-416 dialog the live loop does not run a dialog case as one process' }
+    $runText = (Get-Command Invoke-ClaudeDialogRun).ScriptBlock.Ast.Extent.Text
+    if (-not $runText.Contains('$pending = Get-DialogBackgroundCount $pending $event') -or -not $runText.Contains('Get-DialogResultAction $event {') -or -not $runText.Contains('$pending -CompleteReview:$CompleteReview')) { throw 'B-416 dialog the dialog loop does not decide a result through Get-DialogBackgroundCount and Get-DialogResultAction' }
     if ($selfText -notmatch [regex]::Escape('$AllowedTools -CompleteReview:([bool]$case.completeReview)')) { throw 'B-416 dialog the live loop does not pass the scenario''s completeReview to the dialog' }
 
     # The scenarios: the same prompts, typed replies and budgets as the text-line cells, plus the option a click lands on.
