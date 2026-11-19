@@ -203,7 +203,8 @@ It '"No open entries." beside an open heading is refused, so it cannot hide a gr
 It 'recent commit decisions name no ids that remain open in the backlog' {
     Push-Location $repoRoot
     try {
-        $subjects = @(& git log -200 --format='%s' 2>&1)
+        # Subjects and bodies: WSD-125 keeps the subject at 72 characters, so a closure can sit in the body.
+        $subjects = @(& git log -200 '--format=%s%n%b' 2>&1)
         $gitExit = $LASTEXITCODE
     } finally { Pop-Location }
     Assert ($gitExit -eq 0) "git log failed with exit $gitExit"
