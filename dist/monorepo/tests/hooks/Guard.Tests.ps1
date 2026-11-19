@@ -744,7 +744,9 @@ It 'guard: the allowlist stays blocked through every path field and from a subfo
     } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
 }
 
-It 'guard: a list line built to backtrack answers within 2 s and waives nothing it does not match' {
+# 5 s, inside Copilot's 10 s hook limit: 2.2 s once on a CI runner (2026-11-19, run 44540739007) against a 2 s bound;
+# the unfixed guard (before 26f9fcc6) took 7.7-24.6 s, so the bound still separates the fix from the defect.
+It 'guard: a list line built to backtrack answers within 5 s and waives nothing it does not match' {
     $secret = '{"k":"sk-' + 'live0123456789abcdefghijklmn"}'   # assembled at run time, as the outgoing-commit guard asks
     $cases = @(
         @{ l = "**/fixtures/**/samples/**/*.json`n"; p = ((@('fixtures\samples') * 600) -join '\') + '\appsettings.cs' }
@@ -760,7 +762,7 @@ It 'guard: a list line built to backtrack answers within 2 s and waives nothing 
                 $result = Invoke-Hook $hook (New-SurfaceEvent $surface $path $secret)
                 $ms = $clock.ElapsedMilliseconds
                 Assert-Decision $result $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "$($case.l.Trim()) on a $($path.Length)-character path ($surface)"
-                Assert ($ms -lt 2000) "$($case.l.Trim()) on a $($path.Length)-character path ($surface): the guard took $ms ms, expected under 2000"
+                Assert ($ms -lt 5000) "$($case.l.Trim()) on a $($path.Length)-character path ($surface): the guard took $ms ms, expected under 5000"
             }
         } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
     }
