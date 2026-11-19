@@ -341,6 +341,26 @@ $GuardCases = @(
     @{ n='masked Password in a keyed connectionString (allow)'; f='src/Db.cs'; c='var connectionString = "Server=db;User Id=app;Password=****";'; block=$false }
     @{ n='a mask in one password key does not hide a real value in another'; f='src/Db.cs'; c="var cs = `"Server=db;Password=****;Proxy.Password=$sqlPassword;`";"; block=$true }
     @{ n='a four-character real Password piece joined to a connection string'; f='src/Db.cs'; c='var cs = "Data Source=x;" + "Password=hunt;";'; block=$true }
+    # Property, raw-string and piece passwords. Each blocked case is blocked only after the change; each (allow) case is allowed
+    # before and after it (a near miss that must stay allowed).
+    @{ n='auto-property initializer assigned a password literal'; f='src/Db.cs'; c="public string Password { get; set; } = `"$sqlPassword`";"; block=$true }
+    @{ n='init-only property initializer assigned a secret literal'; f='src/Db.cs'; c="public string ClientSecret { get; init; } = `"$sqlPassword`";"; block=$true }
+    @{ n='property named PasswordHint assigned a message (allow)'; f='src/Db.cs'; c='public string PasswordHint { get; set; } = "Enter your password here";'; block=$false }
+    @{ n='auto-property initializer assigned no literal (allow)'; f='src/Db.cs'; c='public string Password { get; set; } = string.Empty;'; block=$false }
+    @{ n='auto-property initializer assigned a placeholder (allow)'; f='src/Db.cs'; c='public string Password { get; set; } = "<from-vault>";'; block=$false }
+    @{ n='interpolated string assigned to a password'; f='src/Db.cs'; c="var password = `$`"$sqlPassword`";"; block=$true }
+    @{ n='C# raw string assigned to a password'; f='src/Db.cs'; c="var password = `"`"`"$sqlPassword`"`"`";"; block=$true }
+    @{ n='TypeScript template literal assigned to a password'; f='src/db.ts'; c="const password = ``$sqlPassword``;"; block=$true }
+    @{ n='TypeScript optional password field with a string literal'; f='src/db.ts'; c="const o = { password?: '$sqlPassword' };"; block=$true }
+    @{ n='interpolation holding only a variable (allow)'; f='src/Db.cs'; c='var message = $"{password}";'; block=$false }
+    @{ n='password assigned an interpolation of holes only (allow)'; f='src/Db.cs'; c='var password = $"{config.Secret}{suffix}";'; block=$false }
+    @{ n='password assigned a template literal of a variable (allow)'; f='src/db.ts'; c='const password = `${process.env.DB_PASSWORD}`;'; block=$false }
+    @{ n='empty raw string assigned to a password (allow)'; f='src/Db.cs'; c="var password = `"`"`"`n        `n        `"`"`";"; block=$false }
+    @{ n='password literal after a variable in a concatenated connection string'; f='src/Db.cs'; c="var cs = `"Server=`" + host + `";Password=$sqlPassword`";"; block=$true }
+    @{ n='password literal added with += to a connection string'; f='src/Db.cs'; c="cs += `";Password=$sqlPassword;`";"; block=$true }
+    @{ n='Password: label in a message string (allow)'; f='src/Db.cs'; c='var label = "Password: ";'; block=$false }
+    @{ n='masked ;Password= piece removed from a message (allow)'; f='src/Db.cs'; c='var m = s.Replace(";Password=****", "");'; block=$false }
+    @{ n='message that starts with a semicolon and a password word (allow)'; f='src/Db.cs'; c='Log("; password expired for the user");'; block=$false }
 )
 
 # The edit events of the two surfaces, for the cases that carry o: Claude Code's Edit (file_path, old_string, new_string)

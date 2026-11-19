@@ -82,6 +82,23 @@ foreach ($stall in $stallCases) {
         Assert ($r.Exit -eq $stall.exit) "the hook exited $($r.Exit) after $($r.Seconds) s; expected $($stall.exit)"
     }
 }
+# The credential forms read by their opener, each on a write of about 250 KB that has no credential in it and that a quadratic
+# pattern would re-read from every repetition (it would need minutes). The bound is 5 s where the hook runs in about 1 s here,
+# as CI runners are about four times slower.
+$formStallCases = @(
+    @{ n = 'a credential name followed by 25000 accessor-block openings in a .cs file';     f = 'src/Foo.cs'; c = ('password { ' * 25000); exit = 0 }
+    @{ n = 'a credential name and an unclosed C# raw string of 250000 characters';          f = 'src/Foo.cs'; c = ('var password = """' + ('a' * 250000)); exit = 0 }
+    @{ n = 'a credential name and an unclosed interpolated string of 85000 holes';         f = 'src/Foo.cs'; c = ('var password = $"' + ('{a}' * 85000)); exit = 0 }
+    @{ n = 'a credential name and an unclosed TypeScript template of 250000 characters';    f = 'src/db.ts';  c = ('const password = `' + ('a' * 250000)); exit = 0 }
+    @{ n = '20000 literals that open with ; and hold no password pair, beside one pair';    f = 'src/Foo.cs'; c = ('var q = "SET Password=ab"; ' + ('"; aaaaaaaaa' * 20000)); exit = 0 }
+)
+foreach ($stall in $formStallCases) {
+    It "guard: $($stall.n) is decided inside 5 s" {
+        $r = Invoke-HookBounded $guardPs (New-ClaudeEvent $stall.f $stall.c) 5000
+        Assert (-not $r.TimedOut) "the hook was still scanning after 5 s on a $([int]($stall.c.Length / 1024)) KB write and was killed"
+        Assert ($r.Exit -eq $stall.exit) "the hook exited $($r.Exit) after $($r.Seconds) s; expected $($stall.exit)"
+    }
+}
 # A whole-file write is also compared with the file on disk, so a large write over a large file must be decided inside the
 # limit too: one pragma in each (the common case), and tens of thousands in each (every one counted in both texts).
 $pragma = "#pragma warning disable CS0618`n"

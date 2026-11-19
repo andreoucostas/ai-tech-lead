@@ -6,6 +6,8 @@
 
 ## 0.99.0 — Unreleased
 
+- **The write guard now reads a property, raw-string, template and piece password.** A hardcoded password written as `public string Password { get; set; } = "…"`, `var password = $"…"`, a C# raw string `"""…"""`, a TypeScript `password?: "…"` or backtick template, or as `";Password=…"` joined after a variable (`"Server=" + host + ";Password=…"`) is now refused like a plain `password = "…"`. A message, a mask, an interpolation of variables only (`$"{config.Secret}"`) and a Markdown code span stay allowed.
+
 - **The write guard no longer blocks a masked connection string.** A `"Password=****;"`, `xxxx`, `NULL` or `redacted` piece joined to another quoted literal was read as a real password and refused the write; a password value that is only asterisks (three or more), only `x` (three or more), `NULL` or `redacted` is now treated as a mask. A real password beside a mask is still refused.
 
 - **An update no longer drops the exemplar line from a disabled skill.** A "For a concrete current instance" line you added to a skill's `SKILL.md` was kept by the update that moved the skill to `.claude/disabled-skills/`, then lost on the next update; every update now keeps it there, and when you re-enable the skill.

@@ -907,7 +907,15 @@ foreach ($write in $writes) {
         # verbatim string) -- and the two connection-string forms under a connectionString key. The runs between the
         # name and the "=" are atomic or disjoint, so a long run of spaces or quotes cannot be re-split.
         $type = '[A-Za-z_$][\w$.]*(?:\[\])*'
-        $keyedPattern = '(password|passwd|pwd|secret|ap[i\u0130\u0131][_-]?key|access[_-]?key|client[_-]?secret)(?>["'' ]*)(?:(?>\][^\S\r\n]*)=|(?::[^\S\r\n]*' + $type + '(?:[^\S\r\n]*\|[^\S\r\n]*' + $type + ')*[^\S\r\n]*)?[:=])\s*@?["''](?<v>[^"'']{8,})["'']' +
+        # The value after the "=": a quoted string of 8 or more characters, opened by a plain quote, a verbatim @"...", an
+        # interpolated $"..." (not one that holds only {holes}), a C# raw """...""" or, in a .ts or .js file only (Markdown code spans use backticks), a backtick template. The
+        # name may also be followed by a C# accessor block (Password { get; set; } = "...") or a TypeScript "?" (password?: "...").
+        $valueHoles = '(?!(?:\{[^{}"'']*\})+["''])'
+        $valueOpener = '(?:@?["''](?<v>[^"'']{8,})["'']' +
+            '|(?:\$@?|@\$)["'']' + $valueHoles + '(?<v>[^"'']{8,})["'']' +
+            '|"""\s*(?<v>[^"\s][^"]{7,})"""' +
+            $(if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) { '|`(?<v>[^`]{8,})`' } else { '' }) + ')'
+        $keyedPattern = '(password|passwd|pwd|secret|ap[i\u0130\u0131][_-]?key|access[_-]?key|client[_-]?secret)(?>["'' ]*)(?>\??)(?:(?>\][^\S\r\n]*)=|(?>\{[^{}\r\n]{0,80}\}[^\S\r\n]*)=|(?::[^\S\r\n]*' + $type + '(?:[^\S\r\n]*\|[^\S\r\n]*' + $type + ')*[^\S\r\n]*)?[:=])\s*' + $valueOpener +
             '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']' +
             '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']'
         $tooManyValues = $false
@@ -922,7 +930,8 @@ foreach ($write in $writes) {
         # ";"-separated key=value pairs, one of them that pair; or it holds that one pair (with or without a trailing ";")
         # and is the argument of .Append( or .AppendLine(; or it holds that one pair and a "+" (blanks and newlines
         # allowed) joins it to the next or the previous quoted literal, when that literal holds a key=value pair (a
-        # long string written as "Data Source=...;" + "User ID=...;" + "Password=..."). Any other literal with one pair
+        # long string written as "Data Source=...;" + "User ID=...;" + "Password=..."); or it opens, after a "+", "=", "(" or ",", with ";"
+        # and then holds that one pair (";Password=...", the piece after a variable in "Server=" + host + ";Password=..."). Any other literal with one pair
         # ("Password=****;", "UPDATE Users SET Password=NULL;", a log or exception message) is not read. A key may carry a
         # prefix of letters, digits, ".", "_", "-" and blanks (Db2Password, Proxy.Password); "=" touches the key and the
         # value; a value that opens with "{" or "$" is an interpolation hole or a variable, and one that opens with "@"
@@ -942,6 +951,7 @@ foreach ($write in $writes) {
                 '|(?<=\.Append(?:Line)?\(\s*[$@]{0,2}' + $quote + ')(?=' + $onePair + ')' +
                 '|(?=' + $onePair + $joinTo + '(?>[^"''\r\n]*?' + $anyPair + '))' +
                 '|(?=(?>[^"''\r\n]*?' + $anyPair + ')[^"''\r\n]*' + $quote + $joinTo + $onePair + ')' +
+                '|(?<=[+=(,]\s*[$@]{0,2}' + $quote + ')(?=(?<lit>;' + $credentialPair + ';?)' + $quote + ')' +
                 ')'
             $pairPattern = '(?:^|;)' + $k + '*?(?:password|pwd|SharedAccessKey)=(?<v>[^;{$@][^;]{3,})'
             foreach ($m in [regex]::Matches($content, $literalPattern, $ci)) {
