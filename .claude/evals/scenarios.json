@@ -707,6 +707,19 @@
       "followUp": "I make the table in the database myself, so no migration or script is needed. Same shape as the existing resources: no DTOs, validation or paging. Go ahead, with review.",
       "dialog": "review",
       "assertion": "reviewOffer"
+    },
+    {
+      "id": "b416-dialog-asked",
+      "measures": "B-416 amendment 4: the clickable form on prompt K (b416-review-asked's prompt and typed reply), with the click on 'with review': on a security-sensitive change, does the security gate run first, and the review not in its place? Run with the candidate patch only. It shows the gate's call and order, not a completed review.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "budgetUsd": 1.0,
+      "followUpBudgetUsd": 2.5,
+      "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid.",
+      "followUp": "A second refund on an invoice that is already refunded is a 409 too. Paid stays true; Refunded is an extra flag on top. This only marks the invoice: no event, no payment-provider call, no money moves. I apply the new Refunded column to the database myself, so no script is needed. Two simultaneous refunds are out of scope for now. Go ahead, with review.",
+      "dialog": "review",
+      "assertion": "reviewOffer"
     }
   ]
 }

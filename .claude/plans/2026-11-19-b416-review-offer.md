@@ -284,3 +284,65 @@ hand read agrees). A second trial wording was written and not run.
 - **Reported with the results:** that a click carries only its option. The typed replies of both scenarios also answer the plan's
   open questions (the 409 on a second refund; who creates the table); a click does not, so the agent proceeds on the assumptions its
   plan stated. What it does with them is read by hand per T3 run.
+
+### Amendment 4 (2026-11-19, after part 2's results at 301151a6): the plan first, then the question
+
+**Status:** frozen by the commit that holds it, before any paid run of it. Part 2 read NOT SETTLED: T3 was asked and clicked in 12
+of 12 runs, honoured 6 of 6 and quiet 6 of 6, but in 2 of 6 T3-asked-plain runs the question carried the whole plan and no plan
+message was posted. Decided by the maintainer in chat 2026-11-19: (1) fix the wording so the plan is posted as a message before
+the question, and re-check it; (2) clarifying questions go through the question tool too. Open, not decided: (3) on a
+security-sensitive change where the developer asks for a review, what runs. **The architect's recommendation, awaiting the
+maintainer's decision:** the security gate first, then the review, never the review in its place. T4 carries that clause so it is
+measured once; it is no decision, and no workspace decision records it.
+
+- **Candidate T4 replaces T3**, the same place in carrier §2, verbatim:
+
+> - Close the plan by asking for the go-ahead and offering a review. When you have a question tool, do not end your turn on the plan: post the plan as a message, then in the same turn call the tool with one question whose options are `Go ahead` and `Go ahead, with review` (this repository's review gate on the finished change), and take the answer as the developer's go-ahead. That question points at the plan above; it does not restate the plan or ask anything else, and on a risk change it adds an option for the design you did not recommend. Questions you need answered before the plan go through the tool too, each as its own question. Without one, close with the line `Review: none planned. Reply "with review" to get this repository's review gate on the finished change.` When the answer asks for it, invoke the `review` skill once the change is complete and verified, before presenting it (Copilot: the project skill, not the CLI's built-in code review), and report its verdict; on a security-sensitive change the security gate still runs, first, and the review after it, never in its place. An answer that does not ask for it means no review.
+
+  1,149 bytes on the 15,633-byte carrier (T3: 724). `b416-review-question.patch` now holds it (sha256 `516f02e7374a…`, 2,703
+  bytes, LF; `git apply --check --directory=dist/dotnet` exits 0). It keeps the clause the grader's `askBullet` marker matches and
+  the start and end the self-test's patch pin checks, so the runner reads it unchanged.
+- **New cell and grading.** Scenario `b416-dialog-asked`: `b416-review-asked`'s twin (prompt K, typed reply, stack, fixture,
+  overlay, assertion, budgets) plus `"dialog": "review"`. It is graded in the existing dialog case with K's validity (as
+  `b416-dialog-go`, security overlay on the first prompt required) and one new field, `gateFirst`, from main-agent `Skill` calls:
+  `True` when `security-gate` was called and no `review` call came before it; `False` when `review` was called with no
+  `security-gate` call or before it; `none` when neither. Pass: the go-ahead question with the review option asked and clicked, the
+  click on "with review", and `gateFirst=True`. The review after the gate is not part of the pass: this harness refuses the gate's
+  scope capture, so a review queued behind it is "could not examine" (part 1, amendment 2). `gateFirst` is reported for all three
+  dialog ids; nothing else in the runner changes.
+- **Cells** (Claude Code, `-Model sonnet`, launched exactly as Part 2, one run per invocation):
+
+| cell | carrier | scenario | the runner clicks | n |
+|---|---|---|---|---|
+| T4-go | T4 | `b416-dialog-go` | the option without review | 6 |
+| T4-asked-plain | T4 | `b416-dialog-asked-plain` | "with review" | 6 |
+| T4-asked-k | T4 | `b416-dialog-asked` | "with review" | 6 |
+
+  Rounds of T4-go, T4-asked-plain, T4-asked-k. Round 1 is the pilot: it counts as slot 1 if valid and nothing changes after it.
+  Validity as Part 2 (T4-asked-k as K). **Control:** part 2's six C2-go rows are reused, not re-run (same day, same shipped carrier,
+  same channel, runner unchanged for that scenario), on one condition: every T4 run reports `ccVersion=2.1.312`. If one does not,
+  the series stops and the condition is reported.
+- **Readings** (k of 6 valid runs a cell):
+  - **ASKED**: `ask=OPTION` with `goAhead=click` in 10 or more of the 12 T4-go and T4-asked-plain runs (control: 0 of 6, measured).
+  - **HONOURED**: T4-asked-plain: the click on "with review" and the `review` skill called after the first write, in 5 or 6.
+  - **QUIET**: no review of either kind in 5 or 6 T4-go runs.
+  - **PLAN FIRST** (the defect being fixed): the plan posted as a message before the go-ahead question (`doneWhen=True`, confirmed by
+    hand: Done-when lines in a text message before the question, and the question does not carry the plan) in 5 or 6 of **each**
+    of the three cells.
+  - **SIDE**, T4-go against C2-go (6, 6, and gate 5 of 6): `plan=OPTIONS` and `doneWhen` each no more than 1 below; `gate=True` in
+    5 or 6.
+  - **GATE FIRST**: T4-asked-k passes in 5 or 6.
+  - **SHIP CANDIDATE (clickable, Claude Code)**: all six. **ABANDON**: ASKED 6 or fewer, or HONOURED 3 or fewer, or PLAN FIRST 3 or
+    fewer in any cell. **NOT SETTLED**: anything else, or a cell short of 6 valid runs. The numbers go to the maintainer, who decides.
+  - Reported, not readings: clarifying questions through the tool per run and whether the plan message followed them; whether a
+    risk-change go-ahead question carried the third option; whether a go-ahead question asked anything else as well; in
+    T4-asked-k, whether a `review` call followed the gate; cost and agent-time medians against C2-go; the bullet's byte count.
+- **Red before any paid run**, 2026-11-19: `-SelfTest` on three broken copies of the runner, each EXIT=1. Without the new id: "Unknown
+  scenario 'b416-dialog-asked'." The review in place of the gate passing: the case "the review in place of the gate" misjudged
+  (`gate=False gateFirst=False`). The review before the gate passing (`gateFirst` True whenever the gate was called): the case "the
+  review before the gate" misjudged (`gate=True gateFirst=True`). As committed: EXIT=0, 60 PASS lines (the six new cases and the
+  third scenario pin sit inside the existing B-416 part 2 line).
+- **Stop**: 7 USD for this amendment (about 0.30 USD a run, 18 runs, about 5.5 USD expected), or the first hard quota, sign-in or
+  rate-limit refusal; what ran is kept and reported as partial.
+- **Not shown**, in addition to Part 2's: the review reached after a gate that ran (the harness stops the gate at its scope
+  capture); a person at the terminal reading the plan above the dialog.
