@@ -9636,3 +9636,48 @@ before the first write in each, `askBullet=True`. No quota, sign-in or rate-limi
 - **Not shown:** as registered and amended. The review reached after a gate that ran; a person at Claude Code's terminal reading
   the plan above the dialog; Copilot CLI's `ask_user` (B-530) and VS Code's question tool; a completed review; Opus, Angular,
   monorepo; n = 6 a cell on one fixture and two prompts.
+
+## 2026-11-19 14:02:57 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (7498e0344b6ff2e6de8d8987178f22fdd95a4acf)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 57 allowed-tool rules (f01b98a1d7ac) · scratch: retained=True
+
+- **PASS business-term-c** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2047288 tokensIn=18 tokensOut=3845; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=control.patch@a183bbad7edd op=term arm=c pass=True class=BOUND_OWN flagged=True asked=False crm=False fact=True positive=False window12=False window3=False region=True distinct=True matchesD=False conflict=False | entryRead=False indexRead=False wikiLook=False capture=NONE drafted=False indexLine=False draftOk=False offered=False leak=False | files=Views/rpt.vwActiveCustomersByRegionMonth.sql skillCalls= denied=2 durationMs=53434 turns=1
+
+
+## 2026-11-19 14:03:50 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (7498e0344b6ff2e6de8d8987178f22fdd95a4acf)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 57 allowed-tool rules (f01b98a1d7ac) · scratch: retained=True
+
+- **PASS business-term-c** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1587351 tokensIn=6 tokensOut=2029; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=control.patch@a183bbad7edd op=term arm=c pass=True class=BOUND_OWN flagged=True asked=False crm=False fact=True positive=False window12=False window3=False region=True distinct=True matchesD=False conflict=False | entryRead=False indexRead=False wikiLook=False capture=NONE drafted=False indexLine=False draftOk=False offered=False leak=False | files=Views/rpt.vwActiveCustomersByRegionMonth.sql skillCalls= denied=0 durationMs=29689 turns=1
+
+
+## B-534 results, pilot — 2026-11-19 (hand-written; the two runner rows above, 14:02 and 14:03, are the counted runs)
+
+As pre-registered at 7498e034 (`.claude/plans/2026-11-19-business-terms-pilot.md`), unamended. Claude Code 2.1.312, `claude-sonnet-5-5`,
+acceptEdits with the 57-rule run list (`f01b98a1d7ac`); 2 of 2 valid (exit 0, `success`, a view written), none repeated, no quota refusal. The
+driver checked before each run that the tree was clean at 7498e034. A first launch bound `-AllowedTools` wrongly (`pwsh -File` splits the
+array, as in B-523) and the runner refused its parameters before any setup or model call: no row, no spend.
+
+| run | arm | class | final message flags the definition | defined "active" as | read the CRM `IsActive` | cost USD | duration |
+|---|---|---|---|---|---|---|---|
+| 1 | C | BOUND_OWN | yes, "my assumption, please check it with Finance" | at least one sale in the month | yes, rejected it (current-state flag, no history) | 0.205 | 53.4 s |
+| 2 | C | BOUND_OWN | yes, "Assumption for Finance to confirm" | at least one sale in the month | yes, rejected it (no region, no history) | 0.159 | 29.7 s |
+
+- **Reading, as fixed: CEILING, so NO-SHIP.** C was not silently wrong in 2 of 2 runs: both flagged the term as an assumption and named the
+  alternative, so the series stopped after C2 and K1, K2, K1m and K3 were not run. Spend 0.363 USD of the 4 USD stop. The prediction (C binds
+  silently in most runs) did not hold. Neither view matches the finance definition D (a month of sales, not 12 months of positive orders), so
+  both would be wrong if the developer skipped the report; but both said so in their closing message, in plain words, near the top.
+- **What C did unprompted:** found the CRM table through the file tree although the map omits it, explained why the same-named flag was not
+  usable for a monthly count, kept to `rpt.vwFinanceExtract`'s join path, and said the output is not meaningful until the customer and region
+  loads are fixed. Run 1 also added the view to the map's feeds list (WSD-122's own-change rule) and noted the stale map.
+- **Hand check:** `class` and `flagged` agree with the files and final messages in 2 of 2. Denied calls: 2 and 0, each redone.
+- **Limits:** n = 2; one term, one 14-file warehouse, one model; the prompt approves implementation in advance but the agents still stated an
+  assumption, so a maintainer reading a closing message sees it, where a skim could miss it. The CRM column here is a decoy the agents weighed
+  openly; a field failure may differ (a column the agent does not look at). Nothing here shows whether a K1 entry would be found or used, or
+  whether a K2 entry would be followed: those arms were not run. Not shown: Copilot CLI and VS Code, other models, interactive use.
+- **Reopen triggers.** WSD-105 (an eval where captured knowledge changes a pre-registered result): not met; no K arm ran and C needed no
+  entry. WSD-091 (knowledge-increment expansion needs a fresh decision): not exercised; nothing was proposed to ship. WSD-074 (existing
+  carriers first): unchanged, the carrier was only seeded. WSD-109 (a field report or measured outcome before a new operation or rule): the
+  measured outcome is NO-SHIP. WSD-120 (no semantic index): not met, no located-code failure. WSD-122 (map rows only for an agent's own
+  change): not touched; run 1 followed it. Reopen B-534 on a field report of an agent that bound a business term silently; then K1 and K2
+  run unchanged from the committed scenarios.

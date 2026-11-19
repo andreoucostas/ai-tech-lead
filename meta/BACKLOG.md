@@ -41,7 +41,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 24 | B-531 | Maintainer request: a full implementation plan, each put through an adversarial review, for the items decided 2026-11-19 (the review line's shipping change, B-490, B-504, B-530); after B-416's measurement |
 | 25 | B-532 | Maintainer request: re-read current Claude Code, Copilot CLI and VS Code guidance for what the framework ships that is now outdated or can be deleted, such as `CLAUDE.md` if every host reads `AGENTS.md` |
 | 26 | B-533 | Maintainer request: review the testing strategy, whether end-to-end tests belong in it, and what published practice says about releasing fast; report before any change |
-| 27 | B-534 | Maintainer request after a talk on semantic models, no field report: business terms a developer defines or corrects as wiki context entries; a pre-registered pilot (the framework as shipped against a seeded entry, a stale entry and a capture step) before any shipped change |
+| 27 | B-534 | Maintainer request after a talk on semantic models, no field report: business terms a developer defines or corrects as wiki context entries; pilot measured 2026-11-19, ceiling, no ship; the maintainer decides whether to close |
 
 ## Open entries
 
@@ -207,5 +207,5 @@ Answer whether an end-to-end layer (install, then a real agent session on a fixt
 ### B-534 · Business terms a developer defines or corrects in a warehouse task: do wiki context entries change a later result
 **Filed against:** v0.98.6 (2026-11-19), maintainer request in chat 2026-11-19, no field report
 **Priority:** P3 · **Effort:** M · **Invariants:** none
-**Status:** Open; pilot pre-registered in `.claude/plans/2026-11-19-business-terms-pilot.md`, not yet run (4 USD stop). Business terms a developer defines or corrects in a warehouse task: does capturing them as wiki context entries change a later result, and does a wrong entry hurt; pre-registered pilot before any shipped change.
+**Status:** Open; measured 2026-11-19 as CEILING, NO-SHIP (`meta/eval-results.md`, "B-534 results"; 0.36 USD of 4): in 2 of 2 runs today's framework flagged "active customer" as an assumption for finance to confirm, so K1 to K3 were not run; the maintainer decides whether to close it. Business terms a developer defines or corrects in a warehouse task: does capturing them as wiki context entries change a later result, and does a wrong entry hurt; pre-registered pilot before any shipped change.
 Carrier: team-wiki `context` entries through `remember-for-team` (WSD-074), measured first (WSD-109's measured-outcome route). Held, not filed: the scoped pass writing rows by default contradicts WSD-122, which the maintainer kept on 2026-11-15. Out: a new map heading, any semantic-layer format (WSD-120), Power BI (WSD-127).
