@@ -1,0 +1,12 @@
+diff --git a/.github/instructions/framework-rules.instructions.md b/.github/instructions/framework-rules.instructions.md
+index 254d52a..5cde9f4 100644
+--- a/.github/instructions/framework-rules.instructions.md
++++ b/.github/instructions/framework-rules.instructions.md
+@@ -78,6 +78,7 @@ For any non-trivial task, STOP before writing code and post a short plan:
+ - **Every question to the developer, in any workflow, stands alone** for someone who has not seen your investigation: say which requirement, file or behaviour it concerns, what you found, and what each answer changes, in the ticket's and the code's terms, not shorthand you coined.
+ - **A risk change gets a design, not a file list.** Risk means it touches a `Known Hazard Areas` row, a security-sensitive surface (section 1), a data shape (schema, migration, event or message contract) or a public contract others consume (route, status code, package API). Post `Option A:` and `Option B:`, real alternatives each with its cost or what it breaks, then `Recommend:` one with the reason and the file list beneath it. No real alternative: say so in one line. Every other non-trivial change keeps the short plan above.
+ - For larger features, persist the plan as a spec to `specs/<slug>.md` (see `/design`) and implement against it
++- Close the plan with the line `Review: none planned. Reply "with review" to get this repository's review gate on the finished change.` When the reply asks for it, invoke the `review` skill once the change is complete and verified, before presenting it (Copilot: the project skill, not the CLI's built-in code review), and report its verdict. A go-ahead that does not ask for it means no review.
+ 
+ Then **wait for the developer's explicit go-ahead before editing code.** This catches wrong assumptions before wrong diffs and keeps the developer engaged rather than rubber-stamping. Skip only a trivial, unambiguous change (typo, one-liner), and say why.
+ 
