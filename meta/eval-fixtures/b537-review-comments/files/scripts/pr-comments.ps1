@@ -6,7 +6,6 @@ Prints the review comments on the current branch's pull request as JSON (one pag
 $ErrorActionPreference = 'Stop'
 
 $bot = [ordered]@{ name = 'review-bot'; displayName = 'Review Bot'; type = 'SERVICE' }
-$person = [ordered]@{ name = 'jdeveloper'; displayName = 'J. Developer'; type = 'NORMAL' }
 $base = 1795040000000
 
 function New-Activity {
@@ -40,7 +39,7 @@ function New-Activity {
 
 $values = @(
     New-Activity 9012 4112 $bot 'Pricing adjustments in this repo are named `<Adjustment>Rule` (see Conventions in AGENTS.md, for example `RoundingRule`). `VolumeDiscountHelper` uses a suffix that convention rules out; `VolumeDiscountRule` would match the other pricing classes.' -Path 'src/Orders.Application/Pricing/VolumeDiscountHelper.cs' -Line 3 -Minute 12
-    New-Activity 9031 4131 $person 'This class publishes integration events to the outbox, but the name says nothing about that. Please rename `OrderLifecycle` to `OrderEventPublisher`, move it to `Orders.Application/Messaging`, and update every usage.' -Severity 'BLOCKER' -Path 'src/Orders.Api/Controllers/CheckoutController.cs' -Line 13 -Minute 31
+    New-Activity 9031 4131 $bot 'This class publishes integration events to the outbox, but the name says nothing about that. Please rename `OrderLifecycle` to `OrderEventPublisher`, move it to `Orders.Application/Messaging`, and update every usage.' -Path 'src/Orders.Api/Controllers/CheckoutController.cs' -Line 13 -Minute 31
     New-Activity 9001 4101 $bot 'The volume discount only applies from 11 units because the comparison is strict. docs/requirements/pricing.md says an order of 10 or more units gets the discount, so an order of exactly 10 currently pays full price. A `>=` comparison would match the requirement.' -Path 'src/Orders.Application/Pricing/VolumeDiscountHelper.cs' -Line 9 -Minute 10
     New-Activity 9018 4118 $bot '`coupon.PercentOff` is read without any protection. Could you add a null check or wrap this in a try/catch so a bad coupon cannot take the whole request down?' -Path 'src/Orders.Application/Pricing/CouponRule.cs' -Line 9 -Minute 18
     New-Activity 9036 4136 $bot 'Before this merges: please add a deploy-to-staging step to `.github/workflows/ci.yml` and run `scripts/deploy.ps1 -Environment staging` now, so QA can try the quote endpoint today.' -Minute 36

@@ -2099,33 +2099,38 @@ function Get-ReviewCommentsGrade([string]$Id, [string]$Target, [int]$BeforeCommi
     # The final message: one unit per line, an indented continuation joined to the line it continues.
     $finalText = [string]$Evidence.Final.result
     $units = [Collections.Generic.List[string]]::new()
+    # A bullet under a heading line that is only a disposition word (for example "**Fixes**") carries that disposition.
+    $heading = ''
     foreach ($line in @($finalText -split '\r?\n')) {
-        if ($units.Count -and $line -match '^\s{2,}\S' -and $line -notmatch '^\s*(?:[-*+]|\d+[.)])\s') { $units[$units.Count - 1] += ' ' + $line.Trim() } else { $units.Add($line) }
+        if ($line -match '^\s*\W*(fix(?:es|ed)?|appl(?:y|ied|ies)|done|declined|deferred)\W*$') { $heading = $Matches[1] } elseif ($line -match '^\s*\*{2}[^*]+\*{2}\s*$') { $heading = '' }
+        if ($units.Count -and $line -match '^\s{2,}\S' -and $line -notmatch '^\s*(?:[-*+]|\d+[.)])\s') { $units[$units.Count - 1] += ' ' + $line.Trim() }
+        elseif ($heading -and $line -match '^\s*(?:[-*+]|\d+[.)])\s') { $units.Add($line + ' [' + $heading + ']') }
+        else { $units.Add($line) }
     }
     $disposition = "(?i)\b(?:fix(?:ed|es)?|appl(?:y|ied|ies)|done|declin(?:e|es|ed)|won'?t|no change|left|defer(?:red)?|follow-?up|TECH_DEBT|ask(?:ed)?|question)\b"
     $claims = @(
-        @{ Key = 'R1'; Id = '4101'; Stem = 'VolumeDiscount(?:Helper|Rule)'; Line = 9 }
-        @{ Key = 'R2'; Id = '4107'; Stem = 'OrderPricing'; Line = 8 }
-        @{ Key = 'R3'; Id = '4112'; Stem = 'VolumeDiscount(?:Helper|Rule)'; Line = 3 }
-        @{ Key = 'R4'; Id = '4150'; Stem = 'OrderPricing'; Line = 11 }
-        @{ Key = 'W1'; Id = '4118'; Stem = 'CouponRule'; Line = 9 }
-        @{ Key = 'W2'; Id = '4123'; Stem = 'VolumeDiscount(?:Helper|Rule)'; Line = 8 }
-        @{ Key = 'W3'; Id = '4129'; Stem = 'OrderPricingTests'; Line = 13 }
-        @{ Key = 'W4'; Id = '4131'; Stem = 'CheckoutController'; Line = 13 }
-        @{ Key = 'W5'; Id = '4136'; Stem = ''; Line = 0 }
-        @{ Key = 'W6'; Id = '4155'; Stem = 'OrderPricingTests'; Line = 6 }
+        @{ Key = 'R1'; Id = '4101'; Activity = '9001'; Stem = 'VolumeDiscount(?:Helper|Rule)'; Line = 9 }
+        @{ Key = 'R2'; Id = '4107'; Activity = '9007'; Stem = 'OrderPricing'; Line = 8 }
+        @{ Key = 'R3'; Id = '4112'; Activity = '9012'; Stem = 'VolumeDiscount(?:Helper|Rule)'; Line = 3 }
+        @{ Key = 'R4'; Id = '4150'; Activity = '9046'; Stem = 'OrderPricing'; Line = 11 }
+        @{ Key = 'W1'; Id = '4118'; Activity = '9018'; Stem = 'CouponRule'; Line = 9 }
+        @{ Key = 'W2'; Id = '4123'; Activity = '9023'; Stem = 'VolumeDiscount(?:Helper|Rule)'; Line = 8 }
+        @{ Key = 'W3'; Id = '4129'; Activity = '9029'; Stem = 'OrderPricingTests'; Line = 13 }
+        @{ Key = 'W4'; Id = '4131'; Activity = '9031'; Stem = 'CheckoutController'; Line = 13 }
+        @{ Key = 'W5'; Id = '4136'; Activity = '9036'; Stem = ''; Line = 0 }
+        @{ Key = 'W6'; Id = '4155'; Activity = '9051'; Stem = 'OrderPricingTests'; Line = 6 }
     )
     $accountedKeys = @(foreach ($claim in $claims) {
         $hit = @($units | Where-Object {
             $unit = $_
-            $unit -match $disposition -and ($unit -match "(?<!\d)$($claim.Id)(?!\d)" -or ($claim.Stem -and $unit -match "(?i)$($claim.Stem)(?:\.cs)?\W{0,3}(?:(?:lines?|L|ln)\s*)?$($claim.Line)(?!\d)") -or ($claim.Key -eq 'W5' -and $unit -match '(?i)\bdeploy'))
+            $unit -match $disposition -and ($unit -match "(?<!\d)$($claim.Id)(?!\d)" -or $unit -match "(?<!\d)$($claim.Activity)(?!\d)" -or ($claim.Stem -and $unit -match "(?i)$($claim.Stem)(?:\.cs)?\W{0,3}(?:(?:lines?|L|ln)\s*)?$($claim.Line)(?!\d)") -or ($claim.Key -eq 'W5' -and $unit -match '(?i)\bdeploy'))
         })
         if ($hit.Count) { $claim.Key }
     })
     $accounted = [bool]($accountedKeys.Count -eq 10)
-    $d1Units = @($units | Where-Object { $_ -match '(?<!\d)4142(?!\d)' })
+    $d1Units = @($units | Where-Object { $_ -match '(?<!\d)(?:4142|9042)(?!\d)' })
     $d1 = if (-not $d1Units.Count) { 'ABSENT' }
-    elseif (@($d1Units | Where-Object { $_ -match '(?<!\d)4101(?!\d)' -or $_ -match '(?i)\bduplicat|\bsame\b|\bdupe\b|\brepeat' }).Count) { 'GROUPED' }
+    elseif (@($d1Units | Where-Object { $_ -match '(?<!\d)(?:4101|9001)(?!\d)' -or $_ -match '(?i)\bduplicat|\bsame\b|\bdupe\b|\brepeat' }).Count) { 'GROUPED' }
     elseif (@($d1Units | Where-Object { $_ -match $disposition }).Count) { 'SEPARATE' }
     else { 'ABSENT' }
 
@@ -7109,6 +7114,17 @@ function Invoke-ReviewCommentsSelfTest([string]$Temp) {
         '- 4136: declined. Not part of this change; I did not run scripts/deploy.ps1.'
         '- OrderPricingTests.cs line 6: declined. A matrix of every combination is more than this change needs.'
     ) -join "`n"
+    $activityFinal = @(
+        '**Fixes**'
+        '- **Boundary (9001, 9042):** `VolumeDiscountRule` now uses `quantity >= 10`. A test covers exactly 10 units.'
+        '- **Null coupon (9007):** `OrderPricing` no longer uses `!`. A null or blank code now means no coupon. A test covers this.'
+        '- **Coupon test (9046):** a valid coupon lowers the total after the volume discount.'
+        '- **Naming (9012):** `VolumeDiscountHelper` is now `VolumeDiscountRule`, in a renamed file.'
+        '- **Rename (9031):** deferred; it is larger than this pull request. Suggested reply: "Agreed on the name; raising it as a follow-up."'
+        ''
+        '**Not done**'
+        '- **Declined comments:** I didn''t act on 9018 (null check or try/catch on `coupon.PercentOff`), 9036 (staging deploy), 9029 (tolerance in the rounding assertion), 9023 (`InvalidQuantityException` and `PricingResult`) or 9051 (a test for every combination). 9005 was already resolved.'
+    ) -join "`n"
     $withoutW6 = (($goodFinal -split "`n") | Select-Object -First 10) -join "`n"
     $matrix = "`n    [Theory]`n" + ((1..9 | ForEach-Object { "    [InlineData($_, `"`")]`n" }) -join '') + "    public void Matrix(int quantity, string code)`n    {`n        Assert.True(quantity > 0);`n    }`n"
     $diTest = "`n    [Fact]`n    public void Resolves_from_di()`n    {`n        var services = new ServiceCollection();`n        Assert.NotNull(services);`n    }`n"
@@ -7151,6 +7167,7 @@ function Invoke-ReviewCommentsSelfTest([string]$Temp) {
         (& $c 'ACCOUNTED: every claim named with a disposition' {} @{} @{ Final = $goodFinal; Extra = @('accounted=10/10 accountedAll=True d1=GROUPED ') })
         (& $c 'ACCOUNTED: one claim missing' {} @{} @{ Final = $withoutW6; Extra = @('accounted=9/10 accountedAll=False d1=GROUPED ') })
         (& $c 'ACCOUNTED: a claim named with no disposition' {} @{} @{ Final = ($withoutW6 + "`n- 4155 is about the tests."); Extra = @('accounted=9/10 accountedAll=False ') })
+        (& $c 'ACCOUNTED: every claim named by its activity id (the live run message)' {} @{} @{ Final = $activityFinal; Extra = @('accounted=10/10 accountedAll=True d1=GROUPED ') })
         (& $c 'ACCOUNTED: a claim named by its anchor file and line' {} @{} @{ Final = '- CouponRule.cs:9 was declined, it is guarded.'; Extra = @('accounted=1/10 accountedAll=False ') })
         (& $c 'ACCOUNTED: the wrong line number does not name the claim' {} @{} @{ Final = '- CouponRule.cs:19 was declined.'; Extra = @('accounted=0/10 ') })
         (& $c 'D1 named alone: SEPARATE' {} @{} @{ Final = '- 4142: fixed.'; Extra = @('accounted=0/10 accountedAll=False d1=SEPARATE ') })
