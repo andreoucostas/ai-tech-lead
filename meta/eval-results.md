@@ -9664,3 +9664,134 @@ Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-
 
 - **PASS b416-dialog-asked-full** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=1.462325055 tokensIn=8 tokensOut=54376; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=7 plan=OPTIONS doneWhen=True wrote=True gate=True gateFirst=True reviewAfterGate=True reviewFirst=True reviewRec=True perms=21/9 permClasses=hash:12,none:9,question:2,remove:2,scope-capture:4,weakening-scan:1 gateSub=True auditor=2 reviewConfirm=sent side=EXAMINED durationMs=25335
 
+
+## 2026-11-19 14:03:15 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (cdd32bc1b2f62919e6dfd536199cfe0c91870875)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9101bbd6e4bb · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=0.2902233 tokensIn=24 tokensOut=6167; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=True askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=go offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True gateFirst=True reviewAfterGate=False reviewFirst=True reviewRec=True perms=1/1 permClasses=none:1,question:1 gateSub=True auditor=0 reviewConfirm=none side=none durationMs=85349
+
+
+## 2026-11-19 14:04:41 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (cdd32bc1b2f62919e6dfd536199cfe0c91870875)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9101bbd6e4bb · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-plain** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=0.2848449 tokensIn=24 tokensOut=6071; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=False askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=review offer=LINE review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=False gateFirst=False reviewAfterGate=False reviewFirst=True reviewRec=True perms=1/2 permClasses=none:2,question:1 gateSub=False auditor=0 reviewConfirm=none side=none durationMs=74668
+
+
+## 2026-11-19 14:09:22 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (cdd32bc1b2f62919e6dfd536199cfe0c91870875)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9101bbd6e4bb · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-full** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=1.02435873 tokensIn=8 tokensOut=44395; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=6 plan=OPTIONS doneWhen=True wrote=True gate=True gateFirst=True reviewAfterGate=True reviewFirst=True reviewRec=True perms=30/8 permClasses=hash:18,none:8,question:2,remove:5,scope-capture:4,weakening-scan:1 gateSub=True auditor=1 reviewConfirm=sent side=EXAMINED durationMs=30214
+
+
+## 2026-11-19 14:11:10 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (cdd32bc1b2f62919e6dfd536199cfe0c91870875)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9101bbd6e4bb · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=0.329946 tokensIn=28 tokensOut=7995; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=go offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=True gateFirst=True reviewAfterGate=False reviewFirst=True reviewRec=True perms=2/2 permClasses=none:2,question:2 gateSub=True auditor=0 reviewConfirm=none side=none durationMs=80473
+
+
+## 2026-11-19 14:12:28 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (cdd32bc1b2f62919e6dfd536199cfe0c91870875)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9101bbd6e4bb · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-plain** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=0.3035269 tokensIn=28 tokensOut=6752; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=False askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=EXIT doneWhen=True wrote=True gate=False gateFirst=False reviewAfterGate=False reviewFirst=False reviewRec=False perms=1/3 permClasses=none:3,question:1 gateSub=False auditor=0 reviewConfirm=none side=none durationMs=68291
+
+
+## 2026-11-19 14:17:15 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (cdd32bc1b2f62919e6dfd536199cfe0c91870875)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9101bbd6e4bb · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-full** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=1.19438231 tokensIn=8 tokensOut=43258; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=6 plan=OPTIONS doneWhen=True wrote=True gate=True gateFirst=True reviewAfterGate=True reviewFirst=True reviewRec=True perms=22/8 permClasses=hash:11,none:8,question:2,remove:4,scope-capture:4,weakening-scan:1 gateSub=True auditor=1 reviewConfirm=sent side=EXAMINED durationMs=31607
+
+
+## 2026-11-19 14:18:37 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (cdd32bc1b2f62919e6dfd536199cfe0c91870875)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9101bbd6e4bb · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-go** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=0.3246295 tokensIn=28 tokensOut=7114; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=go offer=NONE review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wrote=True gate=False gateFirst=none reviewAfterGate=False reviewFirst=True reviewRec=True perms=2/2 permClasses=none:2,question:2 gateSub=none auditor=0 reviewConfirm=none side=none durationMs=72582
+
+
+## 2026-11-19 14:19:51 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (cdd32bc1b2f62919e6dfd536199cfe0c91870875)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9101bbd6e4bb · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-plain** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=0.2873196 tokensIn=26 tokensOut=6876; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=absent overlay1=False askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=NEITHER doneWhen=True wrote=True gate=False gateFirst=False reviewAfterGate=False reviewFirst=False reviewRec=False perms=1/2 permClasses=none:2,question:1 gateSub=False auditor=0 reviewConfirm=none side=none durationMs=64185
+
+
+## 2026-11-19 14:24:40 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (cdd32bc1b2f62919e6dfd536199cfe0c91870875)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-question.patch@9101bbd6e4bb · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-dialog-asked-full** (model=sonnet; patch=b416-review-question.patch@9101bbd6e4bb) — agentExit=0 timedOut=False costUsd=1.30459611 tokensIn=8 tokensOut=50136; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none overlay1=True askBullet=True qtool=True ask=OPTION asks=2 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0 reviewers=6 plan=OPTIONS doneWhen=True wrote=True gate=True gateFirst=True reviewAfterGate=True reviewFirst=True reviewRec=True perms=22/9 permClasses=hash:11,none:9,question:2,remove:4,scope-capture:4,weakening-scan:1 gateSub=True auditor=1 reviewConfirm=sent side=EXAMINED durationMs=34472
+
+## B-416 amendment 5 results — 2026-11-19: T5, the review option first on a risk change, and a review that finishes (hand-written; the nine runner rows above, 14:03 to 14:24, are the counted runs; the four rows before them, 11:45 to 13:52, are the uncounted pilots)
+
+As pre-registered in amendment 5 and amended by 5a and 5b (`.claude/plans/2026-11-19-b416-review-offer.md`, frozen at 182f5bc8,
+532342ef and cdd32bc1 before any counted run). Claude Code 2.1.312 and `claude-sonnet-5-5` in all 13 runs, `envLeft=0` in every
+log; acceptEdits with the 39-rule list (`dc735db5da74`); patch `b416-review-question.patch@9101bbd6e4bb` in every counted run. One
+invocation per run through amendment 4's driver, three rounds in the registered order (T5-go, T5-asked-plain, then
+T5-asked-k-full). 9 of 9 valid, none repeated; no quota, sign-in or rate-limit stop; no timeout; no "Stream closed" in any counted
+run.
+
+| cell | n | review option first, labelled `(Recommended)` | click landed on | `review` skill | host built-in | `plan=OPTIONS` | plan message before the question (hand) | `gateSub` | gate verdict | review verdict | cost |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| T5-go (K, click on `Go ahead`) | 3 | 3 | `Go ahead`, 3 | 0 | 0 | 3 | 3 | True 2, none 1 | CANNOT EXAMINE 2; not started 1 | n/a | 0.290, 0.330, 0.325 USD |
+| T5-asked-plain (Supplier, click on the review option) | 3 | 1 (slot 1) | review option, 3 | 3, each after the first write | 0 | 1 (slot 1; EXIT, NEITHER) | 3 | False 3 (review only) | n/a | CANNOT EXAMINE 3 (capture refused, opt-in off) | 0.285, 0.304, 0.287 USD |
+| T5-asked-k-full (K, click on the review option, opt-in on) | 3 | 3 | review option, 3 | 3, after the gate and the one confirmation | 0 | 3 | 3 | True 3 | REQUEST CHANGES 3 | REQUEST CHANGES 3 (3, 2, 1 blockers) | 1.024, 1.194, 1.305 USD |
+
+- **ORDER: holds, 6 of 6** (5 needed). Every K go-ahead question listed `Go ahead, with review (Recommended)` first, `Go ahead`
+  second and the design not recommended third.
+- **ORDER-PLAIN: holds, 2 of 3** (2 needed). Slots 2 and 3: `Go ahead`, `Go ahead, with review`, no label, no third option. Slot 1
+  classed the Supplier change as a risk change ("This adds a public route and a new table, so it gets a design with two options";
+  Option A mirror Customer, Option B add validation) and asked as on K. The same plan message also ended with the no-tool fallback
+  line (`Review: none planned. …`), which contradicts its own `(Recommended)` label; no other run carried that line.
+- **PLAN FIRST: holds, 9 of 9** (8 needed). A text message with the Done-when lines came before the go-ahead question in all nine;
+  no go-ahead question restated the plan.
+- **QUIET: holds, 3 of 3.** No `review` call and no built-in review in T5-go.
+- **HONOURED: holds, 3 of 3.** T5-asked-plain: the click on the review option, the `review` skill called after the first write.
+- **GATE FIRST: holds, 3 of 3.** T5-asked-k-full: the click on the review option, `security-gate` called by the main agent after the
+  first write, no `review` call before it (`gateSub=True`).
+- **COMPLETED: holds, 3 of 3** (2 needed), read by hand from the transcripts and permission logs. In each: the gate's verdict
+  REQUEST CHANGES, its high finding recorded as SF-1; the agent's turn ended; the runner typed its one `Yes, run the review now.`
+  (the transcript shows the turn boundary, a `UserPromptSubmit` hook and a new `init`, not the text; the loop sends it at most once
+  by construction, `$confirmed`); the `review` skill called; five reviewers launched and all returned, the security auditor's result
+  reused; the review's verdict REQUEST CHANGES. What the agent said before the confirmation: slot 1 "The review gate you selected
+  runs next. I'll report its verdict when it finishes."; slot 2 "I'll do that next, unless you'd rather settle the auth question
+  first."; slot 3 ended on the recorded finding. None asked outright; each stopped. Both verdicts reached the developer, each in the
+  message that closed its own turn; no final message restates the gate's verdict.
+- **Reading, as registered: T5 ships.** All six gating readings and COMPLETED hold.
+- **Reported, not readings:**
+  - Clarifying questions through the tool, all before the plan, each its own question, several to one call: T5-go 0, 3, 3;
+    T5-asked-plain 0, 0, 0; T5-asked-k-full 4, 4, 3. None shared the go-ahead call.
+  - Go-ahead questions that asked or said something else: T5-go slot 1 ("If you want to change the answers to Question 1 or 2, pick
+    Other", with no clarifying question asked); T5-asked-plain slot 1 (a note that the Suppliers table needs creating) and slot 3
+    (where the table is created, "pick Other to say where"; the runner did not answer it).
+  - T5-go: the gate ran and stopped at the refused scope capture in slots 1 and 2 (CANNOT EXAMINE, said so); in slot 3 the agent went
+    to the capture without calling the skill, was refused, and said "no security sign-off yet". `gate=False` in that row is right.
+    Slot 2 offered to run `security-auditor` directly, outside the gate's procedure.
+  - Denied requests in the full cell: 8, 8 and 9, all class `none` (PowerShell with variables, pipes or chaining, a `Get-ChildItem`
+    on a bundle, a `cd … && cat`); each was retried as one allowed command. Every cheap run had its scope capture refused (opt-in
+    off), as in amendment 4.
+- **Pilots (uncounted, 3.012 USD), and what each changed.** The pilots, not the counted runs, exposed three harness faults.
+  1. 0.272 USD, an earlier T5 that called the review option recommended without the literal label: listed first, unmarked; the
+     wording was made literal (8ce693cd). Harness fault 1: a chained command's denial read as if every command were blocked and the
+     agent stopped before the gate; the denial now says the allow list still applies (debd5cf0).
+  2. 0.565 USD: the agent followed the gate's procedure without the Skill call (`gate=False auditor=1`), so `gateSub` was added.
+     Harness fault 2: the runner closed its input while the background auditor ran; input is now held open (amendment 5).
+  3. 0.713 USD: the gate reached REQUEST CHANGES; the agent asked whether to run the review and the runner closed. Not a harness
+     fault but an open design question: the maintainer chose "Accept the pause (Recommended)"; the runner confirms once (5a).
+  4. 1.462 USD: the review's reviewers all returned. Harness fault 3: the runner closed at a turn end with no background task, and
+     the agent's self-started next turn had four permission requests fail with "Stream closed"; 30 s grace for a new turn (5b).
+- **Hand check:** two Sonnet readers read all nine transcripts against every graded field; the coordinator re-read T5-asked-k-full-2,
+  T5-asked-plain-1 and T5-go-3 in full and the confirmation turn of T5-asked-k-full-2 event by event. Every row agrees with the
+  transcripts.
+- **Cost:** 8.356 USD of the 10 USD stop (pilots 3.012, T5-go 0.945, T5-asked-plain 0.876, T5-asked-k-full 3.523). B-416 in all,
+  with amendment 4's 21.06 USD: 29.42 USD.
+- **Changes from the registration:** 5a (the pause accepted, one runner confirmation, the stop raised to 10 USD) and 5b (30 s grace
+  for a turn that starts itself; COMPLETED read conservatively; no fifth pilot), both frozen before any counted run. None after.
+- **Not shown:** a person at the terminal; Copilot CLI and VS Code (B-530); other models and stacks; n = 3 a cell; a gate verdict
+  other than REQUEST CHANGES; the review when the developer answers the pause with no.
+
