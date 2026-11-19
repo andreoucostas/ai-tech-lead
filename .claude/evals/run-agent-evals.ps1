@@ -3374,10 +3374,22 @@ function Get-ReviewAsk($Evidence, $Transcript, [string]$Target) {
     $labelsOf = { param($Tool) @($Tool.Input.questions | ForEach-Object { $_.options } | ForEach-Object { [string]$_.label }) }
     $option = @($asks | Where-Object { @(& $labelsOf $_ | Where-Object { $_ -match $b416Loose }).Count } | Select-Object -First 1)
     $ask = if ($option) { 'OPTION' } elseif ($asks.Count) { 'PLAIN' } else { 'NONE' }
-    $picked = 'n/a'
+    $picked = 'n/a'; $goQuestion = @()
     if ($option) {
+        # B-530 Part A: the go-ahead question is the LAST in the call with an option saying "with review" and one without (it comes
+        # after any clarifying question); with none, the first with a "with review" option. Ask=OPTION above is unchanged.
+        $reviewLabels = { param($Question) @($Question.options | Where-Object { [string]$_.label -match $b416Loose }).Count }
+        $questions = @($option[0].Input.questions)
+        $goQuestion = @($questions | Where-Object { (& $reviewLabels $_) -and (& $reviewLabels $_) -lt @($_.options).Count } | Select-Object -Last 1)
+        if (-not $goQuestion) { $goQuestion = @($questions | Where-Object { & $reviewLabels $_ } | Select-Object -First 1) }
+        # The pick is that question's own answer: anchored to "<question text>"= when the result carries it, else its labels anywhere.
         $answer = Get-ToolResultText $Evidence $option[0]
-        $chosen = @(& $labelsOf $option[0] | Where-Object { $answer.Contains('="' + $_ + '"') -or $answer.Contains('=\"' + $_ + '\"') } | Sort-Object Length -Descending | Select-Object -First 1)
+        $labels = @($goQuestion[0].options | ForEach-Object { [string]$_.label })
+        $text = [string]$goQuestion[0].question
+        $anchor = @(@('"' + $text + '"=', '\"' + $text + '\"=') | Where-Object { $text -and $answer.Contains($_) } | Select-Object -First 1)
+        $after = if ($anchor) { $answer.Substring($answer.IndexOf($anchor[0]) + $anchor[0].Length) } else { '' }
+        $chosen = @($labels | Where-Object { if ($anchor) { $after.StartsWith('"' + $_ + '"') -or $after.StartsWith('\"' + $_ + '\"') } else { $answer.Contains('="' + $_ + '"') -or $answer.Contains('=\"' + $_ + '\"') } } |
+            Sort-Object Length -Descending | Select-Object -First 1)
         $picked = if (-not $chosen) { 'other' } elseif ($chosen[0] -match $b416Loose) { 'review' } else { 'go' }
     }
     $clickAt = if ($asks.Count) { [int]$asks[-1].Index } else { 0 }
@@ -3387,7 +3399,6 @@ function Get-ReviewAsk($Evidence, $Transcript, [string]$Target) {
     # The go-ahead question's option order: is the review option first, and does it say recommended (label or description)?
     $reviewFirst = 'n/a'; $reviewRec = 'n/a'
     if ($option) {
-        $goQuestion = @($option[0].Input.questions | Where-Object { @($_.options | Where-Object { [string]$_.label -match $b416Loose }).Count } | Select-Object -First 1)
         $reviewOption = @($goQuestion[0].options | Where-Object { [string]$_.label -match $b416Loose } | Select-Object -First 1)
         $reviewFirst = [string]([string]@($goQuestion[0].options)[0].label -match $b416Loose)
         $reviewRec = [string](([string]$reviewOption[0].label + ' ' + [string]$reviewOption[0].description) -match '(?i)recommended')
@@ -5517,6 +5528,15 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
         if ($Refused) { $content | Add-Member -NotePropertyName is_error -NotePropertyValue $true }
         @($call, [pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @($content) } })
     }
+    # B-530 Part A: one call holding a clarifying question and then the go-ahead question, answered in Claude's wording.
+    $questionPair = { param([string]$ToolId, [string[]]$FirstLabels, [string]$FirstPicked, [string[]]$Labels, [string]$Picked)
+        $toOptions = { param([string[]]$Names) @($Names | ForEach-Object { [pscustomobject]@{ label = $_; description = 'what it does' } }) }
+        $questions = @([pscustomobject]@{ question = 'Which shape?'; header = 'Shape'; multiSelect = $false; options = (& $toOptions $FirstLabels) },
+            [pscustomobject]@{ question = 'Go ahead with this plan?'; header = 'Go-ahead'; multiSelect = $false; options = (& $toOptions $Labels) })
+        $call = & $use $ToolId 'AskUserQuestion' @{ questions = $questions }
+        $content = [pscustomobject]@{ type = 'tool_result'; tool_use_id = $ToolId; content = "Your questions have been answered: `"Which shape?`"=`"$FirstPicked`", `"Go ahead with this plan?`"=`"$Picked`". You can now continue with these answers in mind." }
+        @($call, [pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @($content) } })
+    }
     $overlay = "## Security-sensitive surface detected`n`nThis prompt touches a security- or money-sensitive area."
     $kRails = "## Routed intent: ``feature```n## Plan gate (ask -> plan -> confirm)`n$overlay"
     $plainRails = "## Routed intent: ``feature```n## Plan gate (ask -> plan -> confirm)"
@@ -5574,6 +5594,17 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     & $check 'kasked: the registered order' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'picked=review .*gateFirst=True .*reviewFirst=False reviewRec=False ' | Out-Null
     & $check 'go: the review option first, the click on Go ahead' $goId $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $reviewFirstOrder 'Go ahead') + @(& $edit)) $null) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=go .*reviewFirst=True reviewRec=True ' | Out-Null
     & $check 'go: no question, no option order' $goId $cRepo (& $stream @(& $say $plan) (@(& $say $go) + @(& $edit)) -Rails2 $overlay) 'PASS' 'picked=n/a .*reviewFirst=n/a reviewRec=n/a ' | Out-Null
+    # B-530 Part A: one call holding a clarifying question and the go-ahead question. The pick and the option order are read from the
+    # go-ahead question (the last with a "with review" option and one without), never from a longer clarifying label.
+    $shape = @('Keep the existing shape, endpoint only', 'Add paging')
+    & $check 'pair: a long clarifying label, the click on with review' $asked $tRepo (& $stream (@(& $say $plan) + @(& $questionPair 'q1' $shape $shape[0] $both 'Go ahead, with review') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=review ' | Out-Null
+    & $check 'pair: a long clarifying label, the click on Go ahead' $goId $tRepo (& $stream (@(& $say $plan) + @(& $questionPair 'q1' $shape $shape[0] $both 'Go ahead') + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=go ' | Out-Null
+    & $check 'pair: the go-ahead answered in free text' $asked $tRepo (& $stream (@(& $say $plan) + @(& $questionPair 'q1' $shape $shape[0] $both 'Yes, and review it when done') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'FAIL' 'ask=OPTION asks=1 goAhead=click picked=other ' | Out-Null
+    & $check 'pair: a clarifying option saying with review comes first' $kAsked $tRepo (& $stream (@(& $say $plan) + @(& $questionPair 'q1' @('Ship schema with review later', 'Ship schema now') 'Ship schema now' $both 'Go ahead, with review') + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'picked=review .*gateFirst=True .*reviewFirst=False reviewRec=False ' | Out-Null
+    & $check 'pair: a clarifying question with both kinds of label' $kAsked $tRepo (& $stream (@(& $say $plan) + @(& $questionPair 'q1' @('Ship now', 'Ship schema with review later') 'Ship now' $both 'Go ahead, with review') + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'picked=review .*gateFirst=True .*reviewFirst=False reviewRec=False ' | Out-Null
+    # Amendment 5's meaning of OPTION is kept: any option saying "with review", whatever the other label says.
+    & $check 'option: Proceed or Proceed with review' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' @('Proceed', 'Proceed with review') 'Proceed with review') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=review ' | Out-Null
+    & $check 'option: Yes, go ahead or Go ahead, with review' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' @('Yes, go ahead', 'Go ahead, with review') 'Go ahead, with review') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=review ' | Out-Null
     # reviewConfirm (report-only): sent|none from the live loop, n/a without it.
     $withConfirm = { param($Stream, [string]$Value) $Stream | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue $Value -Force; $Stream }
     & $check 'kfull: the confirmation sent' 'b416-dialog-asked-full' $tRepo (& $withConfirm (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) 'sent') 'PASS' 'auditor=0 reviewConfirm=sent side=' | Out-Null
