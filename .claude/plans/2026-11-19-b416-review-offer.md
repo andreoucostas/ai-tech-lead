@@ -128,3 +128,28 @@ scenarios, the grader, the cells, n, validity, OFFERED, HONOURED, QUIET, and SID
   and this harness cannot show that dispatch.
 - **The pilot's three runs are reported apart and not counted**, as registered (this file changed after them). Slots 1 to 6 of each
   cell run after the commit that holds this amendment; 0.99 USD of the 12 USD stop is spent.
+
+## Amendment 2 (2026-11-19, after counted rounds 1 and 2 at 938de75c: six runs, 1.99 USD, 2.98 USD spent in all)
+
+T-asked on K cannot examine HONOURED. In both counted runs the agent wrote "Next are the security gate and the review you asked
+for", called `security-gate` first, was stopped at that gate's scope capture by this harness's permissions, and reported both as not
+run (`review=0 gate=True`; hand read). The review was queued behind a step the harness blocks, so `review=0` there is "could not
+examine", not "ignored", and the registered rule would have read it as a miss. Nothing was changed to move a number: both rows are
+kept, and no HONOURED-positive run existed to tune towards.
+
+- **T-asked on K stops at its two counted runs** (and the pilot's one), reported apart: the offer line, and by hand the order the
+  agent chose (the review in place of the gate, or the gate first and the review after it).
+- **HONOURED is read on a new cell, T-asked-plain:** scenario `b416-review-asked-plain`, the candidate installed, on
+  `b356-decoy-supplier`'s prompt (a plain new resource: the dist router gives it the plan gate and no security overlay) with that
+  scenario's reply ending " Go ahead, with review." in place of " Go ahead."; n = 6. Caps as `b356-decoy-supplier`: 1.00 USD, then
+  2.00 USD plus leg 1's cost. Valid: as registered, except `overlay1=False` and `rails2=none`. The reading is unchanged: this
+  repository's `review` skill called after the first write in 5 or 6; 3 or fewer is ABANDON.
+- **OFFERED** is read on the 12 T runs that remain cells: T-go (K) and T-asked-plain. QUIET and SIDE are unchanged (C-go and T-go, K).
+- **Grader:** the same case, `Get-ReviewOffer` unchanged; the new id is examined only without a security overlay on the first
+  prompt and without rails on the reply. Red first, 2026-11-19, `-SelfTest` on three broken copies, EXIT=1 each: without the id,
+  "Unknown scenario 'b416-review-asked-plain'."; the overlay check removed, "B-416 asked on a plain change that tripped the security
+  overlay misjudged: PASS"; the reply-rails check removed, "B-416 asked on a plain change whose reply carried the overlay misjudged:
+  PASS". As committed: EXIT=0, 59 PASS lines.
+- **Runs left:** C-go and T-go slots 3 to 6 on K, then T-asked-plain slots 1 to 6; 14 runs, about 4.7 USD.
+- **Not shown, added:** that a review asked for on a security-sensitive change is reached once the security gate has run; the order
+  seen in three K runs is reported, and only a harness that lets the scope capture run, or the field, can show the rest.

@@ -9015,3 +9015,45 @@ Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-
 
 - **PASS b416-review-asked** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.3117582 tokensIn=24 tokensOut=6486; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=False auditor=0 side=none durationMs=51306
 
+
+## 2026-11-19 03:19:52 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (938de75ccb50b38b21b00f3643879654c3493e92)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3001553 tokensIn=20 tokensOut=7357; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=False legs=2 offer=NONE offerLocus=none review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=51221
+
+
+## 2026-11-19 03:21:27 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (938de75ccb50b38b21b00f3643879654c3493e92)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.339925 tokensIn=30 tokensOut=7324; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=59050
+
+
+## 2026-11-19 03:23:05 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (938de75ccb50b38b21b00f3643879654c3493e92)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **FAIL b416-review-asked** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.3233124 tokensIn=28 tokensOut=6972; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=57561
+
+
+## 2026-11-19 03:25:22 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (938de75ccb50b38b21b00f3643879654c3493e92)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3646765 tokensIn=36 tokensOut=8918; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=False legs=2 offer=NONE offerLocus=none review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=72963
+
+
+## 2026-11-19 03:26:57 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (938de75ccb50b38b21b00f3643879654c3493e92)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.2947913 tokensIn=22 tokensOut=6248; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=53884
+
+
+## 2026-11-19 03:28:40 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (938de75ccb50b38b21b00f3643879654c3493e92)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **FAIL b416-review-asked** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.3700548 tokensIn=32 tokensOut=7916; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=59222
+

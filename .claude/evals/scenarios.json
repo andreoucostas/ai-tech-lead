@@ -669,6 +669,18 @@
       "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid.",
       "followUp": "A second refund on an invoice that is already refunded is a 409 too. Paid stays true; Refunded is an extra flag on top. This only marks the invoice: no event, no payment-provider call, no money moves. I apply the new Refunded column to the database myself, so no script is needed. Two simultaneous refunds are out of scope for now. Go ahead, with review.",
       "assertion": "reviewOffer"
+    },
+    {
+      "id": "b416-review-asked-plain",
+      "measures": "B-416, amendment 2: the asked reply on a plain new resource (b356-decoy-supplier's prompt and reply, the reply ending 'Go ahead, with review.'), where no security gate stands in front of the review: is this repository's review skill called after the first file change? Run with the candidate patch only. It shows that the review skill was called, not that a review examined the change.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "budgetUsd": 1.0,
+      "followUpBudgetUsd": 2.0,
+      "prompt": "Add a Supplier resource with a name and a contact email: list, get by id and create, through the API like the existing resources. Follow this repository's conventions.",
+      "followUp": "I make the table in the database myself, so no migration or script is needed. Same shape as the existing resources: no DTOs, validation or paging. Go ahead, with review.",
+      "assertion": "reviewOffer"
     }
   ]
 }
