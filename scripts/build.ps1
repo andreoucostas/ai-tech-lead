@@ -385,6 +385,7 @@ $psPersistent = @(Get-SingleQuotedValues $psPersistentMatch.Groups[1].Value)
 $psMeta = @(Get-SingleQuotedValues $psMetaMatch.Groups[1].Value)
 $psExcluded = @(Get-SingleQuotedValues $psExcludedMatch.Groups[1].Value)
 
+# KEPT ON PURPOSE (B-520): the pins are the only build-time check that an install.ps1 policy edit was deliberate.
 # These explicit pins replace the retired Bash differential oracle. install.ps1 remains the
 # executable authority, but a policy edit must be deliberate in both the installer and composer
 # contract rather than silently changing ownership classification in every generated dist.
