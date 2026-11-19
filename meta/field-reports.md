@@ -467,8 +467,8 @@ command-line tool that queries Bitbucket.
 or that some edge case must be captured, and following it makes the solution over-complex and unsupportable.
 
 **Epistemic status.** A description relayed in chat, not an observation card. Not captured: how often, the tool's name
-and output, whether an agent ever applied a wrong comment, whether people comment on the same pull requests, and whether
-developers reply to or leave unresolved the comments they disagree with. It says the comments are sometimes wrong; it does not say a wrong one was applied.
+and output, whether an agent ever applied a wrong comment, whether people comment on the same pull requests. Developers
+sometimes reply to, or leave unresolved, comments they disagree with (the maintainer, in chat, the same day); how often is not captured. It says the comments are sometimes wrong; it does not say a wrong one was applied.
 
 **Outcome:** no change to the tree. B-537 files the workflow, with a measurement before anything ships
 (`.claude/plans/2026-11-19-b537-address-review-comments.md`). Two things the framework's records did not know: its

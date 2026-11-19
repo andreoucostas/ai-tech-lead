@@ -171,7 +171,7 @@ two-leg allow-list and the self-check; a grader that copies the hidden tests in 
 patches; then the runner's self-test recipe (WSD-096).
 
 **Before any paid run.** Field report #15 is recorded. The team's example of a wrong comment is in
-(section 1; W2 and W6). The maintainer says go on the spend.
+(section 1; W2 and W6). The maintainer approved the spend, about 22 USD, in chat 2026-11-19.
 
 ## 6. What would change in the tree if it ships
 
@@ -293,8 +293,9 @@ developer's answer to each row of the triage table.
 - **Backward, a one-off pass over history.** Possible through the team's Bitbucket tool: comments,
   their state and replies, and whether a later commit changed the anchored line. Worth doing only if
   the history holds human decisions; if nearly every comment was applied, there is nothing to learn
-  from it. Not captured: whether developers reply to or leave unresolved the comments they disagree
-  with.
+  from it. The maintainer, in chat the same day: developers sometimes do reply to, or leave
+  unresolved, comments they disagree with, so the history holds some decisions; how many is not
+  captured.
 - **Limits.** Nothing leaves the team's repository. A learned line is a proposal a person approves,
   never an automatic rule: a pattern of declined comments can also mean the team is skipping tests
   it needs. The same measure-first rule applies before any of it ships.
