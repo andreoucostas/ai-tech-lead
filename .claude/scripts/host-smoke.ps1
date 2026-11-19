@@ -116,8 +116,13 @@ function Test-CommonLegs([string]$HostName, [string]$Root, [string]$Dir, [dateti
     } else { Add-Leg $HostName 'moved-directory' 'CANNOT' 'the shell step did not report a location in sub\, so the move is not shown' }
     $name = Split-Path $Harmless -Leaf
     $audit = Join-Path $Root '.claude\ai-audit.log'
-    $logged = (Test-Path -LiteralPath $audit) -and @(Get-Content -LiteralPath $audit | Where-Object { $_ -match ("\t\.[\\/]sub[\\/]" + [regex]::Escape($name) + '$') }).Count -gt 0
-    if (-not (Test-Path -LiteralPath $Harmless)) { Add-Leg $HostName 'harmless-write' 'FAIL' "sub\$name was not written" }
+    # The run id makes the name unique to this run, so a matching audit line is this run's; both files
+    # must also have been written since the run started (a reused -Repo keeps earlier runs' traces).
+    $logged = (Test-Path -LiteralPath $audit -PathType Leaf) -and (Get-Item -LiteralPath $audit).LastWriteTimeUtc -ge $Since -and
+        @(Get-Content -LiteralPath $audit | Where-Object { $_ -match ("\t\.[\\/]sub[\\/]" + [regex]::Escape($name) + '$') }).Count -gt 0
+    if (-not (Test-Path -LiteralPath $Harmless -PathType Leaf) -or (Get-Item -LiteralPath $Harmless).LastWriteTimeUtc -lt $Since) {
+        Add-Leg $HostName 'harmless-write' 'FAIL' "sub\$name was not written during the run"
+    }
     elseif (-not $logged) { Add-Leg $HostName 'harmless-write' 'FAIL' "sub\$name landed with no .claude\ai-audit.log line: the audit-trail hook did not run" }
     else { Add-Leg $HostName 'harmless-write' 'PASS' "sub\$name landed with its audit line" }
     $pname = Split-Path $Planted -Leaf
@@ -138,7 +143,7 @@ function Test-Examinable([string]$HostName, [string]$Dir, [object]$Run, [int]$La
         Add-Leg $HostName 'run' 'CANNOT' "the host stopped before the scripted planted write (last turn served: $(if ($served) { $served[0] } else { 'none' }); requests: $paths)"
         return $false
     }
-    Add-Leg $HostName 'run' 'PASS' "$($log.Count) requests, all to the local endpoint: $paths"
+    Add-Leg $HostName 'run' 'PASS' "the turn script was played to the end; $($log.Count) requests reached the local listener: $paths"
     return $true
 }
 
@@ -219,8 +224,9 @@ function Invoke-CopilotLegs([string]$Root, [string]$Dir, [string]$RunId) {
             '--usage-output-file', $usage) $envs $Root $out (Join-Path $Dir 'stderr.txt')
     } finally { try { $ep.Process.Kill() } catch { } }
     if (-not (Test-Examinable 'copilot' $Dir $run 2)) { return }
-    $cost = if (Test-Path -LiteralPath $usage) { (Get-Content -LiteralPath $usage -Raw | ConvertFrom-Json).totalPremiumRequestCost } else { $null }
-    if ($null -eq $cost -or [double]$cost -ne 0) { Add-Leg 'copilot' 'zero-cost' 'CANNOT' "the usage file does not record totalPremiumRequestCost 0 ($cost)"; return }
+    $cost = $null
+    if (Test-Path -LiteralPath $usage -PathType Leaf) { try { $cost = (Get-Content -LiteralPath $usage -Raw | ConvertFrom-Json).totalPremiumRequestCost } catch { $cost = "unreadable: $($_.Exception.Message)" } }
+    if ($null -eq $cost -or $cost -isnot [ValueType] -or [double]$cost -ne 0) { Add-Leg 'copilot' 'zero-cost' 'CANNOT' "the usage file does not record totalPremiumRequestCost 0 ($cost)"; return }
     Add-Leg 'copilot' 'zero-cost' 'PASS' 'usage file totalPremiumRequestCost 0'
     $events = @(Read-JsonLines $out)
     $starts = @{}; $moveOut = ''; $plantedFailed = $false
@@ -234,10 +240,12 @@ function Invoke-CopilotLegs([string]$Root, [string]$Dir, [string]$RunId) {
         }
     }
     Test-CommonLegs 'copilot' $Root $Dir $since 'last-session-start-copilot' $harmless $planted $plantedFailed $moveOut
-    $expected = Get-ExpectedHookCount $Root
+    try { $expected = Get-ExpectedHookCount $Root }
+    catch { Add-Leg 'copilot' 'hook-count' 'CANNOT' "could not read .github/hooks/hooks.json or .claude/settings.json: $($_.Exception.Message)"; $expected = $null }
     $logText = (Get-ChildItem -LiteralPath $logs -Filter *.log -File -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n"
     $m = [regex]::Matches($logText, 'hookCount=(\d+)')
-    if ($m.Count -eq 0) { Add-Leg 'copilot' 'hook-count' 'FAIL' "the log records no loaded repo hooks; expected $expected" }
+    if ($null -eq $expected) { }
+    elseif ($m.Count -eq 0) { Add-Leg 'copilot' 'hook-count' 'FAIL' "the log records no loaded repo hooks; expected $expected" }
     elseif ([int]$m[$m.Count - 1].Groups[1].Value -ne $expected) { Add-Leg 'copilot' 'hook-count' 'FAIL' "loaded hookCount=$($m[$m.Count - 1].Groups[1].Value), expected $expected (hooks.json + .claude/settings.json)" }
     else { Add-Leg 'copilot' 'hook-count' 'PASS' "loaded hookCount=$expected (hooks.json + .claude/settings.json)" }
     $skillOut = Join-Path $Dir 'skills.json'
@@ -251,9 +259,14 @@ function Invoke-CopilotLegs([string]$Root, [string]$Dir, [string]$RunId) {
     else { Add-Leg 'copilot' 'inventory' 'FAIL' "skill list names $($names.Count) skills, without map-warehouse" }
 }
 
+# Setup: anything that throws here is the script failing to set up, never a host fault, so it ends as
+# "could not examine" (exit 2), not as the uncaught-error exit 1 that reads as a host misbehaving.
+try {
 if (-not $WorkRoot) { $WorkRoot = Join-Path ([IO.Path]::GetTempPath()) ('host-smoke-' + [guid]::NewGuid().ToString('N').Substring(0, 12)) }
 New-Item -ItemType Directory -Force -Path $WorkRoot | Out-Null
-$runId = [DateTime]::UtcNow.ToString('HHmmss')
+# Unique per run, so a reused -Repo's earlier smoke files and audit lines cannot stand in for this run's.
+$runId = [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0, 6)
+if ($Repo -and -not (Test-Path -LiteralPath $Repo -PathType Container)) { Write-Done 2 "HOST-SMOKE CANNOT_EXAMINE - the repository $Repo is not a directory" }
 if (-not $Repo) {
     $Repo = Join-Path $WorkRoot 'repo'
     New-Item -ItemType Directory -Force -Path $Repo | Out-Null
@@ -270,14 +283,19 @@ $Repo = (Resolve-Path -LiteralPath $Repo).Path
 if (-not (Test-Path -LiteralPath (Join-Path $Repo '.claude\settings.json'))) { Write-Done 2 "HOST-SMOKE CANNOT_EXAMINE - $Repo has no .claude\settings.json" }
 New-Item -ItemType Directory -Force -Path (Join-Path $Repo 'sub') | Out-Null
 [Console]::Out.WriteLine("host-smoke: repository $Repo; work $WorkRoot")
+} catch { Write-Done 2 "HOST-SMOKE CANNOT_EXAMINE - setup failed: $($_.Exception.Message)" }
 
 foreach ($h in $Hosts) {
     $cmd = if ($h -eq 'claude') { $ClaudeCmd } else { $CopilotCmd }
-    if (-not $cmd -or -not (Test-Path -LiteralPath $cmd)) { Add-Leg $h 'run' 'CANNOT' "host program not found: $cmd"; continue }
-    $dir = Join-Path $WorkRoot $h
-    if (Test-Path -LiteralPath $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
-    New-Item -ItemType Directory -Force -Path $dir | Out-Null
-    if ($h -eq 'claude') { Invoke-ClaudeLegs $Repo $dir $runId } else { Invoke-CopilotLegs $Repo $dir $runId }
+    if (-not $cmd -or -not (Test-Path -LiteralPath $cmd -PathType Leaf)) { Add-Leg $h 'run' 'CANNOT' "host program not found (no file): $cmd"; continue }
+    # A throw inside one host's legs (the host will not start, a trace is unreadable) is that host's
+    # "could not examine"; the other host's legs still run.
+    try {
+        $dir = Join-Path $WorkRoot $h
+        if (Test-Path -LiteralPath $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
+        New-Item -ItemType Directory -Force -Path $dir | Out-Null
+        if ($h -eq 'claude') { Invoke-ClaudeLegs $Repo $dir $runId } else { Invoke-CopilotLegs $Repo $dir $runId }
+    } catch { Add-Leg $h 'run' 'CANNOT' "the smoke could not complete for this host: $($_.Exception.Message)" }
 }
 
 $failed = @($results | Where-Object Status -eq 'FAIL' | ForEach-Object { "$($_.Host) $($_.Leg)" })

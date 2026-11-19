@@ -146,6 +146,7 @@ $costHint = @{
     'RepositoryPrivacy.Tests.ps1'        = 30.3
     'AssertRedFirst.Tests.ps1'           = 22.5
     'ReleaseCiWatch.Tests.ps1'           = 20.9
+    'HostSmoke.Tests.ps1'                = 40.0
     'DocsSyncCheck.Tests.ps1'            = 15.6
     'ReleaseStagingGuard.Tests.ps1'      = 15.6
     'MetaHooks.Tests.ps1'                = 12.3

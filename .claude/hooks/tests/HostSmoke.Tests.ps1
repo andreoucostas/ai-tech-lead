@@ -18,7 +18,8 @@ if ($kind -eq 'copilot' -and $rest[0] -eq 'skill') { '[{"name":"map-warehouse"}]
 if ($behaviour -eq 'silent') { exit 0 }
 $opt = @{}; for ($i = 0; $i -lt $rest.Count - 1; $i++) { if ($rest[$i] -like '--*') { $opt[$rest[$i]] = $rest[$i + 1] } }
 $uri = if ($kind -eq 'claude') { "$env:ANTHROPIC_BASE_URL/v1/messages" } else { "$env:COPILOT_PROVIDER_BASE_URL/chat/completions" }
-$steps = foreach ($n in 0..2) {
+$lastTurn = if ($behaviour -eq 'stop1') { 1 } else { 2 }
+$steps = foreach ($n in 0..$lastTurn) {
     $messages = @(@{ role = 'user'; content = 'go' })
     if ($n -gt 0) { $messages += @(1..$n | ForEach-Object { @{ role = 'assistant'; content = 'x' } }) }
     $body = @{ model = 'fake'; stream = $false; messages = $messages; tools = @(@{ name = 't'; type = 'function'; function = @{ name = 't' } }) } | ConvertTo-Json -Depth 6
@@ -33,12 +34,15 @@ if ($kind -eq 'claude') { $lines += '{"type":"system","subtype":"init","slash_co
 foreach ($s in $steps) {
     $i++; $text = 'ok'; $failed = $false
     $path = if ($s.Input.file_path) { $s.Input.file_path } else { $s.Input.path }
-    if ($s.Name -in @('PowerShell', 'powershell')) { $text = Join-Path $root 'sub' }
+    if ($s.Name -in @('PowerShell', 'powershell')) { $text = if ($behaviour -eq 'nomove') { $root } else { Join-Path $root 'sub' } }
     elseif ($path -match 'harmless') {
-        Set-Content -LiteralPath $path -Value 'harmless'
-        if ($behaviour -ne 'noaudit') { Add-Content -LiteralPath (Join-Path $root '.claude\ai-audit.log') -Value ("now`tmain`t.\sub\" + (Split-Path $path -Leaf)) }
+        if ($behaviour -ne 'nowrite') {
+            Set-Content -LiteralPath $path -Value 'harmless'
+            if ($behaviour -ne 'noaudit') { Add-Content -LiteralPath (Join-Path $root '.claude\ai-audit.log') -Value ("now`tmain`t.\sub\" + (Split-Path $path -Leaf)) }
+        }
     } else {
-        if ($behaviour -eq 'leak') { Set-Content -LiteralPath $path -Value 'planted' } else { $failed = $true; $text = 'Blocked by the guard' }
+        if ($behaviour -eq 'leak') { Set-Content -LiteralPath $path -Value 'planted' }
+        elseif ($behaviour -ne 'noreport') { $failed = $true; $text = 'Blocked by the guard' }
     }
     if ($kind -eq 'claude') {
         $lines += (@{ type = 'assistant'; message = @{ content = @(@{ type = 'tool_use'; id = "t$i"; name = $s.Name; input = $s.Input }) } } | ConvertTo-Json -Compress -Depth 8)
@@ -155,6 +159,88 @@ It 'passes the fake Copilot host and names hook-count when the loaded count diff
         Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $d.Dir -Recurse -Force -ErrorAction SilentlyContinue
     }
+}
+
+It 'could not examine (exit 2) when the host stops after turn 1, before the scripted planted write' {
+    $c = New-SmokeCase 'claude' 'stop1'
+    try {
+        $r = Invoke-Smoke $c 'claude'
+        Assert ($r.Exit -eq 2 -and $r.Out -match 'LEG claude run CANNOT - the host stopped before the scripted planted write \(last turn served: 1;') "expected exit 2 for a host that stopped after turn 1, got $($r.Exit): $($r.Out)"
+    } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'could not examine (exit 2) when the planted file is absent but the host reported no failed write' {
+    $c = New-SmokeCase 'claude' 'noreport'
+    try {
+        $r = Invoke-Smoke $c 'claude'
+        Assert ($r.Exit -eq 2 -and $r.Out -match 'LEG claude planted-write CANNOT - .*no failed write') "expected exit 2 naming planted-write, got $($r.Exit): $($r.Out)"
+    } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'could not examine (exit 2) when the shell step reports no location in sub' {
+    $c = New-SmokeCase 'claude' 'nomove'
+    try {
+        $r = Invoke-Smoke $c 'claude'
+        Assert ($r.Exit -eq 2 -and $r.Out -match 'LEG claude moved-directory CANNOT') "expected exit 2 naming moved-directory, got $($r.Exit): $($r.Out)"
+    } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'could not examine (exit 2), not a host fault, when -Repo does not exist' {
+    $c = New-SmokeCase 'claude' 'ok'
+    try {
+        $out = & $pwshExe -NoProfile -ExecutionPolicy Bypass -File $smoke -Hosts claude -ClaudeCmd $c.Cmd -Repo (Join-Path $c.Dir 'no-such-repo') -WorkRoot (Join-Path $c.Dir 'work') 2>&1
+        $code = $LASTEXITCODE
+        Assert ($code -eq 2 -and ($out -join "`n") -match 'HOST-SMOKE CANNOT_EXAMINE - the repository .* is not a directory') "expected exit 2 for a missing repository, got ${code}: $($out -join ' | ')"
+    } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'could not examine (exit 2) when the host path is a directory' {
+    $c = New-SmokeCase 'claude' 'ok'
+    try {
+        $out = & $pwshExe -NoProfile -ExecutionPolicy Bypass -File $smoke -Hosts claude -ClaudeCmd $c.Dir -Repo $c.Repo -WorkRoot (Join-Path $c.Dir 'work') 2>&1
+        $code = $LASTEXITCODE
+        Assert ($code -eq 2 -and ($out -join "`n") -match 'LEG claude run CANNOT - host program not found') "expected exit 2 for a directory host path, got ${code}: $($out -join ' | ')"
+    } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'a host that will not start is that host''s exit 2, and the other host''s legs still run' {
+    $c = New-SmokeCase 'copilot' 'ok'
+    $notAProgram = Join-Path $c.Dir 'claude.txt'
+    Set-Content -LiteralPath $notAProgram -Value 'not a program'
+    try {
+        # -Hosts left at its default, both hosts (claude first): -File cannot pass an array.
+        $out = & $pwshExe -NoProfile -ExecutionPolicy Bypass -File $smoke -ClaudeCmd $notAProgram -CopilotCmd $c.Cmd -Repo $c.Repo `
+            -WorkRoot (Join-Path $c.Dir 'work') -TimeoutSeconds 60 2>&1
+        $code = $LASTEXITCODE; $text = $out -join "`n"
+        Assert ($code -eq 2 -and $text -match 'LEG claude run CANNOT - the smoke could not complete for this host') "expected exit 2 naming the claude run, got ${code}: $($out -join ' | ')"
+        Assert ($text -match 'LEG copilot hook-count PASS') "the copilot legs did not run after the claude failure: $($out -join ' | ')"
+    } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'could not examine (exit 2) when hooks.json cannot be parsed' {
+    $c = New-SmokeCase 'copilot' 'ok'
+    Set-Content -LiteralPath (Join-Path $c.Repo '.github\hooks\hooks.json') -Value '{ not json'
+    try {
+        $r = Invoke-Smoke $c 'copilot'
+        Assert ($r.Exit -eq 2 -and $r.Out -match 'LEG copilot hook-count CANNOT - could not read') "expected exit 2 naming hook-count, got $($r.Exit): $($r.Out)"
+    } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'a reused -Repo''s earlier smoke file and audit line do not pass harmless-write' {
+    $c = New-SmokeCase 'claude' 'nowrite'
+    try {
+        # Traces an earlier run could have left under any run id the next two minutes could produce.
+        $sub = Join-Path $c.Repo 'sub'; New-Item -ItemType Directory -Force $sub | Out-Null
+        $now = [DateTime]::UtcNow
+        $audit = foreach ($s in 0..120) {
+            $id = $now.AddSeconds($s).ToString('HHmmss'); $name = "smoke-claude-$id-harmless.txt"
+            Set-Content -LiteralPath (Join-Path $sub $name) -Value 'old'
+            "earlier`tmain`t.\sub\$name"
+        }
+        Set-Content -LiteralPath (Join-Path $c.Repo '.claude\ai-audit.log') -Value $audit
+        $r = Invoke-Smoke $c 'claude'
+        Assert ($r.Exit -eq 1 -and $r.Out -match 'LEG claude harmless-write FAIL') "expected exit 1 naming harmless-write for a stale trace, got $($r.Exit): $($r.Out)"
+    } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 exit (Write-TestSummary 'HostSmoke.Tests (B-536 real-host smoke classification)')
