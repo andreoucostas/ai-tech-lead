@@ -880,6 +880,7 @@ It 'B-502 a disabled SKILL.md that is not valid UTF-8 does not stop the update: 
         Assert ($exit -eq 0) "the update stopped on the disabled copy (exit $exit): $out"
         $saved = @(Get-ChildItem -LiteralPath (Join-Path $t '.claude/framework-update-backup') -Recurse -File -Force | Where-Object { $_.FullName -match 'add-warehouse-load' -and ([IO.File]::ReadAllBytes($_.FullName) -contains 0x97) })
         Assert ($saved.Count -ge 1) "the team's copy with the 0x97 byte was not backed up: $out"
+        Assert (($out -replace '\s+', ' ') -match "NOTICE: '\.claude/disabled-skills/add-warehouse-load/SKILL\.md' could not be read .* is not carried; the update goes on without it\.") "the skip NOTICE was not printed: $out"
     } finally {
         Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
     }

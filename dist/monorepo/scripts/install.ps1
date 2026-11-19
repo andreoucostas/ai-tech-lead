@@ -2228,6 +2228,7 @@ function Add-PlannedWrite {
 $disabledSkillNames = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
 $discoveredSkillNames = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
 $skillExemplars = @{}
+$exemplarSkipMessages = New-Object System.Collections.Generic.List[string]
 $incomingFrameworkSkillNames = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
 $incoming.Entries | ForEach-Object {
     $frameworkSkill = [regex]::Match([string]$_.path, '^\.claude/skills/([^/]+)/')
@@ -2275,7 +2276,8 @@ if ($updateMode) {
         try {
             $inactiveText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($inactiveFile))
         } catch {
-            $reconciliationMessages.Add("NOTICE: '.claude/disabled-skills/$name/SKILL.md' could not be read ($($_.Exception.Message.Split([char]10)[0].Trim())), so a 'For a concrete current instance' line in it is not carried; the update goes on without it.")
+            # Held in its own list: $reconciliationMessages is printed before this point, $saveMessages is created after it.
+            $exemplarSkipMessages.Add("NOTICE: '.claude/disabled-skills/$name/SKILL.md' could not be read ($($_.Exception.Message.Split([char]10)[0].Trim())), so a 'For a concrete current instance' line in it is not carried; the update goes on without it.")
             continue
         }
         $inactiveExemplar = [regex]::Match($inactiveText, '(?m)^For a concrete current instance in this repo, see .+$')
@@ -2376,6 +2378,7 @@ foreach ($relative in $retirementPreserve) { [void]$preservePlan.Add($relative) 
 # there differs from the last framework install's (Test-ChangedSinceInstall). Its ignore files are left to the ignore-file
 # save below, which saves one whose rules the release drops.
 $saveMessages = New-Object System.Collections.Generic.List[string]
+foreach ($message in $exemplarSkipMessages) { $saveMessages.Add($message) }
 $savesRelative = '.claude/framework-update-backup/files'
 if ($updateMode -and -not $Reinstall) {
     $savedElsewhere = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
