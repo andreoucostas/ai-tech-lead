@@ -442,3 +442,23 @@ spending stop rises from 7 to 10 USD. Changes to the registration above:
   it shows a review still cannot reach a verdict, the counted runs do not start and this amendment is amended first.
 - **Money:** stop at 10 USD for this amendment including all pilots (1.550 USD spent: 0.272, 0.565, 0.713). The series' estimate
   for a full run is now the highest observed full-cell cost (pilots 3 and 4 and counted runs), 3.50 USD before one exists.
+
+**Amendment 5b (2026-11-19, after the fourth uncounted pilot, before any counted run).** Pilot 4 (1.462 USD, run by the architect,
+row `review=1 reviewers=7 gateFirst=True reviewAfterGate=True reviewConfirm=sent perms=21/9`): the gate's verdict was REQUEST
+CHANGES, the runner's one confirmation was sent, the `review` skill was called, and its six reviewers were launched and all
+returned. Then two empty turns (about 0.7 s each) ended as the last reviewers' results were delivered; the background list was empty
+at one of them, the runner closed its input, and the agent's next turn (recompute the manifest hash, second capture, verdict),
+which started by itself about 3.6 s after the last reviewer's output, had four permission requests fail with "Stream closed" and
+ended at CANNOT EXAMINE. A turn end with no background task is not the end of the run. Changes to the registration above:
+- **Grace period.** With the opt-in only, where the runner would close at a turn end it waits up to 30 s (never past the run
+  timeout) for a new turn to start, a `system` event of subtype `init`, the first event of each new turn in pilot 4's stream; it
+  keeps answering permission requests meanwhile. A new turn cancels the wait and its end is decided afresh (hold, confirm, grace);
+  30 s with no new turn closes the input as before. 30 s is about eight times the 3.6 s measured. Hold and confirmation rules are
+  unchanged; with the opt-in off nothing changes (pinned). Red, 2026-11-19: `-SelfTest` on a copy that closes at once, EXIT=1,
+  "the opt-in on, a background task running: the results were hold,close, not hold,grace"; as committed EXIT=0, 60 PASS lines.
+- **No further pilot.** The 10 USD stop does not allow one: 3.012 USD spent on four pilots, and a completed full run costs about
+  1.5 USD. Instead **COMPLETED is read conservatively**: a full run cut short for any reason, the runner's included, counts as not
+  completed; at least 2 of 3 must complete, or 2 of 2 if the stop prevents the third; fewer means nothing ships and it goes back to
+  the maintainer. The other readings are still read from a cut run.
+- **Order of runs.** In each round the two cheap cells (T5-go, T5-asked-plain) run first and T5-asked-k-full last, so a stop that
+  refuses a full run still leaves that round's cheap cells run. The spend counts all four pilot logs.

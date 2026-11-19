@@ -2371,6 +2371,7 @@ function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log
 # closed and the stream is read to its end. The transcript is the stream without the control requests, the shape plain -p prints.
 # With -CompleteReview the input is held open at a successful result while background_tasks_changed still lists running tasks, so a
 # background agent's later turn keeps getting its permission requests answered; the run timeout stays the ceiling (Get-DialogResultAction).
+# With it, a closing result first waits a short grace for a turn that starts by itself (Test-DialogTurnStart) before the input is closed.
 # Also opt-in: when the review was clicked, the security gate started by substance and the agent ended its turn asking to run the review,
 # the runner types one 'Yes, run the review now.' (Get-DialogResultAction 'confirm').
 function Get-DialogBackgroundCount([int]$Count, $Event) {
@@ -2378,13 +2379,18 @@ function Get-DialogBackgroundCount([int]$Count, $Event) {
     $Count
 }
 # 'follow' (send the typed follow-up; $CanFollow is evaluated lazily), 'hold' (opt-in, no error, background work unfinished),
-# 'confirm' (opt-in, no error, no background work, and the lazily evaluated $CanConfirm says the review is still owed), or 'close'.
+# 'confirm' (opt-in, no error, no background work, and the lazily evaluated $CanConfirm says the review is still owed), 'grace' (opt-in,
+# where 'close' would be returned: wait $dialogGraceSeconds for a turn the agent starts by itself before closing), or 'close'.
+$dialogGraceSeconds = 30
 function Get-DialogResultAction($Result, [scriptblock]$CanFollow, [int]$Pending, [switch]$CompleteReview, [scriptblock]$CanConfirm) {
     if (& $CanFollow) { return 'follow' }
     if ($CompleteReview -and -not $Result.is_error -and $Pending -gt 0) { return 'hold' }
     if ($CompleteReview -and -not $Result.is_error -and $CanConfirm -and (& $CanConfirm)) { return 'confirm' }
+    if ($CompleteReview) { return 'grace' }
     'close'
 }
+# A new turn starting by itself (the host's init event); it cancels a grace wait.
+function Test-DialogTurnStart($Event) { $Event.type -eq 'system' -and $Event.subtype -eq 'init' }
 # Is the review still owed? The gate started by substance (Get-GateSubstance True) and the main agent has not called the review skill.
 function Test-DialogReviewOwed($Events) {
     $e = Get-TranscriptEvidence ([pscustomobject]@{ Events = $Events })
@@ -2437,12 +2443,16 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
     & $say $Prompt
     $lines = [Collections.Generic.List[string]]::new()
     $deadline = [DateTime]::UtcNow.AddSeconds($Timeout)
-    $followed = $false; $wrote = $false; $closed = $false; $timedOut = $false; $pending = 0; $clickedReview = $false; $confirmed = $false
+    $followed = $false; $wrote = $false; $closed = $false; $timedOut = $false; $pending = 0; $clickedReview = $false; $confirmed = $false; $graceUntil = $null; $read = $null
     $parsed = [Collections.Generic.List[object]]::new()
     while ($true) {
-        $read = $process.StandardOutput.ReadLineAsync()
-        if (-not $read.Wait([int][Math]::Max(0, ($deadline - [DateTime]::UtcNow).TotalMilliseconds))) { $timedOut = $true; break }
-        $line = $read.Result
+        if ($null -eq $read) { $read = $process.StandardOutput.ReadLineAsync() }
+        $limit = if ($graceUntil -and $graceUntil -lt $deadline) { $graceUntil } else { $deadline }
+        if (-not $read.Wait([int][Math]::Max(0, ($limit - [DateTime]::UtcNow).TotalMilliseconds))) {
+            if ($limit -lt $deadline) { $process.StandardInput.Close(); $closed = $true; $graceUntil = $null; continue }
+            $timedOut = $true; break
+        }
+        $line = $read.Result; $read = $null
         if ($null -eq $line) { break }
         if (-not $line.Trim()) { continue }
         $event = $null
@@ -2459,12 +2469,14 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
         $lines.Add($line)
         if ($CompleteReview) { $parsed.Add($event) }
         $pending = Get-DialogBackgroundCount $pending $event
+        if ($graceUntil -and (Test-DialogTurnStart $event)) { $graceUntil = $null }
         if ($event.type -eq 'assistant') {
             foreach ($content in @($event.message.content)) { if ($content.type -eq 'tool_use' -and (Test-B406Write $content)) { $wrote = $true } }
         } elseif ($event.type -eq 'result' -and -not $closed) {
             $action = Get-DialogResultAction $event { -not $followed -and $FollowUp -and -not $event.is_error -and -not $wrote -and @(Get-B406Changes $WorkingDirectory).Count -eq 0 } $pending -CompleteReview:$CompleteReview -CanConfirm { -not $confirmed -and $clickedReview -and (Test-DialogReviewOwed $parsed) }
             if ($action -eq 'follow') { $followed = $true; & $say $FollowUp }
             elseif ($action -eq 'confirm') { $confirmed = $true; & $say 'Yes, run the review now.' }
+            elseif ($action -eq 'grace') { $graceUntil = [DateTime]::UtcNow.AddSeconds($dialogGraceSeconds) }
             elseif ($action -eq 'close') { $process.StandardInput.Close(); $closed = $true }
         }
     }
@@ -5388,11 +5400,11 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     $heldErr = & $replay (@(& $edit) + @(& $bgChange @($bgTask)) + @($errResult)) $true { $false }
     $heldFollow = & $replay (@(& $edit) + @(& $bgChange @($bgTask)) + @(& $done 0)) $true { $true }
     $heldNone = & $replay (@(& $edit) + @(& $done 0)) $true { $false }
-    if ($heldOn -cne 'hold,close') { throw "B-416 dialog the opt-in on, a background task running: the results were $heldOn, not hold,close" }
+    if ($heldOn -cne 'hold,grace') { throw "B-416 dialog the opt-in on, a background task running: the results were $heldOn, not hold,grace" }
     if ($heldOff -cne 'close,close') { throw "B-416 dialog the opt-in off: the first result was not closed whatever the background count ($heldOff)" }
-    if ($heldErr -cne 'close') { throw "B-416 dialog the opt-in on, an error result with a background task running was $heldErr, not close" }
+    if ($heldErr -cne 'grace') { throw "B-416 dialog the opt-in on, an error result with a background task running was $heldErr, not grace" }
     if ($heldFollow -cne 'follow') { throw "B-416 dialog the follow-up did not come before a hold ($heldFollow)" }
-    if ($heldNone -cne 'close') { throw "B-416 dialog the opt-in on with no background task did not close ($heldNone)" }
+    if ($heldNone -cne 'grace') { throw "B-416 dialog the opt-in on with no background task did not grace ($heldNone)" }
     # The confirmation (A5): pilot-3 shape, the review clicked, the gate by substance (capture + auditor), a background task, then results.
     $replay2 = { param($Events, [bool]$On, [bool]$Clicked)
         $pending = 0; $seen = [Collections.Generic.List[object]]::new(); $actions = [Collections.Generic.List[string]]::new(); $confirmed = $false
@@ -5417,16 +5429,43 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     $confPickedGo = & $replay2 $pilot3 $true $false
     $confErr = & $replay2 (@(& $edit) + @(& $skill 'security-gate') + @($errResult)) $true $true
     $confBusy = & $replay2 (@(& $edit) + @(& $skill 'security-gate') + @(& $bgChange @($bgTask)) + @(& $done 0)) $true $true
-    if ($confOn -cne 'hold,confirm,close') { throw "B-416 dialog the confirmation: the pilot-3 shape with the opt-in on gave $confOn, not hold,confirm,close" }
+    if ($confOn -cne 'hold,confirm,grace') { throw "B-416 dialog the confirmation: the pilot-3 shape with the opt-in on gave $confOn, not hold,confirm,grace" }
     if ($confOff -cne 'close,close,close') { throw "B-416 dialog the confirmation: the opt-in off gave $confOff, not close,close,close" }
     if ($confViaSkill -cne 'confirm') { throw "B-416 dialog the confirmation: a security-gate skill call gave $confViaSkill, not confirm" }
-    if ($confReviewed -cne 'close') { throw "B-416 dialog the confirmation: a review skill already called gave $confReviewed, not close" }
-    if ($confNoGate -cne 'close') { throw "B-416 dialog the confirmation: a capture without the auditor gave $confNoGate, not close" }
-    if ($confPickedGo -cne 'hold,close,close') { throw "B-416 dialog the confirmation: the go option picked gave $confPickedGo, not hold,close,close" }
-    if ($confErr -cne 'close') { throw "B-416 dialog the confirmation: an error result gave $confErr, not close" }
+    if ($confReviewed -cne 'grace') { throw "B-416 dialog the confirmation: a review skill already called gave $confReviewed, not grace" }
+    if ($confNoGate -cne 'grace') { throw "B-416 dialog the confirmation: a capture without the auditor gave $confNoGate, not grace" }
+    if ($confPickedGo -cne 'hold,grace,grace') { throw "B-416 dialog the confirmation: the go option picked gave $confPickedGo, not hold,grace,grace" }
+    if ($confErr -cne 'grace') { throw "B-416 dialog the confirmation: an error result gave $confErr, not grace" }
     if ($confBusy -cne 'hold') { throw "B-416 dialog the confirmation: a background task running gave $confBusy, not hold" }
     if ((Get-Command Invoke-ClaudeDialogRun).ScriptBlock.Ast.Extent.Text -notmatch [regex]::Escape("elseif (`$action -eq 'confirm') { `$confirmed = `$true; & `$say 'Yes, run the review now.' }")) { throw 'B-416 dialog the loop does not send exactly "Yes, run the review now." on the confirm action' }
     if ((Get-DialogBackgroundCount 2 (& $say 'x')) -ne 2 -or (Get-DialogBackgroundCount 2 (& $bgChange @())) -ne 0 -or (Get-DialogBackgroundCount 0 (& $bgChange @($bgTask, $bgTask))) -ne 2) { throw 'B-416 dialog the background task count is not the latest background_tasks_changed list' }
+
+    # The grace (pilot 4): after a closing result the input stays open for a turn the agent starts by itself; an init cancels the wait, no
+    # event within the grace ('idle' marker) closes. Same functions as the loop; opt-in off closes at the first result.
+    $idle = [pscustomobject]@{ type = 'idle' }
+    $replay3 = { param($Events, [bool]$On)
+        $pending = 0; $actions = [Collections.Generic.List[string]]::new(); $grace = $false; $closedAt = ''
+        foreach ($ev in $Events) {
+            if ($closedAt) { break }
+            if ($ev.type -eq 'idle') { if ($grace) { $closedAt = 'idle'; $grace = $false }; continue }
+            $pending = Get-DialogBackgroundCount $pending $ev
+            if ($grace -and (Test-DialogTurnStart $ev)) { $grace = $false }
+            if ($ev.type -eq 'result') {
+                $a = Get-DialogResultAction $ev { $false } $pending -CompleteReview:$On
+                $actions.Add($a)
+                if ($a -eq 'grace') { $grace = $true } elseif ($a -eq 'close') { $closedAt = "result$($actions.Count)" }
+            }
+        }
+        ($actions -join ',') + $(if ($closedAt) { ",closed@$closedAt" } else { '' })
+    }
+    $pilot4 = @(& $skill 'review') + @(& $bgChange @()) + @(& $done 0) + @(& $init $true) + @(& $done 1) + @(& $init $true) + @(& $say 'The review finished.') + @(& $done 2) + @($idle)
+    $graceOn = & $replay3 $pilot4 $true
+    $graceOff = & $replay3 $pilot4 $false
+    if ($graceOn -cne 'grace,grace,grace,closed@idle') { throw "B-416 dialog the grace: the pilot-4 shape with the opt-in on gave $graceOn, not grace,grace,grace,closed@idle" }
+    if ($graceOff -cne 'close,closed@result1') { throw "B-416 dialog the grace: the opt-in off gave $graceOff, not close,closed@result1" }
+    if (-not (Test-DialogTurnStart (& $init $true)) -or (Test-DialogTurnStart (& $done 0)) -or (Test-DialogTurnStart (& $bgChange @()))) { throw 'B-416 dialog the grace: only a system init event is a turn start' }
+    $graceRunText = (Get-Command Invoke-ClaudeDialogRun).ScriptBlock.Ast.Extent.Text
+    if (-not $graceRunText.Contains('Test-DialogTurnStart $event') -or -not $graceRunText.Contains('AddSeconds($dialogGraceSeconds)') -or $dialogGraceSeconds -ne 30) { throw 'B-416 dialog the loop does not use Test-DialogTurnStart and the 30-second grace constant' }
 
     # Not examined.
     & $check 'no question tool on the channel' $asked $tRepo (& $stream @(& $say $line) (@(& $edit) + @(& $skill 'review')) -Plain -NoTool) 'INCONCLUSIVE' 'qtool=False .*NOT EXAMINED: the host listed no question tool on this channel' | Out-Null
