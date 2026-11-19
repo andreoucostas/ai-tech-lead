@@ -2487,7 +2487,31 @@ function Get-ReviewPermissionClass($Request, [string]$BundleRoot, [string]$Scrat
     }
     return 'none'
 }
-function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log, [string]$BundleRoot, [string]$ScratchRoot) {
+# B-516: a scenario's "allowWrite" (skill-approve) lets an Edit, Write or MultiEdit through on this channel when its file_path, rooted, with
+# no '..' and no 8.3 '~', lies strictly under an entry ending in '/' (a folder relative to the target) or is an entry with no trailing '/'
+# (one file), case-insensitively. This host asks before any write under .claude/ in acceptEdits and refuses it in plain -p whatever the
+# command-line allow rules say (executed on 2.1.312 against a local scripted model, 2026-11-19), so the channel is the only place to grant it.
+function Get-WritePermissionClass($Request, [string[]]$AllowWrite, [string]$Root) {
+    if (-not $AllowWrite -or -not $Root -or [string]$Request.tool_name -notin @('Edit', 'Write', 'MultiEdit')) { return 'none' }
+    $p = ([string]$Request.input.file_path).Trim()
+    if (-not $p -or $p.Contains('..') -or $p.Contains('~') -or -not [IO.Path]::IsPathRooted($p)) { return 'none' }
+    try { $full = [IO.Path]::GetFullPath($p); $base = (Get-DialogLongPath ([IO.Path]::GetFullPath($Root))).TrimEnd('\', '/') } catch { return 'none' }
+    if (-not ($full.StartsWith($base + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or $full.StartsWith($base + [IO.Path]::AltDirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))) { return 'none' }
+    $rel = $full.Substring($base.Length + 1).Replace('\', '/')
+    if ($rel.Contains(':')) { return 'none' }
+    foreach ($entry in $AllowWrite) {
+        if ($entry.EndsWith('/')) { if ($rel.Length -gt $entry.Length -and $rel.StartsWith($entry, [StringComparison]::OrdinalIgnoreCase)) { return 'write' } }
+        elseif ($rel -ieq $entry) { return 'write' }
+    }
+    'none'
+}
+# B-516: the click a case makes on the control channel. A dialog case's own pick; an allowWrite case runs there on Claude Code with the go
+# pick (a question it asks is answered with its first option without 'with review'); on Copilot it has no channel and runs as a plain case.
+function Get-DialogPick($Case, [string]$Executor) {
+    if (-not $Case.dialog -and $Case.allowWrite -and $Executor -eq 'claude') { return 'go' }
+    [string]$Case.dialog
+}
+function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log, [string]$BundleRoot, [string]$ScratchRoot, [string[]]$AllowWrite, [string]$WriteRoot) {
     $class = 'none'
     $isRequest = [string]$Request.subtype -eq 'can_use_tool'
     if ($isRequest -and [string]$Request.tool_name -eq 'AskUserQuestion') {
@@ -2496,6 +2520,7 @@ function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log
         if ($Pick -in @('away', 'silent') -and @($Request.input.questions | ForEach-Object { $_.options } | Where-Object { [string]$_.label -match $b416Loose }).Count) { $class = $Pick }
     }
     elseif ($isRequest -and $CompleteReview) { $class = Get-ReviewPermissionClass $Request $BundleRoot $ScratchRoot }
+    elseif ($isRequest -and $AllowWrite) { $class = Get-WritePermissionClass $Request $AllowWrite $WriteRoot }
     if ($null -ne $Log) {
         $in = $Request.input
         $summary = switch ([string]$Request.tool_name) {
@@ -2585,14 +2610,14 @@ function Get-GateSubstance($Evidence) {
     }
     if ($review) { 'False' } else { 'none' }
 }
-function Invoke-ClaudeDialog([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview) {
+function Invoke-ClaudeDialog([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview, [string[]]$AllowWrite) {
     # With the opt-in the run gets one private bundle root, made here and removed here once the transcript and the permissions log are written.
     $scratchRoot = Split-Path -Parent $TranscriptPath
     $bundleRoot = if ($CompleteReview) { New-DialogBundleRoot $scratchRoot } else { '' }
-    try { Invoke-ClaudeDialogRun $WorkingDirectory $Prompt $FollowUp $Pick $TranscriptPath $ModelId $Budget $Timeout $Agent $AllowedTools -CompleteReview:$CompleteReview -BundleRoot $bundleRoot -ScratchRoot $scratchRoot }
+    try { Invoke-ClaudeDialogRun $WorkingDirectory $Prompt $FollowUp $Pick $TranscriptPath $ModelId $Budget $Timeout $Agent $AllowedTools -CompleteReview:$CompleteReview -BundleRoot $bundleRoot -ScratchRoot $scratchRoot -AllowWrite $AllowWrite }
     finally { Remove-DialogBundleRoot $bundleRoot }
 }
-function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview, [string]$BundleRoot, [string]$ScratchRoot) {
+function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview, [string]$BundleRoot, [string]$ScratchRoot, [string[]]$AllowWrite) {
     $permissions = [Collections.Generic.List[object]]::new()
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command claude).Source
@@ -2629,7 +2654,7 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
         try { $event = $line | ConvertFrom-Json -Depth 100 } catch { $lines.Add($line); continue }
         if ($event.type -eq 'control_request') {
             if (-not $closed) {
-                $answer = Get-DialogAnswer $event.request $Pick -CompleteReview:$CompleteReview -Log $permissions -BundleRoot $BundleRoot -ScratchRoot $ScratchRoot
+                $answer = Get-DialogAnswer $event.request $Pick -CompleteReview:$CompleteReview -Log $permissions -BundleRoot $BundleRoot -ScratchRoot $ScratchRoot -AllowWrite $AllowWrite -WriteRoot $WorkingDirectory
                 if ($null -eq $answer) { continue }
                 # The go-ahead click was the review option: some answered label matches $b416Loose.
                 if ($answer.PSObject.Properties['updatedInput'] -and $answer.updatedInput.PSObject.Properties['answers'] -and @($answer.updatedInput.answers.PSObject.Properties | Where-Object { [string]$_.Value -match $b416Loose }).Count) { $clickedReview = $true }
@@ -3148,6 +3173,69 @@ function Get-B406Changes([string]$Target) {
     })
 }
 
+# B-516: the draft skill and AGENTS.md as the agent finds them (skill-approve). A missing draft is a setup failure, never a grade.
+function Get-SkillApproveBefore([string]$Target, [string]$Slug) {
+    $draftPath = Join-Path $Target ".claude/skills/$Slug/SKILL.md"
+    $agentsPath = Join-Path $Target 'AGENTS.md'
+    if (-not $Slug -or -not (Test-Path -LiteralPath $draftPath -PathType Leaf) -or -not (Test-Path -LiteralPath $agentsPath -PathType Leaf)) { throw "skill-approve: no draft .claude/skills/$Slug/SKILL.md or no AGENTS.md before the run." }
+    [pscustomobject]@{ Slug = $Slug; Draft = [IO.File]::ReadAllText($draftPath); Agents = [IO.File]::ReadAllText($agentsPath) }
+}
+
+# B-516: the skill-approve oracle, semantic rather than byte equality with approved.patch (which also keeps the draft H1 the paragraph
+# does not list). From the draft's own "## After review" paragraph: its Common Tasks line (the double-backtick span) appears exactly once
+# as a list line under AGENTS.md's "## Common Tasks" heading (up to the next "## " heading or "---"); the three pieces of draft wording it
+# names are gone from the skill (the "**Status:**" line, "DRAFT, pending PR review:" in the front matter, the paragraph and its heading);
+# the front matter keeps "origin: discovered"; and nothing else differs from the pre-run tree (Get-B406Changes), the other draft included.
+# Reported only: whether the Steps section and the rest of AGENTS.md are unchanged, and the write requests, refusals and denials.
+function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
+    if ($null -eq $Before) { throw 'skill-approve: no pre-run draft was recorded for this case: the approval could not be examined.' }
+    $changed = @(Get-B406Changes $Target)
+    $skillRel = ".claude/skills/$($Before.Slug)/SKILL.md"
+    $line = if ($Before.Draft -match '(?ms)^## After review\s*$.*?``\s*(`[^`\r\n]+`[^\r\n]*?)\s*``') { $Matches[1] } else { '' }
+    if (-not $line) { throw "skill-approve: the draft's After review paragraph names no Common Tasks line." }
+    $agentsPath = Join-Path $Target 'AGENTS.md'
+    $agents = if (Test-Path -LiteralPath $agentsPath -PathType Leaf) { [IO.File]::ReadAllText($agentsPath) } else { '' }
+    $agentsLines = @($agents -split '\r?\n')
+    $inTasks = $false; $count = 0
+    foreach ($l in $agentsLines) {
+        if ($l -match '^##\s+Common Tasks\s*$') { $inTasks = $true; continue }
+        if ($inTasks -and ($l -match '^##?\s' -or $l -match '^---\s*$')) { $inTasks = $false }
+        if ($inTasks -and $l -match '^\s*[-*]\s+(.*?)\s*$' -and $Matches[1] -ceq $line) { $count++ }
+    }
+    $skillPath = Join-Path $Target $skillRel
+    $skill = if (Test-Path -LiteralPath $skillPath -PathType Leaf) { [IO.File]::ReadAllText($skillPath) } else { '' }
+    $statusLeft = $skill -cmatch '(?m)^\*\*Status:\*\*' -or $skill.Contains('not team-approved policy')
+    $afterLeft = $skill -match '(?m)^##\s+After review\s*$' -or $skill.Contains('delete the draft wording above')
+    $front = if ($skill -match '\A﻿?---\r?\n(?s:(.*?))\r?\n---\r?\n') { $Matches[1] } else { '' }
+    # The paragraph itself quotes the prefix, so the description is read in the front matter alone.
+    $descriptionLeft = $front.Contains('DRAFT, pending PR review')
+    $originKept = $front -cmatch '(?m)^origin:\s*discovered\s*$'
+    $others = @($changed | Where-Object { $_ -cne 'AGENTS.md' -and $_ -cne $skillRel })
+    $failed = @(
+        if ($count -ne 1) { 'commonTasks' }
+        if (-not $skill) { 'skillMissing' }
+        if ($statusLeft) { 'status' }
+        if ($descriptionLeft) { 'description' }
+        if ($afterLeft) { 'afterReview' }
+        if ($skill -and -not $originKept) { 'origin' }
+        if ($others.Count) { 'others' })
+    $steps = { param([string]$Text) if ($Text -match '(?ms)^## Steps\s*$(.*?)(?=^## |\z)') { ($Matches[1] -replace '\r\n', "`n").Trim() } else { '' } }
+    $stepsKept = [bool](& $steps $Before.Draft) -and (& $steps $Before.Draft) -ceq (& $steps $skill)
+    $beforeLines = @($Before.Agents -split '\r?\n')
+    $agentsOnlyLine = $count -eq 1 -and $agentsLines.Count -eq $beforeLines.Count + 1 -and (@($agentsLines | Where-Object { -not ($_ -match '^\s*[-*]\s+(.*?)\s*$' -and $Matches[1] -ceq $line) }) -join "`n") -ceq ($beforeLines -join "`n")
+    $writeTools = @($Evidence.Tools | Where-Object { Test-B406Write $_ })
+    $refused = @($writeTools | Where-Object { $Evidence.ToolResults.ContainsKey($_.Id) -and $Evidence.ToolResults[$_.Id].is_error }).Count
+    $denials = @($Evidence.Final.permission_denials | Where-Object { $_ }).Count
+    $questions = @($Evidence.Tools | Where-Object { -not $_.Sidechain -and $_.Name -eq 'AskUserQuestion' }).Count
+    $asks = if ($null -eq $Permissions) { 'n/a' } else {
+        $writeAsks = @($Permissions | Where-Object { [string]$_.tool -in @('Edit', 'Write', 'MultiEdit', 'NotebookEdit') })
+        "$($writeAsks.Count) asksAllowed=$(@($writeAsks | Where-Object { $_.decision -eq 'allow' }).Count) asksDenied=$(@($writeAsks | Where-Object { $_.decision -ne 'allow' }).Count)"
+    }
+    $otherList = if ($others.Count) { ' (' + ((@($others | Select-Object -First 5)) -join ',') + $(if ($others.Count -gt 5) { ',...' }) + ')' } else { '' }
+    $detail = "approval=$(if ($failed.Count) { 'FAIL' } else { 'PASS' }) failed=$(if ($failed.Count) { $failed -join ',' } else { 'none' }) commonTasks=$count status=$(if ($statusLeft) { 'left' } else { 'gone' }) description=$(if ($descriptionLeft) { 'left' } else { 'gone' }) afterReview=$(if ($afterLeft) { 'left' } else { 'gone' }) origin=$(if ($originKept) { 'kept' } else { 'lost' }) others=$($others.Count)$otherList stepsKept=$stepsKept agentsOnlyLine=$agentsOnlyLine writes=$($writeTools.Count) refusedWrites=$refused denials=$denials writeAsks=$asks questions=$questions durationMs=$(Get-B406Duration $Evidence)"
+    [pscustomobject]@{ Status = 'PASS'; Pass = ($failed.Count -eq 0); Detail = $detail }
+}
+
 # Run-level "no file write": no WRITE tool_use in the main agent or a subagent, and no path changed since the snapshot.
 function Test-B406NoFileWrite($Evidence, [string]$Target) {
     $changed = @(Get-B406Changes $Target)
@@ -3161,6 +3249,12 @@ function Test-B406NoFileWrite($Evidence, [string]$Target) {
 # control channel answers permissions from that list). On Copilot the dialog is ignored (no control channel; the pick is typed as the
 # second leg), -AllowedTools is not required, and completeReview is ignored, not refused: there is no fence to opt in to.
 function Get-DialogLaunchRefusal($Case, [string]$Executor, [string[]]$AllowedTools) {
+    # B-516: an allowWrite case is one prompt on the control channel with no click of its own; on Copilot the field is ignored.
+    if ($Case.allowWrite) {
+        if ($Case.dialog -or $Case.followUp -or $Case.completeReview -or $Case.assertion -ne 'skillApprove' -or -not $Case.approveSkill) { return "$($Case.id): an allowWrite case has no dialog, followUp or completeReview, an approveSkill and the skillApprove assertion." }
+        if ($Executor -eq 'claude' -and -not $AllowedTools) { return "$($Case.id): an allowWrite case runs on -Executor claude with -AllowedTools (the control channel answers the writes it allows)." }
+        return $null
+    }
     $pick = [string]$Case.dialog
     if (-not $pick) { return $null }
     $dialogOk = if ($pick -in @('away', 'silent')) { -not $Case.followUp -and $Case.assertion -eq 'unansweredGo' } else { $pick -in @('go', 'review') -and $Case.followUp -and $Case.assertion -eq 'reviewOffer' }
@@ -5031,6 +5125,10 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 else { '' }
             if ($why) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: $why" } }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $(if ($seam) { [bool]$record.Offer } else { $record.Cand -eq 'NONE' }); Detail = $fields }
+        }
+        # B-516: approving a draft project skill in one action (Get-SkillApproval). The permission log is the Claude control channel's.
+        'skill-approve' {
+            return Get-SkillApproval $e $Target $script:SkillApproveBefore $(if ($Transcript.PSObject.Properties['Permissions']) { @($Transcript.Permissions) } else { $null })
         }
         default { throw "Unknown scenario '$Id'." }
     }
@@ -9521,6 +9619,113 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
             }
         }
         Write-Output 'PASS: B-464 B12 a setup failure on a later case leaves the earlier rows in the results file marked aborted, and a completed run is written whole'
+        # B-516: the skill-approve oracle on the frozen b514-orders drafts (a synthetic approval, then one fault at a time), the write allow
+        # class the control channel answers, and the scenario's launch: the go pick on Claude with exactly its allowWrite, no command-line rule.
+        $saFiles = Join-Path $repo 'meta/eval-fixtures/b514-orders/files'
+        $saLine = '`add-report-export` ' + [char]0x2014 + ' add a CSV report export (view, grant, export class, catalog, flag, test)'
+        $saUtf8 = [Text.UTF8Encoding]::new($false)
+        $saCheck = {
+            param([string]$Name, [hashtable]$Edit, [bool]$Pass, [string]$Detail)
+            $d = Join-Path $temp ('b516-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+            Copy-Item -LiteralPath $saFiles -Destination $d -Recurse -Force
+            [IO.File]::WriteAllText((Join-Path $d 'Orders.sln'), "placeholder`n", $saUtf8)
+            $script:B406Snapshot = Get-TreeHashes $d
+            $skillPath = Join-Path $d '.claude/skills/add-report-export/SKILL.md'
+            $agentsPath = Join-Path $d 'AGENTS.md'
+            $script:SkillApproveBefore = [pscustomobject]@{ Slug = 'add-report-export'; Draft = [IO.File]::ReadAllText($skillPath); Agents = [IO.File]::ReadAllText($agentsPath) }
+            $s = $script:SkillApproveBefore.Draft
+            if (-not $Edit.KeepDescription) { $s = $s.Replace('DRAFT, pending PR review: ', '') }
+            if (-not $Edit.KeepStatus) { $s = $s.Replace('**Status:** candidate skill, draft pending PR review; not team-approved policy. ', '') }
+            if (-not $Edit.KeepAfter) { $s = [regex]::Replace($s, '\r?\n## After review\r?\n[\s\S]*\z', "`n") }
+            if ($Edit.DropOrigin) { $s = [regex]::Replace($s, '(?m)^origin: discovered\r?\n', '') }
+            if (-not $Edit.NoSkillEdit) { [IO.File]::WriteAllText($skillPath, $s, $saUtf8) }
+            $a = $script:SkillApproveBefore.Agents
+            $nl = if ($a.Contains("`r`n")) { "`r`n" } else { "`n" }
+            $anchor = [regex]::Match($a, '(?m)^- `enforce-standards`[^\r\n]*\r?\n')
+            if (-not $anchor.Success) { throw 'B-516: the b514-orders AGENTS.md has no enforce-standards bullet to add the line after' }
+            $copies = if ($Edit.ContainsKey('Lines')) { [int]$Edit.Lines } else { 1 }
+            $a = if ($Edit.LineAtEnd) { $a + $nl + '- ' + $saLine + $nl } else { $a.Insert($anchor.Index + $anchor.Length, ('- ' + $saLine + $nl) * $copies) }
+            [IO.File]::WriteAllText($agentsPath, $a, $saUtf8)
+            if ($Edit.TouchOther) { Add-Content -LiteralPath (Join-Path $d '.claude/skills/add-integration-event/SKILL.md') -Value 'touched' -Encoding utf8NoBOM }
+            $refusedText = 'Claude requested permissions to write to that file, but you haven''t granted it yet.'
+            $events = @([ordered]@{ type = 'system'; subtype = 'init' })
+            $n = 0
+            foreach ($p in @($skillPath, $agentsPath)) {
+                $n++
+                $events += [ordered]@{ type = 'assistant'; message = [ordered]@{ content = @([ordered]@{ type = 'tool_use'; id = "w$n"; name = 'Edit'; input = [ordered]@{ file_path = $p } }) } }
+                $events += [ordered]@{ type = 'user'; message = [ordered]@{ content = @([ordered]@{ type = 'tool_result'; tool_use_id = "w$n"; is_error = [bool]$Edit.Refused; content = $(if ($Edit.Refused) { $refusedText } else { 'edited' }) }) } }
+            }
+            $events += [ordered]@{ type = 'result'; is_error = $false; result = 'Approved.'; duration_ms = 7; permission_denials = @(if ($Edit.Refused) { [ordered]@{ tool_name = 'Edit'; tool_input = [ordered]@{ file_path = $skillPath } }; [ordered]@{ tool_name = 'Edit'; tool_input = [ordered]@{ file_path = $agentsPath } } }) }
+            $tp = Join-Path $d 'transcript.jsonl'
+            [IO.File]::WriteAllLines($tp, @($events | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 20 }), $saUtf8)
+            $t = Read-Transcript $tp
+            Remove-Item -LiteralPath $tp
+            $t | Add-Member -NotePropertyName Permissions -NotePropertyValue @([ordered]@{ tool = 'Edit'; input = $skillPath; decision = $(if ($Edit.Refused) { 'deny' } else { 'allow' }); class = $(if ($Edit.Refused) { 'none' } else { 'write' }) })
+            $r = $null
+            try { $r = Test-ScenarioEvidence 'skill-approve' $d $t 0 } catch { $r = [pscustomobject]@{ Status = 'THREW'; Pass = $false; Detail = $_.Exception.Message } }
+            if ($r.Status -ne 'PASS' -or [bool]$r.Pass -ne $Pass -or $r.Detail -notmatch $Detail) { throw "B-516 skill-approve: $Name misjudged: $($r.Status) pass=$($r.Pass) $($r.Detail)" }
+        }
+        & $saCheck 'a synthetic correct approval' @{} $true '^approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 stepsKept=True agentsOnlyLine=True writes=2 refusedWrites=0 denials=0 writeAsks=1 asksAllowed=1 asksDenied=0 questions=0 durationMs=7$'
+        & $saCheck 'the Common Tasks line added twice' @{ Lines = 2 } $false '^approval=FAIL failed=commonTasks commonTasks=2 .* agentsOnlyLine=False '
+        & $saCheck 'the Status line left' @{ KeepStatus = $true } $false '^approval=FAIL failed=status commonTasks=1 status=left description=gone afterReview=gone '
+        & $saCheck 'the description''s DRAFT prefix left' @{ KeepDescription = $true } $false '^approval=FAIL failed=description commonTasks=1 status=gone description=left afterReview=gone '
+        & $saCheck 'the After review paragraph left' @{ KeepAfter = $true } $false '^approval=FAIL failed=afterReview commonTasks=1 status=gone description=gone afterReview=left '
+        & $saCheck 'origin: discovered removed' @{ DropOrigin = $true } $false '^approval=FAIL failed=origin .* origin=lost others=0 '
+        & $saCheck 'the other draft skill changed' @{ TouchOther = $true } $false '^approval=FAIL failed=others .* others=1 \(\.claude/skills/add-integration-event/SKILL\.md\) '
+        & $saCheck 'the line added outside Common Tasks' @{ LineAtEnd = $true } $false '^approval=FAIL failed=commonTasks commonTasks=0 '
+        & $saCheck 'both writes refused, nothing changed' @{ Lines = 0; NoSkillEdit = $true; Refused = $true } $false '^approval=FAIL failed=commonTasks,status,description,afterReview commonTasks=0 .* writes=2 refusedWrites=2 denials=2 writeAsks=1 asksAllowed=0 asksDenied=1 '
+        Write-Output 'PASS: B-516 the skill-approve oracle passes a correct approval and fails a doubled or misplaced Common Tasks line, each piece of draft wording left, origin removed and a change to the other draft'
+        $saAll = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios)
+        $sa = @($saAll | Where-Object { $_.id -eq 'skill-approve' })
+        if ($sa.Count -ne 1) { throw "B-516: scenarios.json holds $($sa.Count) skill-approve entries" }
+        $sa = $sa[0]
+        if ([string]$sa.prompt -cne 'Approve the add-report-export skill.' -or [string]$sa.approveSkill -cne 'add-report-export' -or (@($sa.allowWrite) -join '|') -cne '.claude/skills/add-report-export/|AGENTS.md' -or [string]$sa.assertion -cne 'skillApprove' -or [string]$sa.overlay -cne 'b514-orders' -or -not ([string]$sa.fixture).Equals('orders-v2') -or $sa.bareArm -or $sa.overlayPatch -or $sa.dialog -or $sa.followUp -or $sa.completeReview -or [decimal]$sa.budgetUsd -ne [decimal]1.5) { throw 'B-516: skill-approve is not the pinned prompt, slug, allowWrite, oracle, overlay, fixture and 1.50 USD budget, framework arm only, one prompt' }
+        foreach ($saOther in @($saAll | Where-Object { $_.id -ne 'skill-approve' })) {
+            if ($saOther.PSObject.Properties['allowWrite'] -or $saOther.PSObject.Properties['approveSkill'] -or [string]$saOther.assertion -eq 'skillApprove') { throw "B-516: $($saOther.id) carries the skill-approve allow class or oracle" }
+            foreach ($saEx in @('claude', 'copilot')) { if ((Get-DialogPick $saOther $saEx) -cne [string]$saOther.dialog) { throw "B-516: $($saOther.id)'s control-channel pick on $saEx is not its own dialog field" } }
+        }
+        if ((Get-DialogPick $sa 'claude') -cne 'go' -or (Get-DialogPick $sa 'copilot') -cne '') { throw 'B-516: skill-approve does not run on the control channel with the go pick on Claude, or does on Copilot' }
+        if ((Get-DialogLaunchRefusal $sa 'claude' @('Read')) -or -not (Get-DialogLaunchRefusal $sa 'claude' @()) -or (Get-DialogLaunchRefusal $sa 'copilot' @())) { throw 'B-516: skill-approve launches without -AllowedTools on Claude, or is refused with it, or on Copilot' }
+        $saBad = $sa.PSObject.Copy(); $saBad | Add-Member -NotePropertyName followUp -NotePropertyValue 'Go ahead.' -Force
+        if (-not (Get-DialogLaunchRefusal $saBad 'claude' @('Read')) -or -not (Get-DialogLaunchRefusal $saBad 'copilot' @())) { throw 'B-516: an allowWrite case with a followUp was not refused' }
+        # The allow class is not a command-line argument (the host ignores one under .claude/); the channel gets exactly the scenario's list.
+        if ((Get-Command Get-ClaudeArguments).Parameters.ContainsKey('AllowWrite')) { throw 'B-516: Get-ClaudeArguments takes an allow class, so it reaches the command line' }
+        $saSelf = Get-Content -Raw -LiteralPath $PSCommandPath
+        foreach ($needle in @('$dialogPick = Get-DialogPick $case $Executor', '-CompleteReview:([bool]$case.completeReview) -AllowWrite ([string[]]@($case.allowWrite | Where-Object { $_ }))', '-ScratchRoot $scratchRoot -AllowWrite $AllowWrite }', '-ScratchRoot $ScratchRoot -AllowWrite $AllowWrite -WriteRoot $WorkingDirectory')) {
+            if (-not $saSelf.Contains($needle)) { throw "B-516: the launch does not pass the scenario's allowWrite to the channel: missing $needle" }
+        }
+        $saRoot = Join-Path $temp 'b516-target'
+        $saAllow = @('.claude/skills/add-report-export/', 'AGENTS.md')
+        $saDecide = { param([string]$Tool, [string]$Path, $Allow) (Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = $Tool; input = [pscustomobject]@{ file_path = $Path; command = $Path } }) 'go' -AllowWrite $Allow -WriteRoot $saRoot).behavior }
+        foreach ($saCase in @(
+            @('Write', (Join-Path $saRoot '.claude\skills\add-report-export\SKILL.md'), 'allow'),
+            @('Edit', (Join-Path $saRoot '.claude\skills\add-report-export\SKILL.md'), 'allow'),
+            @('MultiEdit', "$saRoot/.claude/skills/add-report-export/SKILL.md", 'allow'),
+            @('Write', (Join-Path $saRoot '.claude\skills\add-report-export\references\project-pattern.md'), 'allow'),
+            @('Edit', (Join-Path $saRoot 'AGENTS.md'), 'allow'),
+            @('Write', (Join-Path $saRoot '.claude\skills\add-integration-event\SKILL.md'), 'deny'),
+            @('Write', (Join-Path $saRoot '.claude\skills\add-report-export'), 'deny'),
+            @('Write', (Join-Path $saRoot '.claude\skills\add-report-exportx\SKILL.md'), 'deny'),
+            @('Write', (Join-Path $saRoot '.claude\skills\add-report-export\..\add-integration-event\SKILL.md'), 'deny'),
+            @('Write', (Join-Path $saRoot '.claude\settings.json'), 'deny'),
+            @('Write', (Join-Path $saRoot 'AGENTS.md.bak'), 'deny'),
+            @('Write', (Join-Path $saRoot 'src\AGENTS.md'), 'deny'),
+            @('Write', (Join-Path $saRoot 'AGENTS.md:x'), 'deny'),
+            @('Write', "$saRoot-other\AGENTS.md", 'deny'),
+            @('Write', '.claude/skills/add-report-export/SKILL.md', 'deny'),
+            @('Write', 'AGENTS.md', 'deny'),
+            @('NotebookEdit', (Join-Path $saRoot 'AGENTS.md'), 'deny'),
+            @('Read', (Join-Path $saRoot '.claude\skills\add-integration-event\SKILL.md'), 'deny'),
+            @('PowerShell', "Set-Content $(Join-Path $saRoot 'AGENTS.md') x", 'deny'))) {
+            $saGot = & $saDecide $saCase[0] $saCase[1] $saAllow
+            if ($saGot -ne $saCase[2]) { throw "B-516: the allow class answered $saGot, not $($saCase[2]), to $($saCase[0]) $($saCase[1])" }
+        }
+        if ((& $saDecide 'Write' (Join-Path $saRoot '.claude\skills\add-report-export\SKILL.md') $null) -ne 'deny') { throw 'B-516: a write under the skill was allowed with no allowWrite' }
+        $saLog = [Collections.Generic.List[object]]::new()
+        $saQuestion = Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'AskUserQuestion'; input = [pscustomobject]@{ questions = @([pscustomobject]@{ question = 'Approve it?'; options = @([pscustomobject]@{ label = 'Yes, approve' }, [pscustomobject]@{ label = 'No' }) }) } }) 'go' -Log $saLog -AllowWrite $saAllow -WriteRoot $saRoot
+        [void](Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'Edit'; input = [pscustomobject]@{ file_path = (Join-Path $saRoot 'AGENTS.md') } }) 'go' -Log $saLog -AllowWrite $saAllow -WriteRoot $saRoot)
+        if ($saQuestion.behavior -ne 'allow' -or $saQuestion.updatedInput.answers.'Approve it?' -cne 'Yes, approve' -or (($saLog | ForEach-Object { "$($_.class):$($_.decision)" }) -join ',') -cne 'question:allow,write:allow') { throw "B-516: with allowWrite a question is not answered with its first option, or a write is not logged as class write: $($saLog | ConvertTo-Json -Compress)" }
+        Write-Output 'PASS: B-516 skill-approve runs on the control channel with exactly its allowWrite (Edit, Write, MultiEdit under .claude/skills/add-report-export/ and on AGENTS.md only), no command-line rule; every other scenario''s pick and launch is unchanged'
         Write-Output 'PASS: PowerShell UTF-8 BOM'
     } finally { if (Test-Path $temp) { Remove-Item -LiteralPath $temp -Recurse -Force } }
 }
@@ -9719,7 +9924,9 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
         }
         # B-406: what the agent finds is the install, the overlay, any patch and the scenario setup; its own writes are what differs from this.
-        $script:B406Snapshot = if ($caseFixture -in $contractFixtures -or $case.id -eq 'route-fix-notest' -or $case.assertion -in $planAssertions) { Get-TreeHashes $target } else { $null }
+        $script:B406Snapshot = if ($caseFixture -in $contractFixtures -or $case.id -eq 'route-fix-notest' -or $case.assertion -in $planAssertions -or $case.assertion -eq 'skillApprove') { Get-TreeHashes $target } else { $null }
+        # B-516: the draft and AGENTS.md as the agent finds them, which the skillApprove oracle reads its expectations from.
+        $script:SkillApproveBefore = if ($case.assertion -eq 'skillApprove') { Get-SkillApproveBefore $target ([string]$case.approveSkill) } else { $null }
         $prompt = $case.prompt.Replace('{SYNTHETIC_AWS_KEY}', $syntheticAwsKey).Replace('{FRAMEWORK_ROOT}', $repo).Replace('{TARGET_ROOT}', $target).Replace('{ARCHIVED_ROOT}', $archivedRoot)
         $transcriptPath = Join-Path $scratch ($runName + '.jsonl')
         $outcome = $null
@@ -9729,7 +9936,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
         $caseAgent = if ($case.agent) { [string]$case.agent } else { '' }
         # B-410: a case with a followUp is two invocations of one persisted session (the developer's prompt, then a fixed answer).
         # B-416 part 2: a dialog case is one process that takes the click or the typed reply itself, so it has no second invocation.
-        $dialogPick = [string]$case.dialog
+        $dialogPick = Get-DialogPick $case $Executor
         $dialogRefusal = Get-DialogLaunchRefusal $case $Executor $AllowedTools
         if ($dialogRefusal) { throw $dialogRefusal }
         # B-530 B4: on Copilot a dialog case is two legs, its followUp typed as the second (B-528's path); no control channel exists there.
@@ -9746,7 +9953,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $usageLegOne = Join-Path $scratch ($runName + '.copilot-usage.json')
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId $usageLegOne ($Arm -eq 'framework') -AskUser:$CopilotAskUser -Mode $CopilotMode
         } elseif ($dialogPick) {
-            $run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath $caseModel ($caseBudget + [decimal]$case.followUpBudgetUsd) $TimeoutSeconds $caseAgent $AllowedTools -CompleteReview:([bool]$case.completeReview)
+            $run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath $caseModel ($caseBudget + [decimal]$case.followUpBudgetUsd) $TimeoutSeconds $caseAgent $AllowedTools -CompleteReview:([bool]$case.completeReview) -AllowWrite ([string[]]@($case.allowWrite | Where-Object { $_ }))
         } else {
             $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel $caseBudget $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios -or $case.assertion -in $planAssertions) -SessionId $legSession -AllowedTools $AllowedTools
         }
@@ -9810,7 +10017,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             # Copilot only loads repository hooks in prompt mode behind the opt-in above; if none
             # fired, the framework arm's enforcement surface was absent and the row must say so.
             # B-530 B4: completeReview is a Claude permission fence; a Copilot run has none, and its row says so.
-            $copilotDetail = if ($copilotMeta) { "executor=copilot copilotCli=$($copilotMeta.CliVersion) hooksLoaded=$($copilotMeta.HooksLoaded) premiumRequests=$($copilotMeta.PremiumRequests) credits=$($copilotMeta.Credits) toolCalls=$($copilotMeta.ToolCalls) $(if ($dialogPick -and $Executor -eq 'copilot' -and $case.completeReview) { 'completeReview=ignored(copilot) ' })" } else { '' }
+            $copilotDetail = if ($copilotMeta) { "executor=copilot copilotCli=$($copilotMeta.CliVersion) hooksLoaded=$($copilotMeta.HooksLoaded) premiumRequests=$($copilotMeta.PremiumRequests) credits=$($copilotMeta.Credits) toolCalls=$($copilotMeta.ToolCalls) $(if ($dialogPick -and $Executor -eq 'copilot' -and $case.completeReview) { 'completeReview=ignored(copilot) ' })$(if ($Executor -eq 'copilot' -and $case.allowWrite) { 'allowWrite=ignored(copilot) ' })" } else { '' }
             # B-253: the CLI can update itself between runs of one invocation; the header's version
             # is read once, so each Claude Code row records the host and model its own run reported.
             $init = @($transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
