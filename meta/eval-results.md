@@ -9057,3 +9057,152 @@ Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-
 
 - **FAIL b416-review-asked** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.3700548 tokensIn=32 tokensOut=7916; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=59222
 
+
+## 2026-11-19 03:41:05 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3672703 tokensIn=28 tokensOut=8452; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=False legs=2 offer=NONE offerLocus=none review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=75924
+
+
+## 2026-11-19 03:42:57 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.3811394 tokensIn=36 tokensOut=8628; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=71911
+
+
+## 2026-11-19 03:44:28 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3434978 tokensIn=26 tokensOut=6290; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=False legs=2 offer=NONE offerLocus=none review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=57133
+
+
+## 2026-11-19 03:45:52 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.300069 tokensIn=20 tokensOut=6719; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=47417
+
+
+## 2026-11-19 03:47:30 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3311908 tokensIn=28 tokensOut=7310; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=False legs=2 offer=NONE offerLocus=none review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=57248
+
+
+## 2026-11-19 03:48:59 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.3087752 tokensIn=24 tokensOut=6843; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=51394
+
+
+## 2026-11-19 03:50:37 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3290559 tokensIn=24 tokensOut=8355; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=False legs=2 offer=NONE offerLocus=none review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=True auditor=0 side=none durationMs=62859
+
+
+## 2026-11-19 03:52:18 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-go** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.3386242 tokensIn=26 tokensOut=7438; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=overlay session2=same overlay1=True bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=False auditor=0 side=none durationMs=58018
+
+
+## 2026-11-19 03:54:01 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-asked-plain** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.2928727 tokensIn=26 tokensOut=6097; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none session2=same overlay1=False bullet=True legs=2 offer=LINE offerLocus=leg1 review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=EXIT doneWhen=True wroteT1=False t2action=WROTE gate=False auditor=0 side=none durationMs=55246
+
+
+## 2026-11-19 03:55:31 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-asked-plain** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.2873013 tokensIn=22 tokensOut=6261; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none session2=same overlay1=False bullet=True legs=2 offer=LINE offerLocus=leg1 review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=OPTIONS doneWhen=True wroteT1=False t2action=WROTE gate=False auditor=0 side=none durationMs=50025
+
+
+## 2026-11-19 03:57:12 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-asked-plain** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.3201047 tokensIn=26 tokensOut=7600; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none session2=same overlay1=False bullet=True legs=2 offer=LINE offerLocus=leg1 review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=NEITHER doneWhen=True wroteT1=False t2action=WROTE gate=False auditor=0 side=none durationMs=61907
+
+
+## 2026-11-19 03:59:34 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-asked-plain** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.401012 tokensIn=40 tokensOut=10324; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none session2=same overlay1=False bullet=True legs=2 offer=LINE offerLocus=leg1 review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=NEITHER doneWhen=True wroteT1=False t2action=WROTE gate=False auditor=0 side=none durationMs=94757
+
+
+## 2026-11-19 04:01:08 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-asked-plain** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.273554 tokensIn=20 tokensOut=5994; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none session2=same overlay1=False bullet=True legs=2 offer=LINE offerLocus=leg1 review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=NEITHER doneWhen=True wroteT1=False t2action=WROTE gate=False auditor=0 side=none durationMs=55605
+
+
+## 2026-11-19 04:03:12 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (e46e4b7465afa0feac04adbe380157a6e51a8741)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b416-review-offer.patch@55664fd5d5c1 · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b416-review-asked-plain** (model=sonnet; patch=b416-review-offer.patch@55664fd5d5c1) — agentExit=0 timedOut=False costUsd=0.3124607 tokensIn=26 tokensOut=6878; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate rails2=none session2=same overlay1=False bullet=True legs=2 offer=LINE offerLocus=leg1 review=1 reviewWhen=after-write builtin=0 reviewers=0 plan=NEITHER doneWhen=True wroteT1=False t2action=WROTE gate=False auditor=0 side=none durationMs=80505
+
+
+## B-416 results — 2026-11-19 (hand-written; the 23 runner rows above, 03:12 to 04:03, are the pilot's three and the 20 counted runs)
+
+As pre-registered and twice amended (`.claude/plans/2026-11-19-b416-review-offer.md`, frozen at 12161f01; amendment 1 at 938de75c, before
+any counted run; amendment 2 at e46e4b74, after counted rounds 1 and 2). Claude Code 2.1.312 and `claude-sonnet-5-5` (`system/init`) in
+all 23; acceptEdits with the 39-rule list, tag `dc735db5da74`, recomputed before every run; one invocation per run from a shell with every
+`CLAUDE*` and `ANTHROPIC*` variable removed (0 left, checked per run) and `DISABLE_AUTOUPDATER=1`; `-SelfTest` EXIT=0 before each commit.
+Run in the worktree branch `worktree-b416-review-offer`, off dac7a912, installing from that tree's `dist/dotnet`. 20 of 20 counted runs
+valid, none repeated: exit 0 and a `success` result in each leg, hooks loaded, `rails1=plan-gate`, `legs=2`, `session2=same`, `bullet`
+True in T and False in C, no first leg wrote. No quota, sign-in or rate-limit stop.
+
+| cell | n | the review line in the plan | `review` skill called | host built-in | `plan=OPTIONS` | `doneWhen` | `gate` | cost, median | wall, median |
+|---|---|---|---|---|---|---|---|---|---|
+| C-go (shipped carrier, K, "Go ahead.") | 6 | 0 | 0 | 0 | 6 | 6 | 6 | 0.337 USD | 95 s |
+| T-go (candidate, K, "Go ahead.") | 6 | 6 | 0 | 0 | 6 | 6 | 5 | 0.324 USD | 95 s |
+| T-asked-plain (candidate, Supplier, "Go ahead, with review.") | 6 | 6 | 6, each after the first write | 0 | n/a (not a risk change) | 6 | n/a (no overlay) | 0.303 USD | 98 s |
+| T-asked on K, reported apart (2 counted, stopped by amendment 2) | 2 | 2 | 0 | 0 | 2 | 2 | 2 | 0.347 USD | 100 s |
+
+- **OFFERED: holds.** The line is in the plan before the first write in 12 of the 12 T runs that are cells (10 needed), always in leg
+  1, and in 0 of 6 C-go runs (at most 1). It was posted verbatim in all 12, in the two K asked runs and in the pilot's two T runs: "Review:
+  none planned. Reply "with review" to get this repository's review gate on the finished change."
+- **HONOURED: holds, on a plain change.** T-asked-plain called this repository's `review` skill after the first write in 6 of 6 (5
+  needed), with no host `code-review` in any run.
+- **QUIET: holds.** No review of either kind in 6 of 6 T-go and 6 of 6 C-go.
+- **SIDE: holds.** T-go against C-go: `plan=OPTIONS` 6 against 6, `doneWhen` 6 against 6, `gate=True` 5 of 6 (5 needed). In the sixth
+  (slot 6) the agent tried the gate's scope capture without calling the skill and reported the security gate as not run; by hand the
+  pass was attempted in 6 of 6.
+- **Reading, as registered: SHIP CANDIDATE**, Claude Code alone. Nothing ships from this measurement; the decision is the maintainer's
+  (WSD-131), and Copilot is B-530.
+- **Open product question for that decision, from the K asked runs (not a reading).** On a security-sensitive change the asked-for
+  review and the security gate meet. Pilot run: the agent ran the review in place of the gate ("Now the requested review gate, which
+  also covers the security pass."; `gate=False`). Both counted runs: the gate first and the review after it ("Next are the security
+  gate and the review you asked for."), stopped at the gate's scope capture by this harness, so the review was never reached. So 1 of
+  3 replaced the dedicated gate with the review, and `review.md` dispatches `security-auditor` only when its selection makes it
+  applicable. This harness cannot show either path to its end.
+- **Hand check:** every graded field of the 20 counted rows and the pilot's three agrees with the transcripts. Every review and every
+  security gate that started stopped at `scripts/review-scope.ps1` (`reviewers=0`, `auditor=0` in all 23): the harness's acceptEdits
+  rules refuse the capture, as in B-528. Each run then said plainly that the gate or review had not run and asked for the approval.
+  So `review` counts the skill call, not a completed review.
+- **Cost:** 7.567 USD of the 12 USD stop: pilot 0.988, counted 6.580 (C-go 2.036, T-go 1.963, T-asked on K 0.693, T-asked-plain 1.887).
+  T-go against C-go by medians: -0.013 USD and 0 s, inside run-to-run spread; the line itself adds 396 bytes to a 15,633-byte carrier.
+- **Changes from the registration:** the two amendments, each in the plan file with its reason and committed before the runs it
+  governs. The pilot's three runs are not counted (amendment 1 changed the file after them). T-asked on K was stopped at two counted
+  runs because the harness blocked the step in front of the review; its rows are kept and reported apart, and HONOURED was read on
+  the plain-change cell added for it.
+- **Reopen triggers checked:** WSD-100 (keep `route-prompt`), WSD-111 (the security-pass wording), WSD-114 (the `security-gate` and
+  `review` names): none met. No run sent a review or the security pass to a host built-in. WSD-111's wording is not compared here,
+  though the pilot's replaced gate bears on it and is flagged above.
+- **Not shown:** as registered and amended. Copilot CLI, where the consumer team runs (B-530); a completed review; the review reached
+  after a security gate that ran; a reply that asks in other words; whether a developer answers the line at all; Opus, VS Code,
+  Angular and monorepo; n = 6 a cell on one fixture and two prompts.
