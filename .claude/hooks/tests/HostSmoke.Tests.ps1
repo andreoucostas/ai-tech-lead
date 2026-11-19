@@ -41,7 +41,7 @@ foreach ($s in $steps) {
             if ($behaviour -ne 'noaudit') { Add-Content -LiteralPath (Join-Path $root '.claude\ai-audit.log') -Value ("now`tmain`t.\sub\" + (Split-Path $path -Leaf)) }
         }
     } else {
-        if ($behaviour -eq 'leak') { Set-Content -LiteralPath $path -Value 'planted' }
+        if ($behaviour -in @('leak', 'leaklock')) { Set-Content -LiteralPath $path -Value 'planted' }
         elseif ($behaviour -ne 'noreport') { $failed = $true; $text = 'Blocked by the guard' }
     }
     if ($kind -eq 'claude') {
@@ -52,7 +52,17 @@ foreach ($s in $steps) {
         $lines += (@{ type = 'tool.execution_complete'; data = @{ toolCallId = "c$i"; success = (-not $failed); result = @{ content = $text } } } | ConvertTo-Json -Compress -Depth 8)
     }
 }
-$cost = if ($behaviour -eq 'cost') { 0.25 } else { 0 }
+if ($behaviour -eq 'leaklock') {
+    # A process outside the host holds the audit log open, unshared, while the smoke reads its traces;
+    # its PID goes to lock.pid so the test can kill it.
+    $ready = Join-Path $PSScriptRoot 'lock.ready'
+    $holder = "`$f = [IO.File]::Open('$(Join-Path $root '.claude\ai-audit.log')', 'Open', 'ReadWrite', 'None'); Set-Content -LiteralPath '$ready' -Value x; Start-Sleep -Seconds 120"
+    $p = Start-Process -FilePath (Get-Process -Id $PID).Path -PassThru -WindowStyle Hidden -ArgumentList @('-NoProfile', '-Command', $holder)
+    Set-Content -LiteralPath (Join-Path $PSScriptRoot 'lock.pid') -Value $p.Id
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    while (-not (Test-Path -LiteralPath $ready) -and $clock.Elapsed.TotalSeconds -lt 20) { Start-Sleep -Milliseconds 100 }
+}
+$cost = if ($behaviour -eq 'cost') { 0.25 } elseif ($behaviour -eq 'boolcost') { 'false' } else { 0 }
 if ($kind -eq 'claude') { $lines += "{`"type`":`"result`",`"total_cost_usd`":$cost}" }
 else {
     Set-Content -LiteralPath $opt['--usage-output-file'] -Value "{`"totalPremiumRequestCost`":$cost}"
@@ -98,6 +108,31 @@ It 'names planted-write and exits 1 when the planted key lands' {
         $r = Invoke-Smoke $c 'claude'
         Assert ($r.Exit -eq 1 -and $r.Out -match 'HOST-SMOKE FAIL - claude planted-write') "expected exit 1 naming planted-write, got $($r.Exit): $($r.Out)"
     } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+It 'names planted-write and exits 1 when the planted key lands and the audit log is then unreadable' {
+    $c = New-SmokeCase 'claude' 'leaklock'
+    try {
+        $r = Invoke-Smoke $c 'claude'
+        Assert (Test-Path -LiteralPath (Join-Path $c.Dir 'lock.ready')) "the fake host never locked the audit log: $($r.Out)"
+        Assert ($r.Exit -eq 1 -and $r.Out -match 'HOST-SMOKE FAIL - claude planted-write') "expected exit 1 naming planted-write, got $($r.Exit): $($r.Out)"
+        Assert ($r.Out -match 'LEG claude harmless-write CANNOT') "expected harmless-write CANNOT for an unreadable audit log: $($r.Out)"
+    } finally {
+        $pidFile = Join-Path $c.Dir 'lock.pid'
+        if (Test-Path -LiteralPath $pidFile) { Stop-Process -Id ([int](Get-Content -LiteralPath $pidFile -Raw)) -Force -ErrorAction SilentlyContinue }
+        Start-Sleep -Milliseconds 300
+        Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'could not examine (exit 2) when a host records its cost as a boolean, not the number 0' {
+    foreach ($kind in 'claude', 'copilot') {
+        $c = New-SmokeCase $kind 'boolcost'
+        try {
+            $r = Invoke-Smoke $c $kind
+            Assert ($r.Exit -eq 2 -and $r.Out -match "LEG $kind zero-cost CANNOT") "expected exit 2 naming $kind zero-cost for a boolean cost, got $($r.Exit): $($r.Out)"
+        } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }
 
 It 'names harmless-write and exits 1 when the write lands with no audit line' {

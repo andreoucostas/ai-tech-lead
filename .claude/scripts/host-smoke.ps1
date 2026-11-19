@@ -86,7 +86,9 @@ function Start-Endpoint([string]$Dir, [object[]]$Turns) {
     $clock = [Diagnostics.Stopwatch]::StartNew()
     while (-not (Test-Path -LiteralPath $ready) -and $clock.Elapsed.TotalSeconds -lt 20 -and -not $proc.HasExited) { Start-Sleep -Milliseconds 100 }
     if (-not (Test-Path -LiteralPath $ready)) { try { $proc.Kill() } catch { }; return $null }
-    [pscustomobject]@{ Process = $proc; Port = [int]((Get-Content -LiteralPath $ready -Raw).Trim() -replace '^LISTENING ', '') }
+    try { $port = [int]((Get-Content -LiteralPath $ready -Raw).Trim() -replace '^LISTENING ', '') }
+    catch { try { $proc.Kill() } catch { }; throw }
+    [pscustomobject]@{ Process = $proc; Port = $port }
 }
 
 function Get-ExpectedHookCount([string]$Root) {
@@ -107,6 +109,11 @@ function Get-ExpectedHookCount([string]$Root) {
 # Legs shared by both hosts, from the repository and the endpoint log.
 function Test-CommonLegs([string]$HostName, [string]$Root, [string]$Dir, [datetime]$Since, [string]$StateFile,
     [string]$Harmless, [string]$Planted, [bool]$PlantedToolFailed, [string]$MoveOutput) {
+    # The planted file first: a key that landed is a FAIL whatever later trace turns out unreadable.
+    $pname = Split-Path $Planted -Leaf
+    if (Test-Path -LiteralPath $Planted) { Add-Leg $HostName 'planted-write' 'FAIL' "sub\$pname holds the planted key: the guard did not refuse it" }
+    elseif (-not $PlantedToolFailed) { Add-Leg $HostName 'planted-write' 'CANNOT' "sub\$pname is absent but the host reported no failed write for it" }
+    else { Add-Leg $HostName 'planted-write' 'PASS' "the guard refused sub\$pname" }
     $state = Join-Path $Root ".claude\.state\$StateFile"
     if ((Test-Path -LiteralPath $state) -and (Get-Item -LiteralPath $state).LastWriteTimeUtc -ge $Since) {
         Add-Leg $HostName 'session-hooks' 'PASS' ".claude\.state\$StateFile written during the run"
@@ -118,17 +125,20 @@ function Test-CommonLegs([string]$HostName, [string]$Root, [string]$Dir, [dateti
     $audit = Join-Path $Root '.claude\ai-audit.log'
     # The run id makes the name unique to this run, so a matching audit line is this run's; both files
     # must also have been written since the run started (a reused -Repo keeps earlier runs' traces).
-    $logged = (Test-Path -LiteralPath $audit -PathType Leaf) -and (Get-Item -LiteralPath $audit).LastWriteTimeUtc -ge $Since -and
-        @(Get-Content -LiteralPath $audit | Where-Object { $_ -match ("\t\.[\\/]sub[\\/]" + [regex]::Escape($name) + '$') }).Count -gt 0
-    if (-not (Test-Path -LiteralPath $Harmless -PathType Leaf) -or (Get-Item -LiteralPath $Harmless).LastWriteTimeUtc -lt $Since) {
-        Add-Leg $HostName 'harmless-write' 'FAIL' "sub\$name was not written during the run"
-    }
-    elseif (-not $logged) { Add-Leg $HostName 'harmless-write' 'FAIL' "sub\$name landed with no .claude\ai-audit.log line: the audit-trail hook did not run" }
-    else { Add-Leg $HostName 'harmless-write' 'PASS' "sub\$name landed with its audit line" }
-    $pname = Split-Path $Planted -Leaf
-    if (Test-Path -LiteralPath $Planted) { Add-Leg $HostName 'planted-write' 'FAIL' "sub\$pname holds the planted key: the guard did not refuse it" }
-    elseif (-not $PlantedToolFailed) { Add-Leg $HostName 'planted-write' 'CANNOT' "sub\$pname is absent but the host reported no failed write for it" }
-    else { Add-Leg $HostName 'planted-write' 'PASS' "the guard refused sub\$pname" }
+    try {
+        $logged = (Test-Path -LiteralPath $audit -PathType Leaf) -and (Get-Item -LiteralPath $audit).LastWriteTimeUtc -ge $Since -and
+            @(Get-Content -LiteralPath $audit | Where-Object { $_ -match ("\t\.[\\/]sub[\\/]" + [regex]::Escape($name) + '$') }).Count -gt 0
+        if (-not (Test-Path -LiteralPath $Harmless -PathType Leaf) -or (Get-Item -LiteralPath $Harmless).LastWriteTimeUtc -lt $Since) {
+            Add-Leg $HostName 'harmless-write' 'FAIL' "sub\$name was not written during the run"
+        }
+        elseif (-not $logged) { Add-Leg $HostName 'harmless-write' 'FAIL' "sub\$name landed with no .claude\ai-audit.log line: the audit-trail hook did not run" }
+        else { Add-Leg $HostName 'harmless-write' 'PASS' "sub\$name landed with its audit line" }
+    } catch { Add-Leg $HostName 'harmless-write' 'CANNOT' "could not read sub\$name or .claude\ai-audit.log: $($_.Exception.Message)" }
+}
+
+# A recorded cost passes only as a JSON number equal to 0; a boolean, string or object is not one.
+function Test-ZeroNumber([object]$Value) {
+    ($Value -is [long] -or $Value -is [int] -or $Value -is [double] -or $Value -is [decimal] -or $Value -is [Numerics.BigInteger]) -and $Value -eq 0
 }
 
 # Was the run examinable at all: requests reached the listener and the whole script was served.
@@ -143,7 +153,7 @@ function Test-Examinable([string]$HostName, [string]$Dir, [object]$Run, [int]$La
         Add-Leg $HostName 'run' 'CANNOT' "the host stopped before the scripted planted write (last turn served: $(if ($served) { $served[0] } else { 'none' }); requests: $paths)"
         return $false
     }
-    Add-Leg $HostName 'run' 'PASS' "the turn script was played to the end; $($log.Count) requests reached the local listener: $paths"
+    Add-Leg $HostName 'run' 'PASS' "the turn script was played through the planted write; $($log.Count) requests reached the local listener: $paths"
     return $true
 }
 
@@ -172,7 +182,7 @@ function Invoke-ClaudeLegs([string]$Root, [string]$Dir, [string]$RunId) {
     if (-not (Test-Examinable 'claude' $Dir $run 2)) { return }
     $events = @(Read-JsonLines $out)
     $result = @($events | Where-Object { $_.type -eq 'result' } | Select-Object -Last 1)
-    if (-not $result -or $null -eq $result[0].total_cost_usd -or [double]$result[0].total_cost_usd -ne 0) {
+    if (-not $result -or -not (Test-ZeroNumber $result[0].total_cost_usd)) {
         Add-Leg 'claude' 'zero-cost' 'CANNOT' "the result event does not record total_cost_usd 0 ($(if ($result) { $result[0].total_cost_usd } else { 'no result event' }))"; return
     }
     Add-Leg 'claude' 'zero-cost' 'PASS' 'result event total_cost_usd 0'
@@ -226,7 +236,7 @@ function Invoke-CopilotLegs([string]$Root, [string]$Dir, [string]$RunId) {
     if (-not (Test-Examinable 'copilot' $Dir $run 2)) { return }
     $cost = $null
     if (Test-Path -LiteralPath $usage -PathType Leaf) { try { $cost = (Get-Content -LiteralPath $usage -Raw | ConvertFrom-Json).totalPremiumRequestCost } catch { $cost = "unreadable: $($_.Exception.Message)" } }
-    if ($null -eq $cost -or $cost -isnot [ValueType] -or [double]$cost -ne 0) { Add-Leg 'copilot' 'zero-cost' 'CANNOT' "the usage file does not record totalPremiumRequestCost 0 ($cost)"; return }
+    if (-not (Test-ZeroNumber $cost)) { Add-Leg 'copilot' 'zero-cost' 'CANNOT' "the usage file does not record totalPremiumRequestCost 0 ($cost)"; return }
     Add-Leg 'copilot' 'zero-cost' 'PASS' 'usage file totalPremiumRequestCost 0'
     $events = @(Read-JsonLines $out)
     $starts = @{}; $moveOut = ''; $plantedFailed = $false
