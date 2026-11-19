@@ -22,8 +22,9 @@ The block covers the agent's **file-editing tools** only. A shell command that r
 - Closing it would take: reading shell command text in the guard (a pattern for redirection, `Set-Content`, `Out-File`, `sed -i`, `git checkout`, `mv`, a script written then run, which can never be complete), plus, on Claude Code, adding Bash and PowerShell to the registered
   matcher, which changes a registered entry the installer recognises by digest (guarded installer work, step 4 for it) and sends every shell call through the guard (a `pwsh` start per command, and a stall if it fails). WSD-132 chose to let the shell through; this is question 4, not a scope change.
 
-Separate, not in this plan's scope (reported by the round-2 attacker to the architect, attributed, not re-run by me): the **shipped** guard's credential rule can be passed today with an 8.3 alias. A long `src\test+cfg.json` write
-is refused (`EXIT=2`); the short `src\TEST_C~1.JSO` gets `EXIT=0`, because the alias turns `+` into `_` and matches the test-path exemption. A different guarded finding; this plan does not touch it.
+Added to scope 2026-11-19 (maintainer, in chat): the **shipped** guard's credential rule can be passed today with an 8.3 alias (reported by the round-2 attacker, then run 2026-11-19 on the dist/dotnet guard). A long `src\test+cfg.json` write
+is refused (`EXIT=2`); the short `src\TEST_C~1.JSO` gets `EXIT=0`, because the alias turns `+` into `_` and matches the test-path exemption. Low impact: non-test names and their aliases are blocked. The short-name resolution this plan adds in 3.2 step 3 should also be applied to the credential rule's path, and fixed in this item.
+Open question for the implementer: whether the credential rule can reuse the same resolution function or needs its own call before it classifies the path.
 
 ## 1. Tier and what guarded requires
 
