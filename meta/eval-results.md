@@ -9929,3 +9929,24 @@ approved about 2 to 3 USD in chat on 2026-11-19 ("Yes to both"); the stop below 
   `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Scenario stale-map-control -Model sonnet -Trials 1 -TimeoutSeconds 1500
   -AllowedTools <list>` and the same with `-Scenario stale-map-override`, six of each, in the order above. The runner checks both patches
   against the built tree before any spend. Self-test: `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -SelfTest`, exit 0.
+
+## Stale-map results — 2026-11-19 (hand-written; the series ran from the main session at 17f39827)
+
+- **Spend.** 12 valid runs, 2.195 USD of the 5 USD stop (0.148 to 0.217 a run); Claude Code 2.1.312, `claude-sonnet-5-5`; none repeated, none cut.
+- **Grader.** C: ANSWER GOOD 6 of 6, MAP UNCHANGED 6 of 6. O: ANSWER GOOD 6 of 6, MAP WRONG-EDIT 6 of 6, each from one disallowed line.
+- **Hand check (counts, per the pre-registration).** The disallowed line is the same in all six O runs: Querying rule 6's list of
+  `UNRESOLVED` edges drops `LoadRunId`, the edit that keeps the map consistent with the replaced row. The removed line names `LoadRunId`, so
+  under the written allowed-line rule ("any line that mentions `LoadRun`") it is allowed; the grader tested only the added line. Every O
+  edge row was read against `usp_LoadFactSales.sql` and is true (latest `ctl.LoadRun` by `StartedAt`, not `stg.BatchId`); the one extra
+  `LoadRun` line (run 2, section 6, "only read and never written") is true (no `INSERT`/`UPDATE ctl.LoadRun` in the tree). Each O run added a
+  dated Coverage line naming the file. Hand class: **O FIXED 6 of 6, WRONG-EDIT 0 of 6; C FIXED 0 of 6**. In at least 5 of 6 C runs the
+  closing message told the developer the map is stale on this edge (run 1's stream was not located); none edited it.
+- **Reading, as pre-registered with the hand class:** O FIXED 6 >= 4, WRONG-EDIT 0, ANSWER GOOD 6 = 6, C FIXED 0 <= 1: **SHIP the override**
+  as a candidate, a separate change under `AGENTS.md`'s tiers. By the grader alone it would read NO-SHIP; the difference is the grader's
+  added-line-only test, a defect of the instrument, recorded here and not fixed.
+- **Deviation seen.** All six O runs edited the Querying section, which the override's skill sentence says to leave as is; the edit was
+  needed and true. A shipped wording should allow the consequential edit (a Querying line naming the replaced row) instead of forbidding it.
+- **Not shown** (as pre-registered): one stale row of one kind, one model and host, a map from a full pass, Copilot, the Rule 11 sentence at
+  real-repository length, a wrong fix the grader cannot see.
+- **Reopen triggers.** WSD-122's read-side trigger is met by this result; the maintainer decides. WSD-139: the harm (a map left stale after the
+  agent read the code that contradicts it) was observed 6 of 6 under today's rule, and a test now sees the fix.
