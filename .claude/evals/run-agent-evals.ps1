@@ -3125,6 +3125,22 @@ function Test-B406NoFileWrite($Evidence, [string]$Target) {
 
 # B-406: the b406 graders read Claude Code transcripts (SessionStart hook_response, subagent flags), so a
 # Copilot run of one is refused before any spend.
+# B-416/B-530 B4: whether a dialog case may launch. The scenario shape is checked on both executors. Claude Code needs -AllowedTools (the
+# control channel answers permissions from that list). On Copilot the dialog is ignored (no control channel; the pick is typed as the
+# second leg), -AllowedTools is not required, and completeReview is ignored, not refused: there is no fence to opt in to.
+function Get-DialogLaunchRefusal($Case, [string]$Executor, [string[]]$AllowedTools) {
+    $pick = [string]$Case.dialog
+    if (-not $pick) { return $null }
+    $dialogOk = if ($pick -in @('away', 'silent')) { -not $Case.followUp -and $Case.assertion -eq 'unansweredGo' } else { $pick -in @('go', 'review') -and $Case.followUp -and $Case.assertion -eq 'reviewOffer' }
+    $shape = "either dialog 'go' or 'review' with a followUp and the reviewOffer assertion, or dialog 'away' or 'silent' with no followUp and the unansweredGo assertion."
+    if ($Executor -eq 'copilot') {
+        if (-not $dialogOk) { return "$($Case.id): a dialog case has $shape" }
+        return $null
+    }
+    if ($Executor -ne 'claude' -or -not $dialogOk -or -not $AllowedTools) { return "$($Case.id): a dialog case runs on -Executor claude with -AllowedTools, and $shape" }
+    return $null
+}
+
 function Get-B406ExecutorRefusal($Selected, [string]$Executor) {
     if ($Executor -ne 'copilot') { return $null }
     $ids = @($Selected | Where-Object { $_.fixture -in $contractFixtures } | ForEach-Object { $_.id } | Select-Object -Unique)
@@ -5952,15 +5968,33 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     $silentWant = @($dialogArgs | Select-Object -First $toolsAt) + @('--settings', '{"askUserQuestionTimeout":"60s"}') + @($dialogArgs | Select-Object -Skip $toolsAt)
     if ($toolsAt -lt 1 -or ($silentArgs -join [char]0) -cne ($silentWant -join [char]0) -or $silentArgs[-1] -ne 'Read' -or $dialogArgs -contains '--settings' -or $plainArgs -contains '--settings') { throw "B-416 dialog the silent arguments are not the dialog ones plus --settings before --allowedTools, or --settings leaked into another case: $($silentArgs -join ' ')" }
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-ReviewAskSelfTest).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('$run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath') -or $selfText -notmatch [regex]::Escape('$legSession = if ($case.followUp -and -not $dialogPick)')) { throw 'B-416 dialog the live loop does not run a dialog case as one process' }
+    if ($selfText -notmatch [regex]::Escape('$run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath') -or $selfText -notmatch [regex]::Escape('$legSession = if ($case.followUp -and (-not $dialogPick -or $Executor -eq ''copilot''))')) { throw 'B-416 dialog the live loop does not run a dialog case as one process' }
     $runText = (Get-Command Invoke-ClaudeDialogRun).ScriptBlock.Ast.Extent.Text
     if (-not $runText.Contains('$pending = Get-DialogBackgroundCount $pending $event') -or -not $runText.Contains('Get-DialogResultAction $event {') -or -not $runText.Contains('$pending -CompleteReview:$CompleteReview')) { throw 'B-416 dialog the dialog loop does not decide a result through Get-DialogBackgroundCount and Get-DialogResultAction' }
     if ($selfText -notmatch [regex]::Escape('$AllowedTools -CompleteReview:([bool]$case.completeReview)')) { throw 'B-416 dialog the live loop does not pass the scenario''s completeReview to the dialog' }
+    # B-530 B4: the launch guard by executor. Claude keeps its rules (a dialog case needs -AllowedTools); on Copilot the dialog is ignored
+    # (the pick is the typed second leg), -AllowedTools is not required and completeReview is ignored, not refused.
+    $b4Plain = [pscustomobject]@{ id = 'b4'; dialog = 'review'; followUp = 'Go ahead, with review'; assertion = 'reviewOffer' }
+    $b4Full = [pscustomobject]@{ id = 'b4'; dialog = 'review'; followUp = 'Go ahead, with review'; assertion = 'reviewOffer'; completeReview = $true }
+    foreach ($cell in @(
+            @('claude', @('Read'), $b4Plain, $false), @('claude', @(), $b4Plain, $true), @('claude', @('Read'), $b4Full, $false), @('claude', @(), $b4Full, $true),
+            @('copilot', @('Read'), $b4Plain, $false), @('copilot', @(), $b4Plain, $false), @('copilot', @('Read'), $b4Full, $false), @('copilot', @(), $b4Full, $false))) {
+        $b4Refusal = [string](Get-DialogLaunchRefusal $cell[2] $cell[0] ([string[]]$cell[1]))
+        if ([bool]$b4Refusal -ne $cell[3]) { throw "B-530 B4: $($cell[0]) with $(if ($cell[1].Count) { '-AllowedTools' } else { 'no -AllowedTools' })$(if ($cell[2].completeReview) { ' and completeReview' }) was $(if ($b4Refusal) { "refused ($b4Refusal)" } else { 'launched' }), expected $(if ($cell[3]) { 'refused' } else { 'launched' })" }
+        if ($b4Refusal -and $b4Refusal -notmatch [regex]::Escape('a dialog case runs on -Executor claude with -AllowedTools')) { throw "B-530 B4: the Claude refusal changed: $b4Refusal" }
+    }
+    if (Get-DialogLaunchRefusal ([pscustomobject]@{ id = 'b4' }) 'claude' @()) { throw 'B-530 B4: a case with no dialog was refused' }
+    if (-not (Get-DialogLaunchRefusal ([pscustomobject]@{ id = 'b4'; dialog = 'review'; assertion = 'reviewOffer' }) 'copilot' @())) { throw 'B-530 B4: a review dialog with no followUp launched on Copilot' }
+    # The live loop: the guard is that function, a Copilot dialog case gets its second leg, and only the Claude dialog attaches Permissions.
+    if ($selfText -notmatch [regex]::Escape('$dialogRefusal = Get-DialogLaunchRefusal $case $Executor $AllowedTools') -or $selfText -match [regex]::Escape('if ($dialogPick -and ($Executor -ne ''claude''')) { throw 'B-530 B4: the live loop does not decide a dialog launch through Get-DialogLaunchRefusal' }
+    if ($selfText -notmatch [regex]::Escape('$legSession = if ($case.followUp -and (-not $dialogPick -or $Executor -eq ''copilot''))')) { throw 'B-530 B4: the live loop gives a Copilot dialog case no second leg, so the pick is never typed' }
+    if ($selfText -notmatch [regex]::Escape('if ($dialogPick -and $Executor -eq ''claude'') { $transcript | Add-Member -NotePropertyName Permissions')) { throw 'B-530 B4: the live loop attaches Permissions and ReviewConfirm to a Copilot dialog case (perms=0/0 where the truth is n/a)' }
+    if ($selfText -notmatch [regex]::Escape('$(if ($dialogPick -and $Executor -eq ''copilot'' -and $case.completeReview) { ''completeReview=ignored(copilot) '' })')) { throw 'B-530 B4: a Copilot row does not say completeReview=ignored(copilot)' }
     # The unanswered go-ahead: the loop passes the settings pair only for silent, sends nothing for a null answer, keeps the stream read
     # so far when a silent run times out (read by hand: a timed-out run is still an ERROR row), and the guard asks for no follow-up there.
     if (-not $runText.Contains('-Dialog -Silent:($Pick -eq ''silent'')') -or -not $runText.Contains('if ($null -eq $answer) { continue }') -or -not $runText.Contains('if ($Pick -eq ''silent'') { [IO.File]::WriteAllLines($TranscriptPath, $lines')) { throw 'B-416 dialog the dialog loop does not pass the timeout setting only for silent, skip the reply for a null answer or keep the stream of a silent timeout' }
     if ($runText.IndexOf('if ($null -eq $answer) { continue }') -gt $runText.IndexOf('& $send ([ordered]@{ type = ''control_response''')) { throw 'B-416 dialog the dialog loop checks for a null answer after it sends the reply' }
-    if ($selfText -notmatch [regex]::Escape('$dialogOk = if ($unanswered) { -not $case.followUp -and $case.assertion -eq ''unansweredGo'' }') -or $selfText -notmatch [regex]::Escape("'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm'))")) { throw 'B-416 dialog the live loop does not run an away or silent case without a follow-up on the unansweredGo assertion, or read its stream as multi-turn' }
+    if ($selfText -notmatch [regex]::Escape('$dialogOk = if ($pick -in @(''away'', ''silent'')) { -not $Case.followUp -and $Case.assertion -eq ''unansweredGo'' }') -or $selfText -notmatch [regex]::Escape("'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm'))")) { throw 'B-416 dialog the live loop does not run an away or silent case without a follow-up on the unansweredGo assertion, or read its stream as multi-turn' }
 
     # The scenarios: the same prompts, typed replies and budgets as the text-line cells, plus the option a click lands on.
     $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
@@ -9645,11 +9679,10 @@ Issue: Boundary behavior lacks a direct compiled unit test.
         # B-410: a case with a followUp is two invocations of one persisted session (the developer's prompt, then a fixed answer).
         # B-416 part 2: a dialog case is one process that takes the click or the typed reply itself, so it has no second invocation.
         $dialogPick = [string]$case.dialog
-        # B-416 (unanswered go-ahead): dialog 'away' and 'silent' type nothing after the question closes, so they take no followUp and grade as unansweredGo.
-        $unanswered = $dialogPick -in @('away', 'silent')
-        $dialogOk = if ($unanswered) { -not $case.followUp -and $case.assertion -eq 'unansweredGo' } else { $dialogPick -in @('go', 'review') -and $case.followUp -and $case.assertion -eq 'reviewOffer' }
-        if ($dialogPick -and ($Executor -ne 'claude' -or -not $dialogOk -or -not $AllowedTools)) { throw "$($case.id): a dialog case runs on -Executor claude with -AllowedTools, and either dialog 'go' or 'review' with a followUp and the reviewOffer assertion, or dialog 'away' or 'silent' with no followUp and the unansweredGo assertion." }
-        $legSession = if ($case.followUp -and -not $dialogPick) { [guid]::NewGuid().ToString() } else { '' }
+        $dialogRefusal = Get-DialogLaunchRefusal $case $Executor $AllowedTools
+        if ($dialogRefusal) { throw $dialogRefusal }
+        # B-530 B4: on Copilot a dialog case is two legs, its followUp typed as the second (B-528's path); no control channel exists there.
+        $legSession = if ($case.followUp -and (-not $dialogPick -or $Executor -eq 'copilot')) { [guid]::NewGuid().ToString() } else { '' }
         # B-528: the optionsPlan cases are two legs too, on either executor.
         if ($legSession -and $caseFixture -notin $contractFixtures -and $case.assertion -notin $planAssertions -and $case.assertion -ne 'businessTerm') { throw "$($case.id): a followUp is read only for the contract fixtures and the optionsPlan, recordOffer and reviewOffer cases, whose graders take a merged two-leg transcript." }
         $copilotMeta = $null
@@ -9675,7 +9708,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
             $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm'))
-            if ($dialogPick) { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force; $transcript | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue ([string]$run.ReviewConfirm) -Force }
+            if ($dialogPick -and $Executor -eq 'claude') { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force; $transcript | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue ([string]$run.ReviewConfirm) -Force }
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
                 # tree) and no error. Otherwise the grader sees one leg and says why (wroteT1, or not examined).
@@ -9722,7 +9755,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             if ($case.bareArm) { $outcome = [bool]$evidence.Outcome }
             # Copilot only loads repository hooks in prompt mode behind the opt-in above; if none
             # fired, the framework arm's enforcement surface was absent and the row must say so.
-            $copilotDetail = if ($copilotMeta) { "executor=copilot copilotCli=$($copilotMeta.CliVersion) hooksLoaded=$($copilotMeta.HooksLoaded) premiumRequests=$($copilotMeta.PremiumRequests) toolCalls=$($copilotMeta.ToolCalls) " } else { '' }
+            # B-530 B4: completeReview is a Claude permission fence; a Copilot run has none, and its row says so.
+            $copilotDetail = if ($copilotMeta) { "executor=copilot copilotCli=$($copilotMeta.CliVersion) hooksLoaded=$($copilotMeta.HooksLoaded) premiumRequests=$($copilotMeta.PremiumRequests) toolCalls=$($copilotMeta.ToolCalls) $(if ($dialogPick -and $Executor -eq 'copilot' -and $case.completeReview) { 'completeReview=ignored(copilot) ' })" } else { '' }
             # B-253: the CLI can update itself between runs of one invocation; the header's version
             # is read once, so each Claude Code row records the host and model its own run reported.
             $init = @($transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
