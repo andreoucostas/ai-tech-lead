@@ -195,6 +195,126 @@
       "path": "dist/monorepo/tests/hooks/Guard.Tests.ps1",
       "sha256": "3F9786E8E4E2A1DB3C191B606ADA129E9518ED21D908C5778BD46142763732A8",
       "reason": "Generated copy of the canonical guard test as committed in 0a97ff88; holds the fake sk- test key and a CSS class named sk-navigation-..., both of which the guard reads as a secret; later commits build them at run time."
+    },
+    {
+      "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "E6EBFB0E268AE064D1F2DF46D3950AB8CC465666607851331B454CF11A3E2D9F",
+      "reason": "B-499 canonical guard-policy fixture as committed in 78c9bba9; still intentionally contains synthetic blocked patterns (a private key block)."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "E6EBFB0E268AE064D1F2DF46D3950AB8CC465666607851331B454CF11A3E2D9F",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 78c9bba9)."
+    },
+    {
+      "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "E6EBFB0E268AE064D1F2DF46D3950AB8CC465666607851331B454CF11A3E2D9F",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 78c9bba9)."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "E6EBFB0E268AE064D1F2DF46D3950AB8CC465666607851331B454CF11A3E2D9F",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 78c9bba9)."
+    },
+    {
+      "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "CC1E7CA47552BD2E55ACE6A9155D0DCEA794623D19FA1C37241C064AD38E9201",
+      "reason": "B-499 canonical guard-policy fixture as committed in 82ea51e0; still intentionally contains synthetic blocked patterns (a private key block)."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "CC1E7CA47552BD2E55ACE6A9155D0DCEA794623D19FA1C37241C064AD38E9201",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 82ea51e0)."
+    },
+    {
+      "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "CC1E7CA47552BD2E55ACE6A9155D0DCEA794623D19FA1C37241C064AD38E9201",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 82ea51e0)."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "CC1E7CA47552BD2E55ACE6A9155D0DCEA794623D19FA1C37241C064AD38E9201",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 82ea51e0)."
+    },
+    {
+      "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "86693D27F46FB6DA2FF979FF778D7BB3C43CCEE478036A6801645DAD08B73A09",
+      "reason": "B-499 canonical guard-policy fixture as committed in 2fd49952; still intentionally contains synthetic blocked patterns (a private key block)."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "86693D27F46FB6DA2FF979FF778D7BB3C43CCEE478036A6801645DAD08B73A09",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 2fd49952)."
+    },
+    {
+      "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "86693D27F46FB6DA2FF979FF778D7BB3C43CCEE478036A6801645DAD08B73A09",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 2fd49952)."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "86693D27F46FB6DA2FF979FF778D7BB3C43CCEE478036A6801645DAD08B73A09",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 2fd49952)."
+    },
+    {
+      "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "D6DC260AB18FF4D0E1FC765A1F0857A7816C1D455E7F90C4EBF48FF1E107E7DA",
+      "reason": "B-499 canonical guard-policy fixture as committed in f7abff32; still intentionally contains synthetic blocked patterns (a private key block)."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "D6DC260AB18FF4D0E1FC765A1F0857A7816C1D455E7F90C4EBF48FF1E107E7DA",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in f7abff32)."
+    },
+    {
+      "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "D6DC260AB18FF4D0E1FC765A1F0857A7816C1D455E7F90C4EBF48FF1E107E7DA",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in f7abff32)."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "D6DC260AB18FF4D0E1FC765A1F0857A7816C1D455E7F90C4EBF48FF1E107E7DA",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in f7abff32)."
+    },
+    {
+      "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "DD24FC90572AF39A893356768A6D1AE52927E6E1BA668907B5514CF5CE6884C4",
+      "reason": "B-499 canonical guard-policy fixture as committed in 4ab5eca5; still intentionally contains synthetic blocked patterns (a private key block)."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "DD24FC90572AF39A893356768A6D1AE52927E6E1BA668907B5514CF5CE6884C4",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 4ab5eca5)."
+    },
+    {
+      "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "DD24FC90572AF39A893356768A6D1AE52927E6E1BA668907B5514CF5CE6884C4",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 4ab5eca5)."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "DD24FC90572AF39A893356768A6D1AE52927E6E1BA668907B5514CF5CE6884C4",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in 4ab5eca5)."
+    },
+    {
+      "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "24B2556EDC124616F241E5C3FFA335B7EF83A9A804694BC72F6925FB170BD11E",
+      "reason": "B-499 canonical guard-policy fixture as committed in the dotted-URL fix; still intentionally contains synthetic blocked patterns (a private key block)."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "24B2556EDC124616F241E5C3FFA335B7EF83A9A804694BC72F6925FB170BD11E",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in the dotted-URL fix)."
+    },
+    {
+      "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "24B2556EDC124616F241E5C3FFA335B7EF83A9A804694BC72F6925FB170BD11E",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in the dotted-URL fix)."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "24B2556EDC124616F241E5C3FFA335B7EF83A9A804694BC72F6925FB170BD11E",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in the dotted-URL fix)."
     }
   ]
 }

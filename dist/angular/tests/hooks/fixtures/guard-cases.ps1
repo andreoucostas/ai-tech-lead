@@ -390,6 +390,8 @@ $GuardCases = @(
     @{ n='NetworkCredential documented with the words username and password (allow)'; f='src/Db.cs'; c='var c = new NetworkCredential("username", "password");'; block=$false }
     @{ n='NetworkCredential with a variable password and a literal domain (allow)'; f='src/Db.cs'; c='var c = new NetworkCredential(user, pw, "CORPDOMAIN");'; block=$false }
     @{ n='quoted URL whose password is its user name, guest (allow)'; f='src/Bus.cs'; c='var uri = "amqp://guest:guest@localhost";'; block=$false }
+    @{ n='quoted URL whose password is only dots, a docs ellipsis (allow)'; f='docs/bus.md'; c='Set it to "amqp://svc:...@host".'; block=$false }
+    @{ n='quoted URL whose password is only an ellipsis character (allow)'; f='docs/bus.md'; c="Set it to `"amqp://svc:$([char]0x2026)@host`"."; block=$false }
     @{ n='quoted URL whose password is its user name, postgres (allow)'; f='src/Bus.cs'; c='var uri = "postgres://postgres:postgres@localhost/db";'; block=$false }
     @{ n='quoted URL with a port and an e-mail in the query (allow)'; f='src/Bus.cs'; c='var uri = "http://localhost:5000?email=jane@contoso.com";'; block=$false }
     @{ n='quoted URL with a port and an at sign in the fragment (allow)'; f='src/Bus.cs'; c='var uri = "https://host:443#s@2";'; block=$false }
