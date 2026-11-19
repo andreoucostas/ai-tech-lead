@@ -10001,3 +10001,20 @@ Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: accept
 Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
 
 - **PASS b416-dialog-away** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1914582 tokensIn=12 tokensOut=3219; ccVersion=2.1.312 initModel=claude-sonnet-5-5 hooks=True rails1=plan-gate wrote=False ask=OPTION asks=1 unanswered=away timeoutSeen=True wroteAfter=False reasked=0 perms=0/2 permClasses=away:1,none:1 side=none durationMs=41670
+
+
+
+
+## 2026-11-19 23:02:25 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (1c1d65ecbc3d3e470d8a02b81b4184637858b057)
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · scratch: retained=True
+
+B-525, run on Fable 5.1, not the Fable 5.2 B-525 asked for. Run and hand-read by the main session on 2026-11-19; commit `1c1d65ec`, dist 0.98.6, Claude Code 2.1.312. The alias `fable` resolved to `claude-fable-5-1` in every row: on this Claude Code version the alias is Fable 5.1. Set 1 only: `-Live -Arm framework -Trials 2 -Scenario route-fix,warehouse-bind-sql -Model fable`; runner exit 1; spend 4.83 USD (1.30 + 0.70 + 1.40 + 1.43). Two stop conditions were met: the wrong model, and `route-fix` trial 1 ending `error_max_budget_usd` at 1.30 USD against its 1.25 cap after 6 turns (ERROR, excluded). `route-fix` trial 2 FAIL at 0.70 USD; `warehouse-bind-sql` 2 of 2 PASS (1.40 and 1.43 USD against 1.50).
+
+Hand read: in both `route-fix` transcripts the agent ran the existing test red, made the one-line production fix with `sed -i` through the Bash tool, then ran the test green (`fixed=True`). The grader read production edits only from Edit and Write, so `productionEdit=-1`, and the FAIL is the instrument not seeing a shell edit. Trial 2 said it skipped the plan-and-wait gate "because the change is a trivial, unambiguous one-liner". Grader fixed in commit `9bfec3c5` (counts an in-place shell edit); re-graded offline from the retained transcripts at no cost: trial 2 PASS, trial 1 still FAIL because that run ended on its budget cap. Remaining sets (arm none, `angular-feature-placement`) not run: paid runs stopped pending the maintainer.
+
+- **ERROR route-fix** (model=fable) — agentExit=1 timedOut=False costUsd=1.30020925 tokensIn=68 tokensOut=1604; ccVersion=2.1.312 initModel=claude-fable-5-1 arm=framework outcome=False routeExercised=True routerFired=True routerIntent=fix fixed=True redTestEvent=18 productionEdit=-1 greenTestEvent=33 testInvoked=True
+- **FAIL route-fix** (model=fable) — agentExit=0 timedOut=False costUsd=0.70032675 tokensIn=98 tokensOut=1806; ccVersion=2.1.312 initModel=claude-fable-5-1 arm=framework outcome=False routeExercised=True routerFired=True routerIntent=fix fixed=True redTestEvent=12 productionEdit=-1 greenTestEvent=33 testInvoked=True
+- **PASS warehouse-bind-sql** (model=fable) — agentExit=0 timedOut=False costUsd=1.39611925 tokensIn=132 tokensOut=8365; ccVersion=2.1.312 initModel=claude-fable-5-1 arm=framework outcome=True category=BOTH channels=C1,C4 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **PASS warehouse-bind-sql** (model=fable) — agentExit=0 timedOut=False costUsd=1.4293945 tokensIn=132 tokensOut=7871; ccVersion=2.1.312 initModel=claude-fable-5-1 arm=framework outcome=True category=BOTH channels=C1,C4 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY route-fix** arm=framework outcome=0/1 excluded=1
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=2/2 excluded=0
