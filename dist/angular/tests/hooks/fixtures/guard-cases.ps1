@@ -332,6 +332,15 @@ $GuardCases = @(
     @{ n='Password pair after a tab'; f='src/Db.cs'; c="var cs = `"Server=db;`tPassword=hunter2hunter2;`";"; block=$true }
     @{ n='Db2Password pair'; f='src/Db.cs'; c='var cs = "Server=db;User Id=app;Db2Password=hunter2hunter2;";'; block=$true }
     @{ n='Proxy.Password pair'; f='src/Db.cs'; c='var cs = "Server=db;User Id=app;Proxy.Password=hunter2hunter2;";'; block=$true }
+    # A short mask (****, xxxx), NULL or redacted in a password pair is no secret, wherever the pair stands. The first
+    # five are blocked before the fix (only a mask of six stars or more was a token); the last two were allowed before it and stay so.
+    @{ n='masked Password= piece joined to a connection string (allow)'; f='src/Db.cs'; c='var cs = "Data Source=x;" + "Password=****;";'; block=$false }
+    @{ n='xxxx Password= piece joined to a connection string (allow)'; f='src/Db.cs'; c='var cs = "Data Source=x;" + "Password=xxxx;";'; block=$false }
+    @{ n='NULL Password= piece joined to a connection string (allow)'; f='src/Db.cs'; c='var cs = "Data Source=x;" + "Password=NULL;";'; block=$false }
+    @{ n='redacted Password= piece joined to a connection string (allow)'; f='src/Db.cs'; c='var cs = "Data Source=x;" + "Password=Redacted;";'; block=$false }
+    @{ n='masked Password in a keyed connectionString (allow)'; f='src/Db.cs'; c='var connectionString = "Server=db;User Id=app;Password=****";'; block=$false }
+    @{ n='a mask in one password key does not hide a real value in another'; f='src/Db.cs'; c="var cs = `"Server=db;Password=****;Proxy.Password=$sqlPassword;`";"; block=$true }
+    @{ n='a four-character real Password piece joined to a connection string'; f='src/Db.cs'; c='var cs = "Data Source=x;" + "Password=hunt;";'; block=$true }
 )
 
 # The edit events of the two surfaces, for the cases that carry o: Claude Code's Edit (file_path, old_string, new_string)

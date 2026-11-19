@@ -13,6 +13,8 @@
 
 ## 0.99.0 — Unreleased
 
+- **The write guard no longer blocks a masked connection string.** A `"Password=****;"`, `xxxx`, `NULL` or `redacted` piece joined to another quoted literal was read as a real password and refused the write; a password value that is only asterisks (three or more), only `x` (three or more), `NULL` or `redacted` is now treated as a mask. A real password beside a mask is still refused.
+
 - **An update no longer drops the exemplar line from a disabled skill.** A "For a concrete current instance" line you added to a skill's `SKILL.md` was kept by the update that moved the skill to `.claude/disabled-skills/`, then lost on the next update; every update now keeps it there, and when you re-enable the skill.
 
 Windows PowerShell 5.1 support ends; the release is 0.99.0, not 0.98.7 (guarded, step 4; B-506, WSD-125 (5): the maintainer

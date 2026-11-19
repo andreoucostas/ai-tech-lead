@@ -864,7 +864,7 @@ foreach ($write in $writes) {
         # A release-pipeline token (#{X}#, __X__, $(X), {{X}}) is replaced at deploy time, so it exempts the
         # credential value it stands in for, and only that value: a token elsewhere must not hide a literal. The Service Bus
         # emulator's published key value SAS_KEY_VALUE (exact case) is not a secret and is never read as one, wherever it stands.
-        $token = '^\s*(?:#\{[^}]{1,200}\}#|__[A-Za-z0-9_.:-]{1,200}__|\$\([A-Za-z0-9_.:-]{1,200}\)|\{\{[^}]{1,200}\}\}|replace[_-]?me|\*{6,200}|(?-i:SAS_KEY_VALUE))\s*$'
+        $token = '^\s*(?:#\{[^}]{1,200}\}#|__[A-Za-z0-9_.:-]{1,200}__|\$\([A-Za-z0-9_.:-]{1,200}\)|\{\{[^}]{1,200}\}\}|replace[_-]?me|\*{3,200}|x{3,200}|null|redacted|(?-i:SAS_KEY_VALUE))\s*$'
         # Counts a password value once for the whole write, told by where it ends, and returns false once the cap is passed.
         $script:valueSeen = New-Object 'System.Collections.Generic.HashSet[int]'
         function Add-ExaminedValue([int]$End) {

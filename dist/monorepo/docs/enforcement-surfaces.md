@@ -270,10 +270,11 @@ organization enforces.
 > pairs, a quote of the other kind or an escaped quote inside the literal, a JDBC neighbour with no
 > `=`, a `:` in a neighbouring key, a no-break space or vertical tab before the key; the computed key
 > `{ ['password']: '…' }`. **False blocks:** compact code with no spaces between two literals
-> (`u.Name="bob";u.Password=Hash(p);…`), and a mask, a message or SQL text that is one piece of a
-> longer string: an `.Append(` or `.AppendLine(` of a `Password=` mask of asterisks or `[REDACTED]`,
-> a `Password=required;` message joined to an `Email=required;` piece, or a `SET Password=NULL`
-> piece joined by `+` to a `WHERE Id=1` piece. Also not matched: a
+> (`u.Name="bob";u.Password=Hash(p);…`), and a message or SQL text that is one piece of a longer
+> string: an `.Append(` or `.AppendLine(` of `Password=[REDACTED]`, a `Password=required;` message
+> joined to an `Email=required;` piece, or a `SET Password=NULL WHERE Id=1` piece. A password value
+> that is only asterisks (three or more), only `x` (three or more), `NULL` or `redacted` is a mask,
+> not read as a password. Also not matched: a
 > name that does not end in one of those words (`SecretKey`); an `appSettings`
 > `<add key="DbPassword" value="…" />`; flat
 > `ConnectionStrings:Main` or `ConnectionStrings__Main` keys (user secrets, `launchSettings.json`,

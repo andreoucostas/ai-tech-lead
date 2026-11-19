@@ -6,6 +6,8 @@
 
 ## 0.99.0 — Unreleased
 
+- **The write guard no longer blocks a masked connection string.** A `"Password=****;"`, `xxxx`, `NULL` or `redacted` piece joined to another quoted literal was read as a real password and refused the write; a password value that is only asterisks (three or more), only `x` (three or more), `NULL` or `redacted` is now treated as a mask. A real password beside a mask is still refused.
+
 - **An update no longer drops the exemplar line from a disabled skill.** A "For a concrete current instance" line you added to a skill's `SKILL.md` was kept by the update that moved the skill to `.claude/disabled-skills/`, then lost on the next update; every update now keeps it there, and when you re-enable the skill.
 
 - **The write guard now refuses a write it cannot fully read, instead of letting it through.** A tool call whose JSON repeats a key in a different letter case or has an empty key, an `apply_patch` section header behind a byte-order mark (U+FEFF), and a patch section with a second `*** Move to:` line used to pass unchecked; the guard now blocks them, and the agent resends the call cleanly. Calls that are not writes are unaffected.
