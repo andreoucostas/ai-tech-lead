@@ -645,6 +645,42 @@
       "budgetUsd": 1.0,
       "prompt": "Add order-shipped notifications through pluggable channels. Ship an email channel and a webhook channel now; other teams will add their own channels to this repository later. Each channel is switched on by a `notifications.channel.<key>` flag in config/feature-flags.json, and a channel without its flag stays off. Follow this repository's conventions.",
       "assertion": "recordOffer"
+    },
+    {
+      "id": "b416-review-go",
+      "measures": "B-416 (pre-registered in .claude/plans/2026-11-19-b416-review-offer.md): with the candidate carrier line installed (-TargetPatch b416-review-offer.patch), does the plan before the first file change close with the opt-in review line, and does a plain go-ahead leave the review unrun? Two invocations of one session: K, then b528-options' reply. Run as shipped too, as the control (no line, no review). Framework arm only: install plus the b514-orders overlay as /bootstrap left it. It shows that the review skill was or was not called, not that a review examined the change; not other prompts or fixtures, Copilot, VS Code, Angular or monorepo.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "budgetUsd": 1.0,
+      "followUpBudgetUsd": 2.5,
+      "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid.",
+      "followUp": "A second refund on an invoice that is already refunded is a 409 too. Paid stays true; Refunded is an extra flag on top. This only marks the invoice: no event, no payment-provider call, no money moves. I apply the new Refunded column to the database myself, so no script is needed. Two simultaneous refunds are out of scope for now. Go ahead.",
+      "assertion": "reviewOffer"
+    },
+    {
+      "id": "b416-review-asked",
+      "measures": "B-416: b416-review-go with the reply ending 'Go ahead, with review.', the words the candidate line names: is this repository's review skill called after the first file change? Run with the candidate patch only.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "budgetUsd": 1.0,
+      "followUpBudgetUsd": 2.5,
+      "prompt": "Add a refund endpoint to CheckoutController: POST api/checkout/invoices/{invoiceId}/refund marks a paid invoice as refunded (add a Refunded flag to Invoice) and returns 202, 404 when the invoice does not exist, and 409 when it is not paid.",
+      "followUp": "A second refund on an invoice that is already refunded is a 409 too. Paid stays true; Refunded is an extra flag on top. This only marks the invoice: no event, no payment-provider call, no money moves. I apply the new Refunded column to the database myself, so no script is needed. Two simultaneous refunds are out of scope for now. Go ahead, with review.",
+      "assertion": "reviewOffer"
+    },
+    {
+      "id": "b416-review-asked-plain",
+      "measures": "B-416, amendment 2: the asked reply on a plain new resource (b356-decoy-supplier's prompt and reply, the reply ending 'Go ahead, with review.'), where no security gate stands in front of the review: is this repository's review skill called after the first file change? Run with the candidate patch only. It shows that the review skill was called, not that a review examined the change.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "budgetUsd": 1.0,
+      "followUpBudgetUsd": 2.0,
+      "prompt": "Add a Supplier resource with a name and a contact email: list, get by id and create, through the API like the existing resources. Follow this repository's conventions.",
+      "followUp": "I make the table in the database myself, so no migration or script is needed. Same shape as the existing resources: no DTOs, validation or paging. Go ahead, with review.",
+      "assertion": "reviewOffer"
     }
   ]
 }

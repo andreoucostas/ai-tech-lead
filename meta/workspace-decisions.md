@@ -4831,3 +4831,32 @@ listed, a relative one read from the event's `cwd` (none, or outside the reposit
 Rejected: Option A, blocking only a secret-shaped value, which lets a passphrase with spaces through everywhere. Let through: a real secret written to a
 listed path, and any change to the list made through the shell. The README now calls the guard a local backstop, not the gate.
 **Reopen** if a team reports a secret committed through a listed path, or an agent changing the list without a reviewed pull request.
+
+## WSD-131: the plan offers a review and the developer's reply decides it; no automatic review (2026-11-19)
+
+**Context.** Field report #14: no review ran in 39 sessions that changed files, while all 29 plans got a developer reply before code. Plan v2 §5 item 5
+had deferred an always-loaded sentence that starts the review when work completes. A six-reviewer pass measured 0.49 to 0.66 USD on a small change (B-467).
+**Decision (the maintainer's, in chat 2026-11-19).** The plan closes with one line offering the review, and it runs only when the reply asks for it; a
+plain go-ahead means no review. Rejected: the automatic sentence and "review unless skipped" (nearly every planned change pays), a question at the end
+(one more developer turn, and on Copilot one more premium request), and a risk-only default (a longer rule that is harder to measure). Measured on Claude
+Code first (`.claude/plans/2026-11-19-b416-review-offer.md`); the results go to the maintainer before anything ships, with Copilot stated as unverified
+until B-530 runs. B-425, the plain-words candidate, is folded into B-530.
+**Reopen** if a team reports reviews it did not ask for, or the offer line going unanswered across a team's sessions.
+
+## WSD-132: the guard protects its own wiring narrowly, not every settings write (2026-11-19)
+
+**Context.** B-490: a write of `{ "hooks": {} }` to `.claude/settings.json` exits 0, and so does a write to `.claude/hooks/guard.ps1` (the second by the
+same logic, not run), so the agent can switch the guards off.
+**Decision (the maintainer's, in chat 2026-11-19).** The guard refuses a settings write whose result no longer registers `guard.ps1`, and any agent write
+to `.claude/hooks/*.ps1` or `.github/hooks/hooks.json`. Rejected: blocking every agent write to `.claude/settings*.json`, which stops `/adopt` and the
+upgrade checklist's settings step; and leaving it open with a documentation line. Let through: the shell, which the guard does not read. Not yet built.
+**Reopen** if `/adopt` or an update is reported blocked by the rule, or a team reports the guards switched off through a path the rule does not read.
+
+## WSD-133: the reviewers keep their shell, the Copilot wrappers get a tool list, and nothing calls them read-only (2026-11-19)
+
+**Context.** B-504: the seven `.claude/agents` files list `PowerShell` and the six `.github/agents` wrappers have no `tools:`, which Copilot reads as every
+tool; both vendors say a tool list is the boundary and an instruction is not.
+**Decision (the maintainer's, in chat 2026-11-19).** Keep the shell: the wrappers get `tools: ["read", "search", "execute"]`, so a reviewer loses the edit
+tools, and the shipped text stops saying read-only. Rejected: dropping the shell, which moves the bundle-hash recompute to the parent across six agents,
+six wrappers, `review.md` and `security-gate.md`. Waits for Copilot access: the change needs a host check that a reviewer starts and reads its bundle.
+**Reopen** if a reviewer is seen changing a file or running a command that changes the tree.

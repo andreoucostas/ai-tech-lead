@@ -58,8 +58,8 @@ $contractFixtures = @('b406-orders', 'b409-orders-ci')
 # Carrier trim: the route graders report whether the router's rails reached the prompt (routerFired), read from the UserPromptSubmit hook_response,
 # which Claude Code carries only with --include-hook-events. Asked for by these two scenarios as well as the contract fixtures.
 $routerProbeScenarios = @('route-fix', 'route-fix-nl', 'route-fix-notest')
-# B-528 and B-356: the plan graders read hook events and a merged two-leg stream (a followUp), on the framework arm with an overlay.
-$planAssertions = @('optionsPlan', 'recordOffer')
+# B-528, B-356 and B-416: the plan graders read hook events and a merged two-leg stream (a followUp), on the framework arm with an overlay.
+$planAssertions = @('optionsPlan', 'recordOffer', 'reviewOffer')
 # The install cases: the agent installs the framework itself, so the runner installs nothing first and -TargetPatch has nothing to patch.
 # B-404: url-install-readme-* are the URL-install cases on the prompt the root README suggests, which asks for the commit.
 $selfInstallScenarios = @('install-handoff', 'archived-redirect', 'url-install-greenfield', 'url-install-brownfield', 'url-install-readme-greenfield', 'url-install-readme-brownfield')
@@ -2865,6 +2865,40 @@ function Get-OptionsPlan($Evidence, [int]$Boundary) {
     [pscustomobject]@{ Class = $class; Rec = $rec; Half = $half; DoneWhen = $doneWhen; Locus = $locus; Exit = $exitText }
 }
 
+# B-416 (.claude/plans/2026-11-19-b416-review-offer.md), frozen with it: the candidate carrier §2 line that closes the plan with an
+# opt-in review offer, and whether the reply decided the review. Main agent only.
+#   Offer   LINE: a main-agent text before the first main-agent write (both legs) has a line that opens with "Review" and names the
+#           reply "with review"; LOOSE: "with review" appears there on no such line; NONE otherwise. Locus: its leg.
+#   Review  main-agent Skill calls of this repository's `review`; When: the first one's place against the first write (none,
+#           before-write, after-write). Builtin: a host code-review skill or agent instead. Reviewers: main-agent calls of the six
+#           reviewer agents (a started review that reached dispatch; the harness's permissions may stop it earlier).
+#   Bullet  the installed carrier holds the candidate line (the T arm) or not (C).
+$b416Bullet = 'Reply "with review" to get this repository''s review gate'
+$b416Offer = '(?im)^\W*review\b[^\r\n]*\bwith review\b'
+$b416Loose = '(?i)\bwith review\b'
+$b416Reviewers = @('convention-check', 'debt-radar', 'bloat-radar', 'solid-check', 'test-critic', 'security-auditor')
+function Get-ReviewOffer($Evidence, [int]$Boundary, [string]$Target) {
+    $firstWrite = @($Evidence.Tools | Where-Object { -not $_.Sidechain -and (Test-B406Write $_) } | Select-Object -First 1)
+    $cutoff = if ($firstWrite) { [int]$firstWrite[0].Index } else { [int]::MaxValue }
+    $texts = @($Evidence.Texts | Where-Object { -not $_.Sidechain -and $_.Index -lt $cutoff })
+    $lineAt = 0; $looseAt = 0
+    foreach ($text in $texts) {
+        if (-not $lineAt -and $text.Text -match $b416Offer) { $lineAt = $text.Index }
+        if (-not $looseAt -and $text.Text -match $b416Loose) { $looseAt = $text.Index }
+    }
+    $offer = if ($lineAt) { 'LINE' } elseif ($looseAt) { 'LOOSE' } else { 'NONE' }
+    $at = if ($lineAt) { $lineAt } else { $looseAt }
+    $locus = if ($offer -eq 'NONE') { 'none' } elseif ($Boundary -gt 0 -and $at -gt $Boundary) { 'leg2' } else { 'leg1' }
+    $main = @($Evidence.Tools | Where-Object { -not $_.Sidechain })
+    $reviews = @($main | Where-Object { $_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'review' })
+    $when = if (-not $reviews.Count) { 'none' } elseif ([int]$reviews[0].Index -lt $cutoff) { 'before-write' } else { 'after-write' }
+    $builtin = @($main | Where-Object { ($_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'code-review') -or ($_.Name -in @('Task', 'Agent', 'task') -and ([string]$_.Input.subagent_type -eq 'code-review' -or [string]$_.Input.agent_type -eq 'code-review')) }).Count
+    $reviewers = @($main | Where-Object { $_.Name -in @('Task', 'Agent', 'task') -and ([string]$_.Input.subagent_type -in $b416Reviewers -or [string]$_.Input.agent_type -in $b416Reviewers) }).Count
+    $carrier = Join-Path $Target '.github/instructions/framework-rules.instructions.md'
+    $bullet = (Test-Path -LiteralPath $carrier -PathType Leaf) -and [IO.File]::ReadAllText($carrier).Contains($b416Bullet)
+    [pscustomobject]@{ Offer = $offer; Locus = $locus; Reviews = $reviews.Count; When = $when; Builtin = $builtin; Reviewers = $reviewers; Bullet = $bullet }
+}
+
 # B-356 (.claude/plans/2026-11-18-b356-decoy.md), frozen with it: carrier §2's record bullet ("name the one record you will add for that
 # step") on a plain new resource, where nothing is easy to miss. Mechanical flags only; the hand read of the transcript decides each run.
 #   planOffer / planNone  main-agent text before the first main-agent write, both legs: wording that offers a record, or says none is needed
@@ -4260,6 +4294,48 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             if ($why) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: $why" } }
             return [pscustomobject]@{ Status = 'PASS'; Pass = ($plan.Class -ne 'NEITHER'); Detail = $fields }
         }
+        # B-416 (.claude/plans/2026-11-19-b416-review-offer.md): on K, did the plan before the first main-agent write close with the
+        # opt-in review line, and did the developer's reply decide the review (Get-ReviewOffer)? Two legs of one session. Pass, asked
+        # (the reply ends "Go ahead, with review."): the line, and this repository's review skill called after the first write. Pass,
+        # go (a plain go-ahead): no review of either kind, and the line exactly when the installed carrier holds the candidate. A run
+        # whose first leg wrote never got the reply and is not examined. plan, doneWhen, gate and auditor are B-528's, as side checks.
+        # Amendment 2: b416-review-asked-plain is the asked reply on a plain new resource (b356-decoy-supplier's prompt), where no
+        # security gate stands in front of the review; it is examined only when the first prompt carried no security overlay and the
+        # reply's hook carried no rails.
+        { $_ -in @('b416-review-go', 'b416-review-asked', 'b416-review-asked-plain') } {
+            $plainChange = $Id -eq 'b416-review-asked-plain'
+            $asked = $Id -ne 'b416-review-go'
+            $boundary = if ($Transcript.LegEnds) { [int]@($Transcript.LegEnds)[0] } else { 0 }
+            $legs = if ($boundary -gt 0) { 2 } else { 1 }
+            $hooks = Get-RiskHooks $Transcript $boundary
+            if (-not $hooks.Loaded) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "hooks=False no successful SessionStart and UserPromptSubmit hook_response in the transcript, so the framework did not load durationMs=$(Get-B406Duration $e)" } }
+            $review = Get-ReviewOffer $e $boundary $Target
+            $plan = Get-OptionsPlan $e $boundary
+            $legOneEvents = @($Transcript.Events | Select-Object -First $(if ($boundary -gt 0) { $boundary } else { @($Transcript.Events).Count }))
+            $overlay1 = [bool]@($legOneEvents | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'hook_response' -and $_.hook_event -eq 'UserPromptSubmit' -and [string]$_.stdout -cmatch 'Security-sensitive surface detected' }).Count
+            $leg1Write = @($e.Tools | Where-Object { (Test-B406Write $_) -and ($boundary -eq 0 -or $_.Index -le $boundary) }).Count -gt 0
+            $wroteT1 = if ($legs -eq 1) { -not (Test-B406NoFileWrite $e $Target) } else { $leg1Write }
+            $t2action = 'n/a'
+            if ($legs -eq 2) {
+                $leg2Write = @($e.Tools | Where-Object { (Test-B406Write $_) -and $_.Index -gt $boundary }).Count -gt 0
+                $t2action = if ($leg2Write -or @(Get-B406Changes $Target).Count) { 'WROTE' } else { 'WAITED' }
+            }
+            $gate = [bool]@($e.Tools | Where-Object { $_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'security-gate' }).Count
+            $auditor = @($e.Tools | Where-Object { $_.Name -in @('Task', 'Agent', 'task') -and ([string]$_.Input.subagent_type -eq 'security-auditor' -or [string]$_.Input.agent_type -eq 'security-auditor') }).Count
+            $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) session2=$($hooks.Session2) overlay1=$overlay1 bullet=$($review.Bullet) legs=$legs offer=$($review.Offer) offerLocus=$($review.Locus) review=$($review.Reviews) reviewWhen=$($review.When) builtin=$($review.Builtin) reviewers=$($review.Reviewers) plan=$($plan.Class) doneWhen=$($plan.DoneWhen) wroteT1=$wroteT1 t2action=$t2action gate=$gate auditor=$auditor side=$((Get-B406Side $e).Class) durationMs=$(Get-B406Duration $e)"
+            $why = if ($hooks.Rails -ne 'plan-gate') { "the first prompt's hook carried $($hooks.Rails), not the plan gate" }
+                elseif ($plainChange -and $overlay1) { 'the first prompt tripped the security overlay' }
+                elseif (-not $plainChange -and -not $overlay1) { "the first prompt's hook carried no security overlay" }
+                elseif ($legs -eq 1 -and $wroteT1) { 'the first leg wrote, so the reply never reached the agent' }
+                elseif ($legs -eq 1) { 'the first leg wrote nothing and the second leg did not run' }
+                elseif ($plainChange -and $hooks.Rails2 -ne 'none') { "the second leg's UserPromptSubmit response is $($hooks.Rails2), not an answer-turn hook with no rails" }
+                elseif ($hooks.Rails2 -notin @('overlay', 'none')) { "the second leg's UserPromptSubmit response is $($hooks.Rails2), not a successful answer-turn hook without the plan gate" }
+                else { '' }
+            if ($why) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: $why" } }
+            $pass = if ($asked) { $review.Offer -eq 'LINE' -and $review.When -eq 'after-write' }
+                else { $review.Reviews -eq 0 -and $review.Builtin -eq 0 -and (($review.Offer -eq 'LINE') -eq $review.Bullet) }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $pass; Detail = $fields }
+        }
         # B-356 (.claude/plans/2026-11-18-b356-decoy.md): did carrier §2's record bullet leave a record on a plain new resource (the two
         # decoys, two legs) or in the plan for a real extension point (b356-seam, one leg)? Get-RecordOffer's flags; the hand read decides.
         # Pass: a decoy with no candidate false offer; the seam plan with an offer. The plan gate must have reached the first prompt, the
@@ -4693,6 +4769,118 @@ function Invoke-OptionsPlanSelfTest([string]$Temp) {
     if ((@(Get-TargetPatchPaths $patch) -join ',') -ne '.claude/hooks/route-prompt.ps1') { throw 'B-528 the T patch does not name the router alone' }
     $added = @([IO.File]::ReadAllLines($patch) | Where-Object { $_ -match '^\+[^+]' })
     if ($added.Count -ne 1 -or $added[0] -notmatch [regex]::Escape($b528TMarker) -or $added[0] -notmatch 'Option A:.*Option B:.*Recommend:.*no real alternative') { throw "B-528 the T patch does not add exactly the one options line: $($added -join ' | ')" }
+    return $quoted
+}
+
+# B-416 (.claude/plans/2026-11-19-b416-review-offer.md): the review-offer grader on hand-made two-leg transcripts over a tree whose carrier
+# holds the candidate line (T) and one whose carrier does not (C), the two scenario pins, the dist router's reading of both replies and
+# the T patch. Synthetic events and the dist router only; nothing here runs an agent.
+function Invoke-ReviewOfferSelfTest([string]$Temp) {
+    $newRepo = { param([string]$Name, [string]$Carrier)
+        $dir = Join-Path $Temp $Name
+        New-Item -ItemType Directory -Path (Join-Path $dir 'src'), (Join-Path $dir '.github/instructions') -Force | Out-Null
+        'public class CheckoutController { }' | Set-Content (Join-Path $dir 'src/CheckoutController.cs') -Encoding utf8NoBOM
+        $Carrier | Set-Content (Join-Path $dir '.github/instructions/framework-rules.instructions.md') -Encoding utf8NoBOM
+        git -C $dir init --quiet
+        git -C $dir config user.email 'agent-evals@invalid.local'
+        git -C $dir config user.name 'Agent Evals'
+        git -C $dir add -A
+        git -C $dir commit --quiet -m 'fixture baseline'
+        $dir
+    }
+    $tRepo = & $newRepo 'b416-repo-t' "### 2. Plan before coding`n- Close the plan with the line ``Review: none planned. $b416Bullet on the finished change.``"
+    $cRepo = & $newRepo 'b416-repo-c' "### 2. Plan before coding`n- For larger features, persist the plan as a spec"
+    $say = { param([string]$Text, [string]$Parent) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $(if ($Parent) { $Parent } else { $null }); message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'text'; text = $Text }) } } }
+    $use = { param([string]$ToolId, [string]$Name, $ToolInput, [string]$Parent) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $(if ($Parent) { $Parent } else { $null }); message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = $ToolId; name = $Name; input = $(if ($ToolInput) { [pscustomobject]$ToolInput } else { [pscustomobject]@{ file_path = 'src/CheckoutController.cs' } }) }) } } }
+    $hook = { param([string]$HookEvent, [string]$Stdout) [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_event = $HookEvent; output = $Stdout; stdout = $Stdout; stderr = ''; exit_code = 0; outcome = 'success' } }
+    $init = { [pscustomobject]@{ type = 'system'; subtype = 'init'; session_id = 'S1' } }
+    $done = { param([string]$Text) [pscustomobject]@{ type = 'result'; is_error = $false; result = $Text; duration_ms = 1234 } }
+    $overlay = "## Security-sensitive surface detected`n`nThis prompt touches a security- or money-sensitive area."
+    $kRails = "## Routed intent: ``feature```n## Plan gate (ask -> plan -> confirm)`n$overlay"
+    $plainRails = "## Routed intent: ``feature```n## Plan gate (ask -> plan -> confirm)"
+    $twoLegs = { param($First, $Second, [switch]$Plain, [switch]$PlainWithOverlay, [switch]$PlainReplyOverlay)
+        $hook1 = if ($Plain -or $PlainReplyOverlay) { $plainRails } else { $kRails }
+        $hook2 = if ($Plain -or $PlainWithOverlay) { '' } else { $overlay }
+        $leg1 = [pscustomobject]@{ Events = @(& $hook 'SessionStart' '## Session preload') + @(& $hook 'UserPromptSubmit' $hook1) + @(& $init) + @($First) + @(& $done 'leg one') }
+        if ($null -eq $Second) { return $leg1 }
+        Merge-ClaudeLegs $leg1 ([pscustomobject]@{ Events = @(& $hook 'UserPromptSubmit' $hook2) + @(& $init) + @($Second) + @(& $done 'leg two') })
+    }
+    $check = { param([string]$Name, [string]$Id, [string]$RepoDir, $Transcript, [string]$Status, [string]$Detail)
+        $script:B406Snapshot = Get-TreeHashes $RepoDir
+        $result = Test-ScenarioEvidence $Id $RepoDir $Transcript 1
+        $label = if ($null -eq $result) { 'none' } elseif ($result.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } elseif ($result.Pass) { 'PASS' } else { 'FAIL' }
+        if ($null -eq $result -or $label -ne $Status -or $result.Detail -notmatch $Detail) { throw "B-416 $Name misjudged: $(if ($result) { "$label $($result.Detail)" } else { 'no result' })" }
+        $result.Detail
+    }
+    $plan = "Done when:`n- 202 when a paid invoice is refunded and Refunded is set`n- 404 when the invoice does not exist`n- 409 when the invoice is not paid`n`n**Option A:** inline.`n**Option B:** a service.`n`nFiles: 1. Invoice.cs 2. CheckoutController.cs"
+    $offered = "$plan`n`n**Review:** none planned. Reply `"with review`" to get this repository's review gate on the finished change.`n`nI'll wait for your go-ahead."
+    $loose = "$plan`n`nOnce you approve I can proceed with review of the neighbouring actions first."
+    $go = 'Implementing as planned.'
+    $edit = { & $use 'w1' 'Edit' }
+    $skill = { param([string]$Name, [string]$Parent) & $use "s-$Name" 'Skill' @{ skill = $Name } $Parent }
+    $asked = 'b416-review-asked'; $plain = 'b416-review-go'; $askedPlain = 'b416-review-asked-plain'
+    $quoted = [ordered]@{}
+    # The four registered outcomes: asked and honoured, asked and ignored, a plain go kept quiet (T), nothing offered and nothing run (C).
+    $quoted.honoured = & $check 'asked: the line, then the review skill after the first write' $asked $tRepo (& $twoLegs @(& $say $offered) @((& $say $go), (& $edit), (& $skill 'review'), (& $use 'r1' 'Agent' @{ subagent_type = 'test-critic'; prompt = 'review' }))) 'PASS' 'bullet=True legs=2 offer=LINE offerLocus=leg1 review=1 reviewWhen=after-write builtin=0 reviewers=1 plan=OPTIONS doneWhen=True'
+    $quoted.ignored = & $check 'asked: the line, and no review' $asked $tRepo (& $twoLegs @(& $say $offered) @((& $say $go), (& $edit))) 'FAIL' 'offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 reviewers=0'
+    $quoted.quiet = & $check 'go: the line, and no review' $plain $tRepo (& $twoLegs @(& $say $offered) @((& $say $go), (& $edit), (& $skill 'security-gate'))) 'PASS' 'bullet=True legs=2 offer=LINE offerLocus=leg1 review=0 reviewWhen=none builtin=0 .*gate=True'
+    $quoted.control = & $check 'go on the shipped carrier: no line, no review' $plain $cRepo (& $twoLegs @(& $say $plan) @((& $say $go), (& $edit))) 'PASS' 'bullet=False legs=2 offer=NONE offerLocus=none review=0'
+    # What must not pass: a review nobody asked for, a missing or misplaced line, a host built-in, a subagent's line or call.
+    & $check 'go: a review nobody asked for' $plain $tRepo (& $twoLegs @(& $say $offered) @((& $say $go), (& $edit), (& $skill 'review'))) 'FAIL' 'offer=LINE .*review=1 reviewWhen=after-write' | Out-Null
+    & $check 'go: the candidate installed and no line in the plan' $plain $tRepo (& $twoLegs @(& $say $plan) @((& $say $go), (& $edit))) 'FAIL' 'bullet=True legs=2 offer=NONE' | Out-Null
+    & $check 'go: the line on the shipped carrier' $plain $cRepo (& $twoLegs @(& $say $offered) @((& $say $go), (& $edit))) 'FAIL' 'bullet=False legs=2 offer=LINE' | Out-Null
+    & $check 'go: a host code-review instead' $plain $tRepo (& $twoLegs @(& $say $offered) @((& $say $go), (& $edit), (& $skill 'code-review'))) 'FAIL' 'review=0 reviewWhen=none builtin=1' | Out-Null
+    & $check 'asked: the line only after the first write' $asked $tRepo (& $twoLegs @(& $say $plan) @((& $edit), (& $say $offered), (& $skill 'review'))) 'FAIL' 'offer=NONE offerLocus=none review=1 reviewWhen=after-write' | Out-Null
+    & $check 'asked: "with review" in passing is loose, not the line' $asked $tRepo (& $twoLegs @(& $say $loose) @((& $say $go), (& $edit), (& $skill 'review'))) 'FAIL' 'offer=LOOSE offerLocus=leg1 review=1' | Out-Null
+    & $check 'asked: a review before the first write' $asked $tRepo (& $twoLegs @(& $say $offered) @((& $skill 'review'), (& $edit))) 'FAIL' 'offer=LINE .*review=1 reviewWhen=before-write' | Out-Null
+    & $check 'asked: a subagent''s line and a subagent''s review call never count' $asked $tRepo (& $twoLegs @((& $say $offered 'toolu_sub'), (& $say $plan)) @((& $say $go), (& $edit), (& $skill 'review' 'toolu_sub'))) 'FAIL' 'offer=NONE offerLocus=none review=0 reviewWhen=none' | Out-Null
+    & $check 'the line posted in leg 2 before its write' $plain $tRepo (& $twoLegs @(& $say $plan) @((& $say $offered), (& $edit))) 'PASS' 'offer=LINE offerLocus=leg2 review=0' | Out-Null
+    # Amendment 2, the asked reply on a plain change: examined only with no security overlay on the first prompt and no rails on the reply.
+    $quoted.plain = & $check 'asked on a plain change: the line, then the review skill' $askedPlain $tRepo (& $twoLegs @(& $say $offered) @((& $say $go), (& $edit), (& $skill 'review')) -Plain) 'PASS' 'rails1=plan-gate rails2=none session2=same overlay1=False bullet=True legs=2 offer=LINE offerLocus=leg1 review=1 reviewWhen=after-write builtin=0'
+    & $check 'asked on a plain change: the line, and no review' $askedPlain $tRepo (& $twoLegs @(& $say $offered) @((& $say $go), (& $edit)) -Plain) 'FAIL' 'overlay1=False .*offer=LINE offerLocus=leg1 review=0 reviewWhen=none' | Out-Null
+    & $check 'asked on a plain change that tripped the security overlay' $askedPlain $tRepo (& $twoLegs @(& $say $offered) @((& $say $go), (& $edit), (& $skill 'review')) -PlainWithOverlay) 'INCONCLUSIVE' 'overlay1=True .*NOT EXAMINED: the first prompt tripped the security overlay' | Out-Null
+    & $check 'asked on a plain change whose reply carried the overlay' $askedPlain $tRepo (& $twoLegs @(& $say $offered) @((& $say $go), (& $edit), (& $skill 'review')) -PlainReplyOverlay) 'INCONCLUSIVE' 'overlay1=False .*NOT EXAMINED: the second leg''s UserPromptSubmit response is overlay, not an answer-turn hook with no rails' | Out-Null
+    # Not examined: the reply never reached the agent.
+    & $check 'a first leg that wrote' $asked $tRepo (& $twoLegs @((& $say $offered), (& $edit)) $null) 'INCONCLUSIVE' 'legs=1 offer=LINE .*NOT EXAMINED: the first leg wrote, so the reply never reached the agent' | Out-Null
+    & $check 'a stopped first leg with no second leg' $plain $tRepo (& $twoLegs @(& $say $offered) $null) 'INCONCLUSIVE' 'NOT EXAMINED: the first leg wrote nothing and the second leg did not run' | Out-Null
+
+    # The scenarios: K on fixture v2 with the b514-orders overlay, as b528-options; the go reply is b528-options' own, the asked reply is
+    # B-410's answer followed by ' Go ahead, with review.'; the dist router reads both replies as the overlay alone (no review rail).
+    $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
+    $kCase = @($scenarios | Where-Object { $_.id -eq 'risk-design-k' })
+    $b528Case = @($scenarios | Where-Object { $_.id -eq 'b528-options' })
+    $routerHook = Join-Path $repo 'dist/dotnet/.claude/hooks/route-prompt.ps1'
+    $route = { param([string]$Prompt) (@{ hook_event_name = 'UserPromptSubmit'; prompt = $Prompt } | ConvertTo-Json -Compress) | & pwsh -NoProfile -File $routerHook | Out-String }
+    foreach ($id in @($plain, $asked)) {
+        $case = @($scenarios | Where-Object { $_.id -eq $id })
+        if ($case.Count -ne 1) { throw "B-416 scenarios.json has $($case.Count) $id entries, expected 1" }
+        $case = $case[0]
+        if (-not ([string]$case.fixture).Equals('orders-v2') -or -not ([string]$case.overlay).Equals('b514-orders') -or $case.overlayPatch -or $case.bareArm -or $case.stack -ne 'dotnet' -or $case.assertion -ne 'reviewOffer' -or [decimal]$case.budgetUsd -ne 1 -or [decimal]$case.followUpBudgetUsd -ne 2.5) { throw "B-416 $id is not the pre-registered case (fixture, overlay, stack, assertion or budgets)" }
+        if ($case.prompt -cne $kCase[0].prompt) { throw "B-416 $id does not use prompt K exactly" }
+        $expected = if ($id -eq $plain) { [string]$b528Case[0].followUp } else { [string]$kCase[0].followUp + ' Go ahead, with review.' }
+        if ($case.followUp -cne $expected) { throw "B-416 $id's follow-up is not the pre-registered reply" }
+        $followOut = & $route ([string]$case.followUp)
+        if ($followOut -match 'Routed intent' -or $followOut -match 'Plan gate' -or $followOut -notmatch 'Security-sensitive surface detected') { throw "B-416 $id's follow-up does not route as the overlay alone: $followOut" }
+    }
+    # Amendment 2: the plain cell is b356-decoy-supplier's prompt and reply, the reply ending ' Go ahead, with review.'; the dist router
+    # reads the prompt as a feature with the plan gate and no overlay, and the reply as nothing.
+    $decoy = @($scenarios | Where-Object { $_.id -eq 'b356-decoy-supplier' })
+    $case = @($scenarios | Where-Object { $_.id -eq $askedPlain })
+    if ($case.Count -ne 1) { throw "B-416 scenarios.json has $($case.Count) $askedPlain entries, expected 1" }
+    $case = $case[0]
+    if (-not ([string]$case.fixture).Equals('orders-v2') -or -not ([string]$case.overlay).Equals('b514-orders') -or $case.overlayPatch -or $case.bareArm -or $case.stack -ne 'dotnet' -or $case.assertion -ne 'reviewOffer' -or [decimal]$case.budgetUsd -ne 1 -or [decimal]$case.followUpBudgetUsd -ne 2) { throw "B-416 $askedPlain is not the pre-registered case (fixture, overlay, stack, assertion or budgets)" }
+    if ($case.prompt -cne $decoy[0].prompt) { throw "B-416 $askedPlain does not use b356-decoy-supplier's prompt exactly" }
+    $decoyReply = [string]$decoy[0].followUp
+    if (-not $decoyReply.EndsWith(' Go ahead.') -or $case.followUp -cne ($decoyReply.Substring(0, $decoyReply.Length - ' Go ahead.'.Length) + ' Go ahead, with review.')) { throw "B-416 $askedPlain's follow-up is not the decoy's reply ending ' Go ahead, with review.'" }
+    $promptOut = & $route ([string]$case.prompt)
+    if ($promptOut -notmatch 'Routed intent: `feature`[\s\S]*Plan gate' -or $promptOut -match 'Security-sensitive surface detected') { throw "B-416 $askedPlain's prompt does not route feature with the plan gate and no security overlay" }
+    $followOut = & $route ([string]$case.followUp)
+    if ($followOut -match 'Routed intent' -or $followOut -match 'Plan gate' -or $followOut -match 'Security-sensitive surface detected') { throw "B-416 $askedPlain's follow-up carries rails: $followOut" }
+    # The T arm: one patch naming the carrier only, adding the one candidate line.
+    $patch = Join-Path $repo 'meta/eval-fixtures/target-patches/b416-review-offer.patch'
+    if ((@(Get-TargetPatchPaths $patch) -join ',') -ne '.github/instructions/framework-rules.instructions.md') { throw 'B-416 the T patch does not name the carrier alone' }
+    $changed = @([IO.File]::ReadAllLines($patch) | Where-Object { $_ -match '^(?:\+(?!\+\+ )|-(?!-- ))' })
+    if ($changed.Count -ne 1 -or -not $changed[0].StartsWith('+- Close the plan with the line') -or -not $changed[0].Contains($b416Bullet) -or $changed[0] -notmatch 'A go-ahead that does not ask for it means no review\.$') { throw "B-416 the T patch does not add exactly the one review line: $($changed -join ' | ')" }
     return $quoted
 }
 
@@ -5208,7 +5396,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     # The live loop: the overlay patch lands inside the overlay's commit, multi-turn streams are read for skillUse, and -Live
     # checks every overlay patch against its overlay before any spend.
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
+    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer'', ''reviewOffer''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
     if ($selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $preflightOverlay ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
     Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT']) | Copilot, no skill call: $($quoted['copilot no-skill']) | Copilot, skill tool: $($quoted['copilot skill-tool'])"
 }
@@ -6101,6 +6289,7 @@ export class UserService {
         Invoke-RiskDesignSelfTest $temp
         $b528Quoted = Invoke-OptionsPlanSelfTest $temp
         $b356Quoted = Invoke-RecordOfferSelfTest $temp
+        $b416Quoted = Invoke-ReviewOfferSelfTest $temp
         Invoke-RouterProbeSelfTest $temp
         Invoke-OverlayWiringSelfTest $temp
         Invoke-SkillUseSelfTest $temp
@@ -6110,6 +6299,7 @@ export class UserService {
         Invoke-ReportWriteSelfTest $temp
         Invoke-ReportProcSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
+        Write-Output "PASS: B-416 the review-offer grader reads, before the first main-agent write and across both legs, the plan's closing review line (a line opening with Review that names the reply 'with review'; the words in passing are LOOSE; a subagent's text and text after a write are not the line), counts this repository's review skill and where it fell against the first write, a host code-review and the reviewer agents, and reads whether the installed carrier holds the candidate; asked passes on the line plus the review after the first write, go on no review and the line exactly when the candidate is installed; a first leg that wrote is not examined; the two scenarios are pinned to K, their replies and the overlay-only routing, and the T patch adds the one line to the carrier alone. Honoured: $($b416Quoted.honoured) | ignored: $($b416Quoted.ignored) | quiet: $($b416Quoted.quiet) | control: $($b416Quoted.control) | asked on a plain change (amendment 2: no security overlay in front of the review; a run that tripped it is not examined): $($b416Quoted.plain)"
         Write-Output "PASS: B-356 the record-offer grader flags, before the first main-agent write and across both legs, a plan that offers a record, and on disk or in a denied call a skill or wiki draft, an AGENTS.md convention and a test over every instance, but not an AGENTS.md inventory line, the resource's own test, an offer after the first write or a subagent's; reads the shipped carrier and the knockout; refuses a first prompt without the plan gate or with the security overlay, a second leg with rails, a stopped decoy and a two-leg seam; the three scenarios, their routing and the knockout patch are pinned. Plain: $($b356Quoted.plain) | Offers: $($b356Quoted.offers) | None: $($b356Quoted.none) | Skill: $($b356Quoted.skill) | AGENTS.md: $($b356Quoted.agents) | Inventory: $($b356Quoted.inventory) | Enumerating test: $($b356Quoted['enumerating test']) | Knockout: $($b356Quoted.knockout) | Seam offer: $($b356Quoted['seam offer'])"
         Write-Output "PASS: B-528 the options-plan grader reads, before the first main-agent write and across both legs, Option A and Option B as OPTIONS, the one-line exit as EXIT and anything else as NEITHER (a subagent's text, text after a write and a part alone are not options); reports the security gate, its auditor and the T line; refuses an unexaminable run; the Copilot converter keeps main-agent text in order, flags a subagent's, reads plan mode's plan.md in the session folder as plan text and not a write, converts a resumed second leg and refuses one that did not resume; the scenario and the T patch are pinned. Neither: $($b528Quoted.neither) | Options: $($b528Quoted.options) | Exit: $($b528Quoted.exit) | Copilot options: $($b528Quoted['copilot options']) | Copilot subagent: $($b528Quoted['copilot subagent']) | Copilot plan mode: $($b528Quoted['copilot plan mode'])"
         Write-Output 'PASS: B-410 risk-design grades FULL only when one main-agent text block before the first main-agent write holds options A and B and a recommendation (a subagent''s text, a block after a write, one part alone, and the retained S1-C alternative-as-a-sentence shapes are not), reports where it was, whether the developer was left to answer, the turn-1 question and plan fields and what the second leg did, refuses a second leg whose prompt carried the plan gate or got no hook response, grades the decoy the other way round, merges two legs without a replay, builds the first-leg and resume arguments from the default, and pins both prompts, the follow-up and the dist router''s reading of them'
@@ -8079,7 +8269,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
         # B-410: a case with a followUp is two invocations of one persisted session (the developer's prompt, then a fixed answer).
         $legSession = if ($case.followUp) { [guid]::NewGuid().ToString() } else { '' }
         # B-528: the optionsPlan cases are two legs too, on either executor.
-        if ($legSession -and $caseFixture -notin $contractFixtures -and $case.assertion -notin $planAssertions) { throw "$($case.id): a followUp is read only for the contract fixtures and the optionsPlan and recordOffer cases, whose graders take a merged two-leg transcript." }
+        if ($legSession -and $caseFixture -notin $contractFixtures -and $case.assertion -notin $planAssertions) { throw "$($case.id): a followUp is read only for the contract fixtures and the optionsPlan, recordOffer and reviewOffer cases, whose graders take a merged two-leg transcript." }
         $copilotMeta = $null
         if ($Executor -eq 'copilot') {
             $caseModel = $CopilotModel
@@ -8100,7 +8290,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
-            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer'))
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer'))
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
                 # tree) and no error. Otherwise the grader sees one leg and says why (wroteT1, or not examined).
