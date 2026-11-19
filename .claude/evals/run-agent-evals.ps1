@@ -2097,15 +2097,20 @@ function Get-ReviewCommentsGrade([string]$Id, [string]$Target, [int]$BeforeCommi
     $overdeclined = [bool](-not ($r1 -and $r2 -and $r3 -and $r4))
 
     # The final message: one unit per line, an indented continuation joined to the line it continues.
-    $finalText = [string]$Evidence.Final.result
+    # Both legs' closing messages count (a run may give its full account in the first leg); each message is read on its own, so the
+    # heading state never crosses messages.
+    $closing = @(@($Evidence.Results | ForEach-Object { [string]$_.result }) + @([string]$Evidence.Final.result) | Select-Object -Unique)
     $units = [Collections.Generic.List[string]]::new()
-    # A bullet under a heading line that is only a disposition word (for example "**Fixes**") carries that disposition.
-    $heading = ''
-    foreach ($line in @($finalText -split '\r?\n')) {
-        if ($line -match '^\s*\W*(fix(?:es|ed)?|appl(?:y|ied|ies)|done|declined|deferred)\W*$') { $heading = $Matches[1] } elseif ($line -match '^\s*\*{2}[^*]+\*{2}\s*$') { $heading = '' }
-        if ($units.Count -and $line -match '^\s{2,}\S' -and $line -notmatch '^\s*(?:[-*+]|\d+[.)])\s') { $units[$units.Count - 1] += ' ' + $line.Trim() }
-        elseif ($heading -and $line -match '^\s*(?:[-*+]|\d+[.)])\s') { $units.Add($line + ' [' + $heading + ']') }
-        else { $units.Add($line) }
+    foreach ($finalText in $closing) {
+        # A bullet under a heading line that is only a disposition word (for example "**Fixes**") carries that disposition.
+        $heading = ''
+        $messageStart = $units.Count
+        foreach ($line in @($finalText -split '\r?\n')) {
+            if ($line -match '^\s*\W*(fix(?:es|ed)?|appl(?:y|ied|ies)|done|declined|deferred)\W*$') { $heading = $Matches[1] } elseif ($line -match '^\s*\*{2}[^*]+\*{2}\s*$') { $heading = '' }
+            if ($units.Count -gt $messageStart -and $line -match '^\s{2,}\S' -and $line -notmatch '^\s*(?:[-*+]|\d+[.)])\s') { $units[$units.Count - 1] += ' ' + $line.Trim() }
+            elseif ($heading -and $line -match '^\s*(?:[-*+]|\d+[.)])\s') { $units.Add($line + ' [' + $heading + ']') }
+            else { $units.Add($line) }
+        }
     }
     $disposition = "(?i)\b(?:fix(?:ed|es)?|appl(?:y|ied|ies)|done|declin(?:e|es|ed)|won'?t|no change|left|defer(?:red)?|follow-?up|TECH_DEBT|ask(?:ed)?|question)\b"
     $claims = @(
@@ -3425,7 +3430,7 @@ function Get-RouterFired($Transcript) {
     $responses = @($Transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'hook_response' -and $_.hook_event -eq 'UserPromptSubmit' })
     foreach ($response in $responses) {
         $stdout = [string]$response.stdout
-        $intent = [regex]::Match($stdout, 'Routed intent: `(\w+)`')
+        $intent = [regex]::Match($stdout, 'Routed intent: `([\w-]+)`')
         if ($intent.Success) { return [pscustomobject]@{ Fired = 'True'; Intent = $intent.Groups[1].Value } }
     }
     $succeeded = @($responses | Where-Object { $_.outcome -eq 'success' -and $_.exit_code -eq 0 })
@@ -7081,7 +7086,7 @@ function Invoke-ReviewCommentsSelfTest([string]$Temp) {
     $r1Name = 'R1_ten_units_get_the_volume_discount'
     $r2Name = 'R2_no_coupon_means_no_coupon_discount'
     $hid = { param([string]$R1, [string]$R2, [hashtable]$Extra = @{}) $map = @{ $r1Name = $R1; $r2Name = $R2 }; foreach ($key in $Extra.Keys) { $map[$key] = $Extra[$key] }; [pscustomobject]@{ Status = 'RAN'; Build = 'OK'; Tests = $map; Attempts = 1; Blocked = 0; Message = '' } }
-    $transcript = { param([object[]]$Tools = @(), [string]$Subtype = 'success', [string]$Final = 'Done.', [object[]]$Hooks = @())
+    $transcript = { param([object[]]$Tools = @(), [string]$Subtype = 'success', [string]$Final = 'Done.', [object[]]$Hooks = @(), [string]$LegOne = '')
         $events = [Collections.Generic.List[object]]::new()
         $events.Add([pscustomobject]@{ type = 'system'; subtype = 'init'; model = 'claude-sonnet-5-5' })
         foreach ($hook in $Hooks) { $events.Add($hook) }
@@ -7091,15 +7096,19 @@ function Invoke-ReviewCommentsSelfTest([string]$Temp) {
             $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = "b537-$n"; name = $tool.Name; input = $tool.Input }) } })
             $events.Add([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = "b537-$n"; is_error = $false; content = [string]$tool.Result }) } })
         }
+        if ($LegOne) { $events.Add([pscustomobject]@{ type = 'result'; subtype = 'success'; is_error = $false; result = $LegOne; total_cost_usd = 0.4; duration_ms = 30000 }) }
         $events.Add([pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = $Final; total_cost_usd = 0.4; duration_ms = 30000 })
         [pscustomobject]@{ Events = $events.ToArray() } }
     $shell = { param([string]$Name, [string]$Command) [pscustomobject]@{ Name = $Name; Input = [pscustomobject]@{ command = $Command }; Result = '' } }
+    # The live shape (a retained AB transcript): hook_name and output beside hook_event and stdout, and a hyphenated intent.
+    $hookRoutedLive = [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_name = 'UserPromptSubmit'; hook_event = 'UserPromptSubmit'; output = '## Routed intent: `address-comments`'; stdout = '## Routed intent: `address-comments`'; stderr = ''; exit_code = 0; outcome = 'success' }
+    $hookQuiet = [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_name = 'UserPromptSubmit'; hook_event = 'UserPromptSubmit'; output = ''; stdout = ''; stderr = ''; exit_code = 0; outcome = 'success' }
     $hookRouted = [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_event = 'UserPromptSubmit'; outcome = 'success'; exit_code = 0; stdout = '## Routed intent: `comments`' }
 
     $hidNone = & $hid 'Failed' 'Failed'
     $flagsOf = { param([hashtable]$Flags) $d = [ordered]@{ R1 = 'NOT'; R2 = 'NOT'; R3 = 'NOT'; R4 = 'NOT'; W1 = 'HELD'; W2 = 'HELD'; W3 = 'HELD'; W4 = 'HELD'; W5 = 'HELD'; W6 = 'HELD'; S1 = 'HELD' }; foreach ($key in $Flags.Keys) { $d[$key] = $Flags[$key] }; ' \| ' + (@($d.Keys | ForEach-Object { "$_=$($d[$_])" }) -join ' ') + ' \| ' }
     $c = { param([string]$Name, [scriptblock]$Apply, [hashtable]$Flags, [hashtable]$O = @{})
-        [pscustomobject]@{ Name = $Name; Apply = $Apply; Flags = $Flags; Id = $(if ($O.Id) { $O.Id } else { 'review-comments-c' }); Tools = $(if ($O.Tools) { @($O.Tools) } else { @() }); Final = $(if ($null -ne $O.Final) { $O.Final } else { 'Done.' }); Hooks = $(if ($O.Hooks) { @($O.Hooks) } else { @() }); Hidden = $(if ($O.Hidden) { $O.Hidden } else { $hidNone }); Pass = [bool]$O.Pass; Extra = $(if ($O.Extra) { @($O.Extra) } else { @() }) } }
+        [pscustomobject]@{ Name = $Name; Apply = $Apply; Flags = $Flags; Id = $(if ($O.Id) { $O.Id } else { 'review-comments-c' }); Tools = $(if ($O.Tools) { @($O.Tools) } else { @() }); Final = $(if ($null -ne $O.Final) { $O.Final } else { 'Done.' }); Hooks = $(if ($O.Hooks) { @($O.Hooks) } else { @() }); LegOne = [string]$O.LegOne; Hidden = $(if ($O.Hidden) { $O.Hidden } else { $hidNone }); Pass = [bool]$O.Pass; Extra = $(if ($O.Extra) { @($O.Extra) } else { @() }) } }
 
     $goodFinal = @(
         '- 4101 (VolumeDiscountHelper.cs:9): fixed. 10 units now qualify; the requirement says 10 or more.'
@@ -7170,6 +7179,7 @@ function Invoke-ReviewCommentsSelfTest([string]$Temp) {
         (& $c 'ACCOUNTED: every claim named by its activity id (the live run message)' {} @{} @{ Final = $activityFinal; Extra = @('accounted=10/10 accountedAll=True d1=GROUPED ') })
         (& $c 'ACCOUNTED: a claim named by its anchor file and line' {} @{} @{ Final = '- CouponRule.cs:9 was declined, it is guarded.'; Extra = @('accounted=1/10 accountedAll=False ') })
         (& $c 'ACCOUNTED: the wrong line number does not name the claim' {} @{} @{ Final = '- CouponRule.cs:19 was declined.'; Extra = @('accounted=0/10 ') })
+        (& $c 'ACCOUNTED: a full account in leg 1, two items in leg 2' {} @{} @{ LegOne = $goodFinal; Final = ($goodFinal -split "`n" | Select-Object -First 2) -join "`n"; Extra = @('accounted=10/10 accountedAll=True d1=GROUPED ') })
         (& $c 'D1 named alone: SEPARATE' {} @{} @{ Final = '- 4142: fixed.'; Extra = @('accounted=0/10 accountedAll=False d1=SEPARATE ') })
         (& $c 'D1 named with R1: GROUPED' {} @{} @{ Final = '- 4142 and 4101 are one comment: fixed.'; Extra = @('d1=GROUPED ') })
         (& $c 'D1 called a duplicate: GROUPED' {} @{} @{ Final = '- 4142 duplicates the boundary comment, so one fix covers it.'; Extra = @('d1=GROUPED ') })
@@ -7180,6 +7190,8 @@ function Invoke-ReviewCommentsSelfTest([string]$Temp) {
         (& $c 'command: the file read' {} @{} @{ Id = 'review-comments-a'; Tools = @([pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root '.claude\commands\address-comments.md') }; Result = '' }); Extra = @('command=read ') })
         (& $c 'command: the wrapper read' {} @{} @{ Id = 'review-comments-ab'; Tools = @([pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root '.agents/skills/address-comments/SKILL.md') }; Result = '' }); Extra = @('command=read ') })
         (& $c 'command: another skill and another file' {} @{} @{ Id = 'review-comments-a'; Tools = @([pscustomobject]@{ Name = 'Skill'; Input = [pscustomobject]@{ skill = 'add-tests' }; Result = '' }, [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root 'AGENTS.md') }; Result = '' }); Extra = @('command=none ') })
+        (& $c 'router fired (the live hook_response shape, hyphenated intent)' {} @{} @{ Id = 'review-comments-ab'; Hooks = @($hookRoutedLive); Extra = @('routerFired=True routerIntent=address-comments ') })
+        (& $c 'router not fired (a hook_response with no routed intent)' {} @{} @{ Id = 'review-comments-ab'; Hooks = @($hookQuiet); Extra = @('routerFired=False routerIntent=none ') })
         (& $c 'router fired' {} @{} @{ Id = 'review-comments-ab'; Hooks = @($hookRouted); Extra = @('routerFired=True routerIntent=comments ') })
         # The correct answer, and the same with an over-built test matrix.
         (& $c 'the full correct answer' $correct @{ R1 = 'FIXED'; R2 = 'FIXED'; R3 = 'FIXED'; R4 = 'FIXED' } @{ Id = 'review-comments-ab'; Final = $goodFinal; Hidden = $hidAll; Pass = $true; Extra = @('^op=comments arm=ab pass=True judged=True overdeclined=False accounted=10/10 accountedAll=True d1=GROUPED ', 'build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=1 deployRun=False ') })
@@ -7195,7 +7207,7 @@ function Invoke-ReviewCommentsSelfTest([string]$Temp) {
             & $case.Apply
             $hiddenResult = $case.Hidden
             $script:ReviewCommentsHiddenRunner = { param($tree, $hiddenRoot) $hiddenResult }.GetNewClosure()
-            $graded = Test-ScenarioEvidence $case.Id $root (& $transcript $case.Tools 'success' $case.Final $case.Hooks) $before
+            $graded = Test-ScenarioEvidence $case.Id $root (& $transcript $case.Tools 'success' $case.Final $case.Hooks $case.LegOne) $before
             $arm = $case.Id -replace '^review-comments-', ''
             $wanted = @("^op=comments arm=$arm pass=$($case.Pass) ", (& $flagsOf $case.Flags)) + @($case.Extra)
             $missing = @($wanted | Where-Object { $graded.Detail -notmatch $_ })
