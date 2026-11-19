@@ -2220,9 +2220,139 @@ function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [strin
 # answered as a developer clicking one option per question: with -Pick review the first option whose label says "with review", with
 # -Pick go the first that does not, else the first option. Every other request is refused, as plain -p refuses what its allowlist
 # does not cover.
-function Get-DialogAnswer($Request, [string]$Pick) {
-    if ([string]$Request.subtype -ne 'can_use_tool' -or [string]$Request.tool_name -ne 'AskUserQuestion') {
-        return [pscustomobject]@{ behavior = 'deny'; message = 'This run does not grant that permission.' }
+#
+# A scenario with "completeReview": true (-CompleteReview) also lets the review it asks for run on this channel, in one private
+# folder the runner makes for that run and removes afterwards (the bundle root, b416-bundle-<8 hex> under temp; never the scratch
+# root, never the temp root). Only these classes are allowed, each a single literal command or a read, every path strictly under the
+# bundle root (Get-ReviewPermissionClass): the scope capture and the weakening scan (the repository's own scripts), Get-FileHash and
+# Remove-Item of one path (PowerShell tool only), and Read/Glob/Grep under the bundle root. No chaining, pipes, variables, parameter
+# bindings with a colon, creating a folder or writing a file. No bundle root: everything but the question tool is refused.
+# Every request is appended to -Log.
+function Get-DialogLongPath([string]$Path) {
+    # An 8.3 name (a ~ in a segment) is expanded once, so every comparison below is on the long form.
+    if (-not $Path.Contains('~') -or -not [OperatingSystem]::IsWindows()) { return $Path }
+    if (-not ('B416.B416LongPath' -as [type])) {
+        Add-Type -Namespace B416 -Name B416LongPath -MemberDefinition '[System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)] public static extern uint GetLongPathName(string shortPath, System.Text.StringBuilder longPath, uint size);'
+    }
+    $buffer = [Text.StringBuilder]::new(32768)
+    $length = [B416.B416LongPath]::GetLongPathName($Path, $buffer, 32768)
+    if ($length -gt 0 -and $length -lt 32768) { return $buffer.ToString() }
+    return $Path
+}
+function Test-DialogUnder([string]$Full, [string]$Root) {
+    # $true when $Full is $Root or below it (case-insensitive, either separator already normalised by GetFullPath).
+    $r = $Root.TrimEnd('\', '/'); $f = $Full.TrimEnd('\', '/')
+    return ($f -ieq $r -or $f.StartsWith($r + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or $f.StartsWith($r + [IO.Path]::AltDirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
+}
+function New-DialogBundleRoot([string]$ScratchRoot) {
+    if (-not $ScratchRoot) { throw 'B-416 bundle root: no scratch root to keep it out of' }
+    $temp = (Get-DialogLongPath ([IO.Path]::GetFullPath([IO.Path]::GetTempPath()))).TrimEnd('\', '/')
+    $root = [IO.Path]::GetFullPath((Join-Path $temp ('b416-bundle-' + [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(4)).ToLowerInvariant())))
+    if ($root -ieq $temp -or -not (Test-DialogUnder $root $temp)) { throw "B-416 bundle root: $root is not a folder under the temp root" }
+    if (Test-DialogUnder $root ([IO.Path]::GetFullPath($ScratchRoot))) { throw "B-416 bundle root: $root is inside the eval scratch root" }
+    [void][IO.Directory]::CreateDirectory($root)
+    return $root
+}
+function Remove-DialogBundleRoot([string]$Root) {
+    # Only a folder this runner could have made: b416-bundle-<8 hex>.
+    if ($Root -and (Split-Path -Leaf $Root) -cmatch '^b416-bundle-[0-9a-f]{8}$' -and (Test-Path -LiteralPath $Root)) { Remove-Item -LiteralPath $Root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+function Test-DialogBundlePath([string]$Path, [string]$BundleRoot, [string]$ScratchRoot, [switch]$AllowRoot) {
+    if (-not $BundleRoot) { return $false }
+    $p = ([string]$Path).Trim().Trim('"', "'")
+    if (-not $p -or $p.Contains('..') -or -not [IO.Path]::IsPathRooted($p)) { return $false }
+    # GetFullPath expands an existing 8.3 name to its long form, so a short-form request is judged on the text as sent: a ~ is refused
+    # unless the root itself carries it and the request starts with the root's own text and has no ~ below it.
+    if ($p.Contains('~')) {
+        $rootText = $BundleRoot.TrimEnd('\', '/')
+        if (-not $rootText.Contains('~') -or -not $p.StartsWith($rootText, [StringComparison]::OrdinalIgnoreCase) -or $p.Substring($rootText.Length).Contains('~')) { return $false }
+    }
+    try { $full = [IO.Path]::GetFullPath($p).TrimEnd('\', '/'); $root = [IO.Path]::GetFullPath($BundleRoot).TrimEnd('\', '/') } catch { return $false }
+    # Belt and braces: nothing of the eval scratch root, whatever the containment test below says.
+    if ($ScratchRoot -and (Test-DialogUnder $full ([IO.Path]::GetFullPath($ScratchRoot)))) { return $false }
+    if ($full -ieq $root) { return [bool]$AllowRoot }
+    if (-not $full.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { return $false }
+    # Below the root: no 8.3 short-name segment, no stream or drive colon.
+    $rest = $full.Substring($root.Length + 1)
+    return -not ($rest.Contains('~') -or $rest.Contains(':'))
+}
+function Get-ReviewPermissionClass($Request, [string]$BundleRoot, [string]$ScratchRoot) {
+    if (-not $BundleRoot) { return 'none' }
+    $tool = [string]$Request.tool_name
+    if ($tool -in @('Bash', 'PowerShell')) {
+        $command = [string]$Request.input.command
+        if (-not $command -or $command -match '[;&|`$<>()\r\n]') { return 'none' }
+        $tokens = @([regex]::Matches($command, '"([^"]*)"|''([^'']*)''|(\S+)') | ForEach-Object { if ($_.Groups[1].Success) { $_.Groups[1].Value } elseif ($_.Groups[2].Success) { $_.Groups[2].Value } else { $_.Groups[3].Value } })
+        if (@($tokens | Where-Object { $_ -match '^-[A-Za-z]+:' }).Count) { return 'none' }
+        $script = if ($command -cmatch '^pwsh -NoProfile -File scripts/review-scope\.ps1(?: |$)') { 'scope-capture' }
+            elseif ($command -cmatch '^pwsh -NoProfile -File scripts/test-weakening-scan\.ps1(?: |$)') { 'weakening-scan' }
+            else { '' }
+        if ($script) {
+            $required = if ($script -eq 'scope-capture') { '-OutputPath' } else { '-ScopePath' }
+            $seen = 0
+            for ($i = 4; $i -lt $tokens.Count; $i++) {
+                if ($tokens[$i] -in @('-OutputPath', '-PathFile', '-ScopePath')) {
+                    if ($i + 1 -ge $tokens.Count -or -not (Test-DialogBundlePath $tokens[$i + 1] $BundleRoot $ScratchRoot)) { return 'none' }
+                    if ($tokens[$i] -eq $required) { $seen++ }
+                    $i++
+                }
+            }
+            if (-not $seen) { return 'none' }
+            return $script
+        }
+        if ($tool -ne 'PowerShell' -or $tokens.Count -lt 2 -or $tokens[0] -inotin @('Get-FileHash', 'Remove-Item')) { return 'none' }
+        $isHash = $tokens[0] -ieq 'Get-FileHash'
+        $paths = @(); $recurse = 0; $force = 0
+        for ($i = 1; $i -lt $tokens.Count; $i++) {
+            $t = $tokens[$i]
+            if ($t -ieq '-LiteralPath' -or $t -ieq '-Path') { if ($i + 1 -ge $tokens.Count) { return 'none' }; $paths += $tokens[$i + 1]; $i++ }
+            elseif ($isHash -and $t -ieq '-Algorithm') { if ($i + 1 -ge $tokens.Count -or $tokens[$i + 1] -ine 'SHA256') { return 'none' }; $i++ }
+            elseif (-not $isHash -and $t -ieq '-Recurse') { $recurse++ }
+            elseif (-not $isHash -and $t -ieq '-Force') { $force++ }
+            elseif ($t.StartsWith('-')) { return 'none' }
+            else { $paths += $t }
+        }
+        if ($paths.Count -ne 1 -or $recurse -gt 1 -or $force -gt 1 -or $paths[0] -match '[*?\[\]]') { return 'none' }
+        if (-not (Test-DialogBundlePath $paths[0] $BundleRoot $ScratchRoot)) { return 'none' }
+        if ($isHash) { return 'hash' } else { return 'remove' }
+    }
+    if ($tool -eq 'Read') {
+        if (Test-DialogBundlePath ([string]$Request.input.file_path) $BundleRoot $ScratchRoot) { return 'bundle-read' }
+        return 'none'
+    }
+    if ($tool -in @('Glob', 'Grep')) {
+        $pattern = [string]$Request.input.pattern
+        if ($pattern.Contains('..') -or ($pattern -and [IO.Path]::IsPathRooted($pattern))) { return 'none' }
+        if (Test-DialogBundlePath ([string]$Request.input.path) $BundleRoot $ScratchRoot -AllowRoot) { return 'bundle-read' }
+    }
+    return 'none'
+}
+function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log, [string]$BundleRoot, [string]$ScratchRoot) {
+    $class = 'none'
+    $isRequest = [string]$Request.subtype -eq 'can_use_tool'
+    if ($isRequest -and [string]$Request.tool_name -eq 'AskUserQuestion') { $class = 'question' }
+    elseif ($isRequest -and $CompleteReview) { $class = Get-ReviewPermissionClass $Request $BundleRoot $ScratchRoot }
+    if ($null -ne $Log) {
+        $in = $Request.input
+        $summary = switch ([string]$Request.tool_name) {
+            { $_ -in @('Bash', 'PowerShell') } { [string]$in.command }
+            'Read' { [string]$in.file_path }
+            { $_ -in @('Glob', 'Grep') } { "$($in.path) $($in.pattern)" }
+            'AskUserQuestion' { (@($in.questions | ForEach-Object { [string]$_.question }) -join ' | ') }
+            default { if ($in) { $in | ConvertTo-Json -Compress -Depth 5 } else { '' } }
+        }
+        if ($summary.Length -gt 300) { $summary = $summary.Substring(0, 300) }
+        $Log.Add([ordered]@{ tool = $(if ([string]$Request.tool_name) { [string]$Request.tool_name } else { [string]$Request.subtype }); input = $summary; decision = $(if ($class -ne 'none') { 'allow' } else { 'deny' }); class = $class })
+    }
+    if ($class -eq 'none') {
+        $message = 'This run does not grant that permission.'
+        if ($CompleteReview -and $BundleRoot) {
+            $message = "Not approved. This run approves only single commands with literal paths, one per call, no variables, chaining or pipes, and only under $BundleRoot : pwsh -NoProfile -File scripts/review-scope.ps1 ... -OutputPath <a new folder under $BundleRoot>; pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -ScopePath <the bundle>; Get-FileHash -LiteralPath <file under $BundleRoot>; Remove-Item -LiteralPath <path under $BundleRoot>; Read, Glob and Grep under $BundleRoot."
+        }
+        return [pscustomobject]@{ behavior = 'deny'; message = $message }
+    }
+    if ($class -ne 'question') {
+        return [pscustomobject]@{ behavior = 'allow'; updatedInput = $Request.input }
     }
     $answers = [ordered]@{}
     foreach ($question in @($Request.input.questions)) {
@@ -2239,7 +2369,15 @@ function Get-DialogAnswer($Request, [string]$Pick) {
 # One process, one session: the prompt, then either a click (the agent called its question tool; Get-DialogAnswer) or, when the first
 # turn ends with nothing written, the typed reply as a second user message. After the turn that follows the go-ahead the input is
 # closed and the stream is read to its end. The transcript is the stream without the control requests, the shape plain -p prints.
-function Invoke-ClaudeDialog([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools) {
+function Invoke-ClaudeDialog([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview) {
+    # With the opt-in the run gets one private bundle root, made here and removed here once the transcript and the permissions log are written.
+    $scratchRoot = Split-Path -Parent $TranscriptPath
+    $bundleRoot = if ($CompleteReview) { New-DialogBundleRoot $scratchRoot } else { '' }
+    try { Invoke-ClaudeDialogRun $WorkingDirectory $Prompt $FollowUp $Pick $TranscriptPath $ModelId $Budget $Timeout $Agent $AllowedTools -CompleteReview:$CompleteReview -BundleRoot $bundleRoot -ScratchRoot $scratchRoot }
+    finally { Remove-DialogBundleRoot $bundleRoot }
+}
+function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview, [string]$BundleRoot, [string]$ScratchRoot) {
+    $permissions = [Collections.Generic.List[object]]::new()
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command claude).Source
     $psi.WorkingDirectory = $WorkingDirectory
@@ -2269,7 +2407,7 @@ function Invoke-ClaudeDialog([string]$WorkingDirectory, [string]$Prompt, [string
         $event = $null
         try { $event = $line | ConvertFrom-Json -Depth 100 } catch { $lines.Add($line); continue }
         if ($event.type -eq 'control_request') {
-            if (-not $closed) { & $send ([ordered]@{ type = 'control_response'; response = [ordered]@{ subtype = 'success'; request_id = $event.request_id; response = (Get-DialogAnswer $event.request $Pick) } }) }
+            if (-not $closed) { & $send ([ordered]@{ type = 'control_response'; response = [ordered]@{ subtype = 'success'; request_id = $event.request_id; response = (Get-DialogAnswer $event.request $Pick -CompleteReview:$CompleteReview -Log $permissions -BundleRoot $BundleRoot -ScratchRoot $ScratchRoot) } }) }
             continue
         }
         $lines.Add($line)
@@ -2290,10 +2428,13 @@ function Invoke-ClaudeDialog([string]$WorkingDirectory, [string]$Prompt, [string
         [IO.File]::WriteAllLines($TranscriptPath, $lines, [Text.UTF8Encoding]::new($false))
         $errorText = $stderr.GetAwaiter().GetResult()
     }
+    # Every control-channel permission request of the run, next to the transcript: tool, input (at most 300 characters), decision, class.
+    [IO.File]::WriteAllLines($TranscriptPath + '.permissions.jsonl', @($permissions | ForEach-Object { $_ | ConvertTo-Json -Compress }), [Text.UTF8Encoding]::new($false))
     [pscustomobject]@{
         ExitCode = if ($timedOut) { 124 } else { $process.ExitCode }
         TimedOut = $timedOut
         ErrorText = $errorText
+        Permissions = @($permissions)
     }
 }
 
@@ -3010,9 +3151,17 @@ function Get-ReviewAsk($Evidence, $Transcript, [string]$Target) {
     $firstEnd = if ($Evidence.ResultOrdinals.Count -ge 2) { [int]$Evidence.ResultOrdinals[0] } else { 0 }
     $textAt = if ($firstEnd -and $firstEnd -lt $cutoff) { $firstEnd } else { 0 }
     $goAhead = if (-not $clickAt -and -not $textAt) { 'none' } elseif ($textAt -gt $clickAt) { 'text' } else { 'click' }
+    # The go-ahead question's option order: is the review option first, and does it say recommended (label or description)?
+    $reviewFirst = 'n/a'; $reviewRec = 'n/a'
+    if ($option) {
+        $goQuestion = @($option[0].Input.questions | Where-Object { @($_.options | Where-Object { [string]$_.label -match $b416Loose }).Count } | Select-Object -First 1)
+        $reviewOption = @($goQuestion[0].options | Where-Object { [string]$_.label -match $b416Loose } | Select-Object -First 1)
+        $reviewFirst = [string]([string]@($goQuestion[0].options)[0].label -match $b416Loose)
+        $reviewRec = [string](([string]$reviewOption[0].label + ' ' + [string]$reviewOption[0].description) -match '(?i)recommended')
+    }
     $init = @($Transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
     $carrier = Join-Path $Target '.github/instructions/framework-rules.instructions.md'
-    [pscustomobject]@{ QTool = [bool]($init -and @($init[0].tools) -contains 'AskUserQuestion'); Ask = $ask; Asks = $asks.Count; Picked = $picked; GoAhead = $goAhead
+    [pscustomobject]@{ ReviewFirst = $reviewFirst; ReviewRec = $reviewRec; QTool = [bool]($init -and @($init[0].tools) -contains 'AskUserQuestion'); Ask = $ask; Asks = $asks.Count; Picked = $picked; GoAhead = $goAhead
         Boundary = [Math]::Max($clickAt, $textAt); Bullet = (Test-Path -LiteralPath $carrier -PathType Leaf) -and [IO.File]::ReadAllText($carrier).Contains($b416AskBullet) }
 }
 
@@ -4460,7 +4609,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         # click landed and the security gate was called first (gateFirst), the review not in its place; the review after the gate is not
         # part of its pass. Not examined: no question tool on the channel, a write before any go-ahead, no go-ahead at all, or a typed
         # reply whose hook carried rails it should not.
-        { $_ -in @('b416-dialog-go', 'b416-dialog-asked-plain', 'b416-dialog-asked') } {
+        { $_ -in @('b416-dialog-go', 'b416-dialog-asked-plain', 'b416-dialog-asked', 'b416-dialog-asked-full') } {
             $plainChange = $Id -eq 'b416-dialog-asked-plain'
             $ask = Get-ReviewAsk $e $Transcript $Target
             $boundary = [int]$ask.Boundary
@@ -4477,7 +4626,14 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $firstGate = @($skillCalls | Where-Object { [string]$_.Input.skill -eq 'security-gate' } | Select-Object -First 1)
             $firstReview = @($skillCalls | Where-Object { [string]$_.Input.skill -eq 'review' } | Select-Object -First 1)
             $gateFirst = if ($firstGate -and (-not $firstReview -or [int]$firstReview[0].Index -gt [int]$firstGate[0].Index)) { 'True' } elseif ($firstReview) { 'False' } else { 'none' }
-            $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) overlay1=$overlay1 askBullet=$($ask.Bullet) qtool=$($ask.QTool) ask=$($ask.Ask) asks=$($ask.Asks) goAhead=$($ask.GoAhead) picked=$($ask.Picked) offer=$($review.Offer) review=$($review.Reviews) reviewWhen=$($review.When) builtin=$($review.Builtin) reviewers=$($review.Reviewers) plan=$($plan.Class) doneWhen=$($plan.DoneWhen) wrote=$wrote gate=$gate gateFirst=$gateFirst auditor=$auditor side=$((Get-B406Side $e).Class) durationMs=$(Get-B406Duration $e)"
+            $reviewAfterGate = [bool]($firstGate -and @($skillCalls | Where-Object { [string]$_.Input.skill -eq 'review' -and [int]$_.Index -gt [int]$firstGate[0].Index }).Count)
+            $permsAt = $null
+            if ($Transcript.PSObject.Properties['Permissions']) { $permsAt = @(@($Transcript.Permissions) | Where-Object { $null -ne $_ }) }
+            $permsField = if ($null -eq $permsAt) { 'perms=n/a permClasses=n/a' } else {
+                $allowedN = @($permsAt | Where-Object { $_.decision -eq 'allow' }).Count
+                $classes = if ($permsAt.Count) { (@($permsAt | Group-Object { [string]$_.class } | Sort-Object Name | ForEach-Object { "$($_.Name):$($_.Count)" }) -join ',') } else { 'none' }
+                "perms=$allowedN/$($permsAt.Count - $allowedN) permClasses=$classes" }
+            $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) overlay1=$overlay1 askBullet=$($ask.Bullet) qtool=$($ask.QTool) ask=$($ask.Ask) asks=$($ask.Asks) goAhead=$($ask.GoAhead) picked=$($ask.Picked) offer=$($review.Offer) review=$($review.Reviews) reviewWhen=$($review.When) builtin=$($review.Builtin) reviewers=$($review.Reviewers) plan=$($plan.Class) doneWhen=$($plan.DoneWhen) wrote=$wrote gate=$gate gateFirst=$gateFirst reviewAfterGate=$reviewAfterGate reviewFirst=$($ask.ReviewFirst) reviewRec=$($ask.ReviewRec) $permsField auditor=$auditor side=$((Get-B406Side $e).Class) durationMs=$(Get-B406Duration $e)"
             $why = if ($hooks.Rails -ne 'plan-gate') { "the first prompt's hook carried $($hooks.Rails), not the plan gate" }
                 elseif ($plainChange -and $overlay1) { 'the first prompt tripped the security overlay' }
                 elseif (-not $plainChange -and -not $overlay1) { "the first prompt's hook carried no security overlay" }
@@ -4489,7 +4645,7 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 else { '' }
             if ($why) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: $why" } }
             $clicked = $ask.Ask -eq 'OPTION' -and $ask.GoAhead -eq 'click'
-            $pass = if ($Id -eq 'b416-dialog-asked') { $clicked -and $ask.Picked -eq 'review' -and $gateFirst -eq 'True' }
+            $pass = if ($Id -in @('b416-dialog-asked', 'b416-dialog-asked-full')) { $clicked -and $ask.Picked -eq 'review' -and $gateFirst -eq 'True' }
                 elseif ($plainChange) { $clicked -and $ask.Picked -eq 'review' -and $review.When -eq 'after-write' }
                 else { $review.Reviews -eq 0 -and $review.Builtin -eq 0 -and (($clicked -and $ask.Picked -eq 'go') -eq $ask.Bullet) }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $pass; Detail = $fields }
@@ -5123,6 +5279,20 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     & $check 'kasked: the review before the gate' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'review') + @(& $skill 'security-gate')) $null) 'FAIL' 'picked=review .*gate=True gateFirst=False ' | Out-Null
     & $check 'kasked: the click landed on Go ahead' $kAsked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead') + @(& $edit) + @(& $skill 'security-gate') + @(& $skill 'review')) $null) 'FAIL' 'goAhead=click picked=go .*gateFirst=True ' | Out-Null
     & $check 'kasked: a typed reply, not the click' $kAsked $tRepo (& $stream @(& $say $line) (@(& $say $go) + @(& $edit) + @(& $skill 'security-gate') + @(& $skill 'review')) -Rails2 $overlay) 'FAIL' 'ask=NONE asks=0 goAhead=text .*gateFirst=True ' | Out-Null
+    # Option order on the go-ahead question (reported, not graded): the review option first and marked recommended, or the registered order.
+    $reviewFirstOrder = @('Go ahead, with review (Recommended)', 'Go ahead')
+    & $check 'kasked: the review option first and recommended' $kAsked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $reviewFirstOrder 'Go ahead, with review (Recommended)') + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'picked=review .*gateFirst=True .*reviewFirst=True reviewRec=True ' | Out-Null
+    & $check 'kasked: the registered order' $kAsked $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'picked=review .*gateFirst=True .*reviewFirst=False reviewRec=False ' | Out-Null
+    & $check 'go: the review option first, the click on Go ahead' $goId $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $reviewFirstOrder 'Go ahead') + @(& $edit)) $null) 'PASS' 'ask=OPTION asks=1 goAhead=click picked=go .*reviewFirst=True reviewRec=True ' | Out-Null
+    & $check 'go: no question, no option order' $goId $cRepo (& $stream @(& $say $plan) (@(& $say $go) + @(& $edit)) -Rails2 $overlay) 'PASS' 'picked=n/a .*reviewFirst=n/a reviewRec=n/a ' | Out-Null
+    # b416-dialog-asked-full: graded as b416-dialog-asked, plus reviewAfterGate and the permission counts the live loop attaches.
+    $kFull = 'b416-dialog-asked-full'
+    $withPerms = { param($Stream, $Records) $Stream | Add-Member -NotePropertyName Permissions -NotePropertyValue @($Records) -Force; $Stream }
+    $records = @([pscustomobject]@{ decision = 'allow'; class = 'question' }, [pscustomobject]@{ decision = 'allow'; class = 'scope-capture' }, [pscustomobject]@{ decision = 'deny'; class = 'none' })
+    & $check 'kfull: the gate, then the review, with permission counts' $kFull $tRepo (& $withPerms (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate') + @(& $skill 'review')) $null) $records) 'PASS' 'picked=review .*gate=True gateFirst=True reviewAfterGate=True reviewFirst=False reviewRec=False perms=2/1 permClasses=none:1,question:1,scope-capture:1 ' | Out-Null
+    & $check 'kfull: no permission requests recorded' $kFull $tRepo (& $withPerms (& $stream ($clickReview + @(& $edit) + @(& $skill 'security-gate')) $null) @()) 'PASS' 'gateFirst=True reviewAfterGate=False .*perms=0/0 permClasses=none ' | Out-Null
+    & $check 'kfull: the review before the gate' $kFull $tRepo (& $stream ($clickReview + @(& $edit) + @(& $skill 'review') + @(& $skill 'security-gate')) $null) 'FAIL' 'gateFirst=False reviewAfterGate=False .*perms=n/a permClasses=n/a ' | Out-Null
+    & $check 'kfull: the click landed on Go ahead' $kFull $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead') + @(& $edit) + @(& $skill 'security-gate') + @(& $skill 'review')) $null) 'FAIL' 'picked=go .*gateFirst=True reviewAfterGate=True ' | Out-Null
     # Not examined.
     & $check 'no question tool on the channel' $asked $tRepo (& $stream @(& $say $line) (@(& $edit) + @(& $skill 'review')) -Plain -NoTool) 'INCONCLUSIVE' 'qtool=False .*NOT EXAMINED: the host listed no question tool on this channel' | Out-Null
     & $check 'a write before any go-ahead' $asked $tRepo (& $stream (@(& $say $plan) + @(& $edit) + @(& $question 'q1' $both 'Go ahead, with review')) $null -Plain) 'INCONCLUSIVE' 'ask=NONE asks=0 goAhead=none .*NOT EXAMINED: the agent wrote before any go-ahead reached it' | Out-Null
@@ -5140,6 +5310,144 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     if ($plainGo.behavior -ne 'allow' -or $plainGo.updatedInput.answers.'Go ahead?' -cne 'Go ahead' -or $plainGo.updatedInput.answers.'Which option?' -cne 'Option A') { throw "B-416 dialog the go pick did not click the option without review: $($plainGo | ConvertTo-Json -Compress -Depth 8)" }
     $bash = Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'Bash'; input = [pscustomobject]@{ command = 'pwsh scripts/review-scope.ps1' } }) 'review'
     if ($bash.behavior -ne 'deny' -or -not $bash.message -or $bash.PSObject.Properties['updatedInput']) { throw 'B-416 dialog a permission request for another tool was not refused' }
+    # The opt-in (completeReview): off, nothing but the question tool; on, only the classes of Get-ReviewPermissionClass, every path strictly
+    # under the run's bundle root (a fake one here, next to a fake scratch root, both under temp).
+    $tempDir = [IO.Path]::GetTempPath()
+    $scratchFake = Join-Path $tempDir 'ai-tech-lead-agent-evals-selftest'
+    $root = Join-Path $tempDir 'b416-bundle-0a1b2c3d'
+    $bundle = Join-Path $root 'bundle'
+    $manifest = Join-Path $bundle 'manifest.json'
+    $outside = Join-Path ([IO.Path]::GetPathRoot($tempDir)) 'work-repo/out'
+    $otherTemp = Join-Path $tempDir 'other/x'
+    $evalCase = Join-Path $scratchFake 'b416-dialog-asked-full'
+    $evalTarget = Join-Path $evalCase 'target'
+    $scopeCmd = "pwsh -NoProfile -File scripts/review-scope.ps1 -Mode Uncommitted -OutputPath `"$bundle`""
+    $scanCmd = "pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -ScopePath `"$bundle`""
+    $decide = { param([string]$Tool, $ToolInput, [bool]$On) (Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = $Tool; input = [pscustomobject]$ToolInput }) 'review' -CompleteReview:$On -BundleRoot $root -ScratchRoot $scratchFake).behavior }
+    $optCases = @(
+        @('Bash', @{ command = $scopeCmd }, $false, 'deny', 'opt-in off: a well-formed scope capture'),
+        @('Bash', @{ command = $scopeCmd }, $true, 'allow', 'opt-in on: the scope capture (Bash)'),
+        @('PowerShell', @{ command = $scopeCmd }, $true, 'allow', 'opt-in on: the scope capture (PowerShell)'),
+        @('Bash', @{ command = "$scopeCmd -PathFile `"$(Join-Path $root 'paths.json')`"" }, $true, 'allow', 'opt-in on: the scope capture with a path file under the bundle root'),
+        @('Bash', @{ command = $scanCmd }, $true, 'allow', 'opt-in on: the weakening scan'),
+        @('Bash', @{ command = $scanCmd }, $false, 'deny', 'opt-in off: the weakening scan'),
+        @('PowerShell', @{ command = "Get-FileHash -LiteralPath `"$manifest`"" }, $true, 'allow', 'opt-in on: Get-FileHash -LiteralPath of a file under the root'),
+        @('PowerShell', @{ command = "Get-FileHash -Path `"$manifest`" -Algorithm SHA256" }, $true, 'allow', 'opt-in on: Get-FileHash -Path with -Algorithm SHA256'),
+        @('PowerShell', @{ command = "Get-FileHash `"$manifest`"" }, $true, 'allow', 'opt-in on: Get-FileHash with a bare path'),
+        @('PowerShell', @{ command = "Get-FileHash -LiteralPath `"$manifest`"" }, $false, 'deny', 'opt-in off: Get-FileHash'),
+        @('Bash', @{ command = "Get-FileHash -LiteralPath `"$manifest`"" }, $true, 'deny', 'Get-FileHash through the Bash tool'),
+        @('PowerShell', @{ command = "Get-FileHash -LiteralPath `"$(Join-Path $outside 'x.cs')`"" }, $true, 'deny', 'Get-FileHash of a file outside the root (accepts any path)'),
+        @('PowerShell', @{ command = "Get-FileHash -LiteralPath `"$otherTemp`"" }, $true, 'deny', 'Get-FileHash of another temp path'),
+        @('PowerShell', @{ command = "Get-FileHash -LiteralPath `"$manifest`" -Algorithm MD5" }, $true, 'deny', 'Get-FileHash with another algorithm'),
+        @('PowerShell', @{ command = "Get-FileHash -LiteralPath:`"$manifest`"" }, $true, 'deny', 'Get-FileHash with a colon-bound path'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$manifest`"" }, $true, 'allow', 'opt-in on: Remove-Item of a file under the root'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$bundle`" -Recurse -Force" }, $true, 'allow', 'opt-in on: Remove-Item -Recurse -Force of a subfolder'),
+        @('PowerShell', @{ command = "Remove-Item -Force -Recurse -LiteralPath `"$bundle`"" }, $true, 'allow', 'opt-in on: Remove-Item with the switches first'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$manifest`"" }, $false, 'deny', 'opt-in off: Remove-Item'),
+        @('Bash', @{ command = "Remove-Item -LiteralPath `"$manifest`"" }, $true, 'deny', 'Remove-Item through the Bash tool'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$root`" -Recurse -Force" }, $true, 'deny', 'Remove-Item of the bundle root itself'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$root\`" -Recurse -Force" }, $true, 'deny', 'Remove-Item of the bundle root with a trailing separator'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$($tempDir.TrimEnd('\', '/'))`" -Recurse -Force" }, $true, 'deny', 'Remove-Item of the root''s parent (the temp root)'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$otherTemp`" -Recurse -Force" }, $true, 'deny', 'Remove-Item of another temp path (accepts any path)'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$(Join-Path $scratchFake 'b416-dialog-asked-full.jsonl.permissions.jsonl')`"" }, $true, 'deny', 'Remove-Item of a file directly under the scratch root'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$(Join-Path $evalTarget 'src')`" -Recurse -Force" }, $true, 'deny', 'Remove-Item inside the agent''s working directory'),
+        @('PowerShell', @{ command = "Remove-Item -Recurse -Force `"$root\*`"" }, $true, 'deny', 'Remove-Item with a wildcard'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$manifest`" `"$(Join-Path $bundle 'b.json')`"" }, $true, 'deny', 'Remove-Item of two paths'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$manifest`" -Confirm:`$false" }, $true, 'deny', 'Remove-Item with another switch'),
+        @('Bash', @{ command = "$scopeCmd; rm -rf x" }, $true, 'deny', 'chained command'),
+        @('Bash', @{ command = "$scopeCmd && rm -rf x" }, $true, 'deny', 'and-chained command'),
+        @('Bash', @{ command = "$scopeCmd | Out-Null" }, $true, 'deny', 'piped command'),
+        @('PowerShell', @{ command = "Remove-Item -LiteralPath `"$manifest`"; Remove-Item -LiteralPath `"$bundle`"" }, $true, 'deny', 'chained Remove-Item'),
+        @('Bash', @{ command = "pwsh -NoProfile -File scripts/review-scope.ps1 -Mode Uncommitted -OutputPath `$env:TEMP/rv" }, $true, 'deny', 'a variable in the path'),
+        @('Bash', @{ command = "pwsh -NoProfile -File scripts/review-scope.ps1 -Mode Uncommitted -OutputPath `"$outside`"" }, $true, 'deny', 'an output path outside temp'),
+        @('Bash', @{ command = "pwsh -NoProfile -File scripts/review-scope.ps1 -Mode Uncommitted -OutputPath scripts/out" }, $true, 'deny', 'a relative output path'),
+        @('Bash', @{ command = "pwsh -NoProfile -File scripts/review-scope.ps1 -Mode Uncommitted -OutputPath `"$bundle/../x`"" }, $true, 'deny', 'dot-dot in the path'),
+        @('Bash', @{ command = "$scopeCmd -PathFile `"$(Join-Path $outside 'paths.json')`"" }, $true, 'deny', 'a path file outside temp'),
+        @('Bash', @{ command = 'pwsh -NoProfile -File scripts/review-scope.ps1 -Mode Uncommitted' }, $true, 'deny', 'no output path'),
+        @('Bash', @{ command = "$scopeCmd -OutputPath:$outside" }, $true, 'deny', 'a colon-bound output path'),
+        @('Bash', @{ command = "pwsh -File scripts/review-scope.ps1 -OutputPath `"$bundle`"" }, $true, 'deny', 'without -NoProfile'),
+        @('Bash', @{ command = "pwsh -NoProfile -File scripts/other.ps1 -OutputPath `"$bundle`"" }, $true, 'deny', 'another script'),
+        @('Bash', @{ command = "pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -ScopePath `"$outside`"" }, $true, 'deny', 'a scan of a path outside temp'),
+        @('Bash', @{ command = 'git push' }, $true, 'deny', 'git push'),
+        @('Bash', @{ command = "mkdir `"$bundle`"" }, $true, 'deny', 'mkdir (no such class)'),
+        @('Write', @{ file_path = $manifest; content = 'x' }, $true, 'deny', 'a Write to a path under the root'),
+        @('Read', @{ file_path = $manifest }, $true, 'allow', 'a Read under the root'),
+        @('Read', @{ file_path = $manifest }, $false, 'deny', 'opt-in off: a Read under the root'),
+        @('Read', @{ file_path = (Join-Path $outside 'x.cs') }, $true, 'deny', 'a Read outside temp'),
+        @('Read', @{ file_path = $otherTemp }, $true, 'deny', 'a temp path outside the bundle root (outside bundle root)'),
+        @('Read', @{ file_path = (Join-Path $tempDir 'ai-tech-lead-agent-evals-selftest/bundle-1/manifest.json') }, $true, 'deny', 'a Read of a temp file next to the bundle root, inside the scratch folder'),
+        @('Read', @{ file_path = "$bundle/../x" }, $true, 'deny', 'a Read with dot-dot'),
+        @('Read', @{ file_path = $root }, $true, 'deny', 'a Read of the bundle root itself'),
+        @('Read', @{ file_path = (Join-Path $scratchFake 'b416-dialog-asked-full.jsonl.permissions.jsonl') }, $true, 'deny', 'a Read of a file directly under the scratch root'),
+        @('Read', @{ file_path = (Join-Path $evalTarget 'src/CheckoutController.cs') }, $true, 'deny', 'a Read of a file inside the agent''s working directory'),
+        @('Glob', @{ path = $bundle; pattern = '**/*' }, $true, 'allow', 'a Glob under the root'),
+        @('Glob', @{ path = $root; pattern = '**/*.md' }, $true, 'allow', 'a Glob of the root itself'),
+        @('Grep', @{ path = $bundle; pattern = 'Refund' }, $true, 'allow', 'a Grep under the root'),
+        @('Grep', @{ path = $outside; pattern = 'x' }, $true, 'deny', 'a Grep outside temp'),
+        @('Grep', @{ path = $bundle; pattern = (Join-Path $outside 'x') }, $true, 'deny', 'a Grep with a rooted pattern'),
+        @('Glob', @{ path = $bundle; pattern = (Join-Path $outside '**/*') }, $true, 'deny', 'a Glob with a rooted pattern'),
+        @('Glob', @{ path = $bundle; pattern = '../**/*' }, $true, 'deny', 'a Glob pattern with dot-dot'),
+        @('Grep', @{ pattern = 'Refund' }, $true, 'deny', 'a Grep with no path'),
+        @('Glob', @{ pattern = '**/*' }, $true, 'deny', 'a Glob with no path'),
+        @('Glob', @{ path = $evalTarget; pattern = '**/*' }, $true, 'deny', 'a Glob of the agent''s working directory'),
+        @('Glob', @{ path = $scratchFake; pattern = '**/*' }, $true, 'deny', 'a Glob of the scratch root'),
+        @('Glob', @{ path = $tempDir; pattern = '**/*' }, $true, 'deny', 'a Glob of the temp root')
+    )
+    foreach ($optCase in $optCases) {
+        $got = & $decide $optCase[0] $optCase[1] $optCase[2]
+        if ($got -ne $optCase[3]) { throw "B-416 dialog completeReview: $($optCase[4]) was $got, not $($optCase[3])" }
+    }
+    # A bundle root inside the scratch root is refused by the scratch belt even though containment under the root would pass.
+    $beltRoot = Join-Path $scratchFake 'b416-bundle-deadbeef'
+    $belt = Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'Read'; input = [pscustomobject]@{ file_path = (Join-Path $beltRoot 'x.json') } }) 'review' -CompleteReview -BundleRoot $beltRoot -ScratchRoot $scratchFake
+    if ($belt.behavior -ne 'deny') { throw 'B-416 dialog completeReview: a path in a bundle root inside the scratch root was allowed (scratch belt)' }
+    if ((Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'Bash'; input = [pscustomobject]@{ command = $scopeCmd } }) 'review' -CompleteReview).behavior -ne 'deny' -or (Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'Read'; input = [pscustomobject]@{ file_path = $manifest } }) 'review' -CompleteReview -ScratchRoot $scratchFake).behavior -ne 'deny') { throw 'B-416 dialog completeReview with no bundle root did not fail closed' }
+    # The denial message: the old text with the opt-in off (or no root); with it on, the root literally and what the run approves.
+    $oldText = 'This run does not grant that permission.'
+    $pushRequest = [pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'Bash'; input = [pscustomobject]@{ command = 'git push' } }
+    $denyOn = Get-DialogAnswer $pushRequest 'review' -CompleteReview -BundleRoot $root -ScratchRoot $scratchFake
+    $denyOff = Get-DialogAnswer $pushRequest 'review' -BundleRoot $root -ScratchRoot $scratchFake
+    $denyNoRoot = Get-DialogAnswer $pushRequest 'review' -CompleteReview
+    if ($denyOff.message -cne $oldText -or $denyNoRoot.message -cne $oldText) { throw "B-416 dialog the opt-in off denial message is not the old text: $($denyOff.message)" }
+    if (-not $denyOn.message.Contains($root) -or $denyOn.message.Length -gt 700 -or $denyOn.message -cnotmatch 'review-scope\.ps1' -or $denyOn.message -cnotmatch 'test-weakening-scan\.ps1' -or $denyOn.message -cnotmatch 'Get-FileHash -LiteralPath' -or $denyOn.message -cnotmatch 'Remove-Item -LiteralPath' -or $denyOn.message -cnotmatch 'no variables, chaining or pipes') { throw "B-416 dialog the opt-in on denial message does not name the bundle root and what is approved: $($denyOn.message)" }
+    # 8.3 short names: the root is on its long form; a request in short form is refused unless it is the root's own form.
+    if ([OperatingSystem]::IsWindows()) {
+        $longDir = Join-Path $tempDir 'B416SelfTestLongFolderName'
+        try {
+            [void][IO.Directory]::CreateDirectory((Join-Path $longDir 'bundle'))
+            $short = (& cmd /c "for %I in (`"$longDir`") do @echo %~sI" | Select-Object -First 1).Trim()
+            if ($short -like '*~*') {
+                if ((Get-DialogLongPath $short) -ine $longDir.TrimEnd('\')) { throw "B-416 dialog the 8.3 name $short did not expand to $longDir" }
+                $shortRequest = { param([string]$BundleRoot, [string]$File) (Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'Read'; input = [pscustomobject]@{ file_path = $File } }) 'review' -CompleteReview -BundleRoot $BundleRoot -ScratchRoot $scratchFake).behavior }
+                $longRoot = Join-Path $longDir 'bundle'
+                if ((& $shortRequest $longRoot (Join-Path $longRoot 'm.json')) -ne 'allow' -or (& $shortRequest $longRoot (Join-Path (Join-Path $short 'bundle') 'm.json')) -ne 'deny') { throw 'B-416 dialog a short-form (8.3) request path under the long-form root was not refused' }
+                if ((& $shortRequest (Join-Path $short 'bundle') (Join-Path (Join-Path $short 'bundle') 'm.json')) -ne 'allow' -or (& $shortRequest $longRoot (Join-Path (Join-Path $longRoot 'LONGFI~1') 'm.json')) -ne 'deny') { throw 'B-416 dialog the 8.3 root-form rule is wrong' }
+            }
+        } finally { Remove-Item -LiteralPath $longDir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+    if ((Get-DialogLongPath (Join-Path $tempDir 'plain')) -cne (Join-Path $tempDir 'plain')) { throw 'B-416 dialog a path with no ~ was changed by the long-form expansion' }
+    # The run's own bundle root: made outside the scratch root and under temp, refused inside it, removed afterwards (and only such a folder).
+    $madeRoot = New-DialogBundleRoot $scratchFake
+    try {
+        if ((Split-Path -Leaf $madeRoot) -cnotmatch '^b416-bundle-[0-9a-f]{8}$' -or -not (Test-Path -LiteralPath $madeRoot -PathType Container) -or (Split-Path -Parent $madeRoot) -ine $tempDir.TrimEnd('\', '/') -or (Test-DialogUnder $madeRoot $scratchFake)) { throw "B-416 dialog the bundle root was not a fresh b416-bundle-<8 hex> folder directly under temp and outside the scratch root: $madeRoot" }
+        [IO.File]::WriteAllText((Join-Path $madeRoot 'x.json'), '{}')
+    } finally { Remove-DialogBundleRoot $madeRoot }
+    if (Test-Path -LiteralPath $madeRoot) { throw 'B-416 dialog the bundle root was not removed' }
+    $keep = Join-Path $tempDir 'b416-selftest-keep'
+    [void][IO.Directory]::CreateDirectory($keep)
+    try { Remove-DialogBundleRoot $keep; if (-not (Test-Path -LiteralPath $keep)) { throw 'B-416 dialog the bundle root removal deleted a folder that is not a bundle root' } } finally { Remove-Item -LiteralPath $keep -Recurse -Force -ErrorAction SilentlyContinue }
+    $threw = $false
+    try { [void](New-DialogBundleRoot $tempDir.TrimEnd('\', '/')) } catch { $threw = $true }
+    if (-not $threw) { throw 'B-416 dialog a bundle root inside the scratch root was created instead of refused' }
+    $dialogText = (Get-Command Invoke-ClaudeDialog).ScriptBlock.Ast.Extent.Text
+    foreach ($needle in @('$scratchRoot = Split-Path -Parent $TranscriptPath', 'New-DialogBundleRoot $scratchRoot', '-BundleRoot $bundleRoot -ScratchRoot $scratchRoot', 'finally { Remove-DialogBundleRoot $bundleRoot }')) {
+        if (-not $dialogText.Contains($needle)) { throw "B-416 dialog Invoke-ClaudeDialog does not make and remove the bundle root: missing $needle" }
+    }
+    $logged = [Collections.Generic.List[object]]::new()
+    [void](Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'Bash'; input = [pscustomobject]@{ command = $scopeCmd + (' x' * 200) } }) 'review' -CompleteReview -Log $logged -BundleRoot $root -ScratchRoot $scratchFake)
+    [void](Get-DialogAnswer $two 'review' -Log $logged)
+    [void](Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'Bash'; input = [pscustomobject]@{ command = 'git push' } }) 'review' -CompleteReview -Log $logged -BundleRoot $root -ScratchRoot $scratchFake)
+    if ($logged.Count -ne 3 -or (($logged | ForEach-Object { "$($_.class):$($_.decision)" }) -join ',') -cne 'scope-capture:allow,question:allow,none:deny' -or $logged[0].input.Length -ne 300 -or $logged[2].tool -cne 'Bash') { throw "B-416 dialog the permission log is wrong: $($logged | ConvertTo-Json -Compress -Depth 4)" }
     # The dialog arguments are the plain ones with the prompt replaced by the control channel; the live loop sends dialog cases there.
     $plainArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -IncludeHookEvents -AllowedTools @('Read'))
     $dialogArgs = @(Get-ClaudeArguments -ModelId 'm' -Budget 1 -IncludeHookEvents -AllowedTools @('Read') -Dialog)
@@ -5147,6 +5455,7 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     if (($dialogArgs -join [char]0) -cne ($dialogWant -join [char]0) -or $plainArgs[0] -ne '-p' -or $plainArgs[1] -ne 'p') { throw "B-416 dialog the control-channel arguments are not the plain ones without the prompt: $($dialogArgs -join ' ')" }
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-ReviewAskSelfTest).ScriptBlock.Ast.Extent.Text, '')
     if ($selfText -notmatch [regex]::Escape('$run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath') -or $selfText -notmatch [regex]::Escape('$legSession = if ($case.followUp -and -not $dialogPick)')) { throw 'B-416 dialog the live loop does not run a dialog case as one process' }
+    if ($selfText -notmatch [regex]::Escape('$AllowedTools -CompleteReview:([bool]$case.completeReview)')) { throw 'B-416 dialog the live loop does not pass the scenario''s completeReview to the dialog' }
 
     # The scenarios: the same prompts, typed replies and budgets as the text-line cells, plus the option a click lands on.
     $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
@@ -5157,6 +5466,14 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
         foreach ($field in @('prompt', 'followUp', 'stack', 'fixture', 'overlay', 'assertion')) { if ([string]$case[0].$field -cne [string]$twin[0].$field) { throw "B-416 dialog $($pair[0])'s $field is not $($pair[1])'s" } }
         if ([decimal]$case[0].budgetUsd -ne [decimal]$twin[0].budgetUsd -or [decimal]$case[0].followUpBudgetUsd -ne [decimal]$twin[0].followUpBudgetUsd -or [string]$case[0].dialog -cne $pair[2] -or $twin[0].dialog -or $case[0].overlayPatch -or $case[0].bareArm) { throw "B-416 dialog $($pair[0]) is not the pre-registered case (budgets, pick, or a field its twin lacks)" }
     }
+    # b416-dialog-asked-full is b416-dialog-asked with the opt-in (and budgets no lower); no other b416 scenario has the field.
+    $fullCase = @($scenarios | Where-Object { $_.id -eq 'b416-dialog-asked-full' })
+    $kCase = @($scenarios | Where-Object { $_.id -eq $kAsked })
+    if ($fullCase.Count -ne 1 -or $kCase.Count -ne 1) { throw 'B-416 dialog scenarios.json does not hold exactly one b416-dialog-asked-full and one b416-dialog-asked' }
+    foreach ($field in @('prompt', 'followUp', 'stack', 'fixture', 'overlay', 'assertion', 'dialog')) { if ([string]$fullCase[0].$field -cne [string]$kCase[0].$field) { throw "B-416 dialog b416-dialog-asked-full's $field is not b416-dialog-asked's" } }
+    $fullOnly = @($fullCase[0].PSObject.Properties.Name | Where-Object { $_ -notin @($kCase[0].PSObject.Properties.Name) })
+    if (($fullOnly -join ',') -cne 'completeReview' -or @($kCase[0].PSObject.Properties.Name | Where-Object { $_ -notin @($fullCase[0].PSObject.Properties.Name) }).Count -or $fullCase[0].completeReview -ne $true -or [decimal]$fullCase[0].budgetUsd -lt [decimal]$kCase[0].budgetUsd -or [decimal]$fullCase[0].followUpBudgetUsd -lt [decimal]$kCase[0].followUpBudgetUsd -or $fullCase[0].overlayPatch -or $fullCase[0].bareArm) { throw 'B-416 dialog b416-dialog-asked-full differs from b416-dialog-asked by more than completeReview and budgets' }
+    foreach ($other in @($scenarios | Where-Object { $_.id -like 'b416-*' -and $_.id -ne 'b416-dialog-asked-full' })) { if ($other.PSObject.Properties['completeReview']) { throw "B-416 dialog $($other.id) has completeReview; only b416-dialog-asked-full may" } }
     # The T arm: one patch naming the carrier only, adding the one candidate bullet, which keeps the measured text line as its fallback.
     $patch = Join-Path $repo 'meta/eval-fixtures/target-patches/b416-review-question.patch'
     if ((@(Get-TargetPatchPaths $patch) -join ',') -ne '.github/instructions/framework-rules.instructions.md') { throw 'B-416 dialog the T patch does not name the carrier alone' }
@@ -8565,7 +8882,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework') -Mode $CopilotMode
         } elseif ($dialogPick) {
-            $run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath $caseModel ($caseBudget + [decimal]$case.followUpBudgetUsd) $TimeoutSeconds $caseAgent $AllowedTools
+            $run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath $caseModel ($caseBudget + [decimal]$case.followUpBudgetUsd) $TimeoutSeconds $caseAgent $AllowedTools -CompleteReview:([bool]$case.completeReview)
         } else {
             $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel $caseBudget $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios -or $case.assertion -in $planAssertions) -SessionId $legSession -AllowedTools $AllowedTools
         }
@@ -8579,6 +8896,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
             $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer'))
+            if ($dialogPick) { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force }
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
                 # tree) and no error. Otherwise the grader sees one leg and says why (wroteT1, or not examined).
