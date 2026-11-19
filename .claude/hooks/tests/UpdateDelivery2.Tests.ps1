@@ -854,6 +854,55 @@ It 'B-502 a disabled skill keeps the team''s exemplar line through two updates, 
     }
 }
 
+# B-502 attack: reading a disabled copy for its exemplar line must never stop an update the way the unread copy did not.
+function New-B502DisabledTarget {
+    param([Parameter(Mandatory)][string]$Tag)
+    $t = Join-Path ([IO.Path]::GetTempPath()) ("b502-$Tag-" + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    $first = Invoke-Installer -Dist 'dotnet' -Target $t
+    Assert ($LASTEXITCODE -eq 0) "calibration: the install failed (exit $LASTEXITCODE): $first"
+    $learnings = Join-Path $t 'LEARNINGS.md'
+    $before = if (Test-Path -LiteralPath $learnings) { [IO.File]::ReadAllText($learnings) } else { "# Learnings`n" }
+    [IO.File]::WriteAllText($learnings, $before + "`n## Disabled framework skill: add-warehouse-load`n`nNot used here.`n", [Text.UTF8Encoding]::new($false))
+    $one = Invoke-Installer -Dist 'dotnet' -Target $t
+    Assert ($LASTEXITCODE -eq 0) "calibration: the disabling update failed (exit $LASTEXITCODE): $one"
+    return $t
+}
+
+It 'B-502 a disabled SKILL.md that is not valid UTF-8 does not stop the update: it finishes and the file is backed up' {
+    $t = New-B502DisabledTarget -Tag 'badutf8'
+    try {
+        $inactive = Join-Path $t '.claude/disabled-skills/add-warehouse-load/SKILL.md'
+        $bytes = [IO.File]::ReadAllBytes($inactive)
+        [IO.File]::WriteAllBytes($inactive, [byte[]]($bytes + [byte[]](0x0A, 0x4E, 0x6F, 0x74, 0x65, 0x20, 0x97, 0x20, 0x78, 0x0A)))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        Assert ($exit -eq 0) "the update stopped on the disabled copy (exit $exit): $out"
+        $saved = @(Get-ChildItem -LiteralPath (Join-Path $t '.claude/framework-update-backup') -Recurse -File -Force | Where-Object { $_.FullName -match 'add-warehouse-load' -and ([IO.File]::ReadAllBytes($_.FullName) -contains 0x97) })
+        Assert ($saved.Count -ge 1) "the team's copy with the 0x97 byte was not backed up: $out"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+It 'B-502 a disabled SKILL.md held open by another process stops the update at its own preflight (exit 4, CANT-VERIFY, nothing changed)' {
+    $t = New-B502DisabledTarget -Tag 'locked'
+    $handle = $null
+    try {
+        $inactive = Join-Path $t '.claude/disabled-skills/add-warehouse-load/SKILL.md'
+        $handle = [IO.File]::Open($inactive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $flat = $out -replace '\s+', ' '
+        Assert ($exit -eq 4) "the held disabled copy did not stop at the preflight with exit 4 (exit $exit): $out"
+        Assert ($flat -match 'CANT-VERIFY: .*could not be read.*Nothing was changed') "the preflight message is missing: $out"
+        Assert ($flat -notmatch 'Exception calling') "a raw .NET exception reached the consumer: $out"
+    } finally {
+        if ($handle) { $handle.Dispose() }
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # B-464 C5: the version stamp is the 34th of 101 copies, so a file held open later in the manifest stopped the update
 # with a raw Copy-Item error after the stamp already named the new release, and the re-run was refused as a dirty tree.
 It 'C5 an update stopped by a held file keeps the old version stamp and prints the re-run command' {

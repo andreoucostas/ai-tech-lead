@@ -2270,7 +2270,14 @@ if ($updateMode) {
         $inactiveFile = Join-Path $tgt ".claude/disabled-skills/$name/SKILL.md"
         $inactiveItem = Get-Item -LiteralPath $inactiveFile -Force -ErrorAction SilentlyContinue
         if ($null -eq $inactiveItem -or $inactiveItem.PSIsContainer -or (Test-IsLinkEntry $inactiveItem)) { continue }
-        $inactiveText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($inactiveFile))
+        # This read must never be what stops an update: a copy that cannot be read or decoded is skipped, and the later steps
+        # handle it as they did before this read existed (a held file stops at their own preflight, a bad encoding is backed up).
+        try {
+            $inactiveText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($inactiveFile))
+        } catch {
+            $reconciliationMessages.Add("NOTICE: '.claude/disabled-skills/$name/SKILL.md' could not be read ($($_.Exception.Message.Split([char]10)[0].Trim())), so a 'For a concrete current instance' line in it is not carried; the update goes on without it.")
+            continue
+        }
         $inactiveExemplar = [regex]::Match($inactiveText, '(?m)^For a concrete current instance in this repo, see .+$')
         if ($inactiveExemplar.Success) { $skillExemplars[$name] = $inactiveExemplar.Value.TrimEnd("`r") }
     }
