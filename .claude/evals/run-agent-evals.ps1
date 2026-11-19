@@ -2295,6 +2295,24 @@ function Get-ToolPath($Tool) {
     return ''
 }
 
+# The offset in a shell command of the first in-place rewrite of a file matching $PathPattern, or -1. Counted: sed/perl -i, Set-Content,
+# Out-File, Add-Content, tee, [IO.File]::Write*/Append*, and a > or >> redirect, each naming the file in the same simple command (quoted
+# text is skipped whole, so `&&` inside a sed expression does not end it). A read (cat, Get-Content, Select-String) is never an edit.
+function Get-ShellEditOffset([string]$Command, [string]$PathPattern) {
+    $seg = '(?:''[^'']*''|"(?:\\.|[^"\\])*"|[^''";&|\r\n])*?'
+    $path = "(?:['""][^'""\r\n]*?)?(?<=^|[\s'""/\\=(:])$PathPattern(?![\w.])"
+    $best = -1
+    foreach ($pattern in @(
+            "\b(?:sed|perl)\b(?=$seg\s(?:-[A-Za-z]*i|--in-place)\b)$seg$path",
+            "(?i)\b(?:Set-Content|Out-File|Add-Content|Tee-Object|tee)\b$seg$path",
+            "(?i)\[(?:System\.)?IO\.File\]::(?:Write|Append)All(?:Text|Lines|Bytes)\s*\($seg$path",
+            "(?<![\d&>])>>?\s*['""]?(?:[^\s'"";&|<>]*[\\/])?$PathPattern(?![\w.])")) {
+        $m = [regex]::Match($Command, $pattern)
+        if ($m.Success -and ($best -lt 0 -or $m.Index -lt $best)) { $best = $m.Index }
+    }
+    return $best
+}
+
 function Get-ToolResultText($Evidence, $Tool) {
     if (-not $Evidence.ToolResults.ContainsKey($Tool.Id)) { return '' }
     $content = $Evidence.ToolResults[$Tool.Id].content
@@ -3768,14 +3786,22 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $passRun = "(?i)(?<!')PASS: inclusive range"
             $red = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)EXIT:\s*1|Exception:[\s\S]*inclusive upper bound is broken|(?m)^\s*\|\s+inclusive upper bound is broken\s*$' -and $text -notmatch $passRun } | Select-Object -First 1)
             $green = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; ($text -match '(?i)EXIT:\s*0' -or $text -match $passRun) -and $text -notmatch '(?i)Exception:[\s\S]*inclusive upper bound is broken' } | Select-Object -Last 1)
+            # A shell call (Bash, PowerShell) that rewrites src/Calculator.cs in place (sed -i, Set-Content, a redirect) is a production edit too, at that
+            # call's event index. When the test runs in the same call, the command text's order decides: a red run before the edit, a green run after it.
+            $shellEdits = @($e.Tools | Where-Object { $_.Name -in @('Bash','PowerShell') -and (Get-ShellEditOffset ([string]$_.Input.command) 'src[\\/]Calculator\.cs') -ge 0 })
+            $firstEdit = @(@($prodEdits) + @($shellEdits) | Sort-Object Index -Stable | Select-Object -First 1)
             $testAt = if ($red) { $red[0].Index } else { -1 }
-            $prodAt = if ($prodEdits) { $prodEdits[0].Index } else { -1 }
+            $prodAt = if ($firstEdit) { $firstEdit[0].Index } else { -1 }
+            $editAt = if ($firstEdit -and $firstEdit[0].Name -in @('Bash','PowerShell')) { Get-ShellEditOffset ([string]$firstEdit[0].Input.command) 'src[\\/]Calculator\.cs' } else { -1 }
+            $runAt = { param($Tool) @([regex]::Matches([string]$Tool.Input.command, 'Test-Calculator\.ps1') | ForEach-Object Index) }
+            $redFirst = $testAt -ge 0 -and $prodAt -ge 0 -and ($prodAt -gt $testAt -or ($prodAt -eq $testAt -and $editAt -ge 0 -and (& $runAt $red[0])[0] -lt $editAt))
+            $greenAfter = $green -and $prodAt -ge 0 -and ($green[0].Index -gt $prodAt -or ($green[0].Index -eq $prodAt -and $editAt -ge 0 -and (& $runAt $green[0])[-1] -gt $editAt))
             $fixed = (Get-Content -Raw (Join-Path $Target 'src/Calculator.cs')) -match 'value\s*<=\s*max'
             $exercised = $testRuns.Count -gt 0
             # B-421: testInvoked is a call whose result is the script's own run output; a read of the script (Get-Content) names it and shows its source.
             $invoked = @($testRuns | Where-Object { $text = Get-ToolResultText $e $_; $text -match '(?i)PASS: inclusive range|inclusive upper bound is broken' -and $text -notmatch '\$source = Get-Content|Write-Output ''PASS' }).Count -gt 0
             # B-253: Outcome is what either arm can produce. Here the pass condition already is.
-            $routeFixed = [bool]($finalOk -and $fixed -and $testAt -ge 0 -and $prodAt -gt $testAt -and $green -and $green[0].Index -gt $prodAt)
+            $routeFixed = [bool]($finalOk -and $fixed -and $redFirst -and $greenAfter)
             # Carrier trim: routeExercised is "the test ran"; routerFired is "the router's rails reached the prompt". route-fix reports it (it should be True
             # in a framework arm); route-fix-nl is valid in a framework arm only when it is False, because it exists to leave the carrier as the one copy.
             $router = Get-RouterFired $Transcript
@@ -6347,6 +6373,31 @@ function Invoke-RouterProbeSelfTest([string]$Temp) {
         (& $use 'v1' 'Bash' ([pscustomobject]@{ command = 'Get-Content tests/Test-Calculator.ps1' })), (& $res 'v1' $scriptSource $false),
         [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed' })
     & $check 'route-fix, the script source printed after the edit is not a green run' 'route-fix' (& $run @(& $hook $rails) $sourceAfterEdit) 'FAIL' $false 'redTestEvent=\d+ productionEdit=\d+ greenTestEvent=-1 '
+    # The 2026-11-19 paid run, scrubbed: the fix made with `sed -i` through Bash, in the same call as the green run, is the production edit.
+    $cd = 'cd "<target>" && '
+    $fixedSource = "namespace EvalFixture;`npublic static class Calculator`n{`n    public static bool IsWithinInclusiveRange(int value, int min, int max) => value >= min && value <= max;`n}"
+    $shellRed = (& $use 'r1' 'Bash' ([pscustomobject]@{ command = $cd + 'cat -n src/Calculator.cs && echo ---- && pwsh -NoProfile -File tests/Test-Calculator.ps1; echo "exit=$?"' })),
+        (& $res 'r1' "----`nException: <target>\tests\Test-Calculator.ps1:2`nLine |`n   2 |  . -notmatch 'value <= max') { throw 'inclusive upper bound is broken' }`n     | inclusive upper bound is broken`nexit=1" $false)
+    $sedFix = @($shellRed) + @(
+        (& $use 's1' 'Bash' ([pscustomobject]@{ command = $cd + 'sed -i ''s/value >= min && value < max;/value >= min \&\& value <= max;/'' src/Calculator.cs && cat src/Calculator.cs && echo ---- && pwsh -NoProfile -File tests/Test-Calculator.ps1; echo "test exit=$?"' })),
+        (& $res 's1' "$fixedSource`n----`nPASS: inclusive range`ntest exit=0" $false),
+        [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed and verified' })
+    & $check 'route-fix, sed -i through Bash before the green run in one call is the production edit' 'route-fix' (& $run @(& $hook $rails) $sedFix) 'PASS' $true 'redTestEvent=\d+ productionEdit=\d+ greenTestEvent=\d+ '
+    $psFix = @($shellRed) + @(
+        (& $use 'p1' 'PowerShell' ([pscustomobject]@{ command = '(Get-Content -Raw src/Calculator.cs) -replace ''value < max'', ''value <= max'' | Set-Content -NoNewline -LiteralPath "src/Calculator.cs"' })),
+        (& $res 'p1' '' $false),
+        (& $use 'g1' 'PowerShell' ([pscustomobject]@{ command = 'pwsh -NoProfile -File tests/Test-Calculator.ps1' })), (& $res 'g1' 'PASS: inclusive range' $false),
+        [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed and verified' })
+    & $check 'route-fix, a PowerShell in-place write is the production edit' 'route-fix' (& $run @(& $hook $rails) $psFix) 'PASS' $true 'redTestEvent=\d+ productionEdit=\d+ greenTestEvent=\d+ '
+    $readsOnly = @($shellRed) + @(
+        (& $use 'c1' 'Bash' ([pscustomobject]@{ command = $cd + 'cat src/Calculator.cs && pwsh -NoProfile -File tests/Test-Calculator.ps1' })), (& $res 'c1' "$fixedSource`nPASS: inclusive range" $false),
+        (& $use 'c2' 'PowerShell' ([pscustomobject]@{ command = 'Get-Content src/Calculator.cs' })), (& $res 'c2' $fixedSource $false),
+        [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed' })
+    & $check 'route-fix, cat or Get-Content of the production file is not an edit' 'route-fix' (& $run @(& $hook $rails) $readsOnly) 'FAIL' $false 'productionEdit=-1 '
+    $runThenSed = @($shellRed) + @(
+        (& $use 's2' 'Bash' ([pscustomobject]@{ command = 'pwsh -NoProfile -File tests/Test-Calculator.ps1; sed -i ''s/< max/<= max/'' src/Calculator.cs' })), (& $res 's2' 'PASS: inclusive range' $false),
+        [pscustomobject]@{ type = 'result'; is_error = $false; result = 'fixed' })
+    & $check 'route-fix, a run before the sed -i in the same call is not green after the edit' 'route-fix' (& $run @(& $hook $rails) $runThenSed) 'FAIL' $false 'productionEdit=\d+ '
     # A framework-arm route-fix-nl row counts only when the router is known to have been silent: rails reaching the prompt, or no
     # hook response at all, make it not examinable (INCONCLUSIVE), never a PASS or FAIL.
     & $check 'route-fix-nl, router fired: the carrier copy is not isolated' 'route-fix-nl' (& $run @(& $hook $rails) $fixRun) 'INCONCLUSIVE' $false 'routerFired=True routerIntent=fix .*router fired'
