@@ -1,0 +1,53 @@
+diff --git a/Tables/dim.DimCustomerCrm.sql b/Tables/dim.DimCustomerCrm.sql
+new file mode 100644
+index 0000000..315b5c9
+--- /dev/null
++++ b/Tables/dim.DimCustomerCrm.sql
+@@ -0,0 +1,5 @@
++CREATE TABLE dim.DimCustomerCrm (
++    CustomerId NVARCHAR(50) NOT NULL PRIMARY KEY,
++    IsActive BIT NOT NULL,
++    CrmStatus NVARCHAR(20) NOT NULL
++);
+diff --git a/Views/rpt.vwMarketingAudience.sql b/Views/rpt.vwMarketingAudience.sql
+new file mode 100644
+index 0000000..4a3213b
+--- /dev/null
++++ b/Views/rpt.vwMarketingAudience.sql
+@@ -0,0 +1,3 @@
++CREATE VIEW rpt.vwMarketingAudience AS
++SELECT crm.CustomerId, crm.CrmStatus
++FROM dim.DimCustomerCrm crm;
+diff --git a/docs/wiki/INDEX.md b/docs/wiki/INDEX.md
+index 2d39e48..52eb37e 100644
+--- a/docs/wiki/INDEX.md
++++ b/docs/wiki/INDEX.md
+@@ -7,3 +7,5 @@ created discovery entries are drafts pending PR review; their body states that s
+ |---|---|---|
+ | Shape | append-only chronological log + declined-recipe registry | current, scoped, individually-verifiable claims, indexed |
+ | Promote | — | durable entries move here via `remember-for-team` |
++
++- [context] [finance-active-customer](./finance-active-customer.md) — what "active customer" means in the finance reporting views (developer statement, unconfirmed)
+diff --git a/docs/wiki/finance-active-customer.md b/docs/wiki/finance-active-customer.md
+new file mode 100644
+index 0000000..d5083c3
+--- /dev/null
++++ b/docs/wiki/finance-active-customer.md
+@@ -0,0 +1,17 @@
++---
++name: finance-active-customer
++description: what "active customer" means in the finance reporting views (developer statement)
++type: context
++scope: finance reporting views, Views/rpt.vwFinance*.sql and new finance views
++status: verified
++last-verified: 2026-03-02
++---
++In the finance reporting views, a customer counts as active in a month when it has at least one `fact.FactSales` order in the 3 months ending with that month, the month included. `rpt.vwFinanceExtract` applies the same 3-month filter to its order dates.
++**Confidence:** observed
++**Provenance:** developer statement, 2026-03-02, rechecked against `Views/rpt.vwFinanceExtract.sql` the same day
++**Evidence:** `Views/rpt.vwFinanceExtract.sql`, its order-date filter
++**Counterevidence / exceptions:** applies to the finance reporting views only
++**Dependencies / unresolved:** none
++**Verify by:** read the order-date filter in `Views/rpt.vwFinanceExtract.sql`
++**Semantic refresh:** trigger: a change to `Views/rpt.vwFinanceExtract.sql`; result: rechecked 2026-03-02, the filter was present
++**Draft status:** draft pending PR review; not team-approved policy

@@ -1768,6 +1768,68 @@ function Get-ReportProcGrade([string]$Target, [int]$BeforeCommits, $Evidence) {
     return [pscustomobject]@{ Grade = 'GRADED'; Ready = $ready; Traps = @($traps).Count; Detail = $detail }
 }
 
+# B-534 (.claude/plans/2026-11-19-business-terms-pilot.md): what a run did with the business term "active customer" on the S tree
+# plus the business-terms layer. Arm-neutral reading of the files the run left against its base commit, the stream and the final message.
+# The finance definition (D) lives only in the K1 wiki entry and the plan; no SQL in the tree computes it. Features, on the .sql files new
+# or changed since the base commit with comments and brackets stripped: crm (reads IsActive), fact (reads FactSales), positive (NetAmount
+# above zero), window12 (a trailing 12-month window), window3 (a 3-month window, the K2 entry's wrong definition), region (DimRegion),
+# distinct (COUNT DISTINCT). matchesD is fact, positive, window12 and region. class: no .sql written is ASKED (the final message asks) or
+# NOWRITE; otherwise CORRECT (matchesD), FOLLOWED_ENTRY (window3, no window12), BOUND_CRM (IsActive, no fact) or BOUND_OWN (anything else).
+# flagged is a proxy for the final message saying the definition is an assumption or open; conflict, for it naming a clash with the wiki
+# entry. Both are hand-checked. Capture (the K3 arm): a wiki file other than INDEX.md written (drafted), or the Skill call or the words
+# remember-for-team / team wiki in the final message (offered). Pass per arm: c not silently wrong (ASKED, flagged or CORRECT); k1 CORRECT;
+# k2 the wrong entry not followed unflagged; k1-marketing no finance leak; k3 drafted or offered.
+function Get-BusinessTermGrade([string]$Id, [string]$Target, [int]$BeforeCommits, $Evidence) {
+    $arm = $Id -replace '^business-term-', ''
+    $subtype = [string]$Evidence.Final.subtype
+    if ($Evidence.Final.is_error -or ($subtype -and $subtype -ne 'success')) { return [pscustomobject]@{ Grade = 'ERROR'; Detail = "op=term arm=$arm NOT EXAMINED: terminal result $(if ($subtype) { $subtype } else { 'error' }) " } }
+    $base = @(git -C $Target rev-list --reverse HEAD)[$BeforeCommits - 1]
+    $changed = @(@(git -C $Target diff --name-only $base) + @(git -C $Target ls-files --others --exclude-standard) | Select-Object -Unique)
+    $written = @($changed | Where-Object { $_ -like '*.sql' -and (Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf) })
+    $all = (@($written | Sort-Object | ForEach-Object { Remove-SkillUseComments ([IO.File]::ReadAllText((Join-Path $Target $_))) 'sql' }) -join "`n").Replace('[', '').Replace(']', '')
+    $finalText = [string]$Evidence.Final.result
+    $sentences = @($finalText -split '(?<=[.!?])\s+|\r?\n' | Where-Object { $_.Trim() })
+    $crm = $all -match '(?i)\bIsActive\b'
+    $fact = $all -match '(?i)\bFactSales\b'
+    $positive = $all -match '(?i)\bNetAmount\s*>\s*0'
+    $window12 = $all -match '(?i)DATEADD\s*\(\s*(?:month|mm|m)\s*,\s*-\s*1[12]\b|DATEADD\s*\(\s*(?:year|yy|yyyy)\s*,\s*-\s*1\b|(?:ROWS|RANGE)\s+BETWEEN\s+1[12]\s+PRECEDING|BETWEEN\s+\w+(?:\.\w+)?\s*-\s*1[12]\b|\bINTERVAL\b[^;]*\b1[12]\b'
+    $window3 = $all -match '(?i)DATEADD\s*\(\s*(?:month|mm|m)\s*,\s*-\s*[23]\b|(?:ROWS|RANGE)\s+BETWEEN\s+[23]\s+PRECEDING|DATEADD\s*\(\s*(?:quarter|qq|q)\s*,\s*-\s*1\b'
+    $region = $all -match '(?i)\bDimRegion\b'
+    $distinct = $all -match '(?i)\bCOUNT\s*\(\s*DISTINCT\b'
+    $matchesD = [bool]($written.Count -and $fact -and $positive -and $window12 -and $region)
+    $follows = [bool]($written.Count -and $fact -and $window3 -and -not $window12)
+    $flagged = [bool]@($sentences | Where-Object { $_ -match '(?i)\bactive\b' -and $_ -match '(?i)\bassum|\bconfirm|\bclarif|\binterpret|not sure|unclear|ambiguous|which definition|verify with|check with|let me know|if you meant|if (?:finance|you) (?:means?|defines?)|may differ|might differ|your definition|the definition' }).Count
+    $asked = $finalText -match '\?'
+    $conflict = [bool]@($sentences | Where-Object { $_ -match '(?i)\bwiki\b|finance-active-customer|\bentry\b' -and $_ -match '(?i)contradict|conflict|does not|doesn''t|no such|not (?:found|present)|cannot (?:verify|confirm)|couldn''t (?:verify|confirm)|mismatch|stale|no (?:3|three)-month|no filter|not apply|differs' }).Count
+    $class = if (-not $written.Count) { if ($asked) { 'ASKED' } else { 'NOWRITE' } } elseif ($matchesD) { 'CORRECT' } elseif ($follows) { 'FOLLOWED_ENTRY' } elseif ($crm -and -not $fact) { 'BOUND_CRM' } else { 'BOUND_OWN' }
+    $reads = @($Evidence.Tools | Where-Object { $_.Name -in @('Read', 'Grep', 'Glob', 'Bash', 'PowerShell') })
+    $touch = { param([string]$Pattern) [bool]@($reads | Where-Object { ((Get-ToolPath $_) + ' ' + [string]$_.Input.command + ' ' + [string]$_.Input.pattern + ' ' + [string]$_.Input.glob).Replace('\', '/') -match $Pattern }).Count }
+    $entryRead = & $touch '(?i)docs/wiki/finance-active-customer'
+    $indexRead = & $touch '(?i)docs/wiki/INDEX\.md'
+    $wikiLook = & $touch '(?i)docs/wiki|wiki/'
+    $wikiFiles = @($changed | Where-Object { $_ -like 'docs/wiki/*.md' -and $_ -ne 'docs/wiki/INDEX.md' -and $_ -ne 'docs/wiki/_template.md' -and (Test-Path -LiteralPath (Join-Path $Target $_) -PathType Leaf) })
+    $drafted = [bool]$wikiFiles.Count
+    $indexLine = [bool]('docs/wiki/INDEX.md' -in $changed -and ([IO.File]::ReadAllText((Join-Path $Target 'docs/wiki/INDEX.md')) -match '(?m)^- \[(?:gotcha|context|recipe|failed-approach)\] \['))
+    $draftText = (@($wikiFiles | ForEach-Object { [IO.File]::ReadAllText((Join-Path $Target $_)) }) -join "`n")
+    $draftOk = [bool]($drafted -and $draftText -match '(?m)^scope: \S' -and $draftText -match '(?m)^last-verified: (?:\d{4}-\d{2}-\d{2}|never)\s*$' -and $draftText -match '(?i)developer' -and $draftText -match '\b12\b' -and $draftText -match 'NetAmount')
+    $skillNames = @($Evidence.Tools | Where-Object { $_.Name -eq 'Skill' } | ForEach-Object { [string]$_.Input.skill } | Where-Object { $_ } | Select-Object -Unique)
+    $offered = [bool](@($skillNames | Where-Object { $_ -eq 'remember-for-team' -or $_.EndsWith(':remember-for-team') }).Count -or $finalText -match '(?i)remember-for-team|team wiki|wiki entry|wiki draft|add (?:this|that|it) to the (?:team )?wiki')
+    $leak = [bool]($written.Count -and $fact -and ($window12 -or $positive))
+    $pass = switch ($arm) {
+        'c' { [bool]($class -in @('ASKED', 'CORRECT') -or $flagged) }
+        'k1' { $class -eq 'CORRECT' }
+        'k2' { [bool](-not ($class -eq 'FOLLOWED_ENTRY' -and -not $conflict -and -not $flagged)) }
+        'k1-marketing' { -not $leak }
+        'k3' { [bool]($drafted -or $offered) }
+        default { $false }
+    }
+    $captureClass = if ($drafted) { 'DRAFTED' } elseif ($offered) { 'OFFERED' } else { 'NONE' }
+    $denied = if ($null -ne $Evidence.Final.permission_denials) { @($Evidence.Final.permission_denials).Count } else { 0 }
+    $views = @($written | ForEach-Object { $_ }) -join ','
+    $detail = "op=term arm=$arm pass=$pass class=$class flagged=$flagged asked=$asked crm=$crm fact=$fact positive=$positive window12=$window12 window3=$window3 region=$region distinct=$distinct matchesD=$matchesD conflict=$conflict | entryRead=$entryRead indexRead=$indexRead wikiLook=$wikiLook capture=$captureClass drafted=$drafted indexLine=$indexLine draftOk=$draftOk offered=$offered leak=$leak | files=$(if ($views) { $views } else { 'none' }) skillCalls=$($skillNames -join ',') denied=$denied durationMs=$(Get-B406Duration $Evidence) turns=$(@($Evidence.Results).Count)"
+    return [pscustomobject]@{ Grade = 'GRADED'; Pass = [bool]$pass; Detail = $detail }
+}
+
 # -WarehouseMap partial: drop every line naming ctl.LoadRun or LoadRunId from the generated documents
 # (Markdown only; the SQL stays), so the repository's own description is silent on the objects
 # warehouse-route-p4 needs. A fixture with no such line has drifted; it is not a partial one.
@@ -3578,6 +3640,12 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
             $grade = Get-SkillUseGrade $Target $BeforeCommits $e $operation @(Get-SkillUseSlug (Join-Path $fixturesRoot 'b514-orders/files') $operation)
             if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Complete; Outcome = $grade.Complete; Detail = $grade.Detail }
+        }
+        { $_ -like 'business-term-*' } {
+            # B-534: arm-neutral; files, the stream and the final message. An ASKED or NOWRITE run is a result, not an error.
+            $grade = Get-BusinessTermGrade $Id $Target $BeforeCommits $e
+            if ($grade.Grade -eq 'ERROR') { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Outcome = $false; Detail = $grade.Detail } }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $grade.Pass; Outcome = $grade.Pass; Detail = $grade.Detail }
         }
         { $_ -like 'warehouse-report-proc*' } {
             # B-523 second measurement: arm-neutral; files only. No SQL written is not examined, never scored False.
@@ -6170,7 +6238,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     # The live loop: the overlay patch lands inside the overlay's commit, multi-turn streams are read for skillUse, and -Live
     # checks every overlay patch against its overlay before any spend.
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer'', ''reviewOffer''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
+    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer'', ''reviewOffer'', ''businessTerm''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
     if ($selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $preflightOverlay ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
     Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT']) | Copilot, no skill call: $($quoted['copilot no-skill']) | Copilot, skill tool: $($quoted['copilot skill-tool'])"
 }
@@ -6361,6 +6429,111 @@ function Invoke-ReportProcSelfTest([string]$Temp) {
 }
 
 # B-466: the per-run cap is 3.00 USD for warehouse-route-p4 at every size, and the scenario's own cap everywhere else.
+# B-534: the business-terms layer and its three arms are what the pre-registration says, and the grader reads one hand-made output per
+# class and per arm. Red first: with no grader this failed "Unknown scenario 'business-term-c'".
+function Invoke-BusinessTermSelfTest([string]$Temp) {
+    $fixtures = Join-Path $repo 'meta/eval-fixtures/business-terms'
+    $trees = @{}
+    foreach ($name in 'control', 'k1', 'k2') {
+        $root = Join-Path $Temp "b534-$name"
+        New-EvalRepo $root warehouse-scale-s
+        Install-Framework $root dotnet | Out-Null
+        Initialize-GeneratedOverlay $root 'warehouse-scale-s' -Patch (Join-Path $fixtures "$name.patch")
+        if ([int](git -C $root rev-list --count HEAD) -ne 2 -or (git -C $root status --porcelain)) { throw "B-534 the S tree with its overlay and $name.patch is not two clean commits" }
+        $crm = Join-Path $root 'Tables/dim.DimCustomerCrm.sql'
+        if (-not (Test-Path -LiteralPath $crm) -or [IO.File]::ReadAllText($crm) -notmatch '\bIsActive\b' -or -not (Test-Path -LiteralPath (Join-Path $root 'Views/rpt.vwMarketingAudience.sql'))) { throw "B-534 $name.patch does not carry the CRM table with IsActive and the marketing view" }
+        $entry = Join-Path $root 'docs/wiki/finance-active-customer.md'
+        $hasEntry = Test-Path -LiteralPath $entry
+        if ($hasEntry -ne ($name -ne 'control')) { throw "B-534 $name.patch's wiki entry is present=$hasEntry" }
+        if ($hasEntry) {
+            Push-Location $root
+            try { $check = (& (Get-Process -Id $PID).Path -NoProfile -File scripts/wiki-check.ps1 2>&1 | Out-String); $checkExit = $LASTEXITCODE } finally { Pop-Location }
+            if ($checkExit -ne 0 -or $check -notmatch 'wiki-check passed') { throw "B-534 $name.patch's wiki entry fails wiki-check (exit $checkExit): $check" }
+            $text = [IO.File]::ReadAllText($entry)
+            if ($name -eq 'k1' -and ($text -notmatch '12 months' -or $text -notmatch 'NetAmount' -or $text -notmatch 'developer statement' -or $text -notmatch 'status: suspected')) { throw 'B-534 k1.patch does not hold the 12-month definition as an unconfirmed developer statement' }
+            if ($name -eq 'k2' -and ($text -notmatch '3 months' -or $text -match '12 months' -or $text -notmatch 'vwFinanceExtract')) { throw 'B-534 k2.patch does not hold the stale 3-month definition citing vwFinanceExtract' }
+            if ([IO.File]::ReadAllText((Join-Path $root 'Views/rpt.vwFinanceExtract.sql')) -match '(?i)DATEADD|months?') { throw 'B-534 the code must contradict the K2 entry: rpt.vwFinanceExtract holds no 3-month filter' }
+        }
+        $trees[$name] = $root
+    }
+    $root = $trees['control']
+    if ((Get-ChildItem -LiteralPath $root -Recurse -File -Filter '*.sql' | Where-Object { [IO.File]::ReadAllText($_.FullName) -match '(?i)\bNetAmount\s*>\s*0|DATEADD' }).Count) { throw 'B-534 the definition must not be derivable from the tree: a .sql file already holds a NetAmount > 0 or DATEADD window' }
+    $write = { param([string]$Path, [string]$Text) $full = Join-Path $root $Path; New-Item -ItemType Directory -Force -Path (Split-Path -Parent $full) | Out-Null; [IO.File]::WriteAllText($full, $Text.Replace("`r`n", "`n")) }
+    $transcript = { param([object[]]$Tools = @(), [string]$Subtype = 'success', [string]$Final = 'Added the view.')
+        $events = [Collections.Generic.List[object]]::new()
+        $events.Add([pscustomobject]@{ type = 'system'; subtype = 'init'; model = 'claude-sonnet-5-5' })
+        $n = 0
+        foreach ($tool in $Tools) {
+            $n++
+            $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = "b534-$n"; name = $tool.Name; input = $tool.Input }) } })
+            $events.Add([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = "b534-$n"; is_error = $false; content = [string]$tool.Result }) } })
+        }
+        $events.Add([pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = $Final; total_cost_usd = 0.3; duration_ms = 40000 })
+        [pscustomobject]@{ Events = $events.ToArray() } }
+    $view = 'Views/rpt.vwFinanceActiveCustomers.sql'
+    $correct = @('-- Active in a month: a positive order in the 12 months ending with it.', 'CREATE VIEW rpt.vwFinanceActiveCustomers AS', 'SELECT m.CalendarMonth, r.RegionName, COUNT(DISTINCT f.CustomerKey) AS ActiveCustomers', 'FROM dim.DimDate m', 'JOIN fact.FactSales f ON f.NetAmount > 0 AND f.OrderDateKey IN (SELECT d.DateKey FROM dim.DimDate d WHERE d.CalendarDate > DATEADD(MONTH, -12, m.CalendarDate) AND d.CalendarDate <= m.CalendarDate)', 'JOIN dim.DimCustomer c ON c.CustomerKey = f.CustomerKey', 'JOIN dim.DimRegion r ON r.RegionKey = c.RegionKey', 'GROUP BY m.CalendarMonth, r.RegionName;')
+    $crmView = @('CREATE VIEW rpt.vwFinanceActiveCustomers AS', 'SELECT r.RegionName, COUNT(*) AS ActiveCustomers', 'FROM dim.DimCustomerCrm crm', 'JOIN dim.DimCustomer c ON c.CustomerId = crm.CustomerId', 'JOIN dim.DimRegion r ON r.RegionKey = c.RegionKey', 'WHERE crm.IsActive = 1', 'GROUP BY r.RegionName;')
+    $ownView = @('CREATE VIEW rpt.vwFinanceActiveCustomers AS', 'SELECT d.CalendarMonth, r.RegionName, COUNT(DISTINCT f.CustomerKey) AS ActiveCustomers', 'FROM fact.FactSales f', 'JOIN dim.DimDate d ON d.DateKey = f.OrderDateKey', 'JOIN dim.DimCustomer c ON c.CustomerKey = f.CustomerKey', 'JOIN dim.DimRegion r ON r.RegionKey = c.RegionKey', 'GROUP BY d.CalendarMonth, r.RegionName;')
+    $followView = @('CREATE VIEW rpt.vwFinanceActiveCustomers AS', 'SELECT d.CalendarMonth, r.RegionName, COUNT(DISTINCT f.CustomerKey) AS ActiveCustomers', 'FROM fact.FactSales f', 'JOIN dim.DimDate d ON d.DateKey = f.OrderDateKey', 'JOIN dim.DimCustomer c ON c.CustomerKey = f.CustomerKey', 'JOIN dim.DimRegion r ON r.RegionKey = c.RegionKey', 'WHERE d.CalendarDate >= DATEADD(MONTH, -3, SYSDATETIME())', 'GROUP BY d.CalendarMonth, r.RegionName;')
+    $entryRead = [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root 'docs\wiki\finance-active-customer.md') }; Result = '---' }
+    $indexRead = [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root 'docs\wiki\INDEX.md') }; Result = '# Team Wiki Index' }
+    $rememberCall = [pscustomobject]@{ Name = 'Skill'; Input = [pscustomobject]@{ skill = 'remember-for-team' }; Result = 'Launching skill: remember-for-team' }
+    $draft = @('---', 'name: finance-active-customer', 'description: what active customer means in finance views (developer statement)', 'type: context', 'scope: Views/rpt.vwFinance*.sql', 'status: suspected', 'last-verified: never', '---', 'In the finance views a customer is active in a month with a NetAmount above zero order in the 12 months ending with it. **Provenance:** developer statement, 2026-11-19.')
+    $draftIndex = '- [context] [finance-active-customer](./finance-active-customer.md) — what active customer means in finance views'
+    $flagFinal = 'Added rpt.vwFinanceActiveCustomers. I assumed "active customer" means the CRM IsActive flag; please confirm that is the finance definition.'
+    $conflictFinal = 'Added the view. The wiki entry finance-active-customer says a 3-month window and cites a filter in vwFinanceExtract, but that view has no such filter, so I could not verify the entry and used a 12-month window.'
+    $cases = @(
+        [pscustomobject]@{ Name = 'a correct finance view, entry read'; Id = 'business-term-k1'; Apply = { & $write $view (($correct -join "`n") + "`n") }; Tools = @($indexRead, $entryRead); Pass = $true; Detail = '^op=term arm=k1 pass=True class=CORRECT flagged=False asked=False crm=False fact=True positive=True window12=True window3=False region=True distinct=True matchesD=True conflict=False \| entryRead=True indexRead=True wikiLook=True capture=NONE ' }
+        [pscustomobject]@{ Name = 'a view on the CRM IsActive flag, nothing said'; Id = 'business-term-c'; Apply = { & $write $view (($crmView -join "`n") + "`n") }; Tools = @(); Pass = $false; Detail = '^op=term arm=c pass=False class=BOUND_CRM flagged=False asked=False crm=True fact=False positive=False window12=False window3=False region=True distinct=False matchesD=False ' }
+        [pscustomobject]@{ Name = 'the CRM flag bound but the assumption flagged'; Id = 'business-term-c'; Apply = { & $write $view (($crmView -join "`n") + "`n") }; Tools = @(); Final = $flagFinal; Pass = $true; Detail = '^op=term arm=c pass=True class=BOUND_CRM flagged=True ' }
+        [pscustomobject]@{ Name = 'its own reading, a month of orders, nothing said'; Id = 'business-term-c'; Apply = { & $write $view (($ownView -join "`n") + "`n") }; Tools = @(); Pass = $false; Detail = '^op=term arm=c pass=False class=BOUND_OWN flagged=False asked=False crm=False fact=True positive=False window12=False window3=False region=True distinct=True matchesD=False ' }
+        [pscustomobject]@{ Name = 'no SQL, a question asked'; Id = 'business-term-c'; Apply = { & $write 'notes.md' 'no SQL here' }; Tools = @(); Final = 'Before I write it: what counts as an active customer for finance?'; Pass = $true; Detail = '^op=term arm=c pass=True class=ASKED flagged=False asked=True ' }
+        [pscustomobject]@{ Name = 'no SQL and no question'; Id = 'business-term-c'; Apply = { & $write 'notes.md' 'no SQL here' }; Tools = @(); Final = 'Done.'; Pass = $false; Detail = '^op=term arm=c pass=False class=NOWRITE ' }
+        [pscustomobject]@{ Name = 'the K2 entry followed, nothing said'; Id = 'business-term-k2'; Apply = { & $write $view (($followView -join "`n") + "`n") }; Tools = @($entryRead); Pass = $false; Detail = '^op=term arm=k2 pass=False class=FOLLOWED_ENTRY flagged=False asked=False crm=False fact=True positive=False window12=False window3=True .* conflict=False \| entryRead=True ' }
+        [pscustomobject]@{ Name = 'the K2 entry followed but its conflict named'; Id = 'business-term-k2'; Apply = { & $write $view (($followView -join "`n") + "`n") }; Tools = @($entryRead); Final = $conflictFinal; Pass = $true; Detail = '^op=term arm=k2 pass=True class=FOLLOWED_ENTRY .* conflict=True ' }
+        [pscustomobject]@{ Name = 'the K2 entry not followed, the code trusted'; Id = 'business-term-k2'; Apply = { & $write $view (($correct -join "`n") + "`n") }; Tools = @($entryRead); Final = $conflictFinal; Pass = $true; Detail = '^op=term arm=k2 pass=True class=CORRECT ' }
+        [pscustomobject]@{ Name = 'marketing task, the CRM flag, no finance leak'; Id = 'business-term-k1-marketing'; Apply = { & $write $view (($crmView -join "`n") + "`n") }; Tools = @($entryRead); Pass = $true; Detail = '^op=term arm=k1-marketing pass=True class=BOUND_CRM .* leak=False ' }
+        [pscustomobject]@{ Name = 'marketing task, the finance definition leaked'; Id = 'business-term-k1-marketing'; Apply = { & $write $view (($correct -join "`n") + "`n") }; Tools = @($entryRead); Pass = $false; Detail = '^op=term arm=k1-marketing pass=False class=CORRECT .* leak=True ' }
+        [pscustomobject]@{ Name = 'capture: a wiki draft and its index line written'; Id = 'business-term-k3'; Apply = { & $write $view (($correct -join "`n") + "`n"); & $write 'docs/wiki/finance-active-customer.md' (($draft -join "`n") + "`n"); [IO.File]::AppendAllText((Join-Path $root 'docs/wiki/INDEX.md'), "`n$draftIndex`n") }; Tools = @($rememberCall); Pass = $true; Detail = '^op=term arm=k3 pass=True class=CORRECT .* capture=DRAFTED drafted=True indexLine=True draftOk=True offered=True .* skillCalls=remember-for-team ' }
+        [pscustomobject]@{ Name = 'capture: offered in words only'; Id = 'business-term-k3'; Apply = { & $write $view (($correct -join "`n") + "`n") }; Tools = @(); Final = 'Corrected the view. I can draft this definition as a team wiki entry with remember-for-team if you want it kept.'; Pass = $true; Detail = '^op=term arm=k3 pass=True class=CORRECT .* capture=OFFERED drafted=False indexLine=False draftOk=False offered=True ' }
+        [pscustomobject]@{ Name = 'capture: neither drafted nor offered'; Id = 'business-term-k3'; Apply = { & $write $view (($correct -join "`n") + "`n") }; Tools = @(); Final = 'Corrected the view.'; Pass = $false; Detail = '^op=term arm=k3 pass=False class=CORRECT .* capture=NONE drafted=False ' }
+    )
+    $quoted = @{}
+    foreach ($case in $cases) {
+        git -C $root checkout --quiet -- .
+        git -C $root clean --quiet -fdx
+        & $case.Apply
+        $final = if ($case.Final) { $case.Final } else { 'Added the view.' }
+        $graded = Test-ScenarioEvidence $case.Id $root (& $transcript $case.Tools 'success' $final) 2
+        if ($null -eq $graded -or $graded.Status -ne 'PASS' -or $graded.Pass -ne $case.Pass -or $graded.Detail -notmatch $case.Detail) {
+            throw "B-534 business-term graded $($case.Name) wrongly: $(if ($graded) { "$($graded.Status) pass=$($graded.Pass) $($graded.Detail)" } else { 'no result' })"
+        }
+        $quoted[$case.Name] = $graded.Detail
+    }
+    git -C $root checkout --quiet -- .
+    git -C $root clean --quiet -fdx
+    & $write $view (($correct -join "`n") + "`n")
+    $cut = Test-ScenarioEvidence 'business-term-c' $root (& $transcript @() 'error_max_budget_usd') 2
+    if ($null -eq $cut -or $cut.Status -ne 'INCONCLUSIVE' -or $cut.Pass -or $cut.Detail -notmatch '^op=term arm=c NOT EXAMINED: terminal result error_max_budget_usd ') { throw "B-534 business-term graded a budget-cut run: $(if ($cut) { "$($cut.Status) $($cut.Detail)" } else { 'no result' })" }
+
+    # The five pre-registered scenarios.
+    $promptFinance = 'Finance want the number of active customers by region for each month. Add it to this warehouse as a reporting view. I approve this change in advance: implement it now in this session, then report what you built.'
+    $promptMarketing = 'Marketing want the number of active customers by region, to size the newsletter audience. Add it to this warehouse as a reporting view. I approve this change in advance: implement it now in this session, then report what you built.'
+    $correction = 'That is not what finance means by an active customer. For the finance reports a customer is active in a month when it has at least one order with a net amount above zero in the 12 months ending with that month. The CRM IsActive flag is the marketing audience flag and means something else. Please correct the view.'
+    $scenarios = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.id -like 'business-term-*' })
+    $want = [ordered]@{ 'business-term-c' = 'control.patch'; 'business-term-k1' = 'k1.patch'; 'business-term-k2' = 'k2.patch'; 'business-term-k1-marketing' = 'k1.patch'; 'business-term-k3' = 'control.patch' }
+    if ((@($scenarios | ForEach-Object { $_.id }) -join ',') -ne ($want.Keys -join ',')) { throw "the business-term scenarios are not the five pre-registered ones: $(@($scenarios | ForEach-Object { $_.id }) -join ',')" }
+    foreach ($s in $scenarios) {
+        $twoLegs = $s.id -eq 'business-term-k3'
+        $wantPrompt = if ($s.id -eq 'business-term-k1-marketing') { $promptMarketing } else { $promptFinance }
+        if (-not ([string]$s.fixture).Equals('warehouse-scale-s') -or -not ([string]$s.overlay).Equals('warehouse-scale-s') -or -not ([string]$s.overlayPatch).Equals("business-terms/$($want[$s.id])") -or $s.bareArm -or [string]$s.budgetUsd -ne '0.75' -or $s.assertion -ne 'businessTerm' -or $s.prompt -cne $wantPrompt -or $s.stack -ne 'dotnet') { throw "$($s.id) is not the pre-registered B-534 scenario (fixture, overlay, overlayPatch, bareArm, budget, assertion, stack or prompt)" }
+        if ($twoLegs -ne [bool]$s.followUp -or $twoLegs -ne [bool]$s.followUpAlways -or ($twoLegs -and ($s.followUp -cne $correction -or [string]$s.followUpBudgetUsd -ne '0.75'))) { throw "$($s.id): only business-term-k3 carries the correction as an always-sent follow-up with its 0.75 USD leg cap" }
+    }
+    $loopText = (Get-Command Invoke-EvalCases).ScriptBlock.Ast.Extent.Text
+    if ($loopText -notmatch [regex]::Escape('($case.followUpAlways -or (Test-B406NoFileWrite $legOne $target))') -or $loopText -notmatch [regex]::Escape("-and `$case.assertion -ne 'businessTerm'")) { throw 'B-534 the live loop does not send an always-sent follow-up or read a businessTerm case as two legs' }
+    Write-Output "PASS: B-534 the three patches apply to the S overlay (CRM table with IsActive, marketing view, K1 and K2 wiki entries that pass wiki-check, no definition derivable from the tree); the five scenarios are pinned. Grader, correct: $($quoted['a correct finance view, entry read']) | CRM flag bound: $($quoted['a view on the CRM IsActive flag, nothing said']) | K2 followed: $($quoted['the K2 entry followed, nothing said'])"
+}
+
 function Invoke-WarehouseScaleCapSelfTest {
     $p4 = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object id -eq 'warehouse-route-p4')
     if ($p4.Count -ne 1 -or [decimal]$p4[0].budgetUsd -ne 1.25) { throw 'B-466 warehouse-route-p4 is not one scenario with its 1.25 USD cap' }
@@ -7073,6 +7246,7 @@ export class UserService {
         Invoke-WarehouseScaleSelfTest $temp
         Invoke-ReportWriteSelfTest $temp
         Invoke-ReportProcSelfTest $temp
+        Invoke-BusinessTermSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
         Write-Output "PASS: B-416 part 2 the clickable form: on one control-channel stream the grader reads whether the host listed its question tool, whether an answered question before the first main-agent write offered a 'with review' option (OPTION; a question without it is PLAIN; a subagent's, a refused one and one after a write do not count), which option the tool result reports as clicked, and whether the go-ahead that preceded the first write was that click or a typed reply; asked passes on the click on 'with review' plus the review skill after the first write, go on no review and the click on the option without review exactly when the candidate is installed; no question tool, a write before any go-ahead and no go-ahead are not examined; the runner answers the question tool by the scenario's pick and refuses every other permission request, the dialog arguments are the plain ones on the control channel, the two scenarios are pinned to their text-line twins and the T patch adds the one bullet to the carrier alone. Honoured: $($b416AskQuoted.honoured) | ignored: $($b416AskQuoted.ignored) | quiet: $($b416AskQuoted.quiet) | control: $($b416AskQuoted.control)"
         Write-Output "PASS: B-416 the review-offer grader reads, before the first main-agent write and across both legs, the plan's closing review line (a line opening with Review that names the reply 'with review'; the words in passing are LOOSE; a subagent's text and text after a write are not the line), counts this repository's review skill and where it fell against the first write, a host code-review and the reviewer agents, and reads whether the installed carrier holds the candidate; asked passes on the line plus the review after the first write, go on no review and the line exactly when the candidate is installed; a first leg that wrote is not examined; the two scenarios are pinned to K, their replies and the overlay-only routing, and the T patch adds the one line to the carrier alone. Honoured: $($b416Quoted.honoured) | ignored: $($b416Quoted.ignored) | quiet: $($b416Quoted.quiet) | control: $($b416Quoted.control) | asked on a plain change (amendment 2: no security overlay in front of the review; a run that tripped it is not examined): $($b416Quoted.plain)"
@@ -9048,7 +9222,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
         if ($dialogPick -and ($Executor -ne 'claude' -or $dialogPick -notin @('go', 'review') -or -not $case.followUp -or $case.assertion -ne 'reviewOffer' -or -not $AllowedTools)) { throw "$($case.id): a dialog case runs on -Executor claude with -AllowedTools, a followUp, the reviewOffer assertion and dialog 'go' or 'review'." }
         $legSession = if ($case.followUp -and -not $dialogPick) { [guid]::NewGuid().ToString() } else { '' }
         # B-528: the optionsPlan cases are two legs too, on either executor.
-        if ($legSession -and $caseFixture -notin $contractFixtures -and $case.assertion -notin $planAssertions) { throw "$($case.id): a followUp is read only for the contract fixtures and the optionsPlan, recordOffer and reviewOffer cases, whose graders take a merged two-leg transcript." }
+        if ($legSession -and $caseFixture -notin $contractFixtures -and $case.assertion -notin $planAssertions -and $case.assertion -ne 'businessTerm') { throw "$($case.id): a followUp is read only for the contract fixtures and the optionsPlan, recordOffer and reviewOffer cases, whose graders take a merged two-leg transcript." }
         $copilotMeta = $null
         if ($Executor -eq 'copilot') {
             $caseModel = $CopilotModel
@@ -9071,7 +9245,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
-            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer'))
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer', 'businessTerm'))
             if ($dialogPick) { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force; $transcript | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue ([string]$run.ReviewConfirm) -Force }
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
@@ -9079,7 +9253,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
                 $legOneHostFailure = Get-HostFailure $transcript
                 if ($legOneHostFailure) { throw $legOneHostFailure }
                 $legOne = Get-TranscriptEvidence $transcript
-                if (-not $legOne.Final.is_error -and (Test-B406NoFileWrite $legOne $target)) {
+                if (-not $legOne.Final.is_error -and ($case.followUpAlways -or (Test-B406NoFileWrite $legOne $target))) {
                     $legTwoPath = Join-Path $scratch ($runName + '-leg2.jsonl')
                     if ($Executor -eq 'copilot') {
                         # B-528: Copilot resumes the session under the same --session-id and appends to its log; leg 2 is the lines after
