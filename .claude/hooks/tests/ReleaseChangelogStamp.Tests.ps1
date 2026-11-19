@@ -126,6 +126,24 @@ try {
         Assert (-not (Test-ReleaseReviewRecord -Text $ledger -Version '0.7')) 'ledger matcher accepted a version substring'
     }
 
+    It 'the release commit subject carries the tier and is refused, not cut, past 72 characters' {
+        $subjectAst = @($releaseAst.FindAll({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Get-ReleaseCommitSubject' }, $true))
+        Assert ($subjectAst.Count -eq 1) "release helper Get-ReleaseCommitSubject is missing or ambiguous (found $($subjectAst.Count))"
+        . ([scriptblock]::Create($subjectAst[0].Extent.Text))
+        $ok = Get-ReleaseCommitSubject -Version '1.2.3' -Summary 'short topic' -ReviewEvidence 'Guarded; reviewer none; a..b'
+        Assert ($ok -ceq 'guarded: v1.2.3: short topic') "subject was '$ok'"
+        $threw = $false
+        try { Get-ReleaseCommitSubject -Version '1.2.3' -Summary 'x' -ReviewEvidence 'reviewer none; a..b' | Out-Null } catch { $threw = $true }
+        Assert $threw 'a ReviewEvidence without a tier first field was accepted'
+        $long = 'a' * 80
+        $msg = ''
+        try { Get-ReleaseCommitSubject -Version '1.2.3' -Summary $long -ReviewEvidence 'ordinary; reviewer none; a..b' | Out-Null } catch { $msg = $_.Exception.Message }
+        Assert ($msg -match 'over the 72 limit') "an over-long subject was not refused: '$msg'"
+        $edge = Get-ReleaseCommitSubject -Version '1.2.3' -Summary ('a' * (72 - 'ordinary: v1.2.3: '.Length)) -ReviewEvidence 'ordinary; none; r'
+        Assert ($edge.Length -eq 72) 'a 72-character subject was refused'
+        Assert ($releaseText -match [regex]::Escape('commit -m $releaseSubject')) 'the release commit does not use the checked subject'
+    }
+
     It 'the release asks only for -ReviewEvidence, in the format AGENTS.md "Ship" names' {
         # AGENTS.md records absent review as "reviewer none" inside -ReviewEvidence; the old switch filed
         # a stub under a backlog heading that no longer exists.

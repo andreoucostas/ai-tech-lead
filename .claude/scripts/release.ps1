@@ -59,6 +59,26 @@ function Test-ReleaseReviewRecord {
     return [regex]::IsMatch($Text, "(?m)^\| v$([regex]::Escape($Version)) \|")
 }
 
+# The release commit subject is `<tier>: v<version>: <summary>` (AGENTS.md "Two tiers"), the tier read from
+# the first field of -ReviewEvidence, at most 72 characters. A summary that does not fit is refused, not
+# truncated: the maintainer's words are not cut silently, and step 0 refuses before anything is stamped.
+function Get-ReleaseCommitSubject {
+    param(
+        [Parameter(Mandatory)][string]$Version,
+        [Parameter(Mandatory)][string]$Summary,
+        [AllowEmptyString()][string]$ReviewEvidence
+    )
+    $tier = ("$ReviewEvidence" -split ';')[0].Trim().ToLowerInvariant()
+    if ($tier -ne 'guarded' -and $tier -ne 'ordinary') {
+        throw "the first field of -ReviewEvidence must be the tier, 'guarded' or 'ordinary'; got '$tier'."
+    }
+    $subject = "${tier}: v${Version}: $Summary"
+    if ($subject.Length -gt 72) {
+        throw "the release commit subject is $($subject.Length) characters, over the 72 limit; shorten -Summary by $($subject.Length - 72): $subject"
+    }
+    return $subject
+}
+
 # Stage timing is printed for the maintainer to read; no stage time refuses a release.
 function Measure-Stage([string]$Name, [scriptblock]$Body) {
     $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -194,6 +214,11 @@ AGENTS.md "Ship": re-run with
 It is recorded verbatim in meta/review-ledger.md; "reviewer none" is a legitimate answer, recorded
 as given.
 "@)
+    exit 2
+}
+try { $releaseSubject = Get-ReleaseCommitSubject -Version $Version -Summary $Summary -ReviewEvidence $ReviewEvidence }
+catch {
+    [Console]::Error.WriteLine("FATAL: $($_.Exception.Message) Nothing has been stamped or committed.")
     exit 2
 }
 
@@ -724,7 +749,7 @@ if (-not $nothingToCommit) {
     # "all gates green" must stop being said the moment it stops being true; the commit body names
     # exactly what this release did and did not prove.
     $gateNote = 'Released via .claude/scripts/release.ps1 — all local deterministic gates green (compose ×3, validate-dist ×3 + context footprint, the three release-subject meta test files). No shipped dist hook suite runs locally; normal tagging waits for CI''s PowerShell 7 three-dist hook matrices.'
-    git -C $repo commit -m "v${Version}: $Summary" -m $gateNote
+    git -C $repo commit -m $releaseSubject -m $gateNote
     if ($LASTEXITCODE -ne 0) { Write-Host 'Commit FAILED.'; exit 1 }
 }
 # Bound OUTSIDE the -NoPush branch below: step 5c needs it in every mode, and a variable that
