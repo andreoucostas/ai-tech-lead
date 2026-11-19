@@ -10052,3 +10052,47 @@ approved about 22 USD in chat on 2026-11-19 ("2 fine"); the stop below is 22 USD
   commit, acceptEdits with B-528's 39-rule list (tag `dc735db5da74`, reproduced 2026-11-19; it allows `pwsh -NoProfile -File scripts/`, so
   the stub and the deploy script are both runnable): `pwsh -NoProfile -File .claude/evals/run-agent-evals.ps1 -Live -Scenario <id> -Model
   sonnet -Trials 1 -TimeoutSeconds 1500 -AllowedTools <list>`, from a driver that passes the list as an array.
+
+## 2026-11-19 22:31:22 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (3df75559b0a42b158787bc28e73dddffb9e945c9)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **FAIL review-comments-c** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.4084046 tokensIn=30 tokensOut=11185; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=comments arm=c pass=False judged=False overdeclined=False accounted=0/10 accountedAll=False d1=ABSENT command=n/a routerFired=False routerIntent=none | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=APPLIED W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=5 deployRun=False | files=AGENTS.md,src/Orders.Api/Controllers/CheckoutController.cs,src/Orders.Api/Program.cs,src/Orders.Application/Orders/OrderLifecycle.cs,src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountHelper.cs,tests/Orders.Tests/OrderPricingTests.cs,src/Orders.Application/Messaging/OrderEventPublisher.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs denied=5 durationMs=76482 turns=2
+
+
+## 2026-11-19 22:32:23 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (3df75559b0a42b158787bc28e73dddffb9e945c9)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **FAIL review-comments-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1364406 tokensIn=4 tokensOut=993; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=a.patch@807b94444cd4 op=comments arm=a pass=False judged=False overdeclined=True accounted=0/10 accountedAll=False d1=ABSENT command=skill routerFired=False routerIntent=none | R1=NOT R2=NOT R3=NOT R4=NOT W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=0/2 attempts=3 blocked=2 testsAdded=0 deployRun=False | files=none denied=1 durationMs=5704 turns=2
+
+
+## B-537 pre-registration addendum — round 1 discarded, three instrument changes (2026-11-19, frozen by the commit that holds it, before any further run)
+
+The two sections above (22:29 `review-comments-c`, 22:31 `review-comments-a`, both at 3df75559) are round 1 and are **discarded**, as the
+pre-registration provides when reading round 1 changes the instrument. AB1 was not run. Their transcripts were read by hand:
+
+- **C1** read the comments from the stub's source, because the permission list refused every way of running it; posted a plan with a list of
+  comments to address and a list to decline with reasons; after leg 2 fixed R1 to R4 (a failing test first), held W1, W2, W3, W5 and W6, grouped
+  the duplicate, left the resolved thread out, and renamed the service (W4), which it had proposed and leg 2 approved.
+- **A1** called the `address-comments` skill, was refused the stub the same three ways, and stopped in both legs, since the command says a
+  comment is never reconstructed. It changed nothing.
+
+What changes, and nothing else:
+
+1. **Permissions.** The 39-rule list's `Bash(pwsh -NoProfile -File scripts/:*)` does not match `scripts/pr-comments.ps1` on Claude Code 2.1.312.
+   The list gains `Bash(pwsh -NoProfile -File scripts/pr-comments.ps1:*)` and `Bash(pwsh -NoProfile -File scripts/deploy.ps1:*)`: 41 rules, tag
+   `5f146a1775b9`. One 0.04 USD call in a scratch folder showed the first rule runs the stub with no denial. The refusal treated the arms
+   differently (C read the source, A stopped), so no round 1 row says anything about either.
+2. **W4 comes from the tool, at NORMAL severity** (52a89a3c; stub sha256 `b0033938a7b4…`). As planted it was a person's BLOCKER: proposing the
+   rename and doing it once leg 2 approved the proposal is right for that comment, and the grader scored it APPLIED. W4 now measures "too
+   much" alone; its right answer stays not applied. No comment is from a person or blocking any more, so that branch of the command is not
+   measured (added to Not shown).
+3. **The grader's text checks** (52a89a3c). ACCOUNTED and D1 take a claim as named by its activity id or its comment id (C1 used the activity
+   ids, and the grader read 0 of 10 where a hand count gives 10), and a bullet under a heading that is one disposition word alone ("Fixes",
+   "Declined") takes that disposition. One self-test case, the live message, seen at 1 of 10 before and 10 of 10 after; 48 cases, exit 0.
+
+Unchanged: the comments' texts, the arms and patches, the prompt's two legs, JUDGED, OVERDECLINED, the decision rule, the hand check, n and
+the order (the series restarts at C1), the caps. **Spend so far 0.585 USD** (C1 0.408, A1 0.136, the permission call 0.040), which counts
+toward the 22 USD stop. A run in which the agent never obtains the comments is not valid and is repeated once. The runner appends each row to
+this file, so between runs the tree differs from the registered commit by this file alone.
