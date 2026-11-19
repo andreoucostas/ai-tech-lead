@@ -888,7 +888,7 @@ foreach ($write in $writes) {
             if ($Match.Groups['strict'].Success) {
                 $value = $v.Value
                 if ([regex]::IsMatch($value, $placeholder, $ci) -or [regex]::IsMatch($value, $token, $ci) -or
-                    [regex]::IsMatch($value, '^(?:pass(?:w(?:or)?d)?|pwd|pw|secret)$', $ci)) { return $false }
+                    [regex]::IsMatch($value, '^(?:pass(?:w(?:or)?d)?|pwd|pw|secret|\.{2,}|…+)$', $ci)) { return $false }
                 $u = $Match.Groups['u']
                 return -not ($u.Success -and $u.Value -ieq $value)
             }
@@ -924,7 +924,7 @@ foreach ($write in $writes) {
         # of new NetworkCredential(user, "...") when it is a literal of 4 or more characters, and a quoted URL that starts
         # with a scheme and holds user:password@ ("amqp://svc:...@host"). A URL password that opens with $, {, < or %, and a
         # NetworkCredential password that opens with {, is a variable, an interpolation hole or a placeholder, not a literal;
-        # a URL password that is only pass, password, passwd, pwd, pw or secret is a README's illustration, not a credential.
+        # a URL password that is only pass, password, passwd, pwd, pw, secret, dots or an ellipsis is a README's illustration, not a credential.
         $valueHoles = '(?!(?:\{[^{}"'']*\})+["''])'
         $unionGuard = if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) { '(?![^\S\r\n]*\|(?!\|))' } else { '' }
         $valueOpener = '(?:@?["''](?<v>[^"'']{8,})["'']' + $unionGuard +
