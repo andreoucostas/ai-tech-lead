@@ -405,6 +405,19 @@ $GuardCases = @(
     @{ n='expression-bodied property returning a password literal'; f='src/Db.cs'; c="public string Password => `"$sqlPassword`";"; block=$true }
     @{ n='expression-bodied property returning a variable (allow)'; f='src/Db.cs'; c='public string Password => _options.Password;'; block=$false }
     @{ n='TypeScript literal-union type on a password field (allow)'; f='src/a.ts'; c="type O = { password?: 'required' | 'optional' };"; block=$false }
+    # Attack 2: the literal-union look-ahead is for .ts/.js, one line, one pipe; a NetworkCredential password may be followed by anything;
+    # `NAME =>` is read only as a property (after a type), not as a lambda parameter.
+    @{ n='PowerShell password literal piped to ConvertTo-SecureString'; f='deploy/Deploy.ps1'; c="`$password = `"$sqlPassword`" | ConvertTo-SecureString -AsPlainText -Force"; block=$true }
+    @{ n='PowerShell single-quoted password literal piped to ConvertTo-SecureString'; f='deploy/Deploy.ps1'; c="`$Password = '$sqlPassword' | ConvertTo-SecureString -AsPlainText -Force"; block=$true }
+    @{ n='TypeScript password literal with a || fallback'; f='src/a.ts'; c="const password = '$sqlPassword' || '';"; block=$true }
+    @{ n='Markdown table row holding a password literal'; f='docs/setup.md'; c="| db | password: `"$sqlPassword`" |"; block=$true }
+    @{ n='TypeScript password literal, a newline, then a pipe'; f='src/a.ts'; c="const password = '$sqlPassword'`n| x;"; block=$true }
+    @{ n='NetworkCredential password literal then a comment'; f='src/Db.cs'; c="var c = new NetworkCredential(`"svc`", `"$sqlPassword`" /* rotate */);"; block=$true }
+    @{ n='NetworkCredential password literal then a concatenation'; f='src/Db.cs'; c="var c = new NetworkCredential(`"svc`", `"$sqlPassword`" + Environment.MachineName);"; block=$true }
+    @{ n='NetworkCredential password literal then a method call'; f='src/Db.cs'; c="var c = new NetworkCredential(`"svc`", `"$sqlPassword`".ToSecureString());"; block=$true }
+    @{ n='lambda parameter named secret returning a prefixed string (allow)'; f='src/Vault.cs'; c='var names = keys.Select(secret => "kv-prod-" + secret);'; block=$false }
+    @{ n='TypeScript arrow parameter named password returning a message (allow)'; f='src/val.ts'; c="const msg = { tooShort: password => 'Password is too short' };"; block=$false }
+    @{ n='TypeScript arrow parameter named apiKey returning a header name (allow)'; f='src/http.ts'; c="const h = keys.map(apiKey => 'X-Api-Key-Header');"; block=$false }
 )
 
 # The edit events of the two surfaces, for the cases that carry o: Claude Code's Edit (file_path, old_string, new_string)
