@@ -343,6 +343,10 @@ row carries any you add.
 `release.ps1` does not run the self-test (B-246 retired that stage: a maintainer-only tool that
 ships nothing must not be able to refuse a consumer release). Run `-SelfTest` yourself after any
 change to the runner and before every `-Live` run.
+
+When a `-Live` run is hand-checked against its transcripts, keep one scrubbed transcript and its verdict as a `-SelfTest`
+fixture under `meta/eval-fixtures/`: the grader defects so far were found by reading transcripts, which the hand-written
+fixtures cannot reproduce. (No scrubbed transcript is in the repository yet, so none is wired today.)
 - **Speed:** slow by design — a process is spawned per hook invocation; a full dist suite took
   about 9 minutes at 4 lanes (2026-11-16). Expected, not a hang. `-ShardCount 2 -ShardIndex <n>`
   runs one of the two halves CI runs.

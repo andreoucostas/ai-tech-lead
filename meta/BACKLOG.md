@@ -33,7 +33,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 16 | B-504 | Vendor-guidance audit, read: the reviewers are read-only in prose only; decided 2026-11-19: keep the shell, give the Copilot wrappers a tool list and stop saying read-only; blocked on Copilot access for the host check |
 | 17 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
 | 18 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
-| 19 | B-520 | Seven small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
+| 19 | B-520 | One small leftover of the 2026-11-14 reviews: move headless `/adopt` into its own file; needs a maintainer decision first |
 | 20 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
 | 21 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
 | 22 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
@@ -165,9 +165,8 @@ Candidate: cut or shorten only text a discriminating cell covers, one group per 
 ### B-520 · Smaller leftovers of the 2026-11-14 reviews
 **Filed against:** v0.98.6 (2026-11-14)
 **Priority:** P3 · **Effort:** S each · **Invariants:** none
-**Status:** Open; each stood its attack in this narrowed form. (1) Headless `/adopt` (about 6.8 KB) into its own file. (2) When a live eval run is hand-checked, keep its scrubbed transcript and verdict as a self-test fixture: grader defects were found by reading transcripts, not by the hand-written fixtures. (3) Time `UpdateDelivery.Tests.ps1` per case, then replace only the setup installs whose result no case asserts.
-(4) One meta case asserting the five `Test-IsLinkEntry` copies are identical and none uses a bare `-band ReparsePoint`, in place of the five per-copy cases. (5) `build.ps1`'s second ownership listing (`:383-390`): the Bash oracle it replaced is gone (B-157), so keep or delete it on purpose.
-(6) `BacklogHygiene.Tests.ps1:206` reads commit subjects only, so a closure recorded in a body under the 72-character subject rule (WSD-125) escapes its open-item check: read bodies too, after checking the last 200. (7) `release.ps1:766` builds `v<version>: <summary>` with no tier and no length bound.
+**Status:** Open; only item (1) is left: headless `/adopt` (about 6.8 KB) into its own file. Skipped 2026-11-19 because the split reaches the installer's pointer text (`install.ps1`), the Copilot `adopt` skill, and tests that read `adopt.md`, and "same behaviour" needs a live eval; the maintainer decides the file's location and whether to pay for that eval.
+Items (2) to (7) done 2026-11-19: (2) a rule sentence in `DEVELOPING.md` (no scrubbed transcript exists to wire); (3) measured, nothing to replace (every setup install's result or effect is asserted; suite 313.6 s); (4) one meta case in `UpdateDelivery2.Tests.ps1`; (5) the ownership pins stay, with a comment; (6) the open-item check reads bodies; (7) the release subject carries a tier and is refused past 72 characters.
 ### B-524 · `/bootstrap` and `/adopt` lose their write steps when Claude Code compacts the conversation
 **Filed against:** v0.98.6 (2026-11-15)
 **Priority:** P3 · **Effort:** S · **Invariants:** #1 #7
