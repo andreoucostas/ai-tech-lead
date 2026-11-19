@@ -1052,4 +1052,19 @@ It 'guard: 200 replacements items of 40 KB each, all to listed paths, are decide
     } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
 }
 
+It 'guard: 200 replacements items whose text is a 1,000-line array are decided under 5 s, and a secret in the last is still denied' {
+    $lines = @(1..1000 | ForEach-Object { 'x' * 38 })
+    $items = @(1..200 | ForEach-Object { @{ filePath = "src/f$_.cs"; oldString = 'a'; newString = $lines } })
+    $dirty = @($items[0..198]) + @(@{ filePath = 'src/z.cs'; oldString = 'a'; newString = @($lines + "k = '$editSecret'") })
+    foreach ($surface in 'Claude', 'Copilot') {
+        foreach ($case in @(@{ n = 'clean'; i = $items; d = 'ALLOW' }, @{ n = 'with a secret in the last item'; i = $dirty; d = (Get-SurfaceDecision $surface) })) {
+            $clock = [Diagnostics.Stopwatch]::StartNew()
+            $result = Invoke-Hook $guardPs (New-EditToolEvent $surface @{ explanation = 'x'; replacements = $case.i })
+            $ms = $clock.ElapsedMilliseconds
+            Assert-Decision $result $case.d "200 items of 1,000 lines, $($case.n) ($surface)"
+            Assert ($ms -lt 5000) "200 items of 1,000 lines, $($case.n) ($surface): the guard took $ms ms, expected under 5000"
+        }
+    }
+}
+
 exit (Write-TestSummary 'Guard.Tests (PowerShell)')

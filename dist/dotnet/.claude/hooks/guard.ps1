@@ -198,7 +198,16 @@ function Get-OwnPaths($Object) {
 function Join-Text($Value) {
     if ($null -eq $Value) { return '' }
     if ($Value -is [string]) { return $Value }
-    if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [System.Collections.IDictionary]) { return (@($Value | ForEach-Object { Join-Text $_ }) -join "`n") }
+    if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [System.Collections.IDictionary]) {
+        # An array of plain strings (the usual one) is joined at once; only a nested value is recursed into, so a
+        # 1,000-line array costs one call, not one per line.
+        $plain = $true
+        foreach ($element in $Value) { if ($element -isnot [string]) { $plain = $false; break } }
+        if ($plain) { return [string]::Join("`n", [string[]]$Value) }
+        $parts = New-Object System.Collections.Generic.List[string]
+        foreach ($element in $Value) { $parts.Add($(if ($element -is [string]) { $element } else { Join-Text $element })) }
+        return [string]::Join("`n", $parts)
+    }
     return [string]$Value
 }
 # `code` is read as a write only beside a path and either insert_edit_into_file's `explanation` field or its tool name; an
@@ -223,8 +232,8 @@ foreach ($o in @($ti, $ta)) {
             $own = @(Get-OwnPaths $item)
             foreach ($path in $own) { $itemPaths.Add($path) }
             $new = $null; $old = $null
-            foreach ($f in 'newString', 'new_string', 'new_str') { if ($null -ne $item.$f -and (Join-Text $item.$f)) { $new = Join-Text $item.$f; break } }
-            foreach ($f in 'oldString', 'old_string', 'old_str') { if ($null -ne $item.$f -and (Join-Text $item.$f)) { $old = Join-Text $item.$f; break } }
+            foreach ($f in 'newString', 'new_string', 'new_str') { if ($null -ne $item.$f) { $text = Join-Text $item.$f; if ($text) { $new = $text; break } } }
+            foreach ($f in 'oldString', 'old_string', 'old_str') { if ($null -ne $item.$f) { $text = Join-Text $item.$f; if ($text) { $old = $text; break } } }
             if ($new) { $itemWrites.Add([pscustomobject]@{ Path = $(if ($own.Count -gt 0) { $own[0] } else { $fp }); Unit = (New-WriteUnit $new $old $false) }) }
         }
     }
