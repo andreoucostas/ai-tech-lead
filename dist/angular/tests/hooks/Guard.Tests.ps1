@@ -895,4 +895,161 @@ It 'guard: a bash call that quotes a patch marker in its input and will not pars
     Assert-Decision (Invoke-Hook $guardPs $e) 'ALLOW' $e
 }
 
+# VS Code agent mode's insert-edit, notebook-edit and multi-replace tools and Claude Code's MultiEdit carry their text in
+# fields the guard did not read (code, newCode, replacements[], edits[]). Recognised by field shape: the tool name the hook
+# receives is not verified. Shapes checked against the VS Code 1.146 Copilot package schema, not a live hook event.
+$editSecret = 'sk-' + 'live0123456789abcdefghijklmn'   # assembled at run time, as the outgoing-commit guard asks
+$editList = '.claude/guard-allowlist.txt'
+function New-EditToolEvent([string]$Surface, [hashtable]$ToolInput, [string]$ClaudeTool = 'Edit') {
+    if ($Surface -eq 'Claude') { ConvertTo-EventJson @{ tool_name = $ClaudeTool; tool_input = $ToolInput } }
+    else { ConvertTo-EventJson @{ toolName = 'insert_edit_into_file'; toolArgs = $ToolInput } }
+}
+It 'guard: a secret in insert_edit_into_file code, edit_notebook_file newCode (string, array), a replacements item for a second file or a MultiEdit edits item is blocked' {
+    $cases = @(
+        @{ n = 'code beside filePath';              i = @{ explanation = 'x'; filePath = 'src/a.ts'; code = "const k = '$editSecret';" } }
+        @{ n = 'newCode string';                    i = @{ filePath = 'n.ipynb'; cellId = 'c1'; editType = 'insert'; language = 'python'; newCode = "k = '$editSecret'" } }
+        @{ n = 'newCode array of strings';          i = @{ filePath = 'n.ipynb'; cellId = 'c1'; editType = 'edit'; language = 'python'; newCode = @('import os', "k = '$editSecret'") } }
+        @{ n = 'replacements item for a 2nd file';  i = @{ replacements = @(@{ filePath = 'src/a.ts'; oldString = 'a'; newString = 'b' }, @{ filePath = 'src/b.ts'; oldString = 'a'; newString = "k = '$editSecret'" }) } }
+        @{ n = 'MultiEdit edits item';              t = 'MultiEdit'; i = @{ file_path = 'src/a.ts'; edits = @(@{ old_string = 'a'; new_string = 'b' }, @{ old_string = 'c'; new_string = "k = '$editSecret'" }) } }
+    )
+    foreach ($case in $cases) {
+        foreach ($surface in 'Claude', 'Copilot') {
+            $tool = if ($case.t) { $case.t } else { 'Edit' }
+            Assert-Decision (Invoke-Hook $guardPs (New-EditToolEvent $surface $case.i $tool)) (Get-SurfaceDecision $surface) "$($case.n) ($surface)"
+        }
+    }
+}
+
+It 'guard: replacements and edits items that target the allowlist are blocked' {
+    $cases = @(
+        @{ n = 'replacements item for the list'; i = @{ replacements = @(@{ filePath = 'src/a.ts'; oldString = 'a'; newString = 'b' }, @{ filePath = $editList; oldString = 'a'; newString = '**' }) } }
+        @{ n = 'replacements item that empties the list'; i = @{ replacements = @(@{ filePath = $editList; oldString = 'docs/'; newString = '' }) } }
+        @{ n = 'MultiEdit edits of the list'; t = 'MultiEdit'; i = @{ file_path = $editList; edits = @(@{ old_string = 'docs/'; new_string = '**' }) } }
+        @{ n = 'replacements item with an item path beside an event path'; i = @{ filePath = 'src/a.ts'; replacements = @(@{ filePath = $editList; oldString = 'a'; newString = 'b' }) } }
+    )
+    foreach ($case in $cases) {
+        foreach ($surface in 'Claude', 'Copilot') {
+            $tool = if ($case.t) { $case.t } else { 'Edit' }
+            $result = Invoke-Hook $guardPs (New-EditToolEvent $surface $case.i $tool)
+            Assert-Decision $result (Get-SurfaceDecision $surface) "$($case.n) ($surface)"
+            $said = if ($surface -eq 'Claude') { $result.Err } else { $result.Out }
+            Assert ($said.Contains('reviewed in a pull request')) "$($case.n) ($surface): expected the team-review reason, got: $said"
+        }
+    }
+}
+
+# Near misses, green before and after the change: they write no secret text, or no file.
+It 'guard: edit_notebook_file delete and code with no path field are allowed (green before and after)' {
+    $cases = @(
+        @{ n = 'edit_notebook_file editType delete'; i = @{ filePath = 'n.ipynb'; cellId = 'c1'; editType = 'delete'; language = 'python'; newCode = "k = '$editSecret'" } }
+        @{ n = 'code beside no path field';          i = @{ code = "const k = '$editSecret';"; language = 'ts' } }
+    )
+    foreach ($case in $cases) {
+        foreach ($surface in 'Claude', 'Copilot') { Assert-Decision (Invoke-Hook $guardPs (New-EditToolEvent $surface $case.i)) 'ALLOW' "$($case.n) ($surface)" }
+    }
+}
+
+It 'guard: the same fields on a call that will not parse are read as a write, and a search call is allowed' {
+    $denied = @(
+        '{"toolName":"insert_edit_into_file","toolArgs":{"filePath":"a.ts","FilePath":"b.ts","code":"x"}}'
+        '{"toolName":"edit_notebook_file","toolArgs":{"filePath":"a.ipynb","FilePath":"b","editType":"edit","newCode":["x"]}}'
+        '{"toolName":"multi_replace_string_in_file","toolArgs":{"replacements":[{"filePath":"a.ts"}],"Replacements":[]}}'
+        '{"tool_name":"MultiEdit","tool_input":{"file_path":"a.ts","File_Path":"b.ts","edits":[{"old_string":"a","new_string":"b"}]}}'
+    )
+    foreach ($e in $denied) { Assert-Decision (Invoke-Hook $guardPs $e) $(if ($e.Contains('MultiEdit')) { 'BLOCK' } else { 'DENY' }) $e }
+    $allowed = @(
+        '{"toolName":"grep_search","toolArgs":{"query":"code","Query":"x","isRegexp":false}}'
+        '{"toolName":"read_file","toolArgs":{"filePath":"a.ts","FilePath":"b.ts","startLine":1}}'
+    )
+    foreach ($e in $allowed) { Assert-Decision (Invoke-Hook $guardPs $e) 'ALLOW' $e }
+}
+
+It 'guard: a replacements or edits array of 5,000 items is decided under 5 s (blocked past the item cap)' {
+    $items = @(1..5000 | ForEach-Object { @{ filePath = "src/f$_.ts"; oldString = 'a'; newString = 'b' } })
+    $edits = @(1..5000 | ForEach-Object { @{ old_string = 'a'; new_string = 'b' } })
+    foreach ($surface in 'Claude', 'Copilot') {
+        foreach ($case in @(@{ n = 'replacements'; t = 'Edit'; i = @{ replacements = $items } }, @{ n = 'edits'; t = 'MultiEdit'; i = @{ file_path = 'src/a.ts'; edits = $edits } })) {
+            $clock = [Diagnostics.Stopwatch]::StartNew()
+            $result = Invoke-Hook $guardPs (New-EditToolEvent $surface $case.i $case.t)
+            $ms = $clock.ElapsedMilliseconds
+            Assert-Decision $result (Get-SurfaceDecision $surface) "5,000 $($case.n) ($surface)"
+            Assert ($ms -lt 5000) "5,000 $($case.n) ($surface): the guard took $ms ms, expected under 5000"
+        }
+    }
+}
+
+# Every path field of an item decides, a `code` or `editType` field alone is not a write, and 200 items stay inside the time limit.
+It 'guard: an item that names two paths is checked against both (an allowlist decoy neither hides the list nor waives the secret)' {
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) "docs/allowed/**`n"
+        $root = Join-Path $base 'shop'
+        $cases = @(
+            @{ n = 'replacements item: file_path unlisted, filePath the list'; i = @{ explanation = 'x'; replacements = @(@{ file_path = 'src/a.cs'; filePath = $editList; oldString = 'docs/allowed/**'; newString = '' }) } }
+            @{ n = 'replacements item: file_path listed, filePath unlisted, a secret'; i = @{ explanation = 'x'; replacements = @(@{ file_path = 'docs/allowed/a.md'; filePath = 'src/a.cs'; oldString = 'a'; newString = "k = '$editSecret'" }) } }
+            @{ n = 'MultiEdit item: file_path unlisted, filePath the list'; t = 'MultiEdit'; i = @{ file_path = 'src/a.cs'; edits = @(@{ file_path = 'src/a.cs'; filePath = $editList; old_string = 'docs/allowed/**'; new_string = '' }) } }
+            @{ n = 'MultiEdit item: file_path listed, filePath unlisted, a secret'; t = 'MultiEdit'; i = @{ file_path = 'docs/allowed/a.md'; edits = @(@{ file_path = 'docs/allowed/a.md'; filePath = 'src/a.cs'; old_string = 'a'; new_string = "k = '$editSecret'" }) } }
+        )
+        foreach ($case in $cases) {
+            foreach ($surface in 'Claude', 'Copilot') {
+                $tool = if ($case.t) { $case.t } else { 'Edit' }
+                $e = New-EditToolEvent $surface $case.i $tool | ConvertFrom-Json -AsHashtable
+                $e.cwd = $root
+                Assert-Decision (Invoke-Hook $hook (ConvertTo-EventJson $e)) (Get-SurfaceDecision $surface) "$($case.n) ($surface)"
+            }
+        }
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+It 'guard: a read, MCP or terminal call that carries editType or code is not a write; insert_edit_into_file code still is' {
+    $allowed = @(
+        @{ n = 'a read of the list with editType none'; i = @{ filePath = $editList; editType = 'none' } }
+        @{ n = 'an MCP tool with filePath and a code field';  i = @{ filePath = 'src/Scratch.cs'; code = "#pragma warning disable CS0618`nConsole.WriteLine();" } }
+        @{ n = 'a terminal tool with command, the list and an empty code'; i = @{ command = 'type x'; filePath = $editList; code = '' } }
+    )
+    foreach ($case in $allowed) {
+        foreach ($surface in 'Claude', 'Copilot') {
+            $e = if ($surface -eq 'Claude') { @{ tool_name = 'mcp__runner__execute'; tool_input = $case.i } } else { @{ toolName = 'mcp_runner_execute'; toolArgs = $case.i } }
+            Assert-Decision (Invoke-Hook $guardPs (ConvertTo-EventJson $e)) 'ALLOW' "$($case.n) ($surface)"
+        }
+    }
+    # The tool's own name, or its explanation field, makes code its text.
+    $named = ConvertTo-EventJson @{ toolName = 'insert_edit_into_file'; toolArgs = @{ filePath = 'src/a.ts'; code = "k = '$editSecret'" } }
+    Assert-Decision (Invoke-Hook $guardPs $named) 'DENY' 'insert_edit_into_file code by name'
+    $explained = ConvertTo-EventJson @{ toolName = 'other'; toolArgs = @{ explanation = 'x'; filePath = 'src/a.ts'; code = "k = '$editSecret'" } }
+    Assert-Decision (Invoke-Hook $guardPs $explained) 'DENY' 'code beside explanation'
+}
+
+It 'guard: newCode and code as nested arrays, and an editType that is not exactly the string delete, are read' {
+    $cases = @(
+        @{ n = 'newCode nested arrays'; i = @{ filePath = 'n.ipynb'; editType = 'edit'; newCode = @(, @('x', @("k = '$editSecret'"))) } }
+        @{ n = 'editType Delete'; i = @{ filePath = 'n.ipynb'; editType = 'Delete'; newCode = "k = '$editSecret'" } }
+        @{ n = 'editType array'; i = @{ filePath = 'n.ipynb'; editType = @('delete'); newCode = "k = '$editSecret'" } }
+        @{ n = 'code as an array'; i = @{ explanation = 'x'; filePath = 'src/a.ts'; code = @("k = '$editSecret'") } }
+    )
+    foreach ($case in $cases) {
+        foreach ($surface in 'Claude', 'Copilot') { Assert-Decision (Invoke-Hook $guardPs (New-EditToolEvent $surface $case.i)) (Get-SurfaceDecision $surface) "$($case.n) ($surface)" }
+    }
+}
+
+It 'guard: 200 replacements items of 40 KB each, all to listed paths, are decided under 5 s' {
+    $base = $null
+    try {
+        $hook = New-AllowlistedRoot ([ref]$base) "docs/allowed/**`n"
+        $root = Join-Path $base 'shop'
+        $text = ('  var value = compute(input, options);' + "`n") * 1100
+        $items = @(1..200 | ForEach-Object { @{ filePath = "docs/allowed/f$_.md"; oldString = 'a'; newString = $text } })
+        foreach ($surface in 'Claude', 'Copilot') {
+            $e = New-EditToolEvent $surface @{ explanation = 'x'; replacements = $items } | ConvertFrom-Json -AsHashtable -Depth 8
+            $e.cwd = $root
+            $json = $e | ConvertTo-Json -Compress -Depth 8
+            $clock = [Diagnostics.Stopwatch]::StartNew()
+            $result = Invoke-Hook $hook $json
+            $ms = $clock.ElapsedMilliseconds
+            Assert-Decision $result 'ALLOW' "200 listed items of 40 KB ($surface)"
+            Assert ($ms -lt 5000) "200 listed items of 40 KB ($surface): the guard took $ms ms, expected under 5000"
+        }
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
 exit (Write-TestSummary 'Guard.Tests (PowerShell)')

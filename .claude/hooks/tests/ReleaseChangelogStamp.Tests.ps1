@@ -44,6 +44,15 @@ if ($reviewFunctionReady) {
     . ([scriptblock]::Create($reviewFunctionAst[0].Extent.Text))
 }
 
+# B-522: the pure delivery-number functions, extracted verbatim from release.ps1 like the helpers above.
+$deliveryNames = @('Get-EscapedDefectCount', 'Get-ReleasesPerWeek', 'Get-ReleaseDeliveryNumbers', 'Format-ReleaseDeliveryLines')
+$deliveryAsts = @($releaseAst.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $deliveryNames -contains $node.Name
+}, $true))
+$deliveryReady = ($parseErrors.Count -eq 0 -and $deliveryAsts.Count -eq $deliveryNames.Count)
+if ($deliveryReady) { foreach ($a in $deliveryAsts) { . ([scriptblock]::Create($a.Extent.Text)) } }
+
 # The fallback is bounded by stable numbered release-step markers. It exists only to make the
 # original root-only behavior an observable red; every post-fix assertion drives extracted helpers.
 $step1Start = $releaseText.IndexOf('# ---- 1.')
@@ -235,6 +244,38 @@ try {
         }
         $green = Test-ReleaseChangelogHeads -Root $root -Version $version -Date $date -Dists $dists -IncludeDist
         Assert $green.Ok ("restored fully dated world was refused: " + (@($green.Problems) -join '; '))
+    }
+
+    It 'delivery numbers: the four values and the previous release come from tag dates, bodies and run timings' {
+        Assert $deliveryReady "delivery helpers missing or ambiguous (found $($deliveryAsts.Count) of $($deliveryNames.Count))"
+        $d = { param($s) [DateTimeOffset]::Parse($s, [Globalization.CultureInfo]::InvariantCulture) }
+        $tags = @((& $d '2031-01-01T00:00:00Z'), (& $d '2031-01-10T00:00:00Z'), (& $d '2031-01-20T00:00:00Z'), (& $d '2031-02-03T00:00:00Z'), (& $d '2030-11-01T00:00:00Z'))
+        $bodies = @("guarded: a`n`nEscaped defect: cause x.", "ordinary: b`n`nno defect here", "ordinary: c`n`nThe escaped defect word is mid-line only", "ordinary: d`n`nescaped defect. Cause y.")
+        $now = Get-ReleaseDeliveryNumbers -In @{
+            RunStart = (& $d '2031-02-03T10:00:00Z'); RunEnd = (& $d '2031-02-03T10:28:30Z')
+            FirstChange = (& $d '2031-01-30T12:00:00Z'); TagDate = (& $d '2031-02-03T00:00:00Z')
+            Bodies = $bodies; TagDates = $tags; Why = @{}
+        }
+        $text = @($now.Values | ForEach-Object { $_.Text })
+        Assert ($text[0] -eq '28.5') "test-run minutes: $($text[0])"
+        Assert ($text[1] -eq '3.5') "days to tag: $($text[1])"
+        Assert ($text[2] -eq '2') "escaped defects (line-start marker only): $($text[2])"
+        Assert ($text[3] -eq '0.75') "releases a week (3 tags in 28 days / 4): $($text[3])"
+        $lines = @(Format-ReleaseDeliveryLines -Current $now -Previous $now -PreviousName 'v9.9.9')
+        Assert ($lines.Count -eq 4 -and $lines[0] -match 'v9\.9\.9: 28\.5') "formatted lines: $($lines -join ' | ')"
+    }
+
+    It 'delivery numbers: a missing input prints unknown with its reason, never zero, and an empty body list is a real zero' {
+        Assert $deliveryReady "delivery helpers missing or ambiguous (found $($deliveryAsts.Count) of $($deliveryNames.Count))"
+        $r = Get-ReleaseDeliveryNumbers -In @{ Bodies = $null; TagDates = $null; Why = @{ Run = 'gh not installed'; Escaped = 'git log failed' } }
+        $text = @($r.Values | ForEach-Object { $_.Text })
+        Assert ($text[0] -eq 'unknown (gh not installed)') "run: $($text[0])"
+        Assert ($text[1] -eq 'unknown (input missing)') "days: $($text[1])"
+        Assert ($text[2] -eq 'unknown (git log failed)') "escaped: $($text[2])"
+        Assert ($text[3] -like 'unknown*') "cadence: $($text[3])"
+        Assert ($null -eq @($r.Values)[0].Value) 'an unknown value must be null, not 0'
+        $zero = Get-ReleaseDeliveryNumbers -In @{ Bodies = @(); Why = @{} }
+        Assert (@($zero.Values)[2].Text -eq '0') 'an empty body list must count as 0 escaped defects'
     }
 } finally {
     foreach ($dir in $scratch) { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }

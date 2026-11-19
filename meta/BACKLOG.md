@@ -34,16 +34,15 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 17 | B-518 | Consumers have a stated floor for Claude Code only, and no statement of what 1.0 promises; ordinary |
 | 18 | B-519 | The always-loaded rules file, cut only where a measurement can go red; every cut measured |
 | 19 | B-520 | Seven small leftovers of the 2026-11-14 reviews, each narrowed by its attack |
-| 20 | B-522 | Release review: nothing tracks how long a release takes or how often a defect escapes; guarded, S |
-| 21 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
-| 22 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
-| 23 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
-| 24 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
-| 25 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
-| 26 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
-| 27 | B-531 | Maintainer request: a full implementation plan, each put through an adversarial review, for the items decided 2026-11-19 (the review line's shipping change, B-490, B-504, B-530); after B-416's measurement |
-| 28 | B-532 | Maintainer request: re-read current Claude Code, Copilot CLI and VS Code guidance for what the framework ships that is now outdated or can be deleted, such as `CLAUDE.md` if every host reads `AGENTS.md` |
-| 29 | B-533 | Maintainer request: review the testing strategy, whether end-to-end tests belong in it, and what published practice says about releasing fast; report before any change |
+| 20 | B-483 | False-green class, run by a fresh-session review: the warehouse map check reports `current` for deleted tables; was missing from this table |
+| 21 | B-524 | Guidance review, read: after a compaction Claude Code keeps only the start of a long command, and the write steps of `/bootstrap` and `/adopt` sit past it; size the session first; guarded, text-only |
+| 22 | B-525 | Guidance review: no run on Fable 5.2, which Claude Code now moves saved Fable 5.1 sessions to; one pass of the per-release model-change check |
+| 23 | B-527 | Guidance review: the maintainer gate's stillness check missed the one case recorded, and the rule names no next step; ordinary for the skill, guarded for `AGENTS.md` |
+| 24 | B-526 | Guidance review, observed, no harm recorded: consumer instructions and skills load into maintainer sessions; one sentence to correct, one setting for the maintainer to decide |
+| 25 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
+| 26 | B-531 | Maintainer request: a full implementation plan, each put through an adversarial review, for the items decided 2026-11-19 (the review line's shipping change, B-490, B-504, B-530); after B-416's measurement |
+| 27 | B-532 | Maintainer request: re-read current Claude Code, Copilot CLI and VS Code guidance for what the framework ships that is now outdated or can be deleted, such as `CLAUDE.md` if every host reads `AGENTS.md` |
+| 28 | B-533 | Maintainer request: review the testing strategy, whether end-to-end tests belong in it, and what published practice says about releasing fast; report before any change |
 
 ## Open entries
 
@@ -101,11 +100,6 @@ Left: re-run R2 with the eval harness's hook also covering cmdlet aliases (test-
 "a new package" and harness; the provider already reached the test project through its reference to the API, and 21 other runs used it without touching a `.csproj`. Suspected carrier: the Bug-fix
 bullet's and fix rail's "add no foreign harness", read as forbidding an engine the code under test already uses. n = 2: measure (about 0.25 USD a run) before any wording change.
 
-### B-522 · Print four numbers at each release: test-run minutes, days from first change to tag, escaped defects, releases a week
-**Filed against:** v0.98.6 (2026-11-14)
-**Priority:** P3 · **Effort:** S · **Invariants:** none
-**Status:** Open; decided 2026-11-14 (maintainer, in chat; WSD-125). Measured by hand that day: push to tag 25 to 36 minutes, the CI run's median 28 minutes (7 in August), and 23 releases with 11 to 15 escaped-defect notes since v0.86.7, by the search used. Nothing tracks them; WSD-093's own measure was retired unread (B-288) for naming no baseline.
-Candidate: `release.ps1` prints the four from `git` and `gh` when a release ends, beside the previous release's values; no new file and no gate. Guarded (`.claude/scripts/**`).
 ### B-483 · `warehouse-map-check` reports `current` for a map whose tables were deleted, or that has no full-pass stamp
 **Filed against:** v0.98.4 (2026-11-05)
 **Priority:** P3 · **Effort:** M · **Invariants:** none
@@ -128,7 +122,7 @@ Remaining: merge the three Haiku reviewers (convention-check, bloat-radar, debt-
 **Priority:** P3 · **Effort:** M · **Invariants:** #3 #5 #7
 **Status:** Open; B-487's step-4 attacks (a sub-session's runs, not re-run). Not read: an auto-property initializer `public string Password { get; set; } = "…"`, Redis `password=`, URL userinfo outside a connection-string key, a backtick string, a `Dictionary` initializer, `new NetworkCredential(…)`, `SetEnvironmentVariable`, `password?:`, a `"""` or `$"` literal, a `??` or `||` fallback, VB; and B-487's stated limits: `string.Join`, `;;`, a quote inside the literal, a JDBC neighbour, a `:` in a neighbouring key, the computed key `['password']:`, a no-break space or vertical tab, a one-pair literal standing alone, a variable between the pieces (`"Server=" + host + ";Password=…"`, the commonest real shape), VB `&`, `+=`, `string.Concat`, `AppendFormat`, `.Add(` or `.push(` pieces, an unkeyed password opening with `@`; and its false blocks on a mask, message or SQL text that is a piece of a longer string.
 Candidate: decide per form whether the guard or CI secret scanning owns it; extending the guard is guarded, step 4, and each form needs its false-block survey (B-487 audited 145 repo and 476 npm files).
-B-489's round-2 attack: the patch (U+FEFF header, repeated `*** Move to:`) and unparseable-input gaps are fixed (B-499 part 1); VS Code agent-mode `insert_edit_into_file`, `edit_notebook_file` and `multi_replace_string_in_file` are still not read as writes. Round 2 left, pre-existing: a `toolArgs` array, `str_replace_based_edit_tool`, an unknown tool with a string `tool_input`, and a nested `input:{input}` are not read as writes.
+B-489's round-2 attack: the patch (U+FEFF header, repeated `*** Move to:`) and unparseable-input gaps are fixed (B-499 part 1); VS Code agent-mode `insert_edit_into_file`, `edit_notebook_file`, `multi_replace_string_in_file` and Claude Code's `MultiEdit` items are now read (checked against the VS Code 1.146 package schema, not a live hook event). Round 2 left, pre-existing: a `toolArgs` array, `str_replace_based_edit_tool`, an unknown tool with a string `tool_input`, and a nested `input:{input}` are not read as writes.
 ### B-502 · A disabled skill's exemplar line is dropped by the update after the one that disables it
 **Filed against:** v0.98.5 (2026-11-11)
 **Priority:** P3 · **Effort:** S · **Invariants:** #7
@@ -221,4 +215,4 @@ The maintainer's example: whether the shipped `CLAUDE.md` stub can go if every s
 **Filed against:** v0.98.6 (2026-11-19)
 **Priority:** P2 · **Effort:** M · **Invariants:** none
 **Status:** Open; maintainer request in chat 2026-11-19, after B-532. Lay out what the gates cover today (hook and installer tests, `validate-dist`, the paid agent evals, CI at a median 28 minutes) against published guidance, including what Anthropic has said publicly about how it tests and ships Claude Code at its pace, attributed to its source and not inferred.
-Answer whether an end-to-end layer (install, then a real agent session on a fixture, on each host) should be a standing part, what it would cost a release, and what it would replace. Report before any change; B-522's four release numbers are the baseline it needs.
+Answer whether an end-to-end layer (install, then a real agent session on a fixture, on each host) should be a standing part, what it would cost a release, and what it would replace. Report before any change; the four numbers a release now prints (B-522, done 2026-11-19) are its baseline.

@@ -7,6 +7,7 @@
 ## 0.99.0 — Unreleased
 
 - **The write guard now refuses a write it cannot fully read, instead of letting it through.** A tool call whose JSON repeats a key in a different letter case or has an empty key, an `apply_patch` section header behind a byte-order mark (U+FEFF), and a patch section with a second `*** Move to:` line used to pass unchecked; the guard now blocks them, and the agent resends the call cleanly. Calls that are not writes are unaffected.
+- **The write guard now reads VS Code agent mode's insert-edit, notebook-edit and multi-replace tools, and Claude Code's `MultiEdit`.** A secret, or an edit of `.claude/guard-allowlist.txt`, written through the text those tools carry (`code`, `newCode`, each `replacements` or `edits` item) used to pass unchecked; the guard now checks each item against its own file and blocks a call of more than 200 items. Recognised by the shape of the call, checked against the VS Code 1.146 tool definitions, not a live hook event.
 
 - **Windows PowerShell 5.1 is no longer supported: every developer machine and every CI agent that runs the framework's
   hooks or checks needs PowerShell 7.** Install it (`winget install --id Microsoft.PowerShell`), then open a new terminal so
