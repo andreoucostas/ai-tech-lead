@@ -28,7 +28,8 @@ already there, and so a report can be written against the joins the warehouse ac
    at least two independent warehouse signal categories were found. If it reports
    `WAREHOUSE_MAP not-applicable`, STOP — this recipe does not apply. If it exits 2, do not guess;
    report that applicability could not be determined. The richer patterns below are mapping
-   guidance only, never a second activation threshold.
+   guidance only, never a second activation threshold. On a full pass, before reading any file, run
+   it again with `-Digest` and keep the line it prints (e.g. `digest=3f9a0c1e7b2d4a68`) for step 9.
 
 1. **Layers.** Identify each database/schema and its role: staging/raw (landing), ODS,
    warehouse core (dims + facts), marts, and the consumption surface — the reporting
@@ -192,9 +193,12 @@ already there, and so a report can be written against the joins the warehouse ac
 
 9. **Report.** Offer to write or refresh `docs/warehouse-map.md` with everything below — offer,
    don't force. If AGENTS.md > Conventions describes the warehouse and the code disagrees, flag the
-   drift; do not silently edit either. Make the first line `<!-- warehouse-map full pass: <UTC time,
-   yyyy-MM-ddTHH:mmZ> -->`, the time this full pass read the SQL: `scripts/warehouse-map-check.ps1`
-   judges freshness from it. Use these seven headings verbatim, in this order, so the
+   drift; do not silently edit either. Make the first line, on one line,
+   `<!-- warehouse-map full pass: <UTC time, yyyy-MM-ddTHH:mmZ> <step 0's digest= line, verbatim> -->`,
+   e.g. `<!-- warehouse-map full pass: 2026-11-19T12:00Z digest=3f9a0c1e7b2d4a68 -->`: the check reads
+   the map as current only while the warehouse files still hash to that digest. If step 0's line was
+   lost, omit it, so the map reads stale until the next full pass, and say so in Coverage; never take
+   a new digest now. Use these seven headings verbatim, in this order, so the
    document is predictable to the next reader and to anything that checks it:
 
    1. **Table inventory**, one table per layer:
