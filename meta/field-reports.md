@@ -463,9 +463,12 @@ the repository as context, the framework's installed files among them. The findi
 A developer typically starts a new Copilot chat and asks it to address the comments, and Copilot reads them through a
 command-line tool that queries Bitbucket.
 
+**The example of a wrong comment** (the maintainer, in chat, the same day): the reviewer decides something needs more testing,
+or that some edge case must be captured, and following it makes the solution over-complex and unsupportable.
+
 **Epistemic status.** A description relayed in chat, not an observation card. Not captured: how often, the tool's name
-and output, an example of a wrong comment, whether an agent ever applied one, whether people comment on the same pull
-requests. It says the comments are sometimes wrong; it does not say a wrong one was applied.
+and output, whether an agent ever applied a wrong comment, whether people comment on the same pull requests, and whether
+developers reply to or leave unresolved the comments they disagree with. It says the comments are sometimes wrong; it does not say a wrong one was applied.
 
 **Outcome:** no change to the tree. B-537 files the workflow, with a measurement before anything ships
 (`.claude/plans/2026-11-19-b537-address-review-comments.md`). Two things the framework's records did not know: its

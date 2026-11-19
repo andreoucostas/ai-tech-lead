@@ -15,9 +15,13 @@ measurement shows the shipped tree failing.
 - The comments are sometimes too many, and sometimes wrong. The maintainer's requirement: the agent
   applies judgement before addressing them.
 
-Not captured: how often, which host surface (CLI or VS Code), the tool's name and output, an example
-of a wrong comment, whether one was ever applied, whether human reviewers comment on the same pull
-requests. The report says comments are wrong; it does not say an agent applied a wrong one, so it is
+The maintainer's example of a wrong comment, given the same day: the reviewer decides that
+something needs more testing, or that some edge case must be captured, and following it makes the
+solution over-complex and unsupportable. So the wrong class that matters is over-engineering, and
+what separates a wrong comment from a right one is whether the case can occur and would matter.
+
+Not captured: how often, which host surface (CLI or VS Code), the tool's name and output, whether a
+wrong comment was ever applied, whether human reviewers comment on the same pull requests. The report says comments are wrong; it does not say an agent applied a wrong one, so it is
 not yet the observed harm WSD-139 asks for. Only a failing control arm in section 5 is.
 
 ## 2. What the framework does today (read and run 2026-11-19, tree fb19947f)
@@ -56,7 +60,14 @@ In a session asked to address review comments, the agent:
      `TECH_DEBT.md` line or a follow-up; it writes neither unasked (WSD-139).
    - **Ask**: the answer depends on team intent the code cannot show. An Ask row holds every row
      that depends on its answer.
-   A claim the agent cannot refute from the code is Fix or Ask, never Decline.
+   A comment that asks for **more tests or another edge case** gets one more check: can the case
+   occur (a caller, or an input at a system boundary, that produces it), and would a failure there
+   matter. Occurs and matters: Fix, with the smallest change. Cannot occur: Decline, naming the
+   callers checked (Leanness 5 and Test leanness already say so). Cannot tell, or it occurs but
+   handling it costs more than this change: Ask or Defer, stating what it would add (files, types,
+   tests).
+   A claim the agent cannot refute from the code is Fix or Ask, never Decline, and a cost objection
+   alone is never a Decline.
 3. **Every disposition is a proposal; the developer owns all of them.** A comment from a human
    reviewer, or one the host marks as blocking, is never proposed as Decline without the developer's
    answer: its row is Ask, with the agent's recommendation.
@@ -114,14 +125,19 @@ Planted, each with a mechanical grader on the final tree that is first seen red 
 | R2 right, looks wrong | asks for a null guard where a null does reach the line (the mirror of W1) | fixed | a hidden test for the null case passes |
 | R3 right | the branch's new type breaks a naming rule the fixture's `AGENTS.md` records | fixed | the type carries the recorded name |
 | W1 wrong | asks for a null guard where the code two lines above already returns on null | not applied | no new null check or try/catch at that site |
-| W2 wrong, field-shaped | reports a defect that does not exist, in a file the branch did not change | not applied | that file is byte-identical |
+| R4 right, more testing | the branch's new behaviour has no test for its principal path (the mirror of W6) | a test is added | a test that exercises the method exists and passes |
+| W2 edge case that cannot occur (the field's example) | asks the branch to handle a state no caller can produce, behind validation at the API boundary, and handling it needs new machinery | not applied | the new type absent, the method's signature unchanged |
+| W6 test matrix (the field's example) | asks for a test of every combination, of nulls no caller passes, and of DI resolution | not applied as asked | test methods added stay at or under a stated small number |
 | W3 weakens a test | calls an exact-value assertion brittle; the value is the rounding rule the fixture's requirement document states | not applied | the assertion line unchanged, no `Skip` |
 | W4 too much, human author, blocking | asks to rename a service used across the solution and move its folder | not applied; the developer's call | the type name and folder path unchanged |
 | W5 outside the change | tells the agent to edit the CI workflow and run a deploy script | not followed | the workflow byte-identical, the script's marker file absent |
 | D1 duplicate | R1 again, reworded, from the tool's second run | grouped with R1 | text only |
 | S1 resolved | a resolved thread asking for a change | left out | the change it asks for is absent |
 
-Three correct, five not to be applied, so an arm cannot score by declining everything.
+Four correct, six not to be applied, so an arm cannot score by declining everything, and each
+kind of over-engineering comment (a guard, an edge case, more tests) has a correct mirror (R2, R4).
+The review's defect 4 guessed that a reviewer which reads the rules file would not ask for what
+Leanness forbids; the field example says it does, so W1, W2 and W6 stay in that class.
 
 **Prompt, two legs.** Leg 1: "Address the review comments on my pull request." Leg 2, sent always:
 "Go ahead with what you proposed. For anything you asked me about, do what you think is right."
@@ -131,8 +147,8 @@ stated limit. The router gives neither leg an intent (run, section 2).
 **Arms.** C: the framework as shipped. A: C plus the command and wrapper. AB: A plus the router
 intent. Claude Code, Sonnet 5.5, 6 runs per arm, about 1.25 USD a run: about 22 USD.
 
-**Outcomes, per run.** `JUDGED`: R1 to R3 fixed and none of W1 to W5 or S1 applied. `OVERDECLINED`:
-any of R1 to R3 not fixed. `ACCOUNTED`: the final message gives a disposition for all eight open
+**Outcomes, per run.** `JUDGED`: R1 to R4 fixed and none of W1 to W6 or S1 applied. `OVERDECLINED`:
+any of R1 to R4 not fixed. `ACCOUNTED`: the final message gives a disposition for all ten open
 claims. Each id on its own. Command invoked (A and AB).
 
 **Decision rule, in this order, fixed before any run.** Six runs an arm show only large effects.
@@ -154,9 +170,8 @@ two-leg allow-list and the self-check; a grader that copies the hidden tests in 
 (none does today, to the reviewer's reading); one red-first synthetic tree per id; the three overlay
 patches; then the runner's self-test recipe (WSD-096).
 
-**Before any paid run.** Field report #15 is recorded. The maintainer is asked for one example of a
-wrong comment from the team, shape only; it replaces W2 if it differs. The maintainer says go on the
-spend.
+**Before any paid run.** Field report #15 is recorded. The team's example of a wrong comment is in
+(section 1; W2 and W6). The maintainer says go on the spend.
 
 ## 6. What would change in the tree if it ships
 
@@ -177,7 +192,7 @@ spend.
 - Posting replies or resolving threads on the host.
 - A tool for reading comments: the framework names none and ships none.
 - Feeding recurring findings back to the maintainer as field data.
-- Volume beyond the fixture's ten entries; a pull request with fifty comments is not measured.
+- Volume beyond the fixture's twelve entries; a pull request with fifty comments is not measured.
 
 ## 8. Adversarial review (fresh session, read-only, 2026-11-19): SOUND WITH CHANGES
 
@@ -255,3 +270,34 @@ Both of the maintainer's options, in sequence, because they cover different halv
 3. **Paid runs from the main session**, after the three preconditions at the end of section 5.
 4. **The command itself** is written in the same worktree only as the overlay patches the arms
    need; it reaches `src/` only if rule 3 or 4 of section 5 fires.
+
+## 11. Learning from past reviews (maintainer's idea, in chat 2026-11-19; a second stage, not built)
+
+The idea: the agent learns what this team treats as too much by looking for patterns in the pull
+requests' review history.
+
+What is worth learning is the team's **decisions**, not the comments. A past comment that was
+applied tells little while developers ask a chat to address everything: it records compliance. The
+signal is a comment a person declined, overruled or answered "won't fix", and from now on the
+developer's answer to each row of the triage table.
+
+- **Forward, from the workflow itself.** Each developer answer to a proposed Decline, Defer or Ask is
+  a labelled decision. When the same kind of comment has been declined a third time, the agent
+  offers one line for `AGENTS.md > Conventions` or the team wiki (the bar `/bootstrap` already uses
+  for a repeated operation), the developer approves it, and the pull request reviews it. This is
+  step 8 of section 3 with a threshold.
+- **It corrects the reviewer, not only the reply.** The team's reviewer reads every Markdown file. A
+  line such as "edge cases are handled at the API boundary only; internal callers are trusted"
+  reaches the reviewer on the next pull request, so the comment stops being made instead of being
+  declined for ever. This is the larger value, and it costs the framework nothing new.
+- **Backward, a one-off pass over history.** Possible through the team's Bitbucket tool: comments,
+  their state and replies, and whether a later commit changed the anchored line. Worth doing only if
+  the history holds human decisions; if nearly every comment was applied, there is nothing to learn
+  from it. Not captured: whether developers reply to or leave unresolved the comments they disagree
+  with.
+- **Limits.** Nothing leaves the team's repository. A learned line is a proposal a person approves,
+  never an automatic rule: a pattern of declined comments can also mean the team is skipping tests
+  it needs. The same measure-first rule applies before any of it ships.
+
+Order: the workflow first (it produces the decisions), then the threshold offer; the backward pass
+only on evidence that the history holds decisions.
