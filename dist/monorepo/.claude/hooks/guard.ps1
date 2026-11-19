@@ -57,14 +57,16 @@ function New-NameSet([string[]]$Names) {
 }
 $guardWriteTools = New-NameSet @('Write', 'Edit', 'create', 'MultiEdit', 'NotebookEdit', 'str_replace', 'insert', 'apply_patch')
 $guardPathKeys = New-NameSet @('file_path', 'filePath', 'path', 'notebook_path')
-$guardContentKeys = New-NameSet @('content', 'new_string', 'newString', 'file_text', 'new_str', 'new_source', 'edits', 'old_string', 'oldString', 'old_str', 'newCode', 'replacements', 'editType')
+$guardContentKeys = New-NameSet @('content', 'new_string', 'newString', 'file_text', 'new_str', 'new_source', 'edits', 'old_string', 'oldString', 'old_str', 'replacements')
 $guardEditorCommands = New-NameSet @('create', 'str_replace', 'insert', 'undo_edit')
 $guardToolKeys = New-NameSet @('tool_name', 'toolName')
+$guardInsertTools = New-NameSet @('insert_edit_into_file', 'copilot_insertEdit', 'insertEdit')
 $guardArgKeys = New-NameSet @('tool_input', 'toolArgs')
 $guardPatchLike = '\*\*\* (?:Add|Update|Delete) File:'
 # Whether a call's arguments (a table parsed with -AsHashtable, or a string that is one as JSON text or else a patch)
-# make it a write. $Editor: the tool is str_replace_editor.
-function Test-WriteArgs($ArgsValue, [bool]$Editor) {
+# make it a write. $Editor: the tool is str_replace_editor; $InsertTool: it is insert_edit_into_file, whose `code` beside a path
+# is its text (any other tool's `code` counts only beside an `explanation` field).
+function Test-WriteArgs($ArgsValue, [bool]$Editor, [bool]$InsertTool = $false) {
     if ($ArgsValue -is [string]) {
         $inner = $null
         try { $inner = ConvertFrom-Json -InputObject $ArgsValue -AsHashtable -ErrorAction Stop } catch { }
@@ -72,17 +74,19 @@ function Test-WriteArgs($ArgsValue, [bool]$Editor) {
         $ArgsValue = $inner
     }
     if ($ArgsValue -isnot [System.Collections.IDictionary]) { return $false }
-    $hasPath = $false; $hasText = $false; $hasCode = $false; $patchInput = $false
+    $hasPath = $false; $hasText = $false; $hasCode = $false; $hasNewCode = $false; $hasExplanation = $false; $patchInput = $false
     foreach ($k in @($ArgsValue.Keys)) {
         $key = [string]$k
         if ($guardContentKeys.Contains($key)) { return $true }
         if ($guardPathKeys.Contains($key)) { $hasPath = $true }
         elseif ([string]::Equals($key, 'text', $ordinalIgnoreCase)) { $hasText = $true }
         elseif ([string]::Equals($key, 'code', $ordinalIgnoreCase)) { $hasCode = $true }
+        elseif ([string]::Equals($key, 'newCode', $ordinalIgnoreCase)) { $hasNewCode = $true }
+        elseif ([string]::Equals($key, 'explanation', $ordinalIgnoreCase)) { $hasExplanation = $true }
         elseif ($Editor -and [string]::Equals($key, 'command', $ordinalIgnoreCase) -and $guardEditorCommands.Contains([string]$ArgsValue[$k])) { return $true }
         elseif ([string]::Equals($key, 'input', $ordinalIgnoreCase) -and $ArgsValue[$k] -is [string] -and [regex]::IsMatch($ArgsValue[$k], $guardPatchLike, $ci)) { $patchInput = $true }
     }
-    return (($hasText -or $hasCode) -and $hasPath) -or ($patchInput -and -not $hasPath)
+    return (($hasText -or $hasNewCode -or ($hasCode -and ($hasExplanation -or $InsertTool))) -and $hasPath) -or ($patchInput -and -not $hasPath)
 }
 # ConvertFrom-Json refuses JSON whose keys differ only in case, or that has an empty key, and a call it cannot parse
 # would be let through unread. Such a call is re-read with -AsHashtable, only to classify it: the tool name it names (the
@@ -105,7 +109,7 @@ function Get-UnreadableCall([string]$Json) {
     }
     $name = @($names | Where-Object { $guardWriteTools.Contains($_) })[0]
     if ($null -eq $name) { $name = $names[0] }
-    foreach ($v in $inputs) { if (-not $write -and (Test-WriteArgs $v $editor)) { $write = $true } }
+    foreach ($v in $inputs) { if (-not $write -and (Test-WriteArgs $v $editor ($name -is [string] -and $guardInsertTools.Contains($name)))) { $write = $true } }
     if (-not $write) { return $null }
     if ($null -eq $name -and $hasInput) { $name = '' }
     return [pscustomobject]@{ Tool = $name }
@@ -130,7 +134,7 @@ if ($ta -is [string]) {
         # An object that will not parse as one is unreadable; a string that is no JSON object is a patch, read below.
         $inner = $null
         try { $inner = ConvertFrom-Json -InputObject $taText -AsHashtable -ErrorAction Stop } catch { }
-        if ($inner -is [System.Collections.IDictionary] -and (($tool -is [string] -and $guardWriteTools.Contains($tool)) -or (Test-WriteArgs $inner ([string]::Equals([string]$tool, 'str_replace_editor', $ordinalIgnoreCase))))) { $unreadable = $true }
+        if ($inner -is [System.Collections.IDictionary] -and (($tool -is [string] -and $guardWriteTools.Contains($tool)) -or (Test-WriteArgs $inner ([string]::Equals([string]$tool, 'str_replace_editor', $ordinalIgnoreCase)) ($tool -is [string] -and $guardInsertTools.Contains($tool))))) { $unreadable = $true }
     }
 }
 
@@ -185,18 +189,30 @@ $maxWriteItems = 200
 $itemWrites = New-Object System.Collections.Generic.List[object]
 $itemPaths = New-Object System.Collections.Generic.List[string]
 $itemOverflow = $false
-function Get-OwnPath($Object) {
-    if ($null -eq $Object -or $Object -is [string]) { return $null }
-    foreach ($field in 'file_path', 'filePath', 'path', 'notebook_path') { $v = $Object.$field; if ($null -ne $v -and [string]$v) { return [string]$v } }
-    return $null
+# Every path field an object names (not only the first): a tool may write the one the guard did not pick.
+function Get-OwnPaths($Object) {
+    if ($null -eq $Object -or $Object -is [string]) { return @() }
+    return @(foreach ($field in 'file_path', 'filePath', 'path', 'notebook_path') { $v = $Object.$field; if ($null -ne $v -and [string]$v) { [string]$v } })
 }
+# A text field's string, an array of strings (nested arrays included) joined by newlines.
+function Join-Text($Value) {
+    if ($null -eq $Value) { return '' }
+    if ($Value -is [string]) { return $Value }
+    if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [System.Collections.IDictionary]) { return (@($Value | ForEach-Object { Join-Text $_ }) -join "`n") }
+    return [string]$Value
+}
+# `code` is read as a write only beside a path and either insert_edit_into_file's `explanation` field or its tool name; an
+# MCP or terminal tool that merely carries a `code` field is not a write. editType alone never makes a call a write, and
+# only the exact string 'delete' skips newCode.
+$codeShaped = $false
 $extraUnits = @()
 foreach ($o in @($ti, $ta)) {
     if ($null -eq $o -or $o -is [string]) { continue }
-    if (Get-OwnPath $o) {
-        if ($null -ne $o.code -and $o.code -is [string]) { $extraUnits += New-WriteUnit ([string]$o.code) $null $false }
-        if ($null -ne $o.newCode -and -not [string]::Equals([string]$o.editType, 'delete', $ordinalIgnoreCase)) {
-            $extraUnits += New-WriteUnit $(if ($o.newCode -is [string]) { $o.newCode } else { (@($o.newCode) | ForEach-Object { [string]$_ }) -join "`n" }) $null $false
+    if (@(Get-OwnPaths $o).Count -gt 0) {
+        $insertShaped = ($tool -is [string] -and $guardInsertTools.Contains($tool)) -or (@($o.PSObject.Properties.Name) -contains 'explanation')
+        if ($insertShaped -and $null -ne $o.code) { $codeShaped = $true; $extraUnits += New-WriteUnit (Join-Text $o.code) $null $false }
+        if ($null -ne $o.newCode -and -not ($o.editType -is [string] -and [string]::Equals($o.editType, 'delete', $ordinal))) {
+            $extraUnits += New-WriteUnit (Join-Text $o.newCode) $null $false
         }
     }
     foreach ($collection in 'replacements', 'edits') {
@@ -204,12 +220,12 @@ foreach ($o in @($ti, $ta)) {
         foreach ($item in @($o.$collection)) {
             if ($null -eq $item -or $item -is [string]) { continue }
             if (++$n -gt $maxWriteItems) { $itemOverflow = $true; break }
-            $own = Get-OwnPath $item
-            if ($own) { $itemPaths.Add($own) }
+            $own = @(Get-OwnPaths $item)
+            foreach ($path in $own) { $itemPaths.Add($path) }
             $new = $null; $old = $null
-            foreach ($f in 'newString', 'new_string', 'new_str') { if ($null -ne $item.$f -and [string]$item.$f) { $new = [string]$item.$f; break } }
-            foreach ($f in 'oldString', 'old_string', 'old_str') { if ($null -ne $item.$f -and [string]$item.$f) { $old = [string]$item.$f; break } }
-            if ($new) { $itemWrites.Add([pscustomobject]@{ Path = $(if ($own) { $own } else { $fp }); Unit = (New-WriteUnit $new $old $false) }) }
+            foreach ($f in 'newString', 'new_string', 'new_str') { if ($null -ne $item.$f -and (Join-Text $item.$f)) { $new = Join-Text $item.$f; break } }
+            foreach ($f in 'oldString', 'old_string', 'old_str') { if ($null -ne $item.$f -and (Join-Text $item.$f)) { $old = Join-Text $item.$f; break } }
+            if ($new) { $itemWrites.Add([pscustomobject]@{ Path = $(if ($own.Count -gt 0) { $own[0] } else { $fp }); Unit = (New-WriteUnit $new $old $false) }) }
         }
     }
 }
@@ -347,12 +363,12 @@ if ($isPatch) {
     # empties a file, an edit whose new text is empty and a deleted notebook cell change the list as surely as one
     # that adds text. Write-shaped is a known file-writing tool name or any field that carries a write's text; a
     # read (Copilot's view) carries neither.
-    $writeFields = @('content', 'new_string', 'newString', 'file_text', 'new_str', 'text', 'new_source', 'edits', 'old_string', 'oldString', 'old_str', 'code', 'newCode', 'replacements', 'editType')
+    $writeFields = @('content', 'new_string', 'newString', 'file_text', 'new_str', 'text', 'new_source', 'edits', 'old_string', 'oldString', 'old_str', 'newCode', 'replacements')
     # str_replace_editor writes only through its create, str_replace, insert and undo_edit commands; its view reads.
     $writeTools = @('MultiEdit', 'NotebookEdit', 'str_replace', 'insert')
     $editorWrite = [string]::Equals([string]$tool, 'str_replace_editor', $ordinalIgnoreCase) -and
                    @(foreach ($o in @($ti, $ta)) { if ($null -ne $o -and $o -isnot [string]) { foreach ($c in 'create', 'str_replace', 'insert', 'undo_edit') { if ([string]::Equals([string]$o.command, $c, $ordinalIgnoreCase)) { $c } } } }).Count -gt 0
-    $writeShaped = $knownWrite -or $editorWrite -or @($writeTools | Where-Object { [string]::Equals([string]$tool, $_, $ordinalIgnoreCase) }).Count -gt 0 -or
+    $writeShaped = $knownWrite -or $editorWrite -or @($writeTools | Where-Object { [string]::Equals([string]$tool, $_, $ordinalIgnoreCase) }).Count -gt 0 -or $codeShaped -or
                    @(foreach ($o in @($ti, $ta)) { if ($null -ne $o -and $o -isnot [string]) { @($o.PSObject.Properties.Name) | Where-Object { $writeFields -contains $_ } } }).Count -gt 0
     $targets = if ($writeShaped) { @($pathFields) } else { @() }
     $writes = if (($knownWrite -or ($fp -and $content)) -and $content) { @([pscustomobject]@{ Group = 0; Path = $fp; Content = $content; Units = $units; Paths = @($pathFields) }) } else { @() }
@@ -710,6 +726,8 @@ $blocked = New-Object System.Collections.Generic.List[object]
 # decide depends on the text and on the path only through the extension rules, the waiver and the test-path exemption, so
 # each result is kept by section and by those path facts (a whole-file text is read against its own path's file on disk).
 $scanCache = New-Object Collections.Hashtable([StringComparer]::Ordinal)
+$script:waiverSets = New-Object Collections.Hashtable([StringComparer]::Ordinal)
+$script:waiverPaths = New-Object Collections.Hashtable([StringComparer]::Ordinal)
 $reportedReasons = New-Object Collections.Hashtable([StringComparer]::Ordinal)
 foreach ($write in $writes) {
     $fp = $write.Path
@@ -719,8 +737,18 @@ foreach ($write in $writes) {
     $fileName = Get-CheckedFileName ([string]$fp)
     $relativePath = if ($fp) { Get-RepositoryRelativePath ([string]$fp) }
     # Waived only when the list matches every path the write names, each read from the event's working directory.
-    $waived = @($write.Paths).Count -gt 0
-    foreach ($path in @($write.Paths)) { if (-not (Test-AllowlistedPath (Get-WaiverRelativePath ([string]$path)))) { $waived = $false; break } }
+    # Each distinct path is tested once for the whole event, and so is each distinct set of paths (every item of a
+    # replacements call names the same set).
+    $waiverKey = @($write.Paths) -join "`0"
+    if (-not $script:waiverSets.ContainsKey($waiverKey)) {
+        $setWaived = @($write.Paths).Count -gt 0
+        foreach ($path in @($write.Paths)) {
+            if (-not $script:waiverPaths.ContainsKey([string]$path)) { $script:waiverPaths[[string]$path] = [bool](Test-AllowlistedPath (Get-WaiverRelativePath ([string]$path))) }
+            if (-not $script:waiverPaths[[string]$path]) { $setWaived = $false; break }
+        }
+        $script:waiverSets[$waiverKey] = $setWaived
+    }
+    $waived = $script:waiverSets[$waiverKey]
     $diskPath = if (@($writeUnits | Where-Object { $_.Whole }).Count -gt 0) { [string]$fp } else { '' }
     $extKey = 'ext|' + $write.Group + '|' + [regex]::IsMatch($fileName, '\.cs$', $ci) + '|' + [regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci) + '|' +
         [regex]::IsMatch($fileName, '(\.(spec|test|cy)|~[0-9]+)\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci) + '|' + $diskPath
