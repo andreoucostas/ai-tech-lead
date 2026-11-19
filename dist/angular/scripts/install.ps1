@@ -2263,6 +2263,17 @@ if ($updateMode) {
             if ($exemplar.Success) { $skillExemplars[$skillDir.Name] = $exemplar.Value.TrimEnd("`r") }
         }
     }
+    # A disabled skill's team copy sits under .claude/disabled-skills/ after the update that disabled it, so the next
+    # update reads its line there; an active copy still in place (the update that disables it) is read above and wins.
+    foreach ($name in $(if ($Reinstall) { @() } else { $disabledSkillNames })) {
+        if ($skillExemplars.ContainsKey($name) -or -not $incomingFrameworkSkillNames.Contains($name)) { continue }
+        $inactiveFile = Join-Path $tgt ".claude/disabled-skills/$name/SKILL.md"
+        $inactiveItem = Get-Item -LiteralPath $inactiveFile -Force -ErrorAction SilentlyContinue
+        if ($null -eq $inactiveItem -or $inactiveItem.PSIsContainer -or (Test-IsLinkEntry $inactiveItem)) { continue }
+        $inactiveText = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($inactiveFile))
+        $inactiveExemplar = [regex]::Match($inactiveText, '(?m)^For a concrete current instance in this repo, see .+$')
+        if ($inactiveExemplar.Success) { $skillExemplars[$name] = $inactiveExemplar.Value.TrimEnd("`r") }
+    }
 }
 
 # The one-time backup is a set of leaf copies, not an opaque recursive directory mutation. It is taken

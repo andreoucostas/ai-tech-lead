@@ -819,6 +819,41 @@ It 'B-480 an update stopped after it replaced a SKILL.md keeps the team''s exemp
     }
 }
 
+# B-502: the update that disables a skill moves it to .claude/disabled-skills/ with the team's exemplar line, but the next
+# update read lines only under .claude/skills/, so it replaced that copy with the release's text and the line was lost.
+It 'B-502 a disabled skill keeps the team''s exemplar line through two updates, and through re-enabling' {
+    $exemplar = 'For a concrete current instance in this repo, see `warehouse/LoadSales.sql`.'
+    $t = Join-Path ([IO.Path]::GetTempPath()) ('b502-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    try {
+        $first = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "calibration: the install failed (exit $LASTEXITCODE): $first"
+        $active = Join-Path $t '.claude/skills/add-warehouse-load/SKILL.md'
+        $inactive = Join-Path $t '.claude/disabled-skills/add-warehouse-load/SKILL.md'
+        [IO.File]::AppendAllText($active, "`n$exemplar`n", [Text.UTF8Encoding]::new($false))
+        $learnings = Join-Path $t 'LEARNINGS.md'
+        $learningsBefore = if (Test-Path -LiteralPath $learnings) { [IO.File]::ReadAllText($learnings) } else { "# Learnings`n" }
+        [IO.File]::WriteAllText($learnings, $learningsBefore + "`n## Disabled framework skill: add-warehouse-load`n`nNot used here.`n", [Text.UTF8Encoding]::new($false))
+        foreach ($round in 1, 2) {
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            Assert ($LASTEXITCODE -eq 0) "update $round failed (exit $LASTEXITCODE): $out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/skills/add-warehouse-load'))) "update ${round}: the disabled skill is active again: $out"
+            $text = [IO.File]::ReadAllText($inactive, [Text.UTF8Encoding]::new($false))
+            Assert ($text.EndsWith("`n`n$exemplar`n", [StringComparison]::Ordinal)) "update ${round}: the disabled copy lost the team's exemplar line: $text"
+            Assert (([regex]::Matches($text, 'For a concrete current instance')).Count -eq 1) "update ${round}: the exemplar line is not there exactly once: $text"
+        }
+        # Re-enable: the folder goes back and the ledger entry goes; the line must still be there after one more update.
+        [IO.File]::WriteAllText($learnings, $learningsBefore, [Text.UTF8Encoding]::new($false))
+        Move-Item -LiteralPath (Join-Path $t '.claude/disabled-skills/add-warehouse-load') -Destination (Join-Path $t '.claude/skills/add-warehouse-load')
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        Assert ($LASTEXITCODE -eq 0) "the update after re-enabling failed (exit $LASTEXITCODE): $out"
+        $text = [IO.File]::ReadAllText($active, [Text.UTF8Encoding]::new($false))
+        Assert ($text.EndsWith("`n`n$exemplar`n", [StringComparison]::Ordinal)) "re-enabled: the exemplar line was lost: $text"
+    } finally {
+        Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 # B-464 C5: the version stamp is the 34th of 101 copies, so a file held open later in the manifest stopped the update
 # with a raw Copy-Item error after the stamp already named the new release, and the re-run was refused as a dirty tree.
 It 'C5 an update stopped by a held file keeps the old version stamp and prints the re-run command' {

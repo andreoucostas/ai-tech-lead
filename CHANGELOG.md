@@ -13,6 +13,8 @@
 
 ## 0.99.0 — Unreleased
 
+- **An update no longer drops the exemplar line from a disabled skill.** A "For a concrete current instance" line you added to a skill's `SKILL.md` was kept by the update that moved the skill to `.claude/disabled-skills/`, then lost on the next update; every update now keeps it there, and when you re-enable the skill.
+
 Windows PowerShell 5.1 support ends; the release is 0.99.0, not 0.98.7 (guarded, step 4; B-506, WSD-125 (5): the maintainer
 in chat on 2026-11-14, "fine with powershell 7 only", then, on scope and version, "1. everywhere 2. 99"). Since 9e8dbb28 the
 guard refuses every write without `pwsh`, and the documented remedy, copying `settings.windows.json` over the committed
