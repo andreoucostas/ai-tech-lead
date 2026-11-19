@@ -255,3 +255,32 @@ plan readable above it, and whether a developer reads the plan before clicking, 
 (this harness runs it with `--no-ask-user`; B-530) and VS Code's question tool (B-532). A completed review, and the review asked
 for on a security-sensitive change (part 1's open question stands). Option B chosen through the free-text answer. Opus, Angular,
 monorepo; n = 6 a cell on one fixture and two prompts.
+
+### Amendment 3 (2026-11-19, after part 2's three-run pilot at db792211 and one exploration run; 1.16 USD of the 8 USD stop spent)
+
+T2's wording does not produce the question. In the pilot the host listed the question tool in all three runs (`qtool=True`, 43
+tools) and neither T2 run used it: T2-go typed "Ready to proceed? Reply **Go ahead** or **Go ahead, with review**, which runs this
+repository's review gate on the finished change." and T2-asked-plain closed with the fallback line verbatim (`ask=NONE asks=0
+goAhead=text` in both; hand read agrees). C2-go: `ask=NONE`, typed reply, `plan=OPTIONS doneWhen=True gate=True`. The dialog channel
+itself worked in all three: hooks loaded, the typed reply arrived as a second turn of the same session, `rails2` as registered.
+The three pilot runs (0.290, 0.305, 0.294 USD) are reported apart and not counted, as registered.
+
+One exploration run, not counted (0.275 USD): T2-asked-plain's scenario with a firmer wording, which tells the agent not to end its
+turn on the plan. It posted the plan as text, asked one question with the two options, took the click on "Go ahead, with review",
+wrote, and called the `review` skill after it (`ask=OPTION asks=1 goAhead=click picked=review review=1 reviewWhen=after-write`;
+hand read agrees). A second trial wording was written and not run.
+
+- **Candidate T3 replaces T2**, the same place in carrier §2, verbatim:
+
+> - Close the plan by asking for the go-ahead and offering a review. When you have a question tool, do not end your turn on the plan: call the tool with one question whose options are `Go ahead` and `Go ahead, with review` (this repository's review gate on the finished change), and take the answer as the developer's go-ahead. Without one, close with the line `Review: none planned. Reply "with review" to get this repository's review gate on the finished change.` When the answer asks for it, invoke the `review` skill once the change is complete and verified, before presenting it (Copilot: the project skill, not the CLI's built-in code review), and report its verdict. An answer that does not ask for it means no review.
+
+  724 bytes on the 15,633-byte carrier. `b416-review-question.patch` now holds it (sha256 `c48c411d7735…`, 2,277 bytes, LF), and
+  the grader's `askBullet` marker is its "call the tool with one question whose options are …" clause. Red first: `-SelfTest`
+  with the marker changed and the patch not yet replaced, EXIT=1, "the T patch does not add exactly the one question bullet"; as
+  committed EXIT=0, 60 PASS lines.
+- **Cells:** C2-go, T3-go and T3-asked-plain, slots 1 to 6 each, all run after the commit that holds this amendment; then
+  T3-fallback, up to 3 runs while the stop allows (fewer is reported as such). Everything else in Part 2 stands with T3 read for
+  T2: the channel, the runner, the scenarios, the grader, validity, the readings, the 8 USD stop (which includes the 1.16 spent).
+- **Reported with the results:** that a click carries only its option. The typed replies of both scenarios also answer the plan's
+  open questions (the 409 on a second refund; who creates the table); a click does not, so the agent proceeds on the assumptions its
+  plan stated. What it does with them is read by hand per T3 run.

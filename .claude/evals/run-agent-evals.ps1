@@ -2992,7 +2992,7 @@ function Get-ReviewOffer($Evidence, [int]$Boundary, [string]$Target) {
 #   GoAhead  what reached the agent last before its first write: click (an answered question-tool call) or text (the first turn ended
 #            and a second began: the typed reply); none when neither precedes it. Boundary: that delivery's event ordinal.
 #   Bullet   the installed carrier holds the candidate question bullet (the T arm) or not (C).
-$b416AskBullet = 'With a question tool, ask one question with the options `Go ahead` and `Go ahead, with review`'
+$b416AskBullet = 'call the tool with one question whose options are `Go ahead` and `Go ahead, with review`'
 function Get-ReviewAsk($Evidence, $Transcript, [string]$Target) {
     $firstWrite = @($Evidence.Tools | Where-Object { -not $_.Sidechain -and (Test-B406Write $_) } | Select-Object -First 1)
     $cutoff = if ($firstWrite) { [int]$firstWrite[0].Index } else { [int]::MaxValue }
