@@ -4904,3 +4904,9 @@ low-entropy; it blocks hashes and GUIDs). The guard fails closed only for a writ
 **Decision (the maintainer's, in chat 2026-11-19: "you should be delegating coordination and supervision to opus and he can have sonnet implementing. Your job is that of architecture at all levels.").** Architecture stays with the main session, coordination and supervision go to an Opus agent, implementation to Sonnet agents.
 **Paid eval runs.** They are started from the main session: the permission system refused one from a subagent, and the maintainer said "Run it here."
 **Reopen** if the permission system allows a subagent to start a paid run, or the split costs more than it saves.
+
+## WSD-139: a shipped change needs an observed harm and a test that can see the fix; else record the trigger and close (2026-11-19)
+
+**Context.** WSD-122 (the warehouse map kept current unasked) and B-520 item 1 (headless `/adopt` in its own file) were both improvements with no recorded failure; the maintainer asked Fable for the overall direction.
+**Decision (the architect's recommendation; the maintainer, in chat 2026-11-19: "Yes to both").** Change what ships only for a harm seen in a field report or a failing eval, with a test that can see the fix; otherwise write down the reopen trigger and close. An agent writes unasked only what its own change made true, on a path agents are seen to take. Applied: B-520 item 1 closes, its compaction fact carried into B-524; WSD-122 stands while a stale-map eval decides its read-side half.
+**Reopen** if a field report shows harm from an item closed under this rule.
