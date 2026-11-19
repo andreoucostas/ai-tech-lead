@@ -10096,3 +10096,43 @@ Unchanged: the comments' texts, the arms and patches, the prompt's two legs, JUD
 the order (the series restarts at C1), the caps. **Spend so far 0.585 USD** (C1 0.408, A1 0.136, the permission call 0.040), which counts
 toward the 22 USD stop. A run in which the agent never obtains the comments is not valid and is repeated once. The runner appends each row to
 this file, so between runs the tree differs from the registered commit by this file alone.
+
+## 2026-11-19 22:50:46 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (a3db91e2254e565cde2005a44b11caeb14191d74)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 41 allowed-tool rules (5f146a1775b9) · scratch: retained=True
+
+- **FAIL review-comments-c** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.296301 tokensIn=6 tokensOut=6318; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=comments arm=c pass=False judged=False overdeclined=True accounted=1/10 accountedAll=False d1=ABSENT command=n/a routerFired=False routerIntent=none | R1=FIXED R2=FIXED R3=NOT R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountHelper.cs,tests/Orders.Tests/OrderPricingTests.cs denied=2 durationMs=10179 turns=2
+
+
+## 2026-11-19 22:52:22 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (a3db91e2254e565cde2005a44b11caeb14191d74)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 41 allowed-tool rules (5f146a1775b9) · scratch: retained=True
+
+- **PASS review-comments-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2921573 tokensIn=16 tokensOut=6275; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=a.patch@807b94444cd4 op=comments arm=a pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=False routerIntent=none | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountHelper.cs,tests/Orders.Tests/OrderPricingTests.cs denied=3 durationMs=47497 turns=2
+
+
+## 2026-11-19 22:54:33 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (a3db91e2254e565cde2005a44b11caeb14191d74)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 41 allowed-tool rules (5f146a1775b9) · scratch: retained=True
+
+- **PASS review-comments-ab** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3442825 tokensIn=22 tokensOut=8319; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=ab.patch@efbf3ed366ed op=comments arm=ab pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=False routerIntent=none | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountHelper.cs,tests/Orders.Tests/OrderPricingTests.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs denied=4 durationMs=72786 turns=2
+
+
+## B-537 pre-registration addendum 2 — the restarted round 1 discarded, permissions and two grader reads (2026-11-19, frozen by the commit that holds it, before any further run)
+
+The three sections above (22:49 to 22:53, at a3db91e2, 41 rules) are the restarted round 1 and are **discarded** under the same provision.
+Read by hand: every arm held W1 to W6 and S1 and fixed R1, R2 and R4 with a failing test first; A and AB called the `address-comments`
+skill, ran the stub, posted a triage table and waited for leg 2; C read the stub's source, edited in leg 1 and gave its account there.
+
+1. **Permissions.** The list refused `git mv`, `Move-Item` and `Rename-Item`, so C could not rename the class R3 names and said so twice
+   (R3=NOT, OVERDECLINED, for want of a permission); A renamed the class inside the old file and AB wrote a new file and removed the old one.
+   R3 then measured the workaround, not the judgement. The list gains `Bash(git mv:*)`, `PowerShell(git mv:*)` and
+   `PowerShell(./scripts/pr-comments.ps1:*)` (C asked for that form): 44 rules, tag `f7790c49ad22`. The last two are not verified to match.
+2. **`routerFired`** (3ed0b274). AB's row read `routerFired=False routerIntent=none` while its transcript holds the hook's
+   `Routed intent: address-comments`; the grader's pattern did not allow a hyphen. Reported, not scored, as before.
+3. **ACCOUNTED and D1 read both legs' closing messages** (3ed0b274). A claim is accounted for when either leg's closing message gives it a
+   disposition. C gave its whole account at the end of leg 1 and the grader read leg 2 alone (1 of 10). This changes the registered wording
+   ("the final message"); the meaning, an account the developer was given, is kept. 51 self-test cases, exit 0.
+
+Unchanged: everything else in the registration and the first addendum. The series restarts at C1. **Spend so far 1.518 USD** (0.585 before,
+then C 0.296, A 0.292, AB 0.344), which counts toward the 22 USD stop.
