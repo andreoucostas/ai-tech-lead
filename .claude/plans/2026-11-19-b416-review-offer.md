@@ -153,3 +153,105 @@ kept, and no HONOURED-positive run existed to tune towards.
 - **Runs left:** C-go and T-go slots 3 to 6 on K, then T-asked-plain slots 1 to 6; 14 runs, about 4.7 USD.
 - **Not shown, added:** that a review asked for on a security-sensitive change is reached once the security gate has run; the order
   seen in three K runs is reported, and only a harness that lets the scope capture run, or the field, can show the rest.
+
+## Part 2 (2026-11-19, after part 1's results went to the maintainer): the clickable form
+
+**Status:** frozen by the commit that holds it, before any paid run of it. Decided by the maintainer in chat 2026-11-19 on seeing part
+1's results: "clickable form is better" (WSD-134). Part 1's text line stays as the fallback where a host has no question tool. Nothing
+ships from this part; the numbers go to the maintainer. Basis: master at 78c9bba9 plus this commit, same worktree and branch,
+`dist/dotnet` stamp 0.98.6 (its carrier unchanged since dac7a912). Stop at 8 USD for this part; part 1 spent 7.57.
+
+### Candidate (T2)
+
+One bullet at the same place in carrier §2, in place of part 1's, verbatim:
+
+> - Close the plan by asking for the go-ahead and offering a review. With a question tool, ask one question with the options `Go ahead` and `Go ahead, with review` (this repository's review gate on the finished change); without one, close with the line `Review: none planned. Reply "with review" to get this repository's review gate on the finished change.` When the answer asks for it, invoke the `review` skill once the change is complete and verified, before presenting it (Copilot: the project skill, not the CLI's built-in code review), and report its verdict. An answer that does not ask for it means no review.
+
+616 bytes on the 15,633-byte carrier (part 1's line: 396). `-TargetPatch meta/eval-fixtures/target-patches/b416-review-question.patch`
+(sha256 `07c0fd5b5830…`, 2,169 bytes, LF: part 1's patch with its one added line replaced; `git apply --check --directory=dist/dotnet`
+exits 0). Choices in it that the maintainer can change: one question with two options; the click is the go-ahead, so no turn is added
+(the extra turn was WSD-131's objection to a question at the end); on a risk change `Go ahead` approves the recommended option and the
+other option goes in the tool's free-text answer, which also stays for corrections.
+
+### Channel (probed 2026-11-19 on Claude Code 2.1.312, sonnet, outside a fixture; 0.30 USD, outside the stop)
+
+- Plain `claude -p`, part 1's channel: `AskUserQuestion` is not in `system/init`'s tools and the agent answered NO-QUESTION-TOOL.
+- `-p --input-format stream-json --permission-prompt-tool stdio` (the control channel): the tool is listed, the host sends the runner
+  a `can_use_tool` request for it, and the option the runner returns reaches the agent as the answer ("Your questions have been
+  answered: …"). A second user message on the same process is a second turn of the same session (`result_index` 1).
+- So `Invoke-ClaudeDialog` runs one process a run: the prompt; a click whenever the agent uses the question tool (`Get-DialogAnswer`:
+  per question, `dialog: review` clicks the first option whose label says "with review", `dialog: go` the first that does not, else
+  the first option); the scenario's typed reply once, when the first turn ends with nothing written; every other permission request
+  refused; the input closed after the turn that follows. Cap: the two legs' budgets added (3.50 USD on K, 3.00 on the plain change).
+- It is not part 1's channel: 31 tools listed against 36 in the probes, and a click passes no UserPromptSubmit hook. Part 1's C-go
+  rows are therefore not reused; the control runs again here.
+
+### Cells and runs
+
+| cell | carrier | scenario | what the runner does | n |
+|---|---|---|---|---|
+| C2-go | as shipped | `b416-dialog-go` (K) | clicks without review if asked, else types b416-review-go's reply | 6 |
+| T2-go | T2 | `b416-dialog-go` (K) | the same | 6 |
+| T2-asked-plain | T2 | `b416-dialog-asked-plain` (Supplier) | clicks "with review" if asked, else types the reply ending "with review" | 6 |
+| T2-fallback, reported | T2 | `b416-review-go` on part 1's channel (no question tool) | types the reply | 3 |
+
+Rounds of C2-go, T2-go, T2-asked-plain; the three fallback runs last. **Pilot:** round 1 counts as slot 1 of each cell if it is valid
+and nothing in this file, the runner, the scenarios or the patch changes after it; otherwise it is reported apart. Launch as part 1:
+`-Model sonnet`, acceptEdits with the 39-rule list (tag `dc735db5da74`, recomputed before every run), one run per invocation from a
+shell with every `CLAUDE*` and `ANTHROPIC*` variable removed and `DISABLE_AUTOUPDATER=1`, `-TimeoutSeconds 1500`.
+
+**Valid** (dialog cells): not ERROR; a successful SessionStart and first UserPromptSubmit response; `rails1=plan-gate`;
+`overlay1=True` on K and `False` on the plain change; `qtool=True`; a go-ahead reached the agent before its first write
+(`goAhead` click or text); for a typed go-ahead, `rails2` `overlay` or `none` on K and `none` on the plain change; `askBullet=True` in
+T2 and `False` in C2. An invalid run is repeated once at the end; a second invalid one is reported by its reason, not scored. The
+fallback runs use part 1's validity.
+
+### Grading (`Test-ScenarioEvidence` cases `b416-dialog-go` and `b416-dialog-asked-plain`, `Get-ReviewAsk`; main agent only)
+
+- **ask**: answered question-tool calls before the first main-agent write. `OPTION` when one offers an option whose label says
+  "with review"; `PLAIN` when the tool was used without it; `NONE`. `asks`: how many. `picked`: the label the tool result reports
+  for the `OPTION` call (`review`, `go`, `other`).
+- **goAhead**: what reached the agent last before its first write: `click` or `text` (the first turn ended and the typed reply began
+  a second).
+- `review`, `reviewWhen`, `builtin`, `reviewers`, `offer`, `plan`, `doneWhen`, `gate`, `auditor`: part 1's definitions, with the
+  go-ahead's place in the stream as the leg boundary.
+
+Hand check, every run, as part 1; in addition, per T2 run: is the plan (the Done-when lines, and on K the options) posted as text
+before the question, or does the question stand in for it; and the question's wording and option labels.
+
+**Red before any paid run**, 2026-11-19: `-SelfTest` on four broken copies of the runner, each EXIT=1. Without the grader case:
+"Unknown scenario 'b416-dialog-asked-plain'." Asked passing without the review: "asked: the click on with review, and no review
+misjudged: PASS". The runner clicking the first option whatever the pick: "the review pick did not click 'with review' and the first
+option elsewhere". Go passing whatever is installed: "go: the candidate installed and a typed reply misjudged: PASS". As committed:
+EXIT=0, 60 PASS lines. The process loop of `Invoke-ClaudeDialog` has no synthetic case; the pilot is its first run, and its
+transcripts are hand-read for that.
+
+### Readings and decision rule (k of 6 valid runs a cell)
+
+- **ASKED**: `ask=OPTION` with `goAhead=click` in 10 or more of the 12 T2 dialog runs, and `ask=OPTION` in at most 1 C2-go run.
+- **HONOURED**: T2-asked-plain: the click landed on "with review" and this repository's `review` skill was called after the first
+  write, in 5 or 6.
+- **QUIET**: no review (project or built-in) in 5 or 6 T2-go runs, and in 5 or 6 C2-go runs.
+- **SIDE**, T2-go against C2-go: `plan=OPTIONS` and `doneWhen` each no more than 1 below C2-go; `gate=True` in 5 or 6 T2-go runs; and
+  by hand the plan is posted as text before the question in 5 or 6 of each T2 cell.
+- **SHIP CANDIDATE (clickable, Claude Code)**: all four. The numbers go to the maintainer, who decides.
+- **ABANDON**: ASKED's T2 count is 6 or fewer, or HONOURED is 3 or fewer, or a SIDE check fails by 3 or more. The clickable wording
+  is dropped; part 1's text line stays a ship candidate on its own results.
+- **NOT SETTLED**: anything else, or a cell short of 6 valid runs.
+
+Reported, not readings: the fallback runs under part 1's grader (`offer=LINE` and no review, k of 3); whether clarifying questions
+went through the tool too (`asks` above 1) and what the runner's first-option click did there; how C2-go's go-ahead was delivered
+(a plain proceed question or the typed reply); `rails2` (a click passes no hook); cost and wall time, T2-go against C2-go by medians.
+
+### Stops and cost
+
+Stop at 8 USD for this part, or at the first hard quota, sign-in or rate-limit refusal; what ran is kept and reported as partial.
+Expected: about 0.33 USD a run (part 1's medians), 21 runs, about 7 USD.
+
+### Not shown
+
+A person at Claude Code's terminal: the click here is the runner's answer on the control channel, so whether the dialog leaves the
+plan readable above it, and whether a developer reads the plan before clicking, only the field can show. Copilot CLI's `ask_user`
+(this harness runs it with `--no-ask-user`; B-530) and VS Code's question tool (B-532). A completed review, and the review asked
+for on a security-sensitive change (part 1's open question stands). Option B chosen through the free-text answer. Opus, Angular,
+monorepo; n = 6 a cell on one fixture and two prompts.

@@ -4860,3 +4860,14 @@ tool; both vendors say a tool list is the boundary and an instruction is not.
 tools, and the shipped text stops saying read-only. Rejected: dropping the shell, which moves the bundle-hash recompute to the parent across six agents,
 six wrappers, `review.md` and `security-gate.md`. Waits for Copilot access: the change needs a host check that a reviewer starts and reads its bundle.
 **Reopen** if a reviewer is seen changing a file or running a command that changes the tree.
+
+## WSD-134: where the host has a question tool the go-ahead is a question with a review option; the text line is the fallback (2026-11-19)
+
+**Context.** WSD-131's closing line measured as a ship candidate on Claude Code (`meta/eval-results.md`, "B-416 results"). It reaches every host, but
+it depends on the developer noticing one line and typing a phrase.
+**Decision (the maintainer's, in chat 2026-11-19, on seeing those results: "clickable form is better").** With a question tool the agent asks for the
+go-ahead in one question offering `Go ahead` and `Go ahead, with review`; without one it closes the plan with WSD-131's line. The opt-in stands: no
+review unless asked. This is not the question at the end that WSD-131 rejected: the click replaces the typed go-ahead, so no turn is added. Not taken
+up: a second question for Option A or B on a risk change (the other option goes in the free-text answer). Measured before anything ships
+(`.claude/plans/2026-11-19-b416-review-offer.md`, Part 2); Copilot's and VS Code's question tools are B-530 and B-532.
+**Reopen** if developers report the dialog hiding the plan, or plans approved unread.

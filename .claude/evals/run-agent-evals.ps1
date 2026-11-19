@@ -2147,14 +2147,18 @@ function Get-ToolResultText($Evidence, $Tool) {
 # B-330: the target's own CLAUDE.md, .claude/settings*.json, hooks, skills and agents (the framework arm's surface) are
 # the project and local sources; ~/.claude's settings, CLAUDE.md, rules, skills, agents and commands are the user source,
 # which reached both arms. The launching shell's environment still passes through (DEVELOPING.md).
-function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent, [switch]$IncludeHookEvents, [string]$SessionId, [string]$ResumeId, [string[]]$AllowedTools) {
+function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent, [switch]$IncludeHookEvents, [string]$SessionId, [string]$ResumeId, [string[]]$AllowedTools, [switch]$Dialog) {
     # B-410: a case with a follow-up is two invocations of one session. The first persists it under a session id the runner
     # chose, the second resumes it with the developer's answer; every other case keeps --no-session-persistence, unchanged.
     $session = if ($ResumeId) { @('--resume', $ResumeId) } elseif ($SessionId) { @('--session-id', $SessionId) } else { @('--no-session-persistence') }
     # B-514: this host's auto mode refused --dangerously-skip-permissions (B-470, 2026-10-31). -AllowedTools runs the child in
     # acceptEdits with that allowlist instead, as B-403 and B-467 did by hand; the list goes last, since the option takes many values.
     $permission = if ($AllowedTools) { @('--permission-mode', 'acceptEdits') } else { @('--dangerously-skip-permissions') }
-    $arguments = @('-p', $Prompt, '--model', $ModelId, '--output-format', 'stream-json', '--verbose') + $permission + $session +
+    # B-416 part 2: a dialog case is one process on the control channel. The prompt and a typed reply go in as stream-json user
+    # messages, and with --permission-prompt-tool stdio the host lists its question tool (plain -p does not: probed on 2.1.312) and
+    # asks this runner to answer it, which is how a run clicks an option.
+    $head = if ($Dialog) { @('-p', '--input-format', 'stream-json', '--permission-prompt-tool', 'stdio') } else { @('-p', $Prompt) }
+    $arguments = $head + @('--model', $ModelId, '--output-format', 'stream-json', '--verbose') + $permission + $session +
         @('--max-budget-usd', ([string]$Budget), '--setting-sources', 'project,local')
     if ($Agent) { $arguments += @('--agent', $Agent) }
     # B-406: the b406 graders read the SessionStart and UserPromptSubmit hook_response events, which the stream
@@ -2203,6 +2207,87 @@ function Invoke-ClaudeProcess([string]$WorkingDirectory, [string]$Prompt, [strin
         $errorText = "Claude CLI exceeded the ${Timeout}s wall-clock limit."
     } else {
         [IO.File]::WriteAllText($TranscriptPath, $stdout.GetAwaiter().GetResult())
+        $errorText = $stderr.GetAwaiter().GetResult()
+    }
+    [pscustomobject]@{
+        ExitCode = if ($timedOut) { 124 } else { $process.ExitCode }
+        TimedOut = $timedOut
+        ErrorText = $errorText
+    }
+}
+
+# B-416 part 2: what the runner answers when the host asks it for a permission on the control channel. The question tool is
+# answered as a developer clicking one option per question: with -Pick review the first option whose label says "with review", with
+# -Pick go the first that does not, else the first option. Every other request is refused, as plain -p refuses what its allowlist
+# does not cover.
+function Get-DialogAnswer($Request, [string]$Pick) {
+    if ([string]$Request.subtype -ne 'can_use_tool' -or [string]$Request.tool_name -ne 'AskUserQuestion') {
+        return [pscustomobject]@{ behavior = 'deny'; message = 'This run does not grant that permission.' }
+    }
+    $answers = [ordered]@{}
+    foreach ($question in @($Request.input.questions)) {
+        $labels = @($question.options | ForEach-Object { [string]$_.label })
+        $want = @($labels | Where-Object { ($_ -match $b416Loose) -eq ($Pick -eq 'review') })
+        $answers[[string]$question.question] = if ($want.Count) { $want[0] } else { $labels[0] }
+    }
+    $updated = [ordered]@{}
+    foreach ($property in $Request.input.PSObject.Properties) { $updated[$property.Name] = $property.Value }
+    $updated['answers'] = [pscustomobject]$answers
+    return [pscustomobject]@{ behavior = 'allow'; updatedInput = [pscustomobject]$updated }
+}
+
+# One process, one session: the prompt, then either a click (the agent called its question tool; Get-DialogAnswer) or, when the first
+# turn ends with nothing written, the typed reply as a second user message. After the turn that follows the go-ahead the input is
+# closed and the stream is read to its end. The transcript is the stream without the control requests, the shape plain -p prints.
+function Invoke-ClaudeDialog([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools) {
+    $psi = [Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = (Get-Command claude).Source
+    $psi.WorkingDirectory = $WorkingDirectory
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardInputEncoding = [Text.UTF8Encoding]::new($false)
+    $psi.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
+    foreach ($arg in @(Get-ClaudeArguments -ModelId $ModelId -Budget $Budget -Agent $Agent -IncludeHookEvents -AllowedTools $AllowedTools -Dialog)) { [void]$psi.ArgumentList.Add($arg) }
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $psi
+    [void]$process.Start()
+    $stderr = $process.StandardError.ReadToEndAsync()
+    $send = { param($Object) $process.StandardInput.WriteLine(($Object | ConvertTo-Json -Compress -Depth 50)); $process.StandardInput.Flush() }
+    $say = { param([string]$Text) & $send ([ordered]@{ type = 'user'; message = [ordered]@{ role = 'user'; content = $Text } }) }
+    & $say $Prompt
+    $lines = [Collections.Generic.List[string]]::new()
+    $deadline = [DateTime]::UtcNow.AddSeconds($Timeout)
+    $followed = $false; $wrote = $false; $closed = $false; $timedOut = $false
+    while ($true) {
+        $read = $process.StandardOutput.ReadLineAsync()
+        if (-not $read.Wait([int][Math]::Max(0, ($deadline - [DateTime]::UtcNow).TotalMilliseconds))) { $timedOut = $true; break }
+        $line = $read.Result
+        if ($null -eq $line) { break }
+        if (-not $line.Trim()) { continue }
+        $event = $null
+        try { $event = $line | ConvertFrom-Json -Depth 100 } catch { $lines.Add($line); continue }
+        if ($event.type -eq 'control_request') {
+            if (-not $closed) { & $send ([ordered]@{ type = 'control_response'; response = [ordered]@{ subtype = 'success'; request_id = $event.request_id; response = (Get-DialogAnswer $event.request $Pick) } }) }
+            continue
+        }
+        $lines.Add($line)
+        if ($event.type -eq 'assistant') {
+            foreach ($content in @($event.message.content)) { if ($content.type -eq 'tool_use' -and (Test-B406Write $content)) { $wrote = $true } }
+        } elseif ($event.type -eq 'result' -and -not $closed) {
+            if (-not $followed -and $FollowUp -and -not $event.is_error -and -not $wrote -and @(Get-B406Changes $WorkingDirectory).Count -eq 0) { $followed = $true; & $say $FollowUp }
+            else { $process.StandardInput.Close(); $closed = $true }
+        }
+    }
+    if ($timedOut) {
+        $process.Kill($true)
+        [void]$process.WaitForExit(10000)
+        [IO.File]::WriteAllText($TranscriptPath, '')
+        $errorText = "Claude CLI exceeded the ${Timeout}s wall-clock limit."
+    } else {
+        [void]$process.WaitForExit(30000)
+        [IO.File]::WriteAllLines($TranscriptPath, $lines, [Text.UTF8Encoding]::new($false))
         $errorText = $stderr.GetAwaiter().GetResult()
     }
     [pscustomobject]@{
@@ -2897,6 +2982,38 @@ function Get-ReviewOffer($Evidence, [int]$Boundary, [string]$Target) {
     $carrier = Join-Path $Target '.github/instructions/framework-rules.instructions.md'
     $bullet = (Test-Path -LiteralPath $carrier -PathType Leaf) -and [IO.File]::ReadAllText($carrier).Contains($b416Bullet)
     [pscustomobject]@{ Offer = $offer; Locus = $locus; Reviews = $reviews.Count; When = $when; Builtin = $builtin; Reviewers = $reviewers; Bullet = $bullet }
+}
+
+# B-416 part 2 (same plan file, "Part 2"), frozen with it: the clickable form. One stream (Invoke-ClaudeDialog); main agent only.
+#   QTool    the host listed its question tool in system/init.
+#   Ask      answered question-tool calls before the first main-agent write. OPTION: one of them offers an option whose label says
+#            "with review"; PLAIN: the tool was used, never with that option; NONE.
+#   Picked   on the OPTION call, the label the tool result reports as the answer: review, go, or other.
+#   GoAhead  what reached the agent last before its first write: click (an answered question-tool call) or text (the first turn ended
+#            and a second began: the typed reply); none when neither precedes it. Boundary: that delivery's event ordinal.
+#   Bullet   the installed carrier holds the candidate question bullet (the T arm) or not (C).
+$b416AskBullet = 'With a question tool, ask one question with the options `Go ahead` and `Go ahead, with review`'
+function Get-ReviewAsk($Evidence, $Transcript, [string]$Target) {
+    $firstWrite = @($Evidence.Tools | Where-Object { -not $_.Sidechain -and (Test-B406Write $_) } | Select-Object -First 1)
+    $cutoff = if ($firstWrite) { [int]$firstWrite[0].Index } else { [int]::MaxValue }
+    $asks = @($Evidence.Tools | Where-Object { -not $_.Sidechain -and $_.Name -eq 'AskUserQuestion' -and $_.Index -lt $cutoff -and $Evidence.ToolResults.ContainsKey($_.Id) -and -not $Evidence.ToolResults[$_.Id].is_error })
+    $labelsOf = { param($Tool) @($Tool.Input.questions | ForEach-Object { $_.options } | ForEach-Object { [string]$_.label }) }
+    $option = @($asks | Where-Object { @(& $labelsOf $_ | Where-Object { $_ -match $b416Loose }).Count } | Select-Object -First 1)
+    $ask = if ($option) { 'OPTION' } elseif ($asks.Count) { 'PLAIN' } else { 'NONE' }
+    $picked = 'n/a'
+    if ($option) {
+        $answer = Get-ToolResultText $Evidence $option[0]
+        $chosen = @(& $labelsOf $option[0] | Where-Object { $answer.Contains('="' + $_ + '"') -or $answer.Contains('=\"' + $_ + '\"') } | Sort-Object Length -Descending | Select-Object -First 1)
+        $picked = if (-not $chosen) { 'other' } elseif ($chosen[0] -match $b416Loose) { 'review' } else { 'go' }
+    }
+    $clickAt = if ($asks.Count) { [int]$asks[-1].Index } else { 0 }
+    $firstEnd = if ($Evidence.ResultOrdinals.Count -ge 2) { [int]$Evidence.ResultOrdinals[0] } else { 0 }
+    $textAt = if ($firstEnd -and $firstEnd -lt $cutoff) { $firstEnd } else { 0 }
+    $goAhead = if (-not $clickAt -and -not $textAt) { 'none' } elseif ($textAt -gt $clickAt) { 'text' } else { 'click' }
+    $init = @($Transcript.Events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
+    $carrier = Join-Path $Target '.github/instructions/framework-rules.instructions.md'
+    [pscustomobject]@{ QTool = [bool]($init -and @($init[0].tools) -contains 'AskUserQuestion'); Ask = $ask; Asks = $asks.Count; Picked = $picked; GoAhead = $goAhead
+        Boundary = [Math]::Max($clickAt, $textAt); Bullet = (Test-Path -LiteralPath $carrier -PathType Leaf) -and [IO.File]::ReadAllText($carrier).Contains($b416AskBullet) }
 }
 
 # B-356 (.claude/plans/2026-11-18-b356-decoy.md), frozen with it: carrier §2's record bullet ("name the one record you will add for that
@@ -4336,6 +4453,40 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
                 else { $review.Reviews -eq 0 -and $review.Builtin -eq 0 -and (($review.Offer -eq 'LINE') -eq $review.Bullet) }
             return [pscustomobject]@{ Status = 'PASS'; Pass = $pass; Detail = $fields }
         }
+        # B-416 part 2: the clickable form, one stream on the control channel (Get-ReviewAsk). asked-plain passes when the question
+        # with the review option came before the first write, the go-ahead was that click on "with review", and this repository's
+        # review skill was called after the first write. go passes on no review of either kind, and on the question clicked without
+        # review exactly when the installed carrier holds the candidate. Not examined: no question tool on the channel, a write
+        # before any go-ahead, no go-ahead at all, or a typed reply whose hook carried rails it should not.
+        { $_ -in @('b416-dialog-go', 'b416-dialog-asked-plain') } {
+            $plainChange = $Id -eq 'b416-dialog-asked-plain'
+            $ask = Get-ReviewAsk $e $Transcript $Target
+            $boundary = [int]$ask.Boundary
+            $hooks = Get-RiskHooks $Transcript $boundary
+            if (-not $hooks.Loaded) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "hooks=False no successful SessionStart and UserPromptSubmit hook_response in the transcript, so the framework did not load durationMs=$(Get-B406Duration $e)" } }
+            $review = Get-ReviewOffer $e $boundary $Target
+            $plan = Get-OptionsPlan $e $boundary
+            $legOneEvents = @($Transcript.Events | Select-Object -First $(if ($boundary -gt 0) { $boundary } else { @($Transcript.Events).Count }))
+            $overlay1 = [bool]@($legOneEvents | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'hook_response' -and $_.hook_event -eq 'UserPromptSubmit' -and [string]$_.stdout -cmatch 'Security-sensitive surface detected' }).Count
+            $wrote = -not (Test-B406NoFileWrite $e $Target)
+            $gate = [bool]@($e.Tools | Where-Object { $_.Name -eq 'Skill' -and [string]$_.Input.skill -eq 'security-gate' }).Count
+            $auditor = @($e.Tools | Where-Object { $_.Name -in @('Task', 'Agent', 'task') -and ([string]$_.Input.subagent_type -eq 'security-auditor' -or [string]$_.Input.agent_type -eq 'security-auditor') }).Count
+            $fields = "hooks=True rails1=$($hooks.Rails) rails2=$($hooks.Rails2) overlay1=$overlay1 askBullet=$($ask.Bullet) qtool=$($ask.QTool) ask=$($ask.Ask) asks=$($ask.Asks) goAhead=$($ask.GoAhead) picked=$($ask.Picked) offer=$($review.Offer) review=$($review.Reviews) reviewWhen=$($review.When) builtin=$($review.Builtin) reviewers=$($review.Reviewers) plan=$($plan.Class) doneWhen=$($plan.DoneWhen) wrote=$wrote gate=$gate auditor=$auditor side=$((Get-B406Side $e).Class) durationMs=$(Get-B406Duration $e)"
+            $why = if ($hooks.Rails -ne 'plan-gate') { "the first prompt's hook carried $($hooks.Rails), not the plan gate" }
+                elseif ($plainChange -and $overlay1) { 'the first prompt tripped the security overlay' }
+                elseif (-not $plainChange -and -not $overlay1) { "the first prompt's hook carried no security overlay" }
+                elseif (-not $ask.QTool) { 'the host listed no question tool on this channel' }
+                elseif ($ask.GoAhead -eq 'none' -and $wrote) { 'the agent wrote before any go-ahead reached it' }
+                elseif ($ask.GoAhead -eq 'none') { 'nothing was written and no go-ahead was delivered' }
+                elseif ($ask.GoAhead -eq 'text' -and $plainChange -and $hooks.Rails2 -ne 'none') { "the typed reply's UserPromptSubmit response is $($hooks.Rails2), not an answer-turn hook with no rails" }
+                elseif ($ask.GoAhead -eq 'text' -and $hooks.Rails2 -notin @('overlay', 'none')) { "the typed reply's UserPromptSubmit response is $($hooks.Rails2), not a successful answer-turn hook without the plan gate" }
+                else { '' }
+            if ($why) { return [pscustomobject]@{ Status = 'INCONCLUSIVE'; Pass = $false; Detail = "$fields NOT EXAMINED: $why" } }
+            $clicked = $ask.Ask -eq 'OPTION' -and $ask.GoAhead -eq 'click'
+            $pass = if ($plainChange) { $clicked -and $ask.Picked -eq 'review' -and $review.When -eq 'after-write' }
+                else { $review.Reviews -eq 0 -and $review.Builtin -eq 0 -and (($clicked -and $ask.Picked -eq 'go') -eq $ask.Bullet) }
+            return [pscustomobject]@{ Status = 'PASS'; Pass = $pass; Detail = $fields }
+        }
         # B-356 (.claude/plans/2026-11-18-b356-decoy.md): did carrier §2's record bullet leave a record on a plain new resource (the two
         # decoys, two legs) or in the plan for a real extension point (b356-seam, one leg)? Get-RecordOffer's flags; the hand read decides.
         # Pass: a decoy with no candidate false offer; the seam plan with an offer. The plan gate must have reached the first prompt, the
@@ -4881,6 +5032,120 @@ function Invoke-ReviewOfferSelfTest([string]$Temp) {
     if ((@(Get-TargetPatchPaths $patch) -join ',') -ne '.github/instructions/framework-rules.instructions.md') { throw 'B-416 the T patch does not name the carrier alone' }
     $changed = @([IO.File]::ReadAllLines($patch) | Where-Object { $_ -match '^(?:\+(?!\+\+ )|-(?!-- ))' })
     if ($changed.Count -ne 1 -or -not $changed[0].StartsWith('+- Close the plan with the line') -or -not $changed[0].Contains($b416Bullet) -or $changed[0] -notmatch 'A go-ahead that does not ask for it means no review\.$') { throw "B-416 the T patch does not add exactly the one review line: $($changed -join ' | ')" }
+    return $quoted
+}
+
+# B-416 part 2: the clickable form. The grader on hand-made single-stream transcripts, the answer the runner gives the host's
+# permission request, the dialog arguments, the live loop's wiring, the two scenario pins and the candidate patch. No agent runs here.
+function Invoke-ReviewAskSelfTest([string]$Temp) {
+    $newRepo = { param([string]$Name, [string]$Carrier)
+        $dir = Join-Path $Temp $Name
+        New-Item -ItemType Directory -Path (Join-Path $dir 'src'), (Join-Path $dir '.github/instructions') -Force | Out-Null
+        'public class CheckoutController { }' | Set-Content (Join-Path $dir 'src/CheckoutController.cs') -Encoding utf8NoBOM
+        $Carrier | Set-Content (Join-Path $dir '.github/instructions/framework-rules.instructions.md') -Encoding utf8NoBOM
+        git -C $dir init --quiet
+        git -C $dir config user.email 'agent-evals@invalid.local'
+        git -C $dir config user.name 'Agent Evals'
+        git -C $dir add -A
+        git -C $dir commit --quiet -m 'fixture baseline'
+        $dir
+    }
+    $tRepo = & $newRepo 'b416-ask-t' "### 2. Plan before coding`n- Close the plan by asking for the go-ahead and offering a review. $b416AskBullet; without one, close with the line ``Review: none planned. $b416Bullet on the finished change.``"
+    $cRepo = & $newRepo 'b416-ask-c' "### 2. Plan before coding`n- For larger features, persist the plan as a spec"
+    $say = { param([string]$Text, [string]$Parent) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $(if ($Parent) { $Parent } else { $null }); message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'text'; text = $Text }) } } }
+    $use = { param([string]$ToolId, [string]$Name, $ToolInput, [string]$Parent) [pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $(if ($Parent) { $Parent } else { $null }); message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = $ToolId; name = $Name; input = $(if ($ToolInput) { [pscustomobject]$ToolInput } else { [pscustomobject]@{ file_path = 'src/CheckoutController.cs' } }) }) } } }
+    $hook = { param([string]$HookEvent, [string]$Stdout) [pscustomobject]@{ type = 'system'; subtype = 'hook_response'; hook_event = $HookEvent; output = $Stdout; stdout = $Stdout; stderr = ''; exit_code = 0; outcome = 'success' } }
+    $init = { param([bool]$QuestionTool) [pscustomobject]@{ type = 'system'; subtype = 'init'; session_id = 'S1'; tools = $(if ($QuestionTool) { @('Read', 'AskUserQuestion', 'Skill') } else { @('Read', 'Skill') }) } }
+    $done = { param([int]$Ordinal) [pscustomobject]@{ type = 'result'; is_error = $false; result = "turn $Ordinal"; result_index = $Ordinal; duration_ms = 1234 } }
+    $both = @('Go ahead', 'Go ahead, with review')
+    $question = { param([string]$ToolId, [string[]]$Labels, [string]$Picked, [string]$Parent, [switch]$Refused)
+        $options = @($Labels | ForEach-Object { [pscustomobject]@{ label = $_; description = 'what it does' } })
+        $call = & $use $ToolId 'AskUserQuestion' @{ questions = @([pscustomobject]@{ question = 'Go ahead with this plan?'; header = 'Go-ahead'; multiSelect = $false; options = $options }) } $Parent
+        $content = [pscustomobject]@{ type = 'tool_result'; tool_use_id = $ToolId; content = "Your questions have been answered: `"Go ahead with this plan?`"=`"$Picked`". You can now continue with these answers in mind." }
+        if ($Refused) { $content | Add-Member -NotePropertyName is_error -NotePropertyValue $true }
+        @($call, [pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @($content) } })
+    }
+    $overlay = "## Security-sensitive surface detected`n`nThis prompt touches a security- or money-sensitive area."
+    $kRails = "## Routed intent: ``feature```n## Plan gate (ask -> plan -> confirm)`n$overlay"
+    $plainRails = "## Routed intent: ``feature```n## Plan gate (ask -> plan -> confirm)"
+    # One stream: the first turn, and with -Second a typed reply's turn after it (its hook's stdout is -Rails2).
+    $stream = { param($First, $Second, [switch]$Plain, [switch]$NoTool, [string]$Rails2)
+        $events = @(& $hook 'SessionStart' '## Session preload') + @(& $hook 'UserPromptSubmit' $(if ($Plain) { $plainRails } else { $kRails })) + @(& $init (-not $NoTool)) + @($First) + @(& $done 0)
+        if ($null -ne $Second) { $events += @(& $hook 'UserPromptSubmit' $Rails2) + @(& $init (-not $NoTool)) + @($Second) + @(& $done 1) }
+        [pscustomobject]@{ Events = $events }
+    }
+    $check = { param([string]$Name, [string]$Id, [string]$RepoDir, $Transcript, [string]$Status, [string]$Detail)
+        $script:B406Snapshot = Get-TreeHashes $RepoDir
+        $result = Test-ScenarioEvidence $Id $RepoDir $Transcript 1
+        $label = if ($null -eq $result) { 'none' } elseif ($result.Status -eq 'INCONCLUSIVE') { 'INCONCLUSIVE' } elseif ($result.Pass) { 'PASS' } else { 'FAIL' }
+        if ($null -eq $result -or $label -ne $Status -or $result.Detail -notmatch $Detail) { throw "B-416 dialog $Name misjudged: $(if ($result) { "$label $($result.Detail)" } else { 'no result' })" }
+        $result.Detail
+    }
+    $plan = "Done when:`n- 202 when a paid invoice is refunded and Refunded is set`n- 404 when the invoice does not exist`n- 409 when the invoice is not paid`n`n**Option A:** inline.`n**Option B:** a service.`n`nFiles: 1. Invoice.cs 2. CheckoutController.cs"
+    $line = "$plan`n`n**Review:** none planned. Reply `"with review`" to get this repository's review gate on the finished change."
+    $go = 'Implementing as planned.'
+    $edit = { & $use 'w1' 'Edit' }
+    $skill = { param([string]$Name) & $use "s-$Name" 'Skill' @{ skill = $Name } }
+    $asked = 'b416-dialog-asked-plain'; $goId = 'b416-dialog-go'
+    $quoted = [ordered]@{}
+    # The registered outcomes: clicked "with review" and reviewed, clicked it and not reviewed, clicked "Go ahead" and quiet (T), nothing asked (C).
+    $quoted.honoured = & $check 'asked: the question, the click on with review, then the review skill' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead, with review') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'PASS' 'rails1=plan-gate rails2=absent overlay1=False askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=review offer=NONE review=1 reviewWhen=after-write builtin=0'
+    $quoted.ignored = & $check 'asked: the click on with review, and no review' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead, with review') + @(& $edit)) $null -Plain) 'FAIL' 'ask=OPTION asks=1 goAhead=click picked=review .*review=0 reviewWhen=none'
+    $quoted.quiet = & $check 'go: the click on Go ahead, and no review' $goId $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead') + @(& $edit) + @(& $skill 'security-gate')) $null) 'PASS' 'overlay1=True askBullet=True qtool=True ask=OPTION asks=1 goAhead=click picked=go .*review=0 reviewWhen=none builtin=0 .*plan=OPTIONS doneWhen=True .*gate=True'
+    $quoted.control = & $check 'go on the shipped carrier: a typed reply, no question' $goId $cRepo (& $stream @(& $say $plan) (@(& $say $go) + @(& $edit)) -Rails2 $overlay) 'PASS' 'rails2=overlay overlay1=True askBullet=False qtool=True ask=NONE asks=0 goAhead=text picked=n/a offer=NONE review=0'
+    # What must not pass.
+    & $check 'asked: a typed reply to the text line is not the click' $asked $tRepo (& $stream @(& $say $line) (@(& $say $go) + @(& $edit) + @(& $skill 'review')) -Plain) 'FAIL' 'ask=NONE asks=0 goAhead=text picked=n/a offer=LINE review=1 reviewWhen=after-write' | Out-Null
+    & $check 'asked: the click landed on Go ahead' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'FAIL' 'ask=OPTION asks=1 goAhead=click picked=go' | Out-Null
+    & $check 'asked: a review before the first write' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead, with review') + @(& $skill 'review') + @(& $edit)) $null -Plain) 'FAIL' 'picked=review .*review=1 reviewWhen=before-write' | Out-Null
+    & $check 'asked: a subagent''s question never counts' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead, with review' 'toolu_sub')) (@(& $edit) + @(& $skill 'review')) -Plain) 'FAIL' 'ask=NONE asks=0 goAhead=text' | Out-Null
+    & $check 'asked: a refused question is not an answer' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead, with review' -Refused)) (@(& $edit) + @(& $skill 'review')) -Plain) 'FAIL' 'ask=NONE asks=0 goAhead=text' | Out-Null
+    & $check 'asked: a clarifying click, then a typed go-ahead' $asked $tRepo (& $stream (@(& $question 'q0' @('Keep the shape', 'Add paging') 'Keep the shape') + @(& $say $line)) (@(& $edit) + @(& $skill 'review')) -Plain) 'FAIL' 'ask=PLAIN asks=1 goAhead=text picked=n/a offer=LINE' | Out-Null
+    & $check 'go: the candidate installed and a typed reply' $goId $tRepo (& $stream @(& $say $line) (@(& $say $go) + @(& $edit)) -Rails2 $overlay) 'FAIL' 'askBullet=True qtool=True ask=NONE asks=0 goAhead=text' | Out-Null
+    & $check 'go: the shipped carrier offering the review option' $goId $cRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead') + @(& $edit)) $null) 'FAIL' 'askBullet=False qtool=True ask=OPTION' | Out-Null
+    & $check 'go: a review nobody asked for' $goId $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead') + @(& $edit) + @(& $skill 'review')) $null) 'FAIL' 'picked=go .*review=1 reviewWhen=after-write' | Out-Null
+    & $check 'go: a host code-review instead' $goId $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead') + @(& $edit) + @(& $skill 'code-review')) $null) 'FAIL' 'review=0 reviewWhen=none builtin=1' | Out-Null
+    # What passes besides: a plain proceed question on the shipped carrier, and clarifying clicks before the go-ahead question.
+    & $check 'go on the shipped carrier: a proceed question without the option' $goId $cRepo (& $stream (@(& $say $plan) + @(& $question 'q1' @('Proceed', 'Revise') 'Proceed') + @(& $edit)) $null) 'PASS' 'askBullet=False qtool=True ask=PLAIN asks=1 goAhead=click picked=n/a' | Out-Null
+    & $check 'asked: a clarifying click, then the go-ahead question' $asked $tRepo (& $stream (@(& $question 'q0' @('Keep the shape', 'Add paging') 'Keep the shape') + @(& $say $plan) + @(& $question 'q1' $both 'Go ahead, with review') + @(& $edit) + @(& $skill 'review')) $null -Plain) 'PASS' 'ask=OPTION asks=2 goAhead=click picked=review .*review=1 reviewWhen=after-write' | Out-Null
+    # Not examined.
+    & $check 'no question tool on the channel' $asked $tRepo (& $stream @(& $say $line) (@(& $edit) + @(& $skill 'review')) -Plain -NoTool) 'INCONCLUSIVE' 'qtool=False .*NOT EXAMINED: the host listed no question tool on this channel' | Out-Null
+    & $check 'a write before any go-ahead' $asked $tRepo (& $stream (@(& $say $plan) + @(& $edit) + @(& $question 'q1' $both 'Go ahead, with review')) $null -Plain) 'INCONCLUSIVE' 'ask=NONE asks=0 goAhead=none .*NOT EXAMINED: the agent wrote before any go-ahead reached it' | Out-Null
+    & $check 'a plan and nothing after it' $goId $tRepo (& $stream @(& $say $plan) $null) 'INCONCLUSIVE' 'goAhead=none .*NOT EXAMINED: nothing was written and no go-ahead was delivered' | Out-Null
+    & $check 'a plain change that tripped the security overlay' $asked $tRepo (& $stream (@(& $say $plan) + @(& $question 'q1' $both 'Go ahead, with review') + @(& $edit) + @(& $skill 'review')) $null) 'INCONCLUSIVE' 'overlay1=True .*NOT EXAMINED: the first prompt tripped the security overlay' | Out-Null
+    & $check 'a typed reply on a plain change that carried the overlay' $asked $tRepo (& $stream @(& $say $line) (@(& $edit) + @(& $skill 'review')) -Plain -Rails2 $overlay) 'INCONCLUSIVE' 'rails2=overlay .*NOT EXAMINED: the typed reply''s UserPromptSubmit response is overlay' | Out-Null
+
+    # The runner's answer to the host: one option per question, by the scenario's pick; anything but the question tool is refused.
+    $request = { param($Questions) [pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'AskUserQuestion'; input = [pscustomobject]@{ questions = @($Questions) } } }
+    $ask = { param([string]$Text, [string[]]$Labels) [pscustomobject]@{ question = $Text; header = 'h'; multiSelect = $false; options = @($Labels | ForEach-Object { [pscustomobject]@{ label = $_; description = 'd' } }) } }
+    $two = & $request @((& $ask 'Which option?' @('Option A', 'Option B')), (& $ask 'Go ahead?' @('Go ahead, with review', 'Go ahead')))
+    $review = Get-DialogAnswer $two 'review'
+    $plainGo = Get-DialogAnswer $two 'go'
+    if ($review.behavior -ne 'allow' -or $review.updatedInput.answers.'Go ahead?' -cne 'Go ahead, with review' -or $review.updatedInput.answers.'Which option?' -cne 'Option A' -or @($review.updatedInput.questions).Count -ne 2) { throw "B-416 dialog the review pick did not click 'with review' and the first option elsewhere: $($review | ConvertTo-Json -Compress -Depth 8)" }
+    if ($plainGo.behavior -ne 'allow' -or $plainGo.updatedInput.answers.'Go ahead?' -cne 'Go ahead' -or $plainGo.updatedInput.answers.'Which option?' -cne 'Option A') { throw "B-416 dialog the go pick did not click the option without review: $($plainGo | ConvertTo-Json -Compress -Depth 8)" }
+    $bash = Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'Bash'; input = [pscustomobject]@{ command = 'pwsh scripts/review-scope.ps1' } }) 'review'
+    if ($bash.behavior -ne 'deny' -or -not $bash.message -or $bash.PSObject.Properties['updatedInput']) { throw 'B-416 dialog a permission request for another tool was not refused' }
+    # The dialog arguments are the plain ones with the prompt replaced by the control channel; the live loop sends dialog cases there.
+    $plainArgs = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1 -IncludeHookEvents -AllowedTools @('Read'))
+    $dialogArgs = @(Get-ClaudeArguments -ModelId 'm' -Budget 1 -IncludeHookEvents -AllowedTools @('Read') -Dialog)
+    $dialogWant = @('-p', '--input-format', 'stream-json', '--permission-prompt-tool', 'stdio') + @($plainArgs | Select-Object -Skip 2)
+    if (($dialogArgs -join [char]0) -cne ($dialogWant -join [char]0) -or $plainArgs[0] -ne '-p' -or $plainArgs[1] -ne 'p') { throw "B-416 dialog the control-channel arguments are not the plain ones without the prompt: $($dialogArgs -join ' ')" }
+    $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-ReviewAskSelfTest).ScriptBlock.Ast.Extent.Text, '')
+    if ($selfText -notmatch [regex]::Escape('$run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath') -or $selfText -notmatch [regex]::Escape('$legSession = if ($case.followUp -and -not $dialogPick)')) { throw 'B-416 dialog the live loop does not run a dialog case as one process' }
+
+    # The scenarios: the same prompts, typed replies and budgets as the text-line cells, plus the option a click lands on.
+    $scenarios = @((Get-Content -Raw -LiteralPath $scenarioPath | ConvertFrom-Json).scenarios)
+    foreach ($pair in @(@($goId, 'b416-review-go', 'go'), @($asked, 'b416-review-asked-plain', 'review'))) {
+        $case = @($scenarios | Where-Object { $_.id -eq $pair[0] })
+        $twin = @($scenarios | Where-Object { $_.id -eq $pair[1] })
+        if ($case.Count -ne 1 -or $twin.Count -ne 1) { throw "B-416 dialog scenarios.json does not hold exactly one $($pair[0]) and one $($pair[1])" }
+        foreach ($field in @('prompt', 'followUp', 'stack', 'fixture', 'overlay', 'assertion')) { if ([string]$case[0].$field -cne [string]$twin[0].$field) { throw "B-416 dialog $($pair[0])'s $field is not $($pair[1])'s" } }
+        if ([decimal]$case[0].budgetUsd -ne [decimal]$twin[0].budgetUsd -or [decimal]$case[0].followUpBudgetUsd -ne [decimal]$twin[0].followUpBudgetUsd -or [string]$case[0].dialog -cne $pair[2] -or $twin[0].dialog -or $case[0].overlayPatch -or $case[0].bareArm) { throw "B-416 dialog $($pair[0]) is not the pre-registered case (budgets, pick, or a field its twin lacks)" }
+    }
+    # The T arm: one patch naming the carrier only, adding the one candidate bullet, which keeps the measured text line as its fallback.
+    $patch = Join-Path $repo 'meta/eval-fixtures/target-patches/b416-review-question.patch'
+    if ((@(Get-TargetPatchPaths $patch) -join ',') -ne '.github/instructions/framework-rules.instructions.md') { throw 'B-416 dialog the T patch does not name the carrier alone' }
+    $changed = @([IO.File]::ReadAllLines($patch) | Where-Object { $_ -match '^(?:\+(?!\+\+ )|-(?!-- ))' })
+    if ($changed.Count -ne 1 -or -not $changed[0].StartsWith('+- Close the plan by asking for the go-ahead and offering a review.') -or -not $changed[0].Contains($b416AskBullet) -or -not $changed[0].Contains($b416Bullet) -or $changed[0] -notmatch 'An answer that does not ask for it means no review\.$') { throw "B-416 dialog the T patch does not add exactly the one question bullet: $($changed -join ' | ')" }
     return $quoted
 }
 
@@ -6290,6 +6555,7 @@ export class UserService {
         $b528Quoted = Invoke-OptionsPlanSelfTest $temp
         $b356Quoted = Invoke-RecordOfferSelfTest $temp
         $b416Quoted = Invoke-ReviewOfferSelfTest $temp
+        $b416AskQuoted = Invoke-ReviewAskSelfTest $temp
         Invoke-RouterProbeSelfTest $temp
         Invoke-OverlayWiringSelfTest $temp
         Invoke-SkillUseSelfTest $temp
@@ -6299,6 +6565,7 @@ export class UserService {
         Invoke-ReportWriteSelfTest $temp
         Invoke-ReportProcSelfTest $temp
         Write-Output 'PASS: carrier trim route-fix-nl is route-fix on a prompt the dist router does not match (silent as a Claude and a Copilot event, the carrier naming "looks off" in all three dists) and shares its grader, bare arm and budget; route-fix and route-fix-nl report routerFired and routerIntent from the first UserPromptSubmit hook_response (Claude Code with --include-hook-events, or the Copilot converter writing one from a userPromptSubmitted hook.end), a framework-arm route-fix-nl row is INCONCLUSIVE unless the router was known silent while route-fix only reports; contract-trace-ci-cap is contract-trace-ci at 2.50 USD with contract-trace-ci still at 1.00; the live loop requests hook events for the router-probe scenarios'
+        Write-Output "PASS: B-416 part 2 the clickable form: on one control-channel stream the grader reads whether the host listed its question tool, whether an answered question before the first main-agent write offered a 'with review' option (OPTION; a question without it is PLAIN; a subagent's, a refused one and one after a write do not count), which option the tool result reports as clicked, and whether the go-ahead that preceded the first write was that click or a typed reply; asked passes on the click on 'with review' plus the review skill after the first write, go on no review and the click on the option without review exactly when the candidate is installed; no question tool, a write before any go-ahead and no go-ahead are not examined; the runner answers the question tool by the scenario's pick and refuses every other permission request, the dialog arguments are the plain ones on the control channel, the two scenarios are pinned to their text-line twins and the T patch adds the one bullet to the carrier alone. Honoured: $($b416AskQuoted.honoured) | ignored: $($b416AskQuoted.ignored) | quiet: $($b416AskQuoted.quiet) | control: $($b416AskQuoted.control)"
         Write-Output "PASS: B-416 the review-offer grader reads, before the first main-agent write and across both legs, the plan's closing review line (a line opening with Review that names the reply 'with review'; the words in passing are LOOSE; a subagent's text and text after a write are not the line), counts this repository's review skill and where it fell against the first write, a host code-review and the reviewer agents, and reads whether the installed carrier holds the candidate; asked passes on the line plus the review after the first write, go on no review and the line exactly when the candidate is installed; a first leg that wrote is not examined; the two scenarios are pinned to K, their replies and the overlay-only routing, and the T patch adds the one line to the carrier alone. Honoured: $($b416Quoted.honoured) | ignored: $($b416Quoted.ignored) | quiet: $($b416Quoted.quiet) | control: $($b416Quoted.control) | asked on a plain change (amendment 2: no security overlay in front of the review; a run that tripped it is not examined): $($b416Quoted.plain)"
         Write-Output "PASS: B-356 the record-offer grader flags, before the first main-agent write and across both legs, a plan that offers a record, and on disk or in a denied call a skill or wiki draft, an AGENTS.md convention and a test over every instance, but not an AGENTS.md inventory line, the resource's own test, an offer after the first write or a subagent's; reads the shipped carrier and the knockout; refuses a first prompt without the plan gate or with the security overlay, a second leg with rails, a stopped decoy and a two-leg seam; the three scenarios, their routing and the knockout patch are pinned. Plain: $($b356Quoted.plain) | Offers: $($b356Quoted.offers) | None: $($b356Quoted.none) | Skill: $($b356Quoted.skill) | AGENTS.md: $($b356Quoted.agents) | Inventory: $($b356Quoted.inventory) | Enumerating test: $($b356Quoted['enumerating test']) | Knockout: $($b356Quoted.knockout) | Seam offer: $($b356Quoted['seam offer'])"
         Write-Output "PASS: B-528 the options-plan grader reads, before the first main-agent write and across both legs, Option A and Option B as OPTIONS, the one-line exit as EXIT and anything else as NEITHER (a subagent's text, text after a write and a part alone are not options); reports the security gate, its auditor and the T line; refuses an unexaminable run; the Copilot converter keeps main-agent text in order, flags a subagent's, reads plan mode's plan.md in the session folder as plan text and not a write, converts a resumed second leg and refuses one that did not resume; the scenario and the T patch are pinned. Neither: $($b528Quoted.neither) | Options: $($b528Quoted.options) | Exit: $($b528Quoted.exit) | Copilot options: $($b528Quoted['copilot options']) | Copilot subagent: $($b528Quoted['copilot subagent']) | Copilot plan mode: $($b528Quoted['copilot plan mode'])"
@@ -8267,7 +8534,10 @@ Issue: Boundary behavior lacks a direct compiled unit test.
         $caseModel = if ($case.model) { [string]$case.model } else { $Model }
         $caseAgent = if ($case.agent) { [string]$case.agent } else { '' }
         # B-410: a case with a followUp is two invocations of one persisted session (the developer's prompt, then a fixed answer).
-        $legSession = if ($case.followUp) { [guid]::NewGuid().ToString() } else { '' }
+        # B-416 part 2: a dialog case is one process that takes the click or the typed reply itself, so it has no second invocation.
+        $dialogPick = [string]$case.dialog
+        if ($dialogPick -and ($Executor -ne 'claude' -or $dialogPick -notin @('go', 'review') -or -not $case.followUp -or $case.assertion -ne 'reviewOffer' -or -not $AllowedTools)) { throw "$($case.id): a dialog case runs on -Executor claude with -AllowedTools, a followUp, the reviewOffer assertion and dialog 'go' or 'review'." }
+        $legSession = if ($case.followUp -and -not $dialogPick) { [guid]::NewGuid().ToString() } else { '' }
         # B-528: the optionsPlan cases are two legs too, on either executor.
         if ($legSession -and $caseFixture -notin $contractFixtures -and $case.assertion -notin $planAssertions) { throw "$($case.id): a followUp is read only for the contract fixtures and the optionsPlan, recordOffer and reviewOffer cases, whose graders take a merged two-leg transcript." }
         $copilotMeta = $null
@@ -8278,6 +8548,8 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $copilotHome = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.copilot' }
             $eventsPath = Join-Path $copilotHome "session-state/$sessionId/events.jsonl"
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId (Join-Path $scratch ($runName + '.copilot-usage.json')) ($Arm -eq 'framework') -Mode $CopilotMode
+        } elseif ($dialogPick) {
+            $run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath $caseModel ($caseBudget + [decimal]$case.followUpBudgetUsd) $TimeoutSeconds $caseAgent $AllowedTools
         } else {
             $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel $caseBudget $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios -or $case.assertion -in $planAssertions) -SessionId $legSession -AllowedTools $AllowedTools
         }
