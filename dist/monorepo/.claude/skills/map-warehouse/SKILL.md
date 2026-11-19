@@ -192,9 +192,11 @@ already there, and so a report can be written against the joins the warehouse ac
 
 9. **Report.** Offer to write or refresh `docs/warehouse-map.md` with everything below — offer,
    don't force. If AGENTS.md > Conventions describes the warehouse and the code disagrees, flag the
-   drift; do not silently edit either. Make the first line `<!-- warehouse-map full pass: <UTC time,
-   yyyy-MM-ddTHH:mmZ> -->`, the time this full pass read the SQL: `scripts/warehouse-map-check.ps1`
-   judges freshness from it. Use these seven headings verbatim, in this order, so the
+   drift; do not silently edit either. Before step 1 of a full pass, run
+   `pwsh -NoProfile -File scripts/warehouse-map-check.ps1 -Digest` and keep the `digest=<16 hex>` it
+   prints; make the first line, on one line,
+   `<!-- warehouse-map full pass: <UTC time, yyyy-MM-ddTHH:mmZ> digest=<that value> -->`: the check
+   reads the map as current only while the warehouse files still hash to that digest. If you lost the value, run `-Digest` again and say so in Coverage. Use these seven headings verbatim, in this order, so the
    document is predictable to the next reader and to anything that checks it:
 
    1. **Table inventory**, one table per layer:
