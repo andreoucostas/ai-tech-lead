@@ -377,6 +377,34 @@ $GuardCases = @(
     @{ n='quoted URL with a placeholder password (allow)'; f='src/Bus.cs'; c='var uri = "amqp://svc:<password>@mq.host";'; block=$false }
     @{ n='quoted URL with a port and an at sign in the query (allow)'; f='src/Bus.cs'; c='var uri = "https://api.host:8080/x?mail=a@b.c";'; block=$false }
     @{ n='URL with a password in a code comment, outside a literal (allow)'; f='src/Bus.cs'; c="// the broker lives at amqp://svc:$sqlPassword@mq.host"; block=$false }
+    # Attack fixes: the first argument of NetworkCredential may be any expression; the placeholder and illustration exemptions judge
+    # the password value alone; published local defaults, masks and TypeScript types are not credentials. (allow) cases that
+    # are green before the change are near misses.
+    @{ n='NetworkCredential with a verbatim user and a password literal'; f='src/Db.cs'; c="var c = new NetworkCredential(@`"CORP\svc`", `"$sqlPassword`");"; block=$true }
+    @{ n='NetworkCredential with an interpolated user and a password literal'; f='src/Db.cs'; c="var c = new NetworkCredential(`$`"{d}\svc`", `"$sqlPassword`");"; block=$true }
+    @{ n='NetworkCredential with an indexer user and a password literal'; f='src/Db.cs'; c="var c = new NetworkCredential(_config[`"Smtp:User`"], `"$sqlPassword`");"; block=$true }
+    @{ n='NetworkCredential with an environment-variable user and a password literal'; f='src/Db.cs'; c="var c = new NetworkCredential(Environment.GetEnvironmentVariable(`"X`"), `"$sqlPassword`");"; block=$true }
+    @{ n='NetworkCredential with a method-call user and a password literal'; f='src/Db.cs'; c="var c = new NetworkCredential(GetUser(), `"$sqlPassword`");"; block=$true }
+    @{ n='NetworkCredential with a concatenated user and a password literal'; f='src/Db.cs'; c="var c = new NetworkCredential(`"svc`" + suffix, `"$sqlPassword`");"; block=$true }
+    @{ n='NetworkCredential with an example.com user and a password literal'; f='src/Db.cs'; c="var c = new NetworkCredential(`"noreply@example.com`", `"$sqlPassword`");"; block=$true }
+    @{ n='NetworkCredential documented with the words username and password (allow)'; f='src/Db.cs'; c='var c = new NetworkCredential("username", "password");'; block=$false }
+    @{ n='NetworkCredential with a variable password and a literal domain (allow)'; f='src/Db.cs'; c='var c = new NetworkCredential(user, pw, "CORPDOMAIN");'; block=$false }
+    @{ n='quoted URL whose password is its user name, guest (allow)'; f='src/Bus.cs'; c='var uri = "amqp://guest:guest@localhost";'; block=$false }
+    @{ n='quoted URL whose password is its user name, postgres (allow)'; f='src/Bus.cs'; c='var uri = "postgres://postgres:postgres@localhost/db";'; block=$false }
+    @{ n='quoted URL with a port and an e-mail in the query (allow)'; f='src/Bus.cs'; c='var uri = "http://localhost:5000?email=jane@contoso.com";'; block=$false }
+    @{ n='quoted URL with a port and an at sign in the fragment (allow)'; f='src/Bus.cs'; c='var uri = "https://host:443#s@2";'; block=$false }
+    @{ n='Markdown code span holding a URL with a password (allow)'; f='docs/setup.md'; c=('Run `postgres://app:' + 'secret123@localhost/app` first.'); block=$false }
+    @{ n='Markdown quoted URL with a password'; f='docs/setup.md'; c=('url = "postgres://app:' + 'secret123@localhost/app"'); block=$true }
+    @{ n='alternating-case x is not a mask'; f='src/Db.cs'; c='var cs = "Data Source=x;" + "Password=XxXxXxXx;";'; block=$true }
+    @{ n='XXXX Password= piece joined to a connection string (allow)'; f='src/Db.cs'; c='var cs = "Data Source=x;" + "Password=XXXX;";'; block=$false }
+    @{ n='[REDACTED] mask in a replaced password pair (allow)'; f='src/Db.cs'; c='var m = cs.Replace(";Password=" + pw, ";Password=[REDACTED]");'; block=$false }
+    @{ n='[hidden] Password= piece joined to a connection string (allow)'; f='src/Db.cs'; c='var cs = "Data Source=x;" + "Password=[hidden];";'; block=$false }
+    @{ n='hidden Password= piece joined to a connection string (allow)'; f='src/Db.cs'; c='var cs = "Data Source=x;" + "Password=hidden;";'; block=$false }
+    @{ n='two TypeScript templates on one line, the first ending in Password: (allow)'; f='src/a.ts'; c='const label = `Password: `; const hint = `at least 12 characters`;'; block=$false }
+    @{ n='TypeScript template after Invalid password: with more text (allow)'; f='src/a.ts'; c='throw new Error(`Invalid password: ` + reason + ` (see logs)`)'; block=$false }
+    @{ n='expression-bodied property returning a password literal'; f='src/Db.cs'; c="public string Password => `"$sqlPassword`";"; block=$true }
+    @{ n='expression-bodied property returning a variable (allow)'; f='src/Db.cs'; c='public string Password => _options.Password;'; block=$false }
+    @{ n='TypeScript literal-union type on a password field (allow)'; f='src/a.ts'; c="type O = { password?: 'required' | 'optional' };"; block=$false }
 )
 
 # The edit events of the two surfaces, for the cases that carry o: Claude Code's Edit (file_path, old_string, new_string)

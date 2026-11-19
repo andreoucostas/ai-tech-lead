@@ -240,16 +240,18 @@ organization enforces.
 > `password: string = "…"`, a C# accessor block as in `public string Password { get; set; } = "…"`
 > or a TypeScript `?` as in `password?: "…"`, and the value may be a verbatim `@"…"`, an interpolated
 > `$"…"` that holds more than variables, a C# raw `"""…"""` or, in a `.ts` or `.js` file, a backtick
-> string), a `new NetworkCredential(user, "…")` whose second argument is a literal of 4 or more
+> string with no blank or `${` in it; an expression-bodied `Password => "…"` is read too), a
+> `new NetworkCredential(user, "…")` whose first argument is any expression and whose second is a literal of 4 or more
 > characters, a quoted URL that starts with a scheme and holds `user:password@`
-> (`"amqp://svc:<password>@host"`), unless its password is only `pass`, `password`, `passwd`, `pwd`, `pw` or
-> `secret` (a README's illustration), and a connection string
+> (`"amqp://svc:<password>@host"`; a backtick may open it in a `.ts` or `.js` file), unless its password is only
+> `pass`, `password`, `passwd`, `pwd`, `pw` or `secret` (a README's illustration) or repeats the user name
+> (`guest:guest`), and a connection string
 > with a password of 4 or more characters or a `user:password@` address, whether under a
 > `connectionString` key, in a quoted `"ConnectionStrings": { … }` object such as
 > `appsettings.json`'s, or with no key before it (passed to `UseSqlServer`, `new SqlConnection` or a
 > Service Bus client, or assigned to a variable). Every match, and every password inside a matched
 > connection string, is checked. A placeholder word such as `<from-vault>`, `changeme`, `example` or
-> `${VAR}` anywhere in the matched text excuses it; a release-pipeline token such as `#{X}#`, `__X__`
+> `${VAR}` anywhere in the matched text excuses it (for `NetworkCredential` and a URL, only in the password itself); a release-pipeline token such as `#{X}#`, `__X__`
 > or `$(X)` excuses only a password that is exactly the token. A connection string with no key
 > before it is read when its quoted one-line literal holds at least two `;`-separated `key=value`
 > pairs, one of them a `Password=`, `Pwd=` or `SharedAccessKey=` pair (the key may carry a prefix
@@ -274,7 +276,9 @@ organization enforces.
 > that holds no `key=value` pair, unless the piece opens with `;`; a join across a comment line; `.Append (`
 > with a space; a `;;` between pairs; a quote of the other kind or an escaped quote inside the literal; a
 > JDBC neighbour with no `=`; a `:` in a neighbouring key; a no-break space or vertical tab before the key;
-> a password that opens with `@`; a one-pair literal on its own, a connection string that
+> a password that opens with `@`; an interpolated `$"{base};Password=…"` piece, a ternary `: ";Password=…"` piece, an
+> interpolated raw string `$"""…"""`, a URL with an empty user (`redis://:pw@host`) or a password that opens with `%`, and
+> a multi-line auto-property (`Password` / `{ get; set; }` / `= "…"`); a one-pair literal on its own, a connection string that
 > spans lines, and a `??` or `||` fallback (`password ?? "…"`); the computed key `{ ['password']: '…' }`; a
 > name that does not end in one of the words above (`SecretKey`); an `appSettings`
 > `<add key="DbPassword" value="…" />`; flat `ConnectionStrings:Main` or `ConnectionStrings__Main` keys
@@ -287,7 +291,7 @@ organization enforces.
 > GUIDs. **False blocks:** compact code with no spaces between two literals (`u.Name="bob";u.Password=Hash(p);…`),
 > and a message or SQL text that is one piece of a longer string: an `.Append(` or `.AppendLine(` of
 > `Password=[REDACTED]`, or a `Password=required;` message joined to an `Email=required;` piece. A password value
-> that is only asterisks (three or more), only `x` (three or more), `NULL` or `redacted` is a mask, not read as a
+> that is only asterisks (three or more), only `x` or `X` (three or more), `NULL`, `redacted` or `hidden` (bare or in `[ ]`) is a mask, not read as a
 > password.> **Team waiver:** a path listed in `.claude/guard-allowlist.txt` skips the key-format and credential checks (a real secret written there passes), not the suppression and test checks; every agent write to that file, an empty edit, a patch deletion and an 8.3 short name included, is blocked, so your team edits it by hand and reviews it in a pull request (a shell command that edits it is not seen).
 
 ## Why the differences (the load-bearing facts)

@@ -864,7 +864,7 @@ foreach ($write in $writes) {
         # A release-pipeline token (#{X}#, __X__, $(X), {{X}}) is replaced at deploy time, so it exempts the
         # credential value it stands in for, and only that value: a token elsewhere must not hide a literal. The Service Bus
         # emulator's published key value SAS_KEY_VALUE (exact case) is not a secret and is never read as one, wherever it stands.
-        $token = '^\s*(?:#\{[^}]{1,200}\}#|__[A-Za-z0-9_.:-]{1,200}__|\$\([A-Za-z0-9_.:-]{1,200}\)|\{\{[^}]{1,200}\}\}|replace[_-]?me|\*{3,200}|x{3,200}|null|redacted|(?-i:SAS_KEY_VALUE))\s*$'
+        $token = '^\s*(?:#\{[^}]{1,200}\}#|__[A-Za-z0-9_.:-]{1,200}__|\$\([A-Za-z0-9_.:-]{1,200}\)|\{\{[^}]{1,200}\}\}|replace[_-]?me|\*{3,200}|(?-i:x{3,200}|X{3,200})|null|redacted|hidden|\[(?:redacted|hidden)\]|(?-i:SAS_KEY_VALUE))\s*$'
         # Counts a password value once for the whole write, told by where it ends, and returns false once the cap is passed.
         $script:valueSeen = New-Object 'System.Collections.Generic.HashSet[int]'
         function Add-ExaminedValue([int]$End) {
@@ -882,6 +882,16 @@ foreach ($write in $writes) {
         function Test-CredentialMatch($Match, [int]$Shift) {
             $v = $Match.Groups['v']
             if (-not (Add-ExaminedValue ($Shift + $v.Index + $v.Length))) { return $false }
+            # The two forms that need no credential name (NetworkCredential, a URL) judge the password value alone: a
+            # placeholder word in the user name or the host ("noreply@example.com") excuses nothing, and a password that
+            # only illustrates (pass, password, secret) or repeats the user name (guest:guest, a published default) is no secret.
+            if ($Match.Groups['strict'].Success) {
+                $value = $v.Value
+                if ([regex]::IsMatch($value, $placeholder, $ci) -or [regex]::IsMatch($value, $token, $ci) -or
+                    [regex]::IsMatch($value, '^(?:pass(?:w(?:or)?d)?|pwd|pw|secret)$', $ci)) { return $false }
+                $u = $Match.Groups['u']
+                return -not ($u.Success -and $u.Value -ieq $value)
+            }
             if ([regex]::IsMatch($Match.Value, $placeholder, $ci)) { return $false }
             $value = $v.Value
             if ($value -and -not [regex]::IsMatch($value, $token, $ci)) { return $true }
@@ -916,15 +926,19 @@ foreach ($write in $writes) {
         # NetworkCredential password that opens with {, is a variable, an interpolation hole or a placeholder, not a literal;
         # a URL password that is only pass, password, passwd, pwd, pw or secret is a README's illustration, not a credential.
         $valueHoles = '(?!(?:\{[^{}"'']*\})+["''])'
-        $valueOpener = '(?:@?["''](?<v>[^"'']{8,})["'']' +
+        $valueOpener = '(?:@?["''](?<v>[^"'']{8,})["''](?!\s*\|)' +
             '|(?:\$@?|@\$)["'']' + $valueHoles + '(?<v>[^"'']{8,})["'']' +
             '|"""\s*(?<v>[^"\s][^"]{7,})"""' +
-            $(if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) { '|`(?<v>[^`]{8,})`' } else { '' }) + ')'
-        $keyedPattern = '(password|passwd|pwd|secret|ap[i\u0130\u0131][_-]?key|access[_-]?key|client[_-]?secret)(?>["'' ]*)(?>\??)(?:(?>\][^\S\r\n]*)=|(?>\{[^{}\r\n]{0,80}\}[^\S\r\n]*)=|(?::[^\S\r\n]*' + $type + '(?:[^\S\r\n]*\|[^\S\r\n]*' + $type + ')*[^\S\r\n]*)?[:=])\s*' + $valueOpener +
+            $(if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) { '|`(?<v>(?=[^`\s]{8})(?>(?:(?!\$\{)[^`\s])+))`' } else { '' }) + ')'
+        # The first argument of NetworkCredential is anything up to the first comma (a quoted string, one level of brackets
+        # or any other character, 200 items at most, all disjoint and atomic, so a long run of blanks cannot be re-split).
+        $ncArg = '(?:[^,"''()\r\n;]|"[^"\r\n]{0,200}"|''[^''\r\n]{0,200}''|\([^()\r\n]{0,60}\))'
+        $urlOpen = if ([regex]::IsMatch($fileName, '\.(ts|tsx|js|jsx|mts|cts|mjs|cjs)$', $ci)) { '["''`]' } else { '["'']' }
+        $keyedPattern = '(password|passwd|pwd|secret|ap[i\u0130\u0131][_-]?key|access[_-]?key|client[_-]?secret)(?>["'' ]*)(?>\??)(?:=>|(?>\][^\S\r\n]*)=|(?>\{[^{}\r\n]{0,80}\}[^\S\r\n]*)=|(?::[^\S\r\n]*' + $type + '(?:[^\S\r\n]*\|[^\S\r\n]*' + $type + ')*[^\S\r\n]*)?[:=])\s*' + $valueOpener +
             '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*(?:password|pwd)\s*=\s*(?<v>(?>[^;"'']{4,}))[^"'']*["'']' +
             '|connect[i\u0130\u0131]onstr[i\u0130\u0131]ng["'' ]*[:=]\s*["''](?=[^"'']*["''])[^"'']*://[^/\s:@]+:(?<v>[^/\s@]+)@[^"'']*["'']' +
-            '|NetworkCredential\s*\(\s*(?>[^,()"''\r\n]{1,100}|"[^"\r\n]*"|''[^''\r\n]*'')\s*,\s*[$@]{0,2}["''](?!\{)(?<v>[^"''\r\n]{4,})["'']' +
-            '|["''`][A-Za-z][A-Za-z0-9+.\-]{0,20}://(?>[^/\s:@"''`]+):(?![${<%])(?!(?:pass(?:w(?:or)?d)?|pwd|pw|secret)@)(?<v>[^/\s@"''`]+)@'
+            '|NetworkCredential\s*\((?>\s*)(?>' + $ncArg + '{0,200})' + ',\s*[$@]{0,2}["''](?!\{)(?<strict>)(?<v>[^"''\r\n]{4,})["'']\s*[,)]' +
+            '|' + $urlOpen + '[A-Za-z][A-Za-z0-9+.\-]{0,20}://(?>(?<u>[^/\s:@"''`?#]+)):(?![${<%])(?<strict>)(?<v>[^/\s@"''`?#]+)@'
         $tooManyValues = $false
         foreach ($m in [regex]::Matches($content, $keyedPattern, $ci)) {
             if (Test-CredentialMatch $m 0) { $credentialHit = $true; break }
