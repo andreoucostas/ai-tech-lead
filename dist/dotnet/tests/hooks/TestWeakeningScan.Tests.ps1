@@ -182,25 +182,9 @@ It 'Vitest *.test.ts, MSTest FooTest.cs and __tests__/ files are test files too'
     } finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
-# A OneDrive (cloud files) folder is a reparse point with no LinkType and no Target, and refusing it as a link stopped /review on a
-# bundle under one. No test can give a folder that attribute without a filter driver, so the scanner's predicate is taken from its own
-# AST, as review-scope's is, beside the behaviour that must stay: a junction standing in for the bundle is still refused.
-It 'the scanner predicate calls a reparse point with no link type a folder and a junction or symlink a link' {
-    $ast = [Management.Automation.Language.Parser]::ParseFile($scan, [ref]$null, [ref]$null)
-    $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-IsLinkEntry' }, $true)
-    Assert ($null -ne $fn) 'the scanner defines no Test-IsLinkEntry; any reparse point, a OneDrive folder included, is refused as a link'
-    $predicate = $fn.Body.GetScriptBlock()
-    $dir = [IO.FileAttributes]'Directory, ReparsePoint'
-    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = $null }))) 'a cloud-files folder (no LinkType, no Target) was called a link'
-    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = ''; Target = @() }))) 'a cloud-files folder (empty LinkType, empty Target) was called a link'
-    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'Junction'; Target = @('C:\x') })) 'a junction was not called a link'
-    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'SymbolicLink'; Target = @('C:\x') })) 'a directory symlink was not called a link'
-    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = @('C:\x') })) 'a reparse point that reports a Target was not called a link'
-    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = [IO.FileAttributes]'Directory'; LinkType = 'Junction'; Target = @('C:\x') }))) 'an entry without the reparse attribute was called a link'
-    Assert (-not (& $predicate $null)) 'a missing entry was called a link'
-    $bare = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.BinaryExpressionAst] -and $n.Operator -eq 'Band' -and $n.Extent.Text -match 'ReparsePoint' }, $true) |
-        Where-Object { $_.Extent.StartOffset -lt $fn.Extent.StartOffset -or $_.Extent.StartOffset -ge $fn.Extent.EndOffset })
-    Assert ($bare.Count -eq 0) "the scanner still tests the reparse attribute alone at: $(($bare | ForEach-Object { $_.Extent.StartLineNumber }) -join ', ')"
+# A OneDrive (cloud files) folder is a reparse point with no LinkType and no Target; the shared predicate is pinned once in UpdateDelivery2.Tests.ps1.
+# Here the behaviour that must stay: a junction standing in for the bundle is still refused.
+It 'a junction standing in for the bundle is refused' {
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { return }
     $repo = New-ScanRepo
     $bundle = Join-Path ([IO.Path]::GetTempPath()) ('tw-link-target-' + [guid]::NewGuid().ToString('N'))

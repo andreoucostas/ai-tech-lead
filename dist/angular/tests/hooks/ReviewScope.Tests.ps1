@@ -263,25 +263,6 @@ It 'every repository ancestor walk stops when the cursor is empty, as at a drive
     Assert ($walks.Count -eq 3) "expected the three repository ancestor walks, found $($walks.Count)"
     foreach ($walk in $walks) { Assert ($walk.Condition.Extent.Text.StartsWith('$cursor -and')) "the ancestor walk at line $($walk.Extent.StartLineNumber) does not stop when the cursor is empty" }
 }
-# No test can give a folder the cloud-files attribute, so the predicate is taken from the builder's own AST.
-It 'the builder predicate calls a reparse point with no link type a folder and a junction or symlink a link' {
-    $ast = [Management.Automation.Language.Parser]::ParseFile($builder, [ref]$null, [ref]$null)
-    $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-IsLinkEntry' }, $true)
-    Assert ($null -ne $fn) 'the builder defines no Test-IsLinkEntry; any reparse point is treated as a link'
-    $predicate = $fn.Body.GetScriptBlock()
-    $dir = [IO.FileAttributes]'Directory, ReparsePoint'
-    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = $null }))) 'a cloud-files folder (no LinkType, no Target) was called a link'
-    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = ''; Target = @() }))) 'a cloud-files folder (empty LinkType, empty Target) was called a link'
-    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'Junction'; Target = @('C:\x') })) 'a junction was not called a link'
-    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = 'SymbolicLink'; Target = @('C:\x') })) 'a directory symlink was not called a link'
-    Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = @('C:\x') })) 'a reparse point that reports a Target was not called a link'
-    Assert (-not (& $predicate ([pscustomobject]@{ Attributes = [IO.FileAttributes]'Directory'; LinkType = 'Junction'; Target = @('C:\x') }))) 'an entry without the reparse attribute was called a link'
-    Assert (-not (& $predicate $null)) 'a missing entry was called a link'
-    $bare = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.BinaryExpressionAst] -and $n.Operator -eq 'Band' -and $n.Extent.Text -match 'ReparsePoint' }, $true) |
-        Where-Object { $_.Extent.StartOffset -lt $fn.Extent.StartOffset -or $_.Extent.StartOffset -ge $fn.Extent.EndOffset })
-    Assert ($bare.Count -eq 0) "the builder still tests the reparse attribute alone at: $(($bare | ForEach-Object { $_.Extent.StartLineNumber }) -join ', ')"
-}
-
 It 'scanner rejects tampered bytes but classifies an actual read lock as CANNOT EXAMINE' {
     $repo = New-ReviewRepo; $bundle = New-BundlePath
     try {

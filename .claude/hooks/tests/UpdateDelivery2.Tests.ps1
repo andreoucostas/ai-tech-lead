@@ -687,12 +687,26 @@ It 'a target that is itself a junction is refused with exit 3 naming the link' {
     }
 }
 
-# No test can give a folder the cloud-files attribute, so the predicate is taken from the installer's own AST.
-It 'the installer predicate calls a reparse point with no link type a folder and a junction or symlink a link' {
-    $script = Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'
-    $ast = [Management.Automation.Language.Parser]::ParseFile($script, [ref]$null, [ref]$null)
-    $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-IsLinkEntry' }, $true)
-    Assert ($null -ne $fn) 'the installer defines no Test-IsLinkEntry; any reparse point is treated as a link'
+# No test can give a folder the cloud-files attribute, so the predicate is taken from the scripts' own AST. The five copies
+# (installer, adoption-archive, review-scope, framework-doctor, test-weakening-scan) must be identical and none may test the
+# reparse attribute alone outside it; the behaviour is then asserted once, on the installer's copy.
+It 'the five Test-IsLinkEntry copies are identical, none uses a bare reparse test, and the predicate calls a no-link-type reparse point a folder' {
+    $texts = @{}
+    foreach ($name in 'install', 'adoption-archive', 'review-scope', 'framework-doctor', 'test-weakening-scan') {
+        $script = Join-Path $repoRoot "src/core/scripts/$name.ps1"
+        $ast = [Management.Automation.Language.Parser]::ParseFile($script, [ref]$null, [ref]$null)
+        $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-IsLinkEntry' }, $true)
+        Assert ($null -ne $fn) "$name.ps1 defines no Test-IsLinkEntry; any reparse point is treated as a link"
+        $texts[$name] = ($fn.Extent.Text -replace '\s+', ' ')
+        $bare = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.BinaryExpressionAst] -and $n.Operator -eq 'Band' -and $n.Extent.Text -match 'ReparsePoint' }, $true) |
+            Where-Object { $_.Extent.StartOffset -lt $fn.Extent.StartOffset -or $_.Extent.StartOffset -ge $fn.Extent.EndOffset })
+        Assert ($bare.Count -eq 0) "$name.ps1 still tests the reparse attribute alone at: $(($bare | ForEach-Object { $_.Extent.StartLineNumber }) -join ', ')"
+        if ($name -eq 'install') { $installFn = $fn; $installAst = $ast }
+    }
+    foreach ($name in $texts.Keys) {
+        Assert ($texts[$name] -ceq $texts['install']) "$name.ps1's Test-IsLinkEntry differs from install.ps1's"
+    }
+    $fn = $installFn
     $predicate = $fn.Body.GetScriptBlock()
     $dir = [IO.FileAttributes]'Directory, ReparsePoint'
     Assert (-not (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = $null }))) 'a cloud-files folder (no LinkType, no Target) was called a link'
@@ -702,9 +716,6 @@ It 'the installer predicate calls a reparse point with no link type a folder and
     Assert (& $predicate ([pscustomobject]@{ Attributes = $dir; LinkType = $null; Target = @('C:\x') })) 'a reparse point that reports a Target was not called a link'
     Assert (-not (& $predicate ([pscustomobject]@{ Attributes = [IO.FileAttributes]'Directory'; LinkType = 'Junction'; Target = @('C:\x') }))) 'an entry without the reparse attribute was called a link'
     Assert (-not (& $predicate $null)) 'a missing entry was called a link'
-    $bare = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.BinaryExpressionAst] -and $n.Operator -eq 'Band' -and $n.Extent.Text -match 'ReparsePoint' }, $true) |
-        Where-Object { $_.Extent.StartOffset -lt $fn.Extent.StartOffset -or $_.Extent.StartOffset -ge $fn.Extent.EndOffset })
-    Assert ($bare.Count -eq 0) "the installer still tests the reparse attribute alone at: $(($bare | ForEach-Object { $_.Extent.StartLineNumber }) -join ', ')"
 }
 
 It 'an update over a 0-byte LEARNINGS.md succeeds and disables no skill' {
