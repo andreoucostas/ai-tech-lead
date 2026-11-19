@@ -200,6 +200,8 @@ without backtracking, with a 100 ms timeout per match and a 2 s budget for the l
 10 s limit; a match that runs out waives nothing. Suppression, skip, focus and tautology checks still run at listed paths. The README no longer calls a CI build with secret scanning "the gate"; the guard is a local
 backstop and `docs/ci-integration.md`'s "Recommended alongside" is the authority. Limit: a real secret written to a listed path passes.
 
+The write guard now reads VS Code agent mode's insert-edit, notebook-edit and multi-replace tools and Claude Code's `MultiEdit` (guarded, step 4; B-499). Their text sat in `code`, `newCode` and each `replacements` or `edits` item, which the guard never read, so a secret or an edit of `.claude/guard-allowlist.txt` through them passed. Recognised by field shape, with each item checked against its own path; more than 200 items in one call is blocked. Checked against the VS Code 1.146 package schema, not a live hook event.
+
 ## 0.98.6 — 2026-11-13
 
 The installer says when its clone is not at the release tag, and an update's plan lists a file that already holds the

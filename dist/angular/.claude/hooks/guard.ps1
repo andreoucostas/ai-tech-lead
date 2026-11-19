@@ -57,7 +57,7 @@ function New-NameSet([string[]]$Names) {
 }
 $guardWriteTools = New-NameSet @('Write', 'Edit', 'create', 'MultiEdit', 'NotebookEdit', 'str_replace', 'insert', 'apply_patch')
 $guardPathKeys = New-NameSet @('file_path', 'filePath', 'path', 'notebook_path')
-$guardContentKeys = New-NameSet @('content', 'new_string', 'newString', 'file_text', 'new_str', 'new_source', 'edits', 'old_string', 'oldString', 'old_str')
+$guardContentKeys = New-NameSet @('content', 'new_string', 'newString', 'file_text', 'new_str', 'new_source', 'edits', 'old_string', 'oldString', 'old_str', 'newCode', 'replacements', 'editType')
 $guardEditorCommands = New-NameSet @('create', 'str_replace', 'insert', 'undo_edit')
 $guardToolKeys = New-NameSet @('tool_name', 'toolName')
 $guardArgKeys = New-NameSet @('tool_input', 'toolArgs')
@@ -72,16 +72,17 @@ function Test-WriteArgs($ArgsValue, [bool]$Editor) {
         $ArgsValue = $inner
     }
     if ($ArgsValue -isnot [System.Collections.IDictionary]) { return $false }
-    $hasPath = $false; $hasText = $false; $patchInput = $false
+    $hasPath = $false; $hasText = $false; $hasCode = $false; $patchInput = $false
     foreach ($k in @($ArgsValue.Keys)) {
         $key = [string]$k
         if ($guardContentKeys.Contains($key)) { return $true }
         if ($guardPathKeys.Contains($key)) { $hasPath = $true }
         elseif ([string]::Equals($key, 'text', $ordinalIgnoreCase)) { $hasText = $true }
+        elseif ([string]::Equals($key, 'code', $ordinalIgnoreCase)) { $hasCode = $true }
         elseif ($Editor -and [string]::Equals($key, 'command', $ordinalIgnoreCase) -and $guardEditorCommands.Contains([string]$ArgsValue[$k])) { return $true }
         elseif ([string]::Equals($key, 'input', $ordinalIgnoreCase) -and $ArgsValue[$k] -is [string] -and [regex]::IsMatch($ArgsValue[$k], $guardPatchLike, $ci)) { $patchInput = $true }
     }
-    return ($hasText -and $hasPath) -or ($patchInput -and -not $hasPath)
+    return (($hasText -or $hasCode) -and $hasPath) -or ($patchInput -and -not $hasPath)
 }
 # ConvertFrom-Json refuses JSON whose keys differ only in case, or that has an empty key, and a call it cannot parse
 # would be let through unread. Such a call is re-read with -AsHashtable, only to classify it: the tool name it names (the
@@ -174,7 +175,46 @@ $units = @(
     New-WriteUnit $ta.file_text $null $true
     New-WriteUnit $ta.new_str $ta.old_str $false
     New-WriteUnit $ta.text $null $false
-) | Where-Object { $_.New }
+)
+# Edit tools whose text sits in other fields, recognised by field shape because the name the hook receives is not
+# verified: VS Code's insert_edit_into_file (`code` beside a path), edit_notebook_file (`newCode`, a string or an array
+# of strings, none for editType delete), multi_replace_string_in_file (`replacements`, each item an edit to its own
+# file) and Claude Code's MultiEdit (`edits`, each item old_string/new_string of the event's file). The first two join
+# the units above; each item is a write of its own to its own path ($itemWrites), and every such path joins $pathFields.
+$maxWriteItems = 200
+$itemWrites = New-Object System.Collections.Generic.List[object]
+$itemPaths = New-Object System.Collections.Generic.List[string]
+$itemOverflow = $false
+function Get-OwnPath($Object) {
+    if ($null -eq $Object -or $Object -is [string]) { return $null }
+    foreach ($field in 'file_path', 'filePath', 'path', 'notebook_path') { $v = $Object.$field; if ($null -ne $v -and [string]$v) { return [string]$v } }
+    return $null
+}
+$extraUnits = @()
+foreach ($o in @($ti, $ta)) {
+    if ($null -eq $o -or $o -is [string]) { continue }
+    if (Get-OwnPath $o) {
+        if ($null -ne $o.code -and $o.code -is [string]) { $extraUnits += New-WriteUnit ([string]$o.code) $null $false }
+        if ($null -ne $o.newCode -and -not [string]::Equals([string]$o.editType, 'delete', $ordinalIgnoreCase)) {
+            $extraUnits += New-WriteUnit $(if ($o.newCode -is [string]) { $o.newCode } else { (@($o.newCode) | ForEach-Object { [string]$_ }) -join "`n" }) $null $false
+        }
+    }
+    foreach ($collection in 'replacements', 'edits') {
+        $n = 0
+        foreach ($item in @($o.$collection)) {
+            if ($null -eq $item -or $item -is [string]) { continue }
+            if (++$n -gt $maxWriteItems) { $itemOverflow = $true; break }
+            $own = Get-OwnPath $item
+            if ($own) { $itemPaths.Add($own) }
+            $new = $null; $old = $null
+            foreach ($f in 'newString', 'new_string', 'new_str') { if ($null -ne $item.$f -and [string]$item.$f) { $new = [string]$item.$f; break } }
+            foreach ($f in 'oldString', 'old_string', 'old_str') { if ($null -ne $item.$f -and [string]$item.$f) { $old = [string]$item.$f; break } }
+            if ($new) { $itemWrites.Add([pscustomobject]@{ Path = $(if ($own) { $own } else { $fp }); Unit = (New-WriteUnit $new $old $false) }) }
+        }
+    }
+}
+$units = @($units + $extraUnits) | Where-Object { $_.New }
+if ($itemPaths.Count -gt 0) { $pathFields = @(@($pathFields) + @($itemPaths) | Select-Object -Unique) }
 $content = (@($units | ForEach-Object { $_.New }) -join "`n")
 
 # Emit a block response by detected input shape. PascalCase Edit/Write/NotebookEdit (and the ambiguous
@@ -185,7 +225,7 @@ $content = (@($units | ForEach-Object { $_.New }) -join "`n")
 # docs/enforcement-surfaces.md.
 function Exit-Blocked([string]$Message) {
     if ([string]::Equals($tool, 'Edit', $ordinal) -or [string]::Equals($tool, 'Write', $ordinal) -or
-        [string]::Equals($tool, 'NotebookEdit', $ordinal) -or $emptyTool) {
+        [string]::Equals($tool, 'NotebookEdit', $ordinal) -or [string]::Equals($tool, 'MultiEdit', $ordinal) -or $emptyTool) {
         [Console]::Error.WriteLine($Message)
         exit 2
     }
@@ -198,6 +238,9 @@ function Exit-Blocked([string]$Message) {
 }
 
 if ($unreadable) { Exit-Blocked $unreadableMessage }
+if ($itemOverflow) {
+    Exit-Blocked "Blocked write: it holds more than $maxWriteItems replacements or edits in one call, more than the write guard checks within its time limit, so it checked none of them. Split it into calls of at most $maxWriteItems."
+}
 
 # apply_patch, the file tool GPT models use on Copilot CLI and in VS Code, carries one V4A patch:
 # '*** Begin Patch', then sections '*** Add File: <path>', '*** Update File: <path>' (optionally
@@ -304,7 +347,7 @@ if ($isPatch) {
     # empties a file, an edit whose new text is empty and a deleted notebook cell change the list as surely as one
     # that adds text. Write-shaped is a known file-writing tool name or any field that carries a write's text; a
     # read (Copilot's view) carries neither.
-    $writeFields = @('content', 'new_string', 'newString', 'file_text', 'new_str', 'text', 'new_source', 'edits', 'old_string', 'oldString', 'old_str')
+    $writeFields = @('content', 'new_string', 'newString', 'file_text', 'new_str', 'text', 'new_source', 'edits', 'old_string', 'oldString', 'old_str', 'code', 'newCode', 'replacements', 'editType')
     # str_replace_editor writes only through its create, str_replace, insert and undo_edit commands; its view reads.
     $writeTools = @('MultiEdit', 'NotebookEdit', 'str_replace', 'insert')
     $editorWrite = [string]::Equals([string]$tool, 'str_replace_editor', $ordinalIgnoreCase) -and
@@ -313,6 +356,11 @@ if ($isPatch) {
                    @(foreach ($o in @($ti, $ta)) { if ($null -ne $o -and $o -isnot [string]) { @($o.PSObject.Properties.Name) | Where-Object { $writeFields -contains $_ } } }).Count -gt 0
     $targets = if ($writeShaped) { @($pathFields) } else { @() }
     $writes = if (($knownWrite -or ($fp -and $content)) -and $content) { @([pscustomobject]@{ Group = 0; Path = $fp; Content = $content; Units = $units; Paths = @($pathFields) }) } else { @() }
+    $itemGroup = 0
+    $writes = @($writes) + @(foreach ($item in $itemWrites) {
+        $itemGroup++
+        [pscustomobject]@{ Group = 1000 + $itemGroup; Path = $item.Path; Content = $item.Unit.New; Units = @($item.Unit); Paths = @($pathFields) }
+    })
 }
 
 # The text of the file at $Path on disk, '' when it cannot be read as the file the write replaces: a path that
