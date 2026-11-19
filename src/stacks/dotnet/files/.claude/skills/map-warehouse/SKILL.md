@@ -265,10 +265,10 @@ run it; never compose a connection or a query against a live database yourself.
 
 Then offer to write the result into `docs/warehouse-map.md`. If it does not exist, create it with step
 9's seven headings, the Querying section included, and the first line `<!-- warehouse-map full pass: none -->`. Otherwise add rows for the
-objects it lacks; where an existing row disagrees with what you read now, keep it and add a
-`CONFLICTING` row beside it naming both sources (do not pick one; for the work at hand, the code you
-read wins). Add one dated line to Coverage naming the objects this pass mapped and those it left
-inventory-only. Leave the full-pass line and the Querying section as they are: a scoped pass does not
+objects it lacks; where an existing row disagrees with the code you read now, replace that row,
+unasked, with what the code shows and cite the file (never replace a row you did not verify in
+code). Add one dated line to Coverage naming the objects this pass mapped, those it left
+inventory-only and the rows it replaced. Leave the full-pass line as it is; in the Querying section change only a line that names the row you replaced: a scoped pass does not
 make the rest of the map current, and the full-pass line is how the freshness check knows.
 
 ---

@@ -1873,7 +1873,10 @@ function Get-StaleMapGrade([string]$Id, [string]$Target, [int]$BeforeCommits, $E
     $edge = '^\|\s*FactSales\s*\|\s*`?LoadRunId`?\s*\|'
     $staleKept = [bool]@($newLines | Where-Object { $_.Text -match $edge -and $_.Text -match 'UNRESOLVED' -and $_.Text -match 'nothing links' }).Count
     $about = '(?i)LoadRun'
-    $disallowed = @(@($removed | Where-Object { $_.Text -notmatch $about }) + @($addedLines | Where-Object { $_.Text -notmatch $about -and $_.Section -ne 5 }))
+    # A changed line is allowed when either side of the change mentions LoadRun (the pre-registered rule): a line that does not is the other half
+    # of a LoadRun line's rewrite when it shares that line's first 30 characters and section (Querying rule 6 dropping LoadRunId from its list).
+    $pairs = { param($Line, $Others) $head = $Line.Text.Trim(); $head = $head.Substring(0, [Math]::Min(30, $head.Length)); [bool]@($Others | Where-Object { $_.Section -eq $Line.Section -and $_.Text -match $about -and $_.Text.Trim().StartsWith($head, [StringComparison]::Ordinal) }).Count }
+    $disallowed = @(@($removed | Where-Object { $_.Text -notmatch $about -and -not (& $pairs $_ $addedLines) }) + @($addedLines | Where-Object { $_.Text -notmatch $about -and $_.Section -ne 5 -and -not (& $pairs $_ $removed) }))
     $loadRunLines = @($removed + $addedLines | Where-Object { $_.Text -match $about -and $_.Text -notmatch $edge }).Count
     $coverageAdded = [bool]@($addedLines | Where-Object { $_.Section -eq 5 }).Count
     $dated = [bool]@($addedLines | Where-Object { $_.Section -eq 5 -and $_.Text -match '\d{4}-\d{2}-\d{2}' }).Count
@@ -6816,7 +6819,7 @@ function Invoke-StaleMapSelfTest([string]$Temp) {
     $rulesC = [IO.File]::ReadAllText((Join-Path $trees['stale'] '.github/instructions/framework-rules.instructions.md'))
     $rulesO = [IO.File]::ReadAllText((Join-Path $trees['override'] '.github/instructions/framework-rules.instructions.md'))
     if ($skillC -notmatch 'CONFLICTING. row beside it' -or $skillC -match 'replace that row' -or $rulesC -match 'replace that row') { throw 'WSD-122 arm C is not the shipped wording (the scoped pass keeps CONFLICTING, no replace sentence)' }
-    if ($skillO -match 'CONFLICTING. row beside it' -or $skillO -notmatch 'replace that row,\s+unasked' -or $rulesO -notmatch 'replace that row, unasked, with what the code shows, cite the file' -or $rulesO -notmatch 'never replace a row you did not verify in code') { throw 'WSD-122 arm O does not carry the override wording in the scoped pass and in Rule 11' }
+    if ($skillO -match 'CONFLICTING. row beside it' -or $skillO -notmatch 'replace that row,\s+unasked' -or $rulesO -notmatch 'replace that row, unasked, with what the code shows, and any map line that repeats it, cite the file' -or $rulesO -notmatch 'never replace a row you did not verify in code') { throw 'WSD-122 arm O does not carry the override wording in the scoped pass and in Rule 11' }
     $write = { param([string]$Path, [string]$Text) $full = Join-Path $root $Path; New-Item -ItemType Directory -Force -Path (Split-Path -Parent $full) | Out-Null; [IO.File]::WriteAllText($full, $Text.Replace("`r`n", "`n")) }
     $mapPath = 'docs/warehouse-map.md'
     $setMap = { param([scriptblock]$Edit) $text = & $Edit $overlayMap; & $write $mapPath $text }
@@ -6848,11 +6851,16 @@ function Invoke-StaleMapSelfTest([string]$Temp) {
     $productNew = '| FactSales | `ProductKey` | DimProduct | product | Deferred to query |'
     $stampOld = '<!-- warehouse-map full pass: 2026-11-15T00:00Z -->'
     $stampNew = '<!-- warehouse-map full pass: 2026-11-19T12:00Z -->'
+    $ruleOld = '   - **`UNRESOLVED`**: do not choose. Copy an existing view''s join for that edge, or ask. This applies to `RegionName`, `CategoryName`, `SegmentName` and `LoadRunId` on `FactSales`.'
+    $ruleNew = '   - **`UNRESOLVED`**: do not choose. Copy an existing view''s join for that edge, or ask. This applies to `RegionName`, `CategoryName` and `SegmentName` on `FactSales`.'
+    $edgesOld = '- `UNRESOLVED` edges: FactSales `RegionName`, `CategoryName`, `SegmentName` and `LoadRunId`.'
+    $edgesNew = '- `UNRESOLVED` edges: FactSales `RegionName`, `CategoryName` and `SegmentName`.'
     $stillBatchRow = '| FactSales | `LoadRunId` | `ctl.LoadRun` | none | Load-derived | `usp_LoadFactSales` fills it from `stg.BatchId` | Load-derived |'
     $mapRead = [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root 'docs\warehouse-map.md') }; Result = '<!-- warehouse-map full pass' }
     $loaderRead = [pscustomobject]@{ Name = 'Read'; Input = [pscustomobject]@{ file_path = (Join-Path $root 'StoredProcedures\usp_LoadFactSales.sql') }; Result = 'CREATE PROCEDURE' }
     $cases = @(
         [pscustomobject]@{ Name = 'replaced'; Id = 'stale-map-override'; Apply = { & $write $sql (($good -join "`n") + "`n"); & $setMap { param($t) (& $fixMap $t).Replace($findingOld, $findingNew) } }; Tools = @($mapRead, $loaderRead); Pass = $true; Detail = '^op=stale arm=override pass=True answer=GOOD map=FIXED \| fact=True run=True runJoin=True started=True sums=True batchId=False .* disallowed=0 kept=False .* coverageAdded=True dated=True .* mapRead=True loaderRead=True ' }
+        [pscustomobject]@{ Name = 'querying rule follows'; Id = 'stale-map-override'; Apply = { & $write $sql (($good -join "`n") + "`n"); & $setMap { param($t) (& $fixMap $t).Replace($ruleOld, $ruleNew).Replace($edgesOld, $edgesNew) } }; Tools = @($mapRead, $loaderRead); Pass = $true; Detail = '^op=stale arm=override pass=True answer=GOOD map=FIXED \| .* disallowed=0 kept=False ' }
         [pscustomobject]@{ Name = 'untouched'; Id = 'stale-map-control'; Apply = { & $write $sql (($goodInner -join "`n") + "`n") }; Tools = @($mapRead, $loaderRead); Pass = $false; Detail = '^op=stale arm=control pass=False answer=GOOD map=UNCHANGED \| fact=True run=True runJoin=True started=True sums=True batchId=False .* removed=0 added=0 ' }
         [pscustomobject]@{ Name = 'by the stale row'; Id = 'stale-map-control'; Apply = { & $write $sql (($viaBatch -join "`n") + "`n"); & $setMap { param($t) $t.Replace($staleRow, $conflictRow) } }; Tools = @($mapRead); Pass = $false; Detail = '^op=stale arm=control pass=False answer=MISLEADING map=FLAGGED \| .* batchId=True .* kept=True ' }
         [pscustomobject]@{ Name = 'no run join'; Id = 'stale-map-control'; Apply = { & $write $sql (($noRunJoin -join "`n") + "`n") }; Tools = @(); Pass = $false; Detail = '^op=stale arm=control pass=False answer=MISLEADING map=UNCHANGED \| fact=True run=True runJoin=False ' }
@@ -6899,7 +6907,7 @@ function Invoke-StaleMapSelfTest([string]$Temp) {
         if (git -C $preflight status --porcelain) { throw "WSD-122 the -Live overlay check of $($s.id) left a dirty tree" }
         if ($s.id -like 'stale-map-*' -and [IO.File]::ReadAllText((Join-Path $preflight 'StoredProcedures/usp_LoadFactSales.sql')) -notmatch 'CROSS JOIN \(SELECT TOP \(1\) LoadRunId') { throw "WSD-122 the -Live overlay check of $($s.id) did not land the loader change" }
     }
-    Write-Output "PASS: WSD-122 stale-map: stale.patch changes usp_LoadFactSales to stamp LoadRunId from ctl.LoadRun and leaves the generated map byte for byte (one stale row, FactSales.LoadRunId 'filled from stg.BatchId'); override.patch adds the same change and differs from arm C in the scoped pass and Rule 11 only; the two scenarios are pinned to p4's prompt and the 1.25 USD cap. Grader, row replaced: $($quoted['replaced']) | untouched: $($quoted['untouched']) | by the stale row: $($quoted['by the stale row']) | another row changed: $($quoted['another row changed'])"
+    Write-Output "PASS: WSD-122 stale-map: stale.patch changes usp_LoadFactSales to stamp LoadRunId from ctl.LoadRun and leaves the generated map byte for byte (one stale row, FactSales.LoadRunId 'filled from stg.BatchId'); override.patch is the same change on the shipped tree, and stale.patch also reverts the scoped pass and Rule 11 to their earlier wording, so the arms differ there only; the two scenarios are pinned to p4's prompt and the 1.25 USD cap. Grader, row replaced: $($quoted['replaced']) | untouched: $($quoted['untouched']) | by the stale row: $($quoted['by the stale row']) | another row changed: $($quoted['another row changed'])"
 }
 
 function Invoke-WarehouseScaleCapSelfTest {

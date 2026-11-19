@@ -4717,18 +4717,15 @@ reporting view or procedure is written under `map-warehouse`'s Querying rules on
 bounded section on headroom alone, the smallest of its three reasons. **Reopen** on a field report of a reporting view or procedure written with the framework that was wrong
 or failed to publish, or of a repeated step a team wants kept (then a `/bootstrap` 3a-bis project-skill draft, not a shipped skill).
 
-## WSD-122: an agent writes warehouse-map rows unasked only for what its own change created or altered (2026-11-05)
+## WSD-122: an agent corrects a warehouse-map row its code reading contradicts, unasked; it replaces nothing it did not verify (2026-11-05, amended 2026-11-19)
 
-**Context.** Maintainer idea (chat, 2026-11-05): the map covers only what a pass spot-checked, so let the agent keep documenting as it works and fix what it finds stale. The
-first design (unprompted writes from the scoped pass of whatever was opened, replace in place of `CONFLICTING`, row staleness from git commit time against the Coverage line)
-went to a fresh-session review; its load-bearing findings were re-read in `meta/eval-results.md`. Reading is not knowing: 11 of 12 runs read the loader and all 12 still joined
-wrongly, while a record alone took MISLEADING from 6 of 6 to 0 of 6 (B-325 confirmation run), so a wrong row is not harmless. `map-warehouse` was reached mid-task in 0 of 61
-route runs (B-279), 0 of 8 (B-402) and 1 of 3 through Rule 11 (B-400/B-401), all on fixtures small enough to read whole. Commit time said `current` after an `ALTER` in another
-file and `stale` in a depth-1 clone (the review's runs, not repeated), and e003c8c8 had rejected parsing the Coverage line.
-**Decision (user, 2026-11-05: "Yes" to the narrowed design).** `add-warehouse-load` step 11 is the one unprompted writer: rows for objects the change created, cells it made
-untrue, a dated Coverage line, only in a map that carries a full-pass line, never the stamp, Findings or Querying. The scoped pass keeps offering and keeps `CONFLICTING`.
-Rejected: doing nothing (a load added through the recipe stayed unmapped). **Reopen** the read-side half on B-466's result or a field report of a map that misled by silence.
-B-466 met the first trigger (2026-11-15: maps right at 14, 495 and 4,999 files, framework 6 of 6 at each, scoped pass never run); kept unchanged (maintainer, 2026-11-15). Met again 2026-11-19 by the stale-map eval (`meta/eval-results.md`, "Stale-map results"): the override fixed a stale row 6 of 6 with no wrong edit (hand class), today's rule 0 of 6; maintainer decides.
+**Context.** The map covers only what a pass spot-checked, and reading is not knowing: a record alone took MISLEADING from 6 of 6 to 0 of 6 (B-325), so a wrong row is not
+harmless. `map-warehouse` was reached mid-task in 0 of 61 route runs (B-279), 0 of 8 (B-402), 1 of 3 through Rule 11 and 0 of 18 in the stale-map series, so a skill-only fix is not
+reached. Stale-map eval (`meta/eval-results.md`, "Stale-map results"): under today's rule a stale row was fixed 0 of 6, though the agent had read the contradicting code.
+**Decision (maintainer, chat 2026-11-19: "Go with fables recommendation").** Ship the measured override: the scoped pass and Rule 11 (dotnet, monorepo) say to replace a row the
+code contradicts, unasked, cite the file, date it in Coverage, and never replace a row not verified in code (fixed 6 of 6, wrong edit 0 of 6). The Querying section changes only a
+line naming the replaced row. `add-warehouse-load` step 11 stays the writer for what its own change made untrue. Rejected: skill-only wording; the CONFLICTING row (0 of 6 fixed).
+**Reopen** on a field report of a wrong replaced row, or a Rule 11 sentence that misleads at real-repository length (untested). B-466's trigger (maps right at 14, 495 and 4,999 files) was met by this result.
 
 ## WSD-123: a brownfield install stops for a team's tracked file on a framework-owned path (2026-11-11)
 
