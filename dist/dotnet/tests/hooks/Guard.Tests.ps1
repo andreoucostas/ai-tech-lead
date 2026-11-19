@@ -870,7 +870,9 @@ It 'guard: a read or search call that will not parse is allowed, and a write one
     Assert-Decision (Invoke-Hook $guardPs $denied) 'DENY' $denied
 }
 
-It 'guard: one section with 399 Move to targets and 100 KB of added text is decided under 5 s, and its secret still denied' {
+# 8 s, inside Copilot's 10 s hook limit: about 1.1 s on an idle maintainer machine, 5.2 s once on a CI runner
+# (2026-11-19, run 44470267716), 13.7 s on 851c6cc6's guard, so the bound still separates the fix from the defect.
+It 'guard: one section with 399 Move to targets and 100 KB of added text is decided under 8 s, and its secret still denied' {
     $line = "+  const value = compute(input, 'password', options); // it should work`n"
     $added = $line * [int](100KB / $line.Length)
     $moves = ((1..399) | ForEach-Object { "*** Move to: src/t$_.spec.ts`n" }) -join ''
@@ -881,7 +883,7 @@ It 'guard: one section with 399 Move to targets and 100 KB of added text is deci
         $result = Invoke-Hook $guardPs (Get-PatchSurfaceEvent 'Copilot' $patch)
         $ms = $clock.ElapsedMilliseconds
         Assert-Decision $result $case.d "399 targets, 100 KB, $($case.n)"
-        Assert ($ms -lt 5000) "399 targets, 100 KB, $($case.n): the guard took $ms ms, expected under 5000"
+        Assert ($ms -lt 8000) "399 targets, 100 KB, $($case.n): the guard took $ms ms, expected under 8000"
     }
 }
 
