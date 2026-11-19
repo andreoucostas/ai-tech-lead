@@ -443,6 +443,36 @@ sent to a host built-in.
 
 ---
 
+## Report #15 — a team's own pull-request reviewer, and chats asked to address its comments
+
+| | |
+|---|---|
+| **Date received** | 2026-11-19 |
+| **Stack / repo shape** | not captured |
+| **Framework installed** | yes; version not captured |
+| **Host / IDE** | GitHub Copilot; CLI or VS Code not captured. The pull requests are on Bitbucket |
+| **What misfired** | The team's reviewer comments are sometimes too many and sometimes wrong, and the framework has nothing for the chat that is asked to address them: no router intent (run 2026-11-19 on the `dist/dotnet` router: "Address the review comments on my pull request." gets no rails, "Fix the review comments on my PR" the bug-fix rails, "Please review the comments on my PR and address them" the quality-gate rails) and no installed Markdown file that mentions review comments |
+| **What fired** | not captured |
+| **What got ignored** | not captured |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | the maintainer, in chat, describing the first consumer team's practice |
+
+**What the team does.** It runs its own pull-request reviewer in CI: the team's own agents, with every Markdown file in
+the repository as context, the framework's installed files among them. The findings exist only as pull-request comments.
+A developer typically starts a new Copilot chat and asks it to address the comments, and Copilot reads them through a
+command-line tool that queries Bitbucket.
+
+**Epistemic status.** A description relayed in chat, not an observation card. Not captured: how often, the tool's name
+and output, an example of a wrong comment, whether an agent ever applied one, whether people comment on the same pull
+requests. It says the comments are sometimes wrong; it does not say a wrong one was applied.
+
+**Outcome:** no change to the tree. B-537 files the workflow, with a measurement before anything ships
+(`.claude/plans/2026-11-19-b537-address-review-comments.md`). Two things the framework's records did not know: its
+installed Markdown has a second reader, and `docs/ci-integration.md` describes pull-request review as local only.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.
