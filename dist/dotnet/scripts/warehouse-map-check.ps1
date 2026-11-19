@@ -13,11 +13,11 @@ try {
 function Fail-Examine([string]$Message) { [Console]::Error.WriteLine($Message); exit 2 }
 # Git runs as a process with UTF-8 output (a PowerShell pipe garbles non-ASCII paths under CP437) and LC_ALL=C (so its
 # refusal can be matched). Output is read asynchronously before stdin is written, or a long path list deadlocks.
-function Invoke-Git([string]$Arguments, [string]$InputText = $null) {
+function Invoke-Git([string]$Arguments, [string]$InputText = $null, [string]$Directory = $rootPath) {
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = 'git'
     $psi.Arguments = $Arguments
-    $psi.WorkingDirectory = $rootPath
+    $psi.WorkingDirectory = $Directory
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
     $psi.RedirectStandardInput = $true
@@ -55,36 +55,62 @@ if ($probe) {
     if ($probe.Exit -eq 0) { $gitMode = $probe.Out.Trim() -eq 'true' }
     elseif ($probe.Err -notmatch 'not a git repository') { Fail-Examine "Git could not examine the repository ($($probe.Err.Trim())); warehouse applicability cannot be determined." }
 }
-# $files holds the artifacts; $relative maps each full path to its forward-slash path from the root.
+# $files holds the artifacts; $relative maps each full path to its forward-slash path from the root. In Git, $repoOf and
+# $repoPath map that path to the repository holding the file and its path there, because a submodule hashes in its own.
 $files = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
-$relative = @{}
+$relative = @{}; $repoOf = @{}; $repoPath = @{}
+$seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+$linkDirs = @{}
+function Test-UnderLink([IO.FileSystemInfo]$item) {
+    $dir = if ($item -is [IO.FileInfo]) { $item.Directory } else { $item }
+    while ($dir -and $dir.FullName.Length -gt $rootPath.TrimEnd('\', '/').Length) {
+        if (-not $linkDirs.ContainsKey($dir.FullName)) { $linkDirs[$dir.FullName] = $dir.LinkType -in @('SymbolicLink', 'Junction') }
+        if ($linkDirs[$dir.FullName]) { return $true }
+        $dir = $dir.Parent
+    }
+    $false
+}
+# The files Git tracks or would add: an ignored generated folder (a dbt target/) is not the warehouse. A submodule (a
+# gitlink, mode 160000) or an untracked nested repository is one entry and no file, so its own listing is read instead.
+function Add-GitListing([string]$Repo, [string]$Prefix) {
+    $listing = Invoke-Git '-c core.quotepath=off ls-files -z --cached --others --exclude-standard' $null $Repo
+    if ($listing.Exit -ne 0) { throw "git ls-files: $($listing.Err.Trim())" }
+    $staged = Invoke-Git '-c core.quotepath=off ls-files -z --stage' $null $Repo
+    if ($staged.Exit -ne 0) { throw "git ls-files --stage: $($staged.Err.Trim())" }
+    $gitlinks = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($entry in $staged.Out.Split([char]0)) { if ($entry -match '^160000 [0-9a-f]+ \d+\t(.+)$') { [void]$gitlinks.Add($Matches[1]) } }
+    foreach ($entry in $listing.Out.Split([char]0)) {
+        if ($entry -eq '') { continue }
+        $nested = $gitlinks.Contains($entry) -or $entry.EndsWith('/')
+        $path = $Prefix + $entry.TrimEnd('/')
+        if (-not $seen.Add($path)) { continue }
+        $segments = $path.Split('/'); $inExcluded = $false
+        $last = if ($nested) { $segments.Count } else { $segments.Count - 1 }
+        for ($s = 0; $s -lt $last; $s++) { if ($segments[$s] -in $excluded) { $inExcluded = $true; break } }
+        if ($inExcluded) { continue }
+        $full = Join-Path $rootPath ($path.Replace('/', [IO.Path]::DirectorySeparatorChar))
+        if ($nested) {
+            $sub = New-Object System.IO.DirectoryInfo($full)
+            # A submodule never checked out is an empty folder: nothing is on disk to map or to change.
+            if (-not $sub.Exists -or (Test-UnderLink $sub) -or -not (Get-ChildItem -LiteralPath $full -Force | Select-Object -First 1)) { continue }
+            # An empty prefix means the folder is its own repository's top; otherwise its files cannot be listed as Git sees them.
+            $top = Invoke-Git 'rev-parse --show-prefix' $null $full
+            if ($top.Exit -ne 0 -or $top.Out.Trim() -ne '') { throw "nested repository $path cannot be listed" }
+            Add-GitListing $full ($path + '/')
+            continue
+        }
+        $item = New-Object System.IO.FileInfo($full)
+        # The index still lists a file deleted from the working tree; a deleted artifact changes the digest instead.
+        if (-not $item.Exists -or -not (Test-ArtifactName $item)) { continue }
+        if ($item.LinkType -in @('SymbolicLink', 'Junction')) { continue }
+        # Git descends into a junction; the walk below does not, so neither does this listing.
+        if (Test-UnderLink $item) { continue }
+        $files.Add($item); $relative[$item.FullName] = $path; $repoOf[$path] = $Repo; $repoPath[$path] = $path.Substring($Prefix.Length)
+    }
+}
 try {
     if ($gitMode) {
-        # The files Git tracks or would add: an ignored generated folder (a dbt target/) is not the warehouse.
-        $listing = Invoke-Git '-c core.quotepath=off ls-files -z --cached --others --exclude-standard'
-        if ($listing.Exit -ne 0) { throw "git ls-files: $($listing.Err.Trim())" }
-        $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-        $linkDirs = @{}
-        foreach ($path in $listing.Out.Split([char]0)) {
-            if ($path -eq '' -or -not $seen.Add($path)) { continue }
-            $segments = $path.Split('/'); $inExcluded = $false
-            for ($s = 0; $s -lt $segments.Count - 1; $s++) { if ($segments[$s] -in $excluded) { $inExcluded = $true; break } }
-            if ($inExcluded) { continue }
-            $full = Join-Path $rootPath ($path.Replace('/', [IO.Path]::DirectorySeparatorChar))
-            $item = New-Object System.IO.FileInfo($full)
-            # The index still lists a file deleted from the working tree; a deleted artifact changes the digest instead.
-            if (-not $item.Exists -or -not (Test-ArtifactName $item)) { continue }
-            if ($item.LinkType -in @('SymbolicLink', 'Junction')) { continue }
-            # Git descends into a junction; the walk below does not, so neither does this listing.
-            $underLink = $false; $dir = $item.Directory
-            while ($dir -and $dir.FullName.Length -gt $rootPath.TrimEnd('\', '/').Length) {
-                if (-not $linkDirs.ContainsKey($dir.FullName)) { $linkDirs[$dir.FullName] = $dir.LinkType -in @('SymbolicLink', 'Junction') }
-                if ($linkDirs[$dir.FullName]) { $underLink = $true; break }
-                $dir = $dir.Parent
-            }
-            if ($underLink) { continue }
-            $files.Add($item); $relative[$item.FullName] = $path
-        }
+        Add-GitListing $rootPath ''
     } else {
         $directories = [System.Collections.Generic.Queue[System.IO.DirectoryInfo]]::new()
         $directories.Enqueue((Get-Item -LiteralPath $rootPath -Force -ErrorAction Stop))
@@ -115,10 +141,14 @@ function Get-ArtifactDigest {
     $ids = @{}
     if ($gitMode -and $paths.Count -gt 0) {
         if (@($paths | Where-Object { $_ -match '[\r\n]' }).Count -gt 0) { Fail-Examine 'A warehouse artifact path contains a line break; its content cannot be identified.' }
-        try { $hashed = Invoke-Git 'hash-object --stdin-paths' (($paths -join "`n") + "`n") } catch { $hashed = $null }
-        $lines = if ($hashed) { @($hashed.Out.Split("`n") | Where-Object { $_ -ne '' }) } else { @() }
-        if (-not $hashed -or $hashed.Exit -ne 0 -or $lines.Count -ne $paths.Count) { Fail-Examine "Could not read a warehouse artifact's content ($(if ($hashed) { $hashed.Err.Trim() })); the map's freshness cannot be determined." }
-        for ($i = 0; $i -lt $paths.Count; $i++) { $ids[$paths[$i]] = $lines[$i].Trim() }
+        # Each repository hashes its own files, under its own line-ending rules.
+        foreach ($group in @($paths | Group-Object { $repoOf[$_] })) {
+            $inRepo = [string[]]@($group.Group | ForEach-Object { $repoPath[$_] })
+            try { $hashed = Invoke-Git 'hash-object --stdin-paths' (($inRepo -join "`n") + "`n") $group.Name } catch { $hashed = $null }
+            $lines = @(if ($hashed) { $hashed.Out.Split("`n") | Where-Object { $_ -ne '' } })
+            if (-not $hashed -or $hashed.Exit -ne 0 -or $lines.Count -ne $inRepo.Count) { Fail-Examine "Could not read a warehouse artifact's content ($(if ($hashed) { $hashed.Err.Trim() })); the map's freshness cannot be determined." }
+            for ($i = 0; $i -lt $inRepo.Count; $i++) { $ids[$group.Group[$i]] = $lines[$i].Trim() }
+        }
     } else {
         $sha = [Security.Cryptography.SHA256]::Create()
         foreach ($file in $files) {
