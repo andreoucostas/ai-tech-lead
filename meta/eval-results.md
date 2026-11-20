@@ -10519,3 +10519,20 @@ blocking, all applied below; its port attack on the first start check (a healthy
   test, and whether Test leanness #12 deters it; other models; Angular.
 - Not yet frozen, each required in an amendment committed before the first paid call: T1's patch under `meta/eval-fixtures/target-patches/` with its sha256, cut per DEVELOPING.md from a fresh install; the
   driver's and grader's sha256 and the path outside the repository where they and the run evidence are kept; the commit whose `dist/dotnet` the arms install.
+
+### B-539 amendment — the three items left open, frozen before any run (2026-11-20; spend approved by the maintainer in chat the same day, "approved")
+
+- T1's patch: `meta/eval-fixtures/target-patches/b539-levels.patch`, 1,481 bytes, LF, sha256 prefix `2846da77dfdc`, cut per DEVELOPING.md from a fresh install of ecf8cae2's `dist/dotnet` into the fixture; `git apply
+  --check` exit 0 on that tree. It appends the registered text to self-review's second bullet, after a full stop.
+- Framework under test: `dist/dotnet` of ecf8cae2 (tree `2e47669d4a08`, stamp 0.98.6; unchanged on `master` at afa11f26), installed from a `git archive` export of that commit with `ATL_SOURCE_CHECK=off`, as the runner does.
+- Driver, grader, allowlist and evidence: `%TEMP%\b539\` on the maintainer's machine, kept as retained evidence. sha256 prefixes: `driver.ps1` `1a91a3e64b59`, `grade.ps1` `e71e04005351`, `allowlist.txt`
+  `0a3e4b2e7c7a` (105 rules). Evidence: `ledger.tsv`, `runs\<id>\` (the repository, transcripts, `grade.json`, the graded copy), `said\` and `said-map.tsv`.
+- The allowlist is wider than the pre-registration's summary, so that a start attempt is not refused for a helper command: it adds `Start-Sleep`, `Start-Process dotnet`, the job cmdlets, `Stop-Process -Id`,
+  `Get-Process`, `Get-Content`, `Get-ChildItem`, `Select-String`, `Test-Path`, `Set-Location`, `Write-Output`, `Test-NetConnection`, and for Bash `sleep`, `timeout`, `cd`, `ls`, `cat`, `grep`, `kill`. It has no
+  `taskkill` and no stop-by-name: other sessions run `dotnet` on this machine. Web requests are allowed to `localhost` and `127.0.0.1` only, by prefix, with the common `curl` flag forms.
+- The grader, where it is more specific than the registered text. RAN-START: a shell command matching `dotnet run`, or naming `Catalog.Api.dll` or `.exe`, or `dotnet test` when the final tree holds a
+  `WebApplicationFactory` test, whose result came back and is not a permission refusal. Hooks: leg 1's first SessionStart and first UserPromptSubmit `hook_response`, each `outcome` success and `exit_code` 0.
+  STARTS runs the built dll directly, so in the default environment, not the launch profile's Development. Its tree half was seen green and red before any run: the fixture as installed read STARTS (health
+  200 twice), and the same tree with a hand-planted second constructor read NOT-STARTED with the registered exception. Its transcript half has met no real transcript; a defect found there after the first run
+  is reported as a deviation, and the affected field re-read by hand.
+- Order. Phase 1: C, slots 1 to 6. Phase 2, if reached: the probe, then C, T1, C, T1, T2 repeating until 6, 6 and 3 are valid.
