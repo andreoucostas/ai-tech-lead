@@ -39,4 +39,4 @@ first-party instances (`monthly-sales`, `open-orders`, `overdue-invoices`). It i
 
 ## After review
 
-Add to `AGENTS.md > Common Tasks`: `` `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph).
+Add to `AGENTS.md > Common Tasks`: `` `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph) and in `references/project-pattern.md` (the title's `(draft, pending PR review)` and `Not team-approved policy.`).

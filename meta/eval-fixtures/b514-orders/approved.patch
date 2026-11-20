@@ -28,7 +28,7 @@ index 9ad2b9a..f1f039d 100644
 -
 -Add to `AGENTS.md > Common Tasks`: `` `add-integration-event` — add a versioned integration event (record, schema, handler, registry, DI, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph).
 diff --git a/.claude/skills/add-report-export/SKILL.md b/.claude/skills/add-report-export/SKILL.md
-index 4a72895..1d2edb0 100644
+index 4c272f3..1d2edb0 100644
 --- a/.claude/skills/add-report-export/SKILL.md
 +++ b/.claude/skills/add-report-export/SKILL.md
 @@ -1,7 +1,7 @@
@@ -55,7 +55,20 @@ index 4a72895..1d2edb0 100644
  
 -## After review
 -
--Add to `AGENTS.md > Common Tasks`: `` `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph).
+-Add to `AGENTS.md > Common Tasks`: `` `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph) and in `references/project-pattern.md` (the title's `(draft, pending PR review)` and `Not team-approved policy.`).
+diff --git a/.claude/skills/add-report-export/references/project-pattern.md b/.claude/skills/add-report-export/references/project-pattern.md
+index 9e11339..ea84be6 100644
+--- a/.claude/skills/add-report-export/references/project-pattern.md
++++ b/.claude/skills/add-report-export/references/project-pattern.md
+@@ -1,6 +1,6 @@
+-# Project pattern: report exports (draft, pending PR review)
++# Project pattern: report exports
+ 
+-Not team-approved policy. Observed 2026-11-15; revision: `b28d35f`. Status: `observed`.
++Observed 2026-11-15; revision: `b28d35f`. Status: `observed`.
+ 
+ ## Instances (all consumer-authored; exemplar: `open-orders`, the simplest view)
+ 
 diff --git a/AGENTS.md b/AGENTS.md
 index fb16551..c9a2f5f 100644
 --- a/AGENTS.md

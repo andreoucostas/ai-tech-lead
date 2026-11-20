@@ -1,5 +1,5 @@
 diff --git a/.claude/bootstrap-baseline.tsv b/.claude/bootstrap-baseline.tsv
-index fa966d0..a629162 100644
+index c894449..a629162 100644
 --- a/.claude/bootstrap-baseline.tsv
 +++ b/.claude/bootstrap-baseline.tsv
 @@ -88,8 +88,6 @@ line	f4a1ddfd8688
@@ -7,7 +7,7 @@ index fa966d0..a629162 100644
  line	fd8b3b637d9f
  area	.	2ec564a115f460f2
 -area	.claude/skills/add-integration-event	859c029da4d9ef3d
--area	.claude/skills/add-report-export	2115a5f62272f1c6
+-area	.claude/skills/add-report-export	f12cfa05a7cad0d9
  area	config	94872fde0b39244a
  area	contracts/events	4c8f55eed8f17726
  area	db/security	ccb6cd092b4170c0
@@ -97,7 +97,7 @@ index b147ac1..0000000
 -`OutboxDispatcher.cs:29-40` (version check, handler resolution), `Program.cs`, `EventRegistry.cs`.
 diff --git a/.claude/skills/add-report-export/SKILL.md b/.claude/skills/add-report-export/SKILL.md
 deleted file mode 100644
-index 4a72895..0000000
+index 4c272f3..0000000
 --- a/.claude/skills/add-report-export/SKILL.md
 +++ /dev/null
 @@ -1,42 +0,0 @@
@@ -142,7 +142,7 @@ index 4a72895..0000000
 -
 -## After review
 -
--Add to `AGENTS.md > Common Tasks`: `` `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph).
+-Add to `AGENTS.md > Common Tasks`: `` `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph) and in `references/project-pattern.md` (the title's `(draft, pending PR review)` and `Not team-approved policy.`).
 diff --git a/.claude/skills/add-report-export/references/project-pattern.md b/.claude/skills/add-report-export/references/project-pattern.md
 deleted file mode 100644
 index 9e11339..0000000

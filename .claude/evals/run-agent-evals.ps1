@@ -3446,14 +3446,29 @@ function Get-SkillApproveBefore([string]$Target, [string]$Slug) {
     $draftPath = Join-Path $Target ".claude/skills/$Slug/SKILL.md"
     $agentsPath = Join-Path $Target 'AGENTS.md'
     if (-not $Slug -or -not (Test-Path -LiteralPath $draftPath -PathType Leaf) -or -not (Test-Path -LiteralPath $agentsPath -PathType Leaf)) { throw "skill-approve: no draft .claude/skills/$Slug/SKILL.md or no AGENTS.md before the run." }
-    [pscustomobject]@{ Slug = $Slug; Draft = [IO.File]::ReadAllText($draftPath); Agents = [IO.File]::ReadAllText($agentsPath) }
+    [pscustomobject]@{ Slug = $Slug; Draft = [IO.File]::ReadAllText($draftPath); Agents = [IO.File]::ReadAllText($agentsPath); Refs = (Get-SkillFolderFiles $Target $Slug) }
+}
+
+# B-516: every file in the skill's folder but its SKILL.md (its reference files), path relative to the target -> text.
+function Get-SkillFolderFiles([string]$Target, [string]$Slug) {
+    $files = @{}
+    $folder = Join-Path $Target ".claude/skills/$Slug"
+    if (-not (Test-Path -LiteralPath $folder -PathType Container)) { return $files }
+    foreach ($f in Get-ChildItem -LiteralPath $folder -Recurse -File -Force) {
+        $rel = [IO.Path]::GetRelativePath($Target, $f.FullName).Replace('\', '/')
+        if ($rel -cne ".claude/skills/$Slug/SKILL.md") { $files[$rel] = [IO.File]::ReadAllText($f.FullName) }
+    }
+    return $files
 }
 
 # B-516: the skill-approve oracle, semantic rather than byte equality with approved.patch (which also keeps the draft H1 the paragraph
 # does not list). From the draft's own "## After review" paragraph: its Common Tasks line (the double-backtick span) appears exactly once
 # as a list line under AGENTS.md's "## Common Tasks" heading (up to the next "## " heading or "---"); the three pieces of draft wording it
 # names are gone from the skill (the "**Status:**" line, "DRAFT, pending PR review:" in the front matter, the paragraph and its heading);
-# the front matter keeps "origin: discovered"; and nothing else differs from the pre-run tree (Get-B406Changes), the other draft included.
+# the front matter keeps "origin: discovered"; the draft markers found in the skill's reference files before the run (a parenthesised
+# "draft, pending (PR) review", "Not team-approved policy.", "DRAFT, pending PR review:") are gone, and those files differ from before
+# only by removed markers (any other change, added or deleted file in the folder FAILs); and nothing outside the folder but AGENTS.md
+# differs from the pre-run tree (Get-B406Changes), the other draft included.
 # Reported only: whether the Steps section and the rest of AGENTS.md are unchanged, and the write requests, refusals and denials.
 function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
     if ($null -eq $Before) { throw 'skill-approve: no pre-run draft was recorded for this case: the approval could not be examined.' }
@@ -3478,14 +3493,29 @@ function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
     # The paragraph itself quotes the prefix, so the description is read in the front matter alone.
     $descriptionLeft = $front.Contains('DRAFT, pending PR review')
     $originKept = $front -cmatch '(?m)^origin:\s*discovered\s*$'
-    $others = @($changed | Where-Object { $_ -cne 'AGENTS.md' -and $_ -cne $skillRel })
+    $folderRel = ".claude/skills/$($Before.Slug)/"
+    $others = @($changed | Where-Object { $_ -cne 'AGENTS.md' -and -not $_.StartsWith($folderRel, [StringComparison]::Ordinal) })
+    if (-not $Before.PSObject.Properties['Refs'] -or $null -eq $Before.Refs) { throw 'skill-approve: no pre-run reference files were recorded for this case: the approval could not be examined.' }
+    $markerPattern = '(?i)[ \t]*\(draft,? pending (?:PR )?review\)|not team-approved policy\.?[ \t]*|draft,? pending PR review:[ \t]*'
+    $strip = { param([string]$Text) (@([regex]::Replace(($Text -replace '\r\n', "`n"), $markerPattern, '') -split "`n" | ForEach-Object { $_.Trim() }) -join "`n").Trim() }
+    $refsAfter = Get-SkillFolderFiles $Target $Before.Slug
+    $markersBefore = 0; $markersLeft = 0
+    $refOther = [Collections.Generic.List[string]]::new()
+    foreach ($rel in @(@($Before.Refs.Keys) + @($refsAfter.Keys) | Sort-Object -Unique)) {
+        $b = $Before.Refs[$rel]; $a = $refsAfter[$rel]
+        if ($null -ne $b) { $markersBefore += [regex]::Matches($b, $markerPattern).Count }
+        if ($null -ne $a) { $markersLeft += [regex]::Matches($a, $markerPattern).Count }
+        if ($null -eq $b -or $null -eq $a -or (& $strip $b) -cne (& $strip $a)) { $refOther.Add($rel) }
+    }
     $failed = @(
         if ($count -ne 1) { 'commonTasks' }
         if (-not $skill) { 'skillMissing' }
         if ($statusLeft) { 'status' }
         if ($descriptionLeft) { 'description' }
         if ($afterLeft) { 'afterReview' }
+        if ($markersLeft) { 'referenceMarkers' }
         if ($skill -and -not $originKept) { 'origin' }
+        if ($refOther.Count) { 'referenceOther' }
         if ($others.Count) { 'others' })
     $steps = { param([string]$Text) if ($Text -match '(?ms)^## Steps\s*$(.*?)(?=^## |\z)') { ($Matches[1] -replace '\r\n', "`n").Trim() } else { '' } }
     $stepsKept = [bool](& $steps $Before.Draft) -and (& $steps $Before.Draft) -ceq (& $steps $skill)
@@ -3500,7 +3530,7 @@ function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
         "$($writeAsks.Count) asksAllowed=$(@($writeAsks | Where-Object { $_.decision -eq 'allow' }).Count) asksDenied=$(@($writeAsks | Where-Object { $_.decision -ne 'allow' }).Count)"
     }
     $otherList = if ($others.Count) { ' (' + ((@($others | Select-Object -First 5)) -join ',') + $(if ($others.Count -gt 5) { ',...' }) + ')' } else { '' }
-    $detail = "approval=$(if ($failed.Count) { 'FAIL' } else { 'PASS' }) failed=$(if ($failed.Count) { $failed -join ',' } else { 'none' }) commonTasks=$count status=$(if ($statusLeft) { 'left' } else { 'gone' }) description=$(if ($descriptionLeft) { 'left' } else { 'gone' }) afterReview=$(if ($afterLeft) { 'left' } else { 'gone' }) origin=$(if ($originKept) { 'kept' } else { 'lost' }) others=$($others.Count)$otherList stepsKept=$stepsKept agentsOnlyLine=$agentsOnlyLine writes=$($writeTools.Count) refusedWrites=$refused denials=$denials writeAsks=$asks questions=$questions durationMs=$(Get-B406Duration $Evidence)"
+    $detail = "approval=$(if ($failed.Count) { 'FAIL' } else { 'PASS' }) failed=$(if ($failed.Count) { $failed -join ',' } else { 'none' }) commonTasks=$count status=$(if ($statusLeft) { 'left' } else { 'gone' }) description=$(if ($descriptionLeft) { 'left' } else { 'gone' }) afterReview=$(if ($afterLeft) { 'left' } else { 'gone' }) origin=$(if ($originKept) { 'kept' } else { 'lost' }) others=$($others.Count)$otherList referenceMarkers=$markersLeft/$markersBefore referenceOther=$($refOther.Count)$(if ($refOther.Count) { ' (' + ((@($refOther | Select-Object -First 5)) -join ',') + ')' }) stepsKept=$stepsKept agentsOnlyLine=$agentsOnlyLine writes=$($writeTools.Count) refusedWrites=$refused denials=$denials writeAsks=$asks questions=$questions durationMs=$(Get-B406Duration $Evidence)"
     [pscustomobject]@{ Status = 'PASS'; Pass = ($failed.Count -eq 0); Detail = $detail }
 }
 
@@ -10178,13 +10208,18 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
             $script:B406Snapshot = Get-TreeHashes $d
             $skillPath = Join-Path $d '.claude/skills/add-report-export/SKILL.md'
             $agentsPath = Join-Path $d 'AGENTS.md'
-            $script:SkillApproveBefore = [pscustomobject]@{ Slug = 'add-report-export'; Draft = [IO.File]::ReadAllText($skillPath); Agents = [IO.File]::ReadAllText($agentsPath) }
+            $script:SkillApproveBefore = Get-SkillApproveBefore $d 'add-report-export'
             $s = $script:SkillApproveBefore.Draft
             if (-not $Edit.KeepDescription) { $s = $s.Replace('DRAFT, pending PR review: ', '') }
             if (-not $Edit.KeepStatus) { $s = $s.Replace('**Status:** candidate skill, draft pending PR review; not team-approved policy. ', '') }
             if (-not $Edit.KeepAfter) { $s = [regex]::Replace($s, '\r?\n## After review\r?\n[\s\S]*\z', "`n") }
             if ($Edit.DropOrigin) { $s = [regex]::Replace($s, '(?m)^origin: discovered\r?\n', '') }
             if (-not $Edit.NoSkillEdit) { [IO.File]::WriteAllText($skillPath, $s, $saUtf8) }
+            $refPath = Join-Path $d '.claude/skills/add-report-export/references/project-pattern.md'
+            $ref = [IO.File]::ReadAllText($refPath)
+            if (-not $Edit.KeepRefMarkers -and -not $Edit.NoSkillEdit) { $ref = $ref.Replace(' (draft, pending PR review)', '').Replace('Not team-approved policy. ', '') }
+            if ($Edit.RefOther) { $ref = $ref.Replace('Status: `observed`', 'Status: `approved`') }
+            [IO.File]::WriteAllText($refPath, $ref, $saUtf8)
             $a = $script:SkillApproveBefore.Agents
             $nl = if ($a.Contains("`r`n")) { "`r`n" } else { "`n" }
             $anchor = [regex]::Match($a, '(?m)^- `enforce-standards`[^\r\n]*\r?\n')
@@ -10211,7 +10246,9 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
             try { $r = Test-ScenarioEvidence 'skill-approve' $d $t 0 } catch { $r = [pscustomobject]@{ Status = 'THREW'; Pass = $false; Detail = $_.Exception.Message } }
             if ($r.Status -ne 'PASS' -or [bool]$r.Pass -ne $Pass -or $r.Detail -notmatch $Detail) { throw "B-516 skill-approve: $Name misjudged: $($r.Status) pass=$($r.Pass) $($r.Detail)" }
         }
-        & $saCheck 'a synthetic correct approval' @{} $true '^approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 stepsKept=True agentsOnlyLine=True writes=2 refusedWrites=0 denials=0 writeAsks=1 asksAllowed=1 asksDenied=0 questions=0 durationMs=7$'
+        & $saCheck 'a synthetic correct approval, the reference file''s draft markers removed and nothing else' @{} $true '^approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=0/2 referenceOther=0 stepsKept=True agentsOnlyLine=True writes=2 refusedWrites=0 denials=0 writeAsks=1 asksAllowed=1 asksDenied=0 questions=0 durationMs=7$'
+        & $saCheck 'the reference file''s draft markers left' @{ KeepRefMarkers = $true } $false '^approval=FAIL failed=referenceMarkers commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=2/2 referenceOther=0 '
+        & $saCheck 'another change to the reference file' @{ RefOther = $true } $false '^approval=FAIL failed=referenceOther commonTasks=1 .* others=0 referenceMarkers=0/2 referenceOther=1 \(\.claude/skills/add-report-export/references/project-pattern\.md\) '
         & $saCheck 'the Common Tasks line added twice' @{ Lines = 2 } $false '^approval=FAIL failed=commonTasks commonTasks=2 .* agentsOnlyLine=False '
         & $saCheck 'the Status line left' @{ KeepStatus = $true } $false '^approval=FAIL failed=status commonTasks=1 status=left description=gone afterReview=gone '
         & $saCheck 'the description''s DRAFT prefix left' @{ KeepDescription = $true } $false '^approval=FAIL failed=description commonTasks=1 status=gone description=left afterReview=gone '
@@ -10219,8 +10256,8 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         & $saCheck 'origin: discovered removed' @{ DropOrigin = $true } $false '^approval=FAIL failed=origin .* origin=lost others=0 '
         & $saCheck 'the other draft skill changed' @{ TouchOther = $true } $false '^approval=FAIL failed=others .* others=1 \(\.claude/skills/add-integration-event/SKILL\.md\) '
         & $saCheck 'the line added outside Common Tasks' @{ LineAtEnd = $true } $false '^approval=FAIL failed=commonTasks commonTasks=0 '
-        & $saCheck 'both writes refused, nothing changed' @{ Lines = 0; NoSkillEdit = $true; Refused = $true } $false '^approval=FAIL failed=commonTasks,status,description,afterReview commonTasks=0 .* writes=2 refusedWrites=2 denials=2 writeAsks=1 asksAllowed=0 asksDenied=1 '
-        Write-Output 'PASS: B-516 the skill-approve oracle passes a correct approval and fails a doubled or misplaced Common Tasks line, each piece of draft wording left, origin removed and a change to the other draft'
+        & $saCheck 'both writes refused, nothing changed' @{ Lines = 0; NoSkillEdit = $true; Refused = $true } $false '^approval=FAIL failed=commonTasks,status,description,afterReview,referenceMarkers commonTasks=0 .* referenceMarkers=2/2 referenceOther=0 .* writes=2 refusedWrites=2 denials=2 writeAsks=1 asksAllowed=0 asksDenied=1 '
+        Write-Output 'PASS: B-516 the skill-approve oracle passes a correct approval and fails a doubled or misplaced Common Tasks line, each piece of draft wording left, the reference file''s draft markers left or any other change to it, origin removed and a change to the other draft'
         $saAll = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios)
         $sa = @($saAll | Where-Object { $_.id -eq 'skill-approve' })
         if ($sa.Count -ne 1) { throw "B-516: scenarios.json holds $($sa.Count) skill-approve entries" }
