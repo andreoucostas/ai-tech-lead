@@ -11022,3 +11022,26 @@ were loaded as usual. This phase therefore says nothing about the hook's line, o
 - Cost: 3.49 USD, C 2.44 and N 1.05; 0.14 to 0.45 USD a run. Phases 1 and 2: 6.24 USD.
 - Not shown: as registered, and the hook's line on this feature.
 - Reopen triggers: WSD-104's not met; WSD-102's (work presented as done on a red build) not met: every final build is green.
+
+### B-543 and B-544 phase 2b — the framework arm rerun with the routing word removed (registered 2026-11-20, frozen by the commit that holds it, before any phase 2b run)
+
+Phase 2's registered prompt said "a 400 with a message when a rule is broken"; the shipped router (`route-prompt.ps1`, fix words checked before feature words, `\bbroken\b` among them) filed all six C runs as a bug
+fix, so the feature hook's "a new responsibility gets its own service or class even with one consumer" and the feature rails never reached arm C. Phase 2b reruns arm C on the same feature with that word removed.
+Spend: the maintainer, asked in chat "Rerun the six framework runs with the prompt corrected (about 2.50 USD)?", said "Let's go". Everything not restated is as phase 2's registration and amendment: fixture,
+reference answer (R = 3), host and flags, allowlist, measured fields, kind read, reasons given, grader (sha256 prefix `77bbf33de2bb`), driver apart from the prompt and the stop.
+
+- Prompt, leg 1: phase 2's, with one change: "a 400 with a message when a rule is broken" becomes "a 400 with a message when a rule is not met". Nothing else differs. Legs 2 and 3 as phase 2.
+- Routing check, free, before the first paid call: the frozen `dist/dotnet` hook, run on a `UserPromptSubmit` event holding the new prompt, prints the feature rails ("Design check first") and the line "a new
+  responsibility gets its own service or class even with one consumer", and no fix rails. Seen once on the old prompt as well, which must print the fix rails, so the check can go red.
+- Arm: C only, six valid runs, on the frozen export (`dist/dotnet` tree `e7884680efc9`, unchanged on `master` at 690b8254). A run is valid as phase 2 says and, added, only if its leg 1 transcript holds the
+  feature rails' "Design check first"; a run that does not is reported by its reason and repeated once.
+- N: not rerun. Phase 2's six N runs stand as the no-framework arm. N has no router, and its prompt differs from 2b's by the three words above; the readings name that difference where they use N.
+- Readings: phase 2's, unchanged, with C from 2b and N from phase 2. Reported beside them, no reading: 2b's C against phase 2's C (the same tree and feature, routed as a feature against as a fix): new types
+  and kinds, where the work went (its own class, or the existing `OrderService`), tests, `Done when:` counts, and the reasons given with the text each names, the hook's line counted on its own.
+- Stop: 3.00 USD for 2b, counted from each run's `total_cost_usd`; a run is not started if the spend so far in 2b plus 0.50 would pass it, and a third leg is not started if the spend plus 0.75 would. Phase 2's C runs
+  cost 0.36 to 0.45 USD; with the leg cap at 0.75 the worst case is 4.00 USD. Expected about 2.50.
+- Not shown: as phase 2, without its routing caveat; N on the new wording.
+- Amendment, before the first paid call (the Opus agent): the routing check ran the frozen hook (`pwsh -File .claude/hooks/route-prompt.ps1`, a `UserPromptSubmit` event on stdin, in a fresh C install). Phase 2's
+  prompt printed "## Routed intent: `fix`" and the fix rails' "write a failing regression test BEFORE touching production code"; 2b's printed "## Routed intent: `feature`", "1. Design check first", and "a new
+  responsibility gets its own service or class even with one consumer", and no fix rail. Driver `%TEMP%\b543\p2b\driver.ps1`, sha256 prefix `8a691a2fb9f9` (phase 2's with the prompt, the stop and a
+  `featureRails` ledger column for the "Design check first" check); grader phase 2's, `77bbf33de2bb`; 2b evidence in `%TEMP%\b543\p2b\`.
