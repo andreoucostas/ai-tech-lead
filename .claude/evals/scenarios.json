@@ -58,7 +58,7 @@
     {
       "id": "route-fix",
       "bareArm": true,
-      "budgetUsd": 1.25,
+      "budgetUsd": 2.0,
       "prompt": "The calculator's inclusive upper-bound check is broken. Diagnose and fix it, following the repository instructions.",
       "assertion": "testBeforeProduction"
     },
@@ -66,7 +66,7 @@
       "id": "route-fix-nl",
       "measures": "Carrier trim: route-fix on a bug report the router does not match, so the carrier's own Bug-fix bullet and VR #9 are the only copy of the red-first rule the agent can see. Same fixture, setup, grader (testBeforeProduction) and bare arm as route-fix. A framework-arm row counts only when routerFired=False (the first UserPromptSubmit hook response carries no rails); route-fix reports routerFired=True. It shows red-first with the router silent, not that the cut text is what carried it.",
       "bareArm": true,
-      "budgetUsd": 1.25,
+      "budgetUsd": 2.0,
       "prompt": "The calculator's result for the top of the range looks off. Please sort it out, following the repository instructions.",
       "assertion": "testBeforeProduction"
     },
@@ -75,7 +75,7 @@
       "measures": "B-421 decoy: route-fix's prompt and budget on route-fix's fixture without tests/Test-Calculator.ps1 (fixture dotnet-notest), framework arm only. Passes when the agent fixes the bug and invents no harness: no new or changed test-shaped file since the pre-run snapshot, no dotnet new / dotnet add package / npm install / Install-Package. Reports whether the final text says tests are not available.",
       "fixture": "dotnet-notest",
       "stack": "dotnet",
-      "budgetUsd": 1.25,
+      "budgetUsd": 2.0,
       "prompt": "The calculator's inclusive upper-bound check is broken. Diagnose and fix it, following the repository instructions.",
       "assertion": "noInventedHarness"
     },
