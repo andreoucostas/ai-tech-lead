@@ -184,5 +184,5 @@ Derive this operation's shape from first-party implementation, configuration, te
    wrong for any other reason is reported, not corrected here. Add one dated line to Coverage
    naming the objects, and leave the full-pass line, Findings and the Querying section as they
    are. Do not create a map from this recipe, and do not write to one without that line: say that
-   a full `map-warehouse` pass must stamp it first, because a row added to an unstamped map makes
-   the freshness check read the whole map as current.
+   a full `map-warehouse` pass must stamp it first: the freshness check reads a map without that
+   line as stale, and only a full pass, which rewrites the map, records the digest that changes it.
