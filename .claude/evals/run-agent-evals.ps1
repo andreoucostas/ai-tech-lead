@@ -3451,7 +3451,7 @@ function Get-SkillApproveBefore([string]$Target, [string]$Slug) {
 
 # B-516: every file in the skill's folder but its SKILL.md (its reference files), path relative to the target -> text.
 function Get-SkillFolderFiles([string]$Target, [string]$Slug) {
-    $files = @{}
+    $files = [hashtable]::new([StringComparer]::Ordinal)
     $folder = Join-Path $Target ".claude/skills/$Slug"
     if (-not (Test-Path -LiteralPath $folder -PathType Container)) { return $files }
     foreach ($f in Get-ChildItem -LiteralPath $folder -Recurse -File -Force) {
@@ -3497,11 +3497,15 @@ function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
     $others = @($changed | Where-Object { $_ -cne 'AGENTS.md' -and -not $_.StartsWith($folderRel, [StringComparison]::Ordinal) })
     if (-not $Before.PSObject.Properties['Refs'] -or $null -eq $Before.Refs) { throw 'skill-approve: no pre-run reference files were recorded for this case: the approval could not be examined.' }
     $markerPattern = '(?i)[ \t]*\(draft,? pending (?:PR )?review\)|not team-approved policy\.?[ \t]*|draft,? pending PR review:[ \t]*'
-    $strip = { param([string]$Text) (@([regex]::Replace(($Text -replace '\r\n', "`n"), $markerPattern, '') -split "`n" | ForEach-Object { $_.Trim() }) -join "`n").Trim() }
+    # Per line, trailing whitespace and line endings tolerated; leading whitespace is content (a re-indent can turn a table into code).
+    $strip = { param([string]$Text) (@([regex]::Replace(($Text -replace '\r\n', "`n"), $markerPattern, '') -split "`n" | ForEach-Object { $_.TrimEnd() }) -join "`n").Trim("`n") }
     $refsAfter = Get-SkillFolderFiles $Target $Before.Slug
     $markersBefore = 0; $markersLeft = 0
     $refOther = [Collections.Generic.List[string]]::new()
-    foreach ($rel in @(@($Before.Refs.Keys) + @($refsAfter.Keys) | Sort-Object -Unique)) {
+    # Ordinal keys: a case-only rename reads as one file deleted and one added.
+    $refKeys = [Collections.Generic.SortedSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($k in @(@($Before.Refs.Keys) + @($refsAfter.Keys))) { [void]$refKeys.Add([string]$k) }
+    foreach ($rel in $refKeys) {
         $b = $Before.Refs[$rel]; $a = $refsAfter[$rel]
         if ($null -ne $b) { $markersBefore += [regex]::Matches($b, $markerPattern).Count }
         if ($null -ne $a) { $markersLeft += [regex]::Matches($a, $markerPattern).Count }
@@ -10219,7 +10223,13 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
             $ref = [IO.File]::ReadAllText($refPath)
             if (-not $Edit.KeepRefMarkers -and -not $Edit.NoSkillEdit) { $ref = $ref.Replace(' (draft, pending PR review)', '').Replace('Not team-approved policy. ', '') }
             if ($Edit.RefOther) { $ref = $ref.Replace('Status: `observed`', 'Status: `approved`') }
+            if ($Edit.RefIndent) { $ref = [regex]::Replace($ref, '(?m)^\|', '    |') }
             [IO.File]::WriteAllText($refPath, $ref, $saUtf8)
+            if ($Edit.RefRename) {
+                $refMoved = Join-Path $d '.claude/skills/add-report-export/references/b516-rename.tmp'
+                [IO.File]::Move($refPath, $refMoved)
+                [IO.File]::Move($refMoved, (Join-Path $d '.claude/skills/add-report-export/references/Project-Pattern.md'))
+            }
             $a = $script:SkillApproveBefore.Agents
             $nl = if ($a.Contains("`r`n")) { "`r`n" } else { "`n" }
             $anchor = [regex]::Match($a, '(?m)^- `enforce-standards`[^\r\n]*\r?\n')
@@ -10249,6 +10259,8 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         & $saCheck 'a synthetic correct approval, the reference file''s draft markers removed and nothing else' @{} $true '^approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=0/2 referenceOther=0 stepsKept=True agentsOnlyLine=True writes=2 refusedWrites=0 denials=0 writeAsks=1 asksAllowed=1 asksDenied=0 questions=0 durationMs=7$'
         & $saCheck 'the reference file''s draft markers left' @{ KeepRefMarkers = $true } $false '^approval=FAIL failed=referenceMarkers commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=2/2 referenceOther=0 '
         & $saCheck 'another change to the reference file' @{ RefOther = $true } $false '^approval=FAIL failed=referenceOther commonTasks=1 .* others=0 referenceMarkers=0/2 referenceOther=1 \(\.claude/skills/add-report-export/references/project-pattern\.md\) '
+        & $saCheck 'the reference file''s table re-indented into a code block' @{ RefIndent = $true } $false '^approval=FAIL failed=referenceOther commonTasks=1 .* referenceMarkers=0/2 referenceOther=1 \(\.claude/skills/add-report-export/references/project-pattern\.md\) '
+        & $saCheck 'the reference file renamed by case only' @{ RefRename = $true } $false '^approval=FAIL failed=referenceOther commonTasks=1 .* referenceMarkers=0/2 referenceOther=2 \(\.claude/skills/add-report-export/references/Project-Pattern\.md,\.claude/skills/add-report-export/references/project-pattern\.md\) '
         & $saCheck 'the Common Tasks line added twice' @{ Lines = 2 } $false '^approval=FAIL failed=commonTasks commonTasks=2 .* agentsOnlyLine=False '
         & $saCheck 'the Status line left' @{ KeepStatus = $true } $false '^approval=FAIL failed=status commonTasks=1 status=left description=gone afterReview=gone '
         & $saCheck 'the description''s DRAFT prefix left' @{ KeepDescription = $true } $false '^approval=FAIL failed=description commonTasks=1 status=gone description=left afterReview=gone '
@@ -10257,7 +10269,7 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         & $saCheck 'the other draft skill changed' @{ TouchOther = $true } $false '^approval=FAIL failed=others .* others=1 \(\.claude/skills/add-integration-event/SKILL\.md\) '
         & $saCheck 'the line added outside Common Tasks' @{ LineAtEnd = $true } $false '^approval=FAIL failed=commonTasks commonTasks=0 '
         & $saCheck 'both writes refused, nothing changed' @{ Lines = 0; NoSkillEdit = $true; Refused = $true } $false '^approval=FAIL failed=commonTasks,status,description,afterReview,referenceMarkers commonTasks=0 .* referenceMarkers=2/2 referenceOther=0 .* writes=2 refusedWrites=2 denials=2 writeAsks=1 asksAllowed=0 asksDenied=1 '
-        Write-Output 'PASS: B-516 the skill-approve oracle passes a correct approval and fails a doubled or misplaced Common Tasks line, each piece of draft wording left, the reference file''s draft markers left or any other change to it, origin removed and a change to the other draft'
+        Write-Output 'PASS: B-516 the skill-approve oracle passes a correct approval and fails a doubled or misplaced Common Tasks line, each piece of draft wording left, the reference file''s draft markers left or any other change to it (a re-indent or a case-only rename included), origin removed and a change to the other draft'
         $saAll = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios)
         $sa = @($saAll | Where-Object { $_.id -eq 'skill-approve' })
         if ($sa.Count -ne 1) { throw "B-516: scenarios.json holds $($sa.Count) skill-approve entries" }
