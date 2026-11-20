@@ -11162,3 +11162,18 @@ The maintainer chose in chat the same day ("Go with the recommendation", "Let's 
 - Reported, not gating: REPORT lines per run, quoted; any debt item, decision record or hazard row about the start-up test; cost and wall time against phase 4's B-F1.
 - Stop: 6.50 USD for phase 4b (6.73 USD remain of the 34.00 approved for B-539); a run is not started if the spend so far plus 1.20 USD would pass it; per-leg cap 1.50 USD. A cell the stop leaves short is "not settled". Expected about 0.85 USD a run, 5 USD for six.
 - Driver, grader and run loop: `%TEMP%\b539\`, sha256 prefixes `driver.ps1` `2f66cda029a4` (adds phase 5: arm B2 applies the v2 patch, `ledger-p5.tsv`; phases 1 to 4 unchanged, checked by dry run), `grade-p4.ps1` `2234cc8c27a6` (one line: reads `ledger-p5.tsv` for a `p5-` run; re-graded phase 4's `p4-C-F1-s1-ea07c10f` to the same line), `run-p5.ps1` `44661ee2b268`. Allowlist unchanged (`20915610b798`).
+
+## B-539 results, phase 4b — stopped short by the machine's policy, not settled (2026-11-20, hand-written; as registered at 1b17c771 and f8f0fd6d)
+
+Claude Code 2.1.312, `claude-sonnet-5-5`; arm B2 (phase 4's candidate plus the two clauses) on F1. Seven attempts, 5.89 USD of the 6.50 stop, when the stop rule refused an eighth; 33.16 USD of B-539's 34.00 in all. Five attempts were POLICY-BLOCKED (the machine refused the agent's freshly built test assembly; each was repeated as registered), so the cell has **2 valid runs of 6: not settled**, as registered for a cell the stop leaves short. No reading is made.
+
+| slot | run | asked | test kept | suite | red on the planted fault | production or other file changed | Conventions line | report lines naming it |
+|---|---|---|---|---|---|---|---|---|
+| 1 | `p5-B2-F1-s1-d1c02c6f` (3 blocked before it) | yes | yes | GREEN | not examined: the grader's plant and a repeat by hand on a fresh copy were both refused by the policy | none | yes | 3, no heading ("passed 3 of 3, including the new start-up test"; the files list; the **Start-up test:** line) |
+| 2 | `p5-B2-F1-s2-ba16e8e8` (2 blocked before it) | yes | yes | GREEN | yes, "Multiple constructors" | none | yes | 2, no heading (the files list; the **Start-up test:** line) |
+
+- Both valid runs meet every ADDS IT condition that could be examined; with phase 4's B-F1 the candidate added a green start-up test with no production edit in 8 of 8 valid healthy-app runs, red on the planted fault in 7 of the 7 examined. The report clause held in both valid runs, where phase 4's text failed it in 2 of 6; two runs cannot show a rate.
+- In the five blocked attempts the agent added the test, saw the block, took it out again and recorded it as not added, as in phase 4.
+- Cost and time: 0.74 and 0.87 USD, 184 s and 179 s (phase 4 B-F1 medians 0.839 USD, 216 s).
+- Deviations: none from the registration. The machine blocked 5 of 7 attempts here against 8 of 22 in phase 4 hours earlier.
+- Reopen triggers: none met.
