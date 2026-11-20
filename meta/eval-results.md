@@ -10362,3 +10362,30 @@ Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: accept
 
 - **FAIL skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1665303 tokensIn=10 tokensOut=2578; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=FAIL failed=others commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=1 (.claude/skills/add-report-export/references/project-pattern.md) stepsKept=True agentsOnlyLine=True writes=5 refusedWrites=0 denials=0 writeAsks=4 asksAllowed=4 asksDenied=0 questions=0 durationMs=23521
 - **PASS skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.151127 tokensIn=8 tokensOut=1972; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 stepsKept=True agentsOnlyLine=True writes=4 refusedWrites=0 denials=0 writeAsks=3 asksAllowed=3 asksDenied=0 questions=0 durationMs=19960
+
+## B-537 phrasing check, pre-registration — does the shipped command still get called when the router sends the request to other rails? (2026-11-20, frozen by the commit that holds it, before any run)
+
+B-537's series used one wording, which the shipped router leaves unrouted. Two other likely wordings are routed today: "Fix the review
+comments on my PR" to the bug-fix rails and "Please review the comments on my PR and address them" to the quality-gate rails (run on the
+`dist/dotnet` router, 2026-11-19 and again 2026-11-20). The command shipped without a router intent (97cdab1e, WSD-140). The maintainer said
+"Ok" in chat on 2026-11-20 to checking the two wordings on Claude Code, about 2.50 USD. Ships nothing by itself.
+
+- **Tree.** The fixture and comments of B-537's second addendum, unchanged. The arms were re-cut after the command shipped (d0c08eb6): the
+  shipped tree now holds the command, so `-a` cells take no patch and `-ab` cells take `ab.patch` (sha256 `ef3bfcc73e8f…`), the three
+  `route-prompt.ps1` hunks of the old patch alone. `c.patch` (`5239eaf058ee…`) removes the command for a control arm and is not used here.
+  This also retires the patch digests the B-537 registration names (`a.patch` is deleted; the control is now a knockout).
+- **Cells, two runs each, in this order, twice:** `review-comments-fix-a`, `review-comments-fix-ab`, `review-comments-rev-a`,
+  `review-comments-rev-ab`. They differ from `review-comments-a` and `-ab` in leg 1's prompt alone; leg 2 is unchanged.
+- **Read per run.** The routed intent the hook gave; the command invoked (skill call or file read) or not; JUDGED, OVERDECLINED and the per-id
+  classes by the grader; by hand, whether leg 1 edited before any reply, and ACCOUNTED over both legs' closing messages.
+- **Caps and stop.** Claude Code 2.1.312, `--model sonnet`, 1.25 USD a leg, the 44-rule list (tag `f7790c49ad22`), one run per invocation.
+  No run starts once the recorded spend of this check reaches 2.50 USD; expected 0.25 to 0.45 a run (B-537's range). The first quota
+  refusal stops it. An ERROR or blocked-hidden-test run is repeated once if the stop allows.
+- **Decision rule, fixed now.** Over the four `-a` runs (the shipped tree) and the four `-ab` runs:
+  1. `-a`: the command invoked in 4 of 4 and JUDGED in 4 of 4: the shipped tree is enough for these wordings on this host; the router
+     intent stays a Copilot question (WSD-140 unchanged).
+  2. `-a`: the command invoked in 2 or fewer of 4, or JUDGED in 2 or fewer of 4, and `-ab`: invoked in 4 of 4 and JUDGED in at least 3 of 4
+     with OVERDECLINED in 0: the router intent is fit to ship now, as its own guarded change (`hooks/**`), ahead of the Copilot cells.
+  3. Anything else: the table is reported and the maintainer decides.
+  Two runs a cell show only gross effects.
+- **Not shown.** Copilot; other wordings; more than two runs a cell; what B-537's results list as limits, leg 2's nudge included.
