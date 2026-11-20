@@ -10634,3 +10634,33 @@ check, RAN-START, SAID. Not reviewed by a fresh session; the first design was.
 - Driver sha256 prefix now `d084f8a1a96e` (adds the T3 arm and the probe call; the C, T1 and T2 paths are unchanged); grader `3cf7718a5bcc`; allowlist `0a3e4b2e7c7a`.
 - Stop: 11.00 USD for this phase, as first registered; 16.00 USD in all, of which phase 1 spent 1.64. Expected about 0.25 USD a run, 6 to 7 USD for 24 valid runs and their repeats.
 - Not shown: as first registered, and who reads a "not verified" line.
+
+## B-539 phase 2 — halted after the first batch, not settled (2026-11-20, hand-written; as re-registered at 169b133f)
+
+Two probes and eight runs (rounds 1 and 2 of C, T1, T2, T3), 1.88 USD of the 11.00 stop; 3.52 USD of 16.00 in all. Claude Code 2.1.312, `claude-sonnet-5-5`. Both probes passed (T1 0.09 USD, T3 0.09 USD: each reply
+quoted its patched line). The session stopped the phase, which the registration does not provide for: the machine no longer let the runs do what the fixture needs, so every cell is short and **no reading is made**.
+
+- Why it was stopped. This machine's Application Control policy (`0x800711C7`) refused to load the freshly built test assembly in six of the eight runs, so those agents never saw a test result, and in three of
+  three `dotnet test` attempts on a fresh T2 tree made by hand afterwards. In phase 1, hours earlier in the same folder, every run's tests ran. The policy was not worked around. B-537 recorded the same policy
+  blocking "at random"; here it was the rule, not the exception.
+- The second limit, as registered: the host's command checks refused the start attempts of the one run that tried (T1 slot 1, twice: a background `dotnet run` with a wait and `curl` in one line).
+
+| arm, slot | run | unit tests | start attempt | final tree | closing message |
+|---|---|---|---|---|---|
+| C 1 | `p2-C-s1-a2ba3538` | blocked by policy | none | NOT-STARTED | tests not run |
+| C 2 | `p2-C-s2-4178cb26` | blocked by policy | none | NOT-STARTED | tests not run; wiring "not confirmed by running" |
+| T1 1 | `p2-T1-s1-0667897b` | ran, 5 passed | two, both refused by the host (DENIED-START) | NOT-STARTED | "Start-up: not started", with the reason |
+| T1 2 | `p2-T1-s2-2fcfd26e` | blocked by policy | none | NOT-STARTED | "Start-up and DI: not started" |
+| T2 1 | `p2-T2-s1-584f756f` | blocked by policy, the start-up test with them | none beyond the suite | NOT-STARTED | tests not run; wiring not run |
+| T2 2 | `p2-T2-s2-73a807ee` | blocked by policy, the start-up test with them | none beyond the suite | NOT-STARTED | tests not run; names `StartupTests` as what would exercise the wiring |
+| T3 1 | `p2-T3-s1-1c19f08b` | blocked by policy | none | NOT-STARTED | tests not run |
+| T3 2 | `p2-T3-s2-27103e6c` | ran, 3 passed | none | STARTS | put `[ActivatorUtilitiesConstructor]` on the new constructor; "did not start the app" |
+
+- What can be said, none of it a reading: both T1 runs printed the level line its text asks for, and one of them tried to start the host; no run in any arm added a start-up test; the one tree that starts does so by
+  the agent knowing the attribute, in one leg, without starting anything; T2's start-up test never ran, so T2 is unexamined.
+- Deviations. The grader's refusal pattern missed a third wording ("The following parts require approval"), so it read T1 slot 1 as RAN-START; and it counts a `dotnet test` in a tree with a start-up test as RAN-START
+  even when the policy stopped the tests, as in both T2 runs. The table above is the hand read; the grader is unchanged (`3cf7718a5bcc`). Six of eight runs are outside the registered classes (the agent's tests
+  were stopped by the machine, which the registration covers only for the grader's own start check).
+- What a re-run needs: a machine or folder where the policy lets a built test assembly load, and a harness that can allow one start command and one local request (the runner's dialog channel can answer a
+  permission request). Neither is a framework change.
+- Reopen triggers: none met.
