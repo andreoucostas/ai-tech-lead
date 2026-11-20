@@ -2948,8 +2948,7 @@ function Initialize-ReviewSubject([string]$Target, [string]$SubjectRoot, [string
 # merged report (the last result event's text) and the permission log, and reports per run: valid or why not, per-defect found or missed, other
 # findings (Issues-table rows matching no defect: counted, never scored), rows that match several defects, the reviewers that returned, the cost.
 #   Dk is found when one line of the report names Dk's file stem (no .cs needed) and matches every one of Dk's patterns, case-insensitively;
-#   D8 is found on DEBT-006 alone: /review puts debt-radar's entries in Architecture Notes and never in the Issues table (review.md Step 4),
-#   so a stem check on that line would make D8 unobservable.
+#   D8 is found on DEBT-006 alone, on a line under the Issues or the Architecture Notes heading: /review puts debt-radar's entries in Architecture Notes\n#   as DEBT ids (review.md Step 4), so a stem check on that line would make D8 unobservable; a mention under any other heading is not a finding.
 #   Valid only if: the terminal result is success; the final message has a verdict and an Issues section; all six reviewers were dispatched by the
 #   main agent and each returned a report (a tool result that is not the background stub and not an error, or a completed task notification); no
 #   reviewer report, parent message or final message says CANNOT EXAMINE; the permission log holds no denied request.
@@ -2961,7 +2960,7 @@ $b467Defects = [ordered]@{
     D5 = @{ Stem = 'EventRegistryTests'; All = @('InvoiceIssued|InlineData|weaken|(remov|delet|drop)\w*.{0,40}(case|row|data)') }
     D6 = @{ Stem = 'CheckoutController'; All = @('switch|open.?closed|OCP|polymorph|third arm') }
     D7 = @{ Stem = 'CheckoutController'; All = @('catch|swallow') }
-    D8 = @{ Stem = ''; All = @('DEBT-006') }
+    D8 = @{ Stem = ''; All = @('DEBT-006'); Sections = '^(Issues|Architecture Notes)\b' }
 }
 # Whether the target's history holds the arm O patch commit (the plan's first-row check: present in O, absent in K).
 function Get-ReviewPatchCommit([string]$Target) {
@@ -3003,11 +3002,12 @@ function Get-ReviewRunGrade($Evidence, $Permissions, [bool]$HasPermissionLog) {
     if ($text -cnotmatch '(?im)^\W*verdict\b.*\b(APPROVE|REQUEST CHANGES)\b') { $why.Add('no verdict in the final message') }
     if ($text -cnotmatch '(?im)^\s*#+\s*Issues\b') { $why.Add('no Issues section in the final message') }
     $lines = @($text -split '\r?\n')
-    $found = @{}; $multi = 0; $matched = @{}
+    $found = @{}; $multi = 0; $matched = @{}; $section = ''
     for ($n = 0; $n -lt $lines.Count; $n++) {
+        if ($lines[$n] -match '^\s*#+\s*(.+?)\s*$') { $section = $Matches[1] }
         $hits = @($b467Defects.Keys | Where-Object {
                 $d = $b467Defects[$_]
-                (-not $d.Stem -or $lines[$n] -imatch [regex]::Escape($d.Stem)) -and -not @($d.All | Where-Object { $lines[$n] -inotmatch $_ }).Count })
+                (-not $d.Sections -or $section -imatch $d.Sections) -and (-not $d.Stem -or $lines[$n] -imatch [regex]::Escape($d.Stem)) -and -not @($d.All | Where-Object { $lines[$n] -inotmatch $_ }).Count })
         foreach ($hit in $hits) { $found[$hit] = $true }
         if ($hits.Count -gt 1) { $multi++ }
         if ($hits.Count) { $matched[$n] = $true }
@@ -7810,6 +7810,8 @@ function Invoke-ReviewRunGradeSelfTest([string]$Temp) {
     & $check 'a defect missing from the report' (& $grade (& $stream -Final (& $report -Without @('D5')))) 'PASS' '^valid=True reason=none found=7/8 .*D5:missed.* other=0 '
     & $check 'D1 without its file stem is missed' (& $grade (& $stream -Final (& $report -Without @('D1') -Extra @('| 9 | note | Orders.Api | convention-check | The log message is interpolated | x |')))) 'PASS' 'found=7/8 .*D1:missed.* other=1 '
     & $check 'D8 needs DEBT-006 only, from the Architecture Notes line' (& $grade (& $stream -Final (& $report -Without @('D8')))) 'PASS' 'found=7/8 .*D8:missed'
+    & $check 'D8 on an Issues-table row naming DEBT-006' (& $grade (& $stream -Final (& $report -Without @('D8') -Extra @('| 9 | note | TECH_DEBT.md | debt-radar | DEBT-006 still applies to the registry tests | x |')))) 'PASS' '^valid=True reason=none found=8/8 .*D8:found.* other=0 '
+    & $check 'D8 not found when DEBT-006 sits under another heading' (& $grade (& $stream -Final ((& $report -Without @('D8')) + "`n`n### Summary`n- DEBT-006 was mentioned in passing"))) 'PASS' 'found=7/8 .*D8:missed'
     & $check 'D2 needs both System.Text and unused or remove' (& $grade (& $stream -Final (& $report -Without @('D2') -Extra @('| 9 | note | CheckoutController.cs:1 | convention-check | System.Text is imported | x |')))) 'PASS' 'found=7/8 .*D2:missed.* other=1 '
     & $check 'an invented finding is counted, not scored' (& $grade (& $stream -Final (& $report -Extra @('| 9 | note | Orders.Api | solid-check | No authorization on the endpoint | x |')))) 'PASS' '^valid=True reason=none found=8/8 .* other=1 '
     & $check 'one row matching two defects counts for both and is reported' (& $grade (& $stream -Final (& $report -Without @('D6', 'D7') -Extra @('| 9 | should-fix | CheckoutController.cs:38 | solid-check | The switch on reason and the catch that swallows the error | x |')))) 'PASS' 'found=8/8 .* other=0 multi=1 '
