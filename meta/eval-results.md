@@ -10823,3 +10823,22 @@ stop (1.88 spent): C and T2 (the `boot.patch` variant, one start-up test already
 stated before the runs: T1 and T3 are not resumed (T1's start attempts are refused by the host, and T3's text is contained in A, which read NO DIFFERENCE); POLICY-BLOCKED is the invalid class phase 3 registered,
 repeated up to four attempts a slot; driver `7a796e0a398f`, grader `b30e0a34999b`, allowlist `3e7641c4c259`. Reading, as registered: C STARTS in 3 or more of 6 is C NOT STABLE; otherwise T2 **STARTS IT** at 4 or
 more of 6 and at least 3 more than C, **NO DIFFERENCE** within 1 of C, else INCONCLUSIVE. Reported: whether the agent ran the suite, saw the start-up test red and what it did next.
+
+## B-539 results, phase 2 resumed — a start-up test already in the suite, 2026-11-20 (hand-written; as registered in "B-539 phase 2 resumed for two cells", committed 13:21 UTC before these runs)
+
+Claude Code 2.1.312, `claude-sonnet-5-5`; twelve runs, C and T2 alternating (slots 3 to 8), all valid at the first attempt, none POLICY-BLOCKED; 3.10 USD (phase 2 at 4.98 of its 11.00 stop; 9.48 USD of 16.00 in all).
+
+| cell | valid | STARTS | ran the suite and saw the start-up test red | fix | start-up test edited | median wall s | median cost USD |
+|---|---|---|---|---|---|---|---|
+| C | 6 | **0/6** | no start-up test | none; both constructors kept | n/a | 77.5 | 0.247 |
+| T2 | 6 | **6/6** | 6/6 | `[ActivatorUtilitiesConstructor]` on the new constructor, 6/6 | 0/6 | 92 | 0.272 |
+
+- Reading, applied as registered: C is stable (0 of 6), and T2 is 6 of 6, 6 more than C: **STARTS IT** (Fisher's exact, two-sided, p = 0.002). One start-up test the suite already owns makes the agent find and fix
+  this fault, with no rules change: every T2 run ran `dotnet test`, met "Multiple constructors accepting all given argument types" from `Host_Starts_And_Answers_Health`, kept both constructors and marked the new
+  one. `StartupTests.cs` is byte-identical to the fixture in all six final trees.
+- Cost to a developer: about 15 s and 0.03 USD more per task at the medians, the time of one more red-green round.
+- With phases 1 and 3: the shipped tree without that test hands back an application that does not start in 18 of 18 valid runs. A rule telling the agent to add the test did not get it added (phase 3, 0 of 6).
+  The test being there is what works; what remains open is how it gets there.
+- Not shown: Copilot CLI and VS Code, the report's host; a fault an in-process start cannot see (a missing runtime, a deployed configuration); an application that needs external services to boot; Angular; who
+  adds the test, and when.
+- Reopen triggers: none met.
