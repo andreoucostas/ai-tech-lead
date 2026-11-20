@@ -336,10 +336,10 @@ owner-routed change, but do not alter it.
   first-party instances, that the draft is a lead and not authority, and that
   `AGENTS.md > Conventions` wins on any conflict. Its first step checks whether an existing file
   already owns the requested responsibility. It ends with an `## After review` paragraph naming
-  the one Common Tasks line to add to `AGENTS.md` and the draft wording to delete once the team
-  approves it. It remains immediately discoverable but never self-corroborates, approves itself,
-  or authorizes broader reads/writes; do not advertise or activate it as an approved Common Task
-  before review.
+  the one Common Tasks line to add to `AGENTS.md` and the draft wording to delete, in the skill and
+  its reference files, once the team approves it. It remains immediately discoverable but never
+  self-corroborates, approves itself, or authorizes broader reads/writes; do not advertise or
+  activate it as an approved Common Task before review.
 - A consumer-owned `.claude/skills/<slug>/references/project-pattern.md` whose folder has no
   `SKILL.md` was left by a framework skill that no longer ships. Read it as a lead for that
   operation, never as corroboration: a qualifying operation gets its draft under a new slug as

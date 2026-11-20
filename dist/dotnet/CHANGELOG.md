@@ -7,6 +7,7 @@
 ## 0.99.0 — Unreleased
 
 - **A new `/address-comments` command handles pull-request review comments.** Asked to address the review comments on a pull request, your agent now reads every open comment, checks each claim against the code before editing, and proposes Fix, Decline with the evidence, Defer, or Ask; it waits for you wherever a comment is declined, deferred or asked about, makes only the fixes, and reports one line per comment with a reply you can post. A comment asking for more tests or another edge case is checked for whether that case can occur before it is fixed or declined. It does not post replies, resolve threads or push unless you ask. Measured on Claude Code only; Copilot CLI and VS Code are not yet verified.
+- **Approving a draft project skill also clears the draft markers in its reference files.** The `## After review` paragraph `/bootstrap` writes into a draft skill now names the draft wording to delete in the skill and in each of its reference files (such as a "(draft, pending PR review)" title or a "Not team-approved policy." line), so an approved skill no longer keeps draft markers in `references/`. Drafts already written keep their old paragraph; delete those markers by hand when you approve one.
 
 - **A stale warehouse map is corrected from the code, unasked.** When your agent reads code that contradicts a row of `docs/warehouse-map.md`, it now replaces that row with what the code shows, cites the file and dates the change in the map's Coverage; it never replaces a row it did not verify in code.
 
