@@ -2990,7 +2990,7 @@ function Initialize-ReviewSubject([string]$Target, [string]$SubjectRoot, [string
 #   D8 is found on DEBT-006 alone, on a line under the Issues or the Architecture Notes heading: /review puts debt-radar's entries in Architecture Notes\n#   as DEBT ids (review.md Step 4), so a stem check on that line would make D8 unobservable; a mention under any other heading is not a finding.
 #   Valid only if: the terminal result is success; the final message has a verdict and an Issues section; all six reviewers were dispatched by the
 #   main agent and each returned a report (a tool result that is not the background stub and not an error, or a completed task notification); no
-#   reviewer report, parent message or final message says CANNOT EXAMINE; the permission log holds no denied request.
+#   reviewer report, parent message or final message says CANNOT EXAMINE; a permission log exists. A denied request no longer invalidates by itself (Amendment 2): it is reported as denials=n with the commands, and invalidates only beside another reason.
 $b467Defects = [ordered]@{
     D1 = @{ Stem = 'CheckoutController'; All = @('interpolat|structured|message template') }
     D2 = @{ Stem = 'CheckoutController'; All = @('System\.Text', 'unused|remove') }
@@ -3034,12 +3034,12 @@ function Get-ReviewRunGrade($Evidence, $Permissions, [bool]$HasPermissionLog) {
     if (@($replies | Where-Object { $_ -match $examine }).Count) { $why.Add('CANNOT EXAMINE (a reviewer reply)') }
     elseif ($text -match $examine -or @($mainTexts | Where-Object { $_ -match $examine }).Count) { $why.Add('CANNOT EXAMINE (the parent)') }
     if (-not $HasPermissionLog) { $why.Add('no permission log') }
-    else {
-        $denied = @($Permissions | Where-Object { [string]$_.decision -eq 'deny' } | Select-Object -First 1)
-        if ($denied.Count) { $why.Add("permission denied: $($denied[0].tool) $(([string]$denied[0].input).Substring(0, [Math]::Min(60, ([string]$denied[0].input).Length)))") }
-    }
+    $denied = @(if ($HasPermissionLog) { $Permissions | Where-Object { [string]$_.decision -eq 'deny' } })
+    $deniedText = @($denied | ForEach-Object { "$($_.tool) $(([string]$_.input).Substring(0, [Math]::Min(60, ([string]$_.input).Length)))" })
     if ($text -cnotmatch '(?im)^\W*verdict\b.*\b(APPROVE|REQUEST CHANGES)\b') { $why.Add('no verdict in the final message') }
     if ($text -cnotmatch '(?im)^\s*#+\s*Issues\b') { $why.Add('no Issues section in the final message') }
+    # Amendment 2: a denial no longer invalidates by itself; with a complete review it is reported (denials=n and the commands) and the run is valid.
+    if ($denied.Count -and $why.Count) { $why.Add("permission denied: $($deniedText -join '; ')") }
     $lines = @($text -split '\r?\n')
     $found = @{}; $multi = 0; $matched = @{}; $section = ''
     for ($n = 0; $n -lt $lines.Count; $n++) {
@@ -3070,7 +3070,7 @@ function Get-ReviewRunGrade($Evidence, $Permissions, [bool]$HasPermissionLog) {
     [pscustomobject]@{
         Valid = $valid
         Found = @($found.Keys | Sort-Object)
-        Detail = "valid=$valid reason=$(if ($valid) { 'none' } else { $why -join '; ' }) found=$($found.Count)/8 defects=$($defects -join ',') other=$other multi=$multi reviewers=$($b467Reviewers.Count - $missing.Count)/6 missing=$(if ($missing.Count) { $missing -join ',' } else { 'none' }) cost=$cost"
+        Detail = "valid=$valid reason=$(if ($valid) { 'none' } else { $why -join '; ' }) found=$($found.Count)/8 defects=$($defects -join ',') other=$other multi=$multi reviewers=$($b467Reviewers.Count - $missing.Count)/6 missing=$(if ($missing.Count) { $missing -join ',' } else { 'none' }) cost=$cost denials=$($denied.Count)$(if ($denied.Count) { " denied=$($deniedText -join '; ')" })"
     }
 }
 
@@ -7905,7 +7905,14 @@ function Invoke-ReviewRunGradeSelfTest([string]$Temp) {
     & $check 'a reviewer dispatched and never returned' (& $grade (& $stream -Returned $names[0..4] -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=reviewers missing: security-auditor '
     & $check 'a reviewer that returned CANNOT EXAMINE' (& $grade (& $stream -Reply @{ 'test-critic' = 'CANNOT EXAMINE: the manifest hash could not be computed' } -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=CANNOT EXAMINE '
     & $check 'a parent message that says CANNOT EXAMINE' (& $grade (& $stream -ParentText 'Review stopped: CANNOT EXAMINE the bundle' -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=CANNOT EXAMINE '
-    & $check 'a denied permission' (& $grade (& $stream -Final (& $report)) @([ordered]@{ tool = 'PowerShell'; input = 'Get-FileHash x | Set-Content y'; decision = 'deny'; class = 'none' })) 'INCONCLUSIVE' '^valid=False reason=permission denied: PowerShell '
+    # Amendment 2 (deliberate change of the case 'a denied permission', which read INCONCLUSIVE 'permission denied: PowerShell ...'): a denial no longer invalidates a complete review; it is reported and the run is valid.
+    $denyA = [ordered]@{ tool = 'PowerShell'; input = '$p = Get-FileHash x'; decision = 'deny'; class = 'none' }
+    $denyB = [ordered]@{ tool = 'PowerShell'; input = 'git diff | Format-Table'; decision = 'deny'; class = 'none' }
+    & $check 'a recovered denial with a complete review' (& $grade (& $stream -Final (& $report)) @($denyA, $denyB)) 'PASS' '^valid=True reason=none found=8/8 .* denials=2 denied=PowerShell \$p = Get-FileHash x; PowerShell git diff \| Format-Table'
+    & $check 'a denial with CANNOT EXAMINE' (& $grade (& $stream -ParentText 'Review stopped: CANNOT EXAMINE the bundle' -Final (& $report)) @($denyA)) 'INCONCLUSIVE' '^valid=False reason=CANNOT EXAMINE \(the parent\); permission denied: PowerShell \$p = Get-FileHash x .* denials=1 denied='
+    & $check 'a denial with a missing reviewer' (& $grade (& $stream -Returned $names[0..4] -Final (& $report)) @($denyA)) 'INCONCLUSIVE' '^valid=False reason=reviewers missing: security-auditor; permission denied: '
+    & $check 'a denial with no verdict' (& $grade (& $stream -Final (& $report -Verdict '### Notes')) @($denyA)) 'INCONCLUSIVE' '^valid=False reason=no verdict in the final message; permission denied: '
+    & $check 'a long denied command is cut at 60 characters' (& $grade (& $stream -Final (& $report)) @([ordered]@{ tool = 'PowerShell'; input = ('x' * 80); decision = 'deny'; class = 'none' })) 'PASS' ('denials=1 denied=PowerShell ' + ('x' * 60) + '( |$)')
     & $check 'an allowed permission is no harm' (& $grade (& $stream -Final (& $report)) @([ordered]@{ tool = 'PowerShell'; input = 'Get-FileHash x'; decision = 'allow'; class = 'hash' })) 'PASS' '^valid=True '
     & $check 'a budget cut' (& $grade (& $stream -Subtype 'error_max_budget_usd' -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=budget cut '
     & $check 'no verdict' (& $grade (& $stream -Final (& $report -Verdict '### Notes'))) 'INCONCLUSIVE' '^valid=False reason=no verdict '
@@ -7922,7 +7929,7 @@ function Invoke-ReviewRunGradeSelfTest([string]$Temp) {
     if ($cases.Count -ne 1) { throw "B-467 scenarios.json holds $($cases.Count) b467-review entries" }
     $c = $cases[0]
     if ([string]$c.prompt -cne '/review' -or -not ([string]$c.fixture).Equals('orders-v2') -or -not ([string]$c.overlay).Equals('b514-orders') -or [string]$c.subject -cne 'b467-review' -or [decimal]$c.budgetUsd -ne [decimal]1 -or -not $c.completeReview -or [string]$c.assertion -cne 'reviewRun' -or $c.dialog -or $c.followUp -or $c.bareArm -or $c.overlayPatch) { throw 'B-467 the b467-review scenario is not the pinned /review run (prompt /review, orders-v2, b514-orders, the b467-review subject, 1.00 USD, completeReview, reviewRun, no dialog, followUp or overlay patch)' }
-    Write-Output 'PASS: B-467 the grader reads the final merged report against the plan''s fixed per-defect patterns (file stem without .cs, D8 on DEBT-006), counts invented findings without scoring them, and reads a run invalid when a reviewer is missing or returned no report, any reply says CANNOT EXAMINE, a permission was denied, the run was cut by its budget, or there is no verdict or permission log'
+    Write-Output 'PASS: B-467 the grader reads the final merged report against the plan''s fixed per-defect patterns (file stem without .cs, D8 on DEBT-006), counts invented findings without scoring them, and reads a run invalid when a reviewer is missing or returned no report, any reply says CANNOT EXAMINE, the run was cut by its budget, or there is no verdict or permission log'
 }
 
 # B-537 (.claude/plans/2026-11-19-b537-address-review-comments.md section 5): the review-comments layer and its three arms are what the plan
