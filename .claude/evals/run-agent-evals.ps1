@@ -2755,6 +2755,46 @@ function Get-ReviewPermissionClass($Request, [string]$BundleRoot, [string]$Scrat
     }
     return 'none'
 }
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 1): the /review run's tree. The subject (meta/eval-fixtures/b467-review/subject,
+# three files, sha256 manifest beside it) is copied in uncommitted over a tree whose target patch (arm O) is a commit of its own, so `git
+# status` lists the subject and nothing else in both arms. The patch must be exactly `+omitClaudeMd: true` in the six reviewer agent files
+# (the plan's check before any run); the manifest is verified before a byte is copied; a status that lists anything else is refused.
+$b467Reviewers = @('convention-check', 'debt-radar', 'bloat-radar', 'solid-check', 'test-critic', 'security-auditor')
+function Get-OmitClaudeMdPatchRefusal([string]$PatchPath) {
+    $want = @($b467Reviewers | ForEach-Object { ".claude/agents/$_.md" } | Sort-Object)
+    $named = @(Get-TargetPatchPaths $PatchPath)
+    if (($named -join '|') -cne ($want -join '|')) { return "$(Split-Path -Leaf $PatchPath) names $($named -join ', '), not exactly the six reviewer agent files." }
+    $changed = @([IO.File]::ReadAllLines($PatchPath) | Where-Object { $_ -match '^[+-]' -and $_ -notmatch '^(\+\+\+|---) ' })
+    if ($changed.Count -ne 6 -or @($changed | Where-Object { $_ -cne '+omitClaudeMd: true' }).Count) { return "$(Split-Path -Leaf $PatchPath) changes lines other than six of '+omitClaudeMd: true' (one per file)." }
+    return $null
+}
+function Initialize-ReviewSubject([string]$Target, [string]$SubjectRoot, [string]$PatchPath) {
+    $entries = @([IO.File]::ReadAllLines("$SubjectRoot.sha256") | Where-Object { $_.Trim() })
+    foreach ($entry in $entries) {
+        $file = Join-Path $SubjectRoot $entry.Substring(66)
+        if ($entry.Length -le 66 -or -not (Test-Path -LiteralPath $file -PathType Leaf) -or (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.Substring(0, 64)) { throw "B-467 subject: $($entry.Substring(66)) does not match the frozen manifest $SubjectRoot.sha256." }
+    }
+    if ($PatchPath) {
+        $refusal = Get-OmitClaudeMdPatchRefusal $PatchPath
+        if ($refusal) { throw "B-467 target patch: $refusal" }
+        Invoke-TargetPatch $Target $PatchPath | Out-Null
+        git -C $Target add -A
+        git -C $Target commit --quiet -m 'target patch: omitClaudeMd on the six reviewers'
+        if ($LASTEXITCODE -ne 0) { throw "B-467 target patch: the commit failed (exit $LASTEXITCODE)." }
+    }
+    $dirty = @(git -C $Target status --porcelain=v1 --untracked-files=all)
+    if ($dirty.Count) { throw "B-467 subject: the tree is not clean before the subject is copied in: $($dirty -join '; ')" }
+    foreach ($entry in $entries) {
+        $relative = $entry.Substring(66)
+        New-Item -ItemType Directory -Path (Split-Path -Parent (Join-Path $Target $relative)) -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $SubjectRoot $relative) -Destination (Join-Path $Target $relative) -Force
+    }
+    $listed = @(git -C $Target status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3) } | Sort-Object)
+    $wanted = @($entries | ForEach-Object { $_.Substring(66) } | Sort-Object)
+    if (($listed -join '|') -cne ($wanted -join '|')) { throw "B-467 subject: git status lists $(@($listed | Where-Object { $_ -notin $wanted }) -join ', ') beside the subject." }
+    return [int](git -C $Target rev-list --count HEAD)
+}
+
 # B-516: a scenario's "allowWrite" (skill-approve) lets an Edit, Write or MultiEdit through on this channel when its file_path, rooted, with
 # no '..' and no 8.3 '~', lies strictly under an entry ending in '/' (a folder relative to the target) or is an entry with no trailing '/'
 # (one file), case-insensitively. This host asks before any write under .claude/ in acceptEdits and refuses it in plain -p whatever the
@@ -2777,6 +2817,8 @@ function Get-WritePermissionClass($Request, [string[]]$AllowWrite, [string]$Root
 # pick (a question it asks is answered with its first option without 'with review'); on Copilot it has no channel and runs as a plain case.
 function Get-DialogPick($Case, [string]$Executor) {
     if (-not $Case.dialog -and $Case.allowWrite -and $Executor -eq 'claude') { return 'go' }
+    # B-467 R2: a reviewRun case is one prompt on the control channel with no question pick: its question tool is denied, the review's permission classes allowed.
+    if (-not $Case.dialog -and $Case.assertion -eq 'reviewRun' -and $Executor -eq 'claude') { return 'none' }
     [string]$Case.dialog
 }
 function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log, [string]$BundleRoot, [string]$ScratchRoot, [string[]]$AllowWrite, [string]$WriteRoot) {
@@ -2786,6 +2828,8 @@ function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log
         $class = 'question'
         # B-416 (unanswered go-ahead): away and silent act only on the go-ahead question, any question of the call offering a 'with review' option.
         if ($Pick -in @('away', 'silent') -and @($Request.input.questions | ForEach-Object { $_.options } | Where-Object { [string]$_.label -match $b416Loose }).Count) { $class = $Pick }
+        # B-467 R2: no pick at all (a /review run): the question is denied, never answered.
+        if ($Pick -eq 'none') { $class = 'none' }
     }
     elseif ($isRequest -and $CompleteReview) { $class = Get-ReviewPermissionClass $Request $BundleRoot $ScratchRoot }
     elseif ($isRequest -and $AllowWrite) { $class = Get-WritePermissionClass $Request $AllowWrite $WriteRoot }
@@ -3559,6 +3603,12 @@ function Get-DialogLaunchRefusal($Case, [string]$Executor, [string[]]$AllowedToo
     if ($Case.allowWrite) {
         if ($Case.dialog -or $Case.followUp -or $Case.completeReview -or $Case.assertion -ne 'skillApprove' -or -not $Case.approveSkill) { return "$($Case.id): an allowWrite case has no dialog, followUp or completeReview, an approveSkill and the skillApprove assertion." }
         if ($Executor -eq 'claude' -and -not $AllowedTools) { return "$($Case.id): an allowWrite case runs on -Executor claude with -AllowedTools (the control channel answers the writes it allows)." }
+        return $null
+    }
+    # B-467 R2: a reviewRun case runs on Claude Code only (its grader reads that transcript), on the control channel with -AllowedTools, and has no dialog, followUp or allowWrite.
+    if ($Case.assertion -eq 'reviewRun') {
+        if ($Case.dialog -or $Case.followUp -or $Case.allowWrite -or -not $Case.completeReview -or -not $Case.subject) { return "$($Case.id): a reviewRun case has a subject and completeReview, and no dialog, followUp or allowWrite." }
+        if ($Executor -ne 'claude' -or -not $AllowedTools) { return "$($Case.id): a reviewRun case runs on -Executor claude with -AllowedTools (the control channel answers the review's permissions)." }
         return $null
     }
     $pick = [string]$Case.dialog
@@ -7037,7 +7087,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     # The live loop: the overlay patch lands inside the overlay's commit, multi-turn streams are read for skillUse, and -Live
     # checks every overlay patch against its overlay before any spend.
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer'', ''reviewOffer'', ''unansweredGo'', ''businessTerm'', ''reviewComments''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
+    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -eq ''reviewRun'' -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer'', ''reviewOffer'', ''unansweredGo'', ''businessTerm'', ''reviewComments''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
     if ($selfText -notmatch [regex]::Escape('Initialize-OverlayPreflight $overlayCase $preflightOverlay') -or $selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $Path ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
     Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT']) | Copilot, no skill call: $($quoted['copilot no-skill']) | Copilot, skill tool: $($quoted['copilot skill-tool'])"
 }
@@ -7331,6 +7381,65 @@ function Invoke-BusinessTermSelfTest([string]$Temp) {
     $loopText = (Get-Command Invoke-EvalCases).ScriptBlock.Ast.Extent.Text
     if ($loopText -notmatch [regex]::Escape('($case.followUpAlways -or (Test-B406NoFileWrite $legOne $target))') -or $loopText -notmatch [regex]::Escape("-and `$case.assertion -ne 'businessTerm'")) { throw 'B-534 the live loop does not send an always-sent follow-up or read a businessTerm case as two legs' }
     Write-Output "PASS: B-534 the three patches apply to the S overlay (CRM table with IsActive, marketing view, K1 and K2 wiki entries that pass wiki-check, no definition derivable from the tree); the five scenarios are pinned. Grader, correct: $($quoted['a correct finance view, entry read']) | CRM flag bound: $($quoted['a view on the CRM IsActive flag, nothing said']) | K2 followed: $($quoted['the K2 entry followed, nothing said'])"
+}
+
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 1): the /review run's tree is the committed install, the committed target patch
+# (arm O only) and the three subject files uncommitted, so `git status` lists the subject and nothing else in both arms. Red first: with the
+# patch left uncommitted `git status` listed the six reviewer agent files beside the subject.
+function Invoke-ReviewRunSelfTest([string]$Temp) {
+    $subject = Join-Path $repo 'meta/eval-fixtures/b467-review/subject'
+    $patch = Join-Path $repo 'meta/eval-fixtures/target-patches/b467-omit-claudemd.patch'
+    $wantPaths = @([IO.File]::ReadAllLines("$subject.sha256") | Where-Object { $_.Trim() } | ForEach-Object { $_.Substring(66) } | Sort-Object)
+    if ($wantPaths.Count -ne 3) { throw "B-467 the subject manifest lists $($wantPaths.Count) files, not 3" }
+    $status = { param([string]$Root) @(git -C $Root status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3) } | Sort-Object) }
+    $build = {
+        param([string]$Name)
+        $root = Join-Path $Temp $Name
+        New-EvalRepo $root orders-v2
+        Install-Framework $root dotnet | Out-Null
+        git -C $root add -A
+        git -C $root commit --quiet -m 'install'
+        $root
+    }
+    $armO = & $build 'b467-arm-o'
+    [void](Initialize-ReviewSubject $armO $subject $patch)
+    $listed = & $status $armO
+    if (($listed -join '|') -cne ($wantPaths -join '|')) { throw "B-467 subject setup: git status lists $(@($listed | Where-Object { $_ -notin $wantPaths }) -join ', ') beside the subject (the target patch was left uncommitted); it must list the three subject files and nothing else" }
+    $oCommits = [int](git -C $armO rev-list --count HEAD)
+    if ((git -C $armO log -1 --format=%s) -cnotmatch 'omitClaudeMd' -or (git -C $armO diff --stat HEAD~1 HEAD | Select-String -SimpleMatch '6 files changed').Count -ne 1) { throw 'B-467 arm O: the last commit is not the six-file target patch' }
+    $armK = & $build 'b467-arm-k'
+    $kBefore = Initialize-ReviewSubject $armK $subject ''
+    if (($(& $status $armK) -join '|') -cne ($wantPaths -join '|') -or $kBefore -ne $oCommits - 1) { throw "B-467 arm K: git status or commit count is wrong (commits $kBefore, arm O $oCommits)" }
+    # The patch rule: a patch that changes one other line, or names five files, is refused before the tree is touched; a subject byte off the manifest likewise.
+    $patchText = [IO.File]::ReadAllText($patch)
+    $other = Join-Path $Temp 'other.patch'
+    [IO.File]::WriteAllText($other, $patchText.Replace('+omitClaudeMd: true', '+omitClaudeMd: false'))
+    $five = Join-Path $Temp 'five.patch'
+    [IO.File]::WriteAllText($five, $patchText.Substring($patchText.IndexOf('diff --git', 10)))
+    foreach ($bad in @($other, $five)) {
+        $fresh = & $build ('b467-bad-' + (Split-Path -Leaf $bad))
+        $refused = $false
+        try { [void](Initialize-ReviewSubject $fresh $subject $bad) } catch { $refused = $_.Exception.Message -match 'B-467 target patch' }
+        if (-not $refused -or @(git -C $fresh status --porcelain).Count) { throw "B-467 target patch $(Split-Path -Leaf $bad) was not refused, or left the tree changed" }
+    }
+    $tampered = Join-Path $Temp 'subject-tampered'
+    Copy-Item -LiteralPath $subject -Destination $tampered -Recurse
+    Copy-Item -LiteralPath "$subject.sha256" -Destination "$tampered.sha256"
+    Add-Content -LiteralPath (Join-Path $tampered 'src/Orders.Domain/Entities/Invoice.cs') -Value '// x'
+    $refused = $false
+    try { [void](Initialize-ReviewSubject (& $build 'b467-tamper') $tampered '') } catch { $refused = $_.Exception.Message -match 'frozen manifest' }
+    if (-not $refused) { throw 'B-467 a subject byte off the manifest was not refused' }
+    # The control channel: no question pick, and the review's classes still allowed.
+    $ask = [pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'AskUserQuestion'; input = [pscustomobject]@{ questions = @([pscustomobject]@{ question = 'Which?'; options = @([pscustomobject]@{ label = 'Go ahead' }, [pscustomobject]@{ label = 'Go ahead, with review' }) }) } }
+    $reviewCase = [pscustomobject]@{ id = 'b467-review'; assertion = 'reviewRun'; completeReview = $true; subject = 'b467-review' }
+    if ((Get-DialogPick $reviewCase 'claude') -cne 'none' -or (Get-DialogPick $reviewCase 'copilot')) { throw 'B-467 a reviewRun case does not run on the control channel with pick none (Claude only)' }
+    if ((Get-DialogAnswer $ask 'none' -CompleteReview -BundleRoot $Temp -ScratchRoot (Join-Path $Temp 'scratch')).behavior -ne 'deny') { throw 'B-467 the question tool was answered on a run with no pick' }
+    if (-not (Get-DialogLaunchRefusal $reviewCase 'claude' @()) -or -not (Get-DialogLaunchRefusal $reviewCase 'copilot' @('Read')) -or (Get-DialogLaunchRefusal $reviewCase 'claude' @('Read'))) { throw 'B-467 the reviewRun launch rule is wrong: it needs -Executor claude and -AllowedTools' }
+    $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-ReviewRunSelfTest).ScriptBlock.Ast.Extent.Text, '')
+    foreach ($needle in @('$before = Initialize-ReviewSubject $target (Join-Path $repo "meta/eval-fixtures/$($case.subject)/subject") $TargetPatch', '$WarehouseMap -notin @(''generated'',''partial'') -and -not $case.subject) { Invoke-TargetPatch')) {
+        if (-not $selfText.Contains($needle)) { throw "B-467 the live loop does not commit the target patch and copy the subject in: missing $needle" }
+    }
+    Write-Output 'PASS: B-467 the /review tree holds the target patch as its own commit and the subject alone uncommitted (arm K: the subject alone); a patch that is not +omitClaudeMd in the six reviewers and a subject byte off the manifest are refused; the run answers no question and runs on Claude Code with -AllowedTools only'
 }
 
 # B-537 (.claude/plans/2026-11-19-b537-address-review-comments.md section 5): the review-comments layer and its three arms are what the plan
@@ -7770,6 +7879,8 @@ function Invoke-WarehouseScaleSelfTest([string]$Temp) {
 function Invoke-SelfTest {
     $temp =Join-Path ([IO.Path]::GetTempPath()) ('b41-selftest-' + [guid]::NewGuid().ToString('N'))
     try {
+        $b467Temp = $temp + '-b467'
+        try { Invoke-ReviewRunSelfTest $b467Temp } finally { Remove-Item -LiteralPath $b467Temp -Recurse -Force -ErrorAction SilentlyContinue }
         New-EvalRepo $temp
         if (-not (Test-Path (Join-Path $temp 'src/Calculator.cs'))) { throw 'fixture source missing' }
         $transcriptPath = Join-Path $temp 'synthetic.jsonl'
@@ -10280,7 +10391,8 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         if ($sa.Count -ne 1) { throw "B-516: scenarios.json holds $($sa.Count) skill-approve entries" }
         $sa = $sa[0]
         if ([string]$sa.prompt -cne 'Approve the add-report-export skill.' -or [string]$sa.approveSkill -cne 'add-report-export' -or (@($sa.allowWrite) -join '|') -cne '.claude/skills/add-report-export/|AGENTS.md' -or [string]$sa.assertion -cne 'skillApprove' -or [string]$sa.overlay -cne 'b514-orders' -or -not ([string]$sa.fixture).Equals('orders-v2') -or $sa.bareArm -or $sa.overlayPatch -or $sa.dialog -or $sa.followUp -or $sa.completeReview -or [decimal]$sa.budgetUsd -ne [decimal]1.5) { throw 'B-516: skill-approve is not the pinned prompt, slug, allowWrite, oracle, overlay, fixture and 1.50 USD budget, framework arm only, one prompt' }
-        foreach ($saOther in @($saAll | Where-Object { $_.id -ne 'skill-approve' })) {
+        # B-467 R2: b467-review is the other control-channel case with no dialog field of its own (pick none, Invoke-ReviewRunSelfTest).
+        foreach ($saOther in @($saAll | Where-Object { $_.id -notin @('skill-approve', 'b467-review') })) {
             if ($saOther.PSObject.Properties['allowWrite'] -or $saOther.PSObject.Properties['approveSkill'] -or [string]$saOther.assertion -eq 'skillApprove') { throw "B-516: $($saOther.id) carries the skill-approve allow class or oracle" }
             foreach ($saEx in @('claude', 'copilot')) { if ((Get-DialogPick $saOther $saEx) -cne [string]$saOther.dialog) { throw "B-516: $($saOther.id)'s control-channel pick on $saEx is not its own dialog field" } }
         }
@@ -10401,8 +10513,13 @@ function Invoke-EvalCases($Cases, $Rows) {
             # Before the scenario setup, which commits the framework files in the warehouse cases:
             # the patch adds no commit, so `git log` (session-start preloads it) matches both arms.
             # B-402: under -WarehouseMap generated|partial it lands inside that setup, after the bootstrap overlay.
-            if ($TargetPatch -and $WarehouseMap -notin @('generated','partial')) { Invoke-TargetPatch $target $TargetPatch | Out-Null }
+            # B-467 R2: a /review case with a subject commits the patch itself (Initialize-ReviewSubject), so the review sees the subject alone.
+            if ($TargetPatch -and $WarehouseMap -notin @('generated','partial') -and -not $case.subject) { Invoke-TargetPatch $target $TargetPatch | Out-Null }
             $before = [int](git -C $target rev-list --count HEAD)
+        }
+        if ($case.subject) {
+            if ($Arm -ne 'framework') { throw "$($case.id): the /review subject runs on the framework arm." }
+            $before = Initialize-ReviewSubject $target (Join-Path $repo "meta/eval-fixtures/$($case.subject)/subject") $TargetPatch
         }
         $archivedRoot = ''
         switch ($case.id) {
@@ -10575,7 +10692,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
-            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm', 'reviewComments'))
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -eq 'reviewRun' -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm', 'reviewComments'))
             if ($dialogPick -and $Executor -eq 'claude') { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force; $transcript | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue ([string]$run.ReviewConfirm) -Force }
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
