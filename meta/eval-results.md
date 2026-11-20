@@ -11045,3 +11045,56 @@ reference answer (R = 3), host and flags, allowlist, measured fields, kind read,
   prompt printed "## Routed intent: `fix`" and the fix rails' "write a failing regression test BEFORE touching production code"; 2b's printed "## Routed intent: `feature`", "1. Design check first", and "a new
   responsibility gets its own service or class even with one consumer", and no fix rail. Driver `%TEMP%\b543\p2b\driver.ps1`, sha256 prefix `8a691a2fb9f9` (phase 2's with the prompt, the stop and a
   `featureRails` ledger column for the "Design check first" check); grader phase 2's, `77bbf33de2bb`; 2b evidence in `%TEMP%\b543\p2b\`.
+
+### B-543 and B-544 phase 2b results — 2026-11-20 (hand-written; as registered and amended at d7a599bb)
+
+Claude Code 2.1.312, `claude-sonnet-5-5` in every `system/init`; arm C only (the frozen export of 36e773c0, `dist/dotnet` tree `e7884680efc9`), phase 2's fixture and reference (R = 3), the 2b prompt. Six valid runs
+from six attempts; 2.39 USD of the 3.00 stop. Every run was routed as a feature: its leg 1 transcript holds "Design check first" and the router's "## Routed intent: `feature`" (6 of 6), so the feature hook's
+line reached every run. Every run took two legs; no third leg was held. N is phase 2's six runs, whose prompt says "when a rule is broken" where 2b's says "when a rule is not met"; N has no router.
+
+| slot | run | P | new types by kind (blind read) | step kinds | packages | where the work went | NT | `Done when:` (in scope) | agent's tests | cost USD |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `C-s12-f6158cde` | 4 | request, stored, result (`ReturnOutcome`), work (`ReturnService`) | 0 | none | own class; returns kept in `OrderRepository` | 12 | 7 | ran (a later call refused by policy) | 0.45 |
+| 2 | `C-s2-3bd33fb0` | 4 | request, stored, work (`ReturnService`), other (`ReturnRepository`, a store for returns) | 0 | none | own class and own store | 12 | 7 | ran | 0.43 |
+| 3 | `C-s3-9c5b0a78` | 6 | request, stored, two result (`ReturnOutcome`, `ReturnResult`), work (`ReturnService`), other (`ReturnRepository`, a store that also checks rules) | 0 | none | own class and own store | 17 | 6 | ran | 0.42 |
+| 4 | `C-s4-e5a1ff08` | 5 | request, stored, result (`ReturnOutcome`), work (`ReturnService`), other (`ReturnRepository`) | 0 | none | own class and own store | 13 | 5 | ran | 0.37 |
+| 5 | `C-s5-62d343dc` | 4 | request, stored, result (`RegisterReturnStatus`), work (`ReturnService`) | 0 | none | own class; returns kept in `OrderRepository` | 13 | 5 | refused by policy | 0.28 |
+| 6 | `C-s6-5d9b52ca` | 4 | request, stored, result (`ReturnOutcome`), work (`ReturnService`) | 0 | none | own class; returns kept in `OrderRepository` | 13 | 6 | ran | 0.44 |
+
+- Classes, applied as registered (C from 2b): P of R + 2 (5) or more in 2 of 6 (slots 3 and 4), short of the 4 that REPRODUCED needs; P of R + 1 (4) or fewer in 4 of 6, short of the 5 that NOT REPRODUCED needs:
+  **not settled**. The cause is not read.
+- Split by step: a new type of a step kind in 0 of 6, **NOT REPRODUCED**. Classes is not settled, so NOT EXERCISED AGAIN, which needs both NOT REPRODUCED, is not read.
+- Test support: 0 of 6, **NOT REPRODUCED**. Every new public member has a caller under `src/` (checked by hand, including the four tuple-returning methods the grader missed); no package, no `public partial
+  class Program`, no `InternalsVisibleTo`.
+- Tests, C from 2b against N from phase 2 (whose prompt differs by "broken" against "not met"), on the rows whose tests ran: C slots 1, 2, 3, 4, 6, NT 12, 12, 17, 13, 13, median 13; N phase 2 slots 1, 4, 5, 6,
+  NT 10, 9, 7, 7, median 8. 13 is at least 1.5 times 8 and 5 more: **THE FRAMEWORK ADDS TESTS**. All six 2b rows: 12, 12, 17, 13, 13, 13 (median 13). `Done when:` criteria in scope: 7, 7, 6, 5, 5, 6.
+- WSD-104's trigger as phase 1 registered it: no new type read as pass-through by the blind read, not met. The grader listed `ReturnService` as a pass-through candidate in slots 1, 4, 5 and 6; each is a
+  grader defect (below), not a pass-through.
+- The hand read: the 27 new types of 2b were mixed with phase 2's 45 under fresh random ids, phase and arm hidden, and labelled in one pass by a Sonnet sub-agent (`p2b\blind-map.tsv`, `p2b\hand-read.tsv`).
+  It gave phase 2's 45 the same kinds as phase 2's own blind read. P and NT were checked against each final tree by hand.
+- Reasons given, from a hand search of every 2b transcript and a read of each hit (`p2b\reasons.txt`):
+  - Slot 2: "It bolts a different responsibility onto the order store, which Leanness #1 rules out." Names Leanness #1 (the no-bolt-on clause, which the hook's line also carries), against keeping returns in
+    `OrderRepository`.
+  - Slot 2: "`ReturnService.cs`: new class that validates and applies the rules, with no interfaces, matching the existing concrete-class style." The project's own convention.
+  - Slot 3: "**Recommend A.** It keeps the existing contract unchanged and gives returns their own class." The hook's and Leanness #1's "its own class" wording, naming neither.
+  - Slot 3: "But it adds a field to the existing `/orders` JSON responses and puts return logic in a class that is only about orders." A design reason against the other option; names no text.
+  - Slot 4: "**Recommend: A.** It leaves existing contracts unchanged and keeps each class to one job." Single responsibility; names no text. Slot 4 also: "AGENTS.md is still unbootstrapped, so no conventions are
+    recorded and the defaults apply." The pre-bootstrap defaults, named in general, not for a type.
+  - Slot 1: "It also needs a not-found and a conflict signal for the 404 and 409 cases, probably a small result type." A design reason; names no text.
+  - Slot 5: "Conflict is reported through a result type." and "`src/Orders.Api/RegisterReturnRequest.cs` (new): the request body, following `PlaceOrderRequest`." and "**Interfaces (verified):** the existing
+    services are concrete classes with no interfaces, so I'll add none." The project's own convention.
+  - Slot 6: "I'd keep the returns list inside it deliberately, because one lock has to cover both." and "**Recommend: B**, because it closes the double-refund race." Reasons against a separate store.
+  - The hook's line, counted on its own: 1 of 6 runs quotes or paraphrases "its own class" or "even with one consumer" (slot 3, "their own class"); slot 2 names Leanness #1's no-bolt-on clause. No run gives a
+    reason for `ReturnService` itself in five of six. No run names `docs/defaults.md` for a type, FluentValidation, a time abstraction, DTOs, `/feature` or the SOLID section. No run gives a rule as the reason for
+    its tests.
+- 2b's C against phase 2's C, no reading (the same tree and feature, routed as a feature against as a fix): a separate class doing the work in 6 of 6 against 2 of 6; a separate store for returns in 3 of 6
+  against 2 of 6; P 4, 4, 6, 5, 4, 4 (median 4) against 4, 4, 5, 2, 4, 3 (median 4); result types in 5 of 6 against 2 of 6, custom exceptions in 0 against 2; step kinds 0 and 0; NT median 13 against 13 on all
+  six rows; `Done when:` in scope median 6 against 7; cost 2.39 against 2.44 USD. With the hook's line delivered, the agent moved the work out of `OrderService` into its own class every time.
+- Deviations. (1) Slot 1 is labelled `s12` in its id and ledger row: the batch helper passed `-Slots 1,2` as one value, so one run started instead of two; it is the first 2b run and counts as slot 1. (2) Phase 2's
+  grader (`77bbf33de2bb`, unchanged) does not list a member whose return type is a tuple, so it missed `Create` or `Register` in slots 1, 4, 5 and 6 and then read `ReturnService` as a pass-through candidate;
+  each was read by hand: the missed methods do the work and are called from `Program.cs`. (3) The machine's Application Control policy refused the agent's tests in slot 5 and one later call in slot 1. (4)
+  Another session's paid `claude -p` agents ran on this machine throughout; each 2b run waited until none was alive (61 to 198 s, logged), which does not exclude one starting during a run. (5) Every run
+  except slot 5 invoked `security-gate`; its bundle capture was refused by the host's command checks where read.
+- Cost: 2.39 USD of 3.00; 0.28 to 0.45 a run. B-543 and B-544 in all: 8.63 USD.
+- Not shown: as phase 2, without its routing caveat; N on the new wording.
+- Reopen triggers: WSD-104's not met; WSD-102's not met: every final build is green.
