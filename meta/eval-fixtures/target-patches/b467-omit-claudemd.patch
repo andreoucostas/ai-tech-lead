@@ -1,0 +1,72 @@
+diff --git a/.claude/agents/bloat-radar.md b/.claude/agents/bloat-radar.md
+index 2db5192..3cd4ec8 100644
+--- a/.claude/agents/bloat-radar.md
++++ b/.claude/agents/bloat-radar.md
+@@ -3,6 +3,7 @@ name: bloat-radar
+ description: Scans a diff for bloat — speculative abstractions, single-use interfaces, shallow wrappers, parallel implementations, comment debris, trivial tests, dead code. Returns a structured findings table for the parent to act on. Read-only. Used by `/review` and ad-hoc cleanup audits.
+ tools: Read, Grep, Glob, PowerShell
+ model: inherit
++omitClaudeMd: true
+ ---
+ 
+ You scan a diff for bloat patterns. Apply the .NET-specific checklist only when repository evidence and files in scope establish that profile; otherwise report `No files in scope.` rather than inferring it from this framework distribution. Bloat is the highest-cost long-term failure mode of AI-assisted development; this agent is the framework's counterweight to the Boy Scout Rule's add-bias. You do **not** edit code. You report.
+diff --git a/.claude/agents/convention-check.md b/.claude/agents/convention-check.md
+index 0bbf4cf..37d7e0e 100644
+--- a/.claude/agents/convention-check.md
++++ b/.claude/agents/convention-check.md
+@@ -3,6 +3,7 @@ name: convention-check
+ description: Read-only audit of in-scope files against AGENTS.md conventions, using profile rules only when repository evidence establishes them. Returns structured findings; used by `/review` and ad-hoc audits.
+ tools: Read, Grep, Glob, PowerShell
+ model: inherit
++omitClaudeMd: true
+ ---
+ 
+ You are a convention auditor for this repository. Your single job is to compare the supplied files against the rules in `AGENTS.md` > Conventions (and the always-apply items in `AGENTS.md` > Boy Scout Rule), applying profile-specific conventions only where repository evidence and files in scope establish that profile, and return findings. You do **not** edit code or suggest refactors beyond what each finding directly implies.
+diff --git a/.claude/agents/debt-radar.md b/.claude/agents/debt-radar.md
+index 481feb7..fbdcd4f 100644
+--- a/.claude/agents/debt-radar.md
++++ b/.claude/agents/debt-radar.md
+@@ -3,6 +3,7 @@ name: debt-radar
+ description: Runs inside /review, which supplies the scope bundle it requires. Surfaces TECH_DEBT.md entries touching the changed files, with severity/effort and trojan-horse fit (debt that fits the change); read-only.
+ tools: Read, Grep, PowerShell
+ model: inherit
++omitClaudeMd: true
+ ---
+ 
+ You map the changed files of a `/review` scope bundle to relevant entries in `TECH_DEBT.md`. The goal is to surface bundleable debt in the area the change touches — the trojan-horse principle from `docs/playbook.md`.
+diff --git a/.claude/agents/security-auditor.md b/.claude/agents/security-auditor.md
+index 2529759..3c1fc62 100644
+--- a/.claude/agents/security-auditor.md
++++ b/.claude/agents/security-auditor.md
+@@ -3,6 +3,7 @@ name: security-auditor
+ description: Read-only .NET security audit, used only when that profile is evidenced. Covers injection, auth, secrets, sensitive data, and crypto; used by `/security-gate`.
+ tools: Read, Grep, Glob, PowerShell
+ model: inherit
++omitClaudeMd: true
+ ---
+ 
+ You are a security auditor for this repository. Your single job is to compare supplied files against the applicable OWASP-style checklist, established from repository evidence and the files in scope, and return findings. You do **not** edit code or suggest refactors beyond what each finding directly implies. You do **not** flag style or convention issues — that is `convention-check`'s job.
+diff --git a/.claude/agents/solid-check.md b/.claude/agents/solid-check.md
+index b1eae47..b668253 100644
+--- a/.claude/agents/solid-check.md
++++ b/.claude/agents/solid-check.md
+@@ -3,6 +3,7 @@ name: solid-check
+ description: Audits a diff against the five SOLID principles. Apply the .NET interface requirement only where repository evidence and files in scope establish that profile. Returns a structured findings table — does not modify files. Used by `/review` and ad-hoc SOLID audits.
+ tools: Read, Grep, Glob, PowerShell
+ model: inherit
++omitClaudeMd: true
+ ---
+ 
+ You audit a diff against the five SOLID principles, applying the .NET interpretation only where repository evidence and files in scope establish that profile; the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID) carry the thresholds for S, O and D, and this checklist carries all five. You do **not** edit code.
+diff --git a/.claude/agents/test-critic.md b/.claude/agents/test-critic.md
+index fd5edd2..498012f 100644
+--- a/.claude/agents/test-critic.md
++++ b/.claude/agents/test-critic.md
+@@ -3,6 +3,7 @@ name: test-critic
+ description: Read-only integrity audit of in-scope tests, using .NET guidance only when evidenced. Finds tests that survive broken code, weak assertions, over-mocking, coupling, and nondeterminism; used by `/review`.
+ tools: Read, Grep, Glob, PowerShell
+ model: inherit
++omitClaudeMd: true
+ ---
+ 
+ You audit **tests** in a diff. Apply the .NET-specific test guidance only when repository evidence and files in scope establish that profile; otherwise report `No test files in scope.` rather than inferring it from this framework distribution. Your single organising question for every test is: **"If I broke the code under test, would this test go red?"** A test that would stay green against broken code banks coverage while catching nothing — the most common and most expensive failure mode of AI-written tests. You do **not** edit code. You report.

