@@ -3497,8 +3497,10 @@ function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
     $others = @($changed | Where-Object { $_ -cne 'AGENTS.md' -and -not $_.StartsWith($folderRel, [StringComparison]::Ordinal) })
     if (-not $Before.PSObject.Properties['Refs'] -or $null -eq $Before.Refs) { throw 'skill-approve: no pre-run reference files were recorded for this case: the approval could not be examined.' }
     $markerPattern = '(?i)[ \t]*\(draft,? pending (?:PR )?review\)|not team-approved policy\.?[ \t]*|draft,? pending PR review:[ \t]*'
-    # Per line, trailing whitespace and line endings tolerated; leading whitespace is content (a re-indent can turn a table into code).
-    $strip = { param([string]$Text) (@([regex]::Replace(($Text -replace '\r\n', "`n"), $markerPattern, '') -split "`n" | ForEach-Object { $_.TrimEnd() }) -join "`n").Trim("`n") }
+    # Per line, trailing whitespace and line endings tolerated; leading whitespace is content (a re-indent can turn a table into code),
+    # except on a line that held a marker before the run, where removing the marker words alone can leave the space after them.
+    $markerLines = { param([string]$Text) $i = 0; @(($Text -replace '\r\n', "`n") -split "`n" | ForEach-Object { if ($_ -match $markerPattern) { $i }; $i++ }) }
+    $strip = { param([string]$Text, [int[]]$Lead) $i = 0; (@(($Text -replace '\r\n', "`n") -split "`n" | ForEach-Object { $l = [regex]::Replace($_, $markerPattern, '').TrimEnd(); if ($Lead -contains $i) { $l = $l.TrimStart() }; $l; $i++ }) -join "`n").Trim("`n") }
     $refsAfter = Get-SkillFolderFiles $Target $Before.Slug
     $markersBefore = 0; $markersLeft = 0
     $refOther = [Collections.Generic.List[string]]::new()
@@ -3509,7 +3511,9 @@ function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
         $b = $Before.Refs[$rel]; $a = $refsAfter[$rel]
         if ($null -ne $b) { $markersBefore += [regex]::Matches($b, $markerPattern).Count }
         if ($null -ne $a) { $markersLeft += [regex]::Matches($a, $markerPattern).Count }
-        if ($null -eq $b -or $null -eq $a -or (& $strip $b) -cne (& $strip $a)) { $refOther.Add($rel) }
+        if ($null -eq $b -or $null -eq $a) { $refOther.Add($rel); continue }
+        $lead = & $markerLines $b
+        if ((& $strip $b $lead) -cne (& $strip $a $lead)) { $refOther.Add($rel) }
     }
     $failed = @(
         if ($count -ne 1) { 'commonTasks' }
@@ -10221,7 +10225,7 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
             if (-not $Edit.NoSkillEdit) { [IO.File]::WriteAllText($skillPath, $s, $saUtf8) }
             $refPath = Join-Path $d '.claude/skills/add-report-export/references/project-pattern.md'
             $ref = [IO.File]::ReadAllText($refPath)
-            if (-not $Edit.KeepRefMarkers -and -not $Edit.NoSkillEdit) { $ref = $ref.Replace(' (draft, pending PR review)', '').Replace('Not team-approved policy. ', '') }
+            if (-not $Edit.KeepRefMarkers -and -not $Edit.NoSkillEdit) { $ref = $ref.Replace(' (draft, pending PR review)', '').Replace($(if ($Edit.RefMarkerSpace) { 'Not team-approved policy.' } else { 'Not team-approved policy. ' }), '') }
             if ($Edit.RefOther) { $ref = $ref.Replace('Status: `observed`', 'Status: `approved`') }
             if ($Edit.RefIndent) { $ref = [regex]::Replace($ref, '(?m)^\|', '    |') }
             [IO.File]::WriteAllText($refPath, $ref, $saUtf8)
@@ -10257,6 +10261,7 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
             if ($r.Status -ne 'PASS' -or [bool]$r.Pass -ne $Pass -or $r.Detail -notmatch $Detail) { throw "B-516 skill-approve: $Name misjudged: $($r.Status) pass=$($r.Pass) $($r.Detail)" }
         }
         & $saCheck 'a synthetic correct approval, the reference file''s draft markers removed and nothing else' @{} $true '^approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=0/2 referenceOther=0 stepsKept=True agentsOnlyLine=True writes=2 refusedWrites=0 denials=0 writeAsks=1 asksAllowed=1 asksDenied=0 questions=0 durationMs=7$'
+        & $saCheck 'the reference file''s marker words removed, the space after them left' @{ RefMarkerSpace = $true } $true '^approval=PASS failed=none commonTasks=1 .* referenceMarkers=0/2 referenceOther=0 '
         & $saCheck 'the reference file''s draft markers left' @{ KeepRefMarkers = $true } $false '^approval=FAIL failed=referenceMarkers commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=2/2 referenceOther=0 '
         & $saCheck 'another change to the reference file' @{ RefOther = $true } $false '^approval=FAIL failed=referenceOther commonTasks=1 .* others=0 referenceMarkers=0/2 referenceOther=1 \(\.claude/skills/add-report-export/references/project-pattern\.md\) '
         & $saCheck 'the reference file''s table re-indented into a code block' @{ RefIndent = $true } $false '^approval=FAIL failed=referenceOther commonTasks=1 .* referenceMarkers=0/2 referenceOther=1 \(\.claude/skills/add-report-export/references/project-pattern\.md\) '
