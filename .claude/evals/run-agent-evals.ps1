@@ -2983,8 +2983,8 @@ function Initialize-ReviewSubject([string]$Target, [string]$SubjectRoot, [string
     return [int](git -C $Target rev-list --count HEAD)
 }
 
-# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Scoring" and "Validity", frozen): the grader of a /review run on the subject. It reads the final
-# merged report (the last result event's text) and the permission log, and reports per run: valid or why not, per-defect found or missed, other
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Scoring" and "Validity", frozen; Amendment 3 for runs started after it): the grader of a /review run on the subject. It reads the final
+# merged report (the last result event's text that holds an Issues section; later results add a verdict, defect lines and reviewers returned) and the permission log, and reports per run: valid or why not, per-defect found or missed, other
 # findings (Issues-table rows matching no defect: counted, never scored), rows that match several defects, the reviewers that returned, the cost.
 #   Dk is found when one line of the report names Dk's file stem (no .cs needed) and matches every one of Dk's patterns, case-insensitively;
 #   D8 is found on DEBT-006 alone, on a line under the Issues or the Architecture Notes heading: /review puts debt-radar's entries in Architecture Notes\n#   as DEBT ids (review.md Step 4), so a stem check on that line would make D8 unobservable; a mention under any other heading is not a finding.
@@ -3008,8 +3008,15 @@ function Get-ReviewPatchCommit([string]$Target) {
 }
 function Get-ReviewRunGrade($Evidence, $Permissions, [bool]$HasPermissionLog) {
     $final = $Evidence.Final
-    $text = [string]$final.result
-    $why = [Collections.Generic.List[string]]::new()
+    # Amendment 3: the report is the last result that holds an Issues section (else the last result); later results add to it: a verdict line
+    # there replaces the verdict, their text is searched for defects with the report, and a line naming a reviewer as returned clears it from missing.
+    $allTexts = @(@($Evidence.Results) | ForEach-Object { [string]$_.result })
+    if (-not $allTexts.Count) { $allTexts = @([string]$final.result) }
+    $reportAt = $allTexts.Count - 1
+    for ($i = $allTexts.Count - 1; $i -ge 0; $i--) { if ($allTexts[$i] -cmatch '(?im)^\s*#+\s*Issues\b') { $reportAt = $i; break } }
+    $text = $allTexts[$reportAt]
+    $later = @(if ($reportAt + 1 -lt $allTexts.Count) { $allTexts[($reportAt + 1)..($allTexts.Count - 1)] })
+    $why =[Collections.Generic.List[string]]::new()
     $subtype = [string]$final.subtype
     if ($final.is_error -or ($subtype -and $subtype -ne 'success')) { $why.Add($(if ($subtype -match 'budget') { 'budget cut' } else { "terminal result $(if ($subtype) { $subtype } else { 'error' })" })) }
     $calls = @($Evidence.Tools | Where-Object { -not $_.Sidechain -and $_.Name -in @('Task', 'Agent', 'task') -and ([string]$_.Input.subagent_type -in $b467Reviewers -or [string]$_.Input.agent_type -in $b467Reviewers) })
@@ -3027,16 +3034,20 @@ function Get-ReviewRunGrade($Evidence, $Permissions, [bool]$HasPermissionLog) {
             if (([string]$note.summary).Trim()) { $returned.Add($name); $replies.Add([string]$note.summary) }
         }
     }
-    $missing = @($b467Reviewers | Where-Object { $_ -notin $returned })
+    $laterLines = @($later | ForEach-Object { $_ -split '\r?\n' })
+    $missing = @($b467Reviewers | Where-Object {
+            $reviewer = $_
+            $_ -notin $returned -and -not @($laterLines | Where-Object { $_ -match [regex]::Escape($reviewer) -and $_ -match '(?i)\b(returned|came back|reported back)\b' -and $_ -notmatch '(?i)\b(not|never|no|n''t|without)\b[^.]{0,30}\b(returned|came back|reported)|missing:' }).Count })
     if ($missing.Count) { $why.Add("reviewers missing: $($missing -join ',')") }
     $examine = '(?i)\bCANNOT EXAMINE\b'
     $mainTexts = @($Evidence.Texts | Where-Object { -not $_.Sidechain } | ForEach-Object { $_.Text })
     if (@($replies | Where-Object { $_ -match $examine }).Count) { $why.Add('CANNOT EXAMINE (a reviewer reply)') }
-    elseif ($text -match $examine -or @($mainTexts | Where-Object { $_ -match $examine }).Count) { $why.Add('CANNOT EXAMINE (the parent)') }
+    elseif (@($allTexts | Where-Object { $_ -match $examine }).Count -or @($mainTexts | Where-Object { $_ -match $examine }).Count) { $why.Add('CANNOT EXAMINE (the parent)') }
+    $giveUps = @($replies | Where-Object { $_ -match $examine }).Count
     if (-not $HasPermissionLog) { $why.Add('no permission log') }
     $denied = @(if ($HasPermissionLog) { $Permissions | Where-Object { [string]$_.decision -eq 'deny' } })
     $deniedText = @($denied | ForEach-Object { "$($_.tool) $(([string]$_.input).Substring(0, [Math]::Min(60, ([string]$_.input).Length)))" })
-    if ($text -cnotmatch '(?im)^\W*verdict\b.*\b(APPROVE|REQUEST CHANGES)\b') { $why.Add('no verdict in the final message') }
+    if ((@($text) + $later -join "`n") -cnotmatch '(?im)^\W*verdict\b.*\b(APPROVE|REQUEST CHANGES)\b') { $why.Add('no verdict in the final message') }
     if ($text -cnotmatch '(?im)^\s*#+\s*Issues\b') { $why.Add('no Issues section in the final message') }
     # Amendment 2: a denial no longer invalidates by itself; with a complete review it is reported (denials=n and the commands) and the run is valid.
     if ($denied.Count -and $why.Count) { $why.Add("permission denied: $($deniedText -join '; ')") }
@@ -3050,6 +3061,15 @@ function Get-ReviewRunGrade($Evidence, $Permissions, [bool]$HasPermissionLog) {
         foreach ($hit in $hits) { $found[$hit] = $true }
         if ($hits.Count -gt 1) { $multi++ }
         if ($hits.Count) { $matched[$n] = $true }
+    }
+    # Amendment 3: later results' lines count for found defects only (a follow-up's bullets read as under Issues until a heading says otherwise); other-findings stays on the report.
+    $section = 'Issues'
+    foreach ($line in $laterLines) {
+        if ($line -match '^\s*#+\s*(.+?)\s*$') { $section = $Matches[1] }
+        foreach ($k in $b467Defects.Keys) {
+            $d = $b467Defects[$k]
+            if ((-not $d.Sections -or $section -imatch $d.Sections) -and (-not $d.Stem -or $line -imatch [regex]::Escape($d.Stem)) -and -not @($d.All | Where-Object { $line -inotmatch $_ }).Count) { $found[$k] = $true }
+        }
     }
     # Other findings: the Issues table's rows that match no defect.
     $start = -1; $end = $lines.Count
@@ -3070,7 +3090,7 @@ function Get-ReviewRunGrade($Evidence, $Permissions, [bool]$HasPermissionLog) {
     [pscustomobject]@{
         Valid = $valid
         Found = @($found.Keys | Sort-Object)
-        Detail = "valid=$valid reason=$(if ($valid) { 'none' } else { $why -join '; ' }) found=$($found.Count)/8 defects=$($defects -join ',') other=$other multi=$multi reviewers=$($b467Reviewers.Count - $missing.Count)/6 missing=$(if ($missing.Count) { $missing -join ',' } else { 'none' }) cost=$cost denials=$($denied.Count)$(if ($denied.Count) { " denied=$($deniedText -join '; ')" })"
+        Detail = "valid=$valid reason=$(if ($valid) { 'none' } else { $why -join '; ' }) found=$($found.Count)/8 defects=$($defects -join ',') other=$other multi=$multi reviewers=$($b467Reviewers.Count - $missing.Count)/6 missing=$(if ($missing.Count) { $missing -join ',' } else { 'none' }) cost=$cost giveUps=$giveUps denials=$($denied.Count)$(if ($denied.Count) { " denied=$($deniedText -join '; ')" })"
     }
 }
 
@@ -7868,8 +7888,8 @@ function Invoke-ReviewRunGradeSelfTest([string]$Temp) {
             @('', '### Architecture Notes') + $(if ('D8' -notin $Without) { @($rows['D8']) } else { @('- Debt trajectory: neutral') })) -join "`n"
     }
     $stream = {
-        param([string[]]$Dispatched = $names, [string[]]$Returned = $names, [string]$Final, [string]$Subtype = 'success', [hashtable]$Reply = @{}, [string[]]$Stub = @(), [string]$ParentText = '')
-        $events = [Collections.Generic.List[object]]::new()
+        param([string[]]$Dispatched = $names, [string[]]$Returned = $names, [string]$Final, [string]$Subtype = 'success', [hashtable]$Reply = @{}, [string[]]$Stub = @(), [string]$ParentText = '', [string[]]$Results = @())
+        $events =[Collections.Generic.List[object]]::new()
         $events.Add([pscustomobject]@{ type = 'system'; subtype = 'init' })
         foreach ($name in $Dispatched) { $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_use'; id = "t-$name"; name = 'Task'; input = [pscustomobject]@{ subagent_type = $name; prompt = 'review' } }) } }) }
         foreach ($name in $Returned) {
@@ -7877,7 +7897,12 @@ function Invoke-ReviewRunGradeSelfTest([string]$Temp) {
             $events.Add([pscustomobject]@{ type = 'user'; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'tool_result'; tool_use_id = "t-$name"; content = $text }) } })
         }
         if ($ParentText) { $events.Add([pscustomobject]@{ type = 'assistant'; parent_tool_use_id = $null; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'text'; text = $ParentText }) } }) }
-        $events.Add([pscustomobject]@{ type = 'result'; subtype = $Subtype; is_error = ($Subtype -ne 'success'); result = $Final; total_cost_usd = 0.55 })
+        # -Results: several result events in order (one per turn, as a stream with follow-up turns holds); the last carries the subtype and cost.
+        $resultTexts = @(if ($Results.Count) { $Results } else { $Final })
+        for ($r = 0; $r -lt $resultTexts.Count; $r++) {
+            $last = $r -eq $resultTexts.Count - 1
+            $events.Add([pscustomobject]@{ type = 'result'; subtype = $(if ($last) { $Subtype } else { 'success' }); is_error = ($last -and $Subtype -ne 'success'); result = $resultTexts[$r]; total_cost_usd = 0.55 })
+        }
         [pscustomobject]@{ Events = $events }
     }
     $grade = {
@@ -7921,6 +7946,16 @@ function Invoke-ReviewRunGradeSelfTest([string]$Temp) {
     $noted = & $stream -Stub @('debt-radar') -Final (& $report)
     $noted.Events.Insert($noted.Events.Count - 1, [pscustomobject]@{ type = 'system'; subtype = 'task_notification'; tool_use_id = 't-debt-radar'; status = 'completed'; summary = 'debt-radar: DEBT-006 touches the changed tests' })
     & $check 'a reviewer stub completed by its notification' (& $grade $noted) 'PASS' '^valid=True reason=none '
+    # Amendment 3: the report is the last result that holds an Issues section; later results add to it.
+    $o1Follow = "### Verdict: REQUEST CHANGES - 3 blockers; reviewers returned: all; missing: none`n`nbloat-radar returned its report.`ndebt-radar returned its report.`n`nAdditions to the Issues table:`n- bloat-radar: CheckoutController.cs:60 catch (Exception) swallows the failure and returns 202"
+    $o1Report = (& $report -Without @('D7') -Verdict '### Verdict: REQUEST CHANGES - 2 blockers; reviewers returned: 4 of 6; missing: bloat-radar, debt-radar')
+    & $check 'O1 shape: report with two reviewers missing, an empty result, a follow-up without Issues that adds a defect' (& $grade (& $stream -Returned ($names | Where-Object { $_ -notin @('bloat-radar', 'debt-radar') }) -Results @($o1Report, '', $o1Follow))) 'PASS' '^valid=True reason=none found=8/8 .*D7:found.* other=0 .*reviewers=6/6 missing=none '
+    & $check 'a stream whose only result lacks an Issues section' (& $grade (& $stream -Final '### Verdict: REQUEST CHANGES - 3 blockers; reviewers returned: all; missing: none')) 'INCONCLUSIVE' '^valid=False reason=no Issues section in the final message '
+    & $check 'K1 shape: a status note first, the full report last' (& $grade (& $stream -Results @('Review started; the six reviewers are running in the background.', (& $report)))) 'PASS' "^valid=True reason=none found=8/8 $all other=0 multi=0 reviewers=6/6 "
+    & $check 'a later result without a verdict leaves the report verdict' (& $grade (& $stream -Results @((& $report), 'Anything else? No.'))) 'PASS' '^valid=True reason=none found=8/8 '
+    & $check 'a later result does not clear a reviewer it does not name' (& $grade (& $stream -Returned $names[0..4] -Results @((& $report), 'All done.'))) 'INCONCLUSIVE' '^valid=False reason=reviewers missing: security-auditor '
+    & $check 'a reviewer give-up is counted' (& $grade (& $stream -Reply @{ 'debt-radar' = 'CANNOT EXAMINE: the hash command was denied' } -Final (& $report))) 'INCONCLUSIVE' '^valid=False reason=CANNOT EXAMINE \(a reviewer reply\) .* giveUps=1 denials=0'
+    & $check 'no give-up reads giveUps=0' (& $grade (& $stream -Final (& $report))) 'PASS' ' giveUps=0 denials=0'
     # The row status the live loop writes.
     $good = & $grade (& $stream -Final (& $report))
     if ((Get-CaseStatus -AgentExit 0 -Evidence $good -Transcript (& $stream -Final (& $report))) -cne 'PASS' -or (Get-CaseStatus -AgentExit 0 -Evidence (& $grade (& $stream -Dispatched $names[0..4] -Returned $names[0..4] -Final (& $report))) -Transcript (& $stream -Final (& $report))) -cne 'INCONCLUSIVE') { throw 'B-467 grader: a valid run is not PASS or an invalid run is not INCONCLUSIVE in the row status' }
