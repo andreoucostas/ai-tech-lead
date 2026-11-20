@@ -4926,3 +4926,9 @@ class of wrong comment, and the candidate router intent added nothing. It fits a
 router. A new opt-in capability that adds nothing to other sessions beyond its own listing ships on a lighter bar: a need named by the maintainer or a field report; a check on a fixture that it works and
 does no harm (it does not make a right outcome worse); a stated trigger for removing it; and a changelog line naming the hosts it was checked on. Tiers, red-first tests and the guarded steps are unchanged.
 **Reopen** if a capability shipped on the lighter bar is later measured doing harm, or if the always-loaded text grows through this route.
+
+## WSD-142: the release prints the host-smoke result as one line that never blocks it (2026-11-20)
+
+**Context.** The per-release host check (`host-smoke.ps1`, B-536) was a recipe line in `DEVELOPING.md`, the mechanism B-525 showed being skipped.
+**Decision (the maintainer, in chat 2026-11-20).** `release.ps1` runs the host smoke once the local gates pass, before the commit and push, and prints one line: pass, host fault, or could not examine. No result changes the release's outcome: the check is new and depends on two outside programs (Claude Code, Copilot CLI) that update under us. It usually adds under a minute (39 s measured on the maintainer's machine, 2026-11-20); at worst up to about 15 minutes: three host calls (Claude run, Copilot run, Copilot skill list) of up to 240 s each plus 10 s after a kill, and setup, a little over 750 s, so past 900 s the release stops the check and its process tree and reads it as could not examine.
+**Reopen** to make a host fault blocking once the line has appeared in three or four releases with no false alarm, or at once if a host defect reaches a tag while the line said fault. That count is not kept in `-ReviewEvidence` or the release notes: read the last releases' console output if kept, else ask the maintainer; no new record.
