@@ -10340,6 +10340,45 @@ Hand read: in both `route-fix` transcripts the agent ran the existing test red, 
 - **SUMMARY route-fix** arm=framework outcome=0/1 excluded=1
 - **SUMMARY warehouse-bind-sql** arm=framework outcome=2/2 excluded=0
 
+## B-525 on Fable 5.2, framework arm — 2026-11-20 (hand-written; the runs and the hand read are the main session's; the four runner blocks below are the rows)
+
+B-525's Fable 5.2 pass, run by the main session on 2026-11-20 at commit `956e4f94` (which raised the `route-fix`, `route-fix-nl` and `route-fix-notest` budgets from 1.25 to 2.0 USD; the maintainer approved that in chat), Claude Code 2.1.312, `-Model claude-fable-5-2`; `initModel=claude-fable-5-2` in every row. Six runs, 5.41 USD (0.98, 0.55, 1.09, 1.14, 0.78, 0.86), the first command a single run. `route-fix` 2 of 2 PASS (budget 2.00 USD; neither run near it). `warehouse-bind-sql` 2 of 2 PASS. `angular-feature-placement` 2 of 2 PASS (the recipe names Opus for it; the substitution is stated). Pass total 10.24 USD of the 15 USD cap: 4.83 on Fable 5.1 (the section above, by the main session's mistake) and 5.41 on Fable 5.2.
+
+Not shown: the no-framework arm was not run. The maintainer chose the framework half only, the comparison to follow only if a run failed; none did. n = 2 per scenario, so this is a no-alarm reading of the per-release model-change check, not a rate.
+
+Hand read by the main session of both `route-fix` transcripts: the production edit was made with the Edit tool on `src/Calculator.cs` in 2 of 2 (events 45 and 47), with no in-place shell edit; the test and the build ran through the PowerShell tool. That is the opposite of the Fable 5.1 set above (shell `sed -i` in 2 of 2); it bears on B-538 (n = 2, one scenario).
+
+Decisions opened on this evidence (`meta/decisions-index.md`): WSD-066 (host evidence is capability-specific; recertification is evidence-triggered), WSD-096 (the agent-eval self-test is a recipe before a live run) and WSD-104 (new feature logic is placed by responsibility). WSD-066 and WSD-096 name no **Reopen** trigger. WSD-104's is a field report of one-method or pass-through services created under the rule; the `angular-feature-placement` rows show a new injectable, no bolt-on and no subclass in 2 of 2, and are no field report. Reopen triggers met: none met.
+
+## 2026-11-20 06:18:01 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (956e4f940e33c0e4a0fdcdae3547ddfc47e826ee)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS route-fix** (model=claude-fable-5-2) — agentExit=0 timedOut=False costUsd=0.9792844 tokensIn=10 tokensOut=1900; ccVersion=2.1.312 initModel=claude-fable-5-2 arm=framework outcome=True routeExercised=True routerFired=True routerIntent=fix fixed=True redTestEvent=25 productionEdit=45 greenTestEvent=47 testInvoked=True
+- **SUMMARY route-fix** arm=framework outcome=1/1 excluded=0
+
+## 2026-11-20 06:22:34 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (956e4f940e33c0e4a0fdcdae3547ddfc47e826ee)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS route-fix** (model=claude-fable-5-2) — agentExit=0 timedOut=False costUsd=0.5546952 tokensIn=12 tokensOut=2162; ccVersion=2.1.312 initModel=claude-fable-5-2 arm=framework outcome=True routeExercised=True routerFired=True routerIntent=fix fixed=True redTestEvent=25 productionEdit=47 greenTestEvent=49 testInvoked=True
+- **SUMMARY route-fix** arm=framework outcome=1/1 excluded=0
+
+## 2026-11-20 06:26:10 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (956e4f940e33c0e4a0fdcdae3547ddfc47e826ee)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS warehouse-bind-sql** (model=claude-fable-5-2) — agentExit=0 timedOut=False costUsd=1.0927142 tokensIn=10 tokensOut=7686; ccVersion=2.1.312 initModel=claude-fable-5-2 arm=framework outcome=True category=BOTH channels=C1,C4 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **PASS warehouse-bind-sql** (model=claude-fable-5-2) — agentExit=0 timedOut=False costUsd=1.1397384 tokensIn=10 tokensOut=9134; ccVersion=2.1.312 initModel=claude-fable-5-2 arm=framework outcome=True category=BOTH channels=C1,C4 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=2/2 excluded=0
+
+## 2026-11-20 06:28:26 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (956e4f940e33c0e4a0fdcdae3547ddfc47e826ee)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · scratch: retained=True
+
+- **PASS angular-feature-placement** (model=claude-fable-5-2) — agentExit=0 timedOut=False costUsd=0.7838522 tokensIn=10 tokensOut=4914; ccVersion=2.1.312 initModel=claude-fable-5-2 boltOn=False subclass=False addedMembers= newInjectable=True featureInComponent=True featureInOtherInjectable=True injectsUserService=True usedSkill=add-service:False
+- **PASS angular-feature-placement** (model=claude-fable-5-2) — agentExit=0 timedOut=False costUsd=0.86326 tokensIn=8 tokensOut=6394; ccVersion=2.1.312 initModel=claude-fable-5-2 boltOn=False subclass=False addedMembers= newInjectable=True featureInComponent=True featureInOtherInjectable=True injectsUserService=True usedSkill=add-service:False
+
 ## B-516 Claude Code baseline, `skill-approve` — 2026-11-20 (hand-written; the runs and the hand read are the main session's; the two runner blocks below are the rows)
 
 Run and hand-read by the main session on 2026-11-20 at commit `870b9364`: scenario `skill-approve`, framework arm, Claude Code 2.1.312, Sonnet 5.5 (`initModel=claude-sonnet-5-5` in every row), three runs (one, then `-Trials 2`), 0.61 USD in all (0.29, 0.17, 0.15), permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177). No run came near its 1.50 USD budget; the free self-test exited 0 first. Copilot leg not run (held until the allowance refills on 2026-12-01).

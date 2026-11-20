@@ -302,14 +302,20 @@ each, 2 hours with the driver) plus the hand read, M of attention.
 1. **Spend stop** for the whole measurement, probe included: 45 premium requests / 1,800 AI credits (recommended, about 15 runs),
    or half that with the review cell dropped, or another figure? And the per-run cap: 500 credits as a runaway guard (recommended),
    or none (B-305: a cap is shown to the model and may make it economise)?
+   Maintainer's answer (chat 2026-11-20): spend stop 1,800 AI credits for the whole measurement, probe included; per-run cap 500 credits.
 2. **If the probe shows `-p` cannot answer `ask_user`:** accept observe-only (question and options seen, pick typed; recommended), or fund a
    driver that clicks for real (an ACP client or a pseudo-terminal session; M to L, new code), or stop at the text cells?
+   Maintainer's answer (chat 2026-11-20): observe-only.
 3. **Completed review on Copilot:** include the X-ask-full cell now (recommended; B-425 predicts no reviewer starts, which is itself
    the finding), or defer it until a `review.md` Step 1 candidate exists so it is not run twice?
+   Maintainer's answer (chat 2026-11-20): the X-ask-full cell is included now.
 4. **Unfenced review:** accept `--allow-all-tools` for the review leg in the disposable fixture, as B-528's second leg did?
    (Recommended yes; the alternative is no review cell on Copilot.)
+   Maintainer's answer (chat 2026-11-20): `--allow-all-tools` accepted for the review leg only, in the disposable fixture.
 5. **CLI version:** pin to 1.0.98 as B-528 and B-425 (recommended, comparable) or run whatever is current at the access date?
+   Maintainer's answer (chat 2026-11-20): pin 1.0.98; if it will no longer run, the current version, stated in the results.
 6. **Access:** who restores Copilot, and by when? Parts A and B proceed without it; the plan is otherwise idle.
+   Maintainer's answer (chat 2026-11-20): the allowance refills 2026-12-01; a scheduled check that day reports readiness.
 
 ## Adversarial review
 
