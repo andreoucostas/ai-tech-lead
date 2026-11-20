@@ -2829,7 +2829,7 @@ function Test-ReviewSegment([string]$Segment, $Ctx) {
 function Test-ReviewChain([string]$Text, $Ctx, [int]$Depth) {
     if ($Depth -gt 3 -or -not $Text.Trim()) { return $false }
     $segments = [Collections.Generic.List[string]]::new()
-    $sb = [Text.StringBuilder]::new(); $quote = ''; $i = 0; $n = $Text.Length
+    $sb = [Text.StringBuilder]::new(); $quote = ''; $i = 0; $n = $Text.Length; $pipedAt = @{}
     while ($i -lt $n) {
         $c = [string]$Text[$i]
         if ($c -ceq '`') { return $false }
@@ -2851,7 +2851,7 @@ function Test-ReviewChain([string]$Text, $Ctx, [int]$Depth) {
                 if ($Text.Substring($i).StartsWith('>&1') -and $sb.Length -gt 0 -and $sb[$sb.Length - 1] -ceq '2' -and ($sb.Length -eq 1 -or [char]::IsWhiteSpace($sb[$sb.Length - 2]))) { [void]$sb.Remove($sb.Length - 1, 1); $i += 3 } else { return $false }
             }
             { $_ -in @(';', "`n", "`r") } { $segments.Add($sb.ToString()); [void]$sb.Clear(); $i++ }
-            '|' { $segments.Add($sb.ToString()); [void]$sb.Clear(); $i += $(if ($i + 1 -lt $n -and $Text[$i + 1] -ceq '|') { 2 } else { 1 }) }
+            '|' { $segments.Add($sb.ToString()); [void]$sb.Clear(); if ($i + 1 -lt $n -and $Text[$i + 1] -ceq '|') { $i += 2 } else { $pipedAt[$segments.Count] = $true; $i++ } }
             '&' { if ($i + 1 -lt $n -and $Text[$i + 1] -ceq '&') { $segments.Add($sb.ToString()); [void]$sb.Clear(); $i += 2 } else { return $false } }
             default { [void]$sb.Append($c); $i++ }
         }
@@ -2860,6 +2860,20 @@ function Test-ReviewChain([string]$Text, $Ctx, [int]$Depth) {
     $segments.Add($sb.ToString())
     if (-not @($segments | Where-Object { $_.Trim() }).Count) { return $false }
     foreach ($segment in $segments) { if (-not (Test-ReviewSegment $segment $Ctx)) { return $false } }
+    # H8: piped input is not a path argument, yet Get-ChildItem, Test-Path and Get-FileHash bind a piped string as a path and Get-Content binds
+    # a piped object's Path property. A pipe into one of them is denied when an upstream segment may emit arbitrary strings or file contents.
+    $taint = $false
+    for ($k = 0; $k -lt $segments.Count; $k++) {
+        $text = $segments[$k].Trim()
+        if (-not $text) { continue }
+        if (-not $pipedAt.ContainsKey($k)) { $taint = $false }
+        $name = if ($text.StartsWith('@SUB@')) { '@sub' } else { ([regex]::Match($text, '^\S+').Value).ToLowerInvariant() }
+        if ($reviewAlias.ContainsKey($name)) { $name = $reviewAlias[$name] }
+        if ($pipedAt.ContainsKey($k) -and $taint -and $name -in @('get-childitem', 'test-path', 'get-filehash', 'get-content')) { return $false }
+        if ($name -in @('get-childitem', 'test-path', 'get-filehash', 'measure-object')) { $taint = $false }
+        elseif ($name -in @('select-object', 'sort-object', 'out-string')) { if ($name -ceq 'select-object' -and $text -imatch '-expandproperty\s+hash\s*$') { $taint = $false } }
+        else { $taint = $true }  # write-output, write-host, get-content, select-string, git, dotnet, a script, a sub-expression
+    }
     return $true
 }
 function Get-ReviewPermissionClass($Request, [string]$BundleRoot, [string]$ScratchRoot, [string]$TargetRoot) {
@@ -7790,6 +7804,19 @@ function Invoke-ReviewPermissionSelfTest {
         @('PowerShell', 'Get-Content NUL', 'denied', 'item 7: the NUL device'),
         @('PowerShell', 'Get-Content CON.txt', 'denied', 'item 7: the CON device with an extension'),
         @('PowerShell', "Get-Content `"$bundle\com1`"", 'denied', 'item 7: a COM1 device under the bundle root'),
+        # H8: a pipe into a segment that binds piped strings as paths, fed by a segment that emits arbitrary strings or file contents.
+        @('PowerShell', 'Write-Output C:\Windows | Get-ChildItem', 'denied', 'H8: Write-Output into Get-ChildItem'),
+        @('PowerShell', 'echo C:\Windows\win.ini | gc', 'denied', 'H8: echo into gc'),
+        @('PowerShell', "Get-Content `"$m`" | Get-Content", 'denied', 'H8: Get-Content into Get-Content'),
+        @('PowerShell', 'Write-Host C:\Windows | Test-Path', 'denied', 'H8: Write-Host into Test-Path'),
+        @('PowerShell', "Get-Content `"$m`" | Get-FileHash", 'denied', 'H8: Get-Content into Get-FileHash'),
+        @('PowerShell', "Select-String -Pattern x -Path `"$m`" | Select -ExpandProperty Path | Get-ChildItem", 'denied', 'H8: Select-String through Select -ExpandProperty into Get-ChildItem'),
+        @('PowerShell', "Get-Content `"$m`" | sort | Get-ChildItem", 'denied', 'H8: taint carried through sort'),
+        @('PowerShell', "Get-Content `"$m`" | Select-String x", 'allowed', 'H8: Get-Content into Select-String'),
+        @('PowerShell', "Get-ChildItem `"$bundle`" | Get-FileHash", 'allowed', 'H8: Get-ChildItem FileInfo into Get-FileHash'),
+        @('PowerShell', "Get-ChildItem `"$bundle`" -Recurse -File | Get-FileHash | Select -ExpandProperty Hash", 'allowed', 'H8: Get-ChildItem into Get-FileHash into Select Hash'),
+        @('PowerShell', "Get-ChildItem `"$bundle`" | Measure-Object", 'allowed', 'H8: Get-ChildItem into Measure-Object'),
+        @('PowerShell', "Get-ChildItem `"$bundle`" | sort -Property Length | Select -First 3 | Get-FileHash", 'allowed', 'H8: sort and Select -First keep a checked pipeline clean'),
         @('Bash', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'denied', 'the pipe through the Bash tool'),
         @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'denied-off', 'the opt-in off')
     )
