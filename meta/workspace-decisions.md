@@ -4917,3 +4917,12 @@ the shipped tree's three failures reversed a decline after a vague follow-up. Th
 called in 6 of 6 runs without it. The shipped text names Claude Code as the host it was measured on. The same cells run on Copilot when access returns (B-530's queue), and the intent is decided
 there. Learning from past review decisions (the plan's section 11) is not part of this change.
 **Reopen** if Copilot's cells show the command not called or a wrong comment applied with it, or on a field report of the command declining a correct comment.
+
+## WSD-141: the observed-harm rule covers text the agent already reads; a new opt-in capability ships on a lighter bar (2026-11-20)
+
+**Context.** WSD-139 asks for an observed harm and a test that can see the fix before anything ships. B-537 showed its worth for wording: the measurement found the shipped tree already declined the reported
+class of wrong comment, and the candidate router intent added nothing. It fits a new capability poorly: there is no harm to observe, the field channel is one team, and the measured host is not the team's.
+**Decision (the architect's draft; maintainer, in chat 2026-11-20, "yup").** WSD-139 stands for changes to text the agent already reads: the always-loaded rules file, an existing command or skill, the
+router. A new opt-in capability that adds nothing to other sessions beyond its own listing ships on a lighter bar: a need named by the maintainer or a field report; a check on a fixture that it works and
+does no harm (it does not make a right outcome worse); a stated trigger for removing it; and a changelog line naming the hosts it was checked on. Tiers, red-first tests and the guarded steps are unchanged.
+**Reopen** if a capability shipped on the lighter bar is later measured doing harm, or if the always-loaded text grows through this route.

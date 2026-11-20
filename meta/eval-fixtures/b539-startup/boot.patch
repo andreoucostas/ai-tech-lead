@@ -1,0 +1,43 @@
+diff --git a/src/Catalog.Api/Program.cs b/src/Catalog.Api/Program.cs
+index 9593620..9fd7062 100644
+--- a/src/Catalog.Api/Program.cs
++++ b/src/Catalog.Api/Program.cs
+@@ -9,3 +9,4 @@ var app = builder.Build();
+ app.MapGet("/health", () => Results.Ok(new { status = "up" }));
+ app.MapGet("/prices/{sku}", async (string sku, PricingClient pricing, CancellationToken ct) => Results.Ok(await pricing.GetPriceAsync(sku, ct)));
+ app.Run();
++public partial class Program { }
+diff --git a/tests/Catalog.Tests/Catalog.Tests.csproj b/tests/Catalog.Tests/Catalog.Tests.csproj
+index 1a16ec4..37986bd 100644
+--- a/tests/Catalog.Tests/Catalog.Tests.csproj
++++ b/tests/Catalog.Tests/Catalog.Tests.csproj
+@@ -8,6 +8,7 @@
+   <ItemGroup>
+     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+     <PackageReference Include="xunit" Version="2.6.2" />
++    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
+     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.4" />
+   </ItemGroup>
+   <ItemGroup>
+diff --git a/tests/Catalog.Tests/StartupTests.cs b/tests/Catalog.Tests/StartupTests.cs
+new file mode 100644
+index 0000000..5fa11cf
+--- /dev/null
++++ b/tests/Catalog.Tests/StartupTests.cs
+@@ -0,0 +1,16 @@
++using System.Net;
++using Microsoft.AspNetCore.Mvc.Testing;
++using Xunit;
++
++namespace Catalog.Tests;
++
++public class StartupTests
++{
++    [Fact]
++    public async Task Host_Starts_And_Answers_Health()
++    {
++        await using var factory = new WebApplicationFactory<Program>();
++        var response = await factory.CreateClient().GetAsync("/health");
++        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
++    }
++}

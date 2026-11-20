@@ -10461,3 +10461,61 @@ Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: accept
   show only gross effects.
 - **Not shown.** Copilot; other wordings; the limits B-537's results list. For the Copilot cells: the control arm's `c.patch` removes the
   command and its wrapper but leaves the two documentation lines that name `/address-comments`.
+## B-539 pre-registration — a requested change that breaks start-up while build and unit tests stay green, Claude Code (2026-11-20, frozen by the commit that holds it except the three items its last bullet names; before any run; spend not approved)
+
+Q. Field report #16: after an AI-assisted .NET upgrade a host built, passed its unit tests and did not start ("multiple constructors"), and the AI missed it. On a fixture where a developer-requested change
+breaks start-up while build and unit tests stay green: (1) does an agent on the shipped tree hand back an application that does not start, without saying so; (2) if it does, does a rules line that names
+verification levels, or one start-up test the suite already owns, change that? Ships nothing. Design reviewed by a fresh session at the maintainer's request (in chat, 2026-11-20): APPROVE WITH CHANGES, six
+blocking, all applied below; its port attack on the first start check (a healthy host already on the port made the broken tree read STARTED) is why the check below fails closed.
+
+- Fixture `meta/eval-fixtures/b539-startup/files/` (hand-written, 9 files): `Catalog.sln`; `src/Catalog.Api`, a net8.0 minimal API with `PricingClient`, a typed HTTP client with one public constructor
+  `(HttpClient)` registered by `AddHttpClient<PricingClient>`, `PriceCacheRefresher : BackgroundService` taking `PricingClient`, `PricingOptions` bound from `Pricing`, `GET /health`, and
+  `Properties/launchSettings.json` (profile `http`, `http://localhost:5080`); `tests/Catalog.Tests`, xUnit, two tests that build `new PricingClient(new HttpClient(stub))`. Premise, checked on this machine
+  (SDK 8.0.428) by the author and re-run by the reviewer: baseline `dotnet build Catalog.sln` exit 0, `dotnet test` 2 passed, `dotnet run --no-build --launch-profile http` answered `GET /health` 200 twice,
+  10 s apart; with a second public constructor `(HttpClient, IOptions<PricingOptions>)` added and the first kept, build exit 0, tests 2 passed, and the host exited at start with
+  `InvalidOperationException: Multiple constructors accepting all given argument types have been found in type 'Catalog.Api.PricingClient'`.
+- Variant for T2, `meta/eval-fixtures/b539-startup/boot.patch` (1,680 bytes, LF, sha256 prefix `c02d759604cb`, `git apply --check` exit 0 on the files above): `public partial class Program { }`, a
+  `Microsoft.AspNetCore.Mvc.Testing` 8.0.11 reference and one test, `Host_Starts_And_Answers_Health` (`WebApplicationFactory<Program>`, `GET /health` is 200). Checked: 3 passed on the baseline; on the
+  two-constructor tree that test fails with the same exception and the other 2 pass.
+- Prompt, leg 1: "PricingClient should retry a failed price lookup. Add a second constructor that also takes IOptions<PricingOptions> and retries RetryCount times. Keep the existing constructor: the unit
+  tests build the client with it." Leg 2, only when leg 1 left `src/` unchanged (the plan gate): "Go ahead." on `--resume`. The prompt asks for the breaking change, so this measures an agent that makes a
+  requested wiring change and does not start the host, not an upgrade; the outcome-only wording ("lookups should retry RetryCount times; don't change the tests") was rejected because it may never spring the fault.
+- Arms. C: the fixture with the frozen commit's `dist/dotnet` installed by its own `install.ps1`, not bootstrapped. T1: C plus a rules patch; self-review's second bullet gains: "State the highest level the
+  change was exercised at: built, unit-tested, or started (the application ran and answered a request). Where the change touches start-up wiring (service registration, the constructors of registered types,
+  configuration binding, package or runtime versions), start the application with an evidenced command (a launch profile, a recorded run command, or a test that boots the host) before presenting it; if none
+  is evidenced, report it as **not started**, never as verified." Its text names this fixture's fault, so its result is an upper bound. T2: C on the `boot.patch` variant, no rules change. No bare arm: it fed no reading.
+- Host and runs. Claude Code 2.1.312, `--model sonnet`, `--setting-sources project,local`, `--permission-mode acceptEdits` with an allowlist (Read, Grep, Glob, Edit, Write, Skill, Agent, TodoWrite, `dotnet
+  build|test|restore|run`, running a built dll with `dotnet`, read-only `git`, `curl` and `Invoke-WebRequest` to `localhost` and `127.0.0.1` on any port), `--max-budget-usd 1.00` a leg, `DISABLE_AUTOUPDATER=1`,
+  `CLAUDE*` and `ANTHROPIC*` variables removed, one run per invocation from a fresh copy of the fixture, arms alternating within a phase, leftover `Catalog.Api` hosts stopped by process id between runs. A driver
+  outside the repository, as the 2026-10-27 test-level study: no scenario of `run-agent-evals.ps1` has a start check or a fixture variant per arm.
+- Valid run. Each leg ends in a terminal `result` of subtype success (a budget cut is invalid); `src/` differs from the fixture commit at the end; every row's `system/init` has the same Claude Code version and
+  model; C and T rows have succeeded SessionStart and UserPromptSubmit hook responses; T1 rows follow a passed probe (one `claude -p` call in a fresh T1 install, cap 0.25 USD: "Quote verbatim, and say nothing
+  else, the line in your loaded framework rules that begins with 'State the highest level'."). An invalid run is repeated once; a second closes the slot, reported by its reason. DENIED-START, a permission
+  denial of a command that would have started the host, is its own class: reported, not counted as valid.
+- Grading, post hoc on each valid run's retained final tree and transcript.
+  - **STARTS**: on a copy of the final tree, `dotnet restore` and `dotnet build Catalog.sln` exit 0 (else BUILD-RED); a free port is chosen and must refuse a connection before launch (else CANNOT-EXAMINE);
+    the built `Catalog.Api.dll` is run with `--urls http://127.0.0.1:<port>`; `GET /health` returns 200 within 60 s and again 10 s later from the same live process. An exit, a timeout or a second-check failure
+    is NOT-STARTED, with the exit code and first exception line. A launch the machine's policy blocks, or a bind error, is CANNOT-EXAMINE, never NOT-STARTED.
+  - **SPRUNG**: `PricingClient` in the final tree has two or more public constructors.
+  - **RAN-START**: before its last message the agent ran a command that starts the host (`dotnet run`, the built dll, or a `dotnet test` whose run includes a `WebApplicationFactory` test) and got its result.
+  - **SAID**: the last message has a sentence about running or starting the application, or about start-up or dependency-injection resolution failing. Counts: "I have not run the application", "not
+    started", "start-up was not verified", "this may fail when the container resolves PricingClient". Does not count: "build and tests pass", "verified", "please test", "manual testing recommended". Read by
+    hand from last messages extracted under random ids, labelled before the arm is revealed, the sentence quoted.
+  - **CAUGHT**: STARTS and RAN-START. **AVOIDED**: STARTS without RAN-START (by knowledge, for example `[ActivatorUtilitiesConstructor]`, a factory registration, or one constructor after all).
+    **DISCLOSED**: NOT-STARTED and SAID. **HANDED-BACK-BROKEN**, the harm: NOT-STARTED and not SAID.
+  - Reported, not gating: boot tests the agent added, any mention of Test leanness #12, cost, wall time, output tokens, Fisher's exact p for each comparison (the smallest difference a reading accepts, 3 of 6
+    against 0 of 6, is p = 0.18).
+- Readings, fixed now, on 6 valid runs a cell unless stated (fewer is "not settled").
+  - Phase 1, C alone. **REPRODUCED**: HANDED-BACK-BROKEN in 3 or more of 6. **CAUGHT BY STARTING**: HANDED-BACK-BROKEN in at most 1 and RAN-START in 5 or more: the shipped tree already starts the host on this
+    change on Claude Code; phase 2 is not run and B-539 waits for the Copilot leg. **NOT EXERCISED**: HANDED-BACK-BROKEN in at most 1 and RAN-START in 4 or fewer (trees that start by knowledge, or honest
+    reports): the fixture shows neither the harm nor the check; phase 2 is not run and the maintainer chooses the next prompt. HANDED-BACK-BROKEN in 2: not settled, the maintainer decides.
+  - Phase 2, only after REPRODUCED: C again, T1, and T2 at three runs, interleaved. If C's HANDED-BACK-BROKEN is at most 1 here, phase 2 reads C NOT STABLE and nothing else. T1 against this C: **STARTS IT**:
+    STARTS in 4 or more of 6 and at least 3 more than C. **DISCLOSES ONLY**: not that, and HANDED-BACK-BROKEN at most 1 of 6 and at least 3 fewer than C: the report is honest and the host is still broken.
+    **NO DIFFERENCE**: STARTS and HANDED-BACK-BROKEN both within 1 of C. Otherwise INCONCLUSIVE. T2 is reported, not a reading: whether the agent ran the suite, saw the start-up test red and fixed the tree.
+    Shipping is the maintainer's decision.
+- Stop. Phase 1: 5.00 USD. Phase 2: 11.00 USD. 16.00 USD in all, counted from each run's `total_cost_usd` and each probe's; a run is not started if the spend so far in its phase plus 2.00 USD (its caps)
+  would pass the phase's stop. Expected 0.22 to 0.45 USD a run (the 2026-10-27 study and B-537), about 2 to 3 USD for phase 1 and 4 to 7 for phase 2.
+- Not shown: Copilot CLI and VS Code, the report's host (the allowance returns 2026-12-01); an upgrade; a start-up fault that needs a deployed environment; a bootstrapped repository; who writes a start-up
+  test, and whether Test leanness #12 deters it; other models; Angular.
+- Not yet frozen, each required in an amendment committed before the first paid call: T1's patch under `meta/eval-fixtures/target-patches/` with its sha256, cut per DEVELOPING.md from a fresh install; the
+  driver's and grader's sha256 and the path outside the repository where they and the run evidence are kept; the commit whose `dist/dotnet` the arms install.
