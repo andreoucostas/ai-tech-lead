@@ -23,6 +23,7 @@ request in plain words is classified and follows the matching workflow.
 | `/test` | The smallest risk-relevant tests, in your existing test patterns. |
 | `/debt` | Finds tech debt that can ride along with current work, and fixes it. |
 | `/review` | Runs the specialist reviewers below on your changes and gives APPROVE or REQUEST CHANGES. |
+| `/address-comments` | Reads every open review comment on a pull request, checks each claim against the code, proposes Fix, Decline, Defer or Ask per claim, waits where one is declined, and reports one line per comment. |
 | `/security-gate` | An OWASP-style review of a change with senior judgement; findings go to `SECURITY_FINDINGS.md` with remediation deadlines. |
 | `/docs-sync` | Reports drift between `AGENTS.md`, the other docs and the code, without changing them. |
 

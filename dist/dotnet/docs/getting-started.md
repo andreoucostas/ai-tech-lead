@@ -97,6 +97,7 @@ You can also name a workflow directly:
 | `/test [target]` | Add tests that follow your existing test patterns |
 | `/debt [area]` | Find and fix recorded tech debt |
 | `/review` | Review your changes as a tech lead: APPROVE or REQUEST CHANGES |
+| `/address-comments [pull request]` | Address review comments: check each claim against the code before fixing or declining it |
 | `/security-gate` | Security review of a change |
 | `/docs-sync` | Check `AGENTS.md` and the other docs for drift from the code |
 

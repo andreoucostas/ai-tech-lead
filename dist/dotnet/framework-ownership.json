@@ -1,6 +1,7 @@
 {
   "schema-version": 1,
   "paths": [
+    { "path": ".agents/skills/address-comments/SKILL.md", "ownership": "framework-owned/overwritten" },
     { "path": ".agents/skills/adopt/SKILL.md", "ownership": "framework-owned/overwritten" },
     { "path": ".agents/skills/bootstrap/SKILL.md", "ownership": "framework-owned/overwritten" },
     { "path": ".agents/skills/debt/SKILL.md", "ownership": "framework-owned/overwritten" },
@@ -22,6 +23,7 @@
     { "path": ".claude/agents/solid-check.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/agents/test-critic.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/ai-audit.log", "ownership": "consumer-owned/protected" },
+    { "path": ".claude/commands/address-comments.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/commands/adopt.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/commands/bootstrap.md", "ownership": "framework-owned/overwritten" },
     { "path": ".claude/commands/debt.md", "ownership": "framework-owned/overwritten" },
