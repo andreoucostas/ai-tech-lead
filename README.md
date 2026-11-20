@@ -85,7 +85,7 @@ Describe tasks in plain language ("the export endpoint returns 500 for empty ord
 the customer list") and the agent follows the matching workflow: it asks what is unclear, plans,
 waits for your go-ahead, makes verified changes and reviews its own work. You can also name a
 workflow directly: `/feature`, `/fix`, `/design`, `/refactor`, `/test`, `/debt`, `/review`,
-`/security-gate`.
+`/address-comments`, `/security-gate`.
 
 Developers start with `docs/getting-started.md` in their repository, which walks from the install to
 a first reviewed fix; every installed guide is listed in your distribution's README:

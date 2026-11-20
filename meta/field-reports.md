@@ -476,6 +476,38 @@ installed Markdown has a second reader, and `docs/ci-integration.md` describes p
 
 ---
 
+## Report #16 — .NET upgrade, a host that built and passed its unit tests and did not start
+
+| | |
+|---|---|
+| **Date received** | 2026-11-20 (the reporter: "yesterday's report") |
+| **Stack / repo shape** | .NET with a web UI; an upgrade of .NET; versions and the UI stack not captured |
+| **Framework installed** | not captured |
+| **Host / IDE** | VS Code; the agent and model not captured |
+| **What misfired** | After an AI-assisted .NET upgrade one host process did not start, with a "multiple constructors" error (the reporter's words), and the UI then did not load. The unit tests passed. The reporter: "completely missed by the AI" |
+| **What fired** | not captured |
+| **What got ignored** | not captured |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | the maintainer, in chat, relaying a consumer report |
+
+**What the tree says** (read by the filing session, 2026-11-20, `dist/dotnet`). The framework is silent on this class:
+the upgrade procedure in the `dependency-audit` skill ends on "Run the evidenced build and test commands"; the
+verification categories (build, test, format, lint, migration/deploy, data-validation) have none for starting the
+application; and Test leanness #12, the `add-tests` skill and `/test` tell the agent not to test that dependency
+injection resolves, which does not separate the container library from the application's own wiring.
+
+**Epistemic status.** Two chat messages, not an observation card. Not captured: whether the framework's upgrade procedure
+was used, whether the agent ran the build and tests itself or presented the work as complete, whether the host failed on
+the developer's machine or only after deployment, and the error text. That the error is a dependency-injection activation
+failure is the filing session's reading, not the reporter's statement. The maintainer said in the same chat that there
+are "many such reports" of UI defects shipping while unit tests were green; none other is recorded here.
+
+**Outcome:** no change to the tree. B-539 files the gap, with a measurement before anything ships. WSD-102's reopen
+trigger (work presented as done on a red build) is not met on what was reported: the build and unit tests were green.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.

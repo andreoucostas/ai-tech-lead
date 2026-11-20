@@ -1037,7 +1037,7 @@ try {
             param($d)
             Replace-Text (Join-Path $d '.claude\commands\fix.md') "---`ndescription:" "---`nName: fix`ndescription:"
             Replace-Text (Join-Path $d '.agents\skills\fix\SKILL.md') "name: fix`ndescription:" "name: fix`nName: fix`ndescription:"
-        } '12 workflow wrapper(s) carry their command''s frontmatter' 'skill-frontmatter' -Green
+        } '13 workflow wrapper(s) carry their command''s frontmatter' 'skill-frontmatter' -Green
         # install.ps1 protects a team's file only at a wrapper path named in lowercase letters, digits and hyphens.
         Assert-Case 'skill-wrapper-folder-name-outside-installer-grammar' {
             param($d)
@@ -1051,7 +1051,7 @@ try {
             param($d)
             Remove-Item -LiteralPath (Join-Path $d '.claude\skills') -Recurse -Force
         } 'skill frontmatter scan found no .claude/skills/*/SKILL.md' 'skill-frontmatter' -AlsoPattern 'the scan is blind'
-        Assert-Case 'skill-wrappers-match-commands' { param($d) } '12 workflow wrapper(s) carry their command''s frontmatter' 'skill-frontmatter' -Green
+        Assert-Case 'skill-wrappers-match-commands' { param($d) } '13 workflow wrapper(s) carry their command''s frontmatter' 'skill-frontmatter' -Green
     }
 
     # B-359: Copilot CLI 1.0.92 refuses these values, and a wrapper copies its command's, so the

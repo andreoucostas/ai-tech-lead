@@ -47,6 +47,11 @@
           "tok": 74
         },
         {
+          "path": ".claude/commands/address-comments.md#frontmatter",
+          "chars": 329,
+          "tok": 82
+        },
+        {
           "path": ".claude/commands/adopt.md#frontmatter",
           "chars": 247,
           "tok": 62
@@ -222,8 +227,8 @@
         },
         {
           "path": "docs/getting-started.md",
-          "chars": 6988,
-          "tok": 1747
+          "chars": 7118,
+          "tok": 1780
         },
         {
           "path": "docs/playbook.md",
@@ -232,8 +237,8 @@
         },
         {
           "path": "docs/reference.md",
-          "chars": 11540,
-          "tok": 2885
+          "chars": 11763,
+          "tok": 2941
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -340,6 +345,11 @@
           "path": ".claude/agents/test-critic.md#body",
           "chars": 5415,
           "tok": 1354
+        },
+        {
+          "path": ".claude/commands/address-comments.md#body",
+          "chars": 3601,
+          "tok": 900
         },
         {
           "path": ".claude/commands/adopt.md#body",
@@ -484,6 +494,11 @@
           "path": ".claude/agents/test-critic.md#frontmatter",
           "chars": 299,
           "tok": 75
+        },
+        {
+          "path": ".claude/commands/address-comments.md#frontmatter",
+          "chars": 329,
+          "tok": 82
         },
         {
           "path": ".claude/commands/adopt.md#frontmatter",
@@ -646,8 +661,8 @@
         },
         {
           "path": "docs/getting-started.md",
-          "chars": 6850,
-          "tok": 1712
+          "chars": 6980,
+          "tok": 1745
         },
         {
           "path": "docs/playbook.md",
@@ -656,8 +671,8 @@
         },
         {
           "path": "docs/reference.md",
-          "chars": 11434,
-          "tok": 2858
+          "chars": 11657,
+          "tok": 2914
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -764,6 +779,11 @@
           "path": ".claude/agents/test-critic.md#body",
           "chars": 5685,
           "tok": 1421
+        },
+        {
+          "path": ".claude/commands/address-comments.md#body",
+          "chars": 3601,
+          "tok": 900
         },
         {
           "path": ".claude/commands/adopt.md#body",
@@ -893,6 +913,11 @@
           "path": ".claude/agents/test-critic.md#frontmatter",
           "chars": 303,
           "tok": 76
+        },
+        {
+          "path": ".claude/commands/address-comments.md#frontmatter",
+          "chars": 329,
+          "tok": 82
         },
         {
           "path": ".claude/commands/adopt.md#frontmatter",
@@ -1070,8 +1095,8 @@
         },
         {
           "path": "docs/getting-started.md",
-          "chars": 7117,
-          "tok": 1779
+          "chars": 7247,
+          "tok": 1812
         },
         {
           "path": "docs/playbook.md",
@@ -1080,8 +1105,8 @@
         },
         {
           "path": "docs/reference.md",
-          "chars": 11559,
-          "tok": 2890
+          "chars": 11782,
+          "tok": 2946
         },
         {
           "path": "docs/upgrade-checklist.md",
@@ -1188,6 +1213,11 @@
           "path": ".claude/agents/test-critic.md#body",
           "chars": 7244,
           "tok": 1811
+        },
+        {
+          "path": ".claude/commands/address-comments.md#body",
+          "chars": 3601,
+          "tok": 900
         },
         {
           "path": ".claude/commands/adopt.md#body",
@@ -1299,30 +1329,30 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 36056,
-      "static.claude.tok": 9014,
+      "static.claude.chars": 36385,
+      "static.claude.tok": 9096,
       "static.copilot.chars": 24457,
       "static.copilot.tok": 6114,
       "prompt.max.chars": 3993,
       "prompt.max.tok": 998
     },
     "angular": {
-      "static.claude.chars": 33570,
-      "static.claude.tok": 8392,
+      "static.claude.chars": 33899,
+      "static.claude.tok": 8475,
       "static.copilot.chars": 24445,
       "static.copilot.tok": 6111,
       "prompt.max.chars": 3796,
       "prompt.max.tok": 949
     },
     "monorepo": {
-      "static.claude.chars": 39701,
-      "static.claude.tok": 9925,
+      "static.claude.chars": 40030,
+      "static.claude.tok": 10008,
       "static.copilot.chars": 27244,
       "static.copilot.tok": 6811,
       "prompt.max.chars": 4408,
       "prompt.max.tok": 1102
     },
-    "monorepo-claude-ratio-permille": 1101
+    "monorepo-claude-ratio-permille": 1100
   },
   "_notes": [
     "Claude frontmatter is a stable over-approximation of harness injection.",
