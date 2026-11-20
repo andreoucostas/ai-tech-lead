@@ -10888,3 +10888,63 @@ ahead."); every N run took one. Every agent's `dotnet test` ran; the policy refu
 - Cost: 2.75 USD, C 2.03 and N 0.72; 0.10 to 0.39 USD a run.
 - Not shown: as registered. Whether C's extra tests are too many for a reviewer, or right, is not measured; nor tests per stated behaviour; nor a larger change, where Leanness #1 and SOLID #1 have more to split.
 - Reopen triggers: WSD-104's not met. WSD-102's (work presented as done on a red build) not met: every build and test run ended green.
+
+## B-543 and B-544 phase 2 pre-registration — a POST feature with steps, the shipped tree against no framework: types by kind, Claude Code (2026-11-20, frozen by the commit that holds it except the items its last bullet names; before any phase 2 run)
+
+Phase 1 read NOT EXERCISED on a `GET` with two query values: no request body, no validation layer, no mapping. A fresh session attacked the main session's wording plan the same day (REJECT) and showed, from the
+six framework-arm transcripts and the tree, that no run cited the SOLID section and that other shipped text is likelier to make classes: the feature hook's "a new responsibility gets its own service or class even
+with one consumer" (`route-prompt.ps1`, on every feature prompt), `/feature`'s layer walk ("DTOs, validators, controller actions + applicable tests") and the defaults in force until `/bootstrap` ("Use
+FluentValidation for request validation", separate request and response DTOs, "Pin time behind an abstraction"). The main session re-read each in the tree. Q. On a feature that has steps (a request body, rules,
+a stored result, a response): does an agent on the shipped tree spread one small operation over more production types than it needs, and of which kinds; is that the framework or the model's default; and what
+does the agent give as its reason. Ships nothing. Spend: the maintainer, in chat 2026-11-20, to "Run the second measurement (a multi-step POST feature, 6.00 USD stop) before any rewording?": "Run it".
+The design is the main session's; the reference answer, tooling changes and runs are the Opus agent's. Everything not restated here is as the phase 1 registration and amendment: fixture, arms, host and flags,
+allowlist, valid run, the measured fields (P, IF, AT, TS, NT, lines, cost, tests ran or refused), the machine pre-check, the hand read under random ids.
+
+- Fixture: `meta/eval-fixtures/b543-export/files/`, unchanged. It already holds one `POST` (`PlaceOrderRequest`, a record; rules checked in `OrderService.Place`, which throws `ArgumentException`; the endpoint
+  turns that into a 400), so the project's own way to take a body and refuse it is in evidence: one request record, no validator class, no response type apart from the stored record, no package.
+- Prompt, leg 1: "Add returns. POST /orders/{id}/returns takes a reason (required, at most 200 characters), a refund amount (more than zero and no more than the order's total) and whether the goods are coming
+  back. It is a 404 for an unknown order, a 400 with a message when a rule is broken, and a 409 when the order is not shipped or already has a return. The return is stored with the date it was made, the order's
+  status becomes Returned, and the response is a 201 with the stored return and its id. GET /orders/{id}/returns shows the order's return, or a 404 when there is none." Legs 2 and 3 as phase 1.
+- Reference answer, by hand before any run, kept beside the run evidence: a request record, a stored return record and one class that does the work, with `Returned` added to the existing enum; the rules checked
+  in that class as `Place` checks its own. Its P is R, expected 3; the amendment states R as built. Build exit 0 and its tests green.
+- Arms: C and N as phase 1, on the same frozen export if `dist/dotnet` is unchanged since it (the amendment says). Six valid runs each, C first, alternating.
+- Added to the measured fields.
+  - **Kind**, for each new production type, read by hand under random ids before the arm is revealed: request record, stored record, the class that does the work, **validator**, **mapper or converter**,
+    **response type apart from the stored record**, **interface**, **factory or options**, result or outcome type, custom exception, other. The five in bold are the step kinds.
+  - New `PackageReference` under `src/`, by name. The count of `Done when:` criteria in a C run's plan, beside its NT.
+  - **Reason given**: each sentence of the agent's own text that gives a rule, a default or a convention as the reason for a type, a package or a test, quoted, and which text it names (Leanness #1, the hook's
+    line, `docs/defaults.md`, `/feature`, the SOLID section, another). Found by a hand search of every transcript, not by the grader's pattern alone (phase 1's missed two).
+- Readings, fixed now, on six valid runs a cell (fewer is "not settled").
+  - Classes. **REPRODUCED**: P of R + 2 or more in 4 or more of 6 C runs. **NOT REPRODUCED**: P of R + 1 or fewer in 5 or more. Otherwise not settled.
+  - Split by step. **REPRODUCED**: a new type of a step kind in 3 or more of 6 C runs. **NOT REPRODUCED**: in 0 or 1. In 2: not settled.
+  - Cause, for each that is REPRODUCED. **THE FRAMEWORK ADDS THEM**: C has at least 3 more such runs than N. **THE MODEL'S DEFAULT**: within 1 of N. Otherwise INCONCLUSIVE.
+  - Test support and Tests: as phase 1.
+  - Both Classes and Split by step NOT REPRODUCED: **NOT EXERCISED AGAIN**: two fixtures and 24 runs show neither harm on Claude Code with Sonnet, and the next step is the maintainer's choice (a diff from
+    the team, the team's host when the Copilot allowance returns on 2026-12-01, or an aim line shipped on their position as a recorded exception to WSD-139).
+  - Reported, no reading: the kinds seen in each arm, packages added, the reasons given and which text each names, WSD-104's trigger as phase 1 registered it.
+- If Classes or Split by step reads REPRODUCED and THE FRAMEWORK ADDS THEM, a further phase removes one text at a time (the hook's line, the defaults' lines, the layer walk) to find which does it. It is not
+  registered here: its arms depend on the reasons these runs give.
+- Stop: 6.00 USD for this phase, counted from each run's `total_cost_usd`; a run is not started if the spend so far plus 1.50 USD would pass it, and a third leg is not started if the spend plus 0.75 would.
+- Not shown: as phase 1, and a team's own bootstrapped conventions, which may ask for these kinds where the defaults no longer apply.
+- Not yet frozen, each required in an amendment committed before the first paid call: the reference answer's R and its kinds; the driver's and grader's new sha256 and what changed in each; the grader seen on the
+  reference answer and on a hand-planted tree holding a validator, a mapper, a separate response type and an added package; the frozen export used and the `dist/dotnet` tree hash at the commit.
+
+### B-543 and B-544 phase 2 amendment — the items left open, frozen before any phase 2 run (2026-11-20)
+
+- Reference answer, `p2\reference\` in the evidence folder: `ReturnRequest` (request record), `OrderReturn` (stored record) and `ReturnService` (the class that does the work: it checks the rules as
+  `OrderService.Place` does, throwing `ArgumentException` for a 400 and `InvalidOperationException` for a 409, returns null for a 404, stores the return and sets the status), `Returned` added to
+  `OrderStatus`, `OrderRepository.SetStatus` added, two endpoints in `Program.cs`, three tests. **R = 3**, kinds: request record, stored record, the class that does the work. Build exit 0. Its first
+  `dotnet test` was refused by this machine's Application Control policy (`0x800711C7`); a fresh copy then gave "Passed: 7". Run by hand, the endpoints gave 404, 400 (empty reason; refund above total), 409
+  (order not shipped; second return), 201 with the stored return, and the GET 404 then 200.
+- Framework under test: the frozen export of 36e773c0 (`%TEMP%\b543\frozen\`), reused; `dist/dotnet` at the commit that holds this amendment is tree `e7884680efc9`, unchanged since 36e773c0.
+- Tooling in `%TEMP%\b543\p2\`, phase 1's files, ledger and run folders untouched; phase 2 has its own `ledger.tsv`, `runs\`, `extracts\` and `extract-map.tsv`. sha256 prefixes, each taken from the
+  printed full hash and compared with it: `driver.ps1` `f6045d96c5a3` (phase 1's with the registered prompt; stop 6.00 USD, a run not started if this phase's spend plus 1.50 would pass it, a third leg not
+  started if that spend plus the run's cost so far plus 0.75 would; frozen export and allowlist read from the parent folder; a `thirdLegHeld` ledger column), `grade.ps1` `77bbf33de2bb` (phase 1's plus each
+  new production type's source in `grade.json`, new `PackageReference` names under `src/`, and `doneWhen`: the list items after the first "Done when" in the main agent's text, with a count leaving out an
+  "Out of scope" item), `allowlist.txt` `89aefbfe69e2`, unchanged.
+- The grader, seen before any run. Reference: P = 3, no package, no TS, AT or pass-through candidate, NT = 3. A planted tree (the reference plus `ReturnRequestValidator : AbstractValidator<ReturnRequest>`, a
+  `ReturnMapper`, a `ReturnResponse` record apart from the stored one, and a `FluentValidation` package reference under `src/`): P = 6, each of the three planted types listed with its source, package
+  `FluentValidation` listed, build green. The kind is the hand read's, as registered. `doneWhen` on a copy of phase 1's C 1 transcript read 7 items, 6 leaving out "Out of scope", as its plan shows; it read
+  6 until a defect was fixed (the split ate the first item's bullet); on N 1 it reads none.
+- Machine pre-check, three fresh copies in `p2\runs\`: two "Passed: 4", the third refused by the policy (`0x800711C7`, exit 1). Not all three refused, so the runs go ahead; a run whose tests the policy
+  stops is valid and flagged, as registered.
