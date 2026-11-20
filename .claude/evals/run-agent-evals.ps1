@@ -2706,8 +2706,8 @@ function Test-DialogBundlePath([string]$Path, [string]$BundleRoot, [string]$Scra
 }
 # B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 2): reviewers hash and read with pipes and chains (`Get-FileHash -LiteralPath <file>
 # | Select -ExpandProperty Hash`), which the single-command classes below refuse, and one denied hash command ended a run at CANNOT EXAMINE. On the
-# PowerShell tool a command the single classes refuse is read as a chain of read-only segments joined by `|`, `;`, `&&` or `||`, with `( )` and
-# `$( )` sub-expressions that are chains of their own (depth 3), `2>&1`, and a property read after a sub-expression (`(Get-FileHash ...).Hash`).
+# PowerShell tool a command the single classes refuse is read as a chain of read-only segments joined by `|`, `;`, `&&` or `||`, with `( )`
+# sub-expressions that are chains of their own (depth 3; `$( )` stays denied, as the frozen plan says), `2>&1`, and a property read after a sub-expression (`(Get-FileHash ...).Hash`).
 # A segment is one of: the cmdlets and aliases of $reviewReadOnly (every parameter named, every path argument a literal under the bundle root or
 # the target, or relative to the target without `..`), read-only git (no output, config, -C or no-index form), dotnet build|test|restore (what the
 # run list already allows), or the two review scripts by the single class's own strict rule. Never allowed: any write or other command, a variable,
@@ -2820,7 +2820,7 @@ function Test-ReviewChain([string]$Text, $Ctx, [int]$Depth) {
         if ($c -ceq '`') { return $false }
         if ($quote -ceq "'") { [void]$sb.Append($c); if ($c -ceq "'") { $quote = '' }; $i++; continue }
         $isSub = $false
-        if ($c -ceq '$') { if ($i + 1 -lt $n -and $Text[$i + 1] -ceq '(') { $isSub = $true; $open = $i + 1 } else { return $false } }
+        if ($c -ceq '$') { return $false }  # `$(` stays denied (frozen plan: no `$()`); only a bare `( )` sub-expression is read
         elseif ($c -ceq '(' -and -not $quote) { $isSub = $true; $open = $i }
         if ($isSub) {
             $close = Find-ReviewParen $Text $open
@@ -7708,7 +7708,8 @@ function Invoke-ReviewPermissionSelfTest {
         @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'allowed', 'the plan''s hash pipe with the Select alias'),
         @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Select-Object -ExpandProperty Hash", 'allowed', 'the same with Select-Object'),
         @('PowerShell', "(Get-FileHash -LiteralPath `"$m`").Hash", 'allowed', 'a parenthesized hash and its property'),
-        @('PowerShell', "Write-Output `"hash: `$(Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash)`"", 'allowed', 'a read-only `$( )` inside a string'),
+        @('PowerShell', "Write-Output `"hash: `$(Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash)`"", 'denied', 'a read-only `$( )` inside a string'),
+        @('PowerShell', "`$(Get-Content -LiteralPath `"$m`")", 'denied', 'a read-only `$( )` Get-Content of a bundle file'),
         @('PowerShell', "Get-FileHash -LiteralPath `"$m`" 2>&1 | Select -ExpandProperty Hash", 'allowed', 'the 2>&1 redirect'),
         @('PowerShell', "Get-ChildItem -Path `"$bundle`" -Recurse -File | sort -Property Length -Descending | Select -First 5", 'allowed', 'Get-ChildItem into sort and Select'),
         @('PowerShell', "Get-Content `"$bundle/a.patch`" | Measure-Object -Line", 'allowed', 'Get-Content into Measure-Object'),
@@ -7758,7 +7759,7 @@ function Invoke-ReviewPermissionSelfTest {
     }
     $answer = { param([string]$Command) (Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'PowerShell'; input = [pscustomobject]@{ command = $Command } }) 'none' -CompleteReview -BundleRoot $root -ScratchRoot $scratch -WriteRoot $target).behavior }
     if ((& $answer "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash") -ne 'allow' -or (& $answer "Get-FileHash -LiteralPath `"$m`" | Set-Content `"$bundle/h.txt`"") -ne 'deny') { throw 'B-467 permissions: the control channel does not allow the hash pipe and deny the write pipe' }
-    Write-Output 'PASS: B-467 reviewer permissions: pipes and chains of read-only PowerShell (Get-Content, Get-FileHash, Test-Path, Get-ChildItem, Select-String, read-only git, dotnet build|test|restore, into Select, sort, Measure-Object), parenthesized and $( ) sub-expressions and 2>&1 pass with literal paths under the bundle root or the target; a pipe into Set-Content, Out-File or Tee-Object, a redirect, a variable, a script block, Remove-Item in a chain, a path outside the bundle root and target, a write-form git and the Bash tool stay denied'
+    Write-Output 'PASS: B-467 reviewer permissions: pipes and chains of read-only PowerShell (Get-Content, Get-FileHash, Test-Path, Get-ChildItem, Select-String, read-only git, dotnet build|test|restore, into Select, sort, Measure-Object), parenthesized sub-expressions and 2>&1 pass with literal paths under the bundle root or the target; a pipe into Set-Content, Out-File or Tee-Object, a redirect, a variable, a `$( )` sub-expression, a script block, Remove-Item in a chain, a path outside the bundle root and target, a write-form git and the Bash tool stay denied'
 }
 
 # B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 3, "Scoring" and "Validity"): the grader on hand-made streams. Red first: with no
