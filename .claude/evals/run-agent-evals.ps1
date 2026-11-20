@@ -2963,6 +2963,13 @@ function Initialize-ReviewSubject([string]$Target, [string]$SubjectRoot, [string
         git -C $Target commit --quiet -m 'target patch: omitClaudeMd on the six reviewers'
         if ($LASTEXITCODE -ne 0) { throw "B-467 target patch: the commit failed (exit $LASTEXITCODE)." }
     }
+    # Amendment 2: the fixture ignores build output, so a `dotnet test` in the run cannot change `git status` (C0: ~200 untracked bin/ obj/ files did).
+    $ignorePath = Join-Path $Target '.gitignore'
+    if (Test-Path -LiteralPath $ignorePath) { throw 'B-467 subject: the target already has a .gitignore.' }
+    [IO.File]::WriteAllText($ignorePath, "bin/`nobj/`n")
+    git -C $Target add .gitignore
+    git -C $Target commit --quiet -m 'fixture: ignore bin/ and obj/'
+    if ($LASTEXITCODE -ne 0) { throw "B-467 subject: the .gitignore commit failed (exit $LASTEXITCODE)." }
     $dirty = @(git -C $Target status --porcelain=v1 --untracked-files=all)
     if ($dirty.Count) { throw "B-467 subject: the tree is not clean before the subject is copied in: $($dirty -join '; ')" }
     foreach ($entry in $entries) {
@@ -7685,11 +7692,20 @@ function Invoke-ReviewRunSelfTest([string]$Temp) {
     if (($listed -join '|') -cne ($wantPaths -join '|')) { throw "B-467 subject setup: git status lists $(@($listed | Where-Object { $_ -notin $wantPaths }) -join ', ') beside the subject (the target patch was left uncommitted); it must list the three subject files and nothing else" }
     $oCommits = [int](git -C $armO rev-list --count HEAD)
     if (-not (Get-ReviewPatchCommit $armO) -or (Get-ReviewPatchCommit (Join-Path $Temp 'not-a-repo'))) { throw 'B-467 the row does not say the patch commit is present in arm O' }
-    if ((git -C $armO log -1 --format=%s) -cnotmatch 'omitClaudeMd' -or (git -C $armO diff --stat HEAD~1 HEAD | Select-String -SimpleMatch '6 files changed').Count -ne 1) { throw 'B-467 arm O: the last commit is not the six-file target patch' }
+    if ((git -C $armO log -1 --format=%s HEAD~1) -cnotmatch 'omitClaudeMd' -or (git -C $armO diff --stat HEAD~2 HEAD~1 | Select-String -SimpleMatch '6 files changed').Count -ne 1 -or ((git -C $armO show HEAD:.gitignore) -join '|') -cne 'bin/|obj/') { throw 'B-467 arm O: the commit before the .gitignore commit is not the six-file target patch, or the .gitignore is not bin/ and obj/' }
     $armK = & $build 'b467-arm-k'
     $kBefore = Initialize-ReviewSubject $armK $subject ''
     if (Get-ReviewPatchCommit $armK) { throw 'B-467 arm K holds a patch commit' }
     if (($(& $status $armK) -join '|') -cne ($wantPaths -join '|') -or $kBefore -ne $oCommits - 1) { throw "B-467 arm K: git status or commit count is wrong (commits $kBefore, arm O $oCommits)" }
+    # Amendment 2: a build after setup leaves bin/ and obj/ files; the fixture's .gitignore keeps them out of `git status` in both arms (C0: ~200 untracked files changed the second scope capture).
+    foreach ($armRoot in @($armO, $armK)) {
+        foreach ($built in @('src/Orders.Api/bin/x', 'src/Orders.Api/obj/y')) {
+            New-Item -ItemType Directory -Path (Split-Path -Parent (Join-Path $armRoot $built)) -Force | Out-Null
+            [IO.File]::WriteAllText((Join-Path $armRoot $built), 'built')
+        }
+        $afterBuild = & $status $armRoot
+        if (($afterBuild -join '|') -cne ($wantPaths -join '|')) { throw "B-467 subject setup: after a build git status lists $(@($afterBuild | Where-Object { $_ -notin $wantPaths }) -join ', ') beside the subject; the fixture must ignore bin/ and obj/" }
+    }
     # The patch rule: a patch that changes one other line, or names five files, is refused before the tree is touched; a subject byte off the manifest likewise.
     $patchText = [IO.File]::ReadAllText($patch)
     $other = Join-Path $Temp 'other.patch'
