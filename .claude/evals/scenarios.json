@@ -951,7 +951,7 @@
       "fixture": "orders-v2",
       "overlay": "b514-orders",
       "subject": "b467-review",
-      "budgetUsd": 1.0,
+      "budgetUsd": 1.25,
       "prompt": "/review",
       "completeReview": true,
       "assertion": "reviewRun"
