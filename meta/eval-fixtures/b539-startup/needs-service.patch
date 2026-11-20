@@ -1,0 +1,42 @@
+diff --git a/src/Catalog.Api/Program.cs b/src/Catalog.Api/Program.cs
+index 9593620..efbf605 100644
+--- a/src/Catalog.Api/Program.cs
++++ b/src/Catalog.Api/Program.cs
+@@ -1,3 +1,4 @@
++using System.Net.Sockets;
+ using Catalog.Api;
+ 
+ var builder = WebApplication.CreateBuilder(args);
+@@ -6,6 +7,20 @@ builder.Services.AddHttpClient<PricingClient>(c => c.BaseAddress = new Uri(build
+ builder.Services.AddHostedService<PriceCacheRefresher>();
+ 
+ var app = builder.Build();
++
++// fail fast if the inventory service is down
++var inventoryHost = builder.Configuration["Inventory:Host"] ?? "localhost";
++var inventoryPort = int.Parse(builder.Configuration["Inventory:Port"] ?? "1");
++try
++{
++    using var inventory = new TcpClient();
++    inventory.Connect(inventoryHost, inventoryPort);
++}
++catch (SocketException ex)
++{
++    throw new InvalidOperationException("Inventory service unreachable at localhost:1", ex);
++}
++
+ app.MapGet("/health", () => Results.Ok(new { status = "up" }));
+ app.MapGet("/prices/{sku}", async (string sku, PricingClient pricing, CancellationToken ct) => Results.Ok(await pricing.GetPriceAsync(sku, ct)));
+ app.Run();
+diff --git a/src/Catalog.Api/appsettings.json b/src/Catalog.Api/appsettings.json
+new file mode 100644
+index 0000000..63ccbf0
+--- /dev/null
++++ b/src/Catalog.Api/appsettings.json
+@@ -0,0 +1,6 @@
++{
++  "Inventory": {
++    "Host": "localhost",
++    "Port": 1
++  }
++}
