@@ -81,6 +81,7 @@ characters; everything else goes in the body.
   `meta/BACKLOG-DONE.md` (WSD-106); never an edit.
 - No new script, test file, gate, record or document unless the task requires it; propose it in
   one line instead. Prefer deleting to adding.
+- When the task is done, remove your own scratch files, processes and merged, clean worktrees; keep evidence a record names.
 - An escaped defect — one that reached a tag, or a gate that was green on a wrong artifact — gets
   the case that would have caught it plus at most three sentences in the commit body: cause, why
   no gate caught it, the check added or "none, accepted because …". Nothing else gets an RCA.

@@ -1,0 +1,13 @@
+diff --git a/.github/instructions/framework-rules.instructions.md b/.github/instructions/framework-rules.instructions.md
+index 9bb068c..c6884fd 100644
+--- a/.github/instructions/framework-rules.instructions.md
++++ b/.github/instructions/framework-rules.instructions.md
+@@ -91,7 +91,7 @@ Every bug-fix edit must be necessary for requested behaviour, existing caller/ex
+ ### 5. Self-review before presenting
+ Before presenting work as complete:
+ - Review your changes against `AGENTS.md > Conventions`
+-- Apply Verification command discovery; report what ran, was unavailable, or stayed manual/CI-only
++- Apply Verification command discovery; report what ran, was unavailable, or stayed manual/CI-only. State the highest level the change was exercised at: built, unit-tested, or started (the application ran and answered a request). Where the change touches start-up wiring (service registration, the constructors of registered types, configuration binding, package or runtime versions), start the application with an evidenced command (a launch profile, a recorded run command, or a test that boots the host) before presenting it; if none is evidenced, report it as **not started**, never as verified.
+ - Check if the change introduces a new pattern → flag that AGENTS.md needs updating
+ - Check if the change resolves a TECH_DEBT.md item → flag for removal
+ - Check if the change contradicts any convention → ask whether to update the convention or change the implementation

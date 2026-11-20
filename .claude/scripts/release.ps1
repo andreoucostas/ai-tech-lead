@@ -182,6 +182,62 @@ function Get-ReleaseDeliveryInput {
     return $in
 }
 
+# Host smoke (WSD-142): one line read from host-smoke.ps1's exit, never a gate. 0 with its PASS line is
+# pass; 1 with its FAIL line is a host fault; anything else, a missing script or a throw is "could not
+# examine", and so is more than one summary line. The wait is capped: the check makes three host calls
+# (Claude run, Copilot run, Copilot skill list), each up to 240 s plus 10 s after a kill, plus endpoint
+# starts, install and git setup, a little over 750 s at worst, so 900 s (up to about 15 minutes); past it the
+# child's process tree is killed. Nothing here exits or throws, so no result changes the release's outcome.
+function Invoke-HostSmokeLine {
+    param(
+        [string]$ScriptPath,
+        [string]$PwshPath = (Get-Process -Id $PID).Path,
+        [string[]]$Arguments = @('-Dist', 'dotnet'),
+        [int]$TimeoutSeconds = 900,
+        [int]$OutputWaitSeconds = 30
+    )
+    $tag = 'HOST-SMOKE {0} (report only; the release goes on): {1}'
+    $work = $null
+    $p = $null
+    try {
+        if (-not $ScriptPath -or -not (Test-Path -LiteralPath $ScriptPath -PathType Leaf)) {
+            return ($tag -f 'could not examine', "no check script at $ScriptPath")
+        }
+        $work = Join-Path ([IO.Path]::GetTempPath()) ('release-host-smoke-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
+        $psi = [Diagnostics.ProcessStartInfo]::new($PwshPath)
+        foreach ($a in @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ScriptPath) + $Arguments + @('-WorkRoot', $work)) { [void]$psi.ArgumentList.Add($a) }
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.RedirectStandardInput = $true
+        $p = [Diagnostics.Process]::Start($psi)
+        $p.StandardInput.Close()
+        $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()
+        if (-not $p.WaitForExit($TimeoutSeconds * 1000)) {
+            try { $p.Kill($true) } catch { }
+            [void]$p.WaitForExit(10000)
+            return ($tag -f 'could not examine', "the check timed out after $TimeoutSeconds s and was stopped")
+        }
+        # A process the check left running can hold its output open; do not wait on it past 30 s.
+        if (-not [Threading.Tasks.Task]::WaitAll([Threading.Tasks.Task[]]@($o, $e), $OutputWaitSeconds * 1000)) {
+            return ($tag -f 'could not examine', "exit $($p.ExitCode); the check's output stayed open after it ended")
+        }
+        $code = $p.ExitCode
+        $out = @(($o.GetAwaiter().GetResult() + "`n" + $e.GetAwaiter().GetResult()) -split '\r?\n')
+        $summary = @($out | Where-Object { $_ -match '^HOST-SMOKE (PASS|FAIL|CANNOT_EXAMINE) - ' })
+        if ($summary.Count -gt 1) { return ($tag -f 'could not examine', "exit $code; $($summary.Count) HOST-SMOKE summary lines") }
+        $detail = if ($summary.Count -eq 1) { $summary[0] -replace '^HOST-SMOKE \S+ - ', '' } else { 'no HOST-SMOKE line' }
+        if ($code -eq 0 -and $summary.Count -eq 1 -and $summary[0] -match '^HOST-SMOKE PASS ') { return ($tag -f 'pass', $detail) }
+        if ($code -eq 1 -and $summary.Count -eq 1 -and $summary[0] -match '^HOST-SMOKE FAIL ') { return ($tag -f 'host fault', $detail) }
+        return ($tag -f 'could not examine', "exit $code; $detail")
+    } catch {
+        return ($tag -f 'could not examine', ("the check threw: $($_.Exception.Message)" -replace '\s+', ' '))
+    } finally {
+        if ($p) { $p.Dispose() }
+        if ($work) { try { Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction Stop } catch { } }
+    }
+}
+
 # ---- 0. Reject a path-expanded -Summary (B-73) -----------------------------------------------
 # A leading slash-command was once rewritten to a filesystem path before PowerShell received it;
 # v0.40.0 shipped that path in its commit subject. Keep the input invariant even though the
@@ -591,6 +647,10 @@ if ($fatal) {
     Write-Host 'Once fixed, re-run the same release command as-is.'
     exit 1
 }
+
+# ---- 4a. Host smoke (WSD-142): dist/ is final here (composed at step 3, validated at step 4) and
+# nothing is committed or pushed yet. Report only: the line never changes this release's outcome.
+Write-Host (Invoke-HostSmokeLine -ScriptPath (Join-Path $repo '.claude/scripts/host-smoke.ps1'))
 
 # ---- 4b. Record the supplied review evidence (B-45) ----
 # Written after the gates pass and before `git add -A`, so the ledger row lands in the release

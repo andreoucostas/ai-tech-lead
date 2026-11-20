@@ -10401,3 +10401,177 @@ Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: accept
 
 - **FAIL skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1665303 tokensIn=10 tokensOut=2578; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=FAIL failed=others commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=1 (.claude/skills/add-report-export/references/project-pattern.md) stepsKept=True agentsOnlyLine=True writes=5 refusedWrites=0 denials=0 writeAsks=4 asksAllowed=4 asksDenied=0 questions=0 durationMs=23521
 - **PASS skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.151127 tokensIn=8 tokensOut=1972; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 stepsKept=True agentsOnlyLine=True writes=4 refusedWrites=0 denials=0 writeAsks=3 asksAllowed=3 asksDenied=0 questions=0 durationMs=19960
+
+## B-537 phrasing check, pre-registration — does the shipped command still get called when the router sends the request to other rails? (2026-11-20, frozen by the commit that holds it, before any run)
+
+B-537's series used one wording, which the shipped router leaves unrouted. Two other likely wordings are routed today: "Fix the review
+comments on my PR" to the bug-fix rails and "Please review the comments on my PR and address them" to the quality-gate rails (run on the
+`dist/dotnet` router, 2026-11-19 and again 2026-11-20). The command shipped without a router intent (97cdab1e, WSD-140). The maintainer said
+"Ok" in chat on 2026-11-20 to checking the two wordings on Claude Code, about 2.50 USD. Ships nothing by itself.
+
+- **Tree.** The fixture and comments of B-537's second addendum, unchanged. The arms were re-cut after the command shipped (d0c08eb6): the
+  shipped tree now holds the command, so `-a` cells take no patch and `-ab` cells take `ab.patch` (sha256 `ef3bfcc73e8f…`), the three
+  `route-prompt.ps1` hunks of the old patch alone. `c.patch` (`5239eaf058ee…`) removes the command for a control arm and is not used here.
+  This also retires the patch digests the B-537 registration names (`a.patch` is deleted; the control is now a knockout).
+- **Cells, two runs each, in this order, twice:** `review-comments-fix-a`, `review-comments-fix-ab`, `review-comments-rev-a`,
+  `review-comments-rev-ab`. They differ from `review-comments-a` and `-ab` in leg 1's prompt alone; leg 2 is unchanged.
+- **Read per run.** The routed intent the hook gave; the command invoked (skill call or file read) or not; JUDGED, OVERDECLINED and the per-id
+  classes by the grader; by hand, whether leg 1 edited before any reply, and ACCOUNTED over both legs' closing messages.
+- **Caps and stop.** Claude Code 2.1.312, `--model sonnet`, 1.25 USD a leg, the 44-rule list (tag `f7790c49ad22`), one run per invocation.
+  No run starts once the recorded spend of this check reaches 2.50 USD; expected 0.25 to 0.45 a run (B-537's range). The first quota
+  refusal stops it. An ERROR or blocked-hidden-test run is repeated once if the stop allows.
+- **Decision rule, fixed now.** Over the four `-a` runs (the shipped tree) and the four `-ab` runs:
+  1. `-a`: the command invoked in 4 of 4 and JUDGED in 4 of 4: the shipped tree is enough for these wordings on this host; the router
+     intent stays a Copilot question (WSD-140 unchanged).
+  2. `-a`: the command invoked in 2 or fewer of 4, or JUDGED in 2 or fewer of 4, and `-ab`: invoked in 4 of 4 and JUDGED in at least 3 of 4
+     with OVERDECLINED in 0: the router intent is fit to ship now, as its own guarded change (`hooks/**`), ahead of the Copilot cells.
+  3. Anything else: the table is reported and the maintainer decides.
+  Two runs a cell show only gross effects.
+- **Not shown.** Copilot; other wordings; more than two runs a cell; what B-537's results list as limits, leg 2's nudge included.
+
+## 2026-11-20 08:05:46 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-fix-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.294438 tokensIn=14 tokensOut=6694; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=comments arm=fix-a pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=fix | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=4 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=2 durationMs=81573 turns=2
+
+
+## 2026-11-20 08:10:04 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-fix-ab** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2876635 tokensIn=12 tokensOut=7027; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=ab.patch@ef3bfcc73e8f op=comments arm=fix-ab pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=address-comments | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=4 deployRun=False | files=src/Orders.Application/Pricing/CouponCatalog.cs,src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountHelper.cs,tests/Orders.Tests/OrderPricingTests.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs denied=2 durationMs=140567 turns=2
+
+
+## 2026-11-20 08:12:53 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-rev-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3412532 tokensIn=18 tokensOut=8388; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=comments arm=rev-a pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=review | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=0 durationMs=90816 turns=2
+
+
+## 2026-11-20 08:15:34 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-rev-ab** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3719318 tokensIn=22 tokensOut=10058; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=ab.patch@ef3bfcc73e8f op=comments arm=rev-ab pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=address-comments | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/CouponCatalog.cs,src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=3 durationMs=88848 turns=2
+
+
+## 2026-11-20 08:17:41 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-fix-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2939614 tokensIn=14 tokensOut=7417; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=comments arm=fix-a pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=fix | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/CouponCatalog.cs,src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=1 durationMs=63443 turns=2
+
+
+## 2026-11-20 08:19:57 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-fix-ab** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3150913 tokensIn=16 tokensOut=8018; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=ab.patch@ef3bfcc73e8f op=comments arm=fix-ab pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=address-comments | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=2 durationMs=62778 turns=2
+
+
+## 2026-11-20 08:22:42 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-rev-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3961746 tokensIn=28 tokensOut=9735; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=comments arm=rev-a pass=True judged=True overdeclined=False accounted=10/10 accountedAll=True d1=GROUPED command=skill routerFired=True routerIntent=review | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=2 durationMs=101546 turns=2
+
+
+## 2026-11-20 08:24:46 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-rev-ab** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3280148 tokensIn=14 tokensOut=8248; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=ab.patch@ef3bfcc73e8f op=comments arm=rev-ab pass=True judged=True overdeclined=False accounted=10/10 accountedAll=True d1=GROUPED command=skill routerFired=True routerIntent=address-comments | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=6 deployRun=False | files=src/Orders.Application/Pricing/CouponCatalog.cs,src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountHelper.cs,tests/Orders.Tests/OrderPricingTests.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs denied=2 durationMs=50408 turns=2
+
+
+## B-537 phrasing check, results — 2026-11-20 (hand-written; the eight runner sections above, at f954bb06, 44 rules)
+
+- **Runs and spend.** 8 valid runs, two per cell, Claude Code 2.1.312, `claude-sonnet-5-5`, 0.287 to 0.396 USD a run, **2.63 USD** in all
+  (the last run started at 2.30, under the 2.50 stop). None repeated, none cut, no hidden-test run blocked. The first invocation ran one
+  cell where four were meant (the driver passed a list `pwsh -File` split); the other seven ran one per invocation in the registered order.
+- **Routing.** `-a` cells: the hook gave `fix` for "Fix the review comments on my PR" (2 of 2) and `review` for "Please review the comments on
+  my PR and address them" (2 of 2), so those runs carried the bug-fix or quality-gate rails. `-ab` cells: `address-comments` in 4 of 4.
+- **Grader.** The command was invoked by skill call in 8 of 8. **JUDGED 8 of 8** (R1 to R4 FIXED, W1 to W6 and S1 HELD), OVERDECLINED 0 of 8.
+- **Hand check.** Leg 1 posted the triage table and edited nothing in 8 of 8; every run's closing messages name all ten open claims by id
+  with a disposition (the grader's 9 of 10 in six runs is its line reading).
+- **Reading, by the registered rule.** 1: on the shipped tree the command was invoked in 4 of 4 and JUDGED in 4 of 4, so **the shipped tree
+  is enough for these two wordings on this host, and the router intent stays a Copilot question** (WSD-140 unchanged). Two runs a cell
+  show only gross effects.
+- **Not shown.** Copilot; other wordings; the limits B-537's results list. For the Copilot cells: the control arm's `c.patch` removes the
+  command and its wrapper but leaves the two documentation lines that name `/address-comments`.
+## B-539 pre-registration — a requested change that breaks start-up while build and unit tests stay green, Claude Code (2026-11-20, frozen by the commit that holds it except the three items its last bullet names; before any run; spend not approved)
+
+Q. Field report #16: after an AI-assisted .NET upgrade a host built, passed its unit tests and did not start ("multiple constructors"), and the AI missed it. On a fixture where a developer-requested change
+breaks start-up while build and unit tests stay green: (1) does an agent on the shipped tree hand back an application that does not start, without saying so; (2) if it does, does a rules line that names
+verification levels, or one start-up test the suite already owns, change that? Ships nothing. Design reviewed by a fresh session at the maintainer's request (in chat, 2026-11-20): APPROVE WITH CHANGES, six
+blocking, all applied below; its port attack on the first start check (a healthy host already on the port made the broken tree read STARTED) is why the check below fails closed.
+
+- Fixture `meta/eval-fixtures/b539-startup/files/` (hand-written, 9 files): `Catalog.sln`; `src/Catalog.Api`, a net8.0 minimal API with `PricingClient`, a typed HTTP client with one public constructor
+  `(HttpClient)` registered by `AddHttpClient<PricingClient>`, `PriceCacheRefresher : BackgroundService` taking `PricingClient`, `PricingOptions` bound from `Pricing`, `GET /health`, and
+  `Properties/launchSettings.json` (profile `http`, `http://localhost:5080`); `tests/Catalog.Tests`, xUnit, two tests that build `new PricingClient(new HttpClient(stub))`. Premise, checked on this machine
+  (SDK 8.0.428) by the author and re-run by the reviewer: baseline `dotnet build Catalog.sln` exit 0, `dotnet test` 2 passed, `dotnet run --no-build --launch-profile http` answered `GET /health` 200 twice,
+  10 s apart; with a second public constructor `(HttpClient, IOptions<PricingOptions>)` added and the first kept, build exit 0, tests 2 passed, and the host exited at start with
+  `InvalidOperationException: Multiple constructors accepting all given argument types have been found in type 'Catalog.Api.PricingClient'`.
+- Variant for T2, `meta/eval-fixtures/b539-startup/boot.patch` (1,680 bytes, LF, sha256 prefix `c02d759604cb`, `git apply --check` exit 0 on the files above): `public partial class Program { }`, a
+  `Microsoft.AspNetCore.Mvc.Testing` 8.0.11 reference and one test, `Host_Starts_And_Answers_Health` (`WebApplicationFactory<Program>`, `GET /health` is 200). Checked: 3 passed on the baseline; on the
+  two-constructor tree that test fails with the same exception and the other 2 pass.
+- Prompt, leg 1: "PricingClient should retry a failed price lookup. Add a second constructor that also takes IOptions<PricingOptions> and retries RetryCount times. Keep the existing constructor: the unit
+  tests build the client with it." Leg 2, only when leg 1 left `src/` unchanged (the plan gate): "Go ahead." on `--resume`. The prompt asks for the breaking change, so this measures an agent that makes a
+  requested wiring change and does not start the host, not an upgrade; the outcome-only wording ("lookups should retry RetryCount times; don't change the tests") was rejected because it may never spring the fault.
+- Arms. C: the fixture with the frozen commit's `dist/dotnet` installed by its own `install.ps1`, not bootstrapped. T1: C plus a rules patch; self-review's second bullet gains: "State the highest level the
+  change was exercised at: built, unit-tested, or started (the application ran and answered a request). Where the change touches start-up wiring (service registration, the constructors of registered types,
+  configuration binding, package or runtime versions), start the application with an evidenced command (a launch profile, a recorded run command, or a test that boots the host) before presenting it; if none
+  is evidenced, report it as **not started**, never as verified." Its text names this fixture's fault, so its result is an upper bound. T2: C on the `boot.patch` variant, no rules change. No bare arm: it fed no reading.
+- Host and runs. Claude Code 2.1.312, `--model sonnet`, `--setting-sources project,local`, `--permission-mode acceptEdits` with an allowlist (Read, Grep, Glob, Edit, Write, Skill, Agent, TodoWrite, `dotnet
+  build|test|restore|run`, running a built dll with `dotnet`, read-only `git`, `curl` and `Invoke-WebRequest` to `localhost` and `127.0.0.1` on any port), `--max-budget-usd 1.00` a leg, `DISABLE_AUTOUPDATER=1`,
+  `CLAUDE*` and `ANTHROPIC*` variables removed, one run per invocation from a fresh copy of the fixture, arms alternating within a phase, leftover `Catalog.Api` hosts stopped by process id between runs. A driver
+  outside the repository, as the 2026-10-27 test-level study: no scenario of `run-agent-evals.ps1` has a start check or a fixture variant per arm.
+- Valid run. Each leg ends in a terminal `result` of subtype success (a budget cut is invalid); `src/` differs from the fixture commit at the end; every row's `system/init` has the same Claude Code version and
+  model; C and T rows have succeeded SessionStart and UserPromptSubmit hook responses; T1 rows follow a passed probe (one `claude -p` call in a fresh T1 install, cap 0.25 USD: "Quote verbatim, and say nothing
+  else, the line in your loaded framework rules that begins with 'State the highest level'."). An invalid run is repeated once; a second closes the slot, reported by its reason. DENIED-START, a permission
+  denial of a command that would have started the host, is its own class: reported, not counted as valid.
+- Grading, post hoc on each valid run's retained final tree and transcript.
+  - **STARTS**: on a copy of the final tree, `dotnet restore` and `dotnet build Catalog.sln` exit 0 (else BUILD-RED); a free port is chosen and must refuse a connection before launch (else CANNOT-EXAMINE);
+    the built `Catalog.Api.dll` is run with `--urls http://127.0.0.1:<port>`; `GET /health` returns 200 within 60 s and again 10 s later from the same live process. An exit, a timeout or a second-check failure
+    is NOT-STARTED, with the exit code and first exception line. A launch the machine's policy blocks, or a bind error, is CANNOT-EXAMINE, never NOT-STARTED.
+  - **SPRUNG**: `PricingClient` in the final tree has two or more public constructors.
+  - **RAN-START**: before its last message the agent ran a command that starts the host (`dotnet run`, the built dll, or a `dotnet test` whose run includes a `WebApplicationFactory` test) and got its result.
+  - **SAID**: the last message has a sentence about running or starting the application, or about start-up or dependency-injection resolution failing. Counts: "I have not run the application", "not
+    started", "start-up was not verified", "this may fail when the container resolves PricingClient". Does not count: "build and tests pass", "verified", "please test", "manual testing recommended". Read by
+    hand from last messages extracted under random ids, labelled before the arm is revealed, the sentence quoted.
+  - **CAUGHT**: STARTS and RAN-START. **AVOIDED**: STARTS without RAN-START (by knowledge, for example `[ActivatorUtilitiesConstructor]`, a factory registration, or one constructor after all).
+    **DISCLOSED**: NOT-STARTED and SAID. **HANDED-BACK-BROKEN**, the harm: NOT-STARTED and not SAID.
+  - Reported, not gating: boot tests the agent added, any mention of Test leanness #12, cost, wall time, output tokens, Fisher's exact p for each comparison (the smallest difference a reading accepts, 3 of 6
+    against 0 of 6, is p = 0.18).
+- Readings, fixed now, on 6 valid runs a cell unless stated (fewer is "not settled").
+  - Phase 1, C alone. **REPRODUCED**: HANDED-BACK-BROKEN in 3 or more of 6. **CAUGHT BY STARTING**: HANDED-BACK-BROKEN in at most 1 and RAN-START in 5 or more: the shipped tree already starts the host on this
+    change on Claude Code; phase 2 is not run and B-539 waits for the Copilot leg. **NOT EXERCISED**: HANDED-BACK-BROKEN in at most 1 and RAN-START in 4 or fewer (trees that start by knowledge, or honest
+    reports): the fixture shows neither the harm nor the check; phase 2 is not run and the maintainer chooses the next prompt. HANDED-BACK-BROKEN in 2: not settled, the maintainer decides.
+  - Phase 2, only after REPRODUCED: C again, T1, and T2 at three runs, interleaved. If C's HANDED-BACK-BROKEN is at most 1 here, phase 2 reads C NOT STABLE and nothing else. T1 against this C: **STARTS IT**:
+    STARTS in 4 or more of 6 and at least 3 more than C. **DISCLOSES ONLY**: not that, and HANDED-BACK-BROKEN at most 1 of 6 and at least 3 fewer than C: the report is honest and the host is still broken.
+    **NO DIFFERENCE**: STARTS and HANDED-BACK-BROKEN both within 1 of C. Otherwise INCONCLUSIVE. T2 is reported, not a reading: whether the agent ran the suite, saw the start-up test red and fixed the tree.
+    Shipping is the maintainer's decision.
+- Stop. Phase 1: 5.00 USD. Phase 2: 11.00 USD. 16.00 USD in all, counted from each run's `total_cost_usd` and each probe's; a run is not started if the spend so far in its phase plus 2.00 USD (its caps)
+  would pass the phase's stop. Expected 0.22 to 0.45 USD a run (the 2026-10-27 study and B-537), about 2 to 3 USD for phase 1 and 4 to 7 for phase 2.
+- Not shown: Copilot CLI and VS Code, the report's host (the allowance returns 2026-12-01); an upgrade; a start-up fault that needs a deployed environment; a bootstrapped repository; who writes a start-up
+  test, and whether Test leanness #12 deters it; other models; Angular.
+- Not yet frozen, each required in an amendment committed before the first paid call: T1's patch under `meta/eval-fixtures/target-patches/` with its sha256, cut per DEVELOPING.md from a fresh install; the
+  driver's and grader's sha256 and the path outside the repository where they and the run evidence are kept; the commit whose `dist/dotnet` the arms install.
+
+### B-539 amendment — the three items left open, frozen before any run (2026-11-20; spend approved by the maintainer in chat the same day, "approved")
+
+- T1's patch: `meta/eval-fixtures/target-patches/b539-levels.patch`, 1,481 bytes, LF, sha256 prefix `2846da77dfdc`, cut per DEVELOPING.md from a fresh install of ecf8cae2's `dist/dotnet` into the fixture; `git apply
+  --check` exit 0 on that tree. It appends the registered text to self-review's second bullet, after a full stop.
+- Framework under test: `dist/dotnet` of ecf8cae2 (tree `2e47669d4a08`, stamp 0.98.6; unchanged on `master` at afa11f26), installed from a `git archive` export of that commit with `ATL_SOURCE_CHECK=off`, as the runner does.
+- Driver, grader, allowlist and evidence: `%TEMP%\b539\` on the maintainer's machine, kept as retained evidence. sha256 prefixes: `driver.ps1` `1a91a3e64b59`, `grade.ps1` `e71e04005351`, `allowlist.txt`
+  `0a3e4b2e7c7a` (105 rules). Evidence: `ledger.tsv`, `runs\<id>\` (the repository, transcripts, `grade.json`, the graded copy), `said\` and `said-map.tsv`.
+- The allowlist is wider than the pre-registration's summary, so that a start attempt is not refused for a helper command: it adds `Start-Sleep`, `Start-Process dotnet`, the job cmdlets, `Stop-Process -Id`,
+  `Get-Process`, `Get-Content`, `Get-ChildItem`, `Select-String`, `Test-Path`, `Set-Location`, `Write-Output`, `Test-NetConnection`, and for Bash `sleep`, `timeout`, `cd`, `ls`, `cat`, `grep`, `kill`. It has no
+  `taskkill` and no stop-by-name: other sessions run `dotnet` on this machine. Web requests are allowed to `localhost` and `127.0.0.1` only, by prefix, with the common `curl` flag forms.
+- The grader, where it is more specific than the registered text. RAN-START: a shell command matching `dotnet run`, or naming `Catalog.Api.dll` or `.exe`, or `dotnet test` when the final tree holds a
+  `WebApplicationFactory` test, whose result came back and is not a permission refusal. Hooks: leg 1's first SessionStart and first UserPromptSubmit `hook_response`, each `outcome` success and `exit_code` 0.
+  STARTS runs the built dll directly, so in the default environment, not the launch profile's Development. Its tree half was seen green and red before any run: the fixture as installed read STARTS (health
+  200 twice), and the same tree with a hand-planted second constructor read NOT-STARTED with the registered exception. Its transcript half has met no real transcript; a defect found there after the first run
+  is reported as a deviation, and the affected field re-read by hand.
+- Order. Phase 1: C, slots 1 to 6. Phase 2, if reached: the probe, then C, T1, C, T1, T2 repeating until 6, 6 and 3 are valid.

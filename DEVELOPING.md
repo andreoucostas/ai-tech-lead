@@ -422,7 +422,7 @@ stamp drift twice:
    `src/` too if the notes should reach consumers).
 2. Confirm the latest `master` CI run is green: `gh run list --branch master --limit 1`. The local
    gates run only the release-subject meta files, so that run is the full-suite evidence for the
-   pre-release tree. Then run `pwsh -NoProfile -File .claude/scripts/host-smoke.ps1` (B-536, free, not a gate: real Claude Code and Copilot CLI over a fresh `dist/dotnet` install against a scripted model on 127.0.0.1; exit 0 pass, 1 names the leg a host failed, 2 could not examine).
+   pre-release tree. The release runs `.claude/scripts/host-smoke.ps1` itself once the local gates pass, before the commit and push, and prints one `HOST-SMOKE pass|host fault|could not examine` line (WSD-142; B-536, free, not a gate: real Claude Code and Copilot CLI over a fresh `dist/dotnet` install against a scripted model on 127.0.0.1; it usually adds under a minute (39 s measured on the maintainer's machine, 2026-11-20) and at worst up to about 15 minutes: three host calls (Claude run, Copilot run, Copilot skill list) of up to 240 s each, and the release stops the check at 900 s).
 3. From PowerShell 7, run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
    -ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`.
    It stamps `src/core/AGENTS.md` + the three `framework-version.json` files, rebuilds all three

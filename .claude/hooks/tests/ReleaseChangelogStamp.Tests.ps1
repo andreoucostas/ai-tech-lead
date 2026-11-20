@@ -53,6 +53,14 @@ $deliveryAsts = @($releaseAst.FindAll({
 $deliveryReady = ($parseErrors.Count -eq 0 -and $deliveryAsts.Count -eq $deliveryNames.Count)
 if ($deliveryReady) { foreach ($a in $deliveryAsts) { . ([scriptblock]::Create($a.Extent.Text)) } }
 
+# WSD-142: the host-smoke line, extracted verbatim and driven with fake check scripts.
+$smokeAst = @($releaseAst.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Invoke-HostSmokeLine'
+}, $true))
+$smokeReady = ($parseErrors.Count -eq 0 -and $smokeAst.Count -eq 1)
+if ($smokeReady) { . ([scriptblock]::Create($smokeAst[0].Extent.Text)) }
+
 # The fallback is bounded by stable numbered release-step markers. It exists only to make the
 # original root-only behavior an observable red; every post-fix assertion drives extracted helpers.
 $step1Start = $releaseText.IndexOf('# ---- 1.')
@@ -294,6 +302,122 @@ try {
         Assert ($null -eq @($r.Values)[0].Value) 'an unknown value must be null, not 0'
         $zero = Get-ReleaseDeliveryNumbers -In @{ Bodies = @(); Why = @{} }
         Assert (@($zero.Values)[2].Text -eq '0') 'an empty body list must count as 0 escaped defects'
+    }
+
+    # Each fake records the -WorkRoot it was given, creates it, then ends as the case says.
+    $smokeDir = Join-Path ([IO.Path]::GetTempPath()) ('host-smoke-line-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+    New-Item -ItemType Directory -Force -Path $smokeDir | Out-Null
+    $scratch.Add($smokeDir)
+    $newFake = {
+        param([string]$Name, [string]$Ending)
+        $path = Join-Path $smokeDir "$Name.ps1"
+        $record = Join-Path $smokeDir "$Name.workroot"
+        $body = "param([string]`$Dist, [string]`$WorkRoot)`r`n" +
+            "New-Item -ItemType Directory -Force -Path `$WorkRoot | Out-Null`r`n" +
+            "[IO.File]::WriteAllText('$record', `"`$Dist|`$WorkRoot`")`r`n" + $Ending
+        [IO.File]::WriteAllText($path, $body, [Text.UTF8Encoding]::new($true))
+        return [pscustomobject]@{ Path = $path; Record = $record }
+    }
+    $smokeCases = @(
+        @{ Name = 'exit0'; Ending = "'LEG claude run PASS - x'; 'HOST-SMOKE PASS - claude, copilot'; exit 0"; Expect = 'pass'; Detail = 'claude, copilot' },
+        @{ Name = 'exit1'; Ending = "'HOST-SMOKE FAIL - copilot planted-write'; exit 1"; Expect = 'host fault'; Detail = 'copilot planted-write' },
+        @{ Name = 'exit2'; Ending = "'HOST-SMOKE CANNOT_EXAMINE - claude run'; exit 2"; Expect = 'could not examine'; Detail = 'claude run' },
+        @{ Name = 'exit7'; Ending = "'HOST-SMOKE PASS - claude'; exit 7"; Expect = 'could not examine'; Detail = 'exit 7' },
+        @{ Name = 'throws'; Ending = "throw 'smoke script blew up'"; Expect = 'could not examine'; Detail = 'no HOST-SMOKE line' }
+    )
+
+    foreach ($c in $smokeCases) {
+        It "host smoke line: a check that ends '$($c.Name)' prints one '$($c.Expect)' line and cleans its work folder" {
+            Assert $smokeReady "Invoke-HostSmokeLine missing or ambiguous in release.ps1 (found $($smokeAst.Count))"
+            $fake = & $newFake $c.Name $c.Ending
+            $line = @(Invoke-HostSmokeLine -ScriptPath $fake.Path)
+            Assert ($line.Count -eq 1) "expected one line, got $($line.Count): $($line -join ' | ')"
+            Assert ($line[0] -like "HOST-SMOKE $($c.Expect) (report only*") "line: $($line[0])"
+            Assert ($line[0] -like "*$($c.Detail)*") "line does not carry '$($c.Detail)': $($line[0])"
+            Assert (Test-Path -LiteralPath $fake.Record) 'the fake check was not run'
+            $given = ([IO.File]::ReadAllText($fake.Record)) -split '\|', 2
+            Assert ($given[0] -eq 'dotnet') "the check was not asked for dist/dotnet: '$($given[0])'"
+            Assert ($given[1] -and -not (Test-Path -LiteralPath $given[1])) "the -WorkRoot was left behind: $($given[1])"
+        }
+    }
+
+    It 'host smoke line: a check that prints more than one summary line reads as could not examine' {
+        Assert $smokeReady "Invoke-HostSmokeLine missing or ambiguous in release.ps1 (found $($smokeAst.Count))"
+        $fake = & $newFake 'twolines' "'HOST-SMOKE FAIL - copilot planted-write'; 'HOST-SMOKE PASS - claude, copilot'; exit 0"
+        $line = @(Invoke-HostSmokeLine -ScriptPath $fake.Path)
+        Assert ($line.Count -eq 1 -and $line[0] -like 'HOST-SMOKE could not examine (report only*2 HOST-SMOKE summary lines*') "two summaries: $($line -join ' | ')"
+    }
+
+    It 'host smoke line: a check that outlives the wait limit is killed and reads as could not examine, timed out' {
+        Assert $smokeReady "Invoke-HostSmokeLine missing or ambiguous in release.ps1 (found $($smokeAst.Count))"
+        $pidFile = Join-Path $smokeDir 'hang.pid'
+        $fake = & $newFake 'hang' "[IO.File]::WriteAllText('$pidFile', [string]`$PID); Start-Sleep -Seconds 60; 'HOST-SMOKE PASS - claude, copilot'; exit 0"
+        $clock = [Diagnostics.Stopwatch]::StartNew()
+        $line = @(Invoke-HostSmokeLine -ScriptPath $fake.Path -TimeoutSeconds 4)
+        $took = $clock.Elapsed.TotalSeconds
+        Assert ($line.Count -eq 1 -and $line[0] -like 'HOST-SMOKE could not examine (report only*timed out after 4 s*') "hang: $($line -join ' | ')"
+        Assert ($took -lt 25) "the release waited $([int]$took) s on a check limited to 4 s"
+        $hung = [int]([IO.File]::ReadAllText($pidFile))
+        Assert (-not (Get-Process -Id $hung -ErrorAction SilentlyContinue)) "the timed-out check (pid $hung) is still running"
+        $given = ([IO.File]::ReadAllText($fake.Record)) -split '\|', 2
+        Assert ($given[1] -and -not (Test-Path -LiteralPath $given[1])) "the -WorkRoot was left behind: $($given[1])"
+    }
+
+    It 'host smoke line: a timed-out check dies with the process it started, and a pipe that process holds is not waited on' {
+        Assert $smokeReady "Invoke-HostSmokeLine missing or ambiguous in release.ps1 (found $($smokeAst.Count))"
+        # The fake starts a grandchild that inherits its output pipe and sleeps, then ends as the leg says.
+        $spawn = {
+            param([string]$PidFile)
+            "`$gp = [Diagnostics.ProcessStartInfo]::new((Get-Process -Id `$PID).Path); `$gp.UseShellExecute = `$false; " +
+            "foreach (`$a in @('-NoProfile', '-Command', 'Start-Sleep -Seconds 60')) { [void]`$gp.ArgumentList.Add(`$a) }; " +
+            "[IO.File]::WriteAllText('$PidFile', [string]([Diagnostics.Process]::Start(`$gp).Id)); "
+        }
+        $grandchildren = @()
+        try {
+            # Leg 1: the check hangs past the limit; the kill must take the grandchild with it.
+            $treePid = Join-Path $smokeDir 'tree.pid'
+            $fake = & $newFake 'tree' ((& $spawn $treePid) + "Start-Sleep -Seconds 60; exit 0")
+            $clock = [Diagnostics.Stopwatch]::StartNew()
+            $line = @(Invoke-HostSmokeLine -ScriptPath $fake.Path -TimeoutSeconds 6)
+            $took = $clock.Elapsed.TotalSeconds
+            $grandchildren += [int]([IO.File]::ReadAllText($treePid))
+            Assert ($line.Count -eq 1 -and $line[0] -like 'HOST-SMOKE could not examine (report only*timed out after 6 s*') "tree: $($line -join ' | ')"
+            Assert ($took -lt 25) "the release waited $([int]$took) s on a check limited to 6 s"
+            $wait = [Diagnostics.Stopwatch]::StartNew()
+            while ((Get-Process -Id $grandchildren[0] -ErrorAction SilentlyContinue) -and $wait.Elapsed.TotalSeconds -lt 5) { Start-Sleep -Milliseconds 200 }
+            Assert (-not (Get-Process -Id $grandchildren[0] -ErrorAction SilentlyContinue)) "the process the timed-out check started (pid $($grandchildren[0])) is still running"
+            # Leg 2: the check ends at once, but its grandchild keeps the output pipe open.
+            $pipePid = Join-Path $smokeDir 'pipe.pid'
+            $fake = & $newFake 'pipe' ((& $spawn $pipePid) + "'HOST-SMOKE PASS - claude, copilot'; exit 0")
+            $clock = [Diagnostics.Stopwatch]::StartNew()
+            $line = @(Invoke-HostSmokeLine -ScriptPath $fake.Path -OutputWaitSeconds 3)
+            $took = $clock.Elapsed.TotalSeconds
+            $grandchildren += [int]([IO.File]::ReadAllText($pipePid))
+            Assert ($line.Count -eq 1 -and $line[0] -like "HOST-SMOKE could not examine (report only*output stayed open*") "pipe: $($line -join ' | ')"
+            Assert ($took -lt 25) "the release waited $([int]$took) s on an output pipe capped at 3 s"
+        } finally {
+            foreach ($g in $grandchildren) { Stop-Process -Id $g -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
+    It 'host smoke line: a missing check script or host program reads as could not examine, not a crash' {
+        Assert $smokeReady "Invoke-HostSmokeLine missing or ambiguous in release.ps1 (found $($smokeAst.Count))"
+        $missing = @(Invoke-HostSmokeLine -ScriptPath (Join-Path $smokeDir 'no-such-host-smoke.ps1'))
+        Assert ($missing.Count -eq 1 -and $missing[0] -like 'HOST-SMOKE could not examine (report only*no check script*') "missing script: $($missing -join ' | ')"
+        $fake = & $newFake 'nopwsh' "'HOST-SMOKE PASS - claude'; exit 0"
+        $noHost = @(Invoke-HostSmokeLine -ScriptPath $fake.Path -PwshPath (Join-Path $smokeDir 'no-such-pwsh.exe'))
+        Assert ($noHost.Count -eq 1 -and $noHost[0] -like 'HOST-SMOKE could not examine (report only*threw*') "missing program: $($noHost -join ' | ')"
+    }
+
+    It 'host smoke line: release.ps1 prints it after the local gates and before the commit and push, never exiting on it' {
+        $gatesRefused = $releaseText.IndexOf('Release REFUSED: fix the failing gate(s)')
+        $commitStep = $releaseText.IndexOf('# ---- 5. Commit + push')
+        $call = [regex]::Matches($releaseText, '(?m)^Write-Host \(Invoke-HostSmokeLine -ScriptPath \(Join-Path \$repo ''\.claude/scripts/host-smoke\.ps1''\)\)\s*$')
+        Assert ($call.Count -eq 1) "expected one top-level call printing the host-smoke line, found $($call.Count)"
+        Assert ($gatesRefused -ge 0 -and $commitStep -gt $gatesRefused -and $call[0].Index -gt $gatesRefused -and $call[0].Index -lt $commitStep) 'the host-smoke line is not between the local gates and the commit/push step'
+        Assert $smokeReady "Invoke-HostSmokeLine missing or ambiguous in release.ps1 (found $($smokeAst.Count))"
+        $ends = @($smokeAst[0].FindAll({ param($n) $n -is [Management.Automation.Language.ExitStatementAst] -or $n -is [Management.Automation.Language.ThrowStatementAst] }, $true))
+        Assert ($ends.Count -eq 0) "Invoke-HostSmokeLine has $($ends.Count) exit/throw statement(s), so it can change the release outcome"
     }
 } finally {
     foreach ($dir in $scratch) { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
