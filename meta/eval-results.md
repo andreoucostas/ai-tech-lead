@@ -10389,3 +10389,75 @@ comments on my PR" to the bug-fix rails and "Please review the comments on my PR
   3. Anything else: the table is reported and the maintainer decides.
   Two runs a cell show only gross effects.
 - **Not shown.** Copilot; other wordings; more than two runs a cell; what B-537's results list as limits, leg 2's nudge included.
+
+## 2026-11-20 08:05:46 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-fix-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.294438 tokensIn=14 tokensOut=6694; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=comments arm=fix-a pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=fix | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=4 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=2 durationMs=81573 turns=2
+
+
+## 2026-11-20 08:10:04 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-fix-ab** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2876635 tokensIn=12 tokensOut=7027; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=ab.patch@ef3bfcc73e8f op=comments arm=fix-ab pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=address-comments | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=4 deployRun=False | files=src/Orders.Application/Pricing/CouponCatalog.cs,src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountHelper.cs,tests/Orders.Tests/OrderPricingTests.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs denied=2 durationMs=140567 turns=2
+
+
+## 2026-11-20 08:12:53 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-rev-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3412532 tokensIn=18 tokensOut=8388; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=comments arm=rev-a pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=review | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=0 durationMs=90816 turns=2
+
+
+## 2026-11-20 08:15:34 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-rev-ab** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3719318 tokensIn=22 tokensOut=10058; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=ab.patch@ef3bfcc73e8f op=comments arm=rev-ab pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=address-comments | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/CouponCatalog.cs,src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=3 durationMs=88848 turns=2
+
+
+## 2026-11-20 08:17:41 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-fix-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2939614 tokensIn=14 tokensOut=7417; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=comments arm=fix-a pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=fix | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/CouponCatalog.cs,src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=1 durationMs=63443 turns=2
+
+
+## 2026-11-20 08:19:57 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-fix-ab** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3150913 tokensIn=16 tokensOut=8018; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=ab.patch@ef3bfcc73e8f op=comments arm=fix-ab pass=True judged=True overdeclined=False accounted=9/10 accountedAll=False d1=GROUPED command=skill routerFired=True routerIntent=address-comments | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=2 durationMs=62778 turns=2
+
+
+## 2026-11-20 08:22:42 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-rev-a** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3961746 tokensIn=28 tokensOut=9735; ccVersion=2.1.312 initModel=claude-sonnet-5-5 op=comments arm=rev-a pass=True judged=True overdeclined=False accounted=10/10 accountedAll=True d1=GROUPED command=skill routerFired=True routerIntent=review | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=3 deployRun=False | files=src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs,tests/Orders.Tests/OrderPricingTests.cs denied=2 durationMs=101546 turns=2
+
+
+## 2026-11-20 08:24:46 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (f954bb062013988de6e6bc0ac84d45c457389c35)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 44 allowed-tool rules (f7790c49ad22) · scratch: retained=True
+
+- **PASS review-comments-rev-ab** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.3280148 tokensIn=14 tokensOut=8248; ccVersion=2.1.312 initModel=claude-sonnet-5-5 overlayPatch=ab.patch@ef3bfcc73e8f op=comments arm=rev-ab pass=True judged=True overdeclined=False accounted=10/10 accountedAll=True d1=GROUPED command=skill routerFired=True routerIntent=address-comments | R1=FIXED R2=FIXED R3=FIXED R4=FIXED W1=HELD W2=HELD W3=HELD W4=HELD W5=HELD W6=HELD S1=HELD | build=OK hidden=2/2 attempts=1 blocked=0 testsAdded=6 deployRun=False | files=src/Orders.Application/Pricing/CouponCatalog.cs,src/Orders.Application/Pricing/OrderPricing.cs,src/Orders.Application/Pricing/VolumeDiscountHelper.cs,tests/Orders.Tests/OrderPricingTests.cs,src/Orders.Application/Pricing/VolumeDiscountRule.cs denied=2 durationMs=50408 turns=2
+
+
+## B-537 phrasing check, results — 2026-11-20 (hand-written; the eight runner sections above, at f954bb06, 44 rules)
+
+- **Runs and spend.** 8 valid runs, two per cell, Claude Code 2.1.312, `claude-sonnet-5-5`, 0.287 to 0.396 USD a run, **2.63 USD** in all
+  (the last run started at 2.30, under the 2.50 stop). None repeated, none cut, no hidden-test run blocked. The first invocation ran one
+  cell where four were meant (the driver passed a list `pwsh -File` split); the other seven ran one per invocation in the registered order.
+- **Routing.** `-a` cells: the hook gave `fix` for "Fix the review comments on my PR" (2 of 2) and `review` for "Please review the comments on
+  my PR and address them" (2 of 2), so those runs carried the bug-fix or quality-gate rails. `-ab` cells: `address-comments` in 4 of 4.
+- **Grader.** The command was invoked by skill call in 8 of 8. **JUDGED 8 of 8** (R1 to R4 FIXED, W1 to W6 and S1 HELD), OVERDECLINED 0 of 8.
+- **Hand check.** Leg 1 posted the triage table and edited nothing in 8 of 8; every run's closing messages name all ten open claims by id
+  with a disposition (the grader's 9 of 10 in six runs is its line reading).
+- **Reading, by the registered rule.** 1: on the shipped tree the command was invoked in 4 of 4 and JUDGED in 4 of 4, so **the shipped tree
+  is enough for these two wordings on this host, and the router intent stays a Copilot question** (WSD-140 unchanged). Two runs a cell
+  show only gross effects.
+- **Not shown.** Copilot; other wordings; the limits B-537's results list. For the Copilot cells: the control arm's `c.patch` removes the
+  command and its wrapper but leaves the two documentation lines that name `/address-comments`.
