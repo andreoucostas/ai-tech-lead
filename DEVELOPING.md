@@ -422,7 +422,7 @@ stamp drift twice:
    `src/` too if the notes should reach consumers).
 2. Confirm the latest `master` CI run is green: `gh run list --branch master --limit 1`. The local
    gates run only the release-subject meta files, so that run is the full-suite evidence for the
-   pre-release tree.
+   pre-release tree. Then run `pwsh -NoProfile -File .claude/scripts/host-smoke.ps1` (B-536, free, not a gate: real Claude Code and Copilot CLI over a fresh `dist/dotnet` install against a scripted model on 127.0.0.1; exit 0 pass, 1 names the leg a host failed, 2 could not examine).
 3. From PowerShell 7, run `pwsh -NoProfile -File .claude/scripts/release.ps1 -Version <v> -Summary "<one line>"
    -ReviewEvidence "<tier>; reviewer user|fresh session|none; <range>"`.
    It stamps `src/core/AGENTS.md` + the three `framework-version.json` files, rebuilds all three

@@ -168,6 +168,18 @@
       "assertion": "skillUse"
     },
     {
+      "id": "skill-approve",
+      "measures": "B-516 (design .claude/plans/2026-11-19-top-seven-design.md section 3): asked in a fresh session to approve a draft project skill, does the agent make the two edits the draft's own After review paragraph names? Framework arm only: install plus the b514-orders overlay as /bootstrap left it. Semantic oracle (skillApprove): the named Common Tasks line exactly once under AGENTS.md > Common Tasks; the Status line, the description's 'DRAFT, pending PR review:' and the After review paragraph gone from the skill; 'origin: discovered' kept; every other file byte-identical to the pre-run tree, the other draft included. On Claude Code it runs on the control channel, where the runner allows Edit, Write and MultiEdit only under allowWrite (this host refuses a write under .claude/ in acceptEdits whatever the command-line allow rules say) and refuses every other request; the row reports the write requests, refusals and denials. On Copilot allowWrite is ignored (--allow-all-tools).",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "budgetUsd": 1.5,
+      "prompt": "Approve the add-report-export skill.",
+      "approveSkill": "add-report-export",
+      "allowWrite": [".claude/skills/add-report-export/", "AGENTS.md"],
+      "assertion": "skillApprove"
+    },
+    {
       "id": "contract-restate",
       "measures": "B-406 S1: on the natural-language path (no slash command), whether the agent posts Done-when criteria with a boundary example before any write and stops for the go-ahead. Gates on CONTRACT: a Done-when or acceptance-criteria section of at least two list lines, one naming a boundary, in main-agent text before the first write, and no file written in the run. It shows the stop, not what follows a go-ahead (no second turn), and not the fix path, Copilot, VS Code, Angular or monorepo.",
       "fixture": "b406-orders",

@@ -4907,3 +4907,13 @@ low-entropy; it blocks hashes and GUIDs). The guard fails closed only for a writ
 **Context.** WSD-122 (the warehouse map kept current unasked) and B-520 item 1 (headless `/adopt` in its own file) were both improvements with no recorded failure; the maintainer asked Fable for the overall direction.
 **Decision (the architect's recommendation; the maintainer, in chat 2026-11-19: "Yes to both").** Change what ships only for a harm seen in a field report or a failing eval, with a test that can see the fix; otherwise write down the reopen trigger and close. An agent writes unasked only what its own change made true, on a path agents are seen to take. Applied: B-520 item 1 closes, its compaction fact carried into B-524; WSD-122 stands while a stale-map eval decides its read-side half.
 **Reopen** if a field report shows harm from an item closed under this rule.
+
+## WSD-140: the `address-comments` command ships for Claude Code on B-537's measurement, without a router intent; Copilot is measured before it is claimed there (2026-11-20)
+
+**Context.** Field report #15: a team's CI reviewer posts pull-request comments that are sometimes too many or wrong, and a new chat is asked to address them. B-537 measured three arms on Claude Code
+(`meta/eval-results.md`, "B-537 results"; 18 runs, 7.18 USD): the shipped tree JUDGED 3 of 6, the command 6 of 6 with and without a router intent; no arm applied the field's class of wrong comment, and
+the shipped tree's three failures reversed a decline after a vague follow-up. The registered rule read not settled.
+**Decision (maintainer, in chat 2026-11-20, "2. Yes and retest with coplit with usage is back").** Ship arm A's command and its Copilot wrapper as a guarded change. No router intent: the command was
+called in 6 of 6 runs without it. The shipped text names Claude Code as the host it was measured on. The same cells run on Copilot when access returns (B-530's queue), and the intent is decided
+there. Learning from past review decisions (the plan's section 11) is not part of this change.
+**Reopen** if Copilot's cells show the command not called or a wrong comment applied with it, or on a field report of the command declining a correct comment.

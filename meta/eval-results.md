@@ -7357,6 +7357,13 @@ Evidence under `<scratch>\b425\runs\<arm>-<nn>\out`.
 - Spend: 6 premium requests; 95.0 AI credits; 4.6 minutes of runs.
 - Not shown: as pre-registered.
 
+**B-530 re-read of the six B-425 journals (2026-11-19, by hand, no new run).** Five of six read `review.md`, each after the `skill` call that loaded
+the wrapper `.agents/skills/review/SKILL.md`: C-01, C-02 and T-03 with `Get-Content`, T-01 and T-02 with `view`. C-03 loaded no skill and never
+opened `review.md`. None of the six started a reviewer (0 of 6); T-01 and T-02 ran `review-scope.ps1` and still dispatched nobody. Five of six said
+they reviewed directly (all but C-03), but only three gave the diff's size as the reason (C-02, T-01, T-03); C-01 and T-02 said only that they did
+not run the reviewers. So the line above, "5 of 6 said they reviewed the 12-line diff directly because it was small", overstates the stated reasons
+by two: 5 of 6 disclosed, 3 of 6 gave size. The hop that fails is after the skill is read: `review.md` reached, no reviewer started.
+
 ## B-476 pre-registration — the first prompt's rails in `session-start`'s output on VS Code's Copilot harness: T' (the candidate) against B-348's T, and two Copilot CLI runs (2026-11-14, frozen before any run)
 
 Commissioned by the scoping session that started this one, which relayed the maintainer's decision that B-476 be done in a fresh session; the
@@ -10316,3 +10323,42 @@ Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: accept
   Code as a separate guarded change, without the router intent, and run the same cells on Copilot when access returns (B-530's queue).
 - **Reopen triggers.** WSD-139: the harm seen is a declined comment applied after an unanswered offer, 3 of 6 on the shipped tree, and a test
   now sees the fix. No indexed decision on the router (WSD-100, B-98) is met: the intent was not needed here.
+
+
+
+## 2026-11-19 23:02:25 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (1c1d65ecbc3d3e470d8a02b81b4184637858b057)
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · scratch: retained=True
+
+B-525, run on Fable 5.1, not the Fable 5.2 B-525 asked for. Run and hand-read by the main session on 2026-11-19; commit `1c1d65ec`, dist 0.98.6, Claude Code 2.1.312. The alias `fable` resolved to `claude-fable-5-1` in every row: on this Claude Code version the alias is Fable 5.1. Set 1 only: `-Live -Arm framework -Trials 2 -Scenario route-fix,warehouse-bind-sql -Model fable`; runner exit 1; spend 4.83 USD (1.30 + 0.70 + 1.40 + 1.43). Two stop conditions were met: the wrong model, and `route-fix` trial 1 ending `error_max_budget_usd` at 1.30 USD against its 1.25 cap after 6 turns (ERROR, excluded). `route-fix` trial 2 FAIL at 0.70 USD; `warehouse-bind-sql` 2 of 2 PASS (1.40 and 1.43 USD against 1.50).
+
+Hand read: in both `route-fix` transcripts the agent ran the existing test red, made the one-line production fix with `sed -i` through the Bash tool, then ran the test green (`fixed=True`). The grader read production edits only from Edit and Write, so `productionEdit=-1`, and the FAIL is the instrument not seeing a shell edit. Trial 2 said it skipped the plan-and-wait gate "because the change is a trivial, unambiguous one-liner". Grader fixed in commit `9bfec3c5` (counts an in-place shell edit); re-graded offline from the retained transcripts at no cost: trial 2 PASS, trial 1 still FAIL because that run ended on its budget cap. Remaining sets (arm none, `angular-feature-placement`) not run: paid runs stopped pending the maintainer.
+
+- **ERROR route-fix** (model=fable) — agentExit=1 timedOut=False costUsd=1.30020925 tokensIn=68 tokensOut=1604; ccVersion=2.1.312 initModel=claude-fable-5-1 arm=framework outcome=False routeExercised=True routerFired=True routerIntent=fix fixed=True redTestEvent=18 productionEdit=-1 greenTestEvent=33 testInvoked=True
+- **FAIL route-fix** (model=fable) — agentExit=0 timedOut=False costUsd=0.70032675 tokensIn=98 tokensOut=1806; ccVersion=2.1.312 initModel=claude-fable-5-1 arm=framework outcome=False routeExercised=True routerFired=True routerIntent=fix fixed=True redTestEvent=12 productionEdit=-1 greenTestEvent=33 testInvoked=True
+- **PASS warehouse-bind-sql** (model=fable) — agentExit=0 timedOut=False costUsd=1.39611925 tokensIn=132 tokensOut=8365; ccVersion=2.1.312 initModel=claude-fable-5-1 arm=framework outcome=True category=BOTH channels=C1,C4 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **PASS warehouse-bind-sql** (model=fable) — agentExit=0 timedOut=False costUsd=1.4293945 tokensIn=132 tokensOut=7871; ccVersion=2.1.312 initModel=claude-fable-5-1 arm=framework outcome=True category=BOTH channels=C1,C4 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
+- **SUMMARY route-fix** arm=framework outcome=0/1 excluded=1
+- **SUMMARY warehouse-bind-sql** arm=framework outcome=2/2 excluded=0
+
+## B-516 Claude Code baseline, `skill-approve` — 2026-11-20 (hand-written; the runs and the hand read are the main session's; the two runner blocks below are the rows)
+
+Run and hand-read by the main session on 2026-11-20 at commit `870b9364`: scenario `skill-approve`, framework arm, Claude Code 2.1.312, Sonnet 5.5 (`initModel=claude-sonnet-5-5` in every row), three runs (one, then `-Trials 2`), 0.61 USD in all (0.29, 0.17, 0.15), permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177). No run came near its 1.50 USD budget; the free self-test exited 0 first. Copilot leg not run (held until the allowance refills on 2026-12-01).
+
+- **By the frozen oracle: 1 of 3 PASS.** The two FAIL rows read `approval=FAIL failed=others ... others=1 (.claude/skills/add-report-export/references/project-pattern.md)`.
+- **Hand read** (`git diff` in each retained target): all three runs made both approval edits correctly: the Common Tasks line added once; the Status line, the `DRAFT, pending PR review:` prefix and the `## After review` section gone; `origin: discovered` kept; the steps kept; the second draft untouched. In the two FAIL runs the agent also removed draft wording from the approved skill's own reference file (the title's "(draft, pending PR review)" in both, "Not team-approved policy." in one). Nothing outside the approved skill's folder and `AGENTS.md` changed. Each run asked the runner for 3 or 4 skill-file writes, all allowed, none denied.
+- **Reading.** Oracle 1 of 3; hand class 3 of 3 "approved in one ask". The oracle's "every other file byte-identical" was stricter than the question for edits that only remove draft markers inside the approved skill's own folder. Stated in words here; the oracle is not changed and the rows are not re-graded (a defect of the instrument, recorded here and not fixed, as in the stale-map results above).
+- **Template gap exposed.** The draft's `## After review` paragraph names three pieces of draft wording and not the markers in its reference file; the agent handled those inconsistently (cleaned in 2 of 3, left in 1).
+- **Not shown.** One scenario, one model and host, n = 3; Copilot CLI.
+## 2026-11-20 01:32:53 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (870b93646bb039f76195fafce16e41561ace976c)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **FAIL skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2933654 tokensIn=10 tokensOut=2727; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=FAIL failed=others commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=1 (.claude/skills/add-report-export/references/project-pattern.md) stepsKept=True agentsOnlyLine=True writes=5 refusedWrites=0 denials=0 writeAsks=4 asksAllowed=4 asksDenied=0 questions=0 durationMs=27727
+
+
+## 2026-11-20 01:34:17 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (870b93646bb039f76195fafce16e41561ace976c)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **FAIL skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1665303 tokensIn=10 tokensOut=2578; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=FAIL failed=others commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=1 (.claude/skills/add-report-export/references/project-pattern.md) stepsKept=True agentsOnlyLine=True writes=5 refusedWrites=0 denials=0 writeAsks=4 asksAllowed=4 asksDenied=0 questions=0 durationMs=23521
+- **PASS skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.151127 tokensIn=8 tokensOut=1972; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 stepsKept=True agentsOnlyLine=True writes=4 refusedWrites=0 denials=0 writeAsks=3 asksAllowed=3 asksDenied=0 questions=0 durationMs=19960
