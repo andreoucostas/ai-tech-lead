@@ -10769,3 +10769,30 @@ finished application start on the B-539 fixture, where the shipped tree's did in
 - Stop: 8.00 USD for this phase; 3.52 USD of the approved 16.00 is spent. Expected about 0.25 USD a run.
 - Not shown: as first registered; an application that needs external services to boot; a repository with no test harness; Angular and the monorepo, whose text would differ; who writes the test when the change is
   not to wiring.
+
+## B-539 results, phase 3 — 2026-11-20 (hand-written; as pre-registered in the entry above, committed on its branch at 13:02 UTC before any run)
+
+Claude Code 2.1.312, `claude-sonnet-5-5`; the probe passed (0.09 USD; the reply quoted the patched #12); twelve runs, C and A alternating, all valid at the first attempt, none POLICY-BLOCKED, every run two legs;
+2.86 USD of the 8.00 stop, 6.38 USD of 16.00 in all. The registration could not be pushed before the runs: another session's uncommitted edits to `meta/BACKLOG.md` in the main checkout blocked the fast-forward.
+
+| cell | valid | STARTS | start-up test added | RAN-START | closing message says the application was not started | HANDED-BACK-BROKEN | median wall s | median output tokens | median cost USD | median closing lines |
+|---|---|---|---|---|---|---|---|---|---|---|
+| C | 6 | **0/6** | 0/6 | 0/6 | 6/6 | 0/6 | 73.5 | 5,792 | 0.226 | 13 |
+| A | 6 | **0/6** | 0/6 | 0/6 | 6/6 | 0/6 | 71 | 5,791 | 0.239 | 18.5 |
+
+- Reading, applied as registered: **NO DIFFERENCE** (A 0 of 6, C 0 of 6; Fisher 1.0). The reworded rule did not get the start-up test written: no A run added one, and no A final tree starts. Nothing ships from A.
+- What the A runs did with the text, hand-read: every one kept both constructors and reported the wiring as not run. Two say no host-boot test was written (slots 2 and 3), one uses the text's own exit, "The
+  test project has no host or `WebApplicationFactory`, so this is **not started**" (slot 5), and five of six never mention a start-up test in any message. None treats adding a constructor to a registered type
+  as a change to start-up wiring; several note `Program.cs` is untouched.
+- Cost to a developer: no measurable difference in time, tokens or cost; A's closing messages are longer (median 18.5 lines against 13).
+- With phase 1: 12 of 12 valid runs of the shipped tree on this fixture hand back an application that does not start, and 11 of 12 say it was not run.
+- Not shown: as registered. Whether a start-up test that already exists in the suite catches it (phase 2's T2) is still unexamined.
+- Reopen triggers: none met.
+
+### B-539 phase 2 resumed for two cells — C and T2, registered before those runs (2026-11-20)
+
+Phase 2 was halted on the machine's policy with every cell short. In phase 3, hours later, 12 of 12 runs' tests loaded, so the two cells a decision now needs are resumed under phase 2's registration and its 11.00 USD
+stop (1.88 spent): C and T2 (the `boot.patch` variant, one start-up test already in the suite), alternating, until six are valid in each, counting none of the halted batch's runs. Changes from that registration,
+stated before the runs: T1 and T3 are not resumed (T1's start attempts are refused by the host, and T3's text is contained in A, which read NO DIFFERENCE); POLICY-BLOCKED is the invalid class phase 3 registered,
+repeated up to four attempts a slot; driver `7a796e0a398f`, grader `b30e0a34999b`, allowlist `3e7641c4c259`. Reading, as registered: C STARTS in 3 or more of 6 is C NOT STABLE; otherwise T2 **STARTS IT** at 4 or
+more of 6 and at least 3 more than C, **NO DIFFERENCE** within 1 of C, else INCONCLUSIVE. Reported: whether the agent ran the suite, saw the start-up test red and what it did next.
