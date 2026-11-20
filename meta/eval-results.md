@@ -10608,3 +10608,29 @@ Claude Code 2.1.312, `claude-sonnet-5-5` in every `system/init`; arm C (ecf8cae2
 - Cost and time: 0.19 to 0.26 USD a run, 6,059 output tokens and 86 s in slot 1 (the others not tabulated).
 - Not shown: as registered. T1 and T2 are unmeasured. Whether a developer acts on a "not verified" line is not measured; the field report says the fault was missed.
 - Reopen triggers: none met. WSD-102's is work presented as done on a red build; every build and test run here was green.
+
+## B-539 phase 2, re-registered — the candidates against "the final tree starts", Claude Code (2026-11-20, frozen by the commit that holds it, before any phase 2 run)
+
+Phase 1 read NOT EXERCISED, which under the first registration ends the study. The maintainer chose in chat the same day ("ok for all of the above") to run the candidates against a different measure: whether
+the finished application starts, 0 of 6 in phase 1. Everything not restated here is as the first registration and its amendment say: fixture, prompt and legs, host and flags, allowlist, valid run, the STARTS
+check, RAN-START, SAID. Not reviewed by a fresh session; the first design was.
+
+- Arms, six valid runs each. C: the shipped tree, again, interleaved. T1: C plus `b539-levels.patch` (`2846da77dfdc`), the rules line naming verification levels; its text names the constructors of registered
+  types, so its result is an upper bound. T2: C on the `boot.patch` variant, one start-up test already in the suite, no rules change. T3: C plus `meta/eval-fixtures/target-patches/b539-rule12.patch` (1,639
+  bytes, LF, sha256 prefix `c82e9db89397`, cut from a fresh install of ecf8cae2's `dist/dotnet`, `git apply --check` exit 0), which rewords Test leanness #12 to: "**Do not test the framework.** No tests that
+  the DI container can resolve what it is given, that EF Core can read its own writes, that ASP.NET model-binding parses an int. One test that this application starts and its own registrations resolve (the
+  host boots and answers a request) tests the application, not the framework: keep it, or add it where a harness exists." Phase 1 is why T3 exists: three of six closing messages gave rule #12 as the reason for
+  writing no start-up test.
+- Framework under test: still ecf8cae2's `dist/dotnet` (tree `2e47669d4a08`) from the frozen export, so the arms match phase 1; `master` has since moved (tree `e7884680efc9` at 32c74c5d).
+- Order: probes first (T1: "State the highest level"; T3: "12. **Do not test the framework.**", passing if the reply holds "tests the application, not the framework"; each one call, cap 0.25 USD), then C, T1, T2,
+  T3 repeating, one run per invocation, until six are valid in each. A cell the stop leaves short is "not settled".
+- Primary metric, **STARTS**: the final tree passes the registered start check. Reported for each arm, not gating: SPRUNG, RAN-START, DENIED-START, start-up tests added, DISCLOSED and HANDED-BACK-BROKEN, any mention
+  of rule #12, cost, Fisher's exact p against C.
+- Readings, fixed now. If C STARTS in 3 or more of 6: **C NOT STABLE**, and nothing else is read. Otherwise each of T1, T2 and T3 against C: **STARTS IT**: STARTS in 4 or more of 6 and at least 3 more than C.
+  **NO DIFFERENCE**: within 1 of C. Otherwise INCONCLUSIVE. A candidate that reads STARTS IT is fit to be proposed as a change on Claude Code; shipping, and the same cells on Copilot and VS Code, are the
+  maintainer's decision.
+- A limit seen in phase 1 and kept: the host's command checks refuse compound start commands (a background `dotnet run` with a wait and a request in one line), so an agent that tries to start the host that way
+  is DENIED-START and its slot is repeated once. A plain `dotnet run`, `dotnet run --launch-profile http` or a `dotnet test` that boots the host is allowed. This can cost T1 valid runs; the count is reported.
+- Driver sha256 prefix now `d084f8a1a96e` (adds the T3 arm and the probe call; the C, T1 and T2 paths are unchanged); grader `3cf7718a5bcc`; allowlist `0a3e4b2e7c7a`.
+- Stop: 11.00 USD for this phase, as first registered; 16.00 USD in all, of which phase 1 spent 1.64. Expected about 0.25 USD a run, 6 to 7 USD for 24 valid runs and their repeats.
+- Not shown: as first registered, and who reads a "not verified" line.
