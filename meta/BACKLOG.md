@@ -190,7 +190,7 @@ First step: measure how often, on which models, from retained transcripts, befor
 **Filed against:** v0.98.6 (2026-11-20)
 **Priority:** P2 · **Effort:** M · **Invariants:** #7 if it ships
 **Status:** Open; field report #16 (2026-11-20): after an AI-assisted .NET upgrade one host failed at start-up with a "multiple constructors" error while the unit tests passed, and the UI did not load. Read in `dist/dotnet` the same day: verification is build and test only, with no category for starting the application, and Test leanness #12, `add-tests` and `/test` discourage a test that the application's own wiring resolves.
-First step: a fixture where a change breaks start-up while build and unit tests stay green, bare against the shipped tree, on Claude Code and on VS Code Copilot where the report arose. Candidates to measure, none decided: a recorded start command and "not started" in the closing report; one start-up test the suite owns; the wording of #12.
+Pre-registered 2026-11-20 (`meta/eval-results.md`, "B-539 pre-registration"; fixture `meta/eval-fixtures/b539-startup/`; a fresh session approved the design with six changes, applied): the shipped tree alone first, then a rules line naming verification levels and one start-up test the suite owns. No run yet: the 16 USD stop waits for the maintainer, and an amendment freezes the patch, driver and grader before the first paid call. Copilot and VS Code, the report's host, wait for 2026-12-01; the wording of #12 is not measured here.
 
 ### B-540 · Learn what a team treats as too much from its decisions on past review comments
 **Filed against:** v0.98.6 (2026-11-20)
