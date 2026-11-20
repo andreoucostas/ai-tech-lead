@@ -2704,7 +2704,156 @@ function Test-DialogBundlePath([string]$Path, [string]$BundleRoot, [string]$Scra
     $rest = $full.Substring($root.Length + 1)
     return -not ($rest.Contains('~') -or $rest.Contains(':'))
 }
-function Get-ReviewPermissionClass($Request, [string]$BundleRoot, [string]$ScratchRoot) {
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 2): reviewers hash and read with pipes and chains (`Get-FileHash -LiteralPath <file>
+# | Select -ExpandProperty Hash`), which the single-command classes below refuse, and one denied hash command ended a run at CANNOT EXAMINE. On the
+# PowerShell tool a command the single classes refuse is read as a chain of read-only segments joined by `|`, `;`, `&&` or `||`, with `( )` and
+# `$( )` sub-expressions that are chains of their own (depth 3), `2>&1`, and a property read after a sub-expression (`(Get-FileHash ...).Hash`).
+# A segment is one of: the cmdlets and aliases of $reviewReadOnly (every parameter named, every path argument a literal under the bundle root or
+# the target, or relative to the target without `..`), read-only git (no output, config, -C or no-index form), dotnet build|test|restore (what the
+# run list already allows), or the two review scripts by the single class's own strict rule. Never allowed: any write or other command, a variable,
+# a script block, a backtick, `&`, `<`, `>` but the literal `2>&1`, Remove-Item in a chain. A refusal falls back to what it was: denied.
+$reviewReadOnly = @{
+    'get-content'    = @{ Path = @('-path', '-literalpath'); Value = @('-totalcount', '-head', '-tail', '-encoding', '-erroraction', '-readcount'); Switch = @('-raw'); Positional = 'path' }
+    'get-filehash'   = @{ Path = @('-path', '-literalpath'); Value = @('-algorithm', '-erroraction'); Switch = @(); Positional = 'path'; Algorithm = 'SHA256' }
+    'test-path'      = @{ Path = @('-path', '-literalpath'); Value = @('-pathtype', '-erroraction'); Switch = @(); Positional = 'path' }
+    'get-childitem'  = @{ Path = @('-path', '-literalpath'); Value = @('-filter', '-include', '-exclude', '-depth', '-erroraction'); Switch = @('-recurse', '-file', '-directory', '-force', '-name'); Positional = 'path' }
+    'select-string'  = @{ Path = @('-path', '-literalpath'); Value = @('-pattern', '-context', '-encoding', '-erroraction'); Switch = @('-simplematch', '-casesensitive', '-list', '-quiet', '-notmatch', '-allmatches'); Positional = 'pattern-then-path' }
+    'select-object'  = @{ Path = @(); Value = @('-property', '-expandproperty', '-first', '-last', '-skip', '-skiplast', '-index', '-exclude', '-erroraction'); Switch = @('-unique'); Positional = 'any' }
+    'sort-object'    = @{ Path = @(); Value = @('-property', '-top', '-bottom', '-erroraction'); Switch = @('-descending', '-unique', '-casesensitive'); Positional = 'any' }
+    'measure-object' = @{ Path = @(); Value = @('-property', '-erroraction'); Switch = @('-line', '-word', '-character', '-sum', '-average', '-minimum', '-maximum', '-allstats'); Positional = 'any' }
+    'out-string'     = @{ Path = @(); Value = @('-width'); Switch = @('-stream'); Positional = 'none' }
+    'write-output'   = @{ Path = @(); Value = @(); Switch = @('-nonewline'); Positional = 'any' }
+    'write-host'     = @{ Path = @(); Value = @(); Switch = @('-nonewline'); Positional = 'any' }
+}
+$reviewAlias = @{ 'select' = 'select-object'; 'sort' = 'sort-object'; 'measure' = 'measure-object'; 'gc' = 'get-content'; 'cat' = 'get-content'; 'type' = 'get-content'; 'ls' = 'get-childitem'; 'dir' = 'get-childitem'; 'gci' = 'get-childitem'; 'sls' = 'select-string'; 'echo' = 'write-output' }
+$reviewGitSub = @('status', 'diff', 'log', 'show', 'rev-parse', 'ls-files', 'cat-file', 'rev-list', 'ls-tree', 'branch')
+function Find-ReviewParen([string]$Text, [int]$Open) {
+    $depth = 0; $quote = ''
+    for ($i = $Open; $i -lt $Text.Length; $i++) {
+        $c = [string]$Text[$i]
+        if ($quote) { if ($c -ceq $quote) { $quote = '' }; continue }
+        if ($c -ceq "'" -or $c -ceq '"') { $quote = $c; continue }
+        if ($c -ceq '(') { $depth++ } elseif ($c -ceq ')') { $depth--; if ($depth -eq 0) { return $i } }
+    }
+    return -1
+}
+function Test-ReviewPathArg([string]$Value, $Ctx) {
+    if (-not $Value -or $Value.Contains('@SUB@') -or $Value.Contains('$') -or $Value.Contains('"') -or $Value.Contains("'")) { return $false }
+    if ([IO.Path]::IsPathRooted($Value)) {
+        if (Test-DialogBundlePath $Value $Ctx.BundleRoot $Ctx.ScratchRoot -AllowRoot) { return $true }
+        if (-not $Ctx.TargetRoot -or $Value.Contains('..') -or $Value.Contains('~')) { return $false }
+        try { $full = [IO.Path]::GetFullPath($Value); $base = [IO.Path]::GetFullPath($Ctx.TargetRoot) } catch { return $false }
+        return (Test-DialogUnder $full $base) -and -not $full.Substring([Math]::Min($full.Length, $base.TrimEnd('\', '/').Length)).Contains(':')
+    }
+    return -not ($Value.Contains('..') -or $Value.Contains('~') -or $Value.Contains(':') -or $Value.StartsWith('/') -or $Value.StartsWith('\'))
+}
+function Test-ReviewGitSegment([string[]]$Tokens, $Ctx) {
+    if ($Tokens.Count -lt 2 -or $Tokens[1].ToLowerInvariant() -notin $reviewGitSub) { return $false }
+    $sub = $Tokens[1].ToLowerInvariant(); $afterDashes = $false
+    for ($i = 2; $i -lt $Tokens.Count; $i++) {
+        $t = $Tokens[$i]
+        if ($t.Contains('$') -or $t.Contains('@SUB@') -or $t.Contains('"') -or $t.Contains("'")) { return $false }
+        if ($afterDashes) { if (-not (Test-ReviewPathArg $t $Ctx)) { return $false }; continue }
+        if ($t -ceq '--') { $afterDashes = $true; continue }
+        if ($t -cmatch '^-[cCoO]$' -or $t -imatch '^--(output|exec|upload-pack|receive-pack|open-files-in-pager|no-index|ext-diff|git-dir|work-tree|namespace|config-env)(=|$)') { return $false }
+        if ($sub -eq 'branch' -and $t -notin @('--show-current', '--list', '-a', '-r', '-v', '--all', '--remotes')) { return $false }
+        if (-not $t.StartsWith('-') -and ([IO.Path]::IsPathRooted($t) -or ($t.Contains('..') -and ($t.Contains('/') -or $t.Contains('\'))))) { return $false }
+    }
+    return $true
+}
+function Test-ReviewSegment([string]$Segment, $Ctx) {
+    $s = $Segment.Trim()
+    if (-not $s) { return $true }
+    if ($s -cmatch '^@SUB@(\.[A-Za-z_][A-Za-z0-9_]*)*$') { return $true }
+    $raw = @([regex]::Matches($s, '"[^"]*"|''(?:[^'']|'''')*''|\S+') | ForEach-Object { $_.Value })
+    $tokens = @($raw | ForEach-Object {
+            if ($_.Length -ge 2 -and $_[0] -ceq '"' -and $_[-1] -ceq '"') { $_.Substring(1, $_.Length - 2) }
+            elseif ($_.Length -ge 2 -and $_[0] -ceq "'" -and $_[-1] -ceq "'") { $_.Substring(1, $_.Length - 2).Replace("''", "'") }
+            elseif ($_.Contains('"') -or $_.Contains("'")) { $null }
+            else { $_ } })
+    if (@($tokens | Where-Object { $null -eq $_ }).Count -or $raw[0] -match '^["'']') { return $false }
+    $name = $tokens[0].ToLowerInvariant()
+    if ($reviewAlias.ContainsKey($name)) { $name = $reviewAlias[$name] }
+    if ($name -ceq 'pwsh') {
+        $single = Get-ReviewPermissionClassSingle ([pscustomobject]@{ tool_name = 'PowerShell'; input = [pscustomobject]@{ command = $s } }) $Ctx.BundleRoot $Ctx.ScratchRoot
+        if ($single -notin @('scope-capture', 'weakening-scan')) { return $false }
+        $Ctx.Script = $true
+        return $true
+    }
+    if ($name -ceq 'git') { return Test-ReviewGitSegment $tokens $Ctx }
+    if ($name -ceq 'dotnet') {
+        if ($tokens.Count -lt 2 -or $tokens[1].ToLowerInvariant() -notin @('build', 'test', 'restore')) { return $false }
+        return -not @($tokens | Where-Object { $_.Contains('$') -or $_.Contains('@SUB@') -or $_.Contains('..') -or $_.Contains('~') -or [IO.Path]::IsPathRooted($_) }).Count
+    }
+    if (-not $reviewReadOnly.ContainsKey($name)) { return $false }
+    $spec = $reviewReadOnly[$name]
+    $positional = 0
+    for ($i = 1; $i -lt $tokens.Count; $i++) {
+        $t = $tokens[$i]
+        if ($t -cmatch '^-[A-Za-z]+$') {
+            $flag = $t.ToLowerInvariant()
+            if ($flag -in $spec.Switch) { continue }
+            if ($flag -in $spec.Path) { if ($i + 1 -ge $tokens.Count -or -not (Test-ReviewPathArg $tokens[$i + 1] $Ctx)) { return $false }; $i++; continue }
+            if ($flag -in $spec.Value) {
+                if ($i + 1 -ge $tokens.Count -or $tokens[$i + 1].Contains('$')) { return $false }
+                if ($spec.Algorithm -and $flag -ceq '-algorithm' -and $tokens[$i + 1] -ine $spec.Algorithm) { return $false }
+                $i++; continue
+            }
+            return $false
+        }
+        if ($t.StartsWith('-') -and $t -cnotmatch '^-\d+$') { return $false }
+        $positional++
+        switch ($spec.Positional) {
+            'path' { if (-not (Test-ReviewPathArg $t $Ctx)) { return $false } }
+            'pattern-then-path' { if ($positional -gt 1 -and -not (Test-ReviewPathArg $t $Ctx)) { return $false } }
+            'none' { return $false }
+        }
+    }
+    return $true
+}
+function Test-ReviewChain([string]$Text, $Ctx, [int]$Depth) {
+    if ($Depth -gt 3 -or -not $Text.Trim()) { return $false }
+    $segments = [Collections.Generic.List[string]]::new()
+    $sb = [Text.StringBuilder]::new(); $quote = ''; $i = 0; $n = $Text.Length
+    while ($i -lt $n) {
+        $c = [string]$Text[$i]
+        if ($c -ceq '`') { return $false }
+        if ($quote -ceq "'") { [void]$sb.Append($c); if ($c -ceq "'") { $quote = '' }; $i++; continue }
+        $isSub = $false
+        if ($c -ceq '$') { if ($i + 1 -lt $n -and $Text[$i + 1] -ceq '(') { $isSub = $true; $open = $i + 1 } else { return $false } }
+        elseif ($c -ceq '(' -and -not $quote) { $isSub = $true; $open = $i }
+        if ($isSub) {
+            $close = Find-ReviewParen $Text $open
+            if ($close -lt 0 -or -not (Test-ReviewChain $Text.Substring($open + 1, $close - $open - 1) $Ctx ($Depth + 1))) { return $false }
+            [void]$sb.Append('@SUB@'); $i = $close + 1; continue
+        }
+        if ($quote) { [void]$sb.Append($c); if ($c -ceq $quote) { $quote = '' }; $i++; continue }
+        switch -CaseSensitive ($c) {
+            { $_ -ceq '"' -or $_ -ceq "'" } { $quote = $c; [void]$sb.Append($c); $i++ }
+            { $_ -in @('{', '}', '<', ')') } { return $false }
+            '>' {
+                if ($Text.Substring($i).StartsWith('>&1') -and $sb.Length -gt 0 -and $sb[$sb.Length - 1] -ceq '2' -and ($sb.Length -eq 1 -or [char]::IsWhiteSpace($sb[$sb.Length - 2]))) { [void]$sb.Remove($sb.Length - 1, 1); $i += 3 } else { return $false }
+            }
+            { $_ -in @(';', "`n", "`r") } { $segments.Add($sb.ToString()); [void]$sb.Clear(); $i++ }
+            '|' { $segments.Add($sb.ToString()); [void]$sb.Clear(); $i += $(if ($i + 1 -lt $n -and $Text[$i + 1] -ceq '|') { 2 } else { 1 }) }
+            '&' { if ($i + 1 -lt $n -and $Text[$i + 1] -ceq '&') { $segments.Add($sb.ToString()); [void]$sb.Clear(); $i += 2 } else { return $false } }
+            default { [void]$sb.Append($c); $i++ }
+        }
+    }
+    if ($quote) { return $false }
+    $segments.Add($sb.ToString())
+    if (-not @($segments | Where-Object { $_.Trim() }).Count) { return $false }
+    foreach ($segment in $segments) { if (-not (Test-ReviewSegment $segment $Ctx)) { return $false } }
+    return $true
+}
+function Get-ReviewPermissionClass($Request, [string]$BundleRoot, [string]$ScratchRoot, [string]$TargetRoot) {
+    $class = Get-ReviewPermissionClassSingle $Request $BundleRoot $ScratchRoot
+    if ($class -ne 'none' -or -not $BundleRoot -or [string]$Request.tool_name -ne 'PowerShell') { return $class }
+    $ctx = @{ BundleRoot = $BundleRoot; ScratchRoot = $ScratchRoot; TargetRoot = $TargetRoot; Script = $false }
+    if (Test-ReviewChain ([string]$Request.input.command) $ctx 0) { return $(if ($ctx.Script) { 'chain' } else { 'read-only' }) }
+    return 'none'
+}
+function Get-ReviewPermissionClassSingle($Request, [string]$BundleRoot, [string]$ScratchRoot) {
     if (-not $BundleRoot) { return 'none' }
     $tool = [string]$Request.tool_name
     if ($tool -in @('Bash', 'PowerShell')) {
@@ -2831,7 +2980,7 @@ function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log
         # B-467 R2: no pick at all (a /review run): the question is denied, never answered.
         if ($Pick -eq 'none') { $class = 'none' }
     }
-    elseif ($isRequest -and $CompleteReview) { $class = Get-ReviewPermissionClass $Request $BundleRoot $ScratchRoot }
+    elseif ($isRequest -and $CompleteReview) { $class = Get-ReviewPermissionClass $Request $BundleRoot $ScratchRoot $WriteRoot }
     elseif ($isRequest -and $AllowWrite) { $class = Get-WritePermissionClass $Request $AllowWrite $WriteRoot }
     if ($null -ne $Log) {
         $in = $Request.input
@@ -2854,7 +3003,7 @@ function Get-DialogAnswer($Request, [string]$Pick, [switch]$CompleteReview, $Log
     if ($class -eq 'none') {
         $message = 'This run does not grant that permission.'
         if ($CompleteReview -and $BundleRoot) {
-            $message = "This request is not approved. Commands the session's allow list covers still run as before. For a review bundle this run also approves, as single commands with literal paths, one per call, no variables, chaining or pipes, only under $BundleRoot : pwsh -NoProfile -File scripts/review-scope.ps1 ... -OutputPath <a new folder under $BundleRoot>; pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -ScopePath <the bundle>; Get-FileHash -LiteralPath <file under $BundleRoot>; Remove-Item -LiteralPath <path under $BundleRoot>; Read, Glob and Grep under $BundleRoot."
+            $message = "This request is not approved. Commands the session's allow list covers still run as before. For a review bundle this run also approves, as single commands with literal paths, one per call, no variables, chaining or pipes, only under $BundleRoot : pwsh -NoProfile -File scripts/review-scope.ps1 ... -OutputPath <a new folder under $BundleRoot>; pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -ScopePath <the bundle>; Get-FileHash -LiteralPath <file under $BundleRoot>; Remove-Item -LiteralPath <path under $BundleRoot>; Read, Glob and Grep under $BundleRoot. Read-only PowerShell may be piped or chained: Get-Content, Get-FileHash, Test-Path, Get-ChildItem, Select-String and read-only git into Select-Object, Sort-Object or Measure-Object, with literal paths only under $BundleRoot or the target."
         }
         return [pscustomobject]@{ behavior = 'deny'; message = $message }
     }
@@ -6393,7 +6542,7 @@ function Invoke-ReviewAskSelfTest([string]$Temp) {
     $denyOff = Get-DialogAnswer $pushRequest 'review' -BundleRoot $root -ScratchRoot $scratchFake
     $denyNoRoot = Get-DialogAnswer $pushRequest 'review' -CompleteReview
     if ($denyOff.message -cne $oldText -or $denyNoRoot.message -cne $oldText) { throw "B-416 dialog the opt-in off denial message is not the old text: $($denyOff.message)" }
-    if (-not $denyOn.message.Contains($root) -or $denyOn.message.Length -gt 800 -or $denyOn.message -cnotmatch 'allow list covers still run' -or $denyOn.message -cnotmatch 'review-scope\.ps1' -or $denyOn.message -cnotmatch 'test-weakening-scan\.ps1' -or $denyOn.message -cnotmatch 'Get-FileHash -LiteralPath' -or $denyOn.message -cnotmatch 'Remove-Item -LiteralPath' -or $denyOn.message -cnotmatch 'no variables, chaining or pipes') { throw "B-416 dialog the opt-in on denial message does not name the bundle root and what is approved: $($denyOn.message)" }
+    if (-not $denyOn.message.Contains($root) -or $denyOn.message.Length -gt 1100 -or $denyOn.message -cnotmatch 'allow list covers still run' -or $denyOn.message -cnotmatch 'review-scope\.ps1' -or $denyOn.message -cnotmatch 'test-weakening-scan\.ps1' -or $denyOn.message -cnotmatch 'Get-FileHash -LiteralPath' -or $denyOn.message -cnotmatch 'Remove-Item -LiteralPath' -or $denyOn.message -cnotmatch 'no variables, chaining or pipes') { throw "B-416 dialog the opt-in on denial message does not name the bundle root and what is approved: $($denyOn.message)" }
     # 8.3 short names: the root is on its long form; a request in short form is refused unless it is the root's own form.
     if ([OperatingSystem]::IsWindows()) {
         $longDir = Join-Path $tempDir 'B416SelfTestLongFolderName'
@@ -7442,6 +7591,77 @@ function Invoke-ReviewRunSelfTest([string]$Temp) {
     Write-Output 'PASS: B-467 the /review tree holds the target patch as its own commit and the subject alone uncommitted (arm K: the subject alone); a patch that is not +omitClaudeMd in the six reviewers and a subject byte off the manifest are refused; the run answers no question and runs on Claude Code with -AllowedTools only'
 }
 
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 2): reviewers' read-only pipes and chains pass the control channel, a write does not.
+# Red first: on the runner before this change `Get-FileHash -LiteralPath <bundle file> | Select -ExpandProperty Hash` was denied (the line of the
+# first failure: "B-467 permissions: allowed was none, not allowed" for that command).
+function Invoke-ReviewPermissionSelfTest {
+    $tempDir = [IO.Path]::GetTempPath()
+    $scratch = Join-Path $tempDir 'ai-tech-lead-agent-evals-selftest'
+    $root = Join-Path $tempDir 'b416-bundle-0a1b2c3d'
+    $bundle = Join-Path $root 'bundle'
+    $m = Join-Path $bundle 'manifest.json'
+    $target = Join-Path $scratch 'b467-review/target'
+    $outside = Join-Path ([IO.Path]::GetPathRoot($tempDir)) 'work-repo/out/x.cs'
+    $other = Join-Path $tempDir 'other/x'
+    $scope = "pwsh -NoProfile -File scripts/review-scope.ps1 -Mode Uncommitted -OutputPath `"$bundle`""
+    $class = { param([string]$Tool, [string]$Command, [bool]$On = $true) Get-ReviewPermissionClass ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = $Tool; input = [pscustomobject]@{ command = $Command } }) $(if ($On) { $root } else { '' }) $scratch $target }
+    $cases = @(
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'allowed', 'the plan''s hash pipe with the Select alias'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Select-Object -ExpandProperty Hash", 'allowed', 'the same with Select-Object'),
+        @('PowerShell', "(Get-FileHash -LiteralPath `"$m`").Hash", 'allowed', 'a parenthesized hash and its property'),
+        @('PowerShell', "Write-Output `"hash: `$(Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash)`"", 'allowed', 'a read-only `$( )` inside a string'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" 2>&1 | Select -ExpandProperty Hash", 'allowed', 'the 2>&1 redirect'),
+        @('PowerShell', "Get-ChildItem -Path `"$bundle`" -Recurse -File | sort -Property Length -Descending | Select -First 5", 'allowed', 'Get-ChildItem into sort and Select'),
+        @('PowerShell', "Get-Content `"$bundle/a.patch`" | Measure-Object -Line", 'allowed', 'Get-Content into Measure-Object'),
+        @('PowerShell', 'Get-Content AGENTS.md | Select -First 20', 'allowed', 'a relative target file'),
+        @('PowerShell', "Get-Content `"$target/AGENTS.md`" -Raw", 'allowed', 'an absolute target file'),
+        @('PowerShell', "Test-Path `"$m`"; Get-FileHash -LiteralPath `"$m`"", 'allowed', 'a ; chain'),
+        @('PowerShell', "Test-Path `"$m`" && Get-FileHash -LiteralPath `"$m`"", 'allowed', 'a && chain'),
+        @('PowerShell', 'git diff --stat | Select -Last 3', 'allowed', 'read-only git into Select'),
+        @('PowerShell', 'git log -1 --format=%s', 'allowed', 'git log'),
+        @('PowerShell', 'git diff HEAD~1..HEAD -- src/Orders.Api', 'allowed', 'git diff over a range and a relative path'),
+        @('PowerShell', "Select-String -Pattern 'Refund' -Path src/Orders.Api/Controllers/CheckoutController.cs | Select -First 5", 'allowed', 'Select-String over a target file'),
+        @('PowerShell', 'dotnet build Orders.sln 2>&1 | Select -Last 3', 'allowed', 'dotnet build into Select'),
+        @('PowerShell', "$scope; Get-FileHash -LiteralPath `"$m`"", 'allowed', 'the scope capture chained to a hash'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Set-Content `"$bundle/h.txt`"", 'denied', 'a pipe into Set-Content'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Out-File x.txt", 'denied', 'a pipe into Out-File'),
+        @('PowerShell', "Get-Content `"$m`" > x.txt", 'denied', 'a > redirect'),
+        @('PowerShell', "Get-Content `"$m`" >> x.txt", 'denied', 'a >> redirect'),
+        @('PowerShell', "Get-Content `"$m`" | Tee-Object x.txt", 'denied', 'a pipe into Tee-Object'),
+        @('PowerShell', "Get-Content `"$outside`" | Select -First 1", 'denied', 'a file outside the bundle root and target'),
+        @('PowerShell', "Get-Content `"$other`" | Select -First 1", 'denied', 'another temp path'),
+        @('PowerShell', 'Get-Content ..\x.txt | Select -First 1', 'denied', 'a relative path with dot-dot'),
+        @('PowerShell', 'Get-Content C:\Windows\win.ini | Select -First 1', 'denied', 'a rooted path elsewhere'),
+        @('PowerShell', "Get-FileHash -LiteralPath `$env:TEMP\x | Select -ExpandProperty Hash", 'denied', 'a variable in the path'),
+        @('PowerShell', "`$h = Get-FileHash -LiteralPath `"$m`"", 'denied', 'an assignment'),
+        @('PowerShell', "Get-Content `"$m`" | ForEach-Object { `$_ }", 'denied', 'a script block'),
+        @('PowerShell', "Get-Content `"$m`" | Invoke-Expression", 'denied', 'a pipe into Invoke-Expression'),
+        @('PowerShell', "Get-Content `"$m`"; Remove-Item -LiteralPath `"$m`"", 'denied', 'Remove-Item in a chain'),
+        @('PowerShell', "Get-Content (Get-ChildItem -Path `"$bundle`")", 'denied', 'a path produced by a sub-expression'),
+        @('PowerShell', "Write-Output `$(Set-Content x y)", 'denied', 'a write inside `$( )'),
+        @('PowerShell', "Get-Content `"$m`" & Remove-Item x", 'denied', 'a lone &'),
+        @('PowerShell', "Get-Content `"$m`" `` | Select -First 1", 'denied', 'a backtick'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" -Algorithm MD5 | Select -ExpandProperty Hash", 'denied', 'another algorithm'),
+        @('PowerShell', 'git push', 'denied', 'git push'),
+        @('PowerShell', 'git diff --output=x.patch', 'denied', 'git diff --output'),
+        @('PowerShell', 'git -C .. status', 'denied', 'git -C'),
+        @('PowerShell', 'git config user.name x', 'denied', 'git config'),
+        @('PowerShell', 'git log | Out-File x.txt', 'denied', 'git into Out-File'),
+        @('PowerShell', 'dotnet publish | Select -Last 3', 'denied', 'dotnet publish'),
+        @('Bash', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'denied', 'the pipe through the Bash tool'),
+        @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'denied-off', 'the opt-in off')
+    )
+    foreach ($case in $cases) {
+        $on = $case[2] -ne 'denied-off'
+        $got = & $class $case[0] $case[1] $on
+        $want = $case[2] -eq 'allowed'
+        if (($got -ne 'none') -ne $want) { throw "B-467 permissions: $($case[3]) was $(if ($got -eq 'none') { 'denied' } else { "allowed ($got)" }), not $(if ($want) { 'allowed' } else { 'denied' }): $($case[1])" }
+    }
+    $answer = { param([string]$Command) (Get-DialogAnswer ([pscustomobject]@{ subtype = 'can_use_tool'; tool_name = 'PowerShell'; input = [pscustomobject]@{ command = $Command } }) 'none' -CompleteReview -BundleRoot $root -ScratchRoot $scratch -WriteRoot $target).behavior }
+    if ((& $answer "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash") -ne 'allow' -or (& $answer "Get-FileHash -LiteralPath `"$m`" | Set-Content `"$bundle/h.txt`"") -ne 'deny') { throw 'B-467 permissions: the control channel does not allow the hash pipe and deny the write pipe' }
+    Write-Output 'PASS: B-467 reviewer permissions: pipes and chains of read-only PowerShell (Get-Content, Get-FileHash, Test-Path, Get-ChildItem, Select-String, read-only git, dotnet build|test|restore, into Select, sort, Measure-Object), parenthesized and $( ) sub-expressions and 2>&1 pass with literal paths under the bundle root or the target; a pipe into Set-Content, Out-File or Tee-Object, a redirect, a variable, a script block, Remove-Item in a chain, a path outside the bundle root and target, a write-form git and the Bash tool stay denied'
+}
+
 # B-537 (.claude/plans/2026-11-19-b537-address-review-comments.md section 5): the review-comments layer and its three arms are what the plan
 # says, and the grader reads one hand-made tree per id, wrong and right. Red first: with no grader this failed
 # "Unknown scenario 'review-comments-c'". The hidden-test leg is swapped for a fake ($script:ReviewCommentsHiddenRunner), so the default
@@ -7879,6 +8099,7 @@ function Invoke-WarehouseScaleSelfTest([string]$Temp) {
 function Invoke-SelfTest {
     $temp =Join-Path ([IO.Path]::GetTempPath()) ('b41-selftest-' + [guid]::NewGuid().ToString('N'))
     try {
+        Invoke-ReviewPermissionSelfTest
         $b467Temp = $temp + '-b467'
         try { Invoke-ReviewRunSelfTest $b467Temp } finally { Remove-Item -LiteralPath $b467Temp -Recurse -Force -ErrorAction SilentlyContinue }
         New-EvalRepo $temp
