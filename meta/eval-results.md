@@ -10948,3 +10948,19 @@ allowlist, valid run, the measured fields (P, IF, AT, TS, NT, lines, cost, tests
   6 until a defect was fixed (the split ate the first item's bullet); on N 1 it reads none.
 - Machine pre-check, three fresh copies in `p2\runs\`: two "Passed: 4", the third refused by the policy (`0x800711C7`, exit 1). Not all three refused, so the runs go ahead; a run whose tests the policy
   stops is valid and flagged, as registered.
+
+## B-467 R2 calibration run C0 — 2026-11-20, invalid, uncounted; the measurement stopped on its own rules
+
+Run by the main session at `671e93f8` in a clean worktree (`HEAD=671e93f8 dirty=0`, free `-SelfTest` exit 0 first), arm K, plan `.claude/plans/2026-11-20-b467-r2.md` with Amendment 1, 39 allowed-tool rules (tag `dc735db5da74`), Claude Code 2.1.312, parent `claude-sonnet-5-5`. 0.82 USD (Sonnet 0.795, Haiku 0.021: the parent and three Sonnet reviewers carry 97%). Retained scratch `%TEMP%\ai-tech-lead-agent-evals-20261120-140752`.
+
+- **Invalid, two stop rules met:** the run is invalid, and C0 cost more than 0.80 USD (stop and re-register).
+- **Cause (hand read by a coordinator worker, checked by the coordinator in the result event and the retained target):** the parent ran `dotnet test` between its two scope captures; the fixture had no `.gitignore`, so about 200 untracked `bin/` and `obj/` files changed the second capture, and the parent ended CANNOT EXAMINE with no verdict, as `review.md` requires. Five permission denials (the parent's `$b1 = Join-Path $env:TEMP …` and four reviewers' `$p = …` or `Format-Table` commands; variables and a formatter, not `$()`) were each recovered with a literal command and did not cause the stop.
+- **What it showed, not a calibration pass:** all six reviewers returned on the expected models (convention-check, bloat-radar and debt-radar on Haiku) and between them named all eight seeded defects; the grader read 0 of 8 because the report had no Issues section, which is correct for an invalid run.
+- **Followed by** Amendment 2 (the fixture ignores `bin/` and `obj/`; a recovered denial in a completed review no longer invalidates; per-run cap 1.25 USD; total re-registered at 15 USD by the maintainer). B-467 spend so far 0.82 USD.
+- Noted, not scored: two Haiku reviewers wrote that they ignored an instruction to create a claude.ai document; the init event shows the user's claude.ai Claude Docs connector attached to the child session (the runner passes no `--strict-mcp-config`). Same in both arms.
+
+## 2026-11-20 14:10:08 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (671e93f83ff1c807bdc047a849bd0dc16340f938)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **INCONCLUSIVE b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.816026845 tokensIn=30 tokensOut=33691; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=False reason=CANNOT EXAMINE (the parent); permission denied: PowerShell $b1 = Join-Path $env:TEMP "rv-b1-$(Get-Random)"; pwsh -NoPro; no verdict in the final message; no Issues section in the final message found=0/8 defects=D1:missed,D2:missed,D3:missed,D4:missed,D5:missed,D6:missed,D7:missed,D8:missed other=0 multi=0 reviewers=6/6 missing=none cost=0.816026845 patchCommit=False
