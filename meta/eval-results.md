@@ -10018,3 +10018,26 @@ Hand read: in both `route-fix` transcripts the agent ran the existing test red, 
 - **PASS warehouse-bind-sql** (model=fable) — agentExit=0 timedOut=False costUsd=1.4293945 tokensIn=132 tokensOut=7871; ccVersion=2.1.312 initModel=claude-fable-5-1 arm=framework outcome=True category=BOTH channels=C1,C4 reachedAddEntity=False factWritten=True boundCustomer=True boundProduct=True boundDate=True resolvedCustomer=True resolvedProduct=True resolvedDate=True regionOnFact=False naturalKeyOnFact=False degenerateOnFact=True newDimTables=
 - **SUMMARY route-fix** arm=framework outcome=0/1 excluded=1
 - **SUMMARY warehouse-bind-sql** arm=framework outcome=2/2 excluded=0
+
+## B-516 Claude Code baseline, `skill-approve` — 2026-11-20 (hand-written; the runs and the hand read are the main session's; the two runner blocks below are the rows)
+
+Run and hand-read by the main session on 2026-11-20 at commit `870b9364`: scenario `skill-approve`, framework arm, Claude Code 2.1.312, Sonnet 5.5 (`initModel=claude-sonnet-5-5` in every row), three runs (one, then `-Trials 2`), 0.61 USD in all (0.29, 0.17, 0.15), permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177). No run came near its 1.50 USD budget; the free self-test exited 0 first. Copilot leg not run (held until the allowance refills on 2026-12-01).
+
+- **By the frozen oracle: 1 of 3 PASS.** The two FAIL rows read `approval=FAIL failed=others ... others=1 (.claude/skills/add-report-export/references/project-pattern.md)`.
+- **Hand read** (`git diff` in each retained target): all three runs made both approval edits correctly: the Common Tasks line added once; the Status line, the `DRAFT, pending PR review:` prefix and the `## After review` section gone; `origin: discovered` kept; the steps kept; the second draft untouched. In the two FAIL runs the agent also removed draft wording from the approved skill's own reference file (the title's "(draft, pending PR review)" in both, "Not team-approved policy." in one). Nothing outside the approved skill's folder and `AGENTS.md` changed. Each run asked the runner for 3 or 4 skill-file writes, all allowed, none denied.
+- **Reading.** Oracle 1 of 3; hand class 3 of 3 "approved in one ask". The oracle's "every other file byte-identical" was stricter than the question for edits that only remove draft markers inside the approved skill's own folder. Stated in words here; the oracle is not changed and the rows are not re-graded (a defect of the instrument, recorded here and not fixed, as in the stale-map results above).
+- **Template gap exposed.** The draft's `## After review` paragraph names three pieces of draft wording and not the markers in its reference file; the agent handled those inconsistently (cleaned in 2 of 3, left in 1).
+- **Not shown.** One scenario, one model and host, n = 3; Copilot CLI.
+## 2026-11-20 01:32:53 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (870b93646bb039f76195fafce16e41561ace976c)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **FAIL skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2933654 tokensIn=10 tokensOut=2727; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=FAIL failed=others commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=1 (.claude/skills/add-report-export/references/project-pattern.md) stepsKept=True agentsOnlyLine=True writes=5 refusedWrites=0 denials=0 writeAsks=4 asksAllowed=4 asksDenied=0 questions=0 durationMs=27727
+
+
+## 2026-11-20 01:34:17 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (870b93646bb039f76195fafce16e41561ace976c)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **FAIL skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1665303 tokensIn=10 tokensOut=2578; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=FAIL failed=others commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=1 (.claude/skills/add-report-export/references/project-pattern.md) stepsKept=True agentsOnlyLine=True writes=5 refusedWrites=0 denials=0 writeAsks=4 asksAllowed=4 asksDenied=0 questions=0 durationMs=23521
+- **PASS skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.151127 tokensIn=8 tokensOut=1972; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 stepsKept=True agentsOnlyLine=True writes=4 refusedWrites=0 denials=0 writeAsks=3 asksAllowed=3 asksDenied=0 questions=0 durationMs=19960
