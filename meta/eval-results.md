@@ -10964,3 +10964,61 @@ Run by the main session at `671e93f8` in a clean worktree (`HEAD=671e93f8 dirty=
 Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
 
 - **INCONCLUSIVE b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.816026845 tokensIn=30 tokensOut=33691; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=False reason=CANNOT EXAMINE (the parent); permission denied: PowerShell $b1 = Join-Path $env:TEMP "rv-b1-$(Get-Random)"; pwsh -NoPro; no verdict in the final message; no Issues section in the final message found=0/8 defects=D1:missed,D2:missed,D3:missed,D4:missed,D5:missed,D6:missed,D7:missed,D8:missed other=0 multi=0 reviewers=6/6 missing=none cost=0.816026845 patchCommit=False
+
+## B-543 and B-544 phase 2 results — 2026-11-20 (hand-written; as pre-registered and amended at ef141338)
+
+Claude Code 2.1.312, `claude-sonnet-5-5` in every `system/init`; SDK 8.0.428; arm C (the frozen export of 36e773c0, `dist/dotnet` tree `e7884680efc9`, not bootstrapped) against arm N on fixture
+`b543-export`; one run per invocation by the phase 2 driver, C first, alternating. Twelve valid runs from twelve attempts; 3.49 USD of the 6.00 stop. Every C run took two legs (plan gate, "Go ahead."), every N
+run one; no third leg was held. Evidence in `%TEMP%\b543\p2\`.
+
+**The routing, first.** All six C runs were routed as a bug fix, not a feature: the registered prompt's own wording (the main session's) says "a 400 with a message when a rule is broken", and the keyword router
+`route-prompt.ps1` matches `broken` for the fix intent before it tries the feature intent. So the feature hook's line ("a new responsibility gets its own service or class even with one consumer") and the feature
+rails never reached arm C (0 of 6 transcripts hold it; phase 1's six hold it in every leg), while the always-loaded rules file (Leanness #1, the SOLID section, Test leanness) and the pre-bootstrap defaults
+were loaded as usual. This phase therefore says nothing about the hook's line, one of the three texts it was built to test; its readings are of the rules file, the defaults and the fix rails.
+
+| arm, slot | run | P (R = 3) | new types by kind (blind read) | step kinds | packages | NT | `Done when:` (in scope) | agent's tests | cost USD |
+|---|---|---|---|---|---|---|---|---|---|
+| C 1 | `C-s1-f4dc76f0` | 4 | request, stored, work (`ReturnService`), other (`ReturnRepository`, a store for returns) | 0 | none | 14 | 5 | refused by policy | 0.40 |
+| N 1 | `N-s1-740b2e37` | 4 | request, stored, two exceptions | 0 | none | 10 | – | ran | 0.20 |
+| C 2 | `C-s2-387da7db` | 4 | request, stored, two exceptions | 0 | none | 12 | 8 | ran | 0.45 |
+| N 2 | `N-s2-0d749012` | 4 | request, stored, two exceptions | 0 | none | 10 | – | refused by policy | 0.14 |
+| C 3 | `C-s3-5895ad38` | 5 | request, stored, work (`ReturnService`), other (`ReturnRepository`), one exception | 0 | none | 13 | 7 | ran | 0.38 |
+| N 3 | `N-s3-0c8dd9ac` | 4 | request, stored, two exceptions | 0 | none | 9 | – | refused by policy | 0.18 |
+| C 4 | `C-s4-6fcb97cb` | 2 | request, stored | 0 | none | 13 | 7 | refused by policy | 0.36 |
+| N 4 | `N-s4-bc01e9ac` | 4 | request, stored, two exceptions | 0 | none | 9 | – | ran | 0.19 |
+| C 5 | `C-s5-eb22a7c1` | 4 | request, stored, two result (`ReturnOutcome` enum, `ReturnResult`) | 0 | none | 16 | 6 | ran | 0.42 |
+| N 5 | `N-s5-1f0b1ead` | 3 | request, stored, one exception | 0 | none | 7 | – | ran | 0.17 |
+| C 6 | `C-s6-ba9525f7` | 3 | request, stored, one result (`ReturnOutcome`) | 0 | none | 11 | 8 | ran | 0.43 |
+| N 6 | `N-s6-c65bfe34` | 4 | request, stored, two result (`ReturnOutcome`, `ReturnResult`) | 0 | none | 7 | – | ran | 0.18 |
+
+- Classes, applied as registered: P of R + 2 (5) or more in 1 of 6 C runs (C 3); P of R + 1 (4) or fewer in 5 of 6, so **NOT REPRODUCED**; the cause is not read.
+- Split by step: a new type of a step kind (validator, mapper or converter, response type apart from the stored record, interface, factory or options) in 0 of 6 C runs, so **NOT REPRODUCED** (N: 0 of 6).
+- Both NOT REPRODUCED: **NOT EXERCISED AGAIN**. Two fixtures and 24 runs show neither harm on Claude Code with Sonnet; the next step is the maintainer's choice, as registered.
+- Test support: 0 of 6 C runs, **NOT REPRODUCED**. No run in either arm added a package, `public partial class Program` or `InternalsVisibleTo`.
+- Tests, on the rows whose tests ran, four a cell (the minimum): C 2, 3, 5, 6 NT 12, 13, 16, 11, median 12.5; N 1, 4, 5, 6 NT 10, 9, 7, 7, median 8. 12.5 is at least 1.5 times 8 and 4.5 more, so **THE FRAMEWORK
+  ADDS TESTS**. All twelve rows: C 14, 12, 13, 13, 16, 11 (median 13); N 10, 10, 9, 9, 7, 7 (median 9). C's plans held 5 to 8 `Done when:` criteria in scope (5, 8, 7, 7, 6, 8) against 11 to 16 new tests.
+- WSD-104's trigger as phase 1 registered it: no new type read as pass-through, not met.
+- The hand read: a Sonnet sub-agent saw only the 45 type extracts, without arm, and labelled each kind; unblinded by `extract-map.tsv`, labels in `hand-read.tsv`. The grader listed no TS or AT candidate;
+  every new public member has a caller under `src/`. P and NT were checked against each final tree by hand and match in all twelve.
+- Outside the readings, no reading and not a controlled comparison with phase 1 (the features differ): where the work went. C 1 and C 3 made a separate class that does the work, each with a separate store for
+  returns; the other four C runs and all six N runs put it in the existing `OrderService` and the returns in `OrderRepository`. In phase 1, with the hook's line delivered, C made its own class in 6 of 6.
+- Reasons given, from a hand search of every transcript and a read of each hit (the grader's pattern found two). No N run gives one.
+  - C 1: "The cost is that the repository then holds two resources, which the leanness rule against bolting code onto the nearest class advises against." Names Leanness #1 (its no-bolt-on clause).
+  - C 1: "**Recommend A:** it keeps each class to one responsibility, and the concurrency guard still works." Single responsibility; names no text.
+  - C 1: "both new classes are concrete and registered as singletons, matching how `OrderService` is done." The project's own convention.
+  - C 3: "**Recommend A, with the return handling in its own class.**" The "its own class" wording of Leanness #1 and the hook, naming neither; the hook's line did not reach this run.
+  - C 3: "A 409 needs a distinct signal, since 400 and 409 can't share `ArgumentException`." A design reason for its exception type; names no text.
+  - C 2: "The 404 and 409 cases need distinct signals, so I'd add small exception types or a result type." A design reason; names no text.
+  - C 5: "A small result type carries the not-found and conflict outcomes." A design reason; names no text.
+  - C 6: "The cost is that `OrderRepository` grows a returns list, which is acceptable because it already owns order state." A reason against a separate class.
+  - C 4 gives none for a type; it cites the convention "following how `Place` already throws". No run gives a rule as the reason for its tests. No run names `docs/defaults.md`, FluentValidation, a time
+    abstraction, DTOs, `/feature` or the SOLID section. C 1, 2, 3 and 6 name "Feature" as their workflow in the plan despite the routing.
+- Deviations. (1) The routing above: a feature request holding the word "broken" routes as a fix on the shipped tree; that belongs to B-529 (the open entry on the keyword router), not edited here. (2) This
+  machine's Application Control policy (`0x800711C7`) refused the agent's tests in four runs (C 1, C 4, N 2, N 3), the reference answer's first test run and one of three pre-check copies; those runs are valid
+  and flagged, and the Tests reading stands on four rows a cell. (3) Another session ran paid `claude -p` agents on this machine throughout (its B-467 work); before each run the batch waited until no other
+  `claude -p` process was alive (106 to 183 s a run, logged), which does not exclude one starting during a run. (4) All six C runs invoked the `security-gate` skill; in the runs read (C 2, C 4) its bundle
+  capture was refused by the host's command checks. (5) The grader's `Done when:` count missed the first item until fixed before any run, as the amendment says; the grader is otherwise unchanged
+  (`77bbf33de2bb`), the driver `f6045d96c5a3`.
+- Cost: 3.49 USD, C 2.44 and N 1.05; 0.14 to 0.45 USD a run. Phases 1 and 2: 6.24 USD.
+- Not shown: as registered, and the hook's line on this feature.
+- Reopen triggers: WSD-104's not met; WSD-102's (work presented as done on a red build) not met: every final build is green.
