@@ -4901,7 +4901,7 @@ low-entropy; it blocks hashes and GUIDs). The guard fails closed only for a writ
 **Decision (the maintainer's, in chat 2026-11-19: "you should be delegating coordination and supervision to opus and he can have sonnet implementing. Your job is that of architecture at all levels.").** Architecture stays with the main session, coordination and supervision go to an Opus agent, implementation to Sonnet agents.
 **Paid eval runs.** They are started from the main session: the permission system refused one from a subagent, and the maintainer said "Run it here."
 **Reopen** if the permission system allows a subagent to start a paid run, or the split costs more than it saves.
-**Amended 2026-11-20 (the maintainer, in chat: "best if the coordinator orchestrates those").** The coordinator starts the `skill-approve` re-run (hard stop 2.00 USD) and the B-467 R2 runs (12 USD, by its pre-registration) within the caps approved in chat; every other paid run, Copilot included, still starts from the main session on the maintainer's word.
+**Amended 2026-11-20 (the maintainer, in chat: "best if the coordinator orchestrates those").** The coordinator starts the `skill-approve` re-run (hard stop 2.00 USD) and the B-467 R2 runs (12 USD, by its pre-registration) within the caps approved in chat; every other paid run, Copilot included, still starts from the main session on the maintainer's word. What happened: the coordinator's first `skill-approve` run ran; its second was refused by the host's permission system, and the maintainer then ruled that the main session runs the rest, the B-467 runs included.
 
 ## WSD-139: a shipped change needs an observed harm and a test that can see the fix; else record the trigger and close (2026-11-19)
 

@@ -10664,3 +10664,30 @@ quoted its patched line). The session stopped the phase, which the registration 
 - What a re-run needs: a machine or folder where the policy lets a built test assembly load, and a harness that can allow one start command and one local request (the runner's dialog channel can answer a
   permission request). Neither is a framework change.
 - Reopen triggers: none met.
+
+## B-516 `skill-approve` re-run after the template clause — 2026-11-20
+
+Claude Code 2.1.312, Sonnet (`initModel=claude-sonnet-5-5` in every row), framework arm, `skill-approve` at `078328ae` (the template clause and the amended oracle), worktree `pass7-b516-clean`, `HEAD=078328ae dirty=0` printed before each run, one run per command, the 37-rule `-AllowedTools` list (header tag `a25d241c0177`). Run 1 by the coordinator; the coordinator's run 2 was refused by the host's permission system before launch, and runs 2 and 3 were run by the main session (maintainer, in chat). One main-session attempt before its run 2 was refused by the runner before any launch (no `-AllowedTools`: "an allowWrite case runs on -Executor claude with -AllowedTools"), exit 1, no cost, no row. Set: 0.61 USD (0.29, 0.16, 0.16), inside the 2.00 USD stop; no run above 0.60 USD.
+
+- **Result: 3 of 3 PASS under the amended oracle** (`approval=PASS failed=none referenceMarkers=0/2 referenceOther=0 others=0`).
+- **Hand read** (a worker read `git diff` in the three retained targets; the coordinator re-read run 2): in every run the Common Tasks line was added once, the Status line, the `DRAFT, pending PR review:` prefix and `## After review` were removed, `origin: discovered` and the eight Steps were kept, and in `references/project-pattern.md` only the title's "(draft, pending PR review)" and "Not team-approved policy." were removed; no other file changed, the second draft included. The runs placed the Common Tasks line at different points in the list (end, middle, top). Agrees with the rows.
+- **Reading.** Before the clause, 1 of 3 by the hand read under this oracle (rows not re-graded); after it, 3 of 3. n = 3 cannot tell a 1-in-3 rate from 0-in-3 with any confidence; one host, one model, one fixture. The Copilot leg waits for the allowance refill on 2026-12-01.
+- Runs 1 to 3: scratch `%TEMP%\ai-tech-lead-agent-evals-20261120-122937`, `-123859`, `-123944` (retained).
+
+## 2026-11-20 12:30:08 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (078328ae0b8b32cb46129994d85553f202f816d3)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.2882105 tokensIn=8 tokensOut=2860; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=0/2 referenceOther=0 stepsKept=True agentsOnlyLine=True writes=5 refusedWrites=0 denials=0 writeAsks=4 asksAllowed=4 asksDenied=0 questions=0 durationMs=24097
+
+## 2026-11-20 12:39:33 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (078328ae0b8b32cb46129994d85553f202f816d3)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1604378 tokensIn=8 tokensOut=2416; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=0/2 referenceOther=0 stepsKept=True agentsOnlyLine=True writes=4 refusedWrites=0 denials=0 writeAsks=3 asksAllowed=3 asksDenied=0 questions=0 durationMs=23506
+
+## 2026-11-20 12:40:21 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (078328ae0b8b32cb46129994d85553f202f816d3)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
+
+- **PASS skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1607658 tokensIn=8 tokensOut=2349; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=0/2 referenceOther=0 stepsKept=True agentsOnlyLine=True writes=5 refusedWrites=0 denials=0 writeAsks=4 asksAllowed=4 asksDenied=0 questions=0 durationMs=27551
