@@ -943,6 +943,18 @@
       "dialog": "review",
       "completeReview": true,
       "assertion": "reviewOffer"
+    },
+    {
+      "id": "b467-review",
+      "measures": "B-467 R2 (pre-registered in .claude/plans/2026-11-20-b467-r2.md): a Claude Code /review of the frozen subject (meta/eval-fixtures/b467-review/: three uncommitted files with eight seeded defects D1-D8) on orders-v2 with the b514-orders overlay, with no question pick. Arm K runs the shipped reviewers; arm O adds -TargetPatch meta/eval-fixtures/target-patches/b467-omit-claudemd.patch (omitClaudeMd: true on the six reviewer agents), committed before the subject is copied in. The grader reads the final merged report against the plan's fixed per-defect patterns; invalid runs are reported, not scored.",
+      "stack": "dotnet",
+      "fixture": "orders-v2",
+      "overlay": "b514-orders",
+      "subject": "b467-review",
+      "budgetUsd": 1.0,
+      "prompt": "/review",
+      "completeReview": true,
+      "assertion": "reviewRun"
     }
   ]
 }
