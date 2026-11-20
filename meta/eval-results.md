@@ -10842,3 +10842,49 @@ Claude Code 2.1.312, `claude-sonnet-5-5`; twelve runs, C and T2 alternating (slo
 - Not shown: Copilot CLI and VS Code, the report's host; a fault an in-process start cannot see (a missing runtime, a deployed configuration); an application that needs external services to boot; Angular; who
   adds the test, and when.
 - Reopen triggers: none met.
+
+## B-543 and B-544 results — 2026-11-20 (hand-written; as pre-registered and amended at 36e773c0)
+
+Claude Code 2.1.312, `claude-sonnet-5-5` in every `system/init`; SDK 8.0.428; arm C (36e773c0's `dist/dotnet`, tree `e7884680efc9`, not bootstrapped) against arm N (no framework file) on fixture `b543-export`;
+one run per invocation by the frozen driver, C first, alternating. Twelve valid runs from twelve attempts; 2.75 USD of the 7.00 stop. Every C run took two legs (leg 1 stopped at the plan gate, leg 2 "Go
+ahead."); every N run took one. Every agent's `dotnet test` ran; the policy refused none. Evidence in the folder the amendment names.
+
+| arm, slot | run | P (new production types) | IF | AT | TS | NT | lines added src / tests | build | cost USD | output tokens |
+|---|---|---|---|---|---|---|---|---|---|---|
+| C 1 | `C-s1-1d687b18` | 1 `OrderCsvExporter` (static) | 0 | 0 | 0 | 6 | 58 / 62 | green | 0.37 | 11,352 |
+| N 1 | `N-s1-3b1ee5be` | 1 `OrderCsv` (static) | 0 | 0 | 0 | 3 | 48 / 29 | green | 0.13 | 4,850 |
+| C 2 | `C-s2-6406d161` | 1 `OrderCsvExporter` | 0 | 0 | 0 | 4 | 47 / 57 | green | 0.28 | 7,699 |
+| N 2 | `N-s2-a9d82468` | 0 (`OrderService.ExportCsv`) | 0 | 0 | 0 | 2 | 33 / 26 | green | 0.10 | 3,192 |
+| C 3 | `C-s3-36d14553` | 1 `OrderCsvExporter` | 0 | 0 | 0 | 6 | 47 / 63 | green | 0.29 | 8,245 |
+| N 3 | `N-s3-9cf14c5a` | 1 `OrderCsv` (static) | 0 | 0 | 0 | 4 | 49 / 26 | green | 0.14 | 5,116 |
+| C 4 | `C-s4-2013266a` | 1 `OrderCsvWriter` (static) | 0 | 0 | 0 | 4 | 46 / 50 | green | 0.37 | 9,360 |
+| N 4 | `N-s4-b995f167` | 0 (`OrderService.ExportCsv`) | 0 | 0 | 0 | 3 | 33 / 32 | green | 0.11 | 3,268 |
+| C 5 | `C-s5-aa29ff8e` | 1 `OrderCsvExporter` | 0 | 0 | 0 | 6 | 50 / 61 | green | 0.39 | 10,552 |
+| N 5 | `N-s5-cd778896` | 0 (`OrderService.ExportCsv`) | 0 | 0 | 0 | 3 | 36 / 26 | green | 0.11 | 3,303 |
+| C 6 | `C-s6-285e63f0` | 1 `OrderCsvExporter`, injected into `OrderService` | 0 | 0 | 0 | 6 | 45 / 62 | green | 0.33 | 9,286 |
+| N 6 | `N-s6-e4f1149c` | 1 `OrderCsvExporter` (static) | 0 | 0 | 0 | 4 | 49 / 39 | green | 0.13 | 4,724 |
+
+- Classes, applied as registered: P of 2 or fewer in 6 of 6 C runs (P = 1 in each), so **NOT REPRODUCED**; the cause is not read. N had P = 1 in 3 of 6 and put the CSV code in `OrderService` in the other 3.
+- Test support: TS in 0 of 6 C runs, so **NOT REPRODUCED**. No run in either arm added a CSV reader, a clock abstraction, an interface, a mock, `public partial class Program` or `InternalsVisibleTo`.
+- Both NOT REPRODUCED: **NOT EXERCISED**. The fixture shows neither harm; the maintainer chooses the next prompt.
+- Tests, on 6 and 6 rows whose tests ran: C's NT 4, 4, 6, 6, 6, 6, median 6; N's 2, 3, 3, 3, 4, 4, median 3. 6 is at least 1.5 times 3 and 3 more, so **THE FRAMEWORK ADDS TESTS**. The second condition is met
+  exactly at its threshold; one fewer test in two C runs would have read INCONCLUSIVE.
+- WSD-104's trigger as registered (a new type read as pass-through in 2 or more C runs): 0 of 6, not met.
+- The hand read, blind (a Sonnet sub-agent saw only the 15 extracts): all 9 new production types read as doing the work (formatting and escaping CSV; four also build the file name from a date passed in); none
+  pass-through, data carrier, interface or test support. Every new public member was confirmed by hand to have a caller under `src/` (`Program.cs`, or `OrderService` in C 6); the grader's name match
+  also counted `builder.Build()` as a use of `Build` in C 3 and N 3, where `Build` has a real caller too, so it hid nothing. P was checked against each final tree by hand: it matches in all twelve.
+- Rule-citing sentences, C only (N has none): three name Leanness #1 as the reason for the new class (C 1 "This follows Leanness #1 (CSV formatting is its own responsibility)", C 2, C 3 "breaks the placement
+  rule in Leanness #1"); C 4 "This is its own class because CSV formatting is a separate responsibility", labelled a design reason by the blind read though it carries the registered phrase; C 5 "a separate
+  responsibility from `OrderService`", a design reason. C 6 gives none.
+- Outside the readings: every C run made a red test run before its green one (5, 2, 6, 3, 5 and 4 failing), by breaking code and restoring it or by writing tests first; no N run did. C took about 2.8 times N's
+  cost, 2.3 times its output tokens and 2.0 times its added test lines (355 against 178). Three C runs tried to start the host to check the endpoint (C 3, C 4, C 5): two started it in the background and both had the
+  follow-up request refused by the host's command checks; C 4 also tried `taskkill` by image name, refused; no host was left running. C 1 wrote a smoke script outside its repository (`%TEMP%`), which it was
+  refused leave to run; it is kept in the run folder. No run invoked a skill or a sub-agent. Leg 3 was never used.
+- Invalid attempts: none.
+- Deviations. (1) The amendment's sha256 prefixes for `driver.ps1` and `allowlist.txt` are wrong in their twelfth character (a `cut` error in the session that wrote them): the files are unchanged since
+  before 36e773c0 (modified 13:13 UTC, commit 13:19 UTC), and their prefixes are `91b8de047f79` and `89aefbfe69e2`; `grade.ps1` `d799ec170676` is right; all three unchanged through the runs. (2) The
+  grader's rule regex missed sentences that say "separate" or "distinct responsibility" without naming a rule; a broader hand search of all twelve transcripts found two (C 3, C 5), added to the blind
+  extracts. The grader is unchanged. (3) The sentence read could not be blind to arm: the C sentences cite `AGENTS.md` and Leanness, as the registration foresaw.
+- Cost: 2.75 USD, C 2.03 and N 0.72; 0.10 to 0.39 USD a run.
+- Not shown: as registered. Whether C's extra tests are too many for a reviewer, or right, is not measured; nor tests per stated behaviour; nor a larger change, where Leanness #1 and SOLID #1 have more to split.
+- Reopen triggers: WSD-104's not met. WSD-102's (work presented as done on a red build) not met: every build and test run ended green.
