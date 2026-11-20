@@ -106,14 +106,62 @@ function Get-ExpectedHookCount([string]$Root) {
     $n
 }
 
-# Legs shared by both hosts, from the repository and the endpoint log.
-function Test-CommonLegs([string]$HostName, [string]$Root, [string]$Dir, [datetime]$Since, [string]$StateFile,
-    [string]$Harmless, [string]$Planted, [bool]$PlantedToolFailed, [string]$MoveOutput) {
-    # The planted file first: a key that landed is a FAIL whatever later trace turns out unreadable.
+# Called the moment the host process ends (from a finally, so a throw cannot skip it), before anything
+# that can return early or throw: a planted key that landed is always a FAIL, whatever else could not be
+# examined. Otherwise reads the host's trace and returns it; with no completed run ($Ran false) there is
+# no trace to judge an absent file by, and the caller's run CANNOT covers it.
+function Test-PlantedLeg([string]$HostName, [string]$Planted, [bool]$Ran, [string]$Out) {
     $pname = Split-Path $Planted -Leaf
-    if (Test-Path -LiteralPath $Planted) { Add-Leg $HostName 'planted-write' 'FAIL' "sub\$pname holds the planted key: the guard did not refuse it" }
-    elseif (-not $PlantedToolFailed) { Add-Leg $HostName 'planted-write' 'CANNOT' "sub\$pname is absent but the host reported no failed write for it" }
+    $landed = Test-Path -LiteralPath $Planted
+    if ($landed) { Add-Leg $HostName 'planted-write' 'FAIL' "sub\$pname holds the planted key: the guard did not refuse it" }
+    if (-not $Ran) { return $null }
+    try { $trace = if ($HostName -eq 'claude') { Read-ClaudeTrace $Out $Planted } else { Read-CopilotTrace $Out $Planted } }
+    catch {
+        if (-not $landed) { Add-Leg $HostName 'planted-write' 'CANNOT' "could not read the host's trace for sub\${pname}: $($_.Exception.Message)" }
+        return $null
+    }
+    if ($landed) { }
+    elseif (-not $trace.PlantedFailed) { Add-Leg $HostName 'planted-write' 'CANNOT' "sub\$pname is absent but the host reported no failed write for it" }
     else { Add-Leg $HostName 'planted-write' 'PASS' "the guard refused sub\$pname" }
+    $trace
+}
+
+function Read-ClaudeTrace([string]$Out, [string]$Planted) {
+    $events = @(Read-JsonLines $Out)
+    $uses = @{}; $results2 = @{}
+    foreach ($ev in $events) {
+        foreach ($c in @($ev.message.content)) {
+            if ($c.type -eq 'tool_use') { $uses[[string]$c.id] = $c }
+            if ($c.type -eq 'tool_result') { $results2[[string]$c.tool_use_id] = $c }
+        }
+    }
+    $moveOut = ''; $plantedFailed = $false
+    foreach ($id in $uses.Keys) {
+        $u = $uses[$id]; $r = $results2[$id]
+        $text = if ($r) { (@($r.content) | ForEach-Object { if ($_ -is [string]) { $_ } else { $_.text } }) -join "`n" } else { '' }
+        if ($u.name -eq 'PowerShell') { $moveOut = $text }
+        if ($u.name -eq 'Write' -and [string]$u.input.file_path -eq $Planted -and $r -and $r.is_error) { $plantedFailed = $true }
+    }
+    [pscustomobject]@{ Events = $events; MoveOut = $moveOut; PlantedFailed = $plantedFailed }
+}
+
+function Read-CopilotTrace([string]$Out, [string]$Planted) {
+    $starts = @{}; $moveOut = ''; $plantedFailed = $false
+    foreach ($ev in @(Read-JsonLines $Out)) {
+        if ($ev.type -eq 'tool.execution_start') { $starts[[string]$ev.data.toolCallId] = $ev.data }
+        if ($ev.type -eq 'tool.execution_complete') {
+            $s = $starts[[string]$ev.data.toolCallId]
+            $targs = if ($s) { $s.arguments } else { $null }
+            if ($s -and $s.toolName -eq 'powershell') { $moveOut = [string]$ev.data.result.content }
+            if ($s -and $s.toolName -eq 'create' -and [string]$targs.path -eq $Planted -and -not $ev.data.success) { $plantedFailed = $true }
+        }
+    }
+    [pscustomobject]@{ MoveOut = $moveOut; PlantedFailed = $plantedFailed }
+}
+
+# Legs shared by both hosts, from the repository and the endpoint log (planted-write is Test-PlantedLeg's).
+function Test-CommonLegs([string]$HostName, [string]$Root, [string]$Dir, [datetime]$Since, [string]$StateFile,
+    [string]$Harmless, [string]$MoveOutput) {
     $state = Join-Path $Root ".claude\.state\$StateFile"
     if ((Test-Path -LiteralPath $state) -and (Get-Item -LiteralPath $state).LastWriteTimeUtc -ge $Since) {
         Add-Leg $HostName 'session-hooks' 'PASS' ".claude\.state\$StateFile written during the run"
@@ -175,32 +223,23 @@ function Invoke-ClaudeLegs([string]$Root, [string]$Dir, [string]$RunId) {
     }
     New-Item -ItemType Directory -Force -Path $envs.CLAUDE_CONFIG_DIR | Out-Null
     $out = Join-Path $Dir 'stream.jsonl'
+    $run = $null; $trace = $null
     try {
         $run = Invoke-HostProcess $ClaudeCmd @('-p', 'Run the scripted host smoke.', '--output-format', 'stream-json', '--verbose',
             '--setting-sources', 'project,local', '--permission-mode', 'acceptEdits', '--allowedTools', 'PowerShell,Write') $envs $Root $out (Join-Path $Dir 'stderr.txt')
-    } finally { try { $ep.Process.Kill() } catch { } }
+    } finally {
+        try { $ep.Process.Kill() } catch { }
+        $trace = Test-PlantedLeg 'claude' $planted ($null -ne $run) $out
+    }
     if (-not (Test-Examinable 'claude' $Dir $run 2)) { return }
-    $events = @(Read-JsonLines $out)
+    if (-not $trace) { return }
+    $events = $trace.Events
     $result = @($events | Where-Object { $_.type -eq 'result' } | Select-Object -Last 1)
     if (-not $result -or -not (Test-ZeroNumber $result[0].total_cost_usd)) {
         Add-Leg 'claude' 'zero-cost' 'CANNOT' "the result event does not record total_cost_usd 0 ($(if ($result) { $result[0].total_cost_usd } else { 'no result event' }))"; return
     }
     Add-Leg 'claude' 'zero-cost' 'PASS' 'result event total_cost_usd 0'
-    $uses = @{}; $results2 = @{}
-    foreach ($ev in $events) {
-        foreach ($c in @($ev.message.content)) {
-            if ($c.type -eq 'tool_use') { $uses[[string]$c.id] = $c }
-            if ($c.type -eq 'tool_result') { $results2[[string]$c.tool_use_id] = $c }
-        }
-    }
-    $moveOut = ''; $plantedFailed = $false
-    foreach ($id in $uses.Keys) {
-        $u = $uses[$id]; $r = $results2[$id]
-        $text = if ($r) { (@($r.content) | ForEach-Object { if ($_ -is [string]) { $_ } else { $_.text } }) -join "`n" } else { '' }
-        if ($u.name -eq 'PowerShell') { $moveOut = $text }
-        if ($u.name -eq 'Write' -and [string]$u.input.file_path -eq $planted -and $r -and $r.is_error) { $plantedFailed = $true }
-    }
-    Test-CommonLegs 'claude' $Root $Dir $since 'last-session-start' $harmless $planted $plantedFailed $moveOut
+    Test-CommonLegs 'claude' $Root $Dir $since 'last-session-start' $harmless $trace.MoveOut
     $init = @($events | Where-Object { $_.type -eq 'system' -and $_.subtype -eq 'init' } | Select-Object -First 1)
     $commands = @($init | ForEach-Object { $_.slash_commands })
     $skills = @($init | ForEach-Object { $_.skills })
@@ -228,28 +267,22 @@ function Invoke-CopilotLegs([string]$Root, [string]$Dir, [string]$RunId) {
         COPILOT_AUTO_UPDATE = 'false'; GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS = 'true'
     }
     $out = Join-Path $Dir 'stdout.jsonl'
+    $run = $null; $trace = $null
     try {
         $run = Invoke-HostProcess $CopilotCmd @('-p', 'Run the scripted host smoke.', '-C', $Root, '--allow-all-tools', '--no-ask-user',
             '--no-remote', '--no-remote-export', '--no-color', '--no-auto-update', '--output-format', 'json', '--log-dir', $logs, '--log-level', 'debug',
             '--usage-output-file', $usage) $envs $Root $out (Join-Path $Dir 'stderr.txt')
-    } finally { try { $ep.Process.Kill() } catch { } }
+    } finally {
+        try { $ep.Process.Kill() } catch { }
+        $trace = Test-PlantedLeg 'copilot' $planted ($null -ne $run) $out
+    }
     if (-not (Test-Examinable 'copilot' $Dir $run 2)) { return }
+    if (-not $trace) { return }
     $cost = $null
     if (Test-Path -LiteralPath $usage -PathType Leaf) { try { $cost = (Get-Content -LiteralPath $usage -Raw | ConvertFrom-Json).totalPremiumRequestCost } catch { $cost = "unreadable: $($_.Exception.Message)" } }
     if (-not (Test-ZeroNumber $cost)) { Add-Leg 'copilot' 'zero-cost' 'CANNOT' "the usage file does not record totalPremiumRequestCost 0 ($cost)"; return }
     Add-Leg 'copilot' 'zero-cost' 'PASS' 'usage file totalPremiumRequestCost 0'
-    $events = @(Read-JsonLines $out)
-    $starts = @{}; $moveOut = ''; $plantedFailed = $false
-    foreach ($ev in $events) {
-        if ($ev.type -eq 'tool.execution_start') { $starts[[string]$ev.data.toolCallId] = $ev.data }
-        if ($ev.type -eq 'tool.execution_complete') {
-            $s = $starts[[string]$ev.data.toolCallId]
-            $targs = if ($s) { $s.arguments } else { $null }
-            if ($s -and $s.toolName -eq 'powershell') { $moveOut = [string]$ev.data.result.content }
-            if ($s -and $s.toolName -eq 'create' -and [string]$targs.path -eq $planted -and -not $ev.data.success) { $plantedFailed = $true }
-        }
-    }
-    Test-CommonLegs 'copilot' $Root $Dir $since 'last-session-start-copilot' $harmless $planted $plantedFailed $moveOut
+    Test-CommonLegs 'copilot' $Root $Dir $since 'last-session-start-copilot' $harmless $trace.MoveOut
     try { $expected = Get-ExpectedHookCount $Root }
     catch { Add-Leg 'copilot' 'hook-count' 'CANNOT' "could not read .github/hooks/hooks.json or .claude/settings.json: $($_.Exception.Message)"; $expected = $null }
     $logText = (Get-ChildItem -LiteralPath $logs -Filter *.log -File -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n"

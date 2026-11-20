@@ -18,7 +18,7 @@ if ($kind -eq 'copilot' -and $rest[0] -eq 'skill') { '[{"name":"map-warehouse"}]
 if ($behaviour -eq 'silent') { exit 0 }
 $opt = @{}; for ($i = 0; $i -lt $rest.Count - 1; $i++) { if ($rest[$i] -like '--*') { $opt[$rest[$i]] = $rest[$i + 1] } }
 $uri = if ($kind -eq 'claude') { "$env:ANTHROPIC_BASE_URL/v1/messages" } else { "$env:COPILOT_PROVIDER_BASE_URL/chat/completions" }
-$lastTurn = if ($behaviour -eq 'stop1') { 1 } else { 2 }
+$lastTurn = if ($behaviour -in @('stop1', 'leakstop')) { 1 } else { 2 }
 $steps = foreach ($n in 0..$lastTurn) {
     $messages = @(@{ role = 'user'; content = 'go' })
     if ($n -gt 0) { $messages += @(1..$n | ForEach-Object { @{ role = 'assistant'; content = 'x' } }) }
@@ -41,7 +41,7 @@ foreach ($s in $steps) {
             if ($behaviour -ne 'noaudit') { Add-Content -LiteralPath (Join-Path $root '.claude\ai-audit.log') -Value ("now`tmain`t.\sub\" + (Split-Path $path -Leaf)) }
         }
     } else {
-        if ($behaviour -in @('leak', 'leaklock')) { Set-Content -LiteralPath $path -Value 'planted' }
+        if ($behaviour -in @('leak', 'leaklock', 'leakcost', 'leaknocost')) { Set-Content -LiteralPath $path -Value 'planted' }
         elseif ($behaviour -ne 'noreport') { $failed = $true; $text = 'Blocked by the guard' }
     }
     if ($kind -eq 'claude') {
@@ -52,6 +52,9 @@ foreach ($s in $steps) {
         $lines += (@{ type = 'tool.execution_complete'; data = @{ toolCallId = "c$i"; success = (-not $failed); result = @{ content = $text } } } | ConvertTo-Json -Compress -Depth 8)
     }
 }
+# leakstop: the host writes the planted key (beside the harmless file) but asked only through turn 1,
+# so the served-turn log reads short.
+if ($behaviour -eq 'leakstop') { Set-Content -LiteralPath (($steps[1].Input.file_path, $steps[1].Input.path | Where-Object { $_ }) -replace 'harmless', 'planted') -Value 'planted' }
 if ($behaviour -eq 'leaklock') {
     # A process outside the host holds the audit log open, unshared, while the smoke reads its traces;
     # its PID goes to lock.pid so the test can kill it.
@@ -62,10 +65,10 @@ if ($behaviour -eq 'leaklock') {
     $clock = [Diagnostics.Stopwatch]::StartNew()
     while (-not (Test-Path -LiteralPath $ready) -and $clock.Elapsed.TotalSeconds -lt 20) { Start-Sleep -Milliseconds 100 }
 }
-$cost = if ($behaviour -eq 'cost') { 0.25 } elseif ($behaviour -eq 'boolcost') { 'false' } else { 0 }
-if ($kind -eq 'claude') { $lines += "{`"type`":`"result`",`"total_cost_usd`":$cost}" }
+$cost = if ($behaviour -in @('cost', 'leakcost')) { 0.25 } elseif ($behaviour -eq 'boolcost') { 'false' } else { 0 }
+if ($kind -eq 'claude') { if ($behaviour -ne 'leaknocost') { $lines += "{`"type`":`"result`",`"total_cost_usd`":$cost}" } }
 else {
-    Set-Content -LiteralPath $opt['--usage-output-file'] -Value "{`"totalPremiumRequestCost`":$cost}"
+    if ($behaviour -ne 'leaknocost') { Set-Content -LiteralPath $opt['--usage-output-file'] -Value "{`"totalPremiumRequestCost`":$cost}" }
     New-Item -ItemType Directory -Force $opt['--log-dir'] | Out-Null
     $count = if ($behaviour -eq 'hooks') { 1 } else { 2 }
     Set-Content -LiteralPath (Join-Path $opt['--log-dir'] 'process-1.log') -Value "x [DEBUG] loadDeferredRepoHooks(s): loaded repo hooks (hookCount=$count)"
@@ -123,6 +126,32 @@ It 'names planted-write and exits 1 when the planted key lands and the audit log
         Start-Sleep -Milliseconds 300
         Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue
     }
+}
+
+It 'names planted-write and exits 1 when the key lands and the host then stops short of the turn script' {
+    $bad = foreach ($kind in 'claude', 'copilot') {
+        $c = New-SmokeCase $kind 'leakstop'
+        try {
+            $r = Invoke-Smoke $c $kind
+            if ($r.Out -notmatch "LEG $kind run CANNOT - the host stopped before") { "$kind did not read short, got $($r.Exit): $($r.Out)" }
+            elseif ($r.Exit -ne 1 -or $r.Out -notmatch "HOST-SMOKE FAIL - $kind planted-write") { "$kind expected exit 1 naming planted-write, got $($r.Exit): $(($r.Out -split "`n")[-1])" }
+        } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+    Assert (-not $bad) ($bad -join ' || ')
+}
+
+It 'names planted-write and exits 1 when the key lands and the recorded cost is non-zero or missing' {
+    $bad = foreach ($kind in 'claude', 'copilot') {
+        foreach ($b in 'leakcost', 'leaknocost') {
+            $c = New-SmokeCase $kind $b
+            try {
+                $r = Invoke-Smoke $c $kind
+                if ($r.Out -notmatch "LEG $kind zero-cost CANNOT") { "$kind $b gave no zero-cost CANNOT, got $($r.Exit): $($r.Out)" }
+                elseif ($r.Exit -ne 1 -or $r.Out -notmatch "HOST-SMOKE FAIL - $kind planted-write") { "$kind $b expected exit 1 naming planted-write, got $($r.Exit): $(($r.Out -split "`n")[-1])" }
+            } finally { Remove-Item -LiteralPath $c.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
+    Assert (-not $bad) ($bad -join ' || ')
 }
 
 It 'could not examine (exit 2) when a host records its cost as a boolean, not the number 0' {
