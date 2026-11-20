@@ -10691,3 +10691,83 @@ Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: accept
 Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 37 allowed-tool rules (a25d241c0177) · scratch: retained=True
 
 - **PASS skill-approve** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.1607658 tokensIn=8 tokensOut=2349; ccVersion=2.1.312 initModel=claude-sonnet-5-5 approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=0/2 referenceOther=0 stepsKept=True agentsOnlyLine=True writes=5 refusedWrites=0 denials=0 writeAsks=4 asksAllowed=4 asksDenied=0 questions=0 durationMs=27551
+
+## B-543 and B-544 pre-registration — one .NET feature on the shipped tree against no framework: new classes, test support in production code, tests added, Claude Code (2026-11-20, frozen by the commit that holds it except the items its last bullet names; before any run)
+
+Q. Field report #17: on .NET, "strict SOLID is creating too many classes", and "it's adding utilities for unit tests in regular code that it shouldn't -- going over the top with unit tests" ("like a csv reader").
+On one small feature: (1) does an agent on the shipped tree create more production types than the change needs; (2) does it put code only tests use in the production project; (3) does it write more tests than an
+agent with no framework; and for each, is the framework the cause or is it the model's default. Ships nothing. No candidate wording is measured here: that follows the plan the maintainer asked for in chat.
+Spend: the maintainer, asked in chat whether to measure first and told B-539 phase 1 cost 1.64 USD for six runs, said "measure i guess"; the stop below is the session's figure, not one the maintainer named.
+Not reviewed by a fresh session. The design is the main session's; the fixture, driver, grader and runs are an Opus agent's, at the maintainer's direction in chat.
+
+- Fixture `meta/eval-fixtures/b543-export/files/` (hand-written): `Orders.sln`; `src/Orders.Api`, a net8.0 minimal API with `Order` (a record), `OrderStatus`, `OrderRepository` (in memory, seeded, one customer
+  name holding a comma) and `OrderService`, both concrete classes registered directly, no interface anywhere, and `Program.cs` mapping `GET /health`, `GET /orders`, `GET /orders/{id}` and `POST /orders`, which
+  takes today's date from `DateTime.UtcNow` in the endpoint and passes it in; `tests/Orders.Tests`, xUnit, four tests that build `new OrderService(new OrderRepository())`, no mocking library. So an interface, a
+  clock abstraction or a mock in the answer has no project evidence behind it.
+- Prompt, leg 1: "Add a CSV export of orders. GET /orders/export returns every order as CSV with the columns id, customer, placed date, total and status, and takes optional from and to dates (inclusive) to limit
+  it by placed date; from after to is a 400. Totals always use a dot as the decimal separator, a customer name with a comma or a double quote is escaped the usual CSV way, and the download's file name carries
+  today's date, like orders-20261120.csv." Legs 2 and 3, each only while `src/` is unchanged (the plan gate, or questions): "Go ahead." on `--resume`. The prompt does not mention tests. The feature writes CSV and
+  never reads it, so CSV reading under `src/` can only be there for the tests; the dated file name gives a clock abstraction "for testability" room to appear.
+- Reference answer, written by hand before any run and kept beside the run evidence, not in the repository: one new production class that writes the CSV, and the endpoint. Build exit 0 and its tests green
+  on this machine. It scores P = 1, IF = 0, TS = 0 below.
+- Arms. C: the fixture with the frozen commit's `dist/dotnet` installed by its own `install.ps1`, not bootstrapped. N: the fixture alone, no framework file. Six valid runs each, C first, alternating.
+- Host and runs: as B-539's registration and amendment (Claude Code 2.1.312, `--model sonnet`, `--setting-sources project,local`, `--permission-mode acceptEdits` with that allowlist renamed for this fixture,
+  `DISABLE_AUTOUPDATER=1`, `CLAUDE*` and `ANTHROPIC*` variables removed, one run per invocation from a fresh copy), `--max-budget-usd 0.75` a leg, a driver outside the repository.
+- Valid run. Each leg ends in a terminal `result` of subtype success; `src/` differs from the start commit at the end; every row's `system/init` has the same Claude Code version and model; C rows have succeeded
+  SessionStart and UserPromptSubmit hook responses; N rows hold no `.claude/` folder and no `AGENTS.md`. An invalid run is repeated once; a second closes the slot, reported by its reason. A final tree that does
+  not build is valid, reported BUILD-RED.
+- Measured on each valid run, from the commit the agent started on (C: after the install commit; N: the fixture commit) to the final working tree, `src/` and `tests/` only, `bin/` and `obj/` left out.
+  - **P**, new production types: type declarations (class, record, struct, interface, enum; nested ones too) under `src/` at the end whose name is declared nowhere under `src/` at the start. `Program` is left out.
+  - **IF**: the interfaces among P. **AT**, an abstraction for the tests: a new interface or abstract type under `src/` with one implementation under `src/` and a fake, stub or mock of it under `tests/`.
+  - **TS**, test support in production code: a new type, or a new public or internal member, under `src/` that no code under `src/` uses outside its own declaration and that code under `tests/` uses; or any CSV
+    reading or parsing code under `src/`. The grader lists candidates; each is confirmed by hand with its file and line. Reported apart and not TS: `public partial class Program` and `InternalsVisibleTo`, the
+    vendor's documented way to test a minimal API, which the shipped `add-tests` skill names.
+  - **NT**, new test cases: `[Fact]` methods plus `[InlineData]` rows (a `[Theory]` fed another way counts 1) under `tests/`, end less start. Also listed: new types under `tests/` that hold no test.
+  - Lines added under `src/` and under `tests/`; cost, legs, output tokens; whether the agent's `dotnet test` ran or the machine's policy stopped it; skills and sub-agents it invoked.
+  - Read by hand under random ids, labelled before the arm is revealed: each P type as doing the work, pass-through (every public method only forwards to one other type), data carrier, interface or test
+    support; and any sentence in the agent's own text that gives a rule (Leanness, SOLID, single responsibility, "its own class") as the reason for a new type, quoted. C rows only can cite the framework.
+- Readings, fixed now, on six valid runs a cell (fewer is "not settled").
+  - Classes. **REPRODUCED**: P of 3 or more in 4 or more of 6 C runs (the reference is 1). **NOT REPRODUCED**: P of 2 or fewer in 5 or more. Otherwise not settled. When REPRODUCED, the cause. **THE FRAMEWORK
+    ADDS THEM**: C has at least 3 more such runs than N. **THE MODEL'S DEFAULT**: within 1 of N. Otherwise INCONCLUSIVE.
+  - Test support. **REPRODUCED**: TS in 3 or more of 6 C runs. **NOT REPRODUCED**: in 0 or 1. In 2: not settled. The cause is read against N the same way.
+  - Tests. The report gives no number for too many, so this is comparative only. **THE FRAMEWORK ADDS TESTS**: C's median NT is at least 1.5 times N's and at least 3 more. **NO DIFFERENCE**: the medians are
+    within 2. Otherwise INCONCLUSIVE. Made only on rows where the agent's tests ran; "not settled" with fewer than 4 such rows in a cell.
+  - Classes and test support both NOT REPRODUCED: **NOT EXERCISED**, the fixture shows neither harm, and the maintainer chooses the next prompt.
+  - WSD-104's reopen trigger (one-method or pass-through services created under its rule) is reported as met if 2 or more C runs hold a new type read as pass-through; reopening is the maintainer's decision.
+- Machine limit, known from B-539 phase 2: this machine's Application Control policy can refuse to load a freshly built test assembly. Before the first paid call `dotnet test` is run three times on fresh copies
+  of the fixture in the run folder; all three refused is an escalation to the main session, not a run. A run whose tests the policy stopped is valid and flagged: P, IF, AT and TS are of written code and stand.
+- Stop: 7.00 USD, counted from each run's `total_cost_usd`; a run is not started if the spend so far plus 2.25 USD (its three caps) would pass it. Expected 0.30 to 0.50 USD a run, 4 to 6 USD for twelve.
+- Not shown: Copilot CLI and VS Code, the reporting teams' hosts; other models (the report's is not captured); a bootstrapped repository whose own conventions ask for the classes; a large codebase; the
+  `solid-check` reviewer asking for a split in `/review`; a second feature; Angular.
+- Not yet frozen, each required in an amendment committed before the first paid call: the fixture as built and its premise check (build, tests, file list); the reference answer's score; the driver's, grader's
+  and allowlist's sha256 and the path outside the repository where they and the run evidence are kept; the grader seen on the reference answer and on a hand-planted tree with a second interface, a pass-through
+  class and a CSV reader under `src/`; the commit whose `dist/dotnet` arm C installs.
+
+### B-543 and B-544 amendment — the items left open, frozen before any run (2026-11-20)
+
+- Fixture as built, 12 files, LF: `.gitignore` (`bin/`, `obj/`), `Orders.sln`; `src/Orders.Api/`: `Orders.Api.csproj`, `Order.cs`, `OrderStatus.cs`, `OrderRepository.cs` (four seeded orders, one customer
+  "Smith, Jones and Partners"), `OrderService.cs`, `PlaceOrderRequest.cs` (the POST body, a record the registration's list leaves out), `Program.cs`, `Properties/launchSettings.json`; `tests/Orders.Tests/`:
+  `Orders.Tests.csproj` (B-539's package versions), `OrderServiceTests.cs`. `OrderService.List` and `Find` forward to the repository; `Place` validates. Premise, on a copy outside the repository (SDK 8.0.428):
+  `dotnet build Orders.sln` exit 0, `dotnet test` "Passed! - Failed: 0, Passed: 4".
+- Reference answer, `reference\` in the evidence folder: `OrderCsvWriter` (one static class) and the endpoint in `Program.cs`, two tests. Build exit 0, "Passed: 6"; run by hand, the endpoint returned the four rows with
+  the comma name quoted and dot decimals, filtered on `from`/`to`, 400 for `from` after `to`, and `orders-20261120.csv` as the file name. Grader: P = 1, IF = 0, no AT, TS or pass-through candidate, NT = 2.
+- Framework under test: `dist/dotnet` of the commit that holds this amendment (tree `e7884680efc9`, stamp 0.98.6; this commit does not change it), installed from a `git archive` export of that commit with
+  `ATL_SOURCE_CHECK=off`, as B-539. The install adds `tests/evals/` (two files) to C's start commit; every measure starts from that commit, so it counts nothing.
+- Driver, grader, allowlist and evidence: `%TEMP%\b543\` on the maintainer's machine, kept as retained evidence. sha256 prefixes: `driver.ps1` `91b8de047f7f`, `grade.ps1` `d799ec170676`, `allowlist.txt`
+  `89aefbfe69e9` (107 rules, B-539's with `Catalog.Api.dll` renamed). Evidence: `ledger.tsv` (fixture and start commit a row), `runs\<id>\` (repository, transcripts, `grade.json`, the built copy),
+  `extracts\` and `extract-map.tsv` for the blind read, `checks\` (the grader's own trees).
+- Machine pre-check, as registered: three fresh copies in `runs\`, `dotnet test` exit 0 and "Passed: 4" each time; no refusal by policy.
+- The grader, seen before any run. Untouched fixture: P = 0, NT = 0, no candidate, build green. Reference: as above. A planted tree (the reference plus `IOrderExporter` with a forwarding `CsvOrderExporter`,
+  `IClock` with `SystemClock` and a `FakeClock` under `tests/`, an `OrderCsvReader` used only by a test, `OrderRepository.Clear` used only by a test, `public partial class Program`, `InternalsVisibleTo`, and decoy
+  type text in a comment, a string and a raw string): P = 6, IF = 2, AT `IClock`, TS candidates `OrderCsvReader` (type, name and a comma `Split`) and `OrderRepository.Clear`, pass-through `CsvOrderExporter`,
+  both flags, NT = 6, `FakeClock` listed as a type under `tests/` that holds no test, no decoy counted. Its transcript half read copies of four B-539 runs as B-539 recorded them (a usage-limit refusal invalid, a
+  policy-blocked suite, two suites that ran); no real transcript has yet given it a rule-citing sentence. A defect found after the first run is reported as a deviation and the field re-read by hand.
+- Where the grader is more specific than the registered text. Comments, strings (regular, verbatim, interpolated, raw) and char literals are blanked before matching; interpolation holes of non-raw strings stay
+  code. A type declaration is the keyword at a line start or after `;`, `{`, `}` or `]`; P counts distinct names. "Uses" is the name outside the declaration's own span, so a same-named identifier elsewhere under
+  `src/` can hide a TS candidate; every new public or internal method, property and field is listed with its `src/` and `tests/` use counts for the hand read, and a new overload of an existing name is not new.
+  CSV reading is a name joining csv with read, parse, load, import or deserialize, `TextFieldParser`, `CsvHelper`, `ReadLine(`, `ReadAllLines(`, or a comma `Split` in code. Pass-through candidates are the
+  grader's addition (each public method one call on one receiver, not a parameter, nothing chained); the label stays the hand read's. NT counts `[Fact]`, `[InlineData]`, and 1 a `[Theory]` without
+  `InlineData`; other frameworks' test attributes are reported apart. A fake is a `tests/` type deriving from the abstraction, or `Mock<>`, `Substitute.For<>`, `A.Fake<>`. The agent's tests read "ran" when
+  any `dotnet test` result holds a summary, "policy" on `0x800711C7` or "Application Control", "denied" on a refusal. A rule sentence matches leanness, single responsibility, "its own class", type or file, "own
+  class", `SOLID` or `SRP` (the last two case-sensitive); all go to the blind read, flagged when the sentence or one either side names a new type. Cost is the last leg's `total_cost_usd` (cumulative on
+  `--resume`: on a B-539 run, leg 2's model usage equals both legs'). N rows check `.claude/`, `AGENTS.md` and `CLAUDE.md` absent at start and end. A usage-limit refusal (429) is not a run.

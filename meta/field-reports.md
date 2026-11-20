@@ -508,6 +508,47 @@ trigger (work presented as done on a red build) is not met on what was reported:
 
 ---
 
+## Report #17 — .NET, too many classes from SOLID applied mechanically, and test utilities in production code
+
+| | |
+|---|---|
+| **Date received** | 2026-11-20 |
+| **Stack / repo shape** | .NET; repo shape not captured |
+| **Framework installed** | not captured |
+| **Host / IDE** | not captured; the model not captured |
+| **What misfired** | Two things, in the reporter's words as relayed. (1) "strict SOLID is creating too many classes": "i am not convinced about applying solid mechanically, because there is a cost to bloated code". (2) "it's adding utilities for unit tests in regular code that it shouldn't -- going over the top with unit tests"; the maintainer's example of such a utility: "like a csv reader" |
+| **What fired** | not captured |
+| **What got ignored** | not captured |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | the maintainer, in chat, relaying consumer feedback |
+
+**The reporter's proposed goal** (relayed verbatim): "follow solid principles but with the aim of the simplest
+maintaable solution, introducing abstractions, reuse and additional tests where they provide clear value relative to the
+complexity, risk and likely evolution of the code".
+
+**What the tree says** (read by the filing session, 2026-11-20, `src/stacks/dotnet` and `dist/dotnet` at 0.98.6). On
+classes: the SOLID section is three lines and asks for no interface without project evidence; two lines create classes
+by rule: Leanness #1 ("otherwise it gets its own class … even with one consumer"; WSD-104, from report #8) and SOLID #1
+("more than ~5 injected collaborators, or a name needing "And"/"Manager", means split"), which the `solid-check`
+reviewer repeats as a `medium` finding. On tests: Test leanness #12 to #15 and the Feature and Test rails ask for "the
+smallest useful tests" and "the principal behavior plus consequential risks only"; no shipped line says that code only
+tests use belongs in the test project.
+
+**Epistemic status.** Two chat messages and four answers, not an observation card. The maintainer, asked: which kind of
+class (one-method or pass-through services, single-implementation interfaces, split-out validators or mappers), "not
+sure"; whether the agent wrote them or `/review` asked for them, "agent but hard to say where"; the stack, ".net for
+sure". Not captured: a diff or transcript, the installed version, whether the repository's own conventions call for the
+classes, whether the CSV reader was written for the tests or for the feature, and how many tests is too many. That
+Leanness #1 or SOLID #1 is the cause is the filing session's reading, not the reporter's statement.
+
+**Outcome:** no change to the tree. B-543 and B-544 file the two complaints, with a measurement before anything ships
+(WSD-139). WSD-104's reopen trigger is a field report of one-method or pass-through services created under its rule:
+this report says too many classes and cannot say which kind, so the trigger is **approached, not met**; B-543's
+measurement counts that kind.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.
