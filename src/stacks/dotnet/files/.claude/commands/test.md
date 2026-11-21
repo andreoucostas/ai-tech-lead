@@ -35,7 +35,7 @@ For each target:
 - **SQL/warehouse tests**: where the repository already has dbt tests, tSQLt, data-quality assertions, migration verification, or another SQL test harness, mirror it and assert observable schema/data behavior. If none exists, report the automated test command as **not available**; do not create a .NET test project as a substitute.
 - Write the smallest risk-relevant set: the principal behavior plus only consequential error, edge,
   or boundary cases. Do not create one case for every category or public member.
-- Do not test framework behavior (e.g., don't test that DI works)
+- Do not test framework behavior (e.g., don't test that DI works; a test that the application's host starts tests the application)
 - Mock only true external boundaries; every test needs a real oracle — a return, state change, or thrown exception, never just "the mock was called" or `Assert.True(true)` (Test leanness #14–15)
 
 ### Step 4 — Verify

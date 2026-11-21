@@ -33,7 +33,7 @@ The Boy Scout Rule biases toward improvements. This counterweight requires every
 
 ### Test leanness
 
-12. **Do not test the framework.** No tests that DI resolves, that EF Core can read its own writes, that ASP.NET model-binding parses an int.
+12. **Do not test the framework.** No tests that the DI container resolves what it is given (a test that this application's host starts tests the application), that EF Core can read its own writes, that ASP.NET model-binding parses an int.
 13. **Reuse existing builders / fixtures.** Do not introduce parallel test data unless the existing builders cannot represent the case.
 14. **No over-mocking.** Mock only true external boundaries — network, clock, filesystem, third-party SDKs, the database when a test-owned instance reset per run won't do. Never mock the type under test or its owned collaborators when a real or in-memory instance is cheap; prefer a fake/in-memory over an interaction mock for code you own.
 15. **No tautological assertions.** A test whose only assertion is `Assert.True(true)`, a not-null check on a freshly-constructed object, or "the mock was called" verifies nothing. Assert the observable return value, state change, or emitted effect.

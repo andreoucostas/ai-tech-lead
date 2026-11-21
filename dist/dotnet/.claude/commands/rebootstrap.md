@@ -52,7 +52,8 @@ its last line:
 - `RESULT stop`: nothing relevant changed since the `BASELINE` date. Report that, quote any bounded
   continuation left pending for shared A8 in `FRAMEWORK-CONTEXT.md > Repository Knowledge Discovery`
   and `docs/discovery-notes.md`, say that `/rebootstrap full` forces a run, offer 3c's ageing-row
-  re-confirmation if a row is older than ~90 days, and **STOP** here.
+  re-confirmation if a row is older than ~90 days, ask the start-up test question below when it
+  applies, and **STOP** here.
 - `RESULT incremental` or `RESULT full`: each `PROFILE` line says whether that profile runs `full`
   or `incremental`, how many of its claims are affected, and why. `AREA` lines are the changed
   areas: one three directories deep covers its whole subtree, a shallower one only the files
@@ -75,6 +76,16 @@ For shared A8 only, run `git log --since="3 months ago" --stat` and identify act
 areas—files and directories with the most edits in the past 3 months. They do not bound shared A8: it
 also rechecks retained knowledge's explicit evidence/dependency sources, including quiet callers,
 and continues from prior uncovered areas.
+
+## Start-up test
+
+When the .NET profile is selected, a web host has a public type that no test starts, a test project
+exists, and `AGENTS.md > Conventions > Testing` has no start-up test line, ask the start-up test
+question `/bootstrap` gives in Phase 2b, as its own yes/no question: at the Phase 2 delta pause on
+an incremental or full run, or under `RESULT stop` as the only question. A yes applies
+`/bootstrap`'s 3c (`.claude/commands/bootstrap.md`, not this file's 3c); a no writes its declined
+line; a skip writes nothing, so the next run asks again. Under `RESULT stop`, a yes or a no then
+runs this file's 3d and the deterministic completion gate before the STOP.
 
 ---
 

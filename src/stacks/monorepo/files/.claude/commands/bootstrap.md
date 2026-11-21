@@ -97,6 +97,7 @@ The pass definitions below are the source of truth the subagents read. Do not du
 - Coverage gaps
 - Test quality — behaviour vs implementation
 - Integration tests — `WebApplicationFactory` usage
+- Start-up: for each web host (`Microsoft.NET.Sdk.Web` project), whether a test project references it, whether a test already starts it (`WebApplicationFactory<`, `TestServer`), one public type it declares, one anonymous `GET` it maps (a health check first), and what its start-up does outside the process (database migration or seeding, hosted services, message consumers, outbound calls)
 - Fixtures, builders, helpers
 
 #### A6: Code Quality & Dependencies
@@ -251,6 +252,8 @@ Before generating any artifact, ask the developer a small number of targeted que
 3. **.NET only — financial domain scope** — if the .NET A7 pass fired: *"I detected financial-domain signals in [area/file]. Which invariant, tolerance, and preconditions apply, and where is their policy or executable evidence?"*
 
 **Do not ask** about things determinable from code (naming patterns, framework/version, file structure), matters of taste with no right answer, or hazard areas (those get their own confirmation in Phase 3d-bis).
+
+**Start-up test question** (outside the cap of 5): ask it when the .NET profile is selected, .NET A5 found a web host with a public type that no test starts, a test project exists, and `AGENTS.md > Conventions > Testing` has no start-up test line. One yes/no question covers every such host: *"Add one test that starts [Host] in-process and checks it answers, so `dotnet test` and CI fail when the application no longer starts? It adds `[test project]/StartupTests.cs` and the `Microsoft.AspNetCore.Mvc.Testing` package (and a reference to the host if that test project has none); no production code changes. Starting it runs [what A5 found its start-up does outside the process, or "nothing outside the process"] against your Development settings."* Only a yes runs 3c. A skip is not a no: add nothing and write no line, so a later `/rebootstrap` asks again. Under headless `/adopt`, do not ask and do not add it.
 
 **Skip signal:** if the developer says "skip", "proceed", or "accept defaults", continue without adding any markers. Use `<!-- INFERRED -->` only when the code gives genuinely contradictory signals and the agent still cannot determine intent after reading multiple files — not as a default fallback when the developer skips.
 
@@ -417,7 +420,30 @@ renumbering. Generic links to the register need no item ID.
 
 Before replacing the register, preserve every existing `## Dismissed proposals` row byte-for-byte. Derive `<area>::<claim-slug>` from the stable subsystem and problem, not severity or remedy. Suppress a candidate with the same key, or the same problem and consequence over overlapping paths/symbols. Reopen only for materially changed evidence; keep the dismissal and add `Reopens dismissal: <key>` plus `Evidence delta: <specific change>` to the new active block.
 
-Use only selected-profile paths and categories in the register: a warehouse-only repo uses SQL/load/orchestration paths and warehouse validation/deployment categories, not the `.cs` or `.ts` examples above. If a selected .NET or Angular testing pass found no tests, write one Severity-High Testing entry per affected profile whose recommended fix explicitly names the `add-tests` skill's suite-bootstrap mode. If W3 found no warehouse test or validation assets, write a warehouse Testing entry based on that finding without naming an application tool. Surface applicable entries in the top 3 quick wins.
+Use only selected-profile paths and categories in the register: a warehouse-only repo uses SQL/load/orchestration paths and warehouse validation/deployment categories, not the `.cs` or `.ts` examples above. If a selected .NET or Angular testing pass found no tests, write one Severity-High Testing entry per affected profile whose recommended fix explicitly names the `add-tests` skill's suite-bootstrap mode (for the .NET case, the fix also says its first test is the start-up test 3c describes). If W3 found no warehouse test or validation assets, write a warehouse Testing entry based on that finding without naming an application tool. Surface applicable entries in the top 3 quick wins.
+
+### 3c: Add the start-up test (only on a yes in Phase 2b)
+
+A unit suite stays green when the application no longer starts (a registration, constructor or configuration binding the container cannot satisfy); one test that starts the host turns that red in every later test run and in CI.
+
+1. **Save first.** Before touching any file, keep the exact bytes of every file you may change (the test `.csproj`, `Directory.Packages.props`, every `packages.lock.json`). Never restore with Git: the developer's tree may hold uncommitted work.
+2. **Write one file per test project**, `StartupTests.cs` (if that name is already taken in the project, a name not used there; never overwrite a file), in the test project that references the host (add a project reference only if none does; prefer an existing integration-test project). One test per host, in the suite's runner, naming and assertion style:
+
+   ```csharp
+   [Fact]
+   public async Task Host_Starts()
+   {
+       await using var factory = new WebApplicationFactory<MyApp.Api.SomePublicType>(); // any public type the host declares
+       var response = await factory.CreateClient().GetAsync("/the-evidenced-anonymous-get"); // else "/"
+       Assert.Equal(HttpStatusCode.OK, response.StatusCode); // with "/": Assert.True((int)response.StatusCode < 500)
+   }
+   ```
+
+   Use a public type the host declares, never `Program`, so no production file changes. Add `Microsoft.AspNetCore.Mvc.Testing` at the host's target-framework major (in `Directory.Packages.props` when central package management is on); it is not a second test framework. Under xUnit v3 pass `TestContext.Current.CancellationToken`.
+3. **Run only this test** with the recorded `test` command narrowed by the runner's filter (VSTest `--filter "FullyQualifiedName~.Host_Starts"`, or the Microsoft.Testing.Platform form), with a 3-minute timeout set on the command (a shell's default limit may be shorter). Do not break the application to watch it go red.
+4. **Green:** keep it and add one `AGENTS.md > Conventions > Testing` line: "`[path]` starts [Host] in a test (start-up and what the first request resolves; not failures after start); keep it green."
+5. **Not green, timed out, or could not run:** delete the file 3c created, write back every saved byte, and add one `Conventions > Testing` line: "Start-up test: not added — [Host] did not start in a test ([first exception line])." Do not restructure the application, fake its services or override its configuration to make it start, and record nothing else about it: no `TECH_DEBT.md` item, decision record, hazard row or convention proposing a change so that it can start. That one line is the record.
+6. **A no** adds only the line "Start-up test: declined [YYYY-MM-DD]." In 3f each of these lines is a `scoped` claim whose evidence is the host's `.csproj`, plus the test file when kept.
 
 ### 3d: Populate FRAMEWORK-CONTEXT.md > Detected Framework Packages
 
@@ -577,6 +603,7 @@ Then output:
 - Top 3 architectural risks
 - Top 3 quick wins (including each Severity-High no-test-suite entry when a testing pass found no tests)
 - Files generated/modified
+- **Start-up test (3c)**: when it ran, its `Conventions > Testing` line, as one line. Give it no heading, and mention the test nowhere else in the report except as a file in the files list.
 - **Phase 2a recheck**: each finding dropped because its cited evidence did not show it, with the reason, or "none dropped".
 - **Rebootstrap baseline (3f)**: the `RECORDED` line verbatim, why each `UNCLAIMED` statement has no claim, and each `EMPTY` path with its `TECH_DEBT.md` item, or why no baseline was recorded.
 - **Repository knowledge discovery (A8)**: list each new review draft with body provenance, scope, confidence, counterevidence, unresolved dependencies, draft-pending-review state, and semantic refresh trigger/result; also list skipped duplicates/owner-routed items, actual reads, inventory-only/excluded/inaccessible areas, and the next bounded continuation. For each new project skill add one plain-language line: the operation, its instance count, its exemplar path, and the Common Tasks line its `## After review` paragraph names. Also list each qualifying operation left over after the three-draft limit and each leftover `references/project-pattern.md`. State that drafts await PR review and changed no owner-authored knowledge.
