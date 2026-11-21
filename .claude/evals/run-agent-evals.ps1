@@ -7707,9 +7707,9 @@ function Invoke-BusinessTermSelfTest([string]$Temp) {
     Write-Output "PASS: B-534 the three patches apply to the S overlay (CRM table with IsActive, marketing view, K1 and K2 wiki entries that pass wiki-check, no definition derivable from the tree); the five scenarios are pinned. Grader, correct: $($quoted['a correct finance view, entry read']) | CRM flag bound: $($quoted['a view on the CRM IsActive flag, nothing said']) | K2 followed: $($quoted['the K2 entry followed, nothing said'])"
 }
 
-# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 1): the /review run's tree is the committed install, the committed target patch
-# (arm O only) and the three subject files uncommitted, so `git status` lists the subject and nothing else in both arms. Red first: with the
-# patch left uncommitted `git status` listed the six reviewer agent files beside the subject.
+# B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 1): the /review run's tree is the committed install and the three subject files
+# uncommitted, so `git status` lists the subject and nothing else. Arm O is historical: its patch (omitClaudeMd in the six reviewers) is now the shipped state,
+# the recorded rows stand at their commits, and a live O run would be refused because the patch no longer applies to dist. Its self-test leg is retired.
 function Invoke-ReviewRunSelfTest([string]$Temp) {
     $subject = Join-Path $repo 'meta/eval-fixtures/b467-review/subject'
     $patch = Join-Path $repo 'meta/eval-fixtures/target-patches/b467-omit-claudemd.patch'
@@ -7725,19 +7725,14 @@ function Invoke-ReviewRunSelfTest([string]$Temp) {
         git -C $root commit --quiet -m 'install'
         $root
     }
-    $armO = & $build 'b467-arm-o'
-    [void](Initialize-ReviewSubject $armO $subject $patch)
-    $listed = & $status $armO
-    if (($listed -join '|') -cne ($wantPaths -join '|')) { throw "B-467 subject setup: git status lists $(@($listed | Where-Object { $_ -notin $wantPaths }) -join ', ') beside the subject (the target patch was left uncommitted); it must list the three subject files and nothing else" }
-    $oCommits = [int](git -C $armO rev-list --count HEAD)
-    if (-not (Get-ReviewPatchCommit $armO) -or (Get-ReviewPatchCommit (Join-Path $Temp 'not-a-repo'))) { throw 'B-467 the row does not say the patch commit is present in arm O' }
-    if ((git -C $armO log -1 --format=%s HEAD~1) -cnotmatch 'omitClaudeMd' -or (git -C $armO diff --stat HEAD~2 HEAD~1 | Select-String -SimpleMatch '6 files changed').Count -ne 1 -or ((git -C $armO show HEAD:.gitignore) -join '|') -cne 'bin/|obj/') { throw 'B-467 arm O: the commit before the .gitignore commit is not the six-file target patch, or the .gitignore is not bin/ and obj/' }
+    # Arm O (the target patch committed over the install) is retired: the patch is the shipped state, so it no longer applies to dist (see the b467-review scenario).
     $armK = & $build 'b467-arm-k'
-    $kBefore = Initialize-ReviewSubject $armK $subject ''
-    if (Get-ReviewPatchCommit $armK) { throw 'B-467 arm K holds a patch commit' }
-    if (($(& $status $armK) -join '|') -cne ($wantPaths -join '|') -or $kBefore -ne $oCommits - 1) { throw "B-467 arm K: git status or commit count is wrong (commits $kBefore, arm O $oCommits)" }
+    [void](Initialize-ReviewSubject $armK $subject '')
+    if ((Get-ReviewPatchCommit $armK) -or (Get-ReviewPatchCommit (Join-Path $Temp 'not-a-repo'))) { throw 'B-467 arm K holds a patch commit, or a non-repo reads as having one' }
+    $listed = & $status $armK
+    if (($listed -join '|') -cne ($wantPaths -join '|')) { throw "B-467 subject setup: git status lists $(@($listed | Where-Object { $_ -notin $wantPaths }) -join ', ') beside the subject; it must list the three subject files and nothing else" }
     # Amendment 2: a build after setup leaves bin/ and obj/ files; the fixture's .gitignore keeps them out of `git status` in both arms (C0: ~200 untracked files changed the second scope capture).
-    foreach ($armRoot in @($armO, $armK)) {
+    foreach ($armRoot in @($armK)) {
         foreach ($built in @('src/Orders.Api/bin/x', 'src/Orders.Api/obj/y')) {
             New-Item -ItemType Directory -Path (Split-Path -Parent (Join-Path $armRoot $built)) -Force | Out-Null
             [IO.File]::WriteAllText((Join-Path $armRoot $built), 'built')
@@ -7774,7 +7769,7 @@ function Invoke-ReviewRunSelfTest([string]$Temp) {
     foreach ($needle in @('$before = Initialize-ReviewSubject $target (Join-Path $repo "meta/eval-fixtures/$($case.subject)/subject") $TargetPatch', '$WarehouseMap -notin @(''generated'',''partial'') -and -not $case.subject) { Invoke-TargetPatch')) {
         if (-not $selfText.Contains($needle)) { throw "B-467 the live loop does not commit the target patch and copy the subject in: missing $needle" }
     }
-    Write-Output 'PASS: B-467 the /review tree holds the target patch as its own commit and the subject alone uncommitted (arm K: the subject alone); a patch that is not +omitClaudeMd in the six reviewers and a subject byte off the manifest are refused; the run answers no question and runs on Claude Code with -AllowedTools only'
+    Write-Output 'PASS: B-467 the /review tree holds the subject alone uncommitted (arm K, the only live arm); a patch that is not +omitClaudeMd in the six reviewers and a subject byte off the manifest are refused; the run answers no question and runs on Claude Code with -AllowedTools only'
 }
 
 # B-467 R2 Amendment 4: the model sees the --max-budget-usd figure in its context ("USD budget: $0/$1.25; $1.25 remaining", probed on 2.1.312 against a

@@ -946,7 +946,7 @@
     },
     {
       "id": "b467-review",
-      "measures": "B-467 R2 (pre-registered in .claude/plans/2026-11-20-b467-r2.md): a Claude Code /review of the frozen subject (meta/eval-fixtures/b467-review/: three uncommitted files with eight seeded defects D1-D8) on orders-v2 with the b514-orders overlay, with no question pick. Arm K runs the shipped reviewers; arm O adds -TargetPatch meta/eval-fixtures/target-patches/b467-omit-claudemd.patch (omitClaudeMd: true on the six reviewer agents), committed before the subject is copied in. The grader reads the final merged report against the plan's fixed per-defect patterns; invalid runs are reported, not scored.",
+      "measures": "B-467 R2 (pre-registered in .claude/plans/2026-11-20-b467-r2.md): a Claude Code /review of the frozen subject (meta/eval-fixtures/b467-review/: three uncommitted files with eight seeded defects D1-D8) on orders-v2 with the b514-orders overlay, with no question pick. Arm K ran the shipped reviewers; arm O added -TargetPatch meta/eval-fixtures/target-patches/b467-omit-claudemd.patch (omitClaudeMd: true on the six reviewer agents), committed before the subject was copied in. Arm O is historical: the patch is now the shipped state, the recorded rows stand at their commits, and a live O run would be refused because the patch no longer applies to dist. The grader reads the final merged report against the plan's fixed per-defect patterns; invalid runs are reported, not scored.",
       "stack": "dotnet",
       "fixture": "orders-v2",
       "overlay": "b514-orders",
