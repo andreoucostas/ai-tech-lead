@@ -13,8 +13,8 @@
       "static.claude": [
         {
           "path": ".claude/agents/bloat-radar.md#frontmatter",
-          "chars": 370,
-          "tok": 92
+          "chars": 389,
+          "tok": 97
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
@@ -23,28 +23,28 @@
         },
         {
           "path": ".claude/agents/convention-check.md#frontmatter",
-          "chars": 294,
-          "tok": 74
+          "chars": 313,
+          "tok": 78
         },
         {
           "path": ".claude/agents/debt-radar.md#frontmatter",
-          "chars": 289,
-          "tok": 72
+          "chars": 308,
+          "tok": 77
         },
         {
           "path": ".claude/agents/security-auditor.md#frontmatter",
-          "chars": 255,
-          "tok": 64
+          "chars": 274,
+          "tok": 68
         },
         {
           "path": ".claude/agents/solid-check.md#frontmatter",
-          "chars": 356,
-          "tok": 89
+          "chars": 375,
+          "tok": 94
         },
         {
           "path": ".claude/agents/test-critic.md#frontmatter",
-          "chars": 294,
-          "tok": 74
+          "chars": 313,
+          "tok": 78
         },
         {
           "path": ".claude/commands/address-comments.md#frontmatter",
@@ -333,8 +333,8 @@
         },
         {
           "path": ".claude/agents/security-auditor.md#body",
-          "chars": 7320,
-          "tok": 1830
+          "chars": 7331,
+          "tok": 1833
         },
         {
           "path": ".claude/agents/solid-check.md#body",
@@ -462,8 +462,8 @@
       "static.claude": [
         {
           "path": ".claude/agents/bloat-radar.md#frontmatter",
-          "chars": 379,
-          "tok": 95
+          "chars": 398,
+          "tok": 100
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
@@ -472,28 +472,28 @@
         },
         {
           "path": ".claude/agents/convention-check.md#frontmatter",
-          "chars": 294,
-          "tok": 74
+          "chars": 313,
+          "tok": 78
         },
         {
           "path": ".claude/agents/debt-radar.md#frontmatter",
-          "chars": 289,
-          "tok": 72
+          "chars": 308,
+          "tok": 77
         },
         {
           "path": ".claude/agents/security-auditor.md#frontmatter",
-          "chars": 251,
-          "tok": 63
+          "chars": 270,
+          "tok": 68
         },
         {
           "path": ".claude/agents/solid-check.md#frontmatter",
-          "chars": 367,
-          "tok": 92
+          "chars": 386,
+          "tok": 96
         },
         {
           "path": ".claude/agents/test-critic.md#frontmatter",
-          "chars": 299,
-          "tok": 75
+          "chars": 318,
+          "tok": 80
         },
         {
           "path": ".claude/commands/address-comments.md#frontmatter",
@@ -767,8 +767,8 @@
         },
         {
           "path": ".claude/agents/security-auditor.md#body",
-          "chars": 6790,
-          "tok": 1698
+          "chars": 6782,
+          "tok": 1696
         },
         {
           "path": ".claude/agents/solid-check.md#body",
@@ -777,8 +777,8 @@
         },
         {
           "path": ".claude/agents/test-critic.md#body",
-          "chars": 5685,
-          "tok": 1421
+          "chars": 5695,
+          "tok": 1424
         },
         {
           "path": ".claude/commands/address-comments.md#body",
@@ -881,8 +881,8 @@
       "static.claude": [
         {
           "path": ".claude/agents/bloat-radar.md#frontmatter",
-          "chars": 395,
-          "tok": 99
+          "chars": 414,
+          "tok": 104
         },
         {
           "path": ".claude/agents/bootstrap-pass.md#frontmatter",
@@ -891,28 +891,28 @@
         },
         {
           "path": ".claude/agents/convention-check.md#frontmatter",
-          "chars": 294,
-          "tok": 74
+          "chars": 313,
+          "tok": 78
         },
         {
           "path": ".claude/agents/debt-radar.md#frontmatter",
-          "chars": 289,
-          "tok": 72
+          "chars": 308,
+          "tok": 77
         },
         {
           "path": ".claude/agents/security-auditor.md#frontmatter",
-          "chars": 278,
-          "tok": 70
+          "chars": 297,
+          "tok": 74
         },
         {
           "path": ".claude/agents/solid-check.md#frontmatter",
-          "chars": 405,
-          "tok": 101
+          "chars": 424,
+          "tok": 106
         },
         {
           "path": ".claude/agents/test-critic.md#frontmatter",
-          "chars": 303,
-          "tok": 76
+          "chars": 322,
+          "tok": 80
         },
         {
           "path": ".claude/commands/address-comments.md#frontmatter",
@@ -1201,8 +1201,8 @@
         },
         {
           "path": ".claude/agents/security-auditor.md#body",
-          "chars": 11369,
-          "tok": 2842
+          "chars": 11372,
+          "tok": 2843
         },
         {
           "path": ".claude/agents/solid-check.md#body",
@@ -1211,8 +1211,8 @@
         },
         {
           "path": ".claude/agents/test-critic.md#body",
-          "chars": 7244,
-          "tok": 1811
+          "chars": 7254,
+          "tok": 1814
         },
         {
           "path": ".claude/commands/address-comments.md#body",
@@ -1329,24 +1329,24 @@
   },
   "derived": {
     "dotnet": {
-      "static.claude.chars": 36385,
-      "static.claude.tok": 9096,
+      "static.claude.chars": 36499,
+      "static.claude.tok": 9125,
       "static.copilot.chars": 24457,
       "static.copilot.tok": 6114,
       "prompt.max.chars": 3993,
       "prompt.max.tok": 998
     },
     "angular": {
-      "static.claude.chars": 33899,
-      "static.claude.tok": 8475,
+      "static.claude.chars": 34013,
+      "static.claude.tok": 8503,
       "static.copilot.chars": 24445,
       "static.copilot.tok": 6111,
       "prompt.max.chars": 3796,
       "prompt.max.tok": 949
     },
     "monorepo": {
-      "static.claude.chars": 40030,
-      "static.claude.tok": 10008,
+      "static.claude.chars": 40144,
+      "static.claude.tok": 10036,
       "static.copilot.chars": 27244,
       "static.copilot.tok": 6811,
       "prompt.max.chars": 4408,

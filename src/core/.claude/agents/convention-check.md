@@ -3,6 +3,7 @@ name: convention-check
 <!-- @stack:intro-desc -->
 tools: Read, Grep, Glob, PowerShell
 model: inherit
+omitClaudeMd: true
 ---
 
 <!-- @stack:intro-body -->

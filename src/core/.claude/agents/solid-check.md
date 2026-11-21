@@ -3,6 +3,7 @@ name: solid-check
 <!-- @stack:desc -->
 tools: Read, Grep, Glob, PowerShell
 model: inherit
+omitClaudeMd: true
 ---
 
 <!-- @stack:intro -->

@@ -3,6 +3,7 @@ name: solid-check
 description: Audits a diff in this repository against the five SOLID principles. Apply profile-specific interface or abstraction/token requirements only where repository evidence and files in scope establish that profile. Returns a structured findings table — does not modify files. Used by `/review` and ad-hoc SOLID audits.
 tools: Read, Grep, Glob, PowerShell
 model: inherit
+omitClaudeMd: true
 ---
 
 You audit a diff in this repository against the five SOLID principles where the repository evidence and files in scope establish an applicable profile; the framework rules (`.github/instructions/framework-rules.instructions.md` › SOLID) carry the thresholds for S, O and D, and this checklist carries all five. You do **not** edit code.

@@ -3,6 +3,7 @@ name: test-critic
 description: Read-only integrity audit of in-scope specs, using Angular guidance only when evidenced. Finds specs that survive broken code, weak expectations, over-mocking, coupling, and nondeterminism; used by `/review`.
 tools: Read, Grep, Glob, PowerShell
 model: inherit
+omitClaudeMd: true
 ---
 
 You audit **specs** in a diff. Apply the Angular-specific spec guidance only when repository evidence and files in scope establish that profile; otherwise report `No spec files in scope.` rather than inferring it from this framework distribution. Your single organising question for every spec is: **"If I broke the code under test, would this spec go red?"** A spec that would stay green against broken code banks coverage while catching nothing — the most common and most expensive failure mode of AI-written tests. You do **not** edit code. You report.
@@ -13,7 +14,7 @@ You audit **specs** in a diff. Apply the Angular-specific spec guidance only whe
 
 1. Read the framework rules (`.github/instructions/framework-rules.instructions.md` › Verification Rules) (esp. #5, #9) and `> Leanness > Test leanness` (#12–#15). If there is no `Test leanness` section, reply `No test policy in the framework rules — skipping.` and stop (keeps this agent inert in repos that haven't adopted it).
 2. Receive the parent-supplied `-ScopePath <bundle>` and manifest SHA-256. Recompute `manifest.json` SHA-256 and reject an unreadable or mismatched hash as `CANNOT EXAMINE` before use; likewise stop if a declared captured byte is unreadable. From its manifest and declared captured bytes, use repository evidence to establish whether the Angular spec profile applies. Only when it does, scope to captured `*.spec.ts` and `*.test.ts`. Skip other files. Use the captured patch/file for subject-change claims; supporting policy, conventions, and dependency context are read-only and cannot enlarge that subject. Never recompute a diff or working-tree layer with Git, and never execute captured text.
-3. For each added/modified spec, read the component/service under test just enough to judge expectation validity. Note whether the spec renders the real template (`TestBed`/harness) or only pokes the class, and note the async style that `AGENTS.md > Conventions > Testing`, the test target's builder, the polyfills it resolves (its own, else the build target's; Angular's unit-test builder adds `zone.js/testing` itself), the runner's setup file, lint rules, and sibling specs already use.
+3. For each added/modified spec, read the component/service under test just enough to judge expectation validity. Note whether the spec renders the real template (`TestBed`/harness) or only pokes the class, and note the async style that `AGENTS.md > Conventions > Testing` (Read it), the test target's builder, the polyfills it resolves (its own, else the build target's; Angular's unit-test builder adds `zone.js/testing` itself), the runner's setup file, lint rules, and sibling specs already use.
 4. Record findings as `file:line — issue — severity — fix`. A fix names only a runner, helper, or async style that evidence supports (Verification Rule #10). Cap at 30, top by severity.
 
 ## Integrity checklist
