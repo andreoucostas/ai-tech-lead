@@ -2573,7 +2573,7 @@ function Get-ToolResultText($Evidence, $Tool) {
 # B-330: the target's own CLAUDE.md, .claude/settings*.json, hooks, skills and agents (the framework arm's surface) are
 # the project and local sources; ~/.claude's settings, CLAUDE.md, rules, skills, agents and commands are the user source,
 # which reached both arms. The launching shell's environment still passes through (DEVELOPING.md).
-function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent, [switch]$IncludeHookEvents, [string]$SessionId, [string]$ResumeId, [string[]]$AllowedTools, [switch]$Dialog, [switch]$Silent) {
+function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget, [string]$Agent, [switch]$IncludeHookEvents, [string]$SessionId, [string]$ResumeId, [string[]]$AllowedTools, [switch]$Dialog, [switch]$Silent, [switch]$NoBudgetFlag) {
     # B-410: a case with a follow-up is two invocations of one session. The first persists it under a session id the runner
     # chose, the second resumes it with the developer's answer; every other case keeps --no-session-persistence, unchanged.
     $session = if ($ResumeId) { @('--resume', $ResumeId) } elseif ($SessionId) { @('--session-id', $SessionId) } else { @('--no-session-persistence') }
@@ -2585,7 +2585,7 @@ function Get-ClaudeArguments([string]$Prompt, [string]$ModelId, [decimal]$Budget
     # asks this runner to answer it, which is how a run clicks an option.
     $head = if ($Dialog) { @('-p', '--input-format', 'stream-json', '--permission-prompt-tool', 'stdio') } else { @('-p', $Prompt) }
     $arguments = $head + @('--model', $ModelId, '--output-format', 'stream-json', '--verbose') + $permission + $session +
-        @('--max-budget-usd', ([string]$Budget), '--setting-sources', 'project,local')
+        $(if ($NoBudgetFlag) { @() } else { @('--max-budget-usd', ([string]$Budget)) }) + @('--setting-sources', 'project,local')
     if ($Agent) { $arguments += @('--agent', $Agent) }
     # B-406: the b406 graders read the SessionStart and UserPromptSubmit hook_response events, which the stream
     # carries only with this flag. Asked for by those cases alone, so every other scenario's arguments are unchanged.
@@ -3232,14 +3232,14 @@ function Get-GateSubstance($Evidence) {
     }
     if ($review) { 'False' } else { 'none' }
 }
-function Invoke-ClaudeDialog([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview, [string[]]$AllowWrite) {
+function Invoke-ClaudeDialog([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview, [string[]]$AllowWrite, [decimal]$KillAtCost = 0) {
     # With the opt-in the run gets one private bundle root, made here and removed here once the transcript and the permissions log are written.
     $scratchRoot = Split-Path -Parent $TranscriptPath
     $bundleRoot = if ($CompleteReview) { New-DialogBundleRoot $scratchRoot } else { '' }
-    try { Invoke-ClaudeDialogRun $WorkingDirectory $Prompt $FollowUp $Pick $TranscriptPath $ModelId $Budget $Timeout $Agent $AllowedTools -CompleteReview:$CompleteReview -BundleRoot $bundleRoot -ScratchRoot $scratchRoot -AllowWrite $AllowWrite }
+    try { Invoke-ClaudeDialogRun $WorkingDirectory $Prompt $FollowUp $Pick $TranscriptPath $ModelId $Budget $Timeout $Agent $AllowedTools -CompleteReview:$CompleteReview -BundleRoot $bundleRoot -ScratchRoot $scratchRoot -AllowWrite $AllowWrite -KillAtCost $KillAtCost }
     finally { Remove-DialogBundleRoot $bundleRoot }
 }
-function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview, [string]$BundleRoot, [string]$ScratchRoot, [string[]]$AllowWrite) {
+function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [string]$FollowUp, [string]$Pick, [string]$TranscriptPath, [string]$ModelId, [decimal]$Budget, [int]$Timeout, [string]$Agent, [string[]]$AllowedTools, [switch]$CompleteReview, [string]$BundleRoot, [string]$ScratchRoot, [string[]]$AllowWrite, [decimal]$KillAtCost = 0) {
     $permissions = [Collections.Generic.List[object]]::new()
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = (Get-Command claude).Source
@@ -3250,7 +3250,7 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
     $psi.RedirectStandardError = $true
     $psi.StandardInputEncoding = [Text.UTF8Encoding]::new($false)
     $psi.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
-    foreach ($arg in @(Get-ClaudeArguments -ModelId $ModelId -Budget $Budget -Agent $Agent -IncludeHookEvents -AllowedTools $AllowedTools -Dialog -Silent:($Pick -eq 'silent'))) { [void]$psi.ArgumentList.Add($arg) }
+    foreach ($arg in @(Get-ClaudeArguments -ModelId $ModelId -Budget $Budget -Agent $Agent -IncludeHookEvents -AllowedTools $AllowedTools -Dialog -Silent:($Pick -eq 'silent') -NoBudgetFlag:($KillAtCost -gt 0))) { [void]$psi.ArgumentList.Add($arg) }
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $psi
     [void]$process.Start()
@@ -3260,7 +3260,7 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
     & $say $Prompt
     $lines = [Collections.Generic.List[string]]::new()
     $deadline = [DateTime]::UtcNow.AddSeconds($Timeout)
-    $followed = $false; $wrote = $false; $closed = $false; $timedOut = $false; $pending = 0; $clickedReview = $false; $confirmed = $false; $graceUntil = $null; $read = $null
+    $followed = $false; $wrote = $false; $closed = $false; $timedOut = $false; $budgetCost = $null; $pending = 0; $clickedReview = $false; $confirmed = $false; $graceUntil = $null; $read = $null
     $parsed = [Collections.Generic.List[object]]::new()
     while ($true) {
         if ($null -eq $read) { $read = $process.StandardOutput.ReadLineAsync() }
@@ -3285,6 +3285,8 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
             continue
         }
         $lines.Add($line)
+        # B-467 Amendment 4: the review run passes no --max-budget-usd (the model would see it); a result whose cost is above the scenario budget ends the run here.
+        if ($KillAtCost -gt 0 -and $event.type -eq 'result' -and $null -ne $event.total_cost_usd -and [decimal]$event.total_cost_usd -gt $KillAtCost) { $budgetCost = [decimal]$event.total_cost_usd; break }
         if ($CompleteReview) { $parsed.Add($event) }
         $pending = Get-DialogBackgroundCount $pending $event
         if ($graceUntil -and (Test-DialogTurnStart $event)) { $graceUntil = $null }
@@ -3298,7 +3300,12 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
             elseif ($action -eq 'close') { $process.StandardInput.Close(); $closed = $true }
         }
     }
-    if ($timedOut) {
+    if ($null -ne $budgetCost) {
+        $process.Kill($true)
+        [void]$process.WaitForExit(10000)
+        [IO.File]::WriteAllLines($TranscriptPath, $lines, [Text.UTF8Encoding]::new($false))
+        $errorText = "budget error: the stream reported $($budgetCost.ToString('0.00', [Globalization.CultureInfo]::InvariantCulture)) USD, above the $($KillAtCost.ToString('0.00', [Globalization.CultureInfo]::InvariantCulture)) USD scenario budget; the run was killed and is not scored"
+    } elseif ($timedOut) {
         $process.Kill($true)
         [void]$process.WaitForExit(10000)
         # A silent run keeps the stream read so far for a hand read (the live loop still reports the timeout as an ERROR row).
@@ -3312,8 +3319,9 @@ function Invoke-ClaudeDialogRun([string]$WorkingDirectory, [string]$Prompt, [str
     # Every control-channel permission request of the run, next to the transcript: tool, input (at most 300 characters), decision, class.
     [IO.File]::WriteAllLines($TranscriptPath + '.permissions.jsonl', @($permissions | ForEach-Object { $_ | ConvertTo-Json -Compress }), [Text.UTF8Encoding]::new($false))
     [pscustomobject]@{
-        ExitCode = if ($timedOut) { 124 } else { $process.ExitCode }
+        ExitCode = if ($null -ne $budgetCost) { 1 } elseif ($timedOut) { 124 } else { $process.ExitCode }
         TimedOut = $timedOut
+        BudgetKilled = ($null -ne $budgetCost)
         ErrorText = $errorText
         Permissions = @($permissions)
         ReviewConfirm = $(if ($confirmed) { 'sent' } else { 'none' })
@@ -7769,6 +7777,62 @@ function Invoke-ReviewRunSelfTest([string]$Temp) {
     Write-Output 'PASS: B-467 the /review tree holds the target patch as its own commit and the subject alone uncommitted (arm K: the subject alone); a patch that is not +omitClaudeMd in the six reviewers and a subject byte off the manifest are refused; the run answers no question and runs on Claude Code with -AllowedTools only'
 }
 
+# B-467 R2 Amendment 4: the model sees the --max-budget-usd figure in its context ("USD budget: $0/$1.25; $1.25 remaining", probed on 2.1.312 against a
+# local scripted model: the same request without the flag carries no budget text), and K2 skipped two reviewers "to stay inside the session budget" while its
+# result event read 0.67 USD. The /review run therefore passes no --max-budget-usd; the runner kills the child once a result event reports a cost above the
+# scenario budget, and the row reads as a budget error, not a score. A fake claude on PATH emits a result over the limit and then waits for stdin.
+# Red first: with no -KillAtCost on Invoke-ClaudeDialog the first call below failed "A parameter cannot be found that matches parameter name 'KillAtCost'".
+function Invoke-ReviewBudgetGuardSelfTest([string]$Temp) {
+    $fakeDir = Join-Path $Temp 'fake-claude'
+    [void][IO.Directory]::CreateDirectory($fakeDir)
+    $fakePs = Join-Path $fakeDir 'fake-claude.ps1'
+    [IO.File]::WriteAllText($fakePs, @'
+[IO.File]::WriteAllText($env:FAKE_ARGS, ($args -join ' '))
+[Console]::Out.WriteLine('{"type":"system","subtype":"init"}')
+[Console]::Out.WriteLine('{"type":"result","subtype":"success","is_error":false,"result":"done","total_cost_usd":' + $env:FAKE_COST + '}')
+[Console]::Out.Flush()
+[void][Console]::In.ReadToEnd()
+exit 0
+'@)
+    $pwshPath = (Get-Process -Id $PID).Path
+    $onWindows = [OperatingSystem]::IsWindows()
+    $shim = Join-Path $fakeDir $(if ($onWindows) { 'claude.cmd' } else { 'claude' })
+    if ($onWindows) { [IO.File]::WriteAllText($shim, "@`"$pwshPath`" -NoProfile -File `"$fakePs`" %*`r`n") }
+    else { [IO.File]::WriteAllText($shim, "#!/bin/sh`nexec `"$pwshPath`" -NoProfile -File `"$fakePs`" `"`$@`"`n"); & chmod +x $shim }
+    $oldPath = $env:PATH; $oldCost = $env:FAKE_COST; $oldArgs = $env:FAKE_ARGS
+    try {
+        $env:PATH = $fakeDir + [IO.Path]::PathSeparator + $oldPath
+        $env:FAKE_ARGS = Join-Path $fakeDir 'args.txt'
+        $work = Join-Path $Temp 'fake-work'
+        [void][IO.Directory]::CreateDirectory($work)
+        $run = {
+            param([string]$Cost, [decimal]$Kill)
+            $env:FAKE_COST = $Cost
+            $tp = Join-Path $Temp "fake-$Cost-$Kill.jsonl"
+            $watch = [Diagnostics.Stopwatch]::StartNew()
+            $r = Invoke-ClaudeDialog $work 'p' '' 'none' $tp 'm' 1.25 60 '' @('Read') -KillAtCost $Kill
+            $watch.Stop()
+            [pscustomobject]@{ Run = $r; Seconds = $watch.Elapsed.TotalSeconds; Args = [IO.File]::ReadAllText($env:FAKE_ARGS); Transcript = $tp }
+        }
+        $over = & $run '1.40' 1.25
+        if (-not $over.Run.BudgetKilled -or $over.Run.ExitCode -eq 0 -or $over.Run.TimedOut -or [string]$over.Run.ErrorText -cnotmatch '^budget error: the stream reported 1\.40 USD, above the 1\.25 USD scenario budget; the run was killed and is not scored') { throw "B-467 budget guard: a result at 1.40 USD against 1.25 was not killed as a budget error (killed=$($over.Run.BudgetKilled) exit=$($over.Run.ExitCode) error=$($over.Run.ErrorText))" }
+        if ($over.Seconds -gt 40) { throw "B-467 budget guard: the over-limit child took $([int]$over.Seconds) s to stop; it was not killed at the result" }
+        if ($over.Args -match '--max-budget-usd') { throw "B-467 budget guard: a guarded run still passed --max-budget-usd (the model would see it): $($over.Args)" }
+        if (@(Get-Content -LiteralPath $over.Transcript | Where-Object { $_ -match 'total_cost_usd' }).Count -ne 1) { throw 'B-467 budget guard: the killed run lost the stream it had read' }
+        $under = & $run '1.10' 1.25
+        if ($under.Run.BudgetKilled -or $under.Run.ExitCode -ne 0 -or $under.Run.TimedOut) { throw "B-467 budget guard: a result at 1.10 USD against 1.25 was killed or failed (killed=$($under.Run.BudgetKilled) exit=$($under.Run.ExitCode))" }
+        $plain = & $run '9.99' 0
+        if ($plain.Run.BudgetKilled -or $plain.Args -notmatch '--max-budget-usd 1\.25') { throw "B-467 budget guard: a run with no kill limit lost its --max-budget-usd flag or was killed: $($plain.Args)" }
+    } finally { $env:PATH = $oldPath; $env:FAKE_COST = $oldCost; $env:FAKE_ARGS = $oldArgs }
+    $noFlag = @(Get-ClaudeArguments -Prompt 'p' -ModelId 'm' -Budget 1.25 -NoBudgetFlag)
+    if ($noFlag -contains '--max-budget-usd' -or $noFlag -notcontains '--setting-sources') { throw 'B-467 budget guard: -NoBudgetFlag did not drop exactly --max-budget-usd and its value' }
+    $selfText = (Get-Content -Raw -LiteralPath $PSCommandPath).Replace((Get-Command Invoke-ReviewBudgetGuardSelfTest).ScriptBlock.Ast.Extent.Text, '')
+    foreach ($needle in @('-KillAtCost $(if ($case.assertion -eq ''reviewRun'')', 'if ($run.BudgetKilled) { throw $run.ErrorText }')) {
+        if (-not $selfText.Contains($needle)) { throw "B-467 budget guard: the live loop does not guard the review run: missing $needle" }
+    }
+    Write-Output 'PASS: B-467 budget guard: the /review run passes no --max-budget-usd (the model sees that figure); a result above the scenario budget kills the child and reads as a budget error, a result under it does not, and a run with no kill limit keeps its flag'
+}
+
 # B-467 R2 (.claude/plans/2026-11-20-b467-r2.md, "Runner work" 2): reviewers' read-only pipes and chains pass the control channel, a write does not.
 # Red first: on the runner before this change `Get-FileHash -LiteralPath <bundle file> | Select -ExpandProperty Hash` was denied (the line of the
 # first failure: "B-467 permissions: allowed was none, not allowed" for that command).
@@ -8432,6 +8496,7 @@ function Invoke-SelfTest {
     try {
         New-Item -ItemType Directory -Path $temp -Force | Out-Null
         Invoke-ReviewRunGradeSelfTest $temp
+        Invoke-ReviewBudgetGuardSelfTest $temp
         Invoke-ReviewPermissionSelfTest
         $b467Temp = $temp + '-b467'
         try { Invoke-ReviewRunSelfTest $b467Temp } finally { Remove-Item -LiteralPath $b467Temp -Recurse -Force -ErrorAction SilentlyContinue }
@@ -11232,13 +11297,14 @@ Issue: Boundary behavior lacks a direct compiled unit test.
             $usageLegOne = Join-Path $scratch ($runName + '.copilot-usage.json')
             $run = Invoke-CopilotProcess $target $prompt (Join-Path $scratch ($runName + '.copilot-stdout.txt')) $CopilotModel $CopilotMaxAiCredits $TimeoutSeconds $sessionId $usageLegOne ($Arm -eq 'framework') -AskUser:$CopilotAskUser -Mode $CopilotMode
         } elseif ($dialogPick) {
-            $run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath $caseModel ($caseBudget + [decimal]$case.followUpBudgetUsd) $TimeoutSeconds $caseAgent $AllowedTools -CompleteReview:([bool]$case.completeReview) -AllowWrite ([string[]]@($case.allowWrite | Where-Object { $_ }))
+            $run = Invoke-ClaudeDialog $target $prompt ([string]$case.followUp) $dialogPick $transcriptPath $caseModel ($caseBudget + [decimal]$case.followUpBudgetUsd) $TimeoutSeconds $caseAgent $AllowedTools -CompleteReview:([bool]$case.completeReview) -AllowWrite ([string[]]@($case.allowWrite | Where-Object { $_ })) -KillAtCost $(if ($case.assertion -eq 'reviewRun') { $caseBudget + [decimal]$case.followUpBudgetUsd } else { [decimal]0 })
         } else {
             $run = Invoke-ClaudeProcess $target $prompt $transcriptPath $caseModel $caseBudget $TimeoutSeconds $caseAgent -LiveSourceCheck:($case.assertion -eq 'urlInstall') -IncludeHookEvents:($caseFixture -in $contractFixtures -or $case.id -in $routerProbeScenarios -or $case.assertion -in $planAssertions) -SessionId $legSession -AllowedTools $AllowedTools
         }
         $agentExit = $run.ExitCode
         try {
             if ($run.TimedOut) { throw $run.ErrorText }
+            if ($run.BudgetKilled) { throw $run.ErrorText }
             if ($Executor -eq 'copilot') {
                 $copilotMeta = ConvertFrom-CopilotEvents $eventsPath $transcriptPath
                 $copilotMeta | Add-Member -NotePropertyName Credits -NotePropertyValue (Get-CopilotCredits @($usageLegOne)) -Force
