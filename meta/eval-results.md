@@ -11177,3 +11177,180 @@ Claude Code 2.1.312, `claude-sonnet-5-5`; arm B2 (phase 4's candidate plus the t
 - Cost and time: 0.74 and 0.87 USD, 184 s and 179 s (phase 4 B-F1 medians 0.839 USD, 216 s).
 - Deviations: none from the registration. The machine blocked 5 of 7 attempts here against 8 of 22 in phase 4 hours earlier.
 - Reopen triggers: none met.
+
+
+## B-467 R2 results — reviewers without the instruction chain (2026-11-20 to 2026-11-21)
+
+Hand-written. Runs by the main session; hand reads by the coordinator's workers, checked by the coordinator. Claude Code 2.1.312, one parent model (named in each row), plan `.claude/plans/2026-11-20-b467-r2.md` with Amendments 1 to 4. Arm K is the shipped reviewers (the chain loaded); arm O is the same with `omitClaudeMd: true` (patch `b467-omit-claudemd.patch`). Spend 10.47 USD of 15.
+
+| run | arm | commit | valid | found | reviewers | giveUps | notStarted | cost (USD) |
+|---|---|---|---|---|---|---|---|---|
+| C0 | K (uncounted calibration) | 671e93f8 | no | 0/8 | 6/6 | not recorded | not recorded | 0.816 |
+| C1 | K (uncounted calibration) | 4b83e995 | yes | 8/8 | 6/6 | not recorded | not recorded | 0.797 |
+| K1 | K | 4b83e995 | yes | 8/8 | 6/6 | not recorded | not recorded | 0.596 |
+| O1 | O | 4b83e995 | no | 0/8 | 6/6 | not recorded | not recorded | 0.522 |
+| O2 | O | 4b83e995 | no | 8/8 | 6/6 | 1 | 0 | 0.586 |
+| K2 | K | d345ffd0 | no | 0/8 | 4/6 | 0 | 2 | 0.666 |
+| K3 | K | d345ffd0 | no | 0/8 | 6/6 | 0 | 0 | 0.624 |
+| O3 | O | 6aa6aae0 | yes | 8/8 | 6/6 | 0 | 0 | 0.693 |
+| K4 | K | 6aa6aae0 | no | 8/8 | 6/6 | 1 | 0 | 0.826 |
+| O4 | O | 6aa6aae0 | yes | 8/8 | 6/6 | 0 | 0 | 0.576 |
+| K5 | K | 6aa6aae0 | yes | 8/8 | 6/6 | 0 | 0 | 0.716 |
+| O5 | O | 6aa6aae0 | yes | 8/8 | 6/6 | 0 | 0 | 0.601 |
+| K2r | K | 6aa6aae0 | yes | 8/8 | 6/6 | 0 | 0 | 0.646 |
+| O1r | O | 6aa6aae0 | yes | 8/8 | 6/6 | 0 | 0 | 0.551 |
+| K3r | K | 6aa6aae0 | yes | 8/8 | 6/6 | 0 | 0 | 0.668 |
+| O2r | O | 6aa6aae0 | yes | 8/8 | 6/6 | 0 | 0 | 0.581 |
+
+- **Primary reading (registered rule):** valid counted runs K = 4 (K1, K5, K2r, K3r), O = 5 (O3, O4, O5, O1r, O2r); N = 4 is met in both; mean found K = 8.0, O = 8.0; no defect found in every valid K run is missed in every valid O run, so the cut ships.
+- **Invalid runs, with causes:** C0 (K, uncounted calibration): untracked `bin/` and `obj/` files changed the second scope capture. O1: the report was not in the last result (the grader; fixed by Amendment 3, forward only). O2: debt-radar gave up after a denied chained hash command. K2: the parent did not dispatch solid-check and debt-radar "to stay inside the session budget" (the `--max-budget-usd` figure is shown to the model; Amendment 4) and its report sat in a parent message. K3: the report sat in a parent message before a Stop-hook reply (Amendment 4). K4: a reviewer returned CANNOT EXAMINE.
+- **Secondary:** reviewer give-ups K 1 (K4), O 1 (O2); reviewers not started K 2 (K2), O 0; recovered permission denials occurred in every run on both arms. O does not have more give-ups than K, so shipping is not held.
+- **Sensitivity reading, post hoc:** every run whose report carries findings, adding K4 and O2 (both 8/8): unchanged.
+- **Reported, not scored:** mean cost of valid runs K 0.657 USD (4 runs), O 0.600 USD (5 runs).
+- **Money rule change:** from Amendment 4's start-if-spend+1.25<=15 to spend+2.00<=15.00 (maintainer, in chat 2026-11-21), because the runner's guard sees cost only at the end of a run.
+- **Limits:** a ceiling effect (every valid run on both arms found 8 of 8, so the instrument shows no loss on these eight defects and cannot show a small loss on harder ones); four amendments, two written after seeing rows, each applied forward only; Claude Code only, one parent model, Copilot not measured; R1 (about 9,200 tokens off each reviewer's first request) not re-measured here.
+- **Reopen triggers** (decisions indexed on reviews, reviewers and sub-agents: WSD-131, WSD-133; WSD-057 and WSD-054 carry none that these rows touch): none met. WSD-133 reopens if a reviewer is seen changing the tree; the one tree change in these rows (C0's `bin/` and `obj/`) was the parent's `dotnet test`, not a reviewer's. WSD-131 reopens on unrequested reviews or an unanswered offer; no row bears on either.
+
+### Run rows, in run order (pasted from the runner)
+#### C0
+
+##### 2026-11-20 14:10:08 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (671e93f83ff1c807bdc047a849bd0dc16340f938)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **INCONCLUSIVE b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.816026845 tokensIn=30 tokensOut=33691; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=False reason=CANNOT EXAMINE (the parent); permission denied: PowerShell $b1 = Join-Path $env:TEMP "rv-b1-$(Get-Random)"; pwsh -NoPro; no verdict in the final message; no Issues section in the final message found=0/8 defects=D1:missed,D2:missed,D3:missed,D4:missed,D5:missed,D6:missed,D7:missed,D8:missed other=0 multi=0 reviewers=6/6 missing=none cost=0.816026845 patchCommit=False
+
+
+#### C1
+
+##### 2026-11-20 18:43:12 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (4b83e9952a0627a5c9f70191b3ec7c209d6abe77)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.79698264 tokensIn=36 tokensOut=37905; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=True reason=none found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=8 multi=0 reviewers=6/6 missing=none cost=0.79698264 denials=5 denied=PowerShell $b = Join-Path $env:TEMP ("review-bundle-" + [guid]::NewGuid; PowerShell $p='<temp>\b416-bundle-a9ed34ec\; PowerShell $p='<temp>\b416-bundle-a9ed34ec\; PowerShell $p='<temp>\b416-bundle-a9ed34ec\; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home> patchCommit=False
+
+
+#### K1
+
+##### 2026-11-20 18:45:31 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (4b83e9952a0627a5c9f70191b3ec7c209d6abe77)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.59604044 tokensIn=2 tokensOut=37824; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=True reason=none found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=5 multi=0 reviewers=6/6 missing=none cost=0.59604044 denials=8 denied=PowerShell $b = Join-Path $env:TEMP ("rv-" + [guid]::NewGuid().ToString; PowerShell Get-ChildItem -Recurse -Force "<home>\AppData\Local; PowerShell $p='<temp>\b416-bundle-4ec8237a\; PowerShell Get-ChildItem -Force -Recurse -LiteralPath '<home>\; PowerShell $p='<temp>\b416-bundle-4ec8237a\; PowerShell $p='<temp>\b416-bundle-4ec8237a\; PowerShell $p = '<temp>\b416-bundle-4ec8237; PowerShell $a=Get-FileHash -LiteralPath <home>\AppData\Local\T patchCommit=False
+
+
+#### O1
+
+##### 2026-11-20 18:48:44 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (4b83e9952a0627a5c9f70191b3ec7c209d6abe77)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b467-omit-claudemd.patch@f4bd065d582a · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **INCONCLUSIVE b467-review** (model=sonnet; patch=b467-omit-claudemd.patch@f4bd065d582a) — agentExit=0 timedOut=False costUsd=0.522482715 tokensIn=2 tokensOut=43115; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=False reason=no Issues section in the final message; permission denied: PowerShell $b1="$env:TEMP\rv-b1-$([guid]::NewGuid().ToString('N'))"; pw; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $d='<temp>\b416-bundle-0b68d516\ found=0/8 defects=D1:missed,D2:missed,D3:missed,D4:missed,D5:missed,D6:missed,D7:missed,D8:missed other=0 multi=0 reviewers=6/6 missing=none cost=0.522482715 denials=4 denied=PowerShell $b1="$env:TEMP\rv-b1-$([guid]::NewGuid().ToString('N'))"; pw; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $d='<temp>\b416-bundle-0b68d516\ patchCommit=True
+
+
+#### O2
+
+##### 2026-11-20 18:51:32 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (4b83e9952a0627a5c9f70191b3ec7c209d6abe77)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b467-omit-claudemd.patch@f4bd065d582a · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **INCONCLUSIVE b467-review** (model=sonnet; patch=b467-omit-claudemd.patch@f4bd065d582a) — agentExit=0 timedOut=False costUsd=0.586043255 tokensIn=36 tokensOut=34288; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=False reason=CANNOT EXAMINE (a reviewer reply); permission denied: PowerShell $p = Join-Path $env:TEMP "review-bundle-1-$(Get-Random)"; pw; PowerShell $p='<temp>\b416-bundle-8ac957e6\; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-ChildItem -LiteralPath '<home>\AppData\Local\Te; PowerShell $p='<temp>\b416-bundle-8ac957e6\; PowerShell $p='<temp>\b416-bundle-8ac957e6\; PowerShell pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -Scope; PowerShell (Get-Item -LiteralPath '<temp>\b found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=5 multi=0 reviewers=6/6 missing=none cost=0.586043255 denials=8 denied=PowerShell $p = Join-Path $env:TEMP "review-bundle-1-$(Get-Random)"; pw; PowerShell $p='<temp>\b416-bundle-8ac957e6\; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-ChildItem -LiteralPath '<home>\AppData\Local\Te; PowerShell $p='<temp>\b416-bundle-8ac957e6\; PowerShell $p='<temp>\b416-bundle-8ac957e6\; PowerShell pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -Scope; PowerShell (Get-Item -LiteralPath '<temp>\b patchCommit=True
+
+
+#### K2
+
+##### 2026-11-20 22:24:13 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (d345ffd0bae6d98360fca217ffa49d2441192134)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **INCONCLUSIVE b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.665771845 tokensIn=32 tokensOut=31061; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=False reason=reviewers missing: debt-radar,solid-check; no verdict in the final message; no Issues section in the final message; permission denied: PowerShell $b = Join-Path $env:TEMP ("rv-" + [guid]::NewGuid().ToString; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-ChildItem -Force -LiteralPath '<home>\AppData\L; Bash ls src/Orders.Infrastructure/Persistence/Configurations; ech; PowerShell Remove-Item -LiteralPath <temp>\ found=0/8 defects=D1:missed,D2:missed,D3:missed,D4:missed,D5:missed,D6:missed,D7:missed,D8:missed other=0 multi=0 reviewers=4/6 missing=debt-radar,solid-check cost=0.665771845 giveUps=0 denials=5 denied=PowerShell $b = Join-Path $env:TEMP ("rv-" + [guid]::NewGuid().ToString; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-ChildItem -Force -LiteralPath '<home>\AppData\L; Bash ls src/Orders.Infrastructure/Persistence/Configurations; ech; PowerShell Remove-Item -LiteralPath <temp>\ patchCommit=False
+
+
+#### K3
+
+##### 2026-11-20 22:26:51 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (d345ffd0bae6d98360fca217ffa49d2441192134)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **INCONCLUSIVE b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.62362061 tokensIn=32 tokensOut=39340; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=False reason=no verdict in the final message; no Issues section in the final message; permission denied: PowerShell $b = Join-Path $env:TEMP "rev-b1-$(Get-Random)"; $b2 = Join-; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $p='<temp>\b416-bundle-1c1d74e3\; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $p='<temp>\b416-bundle-1c1d74e3\; PowerShell Get-FileHash -LiteralPath <temp> found=0/8 defects=D1:missed,D2:missed,D3:missed,D4:missed,D5:missed,D6:missed,D7:missed,D8:missed other=0 multi=0 reviewers=6/6 missing=none cost=0.62362061 giveUps=0 denials=7 denied=PowerShell $b = Join-Path $env:TEMP "rev-b1-$(Get-Random)"; $b2 = Join-; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $p='<temp>\b416-bundle-1c1d74e3\; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $p='<temp>\b416-bundle-1c1d74e3\; PowerShell Get-FileHash -LiteralPath <temp> patchCommit=False
+
+
+#### O3
+
+##### 2026-11-21 07:56:53 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (6aa6aae09bb97000e04d2c48423fadc720195a73)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b467-omit-claudemd.patch@f4bd065d582a · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b467-review** (model=sonnet; patch=b467-omit-claudemd.patch@f4bd065d582a) — agentExit=0 timedOut=False costUsd=0.693472295 tokensIn=28 tokensOut=37990; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=True reason=none found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=6 multi=0 reviewers=6/6 missing=none cost=0.693472295 notStarted=0 giveUps=0 denials=6 denied=PowerShell $b = Join-Path $env:TEMP "rv-b1-$([guid]::NewGuid().ToString; PowerShell $p='<temp>\b416-bundle-8ae6e1cc\; PowerShell $p='<temp>\b416-bundle-8ae6e1cc\; PowerShell $b='<temp>\b416-bundle-8ae6e1cc\; PowerShell $d='<temp>\b416-bundle-8ae6e1cc\; PowerShell Remove-Item -LiteralPath <temp>\ patchCommit=True
+
+
+#### K4
+
+##### 2026-11-21 08:00:35 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (6aa6aae09bb97000e04d2c48423fadc720195a73)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **INCONCLUSIVE b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.825971695 tokensIn=4 tokensOut=38780; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=False reason=CANNOT EXAMINE (a reviewer reply); permission denied: PowerShell $b = Join-Path $env:TEMP ("review-b1-" + [guid]::NewGuid().T; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $p='<temp>\b416-bundle-14e4dc29\; PowerShell $d='<temp>\b416-bundle-14e4dc29\; PowerShell Remove-Item -LiteralPath <temp>\ found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=6 multi=0 reviewers=6/6 missing=none cost=0.825971695 notStarted=0 giveUps=1 denials=5 denied=PowerShell $b = Join-Path $env:TEMP ("review-b1-" + [guid]::NewGuid().T; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $p='<temp>\b416-bundle-14e4dc29\; PowerShell $d='<temp>\b416-bundle-14e4dc29\; PowerShell Remove-Item -LiteralPath <temp>\ patchCommit=False
+
+
+#### O4
+
+##### 2026-11-21 08:02:58 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (6aa6aae09bb97000e04d2c48423fadc720195a73)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b467-omit-claudemd.patch@f4bd065d582a · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b467-review** (model=sonnet; patch=b467-omit-claudemd.patch@f4bd065d582a) — agentExit=0 timedOut=False costUsd=0.5764975 tokensIn=11 tokensOut=40348; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=True reason=none found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=6 multi=2 reviewers=6/6 missing=none cost=0.5764975 notStarted=0 giveUps=0 denials=6 denied=PowerShell $b1 = Join-Path $env:TEMP ("rev-b1-" + [guid]::NewGuid()); $; PowerShell Get-ChildItem -Recurse -Force "<home>\AppData\Local; PowerShell $p='<temp>\b416-bundle-5f997a79\; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $h=(Get-FileHash -Algorithm SHA256 "<home>\AppData\ patchCommit=True
+
+
+#### K5
+
+##### 2026-11-21 08:05:23 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (6aa6aae09bb97000e04d2c48423fadc720195a73)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.716079565 tokensIn=4 tokensOut=40508; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=True reason=none found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=5 multi=2 reviewers=6/6 missing=none cost=0.716079565 notStarted=0 giveUps=0 denials=7 denied=PowerShell $b = Join-Path $env:TEMP ("rv-" + [guid]::NewGuid().ToString; PowerShell $p='<temp>\b416-bundle-9664ab6c\; PowerShell Get-ChildItem -LiteralPath '<home>\AppData\Local\Te; PowerShell $p='<temp>\b416-bundle-9664ab6c\; PowerShell $p='<temp>\b416-bundle-9664ab6c\; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -Scope patchCommit=False
+
+
+#### O5
+
+##### 2026-11-21 08:07:34 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (6aa6aae09bb97000e04d2c48423fadc720195a73)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b467-omit-claudemd.patch@f4bd065d582a · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b467-review** (model=sonnet; patch=b467-omit-claudemd.patch@f4bd065d582a) — agentExit=0 timedOut=False costUsd=0.60059615 tokensIn=9 tokensOut=39226; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=True reason=none found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=6 multi=0 reviewers=6/6 missing=none cost=0.60059615 notStarted=0 giveUps=0 denials=4 denied=PowerShell $b1 = Join-Path $env:TEMP ("review-b1-" + [guid]::NewGuid().; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-ChildItem -Force -Recurse -File "<home>\AppData; PowerShell $d='<temp>\b416-bundle-14275f75' patchCommit=True
+
+
+#### K2r
+
+##### 2026-11-21 08:09:51 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (6aa6aae09bb97000e04d2c48423fadc720195a73)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.64628897 tokensIn=6 tokensOut=39890; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=True reason=none found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=6 multi=0 reviewers=6/6 missing=none cost=0.64628897 notStarted=0 giveUps=0 denials=6 denied=PowerShell $b1 = Join-Path $env:TEMP "review-bundle-a-$([guid]::NewGuid; PowerShell Get-ChildItem -Force -Recurse -LiteralPath '<home>\; PowerShell $p='<temp>\b416-bundle-f1581916\; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $p='<temp>\b416-bundle-f1581916\ patchCommit=False
+
+
+#### O1r
+
+##### 2026-11-21 08:12:05 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (6aa6aae09bb97000e04d2c48423fadc720195a73)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b467-omit-claudemd.patch@f4bd065d582a · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b467-review** (model=sonnet; patch=b467-omit-claudemd.patch@f4bd065d582a) — agentExit=0 timedOut=False costUsd=0.551265535 tokensIn=6 tokensOut=38585; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=True reason=none found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=8 multi=0 reviewers=6/6 missing=none cost=0.551265535 notStarted=0 giveUps=0 denials=4 denied=PowerShell $b="<temp>\claude\C--Users-Costa; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-ChildItem -Force -LiteralPath '<home>\AppData\L; PowerShell foreach ($f in 'manifest.json','unstaged.patch','staged.patc patchCommit=True
+
+
+#### K3r
+
+##### 2026-11-21 08:14:16 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (6aa6aae09bb97000e04d2c48423fadc720195a73)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b467-review** (model=sonnet) — agentExit=0 timedOut=False costUsd=0.66823565 tokensIn=5 tokensOut=39528; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=True reason=none found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=8 multi=1 reviewers=6/6 missing=none cost=0.66823565 notStarted=0 giveUps=0 denials=8 denied=PowerShell $b1 = "<temp>\claude\C--Users-Co; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell $p='<temp>\b416-bundle-b6ec4a66\; PowerShell Get-ChildItem -LiteralPath '<home>\AppData\Local\Te; PowerShell $p='<temp>\b416-bundle-b6ec4a66\; PowerShell Get-ChildItem -Recurse -File -LiteralPath '<home>\A; PowerShell $p='<temp>\b416-bundle-b6ec4a66\; PowerShell pwsh -NoProfile -File scripts/test-weakening-scan.ps1 -Scope patchCommit=False
+
+
+#### O2r
+
+##### 2026-11-21 08:16:39 +00:00 — framework v0.98.6 (root head 0.99.0 — Unreleased) (6aa6aae09bb97000e04d2c48423fadc720195a73)
+
+Host: Claude Code 2.1.312 (Claude Code) · arm: framework · patch: b467-omit-claudemd.patch@f4bd065d582a · permissions: acceptEdits, 39 allowed-tool rules (dc735db5da74) · scratch: retained=True
+
+- **PASS b467-review** (model=sonnet; patch=b467-omit-claudemd.patch@f4bd065d582a) — agentExit=0 timedOut=False costUsd=0.581206315 tokensIn=7 tokensOut=38388; ccVersion=2.1.312 initModel=claude-sonnet-5-5 valid=True reason=none found=8/8 defects=D1:found,D2:found,D3:found,D4:found,D5:found,D6:found,D7:found,D8:found other=7 multi=0 reviewers=6/6 missing=none cost=0.581206315 notStarted=0 giveUps=0 denials=6 denied=PowerShell $b1="$env:TEMP\rv-b1-$(Get-Random)"; $b2="$env:TEMP\rv-b2-$(; PowerShell Get-ChildItem -Force -Recurse -File '<home>\AppData; PowerShell $p='<temp>\b416-bundle-912ff284\; PowerShell Get-FileHash -Algorithm SHA256 -LiteralPath '<home>; PowerShell Get-ChildItem -Force -Recurse -Path '<home>\AppData; PowerShell $p='<temp>\b416-bundle-912ff284\ patchCommit=True
