@@ -394,12 +394,19 @@ Do **not** edit any other section of FRAMEWORK-CONTEXT.md here — `Known Hazard
 
 From the Phase-2 **Tier-1 architectural risks** (and any domain-invariant / security findings — e.g. for .NET the A7 check-then-act / idempotency gaps), identify up to ~12 candidate hazard areas. **Before writing anything to FRAMEWORK-CONTEXT.md**, ask the developer to confirm each one at this one pause, **one question per hazard** — never several hazards in one question:
 
-For each candidate, ask a plain, answerable engineering question:
-> "I found a potential hazard in [Area / file]: [one plain sentence describing the specific risk — e.g. 'balance reads and the subsequent debit write don't appear to be in the same transaction, which could allow double-spend under concurrent requests']. Is this (a) a confirmed risk to track, (b) not actually a risk in this codebase, or (c) you're not sure?"
+For each candidate, ask a plain, answerable engineering question that **stands alone** for a developer who has seen none of your scan, often in a question box that shows nothing else: say that you are confirming the list of risky areas the agent checks before changing code; name the file and the `path:line` range Phase 2a reread; say what could go wrong, in one plain sentence; and say what you saw that suggests it. Name nothing by a table term ("row", "Status", "UNVERIFIED") or a label you coined; for a hazard already on the list, say so in words and restate it plainly rather than quoting its cells:
+> "I'm confirming the list of risky areas I check before changing code. In [path:line range], [what could go wrong, in one plain sentence — e.g. 'the balance read and the debit write don't appear to be in one transaction, so two concurrent transfers could both pass the balance check and overdraw the account'], because [what you saw]. Is this a real risk to track?"
 
-Each question names the `path:line` range Phase 2a reread for that hazard.
+Offer these answers by their words, never as a bare letter (the letters are this file's names for them), each with what it does: in the option's description where the tool has one, otherwise in the question.
+- (a) **Real risk, track it**: added to, or kept on, the list as confirmed.
+- (b) **Not a risk here**: added to, or kept on, the list as reviewed and dismissed.
+- (c) **Not sure**: a new one is added as unconfirmed; one already on the list stays as it is.
 
-With a question tool, ask as many hazards per call as it accepts, each its own question offering (a), (b), (c) and "skip the rest — mark them unverified", and make the next call straight away. Without one, number the questions in a single message and end it with a "skip all — mark as unverified" escape.
+If the tool has a short title field, fill it with plain words such as "Risk 3/12", never a code name.
+
+Not this: a question titled with a code name that says "Existing row. src/…/Ledger.cs check-then-act; the wrapper skips the lock. No tests." and offers a, b and c. The developer cannot tell what is being asked, what "the wrapper" is, or what each letter does.
+
+With a question tool, ask as many hazards per call as it accepts, each its own question offering those three answers and "Skip the rest: decide later", described as: new ones are added as unconfirmed and ones already on the list stay as they are; and make the next call straight away. Without one, number the questions in a single message, give the three answers with their meanings once, and end it with a "skip all — mark as unverified" escape.
 
 **Under headless `/adopt`** (the `--headless` directive propagated into this Phase-7 `/bootstrap`): do **not** pause for confirmation. Take the "skip all — mark as unverified" path automatically — write every candidate hazard `[UNVERIFIED]` and surface it on adopt's Phase-8 checklist. Never auto-confirm a hazard when no developer is present.
 

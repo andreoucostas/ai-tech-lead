@@ -187,6 +187,25 @@ function Assert-NoDebtDerivedBoyScout {
     }
 }
 
+# Field report #18: during /adopt a developer got a hazard question offering bare letters a, b, c, in the
+# table's terms ("Existing row") and the agent's own labels, and could not answer it.
+function Assert-HazardQuestionsStandAlone {
+    param([object[]]$DistEntries)
+    foreach ($dist in $DistEntries) {
+        foreach ($relative in @('.claude/commands/bootstrap.md', '.claude/commands/rebootstrap.md')) {
+            $path = Join-Path $dist.Root $relative
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "workflow is missing in $($dist.Name): $relative" }
+            $text = Read-Utf8Text $path
+            if ($text -match '(?i)offering \(a\), \(b\), \(c\)|Is this \(a\) a confirmed risk') {
+                throw "$($dist.Name)/$relative offers hazard answers as bare letters"
+            }
+            foreach ($required in @('stands alone', '\*\*Real risk, track it\*\*', '\*\*Not a risk here\*\*', '\*\*Not sure\*\*', 'never (?:by|as) a bare letter', 'table term', "option's description", 'Risk 3/12', 'what could go wrong', 'what you saw')) {
+                if ($text -notmatch "(?i)$required") { throw "$($dist.Name)/$relative hazard questions omit '$required'" }
+            }
+        }
+    }
+}
+
 function Assert-OnboardingMemoryContracts {
     param([object[]]$DistEntries)
     foreach ($dist in $DistEntries) {
@@ -592,6 +611,10 @@ It 'adoption never presents its post-install tag as an old-framework A/B arm' {
 
 It 'bootstrap workflows do not turn finite debt into the Boy Scout list' {
     Assert-NoDebtDerivedBoyScout -DistEntries $distEntries
+}
+
+It 'hazard questions stand alone and offer their answers in words, not bare letters' {
+    Assert-HazardQuestionsStandAlone -DistEntries $distEntries
 }
 
 It 'onboarding preserves debt dismissals and excludes framework-owned skill evidence' {
