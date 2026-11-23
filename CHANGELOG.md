@@ -14,6 +14,7 @@
 ## 0.99.1 — Unreleased
 
 - **Supported host versions stated; stale host observations refreshed (B-518).** `enforcement-surfaces.md` gains a "Supported hosts" table, a required and a last-checked version per host: Claude Code 2.1.141 and 2.1.312, Copilot CLI 1.0.72 and 1.0.98, VS Code's Copilot harness 1.146.0 and 1.146.0, the Local harness instruction-only. The closing Status notes block is deleted, and the cells and sentences that understated `meta/host-certification.md`'s rows of 2026-09-25 to 2026-11-14, or said "older version" without naming one, are refreshed. The six requirement lines point at the table for Copilot. WSD-145 records what 1.0 promises; its consumer text ships with 1.0.0. Docs only; ships unmeasured, cost-benefit: no runtime or context cost, and the 1.144.1 hook loss gets a version a team can check.
+- **Shell-routed writes measured; the enforcement doc corrected (B-538).** 316 retained Claude Code fixture sessions (304 with the framework, 287 of them Sonnet 5.5): 168 of 1,262 code writes went through the Bash tool (heredoc 72, `sed -i` 61, script 35) in 63 sessions, none through the PowerShell tool; 0 of 208 rebuilt as Write/Edit events and replayed through the dist guard would be blocked (planted control 2 of 2 blocked). `enforcement-surfaces.md`'s scope caveat names the routes, the rate and push-time scanning as the cover; the guard and its registrations are unchanged (WSD-047 DOCUMENT, WSD-139). Evidence: `meta/eval-results.md`, "B-538".
 
 ## 0.99.0 — 2026-11-23
 

@@ -188,10 +188,19 @@ organization enforces.
 > file the patch names, and `post-write` checks the first file in the patch that it reads, so in the
 > monorepo dist a patch that changes both a .NET and an Angular file is checked for one stack only. Both
 > are tested on the `preToolUse` envelopes Copilot CLI 1.0.95 sent, not on an observed `postToolUse`
-> one. A write routed through a **terminal/shell tool** —
-> Claude Code's PowerShell tool running `Set-Content`, `Add-Content`, or redirection —
-> carries no `Write`/`Edit` payload, so neither the secrets/test-defeat/suppression floor nor the
-> local telemetry hook fires on it. Externally written content is outside the same boundary.
+> one. A write routed through a **terminal/shell tool** — on Claude Code most often the Bash tool's
+> heredoc (`cat > File.cs <<'EOF'`), `sed -i` or an inline script, and PowerShell's `Set-Content`,
+> `Add-Content` or a redirect alike — carries no `Write`/`Edit` payload, so neither the
+> secrets/test-defeat/suppression floor, nor `post-write`'s build feedback, nor the local telemetry
+> hook fires on it. It is common: across 304 sessions of the framework's own .NET evaluation runs
+> (Claude Code 2.1.281 to 2.1.312, 287 of them Sonnet 5.5, 2026-09-30 to 2026-11-20), 168 of 1,262
+> code writes went through the Bash tool, in 63 sessions; in the three largest families of tasks,
+> 17% to 72% of sessions did it (one-line edits by `sed -i`, multi-file features by heredoc), and on
+> two tasks run both ways (6 runs per arm) it was as frequent with no framework installed. None of
+> the 164 whose content could be rebuilt held content the guard refuses; no task asked for any.
+> Copilot was not measured. So for a secret written through the shell, the control is push-time
+> secret scanning where you have enabled it (`docs/ci-integration.md`, "Recommended alongside").
+> Externally written content is outside the same boundary.
 > `.claude/ai-audit.log` is mutable and incomplete; it is diagnostic telemetry, not correctness,
 > retention, regulatory, or compliance evidence. Wherever an agent can run shell commands, the
 > framework-rules carrier and `AGENTS.md` rules remain the binding instruction for that path.
