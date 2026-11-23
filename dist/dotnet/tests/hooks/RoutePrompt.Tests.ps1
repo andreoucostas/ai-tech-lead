@@ -236,8 +236,25 @@ It 'route-prompt.ps1 bare approvals and plan references stay no-ops (both surfac
     }
 }
 It 'route-prompt.ps1 question with an imperative word mid-sentence -> no routed intent' {
-    $r = Invoke-Hook $rpPs (New-ClaudePrompt 'What does the build pipeline do?')
-    Assert ($r.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($r.Out)) "a question must be a no-op, got exit $($r.Exit) output: $($r.Out)"
+    foreach ($q in 'What does the build pipeline do?', 'Can you explain why the build fails?', 'When can we build the release?', 'Can I add a field without a migration?') {
+        $r = Invoke-Hook $rpPs (New-ClaudePrompt $q)
+        Assert ($r.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($r.Out)) "a question must be a no-op for: $q; got exit $($r.Exit) output: $($r.Out)"
+    }
+}
+It 'route-prompt.ps1 polite request phrased as a question -> plan gate (both surfaces)' {
+    $cases = @(
+        @{ P = 'Would you add a retry to the HTTP client?'; I = 'feature' },
+        @{ P = 'Can we fix the rounding bug in the totals?'; I = 'fix' },
+        @{ P = 'Hi, could you kindly fix the null reference in OrderService?'; I = 'fix' },
+        @{ P = 'Can you help me add tests for the date parser?'; I = 'test' },
+        @{ P = 'Is it possible to add paging to the orders endpoint?'; I = 'feature' }
+    )
+    foreach ($c in $cases) {
+        foreach ($evt in (New-ClaudePrompt $c.P), (New-CopilotPrompt $c.P)) {
+            $r = Invoke-Hook $rpPs $evt
+            Assert ($r.Exit -eq 0 -and $r.Out -match ('## Routed intent: `' + $c.I + '`') -and $r.Out -match 'Plan gate') "expected intent $($c.I) with the plan gate for: $($c.P); got exit $($r.Exit) output: $($r.Out)"
+        }
+    }
 }
 It 'route-prompt.ps1 concurrency does not match currency -> no security overlay' {
     $r = Invoke-Hook $rpPs (New-ClaudePrompt 'fix the concurrency bug in the cache')

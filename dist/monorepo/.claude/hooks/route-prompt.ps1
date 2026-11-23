@@ -170,8 +170,11 @@ elseif ($lc -match '(\badd\b|\bimplement\b|\bcreate\b|\bbuild\b|new (feature|end
 # ceremony. Clearing $intent suppresses the rails + plan-gate; the security overlay
 # below still fires if the question touches a sensitive surface.
 $isQuestion = ($lc -match "^\s*(why|what|what'?s|how come|when|where|which|who|is|are|does|do|can|could|would|should)\b") -or ($prompt.TrimEnd() -match '\?$')
-# An imperative counts only as the first word or after please / can you / could you; "build" in "what does the build do?" is a noun.
-$hasImperative = $lc -match '^\W*((please|can you|could you)\W+)*(add|fix|implement|create|build|make|change|update|modify|remove|delete|refactor|rename|extract|write|test|review|clean\s?up|migrate|wire|integrate|introduce)\b'
+# An imperative counts only as the first word or after a greeting ("hey Claude,") and polite openers ("please", "kindly",
+# "can/could/would/will you/we", "help me", "is it possible to"); "build" in "what does the build do?" is a noun, and
+# "can I" / "should we" stay questions. Each word parses one way only, so a long run of openers cannot backtrack exponentially.
+$politeOpener = 'hi|hey|hello|please|kindly|just|also|(?:can|could|would|will)\s+(?:you|we)|help(?:\s+(?:me|us))?(?:\s+to)?|(?:is|would)\s+it\s+(?:be\s+)?possible\s+to'
+$hasImperative = $lc -match "^\W*(?:(?:hi|hey|hello)\b[^,.!?\n]{0,40}[,.!]\W*)?(?:(?:$politeOpener)\W+)*(add|fix|implement|create|build|make|change|update|modify|remove|delete|refactor|rename|extract|write|test|review|clean\s?up|migrate|wire|integrate|introduce)\b"
 if ($isQuestion -and -not $hasImperative -and $intent -in @('fix','feature','refactor','test','debt')) { $intent = '' }
 
 # An approval of work already planned ("yes, go ahead and implement the plan") is not a new request.
