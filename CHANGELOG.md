@@ -11,7 +11,7 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
-## 0.99.0 — Unreleased
+## 0.99.0 — 2026-11-23
 
 - **`/review`'s six reviewers run with `omitClaudeMd: true` (B-467).** Claude Code no longer injects the consumer's 25,805-character instruction chain into each reviewer; first request about 9,200 tokens smaller (measured earlier: R1, 2026-11-04). R2: valid runs K 4, O 5, 8 of 8 found in both; see `meta/eval-results.md`, "B-467 R2 results". Claude Code only; Copilot not measured. Guarded (agent files).
 

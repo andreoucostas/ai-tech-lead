@@ -1,8 +1,8 @@
 <!--
 ai-tech-lead-framework
   template: monorepo
-  version: 0.98.6
-  applied: 2026-11-13
+  version: 0.99.0
+  applied: 2026-11-23
   After a framework update, copy these fields from .claude/framework-version.json.
 -->
 # [Project Name]

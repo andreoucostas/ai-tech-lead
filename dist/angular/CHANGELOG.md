@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.99.0 — Unreleased
+## 0.99.0 — 2026-11-23
 
 - **`/review`'s reviewers no longer load your project's full instruction chain.** Each of the six reviewers (convention, debt, bloat, SOLID, test and security) used to start with your `CLAUDE.md`, `AGENTS.md` and the rules file, about 25,800 characters, loaded again for every one of them. They now start without those, so each reviewer's first request is about 9,200 tokens smaller (measured earlier). Measured on Claude Code only, on a set of eight seeded defects: every valid run found all eight with and without the change. A finding that only your instruction files would have enabled is not shown on that set; Copilot is not measured.
 
