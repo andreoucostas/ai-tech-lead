@@ -1434,4 +1434,257 @@ It 'B-508 an update says a framework file Git ignores has no commit, not that it
     }
 }
 
+# The one form of the could-not-check line no case printed: a framework file HEAD holds that the last framework install
+# does not, as when the install was committed in parts.
+It 'B-508 an update says it could not check a framework file the last framework install does not hold, and names no edit to it' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('b508i-' + [guid]::NewGuid())
+    try {
+        $t = New-B508Install -Root $root
+        $later = '.claude/commands/review.md'
+        & git -C $t rm -q --cached -- $later
+        & git -C $t commit -q --amend -m 'framework install without review.md'
+        & git -C $t add -- $later
+        & git -C $t commit -qm 'review.md committed on its own'
+        $install = (& git -C $t rev-parse HEAD~1 | Out-String).Trim()
+        Assert ((& git -C $t log -1 --format=%H -- .claude/framework-version.json | Out-String).Trim() -ceq $install) 'calibration: the first commit is not the last framework install'
+        & git -C $t cat-file -e "${install}:$later" 2>$null
+        Assert ($LASTEXITCODE -ne 0) "calibration: the install commit holds $later"
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $flat = $out -replace '\s+', ' '
+        Assert ($LASTEXITCODE -eq 0 -and $out -match "(?m)^PLAN replace $([regex]::Escape($later))\r?$") "calibration: the update failed or did not replace $later (exit $LASTEXITCODE): $out"
+        Assert ($flat -match "NOTICE: edits to framework files could not be checked for $([regex]::Escape($later)) \(the last framework install, commit $install, does not hold it\), so the update names none your team may have made there\.") "no NOTICE says $later could not be checked because the last framework install does not hold it: $out"
+        Assert ($flat -notmatch "'$([regex]::Escape($later))' is a framework file") "the update named an edit to a file it could not check: $out"
+        Assert ((Get-B508Copies -Target $t).Count -eq 0) "the update copied a file its last commit holds: $((Get-B508Copies -Target $t) -join ' | ')"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# B-508 unit cases: the rules by which an update decides whether a team changed a framework file it replaces, run without
+# the installer. Each case takes the shipped installer's functions by syntax tree, answers their Git calls from the table
+# $b508Git (the Invoke-Git* functions below stand in for the installer's, which are not loaded; PowerShell finds a
+# function by name when it is called) and seeds the state they read.
+$b508Installer = [Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), [ref]$null, [ref]$null)
+function Get-B508Functions {
+    param([Parameter(Mandatory)][string[]]$Name)
+    $code = New-Object System.Text.StringBuilder
+    foreach ($n in $Name) {
+        $found = @($b508Installer.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -ceq $n })
+        Assert ($found.Count -eq 1) "calibration: the installer has no top-level function $n"
+        [void]$code.AppendLine($found[0].Extent.Text)
+    }
+    return [scriptblock]::Create($code.ToString())
+}
+function New-B508Map {
+    param([hashtable]$Pairs)
+    $map = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    foreach ($key in $Pairs.Keys) { $map[$key] = $Pairs[$key] }
+    return , $map
+}
+# Dot-sourced first in each case. $b508Git maps a regex over a Git call's arguments after '-C <target>' to Git's answer
+# ($null: Git failed); $b508Calls logs each call with the fetch and prompt settings it ran under.
+$b508Setup = {
+    . (Get-B508Functions -Name 'Get-HeadState', 'Get-HeadHeldCommit', 'Format-HeadHeld', 'Get-InstallState', 'Read-InstallState', 'Test-ChangedSinceInstall', 'Enter-GitNoFetch', 'Exit-GitNoFetch')
+    function Get-WorkTreeGit { return 'git' }
+    function Get-GitSkippedFiles { if ($null -eq $b508Skipped) { return $null }; return , $b508Skipped }
+    function Find-B508Answer {
+        param([string[]]$Arguments)
+        $key = @($Arguments | Select-Object -Skip 2) -join ' '
+        $b508Calls.Add("$key | GIT_NO_LAZY_FETCH=$env:GIT_NO_LAZY_FETCH GIT_TERMINAL_PROMPT=$env:GIT_TERMINAL_PROMPT")
+        foreach ($pattern in @($b508Git.Keys)) { if ($key -cmatch $pattern) { return [pscustomobject]@{ Value = $b508Git[$pattern] } } }
+        return [pscustomobject]@{ Value = $null }
+    }
+    function Invoke-GitText {
+        param([string]$GitPath, [string[]]$Arguments)
+        $answer = (Find-B508Answer -Arguments $Arguments).Value
+        if ($null -eq $answer) { return [pscustomobject]@{ Started = $true; ExitCode = 1; Output = ''; RecordCount = 0 } }
+        return [pscustomobject]@{ Started = $true; ExitCode = 0; Output = [string]$answer; RecordCount = 1 }
+    }
+    function Invoke-GitRecords {
+        param([string]$GitPath, [string[]]$Arguments, [int[]]$SuccessCodes = @(0))
+        $answer = (Find-B508Answer -Arguments $Arguments).Value
+        if ($null -eq $answer) { return $null }
+        return , @($answer)
+    }
+    function Invoke-GitBytes {
+        param([string]$GitPath, [string[]]$Arguments, [int[]]$SuccessCodes = @(0))
+        $answer = (Find-B508Answer -Arguments $Arguments).Value
+        if ($null -eq $answer) { return $null }
+        return , [byte[]]$answer
+    }
+    $tgt = 'C:\b508 target'; $updateMode = $true; $Reinstall = $false; $incomingPaths = @('.claude/commands/fix.md', 'scripts/run.ps1')
+    $script:HeadState = $null; $script:InstallState = $null
+    $script:HeadHeldAs = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    $script:InstallCopyUnreadable = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $b508Skipped = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $b508Git = [ordered]@{}
+    $b508Calls = New-Object System.Collections.Generic.List[string]
+    $head = 'a' * 40; $install = 'b' * 40
+}
+
+It 'B-508 unit: an update reads each regular or executable file of HEAD and of the last install by its exact path, and no link or submodule, the install''s with Git''s fetches and prompts off' {
+    . $b508Setup
+    $records = @(
+        "100644 blob $('1' * 40)`t.claude/commands/fix.md",
+        "100644 blob $('2' * 40)`t.claude/commands/FIX.md",
+        "100755 blob $('3' * 40)`tscripts/run.ps1",
+        "100644 blob $('4' * 64)`t.claude/skills/perf/SKILL.md",
+        "100644 blob $('5' * 40)`t.claude/odd name`twith tab`nand newline.md",
+        "120000 blob $('6' * 40)`t.claude/commands/link.md",
+        "160000 commit $('7' * 40)`t.claude/vendor",
+        "100644 blob `t.claude/commands/no-id.md"
+    )
+    $b508Git['^rev-parse --verify --quiet HEAD\^\{commit\}$'] = $head
+    $b508Git["^ls-tree -r -z $head -- "] = $records
+    $b508Git['^rev-parse --is-shallow-repository$'] = 'false'
+    $b508Git["^log -1 --format=%H $head -- \.claude/framework-version\.json$"] = $install
+    $b508Git["^ls-tree -r -z $install -- "] = $records
+    [string[]]$want = @('.claude/commands/fix.md', '.claude/commands/FIX.md', 'scripts/run.ps1', '.claude/skills/perf/SKILL.md', ".claude/odd name`twith tab`nand newline.md")
+    [Array]::Sort($want, [StringComparer]::Ordinal)
+    # Neither setting is on in this process while the two commits are read, so only the installer can turn them on.
+    $priorFetch = [Environment]::GetEnvironmentVariable('GIT_NO_LAZY_FETCH', 'Process'); $priorPrompt = [Environment]::GetEnvironmentVariable('GIT_TERMINAL_PROMPT', 'Process')
+    try {
+        [Environment]::SetEnvironmentVariable('GIT_NO_LAZY_FETCH', $null, 'Process'); [Environment]::SetEnvironmentVariable('GIT_TERMINAL_PROMPT', $null, 'Process')
+        $states = @((Get-HeadState), (Get-InstallState))
+    } finally {
+        [Environment]::SetEnvironmentVariable('GIT_NO_LAZY_FETCH', $priorFetch, 'Process'); [Environment]::SetEnvironmentVariable('GIT_TERMINAL_PROMPT', $priorPrompt, 'Process')
+    }
+    $installCalls = @($b508Calls | Where-Object { $_ -match "^(rev-parse --is-shallow-repository|log -1 |ls-tree -r -z $install )" })
+    Assert ($installCalls.Count -eq 3 -and @($installCalls | Where-Object { $_ -notmatch '\| GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0$' }).Count -eq 0) "the last install was read with Git's fetches or prompts on: $($installCalls -join ' ; ')"
+    foreach ($state in $states) {
+        Assert ($state.Blobs -is [System.Collections.Generic.Dictionary[string, string]]) "the files of a commit are not read into one map: $($state.Blobs.GetType().FullName)"
+        [string[]]$keys = @($state.Blobs.Keys)
+        [Array]::Sort($keys, [StringComparer]::Ordinal)
+        Assert (($keys -join '|') -ceq ($want -join '|')) "the files read are not exactly the regular and executable ones by their exact paths: $($keys -join ' | ')"
+        Assert ($state.Blobs['.claude/skills/perf/SKILL.md'] -ceq ('4' * 64) -and -not $state.Blobs.ContainsKey('.claude/commands/Fix.md')) 'a SHA-256 id was not kept, or a path matched in another letter case'
+    }
+    Assert ((Get-HeadState).Commit -ceq $head -and (Get-InstallState).Commit -ceq $install -and $null -eq (Get-InstallState).Reason) 'calibration: HEAD or the last install was not read'
+    # A commit with no file under the shipped folders: an empty map that every later lookup can ask, not nothing.
+    $script:HeadState = $null; $script:InstallState = $null
+    $b508Git["^ls-tree -r -z $head -- "] = @()
+    $b508Git["^ls-tree -r -z $install -- "] = @()
+    foreach ($state in @((Get-HeadState), (Get-InstallState))) {
+        Assert ($state.Blobs -is [System.Collections.Generic.Dictionary[string, string]] -and $state.Blobs.Count -eq 0) 'a commit with no shipped file did not read as an empty map'
+    }
+}
+
+It 'B-508 unit: an update takes a file to be in HEAD as it is on disk when its raw bytes hash to the blob there, SHA-1 or SHA-256, or a checkout writes them' {
+    . $b508Setup
+    $lf = [Text.Encoding]::UTF8.GetBytes("hello`n"); $crlf = [Text.Encoding]::UTF8.GetBytes("hello`r`n")
+    # Git's ids for the empty file, SHA-1 and SHA-256, and for 'hello' and LF.
+    $script:HeadState = [pscustomobject]@{ Commit = $head; GitPath = 'git'; Blobs = (New-B508Map @{
+        'empty.md' = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391'; 'empty256.md' = '473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813'
+        'hello.md' = 'ce013625030ba8dba906f756967f9e9ca394464a' }) }
+    $b508Git["^cat-file --filters ${head}:\./hello\.md$"] = $crlf
+    Assert ((Get-HeadHeldCommit -Relative 'empty.md' -Bytes ([byte[]]@())) -ceq $head) 'an empty file was not matched to its SHA-1 blob'
+    Assert ((Get-HeadHeldCommit -Relative 'empty256.md' -Bytes ([byte[]]@())) -ceq $head) 'an empty file was not matched to its SHA-256 blob'
+    Assert ((Get-HeadHeldCommit -Relative 'hello.md' -Bytes $lf) -ceq $head -and $script:HeadHeldAs['hello.md'] -ceq 'blob') 'a file whose bytes are the blob was not held as the blob'
+    Assert (@($b508Calls | Where-Object { $_ -match '^cat-file' }).Count -eq 0) "a file matched by its blob id was compared with a checkout too: $($b508Calls -join ' ; ')"
+    # A core.autocrlf checkout's CRLF: not the blob's bytes, but what a checkout of the commit writes.
+    Assert ((Get-HeadHeldCommit -Relative 'hello.md' -Bytes $crlf) -ceq $head -and $script:HeadHeldAs['hello.md'] -ceq 'checkout') 'a CRLF checkout was not held as the commit''s checkout'
+    Assert ($null -eq (Get-HeadHeldCommit -Relative 'hello.md' -Bytes ([Text.Encoding]::UTF8.GetBytes("hello, team`n")))) 'an edited file was held by the commit'
+    Assert ($null -eq (Get-HeadHeldCommit -Relative 'other.md' -Bytes $lf)) 'a file HEAD lacks was held by it'
+    Assert ($null -eq (Get-HeadHeldCommit -Relative 'hello.md' -Bytes $null)) 'a file that could not be read was held'
+    [void]$b508Skipped.Add('hello.md')
+    Assert ($null -eq (Get-HeadHeldCommit -Relative 'hello.md' -Bytes $lf)) 'a file Git is told not to see the changes of was held'
+    $b508Skipped = $null
+    Assert ($null -eq (Get-HeadHeldCommit -Relative 'hello.md' -Bytes $lf)) 'a file was held where Git could not say which files it skips'
+}
+
+It 'B-508 unit: an update compares no framework file when it has no last install to compare with, and says why' {
+    . $b508Setup
+    $fix = '.claude/commands/fix.md'
+    $script:HeadState = [pscustomobject]@{ Commit = $head; GitPath = 'git'; Blobs = (New-B508Map @{ $fix = '1' * 40; 'only-head.md' = '2' * 40 }) }
+    foreach ($case in @(
+            @{ Shallow = 'true'; Log = $install; Tree = @(); Reason = 'the clone is shallow, so its history may not reach the last framework install' },
+            @{ Shallow = $null; Log = $install; Tree = @(); Reason = 'Git could not say whether the clone holds its whole history' },
+            @{ Shallow = 'false'; Log = $null; Tree = @(); Reason = "no commit in HEAD's history changed .claude/framework-version.json, so the last framework install is not known" },
+            # What Git itself answers when no commit changed the stamp: exit 0 and no output.
+            @{ Shallow = 'false'; Log = ''; Tree = @(); Reason = "no commit in HEAD's history changed .claude/framework-version.json, so the last framework install is not known" },
+            @{ Shallow = 'false'; Log = $install; Tree = $null; Reason = "Git could not list the files of the last framework install, commit $install" })) {
+        $script:InstallState = $null
+        $b508Git['^rev-parse --is-shallow-repository$'] = $case.Shallow
+        $b508Git['^log -1 --format=%H '] = $case.Log
+        $b508Git['^ls-tree -r -z '] = $case.Tree
+        Assert ($null -eq (Test-ChangedSinceInstall -Relative $fix)) "a file was compared with no last install ($($case.Reason))"
+        Assert ((Get-InstallState).Reason -ceq $case.Reason) "the reason is not '$($case.Reason)': '$((Get-InstallState).Reason)'"
+    }
+    $script:HeadState = [pscustomobject]@{ Commit = $null; Blobs = $null; GitPath = $null }; $script:InstallState = $null
+    Assert ($null -eq (Test-ChangedSinceInstall -Relative $fix) -and (Get-InstallState).Reason -ceq 'the target has no Git commit to compare them with') 'a target with no commit did not say so'
+    # The last install, or HEAD, lacks the path: not compared, and not a copy that could not be read.
+    $script:HeadState = [pscustomobject]@{ Commit = $head; GitPath = 'git'; Blobs = (New-B508Map @{ $fix = '1' * 40; 'only-head.md' = '2' * 40 }) }
+    $script:InstallState = [pscustomobject]@{ Commit = $install; Reason = $null; Blobs = (New-B508Map @{ $fix = '1' * 40; 'only-install.md' = '3' * 40 }) }
+    Assert ($null -eq (Test-ChangedSinceInstall -Relative 'only-head.md')) 'a file the last install lacks was compared'
+    Assert ($null -eq (Test-ChangedSinceInstall -Relative 'only-install.md')) 'a file HEAD lacks was compared'
+    Assert ($script:InstallCopyUnreadable.Count -eq 0) "a file not compared was called unreadable: $($script:InstallCopyUnreadable -join ', ')"
+    Assert (@($b508Calls | Where-Object { $_ -match '^cat-file' }).Count -eq 0) "a file not compared was read: $($b508Calls -join ' ; ')"
+}
+
+It 'B-508 unit: a framework file is unchanged since the install when its blob is the same and changed when it differs, read only for a skill''s own SKILL.md' {
+    . $b508Setup
+    $script:HeadState = [pscustomobject]@{ Commit = $head; GitPath = 'git'; Blobs = (New-B508Map @{
+        'same.md' = '1' * 40; 'edit.md' = '2' * 40; '.claude/skills/perf/references/p.md' = '3' * 40; '.claude/skills/perf/sub/SKILL.md' = '4' * 40 }) }
+    $script:InstallState = [pscustomobject]@{ Commit = $install; Reason = $null; Blobs = (New-B508Map @{
+        'same.md' = '1' * 40; 'edit.md' = '5' * 40; '.claude/skills/perf/references/p.md' = '6' * 40; '.claude/skills/perf/sub/SKILL.md' = '7' * 40 }) }
+    Assert ((Test-ChangedSinceInstall -Relative 'same.md') -eq $false) 'a file with the install''s blob was not unchanged'
+    foreach ($relative in 'edit.md', '.claude/skills/perf/references/p.md', '.claude/skills/perf/sub/SKILL.md') {
+        Assert ((Test-ChangedSinceInstall -Relative $relative) -eq $true) "$relative, whose blob differs from the install's, was not changed"
+    }
+    Assert (@($b508Calls | Where-Object { $_ -match '^cat-file' }).Count -eq 0) "a file other than a skill's own SKILL.md was read: $($b508Calls -join ' ; ')"
+}
+
+It 'B-508 unit: a skill''s SKILL.md that differs from the install''s only by the /bootstrap exemplar line or line endings is unchanged; any other line is a change' {
+    . $b508Setup
+    $script:HeadState = [pscustomobject]@{ Commit = $head; GitPath = 'git'; Blobs = (New-B508Map @{ '.claude/skills/perf/SKILL.md' = '1' * 40; '.claude/skills/add-tests/SKILL.md' = '2' * 40 }) }
+    $script:InstallState = [pscustomobject]@{ Commit = $install; Reason = $null; Blobs = (New-B508Map @{ '.claude/skills/perf/SKILL.md' = '3' * 40; '.claude/skills/add-tests/SKILL.md' = '4' * 40 }) }
+    $b508Git["^cat-file blob $('1' * 40)$"] = [Text.Encoding]::UTF8.GetBytes("---`r`nname: perf`r`n---`r`n# Perf`r`n`r`nFor a concrete current instance in this repo, see src/Smoke/Budget.cs`r`n")
+    $b508Git["^cat-file blob $('3' * 40)$"] = [Text.Encoding]::UTF8.GetBytes("---`nname: perf`n---`n# Perf`n")
+    $b508Git["^cat-file blob $('2' * 40)$"] = [Text.Encoding]::UTF8.GetBytes("---`nname: add-tests`n---`n# Add tests`nB508 COMMITTED SKILL EDIT`n")
+    $b508Git["^cat-file blob $('4' * 40)$"] = [Text.Encoding]::UTF8.GetBytes("---`nname: add-tests`n---`n# Add tests`n")
+    Assert ((Test-ChangedSinceInstall -Relative '.claude/skills/perf/SKILL.md') -eq $false) 'a SKILL.md whose only change is the exemplar line and CRLF was called changed'
+    Assert ((Test-ChangedSinceInstall -Relative '.claude/skills/add-tests/SKILL.md') -eq $true) 'a SKILL.md with a committed edit was not called changed'
+}
+
+It 'B-508 unit: a skill''s SKILL.md whose copy to compare cannot be read locally is not compared and never called changed, and Git is not let fetch or prompt for it' {
+    . $b508Setup
+    $priorFetch = [Environment]::GetEnvironmentVariable('GIT_NO_LAZY_FETCH', 'Process'); $priorPrompt = [Environment]::GetEnvironmentVariable('GIT_TERMINAL_PROMPT', 'Process')
+    $script:HeadState = [pscustomobject]@{ Commit = $head; GitPath = 'git'; Blobs = (New-B508Map @{ '.claude/skills/perf/SKILL.md' = '1' * 40; '.claude/skills/add-tests/SKILL.md' = '2' * 40 }) }
+    $script:InstallState = [pscustomobject]@{ Commit = $install; Reason = $null; Blobs = (New-B508Map @{ '.claude/skills/perf/SKILL.md' = '3' * 40; '.claude/skills/add-tests/SKILL.md' = '4' * 40 }) }
+    # A partial clone that never fetched the install's copy of perf, or HEAD's copy of add-tests.
+    $b508Git["^cat-file blob $('1' * 40)$"] = [Text.Encoding]::UTF8.GetBytes("# Perf`n")
+    $b508Git["^cat-file blob $('4' * 40)$"] = [Text.Encoding]::UTF8.GetBytes("# Add tests`n")
+    foreach ($relative in '.claude/skills/perf/SKILL.md', '.claude/skills/add-tests/SKILL.md') {
+        Assert ($null -eq (Test-ChangedSinceInstall -Relative $relative)) "$relative, whose copy to compare could not be read, was judged"
+        Assert ($script:InstallCopyUnreadable.Contains($relative)) "$relative is not listed as a file whose copy to compare could not be read"
+    }
+    $reads = @($b508Calls | Where-Object { $_ -match '^cat-file' })
+    Assert ($reads.Count -gt 0 -and @($reads | Where-Object { $_ -notmatch '\| GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0$' }).Count -eq 0) "a copy was read with fetches or prompts on: $($reads -join ' ; ')"
+    Assert ([Environment]::GetEnvironmentVariable('GIT_NO_LAZY_FETCH', 'Process') -eq $priorFetch -and [Environment]::GetEnvironmentVariable('GIT_TERMINAL_PROMPT', 'Process') -eq $priorPrompt) 'the fetch and prompt settings were not put back'
+}
+
+It 'B-508 unit: the line naming the commit that holds a team''s version prints it with git show, quoted so it pastes into PowerShell' {
+    . $b508Setup
+    $c = 'c' * 40; $r = [char]0x2019
+    $tgt = "C:\Repos\Bob's$r app"
+    $quotedTarget = "'C:\Repos\Bob''s$r$r app'"
+    Assert ((Format-HeadHeld -Relative '.claude/commands/fix.md' -Commit $c) -ceq "in commit ${c}:  git -C $quotedTarget show ${c}:./.claude/commands/fix.md  prints it") "the line for a plain path is not the git show line: $(Format-HeadHeld -Relative '.claude/commands/fix.md' -Commit $c)"
+    Assert ((Format-HeadHeld -Relative "docs/it's `$HOME.md" -Commit $c) -ceq "in commit ${c}:  git -C $quotedTarget show '${c}:./docs/it''s `$HOME.md'  prints it") "a path with a quote, a space or a dollar sign is not quoted to paste: $(Format-HeadHeld -Relative "docs/it's `$HOME.md" -Commit $c)"
+}
+
+It 'B-508 unit: the line for a version a commit holds only as a checkout writes it puts it back with git checkout, a glob or leading colon read literally' {
+    . $b508Setup
+    $c = 'c' * 40
+    $expected = [ordered]@{
+        '.claude/commands/fix.md' = '.claude/commands/fix.md'
+        'docs/[draft]*.md' = "':(literal)docs/[draft]*.md'"
+        ':colon.md' = "':(literal):colon.md'"
+        'docs/a b.md' = "'docs/a b.md'"
+    }
+    foreach ($relative in $expected.Keys) {
+        $script:HeadHeldAs[$relative] = 'checkout'
+        $line = Format-HeadHeld -Relative $relative -Commit $c
+        Assert ($line -ceq "in commit ${c}:  git -C 'C:\b508 target' checkout $c -- $($expected[$relative])  puts it back") "the checkout line for $relative is wrong: $line"
+    }
+}
+
 exit (Write-TestSummary 'UpdateDelivery2.Tests')
