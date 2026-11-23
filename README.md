@@ -15,7 +15,8 @@ agents commit only when you ask.
 
 **You need:** Windows; Git; PowerShell 7 (`pwsh`; `winget install --id Microsoft.PowerShell`) on every
 developer machine and CI agent that runs the framework's hooks or checks; and Claude Code 2.1.141 or
-newer, or GitHub Copilot (VS Code or Copilot CLI). Commit or stash your own changes first, so the working tree is clean: an update, or an install over AI tooling the repository
+newer, or GitHub Copilot (VS Code or Copilot CLI) at a version listed under
+[Supported hosts](src/core/docs/enforcement-surfaces.md#supported-hosts). Commit or stash your own changes first, so the working tree is clean: an update, or an install over AI tooling the repository
 already has, stops on uncommitted changes. A first install into a repository with none does not check,
 and its files then sit among your uncommitted ones in `git status`.
 

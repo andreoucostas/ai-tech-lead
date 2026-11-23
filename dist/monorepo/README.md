@@ -34,7 +34,8 @@ agent terms.
 - **Debt paid down as you go**, recorded in `TECH_DEBT.md`, with a counterweight against needless
   abstraction.
 
-Hooks need native Windows with PowerShell, and Claude Code 2.1.141 or newer or GitHub Copilot. What
+Hooks need native Windows with PowerShell, and Claude Code 2.1.141 or newer or GitHub Copilot at a
+version listed under [Supported hosts](docs/enforcement-surfaces.md#supported-hosts). What
 each client enforces is listed in [docs/enforcement-surfaces.md](docs/enforcement-surfaces.md); the
 Copilot cloud coding agent runs none of the hooks.
 

@@ -28,7 +28,8 @@ pwsh -NoProfile -File scripts/framework-doctor.ps1
 
 It lists which controls are live on your machine. The hooks need Windows, PowerShell 7
 (`winget install --id Microsoft.PowerShell`; Windows PowerShell 5.1 is not supported), and Claude Code
-2.1.141 or newer, or GitHub Copilot. The workflows and rules work
+2.1.141 or newer, or GitHub Copilot at a version listed under
+[Supported hosts](enforcement-surfaces.md#supported-hosts). The workflows and rules work
 without them; [enforcement-surfaces.md](enforcement-surfaces.md) says exactly what each client
 enforces.
 

@@ -5,6 +5,10 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.99.1 — Unreleased
+
+- **The host versions the framework supports are now stated.** `docs/enforcement-surfaces.md` has a new "Supported hosts" table: Claude Code 2.1.141 or newer, Copilot CLI 1.0.72 or newer, and VS Code 1.146.0 or newer in its Copilot harness, each with the version it was last checked on; VS Code's Local harness has no supported version and stays instruction-only. If your team uses VS Code's Copilot harness, check that everyone is on 1.146.0 or newer: on VS Code 1.144.1 none of the framework's hooks ran in a folder VS Code trusts, so the write guard was off. The same page now records what was seen working in VS Code's own window (the write guard's deny on 1.146.0, and a queued Boy Scout finding reaching the next prompt, seen once on 1.144.1) and drops a status summary that had fallen behind. Nothing in your repository changes.
+
 ## 0.99.0 — 2026-11-23
 
 - **`/review`'s reviewers no longer load your project's full instruction chain.** Each of the six reviewers (convention, debt, bloat, SOLID, test and security) used to start with your `CLAUDE.md`, `AGENTS.md` and the rules file, about 25,800 characters, loaded again for every one of them. They now start without those, so each reviewer's first request is about 9,200 tokens smaller (measured earlier). Measured on Claude Code only, on a set of eight seeded defects: every valid run found all eight with and without the change. A finding that only your instruction files would have enabled is not shown on that set; Copilot is not measured.

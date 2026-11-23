@@ -11,6 +11,10 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.99.1 — Unreleased
+
+- **Supported host versions stated; stale host observations refreshed (B-518).** `enforcement-surfaces.md` gains a "Supported hosts" table, a required and a last-checked version per host: Claude Code 2.1.141 and 2.1.312, Copilot CLI 1.0.72 and 1.0.98, VS Code's Copilot harness 1.146.0 and 1.146.0, the Local harness instruction-only. The closing Status notes block is deleted, and the cells and sentences that understated `meta/host-certification.md`'s rows of 2026-09-25 to 2026-11-14, or said "older version" without naming one, are refreshed. The six requirement lines point at the table for Copilot. WSD-145 records what 1.0 promises; its consumer text ships with 1.0.0. Docs only; ships unmeasured, cost-benefit: no runtime or context cost, and the 1.144.1 hook loss gets a version a team can check.
+
 ## 0.99.0 — 2026-11-23
 
 - **`/review`'s six reviewers run with `omitClaudeMd: true` (B-467).** Claude Code no longer injects the consumer's 25,805-character instruction chain into each reviewer; first request about 9,200 tokens smaller (measured earlier: R1, 2026-11-04). R2: valid runs K 4, O 5, 8 of 8 found in both; see `meta/eval-results.md`, "B-467 R2 results". Claude Code only; Copilot not measured. Guarded (agent files).
