@@ -192,12 +192,15 @@ organization enforces.
 > heredoc (`cat > File.cs <<'EOF'`), `sed -i` or an inline script, and PowerShell's `Set-Content`,
 > `Add-Content` or a redirect alike — carries no `Write`/`Edit` payload, so neither the
 > secrets/test-defeat/suppression floor, nor `post-write`'s build feedback, nor the local telemetry
-> hook fires on it. It is common: across 304 sessions of the framework's own .NET evaluation runs
+> hook fires on it. Agents try it: across 304 sessions of the framework's own .NET evaluation runs
 > (Claude Code 2.1.281 to 2.1.312, 287 of them Sonnet 5.5, 2026-09-30 to 2026-11-20), 168 of 1,262
-> code writes went through the Bash tool, in 63 sessions; in the three largest families of tasks,
-> 17% to 72% of sessions did it (one-line edits by `sed -i`, multi-file features by heredoc), and on
-> two tasks run both ways (6 runs per arm) it was as frequent with no framework installed. None of
-> the 164 whose content could be rebuilt held content the guard refuses; no task asked for any.
+> code writes were sent to the Bash tool, in 63 sessions, and on two tasks run both ways (6 runs per
+> arm) as often with no framework installed. Claude Code's own permission checks stopped most of
+> them: those runs were unattended, and 141 of the 168 were refused before they ran (a heredoc that
+> holds braces and quotes, a chain of several commands), so 27 wrote files, in 13 sessions. A
+> command those checks stop is put to you or refused; one you approve, or one an allow rule or
+> permission mode lets run, is invisible to these hooks. None of the 164 whose content could be
+> rebuilt held content the guard refuses; no task asked for any.
 > Copilot was not measured. So for a secret written through the shell, the control is push-time
 > secret scanning where you have enabled it (`docs/ci-integration.md`, "Recommended alongside").
 > Externally written content is outside the same boundary.

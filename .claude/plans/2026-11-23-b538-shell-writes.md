@@ -1,7 +1,9 @@
 # B-538 — agent file writes through the shell, which the write guard and post-write hooks do not see
 
 Design for peer review, 2026-11-23. Author: the main session (Opus). Status: option E built (section 6 records
-the review and what changed from this draft); the probe is the maintainer's call.
+the review and what changed from this draft); the probe ran the same day, NOT EXERCISED. **Correction:** section 2's
+counts are calls sent to the shell, not writes; the host refused 141 of the 168 before they ran, so 27 wrote files
+(`meta/eval-results.md`, "B-538 probe results").
 
 ## 1. The item
 
