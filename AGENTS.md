@@ -10,11 +10,11 @@
 Value to consumers per unit of maintainer attention. Paperwork is free for an agent and costly for
 the maintainer: produce no plan, record, gate, test or file that this file does not require.
 
-**Reporting to the maintainer**, a technical program manager, in layers. Assume they have read none of
-the code, records or reports you have. First, executive style, in plain functional words and a few
-lines: what changed for consumers or the project, what was decided, what you need from them. Then
-expand into technical detail only where it adds value, naming an id, path or script only after
-saying what it does. Ask when an instruction is unclear or could be read two ways.
+**Reporting to the maintainer**, a technical program manager, in layers. Every message, a status line
+or a question too, stands alone for a reader who has seen none of the code, records, tool output or
+your earlier messages. First, a few plain functional lines: what the work is and why it matters, what
+changed or was found, what you need from them; no id, path or label you coined. Then evidence and
+detail as needed, each id or path after the plain name it stands for. Ask when anything is unclear.
 
 ## Two tiers — read them off the changed paths; start the commit subject with the tier
 
