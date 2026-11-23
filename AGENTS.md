@@ -60,8 +60,8 @@ characters; everything else goes in the body.
 - A hook or script: also its test file under `pwsh`; test the **dist** copy by piping a fixture
   JSON event and asserting `EXIT=` plus output, on both agent surfaces where it enforces on both.
 - An installer change: greenfield and brownfield smoke installs into temp directories.
-- Capture `$LASTEXITCODE` before piping a gate into anything. Do not run suites while another
-  session is editing the tree.
+- Capture `$LASTEXITCODE` before piping a gate into anything. Run no gate or build over uncommitted
+  edits that are not yours: move your change to a worktree outside the repository and gate there.
 
 ## Evidence
 
