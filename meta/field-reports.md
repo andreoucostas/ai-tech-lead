@@ -468,7 +468,7 @@ or that some edge case must be captured, and following it makes the solution ove
 
 **Epistemic status.** A description relayed in chat, not an observation card. Not captured: how often, the tool's name
 and output, whether an agent ever applied a wrong comment, whether people comment on the same pull requests. Developers
-sometimes reply to, or leave unresolved, comments they disagree with (the maintainer, in chat, the same day); how often is not captured. It says the comments are sometimes wrong; it does not say a wrong one was applied. Corrected 2026-11-23 (the maintainer, in chat): the reviewer has access to the whole codebase and, as the maintainer guesses, decides itself which files to look at, so "every Markdown file in the repository as context" above is what it can read, not what it is known to read.
+sometimes reply to, or leave unresolved, comments they disagree with (the maintainer, in chat, the same day); how often is not captured. It says the comments are sometimes wrong; it does not say a wrong one was applied. Corrected 2026-11-23 (the maintainer, in chat): the reviewer has access to the whole codebase and, as the maintainer guesses, decides itself which files to look at, so "every Markdown file in the repository as context" above is what it can read, not what it is known to read. The reviewer runs on Copilot (the maintainer, in chat, the same day); which Copilot surface and model, and the prompt it is given, not captured.
 
 **Outcome:** no change to the tree. B-537 files the workflow, with a measurement before anything ships
 (`.claude/plans/2026-11-19-b537-address-review-comments.md`). Two things the framework's records did not know: its
