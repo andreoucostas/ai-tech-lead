@@ -744,9 +744,12 @@ It 'guard: the allowlist stays blocked through every path field and from a subfo
     } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
 }
 
-# 5 s, inside Copilot's 10 s hook limit: 2.2 s once on a CI runner (2026-11-19, run 44540739007) against a 2 s bound;
-# the unfixed guard (before 26f9fcc6) took 7.7-24.6 s, so the bound still separates the fix from the defect.
-It 'guard: a list line built to backtrack answers within 5 s and waives nothing it does not match' {
+# Bounded against the same write under a plain list line, timed just before it, so start-up, the guard's per-write
+# cost, the path's own cost and a busy runner cancel: a 5 s bound on the whole call failed six times on CI runners
+# (8.0-9.7 s) though the list line cost this host under 0.2 s. The unfixed guard (before 26f9fcc6) cost 7-25 s
+# more on every try, and noise only adds time, so three tries cannot hide it. One line and one path reach neither the
+# 100 ms match timeout nor the 2 s list budget; this case does not test them.
+It 'guard: a list line built to backtrack costs under 4 s more than a plain line and waives nothing it does not match' {
     $secret = '{"k":"sk-' + 'live0123456789abcdefghijklmn"}'   # assembled at run time, as the outgoing-commit guard asks
     $cases = @(
         @{ l = "**/fixtures/**/samples/**/*.json`n"; p = ((@('fixtures\samples') * 600) -join '\') + '\appsettings.cs' }
@@ -754,17 +757,31 @@ It 'guard: a list line built to backtrack answers within 5 s and waives nothing 
     )
     foreach ($case in $cases) {
         $base = $null
+        $plainBase = $null
         try {
             $hook = New-AllowlistedRoot ([ref]$base) $case.l
+            $plainHook = New-AllowlistedRoot ([ref]$plainBase) "fixtures/plain.json`n"
             $path = (Join-Path $base 'shop') + '\src\' + $case.p
+            $plainPath = (Join-Path $plainBase 'shop') + '\src\' + $case.p
             foreach ($surface in 'Claude', 'Copilot') {
-                $clock = [Diagnostics.Stopwatch]::StartNew()
-                $result = Invoke-Hook $hook (New-SurfaceEvent $surface $path $secret)
-                $ms = $clock.ElapsedMilliseconds
-                Assert-Decision $result $(if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }) "$($case.l.Trim()) on a $($path.Length)-character path ($surface)"
-                Assert ($ms -lt 5000) "$($case.l.Trim()) on a $($path.Length)-character path ($surface): the guard took $ms ms, expected under 5000"
+                $block = if ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }
+                $what = "$($case.l.Trim()) on a $($path.Length)-character path ($surface)"
+                foreach ($try in 1..3) {
+                    $clock = [Diagnostics.Stopwatch]::StartNew()
+                    $plain = Invoke-Hook $plainHook (New-SurfaceEvent $surface $plainPath $secret)
+                    $plainMs = $clock.ElapsedMilliseconds
+                    $clock.Restart()
+                    $result = Invoke-Hook $hook (New-SurfaceEvent $surface $path $secret)
+                    $ms = $clock.ElapsedMilliseconds
+                    Assert-Decision $plain $block "the same path under a plain list line ($surface)"
+                    Assert-Decision $result $block $what
+                    if ($ms - $plainMs -lt 4000) { break }
+                }
+                Assert ($ms - $plainMs -lt 4000) "${what}: the guard took $ms ms, $($ms - $plainMs) ms more than under a plain list line ($plainMs ms), on try $try of 3; expected under 4000 more"
             }
-        } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+        } finally {
+            foreach ($b in $base, $plainBase) { if ($b) { Remove-Item -LiteralPath $b -Recurse -Force -ErrorAction SilentlyContinue } }
+        }
     }
     $base = $null
     try {
