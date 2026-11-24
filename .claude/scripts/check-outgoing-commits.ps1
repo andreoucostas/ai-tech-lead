@@ -175,8 +175,22 @@ if (-not (Test-Path -LiteralPath $guard -PathType Leaf)) {
     Stop-CantVerify "the canonical guard is missing: $guard"
 }
 
+# The blob's path for the guard: the same path with one folder inserted before the file name. The guard's content rules read
+# the path only through the file name (its extension) and the folders (the test-path exemption; a relative path gets no
+# waiver and no file on disk), and the inserted folder holds no test word, so their verdict is unchanged. Its hook-wiring rule
+# refuses a write to a hook script, the Copilot hook file or a settings file by path alone, because an agent must not rewire a
+# consumer's hooks; that says nothing about what a commit carries, and each of those paths needs its own folder right before the
+# file name (.claude/hooks/<name>.ps1, .github/hooks/hooks.json, .claude/settings.json), which the inserted folder never is. A
+# file at the repository root keeps its path: no wiring path is one, and the guard reads how a path starts (a leading '~' is
+# never test-exempt), which a folder put in front would change.
+function Get-GuardedPath([string]$Path) {
+    $slash = $Path.LastIndexOf('/')
+    if ($slash -lt 0) { return $Path }
+    return $Path.Substring(0, $slash) + '/outgoing-check/' + $Path.Substring($slash + 1)
+}
+
 function Invoke-Guard([string]$Path, [string]$Content) {
-    $event = @{ tool_name='Write'; tool_input=@{ file_path=$Path; content=$Content } } |
+    $event = @{ tool_name='Write'; tool_input=@{ file_path=(Get-GuardedPath $Path); content=$Content } } |
         ConvertTo-Json -Compress -Depth 5
     $start = [Diagnostics.ProcessStartInfo]::new()
     $start.FileName = (Get-Process -Id $PID).Path
@@ -290,7 +304,7 @@ foreach ($commit in $commits) {
             if ($guardExceptions.ContainsKey($exceptionKey)) {
                 Write-Host "OUTGOING EXCEPTION: '$path' at $digest — $($guardExceptions[$exceptionKey])"
             } else {
-                $detail = @($guardResult.Err.Trim(), $guardResult.Out.Trim() | Where-Object { $_ }) -join ' '
+                $detail = (@($guardResult.Err.Trim(), $guardResult.Out.Trim() | Where-Object { $_ }) -join ' ').Replace((Get-GuardedPath $path), $path)
                 $violations.Add("commit $commit guard rejected '$path': $detail")
             }
         }

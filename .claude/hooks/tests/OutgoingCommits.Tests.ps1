@@ -238,6 +238,34 @@ try {
         Assert ($result.Out -match 'guard rejected') "changed guard fixture rejection is missing: $($result.Out)"
     }
 
+    It 'accepts hook scripts, hook registrations and settings files for their path alone, and still rejects a credential in a hook script' {
+        $fixture = New-RepositoryFixture
+        $files = [ordered]@{
+            'src/core/.claude/hooks/new-hook.ps1' = "Write-Host 'hook'`n"
+            'dist/dotnet/.claude/hooks/new-hook.ps1' = "Write-Host 'hook'`n"
+            'dist/dotnet/.github/hooks/hooks.json' = "{`"version`":1,`"hooks`":{}}`n"
+            'dist/dotnet/.claude/settings.json' = "{ `"hooks`": {} }`n"
+            'meta/eval-fixtures/commented/.claude/settings.json' = "{ // a fixture that is not strict JSON`n}`n"
+        }
+        foreach ($name in $files.Keys) { Set-Text (Join-Path $fixture.Work $name) $files[$name] ($name -match '\.ps1$') }
+        $null = Invoke-Git $fixture.Work (@('add','--') + @($files.Keys))
+        $null = Invoke-Git $fixture.Work @('commit','-q','-m','Add hook files with clean content')
+        $result = Invoke-Checker $fixture
+        Assert ($result.Exit -eq 0) "clean hook files were refused for their path: $($result.Out)"
+        Assert ($result.Out -match 'all clean') "clean hook files were not reported clean: $($result.Out)"
+
+        # The synthetic AWS key id is split so this file itself carries no literal credential.
+        Add-Commit $fixture 'src/core/.claude/hooks/leaky.ps1' ("`$id = '" + 'AK' + 'IA' + 'IOSFODNN7EXAMPLE' + "'`n") 'Add a hook script holding a key id' $true
+        # A root-level name that starts with '~' is never test-exempt, whatever test word it carries; the literal is split for the
+        # same reason as the key id.
+        Add-Commit $fixture '~notes.test.json' ('{ "pass' + 'word": "hunter2' + 'hunter2" }' + "`n") 'Add a root-level tilde name holding a password'
+        $result = Invoke-Checker $fixture
+        Assert ($result.Exit -eq 1) "a credential in a hook script was not refused: $($result.Out)"
+        Assert ($result.Out -match "guard rejected 'src/core/\.claude/hooks/leaky\.ps1': Blocked write to src/core/\.claude/hooks/leaky\.ps1: it contains an AWS access key id") "the hook script's content refusal is missing or names another path: $($result.Out)"
+        Assert ($result.Out -match "guard rejected '~notes\.test\.json': Blocked write to ~notes\.test\.json: it assigns a hardcoded credential literal") "the root-level tilde name lost its refusal: $($result.Out)"
+        Assert ($result.Out -notmatch 'new-hook\.ps1|hooks\.json|settings\.json') "a clean hook file was refused beside the credential: $($result.Out)"
+    }
+
     It 'reports a clean binary blob without blocking and without weakening PowerShell BOM checks' {
         $fixture = New-RepositoryFixture
         Add-Commit $fixture 'image.bin' ("binary`0payload") 'Add binary fixture payload'
