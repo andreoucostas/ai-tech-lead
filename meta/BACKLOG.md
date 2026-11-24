@@ -28,7 +28,7 @@ Full pre-reset text: `git show 36babcaf:meta/BACKLOG.md`.
 | 11 | B-544 | Field report #17: on .NET, the agent puts utilities only tests use in production code and writes too many tests; test support never seen; the framework adds 1.5 to 2 times the tests; held with B-543 (maintainer, in chat 2026-11-23: "Okay hold it."): no Copilot run for the test count until the team reports again |
 | 12 | B-451 | Field report, narrowed: the compact baseline shipped; review-tool markers for it wait on the reporter saying what their host honours; guarded |
 | 13 | B-490 | Audit, reproduced: the agent can rewrite the hook registrations; decided 2026-11-19: the guard refuses a settings write that drops its own registration and any write to the hook files; guarded, step 4; maintainer, in chat 2026-11-19: not to be picked up unless it is shown to be the highest-value item, since a scan the same day of 412 retained Claude Code eval sessions (36 with a blocked call) found no agent write to the settings or hook files |
-| 14 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change |
+| 14 | B-529 | Maintainer request, exploration only: whether a model call is a quick fallback when the router's keyword rules cannot tell the intent; report before any change. Free leg reported 2026-11-24; waits on the maintainer: a terminal login or a waiver |
 | 15 | B-545 | The Stop-hook cause fixed 2026-11-23 (unreleased); left: under `claude -p` reviewers that return after the report can leave a later turn's addition as the last result (B-467 O1, K1); a false green that ordinary unattended (CI) use can trigger (WSD-124); not fixed |
 | 16 | B-547 | Found while closing field report #18's setup questions: unattended `/adopt` defers three kinds of question to the end-of-run list, which has no item for them, so a pull-request reader takes the list as complete; placed last pending the maintainer's ranking |
 
@@ -77,8 +77,8 @@ Field, 2026-11-23 (maintainer, in chat): the first consumer team is on the lates
 ### B-529 · Explore a model-call fallback for `route-prompt` when its keyword rules cannot tell the intent
 **Filed against:** v0.98.6 (2026-11-17)
 **Priority:** P3 · **Effort:** M to explore · **Invariants:** #3 #5
-**Status:** Open; raised by the maintainer in chat 2026-11-17 while reviewing B-491, no field report. B-491's keyword rules mis-routed approvals, questions and words inside other words, and each narrowing trades one miss for another.
-Explore, in a Fable 5.2 session, whether asking a small model for the intent only when the rules are unsure is a quick fallback a prompt hook can afford: latency, cost per prompt, what happens with no network or key, and both surfaces. Report before any change.
+**Status:** Reported 2026-11-24, awaiting the maintainer: waive the 12 timed calls and rule, or log `claude` in at a terminal. Raised by the maintainer in chat 2026-11-17 while reviewing B-491, no field report. Free leg (`meta/eval-results.md`, "B-529 results, free leg"): the signals precise enough to act on fire on 3.0% of 908 of the maintainer's typed prompts and reach an estimated quarter of the rules' gate errors (range a tenth to two thirds); on this machine the desktop app does not share its login with the terminal `claude` a hook would call; the session's judgement, under no pre-set rule: build no fallback.
+Left: with `claude` logged in, 10 warm and 2 cold timed calls (about 0.02 USD of the 2.5 USD approved) for the latency and cost of a real call; then close on the maintainer's ruling.
 
 ### B-535 · Does VS Code's default Copilot mode list the framework's commands
 **Filed against:** v0.98.6 (2026-11-19)
