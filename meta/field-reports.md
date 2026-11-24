@@ -549,6 +549,33 @@ measurement counts that kind.
 
 ---
 
+## Report #18 — `/adopt`, setup questions a developer could not answer
+
+| | |
+|---|---|
+| **Date received** | 2026-11-23 |
+| **Stack / repo shape** | not captured; a repository being adopted through `/adopt` |
+| **Framework installed** | not captured |
+| **Host / IDE** | not captured; the model not captured |
+| **What misfired** | Relayed by the maintainer, in the maintainer's words, not the developer's: the team's developers are asked questions without enough context, this time in /adopt. The one question described (commit `1be24391` and its CHANGELOG entry): a hazard-confirmation question titled with a code name, in the hazard table's own terms (Existing row) and the agent's own labels and offering a, b and c, which a developer could not answer. The developer's own words are not captured |
+| **What fired** | `/adopt`'s embedded `/bootstrap`, Phase 3d-bis hazard confirmation (inferred: "Existing row" and the answers a, b and c were that step's form) |
+| **What got ignored** | carrier §2's stand-alone question bullet, added for report #11 (inferred) |
+| **Hook noise** | not captured |
+| **Token pain** | not captured |
+| **Reporter** | the maintainer, in chat, relaying the team's feedback |
+
+**Epistemic status.** One question, quoted in part; the run's other questions, the stack, the host, the model and the
+installed version are not captured, nor whether the developer had seen the agent's scan before the question. B-546's
+entry read it as a repeat of #11 (the same complaint, another workflow).
+
+**Outcome:** done 2026-11-23 and 2026-11-24, unmeasured on a live host. `1be24391` made the `/bootstrap` 3d-bis and
+`/rebootstrap` 3c questions stand alone with their answers in words. B-546 did the same for the end-of-run list of
+`/adopt` and `/bootstrap` (every unconfirmed risky area in one entry the cap never cuts), `/adopt`'s Phase 1 and Phase 5
+questions and the escape when there is no question box. A capture of real question-tool calls runs with B-530 after
+2026-12-01; B-547 files the questions unattended `/adopt` defers to a list with no item for them.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.

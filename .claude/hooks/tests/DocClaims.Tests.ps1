@@ -206,6 +206,35 @@ function Assert-HazardQuestionsStandAlone {
     }
 }
 
+# Field report #18, second half: the end-of-run checklists asked "Is [specific risk] real in this codebase?" with
+# no file, evidence or effect, unattended /adopt sends every hazard there past a ~10-entry cap, and /adopt's
+# Phase 1 and Phase 5 said only "ask the user".
+function Assert-SetupChecklistStandsAlone {
+    param([object[]]$DistEntries)
+    foreach ($dist in $DistEntries) {
+        foreach ($relative in @('.claude/commands/adopt.md', '.claude/commands/bootstrap.md')) {
+            $path = Join-Path $dist.Root $relative
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "workflow is missing in $($dist.Name): $relative" }
+            $text = Read-Utf8Text $path
+            foreach ($stale in @('Is \[specific risk\] real in this codebase', 'mark as unverified', 'ask user when unclear', 'ask the user explicitly')) {
+                if ($text -match "(?i)$stale") { throw "$($dist.Name)/$relative still asks '$($Matches[0])', with no file, evidence or effect" }
+            }
+            $checklist = [regex]::Match($text, '(?ms)^(?:## Phase 8 — Final report|### Needs a human decision)\s*$.*?(?=^## |\z)').Value
+            if (-not $checklist) { throw "$($dist.Name)/$relative has no end-of-run checklist" }
+            foreach ($required in @('never cut by the cap', 'one entry listing every one of them', 'real risk, set its Status to [VERIFIED]', 'set it to [REVIEWED: not a hazard', 'set Reviewed to today', 'Not sure: leave it', '[what could go wrong', 'because [what that code shows]',
+                    'Such a row is never listed in entry 3: its file and line are recorded nowhere and must not reach the pull request.')) {
+                if (-not $checklist.Contains($required)) { throw "$($dist.Name)/$relative end-of-run checklist omits '$required'" }
+            }
+            if ($checklist -notmatch 'reread\w*[^\r\n]{0,20}path:line') { throw "$($dist.Name)/$relative end-of-run checklist does not reread each hazard's path:line range" }
+        }
+        $label = "$($dist.Name)/.claude/commands/adopt.md"
+        $adopt = Read-Utf8Text (Join-Path $dist.Root '.claude/commands/adopt.md')
+        foreach ($pair in @(@('Phase 1 — Discovery', 'what each does to it'), @('Phase 5 — Merge into TECH_DEBT.md', 'what each means'), @('Phase 5 — Merge into TECH_DEBT.md', 'unset — needs a human'))) {
+            if (-not (Get-LevelTwoSection $adopt $pair[0] $label).Contains($pair[1])) { throw "$label $($pair[0]) omits '$($pair[1])'" }
+        }
+    }
+}
+
 function Assert-OnboardingMemoryContracts {
     param([object[]]$DistEntries)
     foreach ($dist in $DistEntries) {
@@ -615,6 +644,10 @@ It 'bootstrap workflows do not turn finite debt into the Boy Scout list' {
 
 It 'hazard questions stand alone and offer their answers in words, not bare letters' {
     Assert-HazardQuestionsStandAlone -DistEntries $distEntries
+}
+
+It 'end-of-setup checklists and adopt questions stand alone, every unconfirmed hazard listed' {
+    Assert-SetupChecklistStandsAlone -DistEntries $distEntries
 }
 
 It 'onboarding preserves debt dismissals and excludes framework-owned skill evidence' {

@@ -489,9 +489,9 @@ If the tool has a short title field, fill it with plain words such as "Risk 3/12
 
 Not this: a question titled with a code name that says "Existing row. src/…/Ledger.cs check-then-act; the wrapper skips the lock. No tests." and offers a, b and c. The developer cannot tell what is being asked, what "the wrapper" is, or what each letter does.
 
-With a question tool, ask as many hazards per call as it accepts, each its own question offering those three answers and "Skip the rest: decide later", described as: new ones are added as unconfirmed and ones already on the list stay as they are; and make the next call straight away. Without one, number the questions in a single message, give the three answers with their meanings once, and end it with a "skip all — mark as unverified" escape.
+With a question tool, ask as many hazards per call as it accepts, each its own question offering those three answers and "Skip the rest: decide later", described as: new ones are added as unconfirmed and ones already on the list stay as they are; and make the next call straight away. Without one, number the questions in a single message, give the three answers with their meanings once, and end it with a "Skip all: decide later" escape that does what the skip option above does.
 
-**Under headless `/adopt`** (the `--headless` directive propagated into this Phase-7 `/bootstrap`): do **not** pause for confirmation. Take the "skip all — mark as unverified" path automatically — write every candidate hazard `[UNVERIFIED]` and surface it on adopt's Phase-8 checklist. Never auto-confirm a hazard when no developer is present.
+**Under headless `/adopt`** (the `--headless` directive propagated into this Phase-7 `/bootstrap`): do **not** pause for confirmation. Take the "Skip all: decide later" path automatically — write every candidate hazard `[UNVERIFIED]` and surface it on adopt's Phase-8 checklist. Never auto-confirm a hazard when no developer is present.
 
 Map each answer to a row status:
 - **(a) confirmed** → `Status = [VERIFIED]`
@@ -622,18 +622,18 @@ Then output:
 
 ### Needs a human decision
 
-Unless this `/bootstrap` is being invoked from within `/adopt`, emit a prioritized checklist capped at about 10 entries. Under `/adopt`, suppress this checklist because adopt Phase 8 is the sole emitter and aggregates these sources. Re-scan the written artifacts, omit any source category with no entries, and use this priority order:
+Unless this `/bootstrap` is being invoked from within `/adopt`, emit a prioritized checklist capped at about 10 entries. Under `/adopt`, suppress this checklist because adopt Phase 8 is the sole emitter and aggregates these sources. Each entry stands alone for a reader of the pull request who has seen none of this run, as 3d-bis's questions do: what it concerns and where that is recorded, what you saw, and what each answer changes. Re-scan the written artifacts, omit any source category with no entries, and use this priority order:
 
-1. For each hazard row 3d-bis wrote that records a credential committed to the repository (a password, key, token, or a connection string holding one), unless its Status is `[REVIEWED: not a hazard — …]`: "`FRAMEWORK-CONTEXT.md > Known Hazard Areas` records a credential committed to this repository. Has it been revoked or rotated, and has whoever handles security incidents for your team been told? It stays readable in Git history until it is rotated, and this run recorded no security follow-up: a credential incident is handled by people, never written to `SECURITY_FINDINGS.md` automatically." One question covers every such row; it repeats no path, line or part of the value. Such a row does not also get the unsure-hazard question.
+1. For each hazard row 3d-bis wrote that records a credential committed to the repository (a password, key, token, or a connection string holding one), unless its Status is `[REVIEWED: not a hazard — …]`: "`FRAMEWORK-CONTEXT.md > Known Hazard Areas` records a credential committed to this repository. Has it been revoked or rotated, and has whoever handles security incidents for your team been told? It stays readable in Git history until it is rotated, and this run recorded no security follow-up: a credential incident is handled by people, never written to `SECURITY_FINDINGS.md` automatically." One question covers every such row; it repeats no path, line or part of the value. Such a row is never listed in entry 3: its file and line are recorded nowhere and must not reach the pull request.
 2. For each `<!-- INFERRED -->` convention: "The code gave mixed signals on [area]; I wrote **[rule]**. Is that the team's intent? (AGENTS.md > Conventions > [subsection])"
-3. For each `(c) unsure` or tooling-only hazard from 3d-bis: "Is [specific risk] real in this codebase? If you're not sure, leave it as it is. (FRAMEWORK-CONTEXT.md > Known Hazard Areas)"
+3. For each hazard row whose Status is `[UNVERIFIED]` (answered **Not sure** or skipped in 3d-bis): one entry listing every one of them, never cut by the cap. First, once: "Nobody has confirmed these risky areas, which the agent checks before changing code. For each one, in FRAMEWORK-CONTEXT.md > Known Hazard Areas: real risk, set its Status to [VERIFIED]; not a risk here, set it to [REVIEWED: not a hazard — YYYY-MM-DD]; either way set Reviewed to today. Not sure: leave it; the agent keeps treating it as an open question." Then, after rereading the `path:line` range each entry names, one line per hazard: "[path:line range]: [what could go wrong, in one plain sentence], because [what that code shows]."
 4. For each skill whose frontmatter says `origin: discovered`, fold in the existing plain-language skill line from the report as a yes/no question with its skill file pointer; a yes means applying its `## After review` paragraph.
 
 Emit the result in a fenced code block whose first line is exactly:
 
 ```text
 Paste this into your PR (or commit message)
-[prioritized yes/no questions]
+[the prioritized entries]
 ```
 
 If every category is empty, replace the questions with the single line: `No open judgment calls — the run resolved everything against your code.`
