@@ -69,6 +69,32 @@ It 'boy-scout repeats no unchanged finding set in a repository folder named with
     } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# On Claude Code a Stop hook's additionalContext, decision or exit 2 makes the agent take another turn, and under
+# `claude -p` its reply to the note replaced its own last message (a /review report) as the run's result. The
+# candidates go to the developer as systemMessage, the one field here that adds no turn.
+It 'boy-scout Claude Stop shows the candidates to the developer and does not continue the turn' {
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('boystop-' + [guid]::NewGuid().ToString('N'))
+    $repo = Join-Path $dir 'repo'
+    try {
+        $hook = Copy-HookInto $boyScout $repo
+        git -C $repo init --quiet
+        foreach ($file in 'Commented.cs', 'commented.ts') {
+            [IO.File]::WriteAllText((Join-Path $repo $file), "// first();`n// second();`nclass Probe {}`n")
+        }
+        Push-Location -LiteralPath $dir
+        try {
+            $first = Invoke-BoyScoutHook $hook '{"hook_event_name":"Stop","stop_hook_active":false}'
+            $second = Invoke-BoyScoutHook $hook '{"hook_event_name":"Stop","stop_hook_active":false}'
+        } finally { Pop-Location }
+        Assert ($first.Exit -eq 0) "the Stop exited $($first.Exit): $($first.Err)"
+        $json = $first.Out | ConvertFrom-Json
+        $names = @($json.PSObject.Properties.Name)
+        Assert ($names.Count -eq 1 -and $names[0] -ceq 'systemMessage') "the Stop output must hold systemMessage alone, got [$($names -join ', ')]: '$($first.Out)'"
+        Assert ($json.systemMessage -match 'commented-out code block') "the developer is not shown the candidate: '$($first.Out)'"
+        Assert ($second.Exit -eq 0 -and [string]::IsNullOrWhiteSpace($second.Out)) "the second Stop repeated an unchanged finding set: '$($second.Out)'"
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 # A subfolder install (framework in app\ below the git root) keeps its state and queue in its own .claude\.state
 # and scans only its own folder; writer and reader agree on the queue path. The outer root's .claude\.state is
 # unignored, so a write there leaves the tree dirty and the next installer update refuses it.
@@ -162,19 +188,6 @@ if (-not (Test-Path -LiteralPath $boyScout) -or -not ((Get-Content -Raw -Literal
             $result = Invoke-BoyScoutHook (Join-Path $fixture.Hooks 'boy-scout-check.ps1') '{}' 'deliver'
             Assert ($result.Exit -eq 0) "queue-less deliver exited $($result.Exit)"
             Assert ([string]::IsNullOrEmpty($result.Out)) "queue-less deliver scanned or spoke: '$($result.Out)'"
-        } finally { Pop-Location; Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'boy-scout Claude Stop payload emits Claude context' {
-        $fixture = New-BoyScoutFixture $boyScout
-        Push-Location $fixture.Dir
-        try {
-            $result = Invoke-BoyScoutHook (Join-Path $fixture.Hooks 'boy-scout-check.ps1') '{"hook_event_name":"Stop"}'
-            $json = $result.Out | ConvertFrom-Json
-            Assert ($result.Exit -eq 0) "Claude mode exited $($result.Exit)"
-            Assert ($json.hookSpecificOutput.hookEventName -eq 'Stop') 'Claude event shape wrong'
-            Assert (-not [string]::IsNullOrWhiteSpace($json.systemMessage)) 'Claude systemMessage missing'
-            Assert ($result.Out -notmatch 'decision') 'Claude output contained forbidden decision property'
         } finally { Pop-Location; Remove-Item -LiteralPath $fixture.Dir -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }

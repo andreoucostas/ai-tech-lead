@@ -1,9 +1,9 @@
 ﻿# Stop hook -- flag Boy Scout opportunities in modified .cs files.
 # Boy-scout hook for the supported native Windows PowerShell topology.
-# CLAUDE scans and emits the Stop output shapes; SCAN queues findings and emits a Copilot-shaped
-# response; DELIVER emits and deletes that queued response without scanning. These are script
-# outputs: host firing and consumption are capability-specific. The advisory response uses
-# additionalContext and never blocks.
+# CLAUDE scans and shows the candidates to the developer as a Stop systemMessage only; SCAN queues
+# findings and emits a Copilot-shaped response; DELIVER emits and deletes that queued response without
+# scanning. These are script outputs: host firing and consumption are capability-specific. Nothing
+# here blocks or continues a turn.
 #
 # Advisory patterns related to AGENTS.md > Boy Scout Rule:
 #   - missing CancellationToken on async methods (best-effort)
@@ -157,12 +157,11 @@ if ($resolvedMode -eq 'scan') {
     Set-Content -LiteralPath $queueFile -Value $text -Encoding UTF8
 }
 
-# The Claude-mode response includes findings as additionalContext plus a short systemMessage that
-# reports the candidate count; whether a host consumes either field is capability-specific.
-$summary = "Boy Scout: $($findings.Count) candidate(s) found across $checked file(s) (see AGENTS.md > Boy Scout Rule)."
-
+# Claude mode gives the agent nothing: on Claude Code a Stop hook's additionalContext, decision or exit 2
+# makes the agent take another turn, and under `claude -p` that reply replaced the agent's own last
+# message (a /review report) as the run's result. systemMessage reaches only the developer.
 if ($resolvedMode -eq 'claude') {
-    @{ systemMessage = $summary; hookSpecificOutput = @{ hookEventName = 'Stop'; additionalContext = $text } } | ConvertTo-Json -Compress
+    @{ systemMessage = $text } | ConvertTo-Json -Compress
 } else {
     @{ additionalContext = $text; hookSpecificOutput = @{ hookEventName = 'UserPromptSubmit'; additionalContext = $text } } | ConvertTo-Json -Compress
 }
