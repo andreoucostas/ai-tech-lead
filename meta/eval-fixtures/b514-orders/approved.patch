@@ -1,84 +1,125 @@
 diff --git a/.claude/skills/add-integration-event/SKILL.md b/.claude/skills/add-integration-event/SKILL.md
-index 9ad2b9a..f1f039d 100644
+index b88f92e..f5b80be 100644
 --- a/.claude/skills/add-integration-event/SKILL.md
 +++ b/.claude/skills/add-integration-event/SKILL.md
 @@ -1,7 +1,7 @@
  ---
  name: add-integration-event
  description: >
--  DRAFT, pending PR review: add a new versioned integration event to the Orders service
-+  add a new versioned integration event to the Orders service
-   (event record, handler, EventRegistry entry, JSON schema, DI registration, test). Use when adding
-   or changing an event such as order-placed, order-shipped or invoice-issued, or bumping an event version.
+-  DRAFT, pending PR review: add a new integration event (record, version attribute, JSON
++  add a new integration event (record, version attribute, JSON
+   schema, EventRegistry entry, handler, DI registration, lifecycle method, test row) to the
+   Orders event pipeline. Use for "add an event", "publish X when Y happens", or a new topic.
  origin: discovered
-@@ -9,7 +9,7 @@ origin: discovered
+@@ -9,8 +9,6 @@ origin: discovered
  
  # Add an integration event (draft, pending review)
  
--**Status:** candidate skill, draft pending PR review; not team-approved policy. Derived from the three current
-+Derived from the three current
- first-party instances (`order-placed`, `order-shipped`, `invoice-issued`). It is a lead, not authority:
- `AGENTS.md > Conventions` wins on any conflict.
+-**Status:** candidate recipe derived from the three current first-party instances (`order-placed`, `order-shipped`, `invoice-issued`). It is a lead, not authority; `AGENTS.md > Conventions` wins on any conflict. Draft pending PR review; not team-approved policy.
+-
+ **Scope:** `src/Orders.Domain/Events`, `src/Orders.Application`, `src/Orders.Infrastructure/Messaging`, `src/Orders.Api/Program.cs`, `contracts/events`, `tests/Orders.Tests`.
  
-@@ -41,6 +41,3 @@ first-party instances (`order-placed`, `order-shipped`, `invoice-issued`). It is
- 
- **Semantic refresh trigger:** reread `OutboxDispatcher.cs`, `EventRegistry.cs` and `Program.cs` when any changes. Result at creation: sources reread, steps match.
- 
+ Details, instance paths and counterevidence: [references/project-pattern.md](./references/project-pattern.md).
+@@ -26,12 +24,3 @@ Details, instance paths and counterevidence: [references/project-pattern.md](./r
+ 7. Raise it by adding a method to `OrderLifecycle` that calls `IOutbox.Enqueue`.
+ 8. Add an `[InlineData(typeof(<Name>Event))]` row to `tests/Orders.Tests/EventRegistryTests.cs`.
+ 9. Verify with `dotnet build Orders.sln` and `dotnet test Orders.sln`.
+-
+-## Unresolved
+-
+-- Whether new events should follow the in-memory outbox as-is (see `TECH_DEBT.md` DEBT-003/004).
+-- Semantic refresh trigger: any change to `OutboxDispatcher.cs`, `EventRegistry.cs` or `Program.cs`. Result: decisive sources reread 2026-11-25; no runtime proof.
+-
 -## After review
 -
--Add to `AGENTS.md > Common Tasks`: `` `add-integration-event` — add a versioned integration event (record, schema, handler, registry, DI, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph).
+-Add one Common Tasks line to `AGENTS.md` (`add-integration-event` — add an integration event end to end), then delete the `DRAFT, pending PR review:` wording, this status paragraph and the Unresolved note in this skill and its reference file.
+diff --git a/.claude/skills/add-integration-event/references/project-pattern.md b/.claude/skills/add-integration-event/references/project-pattern.md
+index c7cb2dc..b9974ce 100644
+--- a/.claude/skills/add-integration-event/references/project-pattern.md
++++ b/.claude/skills/add-integration-event/references/project-pattern.md
+@@ -1,6 +1,6 @@
+-# Project pattern: integration events (draft, pending PR review)
++# Project pattern: integration events
+ 
+-**Provenance:** requested `/bootstrap` discovery, 2026-11-25. **Confidence:** observed. Draft pending PR review; not team-approved policy.
++**Provenance:** requested `/bootstrap` discovery, 2026-11-25. **Confidence:** observed.
+ 
+ ## Instances (all consumer-authored)
+ 
+@@ -19,7 +19,3 @@ Raised from `src/Orders.Application/Orders/OrderLifecycle.cs`; dispatched by `sr
+ - `order-shipped` is v2 with no v1 in the repo: the version number is not always 1.
+ - The handlers are identical log-only stubs; real handler logic has no instance yet.
+ - The in-memory outbox and in-process dispatch are flagged as debt (DEBT-003, DEBT-004); the recipe describes current behaviour, not a target.
+-
+-## Unresolved
+-
+-Nothing beyond the above; no other consumer of the schemas is visible in this repo.
 diff --git a/.claude/skills/add-report-export/SKILL.md b/.claude/skills/add-report-export/SKILL.md
-index 4c272f3..1d2edb0 100644
+index 197868f..41e3f9b 100644
 --- a/.claude/skills/add-report-export/SKILL.md
 +++ b/.claude/skills/add-report-export/SKILL.md
 @@ -1,7 +1,7 @@
  ---
  name: add-report-export
  description: >
--  DRAFT, pending PR review: add a CSV report export backed by a SQL view in the Orders service
-+  add a CSV report export backed by a SQL view in the Orders service
-   (IReportExport class, ReportCatalog entry, rpt view, ReportReader grant, feature flag, test). Use when
-   adding a new report such as monthly-sales, open-orders or overdue-invoices.
+-  DRAFT, pending PR review: add a new CSV report export backed by an rpt SQL view (export
++  add a new CSV report export backed by an rpt SQL view (export
+   class, catalog entry, view script, GRANT to ReportReader, feature flag, test row). Use for
+   "add a report", "new export", or a new rpt view.
  origin: discovered
-@@ -9,7 +9,7 @@ origin: discovered
+@@ -9,8 +9,6 @@ origin: discovered
  
  # Add a report export (draft, pending review)
  
--**Status:** candidate skill, draft pending PR review; not team-approved policy. Derived from the three current
-+Derived from the three current
- first-party instances (`monthly-sales`, `open-orders`, `overdue-invoices`). It is a lead, not authority:
- `AGENTS.md > Conventions` wins on any conflict.
+-**Status:** candidate recipe derived from the three current first-party instances (`monthly-sales`, `open-orders`, `overdue-invoices`). It is a lead, not authority; `AGENTS.md > Conventions` wins on any conflict. Draft pending PR review; not team-approved policy.
+-
+ **Scope:** `src/Orders.Reporting`, `db/views`, `db/security`, `config/feature-flags.json`, `tests/Orders.Tests`.
  
-@@ -37,6 +37,3 @@ first-party instances (`monthly-sales`, `open-orders`, `overdue-invoices`). It i
- 
- **Semantic refresh trigger:** reread `ReportCatalog.cs`, `SqlReportReader.cs` and `reporting-grants.sql` when any changes. Result at creation: sources reread, steps match.
- 
+ Details, instance paths and counterevidence: [references/project-pattern.md](./references/project-pattern.md).
+@@ -25,12 +23,3 @@ Details, instance paths and counterevidence: [references/project-pattern.md](./r
+ 6. Add `"reports.export.<key>": true` to `config/feature-flags.json`. Non-obvious: `ReportCatalog.Visible` hides any export whose flag is absent or false.
+ 7. Add an `[InlineData("<key>")]` row to `tests/Orders.Tests/ReportCatalogTests.cs`.
+ 8. Verify with `dotnet build Orders.sln` and `dotnet test Orders.sln`. The view, grant and runtime read are not covered by tests.
+-
+-## Unresolved
+-
+-- How `db/` scripts are deployed is not recorded (DEBT-010). `ReportsController` may fail to find the flags file at runtime (DEBT-001).
+-- Semantic refresh trigger: changes to `ReportCatalog.cs`, `IReportReader.cs` or `reporting-grants.sql`. Result: decisive sources reread 2026-11-25; no runtime proof.
+-
 -## After review
 -
--Add to `AGENTS.md > Common Tasks`: `` `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph) and in `references/project-pattern.md` (the title's `(draft, pending PR review)` and `Not team-approved policy.`).
+-Add one Common Tasks line to `AGENTS.md` (`add-report-export` — add a report export end to end), then delete the `DRAFT, pending PR review:` wording, this status paragraph and the Unresolved note in this skill and its reference file.
 diff --git a/.claude/skills/add-report-export/references/project-pattern.md b/.claude/skills/add-report-export/references/project-pattern.md
-index 9e11339..ea84be6 100644
+index b4bcdfc..3b69264 100644
 --- a/.claude/skills/add-report-export/references/project-pattern.md
 +++ b/.claude/skills/add-report-export/references/project-pattern.md
 @@ -1,6 +1,6 @@
 -# Project pattern: report exports (draft, pending PR review)
 +# Project pattern: report exports
  
--Not team-approved policy. Observed 2026-11-15; revision: `b28d35f`. Status: `observed`.
-+Observed 2026-11-15; revision: `b28d35f`. Status: `observed`.
+-**Provenance:** requested `/bootstrap` discovery, 2026-11-25. **Confidence:** observed. Draft pending PR review; not team-approved policy.
++**Provenance:** requested `/bootstrap` discovery, 2026-11-25. **Confidence:** observed.
  
- ## Instances (all consumer-authored; exemplar: `open-orders`, the simplest view)
+ ## Instances (all consumer-authored)
  
+@@ -19,7 +19,3 @@ Shared: `src/Orders.Reporting/ReportCatalog.cs`, `db/security/reporting-grants.s
+ - Instances do not diverge in structure; the three export classes differ only in `Key` and `ViewName`.
+ - `orders.checkout.v2` in the flags file is a non-report flag; do not copy its naming.
+ - CSV output has no escaping and uses `SELECT *` (DEBT-009).
+-
+-## Unresolved
+-
+-Deployment of the view scripts is not evidenced (DEBT-010).
 diff --git a/AGENTS.md b/AGENTS.md
-index fb16551..c9a2f5f 100644
+index adced08..5011e17 100644
 --- a/AGENTS.md
 +++ b/AGENTS.md
-@@ -99,6 +99,8 @@ evidence satisfies the gate:
+@@ -98,6 +98,8 @@ evidence satisfies the gate:
  - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review
  - `enforce-architecture` — wire the deterministic DIP/layering CI gate (NetArchTest)
  - `enforce-standards` — make warnings, skipped tests, and analyzer findings build-breaking (`TreatWarningsAsErrors` + `.editorconfig` severities)
-+- `add-integration-event` — add a versioned integration event (record, schema, handler, registry, DI, test)
-+- `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test)
++- `add-integration-event` — add an integration event end to end
++- `add-report-export` — add a report export end to end
  
  `/bootstrap` drafts a project skill under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, for an operation this repository repeats at least three times; add its line here once the team approves the draft.
  

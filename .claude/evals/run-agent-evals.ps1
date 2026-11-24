@@ -10930,7 +10930,9 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         Write-Output 'PASS: B-464 B12 a setup failure on a later case leaves the earlier rows in the results file marked aborted, and a completed run is written whole'
         # B-516: the skill-approve oracle on the frozen b514-orders drafts (a synthetic approval, then one fault at a time), the write allow
         # class the control channel answers, and the scenario's launch: the go pick on Claude with exactly its allowWrite, no command-line rule.
-        $saFiles = Join-Path $repo 'meta/eval-fixtures/b514-orders/files'
+        # B-545: the cases below pin the 0.98.6 drafts' words, and every release regenerates b514-orders, so they read a frozen copy of
+        # those drafts (b516-draft-0.98.6: AGENTS.md and the two skill files they touch, byte for byte from f6192c1d), not the overlay.
+        $saFiles = Join-Path $repo 'meta/eval-fixtures/b516-draft-0.98.6/files'
         $saLine = '`add-report-export` ' + [char]0x2014 + ' add a CSV report export (view, grant, export class, catalog, flag, test)'
         $saUtf8 = [Text.UTF8Encoding]::new($false)
         $saCheck = {

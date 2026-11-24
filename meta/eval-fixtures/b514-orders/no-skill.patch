@@ -1,177 +1,160 @@
 diff --git a/.claude/bootstrap-baseline.tsv b/.claude/bootstrap-baseline.tsv
-index c894449..a629162 100644
+index ad2401a..91031cb 100644
 --- a/.claude/bootstrap-baseline.tsv
 +++ b/.claude/bootstrap-baseline.tsv
-@@ -88,8 +88,6 @@ line	f4a1ddfd8688
- line	f553ce8672a8
- line	fd8b3b637d9f
- area	.	2ec564a115f460f2
--area	.claude/skills/add-integration-event	859c029da4d9ef3d
--area	.claude/skills/add-report-export	f12cfa05a7cad0d9
+@@ -86,8 +86,6 @@ line	f4a1ddfd8688
+ line	f800e020619d
+ line	fa8004c42397
+ area	.	caa97461f5025141
+-area	.claude/skills/add-integration-event	45fc42632a73388c
+-area	.claude/skills/add-report-export	9414aab332bf0010
  area	config	94872fde0b39244a
  area	contracts/events	4c8f55eed8f17726
  area	db/security	ccb6cd092b4170c0
 diff --git a/.claude/skills/add-integration-event/SKILL.md b/.claude/skills/add-integration-event/SKILL.md
 deleted file mode 100644
-index 9ad2b9a..0000000
+index b88f92e..0000000
 --- a/.claude/skills/add-integration-event/SKILL.md
 +++ /dev/null
-@@ -1,46 +0,0 @@
+@@ -1,37 +0,0 @@
 ----
 -name: add-integration-event
 -description: >
--  DRAFT, pending PR review: add a new versioned integration event to the Orders service
--  (event record, handler, EventRegistry entry, JSON schema, DI registration, test). Use when adding
--  or changing an event such as order-placed, order-shipped or invoice-issued, or bumping an event version.
+-  DRAFT, pending PR review: add a new integration event (record, version attribute, JSON
+-  schema, EventRegistry entry, handler, DI registration, lifecycle method, test row) to the
+-  Orders event pipeline. Use for "add an event", "publish X when Y happens", or a new topic.
 -origin: discovered
 ----
 -
 -# Add an integration event (draft, pending review)
 -
--**Status:** candidate skill, draft pending PR review; not team-approved policy. Derived from the three current
--first-party instances (`order-placed`, `order-shipped`, `invoice-issued`). It is a lead, not authority:
--`AGENTS.md > Conventions` wins on any conflict.
+-**Status:** candidate recipe derived from the three current first-party instances (`order-placed`, `order-shipped`, `invoice-issued`). It is a lead, not authority; `AGENTS.md > Conventions` wins on any conflict. Draft pending PR review; not team-approved policy.
 -
--**Scope:** `src/Orders.Domain/Events`, `src/Orders.Application/EventHandlers`,
--`src/Orders.Infrastructure/Messaging/EventRegistry.cs`, `contracts/events`, `src/Orders.Api/Program.cs`,
--`tests/Orders.Tests/EventRegistryTests.cs`.
+-**Scope:** `src/Orders.Domain/Events`, `src/Orders.Application`, `src/Orders.Infrastructure/Messaging`, `src/Orders.Api/Program.cs`, `contracts/events`, `tests/Orders.Tests`.
 -
--**Provenance:** read directly from those files on 2026-11-15; evidence, instance list and divergences are in
--[references/project-pattern.md](references/project-pattern.md).
+-Details, instance paths and counterevidence: [references/project-pattern.md](./references/project-pattern.md).
 -
 -## Steps
 -
--1. Check whether an existing event or handler already owns the responsibility; extend it rather than adding a new one.
--2. Add the record in `Orders.Domain/Events` implementing `IIntegrationEvent` with `[EventVersion(n)]`.
--3. Add `contracts/events/<topic>.v<n>.schema.json`. **The `v<n>` in the file name must equal `[EventVersion(n)]`**:
--   `OutboxDispatcher` parses it from the path and sends the event to `<topic>.dlq` on a mismatch (non-obvious).
--4. Add a handler in `Orders.Application/EventHandlers` implementing `IIntegrationEventHandler<TEvent>`.
--5. Add `Register<TEvent, THandler>("<topic>", "<schema path>")` in the `EventRegistry` constructor.
--6. **Register the handler in `Orders.Api/Program.cs`** (`AddScoped<THandler>()`): the dispatcher resolves it with
--   `GetRequiredService`, so omission fails only at runtime (non-obvious).
--7. Add the event type to the `[InlineData]` list in `EventRegistryTests.cs`.
--8. Emit it from `OrderLifecycle` (or the owning service) via `IOutbox.Enqueue`.
--9. Run `dotnet build Orders.sln` and `dotnet test Orders.sln`.
+-1. Check whether an existing event or handler already owns the responsibility; extend it instead of adding a new one.
+-2. Add `<Name>Event` record in `src/Orders.Domain/Events/` implementing `IIntegrationEvent` with `[EventVersion(n)]`.
+-3. Add `contracts/events/<topic>.v<n>.schema.json` where **`n` equals the attribute version**. This is the non-obvious step: `OutboxDispatcher` compares the `.vN.` suffix of the registered schema path with the attribute and silently publishes to `<topic>.dlq` on mismatch.
+-4. Add `<Name>Handler : IIntegrationEventHandler<<Name>Event>` in `src/Orders.Application/EventHandlers/`.
+-5. Register it in `EventRegistry` (`Register<TEvent, THandler>(topic, schemaPath)`); an unregistered event type is dropped without a log.
+-6. Register the handler as scoped in `src/Orders.Api/Program.cs`; the dispatcher resolves it with `GetRequiredService` and throws if absent.
+-7. Raise it by adding a method to `OrderLifecycle` that calls `IOutbox.Enqueue`.
+-8. Add an `[InlineData(typeof(<Name>Event))]` row to `tests/Orders.Tests/EventRegistryTests.cs`.
+-9. Verify with `dotnet build Orders.sln` and `dotnet test Orders.sln`.
 -
 -## Unresolved
 -
--- Whether schema fields must be kept in sync with the record by hand: nothing validates payloads against the schema.
--- Outbox durability is a known hazard (`FRAMEWORK-CONTEXT.md > Known Hazard Areas`); new events inherit it.
--
--**Semantic refresh trigger:** reread `OutboxDispatcher.cs`, `EventRegistry.cs` and `Program.cs` when any changes. Result at creation: sources reread, steps match.
+-- Whether new events should follow the in-memory outbox as-is (see `TECH_DEBT.md` DEBT-003/004).
+-- Semantic refresh trigger: any change to `OutboxDispatcher.cs`, `EventRegistry.cs` or `Program.cs`. Result: decisive sources reread 2026-11-25; no runtime proof.
 -
 -## After review
 -
--Add to `AGENTS.md > Common Tasks`: `` `add-integration-event` — add a versioned integration event (record, schema, handler, registry, DI, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph).
+-Add one Common Tasks line to `AGENTS.md` (`add-integration-event` — add an integration event end to end), then delete the `DRAFT, pending PR review:` wording, this status paragraph and the Unresolved note in this skill and its reference file.
 diff --git a/.claude/skills/add-integration-event/references/project-pattern.md b/.claude/skills/add-integration-event/references/project-pattern.md
 deleted file mode 100644
-index b147ac1..0000000
+index c7cb2dc..0000000
 --- a/.claude/skills/add-integration-event/references/project-pattern.md
 +++ /dev/null
-@@ -1,26 +0,0 @@
+@@ -1,25 +0,0 @@
 -# Project pattern: integration events (draft, pending PR review)
 -
--Not team-approved policy. Observed 2026-11-15; revision: `b28d35f`. Status: `observed`.
+-**Provenance:** requested `/bootstrap` discovery, 2026-11-25. **Confidence:** observed. Draft pending PR review; not team-approved policy.
 -
--## Instances (all consumer-authored; exemplar: `order-placed`)
+-## Instances (all consumer-authored)
 -
--| Event | Record | Handler | Schema | Registry |
--|-------|--------|---------|--------|----------|
--| order-placed v1 (**exemplar**) | `src/Orders.Domain/Events/OrderPlacedEvent.cs` | `src/Orders.Application/EventHandlers/OrderPlacedHandler.cs` | `contracts/events/order-placed.v1.schema.json` | `EventRegistry.cs:12` |
--| order-shipped v2 | `.../OrderShippedEvent.cs` | `.../OrderShippedHandler.cs` | `contracts/events/order-shipped.v2.schema.json` | `EventRegistry.cs:13` |
--| invoice-issued v1 | `.../InvoiceIssuedEvent.cs` | `.../InvoiceIssuedHandler.cs` | `contracts/events/invoice-issued.v1.schema.json` | `EventRegistry.cs:14` |
+-| Event | Record | Schema | Handler | Registration |
+-|-------|--------|--------|---------|--------------|
+-| order-placed v1 | `src/Orders.Domain/Events/OrderPlacedEvent.cs` | `contracts/events/order-placed.v1.schema.json` | `src/Orders.Application/EventHandlers/OrderPlacedHandler.cs` | `src/Orders.Infrastructure/Messaging/EventRegistry.cs`, `src/Orders.Api/Program.cs` |
+-| order-shipped v2 | `.../OrderShippedEvent.cs` | `contracts/events/order-shipped.v2.schema.json` | `.../OrderShippedHandler.cs` | same |
+-| invoice-issued v1 | `.../InvoiceIssuedEvent.cs` | `contracts/events/invoice-issued.v1.schema.json` | `.../InvoiceIssuedHandler.cs` | same |
 -
--Shared: `Program.cs:17-19` registers each handler; `tests/Orders.Tests/EventRegistryTests.cs` lists each type; `OrderLifecycle.cs` emits each.
+-Raised from `src/Orders.Application/Orders/OrderLifecycle.cs`; dispatched by `src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs`; test rows in `tests/Orders.Tests/EventRegistryTests.cs`.
 -
--## Where instances diverge
+-**Exemplar (cleanest):** `order-placed` (v1, schema and attribute aligned, matching handler).
 -
--Only the version (`order-shipped` is v2, others v1); no evidenced reason. Only the `order-shipped` schema content was read.
+-## Divergence and counterevidence
 -
--## Counterevidence / exceptions
+-- `order-shipped` is v2 with no v1 in the repo: the version number is not always 1.
+-- The handlers are identical log-only stubs; real handler logic has no instance yet.
+-- The in-memory outbox and in-process dispatch are flagged as debt (DEBT-003, DEBT-004); the recipe describes current behaviour, not a target.
 -
--- Handlers are logging stubs (`HandleAsync` only logs); real handler behaviour is not evidenced.
--- `ServiceBusPublisher` only logs; no broker package.
+-## Unresolved
 -
--## Dependencies
--
--`OutboxDispatcher.cs:29-40` (version check, handler resolution), `Program.cs`, `EventRegistry.cs`.
+-Nothing beyond the above; no other consumer of the schemas is visible in this repo.
 diff --git a/.claude/skills/add-report-export/SKILL.md b/.claude/skills/add-report-export/SKILL.md
 deleted file mode 100644
-index 4c272f3..0000000
+index 197868f..0000000
 --- a/.claude/skills/add-report-export/SKILL.md
 +++ /dev/null
-@@ -1,42 +0,0 @@
+@@ -1,36 +0,0 @@
 ----
 -name: add-report-export
 -description: >
--  DRAFT, pending PR review: add a CSV report export backed by a SQL view in the Orders service
--  (IReportExport class, ReportCatalog entry, rpt view, ReportReader grant, feature flag, test). Use when
--  adding a new report such as monthly-sales, open-orders or overdue-invoices.
+-  DRAFT, pending PR review: add a new CSV report export backed by an rpt SQL view (export
+-  class, catalog entry, view script, GRANT to ReportReader, feature flag, test row). Use for
+-  "add a report", "new export", or a new rpt view.
 -origin: discovered
 ----
 -
 -# Add a report export (draft, pending review)
 -
--**Status:** candidate skill, draft pending PR review; not team-approved policy. Derived from the three current
--first-party instances (`monthly-sales`, `open-orders`, `overdue-invoices`). It is a lead, not authority:
--`AGENTS.md > Conventions` wins on any conflict.
+-**Status:** candidate recipe derived from the three current first-party instances (`monthly-sales`, `open-orders`, `overdue-invoices`). It is a lead, not authority; `AGENTS.md > Conventions` wins on any conflict. Draft pending PR review; not team-approved policy.
 -
--**Scope:** `src/Orders.Reporting`, `db/views`, `db/security/reporting-grants.sql`, `config/feature-flags.json`,
--`tests/Orders.Tests/ReportCatalogTests.cs`.
+-**Scope:** `src/Orders.Reporting`, `db/views`, `db/security`, `config/feature-flags.json`, `tests/Orders.Tests`.
 -
--**Provenance:** read directly from those files on 2026-11-15; evidence in
--[references/project-pattern.md](references/project-pattern.md).
+-Details, instance paths and counterevidence: [references/project-pattern.md](./references/project-pattern.md).
 -
 -## Steps
 -
--1. Check whether an existing export or view already provides the data; extend it instead.
--2. Add `db/views/rpt.vw<Name>.sql` (`CREATE OR ALTER VIEW rpt.vw<Name>`).
--3. **Add `GRANT SELECT ON rpt.vw<Name> TO ReportReader;` to `db/security/reporting-grants.sql`**: the export reader signs in as `ReportReader`, so without the grant the export fails at runtime (non-obvious).
--4. Add `Exports/<Name>Export.cs` implementing `IReportExport` (`Key` kebab-case, `ViewName`, delegate to `reader.ReadCsvAsync`).
--5. Add the instance to `ReportCatalog.All`.
--6. **Add `"reports.export.<key>": true` to `config/feature-flags.json`**: `ReportCatalog.Visible` hides any export without an enabled flag (non-obvious).
--7. Add the key to the `[InlineData]` list in `ReportCatalogTests.cs`.
--8. Run `dotnet build Orders.sln` and `dotnet test Orders.sln`.
+-1. Check whether an existing export or view already covers the report; extend it instead.
+-2. Add `db/views/rpt.vw<Name>.sql` (`CREATE OR ALTER VIEW rpt.vw<Name>` over `dbo.*`).
+-3. Add `GRANT SELECT ON rpt.vw<Name> TO ReportReader;` to `db/security/reporting-grants.sql`. Non-obvious: `SqlReportReader` signs in as `ReportReader` via the `Reporting` connection string, so a missing grant fails only at runtime.
+-4. Add `src/Orders.Reporting/Exports/<Name>Export.cs` implementing `IReportExport` (`Key` kebab-case, `ViewName`).
+-5. Add it to `ReportCatalog.All`.
+-6. Add `"reports.export.<key>": true` to `config/feature-flags.json`. Non-obvious: `ReportCatalog.Visible` hides any export whose flag is absent or false.
+-7. Add an `[InlineData("<key>")]` row to `tests/Orders.Tests/ReportCatalogTests.cs`.
+-8. Verify with `dotnet build Orders.sln` and `dotnet test Orders.sln`. The view, grant and runtime read are not covered by tests.
 -
 -## Unresolved
 -
--- How the `db/views` scripts are deployed: no deploy tooling is evidenced.
--- `ReportsController` reads the flags file from `ContentRootPath` and the API project does not copy it (DEBT-004); a new flag inherits that.
--
--**Semantic refresh trigger:** reread `ReportCatalog.cs`, `SqlReportReader.cs` and `reporting-grants.sql` when any changes. Result at creation: sources reread, steps match.
+-- How `db/` scripts are deployed is not recorded (DEBT-010). `ReportsController` may fail to find the flags file at runtime (DEBT-001).
+-- Semantic refresh trigger: changes to `ReportCatalog.cs`, `IReportReader.cs` or `reporting-grants.sql`. Result: decisive sources reread 2026-11-25; no runtime proof.
 -
 -## After review
 -
--Add to `AGENTS.md > Common Tasks`: `` `add-report-export` — add a CSV report export (view, grant, export class, catalog, flag, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph) and in `references/project-pattern.md` (the title's `(draft, pending PR review)` and `Not team-approved policy.`).
+-Add one Common Tasks line to `AGENTS.md` (`add-report-export` — add a report export end to end), then delete the `DRAFT, pending PR review:` wording, this status paragraph and the Unresolved note in this skill and its reference file.
 diff --git a/.claude/skills/add-report-export/references/project-pattern.md b/.claude/skills/add-report-export/references/project-pattern.md
 deleted file mode 100644
-index 9e11339..0000000
+index b4bcdfc..0000000
 --- a/.claude/skills/add-report-export/references/project-pattern.md
 +++ /dev/null
-@@ -1,26 +0,0 @@
+@@ -1,25 +0,0 @@
 -# Project pattern: report exports (draft, pending PR review)
 -
--Not team-approved policy. Observed 2026-11-15; revision: `b28d35f`. Status: `observed`.
+-**Provenance:** requested `/bootstrap` discovery, 2026-11-25. **Confidence:** observed. Draft pending PR review; not team-approved policy.
 -
--## Instances (all consumer-authored; exemplar: `open-orders`, the simplest view)
+-## Instances (all consumer-authored)
 -
--| Key | Export class | View | Grant | Flag |
--|-----|--------------|------|-------|------|
--| monthly-sales | `src/Orders.Reporting/Exports/MonthlySalesExport.cs` | `db/views/rpt.vwMonthlySales.sql` | `db/security/reporting-grants.sql` | `config/feature-flags.json` |
--| open-orders (**exemplar**) | `.../OpenOrdersExport.cs` | `db/views/rpt.vwOpenOrders.sql` | same | same |
--| overdue-invoices | `.../OverdueInvoicesExport.cs` | `db/views/rpt.vwOverdueInvoices.sql` | same | same |
+-| Key | Export class | View | Flag |
+-|-----|--------------|------|------|
+-| monthly-sales | `src/Orders.Reporting/Exports/MonthlySalesExport.cs` | `db/views/rpt.vwMonthlySales.sql` | `reports.export.monthly-sales` |
+-| open-orders | `src/Orders.Reporting/Exports/OpenOrdersExport.cs` | `db/views/rpt.vwOpenOrders.sql` | `reports.export.open-orders` |
+-| overdue-invoices | `src/Orders.Reporting/Exports/OverdueInvoicesExport.cs` | `db/views/rpt.vwOverdueInvoices.sql` | `reports.export.overdue-invoices` |
 -
--Shared: `ReportCatalog.cs:5-10` lists each; `tests/Orders.Tests/ReportCatalogTests.cs` lists each key.
+-Shared: `src/Orders.Reporting/ReportCatalog.cs`, `db/security/reporting-grants.sql`, `config/feature-flags.json`, `tests/Orders.Tests/ReportCatalogTests.cs`; served by `src/Orders.Api/Controllers/ReportsController.cs`.
 -
--## Where instances diverge
+-**Exemplar (cleanest):** `open-orders`.
 -
--Only the view SQL (aggregate vs filter). The three export classes are identical apart from `Key` and `ViewName`.
+-## Divergence and counterevidence
 -
--## Counterevidence / exceptions
+-- Instances do not diverge in structure; the three export classes differ only in `Key` and `ViewName`.
+-- `orders.checkout.v2` in the flags file is a non-report flag; do not copy its naming.
+-- CSV output has no escaping and uses `SELECT *` (DEBT-009).
 -
--- `SqlReportReader` interpolates `viewName` into SQL (`SqlReportReader.cs:29`); safe only while view names stay code constants.
--- CSV output joins values with commas without escaping.
+-## Unresolved
 -
--## Dependencies
--
--`SqlReportReader.cs`, `ReportsController.cs:14-19` (flag loading), `ReportCatalog.cs:12-13`.
+-Deployment of the view scripts is not evidenced (DEBT-010).

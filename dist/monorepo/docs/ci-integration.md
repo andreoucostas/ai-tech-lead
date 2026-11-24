@@ -158,3 +158,10 @@ checkout lets `/review`'s verification run on that code. For a pull request from
 `git remote add fork <fork-url>` and `git fetch fork`, then `git switch --detach fork/<source>`
 instead. Copilot CLI may run its own built-in review for `/review`; there, ask for this framework's
 review skill by name.
+
+**Reviewing unattended:** when a pipeline runs `/review` as a one-shot command, use
+`claude -p --output-format json` and parse that JSON: other formats can print an earlier reply, and
+the raw JSON holds the review as one escaped string. Fail the step on a non-zero exit, on `is_error`
+true, and unless the `result` string has exactly one line starting `### Verdict:` that, trimmed of
+trailing white space (CR included), starts `### Verdict: APPROVE`, ends `missing: none` and has no
+`REQUEST CHANGES` in any letter case. `CANNOT EXAMINE` and a missing verdict or reviewer all fail.

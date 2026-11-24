@@ -52,7 +52,9 @@ read-only, but it cannot replace or enlarge the frozen subject bytes.
 
 When the host supports concurrent `Task` dispatch, spawn the applicable auditors in one message;
 otherwise invoke every applicable participant sequentially against the same bundle. A missing
-parallel capability is not a reason to omit a reviewer.
+parallel capability is not a reason to omit a reviewer. Your report needs every reviewer's findings,
+so where the dispatch tool offers `run_in_background`, pass `false` on every reviewer call: calls in
+one message still run together and return before Step 2.
 
 **Reviewer model.** When this session runs a Claude model other than Haiku (Opus or Sonnet, say),
 pass Haiku as the model of each `convention-check`, `debt-radar` and `bloat-radar` call: `haiku` in

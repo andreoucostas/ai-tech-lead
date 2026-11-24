@@ -212,8 +212,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 9098,
-          "tok": 2274
+          "chars": 9681,
+          "tok": 2420
         },
         {
           "path": "docs/defaults.md",
@@ -398,8 +398,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 11774,
-          "tok": 2944
+          "chars": 11977,
+          "tok": 2994
         },
         {
           "path": ".claude/commands/security-gate.md#body",
@@ -646,8 +646,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 8940,
-          "tok": 2235
+          "chars": 9523,
+          "tok": 2381
         },
         {
           "path": "docs/defaults.md",
@@ -832,8 +832,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 11778,
-          "tok": 2944
+          "chars": 11981,
+          "tok": 2995
         },
         {
           "path": ".claude/commands/security-gate.md#body",
@@ -1080,8 +1080,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 9166,
-          "tok": 2292
+          "chars": 9749,
+          "tok": 2437
         },
         {
           "path": "docs/defaults.md",
@@ -1266,8 +1266,8 @@
         },
         {
           "path": ".claude/commands/review.md#body",
-          "chars": 11843,
-          "tok": 2961
+          "chars": 12046,
+          "tok": 3012
         },
         {
           "path": ".claude/commands/security-gate.md#body",

@@ -1,11 +1,11 @@
 <!--
 ai-tech-lead-framework
   template: dotnet
-  version: 0.98.6
-  applied: 2026-11-13
+  version: 0.99.0
+  applied: 2026-11-23
   After a framework update, copy these fields from .claude/framework-version.json.
 -->
-# Orders
+# [Project Name]
 
 > This file is the repo-specific source of truth for AI-assisted development in this repository. Edit it here; `CLAUDE.md` only imports it for Claude Code.
 > **Framework rules** (Verification Rules, Leanness, SOLID, Agentic Workflow) are in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md). If your agent has not already loaded that file, read it before planning or editing.
@@ -20,49 +20,49 @@ ai-tech-lead-framework
 
 ## Codebase Context
 
-Implementation observations from code only; intended users and actual usage are unknown until a named owner supplies them.
-
-- ASP.NET Core (net8.0) orders API: CRUD for customers, products, orders and invoices; a checkout flow (place, ship, issue invoice) that emits integration events; CSV report exports.
-- Domain concepts: `Order`, `Invoice`, `Customer`, `Product` (monetary `decimal`), and three versioned integration events (`order-placed` v1, `order-shipped` v2, `invoice-issued` v1) with JSON schemas under `contracts/events`.
-- Critical journeys: checkout → in-memory outbox → `OutboxProcessor` → `OutboxDispatcher` → publisher + handler; report key → feature flag → `rpt.vw*` view → CSV.
+Implementation observations (intent and users are not stated in code): a .NET 8 Orders API over customers, products, orders and invoices (EF Core / SQL Server).
+- Order/invoice lifecycle actions raise integration events (`order-placed`, `order-shipped`, `invoice-issued`) via an in-memory outbox and a background dispatcher.
+- Three CSV report exports read `rpt.*` SQL views through a separate `ReportReader` login, gated by feature flags.
+- Critical journeys: place → ship → invoice (`CheckoutController`); report export (`ReportsController`).
 
 ---
 
 ## Repository Structure
 
-- `src/Orders.Api` — host; `Program.cs` holds all DI registration; `Controllers/` are the endpoints.
-- `src/Orders.Application` — `OrderLifecycle` (enqueues events), `EventHandlers/`, `Jobs/` (unreferenced scaffolding), `Services/` (`*Client` HTTP stubs), `Contracts/` (DTOs, unused).
-- `src/Orders.Domain` — entities (plain property bags) and event records with `[EventVersion]`.
-- `src/Orders.Infrastructure` — `OrdersDbContext` + `Configurations/`; `Messaging/` (registry, outbox, dispatcher, publisher).
-- `src/Orders.Reporting` — `ReportCatalog`, `Exports/`, `SqlReportReader`; SQL lives in `db/views` and `db/security`.
-- Changes go: endpoints → `Controllers/`; events → Domain + Infrastructure `EventRegistry` + `contracts/events`; reports → `Exports/` + `db/` + `config/feature-flags.json`.
+- `src/Orders.Domain` — anaemic entities (public setters), event records with `[EventVersion]`.
+- `src/Orders.Application` — `OrderLifecycle` (enqueues events), event handlers, `IScheduledJob` classes (not wired), unused HTTP clients.
+- `src/Orders.Infrastructure` — `OrdersDbContext` + per-entity configurations; `Messaging/` (`EventRegistry`, outbox, dispatcher, stub `ServiceBusPublisher`).
+- `src/Orders.Reporting` — `IReportExport` per report, `ReportCatalog`, `SqlReportReader`.
+- `src/Orders.Api` — controllers and `Program.cs` (entry point; all DI registered here).
+- `db/views`, `db/security` — `rpt.*` views and `GRANT`s; `contracts/events` — JSON schemas; `config/feature-flags.json` — flags.
+- `tests/Orders.Tests` — xUnit. Change locations: endpoints → `Orders.Api/Controllers`; events → Domain + Infrastructure/Messaging + `contracts/`; reports → Reporting + `db/`.
 
-```text
-Api → Application, Infrastructure, Reporting
-Infrastructure → Application, Domain      Application → Domain
-Reporting → (Microsoft.Data.SqlClient only)      Tests → Infrastructure, Reporting
+```
+Api -> Application, Infrastructure, Reporting
+Infrastructure -> Application -> Domain
 ```
 
 ---
 
 ## Conventions
 
-- **Architecture**: layered Api/Application/Domain/Infrastructure plus Reporting; dependencies point inward (`Orders.Domain` references nothing). Evidence: `src/*/*.csproj`.
-- **Data access**: EF Core SqlServer 8.0.10, one `IEntityTypeConfiguration` per entity loaded by `ApplyConfigurationsFromAssembly` (`OrdersDbContext.cs`); no repository layer, controllers use `OrdersDbContext` directly (`OrdersController.cs`). Reporting reads SQL views with raw `SqlClient` as the `ReportReader` login (`SqlReportReader.cs`).
-- **API**: attribute-routed `[ApiController]`s on `api/<plural>`; domain entities are bound as request bodies, no DTOs or validation in use.
-- **DI**: manual registration, all in `Program.cs`; every event handler must be registered there because `OutboxDispatcher` resolves it with `GetRequiredService` (`OutboxDispatcher.cs:38`).
-- **Events**: each event record carries `[EventVersion(n)]`, a schema `contracts/events/<topic>.v<n>.schema.json` whose `v<n>` must equal it, and an `EventRegistry` entry; a mismatch routes to `<topic>.dlq` (`OutboxDispatcher.cs:29-35`).
-- **Reports**: an export is visible only if `config/feature-flags.json` has `reports.export.<key>: true` (`ReportCatalog.cs:12-13`); each view needs a `GRANT SELECT … TO ReportReader` in `db/security/reporting-grants.sql`.
-- **Async/null**: `Nullable` and `ImplicitUsings` enabled; `CancellationToken` used in reporting and messaging, not in controllers; `Services/*Client` use sync-over-async `.Result`.
-- **Logging**: `ILogger<T>` structured templates (`ServiceBusPublisher.cs`); no tracing or metrics export.
-- **Testing**: xunit 2.9.2 on Microsoft.NET.Test.Sdk (`tests/Orders.Tests`); no mocking or assertion library; two theory tests guarding registration lists (`EventRegistryTests.cs`, `ReportCatalogTests.cs`); no integration tests. Target shape: behaviour tests through `OutboxDispatcher` and the controllers.
+Observed in code; "not endorsed" marks a pattern logged as debt in [TECH_DEBT.md](./TECH_DEBT.md).
+
+- **Architecture**: Domain ← Application ← Infrastructure ← Api; Reporting is standalone (`src/Orders.Reporting/Orders.Reporting.csproj`). net8.0, nullable and implicit usings on.
+- **DI**: manual registration, all in `src/Orders.Api/Program.cs`; event handlers must be registered there because the dispatcher resolves them by type. Interfaces only at seams (`IOutbox`, `IMessagePublisher`, `IReportReader`).
+- **Data access**: EF Core 8 + SQL Server, one `IEntityTypeConfiguration` per entity auto-applied (`OrdersDbContext.cs`). No migrations folder and no evidenced deploy command for `db/` scripts. Raw ADO.NET only in `SqlReportReader`.
+- **API**: `[ApiController]`, `api/<resource>` routes. Four CRUD controllers use `OrdersDbContext` directly and bind entities as bodies (not endorsed, DEBT-005). No authentication or authorization configured (DEBT-006).
+- **Events**: record + `[EventVersion(n)]` + `contracts/events/<topic>.v<n>.schema.json` + `EventRegistry` entry + handler registered in `Program.cs`; a version/schema mismatch routes to `<topic>.dlq` (`OutboxDispatcher.cs:29-35`).
+- **Reports**: `IReportExport` + `ReportCatalog.All` entry + `db/views/rpt.vw*.sql` + `GRANT` in `db/security/reporting-grants.sql` + flag `reports.export.<key>` in `config/feature-flags.json` (a missing flag hides the report).
+- **Async/logging**: `CancellationToken` flows through dispatch and reporting; handlers log with structured templates. `.Result` in the unused HTTP clients is not a convention (DEBT-011).
+- **Testing**: xUnit 2.9.2 with `Microsoft.NET.Test.Sdk`; plain `Assert`, no mocking library; theories over registered events/reports (`tests/Orders.Tests/`). No start-up test. Target shape: behaviour tests through real objects, one theory row per new event or report.
 
 ### Verification Commands
 
-| Category | Command | Evidence | Execution policy |
-|----------|---------|----------|------------------|
-| build | `dotnet build Orders.sln` | `Orders.sln` (all SDK-style C# projects) | run freely |
-| test | `dotnet test Orders.sln` | `tests/Orders.Tests/Orders.Tests.csproj` | run freely |
+| Category | Command | Evidence | Policy |
+|----------|---------|----------|--------|
+| build | `dotnet build Orders.sln` | `src/Orders.Api/Orders.Api.csproj` (every solution project is SDK-style C#) | run |
+| test | `dotnet test Orders.sln` | `tests/Orders.Tests/Orders.Tests.csproj` | run |
 | format | not available (no evidenced command) | — | — |
 | lint | not available (no evidenced command) | — | — |
 | migration/deploy | not available (no evidenced command) | — | manual/CI-only |
@@ -77,11 +77,10 @@ Reporting → (Microsoft.Data.SqlClient only)      Tests → Infrastructure, Rep
      added by the create-adr skill. Rationale: AGENTS.md loads on nearly every agent turn and
      anchors the prompt cache — keep it small; detail loads on demand. -->
 
-A one-line index of significant decisions (including accidental ones that became convention). Full detail in [docs/architecture-decisions.md](./docs/architecture-decisions.md).
+- Events use an in-memory outbox and in-process dispatcher, not a durable outbox (`src/Orders.Infrastructure/Messaging/`; accidental or interim, unconfirmed).
+- Reports read SQL views through a separate least-privilege `ReportReader` login (`db/security/reporting-grants.sql`).
 
-- ADR-001 — In-memory outbox singleton for integration events (accidental) — 2026-11-15
-- ADR-002 — Event version enforced by schema-file name vs `[EventVersion]` — 2026-11-15
-- ADR-003 — Reports served from SQL views via a least-privilege `ReportReader` login, gated by feature flags — 2026-11-15
+Full detail in [docs/architecture-decisions.md](./docs/architecture-decisions.md).
 
 ---
 

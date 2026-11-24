@@ -1,26 +1,25 @@
 # Project pattern: integration events (draft, pending PR review)
 
-Not team-approved policy. Observed 2026-11-15; revision: `b28d35f`. Status: `observed`.
+**Provenance:** requested `/bootstrap` discovery, 2026-11-25. **Confidence:** observed. Draft pending PR review; not team-approved policy.
 
-## Instances (all consumer-authored; exemplar: `order-placed`)
+## Instances (all consumer-authored)
 
-| Event | Record | Handler | Schema | Registry |
-|-------|--------|---------|--------|----------|
-| order-placed v1 (**exemplar**) | `src/Orders.Domain/Events/OrderPlacedEvent.cs` | `src/Orders.Application/EventHandlers/OrderPlacedHandler.cs` | `contracts/events/order-placed.v1.schema.json` | `EventRegistry.cs:12` |
-| order-shipped v2 | `.../OrderShippedEvent.cs` | `.../OrderShippedHandler.cs` | `contracts/events/order-shipped.v2.schema.json` | `EventRegistry.cs:13` |
-| invoice-issued v1 | `.../InvoiceIssuedEvent.cs` | `.../InvoiceIssuedHandler.cs` | `contracts/events/invoice-issued.v1.schema.json` | `EventRegistry.cs:14` |
+| Event | Record | Schema | Handler | Registration |
+|-------|--------|--------|---------|--------------|
+| order-placed v1 | `src/Orders.Domain/Events/OrderPlacedEvent.cs` | `contracts/events/order-placed.v1.schema.json` | `src/Orders.Application/EventHandlers/OrderPlacedHandler.cs` | `src/Orders.Infrastructure/Messaging/EventRegistry.cs`, `src/Orders.Api/Program.cs` |
+| order-shipped v2 | `.../OrderShippedEvent.cs` | `contracts/events/order-shipped.v2.schema.json` | `.../OrderShippedHandler.cs` | same |
+| invoice-issued v1 | `.../InvoiceIssuedEvent.cs` | `contracts/events/invoice-issued.v1.schema.json` | `.../InvoiceIssuedHandler.cs` | same |
 
-Shared: `Program.cs:17-19` registers each handler; `tests/Orders.Tests/EventRegistryTests.cs` lists each type; `OrderLifecycle.cs` emits each.
+Raised from `src/Orders.Application/Orders/OrderLifecycle.cs`; dispatched by `src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs`; test rows in `tests/Orders.Tests/EventRegistryTests.cs`.
 
-## Where instances diverge
+**Exemplar (cleanest):** `order-placed` (v1, schema and attribute aligned, matching handler).
 
-Only the version (`order-shipped` is v2, others v1); no evidenced reason. Only the `order-shipped` schema content was read.
+## Divergence and counterevidence
 
-## Counterevidence / exceptions
+- `order-shipped` is v2 with no v1 in the repo: the version number is not always 1.
+- The handlers are identical log-only stubs; real handler logic has no instance yet.
+- The in-memory outbox and in-process dispatch are flagged as debt (DEBT-003, DEBT-004); the recipe describes current behaviour, not a target.
 
-- Handlers are logging stubs (`HandleAsync` only logs); real handler behaviour is not evidenced.
-- `ServiceBusPublisher` only logs; no broker package.
+## Unresolved
 
-## Dependencies
-
-`OutboxDispatcher.cs:29-40` (version check, handler resolution), `Program.cs`, `EventRegistry.cs`.
+Nothing beyond the above; no other consumer of the schemas is visible in this repo.

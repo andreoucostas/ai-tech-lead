@@ -1,26 +1,25 @@
 # Project pattern: report exports (draft, pending PR review)
 
-Not team-approved policy. Observed 2026-11-15; revision: `b28d35f`. Status: `observed`.
+**Provenance:** requested `/bootstrap` discovery, 2026-11-25. **Confidence:** observed. Draft pending PR review; not team-approved policy.
 
-## Instances (all consumer-authored; exemplar: `open-orders`, the simplest view)
+## Instances (all consumer-authored)
 
-| Key | Export class | View | Grant | Flag |
-|-----|--------------|------|-------|------|
-| monthly-sales | `src/Orders.Reporting/Exports/MonthlySalesExport.cs` | `db/views/rpt.vwMonthlySales.sql` | `db/security/reporting-grants.sql` | `config/feature-flags.json` |
-| open-orders (**exemplar**) | `.../OpenOrdersExport.cs` | `db/views/rpt.vwOpenOrders.sql` | same | same |
-| overdue-invoices | `.../OverdueInvoicesExport.cs` | `db/views/rpt.vwOverdueInvoices.sql` | same | same |
+| Key | Export class | View | Flag |
+|-----|--------------|------|------|
+| monthly-sales | `src/Orders.Reporting/Exports/MonthlySalesExport.cs` | `db/views/rpt.vwMonthlySales.sql` | `reports.export.monthly-sales` |
+| open-orders | `src/Orders.Reporting/Exports/OpenOrdersExport.cs` | `db/views/rpt.vwOpenOrders.sql` | `reports.export.open-orders` |
+| overdue-invoices | `src/Orders.Reporting/Exports/OverdueInvoicesExport.cs` | `db/views/rpt.vwOverdueInvoices.sql` | `reports.export.overdue-invoices` |
 
-Shared: `ReportCatalog.cs:5-10` lists each; `tests/Orders.Tests/ReportCatalogTests.cs` lists each key.
+Shared: `src/Orders.Reporting/ReportCatalog.cs`, `db/security/reporting-grants.sql`, `config/feature-flags.json`, `tests/Orders.Tests/ReportCatalogTests.cs`; served by `src/Orders.Api/Controllers/ReportsController.cs`.
 
-## Where instances diverge
+**Exemplar (cleanest):** `open-orders`.
 
-Only the view SQL (aggregate vs filter). The three export classes are identical apart from `Key` and `ViewName`.
+## Divergence and counterevidence
 
-## Counterevidence / exceptions
+- Instances do not diverge in structure; the three export classes differ only in `Key` and `ViewName`.
+- `orders.checkout.v2` in the flags file is a non-report flag; do not copy its naming.
+- CSV output has no escaping and uses `SELECT *` (DEBT-009).
 
-- `SqlReportReader` interpolates `viewName` into SQL (`SqlReportReader.cs:29`); safe only while view names stay code constants.
-- CSV output joins values with commas without escaping.
+## Unresolved
 
-## Dependencies
-
-`SqlReportReader.cs`, `ReportsController.cs:14-19` (flag loading), `ReportCatalog.cs:12-13`.
+Deployment of the view scripts is not evidenced (DEBT-010).

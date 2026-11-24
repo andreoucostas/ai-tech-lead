@@ -1,46 +1,37 @@
 ---
 name: add-integration-event
 description: >
-  DRAFT, pending PR review: add a new versioned integration event to the Orders service
-  (event record, handler, EventRegistry entry, JSON schema, DI registration, test). Use when adding
-  or changing an event such as order-placed, order-shipped or invoice-issued, or bumping an event version.
+  DRAFT, pending PR review: add a new integration event (record, version attribute, JSON
+  schema, EventRegistry entry, handler, DI registration, lifecycle method, test row) to the
+  Orders event pipeline. Use for "add an event", "publish X when Y happens", or a new topic.
 origin: discovered
 ---
 
 # Add an integration event (draft, pending review)
 
-**Status:** candidate skill, draft pending PR review; not team-approved policy. Derived from the three current
-first-party instances (`order-placed`, `order-shipped`, `invoice-issued`). It is a lead, not authority:
-`AGENTS.md > Conventions` wins on any conflict.
+**Status:** candidate recipe derived from the three current first-party instances (`order-placed`, `order-shipped`, `invoice-issued`). It is a lead, not authority; `AGENTS.md > Conventions` wins on any conflict. Draft pending PR review; not team-approved policy.
 
-**Scope:** `src/Orders.Domain/Events`, `src/Orders.Application/EventHandlers`,
-`src/Orders.Infrastructure/Messaging/EventRegistry.cs`, `contracts/events`, `src/Orders.Api/Program.cs`,
-`tests/Orders.Tests/EventRegistryTests.cs`.
+**Scope:** `src/Orders.Domain/Events`, `src/Orders.Application`, `src/Orders.Infrastructure/Messaging`, `src/Orders.Api/Program.cs`, `contracts/events`, `tests/Orders.Tests`.
 
-**Provenance:** read directly from those files on 2026-11-15; evidence, instance list and divergences are in
-[references/project-pattern.md](references/project-pattern.md).
+Details, instance paths and counterevidence: [references/project-pattern.md](./references/project-pattern.md).
 
 ## Steps
 
-1. Check whether an existing event or handler already owns the responsibility; extend it rather than adding a new one.
-2. Add the record in `Orders.Domain/Events` implementing `IIntegrationEvent` with `[EventVersion(n)]`.
-3. Add `contracts/events/<topic>.v<n>.schema.json`. **The `v<n>` in the file name must equal `[EventVersion(n)]`**:
-   `OutboxDispatcher` parses it from the path and sends the event to `<topic>.dlq` on a mismatch (non-obvious).
-4. Add a handler in `Orders.Application/EventHandlers` implementing `IIntegrationEventHandler<TEvent>`.
-5. Add `Register<TEvent, THandler>("<topic>", "<schema path>")` in the `EventRegistry` constructor.
-6. **Register the handler in `Orders.Api/Program.cs`** (`AddScoped<THandler>()`): the dispatcher resolves it with
-   `GetRequiredService`, so omission fails only at runtime (non-obvious).
-7. Add the event type to the `[InlineData]` list in `EventRegistryTests.cs`.
-8. Emit it from `OrderLifecycle` (or the owning service) via `IOutbox.Enqueue`.
-9. Run `dotnet build Orders.sln` and `dotnet test Orders.sln`.
+1. Check whether an existing event or handler already owns the responsibility; extend it instead of adding a new one.
+2. Add `<Name>Event` record in `src/Orders.Domain/Events/` implementing `IIntegrationEvent` with `[EventVersion(n)]`.
+3. Add `contracts/events/<topic>.v<n>.schema.json` where **`n` equals the attribute version**. This is the non-obvious step: `OutboxDispatcher` compares the `.vN.` suffix of the registered schema path with the attribute and silently publishes to `<topic>.dlq` on mismatch.
+4. Add `<Name>Handler : IIntegrationEventHandler<<Name>Event>` in `src/Orders.Application/EventHandlers/`.
+5. Register it in `EventRegistry` (`Register<TEvent, THandler>(topic, schemaPath)`); an unregistered event type is dropped without a log.
+6. Register the handler as scoped in `src/Orders.Api/Program.cs`; the dispatcher resolves it with `GetRequiredService` and throws if absent.
+7. Raise it by adding a method to `OrderLifecycle` that calls `IOutbox.Enqueue`.
+8. Add an `[InlineData(typeof(<Name>Event))]` row to `tests/Orders.Tests/EventRegistryTests.cs`.
+9. Verify with `dotnet build Orders.sln` and `dotnet test Orders.sln`.
 
 ## Unresolved
 
-- Whether schema fields must be kept in sync with the record by hand: nothing validates payloads against the schema.
-- Outbox durability is a known hazard (`FRAMEWORK-CONTEXT.md > Known Hazard Areas`); new events inherit it.
-
-**Semantic refresh trigger:** reread `OutboxDispatcher.cs`, `EventRegistry.cs` and `Program.cs` when any changes. Result at creation: sources reread, steps match.
+- Whether new events should follow the in-memory outbox as-is (see `TECH_DEBT.md` DEBT-003/004).
+- Semantic refresh trigger: any change to `OutboxDispatcher.cs`, `EventRegistry.cs` or `Program.cs`. Result: decisive sources reread 2026-11-25; no runtime proof.
 
 ## After review
 
-Add to `AGENTS.md > Common Tasks`: `` `add-integration-event` — add a versioned integration event (record, schema, handler, registry, DI, test) ``, then delete the draft wording above (Status line, `DRAFT, pending PR review:` in the description, this paragraph).
+Add one Common Tasks line to `AGENTS.md` (`add-integration-event` — add an integration event end to end), then delete the `DRAFT, pending PR review:` wording, this status paragraph and the Unresolved note in this skill and its reference file.

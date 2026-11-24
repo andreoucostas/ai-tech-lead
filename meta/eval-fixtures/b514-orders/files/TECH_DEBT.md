@@ -1,134 +1,203 @@
 # Tech Debt Register
 
-> Run `/bootstrap` to populate this file from your actual codebase analysis.
+> One block per item. Sorted by severity then effort. Reference items by ID in commit messages and PRs.
 > Run `/debt [area]` to find and fix items. Run `/docs-sync` to check for staleness.
 
-One `## DEBT-NNN` block per item. To add an item, copy the template below after the last block with the next unused number. To remove a resolved item, delete its whole block.
+---
 
-Template (an example, not an item):
+## DEBT-001: Reports controller reads a flags file the API does not ship
 
-```markdown
-## DEBT-001: <Short title>
-
-- **Key**: <area>::<claim-slug>
-- **Category**: <one of the categories below>
-- **Severity**: Critical | High | Medium | Low
-- **Effort**: S (<1hr) | M (half day) | L (1-2 days) | XL (needs spike)
-- **Files**: `path/to/file:42`, `path/to/other-file`
+- **Key**: reports::feature-flags-file-not-copied
+- **Category**: API Design
+- **Severity**: High
+- **Effort**: S (<1hr)
+- **Files**: `src/Orders.Api/Controllers/ReportsController.cs:17`, `src/Orders.Api/Orders.Api.csproj`, `config/feature-flags.json`
 
 ### Issue
-<1-3 sentences on what's wrong and why it matters>
+The constructor reads `<ContentRoot>/config/feature-flags.json` on every request, but `Orders.Api.csproj` never copies that repo-root file into the API project or output (only the test project links it), so `/api/reports` likely throws `FileNotFoundException`. Not run-verified.
 
 ### Recommended fix
-<1-3 sentences on the change and any risks>
+Bind flags once through the options pattern from configuration, or copy the file as content; read it once, not per request.
 
 ---
-```
 
-## DEBT-001: Sync-over-async, per-call `new HttpClient()` in service clients
+## DEBT-002: Checkout actions have no state guard or idempotency
 
-- **Key**: services::httpclient-sync-over-async
-- **Category**: Async
+- **Key**: checkout::no-state-guard
+- **Category**: Architecture
 - **Severity**: High
 - **Effort**: M (half day)
-- **Files**: `src/Orders.Application/Services/PricingClient.cs:7`, `src/Orders.Application/Services/ShippingClient.cs:7`, `src/Orders.Application/Services/TaxClient.cs:7`
+- **Files**: `src/Orders.Api/Controllers/CheckoutController.cs:20-48`, `src/Orders.Application/Orders/OrderLifecycle.cs`
 
 ### Issue
-Each client creates a new `HttpClient` per call and blocks on `.Result`, risking socket exhaustion and thread-pool starvation, with no timeout, retry or cancellation. None is registered in `Program.cs` or called anywhere yet.
+`place`, `ship` and `issue` set `Status` strings (or enqueue) without checking the current state, so repeated calls emit duplicate events with fresh `EventId`s. Status is a free string; no concurrency token on the entities. Applicable invariants are unconfirmed.
 
 ### Recommended fix
-Before first use, register typed clients with `AddHttpClient`, make the methods async with `CancellationToken`, and add resilience.
+Define allowed transitions with the owners, enforce them in the domain, and add a concurrency token plus an idempotency key.
 
 ---
 
-## DEBT-002: Controllers bind domain entities directly, no validation
+## DEBT-003: Outbox dispatch loses events and can stop the host
 
-- **Key**: api::entity-request-binding
+- **Key**: messaging::dispatch-failure-loses-event
+- **Category**: Architecture
+- **Severity**: High
+- **Effort**: M (half day)
+- **Files**: `src/Orders.Infrastructure/Messaging/OutboxProcessor.cs:22-26`, `src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs:37-40`
+
+### Issue
+The event is dequeued before dispatch; a handler or publish exception escapes `ExecuteAsync` (default .NET 8 behaviour stops the host) and the event is gone.
+
+### Recommended fix
+Catch and log per event, retry or dead-letter, and only remove the event after success.
+
+---
+
+## DEBT-004: In-memory outbox is not atomic with the database save
+
+- **Key**: messaging::in-memory-outbox
+- **Category**: Architecture
+- **Severity**: High
+- **Effort**: L (1-2 days)
+- **Files**: `src/Orders.Api/Program.cs:13`, `src/Orders.Infrastructure/Messaging/InMemoryOutbox.cs`, `src/Orders.Api/Controllers/CheckoutController.cs:25-27`
+
+### Issue
+`SaveChangesAsync` and the enqueue are separate steps and the queue lives in process memory, so a crash or restart loses events that the database already reflects.
+
+### Recommended fix
+Persist outbox rows in the same transaction (table-backed outbox) and have the processor drain them. Record an ADR.
+
+---
+
+## DEBT-005: CRUD controllers bind entities and use the DbContext directly
+
+- **Key**: api::entity-binding-dbcontext-in-controller
 - **Category**: API Design
 - **Severity**: High
 - **Effort**: L (1-2 days)
-- **Files**: `src/Orders.Api/Controllers/OrdersController.cs:26`, `src/Orders.Api/Controllers/InvoicesController.cs`, `src/Orders.Api/Controllers/CustomersController.cs`, `src/Orders.Api/Controllers/ProductsController.cs`, `src/Orders.Application/Contracts`
+- **Files**: `src/Orders.Api/Controllers/OrdersController.cs`, `CustomersController.cs`, `InvoicesController.cs`, `ProductsController.cs`
 
 ### Issue
-`Create(Order item)` and siblings accept the EF entity as the body, so clients can set `Id`, `Status`, `Total` and `Paid`; there is no validation, and `GET` list endpoints return unpaged full tables via `ToListAsync()` (the unused `PagedResultDto` exists). `Orders.Application/Contracts` DTOs are unreferenced.
+`Create(Order item)` etc. accept domain entities, so clients can set `Total`, `Status`, `Paid`, `Id`. List endpoints return whole tables with tracking and no paging.
 
 ### Recommended fix
-Use request/response DTOs with validation, compute totals server-side, add paging and `AsNoTracking()` on reads.
+Introduce request/response DTOs and a service layer; use `AsNoTracking()` and paging on reads.
 
 ---
 
-## DEBT-003: No authentication or authorization
+## DEBT-006: No authentication or authorization
 
-- **Key**: api::no-auth
+- **Key**: security::no-authn-authz
 - **Category**: Security
 - **Severity**: High
 - **Effort**: L (1-2 days)
-- **Files**: `src/Orders.Api/Program.cs:8-23`
+- **Files**: `src/Orders.Api/Program.cs`, `src/Orders.Api/Controllers/`
 
 ### Issue
-No auth middleware or `[Authorize]` exists in `src/`; all endpoints, including checkout and report exports, are open. Upstream gateway protection is unknown (unconfirmed).
+No `UseAuthentication`/`UseAuthorization` or `[Authorize]` anywhere in `src/`; every endpoint, including report export and checkout, is anonymous. Run `/security-gate` to triage; this register is not the security findings register.
 
 ### Recommended fix
-Confirm the intended trust boundary; if none upstream, add authentication/authorization and route the finding through `/security-gate`.
+Add authentication and authorization policies once the identity provider is decided.
 
 ---
 
-## DEBT-004: Feature flags file not copied to the API output and read per request
+## DEBT-007: Dispatcher fails silently when an event is half-wired
 
-- **Key**: reports::feature-flags-file-location
+- **Key**: messaging::silent-registry-drop
 - **Category**: Architecture
 - **Severity**: Medium
 - **Effort**: S (<1hr)
-- **Files**: `src/Orders.Api/Controllers/ReportsController.cs:14-19`, `src/Orders.Api/Orders.Api.csproj`, `config/feature-flags.json`
+- **Files**: `src/Orders.Infrastructure/Messaging/OutboxDispatcher.cs:24-35`, `src/Orders.Infrastructure/Messaging/EventRegistry.cs`, `tests/Orders.Tests/EventRegistryTests.cs`
 
 ### Issue
-The controller reads `ContentRootPath/config/feature-flags.json` in its constructor (each request); only the test project copies the file to output, so a published API likely throws `FileNotFoundException` on the reports endpoints (not executed here).
+An event missing from `EventRegistry` is dropped without a log; a version/schema mismatch goes to a `.dlq` topic; a handler missing from `Program.cs` throws at dispatch. The existing test hard-codes three event types, so a new event is not checked.
 
 ### Recommended fix
-Add the file as a content item in `Orders.Api.csproj` or move flags to `IOptions` configuration.
+Log the drop, and add a test that enumerates every `IIntegrationEvent` type and checks registry, schema version and handler registration.
 
 ---
 
-## DEBT-005: Unreferenced job scaffolding
+## DEBT-008: Decimal money columns have no configured precision
 
-- **Key**: jobs::unused-scheduled-jobs
+- **Key**: data::decimal-precision-unconfigured
+- **Category**: Data Access
+- **Severity**: Medium
+- **Effort**: S (<1hr)
+- **Files**: `src/Orders.Infrastructure/Persistence/Configurations/OrderConfiguration.cs`, `InvoiceConfiguration.cs`, `ProductConfiguration.cs`
+
+### Issue
+`Total`, `Amount` and `Price` use EF's default decimal mapping; scale and rounding policy are not stated anywhere (unconfirmed with the team).
+
+### Recommended fix
+Confirm the monetary scale, then `HasPrecision` in each configuration.
+
+---
+
+## DEBT-009: Report CSV has no escaping and uses SELECT *
+
+- **Key**: reports::csv-no-escaping
+- **Category**: API Design
+- **Severity**: Medium
+- **Effort**: S (<1hr)
+- **Files**: `src/Orders.Reporting/IReportReader.cs:21,28`
+
+### Issue
+Values are joined with commas without quoting, so text containing commas or quotes corrupts the CSV; `viewName` is interpolated into SQL (currently only from code constants).
+
+### Recommended fix
+Quote/escape fields and select named columns; keep `viewName` restricted to catalog values.
+
+---
+
+## DEBT-010: No schema deployment path for `db/` or the `dbo` tables
+
+- **Key**: data::no-migrations
+- **Category**: Data Access
+- **Severity**: Medium
+- **Effort**: XL (needs spike)
+- **Files**: `db/views/`, `db/security/reporting-grants.sql`, `src/Orders.Infrastructure/Persistence/OrdersDbContext.cs`
+
+### Issue
+No EF migrations and no script or pipeline applying the views and grants were found; how `dbo.*` tables and `rpt.*` views reach a database is unrecorded.
+
+### Recommended fix
+Decide the vehicle (EF migrations plus an ordered script step, or an SQL project) and record the command in Verification Commands.
+
+---
+
+## DEBT-011: Unused HTTP clients create `HttpClient` per call with `.Result`
+
+- **Key**: services::unused-sync-over-async-clients
+- **Category**: Async
+- **Severity**: Low
+- **Effort**: S (<1hr)
+- **Files**: `src/Orders.Application/Services/PricingClient.cs`, `ShippingClient.cs`, `TaxClient.cs`
+
+### Issue
+Three identical classes, referenced nowhere, each blocking on `GetStringAsync(...).Result` with a new `HttpClient`.
+
+### Recommended fix
+Delete if dead; otherwise use `IHttpClientFactory` typed clients with async calls and a resilience policy.
+
+---
+
+## DEBT-012: Scheduled jobs are not wired to a scheduler
+
+- **Key**: jobs::unwired-scheduled-jobs
 - **Category**: Architecture
 - **Severity**: Low
 - **Effort**: S (<1hr)
-- **Files**: `src/Orders.Application/Jobs/JobSchedule.cs`, `src/Orders.Application/Jobs/NightlyReconciliationJob.cs`, `src/Orders.Application/Jobs/PurgeStaleCartsJob.cs`
+- **Files**: `src/Orders.Application/Jobs/JobSchedule.cs`, `NightlyReconciliationJob.cs`, `PurgeStaleCartsJob.cs`
 
 ### Issue
-`IScheduledJob`, `JobSchedule.Cron` and both jobs (empty bodies) are not registered or referenced by any runner. Intent is unconfirmed.
+Both jobs have empty bodies and nothing registers or runs them; `JobSchedule.Cron` is unused.
 
 ### Recommended fix
-Confirm intent; delete if dead, or add the runner that consumes `JobSchedule`.
-
----
-
-## DEBT-006: Test suite only guards registration lists
-
-- **Key**: tests::minimal-coverage
-- **Category**: Testing
-- **Severity**: High
-- **Effort**: L (1-2 days)
-- **Files**: `tests/Orders.Tests/EventRegistryTests.cs`, `tests/Orders.Tests/ReportCatalogTests.cs`
-
-### Issue
-Two theories check that events are registered and exports are visible; dispatch, DLQ routing, checkout transitions, and the money fields are untested, and there are no integration tests.
-
-### Recommended fix
-Add behaviour tests via the `add-tests` skill, starting with `OutboxDispatcher` and `CheckoutController`.
-
----
-
-**Categories**: Architecture, Data Access, DI/Lifetime, API Design, Async, Testing, Types/Nullability, Performance, Dependencies, Security
+Delete or implement and register with a scheduler.
 
 ---
 
 ## Dismissed proposals — do not re-propose without materially changed evidence
-
-> These are reviewed claims the team determined are not debt. Keep every row for auditability.
-> A later scan may reopen one only by naming the concrete evidence delta in a new active item.
 
 | Key | Affected paths / symbols | Evidence reviewed | Dismissed | Reason |
 |-----|--------------------------|-------------------|-----------|--------|
@@ -138,9 +207,8 @@ Add behaviour tests via the `add-tests` skill, starting with `OutboxDispatcher` 
 
 ## Trojan Horse Opportunities
 
-_Group debt items by feature area so developers can bundle cleanup into feature work._
-
-- **Checkout / API**: DEBT-002, DEBT-003, DEBT-006
-- **Reports**: DEBT-004
-- **Integrations**: DEBT-001
-- **Jobs**: DEBT-005
+- **Checkout / events**: DEBT-002, DEBT-003, DEBT-004, DEBT-007
+- **Reports**: DEBT-001, DEBT-009
+- **API surface**: DEBT-005, DEBT-006
+- **Data**: DEBT-008, DEBT-010
+- **Dead code**: DEBT-011, DEBT-012
