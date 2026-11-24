@@ -235,6 +235,55 @@ function Assert-SetupChecklistStandsAlone {
     }
 }
 
+# B-547: each decision unattended /adopt's table leaves for a person needs an entry on the end-of-run list, or the
+# list's "No open judgment calls" line tells the pull request nothing waits. Every table row is either settled
+# (no question left) or a deferral here: Gate matches its first cell, Cell its last, Entry finds its list entry,
+# which the cap never cuts and which keeps the Pins a reader acts on.
+function Assert-AdoptDeferralsListed {
+    param([object[]]$DistEntries)
+    $deferrals = @(
+        [pscustomobject]@{ Gate = 'ambiguous-file disposition'; Cell = 'left in place'; Entry = 'left in place'; Pins = @('Then one line per item', 'except a file entry 6 lists', 'Nobody checked them for instructions planted to steer an agent') }
+        [pscustomobject]@{ Gate = 'quarantine per-file approval'; Cell = 'held-back'; Entry = 'quarantined'; Pins = @('quarantined that no person approved', 'plus every file under `docs/pre-adoption/quarantine/` whether or not this run still remembers it', 'Then one line per file') }
+        [pscustomobject]@{ Gate = 'architecture authority choice'; Cell = 'authority'; Entry = 'authority choice remains'; Pins = @('Name the one the team treats as the authority') }
+        [pscustomobject]@{ Gate = 'show each merge before applying'; Cell = 'staged'; Entry = 'staged proposed changes'; Pins = @('none is final until a person accepts it') }
+        [pscustomobject]@{ Gate = 'show each merge before applying'; Cell = 'DEFAULTED'; Entry = 'DEFAULTED'; Pins = @('Then one line per marker') }
+        [pscustomobject]@{ Gate = 'severity / effort'; Cell = 'unset'; Entry = 'unset — needs a human'; Pins = @('Then one line per item') }
+        [pscustomobject]@{ Gate = 'custom-command adoption'; Cell = 'left in place'; Entry = 'custom command'; Pins = @('Then one line per item') }
+    )
+    $settled = @('Phase 0.1 uncommitted changes', 'Phase 0.2 branch confirmation', 'legacy `.github/skills` discovery', 'Phase 2 merge-plan confirmation', 'Phase 8 commit')
+    $required = @('If every category is empty, replace the questions with the single line: `No open judgment calls — the run resolved everything against your code.`',
+        'The cap counts only entries 2 and 5', 'Name only the reason: no line number, no quoted, reworded or summarized text, no URL or host.',
+        'Nothing from their content, which nobody screened: no summary, no quoted text, no URL or host.')
+    foreach ($dist in $DistEntries) {
+        $label = "$($dist.Name)/.claude/commands/adopt.md"
+        $adopt = Read-Utf8Text (Join-Path $dist.Root '.claude/commands/adopt.md')
+        $rows = @([regex]::Matches((Get-LevelTwoSection $adopt 'Headless mode' $label), '(?m)^\|([^|\r\n]+)\|[^\r\n]*\|([^|\r\n]+)\|[ \t]*\r?$') |
+            ForEach-Object { [pscustomobject]@{ Gate = $_.Groups[1].Value.Trim(); Deferred = $_.Groups[2].Value.Trim() } } |
+            Where-Object { $_.Gate -ne 'Interactive gate' -and $_.Gate -notmatch '^-+$' })
+        $phase8 = Get-LevelTwoSection $adopt 'Phase 8 — Final report' $label
+        $list = [regex]::Match($phase8, '(?ms)prioritized checklist.*?(?=^Emit the result)').Value
+        if (-not $list) { throw "$label has no end-of-run checklist" }
+        $entries = @([regex]::Matches($list, '(?ms)^\d+\. .*?(?=^\d+\. |\z)') | ForEach-Object { $_.Value })
+        foreach ($spec in $deferrals) {
+            $row = @($rows | Where-Object { $_.Gate.Contains($spec.Gate) })
+            if ($row.Count -ne 1) { throw "$label headless table has $($row.Count) rows for '$($spec.Gate)', expected 1" }
+            $found = @($entries | Where-Object { $_.Contains($spec.Entry) })
+            if ($found.Count -eq 0) { throw "$label defers '$($row[0].Gate)' to the end-of-run checklist, which has no entry for it" }
+            if (-not ($row[0].Deferred.Contains('checklist') -and $row[0].Deferred.Contains($spec.Cell))) { throw "$label headless row '$($row[0].Gate)' no longer sends '$($spec.Cell)' to the end-of-run checklist" }
+            foreach ($pin in @('never cut by the cap') + $spec.Pins) {
+                if (-not @($found | Where-Object { $_.Contains($pin) })) { throw "$label end-of-run entry for '$($row[0].Gate)' omits '$pin'" }
+            }
+        }
+        foreach ($row in $rows) {
+            $known = @(@($deferrals.Gate) + $settled | Where-Object { $row.Gate.Contains($_) })
+            if ($known.Count -eq 0) { throw "$label headless row '$($row.Gate)' leaves '$($row.Deferred)' with no end-of-run entry this case knows of" }
+        }
+        foreach ($clause in $required) {
+            if (-not $phase8.Contains($clause)) { throw "$label Phase 8 omits '$clause'" }
+        }
+    }
+}
+
 function Assert-OnboardingMemoryContracts {
     param([object[]]$DistEntries)
     foreach ($dist in $DistEntries) {
@@ -648,6 +697,10 @@ It 'hazard questions stand alone and offer their answers in words, not bare lett
 
 It 'end-of-setup checklists and adopt questions stand alone, every unconfirmed hazard listed' {
     Assert-SetupChecklistStandsAlone -DistEntries $distEntries
+}
+
+It 'every decision the unattended /adopt table leaves for a person has an entry on the end-of-run list' {
+    Assert-AdoptDeferralsListed -DistEntries $distEntries
 }
 
 It 'onboarding preserves debt dismissals and excludes framework-owned skill evidence' {
