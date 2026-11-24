@@ -11437,3 +11437,5 @@ Run by a Fable 5.2 session on branch `b-529` at 7363b502, from the designer's me
 - **Left, the maintainer's move**: waive the timed calls and rule, or log `claude` in at a terminal. Then, once `claude auth status` reports a login: 10 warm and 2 cold timed calls of C (about 0.02 USD) for the latency and cost of a real call; the accuracy run only if C passes latency. The recommendation does not rest on it.
 
 Decisions opened on this evidence (`meta/decisions-index.md`): WSD-100 (keep `route-prompt`; **Reopen** on process-free prompt-time context or a knockout arm) and the v0.51.0 decision above. Reopen triggers met: none. Claude Code's `prompt` hook type is process-free and prompt-time but cannot add context, and no arm here is a knockout.
+
+The paid leg was waived by the maintainer in chat 2026-11-24 ("Waive and close") and B-529 closed the same day, so a real call's latency and cost stay unmeasured.

@@ -243,6 +243,8 @@ The installer wrote only inside your repository and changed no Git configuration
    `.claude/hooks/`, and the framework's `_comment`, `env` and `defaultShell` unless you use them; keep keys of
    your own, and delete the file if nothing of yours is left. If you added your own hooks to
    `.github/hooks/hooks.json`, restore the file from Git and remove only the entries naming `.claude\hooks\`.
+   Do steps 2 and 3 yourself: the write guard refuses an agent's file-tool change to the hook files and to
+   its own entry in `.claude/settings.json`.
 4. In `CLAUDE.md`, remove the framework's import lines, `@.github/instructions/framework-rules.instructions.md`
    (and `@AGENTS.md` only if you delete `AGENTS.md` as well).
 5. Delete `.claude/.state/` and `.claude/ai-audit.log`, then any directory left empty.

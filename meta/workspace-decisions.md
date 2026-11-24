@@ -4846,7 +4846,10 @@ until B-530 runs. B-425, the plain-words candidate, is folded into B-530.
 same logic, not run), so the agent can switch the guards off.
 **Decision (the maintainer's, in chat 2026-11-19).** The guard refuses a settings write whose result no longer registers `guard.ps1`, and any agent write
 to `.claude/hooks/*.ps1` or `.github/hooks/hooks.json`. Rejected: blocking every agent write to `.claude/settings*.json`, which stops `/adopt` and the
-upgrade checklist's settings step; and leaving it open with a documentation line. Let through: the shell, which the guard does not read. Not yet built.
+upgrade checklist's settings step; and leaving it open with a documentation line. Let through: the shell, which the guard does not read.
+**Answered (the maintainer's, in chat 2026-11-24).** "No longer registers" means the guard entries already on disk do not stay unchanged, with their
+matcher, not that the result fails to match the shipped entry; and the rule also covers `.claude/settings.local.json` and refuses a write that newly sets
+`disableAllHooks`. Built 2026-11-24 (B-490).
 **Reopen** if `/adopt` or an update is reported blocked by the rule, or a team reports the guards switched off through a path the rule does not read.
 
 ## WSD-133: the reviewers keep their shell, the Copilot wrappers get a tool list, and nothing calls them read-only (2026-11-19)

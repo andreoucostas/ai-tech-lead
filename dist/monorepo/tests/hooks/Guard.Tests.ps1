@@ -1090,4 +1090,286 @@ It 'guard: 200 replacements items whose text is a 2,000-line array are decided u
     }
 }
 
+# Hook wiring: the agent cannot write the hook scripts or the Copilot hook file, nor leave a settings file that drops or changes
+# the guard's entry, while ordinary settings edits pass. Each case runs in a temp root holding a settings file shaped like the
+# shipped one; every mismatch of a case is reported, not only the first.
+$wiringGuard = 'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1 ; if ($null -eq $LASTEXITCODE) { exit 2 } ; exit $LASTEXITCODE'
+$wiringPost = 'pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/post-write.ps1 ; exit $LASTEXITCODE'
+$wiringSettings = (@'
+{
+  "_comment": "Shaped like the shipped registrations.",
+  "permissions": { "allow": [ "Bash(git status)" ] },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "GUARDCMD", "shell": "powershell", "onFailure": "block", "cwd": "." }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "POSTCMD", "shell": "powershell", "timeout": 90, "cwd": "." }
+        ]
+      }
+    ]
+  }
+}
+'@).Replace("`r`n", "`n").Replace('GUARDCMD', $wiringGuard).Replace('POSTCMD', $wiringPost)
+$wiringPreGroup = $wiringSettings.Substring($wiringSettings.IndexOf('    "PreToolUse"'), $wiringSettings.IndexOf('    "PostToolUse"') - $wiringSettings.IndexOf('    "PreToolUse"'))
+$wiringConflictBlock = "<<<<<<< HEAD`n  `"permissions`": { `"allow`": [ `"Bash(git status)`", `"Bash(git diff)`" ] },`n=======`n  `"permissions`": { `"allow`": [ `"Bash(git status)`", `"Bash(npm test)`" ] },`n>>>>>>> feature`n"
+$wiringResolvedLine = "  `"permissions`": { `"allow`": [ `"Bash(git status)`", `"Bash(git diff)`", `"Bash(npm test)`" ] },`n"
+$wiringPermissionLine = "  `"permissions`": { `"allow`": [ `"Bash(git status)`" ] },`n"
+$wiringConflict = $wiringSettings.Replace($wiringPermissionLine, $wiringConflictBlock)
+$wiringCredential = '{ "password": "hunter2hunter2" }'
+function New-WiringRoot([ref]$Base) {
+    $Base.Value = Join-Path ([IO.Path]::GetTempPath()) ('guard-wiring-' + [guid]::NewGuid().ToString('N'))
+    $root = Join-Path $Base.Value 'shop'
+    $null = Copy-HookInto $guardPs $root
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    foreach ($folder in '.github\hooks', 'src\backup~1', 'apps\api\.claude', 'apps\off\.claude', 'apps\conflict\.claude', 'apps\crlf\.claude') { New-Item -ItemType Directory -Force (Join-Path $root $folder) | Out-Null }
+    $files = [ordered]@{
+        '.claude\settings.json' = $wiringSettings; '.claude\hooks\session-start.ps1' = "# session start`n"; '.github\hooks\hooks.json' = '{"version":1,"hooks":{}}'
+        'src\test+cfg.json' = '{}'; 'src\report~1.json' = '{}'; 'apps\api\.claude\settings.json' = '{ "model": "sonnet" }'
+        'apps\off\.claude\settings.json' = '{ "disableAllHooks": true, "permissions": { "allow": [] } }'; 'apps\conflict\.claude\settings.json' = $wiringConflict
+        'apps\crlf\.claude\settings.json' = $wiringSettings.Replace("`n", "`r`n")
+    }
+    foreach ($name in $files.Keys) { [IO.File]::WriteAllText((Join-Path $root $name), $files[$name], $utf8) }
+    return $root
+}
+function New-WiringEvent([string]$Surface, [string]$Tool, $ToolArgs, [string]$Cwd) {
+    $e = if ($Surface -eq 'Claude') { @{ tool_name = $Tool; tool_input = $ToolArgs } } else { @{ toolName = $Tool; toolArgs = $ToolArgs } }
+    if ($Cwd) { $e.cwd = $Cwd }
+    ConvertTo-Json -InputObject $e -Compress -Depth 8
+}
+function Invoke-WiringCases([string]$Hook, $Cases) {
+    $wrong = New-Object System.Collections.Generic.List[string]
+    foreach ($case in $Cases) {
+        $result = Invoke-Hook $Hook $case.e
+        $got = Get-Decision $result
+        if ($got -ne $case.d) { $wrong.Add("$($case.n): expected $($case.d), got $got"); continue }
+        if ($case.p) {
+            $said = if ($case.d -eq 'BLOCK') { $result.Err } else { $result.Out }
+            if (-not $said.Contains($case.p)) { $wrong.Add("$($case.n): the reason does not say '$($case.p)': $said") }
+        }
+    }
+    Assert ($wrong.Count -eq 0) ("$($wrong.Count) of $(@($Cases).Count) wrong: " + ($wrong -join ' | '))
+}
+$wiringHookPhrase = 'hook file of the framework'
+$wiringDropPhrase = 'drops or changes the write guard'
+$wiringUnknownPhrase = 'cannot work out the file'
+$wiringPatchPhrase = 'A teammate makes this change by hand.'
+
+It 'guard: an agent cannot write the hook scripts or the Copilot hook file' {
+    $base = $null
+    try {
+        $root = New-WiringRoot ([ref]$base); $hook = "$root\.claude\hooks\guard.ps1"
+        $cases = @(
+            @{ n = 'a Write of guard.ps1'; d = 'BLOCK'; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude\hooks\guard.ps1"; content = 'exit 0' } $root) }
+            @{ n = 'an Edit of session-start.ps1'; d = 'BLOCK'; e = (New-WiringEvent Claude Edit @{ file_path = "$root\.claude\hooks\session-start.ps1"; old_string = '# session start'; new_string = 'exit 0' } $root) }
+            @{ n = 'a Write of a new team script'; d = 'BLOCK'; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude\hooks\team-check.ps1"; content = 'exit 0' } $root) }
+            @{ n = 'upper case'; d = 'BLOCK'; e = (New-WiringEvent Claude Write @{ file_path = "$root\.CLAUDE\HOOKS\GUARD.PS1"; content = 'exit 0' } $root) }
+            @{ n = 'trailing dots'; d = 'BLOCK'; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude.\hooks\guard.ps1."; content = 'exit 0' } $root) }
+            @{ n = 'a stream suffix'; d = 'BLOCK'; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude\hooks\guard.ps1::`$DATA"; content = 'exit 0' } $root) }
+            @{ n = 'a \\?\ prefix'; d = 'BLOCK'; e = (New-WiringEvent Claude Write @{ file_path = "\\?\$root\.claude\hooks\guard.ps1"; content = 'exit 0' } $root) }
+            @{ n = 'a Copilot create of hooks.json'; d = 'DENY'; e = (New-WiringEvent Copilot create @{ path = '.github/hooks/hooks.json'; file_text = '{"version":1,"hooks":{}}' } $root) }
+            @{ n = 'a Copilot edit emptying hooks.json'; d = 'DENY'; e = (New-WiringEvent Copilot edit @{ path = '.github/hooks/hooks.json'; old_str = '{"version":1,"hooks":{}}'; new_str = '' } $root) }
+            @{ n = 'hooks/guard.ps1 from a .claude working directory'; d = 'DENY'; e = (New-WiringEvent Copilot create @{ path = 'hooks/guard.ps1'; file_text = 'exit 0' } "$root\.claude") }
+            @{ n = '..\.claude\hooks\guard.ps1 from src'; d = 'DENY'; e = (New-WiringEvent Copilot create @{ path = '..\.claude\hooks\guard.ps1'; file_text = 'exit 0' } "$root\src") }
+            @{ n = 'a patch deleting hooks.json'; d = 'DENY'; e = (New-WiringEvent Copilot apply_patch "*** Begin Patch`n*** Delete File: .github/hooks/hooks.json`n*** End Patch`n" $root) }
+            @{ n = 'a patch updating guard.ps1 sent through settings.json'; d = 'BLOCK'; e = (New-WiringEvent Claude Edit "*** Begin Patch`n*** Update File: .claude/hooks/guard.ps1`n@@`n-# guard`n+exit 0`n*** End Patch`n" $root) }
+            @{ n = 'a patch moving a file onto guard.ps1'; d = 'DENY'; e = (New-WiringEvent Copilot apply_patch "*** Begin Patch`n*** Update File: src/x.ps1`n*** Move to: .claude/hooks/guard.ps1`n@@`n+exit 0`n*** End Patch`n" $root) }
+            @{ n = 'a replacements item for hooks.json beside one for another file'; d = 'DENY'; e = (New-WiringEvent Copilot multi_replace_string_in_file @{ replacements = @(@{ filePath = "$root\src\a.ts"; oldString = 'a'; newString = 'b' }, @{ filePath = "$root\.github\hooks\hooks.json"; oldString = '{'; newString = '[' }) } $root) }
+        )
+        foreach ($case in $cases) { $case.p = $wiringHookPhrase }
+        Invoke-WiringCases $hook $cases
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+It 'guard: a settings write that drops or changes the guard entry is refused' {
+    $base = $null
+    try {
+        $root = New-WiringRoot ([ref]$base); $hook = "$root\.claude\hooks\guard.ps1"; $s = "$root\.claude\settings.json"
+        $duplicate = $wiringSettings.TrimEnd().TrimEnd('}') + ', "hooks": {} }'
+        $cases = @(
+            @{ n = 'a Write of empty hooks'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Write @{ file_path = $s; content = '{ "hooks": {} }' } $root) }
+            @{ n = 'a Copilot create of empty hooks'; d = 'DENY'; p = $wiringDropPhrase; e = (New-WiringEvent Copilot create @{ path = '.claude/settings.json'; file_text = '{ "hooks": {} }' } $root) }
+            @{ n = 'an Edit removing the PreToolUse group'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = $wiringPreGroup; new_string = '' } $root) }
+            @{ n = 'an Edit renaming guard.ps1'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = 'guard.ps1'; new_string = 'guard.off' } $root) }
+            @{ n = 'a Copilot edit appending ; exit 0'; d = 'DENY'; p = $wiringDropPhrase; e = (New-WiringEvent Copilot edit @{ path = '.claude/settings.json'; old_str = 'guard.ps1 ; if ($null -eq $LASTEXITCODE) { exit 2 } ; exit $LASTEXITCODE'; new_str = 'guard.ps1 ; if ($null -eq $LASTEXITCODE) { exit 2 } ; exit $LASTEXITCODE ; exit 0' } $root) }
+            @{ n = 'a narrowed matcher'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = '"matcher": "Write|Edit|NotebookEdit"'; new_string = '"matcher": "NotebookEdit"' } $root) }
+            @{ n = 'a timeout added to the entry'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = '"onFailure": "block"'; new_string = '"onFailure": "block", "timeout": 1' } $root) }
+            @{ n = 'a key added to the group'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = '"matcher": "Write|Edit|NotebookEdit",'; new_string = '"matcher": "Write|Edit|NotebookEdit", "x": 1,' } $root) }
+            @{ n = 'disableAllHooks set by an Edit'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = '"permissions":'; new_string = '"disableAllHooks": true, "permissions":' } $root) }
+            @{ n = 'disableAllHooks in settings.local.json'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude\settings.local.json"; content = '{ "disableAllHooks": true }' } $root) }
+            @{ n = 'a relative path with no working directory'; d = 'DENY'; p = $wiringDropPhrase; e = (New-WiringEvent Copilot create @{ path = '.claude/settings.json'; file_text = '{ "hooks": {} }' } '') }
+            @{ n = 'a replacements item for settings beside one for another file'; d = 'DENY'; p = $wiringDropPhrase; e = (New-WiringEvent Copilot multi_replace_string_in_file @{ replacements = @(@{ filePath = "$root\src\a.ts"; oldString = 'a'; newString = 'b' }, @{ filePath = $s; oldString = 'guard.ps1'; newString = 'guard.off' }) } $root) }
+            @{ n = 'a Write without the guard over a file in a merge conflict'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\apps\conflict\.claude\settings.json"; content = '{ "permissions": {} }' } $root) }
+            @{ n = 'a comment'; d = 'BLOCK'; p = $wiringUnknownPhrase; e = (New-WiringEvent Claude Write @{ file_path = $s; content = $wiringSettings.Replace('"_comment"', "// note`n  `"_comment`"") } $root) }
+            @{ n = 'a trailing comma'; d = 'BLOCK'; p = $wiringUnknownPhrase; e = (New-WiringEvent Claude Write @{ file_path = $s; content = $wiringSettings.Replace('"Bash(git status)" ]', '"Bash(git status)", ]') } $root) }
+            @{ n = 'a byte-order mark'; d = 'BLOCK'; p = $wiringUnknownPhrase; e = (New-WiringEvent Claude Write @{ file_path = $s; content = [string][char]0xFEFF + $wiringSettings } $root) }
+            @{ n = 'hooks twice'; d = 'BLOCK'; p = $wiringUnknownPhrase; e = (New-WiringEvent Claude Write @{ file_path = $s; content = $duplicate } $root) }
+            @{ n = 'hooks twice, once escaped'; d = 'BLOCK'; p = $wiringUnknownPhrase; e = (New-WiringEvent Claude Write @{ file_path = $s; content = $duplicate.Replace(', "hooks": {} }', ', "\u0068ooks": {} }') } $root) }
+            @{ n = 'an empty Write'; d = 'BLOCK'; p = $wiringUnknownPhrase; e = (New-WiringEvent Claude Write @{ file_path = $s; content = '' } $root) }
+            @{ n = 'an Edit whose old text is not in the file'; d = 'BLOCK'; p = $wiringUnknownPhrase; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = '"model": "x"'; new_string = '"model": "y"' } $root) }
+            @{ n = 'an insert at a line'; d = 'DENY'; p = $wiringUnknownPhrase; e = (New-WiringEvent Copilot str_replace_editor @{ command = 'insert'; path = $s; insert_line = 1; new_str = '  "model": "x",' } $root) }
+            @{ n = 'an undo_edit'; d = 'DENY'; p = $wiringUnknownPhrase; e = (New-WiringEvent Copilot str_replace_editor @{ command = 'undo_edit'; path = $s } $root) }
+            @{ n = 'a patch updating settings sent through settings.json'; d = 'BLOCK'; p = $wiringPatchPhrase; e = (New-WiringEvent Claude Edit "*** Begin Patch`n*** Update File: .claude/settings.json`n@@`n-  `"permissions`": { `"allow`": [ `"Bash(git status)`" ] },`n+  `"permissions`": { `"allow`": [ `"Bash(git diff)`" ] },`n*** End Patch`n" $root) }
+            @{ n = 'a patch deleting settings'; d = 'DENY'; p = $wiringPatchPhrase; e = (New-WiringEvent Copilot apply_patch "*** Begin Patch`n*** Delete File: .claude/settings.json`n*** End Patch`n" $root) }
+            @{ n = 'a patch moving settings out'; d = 'DENY'; p = $wiringPatchPhrase; e = (New-WiringEvent Copilot apply_patch "*** Begin Patch`n*** Update File: .claude/settings.json`n*** Move to: old-settings.json`n*** End Patch`n" $root) }
+        )
+        Invoke-WiringCases $hook $cases
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+# 8.3 short names are read back from the volume; a volume with them off has none to test.
+$wiringShortBase = $null
+$wiringShortRoot = New-WiringRoot ([ref]$wiringShortBase)
+$wiringShort = @{}
+try {
+    $fso = New-Object -ComObject Scripting.FileSystemObject
+    $wiringShort.claude = $fso.GetFolder("$wiringShortRoot\.claude").ShortName
+    $wiringShort.github = $fso.GetFolder("$wiringShortRoot\.github").ShortName
+    $wiringShort.settings = $fso.GetFile("$wiringShortRoot\.claude\settings.json").ShortName
+    $wiringShort.hooksJson = $fso.GetFile("$wiringShortRoot\.github\hooks\hooks.json").ShortName
+    $wiringShort.session = $fso.GetFile("$wiringShortRoot\.claude\hooks\session-start.ps1").ShortName
+    $wiringShort.testCfg = $fso.GetFile("$wiringShortRoot\src\test+cfg.json").ShortName
+} catch { }
+$wiringShortOff = $wiringShort.Count -lt 6 -or @($wiringShort.Values | Where-Object { $_ -notmatch '~[0-9]' }).Count -gt 0
+$wiringShortCase = 'guard: an agent cannot reach the hook files through an 8.3 short name'
+$wiringCredentialCase = 'guard: a test-looking 8.3 short name does not exempt a credential literal'
+if ($wiringShortOff) {
+    Skip $wiringShortCase "8.3 short names are disabled on the volume holding $wiringShortBase (read back: $($wiringShort.Values -join ', '))"
+    Skip $wiringCredentialCase "8.3 short names are disabled on the volume holding $wiringShortBase"
+} else {
+    It $wiringShortCase {
+        $root = $wiringShortRoot; $hook = "$root\.claude\hooks\guard.ps1"
+        $c = $wiringShort.claude; $settingsShort = "$c\$($wiringShort.settings)"
+        $cases = @(
+            @{ n = "a Write to $settingsShort"; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\$settingsShort"; content = '{"hooks":{}}' } $root) }
+            @{ n = "a Copilot edit of $($wiringShort.github)/hooks/$($wiringShort.hooksJson)"; d = 'DENY'; p = $wiringHookPhrase; e = (New-WiringEvent Copilot edit @{ path = "$($root.Replace('\', '/'))/$($wiringShort.github)/hooks/$($wiringShort.hooksJson)"; old_str = '{'; new_str = '[' } $root) }
+            @{ n = "a Write to $c\hooks\$($wiringShort.session)"; d = 'BLOCK'; p = $wiringHookPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\$c\hooks\$($wiringShort.session)"; content = 'exit 0' } $root) }
+            @{ n = "a \\?\ prefix on $settingsShort"; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Write @{ file_path = "\\?\$root\$settingsShort"; content = '{"hooks":{}}' } $root) }
+            @{ n = "a stream suffix on $settingsShort"; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\$settingsShort::`$DATA"; content = '{"hooks":{}}' } $root) }
+            @{ n = "a relative $settingsShort"; d = 'DENY'; p = $wiringDropPhrase; e = (New-WiringEvent Copilot create @{ path = $settingsShort.Replace('\', '/'); file_text = '{"hooks":{}}' } $root) }
+            @{ n = 'a short name on a network path, not resolved'; d = 'BLOCK'; p = '8.3 short name'; e = (New-WiringEvent Claude Write @{ file_path = '\\192.0.2.30\share\CLAUDE~1\SETTIN~1.JSO'; content = '{"hooks":{}}' } $root) }
+        )
+        Invoke-WiringCases $hook $cases
+    }
+    It $wiringCredentialCase {
+        $root = $wiringShortRoot; $hook = "$root\.claude\hooks\guard.ps1"; $short = $wiringShort.testCfg
+        $cases = @(
+            @{ n = "a Write of a literal to src\$short"; d = 'BLOCK'; p = 'hardcoded credential'; e = (New-WiringEvent Claude Write @{ file_path = "$root\src\$short"; content = $wiringCredential } $root) }
+            @{ n = "a relative Copilot create of src/$short"; d = 'DENY'; p = 'hardcoded credential'; e = (New-WiringEvent Copilot create @{ path = "src/$short"; file_text = $wiringCredential } $root) }
+        )
+        Invoke-WiringCases $hook $cases
+    }
+}
+if ($wiringShortBase) { Remove-Item -LiteralPath $wiringShortBase -Recurse -Force -ErrorAction SilentlyContinue }
+
+# Windows and Node open a folder spelled with its directory stream ('.claude::$INDEX_ALLOCATION') as the folder itself.
+It 'guard: a folder spelled with an NTFS directory stream does not hide the hook files' {
+    $base = $null
+    try {
+        $root = New-WiringRoot ([ref]$base); $hook = "$root\.claude\hooks\guard.ps1"
+        $cases = @(
+            @{ n = '.claude::$INDEX_ALLOCATION\settings.json'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude::`$INDEX_ALLOCATION\settings.json"; content = '{ "hooks": {} }' } $root) }
+            @{ n = '.claude:$I30:$INDEX_ALLOCATION\settings.json'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude:`$I30:`$INDEX_ALLOCATION\settings.json"; content = '{ "hooks": {} }' } $root) }
+            @{ n = '.claude\hooks::$INDEX_ALLOCATION\guard.ps1'; d = 'BLOCK'; p = $wiringHookPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude\hooks::`$INDEX_ALLOCATION\guard.ps1"; content = 'exit 0' } $root) }
+            @{ n = '.claude\hooks:$I30:$INDEX_ALLOCATION\guard.ps1'; d = 'BLOCK'; p = $wiringHookPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude\hooks:`$I30:`$INDEX_ALLOCATION\guard.ps1"; content = 'exit 0' } $root) }
+            @{ n = 'a Copilot create of .github::$INDEX_ALLOCATION/hooks/hooks.json'; d = 'DENY'; p = $wiringHookPhrase; e = (New-WiringEvent Copilot create @{ path = '.github::$INDEX_ALLOCATION/hooks/hooks.json'; file_text = '{}' } $root) }
+            @{ n = 'a patch deleting .claude::$INDEX_ALLOCATION/settings.json'; d = 'DENY'; p = $wiringPatchPhrase; e = (New-WiringEvent Copilot apply_patch "*** Begin Patch`n*** Delete File: .claude::`$INDEX_ALLOCATION/settings.json`n*** End Patch`n" $root) }
+        )
+        Invoke-WiringCases $hook $cases
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
+# A repository opened through a network path (here the machine's own administrative share): its settings and a file whose real
+# name holds ~N stay writable, and a short-looking name on a host outside it is refused with advice a person can follow.
+$wiringUncBase = $null
+$wiringUncRoot = New-WiringRoot ([ref]$wiringUncBase)
+$wiringUncCase = 'guard: a repository opened by a network path keeps its settings and real tilde names writable'
+$wiringUnc = '\\localhost\' + $wiringUncRoot.Substring(0, 1) + '$' + $wiringUncRoot.Substring(2)
+if (-not [regex]::IsMatch($wiringUncRoot, '^[A-Za-z]:\\') -or -not (Test-Path -LiteralPath "$wiringUnc\.claude\settings.json")) {
+    Skip $wiringUncCase "this machine has no administrative share to reach $wiringUncRoot through"
+} else {
+    It $wiringUncCase {
+        $root = $wiringUnc; $hook = "$root\.claude\hooks\guard.ps1"; $s = "$root\.claude\settings.json"
+        $cases = @(
+            @{ n = 'an Edit adding a permission'; d = 'ALLOW'; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = '"Bash(git status)"'; new_string = '"Bash(git status)", "Bash(git diff)"' } $root) }
+            @{ n = 'a file really named report~1.json'; d = 'ALLOW'; e = (New-WiringEvent Claude Write @{ file_path = "$root\src\report~1.json"; content = '{}' } $root) }
+            @{ n = 'a new file named data~1.json'; d = 'ALLOW'; e = (New-WiringEvent Claude Write @{ file_path = "$root\src\data~1.json"; content = '{}' } $root) }
+            @{ n = 'an Edit renaming guard.ps1'; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = 'guard.ps1'; new_string = 'guard.off' } $root) }
+            @{ n = 'data~1.json on another host'; d = 'BLOCK'; p = 'a teammate writes it by hand'; e = (New-WiringEvent Claude Write @{ file_path = '\\192.0.2.31\share\p\data~1.json'; content = '{}' } $root) }
+            @{ n = 'a real name reached through src\x\..'; d = 'ALLOW'; e = (New-WiringEvent Claude Write @{ file_path = "$root\src\x\..\data~1.json"; content = '{}' } $root) }
+        )
+        Invoke-WiringCases $hook $cases
+    }
+}
+# A short name whose path climbs out of a network repository with '..' and comes back is resolved where Windows opens it.
+$wiringClimbCase = 'guard: a short name that climbs out of a network repository and back still reaches the hook files'
+$wiringUncShort = @{}
+try {
+    $fso = New-Object -ComObject Scripting.FileSystemObject
+    $wiringUncShort.claude = $fso.GetFolder("$wiringUncRoot\.claude").ShortName
+    $wiringUncShort.settings = $fso.GetFile("$wiringUncRoot\.claude\settings.json").ShortName
+} catch { }
+if (-not [regex]::IsMatch($wiringUncRoot, '^[A-Za-z]:\\') -or -not (Test-Path -LiteralPath "$wiringUnc\.claude\settings.json")) {
+    Skip $wiringClimbCase "this machine has no administrative share to reach $wiringUncRoot through"
+} elseif ($wiringUncShort.Count -lt 2 -or @($wiringUncShort.Values | Where-Object { $_ -notmatch '~[0-9]' }).Count -gt 0) {
+    Skip $wiringClimbCase "8.3 short names are disabled on the volume holding $wiringUncRoot"
+} else {
+    It $wiringClimbCase {
+        $root = $wiringUnc; $hook = "$root\.claude\hooks\guard.ps1"; $leaf = Split-Path -Leaf $wiringUncRoot
+        $c = $wiringUncShort.claude; $st = $wiringUncShort.settings
+        $cases = @(
+            @{ n = "src\..\..\$leaf\$c\hooks\guard.ps1"; d = 'BLOCK'; p = $wiringHookPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\src\..\..\$leaf\$c\hooks\guard.ps1"; content = 'exit 0' } $root) }
+            @{ n = "src\..\..\$leaf\$c\$st"; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Write @{ file_path = "$root\src\..\..\$leaf\$c\$st"; content = '{ "hooks": {} }' } $root) }
+            @{ n = "a relative ..\$leaf\$c\$st"; d = 'BLOCK'; p = $wiringDropPhrase; e = (New-WiringEvent Claude Write @{ file_path = "..\$leaf\$c\$st"; content = '{ "hooks": {} }' } $root) }
+            @{ n = "a sibling ..\sib\$c\$st"; d = 'BLOCK'; p = '8.3 short name'; e = (New-WiringEvent Claude Write @{ file_path = "$root\..\sib\$c\$st"; content = '{ "hooks": {} }' } $root) }
+        )
+        Invoke-WiringCases $hook $cases
+    }
+}
+if ($wiringUncBase) { Remove-Item -LiteralPath $wiringUncBase -Recurse -Force -ErrorAction SilentlyContinue }
+
+It 'guard: ordinary settings edits, team files and names with a tilde are allowed (green before and after)' {
+    $base = $null
+    try {
+        $root = New-WiringRoot ([ref]$base); $hook = "$root\.claude\hooks\guard.ps1"; $s = "$root\.claude\settings.json"
+        $guardEntry = '{"onFailure":"block","cwd":".","shell":"powershell","type":"command","command":"' + $wiringGuard + '"}'
+        $postEntry = '{"cwd":".","timeout":90,"shell":"powershell","command":"' + $wiringPost + '","type":"command"}'
+        $reordered = '{"hooks":{"PostToolUse":[{"hooks":[' + $postEntry + '],"matcher":"Write|Edit"}],"PreToolUse":[{"hooks":[' + $guardEntry + '],"matcher":"Write|Edit|NotebookEdit"}]},"permissions":{"allow":["Bash(git status)","Bash(git diff)"]}}'
+        $teamHook = '"PostToolUse": [ { "matcher": "Write", "hooks": [ { "type": "command", "command": "pwsh -File tools/format.ps1" } ] },'
+        $cases = @(
+            @{ n = 'an Edit adding a permission'; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = '"Bash(git status)"'; new_string = '"Bash(git status)", "Bash(git diff)"' } $root) }
+            @{ n = 'an Edit adding a permission through .claude::$INDEX_ALLOCATION'; e = (New-WiringEvent Claude Edit @{ file_path = "$root\.claude::`$INDEX_ALLOCATION\settings.json"; old_string = '"Bash(git status)"'; new_string = '"Bash(git status)", "Bash(git diff)"' } $root) }
+            @{ n = 'a Copilot edit adding a permission'; e =(New-WiringEvent Copilot edit @{ path = '.claude/settings.json'; old_str = '"Bash(git status)"'; new_str = '"Bash(git status)", "Bash(git diff)"' } $root) }
+            @{ n = 'an Edit across two lines of a CRLF file'; e = (New-WiringEvent Claude Edit @{ file_path = "$root\apps\crlf\.claude\settings.json"; old_string = "`"Bash(git status)`" ] },`n  `"hooks`""; new_string = "`"Bash(git status)`", `"Bash(git diff)`" ] },`n  `"hooks`"" } $root) }
+            @{ n = 'a Write of the file compacted, reordered and with a permission added'; e = (New-WiringEvent Claude Write @{ file_path = $s; content = $reordered } $root) }
+            @{ n = 'an Edit adding a team hook'; e = (New-WiringEvent Claude Edit @{ file_path = $s; old_string = '"PostToolUse": ['; new_string = $teamHook } $root) }
+            @{ n = 'a Write of settings.local.json'; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude\settings.local.json"; content = '{ "permissions": { "allow": [ "Bash(npm test)" ] } }' } $root) }
+            @{ n = 'a Write of a settings file not yet on disk'; e = (New-WiringEvent Claude Write @{ file_path = "$root\apps\web\.claude\settings.json"; content = '{ "permissions": {} }' } $root) }
+            @{ n = 'an Edit of a settings file with no guard entry'; e = (New-WiringEvent Claude Edit @{ file_path = "$root\apps\api\.claude\settings.json"; old_string = '"sonnet"'; new_string = '"opus"' } $root) }
+            @{ n = 'an Edit of a file that already sets disableAllHooks'; e = (New-WiringEvent Claude Edit @{ file_path = "$root\apps\off\.claude\settings.json"; old_string = '"allow": []'; new_string = '"allow": [ "Bash(git status)" ]' } $root) }
+            @{ n = 'a Write resolving a merge conflict'; e = (New-WiringEvent Claude Write @{ file_path = "$root\apps\conflict\.claude\settings.json"; content = $wiringSettings.Replace($wiringPermissionLine, $wiringResolvedLine) } $root) }
+            @{ n = 'an Edit resolving a merge conflict'; e = (New-WiringEvent Claude Edit @{ file_path = "$root\apps\conflict\.claude\settings.json"; old_string = $wiringConflictBlock; new_string = $wiringResolvedLine } $root) }
+            @{ n = 'a script in .claude\hooks\tests'; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude\hooks\tests\x.ps1"; content = 'exit 0' } $root) }
+            @{ n = 'docs\hooks\guard.ps1.md'; e = (New-WiringEvent Claude Write @{ file_path = "$root\docs\hooks\guard.ps1.md"; content = 'notes' } $root) }
+            @{ n = 'an agent file under .claude'; e = (New-WiringEvent Claude Write @{ file_path = "$root\.claude\agents\x.md"; content = 'notes' } $root) }
+            @{ n = 'another JSON file beside hooks.json'; e = (New-WiringEvent Claude Write @{ file_path = "$root\.github\hooks\other.json"; content = '{}' } $root) }
+            @{ n = 'a Copilot view of settings'; e = (New-WiringEvent Copilot view @{ path = '.claude/settings.json' } $root) }
+            @{ n = 'a file really named report~1.json'; e = (New-WiringEvent Claude Write @{ file_path = "$root\src\report~1.json"; content = '{}' } $root) }
+            @{ n = 'a new file named data~1.json'; e = (New-WiringEvent Claude Write @{ file_path = "$root\src\data~1.json"; content = '{}' } $root) }
+            @{ n = 'a new file in a folder really named backup~1'; e = (New-WiringEvent Claude Write @{ file_path = "$root\src\backup~1\new.json"; content = '{}' } $root) }
+            @{ n = 'a new file under a short-looking folder that does not exist'; e = (New-WiringEvent Claude Write @{ file_path = "$root\src\NOSUCH~1\new.json"; content = '{}' } $root) }
+        )
+        foreach ($case in $cases) { $case.d = 'ALLOW' }
+        Invoke-WiringCases $hook $cases
+    } finally { if ($base) { Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue } }
+}
+
 exit (Write-TestSummary 'Guard.Tests (PowerShell)')

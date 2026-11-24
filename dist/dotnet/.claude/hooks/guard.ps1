@@ -30,6 +30,11 @@
 # Team waiver: a path listed in .claude/guard-allowlist.txt skips the secret and credential checks only, when every path
 # field of the event is listed; every agent write to that list through any of them, an empty edit and a deletion
 # included, is blocked (see Test-AllowlistTarget).
+# Hook wiring: every agent write to a hook script (.claude/hooks/*.ps1) or the Copilot hook file (.github/hooks/hooks.json), in
+# any folder, is blocked, an empty write, a deletion, a move, an 8.3 short name and a folder's stream spelling included; so is a write to
+# .claude/settings.json or .claude/settings.local.json whose resulting file drops or changes a PreToolUse entry naming guard.ps1
+# that the file holds now (its group's matcher included) or newly sets "disableAllHooks": true, and one whose resulting file
+# the guard cannot work out (see Test-SettingsWrite). A shell command is not read, as for every rule here.
 $ErrorActionPreference = 'SilentlyContinue'
 # Case-insensitive patterns fold case culture-invariantly ($ci) and string comparisons are ordinal:
 # under tr-TR the current culture folds 'I' to a dotless i (U+0131), so a culture-following (?i)
@@ -721,6 +726,290 @@ foreach ($target in $targets) {
         Exit-Blocked "Blocked write to ${target}: it changes the guard allowlist (.claude/$allowlistName), the team's list of paths the secret checks skip. An agent may not write, edit or delete it, not even to remove a line; a teammate edits it by hand and the change is reviewed in a pull request."
     }
 }
+
+# Hook wiring (see the header). A path is read as Windows opens it: '/' is '\', a '\\?\' or '\\.\' prefix and the drive or UNC
+# root drop, a stream suffix is cut from every segment (a file's '::$DATA', and a folder's '::$INDEX_ALLOCATION' or
+# ':$I30:$INDEX_ALLOCATION', which Windows and Node open as the folder itself) and so is a trailing dot or space, and '.', '..' and
+# empty segments collapse. Its last segments, ignoring case and in any folder, name a hook file (.claude\hooks\<name>.ps1,
+# .github\hooks\hooks.json) or a settings file (.claude\settings.json, .claude\settings.local.json).
+function Get-OpenedSegments([string]$Path) {
+    $p = $Path.Replace('/', '\')
+    if ($p.StartsWith('\\?\UNC\', $ordinalIgnoreCase) -or $p.StartsWith('\\.\UNC\', $ordinalIgnoreCase)) { $p = '\\' + $p.Substring(8) }
+    elseif ($p.StartsWith('\\?\', $ordinal) -or $p.StartsWith('\\.\', $ordinal)) { $p = $p.Substring(4) }
+    $p = [regex]::Replace($p, '^(?:[A-Za-z]:|\\\\[^\\]*\\[^\\]*)', '')
+    $raw = $p.Split([char]'\')
+    $kept = New-Object System.Collections.Generic.List[string]
+    for ($i = 0; $i -lt $raw.Length; $i++) {
+        $segment = $raw[$i]
+        $colon = $segment.IndexOf(':'); if ($colon -ge 0) { $segment = $segment.Substring(0, $colon) }
+        if (-not ([string]::Equals($segment, '.', $ordinal) -or [string]::Equals($segment, '..', $ordinal))) { $segment = $segment.TrimEnd(' ', '.') }
+        if ($segment.Length -eq 0 -or [string]::Equals($segment, '.', $ordinal)) { continue }
+        if ([string]::Equals($segment, '..', $ordinal)) { if ($kept.Count -gt 0) { $kept.RemoveAt($kept.Count - 1) }; continue }
+        $kept.Add($segment)
+    }
+    return ,$kept
+}
+function Get-SegmentKind($Segments) {
+    $n = $Segments.Count
+    if ($n -ge 2 -and [string]::Equals($Segments[$n - 2], '.claude', $ordinalIgnoreCase) -and
+        ([string]::Equals($Segments[$n - 1], 'settings.json', $ordinalIgnoreCase) -or [string]::Equals($Segments[$n - 1], 'settings.local.json', $ordinalIgnoreCase))) { return 'settings' }
+    if ($n -ge 3 -and [string]::Equals($Segments[$n - 2], 'hooks', $ordinalIgnoreCase) -and
+        (([string]::Equals($Segments[$n - 3], '.claude', $ordinalIgnoreCase) -and $Segments[$n - 1].EndsWith('.ps1', $ordinalIgnoreCase)) -or
+         ([string]::Equals($Segments[$n - 3], '.github', $ordinalIgnoreCase) -and [string]::Equals($Segments[$n - 1], 'hooks.json', $ordinalIgnoreCase)))) { return 'hooks' }
+    return ''
+}
+# The long path Windows opens for $Path: a relative path under the event's working directory, else the repository, and each
+# existing 8.3 segment expanded by GetFullPath through the file system (a segment that does not exist is nobody's alias and
+# stays as written). Only a local drive path, or a network path under a repository opened through one, whose host this hook runs
+# from: another network host may be unreachable and outlast the hook's time limit. $null when it cannot be resolved here.
+function Resolve-LongPath([string]$Path) {
+    $p = $Path.Replace('/', '\')
+    if ([regex]::IsMatch($p, '^\\\\\?\\[A-Za-z]:\\')) { $p = $p.Substring(4) }
+    if (-not [regex]::IsMatch($p, '^(?:[A-Za-z]:|\\)')) {
+        $base = if ($eventCwd) { $eventCwd } else { $repoRoot }
+        if (-not $base) { return $null }
+        $p = $base.TrimEnd('\') + '\' + $p
+    }
+    try {
+        if ([regex]::IsMatch($p, '^[A-Za-z]:\\')) { return [IO.Path]::GetFullPath($p.Substring(0, 2) + '\' + ((Get-OpenedSegments $p) -join '\')) }
+        if ($repoRoot -and $repoRoot.StartsWith('\\', $ordinal) -and $p.StartsWith($repoRoot, $ordinalIgnoreCase)) {
+            # Collapsed from the share root, so a '..' that climbs out of the repository and back is followed; the result must
+            # still lie under the repository.
+            $full = [IO.Path]::GetFullPath([regex]::Match($p, '^\\\\[^\\]+\\[^\\]+').Value + '\' + ((Get-OpenedSegments $p) -join '\'))
+            if ($full.StartsWith($repoRoot, $ordinalIgnoreCase)) { return $full }
+        }
+    } catch { }
+    return $null
+}
+# 'hooks', 'settings', 'unresolved' or ''. A relative path is also read under the event's working directory and under the
+# repository. A spelling with an 8.3 short name (~N) in its last three segments is read as Resolve-LongPath expands it; one that
+# cannot be resolved here (a network path outside the repository, an error) is 'unresolved' when its name ends .ps1, .json or .jso (Windows cuts a short
+# name's extension to three letters), since it may be any of them.
+function Get-WiringKind([string]$Path) {
+    $ErrorActionPreference = 'Stop'
+    if (-not $Path) { return '' }
+    $p = $Path.Replace('/', '\')
+    $spellings = New-Object System.Collections.Generic.List[string]
+    $spellings.Add($p)
+    if (-not [regex]::IsMatch($p, '^(?:[A-Za-z]:|\\)')) {
+        if ($eventCwd) { $spellings.Add($eventCwd + $p) }
+        if ($repoRoot) { $spellings.Add($repoRoot + $p) }
+    }
+    foreach ($spelling in $spellings) {
+        $segments = Get-OpenedSegments $spelling
+        $kind = Get-SegmentKind $segments
+        if ($kind) { return $kind }
+        $n = $segments.Count
+        $aliased = $false
+        for ($i = [Math]::Max(0, $n - 3); $i -lt $n; $i++) { if ([regex]::IsMatch($segments[$i], '~[0-9]')) { $aliased = $true } }
+        if (-not $aliased) { continue }
+        $long = Resolve-LongPath $spelling
+        if ($long) { $kind = Get-SegmentKind (Get-OpenedSegments $long); if ($kind) { return $kind }; continue }
+        if ([regex]::IsMatch($segments[$n - 1], '\.(?:ps1|jso|json)$', $ci)) { return 'unresolved' }
+    }
+    return ''
+}
+# The settings file on disk: State 'text' (with Text), 'missing' or 'unreadable'. A network path is read only when it lies under
+# the repository, whose host the hook itself runs from.
+$maxSettingsBytes = 2MB
+function Get-SettingsDisk([string]$Path) {
+    $unreadable = [pscustomobject]@{ State = 'unreadable'; Text = $null }
+    $long = Resolve-LongPath $Path
+    if (-not $long -and $repoRoot -and $repoRoot.StartsWith('\\', $ordinal)) {
+        $relative = Get-WaiverRelativePath $Path
+        if ($null -ne $relative) { $long = $repoRoot + $relative }
+    }
+    if (-not $long) { return $unreadable }
+    try {
+        $file = New-Object IO.FileInfo($long)
+        if (-not $file.Exists) {
+            if ([IO.Directory]::Exists($long)) { return $unreadable }
+            return [pscustomobject]@{ State = 'missing'; Text = $null }
+        }
+        if ($file.Length -gt $maxSettingsBytes) { return $unreadable }
+        return [pscustomobject]@{ State = 'text'; Text = [IO.File]::ReadAllText($file.FullName) }
+    } catch { return $unreadable }
+}
+# The root object of $Text read as strict JSON, as Claude Code reads settings and the installer reads them: no comment, trailing
+# comma, single quote or byte-order mark, and no name twice in one object, ignoring case (an escaped spelling included). $null
+# otherwise. The documents are kept so that their elements stay readable.
+$script:settingsDocuments = New-Object System.Collections.Generic.List[object]
+function Read-StrictJsonObject([string]$Text) {
+    $doc = $null
+    try { $doc = [System.Text.Json.JsonDocument]::Parse($Text, (New-Object System.Text.Json.JsonDocumentOptions)) } catch { return $null }
+    $script:settingsDocuments.Add($doc)
+    $root = $doc.RootElement
+    if ($root.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) { return $null }
+    $stack = New-Object 'System.Collections.Generic.Stack[System.Text.Json.JsonElement]'
+    $stack.Push($root)
+    while ($stack.Count -gt 0) {
+        $element = $stack.Pop()
+        if ($element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+            $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+            foreach ($property in $element.EnumerateObject()) {
+                if (-not $seen.Add($property.Name)) { return $null }
+                $stack.Push($property.Value)
+            }
+        } elseif ($element.ValueKind -eq [System.Text.Json.JsonValueKind]::Array) {
+            foreach ($item in $element.EnumerateArray()) { $stack.Push($item) }
+        }
+    }
+    return $root
+}
+# A member of a JSON object by its exact name, as Claude Code reads keys; $null when absent.
+function Get-JsonProperty($Element, [string]$Name) {
+    if ($null -eq $Element -or $Element.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) { return $null }
+    foreach ($property in $Element.EnumerateObject()) { if ([string]::Equals($property.Name, $Name, $ordinal)) { return $property.Value } }
+    return $null
+}
+# A JSON value as a string equal for equal values however it is laid out: members sorted by name, every string length-prefixed.
+function ConvertTo-CanonicalJson($Element, [string]$Skip = '') {
+    switch ($Element.ValueKind) {
+        'Object' {
+            $members = New-Object System.Collections.Generic.List[string]
+            foreach ($property in $Element.EnumerateObject()) {
+                if ($Skip -and [string]::Equals($property.Name, $Skip, $ordinal)) { continue }
+                $members.Add([string]$property.Name.Length + ':' + $property.Name + '=' + (ConvertTo-CanonicalJson $property.Value))
+            }
+            $members.Sort([StringComparer]::Ordinal)
+            return '{' + ($members -join ',') + '}'
+        }
+        'Array' { return '[' + (@(foreach ($item in $Element.EnumerateArray()) { ConvertTo-CanonicalJson $item }) -join ',') + ']' }
+        'String' { $s = $Element.GetString(); return 's' + $s.Length + ':' + $s }
+        default { return $Element.GetRawText() }
+    }
+}
+# Each PreToolUse entry that names guard.ps1, with the other keys of its group (the matcher), as one canonical string.
+function Get-GuardEntries($Root) {
+    $entries = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $groups = Get-JsonProperty (Get-JsonProperty $Root 'hooks') 'PreToolUse'
+    if ($null -eq $groups -or $groups.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) { return ,$entries }
+    foreach ($group in $groups.EnumerateArray()) {
+        $handlers = Get-JsonProperty $group 'hooks'
+        if ($null -eq $handlers -or $handlers.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) { continue }
+        $groupKey = $null
+        foreach ($handler in $handlers.EnumerateArray()) {
+            $text = ConvertTo-CanonicalJson $handler
+            if ($text.IndexOf('guard.ps1', $ordinalIgnoreCase) -lt 0) { continue }
+            if ($null -eq $groupKey) { $groupKey = ConvertTo-CanonicalJson $group 'hooks' }
+            [void]$entries.Add($groupKey + "`0" + $text)
+        }
+    }
+    return ,$entries
+}
+function Test-HooksOff($Root) {
+    $value = Get-JsonProperty $Root 'disableAllHooks'
+    return $null -ne $value -and $value.ValueKind -eq [System.Text.Json.JsonValueKind]::True
+}
+# $Text with each replace applied in order, line ends read as LF as the edit tools match them: the old text must occur exactly
+# once, or at least once for a replace-all. $null otherwise.
+function Get-ReplacedText([string]$Text, $Pairs) {
+    $result = $Text.Replace("`r`n", "`n")
+    foreach ($pair in $Pairs) {
+        $old = ([string]$pair.Old).Replace("`r`n", "`n")
+        $new = ([string]$pair.New).Replace("`r`n", "`n")
+        if ($old.Length -eq 0) { return $null }
+        $at = $result.IndexOf($old, $ordinal)
+        if ($at -lt 0) { return $null }
+        if ($pair.All) { $result = $result.Replace($old, $new); continue }
+        if ($result.IndexOf($old, $at + 1, $ordinal) -ge 0) { return $null }
+        $result = $result.Substring(0, $at) + $new + $result.Substring($at + $old.Length)
+    }
+    return $result
+}
+$settingsDroppedMessage = 'Blocked write to {0}: the file it would leave drops or changes the write guard''s entry (.claude/hooks/guard.ps1 under PreToolUse, with its matcher), or sets "disableAllHooks": true, so the guard could stop running. Other settings changes are fine: keep that entry and its group exactly as they are and resend, or have a teammate make this change by hand.'
+$settingsUnknownMessage = 'Blocked write to {0}: the write guard cannot work out the file this write would leave (it is not strict JSON, the text to replace is not in the file exactly once, the file cannot be read, or the change is one the guard does not compute, such as an insert at a line), so it cannot confirm the guard stays registered. Resend it as a whole-file write or a single replace that keeps the guard''s entry, or have a teammate make the change by hand.'
+$settingsPatchMessage = 'Blocked write to {0}: the write guard does not work out the file a patch leaves when it updates, moves or deletes a settings file, so it cannot confirm the guard stays registered. A teammate makes this change by hand.'
+# $null when the write to the settings file $Target keeps every guard entry the file holds now, unchanged, and does not newly set
+# disableAllHooks; else the message that refuses it. Each text the event could leave in the file is checked: a whole-file text
+# (content, file_text, a patch's added file), and each replace (old and new text, or the edits and replacements items for this
+# file, in order) applied to the file on disk. Anything else naming the file (an insert, undo_edit, code, newCode, text, a cell,
+# a patch that updates, moves or deletes it) cannot be worked out and is refused. When the file on disk is not strict JSON (a merge
+# conflict, say) a whole-file text or a replace may repair it, but must leave at least one guard entry if the disk text names
+# guard.ps1.
+function Test-SettingsWrite([string]$Target) {
+    $ErrorActionPreference = 'Stop'
+    $cannot = $settingsUnknownMessage -f $Target
+    $candidates = New-Object System.Collections.Generic.List[object]
+    if ($isPatch) {
+        foreach ($section in $sections) {
+            if (-not $section.Paths.Contains($Target)) { continue }
+            if (-not ([string]::Equals($section.Kind, 'add', $ordinal) -and -not $section.Moved)) { return ($settingsPatchMessage -f $Target) }
+            $candidates.Add([pscustomobject]@{ Whole = ($section.Lines -join "`n"); Pairs = $null })
+        }
+    } else {
+        foreach ($o in @($ti, $ta)) {
+            if ($null -eq $o -or $o -is [string]) { continue }
+            $names = @($o.PSObject.Properties.Name)
+            foreach ($field in 'text', 'code', 'newCode', 'new_source', 'insert_line') { if ($names -contains $field) { return $cannot } }
+            foreach ($command in 'insert', 'undo_edit') { if ([string]::Equals([string]$o.command, $command, $ordinalIgnoreCase)) { return $cannot } }
+            foreach ($field in 'content', 'file_text') {
+                if ($names -contains $field) {
+                    if ($null -ne $o.$field -and $o.$field -isnot [string]) { return $cannot }
+                    $candidates.Add([pscustomobject]@{ Whole = [string]$o.$field; Pairs = $null })
+                }
+            }
+            $all = ($o.replace_all -eq $true) -or ($o.replaceAll -eq $true)
+            foreach ($pair in @(@('old_string', 'new_string'), @('oldString', 'newString'), @('old_str', 'new_str'))) {
+                if ($names -contains $pair[0]) { $candidates.Add([pscustomobject]@{ Whole = $null; Pairs = @([pscustomobject]@{ Old = $o.($pair[0]); New = $o.($pair[1]); All = $all }) }) }
+                elseif ($names -contains $pair[1]) { return $cannot }
+            }
+            $ownPaths = @(Get-OwnPaths $o)
+            foreach ($collection in 'replacements', 'edits') {
+                $itemPairs = New-Object System.Collections.Generic.List[object]
+                foreach ($item in @($o.$collection)) {
+                    if ($null -eq $item -or $item -is [string]) { continue }
+                    $itemPaths = @(Get-OwnPaths $item)
+                    if (-not $(if ($itemPaths.Count -gt 0) { $itemPaths -ccontains $Target } else { $ownPaths -ccontains $Target })) { continue }
+                    $itemNames = @($item.PSObject.Properties.Name)
+                    $old = $null; $new = $null
+                    foreach ($pair in @(@('old_string', 'new_string'), @('oldString', 'newString'), @('old_str', 'new_str'))) {
+                        if ($itemNames -contains $pair[0]) { $old = $item.($pair[0]); $new = $item.($pair[1]); break }
+                    }
+                    if ($null -eq $old) { return $cannot }
+                    $itemPairs.Add([pscustomobject]@{ Old = $old; New = $new; All = (($item.replace_all -eq $true) -or ($item.replaceAll -eq $true)) })
+                }
+                if ($itemPairs.Count -gt 0) { $candidates.Add([pscustomobject]@{ Whole = $null; Pairs = $itemPairs }) }
+            }
+        }
+    }
+    if ($candidates.Count -eq 0) { return $cannot }
+    $disk = Get-SettingsDisk $Target
+    if ([string]::Equals($disk.State, 'unreadable', $ordinal)) { return $cannot }
+    $diskRoot = if ([string]::Equals($disk.State, 'text', $ordinal)) { Read-StrictJsonObject $disk.Text }
+    $diskEntries = if ($null -ne $diskRoot) { Get-GuardEntries $diskRoot }
+    $diskOff = $null -ne $diskRoot -and (Test-HooksOff $diskRoot)
+    $needEntry = $null -eq $diskRoot -and [string]::Equals($disk.State, 'text', $ordinal) -and $disk.Text.IndexOf('guard.ps1', $ordinalIgnoreCase) -ge 0
+    foreach ($candidate in $candidates) {
+        $result = $candidate.Whole
+        if ($null -ne $candidate.Pairs) {
+            if (-not [string]::Equals($disk.State, 'text', $ordinal)) { return $cannot }
+            $result = Get-ReplacedText $disk.Text $candidate.Pairs
+            if ($null -eq $result) { return $cannot }
+        }
+        if ($result.Length -gt $maxSettingsBytes) { return $cannot }
+        $root = Read-StrictJsonObject $result
+        if ($null -eq $root) { return $cannot }
+        if ((Test-HooksOff $root) -and -not $diskOff) { return ($settingsDroppedMessage -f $Target) }
+        $entries = Get-GuardEntries $root
+        if ($null -ne $diskEntries) { foreach ($entry in $diskEntries) { if (-not $entries.Contains($entry)) { return ($settingsDroppedMessage -f $Target) } } }
+        elseif ($needEntry -and $entries.Count -eq 0) { return ($settingsDroppedMessage -f $Target) }
+    }
+    return $null
+}
+$hookFileMessage = 'Blocked write to {0}: it changes a hook file of the framework (.claude/hooks/*.ps1 or .github/hooks/hooks.json), the scripts and registrations that make the write guard and the other hooks run. An agent may not write, edit, move or delete them; a teammate makes the change by hand and it is reviewed in a pull request.'
+$shortNameMessage = 'Blocked write to {0}: the write guard cannot tell whether this 8.3 short name is one of the framework''s hook files or settings, because the path cannot be resolved here (a network path outside the repository, a path with no drive letter, or an error), so it checked none of it. Resend the write with the full long path; if this is the file''s real name, a teammate writes it by hand.'
+foreach ($target in $targets) {
+    $verdict = $null
+    try {
+        switch (Get-WiringKind ([string]$target)) {
+            'hooks' { $verdict = $hookFileMessage -f $target }
+            'unresolved' { $verdict = $shortNameMessage -f $target }
+            'settings' { $verdict = Test-SettingsWrite ([string]$target) }
+        }
+    } catch { $verdict = $settingsUnknownMessage -f $target }
+    if ($verdict) { Exit-Blocked $verdict }
+}
 if ($writes.Count -eq 0) { exit 0 }
 
 # A write that holds more password values than this is blocked, not checked: each one costs about 0.1 ms in
@@ -745,6 +1034,12 @@ foreach ($write in $writes) {
     $reasons = @()
     $fileName = Get-CheckedFileName ([string]$fp)
     $relativePath = if ($fp) { Get-RepositoryRelativePath ([string]$fp) }
+    # An 8.3 short name under the repository is read as the long name Windows opens (TEST_C~1.JSO is test+cfg.json, not a test
+    # file); one that cannot be resolved here gets no test exemption.
+    if ($relativePath -and [regex]::IsMatch($relativePath, '~[0-9]')) {
+        $longPath = Resolve-LongPath ([string]$fp)
+        $relativePath = if ($longPath) { Get-RepositoryRelativePath $longPath }
+    }
     # Waived only when the list matches every path the write names, each read from the event's working directory.
     # Each distinct path is tested once for the whole event, and so is each distinct set of paths (every item of a
     # replacements call names the same set).
