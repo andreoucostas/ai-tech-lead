@@ -310,7 +310,9 @@ and agent bodies are ondemand-info, "reported but never policy-gated" (`scripts/
 One WSD entry (at most ten lines, indexed in `meta/decisions-index.md`) in the commit that closes B-551 carries the triggers people
 would re-litigate: R1 and R2, R3, R5, R5b. The rest go as CLOSED lines in `meta/BACKLOG-DONE.md` (WSD-106).
 - **R1 and R2** close on A2 NO HARM, NO DIFFERENCE or C RECORDS IT. Reopen: a field report or run in which a bootstrapped Angular
-  repository's evidenced e2e suite is handed back red or unrun after a change to a journey it covers.
+  repository's evidenced e2e suite is handed back red, or a journey it covers broken, after a change to that journey. (Amended
+  2026-11-25 after step 1a, where 7 of 8 attempts left the suite unrun with no harm: "unrun" is reported, not a trigger, following
+  the maintainer's answer that one or fewer harmed runs in A2 closes the run and record gaps.)
 - **R2's narrowing half, the suite runs only whole** (`feature.md/verify:1` and siblings). Reopen: an agent skipping an evidenced
   suite for its length, or reporting a narrowed run as the suite.
 - **R3, extending the suite** (`add-tests/SKILL.md:12`; `test.md:33-35`). Reopen: EXTENDS WITHOUT REUSE or any NEW-HARNESS, or a
