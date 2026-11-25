@@ -1,0 +1,27 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet build StockSync.sln
+      - run: dotnet test StockSync.sln
+  deploy-uat:
+    needs: build
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment: uat
+    steps:
+      - run: echo "Deploying StockSync to host stock-uat with ASPNETCORE_ENVIRONMENT=Uat"
+  deploy-production:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - run: echo "Deploying StockSync to stock-prod-1"
+      - run: echo "Deploying StockSync to stock-prod-2"
