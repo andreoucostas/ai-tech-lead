@@ -1,0 +1,12 @@
+diff --git a/.claude/commands/adopt.md b/.claude/commands/adopt.md
+index 886311e..8c745ad 100644
+--- a/.claude/commands/adopt.md
++++ b/.claude/commands/adopt.md
+@@ -237,6 +237,7 @@ For each merge-candidate source file (archived, or left in place because Git ign
+ 
+ Merge principles:
+ - **Safety gate** — never merge a file still QUARANTINED by the Phase-1 safety screen; resolve its provenance / adversarial-content flags with the user first. Merge normalized rules, never raw prose.
++- **Check facts against the code** — a statement about how this system works, rather than how to write its code, is a fact: what calls what and in which direction, endpoints, files or queues it exchanges, servers, environments and what each is for. Before showing the merge, find the code or configuration that settles it (the HTTP client or browser `fetch` call, the route handler, the worker, the file write, the deployment workflow, the environment's settings) and show the result beside it: matches (cite the file); contradicted (cite the file, ask a plain question that gives both versions, and merge the code's version unless the developer says the old file is right; unattended, the code's version with a `<!-- DEFAULTED -->` marker and a checklist entry); or not checkable in this repository (a fact about another system: a `docs/wiki/` draft with confidence `declared` and the old file as its provenance, not `AGENTS.md` or `FRAMEWORK-CONTEXT.md`). Never merge a contradicted fact as written.
+ - **Deduplicate** — if a rule already exists in AGENTS.md, don't add it again
+ - **Normalise voice** — convert do/don't lists, bullet points, or arbitrary prose into our convention format: one line per rule, with its reason
+ - **Preserve attribution** — at the end of each merged section, add a comment: `<!-- Merged from: docs/pre-adoption/.cursorrules, docs/pre-adoption/CONVENTIONS.md -->` (name a candidate left in place by its live path)
