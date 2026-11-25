@@ -117,3 +117,4 @@ authoritative.
 - “`/bootstrap` asks once and adds one `WebApplicationFactory` start-up test (no production edit; put back if the host does not start), shipped on an unsettled reading by the maintainer's decision.” — `meta/workspace-decisions.md WSD-143`
 - “A table the warehouse map does not cover is mapped and offered; the agent writes it into the map only on a yes.” — `meta/workspace-decisions.md WSD-144` (maintainer, in chat 2026-11-23)
 - “Within 1.x an update keeps the update path from 0.76.0, your protected files (named exceptions) and the knowledge-file names; a host floor rises only with a changelog line; the text ships with 1.0.0.” — `meta/workspace-decisions.md WSD-145` (maintainer, in chat 2026-11-23)
+- “An Angular repository's own e2e suite needs no new instruction: record, run, extend and review closed on 12 of 12 harm-free runs; only the lint sample changed.” — `meta/workspace-decisions.md WSD-146` (maintainer, in chat 2026-11-25)
