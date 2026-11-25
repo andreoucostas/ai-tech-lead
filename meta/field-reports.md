@@ -576,6 +576,48 @@ questions and the escape when there is no question box. A capture of real questi
 
 ---
 
+## Report #19 — after `/adopt`, adopted instructions gave the agent a wrong picture of a multi-repository deployment flow
+
+| | |
+|---|---|
+| **Date received** | 2026-11-25 |
+| **Stack / repo shape** | one repository in a multi-repository deployment pipeline, holding a web UI client and a service; the installed stack not captured |
+| **Framework installed** | not captured; the text the report cites (`/adopt` Phase 7, `/bootstrap` 3d-ter, Rule 11, `/docs-sync` step 4, the 16 KB budget) matches 0.99.0 |
+| **Host / IDE** | Copilot (the surface not captured); the model not captured |
+| **What misfired** | The developer wrote a document describing the multi-repository deployment process the repository belongs to; with it pasted into each session, Copilot behaved much better than without it. An analysis session (an Opus model), asked why given the framework was installed, reported: statements adopted from the repository's previous Copilot instructions stated an integration's direction backwards (which side calls which) and a server's environment role wrongly, and sat in `AGENTS.md`, `FRAMEWORK-CONTEXT.md` and two of the team's own documents; `/docs-sync` never flagged the direction; the outputs other repositories parse were recorded nowhere |
+| **What fired** | `/adopt` (the Phase 4 merge and Phase 7's embedded `/bootstrap`); `/docs-sync` |
+| **What got ignored** | not captured |
+| **Hook noise** | not captured |
+| **Token pain** | `AGENTS.md` about 46 KB after adoption, loaded on every turn, against a 16 KB budget |
+| **Reporter** | the maintainer, in chat, relaying the developer's workaround and the analysis session's report |
+
+**The maintainer's ruling at intake.** The analysis's findings are findings to check; its suggested fixes are context only.
+Nothing that points to the reporter's systems or design is recorded: every finding is restated in generic terms, and
+the developer's document is not kept.
+
+**What the tree says** (read by the filing session, 2026-11-25, `src/` and `dist/*` at 0.99.0; all three stacks ship
+the same lines). Six findings: (1) adoption carries old statements forward unchecked: holds; Phase 4 checks no merged
+fact against code, and Phase 7 and 3d-ter skip the sections it filled; Rule 11 reads narrower than quoted (a record
+outranks "what you infer from names"), with the same effect, since its code-wins sentence covers only the warehouse
+map. (2) No home for knowledge that spans repositories: holds; a wiki scope may already be an area label, the gap is
+the missing consumer and owner fields, the four-type check and nobody being asked. (3) No current-behaviour baseline for
+migration work: holds; characterization tests are a partial counterpart. (4) No slot for runtime facts: holds. (5) The
+size budget is not enforced at adoption: holds; the check only notes. (6) Drift checks cannot catch a reversed
+integration: holds in part; step 4 reads outbound wiring only, and the missed case is the reporter's single run.
+
+**Epistemic status.** The six findings are the analysis session's, re-read against the tree by the filing session; the
+field facts (the reversed statement, the 46 KB file, `/docs-sync` silent) are the reporter's and not reproduced. The
+report shows a wrong picture loaded on every turn and a better outcome with the developer's document; it does not show
+a wrong change built on the wrong picture. Not captured: the installed version and stack, the model, which two team
+documents hold the copies, and whether one of them is the archive under `docs/pre-adoption/`.
+
+**Outcome:** no change to the tree. B-555 to B-559 file the findings, each measured or checked on a fixture before it
+ships (WSD-139, WSD-141). WSD-122's reopen trigger (a Rule 11 sentence that misleads at real-repository length) is
+**approached, not met**: the report infers the steer from the rule's text, and no transcript shows an agent citing it.
+WSD-107's (a result built on a premise the project's records name as false) is not met: here the record itself is false.
+
+---
+
 ## Intake gaps (a finding in its own right)
 
 Reports arrive as a sentence or two about one defect, and most table fields go uncaptured.
