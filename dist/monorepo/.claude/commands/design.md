@@ -22,6 +22,8 @@ $ARGUMENTS
 
 If any of these has a material gap, ask the tech-lead questions from the framework rules (Agentic Workflow, section 2), at most five, each with the assumption you would otherwise make, and wait for the answers before Step 2. The answers shape the design; do not draft approaches around guesses.
 
+If the change replaces or migrates something that works today, list the behaviours it must keep, each with its evidence and marked kept, a deliberate change (owner and reason) or a known defect not to carry, and persist them in the spec's Current behaviour to keep section; skip this for new behaviour.
+
 ### Step 2 — Analyse the impact
 - Which layers are affected — .NET: domain, application, API, infrastructure; Angular: models, services, state, components, routing?
 - Which existing files will need to change?

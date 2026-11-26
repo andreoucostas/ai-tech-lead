@@ -368,8 +368,8 @@
         },
         {
           "path": ".claude/commands/design.md#body",
-          "chars": 3425,
-          "tok": 856
+          "chars": 3729,
+          "tok": 932
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
@@ -802,8 +802,8 @@
         },
         {
           "path": ".claude/commands/design.md#body",
-          "chars": 3490,
-          "tok": 872
+          "chars": 3794,
+          "tok": 948
         },
         {
           "path": ".claude/commands/docs-sync.md#body",
@@ -1236,8 +1236,8 @@
         },
         {
           "path": ".claude/commands/design.md#body",
-          "chars": 3717,
-          "tok": 929
+          "chars": 4021,
+          "tok": 1005
         },
         {
           "path": ".claude/commands/docs-sync.md#body",

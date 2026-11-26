@@ -40,6 +40,12 @@ What and why. Who consumes it.
 - In: ...
 - Out: ...
 
+### Current behaviour to keep
+Only for work that replaces or migrates something that works today; omit it otherwise.
+
+| Behaviour | Evidence (file, test, run or document) | Kept / deliberate change (owner and reason) / known defect, not carried |
+|-----------|----------------------------------------|-------------------------------------------------------------------------|
+
 ### Recommended approach
 Specific files, layers, and patterns reused. Reference `AGENTS.md > Conventions` and `> Architecture Decisions`. Note any convention this pushes against.
 

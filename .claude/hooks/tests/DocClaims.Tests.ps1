@@ -221,6 +221,19 @@ function Assert-EnforceStandardsReachesE2e {
     }
 }
 
+# B-559, field report #19: replacement and migration work had no list of the current behaviours to keep. The spec
+# template carries an optional section and /design Step 1 points to it; the text is checked here only, no agent host run.
+function Assert-SpecKeepsCurrentBehaviourSection {
+    param([object[]]$DistEntries)
+    foreach ($dist in $DistEntries) {
+        foreach ($relative in @('specs/README.md', '.claude/commands/design.md')) {
+            $path = Join-Path $dist.Root $relative
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "carrier is missing in $($dist.Name): $relative" }
+            if (-not (Read-Utf8Text $path).Contains('Current behaviour to keep')) { throw "$($dist.Name)/$relative omits 'Current behaviour to keep'" }
+        }
+    }
+}
+
 # Field report #18, second half: the end-of-run checklists asked "Is [specific risk] real in this codebase?" with
 # no file, evidence or effect, unattended /adopt sends every hazard there past a ~10-entry cap, and /adopt's
 # Phase 1 and Phase 5 said only "ask the user".
@@ -751,6 +764,10 @@ It 'review passes the three Haiku reviewers their model per call, and their file
 
 It 'repository-knowledge capture carriers preserve draft and refresh boundaries' {
     Assert-RepositoryKnowledgeCaptureContracts -DistEntries $distEntries
+}
+
+It 'the spec template and /design carry the optional current-behaviour section' {
+    Assert-SpecKeepsCurrentBehaviourSection -DistEntries $distEntries
 }
 
 It 'the supported completion host invocation is required' {
