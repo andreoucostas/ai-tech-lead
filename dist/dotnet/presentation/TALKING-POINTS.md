@@ -17,7 +17,8 @@ You're presenting to two audiences. Use the **same deck**, but change emphasis a
 | **Teams** (enablement) | 15–20 min | Daily workflow (9), what's enforced (6–7), demo | Governance/audit, ROI | 8, 13 |
 
 > **Golden rule:** to leads, you're selling *governance they can inspect*. To teams, you're selling
-> *less friction + fewer review cycles*, and being honest about the constraints.
+> *a plan they approve before code and guardrails that catch slips early* (design intent), and being
+> honest about the constraints. Do not promise speed or fewer review cycles: nothing measured supports either.
 
 ---
 
@@ -79,11 +80,11 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 ### 8 · For tech leads
 - The framework **amplifies you** — your standards at machine scale and consistency.
 - Honest cost: **you own AGENTS.md.** It's small and budgeted, drift-checked, but it's a living doc.
-- Land it: less review time on "you forgot a CancellationToken," more on "is this the right design."
+- Land it: less review time on "you forgot a CancellationToken," more on "is this the right design." (design intent)
 
 ### 9 · For developers  *(teams' core slide)*
 - Lead with what's easier: slash commands run the workflow; skills auto-trigger; the AI already knows
-  our conventions; guardrails catch slips before review.
+  our conventions; guardrails catch slips before review (design intent).
 - Then the constraints, framed as rails: state intent, don't silence failures, SOLID/leanness enforced.
 - **Demo idea:** run `/feature` on a small change live — plan → verified subtasks → self-review.
 - Pre-empt "enforced on a deadline?": yes, friction is cheaper than cleanup — but there's a documented
@@ -112,7 +113,7 @@ These mirror the in-deck speaker notes (press **N**), collected here for printin
 - Name the costs yourself — it disarms skeptics who've seen silver-bullet pitches.
 - Token cost: managed (cheap agents for cheap checks, heavy model only where it matters, tight base
   file). Discipline cost: the friction is the point. Learning curve: a handful of commands.
-- ROI line: cost is tokens + discipline; return is consistency and fewer review cycles.
+- ROI line: cost is tokens + discipline; return is consistency you can inspect (design intent). No saving in time or review cycles has been measured.
 
 ### 14 · The ask
 - Small and concrete: **one repo, one sprint, then we look at the numbers.**
@@ -135,10 +136,15 @@ time, CI fails on drift, and the standards travel with the repo into the AI's co
 **"What does it cost us in AI spend?"**
 More context per turn, but actively managed: cheaper models handle cheap checks, the expensive model
 runs only where it matters, and the per-turn base file is budgeted and prompt-cache-stable.
+Measured on one task type: at three repository sizes, 6 runs each, the framework answer was good 6 of 6
+and the bare agent's 0 of 6, at about 2.2 to 2.6 times the cost per run.
 
 **"Will it slow developers down?"**
-Up front, slightly — new commands and enforced discipline. Net, it's faster: less prompting (the AI
-knows our conventions), fewer review round-trips (guardrails catch slips early), and consistent output.
+Yes, somewhat, and we have not measured a net saving: in our two comparison runs on one task each
+(one void, one no detectable difference) the framework runs took longer. You pay minutes per change for
+the plan gate, and for `/review` when you ask for it. You get a plan you approve before code (seen in one
+team's sessions: most plans opened with Done-when lines and were answered before code) and guardrails
+(design intent).
 
 **"Can it run on our Bitbucket Data Center / behind the firewall?"**
 Yes — on supported Windows hosts. CI uses a required build on Bamboo/Jenkins Windows agents.

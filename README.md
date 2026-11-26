@@ -108,8 +108,8 @@ a first reviewed fix; every installed guide is listed in your distribution's REA
 - **The one gate for every person and tool** is a required build in your CI; each distribution's
   `docs/ci-integration.md` has the recipe for Bitbucket Data Center.
 - **Costs:** one `/bootstrap` session per repository and the time to review what it writes; an
-  `AGENTS.md` of up to 16 KB loaded on every turn; the wait for the plan gate and for `/review`'s
-  reviewers on each change; someone who applies updates.
+  `AGENTS.md` of up to 16 KB loaded on every turn; the wait for the plan gate, and for `/review`'s
+  reviewers on each change you ask them to review; someone who applies updates.
 
 Why it works this way, and its limits: `docs/playbook.md` in each distribution
 ([.NET](./dist/dotnet/docs/playbook.md)).

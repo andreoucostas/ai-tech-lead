@@ -111,8 +111,9 @@ cloud coding agent runs no hooks, and Linux, WSL and macOS are not supported.
 - **Every session:** `AGENTS.md` and the framework rules load on every turn. `/bootstrap` keeps the
   sections it writes to about 6 KB and the whole file under 16 KB; the session preload and the
   per-prompt workflow rules add a little more.
-- **Every change:** the plan gate waits for your go-ahead, and `/review` runs several reviewers in
-  parallel (three of them on Haiku). That is slower than accepting the first draft, by design.
+- **Every change:** the plan gate waits for your go-ahead. **When you ask for it** (`Go ahead, with
+  review`, or `/review`), several reviewers run in parallel (three of them on Haiku); that is slower
+  than accepting the first draft, by design. Nothing starts them unasked.
 - **Ongoing:** someone keeps `AGENTS.md` true and applies updates with
   [upgrade-checklist.md](upgrade-checklist.md), which also describes removing the framework.
 

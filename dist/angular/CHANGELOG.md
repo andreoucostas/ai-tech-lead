@@ -6,6 +6,7 @@
 
 ## 0.99.1 — Unreleased
 
+- **The playbook no longer says `/review` runs on every change.** The plan gate always waits for your go-ahead; the reviewers run when you answer `Go ahead, with review` or run `/review`. Nothing in your repository changes.
 - **The doctor ends with one line to paste into any report about the framework.** `scripts/framework-doctor.ps1` now prints `Report line: framework 0.99.1 (dotnet), PowerShell 7.x.y, ...` as its last line: versions only, no path or repository name. It starts no other program unless you add `-HostVersions`, which also reads the Claude Code and Copilot CLI versions. `docs/getting-started.md` asks for the line with any report; add the agent and mode you used, which the doctor cannot read.
 - **Setup's analysis workers now return in the same turn under a one-shot `claude -p` run.** An unattended `/adopt` could end on a worker's late reply in place of its own report; it now ends on that report. Claude Code only; interactive sessions and Copilot CLI unchanged and not checked.
 - **The standards skill now checks that lint reaches your end-to-end tests.** The Angular lint setup usually covers only `src/`, so a focused or skipped browser test (`.only`) committed in a Playwright or Cypress folder outside `src/` passed `npm run lint`. When `enforce-standards` makes lint part of the gate it now checks which folders the lint command reaches, adds your end-to-end folder if it is missing, and runs its "verify it fails" step in that folder too. If you already ran the skill, ask it to check the lint target again.
