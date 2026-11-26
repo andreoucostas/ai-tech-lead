@@ -264,7 +264,8 @@ organization enforces.
 > (`AKIA…`), a GitHub token (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`, `github_pat_`), a Slack token
 > (`xox…`), an `sk-` API key where a key starts (OpenAI, Anthropic and others), a Google API key
 > (`AIza…`), an Azure storage account key, and an Azure SAS signature. Outside test, spec, mock,
-> fixture, example, sample and `Development` paths, also a quoted value of 8 or more characters
+> fixture, example, sample and `Development` paths, and outside a folder or file whose name ends in
+> `e2e` (`e2e/`, `shop-e2e/`, `login.e2e.ts`), also a quoted value of 8 or more characters
 > assigned to a name ending in password, secret, API key, access key or client secret (the name may
 > end an indexer key such as `config["Password"]`, may carry a type annotation as in
 > `password: string = "…"`, a C# accessor block as in `public string Password { get; set; } = "…"`

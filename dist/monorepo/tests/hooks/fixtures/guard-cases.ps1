@@ -124,6 +124,17 @@ $GuardCases = @(
     @{ n='ConnectionStrings password in an absolute path under a samples folder'; f='D:\Projects\samples\shop\src\Api\appsettings.json'; c='{ "ConnectionStrings": { "Main": "Server=prod-sql;Database=app;User Id=app;Password=Pr0dS3cret!;" } }'; block=$true }
     @{ n='credential behind a .. segment out of tests\';  f='tests\..\src\AuthService.cs'; c='var password = "hunter2hunter2";'; block=$true }
     @{ n='credential behind .. segments in a forward-slash path'; f='src/../tests/../src/AuthService.cs'; c='var password = "hunter2hunter2";'; block=$true }
+    # e2e counts only where a folder or file name ENDS with it (e2e\, shop-e2e\, login.e2e.ts): e2e-encryption, e2e_keys and session.e2e.crypto are production names (end-to-end encryption); a name that only starts with it, or a .. that leaves it, is not exempt.
+    @{ n='credential in an e2e-encryption folder'; f='src/e2e-encryption/keystore.ts'; c="const password = 'hunter2hunter2';"; block=$true }
+    @{ n='credential in an e2e_keys file'; f='src/crypto/e2e_keys.ts'; c="const password = 'hunter2hunter2';"; block=$true }
+    @{ n='credential in a session.e2e.crypto.ts file'; f='src/messaging/session.e2e.crypto.ts'; c="const password = 'hunter2hunter2';"; block=$true }
+    @{ n='credential in an e2e.config.ts file'; f='src/e2e.config.ts'; c="const password = 'hunter2hunter2';"; block=$true }
+    @{ n='ConnectionStrings password in an e2e-encryption appsettings.json'; f='src/e2e-encryption/appsettings.json'; c='{ "ConnectionStrings": { "Main": "Server=prod-sql;Database=app;User Id=app;Password=Pr0dS3cret!;" } }'; block=$true }
+    @{ n='credential in a src auth.setup.ts'; f='src/app/auth.setup.ts'; c="const password = 'hunter2hunter2';"; block=$true }
+    @{ n='credential in an e2eAuth name'; f='src/e2eAuth.ts'; c="const password = 'hunter2hunter2';"; block=$true }
+    @{ n='credential in an e2ee folder'; f='src/e2ee/auth.ts'; c="const password = 'hunter2hunter2';"; block=$true }
+    @{ n='credential behind a .. segment out of e2e\'; f='e2e/../src/AuthService.cs'; c='var password = "hunter2hunter2";'; block=$true }
+    @{ n='private key block in e2e auth.setup.ts'; f='e2e/auth.setup.ts'; c='-----BEGIN RSA PRIVATE KEY-----'; block=$true; policy='secret' }
     # .NET and PowerShell resolve a trailing space or dot away (Foo.cs<space> and Foo.cs. are Foo.cs), so such a name is checked as Foo.cs.
     @{ n='C# suppression in a .cs name with a trailing space'; f='src/Foo.cs '; c='#pragma warning disable CS8602'; block=$true }
     @{ n='C# suppression in a .cs name with a trailing dot';   f='src/Foo.cs.'; c='#pragma warning disable CS8602'; block=$true }
@@ -163,6 +174,12 @@ $GuardCases = @(
     @{ n='credential in __mocks__ (allow)';    f='src/__mocks__/auth.ts';     c="const password = 'hunter2hunter2';";                   block=$false }
     @{ n='credential in appsettings.Development.json (allow)'; f='src/Api/appsettings.Development.json'; c='"Password": "hunter2hunter2"'; block=$false }
     @{ n='credential in tests\ reached through a .. segment (allow)'; f='src/../tests/AuthServiceTests.cs'; c='var password = "hunter2hunter2";'; block=$false }
+    # Playwright's conventional auth.setup.ts sits under e2e\ (or an Nx apps\shop-e2e\ project) and holds a test login; e2e is a test path like tests\.
+    @{ n='credential in e2e auth.setup.ts (allow)'; f='e2e/auth.setup.ts'; c="const password = 'hunter2hunter2';"; block=$false }
+    @{ n='credential in an Nx shop-e2e project (allow)'; f='apps/shop-e2e/src/auth.setup.ts'; c="const password = 'hunter2hunter2';"; block=$false }
+    @{ n='credential in cypress e2e support file (allow)'; f='cypress/e2e/support/login.ts'; c="const password = 'hunter2hunter2';"; block=$false }
+    @{ n='credential in a login.e2e.ts file (allow)'; f='src/app/login.e2e.ts'; c="const password = 'hunter2hunter2';"; block=$false }
+    @{ n='credential in a .NET Shop.E2E project (allow)'; f='Shop.E2E/AuthService.cs'; c='var password = "hunter2hunter2";'; block=$false }
     @{ n='Azurite well-known dev key (allow)'; f='src/Storage.cs';            c='var cs = "AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";'; block=$false }
     @{ n='SAS sig= without a token (allow)';   f='src/Storage.cs';            c='var q = "?sv=2022-11-02&sig=";';                        block=$false }
     @{ n='passwordless connection string';     f='src/AuthService.cs';       c='var connectionString = "Server=localhost;Trusted_Connection=True";'; block=$false }

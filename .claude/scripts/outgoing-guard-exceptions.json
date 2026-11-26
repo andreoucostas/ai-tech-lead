@@ -315,6 +315,26 @@
       "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
       "sha256": "24B2556EDC124616F241E5C3FFA335B7EF83A9A804694BC72F6925FB170BD11E",
       "reason": "Generated copy of the canonical guard-policy fixture (B-499, as committed in the dotted-URL fix)."
+    },
+    {
+      "path": "src/core/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "C93E64099F112B4243FEC975CE596BD7123B8BF8ED2EE56A3DC531D0AAC3AC5C",
+      "reason": "B-552 canonical guard-policy fixture, the guard's own test table, with the e2e rows; still intentionally contains a sample private key block (synthetic, as in every earlier version)."
+    },
+    {
+      "path": "dist/dotnet/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "C93E64099F112B4243FEC975CE596BD7123B8BF8ED2EE56A3DC531D0AAC3AC5C",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-552, the guard's own test table holding a sample private key block)."
+    },
+    {
+      "path": "dist/angular/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "C93E64099F112B4243FEC975CE596BD7123B8BF8ED2EE56A3DC531D0AAC3AC5C",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-552, the guard's own test table holding a sample private key block)."
+    },
+    {
+      "path": "dist/monorepo/tests/hooks/fixtures/guard-cases.ps1",
+      "sha256": "C93E64099F112B4243FEC975CE596BD7123B8BF8ED2EE56A3DC531D0AAC3AC5C",
+      "reason": "Generated copy of the canonical guard-policy fixture (B-552, the guard's own test table holding a sample private key block)."
     }
   ]
 }

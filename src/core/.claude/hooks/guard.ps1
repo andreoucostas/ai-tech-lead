@@ -1134,7 +1134,8 @@ foreach ($write in $writes) {
     # Latest and Specification do not qualify but AuthServiceTests and Api.UnitTests do). Only the path under
     # the repository is read (see Get-RepositoryRelativePath): the folders a checkout sits in, such as
     # C:\Projects\test\repo, and a '..' that leaves a test folder decide nothing, and a path outside the
-    # repository is never exempt.
+    # repository is never exempt. e2e is the one end-anchored token: a folder, or a file name without its last
+    # extension, that ENDS with it (e2e, shop-e2e, Shop.E2E, login.e2e); e2e-encryption and e2e_keys are not exempt.
     $credentialExempt = $waived
     if ($relativePath -and -not $credentialExempt) {
         $segments = @($relativePath -split '[\\/]' | Where-Object { $_ })
@@ -1142,6 +1143,7 @@ foreach ($write in $writes) {
             $segment = $segments[$i]
             $stem = if ($i -eq $segments.Count - 1) { $segment -replace '\.[^.]*$', '' } else { $segment }
             if ([regex]::IsMatch($segment, '(^|[._-])(tests?|specs?|mocks?|fixtures?|examples?|samples?|development)([._-]|$)', $ci) -or
+                [regex]::IsMatch($stem, '(^|[._-])e2e$', $ci) -or
                 $stem -cmatch '(^|[a-z0-9])(Tests?|Specs?|Mocks?|Fixtures?)$|^(Tests?|Specs?|Mocks?|Fixtures?)[A-Z]') {
                 $credentialExempt = $true; break
             }
