@@ -607,6 +607,40 @@ function Assert-AngularTestTextAgreesWithTestLeanness {
     }
 }
 
+# Field report #16: after an AI-assisted .NET upgrade a host built, passed its unit tests and did not start. The upgrade
+# procedure ended on build and test and never named the start-up test /bootstrap's 3c adds. Its step 2 now asks that
+# question before any upgrade edit and its close-out names an application no test starts. The text is checked here only:
+# no agent host has run the upgrade procedure with it.
+function Assert-UpgradeOffersStartupTest {
+    param([object[]]$DistEntries)
+    foreach ($dist in @($DistEntries | Where-Object { $_.Name -in @('dotnet', 'monorepo') })) {
+        $bootstrap = Read-DistCarrier $dist '.claude/commands/bootstrap.md'
+        foreach ($target in @('**Start-up test question**', '### 3c: Add the start-up test')) {
+            if (-not $bootstrap.Contains($target)) { throw "$($dist.Name)/.claude/commands/bootstrap.md no longer has '$target', which the upgrade procedure points to" }
+        }
+
+        $relative = '.claude/skills/dependency-audit/SKILL.md'
+        $scope = Read-DistCarrier $dist $relative
+        $dotnetPart = [regex]::Match($scope, '(?ms)^### \.NET\s*$.*?(?=^### Angular\s*$)')
+        if ($dotnetPart.Success) { $scope = $dotnetPart.Value }
+
+        $blockers = [regex]::Match($scope, '(?s)2\. \*\*Blockers before edits\.\*\*.*?(?=\r?\n3\. \*\*Read the breaking changes\*\*)')
+        if (-not $blockers.Success) { throw "$($dist.Name)/$relative has no 'Blockers before edits' step in its .NET upgrade" }
+        $blockersText = [regex]::Replace($blockers.Value, '\s+', ' ')
+        foreach ($required in @('start-up test question', '`.claude/commands/bootstrap.md`', 'Phase 2b', '3c', 'before any upgrade edit', 'no start-up test line')) {
+            if ($blockersText.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+                throw "$($dist.Name)/$relative .NET upgrade step 2 does not offer the start-up test before it edits (missing '$required')"
+            }
+        }
+
+        $closeOut = [regex]::Match($scope, '(?s)7\. \*\*Close out\.\*\*.*?(?=\r?\n\s*\r?\n|\z)')
+        if (-not $closeOut.Success) { throw "$($dist.Name)/$relative has no 'Close out' step in its .NET upgrade" }
+        if ([regex]::Replace($closeOut.Value, '\s+', ' ').IndexOf('no test starts', [StringComparison]::Ordinal) -lt 0) {
+            throw "$($dist.Name)/$relative .NET upgrade close-out does not name an application that no test starts"
+        }
+    }
+}
+
 function Assert-RepositoryKnowledgeCaptureContracts {
     param([object[]]$DistEntries)
 
@@ -853,6 +887,10 @@ It 'the Copilot test wrapper repeats the selection rule of the test command' {
 
 It 'the Angular test command and skill do not ask for what Test leanness forbids' {
     Assert-AngularTestTextAgreesWithTestLeanness -DistEntries $distEntries
+}
+
+It 'the .NET upgrade procedure offers the start-up test before it edits' {
+    Assert-UpgradeOffersStartupTest -DistEntries $distEntries
 }
 
 It 'the supported completion host invocation is required' {

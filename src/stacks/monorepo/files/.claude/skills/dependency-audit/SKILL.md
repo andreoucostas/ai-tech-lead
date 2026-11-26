@@ -90,7 +90,12 @@ project file) needs a port, not this procedure: report it and stop.
    other installs as developer actions: the SDK on other machines and build agents, a Visual Studio
    version that supports it (listed on the SDK download page), and the runtime or IIS Hosting
    Bundle on servers. Stop and report a red baseline or an unsupported package; install nothing
-   yourself.
+   yourself. An upgrade is where a registration, constructor or configuration binding stops
+   resolving while the unit tests stay green: where a web host has a public type that no test
+   starts, a test project exists, and `AGENTS.md > Conventions > Testing` has no start-up test
+   line, ask in the same message the start-up test question `.claude/commands/bootstrap.md` gives
+   in Phase 2b. A yes applies that file's 3c before any upgrade edit and commits the test on its
+   own, so step 6 runs it on the target; a no writes its declined line; a skip writes nothing.
 3. **Read the breaking changes** of every major after the current one up to the target, in order,
    from `https://learn.microsoft.com/dotnet/core/compatibility/<major>.0`; each page links that
    major's ASP.NET Core and EF Core pages, which apply when those packages are referenced. List
@@ -120,7 +125,8 @@ project file) needs a port, not this procedure: report it and stop.
    `FRAMEWORK-CONTEXT.md > Detected Framework Packages` and docs, except the
    `framework-owned/overwritten` paths in `framework-ownership.json`, and list what the developer
    still has to do (the SDK on build agents and other machines, the runtime or Hosting Bundle on
-   servers, deployment). Use `create-adr` only for a lasting choice the upgrade forced, such as
+   servers, deployment, and, where no test starts a web host, starting the application: say that
+   the upgraded application was not started). Use `create-adr` only for a lasting choice the upgrade forced, such as
    holding a package on an older major or pinning `AnalysisLevel`.
 
 ### Angular
