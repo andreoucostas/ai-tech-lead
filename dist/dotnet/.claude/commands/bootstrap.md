@@ -41,7 +41,7 @@ On any other session model pass none, so the worker runs on the session's own. `
 own: Copilot CLI refuses a Claude Code alias there and the worker never starts. This saves cost only: Phase 2a rechecks
 the evidence behind every high-stakes finding either way.
 
-When native delegation is available, send all applicable worker calls in one message and wait for all to return. In the sequential fallback, complete each selected finite pass before the next. Do not dispatch a .NET pass for a warehouse-only repository, and dispatch `shared A8` exactly once.
+When native delegation is available, send all applicable worker calls in one message and wait for all to return. Phase 2 needs every worker's findings, so where the dispatch tool offers `run_in_background`, pass `false` on every worker call: calls in one message still run together and return before Phase 2. In the sequential fallback, complete each selected finite pass before the next. Do not dispatch a .NET pass for a warehouse-only repository, and dispatch `shared A8` exactly once.
 
 Each subagent returns structured findings; you do **not** redo the analysis. Just collect the selected-profile results — they feed Phase 2. Findings follow `.claude/agents/bootstrap-pass.md`'s Output format, each naming its own evidence and kind for 3f; a host without that agent, and the sequential fallback, read that file and use the same format.
 

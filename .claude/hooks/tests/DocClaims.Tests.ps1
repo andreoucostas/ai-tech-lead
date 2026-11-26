@@ -534,6 +534,22 @@ function Assert-ReviewerModelContracts {
     }
 }
 
+# B-548: headless Claude Code starts Agent calls in the background unless `run_in_background: false`, so /bootstrap's
+# parent could end on a late reply. Same sentence as /review's reviewer calls; the text is checked here, no agent host run.
+function Assert-BootstrapWorkersReturnInTurn {
+    param([object[]]$DistEntries)
+    foreach ($dist in $DistEntries) {
+        $path = Join-Path $dist.Root '.claude/commands/bootstrap.md'
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "carrier is missing in $($dist.Name): .claude/commands/bootstrap.md" }
+        $normalized = [regex]::Replace((Read-Utf8Text $path), '\s+', ' ')
+        foreach ($required in @('`run_in_background`', 'pass `false` on every worker call')) {
+            if ($normalized.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+                throw "$($dist.Name)/.claude/commands/bootstrap.md omits the worker-return rule text '$required'"
+            }
+        }
+    }
+}
+
 function Assert-RepositoryKnowledgeCaptureContracts {
     param([object[]]$DistEntries)
 
@@ -760,6 +776,10 @@ It 'repository-knowledge discovery carriers preserve bounded read-only parity' {
 
 It 'review passes the three Haiku reviewers their model per call, and their files name none' {
     Assert-ReviewerModelContracts -DistEntries $distEntries
+}
+
+It 'bootstrap workers are asked to return in the turn' {
+    Assert-BootstrapWorkersReturnInTurn -DistEntries $distEntries
 }
 
 It 'repository-knowledge capture carriers preserve draft and refresh boundaries' {

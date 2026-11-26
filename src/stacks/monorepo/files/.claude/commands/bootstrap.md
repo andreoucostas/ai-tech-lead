@@ -42,7 +42,7 @@ On any other session model pass none, so the worker runs on the session's own. `
 own: Copilot CLI refuses a Claude Code alias there and the worker never starts. This saves cost only: Phase 2a rechecks
 the evidence behind every high-stakes finding either way.
 
-When native delegation is available, send all worker calls in one message and wait for them to return. In the sequential fallback, complete each selected finite pass before the next.
+When native delegation is available, send all worker calls in one message and wait for them to return. Phase 2 needs every worker's findings, so where the dispatch tool offers `run_in_background`, pass `false` on every worker call: calls in one message still run together and return before Phase 2. In the sequential fallback, complete each selected finite pass before the next.
 
 - **.NET passes:** A1–A7 when .NET is selected (A7 Financial is conditional and may self-skip).
 - **Angular passes:** A1–A6 when Angular is selected.
