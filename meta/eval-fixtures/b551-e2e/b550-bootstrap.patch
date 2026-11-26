@@ -1,0 +1,622 @@
+diff --git a/.claude/bootstrap-baseline.tsv b/.claude/bootstrap-baseline.tsv
+new file mode 100644
+index 0000000..2ef7d99
+--- /dev/null
++++ b/.claude/bootstrap-baseline.tsv
+@@ -0,0 +1,197 @@
++# ai-tech-lead rebootstrap baseline. Written by scripts/bootstrap-baseline.ps1 -Mode Record; do not edit by hand.
++schema	2
++recorded	2026-11-26
++profile	angular
++line	0012ec0cc0c9
++line	02ea57c3810d
++line	048e64ee60b7
++line	04990af4c91e
++line	0628ff91d2d9
++line	074b3d649c15
++line	09742a8f9b2d
++line	0bfc3e8a74a9
++line	0f0cbea24538
++line	194853c7b3ba
++line	1ae50454e36d
++line	1b9a5d6a08db
++line	1f2ee7c2e67b
++line	22b661b78fbf
++line	23916614194f
++line	25a20b1e013d
++line	26b0d3d446ad
++line	3259964d9f34
++line	327910687c42
++line	3285d3834c17
++line	3b506ec7b077
++line	435518d5ceb8
++line	44a64f2d40b5
++line	48a3d2865cd9
++line	4923f61a439a
++line	4978fda68e11
++line	4a83d7114783
++line	4aee9830c965
++line	4b73eb9e9b05
++line	502fe1b1f630
++line	52612fbfc57a
++line	54398562bd8e
++line	568455d89a5c
++line	57faa3ff99fe
++line	5c2d788482db
++line	62b67e1f685b
++line	66c5771b675c
++line	6a8c5ed94005
++line	6be61f7712a2
++line	6d222b99f091
++line	6f426cd5b018
++line	71ab5bb65349
++line	7325c89c2f4f
++line	767a1ed3662f
++line	7a78cefaf586
++line	7bb86190d527
++line	7bd42b77dc37
++line	7d4b95b62598
++line	7f59637897f7
++line	808dd495838c
++line	871f98e26996
++line	8fb65e463c22
++line	9054eb36c537
++line	924be969968c
++line	936f630708e7
++line	94bc863e797c
++line	95dd9a2b5ace
++line	98ebb18781f6
++line	99c624a83bc2
++line	9d400c4c5c50
++line	9e9537f7f354
++line	a0c1ce185a11
++line	a25b4f227992
++line	a27e5fd0d8f2
++line	a29979d0273f
++line	a6268ae096a3
++line	a88719915f43
++line	a8e6c68da36a
++line	abbcfa5715f1
++line	aedcd1dd50e6
++line	b35ef80b6eaa
++line	b652eabfa7a0
++line	bc892e36c464
++line	bee2121ba921
++line	c4ccca125921
++line	c8859d004cac
++line	cb3f91d54eee
++line	cb9213101ddb
++line	cbd85c7ea471
++line	d0899c5c9cf7
++line	d8dbe5f46ecc
++line	dacb5a1bab59
++line	db6cc67f38b1
++line	dc2ce3a2bca2
++line	e072a104fd01
++line	e18992ce9cc5
++line	e580ce34717e
++line	e600c5a3766f
++line	f0a50fc9f427
++line	f0af28a17428
++line	f1f6a343c027
++line	f4a1ddfd8688
++line	f553ce8672a8
++line	f75a9d877c35
++line	fb1d72a79eb5
++line	feea6406d079
++line	feedc991c159
++area	.	8c3dbbb44159e980
++area	.github/workflows	064f0898668492b6
++area	api	1066e1b66880d9a6
++area	docs/wiki	dee029e4d8bef881
++area	public	c1a40b1c970fb862
++area	src	dddee4ff7f4926ba
++area	src/app	d082086d947fc453
++workspace	angular	angular.json	43c48eb1e62495afe48456318b23a1f54d2354de
++project	angular	package.json
++hazard	api/server.mjs	78d75cf2ed145ab3c7f8b7d6b6fde6bf962cdb92
++hazard	src/app/app.routes.ts	9dfedcb8c581d0f124b67c8d48aa0be4674ec6e8
++hazard	src/app/checkout.page.ts	efb7bc6558212d9c797f5a7616112aaac8c8afba
++file	angular.json	43c48eb1e62495afe48456318b23a1f54d2354de
++file	eslint.config.js	a870aa0f599e2b65c237d82b25c8fb20c5a0f980
++file	package.json	03e0cef24e628bb852a23809cf5f3b9d07f32945
++file	proxy.conf.json	88fc43db567c4e775a4b8fa1a33033d4178546c9
++file	src/app/app.config.ts	d50f39de08df87fea15f78a3c3d5c142967793d8
++file	src/app/app.routes.ts	9dfedcb8c581d0f124b67c8d48aa0be4674ec6e8
++file	src/app/app.ts	ac9253093ccb1b85cd9ca79f72e176760f26123b
++file	src/app/cart.page.ts	f396236ced68e1f523a36d91c8e31db76d6d50f9
++file	src/app/cart.store.spec.ts	edca70325595d270bf25f5d4fe7e6b0028fc5173
++file	src/app/cart.store.ts	f9b0e502be1dac92cfb26f5de6d5a47a20cf5ad0
++file	src/app/checkout.page.spec.ts	1dd6176b757ce3fe1d1d5679f454ba7a2d6714eb
++file	src/app/checkout.page.ts	efb7bc6558212d9c797f5a7616112aaac8c8afba
++file	src/app/confirmation.page.ts	f7581bd11d6660430019adad70f7fe0a7700a046
++file	src/app/help.page.ts	4f11507d772e9925d6dfc786a7b0dc2ccbb58df3
++file	src/app/order.service.spec.ts	a750b40a01672126a29a7c5671fb82a5641a63c1
++file	src/app/order.service.ts	00d781c83c340e6f128691b09554f5944f13c351
++file	src/app/products.data.ts	7d20884e5b6c0219b15b70729d97c163a14d9365
++file	src/app/products.page.spec.ts	1689c684f7ef2fab3cb27d3e0eb1f82deb85d29a
++file	src/app/products.page.ts	22d16cfb2960836ec2740418ce478f32c9205078
++file	src/main.ts	5df75f9c838ea50f80ee4d5703b68dd8ac7243d4
++file	src/styles.css	90d4ee0072ce3fc41812f8af910219f9eea3c3de
++file	tsconfig.json	2ab7442758fef79ae3551353028b98cdfa1ed562
++file	tsconfig.spec.json	d38370633f6dc18f5bb2a55884e5ac0c5eceb8d0
++claim	07ca55df2dd3	angular	A6	scoped	Angular 21.2 with the `@angular/build:application` builder, and `strict` plus `strictTemplates` stay on so type errors fail the build (`tsconfig.json`).
++evidence	07ca55df2dd3	angular.json
++evidence	07ca55df2dd3	tsconfig.json
++evidence	07ca55df2dd3	package.json
++claim	97f31cfdb26c	angular	A3	universal	The app is zoneless (no `zone.js`, no `provideZoneChangeDetection`), so changing view state is held in signals (`src/app/checkout.page.ts`).
++evidence	97f31cfdb26c	package.json
++evidence	97f31cfdb26c	angular.json
++evidence	97f31cfdb26c	src/**/*.ts
++claim	c590d944ba97	angular	A1	universal	Components are standalone with no NgModules or barrel files, in a flat `src/app/` using `.page.ts`, `.store.ts`, `.service.ts` and `.data.ts` suffixes.
++evidence	c590d944ba97	src/**/*.ts
++claim	97c8615c68ac	angular	A1	universal	Dependencies are injected with `inject()`, never through constructors (`src/app/checkout.page.ts`).
++evidence	97c8615c68ac	src/**/*.ts
++claim	63c9ff23479f	angular	A1	scoped	Routes are eagerly loaded; a page that reads the cart goes inside the `''` group that provides `CartStore`, every other page outside it (`src/app/app.routes.ts`).
++evidence	63c9ff23479f	src/app/app.routes.ts
++claim	2b6b29907bb4	angular	A3	universal	Components use inline templates with `@if`/`@for`, tracking list items by id (`src/app/cart.page.ts`).
++evidence	2b6b29907bb4	src/**/*.ts
++claim	b57369014792	angular	A6	scoped	Selectors use the `app` prefix, with elements in kebab-case, enforced by lint (`eslint.config.js`).
++evidence	b57369014792	eslint.config.js
++claim	d9afc792c783	angular	A3	universal	No existing component sets `changeDetection` (DEBT-005); new components set `OnPush` as `docs/defaults.md` requires on v21.
++evidence	d9afc792c783	src/**/*.ts
++claim	1e8298e92b37	angular	A3	universal	Forms are reactive and typed through `FormBuilder.nonNullable`, with validators declared on the control (`src/app/checkout.page.ts`).
++evidence	1e8298e92b37	src/**/*.ts
++claim	f94c5ed65f52	angular	A2	universal	Shared state is a signal store (private writable signal, `asReadonly()` exposure, `computed` totals, immutable updates) with no state library (`src/app/cart.store.ts`).
++evidence	f94c5ed65f52	src/**/*.ts
++evidence	f94c5ed65f52	package.json
++claim	b2e9f6842409	angular	A5	universal	HTTP calls live in a `providedIn: 'root'` service with typed request and response, called by relative `/api` URL; there are no interceptors or environment files (`src/app/order.service.ts`).
++evidence	b2e9f6842409	src/**/*.ts
++evidence	b2e9f6842409	proxy.conf.json
++claim	d276ca8c0183	angular	A4	scoped	The order POST subscription handles `next` and `error`; cancelling it on destroy would skip the cart clear for a sent order, so decide that explicitly (`src/app/checkout.page.ts`).
++evidence	d276ca8c0183	src/app/checkout.page.ts
++claim	83642e102ce4	angular	A6	universal	Data shapes are exported interfaces and `src/` uses no `any` (`src/app/order.service.ts`).
++evidence	83642e102ce4	src/**/*.ts
++claim	0938d775f4a5	angular	A3	universal	Styling is plain CSS with the global sheet `src/styles.css`; no component styles exist.
++evidence	0938d775f4a5	src/**/*.ts
++evidence	0938d775f4a5	src/**/*.css
++evidence	0938d775f4a5	angular.json
++claim	e48afcf4a1fb	angular	A6	universal	There is no SSR or hydration setup (`angular.json`).
++evidence	e48afcf4a1fb	angular.json
++evidence	e48afcf4a1fb	package.json
++evidence	e48afcf4a1fb	src/**/*.ts
++claim	e0d41f5051f5	angular	A6	scoped	Specs run on Vitest through `@angular/build:unit-test` with jsdom, beside their source (`angular.json`, `tsconfig.spec.json`).
++evidence	e0d41f5051f5	angular.json
++evidence	e0d41f5051f5	tsconfig.spec.json
++evidence	e0d41f5051f5	package.json
++claim	79cdb188ead2	angular	A6	universal	Specs use `TestBed` with the real store, assert DOM or state, and mock only HTTP with `provideHttpClientTesting`; component specs await `fixture.whenStable()` (`src/app/checkout.page.spec.ts`).
++evidence	79cdb188ead2	src/**/*.spec.ts
++claim	83b11f976f2e	angular	A6	scoped	A spec for anything reading the cart lists `CartStore` in its providers, because the store has no `providedIn` (`src/app/products.page.spec.ts`).
++evidence	83b11f976f2e	src/app/products.page.spec.ts
++evidence	83b11f976f2e	src/app/cart.store.ts
++claim	61d55971c9b0	angular	A6	universal	Target shape: trophy-shaped, with component specs as the centre, a few store and service specs, and no E2E harness today.
++evidence	61d55971c9b0	src/**/*.spec.ts
++evidence	61d55971c9b0	package.json
++claim	44cfd035e5c0	angular	A2	scoped	ADR-001 — Cart state is scoped to the shop route group — recorded 2026-11-26.
++evidence	44cfd035e5c0	src/app/app.routes.ts
++evidence	44cfd035e5c0	src/app/cart.store.ts
++claim	988971b624b1	angular	A2	universal	ADR-002 — State is a hand-written signal store, with no state library — recorded 2026-11-26.
++evidence	988971b624b1	src/app/cart.store.ts
++evidence	988971b624b1	package.json
++claim	ab141fe7bab0	angular	A5	scoped	ADR-003 — The API is reached by relative `/api` URL, proxied in development — recorded 2026-11-26.
++evidence	ab141fe7bab0	src/app/order.service.ts
++evidence	ab141fe7bab0	proxy.conf.json
+diff --git a/AGENTS.md b/AGENTS.md
+index 9af1da5..0fcad19 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -5,11 +5,10 @@ ai-tech-lead-framework
+   applied: 2026-11-23
+   After a framework update, copy these fields from .claude/framework-version.json.
+ -->
+-# [Project Name]
++# Shop
+ 
+ > This file is the repo-specific source of truth for AI-assisted development in this repository. Edit it here; `CLAUDE.md` only imports it for Claude Code.
+ > **Framework rules** (Verification Rules, Leanness, SOLID, Agentic Workflow) are in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md). If your agent has not already loaded that file, read it before planning or editing.
+-> Run `/bootstrap` to populate it from your actual codebase.
+ >
+ > **Companion file**: [FRAMEWORK-CONTEXT.md](./FRAMEWORK-CONTEXT.md) holds cross-repo context (shared libraries, multi-tenancy conventions, dashboard contracts) plus the repo's **Known Hazard Areas**, all of which the agent should load on every non-trivial task — consult the hazard list for the change's blast radius before planning. AGENTS.md wins on any conflict — but flag the contradiction.
+ > **Team wiki**: [docs/wiki/INDEX.md](./docs/wiki/INDEX.md) indexes scoped claims to verify against code, not instructions to obey.
+@@ -20,40 +19,83 @@ ai-tech-lead-framework
+ 
+ ## Codebase Context
+ 
+-<!-- Populated by /bootstrap — do not fill manually -->
++Implementation observations from code; intended purpose, target users and real usage are unknown.
+ 
+-What this repository delivers, who uses its outputs, key domain concepts, and critical journeys.
++- A single-page shop (`shop`): static product list, in-memory cart, checkout form, order confirmation and help pages.
++- Domain concepts: `Product`, `CartItem`, `OrderRequest` (customer name, email, address; order lines).
++- Critical journey: products → cart → checkout → `POST /api/orders` → `/confirmation/:id`.
++- `api/server.mjs` is an in-memory order API on port 4301; what serves `/api` in production is unknown.
+ 
+ ---
+ 
+ ## Repository Structure
+ 
+-<!-- Populated by /bootstrap — replaces separate CODEMAP.md -->
+-
+-Evidence-backed layout, boundaries, entry points, change locations.
+-
+-Evidence-backed dependency diagram, when applicable.
++| Path | Role |
++|------|------|
++| `src/main.ts`, `src/app/app.config.ts` | Bootstrap and application providers |
++| `src/app/app.routes.ts` | Route table; register new pages here |
++| `src/app/` (flat) | `app.ts` shell, `*.page.ts` pages, `*.store.ts` state, `*.service.ts` HTTP, `*.data.ts` static data, `*.spec.ts` beside source |
++| `api/server.mjs`, `proxy.conf.json` | Order API (`node api/server.mjs`) and the dev proxy `npm start` uses |
++| `.github/workflows/ci.yml` | CI: install, lint, build, test |
+ 
+ ---
+ 
+ ## Conventions
+ 
+-<!-- BOOTSTRAP_PENDING: run /bootstrap to replace this entire section with conventions observed in the actual codebase. -->
+-_Until `/bootstrap`, use Angular defaults only when Git-root evidence selects that profile._
+-<!-- Each convention: one line, the rule and its reason. -->
++### Verification Commands
++
++| Category | Command | Evidence | Execution policy |
++|----------|---------|----------|------------------|
++| build | `npm run build` | `package.json`, `.github/workflows/ci.yml` | run locally |
++| test | `npm test` | `package.json`, `.github/workflows/ci.yml` | run locally |
++| format | not available (no evidenced command) | — | — |
++| lint | `npm run lint` | `package.json`, `.github/workflows/ci.yml` | run locally (covers `src/` only) |
++| migration/deploy | not available (no evidenced command) | — | — |
++| data-validation | not available (no evidenced command) | — | — |
++
++### Angular Version & Architecture
++
++- Angular 21.2 with the `@angular/build:application` builder, and `strict` plus `strictTemplates` stay on so type errors fail the build (`tsconfig.json`).
++- The app is zoneless (no `zone.js`, no `provideZoneChangeDetection`), so changing view state is held in signals (`src/app/checkout.page.ts`).
++- Components are standalone with no NgModules or barrel files, in a flat `src/app/` using `.page.ts`, `.store.ts`, `.service.ts` and `.data.ts` suffixes.
++- Dependencies are injected with `inject()`, never through constructors (`src/app/checkout.page.ts`).
++- Routes are eagerly loaded; a page that reads the cart goes inside the `''` group that provides `CartStore`, every other page outside it (`src/app/app.routes.ts`).
++
++### Component Design & Forms
++
++- Components use inline templates with `@if`/`@for`, tracking list items by id (`src/app/cart.page.ts`).
++- Selectors use the `app` prefix, with elements in kebab-case, enforced by lint (`eslint.config.js`).
++- No existing component sets `changeDetection` (DEBT-005); new components set `OnPush` as `docs/defaults.md` requires on v21.
++- Forms are reactive and typed through `FormBuilder.nonNullable`, with validators declared on the control (`src/app/checkout.page.ts`).
++
++### State, RxJS & API
++
++- Shared state is a signal store (private writable signal, `asReadonly()` exposure, `computed` totals, immutable updates) with no state library (`src/app/cart.store.ts`).
++- HTTP calls live in a `providedIn: 'root'` service with typed request and response, called by relative `/api` URL; there are no interceptors or environment files (`src/app/order.service.ts`).
++- The order POST subscription handles `next` and `error`; cancelling it on destroy would skip the cart clear for a sent order, so decide that explicitly (`src/app/checkout.page.ts`).
++
++### Typing, Styling & SSR
++
++- Data shapes are exported interfaces and `src/` uses no `any` (`src/app/order.service.ts`).
++- Styling is plain CSS with the global sheet `src/styles.css`; no component styles exist.
++- There is no SSR or hydration setup (`angular.json`).
++
++### Testing
+ 
+-_Not yet populated. Until you run `/bootstrap`, the greenfield defaults in [docs/defaults.md](./docs/defaults.md) apply. After bootstrap, this section becomes the authoritative source._
++- Specs run on Vitest through `@angular/build:unit-test` with jsdom, beside their source (`angular.json`, `tsconfig.spec.json`).
++- Specs use `TestBed` with the real store, assert DOM or state, and mock only HTTP with `provideHttpClientTesting`; component specs await `fixture.whenStable()` (`src/app/checkout.page.spec.ts`).
++- A spec for anything reading the cart lists `CartStore` in its providers, because the store has no `providedIn` (`src/app/products.page.spec.ts`).
++- Target shape: trophy-shaped, with component specs as the centre, a few store and service specs, and no E2E harness today.
+ 
+ ---
+ 
+ ## Architecture Decisions
+ 
+-<!-- One-line INDEX of significant decisions here (ID — title — date — link). Full ADRs
+-     (Decision → Context → Consequences → Review notes) live in docs/architecture-decisions.md,
+-     added by the create-adr skill. Rationale: AGENTS.md loads on nearly every agent turn and
+-     anchors the prompt cache — keep it small; detail loads on demand. -->
++Full detail in [docs/architecture-decisions.md](./docs/architecture-decisions.md).
+ 
+-A one-line index of significant decisions (including accidental ones that became convention). Full detail in [docs/architecture-decisions.md](./docs/architecture-decisions.md).
++- ADR-001 — Cart state is scoped to the shop route group — recorded 2026-11-26.
++- ADR-002 — State is a hand-written signal store, with no state library — recorded 2026-11-26.
++- ADR-003 — The API is reached by relative `/api` URL, proxied in development — recorded 2026-11-26.
+ 
+ ---
+ 
+@@ -68,7 +110,6 @@ evidence satisfies the gate:
+ - `dependency-audit` — scan for vulnerable/deprecated/outdated npm packages, set up automated scanning, or upgrade Angular one major at a time
+ - `create-adr` — record a significant architecture decision in Architecture Decisions
+ - `remember-for-team` — draft a team wiki entry (gotcha/context/recipe/failed-approach) for PR review
+-- `enforce-architecture` — wire the deterministic DIP/layering CI gate (dependency-cruiser)
+ - `enforce-standards` — make `@ts-ignore`, `eslint-disable`, and focused/skipped specs build-breaking (ESLint `noInlineConfig` + rule severities)
+ 
+ `/bootstrap` drafts a project skill under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, for an operation this repository repeats at least three times; add its line here once the team approves the draft.
+diff --git a/FRAMEWORK-CONTEXT.md b/FRAMEWORK-CONTEXT.md
+index a8457e8..3383767 100644
+--- a/FRAMEWORK-CONTEXT.md
++++ b/FRAMEWORK-CONTEXT.md
+@@ -18,9 +18,9 @@
+      - What does this repo consume? What does it expose?
+      - Where do other systems integrate with this one? -->
+ 
+-<!-- PRODUCTION_ARCHITECTURE_PENDING: run /bootstrap to draft this from the repo's code. -->
++<!-- Auto-drafted by /bootstrap on 2026-11-26 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
+ 
+-_Not yet populated. `/bootstrap` drafts this from the repo's code; a maintainer adds the cross-repo context the code cannot show._
++An Angular application (`angular.json` `projectType: application`), not a publishable library. It consumes one backend call, `POST /api/orders`, by relative URL; no environment files or auth provider configuration were found. It exposes the routes `/`, `/cart`, `/checkout`, `/confirmation/:id` and `/help`. The repository also holds an in-memory API (`api/server.mjs`, port 4301) serving `GET /health` and `POST /api/orders`; production hosting and the production backend are not shown.
+ 
+ ---
+ 
+@@ -31,24 +31,9 @@ _Not yet populated. `/bootstrap` drafts this from the repo's code; a maintainer
+      Document the latest version's public API surface, with a disclaimer that
+      older consumer repos may pin to earlier versions. -->
+ 
+-<!-- SHARED_LIBRARIES_PENDING: run /bootstrap to draft entries from this repo's detected framework packages and their observed usage. -->
++<!-- Auto-drafted by /bootstrap on 2026-11-26 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
+ 
+-_Not yet populated. `/bootstrap` drafts an entry per detected framework package (consumed surface, observed in this repo); a maintainer adds purpose, pitfalls, and the full API surface. Entries exist so AI agents do not reimplement helpers that already exist._
+-
+-Template entry:
+-
+-```markdown
+-### @acme/ui-kit
+-
+-- **Source**: https://github.com/<org>/acme-ui-kit
+-- **Purpose**: Shared design-system components (buttons, modals, forms) with theming.
+-- **Latest version**: 3.1.0
+-- **Public API surface (latest)**:
+-  - `<acme-button>` — primary/secondary/ghost variants; emits `(click)`
+-  - `<acme-modal>` — content-projected modal with `[open]` input
+-  - `provideAcmeTheme({ ... })` — global theme provider, call in `bootstrapApplication`
+-- **Common pitfalls**: Do not import `acme-ui-kit/legacy` — it is for repos still on NgModule-based components.
+-```
++_No shared team libraries found: `package.json` dependencies are `@angular/*`, `rxjs` and `tslib` as of 2026-11-26. If a shared library reaches this app another way, a maintainer should document it here._
+ 
+ ---
+ 
+@@ -59,9 +44,9 @@ Template entry:
+      - Tenant-scoped routing, theming, feature flags
+      - How tenant context is provided to components / services -->
+ 
+-<!-- MULTI_TENANCY_PENDING: run /bootstrap to draft this from the repo's code (or record a verified negative). -->
++<!-- Auto-drafted by /bootstrap on 2026-11-26 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
+ 
+-_Not yet populated. `/bootstrap` drafts this from observed tenant signals — or records that none were found._
++_No multi-tenancy signals found in this repo (no tenant resolution, tenant headers, tenant guards or tenant-scoped config in `src/`, `api/` or `proxy.conf.json` as of 2026-11-26). If the system is multi-tenant at another layer, a maintainer should document it here._
+ 
+ ---
+ 
+@@ -73,9 +58,9 @@ _Not yet populated. `/bootstrap` drafts this from observed tenant signals — or
+      - Health-check / heartbeat contracts
+      - How configuration flows from dashboard to app -->
+ 
+-<!-- DASHBOARD_INTEGRATION_PENDING: run /bootstrap to draft this from the repo's code (or record a verified negative). -->
++<!-- Auto-drafted by /bootstrap on 2026-11-26 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
+ 
+-_Not yet populated. `/bootstrap` drafts this from observed registration/heartbeat wiring — or records that none was found._
++_No dashboard registration, embedded-shell, `postMessage` or heartbeat wiring found in `src/` or `api/` as of 2026-11-26. `api/server.mjs` answers `GET /health` (its comment says for readiness); nothing here shows a control plane calling it._
+ 
+ ---
+ 
+@@ -87,9 +72,12 @@ _Not yet populated. `/bootstrap` drafts this from observed registration/heartbea
+      - Correlation ID propagation, logging conventions
+      - WebSocket / SSE patterns (if any) -->
+ 
+-<!-- CROSS_SERVICE_COMMUNICATION_PENDING: run /bootstrap to draft this from the repo's code (or record a verified negative). -->
++<!-- Auto-drafted by /bootstrap on 2026-11-26 from this repo's code. Describes what THIS repo shows; a maintainer should add the cross-repo context the code cannot prove. -->
+ 
+-_Not yet populated. `/bootstrap` drafts this from observed interceptor/API/envelope wiring; a maintainer adds the org-wide conventions._
++- `provideHttpClient()` with no features and no interceptors (`src/app/app.config.ts`); no auth or correlation-ID headers are set.
++- `OrderService.place` posts `OrderRequest` to the unversioned relative URL `/api/orders` and expects `{ id: number }` (`src/app/order.service.ts`). `proxy.conf.json` forwards `/api` to `http://localhost:4301` in development.
++- The API replies `201 { id }`, or `400`/`404` with `{ error }` (`api/server.mjs`); the page ignores the error body and shows one generic message (`src/app/checkout.page.ts`).
++- No WebSocket or SSE usage found.
+ 
+ ---
+ 
+@@ -112,11 +100,13 @@ _Not yet populated. `/bootstrap` drafts this from observed interceptor/API/envel
+ 
+ Merging the PR does not confirm these — an item is confirmed only when a person answers its question and updates its status.
+ 
+-<!-- KNOWN_HAZARD_AREAS_PENDING: run /bootstrap to draft this from the codebase. -->
+-
+ | Area / file(s) | Hazard | Status | Reviewed |
+ |----------------|--------|--------|----------|
+-| _(drafted by /bootstrap)_ | _ | _ | _ |
++| `src/app/checkout.page.ts` | Submitting again before the server replies can create a duplicate order: nothing tracks a request in progress and no spec covers submit (`src/app/checkout.page.ts:31`, `src/app/checkout.page.ts:50-65`). | [VERIFIED] | 2026-11-26 |
++| `src/app/checkout.page.ts` | An order with no items can be placed: `submit()` checks form validity but not that the cart has items, and the route has no guard (`src/app/checkout.page.ts:50-59`). | [VERIFIED] | 2026-11-26 |
++| `src/app/checkout.page.ts` | Items added while an order is being sent can be lost: lines are copied before the POST, and success clears the whole cart and navigates (`src/app/checkout.page.ts:53-63`). | [VERIFIED] | 2026-11-26 |
++| `api/server.mjs` | The API stores any body that parses as JSON, with no field check or size limit (`api/server.mjs:16-29`). | [VERIFIED] | 2026-11-26 |
++| `src/app/app.routes.ts` | The cart is provided only to the products, cart and checkout route group, deliberately per the code comment; injecting it elsewhere is expected to fail at runtime (`src/app/app.routes.ts:10-19`). | [VERIFIED] | 2026-11-26 |
+ 
+ ---
+ 
+@@ -140,8 +130,4 @@ new file does not collide with owner-authored content. Draft claims and skills r
+      Lists the framework packages this repo references, with version.
+      Helps the AI give version-aware advice and flag drift. -->
+ 
+-<!-- DETECTED_FRAMEWORK_PACKAGES_PENDING: run /bootstrap to populate. -->
+-
+-| Package | Version | Source (package.json) |
+-|---------|---------|-----------------------|
+-| _(populated by /bootstrap)_ | _ | _ |
++_No framework packages detected in this repo._
+diff --git a/TECH_DEBT.md b/TECH_DEBT.md
+index cf57375..4d4ecd8 100644
+--- a/TECH_DEBT.md
++++ b/TECH_DEBT.md
+@@ -25,7 +25,101 @@ Template (an example, not an item):
+ ---
+ ```
+ 
+-_No items yet. Run `/bootstrap` to populate this register._
++## DEBT-001: Checkout can send the same order twice
++
++- **Key**: checkout::no-in-flight-guard
++- **Category**: Architecture
++- **Severity**: High
++- **Effort**: S
++- **Files**: `src/app/checkout.page.ts:31`, `src/app/checkout.page.ts:50-65`, `api/server.mjs:20-24`
++
++### Issue
++The button is disabled only while the form is invalid and `submit()` tracks no pending state. A second submit before the response sends a second POST, and the API creates a new order for each.
++
++### Recommended fix
++Track a pending signal, ignore submits and disable the button while it is set, and reset it on error. Write the failing spec first.
++
++---
++
++## DEBT-002: Empty cart can be ordered
++
++- **Key**: checkout::empty-cart-accepted
++- **Category**: Architecture
++- **Severity**: High
++- **Effort**: S
++- **Files**: `src/app/checkout.page.ts:50-59`, `api/server.mjs:20-24`
++
++### Issue
++`submit()` checks only form validity, so a valid form with an empty cart posts `lines: []`, which the API stores.
++
++### Recommended fix
++Block submission with no lines in the page and reject it in the API.
++
++---
++
++## DEBT-003: Order submit path has no spec
++
++- **Key**: checkout::submit-path-untested
++- **Category**: Testing
++- **Severity**: High
++- **Effort**: S
++- **Files**: `src/app/checkout.page.spec.ts:1-37`, `src/app/checkout.page.ts:50-65`
++
++### Issue
++The checkout specs cover the summary and the email message only. Nothing pins the posted lines, the cart clear and navigation on success, or the failure message.
++
++### Recommended fix
++Add component specs for success and failure using `HttpTestingController`.
++
++---
++
++## DEBT-004: Order success clears the whole cart
++
++- **Key**: checkout::late-success-clears-cart
++- **Category**: State Management
++- **Severity**: Medium
++- **Effort**: M
++- **Files**: `src/app/checkout.page.ts:53-63`
++
++### Issue
++Lines are captured before the POST, but success clears the whole cart and navigates even if the user has left checkout. Items added while the request is in flight would be lost.
++
++### Recommended fix
++Decide the intended behaviour first, then remove only ordered quantities or lock the cart while pending.
++
++---
++
++## DEBT-005: Components do not set OnPush
++
++- **Key**: components::eager-change-detection
++- **Category**: Performance
++- **Severity**: Low
++- **Effort**: S
++- **Files**: `src/app/app.ts`, `src/app/products.page.ts`, `src/app/cart.page.ts`, `src/app/checkout.page.ts`, `src/app/confirmation.page.ts`, `src/app/help.page.ts`
++
++### Issue
++None of the six components sets `changeDetection`, which on Angular 21 means eager checking.
++
++### Recommended fix
++Switch one component at a time and verify the view still updates.
++
++---
++
++## DEBT-006: Name and address give no validation message
++
++- **Key**: checkout::missing-field-errors
++- **Category**: Component Design
++- **Severity**: Low
++- **Effort**: S
++- **Files**: `src/app/checkout.page.ts:21-31`
++
++### Issue
++Only email shows an error; with name or address empty the button is disabled with no explanation.
++
++### Recommended fix
++Show a message for each required field and link it to its input.
++
++---
+ 
+ **Categories**: Architecture, State Management, RxJS, Component Design, Testing, Types, Performance, Dependencies, Security
+ 
+@@ -46,4 +140,5 @@ _No items yet. Run `/bootstrap` to populate this register._
+ 
+ _Group debt items by feature area so developers can bundle cleanup into feature work._
+ 
+-<!-- Populated by /bootstrap -->
++- **Checkout**: DEBT-001, DEBT-002, DEBT-003, DEBT-004, DEBT-006
++- **Any page**: DEBT-005
+diff --git a/docs/architecture-decisions.md b/docs/architecture-decisions.md
+index b920b09..5e0de66 100644
+--- a/docs/architecture-decisions.md
++++ b/docs/architecture-decisions.md
+@@ -2,4 +2,32 @@
+ 
+ Append-only ADR log. Entries are added by the `create-adr` skill (format: `## ADR-NNN: <title>` with Date / Status / Decision / Context / Alternatives considered / Consequences). The one-line index lives in `AGENTS.md > Architecture Decisions`.
+ 
+-_No decisions recorded yet._
++## ADR-001: Cart state is scoped to the shop route group
++
++- **Date**: 2026-11-26 (recorded by /bootstrap; original decision date unknown)
++- **Status**: Observed in code; pending PR review
++- **Decision**: `CartStore` has no `providedIn`; the componentless `''` route provides it for products, cart and checkout (`src/app/app.routes.ts:10-19`).
++- **Context**: The code comment says it is on purpose: only the shop pages share a cart.
++- **Alternatives considered**: Not recorded.
++- **Consequences**: The app shell, confirmation and help pages sit outside the provider, so injecting the store there is expected to fail (inferred, not run). Specs provide the store themselves.
++- **Review notes**: Confirm with the team before moving the store to root or adding a cart badge to the header.
++
++## ADR-002: State is a hand-written signal store
++
++- **Date**: 2026-11-26 (recorded by /bootstrap; original decision date unknown)
++- **Status**: Observed in code; pending PR review
++- **Decision**: Shared state is a service holding a private signal (`src/app/cart.store.ts`).
++- **Context**: Rationale unknown.
++- **Alternatives considered**: Not recorded.
++- **Consequences**: No state-library dependency; the cart is held in memory only, so a page reload loses it.
++- **Review notes**: Whether losing the cart on reload is intended is unknown.
++
++## ADR-003: Relative `/api` URL with a development proxy
++
++- **Date**: 2026-11-26 (recorded by /bootstrap; original decision date unknown)
++- **Status**: Observed in code; pending PR review
++- **Decision**: `OrderService` posts to `/api/orders`; `proxy.conf.json` forwards `/api` to port 4301 under `npm start`.
++- **Context**: Rationale unknown.
++- **Alternatives considered**: Not recorded.
++- **Consequences**: Production must serve `/api` on the same origin or route it there; no environment configuration exists.
++- **Review notes**: Production hosting is not described in this repository.
+diff --git a/docs/wiki/INDEX.md b/docs/wiki/INDEX.md
+index 2d39e48..6ffb762 100644
+--- a/docs/wiki/INDEX.md
++++ b/docs/wiki/INDEX.md
+@@ -7,3 +7,5 @@ created discovery entries are drafts pending PR review; their body states that s
+ |---|---|---|
+ | Shape | append-only chronological log + declined-recipe registry | current, scoped, individually-verifiable claims, indexed |
+ | Promote | — | durable entries move here via `remember-for-team` |
++
++- [gotcha] [local-order-api](./local-order-api.md) — Config shows local order placement needs the API stub started separately and the dev proxy from npm start
+diff --git a/docs/wiki/local-order-api.md b/docs/wiki/local-order-api.md
+new file mode 100644
+index 0000000..803c9f5
+--- /dev/null
++++ b/docs/wiki/local-order-api.md
+@@ -0,0 +1,17 @@
++---
++name: local-order-api
++description: Config shows local order placement needs the API stub started separately and the dev proxy from npm start
++type: gotcha
++scope: api/**, proxy.conf.json, package.json
++status: unverified
++last-verified: never
++---
++`npm start` runs `ng serve --proxy-config proxy.conf.json`, which forwards `/api` to `http://localhost:4301`. No package script starts `api/server.mjs`, and `angular.json` names no proxy file, so a plain `ng serve` has no `/api` proxy.
++**Confidence:** observed
++**Provenance:** requested /bootstrap discovery draft, from `package.json`, `proxy.conf.json`, `angular.json`, `api/server.mjs`
++**Evidence:** `package.json` scripts.start; `proxy.conf.json`; `api/server.mjs` `server.listen(4301)`
++**Counterevidence / exceptions:** none found in the files read; unit specs mock HTTP and need neither.
++**Dependencies / unresolved:** how `/api` is served in production is not described here.
++**Verify by:** run `node api/server.mjs` and `npm start`, then place an order.
++**Semantic refresh:** trigger: change to scripts, proxy file, serve target or API port; result: not yet rechecked at runtime.
++**Draft status:** draft pending PR review; not team-approved policy
