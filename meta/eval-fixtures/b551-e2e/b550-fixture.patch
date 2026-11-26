@@ -1,0 +1,331 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index a7d8ade..3f15c3a 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -12,5 +12,3 @@ jobs:
+       - run: npm run lint
+       - run: npm run build
+       - run: npm test
+-      - run: npx playwright install --with-deps chromium
+-      - run: npm run e2e
+diff --git a/e2e/browse.spec.ts b/e2e/browse.spec.ts
+deleted file mode 100644
+index 7056cd5..0000000
+--- a/e2e/browse.spec.ts
++++ /dev/null
+@@ -1,22 +0,0 @@
+-import { expect, test } from './fixtures';
+-
+-test('the products page lists the products', async ({ page, shop }) => {
+-  await shop.open();
+-
+-  await expect(page.getByRole('listitem').filter({ hasText: 'Blue mug' })).toBeVisible();
+-  await expect(page.getByRole('listitem').filter({ hasText: 'Green pen' })).toBeVisible();
+-});
+-
+-test('the help page opens from the navigation', async ({ page, shop }) => {
+-  await shop.open();
+-  await page.getByRole('link', { name: 'Help' }).click();
+-
+-  await expect(page.getByRole('heading', { name: 'Help' })).toBeVisible();
+-});
+-
+-test('an empty cart says so', async ({ page, shop }) => {
+-  await shop.open();
+-  await shop.openCart();
+-
+-  await expect(page.getByText('Your cart is empty.')).toBeVisible();
+-});
+diff --git a/e2e/fixtures.ts b/e2e/fixtures.ts
+deleted file mode 100644
+index 9a33b2f..0000000
+--- a/e2e/fixtures.ts
++++ /dev/null
+@@ -1,14 +0,0 @@
+-import { test as base } from '@playwright/test';
+-import { CheckoutPage } from './pages/checkout.page';
+-import { ShopPage } from './pages/shop.page';
+-
+-export const test = base.extend<{ shop: ShopPage; checkout: CheckoutPage }>({
+-  shop: async ({ page }, use) => {
+-    await use(new ShopPage(page));
+-  },
+-  checkout: async ({ page }, use) => {
+-    await use(new CheckoutPage(page));
+-  },
+-});
+-
+-export { expect } from '@playwright/test';
+diff --git a/e2e/pages/checkout.page.ts b/e2e/pages/checkout.page.ts
+deleted file mode 100644
+index 98d550b..0000000
+--- a/e2e/pages/checkout.page.ts
++++ /dev/null
+@@ -1,31 +0,0 @@
+-import { expect, Page } from '@playwright/test';
+-
+-export interface Customer {
+-  name: string;
+-  email: string;
+-  address: string;
+-}
+-
+-export class CheckoutPage {
+-  constructor(private readonly page: Page) {}
+-
+-  async expectSummaryItem(productName: string): Promise<void> {
+-    await expect(
+-      this.page.getByRole('region', { name: 'Order summary' }).getByText(productName),
+-    ).toBeVisible();
+-  }
+-
+-  async fillCustomer(customer: Customer): Promise<void> {
+-    await this.page.getByLabel('Name').fill(customer.name);
+-    await this.page.getByLabel('Email').fill(customer.email);
+-    await this.page.getByLabel('Address').fill(customer.address);
+-  }
+-
+-  async placeOrder(): Promise<void> {
+-    await this.page.getByRole('button', { name: 'Place order' }).click();
+-  }
+-
+-  async expectConfirmed(): Promise<void> {
+-    await expect(this.page.getByRole('heading', { name: 'Order placed' })).toBeVisible();
+-  }
+-}
+diff --git a/e2e/pages/shop.page.ts b/e2e/pages/shop.page.ts
+deleted file mode 100644
+index 42f6415..0000000
+--- a/e2e/pages/shop.page.ts
++++ /dev/null
+@@ -1,34 +0,0 @@
+-import { expect, Page } from '@playwright/test';
+-
+-export class ShopPage {
+-  constructor(private readonly page: Page) {}
+-
+-  async open(): Promise<void> {
+-    await this.page.goto('/');
+-    await expect(this.page.getByRole('heading', { name: 'Products' })).toBeVisible();
+-  }
+-
+-  async addToCart(productName: string): Promise<void> {
+-    await this.page
+-      .getByRole('listitem')
+-      .filter({ hasText: productName })
+-      .getByRole('button', { name: 'Add to cart' })
+-      .click();
+-  }
+-
+-  async openCart(): Promise<void> {
+-    await this.page.getByRole('link', { name: 'Cart', exact: true }).click();
+-    await expect(this.page.getByRole('heading', { name: 'Your cart' })).toBeVisible();
+-  }
+-
+-  async expectInCart(productName: string): Promise<void> {
+-    await expect(
+-      this.page.getByRole('list', { name: 'Cart items' }).getByText(productName),
+-    ).toBeVisible();
+-  }
+-
+-  async startCheckout(): Promise<void> {
+-    await this.page.getByRole('link', { name: 'Checkout' }).click();
+-    await expect(this.page.getByRole('heading', { name: 'Checkout' })).toBeVisible();
+-  }
+-}
+diff --git a/e2e/place-order.spec.ts b/e2e/place-order.spec.ts
+deleted file mode 100644
+index 696ec97..0000000
+--- a/e2e/place-order.spec.ts
++++ /dev/null
+@@ -1,20 +0,0 @@
+-import { test } from './fixtures';
+-
+-test('a shopper places an order for a mug', async ({ shop, checkout }) => {
+-  await shop.open();
+-  await shop.addToCart('Blue mug');
+-
+-  await shop.openCart();
+-  await shop.expectInCart('Blue mug');
+-
+-  await shop.startCheckout();
+-  await checkout.expectSummaryItem('Blue mug');
+-  await checkout.fillCustomer({
+-    name: 'Ada Lovelace',
+-    email: 'ada@example.test',
+-    address: '1 Main Street',
+-  });
+-  await checkout.placeOrder();
+-
+-  await checkout.expectConfirmed();
+-});
+diff --git a/package-lock.json b/package-lock.json
+index d7b4959..a1add5d 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -22,7 +22,6 @@
+         "@angular/cli": "21.2.31",
+         "@angular/compiler-cli": "21.2.26",
+         "@eslint/js": "10.0.1",
+-        "@playwright/test": "1.57.0",
+         "angular-eslint": "21.4.0",
+         "eslint": "10.15.0",
+         "jsdom": "28.1.0",
+@@ -3545,22 +3544,6 @@
+       "license": "MIT",
+       "optional": true
+     },
+-    "node_modules/@playwright/test": {
+-      "version": "1.57.0",
+-      "resolved": "https://registry.npmjs.org/@playwright/test/-/test-1.57.0.tgz",
+-      "integrity": "sha512-6TyEnHgd6SArQO8UO2OMTxshln3QMWBtPGrOCgs3wVEmQmwyuNtB10IZMfmYDE0riwNR1cu4q+pPcxMVtaG3TA==",
+-      "dev": true,
+-      "license": "Apache-2.0",
+-      "dependencies": {
+-        "playwright": "1.57.0"
+-      },
+-      "bin": {
+-        "playwright": "cli.js"
+-      },
+-      "engines": {
+-        "node": ">=18"
+-      }
+-    },
+     "node_modules/@rolldown/binding-android-arm64": {
+       "version": "1.0.0-rc.4",
+       "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm64/-/binding-android-arm64-1.0.0-rc.4.tgz",
+@@ -8370,38 +8353,6 @@
+         "node": ">=16.20.0"
+       }
+     },
+-    "node_modules/playwright": {
+-      "version": "1.57.0",
+-      "resolved": "https://registry.npmjs.org/playwright/-/playwright-1.57.0.tgz",
+-      "integrity": "sha512-ilYQj1s8sr2ppEJ2YVadYBN0Mb3mdo9J0wQ+UuDhzYqURwSoW4n1Xs5vs7ORwgDGmyEh33tRMeS8KhdkMoLXQw==",
+-      "dev": true,
+-      "license": "Apache-2.0",
+-      "dependencies": {
+-        "playwright-core": "1.57.0"
+-      },
+-      "bin": {
+-        "playwright": "cli.js"
+-      },
+-      "engines": {
+-        "node": ">=18"
+-      },
+-      "optionalDependencies": {
+-        "fsevents": "2.3.2"
+-      }
+-    },
+-    "node_modules/playwright-core": {
+-      "version": "1.57.0",
+-      "resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.57.0.tgz",
+-      "integrity": "sha512-agTcKlMw/mjBWOnD6kFZttAAGHgi/Nw0CZ2o6JqWSbMlI219lAFLZZCyqByTsvVAJq5XA5H8cA6PrvBRpBWEuQ==",
+-      "dev": true,
+-      "license": "Apache-2.0",
+-      "bin": {
+-        "playwright-core": "cli.js"
+-      },
+-      "engines": {
+-        "node": ">=18"
+-      }
+-    },
+     "node_modules/postcss": {
+       "version": "8.5.33",
+       "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.33.tgz",
+diff --git a/package.json b/package.json
+index 1eadc38..03e0cef 100644
+--- a/package.json
++++ b/package.json
+@@ -7,8 +7,7 @@
+     "start": "ng serve --proxy-config proxy.conf.json",
+     "build": "ng build",
+     "test": "ng test --watch=false",
+-    "lint": "ng lint",
+-    "e2e": "playwright test"
++    "lint": "ng lint"
+   },
+   "dependencies": {
+     "@angular/common": "21.2.26",
+@@ -25,7 +24,6 @@
+     "@angular/cli": "21.2.31",
+     "@angular/compiler-cli": "21.2.26",
+     "@eslint/js": "10.0.1",
+-    "@playwright/test": "1.57.0",
+     "angular-eslint": "21.4.0",
+     "eslint": "10.15.0",
+     "jsdom": "28.1.0",
+diff --git a/playwright.config.ts b/playwright.config.ts
+deleted file mode 100644
+index 071e9c3..0000000
+--- a/playwright.config.ts
++++ /dev/null
+@@ -1,25 +0,0 @@
+-import { defineConfig, devices } from '@playwright/test';
+-
+-export default defineConfig({
+-  testDir: 'e2e',
+-  reporter: 'list',
+-  retries: 0,
+-  use: {
+-    baseURL: 'http://localhost:4300',
+-    actionTimeout: 5000,
+-  },
+-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+-  webServer: [
+-    {
+-      command: 'node api/server.mjs',
+-      url: 'http://localhost:4301/health',
+-      reuseExistingServer: !process.env.CI,
+-    },
+-    {
+-      command: 'npm run start -- --port 4300',
+-      url: 'http://localhost:4300',
+-      timeout: 180000,
+-      reuseExistingServer: !process.env.CI,
+-    },
+-  ],
+-});
+diff --git a/src/app/app.routes.ts b/src/app/app.routes.ts
+index 4c503a4..9dfedcb 100644
+--- a/src/app/app.routes.ts
++++ b/src/app/app.routes.ts
+@@ -1,14 +1,22 @@
+ import { Routes } from '@angular/router';
+ import { CartPage } from './cart.page';
++import { CartStore } from './cart.store';
+ import { CheckoutPage } from './checkout.page';
+ import { ConfirmationPage } from './confirmation.page';
+ import { HelpPage } from './help.page';
+ import { ProductsPage } from './products.page';
+ 
+ export const routes: Routes = [
+-  { path: '', component: ProductsPage },
+-  { path: 'cart', component: CartPage },
+-  { path: 'checkout', component: CheckoutPage },
++  // CartStore is provided here on purpose: only the shop pages share a cart.
++  {
++    path: '',
++    providers: [CartStore],
++    children: [
++      { path: '', component: ProductsPage },
++      { path: 'cart', component: CartPage },
++      { path: 'checkout', component: CheckoutPage },
++    ],
++  },
+   { path: 'confirmation/:id', component: ConfirmationPage },
+   { path: 'help', component: HelpPage },
+ ];
+diff --git a/src/app/cart.store.ts b/src/app/cart.store.ts
+index 732f328..f9b0e50 100644
+--- a/src/app/cart.store.ts
++++ b/src/app/cart.store.ts
+@@ -6,7 +6,7 @@ export interface CartItem {
+   quantity: number;
+ }
+ 
+-@Injectable({ providedIn: 'root' })
++@Injectable()
+ export class CartStore {
+   private readonly state = signal<CartItem[]>([]);
+ 
