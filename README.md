@@ -123,7 +123,7 @@ of three ownership classes:
 | Class | What it means for you |
 |---|---|
 | `framework-owned/overwritten` | Replaced on every update. Do not edit; your changes would be lost. For `.claude/.gitignore`, an update also keeps out of Git each existing file your own lines there ignored, with one line per file below the framework's; put your own rules in the root `.gitignore`. |
-| `consumer-owned/protected` | Yours. Created once if absent, never touched again. |
+| `consumer-owned/protected` | Yours. Created once if absent, never touched again, with one named exception: an update removes from `AGENTS.md` or `CLAUDE.md` an old framework rule section, or the old Boy Scout interface item, whose text is exactly one an earlier release shipped there, and says where the original is. |
 | `mixed` | Shared: `.claude/settings.json` holds the framework's hook registrations next to your own settings, and is backed up before each update. |
 
 **Updating:** follow `docs/upgrade-checklist.md` in your repository; it starts from a fresh clone at

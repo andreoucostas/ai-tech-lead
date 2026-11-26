@@ -212,6 +212,165 @@ function Read-RetirementLedger {
     return $byPath
 }
 
+# Text releases through v0.85.0 shipped inside a team's own instruction file (AGENTS.md, CLAUDE.md before that) and no release
+# ships there now: whole sections under four rule headings, and single Boy Scout Rule items. Each is known by the SHA-256 of
+# its text as Get-InstructionSections reads it, so only an exact copy of a released text matches. $null when the ledger has no
+# such key; a key in any other shape is refused as the ledger's other errors are. Sections maps each of the four headings,
+# and only those, to its digests; Lines maps an item's digest, its list number left out, to the text that replaces it.
+function Read-SupersededInstructionText {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $document = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+    if (-not ($document.PSObject.Properties.Name -ccontains 'superseded-instruction-text')) { return $null }
+    $data = $document.'superseded-instruction-text'
+    $malformed = 'retirement ledger has a malformed superseded-instruction-text'
+    if ($data -isnot [Management.Automation.PSCustomObject] -or $data.sections -isnot [array] -or $data.lines -isnot [array]) { throw $malformed }
+    $sections = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
+    foreach ($heading in @('Verification Rules', 'Leanness', 'SOLID', 'Agentic Workflow')) { $sections[$heading] = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal) }
+    $listed = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($entry in $data.sections) {
+        if ($entry -isnot [Management.Automation.PSCustomObject] -or $entry.heading -isnot [string] -or -not $sections.ContainsKey($entry.heading) -or
+            -not $listed.Add($entry.heading) -or $entry.'known-content-sha256' -isnot [array] -or @($entry.'known-content-sha256').Count -eq 0) { throw "$malformed (sections)" }
+        foreach ($hash in $entry.'known-content-sha256') {
+            if ($hash -isnot [string] -or $hash -cnotmatch '^[0-9a-f]{64}$' -or -not $sections[$entry.heading].Add($hash)) { throw "$malformed (a section digest under '$($entry.heading)')" }
+        }
+    }
+    $lines = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([StringComparer]::Ordinal)
+    foreach ($entry in $data.lines) {
+        if ($entry -isnot [Management.Automation.PSCustomObject] -or $entry.'known-line-sha256' -isnot [string] -or $entry.'known-line-sha256' -cnotmatch '^[0-9a-f]{64}$' -or
+            $lines.ContainsKey($entry.'known-line-sha256') -or $entry.replacement -isnot [string] -or $entry.replacement.Trim().Length -eq 0 -or $entry.replacement -match '[\r\n]') { throw "$malformed (lines)" }
+        $lines[$entry.'known-line-sha256'] = $entry.replacement
+    }
+    return [pscustomobject]@{ Sections = $sections; Lines = $lines }
+}
+# One line as a digest reads it: a final CR, then trailing spaces and tabs, left out.
+function Get-InstructionLineCore {
+    param([AllowEmptyString()][string]$Line)
+    if ($Line.EndsWith([string][char]13, [StringComparison]::Ordinal)) { $Line = $Line.Substring(0, $Line.Length - 1) }
+    return $Line.TrimEnd([char]32, [char]9)
+}
+# SHA-256 of the text's UTF-8 bytes, lower-case hex.
+function Get-InstructionDigest {
+    param([AllowEmptyString()][string]$Text)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash([Text.UTF8Encoding]::new($false).GetBytes($Text)))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
+}
+# Which lines lie in a fenced code block, its fence lines included, read as Markdown reads a fence: a line opening, after at
+# most three spaces and no tab, with three or more backticks (and no backtick after them, so an inline code span opens none)
+# or three or more tildes opens one, and only a line so indented, of the same character, at least as many, with nothing
+# after them, closes it; a marker indented further lies in an indented code block. Open: one is still open at the end.
+function Get-InstructionFences {
+    param([AllowEmptyCollection()][string[]]$Lines)
+    $fenced = New-Object 'bool[]' $Lines.Length
+    $fence = $null
+    for ($i = 0; $i -lt $Lines.Length; $i++) {
+        $line = Get-InstructionLineCore -Line $Lines[$i]
+        $marker = [regex]::Match($line, '^ {0,3}(`{3,}|~{3,})(.*)$')
+        if ($null -eq $fence) {
+            if ($marker.Success -and -not ($marker.Groups[1].Value.StartsWith('`', [StringComparison]::Ordinal) -and $marker.Groups[2].Value.Contains('`'))) {
+                $fence = $marker.Groups[1].Value
+                $fenced[$i] = $true
+            }
+            continue
+        }
+        $fenced[$i] = $true
+        if ($marker.Success -and $marker.Groups[2].Value.Trim().Length -eq 0 -and $marker.Groups[1].Value[0] -ceq $fence[0] -and
+            $marker.Groups[1].Value.Length -ge $fence.Length) { $fence = $null }
+    }
+    return [pscustomobject]@{ Fenced = $fenced; Open = $null -ne $fence }
+}
+# The level-2 sections of a Markdown text (no BOM), split on LF so each line keeps its own CR. A section runs from a line
+# starting '## ' outside a code fence (Get-InstructionFences) to the line before the next such line or the end. Its digest is
+# of its lines as Get-InstructionLineCore reads them, trailing empty and '---' lines left out, joined with LF. FenceOpen: a
+# fence is still open at the end, so no boundary after it can be trusted.
+function Get-InstructionSections {
+    param([AllowEmptyString()][string]$Text)
+    $lines = $Text.Split([char]10)
+    $fences = Get-InstructionFences -Lines $lines
+    $starts = New-Object System.Collections.Generic.List[int]
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        if (-not $fences.Fenced[$i] -and $lines[$i].StartsWith('## ', [StringComparison]::Ordinal)) { $starts.Add($i) }
+    }
+    $sections = New-Object System.Collections.Generic.List[object]
+    for ($k = 0; $k -lt $starts.Count; $k++) {
+        $start = $starts[$k]
+        $end = if ($k + 1 -lt $starts.Count) { $starts[$k + 1] } else { $lines.Length }
+        $norm = New-Object System.Collections.Generic.List[string]
+        for ($i = $start; $i -lt $end; $i++) { $norm.Add((Get-InstructionLineCore -Line $lines[$i])) }
+        while ($norm.Count -gt 1 -and ($norm[$norm.Count - 1].Length -eq 0 -or $norm[$norm.Count - 1] -ceq '---')) { $norm.RemoveAt($norm.Count - 1) }
+        $sections.Add([pscustomobject]@{ Heading = $norm[0]; Start = $start; End = $end; Digest = (Get-InstructionDigest -Text ($norm -join [string][char]10)) })
+    }
+    return [pscustomobject]@{ Lines = $lines; Sections = $sections; Fenced = $fences.Fenced; FenceOpen = $fences.Open }
+}
+# What an update changes in one instruction file's text. A section under one of the four headings whose digest is listed is
+# removed whole: its heading through the line before the next level-2 heading, which is the hashed text plus only empty and
+# '---' lines. One whose digest is not listed is kept and named in Differs. Inside the Boy Scout Rule section, outside a fence,
+# an item whose text after its list number is listed gets the replacement after that same number, its CR kept. Every other
+# line stays as it is. A removal that reaches the end of the file also drops the empty lines it leaves last and one '---'
+# separator an empty line sets apart above them, and the file keeps its final line break, or its lack of one. With KeepSections nothing is removed or named. Nothing at all is
+# decided while a fence is open at the end (FenceOpen).
+function Get-SupersededCleanup {
+    param([AllowEmptyString()][string]$Text, [Parameter(Mandatory = $true)]$Superseded, [switch]$KeepSections)
+    $parsed = Get-InstructionSections -Text $Text
+    $result = [pscustomobject]@{
+        Text = $Text; FenceOpen = $parsed.FenceOpen
+        Removed = New-Object System.Collections.Generic.List[string]
+        Differs = New-Object System.Collections.Generic.List[string]
+        Replaced = New-Object System.Collections.Generic.List[string]
+    }
+    if ($parsed.FenceOpen) { return $result }
+    $lines = $parsed.Lines
+    $out = [string[]]$lines.Clone()
+    $drop = New-Object 'bool[]' $lines.Length
+    $toEnd = $false
+    foreach ($section in $parsed.Sections) {
+        $name = @($Superseded.Sections.Keys | Where-Object { $section.Heading -ceq "## $_" })
+        if ($name.Count -eq 1) {
+            if ($KeepSections) { continue }
+            if (-not $Superseded.Sections[$name[0]].Contains($section.Digest)) { $result.Differs.Add($name[0]); continue }
+            for ($i = $section.Start; $i -lt $section.End; $i++) { $drop[$i] = $true }
+            $result.Removed.Add($name[0])
+            if ($section.End -eq $lines.Length) { $toEnd = $true }
+            continue
+        }
+        if ($section.Heading -cne '## Boy Scout Rule') { continue }
+        for ($i = $section.Start + 1; $i -lt $section.End; $i++) {
+            if ($parsed.Fenced[$i]) { continue }
+            $item = [regex]::Match((Get-InstructionLineCore -Line $lines[$i]), '^(\d+\.\s+)(.*)$')
+            if (-not $item.Success) { continue }
+            $digest = Get-InstructionDigest -Text $item.Groups[2].Value
+            if (-not $Superseded.Lines.ContainsKey($digest)) { continue }
+            $cr = if ($lines[$i].EndsWith([string][char]13, [StringComparison]::Ordinal)) { [string][char]13 } else { '' }
+            $out[$i] = $item.Groups[1].Value + $Superseded.Lines[$digest] + $cr
+            $result.Replaced.Add($item.Groups[1].Value.Trim().TrimEnd('.'))
+        }
+    }
+    if ($result.Removed.Count -eq 0 -and $result.Replaced.Count -eq 0) { return $result }
+    $kept = New-Object System.Collections.Generic.List[string]
+    for ($i = 0; $i -lt $out.Length; $i++) { if (-not $drop[$i]) { $kept.Add($out[$i]) } }
+    if ($toEnd) {
+        # Only what the removal leaves last goes: empty lines, and one '---' separator with an empty line above it. A '---'
+        # right under a line of text underlines a heading, and the first two '---' lines of a file may bound its front matter.
+        $frontClose = -1
+        if ($kept.Count -gt 0 -and (Get-InstructionLineCore -Line $kept[0]) -ceq '---') {
+            for ($j = 1; $j -lt $kept.Count; $j++) { if ((Get-InstructionLineCore -Line $kept[$j]) -ceq '---') { $frontClose = $j; break } }
+        }
+        while ($kept.Count -gt 0 -and (Get-InstructionLineCore -Line $kept[$kept.Count - 1]).Length -eq 0) { $kept.RemoveAt($kept.Count - 1) }
+        $last = $kept.Count - 1
+        if ($last -gt 0 -and $last -ne $frontClose -and (Get-InstructionLineCore -Line $kept[$last]) -ceq '---' -and (Get-InstructionLineCore -Line $kept[$last - 1]).Length -eq 0) {
+            $kept.RemoveAt($last)
+            while ($kept.Count -gt 0 -and (Get-InstructionLineCore -Line $kept[$kept.Count - 1]).Length -eq 0) { $kept.RemoveAt($kept.Count - 1) }
+        }
+        if ($kept.Count -gt 0) {
+            $last = $kept[$kept.Count - 1]
+            if ($Text.EndsWith([string][char]10, [StringComparison]::Ordinal)) { $kept.Add('') }
+            elseif ($last.EndsWith([string][char]13, [StringComparison]::Ordinal)) { $kept[$kept.Count - 1] = $last.Substring(0, $last.Length - 1) }
+        }
+    }
+    $result.Text = $kept -join [string][char]10
+    return $result
+}
+
 function Compare-ReleaseVersion {
     param([string]$Left, [string]$Right)
     if ($Left -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$' -or $Right -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') {
@@ -440,6 +599,7 @@ try {
     foreach ($retiredPath in $retirementLedger.Keys) {
         if ($incoming.ByPath.ContainsKey($retiredPath)) { throw "retirement '$retiredPath' is still present in the incoming ownership manifest" }
     }
+    $supersededText = Read-SupersededInstructionText -Path (Join-Path $src 'framework-retirements.json')
 } catch {
     [Console]::Error.WriteLine("ERROR: Cannot validate incoming framework metadata: $($_.Exception.Message)")
     exit 3
@@ -1931,6 +2091,8 @@ foreach ($relative in $protected + @('.claude/settings.local.json', '.gitlab-ci.
     'Jenkinsfile')) { [void]$protectedReferenceCandidates.Add($relative) }
 # A file -Reinstall moves to docs/pre-adoption/ is replaced, not kept, so a stale reference in it is /adopt's to drop.
 foreach ($entry in $reinstallArchivePlan) { [void]$protectedReferenceCandidates.Remove($entry.OriginalRelative) }
+# The files a MIGRATION line below names, so the instruction-file clean-up can say its removal may have taken the reference.
+$retiredReferenceCarriers = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
 
 function Add-BoundedReferenceDirectory {
     param([string]$Relative, [int]$MaxDepth, [string[]]$Extensions)
@@ -1996,6 +2158,7 @@ foreach ($relative in @($protectedReferenceCandidates | Sort-Object)) {
         $pattern = '(?i)(?<![A-Za-z0-9_./-])(?:\./)?' + [regex]::Escape($retiredPath) + '(?=$|[\s"''`(){}\[\],;:])'
         if ($content -match $pattern) {
             $reconciliationMessages.Add("MIGRATION: protected consumer carrier '$relative' names retired framework path '$retiredPath'. It was not overwritten; replace that reference with: $($retiredReferenceReplacements[$retiredPath]).$($retiredReferenceNotes[$retiredPath])")
+            [void]$retiredReferenceCarriers.Add($relative)
         }
     }
 }
@@ -2743,6 +2906,153 @@ if ($updateMode -and -not ($Reinstall -and -not $reinstallAdoptionPending)) {
                 $layoutMessage = 'LAYOUT: AGENTS.md is not the retired generated mirror, so CLAUDE.md and AGENTS.md were left as they are. Merge CLAUDE.md into AGENTS.md by hand and make CLAUDE.md the two-import stub (docs/upgrade-checklist.md).'
             }
         }
+    }
+}
+
+# Releases through v0.85.0 shipped the framework rules as sections of the team's own instruction file, which no update writes,
+# so a team from then reads them on every turn beside the rules the framework now ships in its own file. A plain update (never
+# a first install or -Reinstall) removes such a section from AGENTS.md, and from CLAUDE.md unless it becomes the stub in this
+# run, only when its text equals one a release shipped (Read-SupersededInstructionText), and replaces the old Boy Scout
+# interface item on the same test; anything else stays, and a rule section that differs is named. The original stays
+# recoverable: the layout move's saved originals, the last commit, or a copy below the backup folder. Decided here, written
+# beside the layout move after the -WhatIf exit; with the layout move, its AGENTS.md text is the cleaned one, so one write.
+$instructionCleanups = New-Object System.Collections.Generic.List[object]
+$instructionMessages = New-Object System.Collections.Generic.List[string]
+$instructionCleaned = @{}
+$rulesFile = '.github/instructions/framework-rules.instructions.md'
+# Whether a text imports the framework rules on a line of its own, outside a code fence, as the shipped stub does.
+function Test-ImportsFrameworkRules {
+    param([AllowEmptyString()][string]$Text)
+    $lines = $Text.Split([char]10)
+    $fences = Get-InstructionFences -Lines $lines
+    for ($i = 0; $i -lt $lines.Length; $i++) {
+        if (-not $fences.Fenced[$i] -and $lines[$i].Trim() -cin @("@$rulesFile", "@./$rulesFile")) { return $true }
+    }
+    return $false
+}
+# A team file as it is on disk: its bytes, whether it starts with a BOM, and its text without it, or why it cannot be read.
+function Read-TeamInstructionFile {
+    param([Parameter(Mandatory = $true)][string]$Relative)
+    $path = Get-ContainedTargetPath -Relative $Relative
+    $entry = Get-Item -Force -LiteralPath $path -ErrorAction SilentlyContinue
+    if ($null -eq $entry) { return $null }
+    if ($entry.PSIsContainer -or (Get-ReparsePointAncestor -Path $path) -or [string]$entry.LinkType -eq 'HardLink') {
+        return [pscustomobject]@{ Path = $path; Problem = "is a symbolic link, a junction or a hard link, lies below one, or is not a regular file, and this update never reads or writes through one" }
+    }
+    try {
+        $bytes = [IO.File]::ReadAllBytes($path)
+        $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+        $text = [Text.UTF8Encoding]::new($false, $true).GetString($bytes)
+        if ($hasBom) { $text = $text.Substring(1) }
+    } catch { return [pscustomobject]@{ Path = $path; Problem = 'could not be read as UTF-8' } }
+    return [pscustomobject]@{ Path = $path; Problem = $null; Bytes = $bytes; HasBom = $hasBom; Text = $text }
+}
+# 'A', 'A and B', 'A, B and C', each name once in the order first given.
+function Join-Names {
+    param([string[]]$Names)
+    $Names = @($Names | Select-Object -Unique)
+    if ($Names.Count -le 1) { return ($Names -join '') }
+    return (@($Names | Select-Object -First ($Names.Count - 1)) -join ', ') + ' and ' + $Names[-1]
+}
+if ($updateMode -and -not $Reinstall -and $null -ne $supersededText) {
+    # Claude Code reads the rules only through CLAUDE.md's import: while CLAUDE.md lacks it, an old copy is the only one it reads.
+    $claudeImports = $false
+    if ($layoutMove) {
+        $claudeImports = Test-ImportsFrameworkRules -Text ([IO.File]::ReadAllText((Join-Path $src 'CLAUDE.md')))
+    } else {
+        $claudeNow = Read-TeamInstructionFile -Relative 'CLAUDE.md'
+        if ($null -eq $claudeNow -and $createPlan.Contains('CLAUDE.md')) {
+            # No CLAUDE.md: this run creates it from the release, before the clean-up writes, and that is what Claude Code reads.
+            $claudeImports = Test-ImportsFrameworkRules -Text ([IO.File]::ReadAllText((Join-Path $src 'CLAUDE.md')))
+        } else {
+            $claudeImports = $null -ne $claudeNow -and -not $claudeNow.Problem -and (Test-ImportsFrameworkRules -Text $claudeNow.Text)
+        }
+    }
+    foreach ($relative in @(@('AGENTS.md') + @(if (-not $layoutMove) { 'CLAUDE.md' }))) {
+        $viaLayout = $relative -ceq 'AGENTS.md' -and $null -ne $layoutMove
+        if ($viaLayout) {
+            $file = [pscustomobject]@{ Path = (Get-ContainedTargetPath -Relative $relative); Problem = $null; Bytes = $null; HasBom = $layoutMove.HasBom; Text = $layoutMove.AgentsText }
+        } else {
+            $file = Read-TeamInstructionFile -Relative $relative
+            if ($null -eq $file) { continue }
+            if ($file.Problem) {
+                $instructionMessages.Add("CANT-VERIFY: $relative $($file.Problem), so this update could not check it for old copies of the framework rules (the Verification Rules, Leanness, SOLID and Agentic Workflow sections an earlier release shipped there) and left it as it is. docs/upgrade-checklist.md says how to remove them by hand.")
+                continue
+            }
+        }
+        $cleanup = Get-SupersededCleanup -Text $file.Text -Superseded $supersededText -KeepSections:(-not $claudeImports)
+        if ($cleanup.FenceOpen) {
+            # A fence marker in an HTML comment reads as one that never closes; it matters only where an old heading may follow.
+            $fileLines = @($file.Text.Split([char]10) | ForEach-Object { Get-InstructionLineCore -Line $_ })
+            $headings = @($supersededText.Sections.Keys | Where-Object { $fileLines -ccontains "## $_" })
+            if ($headings.Count -gt 0) {
+                $one = $headings.Count -eq 1
+                $instructionMessages.Add("CANT-VERIFY: $relative has $(if ($one) { 'a ' })$(Join-Names $headings) $(if ($one) { 'heading' } else { 'headings' }), but this update could not tell whether the old framework $(if ($one) { 'section under it sits' } else { 'sections under them sit' }) inside a code block, so it left the file as it is. You can remove the framework's old sections by hand (docs/upgrade-checklist.md).")
+            }
+            continue
+        }
+        if (-not $claudeImports) {
+            $held = @((Get-SupersededCleanup -Text $file.Text -Superseded $supersededText).Removed)
+            if ($held.Count -gt 0) {
+                $instructionMessages.Add("CANT-VERIFY: $relative holds exact copies of the old $(Join-Names $held) $(if ($held.Count -eq 1) { 'section' } else { 'sections' }) an earlier release shipped, but CLAUDE.md does not import $rulesFile on a line of its own, so for Claude Code they are the only copy of the framework rules; this update left them in place. Add the line @$rulesFile to CLAUDE.md, then run the update again to remove them (docs/upgrade-checklist.md).")
+            }
+        }
+        if ($cleanup.Differs.Count -gt 0) {
+            $one = $cleanup.Differs.Count -eq 1
+            $instructionMessages.Add("CANT-VERIFY: $relative has $(if ($one) { 'a ' })$(Join-Names @($cleanup.Differs)) $(if ($one) { 'section that differs' } else { 'sections that differ' }) from every copy the framework shipped, so this update left $(if ($one) { 'it' } else { 'them' }) in place. $(if ($one) { 'It' } else { 'They' }) may conflict with the current rules in ${rulesFile}: keep what your team wrote and remove the rest by hand (docs/upgrade-checklist.md).")
+        }
+        if ($cleanup.Removed.Count -eq 0 -and $cleanup.Replaced.Count -eq 0) { continue }
+        # Where the text before this update stays: the layout move's originals, the last commit, or a copy saved below the backup folder.
+        if ($viaLayout) {
+            $where = 'the text before this update is the original CLAUDE.md the LAYOUT line above names'
+            $whereShort = 'original: the CLAUDE.md the LAYOUT line names'
+        } else {
+            try { $probe = [IO.File]::Open($file.Path, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::Read); $probe.Dispose() }
+            catch {
+                $cause = $_.Exception
+                while ($null -ne $cause.InnerException) { $cause = $cause.InnerException }
+                $why = if ($cause -is [UnauthorizedAccessException]) { 'it is read-only, or this account may not write it' } else { 'another program may hold it open' }
+                $instructionMessages.Add("CANT-VERIFY: $relative could not be opened for writing ($why), so this update left its old copies of the framework rules in place. Make it writable, then run the update again, or remove them by hand (docs/upgrade-checklist.md).")
+                continue
+            }
+            $heldIn = Get-HeadHeldCommit -Relative $relative -Bytes $file.Bytes
+            if ($heldIn) {
+                [void]$headHeldSaves.Add($relative)
+                $where = "the file before this update is $(Format-HeadHeld -Relative $relative -Commit $heldIn)"
+                $whereShort = "original in commit $heldIn"
+            } else {
+                $backup = Find-UpdateBackup -Preferred ".claude/framework-update-backup/instruction-files/$relative" -Bytes $file.Bytes
+                if ($backup.State -eq 'taken') {
+                    $instructionMessages.Add("CANT-VERIFY: $relative holds old copies of the framework rules, but this update has nowhere to save the file before changing it ($($backup.Relative) already holds other content), so it left them in place. Move that file out of .claude/framework-update-backup/, then run the update again, or remove them by hand (docs/upgrade-checklist.md).")
+                    continue
+                }
+                if ($backup.State -eq 'free') {
+                    [void](Add-PlannedWrite -Relative $backup.Relative -ForceCreate)
+                    $updateBackups.Add([pscustomobject]@{ Source = $file.Path; Relative = $backup.Relative; SourceRelative = $relative; Bytes = $file.Bytes })
+                }
+                $where = "a copy of the file before this update $(if ($backup.State -eq 'free') { 'goes to' } else { 'is already at' }) $($backup.Relative)"
+                $whereShort = "original in $($backup.Relative)"
+            }
+            [void](Add-PlannedWrite -Relative $relative)
+            $instructionCleanups.Add([pscustomobject]@{ Relative = $relative; Path = $file.Path; Text = $cleanup.Text; HasBom = $file.HasBom })
+        }
+        if ($viaLayout) { $layoutMove.AgentsText = $cleanup.Text }
+        $done = @()
+        if ($cleanup.Removed.Count -gt 0) {
+            $sectionWord = if ($cleanup.Removed.Count -eq 1) { 'section' } else { 'sections' }
+            # The retired-path scan reads the file before this decision, ahead of the Git preflight, so it cannot leave out what this removes.
+            # The layout move's AGENTS.md text came out of CLAUDE.md, the file that scan named.
+            $named = if ($viaLayout -and $retiredReferenceCarriers.Contains('CLAUDE.md')) { 'CLAUDE.md' } elseif ($retiredReferenceCarriers.Contains($relative)) { $relative } else { $null }
+            $migrationNote = if ($named) { " The MIGRATION line above about a retired framework path in $named may refer to the removed text: check $(if ($named -ceq $relative) { 'the file' } else { $relative }) after the update." } else { '' }
+            $instructionMessages.Add("NOTICE: removing the old $(Join-Names @($cleanup.Removed)) $sectionWord from ${relative}: $(if ($cleanup.Removed.Count -eq 1) { 'it is an exact copy' } else { 'each is an exact copy' }) of text an earlier framework release shipped in this file, and the framework rules now ship in $rulesFile, which every update refreshes. Your other sections stay as they are; $where.$migrationNote")
+            $done += "removed the old $(Join-Names @($cleanup.Removed)) $sectionWord"
+        }
+        if ($cleanup.Replaced.Count -gt 0) {
+            $items = "$(if ($cleanup.Replaced.Count -eq 1) { 'item' } else { 'items' }) $(Join-Names @($cleanup.Replaced))"
+            $instructionMessages.Add("NOTICE: replacing Boy Scout Rule $items in $relative with the current template's text, keeping the number: the old item required an interface or abstraction for every service even with one implementation, which the framework rules no longer require. To keep that rule, put the old line back; $where.")
+            $done += "replaced Boy Scout Rule $items"
+        }
+        $instructionCleaned[$relative] = "$($done -join ' and ') ($whereShort)"
     }
 }
 
@@ -3723,6 +4033,7 @@ if ($writesAdoptionMarker) { $adoptionMarkerRelative = '.claude/adoption-pending
 $modeName =if ($Reinstall) { 'reinstall' } elseif ($updateMode) { 'update' } elseif ($adoptMode) { 'brownfield' } else { 'greenfield' }
 if ($reinstallLayoutNote) { Write-Output "  $reinstallLayoutNote" }
 if ($layoutMessage) { Write-Output "  $layoutMessage" }
+foreach ($message in $instructionMessages) { Write-Output "  $message" }
 foreach ($message in $saveMessages) { Write-Output "  $message" }
 foreach ($message in $settingsMessages) { Write-Output "  $message" }
 # An update copies every framework file again. One whose text already equals the release's file (line endings aside, as
@@ -4180,6 +4491,18 @@ if ($layoutMove) {
         Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (original $($heldOriginals -join ' and ') in commit $(@($layoutMove.ClaudeHeld, $layoutMove.AgentsHeld) | Where-Object { $_ } | Select-Object -First 1)$(if ($copiedOriginals.Count -gt 0) { ", original $($copiedOriginals -join ' and ') in $backupRoot/" }))."
     }
     else { Write-Output "  moved: CLAUDE.md -> AGENTS.md; CLAUDE.md is now the import stub (originals in $backupRoot/)." }
+    if ($instructionCleaned.ContainsKey('AGENTS.md')) { Write-Output "  cleaned: AGENTS.md; $($instructionCleaned['AGENTS.md'])." }
+}
+# The team files the old framework rules are removed from, written in place (the planning probe opened each the same way),
+# each from the bytes of its text and its own BOM or none; its original was saved above, or a commit holds it.
+foreach ($cleanup in $instructionCleanups) {
+    try {
+        [byte[]]$cleanBytes = [Text.UTF8Encoding]::new($false).GetBytes($cleanup.Text)
+        if ($cleanup.HasBom) { $cleanBytes = [byte[]](@(0xEF, 0xBB, 0xBF) + $cleanBytes) }
+        $stream = [IO.File]::Open($cleanup.Path, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+        try { $stream.SetLength(0); $stream.Write($cleanBytes, 0, $cleanBytes.Length) } finally { $stream.Dispose() }
+    } catch { Stop-IncompleteCopy -Relative $cleanup.Relative -Reason $_.Exception.Message -Written $applyWritten }
+    Write-Output "  cleaned: $($cleanup.Relative); $($instructionCleaned[$cleanup.Relative])."
 }
 # Asked after the last copy: only Git can say none is committable. A target without Git has no commit to keep them from.
 if ($savesIntoBackup) {
@@ -4228,7 +4551,7 @@ if ($backupTracked -gt 0) {
     Write-Output "  NOTICE: Git tracks $(if ($backupTracked -eq 1) { '1 file' } else { "$backupTracked files" }) under $backupRelative/, which may hold copies of files you had gitignored; '*' hides only what Git does not track yet. Review them, then untrack them with  git rm -r --cached $backupRelative  and commit that. A secret once committed there stays in your Git history: rotate it, or rewrite that history."
 }
 if ($updateMode) {
-    $untouchedContent = @($protected | Where-Object { -not ($layoutMove -and $_ -in @('CLAUDE.md', 'AGENTS.md')) -and -not $archiveSources.Contains($_) })
+    $untouchedContent = @($protected | Where-Object { -not ($layoutMove -and $_ -in @('CLAUDE.md', 'AGENTS.md')) -and -not $instructionCleaned.ContainsKey($_) -and -not $archiveSources.Contains($_) })
     Write-Output "  consumer-owned content files left untouched ($($untouchedContent -join ', '))."
 }
 
@@ -4418,6 +4741,8 @@ if ($null -eq $flaggedAfterCopy) {
     foreach ($relative in $ordinaryApplyPaths) { if ($relative -notin $persistentCopyIfAbsent) { [void]$wroteShipped.Add($relative) } }
     # The layout move rewrites both instruction files.
     if ($layoutMove) { [void]$wroteShipped.Add('CLAUDE.md'); [void]$wroteShipped.Add('AGENTS.md') }
+    # So does the removal of old framework rules from either.
+    foreach ($relative in $instructionCleaned.Keys) { [void]$wroteShipped.Add($relative) }
     $flaggedShipped = [string[]]@($flaggedAfterCopy | Where-Object { $wroteShipped.Contains($_) })
     if ($flaggedShipped.Count -gt 0) {
         [Array]::Sort($flaggedShipped, [StringComparer]::Ordinal)

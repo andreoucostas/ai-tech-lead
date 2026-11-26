@@ -106,7 +106,7 @@ three classes.
 | Class | Meaning |
 |---|---|
 | `framework-owned/overwritten` | Replaced on every update. Do not edit; your changes would be lost. For `.claude/.gitignore`, an update also keeps out of Git each existing file your own lines there ignored, with one line per file below the framework's; put your own rules in the root `.gitignore`. |
-| `consumer-owned/protected` | Yours: created once if absent, never touched again. `CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, `SECURITY_FINDINGS.md`, `LEARNINGS.md`, `FRAMEWORK-CONTEXT.md`, `docs/ARCHITECTURE.md`, `docs/architecture-decisions.md`, `docs/wiki/INDEX.md` and `.claude/guard-allowlist.txt`. |
+| `consumer-owned/protected` | Yours: created once if absent, never touched again, with one named exception: an update removes from `AGENTS.md` or `CLAUDE.md` an old framework rule section, or the old Boy Scout interface item, whose text is exactly one an earlier release shipped there, and says where the original is (`docs/upgrade-checklist.md`). `CLAUDE.md`, `AGENTS.md`, `TECH_DEBT.md`, `SECURITY_FINDINGS.md`, `LEARNINGS.md`, `FRAMEWORK-CONTEXT.md`, `docs/ARCHITECTURE.md`, `docs/architecture-decisions.md`, `docs/wiki/INDEX.md` and `.claude/guard-allowlist.txt`. |
 | `mixed` | `.claude/settings.json`: the framework's hook registrations next to your own settings, saved to `.claude/.state/settings.json.pre-update` before each update. |
 
 | Path | What it is |

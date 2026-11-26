@@ -170,16 +170,20 @@ Most updates need none of these. Do each only when its condition holds.
   register, then re-run `/security-gate` on the change whose finding was not recorded.
 
 - **`CLAUDE.md` lacks the framework-rules import, or `AGENTS.md` still holds old copies of the
-  framework rules.** Compare only the four old framework headings: `Verification Rules`, `Leanness`,
-  `SOLID` and `Agentic Workflow`. Keep deliberate project-specific additions, make sure `CLAUDE.md`
-  has this line, then remove only the superseded framework copies:
+  framework rules.** An update now removes these itself: a `Verification Rules`, `Leanness`, `SOLID`
+  or `Agentic Workflow` section of `AGENTS.md` (or of `CLAUDE.md` when it is not the stub) whose text
+  is exactly one an earlier release shipped goes, a `NOTICE:` line names each one and where the
+  original is, and nothing else in the file changes. It removes nothing while `CLAUDE.md` lacks the
+  line below. The hand step is for what it left, each named in a `CANT-VERIFY:` line: a section that
+  differs from every shipped copy, or a file it could not check. Make sure `CLAUDE.md` has this line:
 
   ```markdown
   @.github/instructions/framework-rules.instructions.md
   ```
 
-  Do not edit that framework-owned file. Keep `Conventions` and `Boy Scout Rule`; neither is one of the
-  four headings. Do not remove customised sections wholesale.
+  Do not edit that framework-owned file. Compare only the four old framework headings, keep deliberate
+  project-specific additions, and remove only the superseded framework copies. Keep `Conventions` and
+  `Boy Scout Rule`; neither is one of the four headings. Do not remove customised sections wholesale.
 
 - **The old Boy Scout mandate.** This BEFORE text is an example, not an exact match; inspect your own
   wording and keep the team mandates and numbered items you intend:
@@ -204,7 +208,9 @@ Most updates need none of these. Do each only when its condition holds.
 
   An older Boy Scout interface item may still end "are required by SOLID/DIP even with one
   implementation; never inline those". The framework rules no longer require an interface or
-  abstraction for every service. Unless your team keeps that rule on purpose, keep the item's number
+  abstraction for every service. An update replaces an exact copy of that item with the text below,
+  keeping its number, and says so in a `NOTICE:` line; put the old line back if your team keeps that
+  rule on purpose. For an item your team reworded, which the update leaves, keep the item's number
   and replace its text with:
 
   ```markdown

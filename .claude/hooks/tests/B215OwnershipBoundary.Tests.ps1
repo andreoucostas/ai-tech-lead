@@ -307,6 +307,44 @@ It '0.94.0 ledger contains every released digest of the twelve retired prompt fi
     Assert-TaggedDigestCompleteness $observations (Get-LedgerDigestMap $ledger)
 }
 
+# B-561: the texts an update may remove from a team's own instruction file, one list in the source ledger, its maintainer
+# baseline and the three dists, checked against the shipped installer's own digest of the .NET template's v0.25.5 CLAUDE.md
+# (.claude/hooks/tests/fixtures/legacy-dotnet-instructions-v0.25.5.txt).
+It 'B-561 the ledger lists the superseded rule sections and Boy Scout items, and the installer digest of the old text matches them' {
+    $copies = @('src/core/framework-retirements.json', 'meta/framework-retirements-baseline.json', 'dist/dotnet/framework-retirements.json', 'dist/angular/framework-retirements.json', 'dist/monorepo/framework-retirements.json')
+    $source = ([IO.File]::ReadAllText((Join-Path $repoRoot $copies[0])) | ConvertFrom-Json).'superseded-instruction-text'
+    Assert ($null -ne $source) 'the source ledger has no superseded-instruction-text key'
+    $expectedCounts = [ordered]@{ 'Verification Rules' = 30; 'Leanness' = 16; 'SOLID' = 13; 'Agentic Workflow' = 60 }
+    Assert (@($source.sections).Count -eq 4) "expected 4 section entries, got $(@($source.sections).Count)"
+    foreach ($name in $expectedCounts.Keys) {
+        $entry = @($source.sections | Where-Object { $_.heading -ceq $name })
+        Assert ($entry.Count -eq 1 -and @($entry[0].'known-content-sha256').Count -eq $expectedCounts[$name]) "the $name entry does not carry $($expectedCounts[$name]) digests"
+    }
+    Assert (@($source.lines).Count -eq 3) "expected 3 line entries, got $(@($source.lines).Count)"
+    $sourceJson = $source | ConvertTo-Json -Depth 8 -Compress
+    foreach ($copy in $copies) {
+        $other = ([IO.File]::ReadAllText((Join-Path $repoRoot $copy)) | ConvertFrom-Json).'superseded-instruction-text' | ConvertTo-Json -Depth 8 -Compress
+        Assert ($other -ceq $sourceJson) "$copy carries a different superseded-instruction-text"
+    }
+    $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), [ref]$null, [ref]$null)
+    $wanted = @('Read-SupersededInstructionText', 'Get-InstructionLineCore', 'Get-InstructionDigest', 'Get-InstructionFences', 'Get-InstructionSections', 'Get-SupersededCleanup')
+    $functions = @($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $wanted -ccontains $_.Name })
+    Assert ($functions.Count -eq $wanted.Count) "the shipped installer defines $($functions.Count) of $($wanted -join ', ')"
+    . ([scriptblock]::Create((@($functions | ForEach-Object { $_.Extent.Text }) -join "`n")))
+    $fixture = [Text.UTF8Encoding]::new($false).GetString([IO.File]::ReadAllBytes((Join-Path $PSScriptRoot 'fixtures/legacy-dotnet-instructions-v0.25.5.txt')))
+    $parsed = Get-InstructionSections -Text $fixture
+    foreach ($name in $expectedCounts.Keys) {
+        $section = @($parsed.Sections | Where-Object { $_.Heading -ceq "## $name" })
+        $listed = @(($source.sections | Where-Object { $_.heading -ceq $name }).'known-content-sha256')
+        Assert ($section.Count -eq 1 -and $listed -ccontains $section[0].Digest) "the installer's digest of the old $name section is not listed"
+    }
+    $item = @($fixture.Split([char]10) | Where-Object { $_.StartsWith('10. Inline single-consumer', [StringComparison]::Ordinal) })[0]
+    Assert (@($source.lines | ForEach-Object { $_.'known-line-sha256' }) -ccontains (Get-InstructionDigest -Text ($item -replace '^\d+\.\s+', ''))) "the old Boy Scout item's digest is not listed"
+    $superseded = Read-SupersededInstructionText -Path (Join-Path $repoRoot 'dist/dotnet/framework-retirements.json')
+    $cleanup = Get-SupersededCleanup -Text $fixture -Superseded $superseded
+    Assert ((@($cleanup.Removed) -join ', ') -ceq 'Verification Rules, Leanness, SOLID, Agentic Workflow' -and $cleanup.Replaced.Count -eq 1 -and $cleanup.Differs.Count -eq 0) "the installer would not remove the four old sections and replace one item: removed $(@($cleanup.Removed) -join ', '); replaced $($cleanup.Replaced.Count); differs $(@($cleanup.Differs) -join ', ')"
+}
+
 It '0.95.0 ledger contains every released digest of the renamed security-review command and its wrapper' {
     # B-388: renamed to security-gate, so both installed paths join the ledger.
     $paths = @('.claude/commands/security-review.md', '.agents/skills/security-review/SKILL.md')

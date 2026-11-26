@@ -310,6 +310,468 @@ $powerShellExtension = 'ps1'
     Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue
 }
 
+# B-561: releases through v0.85.0 shipped the framework rules as sections of the team's own instruction file, which no update
+# touched, so a team from then reads them beside the rules the framework now ships in its own file. An update removes a
+# Verification Rules, Leanness, SOLID or Agentic Workflow section only when its text equals one a release shipped, and
+# replaces the old Boy Scout interface item on the same test; every other byte stays. The fixture is the .NET template's
+# CLAUDE.md at v0.25.5 (git show 218acac2^:legacy/dotnet/CLAUDE.md), stored as .txt so no agent loads it.
+$b561Fixture = [Text.UTF8Encoding]::new($false).GetString([IO.File]::ReadAllBytes((Join-Path $PSScriptRoot 'fixtures/legacy-dotnet-instructions-v0.25.5.txt')))
+$b561Rules = @('Verification Rules', 'Leanness', 'SOLID', 'Agentic Workflow')
+# One section as it shipped: its heading line through the line before the next level-2 heading (it ends "---", blank).
+function Get-B561Section {
+    param([string]$Name)
+    $start = $b561Fixture.IndexOf("`n## $Name`n", [StringComparison]::Ordinal) + 1
+    $next = $b561Fixture.IndexOf("`n## ", $start, [StringComparison]::Ordinal)
+    if ($start -le 0 -or $next -lt 0) { throw "calibration: the fixture has no section $Name" }
+    return $b561Fixture.Substring($start, $next + 1 - $start)
+}
+$b561OldItem = @($b561Fixture.Split([char]10) | Where-Object { $_.StartsWith('10. Inline single-consumer', [StringComparison]::Ordinal) })[0]
+$b561OldItemText = $b561OldItem.Substring(4)
+$b561NewItemText = @([IO.File]::ReadAllText((Join-Path $repoRoot 'dist/dotnet/AGENTS.md')).Split([char]10) | Where-Object { $_.StartsWith('10. Inline single-consumer', [StringComparison]::Ordinal) })[0].TrimEnd([char]13).Substring(4)
+# A team's AGENTS.md with the four old sections among its own; -Replace swaps a section's text ('' drops it).
+function New-B561TeamText {
+    param([hashtable]$Replace = @{}, [string]$BoyScout = "1. Delete commented-out code.`n")
+    $s = @{}
+    foreach ($name in $b561Rules) { $s[$name] = if ($Replace.ContainsKey($name)) { $Replace[$name] } else { Get-B561Section $name } }
+    return "# Acme Billing`n`n> Team intro B561-SENTINEL-HEAD.`n`n---`n`n" + $s['Verification Rules'] +
+        "## Conventions`n`nMoney is decimal(19,4). B561-SENTINEL-CONVENTIONS.`n`n---`n`n" + $s['Leanness'] + $s['SOLID'] +
+        "## Boy Scout Rule`n`n$BoyScout`n---`n`n" + $s['Agentic Workflow'] +
+        "## What We've Learned`n`n- B561-SENTINEL-LEARNED: the ledger import is slow.`n"
+}
+$b561None = @{ 'Verification Rules' = ''; 'Leanness' = ''; 'SOLID' = ''; 'Agentic Workflow' = '' }
+$b561Utf8 = [Text.UTF8Encoding]::new($false)
+# A consumer on the current layout (CLAUDE.md the shipped stub unless given), optionally committed to Git.
+function New-B561Consumer {
+    param([byte[]]$Agents, [byte[]]$Claude, [switch]$Git)
+    $t = Join-Path ([IO.Path]::GetTempPath()) "b561-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+    if ($null -eq $Claude) { $Claude = [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/CLAUDE.md')) }
+    [IO.File]::WriteAllBytes((Join-Path $t 'CLAUDE.md'), $Claude)
+    [IO.File]::WriteAllBytes((Join-Path $t 'AGENTS.md'), $Agents)
+    [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), "{`"version`": `"0.89.2`"}`n", $b561Utf8)
+    if ($Git) {
+        & git -C $t init -q 2>&1 | Out-Null
+        & git -C $t config user.email 'fixture@example.test'
+        & git -C $t config user.name 'Fixture'
+        & git -C $t config core.autocrlf false
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'team instructions' 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'calibration: could not commit the B-561 consumer' }
+    }
+    return $t
+}
+function Get-B561Lines { param([string]$Output, [string]$Pattern) return , @($Output -split '\r?\n' | Where-Object { $_ -match $Pattern }) }
+
+# An already-migrated consumer: CLAUDE.md is the stub, AGENTS.md holds the four exact old sections among the team's own.
+& {
+    $agents = $b561Utf8.GetBytes((New-B561TeamText))
+    $expected = $b561Utf8.GetBytes((New-B561TeamText -Replace $b561None))
+    $t = New-B561Consumer -Agents $agents -Git
+    try {
+        $head = (& git -C $t rev-parse HEAD).Trim()
+        $claudeBefore = [IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'update' 2>&1 | Out-Null
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        $rerunExit = $LASTEXITCODE
+
+        It 'B-561 an update removes the four exact old rule sections from AGENTS.md and keeps every other byte' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $expected -Actual $after -Message "AGENTS.md is not the team's text with exactly the four old sections removed. Got:`n$($b561Utf8.GetString($after))`nOutput:`n$out"
+            Assert-BytesEqual -Expected $claudeBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))) -Message "the CLAUDE.md stub changed. Output:`n$out"
+            Assert ($out -match '(?m)^PLAN replace AGENTS\.md\r?$') "the plan does not name AGENTS.md as replaced. Output:`n$out"
+        }
+
+        It 'B-561 the removal notice names the sections and the commit that holds the original' {
+            $notice = Get-B561Lines $out 'NOTICE: [^\r\n]*AGENTS\.md[^\r\n]*exact cop'
+            Assert ($notice.Count -eq 1) "expected one removal NOTICE for AGENTS.md, got $($notice.Count). Output:`n$out"
+            foreach ($name in $b561Rules) { Assert ($notice[0].Contains($name)) "the NOTICE does not name $name. Line: $($notice[0])" }
+            Assert ($notice[0].Contains('.github/instructions/framework-rules.instructions.md')) "the NOTICE does not say where the rules now ship. Line: $($notice[0])"
+            Assert ($notice[0].Contains($head)) "the NOTICE does not name commit $head, which holds the original. Line: $($notice[0])"
+            Assert ((Get-B561Lines $out "recover from Git: [^\r\n]*$head").Count -eq 1) "no recover-from-Git line names commit $head. Output:`n$out"
+            Assert ((Get-B561Lines $out '^\s*cleaned: AGENTS\.md').Count -eq 1) "no confirmation line after the write. Output:`n$out"
+            Assert ((Get-B561Lines $out 'consumer-owned content files left untouched [^\r\n]*AGENTS\.md').Count -eq 0) "AGENTS.md is still listed as left untouched. Output:`n$out"
+        }
+
+        It 'B-561 the removal notice says a MIGRATION line about a retired path in the same file may refer to the removed text' {
+            Assert ((Get-B561Lines $out "MIGRATION: [^\r\n]*'AGENTS\.md'[^\r\n]*'/security-review'").Count -eq 1) "calibration: no MIGRATION line names /security-review in AGENTS.md. Output:`n$out"
+            $notice = Get-B561Lines $out 'NOTICE: [^\r\n]*AGENTS\.md[^\r\n]*exact cop'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains('The MIGRATION line above about a retired framework path in AGENTS.md may refer to the removed text: check the file after the update.')) "the removal NOTICE does not say the MIGRATION line may refer to the removed text. Output:`n$out"
+        }
+
+        It 'B-561 a second update changes nothing and prints no removal notice' {
+            Assert ($rerunExit -eq 0) "second update exited ${rerunExit}: $rerun"
+            Assert-BytesEqual -Expected $expected -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "a second update changed AGENTS.md. Output:`n$rerun"
+            Assert ((Get-B561Lines $rerun 'exact cop|cleaned:|differs from every').Count -eq 0) "a second update printed a clean-up line. Output:`n$rerun"
+            Assert ($rerun -match '(?m)^PLAN preserve AGENTS\.md\r?$') "the second update does not preserve AGENTS.md. Output:`n$rerun"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# An old-layout consumer: CLAUDE.md is the v0.25.5 text, AGENTS.md the generated mirror. One update moves and cleans.
+& {
+    $claude = $b561Utf8.GetBytes($b561Fixture)
+    $t = New-B561Consumer -Agents ($b561Utf8.GetBytes("<!-- GENERATED FILE - do not edit by hand. -->`n# Agent Instructions`n`n## Conventions`n`nstale mirror copy`n")) -Claude $claude
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $agentsText = $b561Utf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')))
+        $expectedBody = $b561Fixture
+        foreach ($name in $b561Rules) { $expectedBody = $expectedBody.Replace((Get-B561Section $name), '') }
+        $expectedBody = $expectedBody.Replace($b561OldItem, "10. $b561NewItemText")
+        $expectedBody = $expectedBody.Substring($expectedBody.IndexOf("`n## ", [StringComparison]::Ordinal))
+
+        It 'B-561 an old-layout consumer is moved and cleaned in one update and its original stays recoverable' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($agentsText -cnotmatch '(?m)^## (Verification Rules|Leanness|SOLID|Agentic Workflow)\s*$') "AGENTS.md still holds an old rule section. Got:`n$agentsText"
+            Assert ($agentsText.EndsWith($expectedBody, [StringComparison]::Ordinal)) "below its header, AGENTS.md is not the old text without the four sections and with the current Boy Scout item. Got:`n$agentsText"
+            Assert-BytesEqual -Expected ([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/CLAUDE.md'))) -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))) -Message 'CLAUDE.md is not the shipped stub'
+            Assert-BytesEqual -Expected $claude -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/framework-update-backup/instruction-files/CLAUDE.md'))) -Message "the original CLAUDE.md was not saved byte for byte. Output:`n$out"
+            Assert ((Get-B561Lines $out 'NOTICE: [^\r\n]*AGENTS\.md[^\r\n]*exact cop[^\r\n]*CLAUDE\.md').Count -eq 1) "the removal NOTICE does not point at the original CLAUDE.md. Output:`n$out"
+        }
+
+        It 'B-561 an old-layout update says the MIGRATION line about the moved CLAUDE.md text may refer to the text it removes' {
+            Assert ((Get-B561Lines $out "MIGRATION: [^\r\n]*'CLAUDE\.md'[^\r\n]*'/security-review'").Count -eq 1) "calibration: no MIGRATION line names /security-review in CLAUDE.md. Output:`n$out"
+            Assert (-not $agentsText.Contains('/security-review')) "calibration: the moved AGENTS.md text still names /security-review. Got:`n$agentsText"
+            $notice = Get-B561Lines $out 'NOTICE: [^\r\n]*AGENTS\.md[^\r\n]*exact cop'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains('The MIGRATION line above about a retired framework path in CLAUDE.md may refer to the removed text: check AGENTS.md after the update.')) "the removal NOTICE does not tie the MIGRATION line about CLAUDE.md to the removed text. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# One edited old section stays and is named; the three exact ones go. The Boy Scout section's old interface item is replaced
+# after its own number, renumbered too; an edited item, and the same item outside the Boy Scout section, stay.
+& {
+    $solid = Get-B561Section 'SOLID'
+    $edited = $solid.Replace('SOLID is **mandatory**', 'SOLID is **preferred**')
+    if ($edited -ceq $solid) { throw 'calibration: the SOLID edit did not apply' }
+    $boyScout = "1. Delete commented-out code.`n$b561OldItem`n12. $b561OldItemText`n13. $b561OldItemText Team note.`n"
+    $team = New-B561TeamText -Replace @{ 'SOLID' = $edited } -BoyScout $boyScout
+    $team = $team.Replace('B561-SENTINEL-CONVENTIONS.', "B561-SENTINEL-CONVENTIONS.`n$b561OldItem")
+    $expected = New-B561TeamText -Replace @{ 'Verification Rules' = ''; 'Leanness' = ''; 'SOLID' = $edited; 'Agentic Workflow' = '' } -BoyScout "1. Delete commented-out code.`n10. $b561NewItemText`n12. $b561NewItemText`n13. $b561OldItemText Team note.`n"
+    $expected = $expected.Replace('B561-SENTINEL-CONVENTIONS.', "B561-SENTINEL-CONVENTIONS.`n$b561OldItem")
+    $t = New-B561Consumer -Agents ($b561Utf8.GetBytes($team))
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))
+
+        It 'B-561 an edited old section stays and is named while the exact ones are removed' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected ($b561Utf8.GetBytes($expected)) -Actual $after -Message "AGENTS.md is not the expected text. Got:`n$($b561Utf8.GetString($after))`nOutput:`n$out"
+            $named = Get-B561Lines $out 'CANT-VERIFY: [^\r\n]*AGENTS\.md[^\r\n]*SOLID[^\r\n]*differs from every'
+            Assert ($named.Count -eq 1) "the edited SOLID section is not named in one CANT-VERIFY line. Output:`n$out"
+            Assert ($named[0].Contains('docs/upgrade-checklist.md')) "the CANT-VERIFY line does not point at the hand step. Line: $($named[0])"
+            $notice = Get-B561Lines $out 'NOTICE: [^\r\n]*AGENTS\.md[^\r\n]*exact cop'
+            Assert ($notice.Count -eq 1 -and -not $notice[0].Contains('SOLID')) "the removal NOTICE names SOLID or is missing. Output:`n$out"
+        }
+
+        It 'B-561 the old Boy Scout interface item is replaced after its own number, also when renumbered, and an edited one stays' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected ($b561Utf8.GetBytes($expected)) -Actual $after -Message "the Boy Scout items are not as expected. Got:`n$($b561Utf8.GetString($after))"
+            $notice = Get-B561Lines $out 'NOTICE: [^\r\n]*Boy Scout Rule item'
+            Assert ($notice.Count -eq 1) "expected one NOTICE for the replaced Boy Scout items. Output:`n$out"
+            Assert ($notice[0] -match '\b10\b' -and $notice[0] -match '\b12\b' -and $notice[0] -notmatch '\b13\b') "the NOTICE does not name items 10 and 12 only. Line: $($notice[0])"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A team section that only shares a heading name stays and is named; an old section inside a code fence is not a section.
+& {
+    $team = "# Acme`n`n## Conventions`n`nTeam text.`n`n``````md`n" + (Get-B561Section 'Leanness') + "```````n`n---`n`n## SOLID`n`nOur own SOLID notes: keep services small.`n`n---`n`n## What We've Learned`n`n- x`n"
+    $agents = $b561Utf8.GetBytes($team)
+    $t = New-B561Consumer -Agents $agents
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))
+
+        It 'B-561 a team section that only shares a heading name stays and is named' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $agents -Actual $after -Message "AGENTS.md changed. Output:`n$out"
+            Assert ((Get-B561Lines $out 'CANT-VERIFY: [^\r\n]*AGENTS\.md[^\r\n]*SOLID[^\r\n]*differs from every').Count -eq 1) "the team's SOLID section is not named. Output:`n$out"
+        }
+
+        It 'B-561 an old section heading inside a code fence is neither removed nor named' {
+            Assert-BytesEqual -Expected $agents -Actual $after -Message "AGENTS.md changed. Output:`n$out"
+            Assert ((Get-B561Lines $out 'Leanness').Count -eq 0) "a fenced Leanness heading was named. Output:`n$out"
+            Assert ((Get-B561Lines $out 'NOTICE: [^\r\n]*exact cop').Count -eq 0) "a removal NOTICE was printed. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A code fence that never closes: no section boundary can be trusted, so nothing is removed and the file is named once.
+& {
+    $agents = $b561Utf8.GetBytes("# Acme`n`n" + (Get-B561Section 'Verification Rules') + "## Conventions`n`n``````md`nunclosed example`n")
+    $t = New-B561Consumer -Agents $agents
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'B-561 a file whose code fence never closes is left as it is with one CANT-VERIFY line' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $agents -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "AGENTS.md changed. Output:`n$out"
+            Assert ((Get-B561Lines $out 'CANT-VERIFY: [^\r\n]*AGENTS\.md').Count -eq 1) "expected exactly one CANT-VERIFY line for AGENTS.md. Output:`n$out"
+            Assert ((Get-B561Lines $out 'CANT-VERIFY: AGENTS\.md has a Verification Rules heading[^\r\n]*code block').Count -eq 1) "the CANT-VERIFY line does not name the old heading it could not place. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A file with a BOM and CRLF endings: the remaining bytes, BOM and every CR included, are the team's.
+& {
+    $crlf = { param([string]$Text) $Text.Replace("`n", "`r`n") }
+    $bom = [byte[]](0xEF, 0xBB, 0xBF)
+    $agents = [byte[]]($bom + $b561Utf8.GetBytes((& $crlf (New-B561TeamText))))
+    $expected = [byte[]]($bom + $b561Utf8.GetBytes((& $crlf (New-B561TeamText -Replace $b561None))))
+    $t = New-B561Consumer -Agents $agents
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'B-561 BOM and CRLF line endings survive the removal byte for byte' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $expected -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "AGENTS.md lost its BOM, a CR or a team byte. Output:`n$out"
+            Assert-BytesEqual -Expected $agents -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/framework-update-backup/instruction-files/AGENTS.md'))) -Message "without Git, the original AGENTS.md was not saved byte for byte. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# -WhatIf shows the same decision and writes nothing.
+& {
+    $agents = $b561Utf8.GetBytes((New-B561TeamText))
+    $t = New-B561Consumer -Agents $agents
+    try {
+        $out = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+        $exit = $LASTEXITCODE
+
+        It 'B-561 -WhatIf shows the plan and the notice and changes nothing' {
+            Assert ($exit -eq 0) "-WhatIf exited ${exit}: $out"
+            Assert-BytesEqual -Expected $agents -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "-WhatIf changed AGENTS.md. Output:`n$out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-update-backup'))) "-WhatIf wrote a backup. Output:`n$out"
+            Assert ($out -match '(?m)^PLAN replace AGENTS\.md\r?$') "-WhatIf does not plan AGENTS.md as replaced. Output:`n$out"
+            Assert ((Get-B561Lines $out 'NOTICE: [^\r\n]*AGENTS\.md[^\r\n]*exact cop').Count -eq 1) "-WhatIf does not show the removal NOTICE. Output:`n$out"
+            Assert ((Get-B561Lines $out '^\s*cleaned:').Count -eq 0) "-WhatIf printed a confirmation line. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# -Reinstall decides the instruction files itself (it moves AGENTS.md to docs/pre-adoption/ for /adopt): no clean-up runs.
+& {
+    $agents = $b561Utf8.GetBytes((New-B561TeamText))
+    $t = New-B561Consumer -Agents $agents -Git
+    try {
+        $out = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -Reinstall 2>&1 | Out-String
+        $exit = $LASTEXITCODE
+
+        It 'B-561 -Reinstall does not run the clean-up' {
+            Assert ($exit -eq 0) "-Reinstall exited ${exit}: $out"
+            Assert-BytesEqual -Expected $agents -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'docs/pre-adoption/AGENTS.md'))) -Message "-Reinstall did not move AGENTS.md aside unchanged. Output:`n$out"
+            Assert ((Get-B561Lines $out 'exact cop|cleaned:|differs from every').Count -eq 0) "-Reinstall printed a clean-up line. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A removed section that is last leaves no dangling separator, and the file keeps its ending: AGENTS.md with a final line
+# break, a CLAUDE.md that imports the rules without one. Without Git, both originals are saved below the backup folder.
+& {
+    $aw = Get-B561Section 'Agentic Workflow'
+    $agents = $b561Utf8.GetBytes("# Team`n`n## Conventions`n`nTeam text.`n`n---`n`n" + $aw)
+    $claudeHead = "@AGENTS.md`n@.github/instructions/framework-rules.instructions.md"
+    $claude = $b561Utf8.GetBytes($claudeHead + "`n`n---`n`n" + $aw.TrimEnd([char]10))
+    $t = New-B561Consumer -Agents $agents -Claude $claude
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'B-561 a removed last section leaves no dangling separator and keeps the file ending' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected ($b561Utf8.GetBytes("# Team`n`n## Conventions`n`nTeam text.`n")) -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "AGENTS.md does not end with the team's last line and one line break. Got:`n$([IO.File]::ReadAllText((Join-Path $t 'AGENTS.md')))"
+            Assert-BytesEqual -Expected ($b561Utf8.GetBytes($claudeHead)) -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))) -Message "CLAUDE.md does not end with its last import line and no line break. Got:`n$([IO.File]::ReadAllText((Join-Path $t 'CLAUDE.md')))"
+            Assert-BytesEqual -Expected $agents -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/framework-update-backup/instruction-files/AGENTS.md'))) -Message "the original AGENTS.md was not saved. Output:`n$out"
+            Assert-BytesEqual -Expected $claude -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/framework-update-backup/instruction-files/CLAUDE.md'))) -Message "the original CLAUDE.md was not saved. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# While CLAUDE.md does not import the framework rules, the old sections are the only rules Claude Code reads: they stay.
+& {
+    $agents = $b561Utf8.GetBytes((New-B561TeamText))
+    $t = New-B561Consumer -Agents $agents -Claude ($b561Utf8.GetBytes("@AGENTS.md`n"))
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'B-561 old sections stay while CLAUDE.md does not import the framework rules' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $agents -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "AGENTS.md changed although CLAUDE.md does not import the rules. Output:`n$out"
+            Assert ((Get-B561Lines $out 'CANT-VERIFY: [^\r\n]*AGENTS\.md[^\r\n]*does not import').Count -eq 1) "no CANT-VERIFY line says why the old sections stayed. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A removed last section takes only its own lines and the one separator a blank line sets apart above it: the team's front
+# matter keeps its closing '---', and a heading underlined with '---' keeps its underline.
+& {
+    $agentsKept = "---`ntitle: Acme agents`n---`n"
+    $claudeKept = "@AGENTS.md`n@.github/instructions/framework-rules.instructions.md`n`n# Acme`n`nintro`n`nOur Team Rules`n---`n"
+    $t = New-B561Consumer -Agents ($b561Utf8.GetBytes($agentsKept + "`n" + (Get-B561Section 'SOLID'))) -Claude ($b561Utf8.GetBytes($claudeKept + "`n" + (Get-B561Section 'Leanness')))
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It "B-561 a removed last section keeps the team's front matter and heading underline above it" {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected ($b561Utf8.GetBytes($agentsKept)) -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "AGENTS.md lost its front matter's closing line. Got:`n$([IO.File]::ReadAllText((Join-Path $t 'AGENTS.md')))`nOutput:`n$out"
+            Assert-BytesEqual -Expected ($b561Utf8.GetBytes($claudeKept)) -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))) -Message "CLAUDE.md lost its heading underline. Got:`n$([IO.File]::ReadAllText((Join-Path $t 'CLAUDE.md')))`nOutput:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A fence closes only on a line of its own character, at least as long, with nothing after it; a backtick line that holds
+# more backticks opens none. So valid Markdown in AGENTS.md is never taken for a fence that never closes and its exact old
+# section outside any fence is removed; an exact old copy shown inside a four-backtick example in CLAUDE.md stays inside it.
+& {
+    $tricky = "## How to write docs`n`n````````markdown`nOpen a block with:`n``````csharp`n`````````n`nUse tildes too:`n`n``````text`n~~~`n```````n`n``````dotnet test`````` is how we run tests.`n`n"
+    $agentsKept = "# Acme`n`n" + $tricky
+    $agentsTail = "## Conventions`n`ntext`n"
+    $example = "## History`n`n````````markdown`n```````n" + (Get-B561Section 'SOLID') + "## Example heading`n```````n`````````n`n"
+    $claude = $b561Utf8.GetBytes([IO.File]::ReadAllText((Join-Path $repoRoot 'dist/dotnet/CLAUDE.md')) + "`n" + $example + $agentsTail)
+    $t = New-B561Consumer -Agents ($b561Utf8.GetBytes($agentsKept + (Get-B561Section 'Leanness') + $agentsTail)) -Claude $claude
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))
+
+        It 'B-561 a closed fence that holds another fence marker, and an inline code span, are not taken for a fence that never closes' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ((Get-B561Lines $out 'never closes').Count -eq 0) "a closed fence was reported as never closing. Output:`n$out"
+            Assert-BytesEqual -Expected ($b561Utf8.GetBytes($agentsKept + $agentsTail)) -Actual $after -Message "AGENTS.md is not the team's text without the old Leanness section. Got:`n$($b561Utf8.GetString($after))`nOutput:`n$out"
+            $notice = Get-B561Lines $out 'NOTICE: [^\r\n]*AGENTS\.md[^\r\n]*exact cop'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains('Leanness')) "the removal NOTICE does not name Leanness. Output:`n$out"
+        }
+
+        It "B-561 an exact old copy inside a team's four-backtick code example stays inside it" {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $claude -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))) -Message "CLAUDE.md, whose old SOLID text lies inside a code example, changed. Got:`n$([IO.File]::ReadAllText((Join-Path $t 'CLAUDE.md')))`nOutput:`n$out"
+            Assert ((Get-B561Lines $out 'NOTICE: [^\r\n]*(from|in) CLAUDE\.md|CANT-VERIFY: CLAUDE\.md|cleaned: CLAUDE\.md').Count -eq 0) "a clean-up line names CLAUDE.md. Output:`n$out"
+            $notice = Get-B561Lines $out 'NOTICE: [^\r\n]*exact cop'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains('from AGENTS.md') -and -not $notice[0].Contains('SOLID')) "the clean-up did not run on AGENTS.md alone, or named the SOLID example. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# The messages read as a team would want them: two copies of one old section named once, team sections under two old names
+# listed with single spaces, and no step asked of the team that this run takes itself (it creates CLAUDE.md with the import).
+& {
+    $team = "# Acme`n`nintro`n`n---`n`n"
+    $own = "## Verification Rules`n`nOur own checks.`n`n---`n`n## Leanness`n`nOur own leanness notes.`n"
+    $solid = Get-B561Section 'SOLID'
+    $t = New-B561Consumer -Agents ($b561Utf8.GetBytes($team + $solid + $solid + $own))
+    try {
+        Remove-Item -Force -LiteralPath (Join-Path $t 'CLAUDE.md')
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'B-561 the clean-up messages name a repeated section once, read with single spaces and ask no step the run takes' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected ($b561Utf8.GetBytes($team + $own)) -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "AGENTS.md is not the team's text without the two old SOLID copies. Got:`n$([IO.File]::ReadAllText((Join-Path $t 'AGENTS.md')))`nOutput:`n$out"
+            Assert-BytesEqual -Expected ([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/CLAUDE.md'))) -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))) -Message 'CLAUDE.md is not the shipped stub'
+            $lines = Get-B561Lines $out '(NOTICE|CANT-VERIFY): [^\r\n]*(AGENTS|CLAUDE)\.md'
+            Assert ((@($lines | Where-Object { $_ -match 'SOLID and SOLID|\S  +\S|does not import' })).Count -eq 0) "a message repeats a name, holds a double space or asks for the import this run writes. Output:`n$out"
+            Assert ((Get-B561Lines $out 'NOTICE: removing the old SOLID sections from AGENTS\.md').Count -eq 1) "the NOTICE does not name the SOLID sections once. Output:`n$out"
+            Assert ((Get-B561Lines $out 'CANT-VERIFY: AGENTS\.md has Verification Rules and Leanness sections that differ').Count -eq 1) "the team's two sections are not named in one line. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A file the update may not write is named with a plain reason, not the .NET exception text, and left as it is.
+& {
+    $agents = $b561Utf8.GetBytes((New-B561TeamText))
+    $t = New-B561Consumer -Agents $agents
+    $agentsPath = Join-Path $t 'AGENTS.md'
+    try {
+        (Get-Item -LiteralPath $agentsPath).IsReadOnly = $true
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'B-561 a read-only instruction file is named with a plain reason and left as it is' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $agents -Actual ([IO.File]::ReadAllBytes($agentsPath)) -Message "a read-only AGENTS.md changed. Output:`n$out"
+            $named = Get-B561Lines $out 'CANT-VERIFY: AGENTS\.md could not be opened for writing'
+            Assert ($named.Count -eq 1) "the read-only AGENTS.md is not named in one CANT-VERIFY line. Output:`n$out"
+            Assert ($named[0] -cnotmatch 'Exception|argument\(s\)|"Open"') "the CANT-VERIFY line carries the raw exception text. Line: $($named[0])"
+            Assert ($named[0].Contains('read-only')) "the CANT-VERIFY line does not give the reason. Line: $($named[0])"
+        }
+    } finally {
+        if (Test-Path -LiteralPath $agentsPath) { (Get-Item -LiteralPath $agentsPath).IsReadOnly = $false }
+        Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue
+    }
+}
+
+# A fence opens only on a line indented by at most three spaces and no tab, so a marker in an indented code block opens
+# none and the exact old sections beside it go. A marker in an HTML comment still reads as a fence that never closes; in a
+# CLAUDE.md with no old heading it gets no line, and the file's lines are those of one without the marker (a control run).
+& {
+    $agentsKept = "# Acme`n`n## Conventions`n`nRun the tests:`n`n    ``````bash`n    dotnet test`n`nOr:`n`n`t~~~`n`tdotnet build`n`n"
+    $agentsTail = "## Tail`n`ntext`n"
+    $agents = $b561Utf8.GetBytes($agentsKept + (Get-B561Section 'Leanness') + (Get-B561Section 'SOLID') + $agentsTail)
+    $stub = [IO.File]::ReadAllText((Join-Path $repoRoot 'dist/dotnet/CLAUDE.md'))
+    $claude = $b561Utf8.GetBytes($stub + "`n<!-- To show code, open a block with:`n```````n-->`n")
+    $t = New-B561Consumer -Agents $agents -Claude $claude
+    $c = New-B561Consumer -Agents $agents -Claude ($b561Utf8.GetBytes($stub + "`n<!-- To show code, open a block. -->`n"))
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $control = Invoke-Installer -Dist 'dotnet' -Target $c
+        $after = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))
+        $claudeLines = { param([string]$Output, [string]$Target) , @(Get-B561Lines $Output 'CLAUDE\.md' | ForEach-Object { $_.Replace($Target, '<t>').Replace($Target.Replace('\', '/'), '<t>') }) }
+
+        It 'B-561 a fence marker in a code block indented by four spaces or a tab is no fence, so the exact old sections beside it go' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected ($b561Utf8.GetBytes($agentsKept + $agentsTail)) -Actual $after -Message "AGENTS.md is not the team's text without the old Leanness and SOLID sections. Got:`n$($b561Utf8.GetString($after))`nOutput:`n$out"
+            Assert ((Get-B561Lines $out 'CANT-VERIFY: AGENTS\.md').Count -eq 0) "AGENTS.md was named in a CANT-VERIFY line. Output:`n$out"
+            $notice = Get-B561Lines $out 'NOTICE: removing the old Leanness and SOLID sections from AGENTS\.md'
+            Assert ($notice.Count -eq 1 -and -not $notice[0].Contains('MIGRATION')) "the removal NOTICE is missing, or speaks of a MIGRATION line no line printed. Output:`n$out"
+        }
+
+        It 'B-561 a fence marker in an HTML comment, in a file with no old heading, gets no line and no change while the clean-up runs beside it' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $claude -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'CLAUDE.md'))) -Message "CLAUDE.md changed. Output:`n$out"
+            $got = (& $claudeLines $out $t) -join "`n"
+            $want = (& $claudeLines $control $c) -join "`n"
+            Assert ($got -ceq $want) "the lines naming CLAUDE.md differ from those for one without the fence marker.`nGot:`n$got`nControl:`n$want"
+            Assert ((Get-B561Lines $out 'NOTICE: removing the old [^\r\n]*AGENTS\.md').Count -eq 1) "the clean-up did not run on AGENTS.md. Output:`n$out"
+        }
+    } finally {
+        Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force $c -ErrorAction SilentlyContinue
+    }
+}
+
+# A fence marker in an HTML comment above an exact old section: the update cannot tell whether the section sits in a code
+# block, so it leaves the file and says so once, without asking the team to close a fence that is not there.
+& {
+    $agents = $b561Utf8.GetBytes("# Acme`n`n<!-- Open a code block with:`n```````n-->`n`n" + (Get-B561Section 'SOLID') + "## Tail`n`ntext`n")
+    $t = New-B561Consumer -Agents $agents
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'B-561 a fence marker in an HTML comment beside an exact old section leaves the file with one CANT-VERIFY line that asks no fence closed' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $agents -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "AGENTS.md changed. Output:`n$out"
+            $named = Get-B561Lines $out 'CANT-VERIFY: [^\r\n]*AGENTS\.md'
+            Assert ($named.Count -eq 1) "expected exactly one CANT-VERIFY line for AGENTS.md. Output:`n$out"
+            Assert ($named[0].Contains("AGENTS.md has a SOLID heading, but this update could not tell whether the old framework section under it sits inside a code block, so it left the file as it is. You can remove the framework's old sections by hand (docs/upgrade-checklist.md).")) "the CANT-VERIFY line is not the expected wording. Line: $($named[0])"
+            Assert ($named[0] -notmatch '(?i)close the fence|never closes') "the CANT-VERIFY line asks the team to close a fence. Line: $($named[0])"
+            Assert ((Get-B561Lines $out 'NOTICE: removing').Count -eq 0) "a removal NOTICE was printed. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
 $powerShellExtension = 'ps1'
 & {
     It "brownfield leaves the copy-if-absent wiki index active and unarchived ($powerShellExtension)" {
