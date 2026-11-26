@@ -347,6 +347,95 @@ if (-not (Test-Path -LiteralPath (Join-Path $installRoot $registrationRelative) 
     } finally { Pop-Location; $env:CLAUDE_PROJECT_DIR = $ambientProjectDir }
 } }
 
+# A settings file with one value of the wrong type is dropped whole by Claude Code (2.1.332, 45 probe cases): no hooks, so no
+# guard, and no permission rules. The guard refuses a write that leaves one of the keys seen to do it, unless the file is
+# already wrong-typed on disk (that is how it gets repaired). List items and env values did not drop the file, so they pass.
+$typedGuardCommand = 'if ($env:CLAUDE_PROJECT_DIR) { Set-Location -LiteralPath $env:CLAUDE_PROJECT_DIR } ; pwsh -NoProfile -ExecutionPolicy Bypass -File .claude/hooks/guard.ps1 ; if ($null -eq $LASTEXITCODE) { exit 2 } ; exit $LASTEXITCODE'
+$typedValidPermissions = '"permissions": { "allow": [ "Bash(git status)" ] }'
+function Get-TypedSettings([string]$Permissions = $typedValidPermissions, [string]$Extra = '') {
+    (@'
+{
+  __PERMS__,
+  __EXTRA__"hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "GUARDCMD", "shell": "powershell", "onFailure": "block", "cwd": "." }
+        ]
+      }
+    ]
+  }
+}
+'@).Replace("`r`n", "`n").Replace('__PERMS__', $Permissions).Replace('__EXTRA__', $Extra).Replace('GUARDCMD', $typedGuardCommand)
+}
+function New-TypedRoot([ref]$Base, [string]$Settings) {
+    $Base.Value = Join-Path ([IO.Path]::GetTempPath()) ('guard-typed-' + [guid]::NewGuid().ToString('N'))
+    $root = Join-Path $Base.Value 'shop'
+    $null = Copy-HookInto $guardPs $root
+    [IO.File]::WriteAllText((Join-Path $root '.claude\settings.json'), $Settings, (New-Object System.Text.UTF8Encoding($false)))
+    return $root
+}
+# The write as each surface sends it: a whole-file write (-Old empty) or one replace.
+function New-TypedEvent([string]$Surface, [string]$Root, [string]$Old, [string]$New) {
+    $whole = $Old.Length -eq 0
+    $e = if ($Surface -eq 'Claude') {
+        $a = @{ file_path = "$Root\.claude\settings.json" }
+        if ($whole) { $a.content = $New } else { $a.old_string = $Old; $a.new_string = $New }
+        @{ tool_name = $(if ($whole) { 'Write' } else { 'Edit' }); tool_input = $a }
+    } else {
+        $a = @{ path = '.claude/settings.json' }
+        if ($whole) { $a.file_text = $New } else { $a.old_str = $Old; $a.new_str = $New }
+        @{ toolName = $(if ($whole) { 'create' } else { 'edit' }); toolArgs = $a }
+    }
+    $e.cwd = $Root
+    ConvertTo-Json -InputObject $e -Compress -Depth 8
+}
+It 'guard: a settings write that leaves a wrong-typed value Claude Code drops the file for is refused' {
+    $base = $null; $badBase = $null
+    try {
+        $root = New-TypedRoot ([ref]$base) (Get-TypedSettings)
+        $badRoot = New-TypedRoot ([ref]$badBase) (Get-TypedSettings '"permissions": "x"')
+        $allowList = '"allow": [ "Bash(git status)" ]'
+        $cases = New-Object System.Collections.Generic.List[object]
+        # Each case runs the guard copy in its own root, on the Claude surface and, when asked, the Copilot one; Says are the
+        # phrases a refusal must hold.
+        $add = {
+            param([string]$Name, [string]$Root, [string]$Old, [string]$New, [string]$Decision, [bool]$Copilot, [string[]]$Says)
+            $surfaces = if ($Copilot) { 'Claude', 'Copilot' } else { , 'Claude' }
+            foreach ($surface in $surfaces) {
+                $want = if ($Decision -eq 'ALLOW') { 'ALLOW' } elseif ($surface -eq 'Claude') { 'BLOCK' } else { 'DENY' }
+                $cases.Add(@{ n = "$Name ($surface)"; d = $want; says = $Says; hook = (Join-Path $Root '.claude\hooks\guard.ps1'); e = (New-TypedEvent $surface $Root $Old $New) })
+            }
+        }
+        $typed = @('wrong type')
+        & $add 'an Edit that turns the allow list into text' $root $allowList '"allow": "Bash(git status)"' 'BLOCK' $true ($typed + @('permissions.allow', 'a list'))
+        & $add 'a Write setting permissions to text' $root '' (Get-TypedSettings '"permissions": "x"') 'BLOCK' $true ($typed + @('"permissions"', 'an object'))
+        & $add 'a Write setting deny to a number' $root '' (Get-TypedSettings '"permissions": { "deny": 5 }') 'BLOCK' $false ($typed + @('permissions.deny', 'a list'))
+        & $add 'a Write setting ask to null' $root '' (Get-TypedSettings '"permissions": { "ask": null }') 'BLOCK' $false ($typed + @('permissions.ask', 'a list'))
+        & $add 'a Write setting env to text' $root '' (Get-TypedSettings $typedValidPermissions '"env": "x",') 'BLOCK' $false ($typed + @('"env"', 'an object'))
+        & $add 'a Write setting model to a number' $root '' (Get-TypedSettings $typedValidPermissions '"model": 5,') 'BLOCK' $false ($typed + @('"model"', 'text'))
+        & $add 'a Write setting model to null' $root '' (Get-TypedSettings $typedValidPermissions '"model": null,') 'BLOCK' $false ($typed + @('"model"', 'text'))
+        & $add 'a Write setting disableAllHooks to the text "true"' $root '' (Get-TypedSettings $typedValidPermissions '"disableAllHooks": "true",') 'BLOCK' $false ($typed + @('"disableAllHooks"', 'true or false'))
+        & $add 'a Write setting disableAllHooks to 0' $root '' (Get-TypedSettings $typedValidPermissions '"disableAllHooks": 0,') 'BLOCK' $false ($typed + @('"disableAllHooks"', 'true or false'))
+        & $add 'an Edit adding a second allow rule' $root $allowList '"allow": [ "Bash(git status)", "Bash(git diff)" ]' 'ALLOW' $true @()
+        & $add 'a Write with a number in the allow list' $root '' (Get-TypedSettings '"permissions": { "allow": [ 5 ] }') 'ALLOW' $false @()
+        & $add 'a Write with a number as an env value' $root '' (Get-TypedSettings $typedValidPermissions '"env": { "A": 1 },') 'ALLOW' $false @()
+        & $add 'a Write repairing a file already wrong-typed on disk' $badRoot '' (Get-TypedSettings) 'ALLOW' $true @()
+        & $add 'a Write leaving a file wrong-typed on disk wrong-typed in another key' $badRoot '' (Get-TypedSettings $typedValidPermissions '"env": "x",') 'ALLOW' $false @()
+        & $add 'a Write over a wrong-typed file that drops the guard entry' $badRoot '' '{ "permissions": "x" }' 'BLOCK' $false @('drops or changes the write guard')
+        $wrong = New-Object System.Collections.Generic.List[string]
+        foreach ($case in $cases) {
+            $result = Invoke-Hook $case.hook $case.e
+            $got = Get-Decision $result
+            if ($got -ne $case.d) { $wrong.Add("$($case.n): expected $($case.d), got $got"); continue }
+            $said = if ($case.d -eq 'BLOCK') { $result.Err } elseif ($case.d -eq 'DENY') { $result.Out.Replace('\"', '"') } else { '' }
+            foreach ($phrase in $case.says) { if (-not $said.Contains($phrase)) { $wrong.Add("$($case.n): the reason does not say '$phrase': $said") } }
+        }
+        Assert ($wrong.Count -eq 0) ("$($wrong.Count) of $($cases.Count) wrong: " + ($wrong -join ' | '))
+    } finally { foreach ($dir in $base, $badBase) { if ($dir) { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue } } }
+}
+
 # Empty stdin and malformed JSON must degrade-safe to ALLOW (exit 0), never crash.
 It 'guard.ps1 empty stdin -> allow'     { Assert-Decision (Invoke-Hook $guardPs '')             'ALLOW' 'empty' }
 It 'guard.ps1 malformed JSON degrades safely' {

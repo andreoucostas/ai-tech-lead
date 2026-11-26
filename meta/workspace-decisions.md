@@ -4850,6 +4850,7 @@ upgrade checklist's settings step; and leaving it open with a documentation line
 **Answered (the maintainer's, in chat 2026-11-24).** "No longer registers" means the guard entries already on disk do not stay unchanged, with their
 matcher, not that the result fails to match the shipped entry; and the rule also covers `.claude/settings.local.json` and refuses a write that newly sets
 `disableAllHooks`. Built 2026-11-24 (B-490).
+**Extended (B-549, 2026-11-26).** Five keys left with a wrong type are refused: 45 probe cases, Claude Code 2.1.332. **Reopen** if a release accepts a refused kind or drops a file for another key.
 **Reopen** if `/adopt` or an update is reported blocked by the rule, or a team reports the guards switched off through a path the rule does not read.
 
 ## WSD-133: the reviewers keep their shell, the Copilot wrappers get a tool list, and nothing calls them read-only (2026-11-19)

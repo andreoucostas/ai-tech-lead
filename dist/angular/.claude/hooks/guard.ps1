@@ -33,8 +33,9 @@
 # Hook wiring: every agent write to a hook script (.claude/hooks/*.ps1) or the Copilot hook file (.github/hooks/hooks.json), in
 # any folder, is blocked, an empty write, a deletion, a move, an 8.3 short name and a folder's stream spelling included; so is a write to
 # .claude/settings.json or .claude/settings.local.json whose resulting file drops or changes a PreToolUse entry naming guard.ps1
-# that the file holds now (its group's matcher included) or newly sets "disableAllHooks": true, and one whose resulting file
-# the guard cannot work out (see Test-SettingsWrite). A shell command is not read, as for every rule here.
+# that the file holds now (its group's matcher included) or newly sets "disableAllHooks": true, one that newly leaves permissions,
+# its allow/deny/ask, env, model or disableAllHooks of a type that makes Claude Code drop the whole file (see Get-SettingsTypeFault),
+# and one whose resulting file the guard cannot work out (see Test-SettingsWrite). A shell command is not read, as for every rule here.
 $ErrorActionPreference = 'SilentlyContinue'
 # Case-insensitive patterns fold case culture-invariantly ($ci) and string comparisons are ordinal:
 # under tr-TR the current culture folds 'I' to a dotless i (U+0131), so a culture-following (?i)
@@ -901,6 +902,27 @@ function Test-HooksOff($Root) {
     $value = Get-JsonProperty $Root 'disableAllHooks'
     return $null -ne $value -and $value.ValueKind -eq [System.Text.Json.JsonValueKind]::True
 }
+# $null when none of the keys Claude Code 2.1.332 was seen to drop the whole file for (45 probe cases) holds a value of the wrong
+# kind; else the first such key and the type it needs, in plain words. An explicit list, not a schema: list items and env values
+# of the wrong kind did not drop the file, and nothing else is checked. A key counts as present whatever its value, null included.
+function Get-SettingsTypeFault($Root) {
+    $kind = [System.Text.Json.JsonValueKind]
+    $permissions = Get-JsonProperty $Root 'permissions'
+    if ($null -ne $permissions -and $permissions.ValueKind -ne $kind::Object) { return @('permissions', 'an object') }
+    if ($null -ne $permissions) {
+        foreach ($name in 'allow', 'deny', 'ask') {
+            $list = Get-JsonProperty $permissions $name
+            if ($null -ne $list -and $list.ValueKind -ne $kind::Array) { return @("permissions.$name", 'a list') }
+        }
+    }
+    $environment = Get-JsonProperty $Root 'env'
+    if ($null -ne $environment -and $environment.ValueKind -ne $kind::Object) { return @('env', 'an object') }
+    $model = Get-JsonProperty $Root 'model'
+    if ($null -ne $model -and $model.ValueKind -ne $kind::String) { return @('model', 'text') }
+    $hooksOff = Get-JsonProperty $Root 'disableAllHooks'
+    if ($null -ne $hooksOff -and $hooksOff.ValueKind -ne $kind::True -and $hooksOff.ValueKind -ne $kind::False) { return @('disableAllHooks', 'true or false') }
+    return $null
+}
 # $Text with each replace applied in order, line ends read as LF as the edit tools match them: the old text must occur exactly
 # once, or at least once for a replace-all. $null otherwise.
 function Get-ReplacedText([string]$Text, $Pairs) {
@@ -918,7 +940,8 @@ function Get-ReplacedText([string]$Text, $Pairs) {
     return $result
 }
 $settingsDroppedMessage = 'Blocked write to {0}: the file it would leave drops or changes the write guard''s entry (.claude/hooks/guard.ps1 under PreToolUse, with its matcher), or sets "disableAllHooks": true, so the guard could stop running. Other settings changes are fine: keep that entry and its group exactly as they are and resend, or have a teammate make this change by hand.'
-$settingsUnknownMessage = 'Blocked write to {0}: the write guard cannot work out the file this write would leave (it is not strict JSON, the text to replace is not in the file exactly once, the file cannot be read, or the change is one the guard does not compute, such as an insert at a line), so it cannot confirm the guard stays registered. Resend it as a whole-file write or a single replace that keeps the guard''s entry, or have a teammate make the change by hand.'
+$settingsTypeMessage = 'Blocked write to {0}: the file it would leave gives "{1}" a value of the wrong type ({2} expected). Claude Code then loads nothing from that file: no hooks, the write guard''s included, and no permission rules. Give "{1}" {2} and resend, or have a teammate make this change by hand.'
+$settingsUnknownMessage ='Blocked write to {0}: the write guard cannot work out the file this write would leave (it is not strict JSON, the text to replace is not in the file exactly once, the file cannot be read, or the change is one the guard does not compute, such as an insert at a line), so it cannot confirm the guard stays registered. Resend it as a whole-file write or a single replace that keeps the guard''s entry, or have a teammate make the change by hand.'
 $settingsPatchMessage = 'Blocked write to {0}: the write guard does not work out the file a patch leaves when it updates, moves or deletes a settings file, so it cannot confirm the guard stays registered. A teammate makes this change by hand.'
 # $null when the write to the settings file $Target keeps every guard entry the file holds now, unchanged, and does not newly set
 # disableAllHooks; else the message that refuses it. Each text the event could leave in the file is checked: a whole-file text
@@ -979,6 +1002,7 @@ function Test-SettingsWrite([string]$Target) {
     $diskRoot = if ([string]::Equals($disk.State, 'text', $ordinal)) { Read-StrictJsonObject $disk.Text }
     $diskEntries = if ($null -ne $diskRoot) { Get-GuardEntries $diskRoot }
     $diskOff = $null -ne $diskRoot -and (Test-HooksOff $diskRoot)
+    $diskFault = if ($null -ne $diskRoot) { Get-SettingsTypeFault $diskRoot }
     $needEntry = $null -eq $diskRoot -and [string]::Equals($disk.State, 'text', $ordinal) -and $disk.Text.IndexOf('guard.ps1', $ordinalIgnoreCase) -ge 0
     foreach ($candidate in $candidates) {
         $result = $candidate.Whole
@@ -990,6 +1014,7 @@ function Test-SettingsWrite([string]$Target) {
         if ($result.Length -gt $maxSettingsBytes) { return $cannot }
         $root = Read-StrictJsonObject $result
         if ($null -eq $root) { return $cannot }
+        if ($null -eq $diskFault) { $fault = Get-SettingsTypeFault $root; if ($null -ne $fault) { return ($settingsTypeMessage -f $Target, $fault[0], $fault[1]) } }
         if ((Test-HooksOff $root) -and -not $diskOff) { return ($settingsDroppedMessage -f $Target) }
         $entries = Get-GuardEntries $root
         if ($null -ne $diskEntries) { foreach ($entry in $diskEntries) { if (-not $entries.Contains($entry)) { return ($settingsDroppedMessage -f $Target) } } }
