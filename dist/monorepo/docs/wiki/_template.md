@@ -3,6 +3,7 @@ name: <kebab-slug, = filename stem>
 description: <one line, unquoted; no broader or more certain than the whole body; same text in INDEX>
 type: gotcha | context | recipe | failed-approach
 scope: <area label or path glob, e.g. src/Payments/**>
+owner: <optional: team or role that can confirm it; omit the line when unknown>
 status: verified | suspected | unverified
 last-verified: YYYY-MM-DD | never (only suspected or unverified claims never meaningfully rechecked)
 ---
@@ -12,6 +13,6 @@ last-verified: YYYY-MM-DD | never (only suspected or unverified claims never mea
 **Evidence:** <code path / commit / PR that shows it>
 **Counterevidence / exceptions:** <what narrows or conflicts with this claim>
 **Dependencies / unresolved:** <dependency source, unknown, or next useful source>
-**Verify by:** <cheapest way a reader re-checks it>
+**Verify by:** <cheapest way a reader re-checks it; for a declared runtime fact, who or where confirms it>
 **Semantic refresh:** trigger: <changed evidence/dependency>; result: <what was actually rechecked, or not yet rechecked>. Rereading the decisive source/predicate is enough for a scoped source claim; restored dependencies or execution are reserved for runtime or business-behaviour proof, and unavailable evidence never inflates the claim.
 **Draft status:** <draft pending PR review; not team-approved policy>

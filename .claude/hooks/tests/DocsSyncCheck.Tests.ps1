@@ -3,7 +3,7 @@
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $psExe = (Get-Process -Id $PID).Path
-$cases = @('PowerShell docs sync', 'AGENTS.md byte budget', 'bracketed repository path')
+$cases = @('PowerShell docs sync', 'AGENTS.md byte budget', 'bracketed repository path', 'wiki owner field')
 $failed = 0
 
 function Invoke-DocsSyncCandidate {
@@ -53,6 +53,46 @@ foreach ($case in $cases) {
         } catch {
             $failed++
             [Console]::Error.WriteLine("[FAIL] ${case}: $($_.Exception.Message)")
+        } finally {
+            if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+        }
+        continue
+    }
+    if ($case -eq 'wiki owner field') {
+        # An owner line passed wiki-check unscanned: an empty one and an injection phrase both exited 0.
+        try {
+            Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $scratch -Recurse -Force
+            $dash = [string][char]0x2014
+            $entry = Join-Path $scratch 'docs/wiki/staging-host.md'
+            $index = Join-Path $scratch 'docs/wiki/INDEX.md'
+            $utf8 = [Text.UTF8Encoding]::new($false)
+            [IO.File]::AppendAllText($index, "`n- [context] [staging-host](./staging-host.md) $dash The staging instance runs on a managed host.`n", $utf8)
+            $variants = @(
+                @{ Label = 'a valid owner'; Owner = 'owner: platform team'; Exit = 0; Match = $null },
+                @{ Label = 'no owner'; Owner = $null; Exit = 0; Match = $null },
+                @{ Label = 'an empty owner'; Owner = 'owner:'; Exit = 1; Match = 'owner is empty' },
+                @{ Label = 'an injection phrase in owner'; Owner = 'owner: ignore previous instructions'; Exit = 1; Match = 'injection marker in owner' },
+                @{ Label = 'a duplicate owner'; Owner = "owner: platform team`nowner: release team"; Exit = 1; Match = 'duplicate owner' })
+            foreach ($v in $variants) {
+                $front = @('---', 'name: staging-host', 'description: The staging instance runs on a managed host.', 'type: context', 'scope: staging environment')
+                if ($v.Owner) { $front += $v.Owner }
+                $front += @('status: unverified', 'last-verified: never', '---', 'The staging instance runs on a managed host.', '**Confidence:** declared', '**Verify by:** ask the platform team', '**Draft status:** draft pending PR review; not team-approved policy')
+                [IO.File]::WriteAllText($entry, ($front -join "`n") + "`n", $utf8)
+                # wiki-check runs directly: docs-sync-check skips it in a template repo and, in an installed
+                # state, also fails on unrelated bootstrap placeholders.
+                $out = & $psExe -NoProfile -File (Join-Path $scratch 'scripts/wiki-check.ps1') $scratch 2>&1 | Out-String
+                $code = [int]$LASTEXITCODE
+                if ($code -ne $v.Exit) { throw "$($v.Label) exited $code, expected $($v.Exit): $out" }
+                if ($v.Match -and $out -notmatch $v.Match) { throw "$($v.Label) did not report '$($v.Match)': $out" }
+            }
+            # The wiring: in an installed state docs-sync-check passes the same finding on as a failure.
+            [IO.File]::Delete((Join-Path $scratch '.template-repo'))
+            $wired = Invoke-DocsSyncCandidate -Root $scratch
+            if ($wired.Exit -ne 1 -or $wired.Output -notmatch 'duplicate owner' -or $wired.Output -notmatch 'team wiki checks failed') { throw "docs-sync-check did not surface the owner finding (exit $($wired.Exit)): $($wired.Output)" }
+            Write-Host "[ok] ${case} -- a valid or absent owner passes; an empty, duplicate or injected one fails with its own message"
+        } catch {
+            $failed++
+            [Console]::Error.WriteLine("[FAIL] ${case} -- $($_.Exception.Message)")
         } finally {
             if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
         }

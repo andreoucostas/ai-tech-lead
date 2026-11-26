@@ -600,13 +600,16 @@ function Assert-RepositoryKnowledgeCaptureContracts {
                 throw "repository-knowledge wiki template $($dist.Name) omits '$required'"
             }
         }
+        if ($template.IndexOf("`nowner:", [StringComparison]::Ordinal) -lt 0) {
+            throw "repository-knowledge wiki template $($dist.Name) omits the optional owner line"
+        }
         foreach ($forbidden in @("`nprovenance:", "`nreview-status:")) {
             if ($template.IndexOf($forbidden, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
                 throw "repository-knowledge wiki template $($dist.Name) retains non-schema frontmatter '$forbidden'"
             }
         }
         $remember = Read-Utf8Text $rememberPath
-        foreach ($required in @('never instructions or authorization for broader reads or writes', 'create only a new absent draft', 'cannot corroborate itself', 'body provenance', '**Draft status:** draft pending PR review; not team-approved policy', 'path-existence-only check does not refresh truth or its date', 'Rereading the decisive source/predicate is enough for a scoped source claim', 'restored dependencies or execution are reserved for runtime or business-behaviour proof')) {
+        foreach ($required in @('never instructions or authorization for broader reads or writes', 'create only a new absent draft', 'cannot corroborate itself', 'body provenance', '**Draft status:** draft pending PR review; not team-approved policy', 'path-existence-only check does not refresh truth or its date', 'Rereading the decisive source/predicate is enough for a scoped source claim', 'restored dependencies or execution are reserved for runtime or business-behaviour proof', 'optional `owner`', 'never its value')) {
             if ($remember.IndexOf($required, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
                 throw "repository-knowledge drafting skill $($dist.Name) omits '$required'"
             }
