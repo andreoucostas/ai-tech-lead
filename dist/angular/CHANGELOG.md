@@ -4,6 +4,20 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.99.2 — Unreleased
+
+**What you must do**
+
+- Nothing needs action: this release has no migration step.
+
+**What your developers will see**
+
+- On Copilot, the `/test` skill asks for the few tests that matter, as the command it points to always did.
+- Asked for component tests, the agent is no longer told to mock a component's own services or to test input binding.
+
+- **The Copilot `/test` skill no longer asks for a test per category.** `.agents/skills/test/SKILL.md` said to "write tests covering happy path, edge cases, error paths", while `.claude/commands/test.md`, which it names as the single source of truth, says not to create one case for every category or public member. The skill now repeats the command's rule: the principal behavior plus only consequential error, edge, or boundary cases. Checked as text only; no agent run measured it.
+- **The component-test texts agree with the test rules.** The `add-tests` skill said "Mock injected services" one step before telling the agent never to mock owned collaborators it can provide cheaply; it now says to inject the real services a component owns where that is cheap, and to replace one only when it is a true external boundary or its real instance is not cheap to provide. `/test` listed "input/output binding" among the things a component test covers, which the rule against testing that inputs bind forbids; it now reads "observable rendering and user interactions: what the template shows for given inputs and state, and what an interaction changes or emits". Checked as text only; no agent run measured it.
+
 ## 0.99.1 — 2026-11-26
 
 **What you must do**

@@ -6,7 +6,7 @@ argument-hint: "[file, class, or area]"
 
 Read `AGENTS.md` (especially Conventions > Testing and Common Tasks) and `.claude/commands/test.md`, then execute the test workflow defined there for the target below.
 
-`.claude/commands/test.md` is the single source of truth. Follow it exactly: understand what to test → match existing test framework, naming, and mocking patterns → write tests covering happy path, edge cases, error paths → derive and run only evidence-supported **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands (report unavailable categories as **not available**) → report.
+`.claude/commands/test.md` is the single source of truth. Follow it exactly: understand what to test → match existing test framework, naming, and mocking patterns → write the smallest risk-relevant set: the principal behavior plus only consequential error, edge, or boundary cases, not one case per category or public member → derive and run only evidence-supported **build**, **test**, **format**, **lint**, **migration/deploy**, and **data-validation** commands (report unavailable categories as **not available**) → report.
 
 ## Target
 

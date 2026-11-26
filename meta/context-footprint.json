@@ -842,13 +842,13 @@
         },
         {
           "path": ".claude/commands/test.md#body",
-          "chars": 3649,
-          "tok": 912
+          "chars": 3722,
+          "tok": 930
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
-          "chars": 7373,
-          "tok": 1843
+          "chars": 7511,
+          "tok": 1878
         },
         {
           "path": ".claude/skills/create-adr/SKILL.md#body",
@@ -1281,8 +1281,8 @@
         },
         {
           "path": ".claude/skills/add-tests/SKILL.md#body",
-          "chars": 11549,
-          "tok": 2887
+          "chars": 11687,
+          "tok": 2922
         },
         {
           "path": ".claude/skills/add-warehouse-load/SKILL.md#body",

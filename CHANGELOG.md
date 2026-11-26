@@ -11,6 +11,10 @@
 > preserved legacy changelogs: [`meta/changelogs/legacy-dotnet.md`](meta/changelogs/legacy-dotnet.md)
 > and [`meta/changelogs/legacy-angular.md`](meta/changelogs/legacy-angular.md).
 
+## 0.99.2 — Unreleased
+
+- **Three shipped test texts no longer argue against the test rules (guarded).** The Copilot wrapper for `/test` (three stacks) names `.claude/commands/test.md` as the single source of truth and then summarised it as "write tests covering happy path, edge cases, error paths", the list of categories that command forbids; it now carries the command's own rule. The Angular and monorepo `add-tests` skill said "Mock injected services" one step before forbidding mocks of cheap owned collaborators (Test leanness #14), and the Angular `/test` command listed "input/output binding" as a thing to test while Test leanness #12 forbids tests that inputs bind (the monorepo command already read "observable rendering and user interactions"). Asked for by the maintainer in chat 2026-11-26 after a review of the shipped test guidance; field report #17 ("going over the top with unit tests", from Copilot) is the nearest harm and nothing ties it to these lines. Unmeasured: no recorded run loaded the wrapper or the skill; two `DocClaims.Tests.ps1` cases pin the wording.
+
 ## 0.99.1 — 2026-11-26
 
 - **A settings edit that would switch every hook off by accident is refused (B-549; guarded).** Claude Code ignores a whole settings file when one value has the wrong type, hooks and permission rules included. The write guard now refuses an agent's write that would leave `permissions`, its `allow`, `deny` or `ask` list, `env`, `model` or `disableAllHooks` with a value of the wrong type, and says which key and what type it needs. A file that is already wrong-typed can still be repaired. Checked against Claude Code 2.1.332.

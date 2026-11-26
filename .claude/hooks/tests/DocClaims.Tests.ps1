@@ -550,6 +550,63 @@ function Assert-BootstrapWorkersReturnInTurn {
     }
 }
 
+function Read-DistCarrier {
+    param([object]$Dist, [string]$Relative)
+    $path = Join-Path $Dist.Root $Relative
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "carrier is missing in $($Dist.Name): $Relative" }
+    return Read-Utf8Text $path
+}
+
+# The Copilot wrapper for /test names `.claude/commands/test.md` as the single source of truth and then summarised it as
+# a list of categories, which that command forbids ("Do not create one case for every category or public member"). The
+# wrapper carries the command's own selection rule; the text is checked here only, no agent host run.
+function Assert-TestWrapperRepeatsSelectionRule {
+    param([object[]]$DistEntries)
+    $rule = 'the principal behavior plus only consequential error, edge, or boundary cases'
+    foreach ($dist in $DistEntries) {
+        foreach ($relative in @('.agents/skills/test/SKILL.md', '.claude/commands/test.md')) {
+            $normalized = [regex]::Replace((Read-DistCarrier $dist $relative), '\s+', ' ')
+            if ($normalized.IndexOf($rule, [StringComparison]::Ordinal) -lt 0) {
+                throw "$($dist.Name)/$relative omits the test-selection rule '$rule'"
+            }
+            if ($normalized -match '(?i)happy path, edge cases, error paths') {
+                throw "$($dist.Name)/$relative asks for a test per category (happy path, edge cases, error paths)"
+            }
+        }
+    }
+}
+
+# The Angular test skill said "Mock injected services" one step before forbidding mocks of cheap owned collaborators
+# (Test leanness #14), and the Angular /test command listed "input/output binding" as a thing to test while Test leanness
+# #12 forbids tests "that inputs bind". The text is checked here only, no agent host run.
+function Assert-AngularTestTextAgreesWithTestLeanness {
+    param([object[]]$DistEntries)
+    foreach ($dist in @($DistEntries | Where-Object { $_.Name -in @('angular', 'monorepo') })) {
+        $rules = Read-DistCarrier $dist '.github/instructions/framework-rules.instructions.md'
+        foreach ($anchor in @('inputs bind', 'Mock only true external boundaries')) {
+            if (-not $rules.Contains($anchor)) { throw "$($dist.Name) rules file no longer says '$anchor'; re-read this check against Test leanness #12 and #14" }
+        }
+
+        $skillLine = [regex]::Match((Read-DistCarrier $dist '.claude/skills/add-tests/SKILL.md'), '(?m)^\s*- \*\*Component\*\*:.*$')
+        if (-not $skillLine.Success) { throw "$($dist.Name)/.claude/skills/add-tests/SKILL.md has no Component bullet" }
+        if ($skillLine.Value -match '(?i)mock injected services') {
+            throw "$($dist.Name)/.claude/skills/add-tests/SKILL.md tells the agent to mock injected services, which Test leanness #14 forbids for cheap owned collaborators"
+        }
+        if (-not $skillLine.Value.Contains('true external boundary')) {
+            throw "$($dist.Name)/.claude/skills/add-tests/SKILL.md Component bullet does not limit replacement to a true external boundary"
+        }
+
+        $commandLine = [regex]::Match((Read-DistCarrier $dist '.claude/commands/test.md'), '(?m)^- \*\*Component tests\*\*:.*$')
+        if (-not $commandLine.Success) { throw "$($dist.Name)/.claude/commands/test.md has no Component tests bullet" }
+        if ($commandLine.Value -match '(?i)binding') {
+            throw "$($dist.Name)/.claude/commands/test.md lists binding as a thing to test, which Test leanness #12 forbids"
+        }
+        if (-not $commandLine.Value.Contains('rendering and user interactions')) {
+            throw "$($dist.Name)/.claude/commands/test.md Component tests bullet omits 'rendering and user interactions'"
+        }
+    }
+}
+
 function Assert-RepositoryKnowledgeCaptureContracts {
     param([object[]]$DistEntries)
 
@@ -788,6 +845,14 @@ It 'repository-knowledge capture carriers preserve draft and refresh boundaries'
 
 It 'the spec template and /design carry the optional current-behaviour section' {
     Assert-SpecKeepsCurrentBehaviourSection -DistEntries $distEntries
+}
+
+It 'the Copilot test wrapper repeats the selection rule of the test command' {
+    Assert-TestWrapperRepeatsSelectionRule -DistEntries $distEntries
+}
+
+It 'the Angular test command and skill do not ask for what Test leanness forbids' {
+    Assert-AngularTestTextAgreesWithTestLeanness -DistEntries $distEntries
 }
 
 It 'the supported completion host invocation is required' {

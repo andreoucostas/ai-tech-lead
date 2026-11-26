@@ -5,6 +5,20 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
+## 0.99.2 — Unreleased
+
+**What you must do**
+
+- Nothing needs action: this release has no migration step.
+
+**What your developers will see**
+
+- On Copilot, the `/test` skill asks for the few tests that matter, as the command it points to always did.
+- Asked for Angular component tests, the agent is no longer told to mock a component's own services.
+
+- **The Copilot `/test` skill no longer asks for a test per category.** `.agents/skills/test/SKILL.md` said to "write tests covering happy path, edge cases, error paths", while `.claude/commands/test.md`, which it names as the single source of truth, says not to create one case for every category or public member. The skill now repeats the command's rule: the principal behavior plus only consequential error, edge, or boundary cases. Checked as text only; no agent run measured it.
+- **The Angular component-test step of `add-tests` agrees with the test rules.** It said "Mock injected services" one step before telling the agent never to mock owned collaborators it can construct cheaply; it now says to inject the real services a component owns where that is cheap, and to replace one only when it is a true external boundary or its real instance is not cheap to provide. Checked as text only; no agent run measured it.
+
 ## 0.99.1 — 2026-11-26
 
 **What you must do**
