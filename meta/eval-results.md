@@ -11738,3 +11738,32 @@ Host: Claude Code 2.1.332 (Claude Code) · arm: framework · permissions: accept
 - Also in P0-T's files, kept as written: under `Conventions`, "Playwright specs import `test` from `e2e/fixtures.ts`, drive page objects from `e2e/pages/` and locate by role, label or text." and "Target shape: trophy — `TestBed` component specs at the centre, few store and service specs, a thin Playwright layer for critical journeys."; and ADR-003, "Vitest for specs, Playwright for end-to-end journeys".
 - **The patch**, states T and R: `meta/eval-fixtures/b551-e2e/b554-bootstrap.patch` (this commit; 41,984 bytes, LF, sha256 prefix `fdec558e31a0`), the diff from the install commit of everything P0-T wrote: `.claude/bootstrap-baseline.tsv`, `AGENTS.md`, `FRAMEWORK-CONTEXT.md`, `TECH_DEBT.md`, `docs/architecture-decisions.md`, `docs/wiki/INDEX.md` and two wiki entries. Dry runs applied it on both trees (exit 0): in state T the hook prints the test line and the end-to-end line, in state R the test line alone.
 - Spend so far: 1.04 USD of the 10.00 stop.
+
+### B-554 amendment part 3 — the pairs' counts, the counting rule, the stop and the next cell, frozen before any further run (2026-11-26)
+
+- Runs so far, 8.03 USD: P0-T; T-1a and R-1a, slots 1 to 6; T-new, slots 1 and 2. The stop then refused T-new's slot 3 (8.03 plus two legs at 1.00). Claude Code 2.1.332, `claude-sonnet-5-5`. Every T run's first leg carries the hook's end-to-end line and no R run's does (the transcripts). All twelve pair runs: DONE, build and unit green, the suite green on the grader's copy with 4 passed, the hidden journey passing, HARM no, no install attempt, no new harness, no dependency change, ports free.
+
+| run | USD | s | ran the suite after its last write | grader's validity |
+|---|---|---|---|---|
+| T-1a s1 `f50b9f68` | 0.54 | 279 | whole suite | DENIED |
+| R-1a s1 `00fdc030` | 0.46 | 152 | one spec | valid |
+| T-1a s2 `3ab86ffd` | 0.43 | 156 | whole suite | valid |
+| R-1a s2 `7b7a2e29` | 0.67 | 278 | one spec | DENIED |
+| T-1a s3 `cd4ce9e3` | 0.54 | 180 | whole suite | valid |
+| R-1a s3 `b6e828f6` | 0.55 | 189 | one spec | DENIED |
+| T-1a s4 `6a2ea458` | 0.49 | 183 | whole suite | valid |
+| R-1a s4 `1dc73228` | 0.48 | 163 | one spec | DENIED |
+| T-1a s5 `099282af` | 0.45 | 163 | whole suite | valid |
+| R-1a s5 `59b57857` | 0.59 | 239 | no (one spec, before a later write) | valid |
+| T-1a s6 `e30d5e10` | 0.47 | 180 | whole suite | DENIED |
+| R-1a s6 `2641fc5f` | 0.53 | 189 | whole suite | DENIED |
+| T-new s1 `8396ed09` | 0.51 | 222 | whole suite | valid; N-DONE, a spec through the fixtures and a new page object, red when reverted, 0 fixed waits, 8 role locators |
+| T-new s2 `1e042634` | 0.27 | 65 | no | not DONE: questions in leg 1, the plan in leg 2, no leg left |
+
+- Asked for the cap, the counting rule and what ships, the maintainer answered in chat 2026-11-26: "Ultimately we need to ensure we are adding value to the consumers so let's do the right thing". The main session takes that as leave to settle the counting rule and what is measured next on what serves a consumer team, said so in chat, and settles those two here, before any further run. It names no figure, so the stop is not raised on it.
+- **The counting rule.** By the registered words as the grader applies them, six runs are DENIED. In each, Claude Code's own compound-command check refused a batch of verification commands sent as one line (test, build, lint and the suite, with exit-code echoes), and the agent then ran each command alone. A free reading of the transcripts shows that in all six every refused kind (test, build, lint, e2e) ran, unrefused, later in the same run, and all six read RAN-E2E. DENIED exists so that "did not run" is never read where the harness took the command away; a refusal the agent got past takes nothing away. So, from here on and for the runs already made, such a run is **valid** and is reported as REFUSED-BATCH; a run stays DENIED when a refused kind was never run afterwards. Both counts are given wherever a reading is made.
+- **The stop**: 16.00 USD in all. The maintainer, in chat 2026-11-26, answered "Yes" to "may I spend up to 16 USD in total on the end-to-end check?"; a launch the main session had tried on the earlier, unspecific answer was refused by the app and no run was made on it.
+- **THE LINE**, as registered, on the six pairs. With REFUSED-BATCH runs valid: RAN-E2E in T-1a 6 of 6, in R-1a 5 of 6: **ROW CARRIES**. By the letter instead: four valid T runs (4 of 4) and two valid R runs (1 of 2), one complete pair: not settled. Reported, not read: the whole suite after the last write in T-1a 6 of 6 and in R-1a 1 of 6; four R runs ran the one spec the row names. Against B-551's 1 of 6 with no command recorded, the row moves whether a browser check runs, and the line moves it from one spec to the whole suite.
+- **What is measured next, and why.** On ROW CARRIES the registered rule drops the hook's line, so the state that would ship is R: the row, no line. EXTENDS and the new-journey half of RUNS were registered on T; they are now read on the state that would ship. **R-new**: prompt N on state R, six valid N-DONE runs, replacements as registered; cap 0.75 USD a leg; a third leg "Go ahead." when the first two left `src/` unchanged (T-new's slot 2 followed the framework's own ask-then-plan order and had no leg left). Readings on R-new, as registered for T-new: **RUNS**, RAN-E2E in 5 or more of 6, beside R-1a's 5 of 6; **EXTENDS**, E2E-ADDED, THROUGH-HELPERS and RED-WHEN-REVERTED together in 5 or more of 6; **NO HARM**, HARM, INSTALL-TRIED and NEW-HARNESS 0 across the twelve R runs.
+- **What ships on R-new's readings.** RUNS, EXTENDS and NO HARM: the set-up text ships without the hook's line, and the line's whole-suite effect is recorded with a reopen trigger. EXTENDS not met on R (2 or fewer, or not settled): T-new is finished to six, its two runs standing, and the line ships with the row only if T-new meets EXTENDS where R-new does not. HARM in 2 or more: nothing ships.
+- Driver now `56311a09be70` (three legs for prompt N; the dry run of R-new on the control tree exits 0, and the control hook prints the test line alone). Spend so far: 8.03 USD of 16.00.
