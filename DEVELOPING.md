@@ -419,7 +419,8 @@ stamp drift twice:
 
 1. Author the release: make the change in `src/` (+ monorepo siblings [#1]), write a
    `## <version>` entry in the **root** `CHANGELOG.md` (update the shipped changelog content in
-   `src/` too if the notes should reach consumers).
+   `src/` too if the notes should reach consumers). Whenever a bullet adds a must-do or something
+   developers see, update the opening block of the Unreleased head in each shipped changelog.
 2. Confirm the latest `master` CI run is green: `gh run list --branch master --limit 1`. The local
    gates run only the release-subject meta files, so that run is the full-suite evidence for the
    pre-release tree. The release runs `.claude/scripts/host-smoke.ps1` itself once the local gates pass, before the commit and push, and prints one `HOST-SMOKE pass|host fault|could not examine` line (WSD-142; B-536, free, not a gate: real Claude Code and Copilot CLI over a fresh `dist/dotnet` install against a scripted model on 127.0.0.1; it usually adds under a minute (39 s measured on the maintainer's machine, 2026-11-20) and at worst up to about 15 minutes: three host calls (Claude run, Copilot run, Copilot skill list) of up to 240 s each, and the release stops the check at 900 s).

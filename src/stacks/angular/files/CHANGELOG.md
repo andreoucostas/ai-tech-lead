@@ -6,6 +6,20 @@
 
 ## 0.99.1 — Unreleased
 
+**What you must do**
+
+- If your team uses VS Code's Copilot harness, get everyone onto VS Code 1.146.0 or newer: on 1.144.1 none of the framework's hooks ran in a folder VS Code trusts, so the write guard was off.
+- If a pipeline runs `/review` with `claude -p`, read its result the way `docs/ci-integration.md` now describes.
+- If you merged `scripts/ci/eslint-standards.sample.mjs`, merge the new sample again and check your lint target covers the folder your end-to-end specs live in.
+- After updating, read the `NOTICE:` and `CANT-VERIFY:` lines the update prints, and review `AGENTS.md` before committing.
+- Nothing else needs action: this release has no migration step.
+
+**What your developers will see**
+
+- A polite request phrased as a question, such as 'Would you add a retry to the HTTP client?', gets the plan gate again, and the questions `/bootstrap`, `/adopt` and `/rebootstrap` ask are in plain words.
+- On Claude Code, the end-of-turn cleanup note is a warning to the developer and costs no extra model turn, and `/review`'s reviewers return in the same turn.
+- The agent can no longer edit the hook scripts, `.github/hooks/hooks.json` or the guard's entry in `.claude/settings.json`; edit those by hand and review the change in a pull request.
+
 - **The playbook no longer says `/review` runs on every change.** The plan gate always waits for your go-ahead; the reviewers run when you answer `Go ahead, with review` or run `/review`. Nothing in your repository changes.
 - **The doctor ends with one line to paste into any report about the framework.** `scripts/framework-doctor.ps1` now prints `Report line: framework 0.99.1 (dotnet), PowerShell 7.x.y, ...` as its last line: versions only, no path or repository name. It starts no other program unless you add `-HostVersions`, which also reads the Claude Code and Copilot CLI versions. `docs/getting-started.md` asks for the line with any report; add the agent and mode you used, which the doctor cannot read.
 - **Setup's analysis workers now return in the same turn under a one-shot `claude -p` run.** An unattended `/adopt` could end on a worker's late reply in place of its own report; it now ends on that report. Claude Code only; interactive sessions and Copilot CLI unchanged and not checked.
