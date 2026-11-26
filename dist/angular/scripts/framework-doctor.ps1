@@ -1,6 +1,8 @@
 ﻿# Developer-machine enforcement diagnostic. PowerShell 7 only: Windows PowerShell 5.1 parses a whole script before it runs
 # any of it, so this file must stay parseable by 5.1 for the version check below to refuse there with its one line (no ??,
 # ?:, && or || chains, or other PowerShell 7-only syntax anywhere in it).
+# -HostVersions also starts 'claude --version' and 'copilot --version' for the last line; by default the doctor starts no other program.
+param([switch]$HostVersions)
 $ErrorActionPreference = 'SilentlyContinue'
 # First. The line names no path, so nothing in it can be pasted back as a command; exit 2 is "could not examine".
 if ($PSVersionTable.PSVersion.Major -lt 7) {
@@ -27,6 +29,41 @@ function RowU($Name, $Detail) {
     Row CANT-VERIFY $Name $Detail
 }
 function Has($Name) { [bool](Get-Command $Name -ErrorAction SilentlyContinue) }
+# The report line carries versions only. Every value is checked against this pattern, because the stamp is team-writable
+# and a path, a name or a sentence in it must not reach a line that is pasted into a report.
+function Get-SafeVersion($Value) {
+    if ($Value -is [string] -and $Value -cmatch '^[0-9A-Za-z.+_-]{1,40}$') { return $Value }
+    return 'unknown'
+}
+# Only under -HostVersions: starts the tool with --version (5 second limit, killed on timeout, its updater switched off in
+# the child) and keeps the first x.y.z it prints.
+function Get-ToolVersion([string]$Name) {
+    $command = Get-Command $Name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $command) { if (Has $Name) { return 'found, version not readable' }; return 'not found' }
+    $text = ''
+    $process = $null
+    try {
+        $info = New-Object System.Diagnostics.ProcessStartInfo
+        $info.FileName = $command.Source
+        $info.Arguments = '--version'
+        $info.UseShellExecute = $false
+        $info.CreateNoWindow = $true
+        $info.RedirectStandardOutput = $true
+        $info.RedirectStandardError = $true
+        $info.Environment['DISABLE_AUTOUPDATER'] = '1'
+        $process = [System.Diagnostics.Process]::Start($info)
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        if ($process.WaitForExit(5000)) {
+            if ($stdout.Wait(2000)) { $text = [string]$stdout.Result }
+        } else {
+            try { $process.Kill($true) } catch { }
+        }
+    } catch { } finally { if ($process) { $process.Dispose() } }
+    $match = [regex]::Match($text, '\d+\.\d+\.\d+[0-9A-Za-z.+_-]*')
+    if ($match.Success -and $match.Value -cmatch '^[0-9A-Za-z.+_-]{1,40}$') { return $match.Value }
+    return 'found, version not readable'
+}
 # PowerShell 7 puts its own folder first on PATH when it starts, so this doctor would always find pwsh there. A hook
 # interpreter is looked up on the PATH the doctor was given: that first folder aside, unless PATH names it again.
 $script:givenPath = @(([string]$env:PATH) -split ';' | ForEach-Object { $_.Trim().Trim('"') } | Where-Object { $_ })
@@ -305,6 +342,11 @@ function Finish {
     Write-Output ("Script-verifiable checks: {0} ok / {1} missing." -f $script:ok, $script:missingRows)
     Write-Output 'Enforcement is only FULL if the canaries above also pass; a script cannot see inside your agent.'
     if ($script:unexamined -gt 0) { Write-Output ("Could not examine: {0} script-verifiable check(s) above are [CANT-VERIFY] because this doctor could not inspect them (exit 2 unless something is MISSING)." -f $script:unexamined) }
+    # One paste-able line, versions only: no path, repository, user or machine name. Finish also runs on the early exits, so the stamp may be absent or unreadable.
+    if ($stamp -is [System.Management.Automation.PSCustomObject]) { $frameworkText = 'framework {0} ({1})' -f (Get-SafeVersion (Get-ExactJsonPropertyValue $stamp 'version')), (Get-SafeVersion (Get-ExactJsonPropertyValue $stamp 'template')) } else { $frameworkText = 'framework unknown' }
+    if ($HostVersions) { $claudeText = Get-ToolVersion 'claude'; $copilotText = Get-ToolVersion 'copilot' } else { $claudeText = 'not read (run with -HostVersions)'; $copilotText = $claudeText }
+    if ($env:TERM_PROGRAM -ceq 'vscode') { $codeText = Get-SafeVersion $env:TERM_PROGRAM_VERSION } else { $codeText = 'not readable' }
+    Write-Output ("Report line: {0}, PowerShell {1}, Claude Code {2}, Copilot CLI {3}, VS Code {4}" -f $frameworkText, (Get-SafeVersion ([string]$PSVersionTable.PSVersion)), $claudeText, $copilotText, $codeText)
     if ($script:missing) { exit 1 }
     if ($script:unexamined -gt 0) { exit 2 }
     exit 0

@@ -33,6 +33,11 @@ It lists which controls are live on your machine. The hooks need Windows, PowerS
 without them; [enforcement-surfaces.md](enforcement-surfaces.md) says exactly what each client
 enforces.
 
+Its last line, `Report line: ...`, holds only versions (the framework, PowerShell, and VS Code when
+you run it in its terminal): no path, repository or user name. By default the doctor starts no other
+program, so the Claude Code and Copilot CLI versions print `not read`; add `-HostVersions` to the
+command above to read them (it runs `claude --version` and `copilot --version`).
+
 ## 2. Populate `AGENTS.md` from your code (once per repository)
 
 Start Claude Code, or an interactive Copilot CLI session, at the repository root and type:
@@ -122,6 +127,10 @@ runs `/security-gate`. To review a colleague's pull request, follow
 
 ## When something looks wrong
 
+- **Reporting a problem with the framework.** Paste the doctor's last line (`Report line: ...`) with
+  your report, from a run with `-HostVersions` so it carries the agent versions. Add which agent and
+  mode you used (Claude Code, Copilot CLI or Copilot in VS Code; chat, agent or plan mode), which the
+  doctor cannot read.
 - **The agent ignores your conventions.** Check that `AGENTS.md` is populated (the session reminder
   says so if it is not), then run the doctor from step 1.
 - **A write was blocked.** Read the reason in the agent's output and fix the cause; a shell command
