@@ -335,8 +335,10 @@ foreach ($caseName in @('retirement baseline ignores a stale dist', 'retirement 
             if ((Invoke-Composer $container) -ne 0) { throw 'initial build failed' }
             $distLedger = Join-Path $container 'dist/dotnet/framework-retirements.json'
             $before = [IO.File]::ReadAllText($distLedger)
-            $stale = [regex]::Replace($before, '\]\}\s*\]\s*\}\s*$',
-                (']},' + "`n" + '    {"path":"zzz-stale-entry.md","retired-in":"0.1.0","known-content-sha256":["' + ('a' * 64) + '"]}' + "`n  ]`n}`n"))
+            # The retirements array need not be the last thing in the file (another top-level key may follow it), so the
+            # entry is planted after the array's own last entry: the first ']}' after "retirements" that a ']' follows.
+            $plant = ',' + "`n" + '    {"path":"zzz-stale-entry.md","retired-in":"0.1.0","known-content-sha256":["' + ('a' * 64) + '"]}'
+            $stale = ([regex]'(?s)("retirements"\s*:\s*\[.*?\]\})(\s*\])').Replace($before, { param($m) $m.Groups[1].Value + $plant + $m.Groups[2].Value }, 1)
             if ($stale -ceq $before) { throw 'could not plant the stale entry; case cannot examine the composer' }
             [IO.File]::WriteAllText($distLedger, $stale, $utf8)
             $exit = Invoke-Composer $container
