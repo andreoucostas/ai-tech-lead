@@ -206,6 +206,21 @@ function Assert-HazardQuestionsStandAlone {
     }
 }
 
+# B-553: the angular-eslint schematic lints only src/**, so a focused or skipped browser spec committed outside
+# src/ (Playwright testDir, Cypress specPattern) passed the lint step the skill says binds every developer, agent and CI.
+function Assert-EnforceStandardsReachesE2e {
+    param([object[]]$DistEntries)
+    foreach ($dist in @($DistEntries | Where-Object { $_.Name -in @('angular', 'monorepo') })) {
+        $relative = '.claude/skills/enforce-standards/SKILL.md'
+        $path = Join-Path $dist.Root $relative
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "skill is missing in $($dist.Name): $relative" }
+        $text = Read-Utf8Text $path
+        foreach ($required in @('lintFilePatterns', 'src/**', 'testDir', 'specPattern', 'end-to-end')) {
+            if (-not $text.Contains($required)) { throw "$($dist.Name)/$relative omits $required" }
+        }
+    }
+}
+
 # Field report #18, second half: the end-of-run checklists asked "Is [specific risk] real in this codebase?" with
 # no file, evidence or effect, unattended /adopt sends every hazard there past a ~10-entry cap, and /adopt's
 # Phase 1 and Phase 5 said only "ask the user".
@@ -697,6 +712,10 @@ It 'hazard questions stand alone and offer their answers in words, not bare lett
 
 It 'end-of-setup checklists and adopt questions stand alone, every unconfirmed hazard listed' {
     Assert-SetupChecklistStandsAlone -DistEntries $distEntries
+}
+
+It 'enforce-standards makes the lint target reach the end-to-end folder' {
+    Assert-EnforceStandardsReachesE2e -DistEntries $distEntries
 }
 
 It 'every decision the unattended /adopt table leaves for a person has an entry on the end-of-run list' {

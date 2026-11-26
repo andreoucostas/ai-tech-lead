@@ -39,11 +39,18 @@ with `docs/ci-integration.md` (leg 2) and `docs/enforcement-surfaces.md`.
      Angular 21 or later, runs `*.spec.ts` and `*.test.ts` and has no `fit`/`xit`).
 3. **Make lint part of the gate**: put the exact repository-evidenced lint command in the required
    build (`docs/ci-integration.md` leg 2) — lint that doesn't run in CI enforces nothing.
+   Check what that command reaches: the angular-eslint schematic writes `lintFilePatterns` of
+   `src/**/*.ts` and `src/**/*.html` in `angular.json` (or `project.json`), so an end-to-end folder
+   outside `src/` (Playwright's `testDir` in `playwright.config.*`, Cypress's `specPattern` in
+   `cypress.config.*`) is not linted and a committed `.only` there passes; add that folder's pattern
+   (for example `e2e/**/*.ts`) to the target, and record violations that surface in `TECH_DEBT.md`
+   (step 5).
 4. **Verify red**: confirm the gate bites — add a temporary focused spec in the form the repository's
    runner uses (`fdescribe` for Karma/Jasmine, `describe.only` for Vitest or Jest) with an `//
    eslint-disable-next-line` above it, run that exact lint command, show it still fails on the
    focused spec the comment cannot hide, revert. On hook surfaces the write guard refuses this edit
-   through the editor tools: ask the developer to make and revert it. A gate you have not watched
+   through the editor tools: ask the developer to make and revert it. Where an end-to-end folder
+   exists, put a temporary focused spec there too. A gate you have not watched
    fail may be miswired (Verification Rule #9 applies to config too).
 5. **Don't weaken to go green** — brownfield repos with existing violations: fix the cheap ones,
    record the rest in `TECH_DEBT.md` (Category: Standards), and scope `noInlineConfig` per-glob
