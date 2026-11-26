@@ -4,7 +4,7 @@
 > **your** repo, and what (if anything) you need to do.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.99.1 — Unreleased
+## 0.99.1 — 2026-11-26
 
 **What you must do**
 

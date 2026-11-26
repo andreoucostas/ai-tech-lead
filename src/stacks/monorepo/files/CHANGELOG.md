@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.99.1 — Unreleased
+## 0.99.1 — 2026-11-26
 
 **What you must do**
 
@@ -13,7 +13,7 @@
 - If a pipeline runs `/review` with `claude -p`, read its result the way `docs/ci-integration.md` now describes.
 - In the Angular part of your repository, if you merged `scripts/ci/eslint-standards.sample.mjs`, merge the new sample again and check your lint target covers the folder your end-to-end specs live in.
 - After updating, read the `NOTICE:` and `CANT-VERIFY:` lines the update prints, and review `AGENTS.md` before committing.
-- If your repository has a Playwright or Cypress suite: run `/rebootstrap`, or add the `e2e` row to `AGENTS.md` › Verification Commands by hand, to get the behaviour above.
+- If your repository has a Playwright or Cypress suite: run `/rebootstrap`, or add the `e2e` row to `AGENTS.md` › Verification Commands by hand, to get the end-to-end behaviour described below.
 - Nothing else needs action: this release has no migration step.
 
 **What your developers will see**
