@@ -52,6 +52,11 @@ cite committed evidence: an existing CI definition, repository script/task runne
 command, manifest, or tool configuration.
 The installed `angular` distribution is not evidence that an Angular command or browser applies.
 
+Where that table also holds an `e2e` row (recorded only when the repository commits an end-to-end
+suite and a command that runs it), add its full-run command to this leg as a required step. The row
+leads an agent to run a browser check before handing back, often only the one spec its change touches;
+a row is not enforcement, and this build is.
+
 For an evidenced Angular application, the repository may use Angular CLI, Nx, Jest, Vitest, Karma,
 or another configured runner; use only the exact scripts and flags the repository supports. When
 standards or architecture gates are installed, include the commands their committed configuration

@@ -30,7 +30,9 @@ Before doing anything else:
    do not run or retain it; report framework checks separately. Replace every stale Verification Commands
    row; outside this remediation, flag `/rebootstrap`. If no Angular profile is evidenced, report
    that re-analysis is not applicable and dispatch no pass. Refresh the six-row inventory only from
-   current eligible evidence, preserving explicit `not available` rows.
+   current eligible evidence, preserving explicit `not available` rows. Treat an `e2e` row the same way:
+   keep or rewrite it only where `/bootstrap` step 4's evidence of an end-to-end suite holds now, add it
+   where that evidence has appeared, and remove it where the suite is gone.
 
 4. **Establish ownership and dismissal boundaries** — require a valid root `framework-ownership.json` `paths` inventory and exclude every `framework-owned/overwritten` path, and every path root `framework-retirements.json` lists, from A7 evidence. A `mixed` path may contribute only consumer-authored evidence corroborated outside framework-owned paths. Read and freeze every row under `TECH_DEBT.md > ## Dismissed proposals` before analysis.
 

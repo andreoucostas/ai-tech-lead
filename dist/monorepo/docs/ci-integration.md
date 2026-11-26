@@ -55,6 +55,11 @@ command, manifest, or tool configuration.
 The installed `monorepo` distribution is not evidence that either application stack—or its usual
 commands—exists.
 
+Where that table also holds an `e2e` row (recorded only when the repository commits an end-to-end
+suite and a command that runs it), add its full-run command to this leg as a required step. The row
+leads an agent to run a browser check before handing back, often only the one spec its change touches;
+a row is not enforcement, and this build is.
+
 An evidenced .NET or Angular application may already use `dotnet`, `npm`, `npx eslint`, or `ng`
 commands; run only the exact commands the repository supports, and only for profiles present in the
 change. For SQL/SSDT/dbt or warehouse sources, preserve their existing project-native

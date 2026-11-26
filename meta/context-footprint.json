@@ -646,8 +646,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 9523,
-          "tok": 2381
+          "chars": 9870,
+          "tok": 2468
         },
         {
           "path": "docs/defaults.md",
@@ -792,8 +792,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 53856,
-          "tok": 13464
+          "chars": 54767,
+          "tok": 13692
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -822,8 +822,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 22312,
-          "tok": 5578
+          "chars": 22526,
+          "tok": 5632
         },
         {
           "path": ".claude/commands/refactor.md#body",
@@ -1080,8 +1080,8 @@
         },
         {
           "path": "docs/ci-integration.md",
-          "chars": 9749,
-          "tok": 2437
+          "chars": 10096,
+          "tok": 2524
         },
         {
           "path": "docs/defaults.md",
@@ -1226,8 +1226,8 @@
         },
         {
           "path": ".claude/commands/bootstrap.md#body",
-          "chars": 74120,
-          "tok": 18530
+          "chars": 75031,
+          "tok": 18758
         },
         {
           "path": ".claude/commands/debt.md#body",
@@ -1256,8 +1256,8 @@
         },
         {
           "path": ".claude/commands/rebootstrap.md#body",
-          "chars": 26515,
-          "tok": 6629
+          "chars": 26729,
+          "tok": 6682
         },
         {
           "path": ".claude/commands/refactor.md#body",

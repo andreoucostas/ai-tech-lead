@@ -31,7 +31,9 @@ Before doing anything else:
    row; outside this remediation, flag `/rebootstrap`. Partial-stack and warehouse-only repositories
    are valid. Refresh the six-row inventory only from current eligible evidence, preserving explicit
    `not available` rows, except that a `not available` build or test row is replaced when the
-   .NET manifest rule in `/bootstrap` step 4 now evidences it.
+   .NET manifest rule in `/bootstrap` step 4 now evidences it. Treat an `e2e` row the same way: keep or
+   rewrite it only where `/bootstrap` step 4's evidence of an end-to-end suite holds now, add it where
+   that evidence has appeared, and remove it where the suite is gone.
 
 4. **Establish ownership and dismissal boundaries** — require a valid root `framework-ownership.json` `paths` inventory and exclude every `framework-owned/overwritten` path, and every path root `framework-retirements.json` lists, from shared A8 evidence. A `mixed` path may contribute only consumer-authored evidence corroborated outside framework-owned paths. Read and freeze every row under `TECH_DEBT.md > ## Dismissed proposals` before analysis.
 
