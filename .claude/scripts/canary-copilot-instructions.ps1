@@ -25,9 +25,133 @@ param(
     [string]$CopilotCmd = '',
     [string]$NodeDir    = 'C:\Program Files\nodejs',
     [int]$TimeoutSeconds = 180,
-    [switch]$ResolveOnly
+    [switch]$ResolveOnly,
+    # Layout mode: how MANY TIMES each sentinel is placed in the context Copilot CLI sends, for the
+    # instruction-file layout a client repository carries. It counts occurrences in the session's
+    # events.jsonl (every event except the model's own `assistant.*` ones). Chosen over
+    # canary-single-carrier.ps1 because that script drives Claude Code; this one drives Copilot CLI and
+    # already builds git-initialised `.github/instructions` fixtures.
+    [ValidateSet('agents-only', 'agents-plus-claude-stub', 'agents-import', 'rules-both-folders')]
+    [string]$Layout,
+    # Layout mode only: Copilot CLI's session-state directory (default: $COPILOT_HOME or ~/.copilot, /session-state).
+    [string]$SessionStateRoot = '',
+    [string]$Model = 'claude-haiku-5.5',
+    [string[]]$ExtraArgs = @(),
+    # Layout mode only: directory the temp fixture is created in (default: the system temp directory).
+    [string]$FixtureParent = ''
 )
 $ErrorActionPreference = 'Stop'
+
+if ($Layout) {
+    # Exits: 0 OBSERVED, 2 INCONCLUSIVE or could not run. The counts are the finding; there is no expectation.
+    function Write-Canary {
+        param([string]$A, [string]$R, [string]$R2, [string]$Verdict, [string]$Tool)
+        Write-Host "CANARY layout=$Layout A_count=$A R_count=$R R2_count=$R2 verdict=$Verdict tool=$Tool"
+    }
+    function New-Codeword {
+        $l = -join (1..7 | ForEach-Object { [char](65 + (Get-Random -Maximum 26)) })
+        $s = -join (1..4 | ForEach-Object { 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[(Get-Random -Maximum 32)] })
+        "$l-$s"
+    }
+    $hasR = $Layout -ne 'agents-only'
+    $hasR2 = $Layout -eq 'rules-both-folders'
+    $tool = $CopilotCmd
+    if ([string]::IsNullOrWhiteSpace($tool) -and -not [string]::IsNullOrWhiteSpace($env:APPDATA)) { $tool = Join-Path $env:APPDATA 'npm\copilot.cmd' }
+    if (-not $tool -or -not (Test-Path -LiteralPath $tool -PathType Leaf)) {
+        Write-Host 'INCONCLUSIVE - the copilot executable was not found; pass -CopilotCmd. Nothing was examined.'
+        Write-Canary 'n/a' 'n/a' 'n/a' 'INCONCLUSIVE' 'unavailable'
+        exit 2
+    }
+    $tool = (Resolve-Path -LiteralPath $tool).Path
+    $env:PATH = "$NodeDir;" + (Split-Path $tool) + ";$env:PATH"
+    $version = ((& $tool --version 2>&1 | Select-Object -First 1) | Out-String).Trim()
+    if (-not $SessionStateRoot) {
+        $home2 = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }
+        $SessionStateRoot = Join-Path $home2 'session-state'
+    }
+    $parent = if ($FixtureParent) { $FixtureParent } else { [IO.Path]::GetTempPath() }
+    New-Item -ItemType Directory -Path $parent -Force | Out-Null
+
+    $sentA = New-Codeword; $sentR = New-Codeword; $sentR2 = New-Codeword
+    $root = Join-Path $parent ('layoutcanary-copilot-' + [IO.Path]::GetRandomFileName())
+    $code = 2
+    try {
+        function Add-FixtureFile([string]$Rel, [string]$Text) {
+            $p = Join-Path $root $Rel
+            New-Item -ItemType Directory -Path (Split-Path -Parent $p) -Force | Out-Null
+            Set-Content -LiteralPath $p -Value $Text -Encoding utf8NoBOM
+        }
+        $rulesRel = '.github/instructions/framework-rules.instructions.md'
+        $rulesFile = "---`napplyTo: `"**`"`n---`n# Framework rules`n`nThe framework rules codeword is $sentR.`n"
+        $agents = "# Canary project`n`nThe project codeword is $sentA.`n"
+        if ($Layout -eq 'agents-import') { $agents += "`n@$rulesRel`n" }
+        Add-FixtureFile 'AGENTS.md' $agents
+        if ($Layout -eq 'agents-plus-claude-stub') { Add-FixtureFile 'CLAUDE.md' "# Canary project`n`n@AGENTS.md`n@$rulesRel`n" }
+        if ($hasR) { Add-FixtureFile $rulesRel $rulesFile }
+        if ($hasR2) { Add-FixtureFile '.claude/rules/framework-rules.md' "# Framework rules, second carrier`n`nThe second rules codeword is $sentR2.`n" }
+
+        Write-Host "Layout: $Layout"
+        Write-Host 'Fixture files:'
+        Get-ChildItem -LiteralPath $root -Recurse -File -Force | ForEach-Object { Write-Host ('  ' + $_.FullName.Substring($root.Length + 1).Replace('\', '/')) }
+        Push-Location $root
+        try { & git init --quiet 2>&1 | Out-Null; & git add -A 2>&1 | Out-Null } finally { Pop-Location }
+
+        $prompt = @"
+List every project codeword you can see in your context from repository instruction files, one per line.
+Use ONLY what is already in your context. Do NOT read, search, or list any file.
+If you see none, answer exactly: NONE
+"@
+        $copilotArgs = @('-p', $prompt, '--no-color', '--no-auto-update') + $(if ($Model) { @('--model', $Model) } else { @() }) + $ExtraArgs
+        $since = [DateTime]::UtcNow.AddSeconds(-5)
+        $job = Start-Job -ScriptBlock {
+            param($cmd, $a, $wd)
+            Set-Location $wd
+            & $cmd @a 2>&1 | Out-String
+        } -ArgumentList $tool, $copilotArgs, $root
+        $done = Wait-Job $job -Timeout $TimeoutSeconds
+        $null = if ($done) { Receive-Job $job }
+        Remove-Job $job -Force -ErrorAction SilentlyContinue
+        if (-not $done) {
+            Write-Host "INCONCLUSIVE - the CLI did not finish within $TimeoutSeconds s; nothing was examined."
+            Write-Canary 'n/a' 'n/a' 'n/a' 'INCONCLUSIVE' $version
+        } else {
+            $leaf = Split-Path -Leaf $root
+            $events = Get-ChildItem -LiteralPath $SessionStateRoot -Directory -ErrorAction SilentlyContinue |
+                ForEach-Object { Join-Path $_.FullName 'events.jsonl' } |
+                Where-Object { (Test-Path -LiteralPath $_ -PathType Leaf) -and (Get-Item -LiteralPath $_).LastWriteTimeUtc -ge $since } |
+                Where-Object { (Get-Content -LiteralPath $_ -Raw) -match [regex]::Escape($leaf) } |
+                Sort-Object { (Get-Item -LiteralPath $_).LastWriteTimeUtc } -Descending | Select-Object -First 1
+            if (-not $events) {
+                Write-Host "INCONCLUSIVE - no events.jsonl under $SessionStateRoot names this run's fixture; nothing was counted."
+                Write-Canary 'n/a' 'n/a' 'n/a' 'INCONCLUSIVE' $version
+            } else {
+                $count = @{ A = 0; R = 0; R2 = 0 }; $byType = @{}; $reads = 0; $answer = ''
+                foreach ($line in (Get-Content -LiteralPath $events)) {
+                    $type = ''; try { $type = [string]($line | ConvertFrom-Json -ErrorAction Stop).type } catch { }
+                    if ($type -like 'assistant.*') { $answer += $line; continue }
+                    if ($type -like 'tool.execution_*') { $reads++ }
+                    foreach ($pair in @(@('A', $sentA), @('R', $sentR), @('R2', $sentR2))) {
+                        $n = [regex]::Matches($line, [regex]::Escape($pair[1])).Count
+                        if ($n) { $count[$pair[0]] += $n; $byType["$($pair[0]) in $type"] = [int]$byType["$($pair[0]) in $type"] + $n }
+                    }
+                }
+                Write-Host ("Events: $events")
+                Write-Host ('Placed in: ' + $(if ($byType.Count) { (($byType.GetEnumerator() | Sort-Object Name | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join '; ') } else { 'nowhere' }))
+                Write-Host ("Model answer named: A=$($answer -match [regex]::Escape($sentA)) R=$($answer -match [regex]::Escape($sentR)) R2=$($answer -match [regex]::Escape($sentR2))")
+                if ($reads -gt 0) {
+                    Write-Host "INCONCLUSIVE - $reads tool execution event(s) in the session; the run is not a pure context reading."
+                    Write-Canary $count.A $(if ($hasR) { $count.R } else { 'n/a' }) $(if ($hasR2) { $count.R2 } else { 'n/a' }) 'INCONCLUSIVE' $version
+                } else {
+                    Write-Canary $count.A $(if ($hasR) { $count.R } else { 'n/a' }) $(if ($hasR2) { $count.R2 } else { 'n/a' }) 'OBSERVED' $version
+                    $code = 0
+                }
+            }
+        }
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    exit $code
+}
 
 if ([string]::IsNullOrWhiteSpace($CopilotCmd)) {
     if ([string]::IsNullOrWhiteSpace($env:APPDATA)) { throw 'Copilot CLI not found; pass -CopilotCmd.' }
