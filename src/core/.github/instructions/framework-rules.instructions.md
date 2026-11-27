@@ -78,7 +78,7 @@ Before presenting work as complete:
 - Review your changes against `AGENTS.md > Conventions`
 - Apply Verification command discovery; report what ran, was unavailable, or stayed manual/CI-only
 - Check if the change introduces a new pattern → flag that AGENTS.md needs updating
-- Check if the change resolves a TECH_DEBT.md item → flag for removal
+- Check if the change fully resolves a TECH_DEBT.md item (every file it lists) → delete that item, its whole `## DEBT-NNN` block, in the same change and name it; partly → update the item and say what remains
 - Check if the change contradicts any convention → ask whether to update the convention or change the implementation
 - If the session surfaced a team-worthy gotcha, recipe, or failed approach, offer `remember-for-team`
 

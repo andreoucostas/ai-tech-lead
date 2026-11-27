@@ -15,7 +15,9 @@ Before presenting work as complete:
   as non-mutating validation/dry-run, or the developer explicitly authorizes execution against a
   known target.
 - New pattern introduced? → flag that AGENTS.md may need updating.
-- TECH_DEBT.md item resolved? → flag the entry for removal.
+- TECH_DEBT.md item fully resolved by this change (every file it lists)? → delete that item, its
+  whole `## DEBT-NNN` block, in the same change and name it; partly resolved → update the item and
+  say what remains.
 - Convention contradicted? → ask whether to update the convention or change the implementation.
 - **Close with a Verification & confidence line** (calibration): in one or two lines, separate what
   you *actually verified by running it* (name the applicable build, test, format, lint, and
