@@ -630,9 +630,11 @@ function Assert-UpgradeOffersStartupTest {
         # Whole sentences, not tokens: a review mutation that dropped a condition, asked after the commit, mixed the test
         # into the upgrade commit and said the application "was started" left a token list green.
         $sentences = @(
-            'On a green baseline, where a web host has a public type that no test starts, a test project exists, and `AGENTS.md > Conventions > Testing` has no start-up test line, ask with the SDK question the start-up test question `.claude/commands/bootstrap.md` gives in Phase 2b'
+            'On a green baseline, where a web host has a public type that no test starts, a test project exists, and `AGENTS.md > Conventions > Testing` has no start-up test line, ask, in the same message as the SDK question, the start-up test question `.claude/commands/bootstrap.md` gives in Phase 2b'
             'first read each such host''s start-up code for what it does outside the process'
-            'A yes applies that file''s 3c before any upgrade edit and commits the test and its `Conventions > Testing` line on their own'
+            'A yes applies that file''s 3c before any upgrade edit and commits every file 3c changed, with its `Conventions > Testing` line, on their own'
+            'a no writes 3c''s declined line'
+            'A not-added or declined line goes with step 7''s edits, not the upgrade commit'
             'With nobody to answer, do not ask and add nothing'
         )
         foreach ($required in $sentences) {
@@ -643,9 +645,11 @@ function Assert-UpgradeOffersStartupTest {
 
         $closeOut = [regex]::Match($scope, '(?s)7\. \*\*Close out\.\*\*.*?(?=\r?\n\s*\r?\n|\z)')
         if (-not $closeOut.Success) { throw "$($dist.Name)/$relative has no 'Close out' step in its .NET upgrade" }
-        $closeOutSentence = 'for each web host that no test starts, starting it: say whether it was started'
-        if ([regex]::Replace($closeOut.Value, '\s+', ' ').IndexOf($closeOutSentence, [StringComparison]::Ordinal) -lt 0) {
-            throw "$($dist.Name)/$relative .NET upgrade close-out omits '$closeOutSentence'"
+        $closeOutText = [regex]::Replace($closeOut.Value, '\s+', ' ')
+        foreach ($closeOutSentence in @('for each web host that no test starts, starting it: say whether it was started', 'Commit these edits, with any start-up test line from step 2, on their own')) {
+            if ($closeOutText.IndexOf($closeOutSentence, [StringComparison]::Ordinal) -lt 0) {
+                throw "$($dist.Name)/$relative .NET upgrade close-out omits '$closeOutSentence'"
+            }
         }
     }
 }
