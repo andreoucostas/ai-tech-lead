@@ -2056,4 +2056,453 @@ $copilotGenerated = $copilotUtf8.GetBytes("$copilotOpening`n`n## Naming`n`n- Acm
     } finally { Remove-Item -Recurse -Force $tk, $tw -ErrorAction SilentlyContinue }
 }
 
+# B-573: the eight team files an install seeds once (docs/ARCHITECTURE.md, SECURITY_FINDINGS.md, ...). A plain update replaces
+# one that is still, line endings aside, a text an earlier release shipped there with this release's, after the last commit or a
+# saved copy holds the original; a file with any change of the team's is never touched. The fixture is New-CopilotConsumer's
+# current layout without the copilot file.
+$seedArchRel = 'docs/ARCHITECTURE.md'
+$seedArchOld = Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/docs/ARCHITECTURE.md'
+$seedArchNew = [IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/dotnet/$seedArchRel"))
+function New-SeedConsumer {
+    param([hashtable]$Files, [switch]$Git)
+    $t = New-CopilotConsumer -Copilot $null
+    foreach ($relative in $Files.Keys) {
+        $path = Join-Path $t $relative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
+        [IO.File]::WriteAllBytes($path, $Files[$relative])
+    }
+    if ($Git) {
+        & git -C $t init -q 2>&1 | Out-Null
+        & git -C $t config user.email 'fixture@example.test'
+        & git -C $t config user.name 'Fixture'
+        & git -C $t config core.autocrlf false
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'team files' 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'calibration: could not commit the seed consumer' }
+    }
+    return $t
+}
+function Get-SeedBytes { param([string]$Target, [string]$Relative) $p = Join-Path $Target $Relative; if (Test-Path -LiteralPath $p -PathType Leaf) { return , [IO.File]::ReadAllBytes($p) } else { return , [byte[]]@() } }
+
+# Committed: -WhatIf plans it and changes nothing; the update replaces it and names the commit, whose printed line gives the old
+# bytes back; a second update says nothing about it.
+& {
+    $t = New-SeedConsumer -Files @{ $seedArchRel = $seedArchOld } -Git
+    try {
+        $head = (& git -C $t rev-parse HEAD).Trim()
+        $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+        $dryExit = $LASTEXITCODE
+        $dryBytes = Get-SeedBytes $t $seedArchRel
+        $dryStatus = (& git -C $t status --porcelain --untracked-files=all | Out-String).Trim()
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = Get-SeedBytes $t $seedArchRel
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'update' 2>&1 | Out-Null
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        $rerunExit = $LASTEXITCODE
+
+        It 'old seed files: an update replaces a committed old docs/ARCHITECTURE.md with this release''s text and names the commit that gives it back' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $seedArchNew -Actual $after -Message "docs/ARCHITECTURE.md is not this release's text. Output:`n$out"
+            Assert ($out -match '(?m)^PLAN replace docs/ARCHITECTURE\.md\r?$') "the plan does not name the file as replaced. Output:`n$out"
+            $notice = Get-CopilotLines $out "NOTICE: replacing docs/ARCHITECTURE\.md: its text, line endings aside, is one an earlier framework release shipped there, so nothing in it is your team's; it gets this release's text\."
+            Assert ($notice.Count -eq 1) "expected one NOTICE. Output:`n$out"
+            Assert ($notice[0].Contains($head) -and $notice[0].Contains('a file that differs from every released text is never replaced')) "the NOTICE does not name commit $head and the keep rule. Line: $($notice[0])"
+            Assert ((Get-CopilotLines $out "^\s*replaced: docs/ARCHITECTURE\.md \(original in commit $head\)\.").Count -eq 1) "no summary line names the commit. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'consumer-owned content files left untouched [^\r\n]*docs/ARCHITECTURE\.md').Count -eq 0) "the file is still listed as left untouched. Output:`n$out"
+            Assert ((Get-CopilotLines $out "MIGRATION: [^\r\n]*'docs/ARCHITECTURE\.md'").Count -eq 0) "a MIGRATION line names the replaced file. Output:`n$out"
+            $printed = [regex]::Match($notice[0], "git -C '([^']+)' show (\S+)  prints it")
+            Assert $printed.Success "the NOTICE prints no git show line. Line: $($notice[0])"
+            Assert-BytesEqual -Expected $seedArchOld -Actual (Get-B469ShowBytes -Target $printed.Groups[1].Value -Spec $printed.Groups[2].Value) -Message "the printed line does not give the old bytes back. Line: $($notice[0])"
+        }
+
+        It 'old seed files: -WhatIf plans the replacement and changes nothing; a second update prints nothing about the file' {
+            Assert ($dryExit -eq 0) "-WhatIf exited ${dryExit}: $dry"
+            Assert ($dry -match '(?m)^PLAN replace docs/ARCHITECTURE\.md\r?$') "-WhatIf does not plan the replacement. Output:`n$dry"
+            Assert ((Get-CopilotLines $dry 'NOTICE: replacing docs/ARCHITECTURE\.md:').Count -eq 1) "-WhatIf does not print the NOTICE. Output:`n$dry"
+            Assert-BytesEqual -Expected $seedArchOld -Actual $dryBytes -Message "-WhatIf changed the file. Output:`n$dry"
+            Assert ($dryStatus -eq '') "-WhatIf changed the tree: $dryStatus"
+            Assert ($rerunExit -eq 0) "second update exited ${rerunExit}: $rerun"
+            Assert ((Get-CopilotLines $rerun 'docs/ARCHITECTURE\.md' | Where-Object { $_ -notmatch 'consumer-owned content files left untouched|^PLAN preserve ' }).Count -eq 0) "a second update printed a line about the file. Output:`n$rerun"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# One character changed by the team: the file is theirs, byte for byte untouched and not mentioned.
+& {
+    $edited = [byte[]]$seedArchOld.Clone(); $edited[2] = if ($edited[2] -eq 0x41) { 0x42 } else { 0x41 }
+    $t = New-SeedConsumer -Files @{ $seedArchRel = $edited } -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'old seed files: a docs/ARCHITECTURE.md with one character changed by the team is untouched and not mentioned' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $edited -Actual (Get-SeedBytes $t $seedArchRel) -Message "the team's file changed. Output:`n$out"
+            # Its MIGRATION lines about retired paths in it stay, as for any team file.
+            Assert ((Get-CopilotLines $out 'docs/ARCHITECTURE\.md' | Where-Object { $_ -notmatch 'consumer-owned content files left untouched|^PLAN preserve |^\s*MIGRATION: ' }).Count -eq 0) "the update printed a line about the team's file. Output:`n$out"
+            Assert ((Get-CopilotLines $out "MIGRATION: [^\r\n]*'docs/ARCHITECTURE\.md'").Count -ge 1) "calibration: the team's file lost its MIGRATION lines. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A CRLF copy no commit holds: saved byte for byte under seed-files/ before it is replaced, and the new file is CRLF.
+& {
+    $crlf = $copilotUtf8.GetBytes($copilotUtf8.GetString($seedArchOld).Replace("`n", "`r`n"))
+    $t = New-SeedConsumer -Files @{ $seedArchRel = $crlf }
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $saved = Join-Path $t '.claude/framework-update-backup/seed-files/docs/ARCHITECTURE.md'
+
+        It 'old seed files: a CRLF old docs/ARCHITECTURE.md no commit holds is saved byte for byte, then replaced with CRLF endings' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (Test-Path -LiteralPath $saved -PathType Leaf) "no copy was saved. Output:`n$out"
+            Assert-BytesEqual -Expected $crlf -Actual ([IO.File]::ReadAllBytes($saved)) -Message "the saved copy is not the file byte for byte. Output:`n$out"
+            $now = $copilotUtf8.GetString((Get-SeedBytes $t $seedArchRel))
+            Assert ($now -ceq $copilotUtf8.GetString($seedArchNew).Replace("`r`n", "`n").Replace("`n", "`r`n")) "the new file is not this release's text with CRLF endings. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: replacing docs/ARCHITECTURE\.md: [^\r\n]*A copy of the file before this update goes to \.claude/framework-update-backup/seed-files/docs/ARCHITECTURE\.md\.').Count -eq 1) "the NOTICE does not say where the copy goes. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# SECURITY_FINDINGS.md as an old seed names the retired /security-review: replaced, and no MIGRATION line names it; a copy with
+# a team row is kept byte for byte with its MIGRATION line.
+& {
+    $secRel = 'SECURITY_FINDINGS.md'
+    $secOld = Get-CopilotReleasedBytes "v0.85.0:dist/dotnet/$secRel"
+    $secTeam = [byte[]]($secOld + $copilotUtf8.GetBytes("`n| SF-1 | High | Team row |`n"))
+    $to = New-SeedConsumer -Files @{ $secRel = $secOld } -Git
+    $tt = New-SeedConsumer -Files @{ $secRel = $secTeam } -Git
+    try {
+        $outO = Invoke-Installer -Dist 'dotnet' -Target $to
+        $exitO = $LASTEXITCODE
+        $outT = Invoke-Installer -Dist 'dotnet' -Target $tt
+        $exitT = $LASTEXITCODE
+
+        It 'old seed files: an old SECURITY_FINDINGS.md is replaced with no MIGRATION line, a copy with a team row keeps its bytes and its MIGRATION line' {
+            Assert ($exitO -eq 0) "update exited ${exitO}: $outO"
+            Assert-BytesEqual -Expected ([IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/dotnet/$secRel"))) -Actual (Get-SeedBytes $to $secRel) -Message "the old seed was not replaced. Output:`n$outO"
+            Assert ((Get-CopilotLines $outO 'NOTICE: replacing SECURITY_FINDINGS\.md:').Count -eq 1) "expected one NOTICE. Output:`n$outO"
+            Assert ((Get-CopilotLines $outO "MIGRATION: [^\r\n]*'SECURITY_FINDINGS\.md'").Count -eq 0) "a MIGRATION line names the replaced file. Output:`n$outO"
+            Assert ($exitT -eq 0) "update exited ${exitT}: $outT"
+            Assert-BytesEqual -Expected $secTeam -Actual (Get-SeedBytes $tt $secRel) -Message "the team's copy changed. Output:`n$outT"
+            Assert ((Get-CopilotLines $outT 'replacing SECURITY_FINDINGS\.md').Count -eq 0) "the team's copy was announced as replaced. Output:`n$outT"
+            Assert ((Get-CopilotLines $outT "MIGRATION: [^\r\n]*'SECURITY_FINDINGS\.md'").Count -ge 1) "the team's copy lost its MIGRATION line. Output:`n$outT"
+        }
+    } finally { Remove-Item -Recurse -Force $to, $tt -ErrorAction SilentlyContinue }
+}
+
+# A read-only old copy is kept with one CANT-VERIFY line.
+& {
+    $t = New-SeedConsumer -Files @{ $seedArchRel = $seedArchOld }
+    try {
+        (Get-Item -LiteralPath (Join-Path $t $seedArchRel)).IsReadOnly = $true
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'old seed files: a read-only old docs/ARCHITECTURE.md is kept byte for byte with one CANT-VERIFY line' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $seedArchOld -Actual (Get-SeedBytes $t $seedArchRel) -Message "the read-only file changed. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'CANT-VERIFY: docs/ARCHITECTURE\.md could not be opened for writing').Count -eq 1) "expected one CANT-VERIFY line. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: replacing docs/ARCHITECTURE\.md').Count -eq 0) "a replacement was announced. Output:`n$out"
+        }
+    } finally {
+        Get-ChildItem -LiteralPath $t -Recurse -Force -File -ErrorAction SilentlyContinue | ForEach-Object { $_.IsReadOnly = $false }
+        Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue
+    }
+}
+
+# Both save names already hold other content, outside Git: the file is kept with one CANT-VERIFY line, and being kept it keeps
+# its MIGRATION lines, as a read-only copy does.
+& {
+    $savedRoot = '.claude/framework-update-backup/seed-files/docs'
+    $digest16 = ([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($seedArchOld))).Replace('-', '').ToLowerInvariant().Substring(0, 16)
+    $t = New-SeedConsumer -Files @{ $seedArchRel = $seedArchOld; "$savedRoot/ARCHITECTURE.md" = $copilotUtf8.GetBytes("other`n"); "$savedRoot/ARCHITECTURE.$digest16.md" = $copilotUtf8.GetBytes("other2`n") }
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'old seed files: an old docs/ARCHITECTURE.md with nowhere to be saved is kept with one CANT-VERIFY line and keeps its MIGRATION lines' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $seedArchOld -Actual (Get-SeedBytes $t $seedArchRel) -Message "the file changed. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'CANT-VERIFY: docs/ARCHITECTURE\.md has nowhere to be saved').Count -eq 1) "expected one CANT-VERIFY line. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: replacing docs/ARCHITECTURE\.md').Count -eq 0) "a replacement was announced. Output:`n$out"
+            Assert ((Get-CopilotLines $out "MIGRATION: [^\r\n]*'docs/ARCHITECTURE\.md'[^\r\n]*'/security-review'").Count -eq 1) "the kept file lost its MIGRATION line about /security-review. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# -Reinstall does not replace an old seed on this account: a committed old copy keeps its bytes, with no line about a replacement.
+& {
+    $t = New-SeedConsumer -Files @{ $seedArchRel = $seedArchOld } -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -Reinstall
+        $exit = $LASTEXITCODE
+
+        It 'old seed files: -Reinstall leaves a committed old docs/ARCHITECTURE.md byte for byte and prints no replacement' {
+            Assert ($exit -eq 0) "-Reinstall exited ${exit}: $out"
+            Assert ($out -match 'mode: reinstall') "calibration: not a reinstall. Output:`n$out"
+            Assert-BytesEqual -Expected $seedArchOld -Actual (Get-SeedBytes $t $seedArchRel) -Message "-Reinstall changed the file. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: replacing docs/ARCHITECTURE\.md|replaced: docs/ARCHITECTURE\.md|^PLAN replace docs/ARCHITECTURE\.md').Count -eq 0) "-Reinstall replaced it on this account. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A brownfield install (no stamp, AI tooling present) does not replace an old seed on this account.
+& {
+    $t = Join-Path ([IO.Path]::GetTempPath()) "seed-bf-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path (Join-Path $t 'docs') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $t 'CLAUDE.md'), "# Acme`n`nTeam text.`n", $copilotUtf8)
+    [IO.File]::WriteAllBytes((Join-Path $t $seedArchRel), $seedArchOld)
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'old seed files: a brownfield install prints no replacement of an old docs/ARCHITECTURE.md' {
+            Assert ($exit -eq 0) "brownfield install exited ${exit}: $out"
+            Assert ($out -match 'mode: brownfield|mode=brownfield') "calibration: not a brownfield install. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: replacing docs/ARCHITECTURE\.md|replaced: docs/ARCHITECTURE\.md').Count -eq 0) "a brownfield install replaced it on this account. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# B-573: the header comment AGENTS.md opens with repeats version and applied from .claude/framework-version.json, and
+# template-checks fails on drift. A plain update brings a header in the shipped shape in step and rewords the old helper line;
+# a header in another shape is left and named; -WhatIf and -Reinstall change nothing on this account.
+$stampIncoming = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'dist/dotnet/.claude/framework-version.json') | ConvertFrom-Json
+$stampSeed = $copilotUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/AGENTS.md')))
+$stampHelper = '  An update keeps these fields in step with .claude/framework-version.json.'
+$stampNoticePattern = 'NOTICE: AGENTS\.md header: version and applied brought in step with \.claude/framework-version\.json'
+$stampShapePattern = 'NOTICE: AGENTS\.md header: the comment AGENTS\.md opens with is not in the shape the framework ships'
+# The current seed one release behind, with CRLF endings: only the two values differ from what the update should leave.
+$stampBehindText = $stampSeed.Replace("  version: $($stampIncoming.version)", '  version: 0.99.0').Replace("  applied: $($stampIncoming.applied)", '  applied: 2026-11-20').Replace("`r`n", "`n").Replace("`n", "`r`n")
+function New-StampConsumer {
+    param([byte[]]$Agents, [byte[]]$Claude, [string]$Stamp = "{`"version`": `"0.99.0`"}`n", [switch]$Git)
+    $t = Join-Path ([IO.Path]::GetTempPath()) "stamp-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+    if ($null -eq $Claude) { $Claude = [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/CLAUDE.md')) }
+    [IO.File]::WriteAllBytes((Join-Path $t 'CLAUDE.md'), $Claude)
+    [IO.File]::WriteAllBytes((Join-Path $t 'AGENTS.md'), $Agents)
+    [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), $Stamp, $copilotUtf8)
+    if ($Git) {
+        & git -C $t init -q 2>&1 | Out-Null
+        & git -C $t config user.email 'fixture@example.test'
+        & git -C $t config user.name 'Fixture'
+        & git -C $t config core.autocrlf false
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'team files' 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'calibration: could not commit the stamp consumer' }
+    }
+    return $t
+}
+
+# A v0.85.0 install (CLAUDE.md holds the instructions and the stamp, AGENTS.md is the generated mirror), committed: the layout
+# move's AGENTS.md carries this release's stamp and helper line, and the target's own health check no longer reports drift.
+& {
+    $t = New-StampConsumer -Agents (Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/AGENTS.md') -Claude (Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/CLAUDE.md') -Stamp ($copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/.claude/framework-version.json'))) -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $head = @([IO.File]::ReadAllLines((Join-Path $t 'AGENTS.md')) | Select-Object -First 10)
+        $check = & (Get-PsExe) -NoProfile -File (Join-Path $t 'scripts/docs-sync-check.ps1') 2>&1 | Out-String
+
+        It 'header stamp: an update of a v0.85.0 install brings the AGENTS.md header in step, and docs-sync-check reports no version-stamp drift' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($head -ccontains "  version: $($stampIncoming.version)" -and $head -ccontains "  applied: $($stampIncoming.applied)") "the AGENTS.md header is not this release's stamp: $($head -join ' | '). Output:`n$out"
+            Assert ($head -ccontains $stampHelper) "the AGENTS.md header has not the new helper line: $($head -join ' | ')"
+            Assert ((Get-CopilotLines $out "$stampNoticePattern \(0\.85\.0 -> $([regex]::Escape($stampIncoming.version))\)\.").Count -eq 1) "expected one header NOTICE. Output:`n$out"
+            Assert ((Get-CopilotLines $out '^\s*(moved|cleaned): AGENTS\.md|^\s*moved: CLAUDE\.md -> AGENTS\.md').Count -le 2 -and (Get-CopilotLines $out '^\s*cleaned: AGENTS\.md').Count -le 1) "more than one summary line for AGENTS.md. Output:`n$out"
+            Assert ($check -notmatch 'version-stamp drift') "docs-sync-check still reports version-stamp drift:`n$check"
+            Assert ($check -match 'version stamps in sync') "calibration: docs-sync-check did not reach the stamp check:`n$check"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# The current layout one release behind, CRLF, outside Git: -WhatIf names it and changes nothing; the update changes only the
+# two values, every other byte stays, and the original is saved once.
+& {
+    $before = $copilotUtf8.GetBytes($stampBehindText)
+    $t = New-StampConsumer -Agents $before
+    try {
+        $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+        $dryExit = $LASTEXITCODE
+        $dryBytes = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))
+        $dryBackup = Test-Path -LiteralPath (Join-Path $t '.claude/framework-update-backup')
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $expected = $stampSeed.Replace("`r`n", "`n").Replace("`n", "`r`n")
+        $saved = Join-Path $t '.claude/framework-update-backup/instruction-files/AGENTS.md'
+
+        It 'header stamp: an update of a current-layout install one release behind changes only version and applied, keeping CRLF' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($copilotUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -ceq $expected) "AGENTS.md is not the old text with only the two values changed. Output:`n$out"
+            Assert ((Get-CopilotLines $out "$stampNoticePattern \(0\.99\.0 -> $([regex]::Escape($stampIncoming.version))\)").Count -eq 1) "expected one header NOTICE. Output:`n$out"
+            Assert (Test-Path -LiteralPath $saved -PathType Leaf) "no copy of the original was saved. Output:`n$out"
+            Assert-BytesEqual -Expected $before -Actual ([IO.File]::ReadAllBytes($saved)) -Message "the saved copy is not the original byte for byte. Output:`n$out"
+            Assert ((Get-CopilotLines $out '^\s*cleaned: AGENTS\.md; brought the header stamp in step \(original in \.claude/framework-update-backup/instruction-files/AGENTS\.md\)\.').Count -eq 1) "expected one summary line. Output:`n$out"
+        }
+
+        It 'header stamp: -WhatIf names the header change and changes nothing' {
+            Assert ($dryExit -eq 0) "-WhatIf exited ${dryExit}: $dry"
+            Assert ((Get-CopilotLines $dry $stampNoticePattern).Count -eq 1) "-WhatIf does not name the header change. Output:`n$dry"
+            Assert-BytesEqual -Expected $before -Actual $dryBytes -Message "-WhatIf changed AGENTS.md. Output:`n$dry"
+            Assert (-not $dryBackup) "-WhatIf wrote a backup folder. Output:`n$dry"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A header already in step: AGENTS.md is not written and nothing is said about it.
+& {
+    $current = $copilotUtf8.GetBytes($stampSeed)
+    $t = New-StampConsumer -Agents $current
+    try {
+        $agentsPath = Join-Path $t 'AGENTS.md'
+        [IO.File]::SetLastWriteTimeUtc($agentsPath, [datetime]::new(2001, 1, 1, 0, 0, 0, [DateTimeKind]::Utc))
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'header stamp: a header already in step leaves AGENTS.md unwritten and unmentioned' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $current -Actual ([IO.File]::ReadAllBytes($agentsPath)) -Message "AGENTS.md changed. Output:`n$out"
+            Assert ([IO.File]::GetLastWriteTimeUtc($agentsPath).Year -eq 2001) "AGENTS.md was written. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'AGENTS\.md header|cleaned: AGENTS\.md').Count -eq 0) "the update printed a line about the header. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A team-reshaped header (its version: line moved below line 10, or the comment opened differently): untouched, one NOTICE.
+& {
+    $belowTen = "<!--`nai-tech-lead-framework`n  applied: 2026-11-20`n-->`n# Acme`n`n1`n2`n3`n4`n5`n  version: 0.99.0`n"
+    $opened = "<!-- ai-tech-lead-framework`n  version: 0.99.0`n  applied: 2026-11-20`n-->`n# Acme`n"
+    $runs = foreach ($text in @($belowTen, $opened)) {
+        $bytes = $copilotUtf8.GetBytes($text)
+        $t = New-StampConsumer -Agents $bytes
+        try {
+            $o = Invoke-Installer -Dist 'dotnet' -Target $t
+            [pscustomobject]@{ Exit = $LASTEXITCODE; Out = $o; Before = $bytes; After = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')) }
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+
+    It 'header stamp: a team-reshaped AGENTS.md header is left byte for byte with one NOTICE naming the hand step' {
+        foreach ($run in $runs) {
+            Assert ($run.Exit -eq 0) "update exited $($run.Exit): $($run.Out)"
+            Assert-BytesEqual -Expected $run.Before -Actual $run.After -Message "the reshaped header changed. Output:`n$($run.Out)"
+            $lines = Get-CopilotLines $run.Out $stampShapePattern
+            Assert ($lines.Count -eq 1 -and $lines[0].Contains('docs/upgrade-checklist.md')) "expected one NOTICE naming docs/upgrade-checklist.md. Output:`n$($run.Out)"
+            Assert ((Get-CopilotLines $run.Out $stampNoticePattern).Count -eq 0) "the update says it brought the header in step. Output:`n$($run.Out)"
+        }
+    }
+}
+
+# Two headers template-checks reads differently from the shipped shape: a version: line inside the comment above the marker
+# (template-checks reads that one), and version and applied inside a comment that closes only after line 10 (template-checks
+# reads the first 10 lines). Each is left byte for byte with one NOTICE, never a NOTICE that says the header is in step.
+& {
+    $aboveMarker = "<!--`n  version: 0.42.0`nai-tech-lead-framework`n  version: 0.99.0`n  applied: 2026-11-20`n-->`n# Acme`n"
+    $pastTen = "<!--`nai-tech-lead-framework`n  x1`n  x2`n  x3`n  x4`n  x5`n  x6`n  x7`n  x8`n  version: 0.99.0`n  applied: 2026-11-20`n-->`n# Acme`n"
+    # Two version: lines after the marker: template-checks reads the first, so the shipped shape holds exactly one.
+    $twoVersions = "<!--`nai-tech-lead-framework`n  version: 0.99.0`n  version: 0.99.0`n  applied: 2026-11-20`n-->`n# Acme`n"
+    # Two applied: lines: template-checks does not read applied, but a header with two is not the shape the framework ships.
+    $twoApplied = "<!--`nai-tech-lead-framework`n  version: 0.99.0`n  applied: 2026-11-20`n  applied: 2026-11-21`n-->`n# Acme`n"
+    $runs = @{}
+    foreach ($case in @(@('above', $aboveMarker), @('pastTen', $pastTen), @('two', $twoVersions), @('twoApplied', $twoApplied))) {
+        $bytes = $copilotUtf8.GetBytes($case[1])
+        $t = New-StampConsumer -Agents $bytes
+        try {
+            $o = Invoke-Installer -Dist 'dotnet' -Target $t
+            $runs[$case[0]] = [pscustomobject]@{ Exit = $LASTEXITCODE; Out = $o; Before = $bytes; After = [IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')) }
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+    $assertLeft = {
+        param($run)
+        Assert ($run.Exit -eq 0) "update exited $($run.Exit): $($run.Out)"
+        Assert-BytesEqual -Expected $run.Before -Actual $run.After -Message "the header changed. Output:`n$($run.Out)"
+        Assert ((Get-CopilotLines $run.Out $stampShapePattern).Count -eq 1) "expected one NOTICE naming the hand step. Output:`n$($run.Out)"
+        Assert ((Get-CopilotLines $run.Out $stampNoticePattern).Count -eq 0) "the update says it brought the header in step. Output:`n$($run.Out)"
+    }
+
+    It 'header stamp: a version line inside the comment above the marker leaves AGENTS.md byte for byte with one NOTICE' { & $assertLeft $runs['above'] }
+
+    It 'header stamp: version and applied inside the comment past line 10 leave AGENTS.md byte for byte with one NOTICE' { & $assertLeft $runs['pastTen'] }
+
+    It 'header stamp: a header with two version lines leaves AGENTS.md byte for byte with one NOTICE' {
+        & $assertLeft $runs['two']
+        Assert ((Get-CopilotLines $runs['two'].Out "$stampShapePattern[^\r\n]*scripts/template-checks\.ps1 reports the stamp as missing or out of step\.").Count -eq 1) "the NOTICE does not say what template-checks reports. Output:`n$($runs['two'].Out)"
+    }
+
+    It 'header stamp: a header with two applied lines leaves AGENTS.md byte for byte with one NOTICE' { & $assertLeft $runs['twoApplied'] }
+}
+
+# Values already in step, only the old helper line (0.90.0 to 0.99.1) left: the update rewords that line and says so, and no line
+# claims the values moved.
+& {
+    $oldHelperText = $stampSeed.Replace($stampHelper, '  After a framework update, copy these fields from .claude/framework-version.json.')
+    # A seed without the new helper line cannot be set up; the case fails with this message instead of stopping the file.
+    $setupFailure = if ($oldHelperText -ceq $stampSeed) { 'calibration: the seed has no helper line to replace' } else { $null }
+    $t = $null
+    try {
+        if (-not $setupFailure) {
+            $before = $copilotUtf8.GetBytes($oldHelperText)
+            $t = New-StampConsumer -Agents $before
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $exit = $LASTEXITCODE
+            $after = $copilotUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')))
+        }
+
+        It 'header stamp: an in-step header with the old helper line gets the new line and no claim that the values moved' {
+            Assert (-not $setupFailure) $setupFailure
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($after -ceq $stampSeed) "AGENTS.md is not the seed with the new helper line. Output:`n$out"
+            Assert ((Get-CopilotLines $out $stampNoticePattern).Count -eq 0) "a line says version and applied were brought in step. Output:`n$out"
+            $line = Get-CopilotLines $out '^\s*NOTICE: AGENTS\.md header: the line under the version stamp now says the update keeps the stamp in step; a copy of the file before this update goes to \.claude/framework-update-backup/instruction-files/AGENTS\.md\.\s*$'
+            Assert ($line.Count -eq 1) "expected one NOTICE about the helper line, with where the original is. Output:`n$out"
+        }
+    } finally { if ($t) { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue } }
+}
+
+# The line clean-up of a v0.90.0 AGENTS.md (retired skill lines) ends in CANT-VERIFY because both save names already hold other
+# content, outside Git: the stamp step does not write the file either, and nothing claims the header was brought in step.
+& {
+    $before = Get-CopilotReleasedBytes 'v0.90.0:dist/dotnet/AGENTS.md'
+    $digest16 = ([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($before))).Replace('-', '').ToLowerInvariant().Substring(0, 16)
+    $t = New-StampConsumer -Agents $before
+    $savedRoot = Join-Path $t '.claude/framework-update-backup/instruction-files'
+    New-Item -ItemType Directory -Force -Path $savedRoot | Out-Null
+    [IO.File]::WriteAllText((Join-Path $savedRoot 'AGENTS.md'), "other`n", $copilotUtf8)
+    [IO.File]::WriteAllText((Join-Path $savedRoot "AGENTS.$digest16.md"), "other2`n", $copilotUtf8)
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'header stamp: when the line clean-up has nowhere to save AGENTS.md, the stamp step leaves it byte for byte and claims nothing' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ((Get-CopilotLines $out 'CANT-VERIFY: AGENTS\.md holds old copies of the framework rules, but this update has nowhere to save the file').Count -eq 1) "calibration: the line clean-up did not end in CANT-VERIFY. Output:`n$out"
+            Assert-BytesEqual -Expected $before -Actual ([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -Message "AGENTS.md changed. Output:`n$out"
+            Assert ((Get-CopilotLines $out "$stampNoticePattern|brought the header stamp in step|the line under the version stamp now says").Count -eq 0) "a line claims the header was brought in step. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# -Reinstall decides AGENTS.md as before (this one goes to docs/pre-adoption/ for /adopt, byte for byte); the header step
+# neither writes it nor says anything.
+& {
+    $before = $copilotUtf8.GetBytes($stampBehindText)
+    $t = New-StampConsumer -Agents $before -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -Reinstall
+        $exit = $LASTEXITCODE
+        $kept = @(Get-ChildItem -LiteralPath (Join-Path $t 'docs/pre-adoption') -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { [Convert]::ToBase64String([IO.File]::ReadAllBytes($_.FullName)) -ceq [Convert]::ToBase64String($before) })
+
+        It 'header stamp: -Reinstall leaves the old AGENTS.md header as it is and prints no header line' {
+            Assert ($exit -eq 0) "-Reinstall exited ${exit}: $out"
+            Assert ($out -match 'mode: reinstall') "calibration: not a reinstall. Output:`n$out"
+            Assert ($kept.Count -eq 1) "the old AGENTS.md is not kept byte for byte under docs/pre-adoption/. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'AGENTS\.md header').Count -eq 0) "-Reinstall printed a header line. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
 exit (Write-TestSummary 'UpdateDelivery4.Tests')

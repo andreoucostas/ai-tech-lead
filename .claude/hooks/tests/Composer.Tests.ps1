@@ -153,10 +153,16 @@ try {
 $normalRoot = Join-Path ([IO.Path]::GetTempPath()) ('composer-policy-green-' + [guid]::NewGuid())
 try {
     Initialize-ComposerSubject $normalRoot
+    # A seeded team file must hold a text the ledger lists (the build refuses any other, B-573): it gets the
+    # shipped dotnet text, which the copied ledger lists; every other protected path gets a canary.
+    $seedPaths = @('TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md', 'FRAMEWORK-CONTEXT.md', 'docs/ARCHITECTURE.md',
+        'docs/architecture-decisions.md', 'docs/wiki/INDEX.md', '.claude/guard-allowlist.txt')
     foreach ($relative in $expectedProtected) {
         $path = Join-Path $normalRoot "src/core/$relative"
         New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
-        if (-not (Test-Path -LiteralPath $path)) { [IO.File]::WriteAllText($path, 'policy canary', [Text.UTF8Encoding]::new($false)) }
+        if (Test-Path -LiteralPath $path) { continue }
+        if ($relative -cin $seedPaths) { Copy-Item -LiteralPath (Join-Path $repoRoot "dist/dotnet/$relative") -Destination $path -Force }
+        else { [IO.File]::WriteAllText($path, 'policy canary', [Text.UTF8Encoding]::new($false)) }
     }
     $templateCi = Join-Path $normalRoot 'src/core/.github/workflows/template-ci.yml'
     New-Item -ItemType Directory -Path (Split-Path -Parent $templateCi) -Force | Out-Null

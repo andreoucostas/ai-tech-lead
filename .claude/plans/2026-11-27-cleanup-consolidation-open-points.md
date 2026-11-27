@@ -26,6 +26,8 @@ Rule, in your words: "If the framework doesn't need it we should remove it. We c
 
 ### 1.2 The rest of the contents (new, sized by a sweep of every release from 0.76.0)
 
+First part built 2026-11-27 (WSD-154): a file that is still exactly a released text is replaced, the header stamp is kept in step, and one list of released texts feeds a build check. The sweep was re-done before building: its count of 74 did not hold (about 39 old texts outside the architecture document, the Copilot file and the stamps); what is left is in backlog entry B-573.
+
 The sweep found 74 old lines or paragraphs in ten of the eleven files an update never rewrites, plus one whole document. Seventeen are instructions today's product contradicts, fourteen point at things that no longer exist.
 
 | File | What is stale | Kind |

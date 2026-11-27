@@ -46,7 +46,7 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    If the preview prints a `NOTICE:` line saying it kept `.github/copilot-instructions.md`, decide before
    you apply whether that file goes (see [Migrations](#migrations-from-older-installs)). The update
    tells an AI agent running it to ask you, not to decide, and not to add `-RemoveLeftovers` unless you say
-   yes; no agent run has measured whether agents do.
+   yes. On Claude Code, in six headless runs, the agent ended by asking every time; Copilot has not been measured.
 
 5. **Apply.** Run the same command without `-WhatIf`. Keep the preview and apply output, and act on
    every line it prints (see [What the installer's messages ask of you](#what-the-installers-messages-ask-of-you)).
@@ -121,9 +121,12 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    to `.claude/framework-update-backup/`, which Git ignores. Copies an older release left there
    stay until you delete them; keep what you need first.
 
-7. **Copy the version into `AGENTS.md`.** Copy `version` and `applied` from
-   `.claude/framework-version.json` into the header comment at the top of `AGENTS.md`. Do not replace
-   a populated `AGENTS.md` with the template.
+7. **Check the version stamp in `AGENTS.md`.** An update copies `version` and `applied` from
+   `.claude/framework-version.json` into the header comment at the top of `AGENTS.md` and says so on a
+   `NOTICE:` line; nothing is copied by hand. Only when the header is not in the shape the framework ships
+   (a first line `<!--`, a line `ai-tech-lead-framework`, then `version:` and `applied:` lines before
+   `-->`, all in the first 10 lines) does the update leave it and say so on a `NOTICE:` line: copy the two
+   fields into the header by hand. Do not replace a populated `AGENTS.md` with the template.
 
 8. **Verify, review, commit.** From your repository root:
 
@@ -156,6 +159,16 @@ rather than deleting its marker.
 ## Migrations from older installs
 
 Most updates need none of these. Do each only when its condition holds.
+
+- **An old seeded file you never edited.** `TECH_DEBT.md`, `SECURITY_FINDINGS.md`, `LEARNINGS.md`,
+  `FRAMEWORK-CONTEXT.md`, `docs/ARCHITECTURE.md`, `docs/architecture-decisions.md`, `docs/wiki/INDEX.md`
+  and `.claude/guard-allowlist.txt` are created once. An update now replaces one whose text, line endings
+  aside, is exactly a text an earlier release shipped there, so nothing in it is yours, with this
+  release's text, and a `NOTICE:` line names it and where the original is (the last commit, with the
+  `git show` line that prints it, or a copy under `.claude/framework-update-backup/seed-files/`). To keep
+  the old text, restore it and change any line: a file that differs from every released text, by one
+  character or more, is never replaced, and the update says nothing about replacing it. A file the update cannot write is kept and
+  named on a `CANT-VERIFY:` line. `-Reinstall` and a first install do not do this.
 
 - **`.claude/ai-audit.log` is tracked by Git.** From the repository root, run
   `git ls-files -- .claude/ai-audit.log`. A non-zero exit means tracking could not be examined;

@@ -479,6 +479,136 @@ It 'retired copilot file: the ledger lists every released copilot-instructions t
     } finally { Remove-Item -LiteralPath $scratch -Force -ErrorAction SilentlyContinue }
 }
 
+# The eight seeded team files an update may replace while they hold a released text (B-573): one key in the source ledger,
+# its maintainer baseline and the three dists, listing the shipped installer's Get-LfSha256 of every blob a tag v0.26.0 to
+# v0.99.1 held at the path in any dist, and of today's composed seed.
+$seedFilePaths = @('TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md', 'FRAMEWORK-CONTEXT.md', 'docs/ARCHITECTURE.md',
+    'docs/architecture-decisions.md', 'docs/wiki/INDEX.md', '.claude/guard-allowlist.txt')
+
+It 'old seed files: the ledger lists every released text of the eight seeded team files and today''s seeds' {
+    $copies = @('src/core/framework-retirements.json', 'meta/framework-retirements-baseline.json', 'dist/dotnet/framework-retirements.json', 'dist/angular/framework-retirements.json', 'dist/monorepo/framework-retirements.json')
+    $source = ([IO.File]::ReadAllText((Join-Path $repoRoot $copies[0])) | ConvertFrom-Json).'superseded-seed-files'
+    Assert ($null -ne $source) 'the source ledger has no superseded-seed-files key'
+    Assert ((@($source | ForEach-Object path) -join ', ') -ceq ($seedFilePaths -join ', ')) "superseded-seed-files lists $(@($source | ForEach-Object path) -join ', ')"
+    $sourceJson = $source | ConvertTo-Json -Depth 8 -Compress
+    foreach ($copy in $copies) {
+        $other = ([IO.File]::ReadAllText((Join-Path $repoRoot $copy)) | ConvertFrom-Json).'superseded-seed-files' | ConvertTo-Json -Depth 8 -Compress
+        Assert ($other -ceq $sourceJson) "$copy carries a different superseded-seed-files"
+    }
+    $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), [ref]$null, [ref]$null)
+    $function = @($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -ceq 'Get-LfSha256' })
+    Assert ($function.Count -eq 1) 'the shipped installer has no Get-LfSha256'
+    . ([scriptblock]::Create($function[0].Extent.Text))
+    $listed = @{}
+    foreach ($entry in $source) {
+        $set = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($hash in @($entry.'known-content-sha256')) { [void]$set.Add([string]$hash) }
+        $listed[[string]$entry.path] = $set
+    }
+    $observations = @(Get-TaggedObservations -Paths $seedFilePaths -Through '0.99.1' | Where-Object { [version]$_.Tag.Substring(1) -ge [version]'0.26.0' })
+    foreach ($path in $seedFilePaths) { Assert (@($observations | Where-Object Path -ceq $path).Count -gt 0) "no released blob was observed for $path" }
+    $digestByOid = @{}
+    foreach ($observation in $observations) {
+        if (-not $digestByOid.ContainsKey($observation.Oid)) {
+            $blob = Invoke-GitBytes @('cat-file', 'blob', $observation.Oid)
+            Assert ($blob.Exit -eq 0) "could not read blob $($observation.Oid)"
+            $digestByOid[$observation.Oid] = Get-LfSha256 -Bytes $blob.Bytes
+        }
+    }
+    $check = {
+        param($Map)
+        foreach ($observation in $observations) {
+            $hash = [string]$digestByOid[$observation.Oid]
+            if (-not $Map[$observation.Path].Contains($hash)) { throw "missing tagged digest: $($observation.Tag) dist/$($observation.Stack)/$($observation.Path) sha256=$hash" }
+        }
+        foreach ($stack in 'dotnet', 'angular', 'monorepo') { foreach ($path in $seedFilePaths) {
+            $file = Join-Path $repoRoot "dist/$stack/$path"
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
+            $hash = Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes($file))
+            if (-not $Map[$path].Contains($hash)) { throw "missing seed digest: dist/$stack/$path sha256=$hash" }
+        } }
+    }
+    & $check $listed
+    $total = 0; foreach ($set in $listed.Values) { $total += $set.Count }
+    Assert ($listed['docs/ARCHITECTURE.md'].Count -eq 57 -and $total -eq 96) "expected 57 docs/ARCHITECTURE.md texts and 96 in all, got $($listed['docs/ARCHITECTURE.md'].Count) and $total"
+    # Hostile calibration: drop one observed digest from a copy; the same check must go red.
+    $first = $observations | Where-Object Path -ceq 'docs/ARCHITECTURE.md' | Select-Object -First 1
+    $bad = @{}; foreach ($key in $listed.Keys) { $bad[$key] = New-Object 'System.Collections.Generic.HashSet[string]' ($listed[$key], [StringComparer]::Ordinal) }
+    Assert ($bad['docs/ARCHITECTURE.md'].Remove([string]$digestByOid[$first.Oid])) 'could not plant the missing-digest mutation'
+    $caught = $false
+    try { & $check $bad } catch { $caught = $_.Exception.Message -match 'missing tagged digest' }
+    Assert $caught 'removing a released seed digest did not make the completeness check go red'
+}
+
+It 'old seed files: the build refuses a seed the ledger does not list and a baseline digest that went missing' {
+    $subject = Join-Path ([IO.Path]::GetTempPath()) ('seed-build-' + [guid]::NewGuid().ToString('N'))
+    try {
+        foreach ($dir in 'scripts', 'src/core/scripts', 'src/core/.claude', 'src/core/docs', 'meta', 'src/stacks/dotnet/files', 'src/stacks/dotnet/snippets') {
+            New-Item -ItemType Directory -Force -Path (Join-Path $subject $dir) | Out-Null
+        }
+        foreach ($file in 'scripts/build.ps1', 'src/core/scripts/install.ps1', 'src/core/.claude/ai-audit.log', 'src/core/docs/architecture-decisions.md', 'src/core/framework-retirements.json', 'meta/framework-retirements-baseline.json') {
+            Copy-Item -LiteralPath (Join-Path $repoRoot $file) -Destination (Join-Path $subject $file) -Force
+        }
+        $build = {
+            $out = & (Get-PsExe) -NoProfile -File (Join-Path $subject 'scripts/build.ps1') dotnet 2>&1 | Out-String
+            [pscustomobject]@{ Exit = $LASTEXITCODE; Output = $out }
+        }
+        $clean = & $build
+        Assert ($clean.Exit -eq 0) "the unmutated subject did not build: exit $($clean.Exit) $($clean.Output)"
+        $seed = Join-Path $subject 'src/core/docs/architecture-decisions.md'
+        [IO.File]::AppendAllText($seed, "one extra line`n", [Text.UTF8Encoding]::new($false))
+        $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), [ref]$null, [ref]$null)
+        . ([scriptblock]::Create(@($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -ceq 'Get-LfSha256' })[0].Extent.Text))
+        $digest = Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes($seed))
+        $refused = & $build
+        Assert ($refused.Exit -eq 1 -and $refused.Output -match [regex]::Escape("dist/dotnet/docs/architecture-decisions.md is a seed text") -and $refused.Output.Contains("add $digest")) "the build did not refuse an unlisted seed by path and digest: exit $($refused.Exit) $($refused.Output)"
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'src/core/docs/architecture-decisions.md') -Destination $seed -Force
+        $ledgerFile = Join-Path $subject 'src/core/framework-retirements.json'
+        $doc = [IO.File]::ReadAllText($ledgerFile) | ConvertFrom-Json
+        $entry = @($doc.'superseded-seed-files' | Where-Object path -ceq 'docs/ARCHITECTURE.md')[0]
+        # An old text, not the seed this subject composes (the subject has no docs/ARCHITECTURE.md seed at all).
+        $dropped = [string]$entry.'known-content-sha256'[0]
+        $entry.'known-content-sha256' = @($entry.'known-content-sha256' | Where-Object { $_ -cne $dropped })
+        [IO.File]::WriteAllText($ledgerFile, ($doc | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+        $gone = & $build
+        Assert ($gone.Exit -eq 1 -and $gone.Output.Contains("known seed digest $dropped for 'docs/ARCHITECTURE.md'")) "the build did not refuse a dropped baseline digest: exit $($gone.Exit) $($gone.Output)"
+    } finally { Remove-Item -LiteralPath $subject -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# The shipped installer reads the key strictly: a malformed one throws, and the installer reads the ledger before it changes
+# anything, so such a ledger stops an update first.
+It 'old seed files: the shipped installer reads superseded-seed-files strictly' {
+    $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), [ref]$null, [ref]$null)
+    $function = @($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -ceq 'Read-SupersededSeedFiles' })
+    Assert ($function.Count -eq 1) 'the shipped installer has no Read-SupersededSeedFiles'
+    . ([scriptblock]::Create($function[0].Extent.Text))
+    $read = Read-SupersededSeedFiles -Path (Join-Path $repoRoot 'dist/dotnet/framework-retirements.json') -Allowed $seedFilePaths
+    Assert ($read.Count -eq 8 -and (@($read | ForEach-Object Path) -join ', ') -ceq ($seedFilePaths -join ', ')) "the reader returned $($read.Count) entries"
+    $scratch = Join-Path ([IO.Path]::GetTempPath()) ('seed-ledger-' + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        $good = [IO.File]::ReadAllText((Join-Path $repoRoot 'dist/dotnet/framework-retirements.json'))
+        $mutations = [ordered]@{
+            'an upper-case digest' = { param($d) $d.'superseded-seed-files'[0].'known-content-sha256'[0] = $d.'superseded-seed-files'[0].'known-content-sha256'[0].ToUpperInvariant() }
+            'a 63-character digest' = { param($d) $d.'superseded-seed-files'[0].'known-content-sha256'[0] = $d.'superseded-seed-files'[0].'known-content-sha256'[0].Substring(1) }
+            'a repeated digest' = { param($d) $d.'superseded-seed-files'[0].'known-content-sha256' = @($d.'superseded-seed-files'[0].'known-content-sha256') + @($d.'superseded-seed-files'[0].'known-content-sha256'[0]) }
+            'a path that is not one of the eight' = { param($d) $d.'superseded-seed-files'[0].path = 'README.md' }
+            'a repeated path' = { param($d) $d.'superseded-seed-files'[1].path = $d.'superseded-seed-files'[0].path }
+            'a missing known-content-sha256' = { param($d) $d.'superseded-seed-files'[0].PSObject.Properties.Remove('known-content-sha256') }
+            'no digest' = { param($d) $d.'superseded-seed-files'[0].'known-content-sha256' = @() }
+            'no entry' = { param($d) $d.'superseded-seed-files' = @() }
+            'a string for the key' = { param($d) $d.'superseded-seed-files' = 'x' }
+        }
+        foreach ($name in $mutations.Keys) {
+            $doc = $good | ConvertFrom-Json
+            & $mutations[$name] $doc
+            [IO.File]::WriteAllText($scratch, ($doc | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+            $refused = $false
+            try { [void](Read-SupersededSeedFiles -Path $scratch -Allowed $seedFilePaths) } catch { $refused = $_.Exception.Message -match 'malformed superseded-seed-files' }
+            Assert $refused "the reader accepted a superseded-seed-files key with $name"
+        }
+    } finally { Remove-Item -LiteralPath $scratch -Force -ErrorAction SilentlyContinue }
+}
+
 It '0.95.0 ledger contains every released digest of the renamed security-review command and its wrapper' {
     # B-388: renamed to security-gate, so both installed paths join the ledger.
     $paths = @('.claude/commands/security-review.md', '.agents/skills/security-review/SKILL.md')

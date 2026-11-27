@@ -214,6 +214,50 @@ function Get-ValidatedRetirements {
     return , $entries
 }
 
+# The seeded team files an update may replace while they still hold a text a release shipped
+# (superseded-seed-files). The digest is the installer's Get-LfSha256: SHA-256 of the bytes with each
+# CR LF turned into LF; a build that passes proves the two agree on every composed seed.
+$SeedFilePaths = @('TECH_DEBT.md', 'SECURITY_FINDINGS.md', 'LEARNINGS.md', 'FRAMEWORK-CONTEXT.md', 'docs/ARCHITECTURE.md',
+    'docs/architecture-decisions.md', 'docs/wiki/INDEX.md', '.claude/guard-allowlist.txt')
+
+function Get-LfSha256 {
+    param([byte[]]$Bytes)
+    $latin1 = [Text.Encoding]::GetEncoding(28591)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash($latin1.GetBytes($latin1.GetString($Bytes).Replace("`r`n", "`n"))))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
+}
+
+function Get-ValidatedSeedFiles {
+    # Returns path -> digest list. A document without the key returns an empty map only when
+    # -AllowAbsent (a release ref from before the key existed).
+    param([object]$Document, [string]$Label, [switch]$AllowAbsent)
+    $map = [ordered]@{}
+    if (-not ($Document.PSObject.Properties.Name -ccontains 'superseded-seed-files')) {
+        if ($AllowAbsent) { return $map }
+        throw "$Label has no superseded-seed-files"
+    }
+    $entries = $Document.'superseded-seed-files'
+    if ($entries -isnot [array]) { throw "$Label superseded-seed-files is not a list" }
+    $paths = @($entries | ForEach-Object { [string]$_.path })
+    if (($paths -join "`n") -cne ($SeedFilePaths -join "`n")) {
+        throw "$Label superseded-seed-files must list exactly, in this order: $($SeedFilePaths -join ', ')"
+    }
+    foreach ($entry in $entries) {
+        $path = [string]$entry.path
+        $hashes = @($entry.'known-content-sha256' | ForEach-Object { [string]$_ })
+        if ($hashes.Count -eq 0) { throw "$Label superseded-seed-files has no known-content-sha256 values for '$path'" }
+        $previousHash = $null
+        foreach ($hash in $hashes) {
+            if ($hash -cnotmatch '^[0-9a-f]{64}$') { throw "$Label superseded-seed-files has invalid SHA-256 '$hash' for '$path'" }
+            if ($previousHash -and [StringComparer]::Ordinal.Compare($previousHash, $hash) -ge 0) { throw "$Label superseded-seed-files hashes are not unique ordinal values for '$path'" }
+            $previousHash = $hash
+        }
+        $map[$path] = $hashes
+    }
+    return $map
+}
+
 if ($Mode -eq 'monorepo') {
     # In monorepo mode the file collision check must pass before anything is composed.
     $collide = $false
@@ -228,6 +272,7 @@ if ($Mode -eq 'monorepo') {
 }
 
 $retirementBaselines = New-Object System.Collections.Generic.List[object]
+$seedFileBaselines = New-Object System.Collections.Generic.List[object]
 $maintainerLedgerPath = 'meta/framework-retirements-baseline.json'
 $maintainerLedgerFile = Join-Path $Root $maintainerLedgerPath
 try {
@@ -237,6 +282,8 @@ try {
     $maintainerLedger = (Read-TextFile $maintainerLedgerFile).Text | ConvertFrom-Json
     $maintainerRetirements = Get-ValidatedRetirements -Document $maintainerLedger -Label $maintainerLedgerPath
     foreach ($entry in $maintainerRetirements) { $retirementBaselines.Add($entry) }
+    $maintainerSeedFiles = Get-ValidatedSeedFiles -Document $maintainerLedger -Label $maintainerLedgerPath
+    $seedFileBaselines.Add([pscustomobject]@{ Label = $maintainerLedgerPath; Map = $maintainerSeedFiles })
 } catch {
     [Console]::Error.WriteLine("ERROR: $($_.Exception.Message)")
     exit 1
@@ -276,6 +323,8 @@ foreach ($ref in $baselineRefNames) {
     try {
         $document = ((@($ledgerQuery.Output) -join "`n") + "`n") | ConvertFrom-Json
         foreach ($entry in (Get-ValidatedRetirements -Document $document -Label "${ref}:src/core/framework-retirements.json")) { $retirementBaselines.Add($entry) }
+        $refSeedFiles = Get-ValidatedSeedFiles -Document $document -Label "${ref}:src/core/framework-retirements.json" -AllowAbsent
+        $seedFileBaselines.Add([pscustomobject]@{ Label = "${ref}:src/core/framework-retirements.json"; Map = $refSeedFiles })
     } catch {
         [Console]::Error.WriteLine("ERROR: $($_.Exception.Message)")
         exit 1
@@ -520,6 +569,33 @@ foreach ($old in $retirementBaselines) {
         if ([string]$hash -notin @($current.'known-content-sha256' | ForEach-Object { [string]$_ })) {
             [Console]::Error.WriteLine("ERROR: known historical digest disappeared for retirement '$path'")
             exit 1
+        }
+    }
+}
+
+# 4b. Every composed seed's text must be one the ledger lists for its path, so a seed change cannot
+# ship unless its digest joins the list; no digest the baseline or a named ref holds may go.
+try { $seedFiles = Get-ValidatedSeedFiles -Document $ledger -Label $ledgerPath }
+catch {
+    [Console]::Error.WriteLine("ERROR: $($_.Exception.Message)")
+    exit 1
+}
+foreach ($path in $SeedFilePaths) {
+    $seedFile = Join-Path $StageDir ($path -replace '/', [IO.Path]::DirectorySeparatorChar)
+    if (-not (Test-Path -LiteralPath $seedFile -PathType Leaf)) { continue }
+    $digest = Get-LfSha256 -Bytes ([IO.File]::ReadAllBytes($seedFile))
+    if ($seedFiles[$path] -cnotcontains $digest) {
+        [Console]::Error.WriteLine("ERROR: $DistLabel/$path is a seed text $ledgerPath does not list; add $digest to superseded-seed-files for '$path' in src/core/framework-retirements.json and meta/framework-retirements-baseline.json")
+        exit 1
+    }
+}
+foreach ($baseline in $seedFileBaselines) {
+    foreach ($path in $baseline.Map.Keys) {
+        foreach ($hash in $baseline.Map[$path]) {
+            if ($seedFiles[$path] -cnotcontains $hash) {
+                [Console]::Error.WriteLine("ERROR: known seed digest $hash for '$path' held by $($baseline.Label) disappeared from $ledgerPath")
+                exit 1
+            }
         }
     }
 }

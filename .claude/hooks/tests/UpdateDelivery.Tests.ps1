@@ -229,7 +229,10 @@ $powerShellExtension = 'ps1'
         '@.github/instructions/framework-rules.instructions.md'
         ''
     )) -join "`r`n") + "`r`n" + $bodyText
-    $expectedAgents = ((@($stampAndTitle) + @(
+    # The same write brings the header's version and applied in step with this release's stamp (B-573).
+    $releaseStamp = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "dist/$dist/.claude/framework-version.json") | ConvertFrom-Json
+    $expectedStampAndTitle = @($stampAndTitle | ForEach-Object { $_ -creplace '^  version: .*$', "  version: $($releaseStamp.version)" -creplace '^  applied: .*$', "  applied: $($releaseStamp.applied)" })
+    $expectedAgents = ((@($expectedStampAndTitle) + @(
         '> This file is the repo-specific source of truth for AI-assisted development in this repository. Edit it here; `CLAUDE.md` only imports it for Claude Code.'
         '> **Framework rules** (Verification Rules, Leanness, SOLID, Agentic Workflow) are in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md). If your agent has not already loaded that file, read it before planning or editing.'
         '> **Companion file**: FRAMEWORK-CONTEXT.md. AGENTS.md wins on any conflict — but flag the contradiction.'
@@ -253,7 +256,7 @@ $powerShellExtension = 'ps1'
         # Consumer body lines, their fenced example and their LF endings pass through unchanged.
         Assert ($installExit -eq 0) "update exited ${installExit}: $out"
         Assert ($out -match '(?m)^PLAN replace CLAUDE\.md\r?$' -and $out -match '(?m)^PLAN replace AGENTS\.md\r?$') "the plan did not disclose the layout move. Output:`n$out"
-        Assert-BytesEqual -Expected ([byte[]]($bomUtf8.GetPreamble() + $bomUtf8.GetBytes($expectedAgents))) -Actual $agentsAfter -Message "AGENTS.md is not CLAUDE.md's text with only the layout lines rewritten (BOM and CRLF kept). Got:`n$([Text.Encoding]::UTF8.GetString($agentsAfter))"
+        Assert-BytesEqual -Expected ([byte[]]($bomUtf8.GetPreamble() + $bomUtf8.GetBytes($expectedAgents))) -Actual $agentsAfter -Message "AGENTS.md is not CLAUDE.md's text with only the layout lines rewritten and the header's version and applied set to this release's (BOM and CRLF kept). Got:`n$([Text.Encoding]::UTF8.GetString($agentsAfter))"
         Assert-BytesEqual -Expected ([IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/$dist/CLAUDE.md"))) -Actual $claudeAfter -Message 'CLAUDE.md is not the shipped two-import stub'
         Assert-BytesEqual -Expected $claudeBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $backupRoot 'CLAUDE.md'))) -Message 'the original CLAUDE.md was not backed up byte-for-byte'
         Assert-BytesEqual -Expected $agentsBefore -Actual ([IO.File]::ReadAllBytes((Join-Path $backupRoot 'AGENTS.md'))) -Message 'the generated AGENTS.md was not backed up byte-for-byte'

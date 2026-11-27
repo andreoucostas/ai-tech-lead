@@ -1,7 +1,7 @@
 # Architecture
 
 This file is yours: describe your system's architecture here, or delete it. The framework created it
-once and never changes it.
+once and leaves it alone once you change anything in it.
 
 AI Tech Lead's own map, its commands, reviewers, skills, hooks, scripts and which files it owns, is in
 [reference.md](reference.md), which stays current with each update. How the pieces work together,
