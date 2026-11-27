@@ -428,8 +428,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 8257,
-          "tok": 2064
+          "chars": 8683,
+          "tok": 2171
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",
@@ -1296,8 +1296,8 @@
         },
         {
           "path": ".claude/skills/dependency-audit/SKILL.md#body",
-          "chars": 14622,
-          "tok": 3656
+          "chars": 15048,
+          "tok": 3762
         },
         {
           "path": ".claude/skills/enforce-architecture/SKILL.md#body",

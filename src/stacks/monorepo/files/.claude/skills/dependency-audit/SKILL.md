@@ -91,11 +91,16 @@ project file) needs a port, not this procedure: report it and stop.
    version that supports it (listed on the SDK download page), and the runtime or IIS Hosting
    Bundle on servers. Stop and report a red baseline or an unsupported package; install nothing
    yourself. An upgrade is where a registration, constructor or configuration binding stops
-   resolving while the unit tests stay green: where a web host has a public type that no test
-   starts, a test project exists, and `AGENTS.md > Conventions > Testing` has no start-up test
-   line, ask in the same message the start-up test question `.claude/commands/bootstrap.md` gives
-   in Phase 2b. A yes applies that file's 3c before any upgrade edit and commits the test on its
-   own, so step 6 runs it on the target; a no writes its declined line; a skip writes nothing.
+   resolving while the unit tests stay green. On a green baseline, where a web host has a public
+   type that no test starts, a test project exists, and `AGENTS.md > Conventions > Testing` has no
+   start-up test line, ask with the SDK question the start-up test question
+   `.claude/commands/bootstrap.md` gives in Phase 2b. No analysis pass has run here, so first read
+   each such host's start-up code for what it does outside the process (database migration or
+   seeding, hosted services, message consumers, outbound calls) and fill the question's last
+   sentence from it. A yes applies that file's 3c before any upgrade edit and commits the test and
+   its `Conventions > Testing` line on their own, so step 6 runs it on the target; a line 3c writes
+   without a test (not added, or declined on a no) goes with step 7's edits, not the upgrade
+   commit; a skip writes nothing. With nobody to answer, do not ask and add nothing.
 3. **Read the breaking changes** of every major after the current one up to the target, in order,
    from `https://learn.microsoft.com/dotnet/core/compatibility/<major>.0`; each page links that
    major's ASP.NET Core and EF Core pages, which apply when those packages are referenced. List
@@ -125,8 +130,8 @@ project file) needs a port, not this procedure: report it and stop.
    `FRAMEWORK-CONTEXT.md > Detected Framework Packages` and docs, except the
    `framework-owned/overwritten` paths in `framework-ownership.json`, and list what the developer
    still has to do (the SDK on build agents and other machines, the runtime or Hosting Bundle on
-   servers, deployment, and, where no test starts a web host, starting the application: say that
-   the upgraded application was not started). Use `create-adr` only for a lasting choice the upgrade forced, such as
+   servers, deployment, and, for each web host that no test starts, starting it: say whether it
+   was started). Use `create-adr` only for a lasting choice the upgrade forced, such as
    holding a package on an older major or pinning `AnalysisLevel`.
 
 ### Angular
