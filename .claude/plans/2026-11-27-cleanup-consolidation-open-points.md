@@ -92,7 +92,15 @@ Existing installs: the update moves any team text out of `CLAUDE.md` into `AGENT
 
 This reverses the recorded choice "never no `CLAUDE.md`" (decision WSD-151) and adds a named exception to the promise that an update never touches a team's own files. The supported Claude Code version does not need to rise: the import route does not depend on native `AGENTS.md` reading.
 
-### 2.4 Checks
+### 2.4 Removing `CLAUDE.md`: every place it exists (the maintainer, in chat 2026-11-27: "remember to remove the Claude.md")
+
+1. **The product:** stop shipping it in all three stacks; the build check fails if one appears in a built product.
+2. **Existing installs:** an update folds any team text into `AGENTS.md`, removes a file that is exactly the framework's stub, and keeps and flags one a team edited. The same for a `.claude/CLAUDE.md`. Installs older than 0.90.0 still hold their whole instructions in `CLAUDE.md`; the existing one-time move handles those first.
+3. **Everything that names it:** the session-start pointer (printed today only when `CLAUDE.md` exists), the health check and the template check (both report a missing import today), the set-up and adoption commands, the shipped documents, the size accounting, and their tests.
+4. **This repository itself:** its own `CLAUDE.md` imports `AGENTS.md` and holds six notes for Claude Code; the notes move to a file in the rules folder beside the two imports, and the file goes. The container folder one level up has its own `CLAUDE.md` and `AGENTS.md` pair, in a separate repository; it goes the same way.
+5. **The rulebook:** invariant 2 in the root `AGENTS.md` describes the stub and is rewritten (guarded, the maintainer reads the diff).
+
+### 2.5 Checks
 
 Done 2026-11-27 on Claude Code 2.1.332, cheapest model, about 0.04 USD (results in the host record):
 - `AGENTS.md` alone loads; a personal notes file switches it off; the two-import rules-folder file loads `AGENTS.md` and the rules in 3 of 3 runs with that file present; no second copy.
