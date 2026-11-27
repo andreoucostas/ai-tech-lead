@@ -110,6 +110,44 @@
       {"known-line-sha256":"15ed44653e99cb45dd45294760d3659c0b1055d17dfcaacf043b00a5780b1fef","replacement":"Inline single-consumer interfaces or abstract bases that are not a project-evidenced DI service seam \u2014 per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it."},
       {"known-line-sha256":"9f90e8fe0153ad0d699ef8d0810c7bf030c1f8bc92e8bd9e6d7d40bfe79fcb49","replacement":"Inline single-consumer interfaces or abstract bases that are not a project-evidenced DI service seam \u2014 per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it."},
       {"known-line-sha256":"cc9db38d909123d58bbece12727518a20d88bdc876e93aed66471a20d1cddde0","replacement":"Inline single-consumer interfaces or abstract bases that are not a project-evidenced DI service seam \u2014 per Leanness. Preserve an existing project boundary when its evidence or correctness need requires it."}
+    ],
+    "boy-scout-items": [
+      {"known-line-sha256":"12324f1aa9595435260f1bffaf14e06d862e11d08b10ea83e249085d9e06573b","replacement":"Split mixed-responsibility methods; never use a line-count threshold"},
+      {"known-line-sha256":"4dc9c9e9aeb393132250e9fd755848a90f09d04211da187d8e9e6c24885e5f87","replacement":"`CancellationToken` only when outcome/compatibility requires it"},
+      {"known-line-sha256":"5df693f5cf5f983b5d3f85adb942e1b02b621ed9b4cdf9e5becc2da216fe7606","replacement":"Extract complex template expressions into a `computed()`, a pipe, or a component member (Angular)"},
+      {"known-line-sha256":"60765927405739cfdcefa40a5b265587881cf1f2fa6420c01897cea681efe26b","replacement":"Unused inputs and outputs, `@Input`/`@Output` or `input()`/`output()` (Angular)"},
+      {"known-line-sha256":"655cc1b735fa4931d9bee14e3dd2628b8281e7dd62935248c16dbeebeab35bd9","replacement":"Move a component off eager change detection (add `ChangeDetectionStrategy.OnPush` on v21; remove `Eager`/`Default` on v22+) — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly."},
+      {"known-line-sha256":"9e2002e37ae8233df7e9e3d283c48865cc3eca50dd8b2ccfc0cecff9f5dfe5cd","replacement":"Structured logging only when outcome/verification requires it"},
+      {"known-line-sha256":"a081c6b7c20b6b6d9416833dbc3cab281ea6d82c7590e861241d1c8d44a788c2","replacement":"Add risk-relevant tests only, and only with a harness"},
+      {"known-line-sha256":"ae7e382532304d18bf5079f16740f1450a7ff02408e19effcad58d3611474ec7","replacement":"Structured logging (.NET) only when outcome/verification requires it"},
+      {"known-line-sha256":"ae8d2fc1b1174b4bad4aa29a93cef1aa327b62d8c0c2e310af03a8be397b7f9a","replacement":"Unused inputs and outputs (`@Input`/`@Output` or `input()`/`output()`)"},
+      {"known-line-sha256":"cd7a0c04cf745695d4984b8663298132419eb39312618df5b8a15fd55a84ad4e","replacement":"Single-use pipes or directives — inline at the call site, or convert to a `computed()` or component member"},
+      {"known-line-sha256":"ce4ae28747928798438725aca55dd4715b12415b4352272343beffbfd905d1d3","replacement":"Extract complex template expressions into a `computed()`, a pipe, or a component member"},
+      {"known-line-sha256":"f00edd49f1d3952d2c657881fdc952363d64a628471a572e3d0cf5d607ffe2b2","replacement":"`CancellationToken` (.NET) only when outcome/compatibility requires it"},
+      {"known-line-sha256":"fd3de2eaf1446116baa5ac65ed615f2db3a78ad4bb5baa244a0821734fdb8943","replacement":"Move a component off eager change detection (add `ChangeDetectionStrategy.OnPush` on v21; remove `Eager`/`Default` on v22+) — but only after verifying the component's data flow (immutable inputs, no in-place mutation, no reliance on ambient ticking) and after manual/test verification that the view still updates correctly. (Angular)"}
+    ],
+    "boy-scout-lines": [
+      {"known-line-sha256":"13396e5749a45813716a14248380998adcbc4fbbc907997bc76ac8da34dffc63","replacement":null},
+      {"known-line-sha256":"4e10297e90ccb0e68529aaddb2b474d1a23f2cee5268f2006233a967d5c51b7d","replacement":"### Always apply (low-effort, low-risk — subject to Bug-fix scope above):"},
+      {"known-line-sha256":"8368fe90d79c3985caed272f15833755e9df2dff2aa70308ad1c0e9c320ae5e3","replacement":"**Bug-fix scope.** See the framework-owned workflow scope."},
+      {"known-line-sha256":"8b90b9bc2702b9cda398270968365eaaa4e9d1bfc16a164f5795702b419f04bf","replacement":"> **Not auto-applied: moving a component off eager change detection** — adding `ChangeDetectionStrategy.OnPush` on v21, or removing `Eager`/`Default` on v22+, where an unset `changeDetection` already means OnPush. It is a semantic change, not a cleanup — it can silently break views that mutate inputs in place, rely on change detection ticking from `setInterval`/Promises/third-party callbacks, or expect re-render on ambient state changes. Treat it as an explicit, tested change when the component is the primary target, not a drive-by edit. The `Eager` that `ng update` writes on v22 is pre-existing upgrade debt, even where lint reports it, not licence for a drive-by switch. New components follow `docs/defaults.md`."},
+      {"known-line-sha256":"d1e216eb17f176148c63b5778db5d6b61021769ef0b55f0668ba5f3914146517","replacement":null}
+    ],
+    "retired-skill-lines": [
+      {"skill":"add-component","known-line-sha256":["d0e11628dd8026adf222af463d6faa454fb12db570f55f6acb624f2e83fcd872"]},
+      {"skill":"add-endpoint","known-line-sha256":["a8f9d02797d672946d8b90ae7917190bc18fe4cd5381ee54e1945bc5bd40784f"]},
+      {"skill":"add-entity","known-line-sha256":["b2b1b2ac3912ea5783a4bc012142c5a21ca28b8aa80014ad3e9972d14c4d7dee"]},
+      {"skill":"add-lazy-route","known-line-sha256":["f0129c1f384d6d6a81f63afa4a70052849ce9cd52833e4a191837e3cf7b324ce"]},
+      {"skill":"add-service","known-line-sha256":["b9e22e9f1413558037805577c930828bc79524bf14728cd44b92e89776bd2427"]},
+      {"skill":"add-signal-store","known-line-sha256":["8c91c1aa97866493ce80fe65a808112b37eee520ffe38025acf9cdf318f2d8a2"]},
+      {"skill":"register-service","known-line-sha256":["fa376f2f335b44a03fed3397a19b9e1f0903c7435b3bcb1a2c1495e16046e3f2"]}
     ]
+  },
+  "retired-copilot-instructions": {
+    "path": ".github/copilot-instructions.md",
+    "retired-in": "0.90.0",
+    "opening-lines": ["When generating code in this repo, follow these rules. The full conventions, architecture, and common tasks are in CLAUDE.md (read it for non-trivial work).", "When generating code in this repo, follow these rules. The full conventions, architecture, and common tasks are in CLAUDE.md (read it for non-trivial work). Mixed repo: apply the .NET rules to C# code and the Angular rules to TypeScript/templates; SOLID, Testing, and Boy Scout apply to both stacks."],
+    "generated-marker": "<!-- GENERATED by /generate-copilot",
+    "known-content-sha256": ["2683c2732b1b5754a0cd022d6c0b05385534e20f74a57646425b15d121104952","2721e25d498f099b60741545c8126e478db82b9d0ddeb740de46e8ff47ff4c0e","2ad2883cdb17081a37bc728a88dfeedc7434bdba9406dc52b03ed58f2aed22c3","53378bcf37e36c3f3be40be444d0598a4d4a2eb358b0709eed56a5412b942ef6","615fe08abd6dfcc4258c3c9d4bed8de53f216de936bc01842eafbeea12c0c9b4","61df8092556265c491e018abb34e1d331706ad0b30356d1703b35b8bddeec4ab","6be9dd670f91edd6685e78fb5f844495830750dab318b13fc31ac4f22e103266","86c69639e2ec9e57806a6f9b833e021d98b487135adbbec0eff911e8ff9e4318","90969b212eb1f61b24004f90842e82303cd66f904e455af84fbcb4a904bd0a05","a538845b90435899093263b246a1f054b71da0cad398f634f9689f935092c312","a6802172718b4938372172266ae1114a4e208389038e45fbc06aa8c4b9071e62","b65913ccd6ef4e6a60ba637b7949c190c9f630b36b924138031e20ca78e3f5f7","b9bce8e30c716d270a4207cea8b6ccee730db33a48f0c61286d42da567516d64","cd518abe1b21b7221c31cc29e01b495a286fb2e8a2125b883559d6178edbf2dc","d653354c109c4fdd72e3735aa4ce06fc3809f0e00d6388a2a0109f0439550907","eb0e695414a6828d1d9f821ebdd3fc31ab43cccba9cebe7de7046276b29f35ba","f60c929a35cd8cd57a28718b889676a8f38791ff5df493733bf2a14bf2e6559a","f712322334020c48846a4fe218553356c3ecc99caf0b64f01082936e87a7e92c"]
   }
 }

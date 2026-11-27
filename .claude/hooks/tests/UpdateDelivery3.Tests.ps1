@@ -150,7 +150,7 @@ It 'retired recipe skills: an update removes an unmodified copy, keeps an edited
         Assert (-not (Test-Path -LiteralPath $service)) "the unmodified retired add-service SKILL.md survived: $out"
         Assert (Test-B194BytesEqual $patternBytes ([IO.File]::ReadAllBytes($pattern))) "the consumer's project-pattern.md beside a retired skill changed or vanished: $out"
         Assert ($flat -match "NOTICE: framework skill 'add-service' was retired in 0\.92\.0") "the removed recipe was not reported: $out"
-        Assert ($flat -match "Remove the 'add-service' line from AGENTS\.md > Common Tasks, or run /rebootstrap full") "the removal did not name the stale Common Tasks line and the forced rebootstrap: $out"
+        Assert ($flat -match "Its line in AGENTS\.md > Common Tasks goes too when it is exactly the line the framework shipped") "the removal did not say what happens to the Common Tasks line: $out"
         Assert (Test-B194BytesEqual $componentBytes ([IO.File]::ReadAllBytes($component))) "the edited retired add-component SKILL.md was not kept byte-identical: $out"
         Assert ($flat -match "'\.claude/skills/add-component/SKILL\.md' sits at the slug of a framework skill retired in 0\.92\.0 and loads as a skill, unless LEARNINGS\.md disables 'add-component'") "the kept recipe was not reported as a live skill at a retired slug: $out"
         Assert (Test-B194BytesEqual $discoveredBytes ([IO.File]::ReadAllBytes($discovered))) "the discovered skill at a retired slug changed or vanished: $out"
@@ -1762,6 +1762,356 @@ It 'B-449 the handoff names a framework file the install wrote where Git is told
         Assert ($blindOut -cmatch "(?m)^NOTE: Git could not say whether it is told not to see local changes to any of the framework's files[^\r\n]*run  git ls-files -v  before committing") "the handoff says nothing when Git could not say whether files are flagged: $blindOut"
     } finally {
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Old Boy Scout Rule lines, Common Tasks lines of retired skills, and empty folders retired framework files leave behind.
+# An update changes a team's instruction file only where a line is byte for byte one a release shipped (B-561's line reading:
+# trailing whitespace and an item's number left out), and removes a folder only when no file is anywhere below it.
+$leftoverUtf8 = [Text.UTF8Encoding]::new($false)
+# The Boy Scout Rule section of a product's team instruction file at a ref: AGENTS.md once CLAUDE.md is the stub, else CLAUDE.md.
+function Get-LeftoverBoyScout {
+    param([string]$Ref, [string]$Product)
+    $claude = $leftoverUtf8.GetString((Get-GitBlobBytes -Spec "${Ref}:dist/$Product/CLAUDE.md"))
+    $file = if ($claude -match '(?m)^@AGENTS\.md') { 'AGENTS.md' } else { 'CLAUDE.md' }
+    $text = $leftoverUtf8.GetString((Get-GitBlobBytes -Spec "${Ref}:dist/$Product/$file")).Replace("`r`n", "`n")
+    $start = $text.IndexOf("`n## Boy Scout Rule`n", [StringComparison]::Ordinal) + 1
+    $end = $text.IndexOf("`n## ", $start + 3, [StringComparison]::Ordinal)
+    if ($start -le 0 -or $end -lt 0) { throw "calibration: no Boy Scout Rule section in $Ref $Product $file" }
+    return $text.Substring($start, $end + 1 - $start)
+}
+function New-LeftoverConsumer {
+    param([string]$Agents, [string]$Version = '0.99.1', [switch]$Git)
+    $t = Join-Path ([IO.Path]::GetTempPath()) "leftover-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude') | Out-Null
+    [IO.File]::WriteAllBytes((Join-Path $t 'CLAUDE.md'), [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/CLAUDE.md')))
+    [IO.File]::WriteAllText((Join-Path $t 'AGENTS.md'), $Agents, $leftoverUtf8)
+    [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), "{`"version`": `"$Version`"}`n", $leftoverUtf8)
+    if ($Git) {
+        & git -C $t init -q 2>&1 | Out-Null
+        & git -C $t config user.email 'fixture@example.test'
+        & git -C $t config user.name 'Fixture'
+        & git -C $t config core.autocrlf false
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'team files' 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'calibration: could not commit the leftover consumer' }
+    }
+    return $t
+}
+function Get-LeftoverLines { param([string]$Output, [string]$Pattern) return , @($Output -split '\r?\n' | Where-Object { $_ -match $Pattern }) }
+
+# Boy Scout Rule sections as releases from 0.76.0 shipped them, several in one file: each exact one becomes today's section for
+# its product; one with every changed line edited stays byte for byte; one with one line edited changes only the others; the
+# same old lines outside the section stay.
+& {
+    $exact = @()
+    foreach ($pair in @(@('v0.76.0', 'dotnet'), @('v0.85.0', 'dotnet'), @('v0.76.0', 'angular'), @('v0.94.0', 'angular'), @('v0.76.0', 'monorepo'), @('v0.85.0', 'monorepo'))) {
+        $exact += [pscustomobject]@{ Old = (Get-LeftoverBoyScout -Ref $pair[0] -Product $pair[1]); New = (Get-LeftoverBoyScout -Ref 'HEAD' -Product $pair[1]); Name = "$($pair[0]) $($pair[1])" }
+    }
+    $headLines = @((Get-LeftoverBoyScout -Ref 'HEAD' -Product 'dotnet').Split([char]10))
+    $old085 = Get-LeftoverBoyScout -Ref 'v0.85.0' -Product 'dotnet'
+    $changed = @($old085.Split([char]10) | Where-Object { $_.Length -gt 0 -and $headLines -cnotcontains $_ -and $_ -ne '## Boy Scout Rule' })
+    if ($changed.Count -lt 5) { throw "calibration: expected at least five changed lines in v0.85.0's section, got $($changed.Count)" }
+    $edited = $old085
+    foreach ($line in $changed) { $edited = $edited.Replace("$line`n", "$line (team wording)`n") }
+    $skip = @($changed | Where-Object { $_.StartsWith('**When to skip**', [StringComparison]::Ordinal) })[0]
+    $item1 = @($changed | Where-Object { $_.StartsWith('1. ', [StringComparison]::Ordinal) })[0]
+    $mixedOld = $old085.Replace("$item1`n", "$item1 (team wording)`n")
+    $mixedNew = (Get-LeftoverBoyScout -Ref 'HEAD' -Product 'dotnet').Replace("1. ``CancellationToken`` only when outcome/compatibility requires it`n", "$item1 (team wording)`n")
+    if ($mixedNew -ceq (Get-LeftoverBoyScout -Ref 'HEAD' -Product 'dotnet')) { throw 'calibration: the mixed expectation did not apply' }
+    $outside = "## Conventions`n`n$item1`n`n$skip`n`n---`n`n"
+    $before = "# Acme`n`n" + $outside + (@($exact | ForEach-Object { $_.Old }) -join '') + $edited + $mixedOld + "## What We've Learned`n`n- x`n"
+    $expected = "# Acme`n`n" + $outside + (@($exact | ForEach-Object { $_.New }) -join '') + $edited + $mixedNew + "## What We've Learned`n`n- x`n"
+    $t = New-LeftoverConsumer -Agents $before -Git
+    try {
+        $head = (& git -C $t rev-parse HEAD).Trim()
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = $leftoverUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')))
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'update' 2>&1 | Out-Null
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        $rerunExit = $LASTEXITCODE
+
+        It 'old Boy Scout lines: each exact line a release shipped becomes the current text or goes, and every other byte stays' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            if ($after -cne $expected) {
+                $a = $after.Split([char]10); $e = $expected.Split([char]10)
+                $at = 0; while ($at -lt [Math]::Min($a.Count, $e.Count) -and $a[$at] -ceq $e[$at]) { $at++ }
+                throw "AGENTS.md differs from the expected text at line $($at + 1): got '$(if ($at -lt $a.Count) { $a[$at] })', want '$(if ($at -lt $e.Count) { $e[$at] })'. Output:`n$out"
+            }
+            $notice = Get-LeftoverLines $out 'NOTICE: updating old Boy Scout Rule text in AGENTS\.md'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains($head)) "expected one Boy Scout NOTICE naming commit $head. Output:`n$out"
+        }
+
+        It 'old Boy Scout lines: an edited copy of each stays, the skip paragraph included, and the same text outside the section stays' {
+            Assert ($after.Contains($edited)) "the section with every changed line edited did not stay byte for byte. Output:`n$out"
+            Assert ($after.Contains("$skip (team wording)`n") -and $after.StartsWith("# Acme`n`n$outside", [StringComparison]::Ordinal)) "an edited skip paragraph, or the old text outside the section, changed. Output:`n$out"
+            Assert ($after.Contains($mixedNew)) "a section with one edited line did not change only its exact lines. Output:`n$out"
+        }
+
+        It 'old Boy Scout lines: a second update changes nothing and says nothing about them' {
+            Assert ($rerunExit -eq 0) "second update exited ${rerunExit}: $rerun"
+            Assert ($leftoverUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -ceq $expected) "a second update changed AGENTS.md. Output:`n$rerun"
+            Assert ((Get-LeftoverLines $rerun 'Boy Scout').Count -eq 0) "a second update printed a Boy Scout line. Output:`n$rerun"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A team line written right under an old line, with no empty line between (a continuation, or an indented sub-bullet), may depend
+# on it: the old line stays as it is and is named; the section's other old lines still change.
+& {
+    $old085 = Get-LeftoverBoyScout -Ref 'v0.85.0' -Product 'dotnet'
+    $headLines = @((Get-LeftoverBoyScout -Ref 'HEAD' -Product 'dotnet').Split([char]10))
+    $changed = @($old085.Split([char]10) | Where-Object { $_.Length -gt 0 -and $headLines -cnotcontains $_ -and $_ -ne '## Boy Scout Rule' })
+    $skip = @($changed | Where-Object { $_.StartsWith('**When to skip**', [StringComparison]::Ordinal) })[0]
+    $item1 = @($changed | Where-Object { $_.StartsWith('1. ', [StringComparison]::Ordinal) })[0]
+    $others = @($changed | Where-Object { $_ -cne $skip -and $_ -cne $item1 })
+    if (-not $skip -or -not $item1 -or $others.Count -lt 3) { throw 'calibration: v0.85.0 lacks the old lines this case hangs team lines on' }
+    $continued = "$skip`nFor our team this ALSO covers release/* branches, never main.`n"
+    $child = "$item1`n   - Acme: also in our message handlers.`n"
+    $before = "# Acme`n`n" + $old085.Replace("$skip`n", $continued).Replace("$item1`n", $child) + "## What We've Learned`n`n- x`n"
+    $t = New-LeftoverConsumer -Agents $before
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = $leftoverUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')))
+
+        It 'old Boy Scout lines: a line a team line hangs on stays and is named, and the other old lines still change' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($after.Contains($continued) -and $after.Contains($child)) "an old line a team line hangs on was reworded or removed. Got:`n$after`nOutput:`n$out"
+            $left = @($others | Where-Object { $after.Contains("$_`n") })
+            Assert ($left.Count -eq 0) "old lines no team line hangs on stayed: $($left -join ' | '). Output:`n$out"
+            $notice = Get-LeftoverLines $out 'NOTICE: kept old Boy Scout Rule text in AGENTS\.md as it is'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains('item 1') -and $notice[0].Contains('**When to skip**') -and $notice[0].Contains('may continue it or depend on it')) "expected one NOTICE naming item 1 and the skip paragraph and saying why. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A team line right above a shipped paragraph line, with no empty line between, leads into it (one Markdown paragraph): the
+# shipped line stays and is named, the rest of the section still changes. Text under a team's own '# ' heading after the
+# section is not the section's: an exact shipped line there stays, and the NOTICE counts only the section's lines.
+& {
+    $old085 = Get-LeftoverBoyScout -Ref 'v0.85.0' -Product 'dotnet'
+    $new = Get-LeftoverBoyScout -Ref 'HEAD' -Product 'dotnet'
+    $headLines = @($new.Split([char]10))
+    $changed = @($old085.Split([char]10) | Where-Object { $_.Length -gt 0 -and $headLines -cnotcontains $_ -and $_ -ne '## Boy Scout Rule' })
+    $skip = @($changed | Where-Object { $_.StartsWith('**When to skip**', [StringComparison]::Ordinal) })[0]
+    $others = @($changed | Where-Object { $_ -cne $skip })
+    if (-not $skip -or $others.Count -lt 3) { throw 'calibration: v0.85.0 lacks the old lines this case needs' }
+    $lead = '**Acme exception**: never skip on payments code. Otherwise, the standard rule applies:'
+    $tail = "## What We've Learned`n`n- x`n"
+    $above = "# Acme`n`n" + $old085.Replace("`n$skip`n", "`n$lead`n$skip`n") + $tail
+    if ($above -ceq "# Acme`n`n$old085$tail") { throw 'calibration: the lead-in line was not inserted' }
+    $appendix = "# Acme appendix: old wording we keep for audit`n`n$skip`n`n"
+    $h1 = "# Acme`n`n" + $old085 + $appendix + $tail
+    $plain = "# Acme`n`n" + $old085 + $tail
+    $ta = New-LeftoverConsumer -Agents $above
+    $th = New-LeftoverConsumer -Agents $h1
+    $tp = New-LeftoverConsumer -Agents $plain
+    try {
+        $outA = Invoke-Installer -Dist 'dotnet' -Target $ta
+        $exitA = $LASTEXITCODE
+        $afterA = $leftoverUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $ta 'AGENTS.md')))
+        $outH = Invoke-Installer -Dist 'dotnet' -Target $th
+        $exitH = $LASTEXITCODE
+        $afterH = $leftoverUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $th 'AGENTS.md')))
+        $outP = Invoke-Installer -Dist 'dotnet' -Target $tp
+        $exitP = $LASTEXITCODE
+
+        It 'old Boy Scout lines: a shipped paragraph line a team line right above leads into stays and is named, and the rest still changes' {
+            Assert ($exitA -eq 0) "update exited ${exitA}: $outA"
+            Assert ($afterA.Contains("`n$lead`n$skip`n")) "the shipped line a team line leads into was reworded or removed. Got:`n$afterA`nOutput:`n$outA"
+            $left = @($others | Where-Object { $afterA.Contains("$_`n") })
+            Assert ($left.Count -eq 0) "old lines no team line leans on stayed: $($left -join ' | '). Output:`n$outA"
+            $notice = Get-LeftoverLines $outA 'NOTICE: kept old Boy Scout Rule text in AGENTS\.md as it is'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains('**When to skip**') -and $notice[0].Contains('(above it: ') -and $notice[0].Contains('a line right next to it')) "expected one NOTICE naming the skip paragraph with the line above it. Output:`n$outA"
+            Assert ((Get-LeftoverLines $outA 'NOTICE: updating old Boy Scout Rule text in AGENTS\.md').Count -eq 1) "the rest of the section was not updated. Output:`n$outA"
+        }
+
+        It 'old Boy Scout lines: a level-1 heading ends the section, so a shipped line under it stays and the NOTICE counts only the section' {
+            Assert ($exitH -eq 0 -and $exitP -eq 0) "update exited $exitH (with the heading) or $exitP (without): $outH"
+            Assert ($afterH -ceq ("# Acme`n`n" + $new + $appendix + $tail)) "AGENTS.md is not the current section followed by the team's heading and its text unchanged. Got:`n$afterH`nOutput:`n$outH"
+            $parts = { param($o) @(Get-LeftoverLines $o 'NOTICE: updating old Boy Scout Rule text in AGENTS\.md' | ForEach-Object { [regex]::Match($_, "to the current template's \(([^)]*)\)").Groups[1].Value }) -join '|' }
+            $withHeading = & $parts $outH; $without = & $parts $outP
+            Assert ($without.Length -gt 0 -and $withHeading -ceq $without) "the NOTICE counts differ: with the heading '$withHeading', without '$without'. Output:`n$outH"
+        }
+    } finally { Remove-Item -Recurse -Force $ta, $th, $tp -ErrorAction SilentlyContinue }
+}
+
+# Keeping an old line: the match is exact and nothing remembers a choice, so the NOTICE says to put it back reworded; a line put
+# back with one word changed survives the next update, which says nothing about Boy Scout text.
+& {
+    $old085 = Get-LeftoverBoyScout -Ref 'v0.85.0' -Product 'dotnet'
+    $headLines = @((Get-LeftoverBoyScout -Ref 'HEAD' -Product 'dotnet').Split([char]10))
+    $item1 = @($old085.Split([char]10) | Where-Object { $_.StartsWith('1. ', [StringComparison]::Ordinal) -and $headLines -cnotcontains $_ })[0]
+    $newItem1 = @($headLines | Where-Object { $_.StartsWith('1. ', [StringComparison]::Ordinal) })[0]
+    if (-not $item1 -or -not $newItem1 -or $item1 -notmatch 'Missing') { throw 'calibration: v0.85.0 item 1 is not an old line this case can reword' }
+    $t = New-LeftoverConsumer -Agents ("# Acme`n`n" + $old085 + "## What We've Learned`n`n- x`n") -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = $leftoverUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')))
+        $kept = $item1.Replace('Missing', 'Absent')
+        [IO.File]::WriteAllText((Join-Path $t 'AGENTS.md'), $after.Replace("$newItem1`n", "$kept`n"), $leftoverUtf8)
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'keep our item 1' 2>&1 | Out-Null
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        $rerunExit = $LASTEXITCODE
+        $final = $leftoverUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')))
+
+        It 'old Boy Scout lines: the NOTICE says to put an old line back reworded, and one put back reworded survives' {
+            Assert ($exit -eq 0 -and $after.Contains("$newItem1`n")) "the first update exited $exit or did not reword item 1. Output:`n$out"
+            $notice = Get-LeftoverLines $out 'NOTICE: updating old Boy Scout Rule text in AGENTS\.md'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains('put it back with any change of wording') -and $notice[0].Contains('a line put back word for word is rewritten again by the next update')) "the NOTICE still says to put the exact line back. Output:`n$out"
+            Assert ($rerunExit -eq 0) "second update exited ${rerunExit}: $rerun"
+            Assert ($final.Contains("$kept`n")) "the item put back reworded was changed. Output:`n$rerun"
+            Assert ((Get-LeftoverLines $rerun 'Boy Scout').Count -eq 0) "the second update printed a Boy Scout line. Output:`n$rerun"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# Common Tasks lines of retired skills: an exact line whose skill is gone goes; an edited one, and one whose skill file remains, stay.
+& {
+    $endpoint = '- `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)'
+    $entity = '- `add-entity` — add a new EF Core entity with configuration and migration review'
+    $register = '- `register-service` — register a new service in DI with the right lifetime'
+    $component = '- `add-component` — add a new Angular feature component end-to-end'
+    $keep = '- `create-adr` — record a significant architecture decision in Architecture Decisions'
+    $before = "# Acme`n`n## Common Tasks`n`n$endpoint`n$entity  `n$register (our wording)`n$component`n$keep`n`n---`n`n## Notes`n`n$endpoint`n"
+    $expected = "# Acme`n`n## Common Tasks`n`n$register (our wording)`n$component`n$keep`n`n---`n`n## Notes`n`n$endpoint`n"
+    $t = New-LeftoverConsumer -Agents $before
+    $skill = Join-Path $t '.claude/skills/add-component/SKILL.md'
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $skill) | Out-Null
+    [IO.File]::WriteAllText($skill, "---`nname: add-component`ndescription: our own recipe`n---`nTEAM`n", $leftoverUtf8)
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = $leftoverUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')))
+
+        It 'retired skill lines: an exact Common Tasks line whose skill is gone is removed, in an install updated before' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($after -ceq $expected) "AGENTS.md is not the expected text. Got:`n$after`nOutput:`n$out"
+            $notice = Get-LeftoverLines $out "NOTICE: removing the 'add-endpoint' and 'add-entity' lines from AGENTS\.md > Common Tasks"
+            Assert ($notice.Count -eq 1) "expected one removal NOTICE naming both lines. Output:`n$out"
+            Assert-BytesEqual -Expected ($leftoverUtf8.GetBytes($before)) -Actual ([IO.File]::ReadAllBytes((Join-Path $t '.claude/framework-update-backup/instruction-files/AGENTS.md'))) -Message "the original AGENTS.md was not saved. Output:`n$out"
+        }
+
+        It 'retired skill lines: an edited line, and a line whose skill file remains, stay and are named' {
+            Assert ($after.Contains("$register (our wording)`n") -and $after.Contains("$component`n")) "a kept line changed. Got:`n$after"
+            Assert ((Get-LeftoverLines $out "NOTICE: kept the 'register-service' line in AGENTS\.md > Common Tasks: [^\r\n]*differs").Count -eq 1) "the edited line is not named. Output:`n$out"
+            Assert ((Get-LeftoverLines $out "NOTICE: kept the 'add-component' line in AGENTS\.md > Common Tasks: [^\r\n]*SKILL\.md is still at \.claude/skills/add-component/").Count -eq 1) "the line whose skill remains is not named. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# The Common Tasks clean-up stops at a team's own level-1 heading: a retired skill's exact line copied under it is the team's text.
+& {
+    $endpoint = '- `add-endpoint` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)'
+    $entity = '- `add-entity` — add a new EF Core entity with configuration and migration review'
+    $before = "# Acme`n`n## Common Tasks`n`n$endpoint`n`n# Our notes`n`n$entity`n"
+    $expected = "# Acme`n`n## Common Tasks`n`n`n# Our notes`n`n$entity`n"
+    $t = New-LeftoverConsumer -Agents $before
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = $leftoverUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')))
+
+        It 'retired skill lines: a retired skill''s exact line under a team''s level-1 heading after Common Tasks stays, the one inside the section goes' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($after -ceq $expected) "AGENTS.md is not the expected text. Got:`n$after`nOutput:`n$out"
+            Assert ((Get-LeftoverLines $out "NOTICE: removing the 'add-endpoint' line from AGENTS\.md > Common Tasks").Count -eq 1) "the removal of the line inside the section is not named. Output:`n$out"
+            Assert ((Get-LeftoverLines $out "add-entity").Count -eq 0) "the line under the team's heading is named in the output. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# The update that deletes a retired skill's SKILL.md removes its exact Common Tasks line in the same run.
+& {
+    $line = '- `add-service` — add an HTTP / business-logic / signal-store service'
+    $t = New-LeftoverConsumer -Agents "# Acme`n`n## Common Tasks`n`n$line`n" -Version '0.91.0'
+    try {
+        [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), '{"version":"0.91.0","template":"monorepo"}', $leftoverUtf8)
+        [IO.File]::WriteAllBytes((Join-Path $t 'framework-ownership.json'), (Get-GitBlobBytes -Spec 'v0.91.0:dist/monorepo/framework-ownership.json'))
+        $service = Join-Path $t '.claude/skills/add-service/SKILL.md'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $service) | Out-Null
+        [IO.File]::WriteAllBytes($service, (Get-GitBlobBytes -Spec 'v0.91.0:dist/monorepo/.claude/skills/add-service/SKILL.md'))
+        $out = Invoke-Installer -Dist 'monorepo' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'retired skill lines: the update that deletes the skill removes its exact line and its emptied folder' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (-not (Test-Path -LiteralPath $service)) "calibration: the retired SKILL.md was not deleted. Output:`n$out"
+            Assert ($leftoverUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) -ceq "# Acme`n`n## Common Tasks`n`n") "the add-service line is still there. Output:`n$out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/skills/add-service'))) "the emptied skill folder is still there. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# Empty folders: a tree an earlier update emptied goes; one holding any file, hidden too, stays whole; a link stays.
+& {
+    $te = New-LeftoverConsumer -Agents "# Acme`n"
+    foreach ($folder in '.github/skills/perf', '.github/skills/add-endpoint/references', '.github/prompts', 'docs/presentation', '.claude/skills/add-endpoint') { New-Item -ItemType Directory -Force -Path (Join-Path $te $folder) | Out-Null }
+    $tk = New-LeftoverConsumer -Agents "# Acme`n"
+    foreach ($folder in '.github/skills/perf', '.github/skills/team') { New-Item -ItemType Directory -Force -Path (Join-Path $tk $folder) | Out-Null }
+    [IO.File]::WriteAllText((Join-Path $tk '.github/skills/team/.keep'), '', $leftoverUtf8)
+    (Get-Item -Force -LiteralPath (Join-Path $tk '.github/skills/team/.keep')).Attributes = 'Hidden'
+    $aim = Join-Path $tk 'elsewhere'
+    New-Item -ItemType Directory -Force -Path $aim, (Join-Path $tk 'docs') | Out-Null
+    New-Item -ItemType Junction -Path (Join-Path $tk 'docs/presentation') -Target $aim | Out-Null
+    try {
+        $outE = Invoke-Installer -Dist 'dotnet' -Target $te
+        $exitE = $LASTEXITCODE
+        $outK = Invoke-Installer -Dist 'dotnet' -Target $tk
+        $exitK = $LASTEXITCODE
+
+        It 'empty folders: retired folders an earlier update emptied are removed and named' {
+            Assert ($exitE -eq 0) "update exited ${exitE}: $outE"
+            foreach ($folder in '.github/skills', '.github/prompts', 'docs/presentation', '.claude/skills/add-endpoint') {
+                Assert (-not (Test-Path -LiteralPath (Join-Path $te $folder))) "$folder is still there. Output:`n$outE"
+            }
+            # The folders may be a team's own; what is known is that they hold no file and lie on retired paths.
+            Assert ((Get-LeftoverLines $outE 'retired framework files left behind').Count -eq 0) "the NOTICE says retired framework files left the folders behind. Output:`n$outE"
+            $notice = Get-LeftoverLines $outE 'NOTICE: removed \d+ empty folders on the paths of files the framework retired, each holding no file at any depth'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains('.github/skills/') -and $notice[0].Contains('docs/presentation/')) "expected one NOTICE naming the folders. Output:`n$outE"
+            Assert (Test-Path -LiteralPath (Join-Path $te '.claude/skills') -PathType Container) 'the skills folder itself went'
+        }
+
+        It 'empty folders: a tree holding one hidden file stays whole, and a link stays' {
+            Assert ($exitK -eq 0) "update exited ${exitK}: $outK"
+            Assert (Test-Path -LiteralPath (Join-Path $tk '.github/skills/team/.keep') -PathType Leaf) "the team's file went. Output:`n$outK"
+            Assert (Test-Path -LiteralPath (Join-Path $tk '.github/skills/perf') -PathType Container) "an empty folder inside a tree that holds a file went. Output:`n$outK"
+            Assert (Test-Path -LiteralPath (Join-Path $tk 'docs/presentation')) "the junction went. Output:`n$outK"
+            Assert (Test-Path -LiteralPath $aim -PathType Container) 'the folder the junction leads to went'
+            Assert ((Get-LeftoverLines $outK 'empty folder').Count -eq 0) "a folder was reported removed. Output:`n$outK"
+        }
+    } finally {
+        if (Test-Path -LiteralPath (Join-Path $tk 'docs/presentation')) { [IO.Directory]::Delete((Join-Path $tk 'docs/presentation'), $false) }
+        Remove-Item -Recurse -Force $te, $tk -ErrorAction SilentlyContinue
+    }
+}
+
+# A junction to an empty folder under a retired folder is a link, not an empty folder: it stays, and so does the folder above it.
+& {
+    $tl = New-LeftoverConsumer -Agents "# Acme`n"
+    New-Item -ItemType Directory -Force -Path (Join-Path $tl '.github/skills') | Out-Null
+    $aimL = Join-Path $tl 'elsewhere-empty'
+    New-Item -ItemType Directory -Force -Path $aimL | Out-Null
+    New-Item -ItemType Junction -Path (Join-Path $tl '.github/skills/team') -Target $aimL | Out-Null
+    try {
+        $outL = Invoke-Installer -Dist 'dotnet' -Target $tl
+        $exitL = $LASTEXITCODE
+
+        It 'empty folders: a junction to an empty folder under a retired folder stays, and so does the folder above it' {
+            Assert ($exitL -eq 0) "update exited ${exitL}: $outL"
+            Assert (Test-Path -LiteralPath (Join-Path $tl '.github/skills/team')) "the junction went. Output:`n$outL"
+            Assert (Test-Path -LiteralPath (Join-Path $tl '.github/skills') -PathType Container) ".github/skills went with the junction in it. Output:`n$outL"
+            Assert (Test-Path -LiteralPath $aimL -PathType Container) 'the folder the junction leads to went'
+            Assert ((Get-LeftoverLines $outL 'empty folder').Count -eq 0) "a folder was reported removed. Output:`n$outL"
+        }
+    } finally {
+        if (Test-Path -LiteralPath (Join-Path $tl '.github/skills/team')) { [IO.Directory]::Delete((Join-Path $tl '.github/skills/team'), $false) }
+        Remove-Item -Recurse -Force $tl -ErrorAction SilentlyContinue
     }
 }
 

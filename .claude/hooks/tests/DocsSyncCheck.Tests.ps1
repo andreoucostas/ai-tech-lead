@@ -3,7 +3,7 @@
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $psExe = (Get-Process -Id $PID).Path
-$cases = @('PowerShell docs sync', 'AGENTS.md byte budget', 'bracketed repository path', 'wiki owner field')
+$cases = @('PowerShell docs sync', 'AGENTS.md byte budget', 'bracketed repository path', 'wiki owner field', 'emptied GitHub skills tree', 'linked GitHub skills tree', 'linked empty GitHub skills tree')
 $failed = 0
 
 function Invoke-DocsSyncCandidate {
@@ -54,6 +54,89 @@ foreach ($case in $cases) {
             $failed++
             [Console]::Error.WriteLine("[FAIL] ${case}: $($_.Exception.Message)")
         } finally {
+            if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+        }
+        continue
+    }
+    if ($case -eq 'emptied GitHub skills tree') {
+        # An update before 0.99.2 emptied .github/skills but left its folders, and this check failed on the path alone.
+        try {
+            # An installed repository (no template marker) runs the consumer checks; before /bootstrap others fail, so read check 5's line.
+            Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $scratch -Recurse -Force
+            [IO.File]::Delete((Join-Path $scratch '.template-repo'))
+            foreach ($folder in '.github/skills/perf', '.github/skills/add-endpoint/references') { New-Item -ItemType Directory -Force -Path (Join-Path $scratch $folder) | Out-Null }
+            $empty = Invoke-DocsSyncCandidate -Root $scratch
+            if ($empty.Output -match '\.github/skills exists' -or $empty.Output -notmatch 'canonical project skills use \.claude/skills') { throw "a .github/skills tree holding no file was reported as a skill path: $($empty.Output)" }
+            [IO.File]::WriteAllText((Join-Path $scratch '.github/skills/add-endpoint/references/note.md'), "kept`n", [Text.UTF8Encoding]::new($false))
+            $held = Invoke-DocsSyncCandidate -Root $scratch
+            if ($held.Exit -ne 1 -or $held.Output -notmatch '\.github/skills exists') { throw "a .github/skills tree holding a file deep down exited $($held.Exit), expected 1 with the finding: $($held.Output)" }
+            Write-Host "[ok] ${case} -- a tree of empty folders passes, one file at any depth fails"
+        } catch {
+            $failed++
+            [Console]::Error.WriteLine("[FAIL] ${case} -- $($_.Exception.Message)")
+        } finally {
+            if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+        }
+        continue
+    }
+    if ($case -eq 'linked GitHub skills tree') {
+        # Get-ChildItem -Recurse -File does not go into a junction, so a .github/skills holding only a link to a skill folder,
+        # which Copilot reads through, passed both checks as a tree holding no file.
+        $aimed = $null
+        try {
+            Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $scratch -Recurse -Force
+            [IO.File]::Delete((Join-Path $scratch '.template-repo'))
+            $aimed = Join-Path $scratch '.claude/skills/teamskill'
+            New-Item -ItemType Directory -Force -Path $aimed, (Join-Path $scratch '.github/skills') | Out-Null
+            [IO.File]::WriteAllText((Join-Path $aimed 'SKILL.md'), "---`nname: teamskill`ndescription: team skill`n---`n", [Text.UTF8Encoding]::new($false))
+            New-Item -ItemType Junction -Path (Join-Path $scratch '.github/skills/teamskill') -Target $aimed | Out-Null
+            $docs = Invoke-DocsSyncCandidate -Root $scratch
+            if ($docs.Exit -eq 0 -or $docs.Output -notmatch 'FAIL: \.github/skills exists' -or $docs.Output -match 'OK: +canonical project skills') { throw "docs-sync-check passed a .github/skills holding a junction (exit $($docs.Exit)): $($docs.Output)" }
+            $checks = & $psExe -NoProfile -File (Join-Path $scratch 'scripts/template-checks.ps1') 2>&1 | Out-String
+            $checksExit = [int]$LASTEXITCODE
+            if ($checksExit -eq 0 -or $checks -notmatch 'FAIL: \.github/skills exists' -or $checks -match 'OK: +canonical project skills') { throw "template-checks passed a .github/skills holding a junction (exit $checksExit): $checks" }
+            Write-Host "[ok] ${case} -- a junction under .github/skills counts as a file in both checks"
+        } catch {
+            $failed++
+            [Console]::Error.WriteLine("[FAIL] ${case} -- $($_.Exception.Message)")
+        } finally {
+            $link = Join-Path $scratch '.github/skills/teamskill'
+            if (Test-Path -LiteralPath $link) { [IO.Directory]::Delete($link, $false) }
+            if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+        }
+        continue
+    }
+    if ($case -eq 'linked empty GitHub skills tree') {
+        # A link is a file for this check although the folder it leads to holds none: a junction to an empty folder under
+        # .github/skills, and .github/skills itself a junction to an empty folder, were both read as an emptied tree.
+        $aimed = Join-Path $scratch 'elsewhere-empty'
+        $links = @((Join-Path $scratch '.github/skills/teamskill'), (Join-Path $scratch '.github/skills'))
+        try {
+            Copy-Item -LiteralPath (Join-Path $repoRoot 'dist/dotnet') -Destination $scratch -Recurse -Force
+            [IO.File]::Delete((Join-Path $scratch '.template-repo'))
+            New-Item -ItemType Directory -Force -Path $aimed | Out-Null
+            foreach ($shape in @('a junction to an empty folder under .github/skills', '.github/skills as a junction to an empty folder')) {
+                foreach ($link in $links) { if (Test-Path -LiteralPath $link) { if ((Get-Item -LiteralPath $link -Force).LinkType) { [IO.Directory]::Delete($link, $false) } } }
+                if (Test-Path -LiteralPath (Join-Path $scratch '.github/skills')) { Remove-Item -LiteralPath (Join-Path $scratch '.github/skills') -Recurse -Force }
+                if ($shape -like 'a junction*') {
+                    New-Item -ItemType Directory -Force -Path (Join-Path $scratch '.github/skills') | Out-Null
+                    New-Item -ItemType Junction -Path $links[0] -Target $aimed | Out-Null
+                } else {
+                    New-Item -ItemType Directory -Force -Path (Join-Path $scratch '.github') | Out-Null
+                    New-Item -ItemType Junction -Path $links[1] -Target $aimed | Out-Null
+                }
+                $docs = Invoke-DocsSyncCandidate -Root $scratch
+                if ($docs.Exit -eq 0 -or $docs.Output -notmatch 'FAIL: \.github/skills exists') { throw "docs-sync-check passed $shape (exit $($docs.Exit)): $($docs.Output)" }
+                $checks = & $psExe -NoProfile -File (Join-Path $scratch 'scripts/template-checks.ps1') 2>&1 | Out-String
+                $checksExit = [int]$LASTEXITCODE
+                if ($checksExit -eq 0 -or $checks -notmatch 'FAIL: \.github/skills exists' -or $checks -match 'OK: +canonical project skills') { throw "template-checks passed $shape (exit $checksExit): $checks" }
+            }
+            Write-Host "[ok] ${case} -- a link to an empty folder, nested or as .github/skills itself, still counts as a file in both checks"
+        } catch {
+            $failed++
+            [Console]::Error.WriteLine("[FAIL] ${case} -- $($_.Exception.Message)")
+        } finally {
+            foreach ($link in $links) { if ((Test-Path -LiteralPath $link) -and (Get-Item -LiteralPath $link -Force).LinkType) { [IO.Directory]::Delete($link, $false) } }
             if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
         }
         continue

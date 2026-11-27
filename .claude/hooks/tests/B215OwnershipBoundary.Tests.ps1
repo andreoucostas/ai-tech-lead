@@ -327,7 +327,7 @@ It 'B-561 the ledger lists the superseded rule sections and Boy Scout items, and
         Assert ($other -ceq $sourceJson) "$copy carries a different superseded-instruction-text"
     }
     $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), [ref]$null, [ref]$null)
-    $wanted = @('Read-SupersededInstructionText', 'Get-InstructionLineCore', 'Get-InstructionDigest', 'Get-InstructionFences', 'Get-InstructionSections', 'Get-SupersededCleanup')
+    $wanted = @('Read-SupersededInstructionText', 'Get-InstructionLineCore', 'Get-InstructionDigest', 'Get-InstructionFences', 'Get-InstructionSections', 'Test-BoyScoutLedgerLine', 'Get-SupersededCleanup')
     $functions = @($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $wanted -ccontains $_.Name })
     Assert ($functions.Count -eq $wanted.Count) "the shipped installer defines $($functions.Count) of $($wanted -join ', ')"
     . ([scriptblock]::Create((@($functions | ForEach-Object { $_.Extent.Text }) -join "`n")))
@@ -343,6 +343,140 @@ It 'B-561 the ledger lists the superseded rule sections and Boy Scout items, and
     $superseded = Read-SupersededInstructionText -Path (Join-Path $repoRoot 'dist/dotnet/framework-retirements.json')
     $cleanup = Get-SupersededCleanup -Text $fixture -Superseded $superseded
     Assert ((@($cleanup.Removed) -join ', ') -ceq 'Verification Rules, Leanness, SOLID, Agentic Workflow' -and $cleanup.Replaced.Count -eq 1 -and $cleanup.Differs.Count -eq 0) "the installer would not remove the four old sections and replace one item: removed $(@($cleanup.Removed) -join ', '); replaced $($cleanup.Replaced.Count); differs $(@($cleanup.Differs) -join ', ')"
+}
+
+# The old Boy Scout Rule lines and retired skills' Common Tasks lines an update may change: 13 items, 5 whole lines (2 of
+# them removals), 7 skill lines. Each old text is a line a release from 0.76.0 shipped in that section, each successor a
+# line of today's section, each skill one the ledger retired; the shipped reader takes the key and refuses a malformed one.
+It 'old Boy Scout and retired skill lines: the ledger lists texts releases shipped, each with a successor today ships' {
+    $source = ([IO.File]::ReadAllText((Join-Path $repoRoot 'src/core/framework-retirements.json')) | ConvertFrom-Json)
+    $data = $source.'superseded-instruction-text'
+    Assert (@($data.'boy-scout-items').Count -eq 13 -and @($data.'boy-scout-lines').Count -eq 5 -and @($data.'retired-skill-lines').Count -eq 7) "expected 13 items, 5 lines and 7 skill lines, got $(@($data.'boy-scout-items').Count), $(@($data.'boy-scout-lines').Count) and $(@($data.'retired-skill-lines').Count)"
+    Assert (@($data.'boy-scout-lines' | Where-Object { $null -eq $_.replacement }).Count -eq 2) 'expected two whole lines mapped to removal'
+    $digest = { param([string]$Text) $sha = [Security.Cryptography.SHA256]::Create(); try { ([BitConverter]::ToString($sha.ComputeHash([Text.UTF8Encoding]::new($false).GetBytes($Text)))).Replace('-', '').ToLowerInvariant() } finally { $sha.Dispose() } }
+    $sectionLines = {
+        param([string]$Ref, [string]$Product)
+        $show = { param([string]$Spec) $r = Invoke-GitBytes @('cat-file', 'blob', $Spec); if ($r.Exit -ne 0) { throw "could not read $Spec" }; [Text.UTF8Encoding]::new($false).GetString($r.Bytes) }
+        $claude = & $show "${Ref}:dist/$Product/CLAUDE.md"
+        $file = if ($claude -match '(?m)^@AGENTS\.md') { 'AGENTS.md' } else { 'CLAUDE.md' }
+        $in = $false; $lines = @(); $tasks = $false; $task = @()
+        foreach ($l in (& $show "${Ref}:dist/$Product/$file").Split([char]10)) {
+            $c = $l.TrimEnd("`r").TrimEnd(' ', "`t")
+            if ($c.StartsWith('## ')) { $in = $c -ceq '## Boy Scout Rule'; $tasks = $c -ceq '## Common Tasks'; continue }
+            if ($in -and $c.Length -gt 0) { $lines += $c }
+            if ($tasks -and $c.StartsWith('- `')) { $task += $c }
+        }
+        return [pscustomobject]@{ Lines = $lines; Tasks = $task }
+    }
+    $oldItems = @{}; $oldLines = @{}; $oldTasks = @{}
+    $tags = @(& git -C $repoRoot tag --list 'v*' | Where-Object { $_ -match '^v(\d+\.\d+\.\d+)$' -and [version]$Matches[1] -ge [version]'0.76.0' })
+    foreach ($tag in $tags) { foreach ($p in 'dotnet', 'angular', 'monorepo') {
+        $read = & $sectionLines $tag $p
+        foreach ($c in $read.Lines) { $oldLines[(& $digest $c)] = $true; if ($c -cmatch '^\d+\.\s+(.*)$') { $oldItems[(& $digest $Matches[1])] = $true } }
+        foreach ($c in $read.Tasks) { $oldTasks[(& $digest $c)] = $true }
+    } }
+    $headItems = @{}; $headLines = @{}
+    foreach ($p in 'dotnet', 'angular', 'monorepo') { foreach ($c in (& $sectionLines 'HEAD' $p).Lines) { $headLines[$c] = $true; if ($c -cmatch '^\d+\.\s+(.*)$') { $headItems[$Matches[1]] = $true } } }
+    foreach ($entry in $data.'boy-scout-items') {
+        Assert $oldItems.ContainsKey($entry.'known-line-sha256') "boy-scout-items digest $($entry.'known-line-sha256') is no item a release from 0.76.0 shipped"
+        Assert $headItems.ContainsKey($entry.replacement) "boy-scout-items successor '$($entry.replacement)' is no item of today's section"
+    }
+    foreach ($entry in $data.'boy-scout-lines') {
+        Assert $oldLines.ContainsKey($entry.'known-line-sha256') "boy-scout-lines digest $($entry.'known-line-sha256') is no line a release from 0.76.0 shipped"
+        Assert ($null -eq $entry.replacement -or $headLines.ContainsKey($entry.replacement)) "boy-scout-lines successor '$($entry.replacement)' is no line of today's section"
+    }
+    $retiredSkills = @($source.retirements | Where-Object { $_.path -match '^\.claude/skills/([^/]+)/SKILL\.md$' } | ForEach-Object { ($_.path -split '/')[2] })
+    foreach ($entry in $data.'retired-skill-lines') {
+        Assert ($retiredSkills -ccontains $entry.skill) "retired-skill-lines names $($entry.skill), which the ledger does not retire"
+        foreach ($hash in $entry.'known-line-sha256') { Assert $oldTasks.ContainsKey($hash) "retired-skill-lines digest $hash under $($entry.skill) is no Common Tasks line a release from 0.76.0 shipped" }
+    }
+    $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), [ref]$null, [ref]$null)
+    $function = @($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $_.Name -ceq 'Read-SupersededInstructionText' })
+    Assert ($function.Count -eq 1) 'the shipped installer has no Read-SupersededInstructionText'
+    . ([scriptblock]::Create($function[0].Extent.Text))
+    $read = Read-SupersededInstructionText -Path (Join-Path $repoRoot 'dist/dotnet/framework-retirements.json')
+    Assert ($read.BoyScoutItems.Count -eq 13 -and $read.BoyScoutLines.Count -eq 5 -and $read.RetiredSkillLines.Count -eq 7) 'the shipped reader did not read the three new lists'
+    Assert (@($read.BoyScoutLines.Values | Where-Object { $null -eq $_ }).Count -eq 2) 'the shipped reader did not keep the two removals as removals (an empty successor would leave an empty line)'
+    $scratch = Join-Path ([IO.Path]::GetTempPath()) ('superseded-ledger-' + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        $good = [IO.File]::ReadAllText((Join-Path $repoRoot 'dist/dotnet/framework-retirements.json'))
+        $mutations = [ordered]@{
+            'a missing boy-scout-items list' = { param($d) $d.'superseded-instruction-text'.PSObject.Properties.Remove('boy-scout-items') }
+            'an empty item successor' = { param($d) $d.'superseded-instruction-text'.'boy-scout-items'[0].replacement = ' ' }
+            'a line with no replacement key' = { param($d) $d.'superseded-instruction-text'.'boy-scout-lines'[0].PSObject.Properties.Remove('replacement') }
+            'a two-line successor' = { param($d) $d.'superseded-instruction-text'.'boy-scout-lines'[0].replacement = "a`nb" }
+            'an item digest also in lines' = { param($d) $d.'superseded-instruction-text'.'boy-scout-items'[0].'known-line-sha256' = $d.'superseded-instruction-text'.lines[0].'known-line-sha256' }
+            'a bad skill slug' = { param($d) $d.'superseded-instruction-text'.'retired-skill-lines'[0].skill = 'Add Endpoint' }
+            'a skill without digests' = { param($d) $d.'superseded-instruction-text'.'retired-skill-lines'[0].'known-line-sha256' = @() }
+        }
+        foreach ($name in $mutations.Keys) {
+            $doc = $good | ConvertFrom-Json
+            & $mutations[$name] $doc
+            [IO.File]::WriteAllText($scratch, ($doc | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+            $refused = $false
+            try { [void](Read-SupersededInstructionText -Path $scratch) } catch { $refused = $_.Exception.Message -match 'malformed superseded-instruction-text' }
+            Assert $refused "the reader accepted a superseded-instruction-text with $name"
+        }
+    } finally { Remove-Item -LiteralPath $scratch -Force -ErrorAction SilentlyContinue }
+}
+
+# The retired .github/copilot-instructions.md (0.26.0 through 0.89.2, 291 blobs, 18 texts): one key in the source ledger,
+# its maintainer baseline and the three dists; the shipped installer's own digest of every released blob is listed, its
+# reader takes the key and refuses a malformed one, and each released text reads as 'released'.
+It 'retired copilot file: the ledger lists every released copilot-instructions text and the shipped installer reads it strictly' {
+    $copies = @('src/core/framework-retirements.json', 'meta/framework-retirements-baseline.json', 'dist/dotnet/framework-retirements.json', 'dist/angular/framework-retirements.json', 'dist/monorepo/framework-retirements.json')
+    $source = ([IO.File]::ReadAllText((Join-Path $repoRoot $copies[0])) | ConvertFrom-Json).'retired-copilot-instructions'
+    Assert ($null -ne $source) 'the source ledger has no retired-copilot-instructions key'
+    $sourceJson = $source | ConvertTo-Json -Depth 8 -Compress
+    foreach ($copy in $copies) {
+        $other = ([IO.File]::ReadAllText((Join-Path $repoRoot $copy)) | ConvertFrom-Json).'retired-copilot-instructions' | ConvertTo-Json -Depth 8 -Compress
+        Assert ($other -ceq $sourceJson) "$copy carries a different retired-copilot-instructions"
+    }
+    $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), [ref]$null, [ref]$null)
+    $wanted = @('Get-LfSha256', 'Read-RetiredCopilotInstructions', 'Get-RetiredCopilotKind')
+    $functions = @($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $wanted -ccontains $_.Name })
+    Assert ($functions.Count -eq $wanted.Count) "the shipped installer defines $($functions.Count) of $($wanted -join ', ')"
+    . ([scriptblock]::Create((@($functions | ForEach-Object { $_.Extent.Text }) -join "`n")))
+    $retired = Read-RetiredCopilotInstructions -Path (Join-Path $repoRoot 'dist/dotnet/framework-retirements.json')
+    Assert ($retired.Version -ceq '0.90.0' -and $retired.Hashes.Count -eq 18) "the reader returned version $($retired.Version) and $($retired.Hashes.Count) digests, expected 0.90.0 and 18"
+    $observations = @(Get-TaggedObservations -Paths @('.github/copilot-instructions.md') -Through '0.89.2')
+    Assert ($observations.Count -eq 291) "observed $($observations.Count) released copilot-instructions blobs, expected 291"
+    $byOid = @{}
+    foreach ($observation in $observations) {
+        if ($byOid.ContainsKey($observation.Oid)) { continue }
+        $blob = Invoke-GitBytes @('cat-file', 'blob', $observation.Oid)
+        Assert ($blob.Exit -eq 0) "could not read blob $($observation.Oid)"
+        $byOid[$observation.Oid] = $true
+        $text = [Text.UTF8Encoding]::new($false).GetString($blob.Bytes)
+        $kind = Get-RetiredCopilotKind -Bytes $blob.Bytes -Text $text -Retired $retired
+        Assert ($kind -ceq 'released') "missing tagged digest: $($observation.Tag) dist/$($observation.Stack)/.github/copilot-instructions.md reads as $kind"
+        $first = @($text.Split([char]10) | Where-Object { $_.Trim().Length -gt 0 })[0].TrimEnd()
+        Assert ($retired.OpeningLines.Contains($first)) "$($observation.Tag) dist/$($observation.Stack) does not open with one of the ledger's opening lines"
+    }
+    Assert ($byOid.Count -eq 18) "observed $($byOid.Count) distinct released texts, expected 18"
+    $scratch = Join-Path ([IO.Path]::GetTempPath()) ('copilot-ledger-' + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        $good = [IO.File]::ReadAllText((Join-Path $repoRoot 'dist/dotnet/framework-retirements.json')) | ConvertFrom-Json
+        $mutations = [ordered]@{
+            'another path' = { param($d) $d.'retired-copilot-instructions'.path = '.github/other.md' }
+            'a bad version' = { param($d) $d.'retired-copilot-instructions'.'retired-in' = '0.90' }
+            'an empty opening line' = { param($d) $d.'retired-copilot-instructions'.'opening-lines' = @(' ') }
+            'no opening line' = { param($d) $d.'retired-copilot-instructions'.'opening-lines' = @() }
+            'no marker' = { param($d) $d.'retired-copilot-instructions'.'generated-marker' = $null }
+            'an upper-case digest' = { param($d) $d.'retired-copilot-instructions'.'known-content-sha256'[0] = $d.'retired-copilot-instructions'.'known-content-sha256'[0].ToUpperInvariant() }
+            'a repeated digest' = { param($d) $d.'retired-copilot-instructions'.'known-content-sha256' = @($d.'retired-copilot-instructions'.'known-content-sha256') + @($d.'retired-copilot-instructions'.'known-content-sha256'[0]) }
+            'no digest' = { param($d) $d.'retired-copilot-instructions'.'known-content-sha256' = @() }
+            'a string for the key' = { param($d) $d.'retired-copilot-instructions' = 'x' }
+        }
+        foreach ($name in $mutations.Keys) {
+            $doc = $good | ConvertTo-Json -Depth 8 | ConvertFrom-Json
+            & $mutations[$name] $doc
+            [IO.File]::WriteAllText($scratch, ($doc | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+            $refused = $false
+            try { [void](Read-RetiredCopilotInstructions -Path $scratch) } catch { $refused = $_.Exception.Message -match 'malformed retired-copilot-instructions' }
+            Assert $refused "the reader accepted a retired-copilot-instructions key with $name"
+        }
+    } finally { Remove-Item -LiteralPath $scratch -Force -ErrorAction SilentlyContinue }
 }
 
 It '0.95.0 ledger contains every released digest of the renamed security-review command and its wrapper' {

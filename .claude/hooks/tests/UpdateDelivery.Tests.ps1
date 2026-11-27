@@ -422,6 +422,21 @@ function Get-B561Lines { param([string]$Output, [string]$Pattern) return , @($Ou
         $expectedBody = $b561Fixture
         foreach ($name in $b561Rules) { $expectedBody = $expectedBody.Replace((Get-B561Section $name), '') }
         $expectedBody = $expectedBody.Replace($b561OldItem, "10. $b561NewItemText")
+        # The other old Boy Scout lines, and retired skills' Common Tasks lines, an exact copy of which an update rewrites or drops (UpdateDelivery3).
+        foreach ($swap in @(
+            @('When touching any file, leave it cleaner than you found it. The rule is symmetric: improvements *add* missing pieces and *remove* dead weight. Deletion is a contribution.', '**Bug-fix scope.** See the framework-owned workflow scope.'),
+            @('### Always apply (low-effort, low-risk — do these on every touched file):', '### Always apply (low-effort, low-risk — subject to Bug-fix scope above):'),
+            @('1. Missing `CancellationToken` propagation', '1. `CancellationToken` only when outcome/compatibility requires it'),
+            @('2. Replace string-interpolated log messages with structured logging', '2. Structured logging only when outcome/verification requires it'),
+            @('8. Split fat methods (>30 lines) into focused private methods', '8. Split mixed-responsibility methods; never use a line-count threshold'),
+            @('9. Missing unit tests for public methods you''re modifying', '9. Add risk-relevant tests only, and only with a harness'),
+            # The Common Tasks lines of three skills 0.92.0 retired, none of which is installed here.
+            @("- ``add-endpoint`` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)`n", ''),
+            @("- ``add-entity`` — add a new EF Core entity with configuration and migration review`n", ''),
+            @("- ``register-service`` — register a new service in DI with the right lifetime`n", ''),            @("`n`n**When to skip**: hotfixes, time-sensitive production incidents, and proof-of-concept branches. If skipping, add a comment ``// TODO: Boy Scout skipped — [reason]`` so it's picked up on the next pass. Use ``/debt`` to clean up later.`n", "`n"))) {
+            if (-not $expectedBody.Contains($swap[0])) { throw "calibration: the fixture has no line '$($swap[0])'" }
+            $expectedBody = $expectedBody.Replace($swap[0], $swap[1])
+        }
         $expectedBody = $expectedBody.Substring($expectedBody.IndexOf("`n## ", [StringComparison]::Ordinal))
 
         It 'B-561 an old-layout consumer is moved and cleaned in one update and its original stays recoverable' {
@@ -475,6 +490,41 @@ function Get-B561Lines { param([string]$Output, [string]$Pattern) return , @($Ou
             $notice = Get-B561Lines $out 'NOTICE: [^\r\n]*Boy Scout Rule item'
             Assert ($notice.Count -eq 1) "expected one NOTICE for the replaced Boy Scout items. Output:`n$out"
             Assert ($notice[0] -match '\b10\b' -and $notice[0] -match '\b12\b' -and $notice[0] -notmatch '\b13\b') "the NOTICE does not name items 10 and 12 only. Line: $($notice[0])"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# The old interface item with a team sub-bullet right under it stays and is named, as an old Boy Scout line does; the NOTICE for
+# one replaced says how to keep it (an exact copy put back is replaced again), and a copy put back reworded stays.
+& {
+    $boyScout = "$b561OldItem`n   - Acme: our payment gateways keep their interfaces.`n12. $b561OldItemText`n"
+    $t = New-B561Consumer -Agents ($b561Utf8.GetBytes((New-B561TeamText -Replace $b561None -BoyScout $boyScout))) -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = $b561Utf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')))
+        # Put item 12 back with one word changed, commit, update again.
+        $reworded = "12. $($b561OldItemText.Replace('Inline', 'Merge'))"
+        [IO.File]::WriteAllText((Join-Path $t 'AGENTS.md'), $after.Replace("12. $b561NewItemText`n", "$reworded`n"), $b561Utf8)
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'keep our item 12' 2>&1 | Out-Null
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        $rerunExit = $LASTEXITCODE
+        $final = $b561Utf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md')))
+
+        It 'B-561 an old interface item a team line hangs on stays and is named, and the replaced one says how to keep it' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($after.Contains("$b561OldItem`n   - Acme: our payment gateways keep their interfaces.`n12. $b561NewItemText`n")) "item 10 with the team line under it changed, or item 12 was not replaced. Got:`n$after`nOutput:`n$out"
+            $kept = Get-B561Lines $out 'NOTICE: kept old Boy Scout Rule text in AGENTS\.md as it is: item 10 \(under it'
+            Assert ($kept.Count -eq 1) "item 10 is not named as kept. Output:`n$out"
+            $notice = Get-B561Lines $out 'NOTICE: replacing Boy Scout Rule item 12 in AGENTS\.md'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains('put the old line back with any change of wording') -and $notice[0].Contains('a line put back word for word is rewritten again by the next update')) "the replacement NOTICE still says to put the exact line back. Output:`n$out"
+        }
+
+        It 'B-561 an old interface item put back with one word changed survives the next update' {
+            Assert ($rerunExit -eq 0) "second update exited ${rerunExit}: $rerun"
+            Assert ($final.Contains("$reworded`n")) "the reworded item was changed. Got:`n$final`nOutput:`n$rerun"
+            Assert ((Get-B561Lines $rerun 'replacing Boy Scout Rule').Count -eq 0) "the second update announced a Boy Scout replacement. Output:`n$rerun"
         }
     } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
 }

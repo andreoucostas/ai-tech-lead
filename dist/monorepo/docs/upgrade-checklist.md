@@ -43,9 +43,26 @@ owns, and which are yours, is in [reference.md](reference.md#files-and-ownership
    on purpose; the files only the old stack shipped stay in place, unowned). A protected path
    that is missing receives a template; if one of your populated files is unexpectedly missing,
    recover it before applying rather than accept a placeholder as project policy.
+   If the preview prints a `NOTICE:` line saying it kept `.github/copilot-instructions.md`, decide before
+   you apply whether that file goes (see [Migrations](#migrations-from-older-installs)). The update
+   tells an AI agent running it to ask you, not to decide, and not to add `-RemoveLeftovers` unless you say
+   yes; no agent run has measured whether agents do.
 
 5. **Apply.** Run the same command without `-WhatIf`. Keep the preview and apply output, and act on
    every line it prints (see [What the installer's messages ask of you](#what-the-installers-messages-ask-of-you)).
+
+   **`-RemoveLeftovers`:** in what is yours, an update changes on its own only text inside `AGENTS.md`
+   or `CLAUDE.md` that is byte for byte what an earlier release shipped there (and, the first time it
+   meets an `AGENTS.md` that is still the generated copy, moves `CLAUDE.md`'s text into it; see
+   [Migrations](#migrations-from-older-installs)), and removes folders on retired paths that hold no
+   file. A whole file the framework no longer uses, but that one of your team's tools may still read, it
+   keeps and names in a `NOTICE:` line, in the preview too; today that is only a
+   `.github/copilot-instructions.md` the framework shipped or generated (see below). Whether such a file
+   goes is your decision: the update tells an AI agent running it to ask you and to pass the switch only
+   on your yes. To remove the file, apply the update with `-RemoveLeftovers`; if you already applied it without
+   the switch, commit, then run it again with the switch. The file goes once the last commit or a saved
+   copy holds it. On a first install, a brownfield install or with `-Reinstall` the switch removes
+   nothing, and a line says so; so does an update that finds nothing for it.
 
    **When the update refuses and names `-Reinstall`:** your install is older than any release the
    installer can clean up after, so a plain update would leave the old hooks, commands and settings
@@ -185,8 +202,22 @@ Most updates need none of these. Do each only when its condition holds.
   project-specific additions, and remove only the superseded framework copies. Keep `Conventions` and
   `Boy Scout Rule`; neither is one of the four headings. Do not remove customised sections wholesale.
 
-- **The old Boy Scout mandate.** This BEFORE text is an example, not an exact match; inspect your own
-  wording and keep the team mandates and numbered items you intend:
+- **The old Boy Scout mandate.** An update now rewrites each line of the `Boy Scout Rule` section
+  that is exactly one an earlier release (0.76.0 or later) shipped and today's template words otherwise:
+  the opening line, the `Always apply` heading and the numbered items get the current text (an item
+  keeps its number), and the "Apply only entries whose technology exists here" line and the
+  **When to skip** paragraph go; a `NOTICE:` line says what changed and where the original is. A line
+  your team reworded stays, and so does the same text outside that section (the section ends at the
+  next `## ` or `# ` heading). A shipped line also stays, named in a `NOTICE:` line, when a line of
+  yours leans on it with no empty line between: one right under it that is indented, or that is not
+  itself a list item or heading, or one right above a shipped paragraph line (the opening line, the
+  "Apply only entries" line, the **When to skip** paragraph). A list item or heading of your own right
+  under a shipped item does not keep it, and only the lines right next to it are looked at. To keep an
+  old line on purpose, put it back with any change of wording: a line whose wording differs from the
+  shipped text is never changed (trailing spaces, an item's number and the spaces after it are not
+  wording), and a line put back word for word is rewritten again by the next update. The hand step
+  is for those lines. This BEFORE text is an example, not an exact match; inspect your own wording and keep the team
+  mandates and numbered items you intend:
 
   ```markdown
   When touching any file, leave it cleaner than you found it.
@@ -209,8 +240,9 @@ Most updates need none of these. Do each only when its condition holds.
   An older Boy Scout interface item may still end "are required by SOLID/DIP even with one
   implementation; never inline those". The framework rules no longer require an interface or
   abstraction for every service. An update replaces an exact copy of that item with the text below,
-  keeping its number, and says so in a `NOTICE:` line; put the old line back if your team keeps that
-  rule on purpose. For an item your team reworded, which the update leaves, keep the item's number
+  keeping its number, and says so in a `NOTICE:` line. If your team keeps that rule on purpose, put
+  the old line back with any change of wording, since an exact copy is replaced again by the next
+  update. For an item your team reworded, which the update leaves, keep the item's number
   and replace its text with:
 
   ```markdown
@@ -230,8 +262,25 @@ Most updates need none of these. Do each only when its condition holds.
   > **Framework rules** (Verification Rules, Leanness, SOLID, Agentic Workflow) are in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md). If your agent has not already loaded that file, read it before planning or editing.
   ```
 
-- **`.github/copilot-instructions.md` exists.** The framework no longer generates or checks it; it is
-  yours to delete or maintain.
+- **`.github/copilot-instructions.md` exists.** Releases up to 0.89.2 shipped this file, and their
+  `/generate-copilot` rewrote it from your instruction file; the framework no longer ships, refreshes
+  or checks it. GitHub documents that Copilot loads it on every request, beside `AGENTS.md` where
+  Copilot reads that file too (VS Code chat, the Copilot CLI, the cloud agent, code review on
+  GitHub.com), so rules in it may compete with the current ones. GitHub also lists Copilot Chat on
+  GitHub.com and in Visual Studio, JetBrains IDEs, Eclipse and Xcode, and Copilot code review in VS
+  Code, Visual Studio, JetBrains IDEs and Xcode, as reading it and not `AGENTS.md`, so a team that uses
+  one of those may rely on it. An update therefore keeps a copy whose text, line endings aside, is one
+  a release shipped, and a copy that only opens with "When generating code in this repo, follow these
+  rules." or carries a `<!-- GENERATED by /generate-copilot` comment (it may hold your team's edits),
+  and names it in a `NOTICE:` line on every update and in every preview. Whether it goes is your team's
+  decision: the update tells an AI agent running it to ask you, and not to pass `-RemoveLeftovers`
+  unless you say yes. To remove it, apply the update with `-RemoveLeftovers` (after an update already applied
+  without it: commit, then run it again with the switch): the file goes once the last commit holds it
+  or a copy is saved under `.claude/framework-update-backup/instruction-files/`, and a `NOTICE:` line
+  says where. To keep it, do nothing, and the next update names it again; to keep a file there that no update names as the
+  framework's, replace its first line and any such comment, and bring its rules up to date. Any other
+  file there is yours: the update keeps it and names it in a `NOTICE:` line, and `-RemoveLeftovers`
+  never removes it; keep it in step with `AGENTS.md` or delete it.
 
 ## Remove the framework
 

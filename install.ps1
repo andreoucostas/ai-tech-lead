@@ -1,5 +1,5 @@
 ﻿# AI Tech Lead Framework — root installer wrapper.
-# Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-WhatIf] [-AllowDowngrade] [-AllowDirtyTree] [-AllowOutdated] [-AllowStackChange] [-Reinstall] [-AllowMoveAside] C:\path\to\target-repo
+# Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-WhatIf] [-AllowDowngrade] [-AllowDirtyTree] [-AllowOutdated] [-AllowStackChange] [-Reinstall] [-AllowMoveAside] [-RemoveLeftovers] C:\path\to\target-repo
 #
 # Thin dispatcher only: it selects a stack, then delegates to
 # dist/<stack>/scripts/install.ps1, which does all the real work (greenfield / brownfield /
@@ -32,6 +32,7 @@ param(
     [Parameter()][switch]$AllowStackChange,
     [Parameter()][switch]$Reinstall,
     [Parameter()][switch]$AllowMoveAside,
+    [Parameter()][switch]$RemoveLeftovers,
     [Parameter(Position = 0)][string]$Target
 )
 $ErrorActionPreference = 'Stop'
@@ -42,7 +43,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     exit 4
 }
 
-$usage = 'Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-WhatIf] [-AllowDowngrade] [-AllowDirtyTree] [-AllowOutdated] [-AllowStackChange] [-Reinstall] [-AllowMoveAside] C:\path\to\target-repo'
+$usage = 'Usage: pwsh -NoProfile -File install.ps1 [-Stack dotnet|angular|monorepo] [-WhatIf] [-AllowDowngrade] [-AllowDirtyTree] [-AllowOutdated] [-AllowStackChange] [-Reinstall] [-AllowMoveAside] [-RemoveLeftovers] C:\path\to\target-repo'
 # Exit 2 with an actionable message on stderr. Write-Error is avoided on purpose: under
 # ErrorActionPreference=Stop it throws before the following exit runs, which -File maps to
 # exit code 1 — this keeps every wrapper-level failure at the documented exit 2.
@@ -273,5 +274,5 @@ finally {
     Set-Location -LiteralPath $callerFileSystemLocation.Path -ErrorAction SilentlyContinue
     Set-Location -LiteralPath $callerLocation.Path -ErrorAction SilentlyContinue
 }
-& $stackInstaller -Target $tgt -WhatIf:$WhatIf -AllowDowngrade:$AllowDowngrade -AllowDirtyTree:$AllowDirtyTree -AllowOutdated:$AllowOutdated -AllowStackChange:$AllowStackChange -Reinstall:$Reinstall -AllowMoveAside:$AllowMoveAside
+& $stackInstaller -Target $tgt -WhatIf:$WhatIf -AllowDowngrade:$AllowDowngrade -AllowDirtyTree:$AllowDirtyTree -AllowOutdated:$AllowOutdated -AllowStackChange:$AllowStackChange -Reinstall:$Reinstall -AllowMoveAside:$AllowMoveAside -RemoveLeftovers:$RemoveLeftovers
 exit $LASTEXITCODE

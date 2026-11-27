@@ -1418,4 +1418,642 @@ It 'B-495 an update lists a file that already holds the release''s text as uncha
     }
 }
 
+# The retired .github/copilot-instructions.md: releases 0.26.0 through 0.89.2 shipped it, and their /generate-copilot rewrote it
+# from the team's instruction file, opening with one fixed line; GitHub Copilot still loads it, and GitHub lists surfaces that read
+# it and not AGENTS.md. An ordinary update keeps a released text and a copy that command wrote and names them; with -RemoveLeftovers
+# it removes either once its bytes are safe (a commit, or a saved copy); a team's own file stays, byte for byte, and is named.
+# A fresh install and a brownfield adoption treat the file as before.
+$copilotUtf8 = [Text.UTF8Encoding]::new($false)
+$copilotRel = '.github/copilot-instructions.md'
+$copilotOpening = 'When generating code in this repo, follow these rules. The full conventions, architecture, and common tasks are in CLAUDE.md (read it for non-trivial work).'
+# A released blob, raw: PowerShell's native-output adapter would decode it.
+function Get-CopilotReleasedBytes {
+    param([string]$Spec)
+    $info = [Diagnostics.ProcessStartInfo]::new('git')
+    foreach ($a in @('-C', $repoRoot, 'cat-file', 'blob', $Spec)) { $info.ArgumentList.Add($a) }
+    $info.RedirectStandardOutput = $true; $info.UseShellExecute = $false
+    $process = [Diagnostics.Process]::Start($info)
+    $memory = [IO.MemoryStream]::new()
+    try { $process.StandardOutput.BaseStream.CopyTo($memory); $process.WaitForExit(); if ($process.ExitCode -ne 0) { throw "calibration: git cat-file blob $Spec failed" }; return , $memory.ToArray() }
+    finally { $memory.Dispose(); $process.Dispose() }
+}
+# A consumer on the current layout with a .github/copilot-instructions.md, optionally committed to Git.
+function New-CopilotConsumer {
+    param([byte[]]$Copilot, [switch]$Git)
+    $t = Join-Path ([IO.Path]::GetTempPath()) "copilot-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path (Join-Path $t '.claude'), (Join-Path $t '.github') | Out-Null
+    [IO.File]::WriteAllBytes((Join-Path $t 'CLAUDE.md'), [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/CLAUDE.md')))
+    [IO.File]::WriteAllText((Join-Path $t 'AGENTS.md'), "# Acme`n`n## Conventions`n`nTeam text.`n", $copilotUtf8)
+    [IO.File]::WriteAllText((Join-Path $t '.claude/framework-version.json'), "{`"version`": `"0.89.2`"}`n", $copilotUtf8)
+    if ($null -ne $Copilot) { [IO.File]::WriteAllBytes((Join-Path $t $copilotRel), $Copilot) }
+    if ($Git) {
+        & git -C $t init -q 2>&1 | Out-Null
+        & git -C $t config user.email 'fixture@example.test'
+        & git -C $t config user.name 'Fixture'
+        & git -C $t config core.autocrlf false
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'team files' 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'calibration: could not commit the copilot consumer' }
+    }
+    return $t
+}
+function Get-CopilotLines { param([string]$Output, [string]$Pattern) return , @($Output -split '\r?\n' | Where-Object { $_ -match $Pattern }) }
+# What a kept NOTICE says to an AI agent that runs the update, and the surfaces GitHub lists as reading only this file.
+$copilotAskParts = @('If you are an AI agent running this update: ask the person you work for', 'do not pass -RemoveLeftovers unless they say yes', 'to keep it for good, make it your own')
+$copilotOnlyText = "GitHub's documentation lists Copilot Chat on GitHub.com and in Visual Studio, JetBrains IDEs, Eclipse and Xcode, and Copilot code review in VS Code, Visual Studio, JetBrains IDEs and Xcode, as reading this file and not AGENTS.md"
+$copilotReleased = Get-CopilotReleasedBytes 'v0.89.2:dist/dotnet/.github/copilot-instructions.md'
+$copilotGenerated = $copilotUtf8.GetBytes("$copilotOpening`n`n## Naming`n`n- Acme rule COPILOT-TEAM-SENTINEL: every service has an interface.`n")
+
+# A released text, committed. GitHub lists Copilot surfaces that read this file and not AGENTS.md, so an ordinary update keeps
+# it byte for byte and names it, on every update; with -RemoveLeftovers it is removed, named with the commit that holds it,
+# and a later update says nothing about it.
+& {
+    $t = New-CopilotConsumer -Copilot $copilotReleased -Git
+    try {
+        $keptOut = Invoke-Installer -Dist 'dotnet' -Target $t
+        $keptExit = $LASTEXITCODE
+        $keptBytes = if (Test-Path -LiteralPath (Join-Path $t $copilotRel) -PathType Leaf) { [IO.File]::ReadAllBytes((Join-Path $t $copilotRel)) } else { [byte[]]@() }
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'update' 2>&1 | Out-Null
+        $keptOut2 = Invoke-Installer -Dist 'dotnet' -Target $t
+        $keptExit2 = $LASTEXITCODE
+        $keptBytes2 = if (Test-Path -LiteralPath (Join-Path $t $copilotRel) -PathType Leaf) { [IO.File]::ReadAllBytes((Join-Path $t $copilotRel)) } else { [byte[]]@() }
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'second update' 2>&1 | Out-Null
+        $head = (& git -C $t rev-parse HEAD).Trim()
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -RemoveLeftovers
+        $exit = $LASTEXITCODE
+        $gone = -not (Test-Path -LiteralPath (Join-Path $t $copilotRel))
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'update with the switch' 2>&1 | Out-Null
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        $rerunExit = $LASTEXITCODE
+
+        It 'retired copilot file: an ordinary update keeps a released copy byte for byte, names -RemoveLeftovers and the surfaces that read it, and tells an agent to ask, twice' {
+            foreach ($run in @(@($keptExit, $keptOut, $keptBytes), @($keptExit2, $keptOut2, $keptBytes2))) {
+                Assert ($run[0] -eq 0) "update exited $($run[0]): $($run[1])"
+                Assert-BytesEqual -Expected $copilotReleased -Actual $run[2] -Message "an ordinary update changed or removed the released copy. Output:`n$($run[1])"
+                Assert ($run[1] -notmatch '(?m)^PLAN delete \.github/copilot-instructions\.md') "the plan deletes the released copy. Output:`n$($run[1])"
+                Assert ((Get-CopilotLines $run[1] 'removing \.github/copilot-instructions\.md').Count -eq 0) "a removal was announced. Output:`n$($run[1])"
+                $notice = Get-CopilotLines $run[1] 'NOTICE: kept \.github/copilot-instructions\.md: its text, line endings aside, is one a framework release shipped\.'
+                Assert ($notice.Count -eq 1) "expected one NOTICE that keeps the released copy. Output:`n$($run[1])"
+                foreach ($part in @($copilotAskParts + 'To remove it, commit this update, then run it again with -RemoveLeftovers' + 'To keep it, do nothing' + '0.90.0' + $copilotOnlyText)) {
+                    Assert ($notice[0].Contains($part)) "the NOTICE does not say '$part'. Line: $($notice[0])"
+                }
+            }
+        }
+
+        It 'retired copilot file: with -RemoveLeftovers an update removes an unmodified released copy and says where its text is' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert $gone "the released copilot-instructions.md is still there. Output:`n$out"
+            Assert ($out -match '(?m)^PLAN delete \.github/copilot-instructions\.md\r?$') "the plan does not name the file as deleted. Output:`n$out"
+            $notice = Get-CopilotLines $out 'NOTICE: removing \.github/copilot-instructions\.md: its text, line endings aside, is one a framework release shipped\. -RemoveLeftovers was given'
+            Assert ($notice.Count -eq 1) "expected one removal NOTICE. Output:`n$out"
+            Assert ($notice[0].Contains('0.90.0') -and $notice[0].Contains('AGENTS.md') -and $notice[0].Contains($head) -and $notice[0].Contains('if your team uses one of those, restore it')) "the NOTICE does not name 0.90.0, AGENTS.md, commit $head and the surfaces that read the file. Line: $($notice[0])"
+            Assert ((Get-CopilotLines $out '^\s*removed: \.github/copilot-instructions\.md').Count -eq 1) "no confirmation line after the removal. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'consumer-owned content files left untouched [^\r\n]*copilot-instructions').Count -eq 0) "the file is still listed as left untouched. Output:`n$out"
+        }
+
+        It 'retired copilot file: a second update over a removed copy prints nothing about it' {
+            Assert ($gone) "calibration: the first update did not remove the file. Output:`n$out"
+            Assert ($rerunExit -eq 0) "second update exited ${rerunExit}: $rerun"
+            Assert ((Get-CopilotLines $rerun 'copilot-instructions\.md' | Where-Object { $_ -notmatch 'consumer-owned content files left untouched' }).Count -eq 0) "a second update printed a line about the file. Output:`n$rerun"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t $copilotRel))) "a second update put the file back. Output:`n$rerun"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A released text with CRLF endings (a core.autocrlf checkout), no Git: no commit holds its bytes, and the texts differ between
+# releases, so with -RemoveLeftovers it is saved byte for byte, as a generated copy is, before it is removed.
+& {
+    $crlf = $copilotUtf8.GetBytes($copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.76.0:dist/angular/.github/copilot-instructions.md')).Replace("`n", "`r`n"))
+    $t = New-CopilotConsumer -Copilot $crlf
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -RemoveLeftovers
+        $exit = $LASTEXITCODE
+        $saved = Join-Path $t '.claude/framework-update-backup/instruction-files/copilot-instructions.md'
+
+        It 'retired copilot file: a CRLF copy of a released text no commit holds is saved byte for byte before it is removed' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t $copilotRel))) "the CRLF copy is still there. Output:`n$out"
+            Assert (Test-Path -LiteralPath $saved -PathType Leaf) "no copy was saved. Output:`n$out"
+            Assert-BytesEqual -Expected $crlf -Actual ([IO.File]::ReadAllBytes($saved)) -Message "the saved copy is not the file byte for byte. Output:`n$out"
+            $notice = Get-CopilotLines $out 'NOTICE: removing \.github/copilot-instructions\.md: its text, line endings aside, is one a framework release shipped[^\r\n]*goes to \.claude/framework-update-backup/instruction-files/copilot-instructions\.md'
+            Assert ($notice.Count -eq 1) "expected one removal NOTICE saying where the copy goes. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'framework text').Count -eq 0) "the update still calls the file framework text that every release holds. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A copy /generate-copilot wrote (its opening line, then the team's rules), committed, with -RemoveLeftovers: removed, the
+# commit named, no copy saved.
+& {
+    $t = New-CopilotConsumer -Copilot $copilotGenerated -Git
+    try {
+        $head = (& git -C $t rev-parse HEAD).Trim()
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -RemoveLeftovers
+        $exit = $LASTEXITCODE
+
+        It 'retired copilot file: a generated copy the last commit holds is removed and the commit named' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t $copilotRel))) "the generated copy is still there. Output:`n$out"
+            # True of a generated copy and of a shipped copy edited since: what is known is its first line or the command's comment.
+            Assert ((Get-CopilotLines $out 'command wrote it from your instruction file as it was then').Count -eq 0) "the NOTICE says the command wrote the file. Output:`n$out"
+            $notice = Get-CopilotLines $out "NOTICE: removing \.github/copilot-instructions\.md: it opens with the line that the framework's copy of that file and the output of the retired /generate-copilot command opened with, or carries that command's comment, whether or not it was edited since\."
+            Assert ($notice.Count -eq 1) "expected one removal NOTICE. Output:`n$out"
+            foreach ($part in @($head, '0.90.0', 'AGENTS.md', 'compete with the current ones', 'restore it and replace its first line', '<!-- GENERATED by /generate-copilot')) {
+                Assert ($notice[0].Contains($part)) "the NOTICE does not say '$part'. Line: $($notice[0])"
+            }
+            Assert ((Get-CopilotLines $out "recover from Git: [^\r\n]*$head").Count -eq 1) "no recover-from-Git line names commit $head. Output:`n$out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.claude/framework-update-backup/instruction-files/copilot-instructions.md'))) "a copy was saved although the commit holds the file. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A generated copy outside Git, with -RemoveLeftovers: saved byte for byte below the backup folder, then removed.
+& {
+    $bom = [byte[]](@(0xEF, 0xBB, 0xBF) + $copilotGenerated)
+    $t = New-CopilotConsumer -Copilot $bom
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -RemoveLeftovers
+        $exit = $LASTEXITCODE
+        $saved = Join-Path $t '.claude/framework-update-backup/instruction-files/copilot-instructions.md'
+
+        It 'retired copilot file: an untracked generated copy is saved byte for byte before it is removed' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t $copilotRel))) "the generated copy is still there. Output:`n$out"
+            Assert (Test-Path -LiteralPath $saved -PathType Leaf) "no copy was saved. Output:`n$out"
+            Assert-BytesEqual -Expected $bom -Actual ([IO.File]::ReadAllBytes($saved)) -Message "the saved copy is not the file byte for byte. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: removing \.github/copilot-instructions\.md: [^\r\n]*goes to \.claude/framework-update-backup/instruction-files/copilot-instructions\.md').Count -eq 1) "the NOTICE does not say where the copy goes. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A generated copy edited since its commit, beside an earlier saved copy with other bytes: the earlier copy stays, this one goes beside it.
+& {
+    $t = New-CopilotConsumer -Copilot $copilotGenerated -Git
+    try {
+        $edited = $copilotUtf8.GetBytes("$copilotOpening`n`n## Naming`n`n- Acme rule edited after the commit.`n")
+        [IO.File]::WriteAllBytes((Join-Path $t $copilotRel), $edited)
+        $earlier = Join-Path $t '.claude/framework-update-backup/instruction-files/copilot-instructions.md'
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $earlier) | Out-Null
+        $earlierBytes = $copilotUtf8.GetBytes("an earlier saved copy`n")
+        [IO.File]::WriteAllBytes($earlier, $earlierBytes)
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -AllowDirtyTree -RemoveLeftovers
+        $exit = $LASTEXITCODE
+        $beside = @(Get-ChildItem -LiteralPath (Split-Path -Parent $earlier) -Filter 'copilot-instructions.*.md' -File)
+
+        It 'retired copilot file: a generated copy edited since its commit is saved beside an earlier copy, which stays' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t $copilotRel))) "the edited generated copy is still there. Output:`n$out"
+            Assert-BytesEqual -Expected $earlierBytes -Actual ([IO.File]::ReadAllBytes($earlier)) -Message "the earlier saved copy was overwritten. Output:`n$out"
+            Assert ($beside.Count -eq 1) "expected one copy saved beside the earlier one, found $($beside.Count). Output:`n$out"
+            Assert-BytesEqual -Expected $edited -Actual ([IO.File]::ReadAllBytes($beside[0].FullName)) -Message "the copy beside it is not the edited file. Output:`n$out"
+            Assert ((Get-CopilotLines $out "NOTICE: removing \.github/copilot-instructions\.md: [^\r\n]*goes to \.claude/framework-update-backup/instruction-files/$([regex]::Escape($beside[0].Name))").Count -eq 1) "the NOTICE does not name the copy beside it. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A file with the GENERATED comment but another first line: removed. A team's own file: kept byte for byte and named.
+& {
+    $commented = $copilotUtf8.GetBytes("# Acme Copilot rules`n`n<!-- GENERATED by /generate-copilot from CLAUDE.md. -->`n`n- rule`n")
+    $team = $copilotUtf8.GetBytes("# Acme Copilot rules`r`n`r`nUse decimal for money. $copilotOpening`r`n")
+    $tc = New-CopilotConsumer -Copilot $commented
+    $tt = New-CopilotConsumer -Copilot $team
+    $mono = $copilotUtf8.GetBytes("$copilotOpening Mixed repo: apply the .NET rules to C# code and the Angular rules to TypeScript/templates; SOLID, Testing, and Boy Scout apply to both stacks.
+
+## Naming
+
+- team rule
+")
+    $tm = New-CopilotConsumer -Copilot $mono
+    try {
+        # With -RemoveLeftovers, which never removes a team's own file.
+        $outC = Invoke-Installer -Dist 'dotnet' -Target $tc -RemoveLeftovers
+        $exitC = $LASTEXITCODE
+        $outT = Invoke-Installer -Dist 'dotnet' -Target $tt -RemoveLeftovers
+        $exitT = $LASTEXITCODE
+        $outM = Invoke-Installer -Dist 'dotnet' -Target $tm -RemoveLeftovers
+        $exitM = $LASTEXITCODE
+
+        It 'retired copilot file: a file with the GENERATED comment under another first line is removed' {
+            Assert ($exitC -eq 0) "update exited ${exitC}: $outC"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $tc $copilotRel))) "the commented copy is still there. Output:`n$outC"
+            Assert-BytesEqual -Expected $commented -Actual ([IO.File]::ReadAllBytes((Join-Path $tc '.claude/framework-update-backup/instruction-files/copilot-instructions.md'))) -Message "the commented copy was not saved. Output:`n$outC"
+        }
+
+        It 'retired copilot file: a generated copy that opens with the combined product''s longer first line is removed' {
+            Assert ($exitM -eq 0) "update exited ${exitM}: $outM"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $tm $copilotRel))) "the combined product's generated copy is still there. Output:`n$outM"
+            Assert-BytesEqual -Expected $mono -Actual ([IO.File]::ReadAllBytes((Join-Path $tm '.claude/framework-update-backup/instruction-files/copilot-instructions.md'))) -Message "the combined product's generated copy was not saved. Output:`n$outM"
+        }
+        It "retired copilot file: a team's own file is kept byte for byte and named" {
+            Assert ($exitT -eq 0) "update exited ${exitT}: $outT"
+            Assert-BytesEqual -Expected $team -Actual ([IO.File]::ReadAllBytes((Join-Path $tt $copilotRel))) -Message "the team's file changed. Output:`n$outT"
+            $flag = Get-CopilotLines $outT 'NOTICE: kept \.github/copilot-instructions\.md: it is not a text a framework release shipped'
+            Assert ($flag.Count -eq 1) "expected one NOTICE naming the kept file. Output:`n$outT"
+            Assert ($flag[0].Contains('AGENTS.md') -and $flag[0].Contains('keep it current') -and $flag[0].Contains('delete it')) "the NOTICE does not say what to do. Line: $($flag[0])"
+            Assert ((Get-CopilotLines $outT 'If you are an AI agent running this update').Count -eq 0) "the team's file is put to the person as a question. Output:`n$outT"
+            Assert ((Get-CopilotLines $outT 'removing \.github/copilot').Count -eq 0) "a removal was announced for the team's file. Output:`n$outT"
+        }
+    } finally { Remove-Item -Recurse -Force $tc, $tt, $tm -ErrorAction SilentlyContinue }
+}
+
+# A directory, a junction, and a file that is not UTF-8 at the path: kept, one CANT-VERIFY line each.
+& {
+    $td = New-CopilotConsumer
+    New-Item -ItemType Directory -Force -Path (Join-Path $td "$copilotRel/inner") | Out-Null
+    $tj = New-CopilotConsumer
+    $aim = Join-Path $tj 'elsewhere'
+    New-Item -ItemType Directory -Force -Path $aim | Out-Null
+    [IO.File]::WriteAllBytes((Join-Path $aim 'x.md'), $copilotReleased)
+    New-Item -ItemType Junction -Path (Join-Path $tj $copilotRel) -Target $aim | Out-Null
+    $bad = [byte[]](@(0xFF, 0xFE, 0x41) + $copilotUtf8.GetBytes($copilotOpening))
+    $tb = New-CopilotConsumer -Copilot $bad
+    try {
+        $results = foreach ($t in $td, $tj, $tb) { [pscustomobject]@{ Target = $t; Out = (Invoke-Installer -Dist 'dotnet' -Target $t); Exit = $LASTEXITCODE } }
+
+        It 'retired copilot file: a directory, a link or a file that is not UTF-8 at the path is kept with one CANT-VERIFY line' {
+            foreach ($r in $results) {
+                Assert ($r.Exit -eq 0) "update exited $($r.Exit): $($r.Out)"
+                Assert (Test-Path -LiteralPath (Join-Path $r.Target $copilotRel)) "the entry at the path is gone. Output:`n$($r.Out)"
+                Assert ((Get-CopilotLines $r.Out 'CANT-VERIFY: \.github/copilot-instructions\.md ').Count -eq 1) "expected one CANT-VERIFY line for the file. Output:`n$($r.Out)"
+            }
+            Assert (Test-Path -LiteralPath (Join-Path $aim 'x.md') -PathType Leaf) 'a file the junction leads to is gone'
+            Assert-BytesEqual -Expected $bad -Actual ([IO.File]::ReadAllBytes((Join-Path $tb $copilotRel))) -Message 'the file that is not UTF-8 changed'
+            Assert ((Get-CopilotLines $results[2].Out 'not valid UTF-8').Count -eq 1) "the CANT-VERIFY line does not say the file is not UTF-8. Output:`n$($results[2].Out)"
+        }
+    } finally {
+        if (Test-Path -LiteralPath (Join-Path $tj $copilotRel)) { [IO.Directory]::Delete((Join-Path $tj $copilotRel), $false) }
+        Remove-Item -Recurse -Force $td, $tj, $tb -ErrorAction SilentlyContinue
+    }
+}
+
+# With -RemoveLeftovers, a file the update could not read, or that is not UTF-8: one CANT-VERIFY line and no "found nothing"
+# NOTICE, since the update could not tell what the file is.
+& {
+    $bad = [byte[]](@(0xFF, 0xFE, 0x41) + $copilotUtf8.GetBytes($copilotOpening))
+    $tb = New-CopilotConsumer -Copilot $bad
+    $tl = New-CopilotConsumer -Copilot $copilotGenerated
+    $handle = $null
+    try {
+        $outB = Invoke-Installer -Dist 'dotnet' -Target $tb -RemoveLeftovers
+        $exitB = $LASTEXITCODE
+        $handle = [IO.File]::Open((Join-Path $tl $copilotRel), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+        $outL = Invoke-Installer -Dist 'dotnet' -Target $tl -RemoveLeftovers
+        $exitL = $LASTEXITCODE
+        $handle.Dispose(); $handle = $null
+
+        It 'retired copilot file: with -RemoveLeftovers a copy that cannot be read or is not UTF-8 gets one CANT-VERIFY line and no found-nothing NOTICE' {
+            foreach ($r in @(@($exitB, $outB, 'not valid UTF-8'), @($exitL, $outL, 'could not be read'))) {
+                Assert ($r[0] -eq 0) "update exited $($r[0]): $($r[1])"
+                $cant = Get-CopilotLines $r[1] 'CANT-VERIFY: \.github/copilot-instructions\.md '
+                Assert ($cant.Count -eq 1 -and $cant[0].Contains($r[2])) "expected one CANT-VERIFY line saying '$($r[2])'. Output:`n$($r[1])"
+                Assert ((Get-CopilotLines $r[1] 'found nothing that only that switch removes').Count -eq 0) "the update says it found nothing although it could not tell. Output:`n$($r[1])"
+                Assert ((Get-CopilotLines $r[1] 'removing \.github/copilot-instructions').Count -eq 0) "a removal was announced. Output:`n$($r[1])"
+            }
+            Assert-BytesEqual -Expected $bad -Actual ([IO.File]::ReadAllBytes((Join-Path $tb $copilotRel))) -Message 'the file that is not UTF-8 changed'
+            Assert-BytesEqual -Expected $copilotGenerated -Actual ([IO.File]::ReadAllBytes((Join-Path $tl $copilotRel))) -Message 'the file that could not be read changed'
+        }
+    } finally {
+        if ($handle) { $handle.Dispose() }
+        Remove-Item -Recurse -Force $tb, $tl -ErrorAction SilentlyContinue
+    }
+}
+
+# With -RemoveLeftovers, an update that stops at its Git preflight changes nothing; -WhatIf shows the removal and changes nothing.
+& {
+    $t = New-CopilotConsumer -Copilot $copilotReleased -Git
+    try {
+        [IO.File]::AppendAllText((Join-Path $t 'AGENTS.md'), "uncommitted`n")
+        $stopped = Invoke-Installer -Dist 'dotnet' -Target $t -RemoveLeftovers
+        $stoppedExit = $LASTEXITCODE
+        $stoppedKept = Test-Path -LiteralPath (Join-Path $t $copilotRel)
+        & git -C $t checkout -- AGENTS.md 2>&1 | Out-Null
+        $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf -RemoveLeftovers 2>&1 | Out-String
+        $dryExit = $LASTEXITCODE
+
+        It 'retired copilot file: a stopped update and -WhatIf leave the file, and -WhatIf shows its removal' {
+            Assert ($stoppedExit -eq 4) "the dirty-tree update did not stop with exit 4 (got $stoppedExit): $stopped"
+            Assert $stoppedKept "a stopped update removed the file. Output:`n$stopped"
+            Assert ($dryExit -eq 0) "-WhatIf exited ${dryExit}: $dry"
+            Assert-BytesEqual -Expected $copilotReleased -Actual ([IO.File]::ReadAllBytes((Join-Path $t $copilotRel))) -Message "-WhatIf changed the file. Output:`n$dry"
+            Assert ($dry -match '(?m)^PLAN delete \.github/copilot-instructions\.md\r?$') "-WhatIf does not plan the removal. Output:`n$dry"
+            Assert ((Get-CopilotLines $dry 'NOTICE: removing \.github/copilot-instructions\.md: its text, line endings aside, is one a framework release shipped').Count -eq 1) "-WhatIf does not show the removal NOTICE. Output:`n$dry"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A fresh install writes no such file; a brownfield adoption leaves a released copy in place for /adopt, as before.
+& {
+    $tg = Join-Path ([IO.Path]::GetTempPath()) "copilot-green-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path $tg | Out-Null
+    $tb = Join-Path ([IO.Path]::GetTempPath()) "copilot-brown-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path (Join-Path $tb '.github') | Out-Null
+    [IO.File]::WriteAllBytes((Join-Path $tb $copilotRel), $copilotReleased)
+    try {
+        $outG = Invoke-Installer -Dist 'dotnet' -Target $tg
+        $exitG = $LASTEXITCODE
+        $outB = Invoke-Installer -Dist 'dotnet' -Target $tb
+        $exitB = $LASTEXITCODE
+
+        It 'retired copilot file: a fresh install and a brownfield adoption treat the file as before' {
+            Assert ($exitG -eq 0) "greenfield exited ${exitG}: $outG"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $tg $copilotRel))) 'a fresh install wrote the file'
+            Assert ($exitB -eq 0) "brownfield exited ${exitB}: $outB"
+            Assert ($outB -match 'mode: brownfield[^\r\n]*\.github/copilot-instructions\.md') "the file no longer selects brownfield. Output:`n$outB"
+            Assert-BytesEqual -Expected $copilotReleased -Actual ([IO.File]::ReadAllBytes((Join-Path $tb $copilotRel))) -Message "brownfield did not leave the file in place unchanged for /adopt. Output:`n$outB"
+            Assert ((Get-CopilotLines $outB 'removing [^\r\n]*copilot-instructions|NOTICE: kept \.github/copilot').Count -eq 0) "brownfield printed an update line about the file. Output:`n$outB"
+        }
+    } finally { Remove-Item -Recurse -Force $tg, $tb -ErrorAction SilentlyContinue }
+}
+
+# -RemoveLeftovers: an ordinary update removes only what it can prove is the framework's text. A generated copy has no
+# fingerprint and may hold the team's edits, so without the switch it stays, byte for byte, and is named on every update.
+& {
+    $t = New-CopilotConsumer -Copilot $copilotGenerated -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $kept = Test-Path -LiteralPath (Join-Path $t $copilotRel) -PathType Leaf
+        $keptBytes = if ($kept) { [IO.File]::ReadAllBytes((Join-Path $t $copilotRel)) } else { [byte[]]@() }
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'update' 2>&1 | Out-Null
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        $rerunExit = $LASTEXITCODE
+
+        It 'retired copilot file: an ordinary update keeps a generated copy byte for byte, names -RemoveLeftovers and tells an agent to ask, twice' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert $kept "an ordinary update removed the generated copy. Output:`n$out"
+            Assert-BytesEqual -Expected $copilotGenerated -Actual $keptBytes -Message "the generated copy changed. Output:`n$out"
+            Assert ($out -notmatch '(?m)^PLAN delete \.github/copilot-instructions\.md') "the plan deletes the generated copy. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'removing \.github/copilot-instructions\.md').Count -eq 0) "a removal was announced. Output:`n$out"
+            $notice = Get-CopilotLines $out "NOTICE: kept \.github/copilot-instructions\.md: it opens with the line that the framework's copy of that file and the output of the retired /generate-copilot command opened with, or carries that command's comment, so it may hold your team's edits\."
+            Assert ($notice.Count -eq 1) "expected one NOTICE that keeps the file. Output:`n$out"
+            foreach ($part in @($copilotAskParts + 'To remove it, commit this update, then run it again with -RemoveLeftovers' + 'To keep it, do nothing' + 'an update removes it only with -RemoveLeftovers' + $copilotOnlyText)) {
+                Assert ($notice[0].Contains($part)) "the NOTICE does not say '$part'. Line: $($notice[0])"
+            }
+            Assert ($rerunExit -eq 0) "second update exited ${rerunExit}: $rerun"
+            Assert-BytesEqual -Expected $copilotGenerated -Actual ([IO.File]::ReadAllBytes((Join-Path $t $copilotRel))) -Message "a second update changed or removed the generated copy. Output:`n$rerun"
+            Assert ((Get-CopilotLines $rerun 'NOTICE: kept \.github/copilot-instructions\.md: it opens with').Count -eq 1) "a second update did not name the kept copy again. Output:`n$rerun"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# -WhatIf -RemoveLeftovers plans the removal and changes nothing.
+& {
+    $t = New-CopilotConsumer -Copilot $copilotGenerated -Git
+    try {
+        $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf -RemoveLeftovers 2>&1 | Out-String
+        $dryExit = $LASTEXITCODE
+
+        It 'retired copilot file: -WhatIf -RemoveLeftovers shows the removal of a generated copy and changes nothing' {
+            Assert ($dryExit -eq 0) "-WhatIf exited ${dryExit}: $dry"
+            Assert-BytesEqual -Expected $copilotGenerated -Actual ([IO.File]::ReadAllBytes((Join-Path $t $copilotRel))) -Message "-WhatIf changed the file. Output:`n$dry"
+            Assert ($dry -match '(?m)^PLAN delete \.github/copilot-instructions\.md\r?$') "-WhatIf -RemoveLeftovers does not plan the removal. Output:`n$dry"
+            Assert ((Get-CopilotLines $dry 'NOTICE: removing \.github/copilot-instructions\.md: it opens with').Count -eq 1) "-WhatIf -RemoveLeftovers does not show the removal NOTICE. Output:`n$dry"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# -WhatIf without the switch over a kept released copy: the kept NOTICE, with the question for an agent and the one-run command,
+# so the team can decide before the update is applied; nothing changes.
+& {
+    $t = New-CopilotConsumer -Copilot $copilotReleased -Git
+    try {
+        $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+        $dryExit = $LASTEXITCODE
+        $status = (& git -C $t status --porcelain --untracked-files=all 2>&1 | Out-String).Trim()
+
+        It 'retired copilot file: -WhatIf without the switch over a kept released copy asks and names the one-run command, and changes nothing' {
+            Assert ($dryExit -eq 0) "-WhatIf exited ${dryExit}: $dry"
+            Assert-BytesEqual -Expected $copilotReleased -Actual ([IO.File]::ReadAllBytes((Join-Path $t $copilotRel))) -Message "-WhatIf changed the file. Output:`n$dry"
+            Assert ($status -eq '') "-WhatIf changed the working tree: $status"
+            Assert ($dry -notmatch '(?m)^PLAN delete \.github/copilot-instructions\.md') "-WhatIf without the switch plans the removal. Output:`n$dry"
+            $notice = Get-CopilotLines $dry 'NOTICE: kept \.github/copilot-instructions\.md: its text, line endings aside, is one a framework release shipped\.'
+            Assert ($notice.Count -eq 1) "expected one kept NOTICE in the preview. Output:`n$dry"
+            foreach ($part in @($copilotAskParts + 'To remove it, run the update with -RemoveLeftovers instead of the plain one')) {
+                Assert ($notice[0].Contains($part)) "the preview's NOTICE does not say '$part'. Line: $($notice[0])"
+            }
+            Assert (-not $notice[0].Contains('commit this update')) "the preview's NOTICE tells the team to commit an update it has not applied. Line: $($notice[0])"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# The switch elsewhere: a first install, a brownfield install and -Reinstall remove nothing on its account and say so in one line;
+# an update with nothing for it says so in one line; the root dispatcher forwards it.
+& {
+    $tg = Join-Path ([IO.Path]::GetTempPath()) "leftovers-green-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path $tg | Out-Null
+    $tb = Join-Path ([IO.Path]::GetTempPath()) "leftovers-brown-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path (Join-Path $tb '.github') | Out-Null
+    [IO.File]::WriteAllBytes((Join-Path $tb $copilotRel), $copilotGenerated)
+    $tr = Join-Path ([IO.Path]::GetTempPath()) "leftovers-reinstall-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path $tr | Out-Null
+    $tn = New-CopilotConsumer
+    $td = New-CopilotConsumer -Copilot $copilotGenerated
+    try {
+        $outG = Invoke-Installer -Dist 'dotnet' -Target $tg -RemoveLeftovers
+        $exitG = $LASTEXITCODE
+        $outB = Invoke-Installer -Dist 'dotnet' -Target $tb -RemoveLeftovers
+        $exitB = $LASTEXITCODE
+        & git -C $tr init -q 2>&1 | Out-Null
+        & git -C $tr config user.email 'tester@example.invalid'
+        & git -C $tr config user.name 'tester'
+        & git -C $tr config core.autocrlf false
+        $first = Invoke-Installer -Dist 'dotnet' -Target $tr
+        & git -C $tr add -A 2>&1 | Out-Null
+        & git -C $tr commit -qm 'install' 2>&1 | Out-Null
+        $outR = Invoke-Installer -Dist 'dotnet' -Target $tr -Reinstall -RemoveLeftovers
+        $exitR = $LASTEXITCODE
+        $outN = Invoke-Installer -Dist 'dotnet' -Target $tn -RemoveLeftovers
+        $exitN = $LASTEXITCODE
+        $outD = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'install.ps1') -Stack dotnet -RemoveLeftovers $td 2>&1 | Out-String
+        $exitD = $LASTEXITCODE
+
+        It 'retired copilot file: -RemoveLeftovers on a first, brownfield or re-install removes nothing on its account and says so' {
+            $note = 'NOTE: -RemoveLeftovers acts only on a plain update of an existing install, so this {0} removes nothing on its account\.'
+            Assert ($exitG -eq 0 -and (Get-CopilotLines $outG ($note -f 'greenfield install')).Count -eq 1) "greenfield (exit $exitG) did not print its one line: $outG"
+            Assert ($exitB -eq 0 -and (Get-CopilotLines $outB ($note -f 'brownfield install')).Count -eq 1) "brownfield (exit $exitB) did not print its one line: $outB"
+            Assert-BytesEqual -Expected $copilotGenerated -Actual ([IO.File]::ReadAllBytes((Join-Path $tb $copilotRel))) -Message "brownfield with -RemoveLeftovers changed the generated copy. Output:`n$outB"
+            Assert ($exitR -eq 0 -and (Get-CopilotLines $outR ($note -f 'reinstall')).Count -eq 1) "-Reinstall (exit $exitR) did not print its one line: $outR`nfirst install: $first"
+            foreach ($o in $outG, $outB, $outR) { Assert ((Get-CopilotLines $o 'removing \.github/copilot-instructions').Count -eq 0) "a removal was announced on the switch's account: $o" }
+        }
+
+        It 'retired copilot file: -RemoveLeftovers with nothing to remove says so, and the root installer forwards the switch' {
+            Assert ($exitN -eq 0) "update exited ${exitN}: $outN"
+            Assert ((Get-CopilotLines $outN 'NOTICE: -RemoveLeftovers was given, but this update found nothing that only that switch removes').Count -eq 1) "the update with nothing for the switch did not say so. Output:`n$outN"
+            Assert ($exitD -eq 0) "the root installer exited ${exitD}: $outD"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $td $copilotRel))) "the root installer did not forward -RemoveLeftovers: the generated copy is still there. Output:`n$outD"
+            Assert ((Get-CopilotLines $outD 'NOTICE: removing \.github/copilot-instructions\.md: it opens with').Count -eq 1) "the root installer's run did not announce the removal. Output:`n$outD"
+        }
+    } finally { Remove-Item -Recurse -Force $tg, $tb, $tr, $tn, $td -ErrorAction SilentlyContinue }
+}
+
+# The re-run line of a stopped run carries -RemoveLeftovers only after a plain update: a brownfield install stopped after its
+# version stamp re-runs as an update, where the switch would remove the generated copy the run's own NOTE said would stay.
+& {
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $tb = Join-Path ([IO.Path]::GetTempPath()) "leftovers-rerun-brown-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path (Join-Path $tb '.github') | Out-Null
+    [IO.File]::WriteAllBytes((Join-Path $tb 'CLAUDE.md'), [IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/CLAUDE.md')))
+    [IO.File]::WriteAllText((Join-Path $tb 'AGENTS.md'), "# Acme`n`n## Conventions`n`nTeam text.`n", $copilotUtf8)
+    [IO.File]::WriteAllBytes((Join-Path $tb $copilotRel), $copilotGenerated)
+    & git -C $tb init -q 2>&1 | Out-Null
+    & git -C $tb config user.email 'fixture@example.test'
+    & git -C $tb config user.name 'Fixture'
+    & git -C $tb config core.autocrlf false
+    & git -C $tb add -A 2>&1 | Out-Null
+    & git -C $tb commit -qm 'team files' 2>&1 | Out-Null
+    $tu = New-CopilotConsumer -Copilot $copilotGenerated -Git
+    $denied = @()
+    try {
+        foreach ($t in $tb, $tu) {
+            New-Item -ItemType Directory -Force -Path (Join-Path $t 'scripts') | Out-Null
+            & icacls (Join-Path $t 'scripts') /deny "*${sid}:(OI)(CI)(WD,AD)" | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'calibration: icacls could not deny writes in scripts' }
+            $denied += $t
+        }
+        $outB = Invoke-Installer -Dist 'dotnet' -Target $tb -RemoveLeftovers
+        $exitB = $LASTEXITCODE
+        $outU = Invoke-Installer -Dist 'dotnet' -Target $tu -RemoveLeftovers
+        $exitU = $LASTEXITCODE
+
+        It 'retired copilot file: a stopped brownfield install prints a re-run line without -RemoveLeftovers, a stopped update one with it' {
+            $flatB = $outB -replace '\s+', ' '
+            Assert ($exitB -eq 3 -and $flatB -match "Could not copy 'scripts/") "calibration: the brownfield install was not stopped in its copy (exit $exitB): $outB"
+            Assert ($flatB -match 'mode: brownfield') "calibration: the install was not brownfield: $outB"
+            # The flags sit between the quoted installer path and the quoted target.
+            $rerunFlags = { param($flat) $m = [regex]::Match($flat, "re-run\s+.*?install\.ps1'(?<flags>[^']*)'"); if ($m.Success) { $m.Groups['flags'].Value } else { $null } }
+            $flagsB = & $rerunFlags $flatB
+            Assert ($null -ne $flagsB -and $flagsB.Contains('-AllowDirtyTree')) "calibration: the brownfield stop printed no re-run line with the installer: $outB"
+            Assert (-not $flagsB.Contains('-RemoveLeftovers')) "the brownfield stop's re-run line carries -RemoveLeftovers ('$flagsB'): $outB"
+            Assert-BytesEqual -Expected $copilotGenerated -Actual ([IO.File]::ReadAllBytes((Join-Path $tb $copilotRel))) -Message "the stopped brownfield install changed the generated copy. Output:`n$outB"
+            $flatU = $outU -replace '\s+', ' '
+            Assert ($exitU -eq 3 -and $flatU -match "Could not copy 'scripts/") "calibration: the update was not stopped in its copy (exit $exitU): $outU"
+            $flagsU = & $rerunFlags $flatU
+            Assert ($null -ne $flagsU -and $flagsU.Contains('-RemoveLeftovers')) "the stopped update's re-run line does not carry -RemoveLeftovers ('$flagsU'): $outU"
+        }
+    } finally {
+        foreach ($t in $denied) { & icacls (Join-Path $t 'scripts') /remove:d "*$sid" | Out-Null }
+        Remove-Item -Recurse -Force $tb, $tu -ErrorAction SilentlyContinue
+    }
+}
+
+# -Reinstall never reads the retired file: over a committed generated copy and a committed released copy it changes nothing and
+# prints nothing about either, with the switch given.
+& {
+    $targets = foreach ($kind in 'generated', 'released') {
+        $tr = Join-Path ([IO.Path]::GetTempPath()) "copilot-reinstall-$kind-$(Get-Random)"
+        New-Item -ItemType Directory -Force -Path $tr | Out-Null
+        & git -C $tr init -q 2>&1 | Out-Null
+        & git -C $tr config user.email 'fixture@example.test'
+        & git -C $tr config user.name 'Fixture'
+        & git -C $tr config core.autocrlf false
+        [void](Invoke-Installer -Dist 'dotnet' -Target $tr)
+        $bytes = if ($kind -ceq 'generated') { $copilotGenerated } else { $copilotReleased }
+        New-Item -ItemType Directory -Force -Path (Join-Path $tr '.github') | Out-Null
+        [IO.File]::WriteAllBytes((Join-Path $tr $copilotRel), $bytes)
+        & git -C $tr add -A 2>&1 | Out-Null
+        & git -C $tr commit -qm 'install and the old copilot file' 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'calibration: could not commit the reinstall consumer' }
+        [pscustomobject]@{ Kind = $kind; Target = $tr; Bytes = $bytes }
+    }
+    try {
+        foreach ($x in $targets) {
+            $x | Add-Member -NotePropertyName Out -NotePropertyValue (Invoke-Installer -Dist 'dotnet' -Target $x.Target -Reinstall -RemoveLeftovers)
+            $x | Add-Member -NotePropertyName Exit -NotePropertyValue $LASTEXITCODE
+        }
+
+        It 'retired copilot file: -Reinstall with -RemoveLeftovers leaves a committed generated or released copy alone and says nothing about it' {
+            foreach ($x in $targets) {
+                Assert ($x.Exit -eq 0) "$($x.Kind): -Reinstall exited $($x.Exit): $($x.Out)"
+                Assert (Test-Path -LiteralPath (Join-Path $x.Target $copilotRel) -PathType Leaf) "$($x.Kind): the copy is gone. Output:`n$($x.Out)"
+                Assert-BytesEqual -Expected $x.Bytes -Actual ([IO.File]::ReadAllBytes((Join-Path $x.Target $copilotRel))) -Message "$($x.Kind): -Reinstall changed the copy. Output:`n$($x.Out)"
+                Assert ((Get-CopilotLines $x.Out 'NOTICE: (kept|removing) \.github/copilot-instructions\.md').Count -eq 0) "$($x.Kind): a kept or removing NOTICE about the copy. Output:`n$($x.Out)"
+                Assert ((Get-CopilotLines $x.Out 'CANT-VERIFY: \.github/copilot-instructions\.md').Count -eq 0) "$($x.Kind): a CANT-VERIFY line about the copy. Output:`n$($x.Out)"
+            }
+        }
+    } finally { Remove-Item -Recurse -Force @($targets | ForEach-Object { $_.Target }) -ErrorAction SilentlyContinue }
+}
+
+# A generated or released copy the account cannot write, with -RemoveLeftovers: left in place, one CANT-VERIFY line each.
+& {
+    $tg = New-CopilotConsumer -Copilot $copilotGenerated
+    $tr = New-CopilotConsumer -Copilot $copilotReleased
+    try {
+        foreach ($t in $tg, $tr) { Set-ItemProperty -LiteralPath (Join-Path $t $copilotRel) -Name IsReadOnly -Value $true }
+        $results = foreach ($x in @(@('generated', $tg, $copilotGenerated), @('released', $tr, $copilotReleased))) {
+            [pscustomobject]@{ Kind = $x[0]; Target = $x[1]; Bytes = $x[2]; Out = (Invoke-Installer -Dist 'dotnet' -Target $x[1] -RemoveLeftovers); Exit = $LASTEXITCODE }
+        }
+
+        It 'retired copilot file: with -RemoveLeftovers a read-only generated or released copy stays, with one CANT-VERIFY line' {
+            foreach ($r in $results) {
+                Assert ($r.Exit -eq 0) "$($r.Kind): update exited $($r.Exit): $($r.Out)"
+                Assert (Test-Path -LiteralPath (Join-Path $r.Target $copilotRel) -PathType Leaf) "$($r.Kind): the read-only copy is gone. Output:`n$($r.Out)"
+                Assert-BytesEqual -Expected $r.Bytes -Actual ([IO.File]::ReadAllBytes((Join-Path $r.Target $copilotRel))) -Message "$($r.Kind): the read-only copy changed. Output:`n$($r.Out)"
+                $cant = Get-CopilotLines $r.Out 'CANT-VERIFY: \.github/copilot-instructions\.md '
+                Assert ($cant.Count -eq 1 -and $cant[0].Contains('could not be opened for writing')) "$($r.Kind): expected one CANT-VERIFY line saying it could not be opened for writing. Output:`n$($r.Out)"
+                Assert ((Get-CopilotLines $r.Out 'NOTICE: removing \.github/copilot-instructions\.md').Count -eq 0) "$($r.Kind): a removal was announced. Output:`n$($r.Out)"
+            }
+        }
+    } finally {
+        foreach ($t in $tg, $tr) { if (Test-Path -LiteralPath (Join-Path $t $copilotRel)) { Set-ItemProperty -LiteralPath (Join-Path $t $copilotRel) -Name IsReadOnly -Value $false } }
+        Remove-Item -Recurse -Force $tg, $tr -ErrorAction SilentlyContinue
+    }
+}
+
+# A team's file that only looks like a generated one: a first line that is the opening line plus words, and a file that names
+# GENERATED in prose (also with the command's name), is the team's own: kept byte for byte with the team NOTICE, with and without the switch.
+& {
+    $longer = $copilotUtf8.GetBytes("$copilotOpening Our own addendum: money is decimal.`n`n## Naming`n`n- team rule`n")
+    $prose = $copilotUtf8.GetBytes("# Acme Copilot rules`n`nTables under db/ are GENERATED by our build; the GENERATED by /generate-copilot era is over.`n")
+    $cases = foreach ($x in @(@('opening line plus words', $longer), @('GENERATED in prose', $prose))) {
+        $t = New-CopilotConsumer -Copilot $x[1]
+        [pscustomobject]@{ Name = $x[0]; Target = $t; Bytes = $x[1] }
+    }
+    try {
+        foreach ($c in $cases) {
+            $c | Add-Member -NotePropertyName Plain -NotePropertyValue (Invoke-Installer -Dist 'dotnet' -Target $c.Target)
+            $c | Add-Member -NotePropertyName PlainExit -NotePropertyValue $LASTEXITCODE
+            $c | Add-Member -NotePropertyName Switch -NotePropertyValue (Invoke-Installer -Dist 'dotnet' -Target $c.Target -RemoveLeftovers)
+            $c | Add-Member -NotePropertyName SwitchExit -NotePropertyValue $LASTEXITCODE
+        }
+
+        It 'retired copilot file: a file that opens with the opening line plus words, or says GENERATED in prose, is a team file, with and without the switch' {
+            foreach ($c in $cases) {
+                foreach ($run in @(@('plain', $c.PlainExit, $c.Plain), @('with the switch', $c.SwitchExit, $c.Switch))) {
+                    Assert ($run[1] -eq 0) "$($c.Name), $($run[0]): update exited $($run[1]): $($run[2])"
+                    Assert (Test-Path -LiteralPath (Join-Path $c.Target $copilotRel) -PathType Leaf) "$($c.Name), $($run[0]): the file is gone. Output:`n$($run[2])"
+                    Assert ((Get-CopilotLines $run[2] 'NOTICE: kept \.github/copilot-instructions\.md: it is not a text a framework release shipped').Count -eq 1) "$($c.Name), $($run[0]): expected one team NOTICE. Output:`n$($run[2])"
+                    Assert ((Get-CopilotLines $run[2] 'NOTICE: removing \.github/copilot-instructions\.md|If you are an AI agent running this update').Count -eq 0) "$($c.Name), $($run[0]): the file was treated as the framework's. Output:`n$($run[2])"
+                }
+                Assert-BytesEqual -Expected $c.Bytes -Actual ([IO.File]::ReadAllBytes((Join-Path $c.Target $copilotRel))) -Message "$($c.Name): the file changed"
+            }
+        }
+    } finally { Remove-Item -Recurse -Force @($cases | ForEach-Object { $_.Target }) -ErrorAction SilentlyContinue }
+}
+
+# A kept generated copy that names a retired path still gets the MIGRATION line about that reference; a copy the switch removes does not.
+& {
+    $named = $copilotUtf8.GetBytes("$copilotOpening`n`n## Review`n`n- Run /security-review before every merge.`n")
+    $tk = New-CopilotConsumer -Copilot $named
+    $tw = New-CopilotConsumer -Copilot $named
+    try {
+        $outK = Invoke-Installer -Dist 'dotnet' -Target $tk
+        $exitK = $LASTEXITCODE
+        $outW = Invoke-Installer -Dist 'dotnet' -Target $tw -RemoveLeftovers
+        $exitW = $LASTEXITCODE
+
+        It 'retired copilot file: a kept generated copy that names /security-review gets its MIGRATION line, and a removed one does not' {
+            Assert ($exitK -eq 0) "update exited ${exitK}: $outK"
+            Assert (Test-Path -LiteralPath (Join-Path $tk $copilotRel) -PathType Leaf) "calibration: the generated copy was not kept. Output:`n$outK"
+            Assert ((Get-CopilotLines $outK "MIGRATION: [^\r\n]*'\.github/copilot-instructions\.md'[^\r\n]*'/security-review'").Count -eq 1) "no MIGRATION line names /security-review in the kept copy. Output:`n$outK"
+            Assert ($exitW -eq 0) "update with the switch exited ${exitW}: $outW"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $tw $copilotRel))) "calibration: the switch did not remove the generated copy. Output:`n$outW"
+            Assert ((Get-CopilotLines $outW "MIGRATION: [^\r\n]*'\.github/copilot-instructions\.md'").Count -eq 0) "a MIGRATION line names the removed copy. Output:`n$outW"
+        }
+    } finally { Remove-Item -Recurse -Force $tk, $tw -ErrorAction SilentlyContinue }
+}
+
 exit (Write-TestSummary 'UpdateDelivery4.Tests')

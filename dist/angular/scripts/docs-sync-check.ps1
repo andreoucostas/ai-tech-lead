@@ -75,10 +75,27 @@ if (-not (Test-Path "FRAMEWORK-CONTEXT.md")) {
 } else { OK "FRAMEWORK-CONTEXT.md present and populated." }
 
 # 5. Canonical project-skill location.
+# A tree an earlier update emptied (folders only, no file at any depth) holds no skill, so it counts as absent.
+# A symbolic link or junction at any depth, the path itself included, counts as a file: Copilot reads skills through one,
+# and the walk never follows it. A folder that cannot be read counts as holding a file.
+function Test-HoldsFileOrLink([string]$Path) {
+    foreach ($child in @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop)) {
+        if (-not $child.PSIsContainer -or ($child.Attributes -band [IO.FileAttributes]::ReparsePoint)) { return $true }
+        if (Test-HoldsFileOrLink $child.FullName) { return $true }
+    }
+    return $false
+}
+$githubSkillsHeld = $false
 if (Test-Path -LiteralPath ".github/skills") {
+    try {
+        $githubSkillsRoot = Get-Item -LiteralPath ".github/skills" -Force -ErrorAction Stop
+        $githubSkillsHeld = (-not $githubSkillsRoot.PSIsContainer) -or ($githubSkillsRoot.Attributes -band [IO.FileAttributes]::ReparsePoint) -or (Test-HoldsFileOrLink $githubSkillsRoot.FullName)
+    } catch { $githubSkillsHeld = $true }
+}
+if ($githubSkillsHeld) {
     Fail ".github/skills exists — migrate its contents to .claude/skills, then remove the GitHub path."
 } else {
-    OK "canonical project skills use .claude/skills (.github/skills absent)."
+    OK "canonical project skills use .claude/skills (.github/skills absent, or holding no file)."
 }
 
 # 6. README mentions each skill and agent (advisory) -- keep the reference tables current.

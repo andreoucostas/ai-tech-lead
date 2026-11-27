@@ -74,11 +74,13 @@ Repo-specific conventions the consumer owns. Populated by /bootstrap. DO NOT CLO
 }
 
 function Invoke-Installer {
-    param([string]$Dist, [string]$Target, [switch]$AllowDirtyTree, [switch]$AllowMoveAside)
+    param([string]$Dist, [string]$Target, [switch]$AllowDirtyTree, [switch]$AllowMoveAside, [switch]$RemoveLeftovers, [switch]$Reinstall)
     $installer = Join-Path $repoRoot "dist/$Dist/scripts/install.ps1"
     $switches = @()
     if ($AllowDirtyTree) { $switches += '-AllowDirtyTree' }
     if ($AllowMoveAside) { $switches += '-AllowMoveAside' }
+    if ($RemoveLeftovers) { $switches += '-RemoveLeftovers' }
+    if ($Reinstall) { $switches += '-Reinstall' }
     & (Get-PsExe) -NoProfile -File $installer -Target $Target @switches 2>&1 | Out-String
 }
 

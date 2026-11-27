@@ -9,16 +9,17 @@ Five pieces of work, in the order at the end. Each says what is known and what i
 2. **What other repositories read (latest report):** "Measure then." The unmeasured hidden-contract case runs on Copilot in the December session.
 3. **December Copilot session:** "Ok." One session; the total cap figure is still to be set before 2026-12-01.
 4. **SonarQube:** "Ok forget the sonarcube idea." Section 4.2 is dropped; section 4.1 (a resolved debt item is deleted in the same change) stays.
+5. **Old Copilot instructions file:** "I think the model should ask them whether it should clean it up." An update keeps the file and its own line tells an AI agent running the update to ask the team; a switch on the update removes it (WSD-153).
 
 ## 1. Remove what old installs still carry (files and contents)
 
 Rule, in your words: "If the framework doesn't need it we should remove it. We can flag it." For a file a team may have edited: change only text that is byte-for-byte what the framework shipped, keep the original recoverable, say what changed, and name anything that differs.
 
-### 1.1 In progress now (an agent in an isolated copy; I review, a fresh agent attacks it)
+### 1.1 Built (WSD-153; built in an isolated copy, attacked by fresh sessions in three rounds)
 
 | Leftover | Releases | Action |
 |---|---|---|
-| Old Copilot instructions file | 0.76.0 to 0.89.2 | Remove a shipped text or a copy the retired generator wrote; flag a team's own file |
+| Old Copilot instructions file | 0.76.0 to 0.89.2 | Keep and name a shipped text or a copy the retired generator wrote; the update tells an AI agent to ask the team; the `-RemoveLeftovers` switch removes it; flag a team's own file |
 | Old Boy Scout lines in the team's instruction file | 0.76.0 to 0.85.0 | Replace or remove each exact line |
 | Task-list lines for retired skills | 0.76.0 to 0.91.0 | Remove each exact line once the skill file is gone |
 | Empty skill folders | 0.76.0 | Remove; the completion check ignores a folder with no files |
