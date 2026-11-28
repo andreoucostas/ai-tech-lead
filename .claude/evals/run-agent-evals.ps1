@@ -3824,20 +3824,25 @@ function Get-SkillFolderFiles([string]$Target, [string]$Slug) {
 }
 
 # B-516: the skill-approve oracle, semantic rather than byte equality with approved.patch (which also keeps the draft H1 the paragraph
-# does not list). From the draft's own "## After review" paragraph: its Common Tasks line (the double-backtick span) appears exactly once
+# does not list). From the draft's own "## After review" paragraph: its Common Tasks line (a span starting with the skill's backticked name) appears exactly once
 # as a list line under AGENTS.md's "## Common Tasks" heading (up to the next "## " heading or "---"); the three pieces of draft wording it
 # names are gone from the skill (the "**Status:**" line, "DRAFT, pending PR review:" in the front matter, the paragraph and its heading);
 # the front matter keeps "origin: discovered"; the draft markers found in the skill's reference files before the run (a parenthesised
 # "draft, pending (PR) review", "Not team-approved policy.", "DRAFT, pending PR review:") are gone, and those files differ from before
 # only by removed markers (any other change, added or deleted file in the folder FAILs); and nothing outside the folder but AGENTS.md
 # differs from the pre-run tree (Get-B406Changes), the other draft included.
-# Reported only: whether the Steps section and the rest of AGENTS.md are unchanged, and the write requests, refusals and denials.
+# Reported only: whether the Steps section, the Unresolved notes and the rest of AGENTS.md are unchanged, and the write requests, refusals and denials.
 function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
     if ($null -eq $Before) { throw 'skill-approve: no pre-run draft was recorded for this case: the approval could not be examined.' }
     $changed = @(Get-B406Changes $Target)
     $skillRel = ".claude/skills/$($Before.Slug)/SKILL.md"
-    $line = if ($Before.Draft -match '(?ms)^## After review\s*$.*?``\s*(`[^`\r\n]+`[^\r\n]*?)\s*``') { $Matches[1] } else { '' }
-    if (-not $line) { throw "skill-approve: the draft's After review paragraph names no Common Tasks line." }
+    # The After review section (heading to the next "## " heading or the end). Its Common Tasks line is the first span that starts with the
+    # skill's name in single backticks: a double-backtick code span (0.98.6; a leading list marker skipped) or a parenthesis (0.99.0; one
+    # level of nested parentheses inside). Drafts are model-written, so the paragraph's other words are not read.
+    $afterSection = if ($Before.Draft -match '(?ms)^## After review[ \t]*\r?$(.*?)(?=^## |\z)') { $Matches[1] } else { '' }
+    $name = '`' + [regex]::Escape($Before.Slug) + '`'
+    $line = if ($afterSection -match ('``[ \t]*(?:[-*+][ \t]+)?(?<l>' + $name + '[^\r\n]*?)[ \t]*``|\([ \t]*(?<l>' + $name + '(?:[^()\r\n]|\([^()\r\n]*\))*)\)')) { $Matches['l'].Trim() } else { '' }
+    if (-not $line) { throw "skill-approve: the draft's After review paragraph names no Common Tasks line in a shape this check reads (a double-backtick span or a parenthesis starting with $name)." }
     $agentsPath = Join-Path $Target 'AGENTS.md'
     $agents = if (Test-Path -LiteralPath $agentsPath -PathType Leaf) { [IO.File]::ReadAllText($agentsPath) } else { '' }
     $agentsLines = @($agents -split '\r?\n')
@@ -3850,7 +3855,8 @@ function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
     $skillPath = Join-Path $Target $skillRel
     $skill = if (Test-Path -LiteralPath $skillPath -PathType Leaf) { [IO.File]::ReadAllText($skillPath) } else { '' }
     $statusLeft = $skill -cmatch '(?m)^\*\*Status:\*\*' -or $skill.Contains('not team-approved policy')
-    $afterLeft = $skill -match '(?m)^##\s+After review\s*$' -or $skill.Contains('delete the draft wording above')
+    # Left: the heading, or any non-blank line of the pre-run section's body, still in the skill (no draft-specific phrase is read).
+    $afterLeft = $skill -match '(?m)^##\s+After review\s*$' -or [bool]@($afterSection -split '\r?\n' | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $skill.Contains($_) }).Count
     $front = if ($skill -match '\A﻿?---\r?\n(?s:(.*?))\r?\n---\r?\n') { $Matches[1] } else { '' }
     # The paragraph itself quotes the prefix, so the description is read in the front matter alone.
     $descriptionLeft = $front.Contains('DRAFT, pending PR review')
@@ -3858,7 +3864,8 @@ function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
     $folderRel = ".claude/skills/$($Before.Slug)/"
     $others = @($changed | Where-Object { $_ -cne 'AGENTS.md' -and -not $_.StartsWith($folderRel, [StringComparison]::Ordinal) })
     if (-not $Before.PSObject.Properties['Refs'] -or $null -eq $Before.Refs) { throw 'skill-approve: no pre-run reference files were recorded for this case: the approval could not be examined.' }
-    $markerPattern = '(?i)[ \t]*\(draft,? pending (?:PR )?review\)|not team-approved policy\.?[ \t]*|draft,? pending PR review:[ \t]*'
+    # 0.99.0's sentence "Draft pending PR review; not team-approved policy." is one marker, matched before its second half alone.
+    $markerPattern = '(?i)[ \t]*\(draft,? pending (?:PR )?review\)|draft,? pending PR review; not team-approved policy\.?[ \t]*|not team-approved policy\.?[ \t]*|draft,? pending PR review:[ \t]*'
     # Per line, trailing whitespace and line endings tolerated; leading whitespace is content (a re-indent can turn a table into code),
     # except on a line that held a marker before the run, where removing the marker words alone can leave the space after them.
     $markerLines = { param([string]$Text) $i = 0; @(($Text -replace '\r\n', "`n") -split "`n" | ForEach-Object { if ($_ -match $markerPattern) { $i }; $i++ }) }
@@ -3889,6 +3896,12 @@ function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
         if ($others.Count) { 'others' })
     $steps = { param([string]$Text) if ($Text -match '(?ms)^## Steps\s*$(.*?)(?=^## |\z)') { ($Matches[1] -replace '\r\n', "`n").Trim() } else { '' } }
     $stepsKept = [bool](& $steps $Before.Draft) -and (& $steps $Before.Draft) -ceq (& $steps $skill)
+    # Reported only, never graded: whether an approval may delete the "## Unresolved" notes is the maintainer's open decision. Of the skill's
+    # SKILL.md and reference files with that section before the run, how many keep its body (line endings, trailing whitespace tolerated).
+    $unresolved = { param([string]$Text) if ($Text -match '(?ms)^## Unresolved[ \t]*\r?$(.*?)(?=^## |\z)') { (@(($Matches[1] -replace '\r\n', "`n") -split "`n" | ForEach-Object { $_.TrimEnd() }) -join "`n").Trim("`n") } else { $null } }
+    $unresolvedPairs = @(, @($Before.Draft, $skill)) + @($Before.Refs.Keys | ForEach-Object { , @($Before.Refs[$_], $refsAfter[$_]) })
+    $unresolvedOf = @($unresolvedPairs | Where-Object { $null -ne (& $unresolved $_[0]) })
+    $unresolvedKept = @($unresolvedOf | Where-Object { $null -ne $_[1] -and (& $unresolved $_[1]) -ceq (& $unresolved $_[0]) }).Count
     $beforeLines = @($Before.Agents -split '\r?\n')
     $agentsOnlyLine = $count -eq 1 -and $agentsLines.Count -eq $beforeLines.Count + 1 -and (@($agentsLines | Where-Object { -not ($_ -match '^\s*[-*]\s+(.*?)\s*$' -and $Matches[1] -ceq $line) }) -join "`n") -ceq ($beforeLines -join "`n")
     $writeTools = @($Evidence.Tools | Where-Object { Test-B406Write $_ })
@@ -3900,7 +3913,7 @@ function Get-SkillApproval($Evidence, [string]$Target, $Before, $Permissions) {
         "$($writeAsks.Count) asksAllowed=$(@($writeAsks | Where-Object { $_.decision -eq 'allow' }).Count) asksDenied=$(@($writeAsks | Where-Object { $_.decision -ne 'allow' }).Count)"
     }
     $otherList = if ($others.Count) { ' (' + ((@($others | Select-Object -First 5)) -join ',') + $(if ($others.Count -gt 5) { ',...' }) + ')' } else { '' }
-    $detail = "approval=$(if ($failed.Count) { 'FAIL' } else { 'PASS' }) failed=$(if ($failed.Count) { $failed -join ',' } else { 'none' }) commonTasks=$count status=$(if ($statusLeft) { 'left' } else { 'gone' }) description=$(if ($descriptionLeft) { 'left' } else { 'gone' }) afterReview=$(if ($afterLeft) { 'left' } else { 'gone' }) origin=$(if ($originKept) { 'kept' } else { 'lost' }) others=$($others.Count)$otherList referenceMarkers=$markersLeft/$markersBefore referenceOther=$($refOther.Count)$(if ($refOther.Count) { ' (' + ((@($refOther | Select-Object -First 5)) -join ',') + ')' }) stepsKept=$stepsKept agentsOnlyLine=$agentsOnlyLine writes=$($writeTools.Count) refusedWrites=$refused denials=$denials writeAsks=$asks questions=$questions durationMs=$(Get-B406Duration $Evidence)"
+    $detail = "approval=$(if ($failed.Count) { 'FAIL' } else { 'PASS' }) failed=$(if ($failed.Count) { $failed -join ',' } else { 'none' }) commonTasks=$count status=$(if ($statusLeft) { 'left' } else { 'gone' }) description=$(if ($descriptionLeft) { 'left' } else { 'gone' }) afterReview=$(if ($afterLeft) { 'left' } else { 'gone' }) origin=$(if ($originKept) { 'kept' } else { 'lost' }) others=$($others.Count)$otherList referenceMarkers=$markersLeft/$markersBefore referenceOther=$($refOther.Count)$(if ($refOther.Count) { ' (' + ((@($refOther | Select-Object -First 5)) -join ',') + ')' }) stepsKept=$stepsKept unresolvedKept=$unresolvedKept/$($unresolvedOf.Count) agentsOnlyLine=$agentsOnlyLine writes=$($writeTools.Count) refusedWrites=$refused denials=$denials writeAsks=$asks questions=$questions durationMs=$(Get-B406Duration $Evidence)"
     [pscustomobject]@{ Status = 'PASS'; Pass = ($failed.Count -eq 0); Detail = $detail }
 }
 
@@ -10938,37 +10951,60 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         $saCheck = {
             param([string]$Name, [hashtable]$Edit, [bool]$Pass, [string]$Detail)
             $d = Join-Path $temp ('b516-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
-            Copy-Item -LiteralPath $saFiles -Destination $d -Recurse -Force
+            Copy-Item -LiteralPath $(if ($Edit.Source) { $Edit.Source } else { $saFiles }) -Destination $d -Recurse -Force
             [IO.File]::WriteAllText((Join-Path $d 'Orders.sln'), "placeholder`n", $saUtf8)
-            $script:B406Snapshot = Get-TreeHashes $d
             $skillPath = Join-Path $d '.claude/skills/add-report-export/SKILL.md'
             $agentsPath = Join-Path $d 'AGENTS.md'
+            $refPath = Join-Path $d '.claude/skills/add-report-export/references/project-pattern.md'
+            # B-516: today's draft shape (0.99.0), built from the frozen copy before the run: the line in parentheses (nested ones inside), the
+            # sentence marker in the reference file, and an Unresolved section there too, so the skill and its reference file both carry one.
+            if ($Edit.Today) {
+                $saPara = if ($Edit.TodayPara) { $Edit.TodayPara } else { 'Add one Common Tasks line to `AGENTS.md` (' + $saLine + ')' }
+                # AfterNotLast: a section after After review, so its end is the next "## " heading, not the end of the file.
+                [IO.File]::WriteAllText($skillPath, [regex]::Replace([IO.File]::ReadAllText($skillPath), '(?ms)^## After review\r?\n.*\z', "## After review`n`n$saPara, then delete the ``DRAFT, pending PR review:`` wording, this status paragraph and the Unresolved note in this skill and its reference file.`n$(if ($Edit.AfterNotLast) { "`n## Ownership`n`nThe report's view owner signs off each export.`n" })"), $saUtf8)
+                [IO.File]::WriteAllText($refPath, [IO.File]::ReadAllText($refPath).Replace('Not team-approved policy. ', 'Draft pending PR review; not team-approved policy. ') + "`n## Unresolved`n`nHow the view scripts are deployed is not evidenced.`n", $saUtf8)
+            }
+            # B-516: the 0.98.6 span with a list marker before the name (the b406-orders and b409-orders-ci drafts' shape).
+            if ($Edit.ListMarker) { [IO.File]::WriteAllText($skillPath, [IO.File]::ReadAllText($skillPath).Replace('`` `add-report-export`', '`` - `add-report-export`'), $saUtf8) }
+            $script:B406Snapshot = Get-TreeHashes $d
             $script:SkillApproveBefore = Get-SkillApproveBefore $d 'add-report-export'
             $s = $script:SkillApproveBefore.Draft
             if (-not $Edit.KeepDescription) { $s = $s.Replace('DRAFT, pending PR review: ', '') }
             if (-not $Edit.KeepStatus) { $s = $s.Replace('**Status:** candidate skill, draft pending PR review; not team-approved policy. ', '') }
-            if (-not $Edit.KeepAfter) { $s = [regex]::Replace($s, '\r?\n## After review\r?\n[\s\S]*\z', "`n") }
+            if ($Edit.KeepAfterText) { $s = [regex]::Replace($s, '(?m)^## After review\r?\n', '') }
+            elseif ($Edit.AfterNotLast) { $s = [regex]::Replace($s, '(?ms)^## After review\r?\n.*?(?=^## )', '') }
+            elseif (-not $Edit.KeepAfter) { $s = [regex]::Replace($s, '\r?\n## After review\r?\n[\s\S]*\z', "`n") }
             if ($Edit.DropOrigin) { $s = [regex]::Replace($s, '(?m)^origin: discovered\r?\n', '') }
-            if (-not $Edit.NoSkillEdit) { [IO.File]::WriteAllText($skillPath, $s, $saUtf8) }
-            $refPath = Join-Path $d '.claude/skills/add-report-export/references/project-pattern.md'
-            $ref = [IO.File]::ReadAllText($refPath)
-            if (-not $Edit.KeepRefMarkers -and -not $Edit.NoSkillEdit) { $ref = $ref.Replace(' (draft, pending PR review)', '').Replace($(if ($Edit.RefMarkerSpace) { 'Not team-approved policy.' } else { 'Not team-approved policy. ' }), '') }
-            if ($Edit.RefOther) { $ref = $ref.Replace('Status: `observed`', 'Status: `approved`') }
-            if ($Edit.RefIndent) { $ref = [regex]::Replace($ref, '(?m)^\|', '    |') }
-            [IO.File]::WriteAllText($refPath, $ref, $saUtf8)
-            if ($Edit.RefRename) {
-                $refMoved = Join-Path $d '.claude/skills/add-report-export/references/b516-rename.tmp'
-                [IO.File]::Move($refPath, $refMoved)
-                [IO.File]::Move($refMoved, (Join-Path $d '.claude/skills/add-report-export/references/Project-Pattern.md'))
+            $saUnresolved = '(?ms)^## Unresolved\s*$.*?(?=^## |\z)'
+            if ($Edit.DropUnresolved) { $s = [regex]::Replace($s, $saUnresolved, '') }
+            # UnresolvedCrlf: the approver rewrites the Unresolved sections with CRLF and a trailing space on each line, their words kept.
+            $saCrlf = { param([string]$Text) [regex]::Replace($Text, $saUnresolved, { param($m) $m.Value.Replace("`n", " `r`n") }) }
+            if ($Edit.UnresolvedCrlf) { $s = & $saCrlf $s }
+            if (-not $Edit.NoSkillEdit -and -not $Edit.NoApproval) { [IO.File]::WriteAllText($skillPath, $s, $saUtf8) }
+            # NoApproval (the live overlay): no file is written, so nothing below reads a name the regenerated overlay may not keep.
+            if (-not $Edit.NoApproval) {
+                $ref = [IO.File]::ReadAllText($refPath)
+                $saRefSentence = if ($Edit.Today) { 'Draft pending PR review; not team-approved policy. ' } elseif ($Edit.RefMarkerSpace) { 'Not team-approved policy.' } else { 'Not team-approved policy. ' }
+                if (-not $Edit.KeepRefMarkers -and -not $Edit.NoSkillEdit) { $ref = $ref.Replace(' (draft, pending PR review)', '').Replace($saRefSentence, '') }
+                if ($Edit.RefOther) { $ref = $ref.Replace('Status: `observed`', 'Status: `approved`') }
+                if ($Edit.RefIndent) { $ref = [regex]::Replace($ref, '(?m)^\|', '    |') }
+                if ($Edit.DropUnresolved) { $ref = [regex]::Replace($ref, $saUnresolved, '') }
+                if ($Edit.UnresolvedCrlf) { $ref = & $saCrlf $ref }
+                [IO.File]::WriteAllText($refPath, $ref, $saUtf8)
+                if ($Edit.RefRename) {
+                    $refMoved = Join-Path $d '.claude/skills/add-report-export/references/b516-rename.tmp'
+                    [IO.File]::Move($refPath, $refMoved)
+                    [IO.File]::Move($refMoved, (Join-Path $d '.claude/skills/add-report-export/references/Project-Pattern.md'))
+                }
+                $a = $script:SkillApproveBefore.Agents
+                $nl = if ($a.Contains("`r`n")) { "`r`n" } else { "`n" }
+                $anchor = [regex]::Match($a, '(?m)^- `enforce-standards`[^\r\n]*\r?\n')
+                if (-not $anchor.Success) { throw 'B-516: the b514-orders AGENTS.md has no enforce-standards bullet to add the line after' }
+                $copies = if ($Edit.ContainsKey('Lines')) { [int]$Edit.Lines } else { 1 }
+                $a = if ($Edit.LineAtEnd) { $a + $nl + '- ' + $saLine + $nl } else { $a.Insert($anchor.Index + $anchor.Length, ('- ' + $saLine + $nl) * $copies) }
+                [IO.File]::WriteAllText($agentsPath, $a, $saUtf8)
+                if ($Edit.TouchOther) { Add-Content -LiteralPath (Join-Path $d '.claude/skills/add-integration-event/SKILL.md') -Value 'touched' -Encoding utf8NoBOM }
             }
-            $a = $script:SkillApproveBefore.Agents
-            $nl = if ($a.Contains("`r`n")) { "`r`n" } else { "`n" }
-            $anchor = [regex]::Match($a, '(?m)^- `enforce-standards`[^\r\n]*\r?\n')
-            if (-not $anchor.Success) { throw 'B-516: the b514-orders AGENTS.md has no enforce-standards bullet to add the line after' }
-            $copies = if ($Edit.ContainsKey('Lines')) { [int]$Edit.Lines } else { 1 }
-            $a = if ($Edit.LineAtEnd) { $a + $nl + '- ' + $saLine + $nl } else { $a.Insert($anchor.Index + $anchor.Length, ('- ' + $saLine + $nl) * $copies) }
-            [IO.File]::WriteAllText($agentsPath, $a, $saUtf8)
-            if ($Edit.TouchOther) { Add-Content -LiteralPath (Join-Path $d '.claude/skills/add-integration-event/SKILL.md') -Value 'touched' -Encoding utf8NoBOM }
             $refusedText = 'Claude requested permissions to write to that file, but you haven''t granted it yet.'
             $events = @([ordered]@{ type = 'system'; subtype = 'init' })
             $n = 0
@@ -10985,9 +11021,13 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
             $t | Add-Member -NotePropertyName Permissions -NotePropertyValue @([ordered]@{ tool = 'Edit'; input = $skillPath; decision = $(if ($Edit.Refused) { 'deny' } else { 'allow' }); class = $(if ($Edit.Refused) { 'none' } else { 'write' }) })
             $r = $null
             try { $r = Test-ScenarioEvidence 'skill-approve' $d $t 0 } catch { $r = [pscustomobject]@{ Status = 'THREW'; Pass = $false; Detail = $_.Exception.Message } }
-            if ($r.Status -ne 'PASS' -or [bool]$r.Pass -ne $Pass -or $r.Detail -notmatch $Detail) { throw "B-516 skill-approve: $Name misjudged: $($r.Status) pass=$($r.Pass) $($r.Detail)" }
+            if ($r.Status -ne $(if ($Edit.Throws) { 'THREW' } else { 'PASS' }) -or [bool]$r.Pass -ne $Pass -or $r.Detail -notmatch $Detail) { throw "B-516 skill-approve: $Name misjudged: $($r.Status) pass=$($r.Pass) $($r.Detail)" }
         }
-        & $saCheck 'a synthetic correct approval, the reference file''s draft markers removed and nothing else' @{} $true '^approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=0/2 referenceOther=0 stepsKept=True agentsOnlyLine=True writes=2 refusedWrites=0 denials=0 writeAsks=1 asksAllowed=1 asksDenied=0 questions=0 durationMs=7$'
+        # B-516: the live overlay the scenario runs on, unapproved, pinning none of its words (every release regenerates it): the oracle must
+        # grade it, not throw. A throw here means the regenerated draft's After review paragraph is in a shape Get-SkillApproval cannot read.
+        try { & $saCheck 'the live b514-orders overlay left unapproved' @{ Source = (Join-Path $repo 'meta/eval-fixtures/b514-orders/files'); NoApproval = $true; Refused = $true } $false '^approval=FAIL failed=\S+ commonTasks=0 status=\S+ description=left afterReview=left ' }
+        catch { throw "B-516 skill-approve: the regenerated b514-orders overlay's add-report-export draft is in a shape the oracle cannot read or grade (read its After review paragraph, then widen Get-SkillApproval): $($_.Exception.Message)" }
+        & $saCheck 'a synthetic correct approval, the reference file''s draft markers removed and nothing else' @{} $true '^approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=0/2 referenceOther=0 stepsKept=True unresolvedKept=1/1 agentsOnlyLine=True writes=2 refusedWrites=0 denials=0 writeAsks=1 asksAllowed=1 asksDenied=0 questions=0 durationMs=7$'
         & $saCheck 'the reference file''s marker words removed, the space after them left' @{ RefMarkerSpace = $true } $true '^approval=PASS failed=none commonTasks=1 .* referenceMarkers=0/2 referenceOther=0 '
         & $saCheck 'the reference file''s draft markers left' @{ KeepRefMarkers = $true } $false '^approval=FAIL failed=referenceMarkers commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=2/2 referenceOther=0 '
         & $saCheck 'another change to the reference file' @{ RefOther = $true } $false '^approval=FAIL failed=referenceOther commonTasks=1 .* others=0 referenceMarkers=0/2 referenceOther=1 \(\.claude/skills/add-report-export/references/project-pattern\.md\) '
@@ -11002,6 +11042,18 @@ JOIN dim.DimCarrier AS c ON c.CarrierDurableKey = f.CarrierDurableKey
         & $saCheck 'the line added outside Common Tasks' @{ LineAtEnd = $true } $false '^approval=FAIL failed=commonTasks commonTasks=0 '
         & $saCheck 'both writes refused, nothing changed' @{ Lines = 0; NoSkillEdit = $true; Refused = $true } $false '^approval=FAIL failed=commonTasks,status,description,afterReview,referenceMarkers commonTasks=0 .* referenceMarkers=2/2 referenceOther=0 .* writes=2 refusedWrites=2 denials=2 writeAsks=1 asksAllowed=0 asksDenied=1 '
         Write-Output 'PASS: B-516 the skill-approve oracle passes a correct approval and fails a doubled or misplaced Common Tasks line, each piece of draft wording left, the reference file''s draft markers left or any other change to it (a re-indent or a case-only rename included), origin removed and a change to the other draft'
+        # B-516: today's draft shape (0.99.0), built in memory from the frozen copy (Today): the line in parentheses, the sentence marker, two Unresolved sections.
+        & $saCheck 'today''s shape: a correct approval that keeps the Unresolved notes' @{ Today = $true } $true '^approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone origin=kept others=0 referenceMarkers=0/2 referenceOther=0 stepsKept=True unresolvedKept=2/2 agentsOnlyLine=True '
+        & $saCheck 'today''s shape: the After review heading deleted, its paragraph left' @{ Today = $true; KeepAfterText = $true } $false '^approval=FAIL failed=afterReview commonTasks=1 status=gone description=gone afterReview=left '
+        # The verdict here follows today's grading of a reference-file change; whether an approval may delete the Unresolved notes, as today's
+        # paragraph asks, is a decision the maintainer has not yet taken, so unresolvedKept is reported only and this pin moves with that decision.
+        & $saCheck 'today''s shape: the Unresolved sections deleted too, as the paragraph says' @{ Today = $true; DropUnresolved = $true } $false '^approval=FAIL failed=referenceOther commonTasks=1 .* referenceMarkers=0/2 referenceOther=1 .* stepsKept=True unresolvedKept=0/2 '
+        & $saCheck 'today''s shape: parentheses that name the skill but do not start with it' @{ Today = $true; TodayPara = 'Add one Common Tasks line to `AGENTS.md` (the one for `add-report-export`, a CSV report export)'; Throws = $true } $false 'names no Common Tasks line'
+        & $saCheck 'today''s shape: a parenthesis starting with another skill''s name before the line' @{ Today = $true; TodayPara = 'Next to the line for (`add-integration-event` is listed already), add one Common Tasks line to `AGENTS.md` (' + $saLine + ')' } $true '^approval=PASS failed=none commonTasks=1 '
+        & $saCheck 'the 0.98.6 span with a list marker before the name' @{ ListMarker = $true } $true '^approval=PASS failed=none commonTasks=1 '
+        & $saCheck 'today''s shape: the Unresolved sections rewritten with CRLF and trailing spaces' @{ Today = $true; UnresolvedCrlf = $true } $true '^approval=PASS failed=none commonTasks=1 .* referenceOther=0 stepsKept=True unresolvedKept=2/2 '
+        & $saCheck 'today''s shape: After review followed by another section, which the approval keeps' @{ Today = $true; AfterNotLast = $true } $true '^approval=PASS failed=none commonTasks=1 status=gone description=gone afterReview=gone '
+        Write-Output 'PASS: B-516 the skill-approve oracle grades the live b514-orders overlay unapproved instead of throwing, and on today''s draft shape (the line in parentheses, the sentence marker) passes a correct approval, fails a heading-only After review delete, reports the Unresolved notes kept (2/2, CRLF and trailing spaces tolerated) or deleted (0/2), takes no line from parentheses that do not start with the skill or start with another skill, reads a list marker in the 0.98.6 span, and ends After review at the next heading'
         $saAll = @((Get-Content -Raw $scenarioPath | ConvertFrom-Json).scenarios)
         $sa = @($saAll | Where-Object { $_.id -eq 'skill-approve' })
         if ($sa.Count -ne 1) { throw "B-516: scenarios.json holds $($sa.Count) skill-approve entries" }
