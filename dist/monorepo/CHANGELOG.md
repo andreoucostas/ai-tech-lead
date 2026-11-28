@@ -5,7 +5,7 @@
 > the rails of both stacks, so entries may apply to one side or both.
 > Architecture decisions you record live in `docs/architecture-decisions.md`.
 
-## 0.99.2 — Unreleased
+## 0.99.2 — 2026-11-28
 
 **What you must do**
 
