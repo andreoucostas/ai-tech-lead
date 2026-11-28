@@ -533,8 +533,9 @@ It 'a retired .sh whose .ps1 twin is also retired still gets a migration replace
             [Text.UTF8Encoding]::new($false))
         $out = Invoke-Installer -Dist 'dotnet' -Target $t
         Assert ($LASTEXITCODE -eq 0) "retired-twin migration update failed: $out"
+        # The update moves this CLAUDE.md into AGENTS.md, and the scan names the file that holds the text after it (B-573).
         foreach ($sh in @('scripts/impact-run.sh', 'scripts/sync-agent-files.sh')) {
-            Assert ($out -match "MIGRATION: protected consumer carrier 'CLAUDE\.md' names retired framework path '$([regex]::Escape($sh))'") "no MIGRATION line for $sh : $out"
+            Assert ($out -match "MIGRATION: protected consumer carrier 'AGENTS\.md' names retired framework path '$([regex]::Escape($sh))'") "no MIGRATION line for $sh : $out"
         }
         Assert ($out -match 'that feature is retired and has no replacement command; remove the reference') "the no-successor replacement text was not emitted: $out"
         Assert ($out -notmatch "replace that reference with: .*scripts/impact-run\.ps1") "a diagnostic directed the reader at the retired .ps1 twin: $out"

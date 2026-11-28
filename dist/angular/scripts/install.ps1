@@ -326,6 +326,46 @@ function Read-SupersededSeedFiles {
     }
     return , $entries.ToArray()
 }
+# Single lines releases from 0.76.0 shipped in a seeded team file, or in the team's instruction file, that today's seed words
+# otherwise in the same place. Each names its file (AGENTS.md for the instruction pair), its place ('' for the lines
+# above the first '## ' heading, else that heading), the digest of the old line as Get-InstructionLineCore reads it, its
+# successor (one line, or several joined with LF; $null where the sentence is gone), whether the hanging-line guard applies (a
+# successor that only puts a current name for a retired one does not need it), whether the line is changed only when AGENTS.md
+# holds the project instructions once the run is done (needs-instructions-in-agents: a line that names AGENTS.md as that file)
+# and what the line was about. Returns the
+# entries by file; $null when the ledger has no such key; a key in any other shape is refused as the ledger's other errors are.
+function Read-SupersededSeedLines {
+    param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][string[]]$Allowed)
+    $document = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+    if (-not ($document.PSObject.Properties.Name -ccontains 'superseded-seed-lines')) { return $null }
+    $data = $document.'superseded-seed-lines'
+    $malformed = 'retirement ledger has a malformed superseded-seed-lines'
+    if ($data -isnot [array] -or @($data).Count -eq 0) { throw $malformed }
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $byFile = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
+    foreach ($entry in $data) {
+        if ($entry -isnot [Management.Automation.PSCustomObject] -or $entry.file -isnot [string] -or $Allowed -cnotcontains $entry.file -or
+            $entry.place -isnot [string] -or ($entry.place.Length -gt 0 -and ($entry.place -cnotmatch '^## \S' -or $entry.place -match '[\r\n]' -or $entry.place -cne $entry.place.TrimEnd())) -or
+            $entry.'known-line-sha256' -isnot [string] -or $entry.'known-line-sha256' -cnotmatch '^[0-9a-f]{64}$' -or -not $seen.Add("$($entry.file)`n$($entry.place)`n$($entry.'known-line-sha256')") -or
+            -not ($entry.PSObject.Properties.Name -ccontains 'replacement') -or
+            ($null -ne $entry.replacement -and ($entry.replacement -isnot [string] -or $entry.replacement.Contains([string][char]13) -or
+                @($entry.replacement.Split([char]10) | Where-Object { $_.Trim().Length -eq 0 -or $_ -cne $_.TrimEnd() }).Count -gt 0)) -or
+            $entry.'hanging-line-guard' -isnot [bool] -or $entry.'needs-instructions-in-agents' -isnot [bool] -or
+            $entry.about -isnot [string] -or $entry.about.Trim().Length -eq 0 -or $entry.about -match '[\r\n]') { throw "$malformed (an entry)" }
+        if (-not $byFile.ContainsKey($entry.file)) { $byFile[$entry.file] = New-Object System.Collections.Generic.List[object] }
+        $byFile[$entry.file].Add([pscustomobject]@{ Place = $entry.place; Digest = $entry.'known-line-sha256'; Replacement = $entry.replacement; Guard = $entry.'hanging-line-guard'; NeedsAgents = $entry.'needs-instructions-in-agents'; About = $entry.about })
+    }
+    # A successor line that is itself listed in its place would be rewritten again by every update.
+    foreach ($file in $byFile.Keys) {
+        foreach ($entry in $byFile[$file]) {
+            if ($null -eq $entry.Replacement) { continue }
+            foreach ($line in $entry.Replacement.Split([char]10)) {
+                if ($seen.Contains("$file`n$($entry.Place)`n$(Get-InstructionDigest -Text $line)")) { throw "$malformed (a successor that is itself listed under '$file')" }
+            }
+        }
+    }
+    return $byFile
+}
 # Which of the three a copilot-instructions text is: 'released' (its LF digest is a released text's), 'generated' (its first
 # non-blank line, a BOM and trailing whitespace left out, is one of the opening lines, or it holds the comment), else 'team'.
 function Get-RetiredCopilotKind {
@@ -547,6 +587,83 @@ function Get-SupersededCleanup {
             elseif ($last.EndsWith([string][char]13, [StringComparison]::Ordinal)) { $kept[$kept.Count - 1] = $last.Substring(0, $last.Length - 1) }
         }
     }
+    $result.Text = $kept -join [string][char]10
+    return $result
+}
+# What an update changes in one file's text for the old seed lines the ledger lists for it (Read-SupersededSeedLines). A place
+# runs from the top of the file to the first '## ' heading outside a code fence (place ''), or from its heading to the next
+# one and, like the Boy Scout clean-up, no further than a line outside a fence that starts with '# '. In its place and outside
+# a fence, a line whose digest is listed gets its successor, each successor line ending as the old line did, or goes, with one
+# empty line when it stood between two. Every other byte stays. A line whose entry has the guard is kept and named in HungKept
+# when a line the ledger does not list hangs on it, as Get-SupersededCleanup decides it for a Boy Scout line: right under it,
+# or right above it when it is a paragraph line; a successor that only puts a current name for a retired one is written
+# whatever is around it. Nothing is decided while a fence is open at the end (Get-InstructionSections).
+function Get-SeedLineCleanup {
+    param([AllowEmptyString()][string]$Text, [AllowEmptyCollection()][object[]]$Entries)
+    $parsed = Get-InstructionSections -Text $Text
+    $result = [pscustomobject]@{
+        Text = $Text; Changed = 0
+        About = New-Object System.Collections.Generic.List[string]
+        Places = New-Object System.Collections.Generic.List[string]
+        HungKept = New-Object System.Collections.Generic.List[string]
+    }
+    if ($parsed.FenceOpen -or $Entries.Count -eq 0) { return $result }
+    $lines = $parsed.Lines
+    $listed = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    foreach ($entry in $Entries) { [void]$listed.Add($entry.Digest) }
+    $regions = New-Object System.Collections.Generic.List[object]
+    $regions.Add([pscustomobject]@{ Place = ''; First = 0; End = $(if ($parsed.Sections.Count -gt 0) { $parsed.Sections[0].Start } else { $lines.Length }) })
+    foreach ($section in $parsed.Sections) {
+        $end = $section.End
+        for ($i = $section.Start + 1; $i -lt $section.End; $i++) {
+            if (-not $parsed.Fenced[$i] -and $lines[$i].StartsWith('# ', [StringComparison]::Ordinal)) { $end = $i; break }
+        }
+        $regions.Add([pscustomobject]@{ Place = $section.Heading; First = $section.Start + 1; End = $end })
+    }
+    $out = [string[]]$lines.Clone()
+    $drop = New-Object 'bool[]' $lines.Length
+    $short = { param([string]$Line) $Line = $Line.Trim(); if ($Line.Length -gt 40) { $Line.Substring(0, 40) + '...' } else { $Line } }
+    foreach ($region in $regions) {
+        $byDigest = @{}
+        foreach ($entry in $Entries) { if ($entry.Place -ceq $region.Place) { $byDigest[$entry.Digest] = $entry } }
+        if ($byDigest.Count -eq 0) { continue }
+        $where = if ($region.Place -ceq '') { '' } else { " under $($region.Place.Substring(3))" }
+        for ($i = $region.First; $i -lt $region.End; $i++) {
+            if ($parsed.Fenced[$i]) { continue }
+            $core = Get-InstructionLineCore -Line $lines[$i]
+            $entry = $byDigest[(Get-InstructionDigest -Text $core)]
+            if ($null -eq $entry) { continue }
+            $cr = if ($lines[$i].EndsWith([string][char]13, [StringComparison]::Ordinal)) { [string][char]13 } else { '' }
+            if ($entry.Guard) {
+                # The Boy Scout clean-up's test: a line the ledger does not list right under this one that continues it or hangs
+                # on it (not empty, a heading or an unindented list item), or one right above a paragraph line that leads into it.
+                $hang = $null
+                if ($i + 1 -lt $region.End) {
+                    $next = Get-InstructionLineCore -Line $lines[$i + 1]
+                    if ($next.Length -gt 0 -and ($parsed.Fenced[$i + 1] -or $next -cmatch '^\s' -or $next -cnotmatch '^(#{1,6}(\s|$)|(\d+\.|[-*+])\s)') -and
+                        -not $listed.Contains((Get-InstructionDigest -Text $next))) { $hang = "under it: '$(& $short $next)'" }
+                }
+                if (-not $hang -and $core -cnotmatch '^(#{1,6}(\s|$)|(\d+\.|[-*+])\s)' -and $i - 1 -ge $region.First -and -not $parsed.Fenced[$i - 1]) {
+                    $above = Get-InstructionLineCore -Line $lines[$i - 1]
+                    if ($above.Length -gt 0 -and $above -cnotmatch '^#{1,6}(\s|$)' -and -not $listed.Contains((Get-InstructionDigest -Text $above))) { $hang = "above it: '$(& $short $above)'" }
+                }
+                if ($hang) { $result.HungKept.Add("the line '$(& $short $core)'$where ($hang)"); continue }
+            }
+            if ($null -ne $entry.Replacement) {
+                $out[$i] = @($entry.Replacement.Split([char]10) | ForEach-Object { $_ + $cr }) -join [string][char]10
+            } else {
+                $drop[$i] = $true
+                if ($i + 1 -lt $region.End -and $i -gt $region.First -and (Get-InstructionLineCore -Line $lines[$i - 1]).Length -eq 0 -and
+                    (Get-InstructionLineCore -Line $lines[$i + 1]).Length -eq 0 -and -not $parsed.Fenced[$i + 1]) { $drop[$i + 1] = $true }
+            }
+            $result.Changed++
+            if (-not $result.About.Contains($entry.About)) { $result.About.Add($entry.About) }
+            if (-not $result.Places.Contains($region.Place)) { $result.Places.Add($region.Place) }
+        }
+    }
+    if ($result.Changed -eq 0) { return $result }
+    $kept = New-Object System.Collections.Generic.List[string]
+    for ($i = 0; $i -lt $out.Length; $i++) { if (-not $drop[$i]) { $kept.Add($out[$i]) } }
     $result.Text = $kept -join [string][char]10
     return $result
 }
@@ -783,6 +900,7 @@ try {
     $retiredCopilot = Read-RetiredCopilotInstructions -Path (Join-Path $src 'framework-retirements.json')
     if ($null -ne $retiredCopilot -and $incoming.ByPath.ContainsKey($retiredCopilot.Path)) { throw "retired '$($retiredCopilot.Path)' is still present in the incoming ownership manifest" }
     $supersededSeeds = Read-SupersededSeedFiles -Path (Join-Path $src 'framework-retirements.json') -Allowed @($protected | Where-Object { $_ -cnotin @('CLAUDE.md', 'AGENTS.md', '.github/copilot-instructions.md') })
+    $supersededLines = Read-SupersededSeedLines -Path (Join-Path $src 'framework-retirements.json') -Allowed @($protected | Where-Object { $_ -cnotin @('CLAUDE.md', '.github/copilot-instructions.md') })
 } catch {
     [Console]::Error.WriteLine("ERROR: Cannot validate incoming framework metadata: $($_.Exception.Message)")
     exit 3
@@ -2232,6 +2350,11 @@ if ($updateMode -and -not $Reinstall) {
 # and apply classify the same bytes. Enumeration is bounded and never follows reparse points.
 $retiredReferenceReplacements = @{}
 $retiredReferenceNotes = @{}
+$retiredReferencePatterns = @{}
+$retiredReferenceGone = @{}
+# What may follow a retired name: the end, whitespace, a quote, a bracket or a separator, or a full stop that ends a sentence
+# (then whitespace or the end), so '/security-review.' matches and '/security-review.md' does not.
+$retiredReferenceEnd = '(?=$|[\s"''`(){}\[\],;:]|\.(?:$|\s))'
 if ($updateMode -and (Compare-ReleaseVersion -Left $incomingVersion -Right '0.83.0') -ge 0) {
     $retiredReferenceReplacements['install.sh'] = "$followUpPowerShell install.ps1"
     $retiredReferenceReplacements['scripts/install.sh'] = "$followUpPowerShell scripts/install.ps1"
@@ -2243,6 +2366,13 @@ if ($updateMode) {
     $retiredReferenceReplacements['/security-review'] = '/security-gate'
     $retiredReferenceReplacements['.claude/commands/security-review.md'] = '.claude/commands/security-gate.md'
     $retiredReferenceNotes['/security-review'] = ' Leave a dated history entry, or a mention that deliberately names the host''s own built-in command of the old name, as it is.'
+    # Gone with no successor: the command that wrote the Copilot mirrors, and the script that copied skills to .github/skills
+    # (named with or without its extension; its .sh twin has its own line below). The line says so instead of a replacement.
+    foreach ($gone in @(@('/generate-copilot', 'command', '.claude/commands/generate-copilot.md', ''), @('scripts/sync-agent-files', 'script', 'scripts/sync-agent-files.ps1', '(?:\.ps1)?'))) {
+        $retiredReferenceReplacements[$gone[0]] = $null
+        $retiredReferenceGone[$gone[0]] = "the framework retired that $($gone[1]) in $($retirementLedger[$gone[2]].Version) and it has no successor: remove the sentence, or say what your team does instead"
+        $retiredReferencePatterns[$gone[0]] = '(?i)(?<![A-Za-z0-9_./-])(?:\./)?' + [regex]::Escape($gone[0]) + $gone[3] + $retiredReferenceEnd
+    }
 }
 foreach ($retiredPath in $(if ($updateMode) { @($retirementLedger.Keys) } else { @() })) {
     # Keep diagnostics cumulative: a consumer may skip the release that first retired the path.
@@ -2342,8 +2472,74 @@ if ($updateMode -and -not $Reinstall -and $null -ne $supersededSeeds) {
         if (-not $seedKeep) { [void]$protectedReferenceCandidates.Remove($seed.Path) }
     }
 }
-# The files a MIGRATION line below names, so the instruction-file clean-up can say its removal may have taken the reference.
-$retiredReferenceCarriers = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+# The seeded team files other than the instruction pair that hold old seed lines the ledger lists (Read-SupersededSeedLines),
+# read once here with the text a plain update leaves (Get-SeedLineCleanup). A file the block above replaces whole, or holds
+# for a CANT-VERIFY, is not also line-cleaned; one this update cannot read is left alone and not mentioned, as above. Where
+# the original goes is decided here; the file is written beside the seed replacements below.
+$seedLineCandidates = New-Object System.Collections.Generic.List[object]
+if ($updateMode -and -not $Reinstall -and $null -ne $supersededLines) {
+    foreach ($relative in @($supersededLines.Keys | Where-Object { $_ -cne 'AGENTS.md' } | Sort-Object)) {
+        if (@($seedCandidates | Where-Object Relative -ceq $relative).Count -gt 0) { continue }
+        $linePath = Get-ContainedTargetPath -Relative $relative
+        $lineEntry = $null
+        try { $lineEntry = Get-LiteralItem -Path $linePath } catch { continue }
+        if ($lineEntry.PSIsContainer -or (Get-ReparsePointAncestor -Path $linePath) -or [string]$lineEntry.LinkType -eq 'HardLink' -or $lineEntry.Length -gt 2097152) { continue }
+        $lineBytes = $null; $lineText = $null
+        try {
+            $lineBytes = [IO.File]::ReadAllBytes($linePath)
+            $lineText = [Text.UTF8Encoding]::new($false, $true).GetString($lineBytes)
+        } catch { continue }
+        $lineBom = $lineText.Length -gt 0 -and $lineText[0] -eq [char]0xFEFF
+        if ($lineBom) { $lineText = $lineText.Substring(1) }
+        # A line that names AGENTS.md as the file holding the instructions is changed only once the layout is known (below), so
+        # both outcomes are worked out here: Cleanup without such lines, CleanupAll with them. Neither kind changes a retired
+        # name, so the scan reads Cleanup's text either way.
+        $lineAll = $supersededLines[$relative].ToArray()
+        $lineCleanup = Get-SeedLineCleanup -Text $lineText -Entries @($lineAll | Where-Object { -not $_.NeedsAgents })
+        $lineCleanupAll = if (@($lineAll | Where-Object { $_.NeedsAgents }).Count -gt 0) { Get-SeedLineCleanup -Text $lineText -Entries $lineAll } else { $lineCleanup }
+        if ($lineCleanupAll.Changed -eq 0 -and $lineCleanupAll.HungKept.Count -eq 0) { continue }
+        $lineKeep = $null; $lineHeld = $null; $lineBackup = $null
+        if ($lineCleanupAll.Changed -gt 0) {
+            try { $probe = [IO.File]::Open($linePath, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::Read); $probe.Dispose() }
+            catch {
+                $cause = $_.Exception
+                while ($null -ne $cause.InnerException) { $cause = $cause.InnerException }
+                $lineKeep = "could not be opened for writing ($(if ($cause -is [UnauthorizedAccessException]) { 'it is read-only, or this account may not write it' } else { 'another program may hold it open' }))"
+            }
+            if (-not $lineKeep) {
+                $lineHeld = Get-HeadHeldCommit -Relative $relative -Bytes $lineBytes
+                if (-not $lineHeld) {
+                    $lineBackup = Find-UpdateBackup -Preferred ".claude/framework-update-backup/seed-files/$(ConvertTo-SavedRelative -Relative $relative)" -Bytes $lineBytes
+                    if ($lineBackup.State -eq 'taken') { $lineKeep = "has nowhere to be saved before it is changed ($($lineBackup.Relative) already holds other content; move that file out of .claude/framework-update-backup/, then run the update again)" }
+                }
+            }
+        }
+        $seedLineCandidates.Add([pscustomobject]@{ Relative = $relative; Path = $linePath; Bytes = $lineBytes; HasBom = $lineBom; Cleanup = $lineCleanup; CleanupAll = $lineCleanupAll; Keep = $lineKeep; Held = $lineHeld; Backup = $lineBackup })
+    }
+}
+# The MIGRATION lines for one file's text: one per retired path or command it names. A copy of the retired copilot file that
+# the framework shipped or generated (Get-RetiredCopilotKind, on the text scanned here, in every mode) is not told to drop the
+# command that wrote it; a team-written one is.
+function Get-RetiredReferenceMessages {
+    param([string]$Relative, [AllowEmptyString()][string]$Content)
+    $frameworkCopilot = $null -ne $retiredCopilot -and $Relative -ceq $retiredCopilot.Path -and
+        (Get-RetiredCopilotKind -Bytes ([Text.UTF8Encoding]::new($false).GetBytes($Content)) -Text $Content -Retired $retiredCopilot) -cne 'team'
+    $Content = $Content -replace '\\', '/'
+    $messages = @()
+    foreach ($retiredPath in @($retiredReferenceReplacements.Keys | Sort-Object)) {
+        if ($retiredPath -ceq '/generate-copilot' -and $frameworkCopilot) { continue }
+        $pattern = if ($retiredReferencePatterns.ContainsKey($retiredPath)) { $retiredReferencePatterns[$retiredPath] } else { '(?i)(?<![A-Za-z0-9_./-])(?:\./)?' + [regex]::Escape($retiredPath) + $retiredReferenceEnd }
+        if ($Content -match $pattern) {
+            $todo = if ($retiredReferenceGone.ContainsKey($retiredPath)) { "$($retiredReferenceGone[$retiredPath])." } else { "replace that reference with: $($retiredReferenceReplacements[$retiredPath])." }
+            $messages += "MIGRATION: protected consumer carrier '$Relative' names retired framework path '$retiredPath'. It was not overwritten; $todo$($retiredReferenceNotes[$retiredPath])"
+        }
+    }
+    return , $messages
+}
+# The instruction pair is scanned once this run's text of each is known (the layout move, the clean-ups, the header stamp),
+# below; what the scan read of each on disk waits here for a file this run leaves as it is.
+$instructionPair = @('AGENTS.md', 'CLAUDE.md')
+$deferredReferenceTexts = @{}
 
 function Add-BoundedReferenceDirectory {
     param([string]$Relative, [int]$MaxDepth, [string[]]$Extensions)
@@ -2403,15 +2599,13 @@ foreach ($relative in @($protectedReferenceCandidates | Sort-Object)) {
         $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$relative' is not a regular bounded file and was not read.")
         continue
     }
-    try { $content = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($candidate)) -replace '\\', '/' }
+    try { $content = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($candidate)) }
     catch { $reconciliationMessages.Add("CANT-VERIFY: protected reference candidate '$relative' could not be read as UTF-8; no stale-command conclusion was inferred."); continue }
-    foreach ($retiredPath in @($retiredReferenceReplacements.Keys | Sort-Object)) {
-        $pattern = '(?i)(?<![A-Za-z0-9_./-])(?:\./)?' + [regex]::Escape($retiredPath) + '(?=$|[\s"''`(){}\[\],;:])'
-        if ($content -match $pattern) {
-            $reconciliationMessages.Add("MIGRATION: protected consumer carrier '$relative' names retired framework path '$retiredPath'. It was not overwritten; replace that reference with: $($retiredReferenceReplacements[$retiredPath]).$($retiredReferenceNotes[$retiredPath])")
-            [void]$retiredReferenceCarriers.Add($relative)
-        }
-    }
+    # This run's text of a file it rewrites: a seeded file's old seed lines are known here; the instruction pair's below.
+    $lineWrite = @($seedLineCandidates | Where-Object { $_.Relative -ceq $relative -and $_.Cleanup.Changed -gt 0 -and -not $_.Keep }) | Select-Object -First 1
+    if ($lineWrite) { $content = $lineWrite.Cleanup.Text }
+    if ($relative -cin $instructionPair) { $deferredReferenceTexts[$relative] = $content; continue }
+    foreach ($message in (Get-RetiredReferenceMessages -Relative $relative -Content $content)) { $reconciliationMessages.Add($message) }
 }
 
 # Git is optional for a plain target, but repository evidence or redirected Git state must never be
@@ -3173,6 +3367,20 @@ if ($updateMode -and -not ($Reinstall -and -not $reinstallAdoptionPending)) {
 $instructionCleanups = New-Object System.Collections.Generic.List[object]
 $instructionMessages = New-Object System.Collections.Generic.List[string]
 $instructionCleaned = @{}
+# What the clean-up of old framework text and copies found and left in place, one entry per item a line above the summary
+# names; the closing count line reads it. Each entry is a kind below.
+$keptFrameworkText = New-Object System.Collections.Generic.List[string]
+$keptFrameworkKinds = [ordered]@{
+    copilot = @('copy of .github/copilot-instructions.md', 'copies of .github/copilot-instructions.md')
+    hung    = @('old template line kept beside a line of yours', 'old template lines kept beside lines of yours')
+    skill   = @('retired skill''s Common Tasks line', 'retired skills'' Common Tasks lines')
+    cant    = @('file left with a CANT-VERIFY line', 'files left with a CANT-VERIFY line')
+    stamp   = @('header stamp not brought in step', 'header stamps not brought in step')
+    github  = @('file under .github/skills/', 'files under .github/skills/')
+    githubro = @('copy under .github/skills/ that could not be written', 'copies under .github/skills/ that could not be written')
+    githublink = @('link at .github/skills', 'links at .github/skills')
+    githubcant = @('part of .github/skills not read', 'parts of .github/skills not read')
+}
 $rulesFile = '.github/instructions/framework-rules.instructions.md'
 # Whether a text imports the framework rules on a line of its own, outside a code fence, as the shipped stub does.
 function Test-ImportsFrameworkRules {
@@ -3207,6 +3415,23 @@ function Join-Names {
     $Names = @($Names | Select-Object -Unique)
     if ($Names.Count -le 1) { return ($Names -join '') }
     return (@($Names | Select-Object -First ($Names.Count - 1)) -join ', ') + ' and ' + $Names[-1]
+}
+# The lines a seed-line clean-up (Get-SeedLineCleanup) prints for one file: what it changed and where the original is, and
+# each old line it kept because a line next to it hangs on it. $Where is lower-case, as the clean-up above writes it.
+function Get-SeedLineNotices {
+    param([string]$Relative, $Cleanup, [string]$Where)
+    $notices = @()
+    if ($Cleanup.HungKept.Count -gt 0) {
+        $one = $Cleanup.HungKept.Count -eq 1
+        $notices += "NOTICE: kept old template text in $Relative as it is: $(Join-Names @($Cleanup.HungKept)). $(if ($one) { 'It is' } else { 'Each is' }) byte for byte a line an earlier framework release shipped there that this release words otherwise, but a line right next to $(if ($one) { 'it' } else { 'each' }) (quoted in the brackets), with no empty line between, is not one this update changes and may continue it or depend on it, so rewording the old line could change what that line means. Bring both up to date by hand."
+    }
+    if ($Cleanup.Changed -gt 0) {
+        $one = $Cleanup.Changed -eq 1
+        $places = @($Cleanup.Places | Where-Object { $_ -cne '' } | ForEach-Object { "> $($_.Substring(3))" })
+        $in = if ($places.Count -eq 0) { $Relative } else { "$Relative $(Join-Names $places)$(if ($Cleanup.Places.Contains('')) { ' and above its first section' })" }
+        $notices += "NOTICE: updating $($Cleanup.Changed) old template $(if ($one) { 'line' } else { 'lines' }) in $in to this release's wording ($($Cleanup.About -join '; ')): $(if ($one) { 'it is' } else { 'each is' }) byte for byte a line an earlier framework release shipped there, and every other line stays as it is. To keep an old line, put it back with any change of wording: a line whose wording differs from the shipped text is never changed, and a line put back word for word is rewritten again by the next update; $Where."
+    }
+    return , $notices
 }
 if ($updateMode -and -not $Reinstall -and $null -ne $supersededText) {
     # A retired skill's Common Tasks line goes only when no SKILL.md is left at its slug once this update's deletions are done.
@@ -3248,9 +3473,21 @@ if ($updateMode -and -not $Reinstall -and $null -ne $supersededText) {
             }
             continue
         }
+        # The old seed lines of the instruction file (Read-SupersededSeedLines), on the text the rule clean-up leaves: only in
+        # AGENTS.md, the file that holds the instructions after this run; a CLAUDE.md the layout move does not reach keeps them.
+        $lineCleanup = [pscustomobject]@{ Text = $cleanup.Text; Changed = 0; HungKept = @() }
+        if ($relative -ceq 'AGENTS.md' -and $null -ne $supersededLines -and $supersededLines.ContainsKey('AGENTS.md')) {
+            $lineCleanup = Get-SeedLineCleanup -Text $cleanup.Text -Entries $supersededLines['AGENTS.md'].ToArray()
+            $cleanup.Text = $lineCleanup.Text
+            if ($lineCleanup.HungKept.Count -gt 0) {
+                $instructionMessages.Add((Get-SeedLineNotices -Relative $relative -Cleanup ([pscustomobject]@{ HungKept = $lineCleanup.HungKept; Changed = 0 }) -Where '')[0])
+                foreach ($hung in $lineCleanup.HungKept) { $keptFrameworkText.Add('hung') }
+            }
+        }
         if (-not $claudeImports) {
             $held = @((Get-SupersededCleanup -Text $file.Text -Superseded $supersededText).Removed)
             if ($held.Count -gt 0) {
+                $keptFrameworkText.Add('cant')
                 $instructionMessages.Add("CANT-VERIFY: $relative holds exact copies of the old $(Join-Names $held) $(if ($held.Count -eq 1) { 'section' } else { 'sections' }) an earlier release shipped, but CLAUDE.md does not import $rulesFile on a line of its own, so for Claude Code they are the only copy of the framework rules; this update left them in place. Add the line @$rulesFile to CLAUDE.md, then run the update again to remove them (docs/upgrade-checklist.md).")
             }
         }
@@ -3260,18 +3497,20 @@ if ($updateMode -and -not $Reinstall -and $null -ne $supersededText) {
         }
         if ($cleanup.HungKept.Count -gt 0) {
             $one = $cleanup.HungKept.Count -eq 1
+            foreach ($hung in $cleanup.HungKept) { $keptFrameworkText.Add('hung') }
             $instructionMessages.Add("NOTICE: kept old Boy Scout Rule text in $relative as it is: $(Join-Names @($cleanup.HungKept)). $(if ($one) { 'It is' } else { 'Each is' }) byte for byte a line an earlier release shipped there, but a line right next to $(if ($one) { 'it' } else { 'each' }) (quoted in the brackets), with no empty line between, is not one this update changes and may continue it or depend on it, so rewording or removing the old line could change what that line means. Bring both in line with the current rules in $rulesFile by hand.")
         }
         foreach ($slug in $cleanup.SkillLinesKept.Keys) {
             $retiredIn = $retirementLedger[".claude/skills/$slug/SKILL.md"].Version
             if ($cleanup.SkillLinesKept[$slug] -ceq 'skill') {
+                $keptFrameworkText.Add('skill')
                 $instructionMessages.Add("NOTICE: kept the '$slug' line in $relative > Common Tasks: the framework retired that skill in $retiredIn, but a SKILL.md is still at .claude/skills/$slug/ (a skill your team wrote or changed there), and the line points to it. Remove both if your team does not use them.")
             } else {
                 $instructionMessages.Add("NOTICE: kept the '$slug' line in $relative > Common Tasks: the framework retired that skill in $retiredIn and no SKILL.md is left at .claude/skills/$slug/, but the line differs from every one the framework shipped, so it may be yours. Remove it if it names no skill your team keeps.")
             }
         }
         if ($cleanup.Removed.Count -eq 0 -and $cleanup.Replaced.Count -eq 0 -and $cleanup.Reworded.Count -eq 0 -and $cleanup.RewordedLines -eq 0 -and
-            $cleanup.DroppedLines -eq 0 -and $cleanup.SkillLinesRemoved.Count -eq 0) { continue }
+            $cleanup.DroppedLines -eq 0 -and $cleanup.SkillLinesRemoved.Count -eq 0 -and $lineCleanup.Changed -eq 0) { continue }
         # Where the text before this update stays: the layout move's originals, the last commit, or a copy saved below the backup folder.
         if ($viaLayout) {
             $where = 'the text before this update is the original CLAUDE.md the LAYOUT line above names'
@@ -3283,6 +3522,7 @@ if ($updateMode -and -not $Reinstall -and $null -ne $supersededText) {
                 while ($null -ne $cause.InnerException) { $cause = $cause.InnerException }
                 $why = if ($cause -is [UnauthorizedAccessException]) { 'it is read-only, or this account may not write it' } else { 'another program may hold it open' }
                 $instructionMessages.Add("CANT-VERIFY: $relative could not be opened for writing ($why), so this update left its old copies of the framework rules in place. Make it writable, then run the update again, or remove them by hand (docs/upgrade-checklist.md).")
+                $keptFrameworkText.Add('cant')
                 continue
             }
             $heldIn = Get-HeadHeldCommit -Relative $relative -Bytes $file.Bytes
@@ -3294,6 +3534,7 @@ if ($updateMode -and -not $Reinstall -and $null -ne $supersededText) {
                 $backup = Find-UpdateBackup -Preferred ".claude/framework-update-backup/instruction-files/$relative" -Bytes $file.Bytes
                 if ($backup.State -eq 'taken') {
                     $instructionMessages.Add("CANT-VERIFY: $relative holds old copies of the framework rules, but this update has nowhere to save the file before changing it ($($backup.Relative) already holds other content), so it left them in place. Move that file out of .claude/framework-update-backup/, then run the update again, or remove them by hand (docs/upgrade-checklist.md).")
+                    $keptFrameworkText.Add('cant')
                     continue
                 }
                 if ($backup.State -eq 'free') {
@@ -3310,11 +3551,7 @@ if ($updateMode -and -not $Reinstall -and $null -ne $supersededText) {
         $done = @()
         if ($cleanup.Removed.Count -gt 0) {
             $sectionWord = if ($cleanup.Removed.Count -eq 1) { 'section' } else { 'sections' }
-            # The retired-path scan reads the file before this decision, ahead of the Git preflight, so it cannot leave out what this removes.
-            # The layout move's AGENTS.md text came out of CLAUDE.md, the file that scan named.
-            $named = if ($viaLayout -and $retiredReferenceCarriers.Contains('CLAUDE.md')) { 'CLAUDE.md' } elseif ($retiredReferenceCarriers.Contains($relative)) { $relative } else { $null }
-            $migrationNote = if ($named) { " The MIGRATION line above about a retired framework path in $named may refer to the removed text: check $(if ($named -ceq $relative) { 'the file' } else { $relative }) after the update." } else { '' }
-            $instructionMessages.Add("NOTICE: removing the old $(Join-Names @($cleanup.Removed)) $sectionWord from ${relative}: $(if ($cleanup.Removed.Count -eq 1) { 'it is an exact copy' } else { 'each is an exact copy' }) of text an earlier framework release shipped in this file, and the framework rules now ship in $rulesFile, which every update refreshes. Your other sections stay as they are; $where.$migrationNote")
+            $instructionMessages.Add("NOTICE: removing the old $(Join-Names @($cleanup.Removed)) $sectionWord from ${relative}: $(if ($cleanup.Removed.Count -eq 1) { 'it is an exact copy' } else { 'each is an exact copy' }) of text an earlier framework release shipped in this file, and the framework rules now ship in $rulesFile, which every update refreshes. Your other sections stay as they are; $where.")
             $done += "removed the old $(Join-Names @($cleanup.Removed)) $sectionWord"
         }
         if ($cleanup.Replaced.Count -gt 0) {
@@ -3334,6 +3571,10 @@ if ($updateMode -and -not $Reinstall -and $null -ne $supersededText) {
             $one = $cleanup.SkillLinesRemoved.Count -eq 1
             $instructionMessages.Add("NOTICE: removing the $(Join-Names @($cleanup.SkillLinesRemoved | ForEach-Object { "'$_'" })) $(if ($one) { 'line' } else { 'lines' }) from $relative > Common Tasks: $(if ($one) { 'it is' } else { 'each is' }) exactly the line the framework shipped for a skill it retired, and no SKILL.md is left at that skill's folder under .claude/skills/; $where.")
             $done += "removed the $(Join-Names @($cleanup.SkillLinesRemoved | ForEach-Object { "'$_'" })) Common Tasks $(if ($one) { 'line' } else { 'lines' })"
+        }
+        if ($lineCleanup.Changed -gt 0) {
+            $instructionMessages.Add((Get-SeedLineNotices -Relative $relative -Cleanup ([pscustomobject]@{ HungKept = @(); Changed = $lineCleanup.Changed; Places = $lineCleanup.Places; About = $lineCleanup.About }) -Where $where)[0])
+            $done += "updated $($lineCleanup.Changed) old template $(if ($lineCleanup.Changed -eq 1) { 'line' } else { 'lines' })"
         }
         $instructionCleaned[$relative] = "$($done -join ' and ') ($whereShort)"
     }
@@ -3405,6 +3646,8 @@ if ($updateMode -and -not $Reinstall) {
             $stampSeen = $null
             foreach ($line in @($stampText.Split([char]10) | Select-Object -First 10)) { if ($line -match '^\s*version:\s*(\S+)') { $stampSeen = $Matches[1]; break } }
             if ($stampSeen -ne $stampVersion) {
+                # Counted only when the file carries a stamp at all: a header that is not the framework's is not its old text.
+                if ($null -ne $stampSeen) { $keptFrameworkText.Add('stamp') }
                 $instructionMessages.Add("NOTICE: AGENTS.md header: the comment AGENTS.md opens with is not in the shape the framework ships (a first line '<!--', a line 'ai-tech-lead-framework', then one 'version:' and one 'applied:' line before '-->', all in the first 10 lines), so this update did not bring its version stamp in step with .claude/framework-version.json, and scripts/template-checks.ps1 reports the stamp as missing or out of step. Copy version and applied from .claude/framework-version.json into the header by hand (docs/upgrade-checklist.md).")
             }
         } elseif ($stamp.Text -cne $stampText) {
@@ -3453,7 +3696,7 @@ if ($updateMode -and -not $Reinstall) {
                 }
                 if ($stampKeep) {
                     # Only the helper line or the applied date would change: template-checks reads version alone and passes, so nothing is claimed.
-                    if ($stamp.OldVersion -cne $stampVersion) { $instructionMessages.Add("CANT-VERIFY: AGENTS.md $stampKeep, so this update did not bring its header's version and applied in step with .claude/framework-version.json, and scripts/template-checks.ps1 reports the stamp as out of step. Run the update again once it can be written, or copy the two fields by hand (docs/upgrade-checklist.md).") }
+                    if ($stamp.OldVersion -cne $stampVersion) { $keptFrameworkText.Add('stamp'); $instructionMessages.Add("CANT-VERIFY: AGENTS.md $stampKeep, so this update did not bring its header's version and applied in step with .claude/framework-version.json, and scripts/template-checks.ps1 reports the stamp as out of step. Run the update again once it can be written, or copy the two fields by hand (docs/upgrade-checklist.md).") }
                 } else {
                     [void](Add-PlannedWrite -Relative 'AGENTS.md')
                     $instructionCleanups.Add([pscustomobject]@{ Relative = 'AGENTS.md'; Path = $stampOnly.Path; Text = $stamp.Text; HasBom = $stampOnly.HasBom })
@@ -3464,6 +3707,21 @@ if ($updateMode -and -not $Reinstall) {
         }
     }
 }
+
+# The stale-reference scan of the instruction pair, on the text each holds after this run, named by the file that holds it: with
+# the layout move AGENTS.md holds the moved, cleaned text and CLAUDE.md becomes this release's stub; otherwise a file this run
+# cleans or stamps is read as it is written, and any other as the scan above read it. These lines lead the update's notices.
+$pairReferenceMessages = New-Object System.Collections.Generic.List[string]
+foreach ($relative in $instructionPair) {
+    if ($layoutMove) { if ($relative -ceq 'CLAUDE.md') { continue }; $pairText = $layoutMove.AgentsText }
+    elseif (-not $deferredReferenceTexts.ContainsKey($relative)) { continue }
+    else {
+        $pairWrite = @($instructionCleanups | Where-Object { $_.Relative -ceq $relative }) | Select-Object -First 1
+        $pairText = if ($pairWrite) { $pairWrite.Text } else { $deferredReferenceTexts[$relative] }
+    }
+    foreach ($message in (Get-RetiredReferenceMessages -Relative $relative -Content $pairText)) { $pairReferenceMessages.Add($message) }
+}
+$instructionMessages.InsertRange(0, $pairReferenceMessages)
 
 # The retired .github/copilot-instructions.md read above. A released text (byte-proven, line endings aside) and a copy that
 # only opens with /generate-copilot's line or carries its comment are both kept and named unless -RemoveLeftovers is given:
@@ -3485,6 +3743,7 @@ if ($null -ne $copilotFile) {
         $instructionMessages.Add("NOTICE: kept ${copilotRel}: it is not a text a framework release shipped, does not open with the line the retired /generate-copilot command wrote and carries no comment of that command, so this update treats it as yours. The framework no longer generates or checks it, and $copilotLoads, so keep it current with AGENTS.md or delete it.")
     } elseif (-not $RemoveLeftovers) {
         $leftoverCandidates++
+        $keptFrameworkText.Add('copilot')
         $copilotKnown = if ($copilotFile.Kind -ceq 'released') { 'its text, line endings aside, is one a framework release shipped' } else { "$copilotGenerated, so it may hold your team's edits" }
         # Whether the file goes is the team's call: an agent running the update is told to ask, not to decide. A preview
         # names the one run that removes it, so the question can be settled before the update is applied.
@@ -3524,6 +3783,7 @@ if ($null -ne $copilotFile) {
         }
         if ($copilotKeep) {
             $known = if ($copilotFile.Kind -ceq 'released') { 'its text, line endings aside, is one a framework release shipped' } else { $copilotGenerated }
+            $keptFrameworkText.Add('copilot')
             $instructionMessages.Add("CANT-VERIFY: $copilotRel $copilotKeep, so this update left it in place, although $known. The framework stopped shipping that file in $($retiredCopilot.Version), and $copilotLoads. Delete it by hand, or keep it current (docs/upgrade-checklist.md).")
         } else {
             [void](Assert-SafeTargetMutation -Relative $copilotRel)
@@ -3565,6 +3825,7 @@ foreach ($seed in $seedCandidates) {
         }
     }
     if ($seedKeep) {
+        $keptFrameworkText.Add('cant')
         $instructionMessages.Add("CANT-VERIFY: $seedRel $seedKeep, so this update left it as it is, although $seedKnown. Replace it with this release's text by hand, or run the update again once it can be written (docs/upgrade-checklist.md).")
         continue
     }
@@ -3575,6 +3836,164 @@ foreach ($seed in $seedCandidates) {
     [void](Add-PlannedWrite -Relative $seedRel)
     $seedReplacements.Add([pscustomobject]@{ Relative = $seedRel; Path = $seed.Path; Bytes = $newBytes; Short = $seedShort })
     $instructionMessages.Add("NOTICE: replacing ${seedRel}: $seedKnown, so nothing in it is your team's; it gets this release's text. $seedWhere. To keep the old text, restore it and change any line: a file that differs from every released text is never replaced.")
+}
+# The seeded team files read above that hold old seed lines: each is written at the same late step, after the last commit or
+# a copy saved under seed-files/ holds the original, with only those lines changed, its line endings and BOM kept.
+# A line that names AGENTS.md as the file holding the instructions (needs-instructions-in-agents) is changed only when the
+# section those lines point to is in AGENTS.md and not in CLAUDE.md once this run is done: the layout move above puts it there,
+# or both of these hold: AGENTS.md as this run leaves it (the text this run writes, else the file on disk, else the release's
+# text when this run creates it) has a '## Architecture Decisions' heading outside a code fence, and CLAUDE.md as this run
+# leaves it has none: it is absent (whether or not this run creates the stub), or its text (the text this run writes, else
+# the file on disk) has no such heading outside a code fence; a CLAUDE.md that cannot be read counts as having one. Otherwise
+# the line stays and nothing is said about it; a later update rewrites it once the section has moved.
+$instructionsInAgents = $null -ne $layoutMove
+if (-not $instructionsInAgents -and $seedLineCandidates.Count -gt 0) {
+    $claudeHasSection = $false
+    $claudeWrite = @($instructionCleanups | Where-Object { $_.Relative -ceq 'CLAUDE.md' }) | Select-Object -First 1
+    if ($claudeWrite) { $claudeLaterText = $claudeWrite.Text }
+    else {
+        $claudeLater = Read-TeamInstructionFile -Relative 'CLAUDE.md'
+        $claudeLaterText = $null
+        if ($null -ne $claudeLater) {
+            if ($claudeLater.Problem) { $claudeHasSection = $true } else { $claudeLaterText = $claudeLater.Text }
+        }
+    }
+    if ($null -ne $claudeLaterText) {
+        $claudeHasSection = @((Get-InstructionSections -Text $claudeLaterText).Sections | Where-Object { $_.Heading -ceq '## Architecture Decisions' }).Count -gt 0
+    }
+    if (-not $claudeHasSection) {
+        $agentsLaterText = $null
+        $agentsWrite = @($instructionCleanups | Where-Object { $_.Relative -ceq 'AGENTS.md' }) | Select-Object -First 1
+        if ($agentsWrite) { $agentsLaterText = $agentsWrite.Text }
+        else {
+            $agentsLater = Read-TeamInstructionFile -Relative 'AGENTS.md'
+            if ($null -eq $agentsLater) {
+                if ($createPlan.Contains('AGENTS.md')) { $agentsLaterText = [Text.UTF8Encoding]::new($false).GetString([IO.File]::ReadAllBytes((Join-Path $src 'AGENTS.md'))).TrimStart([char]0xFEFF) }
+            } elseif (-not $agentsLater.Problem) { $agentsLaterText = $agentsLater.Text }
+        }
+        if ($null -ne $agentsLaterText) {
+            $instructionsInAgents = @((Get-InstructionSections -Text $agentsLaterText).Sections | Where-Object { $_.Heading -ceq '## Architecture Decisions' }).Count -gt 0
+        }
+    }
+}
+$seedLineWrites = New-Object System.Collections.Generic.List[object]
+foreach ($candidate in $seedLineCandidates) {
+    $lineRel = $candidate.Relative
+    if ($instructionsInAgents) { $candidate.Cleanup = $candidate.CleanupAll }
+    $lineWhere = $null; $lineShort = $null
+    if ($candidate.Cleanup.Changed -gt 0 -and -not $candidate.Keep) {
+        if ($candidate.Held) {
+            [void]$headHeldSaves.Add($lineRel)
+            $lineWhere = "the file before this update is $(Format-HeadHeld -Relative $lineRel -Commit $candidate.Held)"
+            $lineShort = "original in commit $($candidate.Held)"
+        } else {
+            if ($candidate.Backup.State -eq 'free') {
+                [void](Add-PlannedWrite -Relative $candidate.Backup.Relative -ForceCreate)
+                $updateBackups.Add([pscustomobject]@{ Source = $candidate.Path; Relative = $candidate.Backup.Relative; SourceRelative = $lineRel; Bytes = $candidate.Bytes })
+            }
+            $lineWhere = "a copy of the file before this update $(if ($candidate.Backup.State -eq 'free') { 'goes to' } else { 'is already at' }) $($candidate.Backup.Relative)"
+            $lineShort = "original in $($candidate.Backup.Relative)"
+        }
+        [void](Add-PlannedWrite -Relative $lineRel)
+        $seedLineWrites.Add([pscustomobject]@{ Relative = $lineRel; Path = $candidate.Path; Text = $candidate.Cleanup.Text; HasBom = $candidate.HasBom; Changed = $candidate.Cleanup.Changed; Short = $lineShort })
+    }
+    foreach ($notice in (Get-SeedLineNotices -Relative $lineRel -Cleanup $candidate.Cleanup -Where $lineWhere)) {
+        if ($notice.StartsWith('NOTICE: updating ', [StringComparison]::Ordinal) -and $candidate.Keep) {
+            $keptFrameworkText.Add('cant')
+            $instructionMessages.Add("CANT-VERIFY: $lineRel $($candidate.Keep), so this update left it as it is, although $($candidate.Cleanup.Changed) of its lines $(if ($candidate.Cleanup.Changed -eq 1) { 'is' } else { 'are' }) byte for byte a line an earlier framework release shipped there that this release words otherwise ($($candidate.Cleanup.About -join '; ')). Reword $(if ($candidate.Cleanup.Changed -eq 1) { 'it' } else { 'them' }) by hand, or run the update again once it can be written (docs/upgrade-checklist.md).")
+            continue
+        }
+        if ($notice.StartsWith('NOTICE: kept old template text ', [StringComparison]::Ordinal)) { foreach ($hung in $candidate.Cleanup.HungKept) { $keptFrameworkText.Add('hung') } }
+        $instructionMessages.Add($notice)
+    }
+}
+# What the retired scripts/sync-agent-files (0.76.0 to 0.81.0) left: it replaced .github/skills with a plain copy of
+# .claude/skills, byte for byte. A plain update (never a first install or -Reinstall) removes a file there that is byte for byte
+# the file at the same path under .claude/skills now, once the last commit or a copy saved under github-skills/ holds it, at the
+# same late step as the copilot file; the empty-folder step then takes the folders it empties. Any other file there (edited, with
+# no counterpart, a link, a copy that cannot be opened for writing) stays, byte for byte, and is named once:
+# scripts/docs-sync-check.ps1 fails while .github/skills holds a file. A path the retirement ledger names is its own (deleted
+# unmodified, or named above), and nothing below a link is read: a .github/skills that is a link, or lies below one, is named
+# in one constant sentence (a .github that is itself a link stops the update earlier, so the path would name nothing new).
+$githubSkillRemovals = New-Object System.Collections.Generic.List[object]
+$githubSkillsKept = New-Object System.Collections.Generic.List[string]
+if ($updateMode -and -not $Reinstall) {
+    $githubSkillsPath = Get-ContainedTargetPath -Relative '.github/skills'
+    $githubSkillsRoot = Get-Item -Force -LiteralPath $githubSkillsPath -ErrorAction SilentlyContinue
+    $githubSkillsLink = if ($null -ne $githubSkillsRoot) { Get-ReparsePointAncestor -Path $githubSkillsPath } else { $null }
+    if ($githubSkillsLink) {
+        # A link is neither read nor followed: what it points to may be outside the repository, or another tree's own skills.
+        $keptFrameworkText.Add('githublink')
+        $instructionMessages.Add("NOTICE: kept .github/skills as it is: it is a symbolic link or a junction, or lies below one, and this update did not read it or follow it, so it did not check it for copies the retired scripts/sync-agent-files wrote. scripts/docs-sync-check.ps1 fails while .github/skills is there: move any skill your team still uses from behind it under .claude/skills/, where Claude Code and GitHub Copilot both read skills, then remove the link.")
+    } elseif ($null -ne $githubSkillsRoot -and $githubSkillsRoot.PSIsContainer) {
+        $githubSkillsUnwritable = New-Object System.Collections.Generic.List[string]
+        $githubSkillsQueue = New-Object System.Collections.Generic.Queue[object]
+        $githubSkillsQueue.Enqueue([pscustomobject]@{ Path = $githubSkillsPath; Depth = 0 })
+        $githubSkillsCant = $null
+        while ($githubSkillsQueue.Count -gt 0) {
+            $current = $githubSkillsQueue.Dequeue()
+            try { $children = @(Get-ChildItem -Force -LiteralPath $current.Path -ErrorAction Stop) } catch { $githubSkillsCant = 'a folder under it could not be listed'; continue }
+            foreach ($child in @($children | Sort-Object Name)) {
+                $childRelative = $child.FullName.Substring($tgt.Length).TrimStart('\', '/') -replace '\\', '/'
+                if ($retirementLedger.ContainsKey($childRelative) -or $deletePlan.Contains($childRelative)) { continue }
+                if (-not (Test-IsLinkEntry $child) -and $child.PSIsContainer) {
+                    if ($current.Depth -lt 8) { $githubSkillsQueue.Enqueue([pscustomobject]@{ Path = $child.FullName; Depth = $current.Depth + 1 }) } else { $githubSkillsCant = 'it nests folders deeper than this update reads' }
+                    continue
+                }
+                $mirrorOf = '.claude/skills/' + $childRelative.Substring('.github/skills/'.Length)
+                $mirrorBytes = $null; $childBytes = $null
+                if (-not (Test-IsLinkEntry $child) -and [string]$child.LinkType -ne 'HardLink' -and $child.Length -le 2097152) {
+                    $mirrorPath = Get-ContainedTargetPath -Relative $mirrorOf
+                    $mirrorEntry = Get-Item -Force -LiteralPath $mirrorPath -ErrorAction SilentlyContinue
+                    if ($null -ne $mirrorEntry -and -not $mirrorEntry.PSIsContainer -and -not (Test-IsLinkEntry $mirrorEntry) -and -not (Get-ReparsePointAncestor -Path $mirrorPath) -and $mirrorEntry.Length -eq $child.Length) {
+                        try { $childBytes = [IO.File]::ReadAllBytes($child.FullName); $mirrorBytes = [IO.File]::ReadAllBytes($mirrorPath) } catch { $childBytes = $null; $mirrorBytes = $null }
+                    }
+                }
+                if ($null -eq $childBytes -or $null -eq $mirrorBytes -or [Convert]::ToBase64String($childBytes) -cne [Convert]::ToBase64String($mirrorBytes)) { $githubSkillsKept.Add($childRelative); continue }
+                # The same probe as the copilot file and the seed-line files: a copy that cannot be opened for writing stays.
+                try { $probe = [IO.File]::Open($child.FullName, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::Read); $probe.Dispose() }
+                catch {
+                    $cause = $_.Exception
+                    while ($null -ne $cause.InnerException) { $cause = $cause.InnerException }
+                    $githubSkillsUnwritable.Add("$childRelative ($(if ($cause -is [UnauthorizedAccessException]) { 'it is read-only, or this account may not write it' } else { 'another program may hold it open' }))")
+                    continue
+                }
+                $mirrorHeld = Get-HeadHeldCommit -Relative $childRelative -Bytes $childBytes
+                $mirrorBackup = $null
+                if (-not $mirrorHeld) {
+                    $mirrorBackup = Find-UpdateBackup -Preferred ".claude/framework-update-backup/github-skills/$(ConvertTo-SavedRelative -Relative $childRelative.Substring('.github/skills/'.Length))" -Bytes $childBytes
+                    if ($mirrorBackup.State -eq 'taken') { $githubSkillsKept.Add($childRelative); continue }
+                    if ($mirrorBackup.State -eq 'free') {
+                        [void](Add-PlannedWrite -Relative $mirrorBackup.Relative -ForceCreate)
+                        $updateBackups.Add([pscustomobject]@{ Source = $child.FullName; Relative = $mirrorBackup.Relative; SourceRelative = $childRelative; Bytes = $childBytes })
+                    }
+                } else { [void]$headHeldSaves.Add($childRelative) }
+                [void](Assert-SafeTargetMutation -Relative $childRelative)
+                $githubSkillRemovals.Add([pscustomobject]@{ Relative = $childRelative; Path = $child.FullName; Short = $(if ($mirrorHeld) { "original in commit $mirrorHeld" } else { "original in $($mirrorBackup.Relative)" }) })
+            }
+        }
+        if ($githubSkillRemovals.Count -gt 0) {
+            $one = $githubSkillRemovals.Count -eq 1
+            $saved = @($githubSkillRemovals | ForEach-Object { "$($_.Relative) ($($_.Short))" })
+            $instructionMessages.Add("NOTICE: removing $(if ($one) { 'a copy' } else { "$($githubSkillRemovals.Count) copies" }) under .github/skills/ that the retired scripts/sync-agent-files wrote: $(if ($one) { 'it is' } else { 'each is' }) byte for byte the file at the same path under .claude/skills/, where your skill stays: $(Join-Names $saved). scripts/docs-sync-check.ps1 fails while .github/skills holds a file.")
+        }
+        if ($githubSkillsKept.Count -gt 0 -or $githubSkillsUnwritable.Count -gt 0 -or $githubSkillsCant) {
+            foreach ($kept in $githubSkillsKept) { $keptFrameworkText.Add('github') }
+            foreach ($kept in $githubSkillsUnwritable) { $keptFrameworkText.Add('githubro') }
+            if ($githubSkillsCant) { $keptFrameworkText.Add('githubcant') }
+            $parts = @()
+            if ($githubSkillsKept.Count -gt 0) {
+                $one = $githubSkillsKept.Count -eq 1
+                $parts += "$(Join-Names @($githubSkillsKept)) $(if ($one) { 'is' } else { 'are' }) not byte for byte the file at the same path under .claude/skills/ (edited since the retired scripts/sync-agent-files copied it, with no such file, a link, or with no copy saved first), so this update kept $(if ($one) { 'it' } else { 'them' }) as $(if ($one) { 'it is' } else { 'they are' })"
+            }
+            if ($githubSkillsUnwritable.Count -gt 0) {
+                $one = $githubSkillsUnwritable.Count -eq 1
+                $parts += "$(Join-Names @($githubSkillsUnwritable)) $(if ($one) { 'is' } else { 'are each' }) byte for byte the file at the same path under .claude/skills/ but could not be opened for writing (the reason in the brackets), so this update kept $(if ($one) { 'it' } else { 'them' }) as $(if ($one) { 'it is' } else { 'they are' })"
+            }
+            if ($githubSkillsCant) { $parts += "this update did not read all of .github/skills ($githubSkillsCant)" }
+            $instructionMessages.Add("NOTICE: kept files under .github/skills/: $($parts -join '; and '). scripts/docs-sync-check.ps1 fails while .github/skills holds a file: move what your team still uses under .claude/skills/, where Claude Code and GitHub Copilot both read skills, or delete it.")
+        }
+    }
 }
 
 # .claude/settings.json holds the framework's hook registrations beside the team's own top-level keys (permissions, model,
@@ -4588,7 +5007,7 @@ foreach ($category in @(
     [pscustomobject]@{ Name = 'unchanged'; Values = $unchangedPlan },
     [pscustomobject]@{ Name = 'preserve'; Values = $preservePlan },
     [pscustomobject]@{ Name = 'archive'; Values = @($archivePlan | ForEach-Object { $_.Relative }) },
-    [pscustomobject]@{ Name = 'delete'; Values = @($deletePlan) + @($skillDeletePlan) + @($reinstallSweep) + @(if ($copilotRemoval) { $copilotRemoval.Relative }) }
+    [pscustomobject]@{ Name = 'delete'; Values = @($deletePlan) + @($skillDeletePlan) + @($reinstallSweep) + @(if ($copilotRemoval) { $copilotRemoval.Relative }) + @($githubSkillRemovals | ForEach-Object { $_.Relative }) }
 )) {
     foreach ($relative in @($category.Values | Sort-Object -Unique)) { Write-Output "PLAN $($category.Name) $relative" }
 }
@@ -5036,10 +5455,25 @@ foreach ($seed in $seedReplacements) {
     } catch { Stop-IncompleteCopy -Relative $seed.Relative -Reason $_.Exception.Message -Written $applyWritten }
     Write-Output "  replaced: $($seed.Relative) ($($seed.Short))."
 }
+# The seeded team files with old seed lines, written in place the same way, from the bytes of the text and its own BOM or none.
+foreach ($lineWrite in $seedLineWrites) {
+    try {
+        [byte[]]$lineBytes = [Text.UTF8Encoding]::new($false).GetBytes($lineWrite.Text)
+        if ($lineWrite.HasBom) { $lineBytes = [byte[]](@(0xEF, 0xBB, 0xBF) + $lineBytes) }
+        $stream = [IO.File]::Open($lineWrite.Path, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+        try { $stream.SetLength(0); $stream.Write($lineBytes, 0, $lineBytes.Length) } finally { $stream.Dispose() }
+    } catch { Stop-IncompleteCopy -Relative $lineWrite.Relative -Reason $_.Exception.Message -Written $applyWritten }
+    Write-Output "  cleaned: $($lineWrite.Relative); updated $($lineWrite.Changed) old template $(if ($lineWrite.Changed -eq 1) { 'line' } else { 'lines' }) ($($lineWrite.Short))."
+}
 # The retired .github/copilot-instructions.md, removed after its backup was saved above (or a commit holds it).
 if ($copilotRemoval) {
     try { Remove-Item -Force -LiteralPath $copilotRemoval.Path -ErrorAction Stop } catch { Stop-IncompleteCopy -Relative $copilotRemoval.Relative -Reason $_.Exception.Message -Written $applyWritten }
     Write-Output "  removed: $($copilotRemoval.Relative) ($copilotRemovedNote)."
+}
+# The copies under .github/skills the retired sync wrote, removed after their backups were saved above (or a commit holds them).
+foreach ($mirror in $githubSkillRemovals) {
+    try { Remove-Item -Force -LiteralPath $mirror.Path -ErrorAction Stop } catch { Stop-IncompleteCopy -Relative $mirror.Relative -Reason $_.Exception.Message -Written $applyWritten }
+    Write-Output "  removed: $($mirror.Relative) ($($mirror.Short))."
 }
 # Folders a retired framework path leaves behind, once empty: a scripts/docs-sync-check.ps1 before 0.99.2 failed on an empty
 # .github/skills, and an empty skill folder reads as a skill slug. A plain update (never a first install; -Reinstall clears its
@@ -5069,7 +5503,7 @@ if ($updateMode -and -not $Reinstall) {
         }
     }
     foreach ($folder in @($retiredRoots | Sort-Object)) { $folderCandidates.Add($folder) }
-    foreach ($relative in @(@($retiredDeleted | ForEach-Object { $_.Relative }) + @(if ($copilotRemoval) { $copilotRemoval.Relative }))) {
+    foreach ($relative in @(@($retiredDeleted | ForEach-Object { $_.Relative }) + @(if ($copilotRemoval) { $copilotRemoval.Relative }) + @($githubSkillRemovals | ForEach-Object { $_.Relative }))) {
         $segments = $relative.Split('/')
         for ($n = $segments.Count - 1; $n -ge 1; $n--) { $folderCandidates.Add((($segments[0..($n - 1)]) -join '/')) }
     }
@@ -5085,7 +5519,7 @@ if ($updateMode -and -not $Reinstall) {
         catch { Write-Output "  CANT-VERIFY: the empty folder $folder could not be removed ($($_.Exception.Message.Split([char]10)[0].Trim())); delete it by hand." }
     }
     if ($foldersRemoved.Count -gt 0) {
-        Write-Output "  NOTICE: removed $(if ($foldersRemoved.Count -eq 1) { 'an empty folder' } else { "$($foldersRemoved.Count) empty folders" }) on the paths of files the framework retired, each holding no file at any depth: $(Join-Names @($foldersRemoved | ForEach-Object { "$_/" }))."
+        Write-Output "  NOTICE: removed $(if ($foldersRemoved.Count -eq 1) { 'an empty folder' } else { "$($foldersRemoved.Count) empty folders" }) on the paths of files the framework retired or of copies this update removed, each holding no file at any depth: $(Join-Names @($foldersRemoved | ForEach-Object { "$_/" }))."
     }
 }
 # Asked after the last copy: only Git can say none is committable. A target without Git has no commit to keep them from.
@@ -5136,8 +5570,17 @@ if ($backupTracked -gt 0) {
 }
 if ($updateMode) {
     $untouchedContent = @($protected | Where-Object { -not ($layoutMove -and $_ -in @('CLAUDE.md', 'AGENTS.md')) -and -not $instructionCleaned.ContainsKey($_) -and -not $archiveSources.Contains($_) -and -not ($copilotRemoval -and $_ -ceq $copilotRemoval.Relative) -and
-        @($seedReplacements | Where-Object Relative -ceq $_).Count -eq 0 })
+        @($seedReplacements | Where-Object Relative -ceq $_).Count -eq 0 -and @($seedLineWrites | Where-Object Relative -ceq $_).Count -eq 0 })
     Write-Output "  consumer-owned content files left untouched ($($untouchedContent -join ', '))."
+}
+# How many of the things named above the clean-up of old framework text and copies left in place, by kind. Only that clean-up:
+# MIGRATION, LAYOUT and the CANT-VERIFY lines about retired files a team changed are not counted here.
+if ($updateMode -and -not $Reinstall -and $keptFrameworkText.Count -gt 0) {
+    $keptParts = foreach ($kind in $keptFrameworkKinds.Keys) {
+        $n = @($keptFrameworkText | Where-Object { $_ -ceq $kind }).Count
+        if ($n -gt 0) { "$n $($keptFrameworkKinds[$kind][[int]($n -ne 1)])" }
+    }
+    Write-Output "  the clean-up of old framework text and copies left $($keptFrameworkText.Count) $(if ($keptFrameworkText.Count -eq 1) { 'item' } else { 'items' }) in place, named above ($(@($keptParts) -join ', ')); each line above that names one says what to do with it."
 }
 
 if ($writesAdoptionMarker) {

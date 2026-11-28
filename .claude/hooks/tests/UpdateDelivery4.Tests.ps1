@@ -2168,11 +2168,12 @@ function Get-SeedBytes { param([string]$Target, [string]$Relative) $p = Join-Pat
 }
 
 # SECURITY_FINDINGS.md as an old seed names the retired /security-review: replaced, and no MIGRATION line names it; a copy with
-# a team row is kept byte for byte with its MIGRATION line.
+# a team row that itself names /security-review is not replaced whole, gets its old seed lines reworded, and keeps the MIGRATION
+# line its team row earns.
 & {
     $secRel = 'SECURITY_FINDINGS.md'
     $secOld = Get-CopilotReleasedBytes "v0.85.0:dist/dotnet/$secRel"
-    $secTeam = [byte[]]($secOld + $copilotUtf8.GetBytes("`n| SF-1 | High | Team row |`n"))
+    $secTeam = [byte[]]($secOld + $copilotUtf8.GetBytes("`n| SF-1 | High | Team row, found by ``/security-review`` |`n"))
     $to = New-SeedConsumer -Files @{ $secRel = $secOld } -Git
     $tt = New-SeedConsumer -Files @{ $secRel = $secTeam } -Git
     try {
@@ -2181,13 +2182,16 @@ function Get-SeedBytes { param([string]$Target, [string]$Relative) $p = Join-Pat
         $outT = Invoke-Installer -Dist 'dotnet' -Target $tt
         $exitT = $LASTEXITCODE
 
-        It 'old seed files: an old SECURITY_FINDINGS.md is replaced with no MIGRATION line, a copy with a team row keeps its bytes and its MIGRATION line' {
+        # The team's copy is not replaced whole; its two old /security-review seed lines and its placeholder row get this release's
+        # wording (B-573, the old seed lines cases below), and the team's own row keeps the MIGRATION line.
+        $secTeamExpected = $copilotUtf8.GetBytes($copilotUtf8.GetString($secTeam).Replace('> Managed by `/security-review`.', '> Managed by `/security-gate`.').Replace('> Run `/security-review` to add new findings.', '> Run `/security-gate` to add new findings.').Replace('_Run `/security-review` to populate_', '_Run `/security-gate` to populate_'))
+        It 'old seed files: an old SECURITY_FINDINGS.md is replaced with no MIGRATION line; a copy with a team row naming /security-review is not replaced, gets its seed lines reworded and keeps the MIGRATION line' {
             Assert ($exitO -eq 0) "update exited ${exitO}: $outO"
             Assert-BytesEqual -Expected ([IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/dotnet/$secRel"))) -Actual (Get-SeedBytes $to $secRel) -Message "the old seed was not replaced. Output:`n$outO"
             Assert ((Get-CopilotLines $outO 'NOTICE: replacing SECURITY_FINDINGS\.md:').Count -eq 1) "expected one NOTICE. Output:`n$outO"
             Assert ((Get-CopilotLines $outO "MIGRATION: [^\r\n]*'SECURITY_FINDINGS\.md'").Count -eq 0) "a MIGRATION line names the replaced file. Output:`n$outO"
             Assert ($exitT -eq 0) "update exited ${exitT}: $outT"
-            Assert-BytesEqual -Expected $secTeam -Actual (Get-SeedBytes $tt $secRel) -Message "the team's copy changed. Output:`n$outT"
+            Assert-BytesEqual -Expected $secTeamExpected -Actual (Get-SeedBytes $tt $secRel) -Message "the team's copy is not its old bytes with only the three seed lines reworded. Output:`n$outT"
             Assert ((Get-CopilotLines $outT 'replacing SECURITY_FINDINGS\.md').Count -eq 0) "the team's copy was announced as replaced. Output:`n$outT"
             Assert ((Get-CopilotLines $outT "MIGRATION: [^\r\n]*'SECURITY_FINDINGS\.md'").Count -ge 1) "the team's copy lost its MIGRATION line. Output:`n$outT"
         }
@@ -2503,6 +2507,776 @@ function New-StampConsumer {
             Assert ((Get-CopilotLines $out 'AGENTS\.md header').Count -eq 0) "-Reinstall printed a header line. Output:`n$out"
         }
     } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# A target for the B-573 cases below: an old layout (Agents and Claude, with Stamp) or the current one, plus Files, optionally committed.
+function New-ScanConsumer {
+    param([byte[]]$Agents, [byte[]]$Claude, [string]$Stamp, [hashtable]$Files, [switch]$Git)
+    $t = if ($null -ne $Claude) { New-StampConsumer -Agents $Agents -Claude $Claude -Stamp $Stamp } else { New-CopilotConsumer -Copilot $null }
+    if ($null -ne $Agents -and $null -eq $Claude) { [IO.File]::WriteAllBytes((Join-Path $t 'AGENTS.md'), $Agents) }
+    foreach ($relative in @($(if ($Files) { $Files.Keys }))) {
+        $path = Join-Path $t $relative
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
+        [IO.File]::WriteAllBytes($path, $Files[$relative])
+    }
+    if ($Git) {
+        & git -C $t init -q 2>&1 | Out-Null
+        & git -C $t config user.email 'fixture@example.test'
+        & git -C $t config user.name 'Fixture'
+        & git -C $t config core.autocrlf false
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'team files' 2>&1 | Out-Null
+    }
+    return $t
+}
+
+# B-573: single lines releases from 0.76.0 shipped in a team file that this release words otherwise in the same place (the
+# retired /security-review, CLAUDE.md named as the instruction file, skills mirrored to .github/skills). A plain update gives a
+# line that is byte for byte such a line, trailing spaces aside, this release's line and keeps every other byte, after the last
+# commit or a saved copy holds the original; a line the team reworded is never changed. A successor that only puts a current
+# name for a retired one is written whatever is around it; any other keeps the old line when a team line hangs on it.
+$oslSecOld1 = '> Managed by `/security-review`. Separate from TECH_DEBT.md — these carry remediation SLAs and require evidence of resolution for internal audit.'
+$oslSecNew1 = '> Managed by `/security-gate`. Separate from TECH_DEBT.md — these carry remediation SLAs and require evidence of resolution for internal audit.'
+$oslSecOld2 = '> Run `/security-review` to add new findings. Run `/docs-sync` to check for stale entries.'
+$oslSecNew2 = '> Run `/security-gate` to add new findings. Run `/docs-sync` to check for stale entries.'
+$oslPlaceholder = '| _  | _        | _        | _                                       | _Run `/security-review` to populate_ | _ | _ | _ | _ | _ | _ |'
+$oslTeamRow = '| SF-1 | High | Auth | src/auth | Token not rotated | 2026-01-01 | 2026-01-31 | Open | | | |'
+# The v0.85.0 register with its placeholder row replaced by a team row: the file is the team's, the two old lines are not.
+$oslSecTeam = $copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/SECURITY_FINDINGS.md')).Replace($oslPlaceholder, $oslTeamRow)
+$oslSecExpected = $oslSecTeam.Replace($oslSecOld1, $oslSecNew1).Replace($oslSecOld2, $oslSecNew2)
+$oslUpdating = 'NOTICE: updating (\d+) old template lines? in '
+
+# Committed: both lines get this release's wording, the team row and every other byte stay, and the NOTICE names the commit,
+# whose printed line gives the old bytes back.
+& {
+    $before = $copilotUtf8.GetBytes($oslSecTeam)
+    $t = New-SeedConsumer -Files @{ 'SECURITY_FINDINGS.md' = $before } -Git
+    try {
+        $head = (& git -C $t rev-parse HEAD).Trim()
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = $copilotUtf8.GetString((Get-SeedBytes $t 'SECURITY_FINDINGS.md'))
+
+        It 'old seed lines: a committed SECURITY_FINDINGS.md with a team row gets today''s two /security-gate lines, every other byte kept, and the NOTICE names the commit' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($oslSecTeam.Contains($oslSecOld1) -and $oslSecTeam.Contains($oslSecOld2) -and $oslSecTeam.Contains($oslTeamRow)) 'calibration: the fixture lacks the two old lines or the team row'
+            Assert ($after -ceq $oslSecExpected) "SECURITY_FINDINGS.md is not the old file with only the two lines reworded. Output:`n$out"
+            $notice = Get-CopilotLines $out "${oslUpdating}SECURITY_FINDINGS\.md to this release's wording \(the retired /security-review command, now /security-gate\)"
+            Assert ($notice.Count -eq 1 -and $notice[0] -match "${oslUpdating}SECURITY_FINDINGS" -and $Matches[1] -eq '2') "expected one NOTICE counting 2 lines. Output:`n$out"
+            Assert ($notice[0].Contains($head)) "the NOTICE does not name commit ${head}: $($notice[0])"
+            $printed = [regex]::Match($notice[0], "git -C '([^']+)' show (\S+)  prints it")
+            Assert $printed.Success "the NOTICE prints no git show line: $($notice[0])"
+            Assert-BytesEqual -Expected $before -Actual (Get-B469ShowBytes -Target $printed.Groups[1].Value -Spec $printed.Groups[2].Value) -Message "the printed line does not give the old bytes back: $($notice[0])"
+            Assert ((Get-CopilotLines $out "^\s*cleaned: SECURITY_FINDINGS\.md; updated 2 old template lines \(original in commit $head\)\.").Count -eq 1) "no summary line names the commit. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'consumer-owned content files left untouched [^\r\n]*SECURITY_FINDINGS\.md').Count -eq 0) "the file is still listed as left untouched. Output:`n$out"
+        }
+
+        It 'old seed lines: after the update no MIGRATION line names /security-review in the reworded SECURITY_FINDINGS.md' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (-not $after.Contains('/security-review')) "calibration: the file still names /security-review. Output:`n$out"
+            Assert ((Get-CopilotLines $out "MIGRATION: [^\r\n]*'SECURITY_FINDINGS\.md'[^\r\n]*'/security-review'").Count -eq 0) "a MIGRATION line asks for a change this update made. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# One of the two lines reworded by the team: that line stays and is not mentioned; the other still gets this release's wording.
+& {
+    $reworded = '> Managed by `/security-review` and our own weekly triage.'
+    $text = $oslSecTeam.Replace($oslSecOld1, $reworded)
+    $t = New-SeedConsumer -Files @{ 'SECURITY_FINDINGS.md' = $copilotUtf8.GetBytes($text) } -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = $copilotUtf8.GetString((Get-SeedBytes $t 'SECURITY_FINDINGS.md'))
+
+        It 'old seed lines: a line the team reworded stays and is not mentioned, and the other old line still changes' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($after -ceq $text.Replace($oslSecOld2, $oslSecNew2)) "the file is not the team's text with only the other line reworded. Output:`n$out"
+            $notice = Get-CopilotLines $out "${oslUpdating}SECURITY_FINDINGS\.md"
+            Assert ($notice.Count -eq 1 -and $notice[0] -match 'updating 1 old template line in') "expected one NOTICE counting 1 line. Output:`n$out"
+            Assert (-not $notice[0].Contains('weekly triage')) "the NOTICE mentions the reworded line: $($notice[0])"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# FRAMEWORK-CONTEXT.md and docs/architecture-decisions.md (v0.85.0), each with a team line right under the old line: a rename
+# needs no hanging-line guard, so the old line gets this release's and the team line stays where it is.
+& {
+    $fcOld = '> **Precedence**: If `FRAMEWORK-CONTEXT.md` and `CLAUDE.md` disagree on a convention, **`CLAUDE.md` (this repo''s authoritative source) wins** — but the agent must flag the contradiction. Framework-level conventions are baseline; per-repo conventions can diverge with rationale.'
+    $fcNew = '> **Precedence**: If `FRAMEWORK-CONTEXT.md` and `AGENTS.md` disagree on a convention, **`AGENTS.md` (this repo''s authoritative source) wins** — but the agent must flag the contradiction. Framework-level conventions are baseline; per-repo conventions can diverge with rationale.'
+    $adOld = 'Append-only ADR log. Entries are added by the `create-adr` skill (format: `## ADR-NNN: <title>` with Date / Status / Decision / Context / Alternatives considered / Consequences). The one-line index lives in `CLAUDE.md > Architecture Decisions`.'
+    $adNew = 'Append-only ADR log. Entries are added by the `create-adr` skill (format: `## ADR-NNN: <title>` with Date / Status / Decision / Context / Alternatives considered / Consequences). The one-line index lives in `AGENTS.md > Architecture Decisions`.'
+    $fcTeamLine = '> Our platform team settles any conflict in the weekly sync.'
+    $adTeamLine = 'Decisions before 2026 live in the old wiki.'
+    $fcText = $copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/FRAMEWORK-CONTEXT.md')).Replace("$fcOld`n", "$fcOld`n$fcTeamLine`n")
+    $adText = $copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/docs/architecture-decisions.md')).Replace("$adOld`n", "$adOld`n$adTeamLine`n")
+    # The current layout: the CLAUDE.md stub, and an AGENTS.md with its Architecture Decisions section, which holds the instructions.
+    $agentsAd = $copilotUtf8.GetBytes("# Acme`n`n## Conventions`n`nTeam text.`n`n## Architecture Decisions`n`n- ADR-001: we keep one ADR log.`n")
+    $t = New-SeedConsumer -Files @{ 'AGENTS.md' = $agentsAd; 'FRAMEWORK-CONTEXT.md' = $copilotUtf8.GetBytes($fcText); 'docs/architecture-decisions.md' = $copilotUtf8.GetBytes($adText) } -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'old seed lines: FRAMEWORK-CONTEXT.md and docs/architecture-decisions.md get today''s line, and a team line right under it stays where it is' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($fcText.Contains("$fcOld`n$fcTeamLine`n") -and $adText.Contains("$adOld`n$adTeamLine`n")) 'calibration: the fixtures lack the old line with the team line under it'
+            Assert ($copilotUtf8.GetString((Get-SeedBytes $t 'FRAMEWORK-CONTEXT.md')) -ceq $fcText.Replace($fcOld, $fcNew)) "FRAMEWORK-CONTEXT.md is not the old file with only the old line reworded. Output:`n$out"
+            Assert ($copilotUtf8.GetString((Get-SeedBytes $t 'docs/architecture-decisions.md')) -ceq $adText.Replace($adOld, $adNew)) "docs/architecture-decisions.md is not the old file with only the old line reworded. Output:`n$out"
+            foreach ($name in 'FRAMEWORK-CONTEXT\.md', 'docs/architecture-decisions\.md') {
+                Assert ((Get-CopilotLines $out "updating 1 old template line in $name to this release's wording \(CLAUDE\.md as the file that holds the instructions, now AGENTS\.md\)").Count -eq 1) "expected one NOTICE for $name. Output:`n$out"
+            }
+            Assert ((Get-CopilotLines $out 'kept old template text').Count -eq 0) "a rename was held by the hanging-line guard. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# B-573 repair: SECURITY_FINDINGS.md > Findings shipped a placeholder row naming /security-review (0.76.0 to 0.94.0). A team row
+# right under it does not hold it (a rename needs no hanging-line guard): the row gets this release's wording, every other byte
+# stays, and no MIGRATION line then names /security-review in the file.
+$oslPlaceholderNew = $oslPlaceholder.Replace('/security-review', '/security-gate')
+& {
+    $text = $copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/SECURITY_FINDINGS.md')).Replace("$oslPlaceholder`n", "$oslPlaceholder`n$oslTeamRow`n")
+    $t = New-SeedConsumer -Files @{ 'SECURITY_FINDINGS.md' = $copilotUtf8.GetBytes($text) } -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $after = $copilotUtf8.GetString((Get-SeedBytes $t 'SECURITY_FINDINGS.md'))
+
+        It 'old seed lines: a team row right under the old placeholder row: the row is reworded, every other byte kept, and no MIGRATION line names /security-review in the file' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($text.Contains("$oslPlaceholder`n$oslTeamRow`n")) 'calibration: the fixture lacks the placeholder row with the team row under it'
+            Assert ($after -ceq $text.Replace($oslSecOld1, $oslSecNew1).Replace($oslSecOld2, $oslSecNew2).Replace($oslPlaceholder, $oslPlaceholderNew)) "SECURITY_FINDINGS.md is not the old file with only the three old lines reworded. Output:`n$out"
+            Assert ((Get-CopilotLines $out "updating 3 old template lines in SECURITY_FINDINGS\.md > Findings and above its first section to this release's wording").Count -eq 1) "expected one NOTICE counting 3 lines. Output:`n$out"
+            Assert ((Get-CopilotLines $out "MIGRATION: [^\r\n]*'SECURITY_FINDINGS\.md'[^\r\n]*'/security-review'").Count -eq 0) "a MIGRATION line names /security-review in the reworded file. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# B-573 repair: the FRAMEWORK-CONTEXT.md and docs/architecture-decisions.md lines name AGENTS.md as the file that holds the project
+# instructions, so they change only when it does once the update is done. A hand-written AGENTS.md beside an old CLAUDE.md
+# declines the layout move: both files stay byte for byte with nothing said about them (-WhatIf plans the same), while
+# SECURITY_FINDINGS.md's lines in the same run still change. An old-layout install that is moved gets both lines.
+$oslFcOld = '> **Precedence**: If `FRAMEWORK-CONTEXT.md` and `CLAUDE.md` disagree on a convention, **`CLAUDE.md` (this repo''s authoritative source) wins** — but the agent must flag the contradiction. Framework-level conventions are baseline; per-repo conventions can diverge with rationale.'
+$oslFcNew = $oslFcOld.Replace('`CLAUDE.md`', '`AGENTS.md`')
+$oslAdOld = 'Append-only ADR log. Entries are added by the `create-adr` skill (format: `## ADR-NNN: <title>` with Date / Status / Decision / Context / Alternatives considered / Consequences). The one-line index lives in `CLAUDE.md > Architecture Decisions`.'
+$oslAdNew = $oslAdOld.Replace('`CLAUDE.md > ', '`AGENTS.md > ')
+# The v0.85.0 texts with a team section at the end, so neither is a released text replaced whole.
+$oslFcTeam = $copilotUtf8.GetBytes($copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/FRAMEWORK-CONTEXT.md')) + "`n## Team notes`n`nOur platform team owns this file.`n")
+$oslAdTeam = $copilotUtf8.GetBytes($copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/docs/architecture-decisions.md')) + "`n## ADR-001: Team decision`n`nWe keep one ADR log.`n")
+$oslV085Stamp = $copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/.claude/framework-version.json'))
+& {
+    $files = @{ 'FRAMEWORK-CONTEXT.md' = $oslFcTeam; 'docs/architecture-decisions.md' = $oslAdTeam; 'SECURITY_FINDINGS.md' = $copilotUtf8.GetBytes($oslSecTeam) }
+    $t = New-ScanConsumer -Agents $copilotUtf8.GetBytes("# Acme`n`n## Conventions`n`nTeam text.`n") -Claude (Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/CLAUDE.md') -Stamp $oslV085Stamp -Files $files -Git
+    try {
+        $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+        $dryExit = $LASTEXITCODE
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'old seed lines: beside a hand-written AGENTS.md, FRAMEWORK-CONTEXT.md and docs/architecture-decisions.md stay byte for byte with nothing said, and SECURITY_FINDINGS.md still changes' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ((Get-CopilotLines $out 'LAYOUT: AGENTS\.md is not the retired generated mirror').Count -eq 1) "calibration: the layout move was not declined. Output:`n$out"
+            Assert ($copilotUtf8.GetString($oslFcTeam).Contains($oslFcOld) -and $copilotUtf8.GetString($oslAdTeam).Contains($oslAdOld)) 'calibration: the fixtures lack the old lines'
+            Assert-BytesEqual -Expected $oslFcTeam -Actual (Get-SeedBytes $t 'FRAMEWORK-CONTEXT.md') -Message "FRAMEWORK-CONTEXT.md changed. Output:`n$out"
+            Assert-BytesEqual -Expected $oslAdTeam -Actual (Get-SeedBytes $t 'docs/architecture-decisions.md') -Message "docs/architecture-decisions.md changed. Output:`n$out"
+            Assert ((Get-CopilotLines $out '^(NOTICE|CANT-VERIFY):[^\r\n]*(FRAMEWORK-CONTEXT\.md|docs/architecture-decisions\.md)').Count -eq 0) "a NOTICE or CANT-VERIFY line names either file. Output:`n$out"
+            Assert ($copilotUtf8.GetString((Get-SeedBytes $t 'SECURITY_FINDINGS.md')) -ceq $oslSecExpected) "SECURITY_FINDINGS.md did not get its two lines in the same run. Output:`n$out"
+            Assert ($dryExit -eq 0) "-WhatIf exited ${dryExit}: $dry"
+            Assert ($dry -notmatch '(?m)^PLAN replace (FRAMEWORK-CONTEXT\.md|docs/architecture-decisions\.md)\r?$' -and $dry -match '(?m)^PLAN replace SECURITY_FINDINGS\.md\r?$') "-WhatIf does not plan what the run does. Output:`n$dry"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+# A CLAUDE.md that still holds the instructions and names @AGENTS.md (a bare import line, or in a sentence) skips the layout
+# move, but a hand-written AGENTS.md without an Architecture Decisions section does not hold them: both lines stay.
+foreach ($oslMention in @(@{ Name = 'a bare @AGENTS.md line'; Line = '@AGENTS.md' }, @{ Name = 'a sentence naming @AGENTS.md'; Line = 'Codex and Copilot read our own @AGENTS.md, not this file.' })) {
+    & {
+        $files = @{ 'FRAMEWORK-CONTEXT.md' = $oslFcTeam; 'docs/architecture-decisions.md' = $oslAdTeam; 'SECURITY_FINDINGS.md' = $copilotUtf8.GetBytes($oslSecTeam) }
+        $claude = $copilotUtf8.GetBytes($copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/CLAUDE.md')) + "`n$($oslMention.Line)`n")
+        $t = New-ScanConsumer -Agents $copilotUtf8.GetBytes("# Acme`n`n## Conventions`n`nTeam text.`n") -Claude $claude -Stamp $oslV085Stamp -Files $files -Git
+        try {
+            $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+            $dryExit = $LASTEXITCODE
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $exit = $LASTEXITCODE
+
+            It "old seed lines: a CLAUDE.md holding the instructions with $($oslMention.Name), beside a hand-written AGENTS.md: FRAMEWORK-CONTEXT.md and docs/architecture-decisions.md stay byte for byte with nothing said, and SECURITY_FINDINGS.md still changes" {
+                Assert ($exit -eq 0) "update exited ${exit}: $out"
+                Assert ((Get-CopilotLines $out '^\s*moved: CLAUDE\.md -> AGENTS\.md|LAYOUT: moving').Count -eq 0) "calibration: the layout move ran. Output:`n$out"
+                Assert-BytesEqual -Expected $oslFcTeam -Actual (Get-SeedBytes $t 'FRAMEWORK-CONTEXT.md') -Message "FRAMEWORK-CONTEXT.md changed. Output:`n$out"
+                Assert-BytesEqual -Expected $oslAdTeam -Actual (Get-SeedBytes $t 'docs/architecture-decisions.md') -Message "docs/architecture-decisions.md changed. Output:`n$out"
+                Assert ((Get-CopilotLines $out '^(NOTICE|CANT-VERIFY):[^\r\n]*(FRAMEWORK-CONTEXT\.md|docs/architecture-decisions\.md)').Count -eq 0) "a NOTICE or CANT-VERIFY line names either file. Output:`n$out"
+                Assert ($copilotUtf8.GetString((Get-SeedBytes $t 'SECURITY_FINDINGS.md')) -ceq $oslSecExpected) "SECURITY_FINDINGS.md did not get its two lines in the same run. Output:`n$out"
+                Assert ($dryExit -eq 0) "-WhatIf exited ${dryExit}: $dry"
+                Assert ($dry -notmatch '(?m)^PLAN replace (FRAMEWORK-CONTEXT\.md|docs/architecture-decisions\.md)\r?$' -and $dry -match '(?m)^PLAN replace SECURITY_FINDINGS\.md\r?$') "-WhatIf does not plan what the run does. Output:`n$dry"
+            }
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+}
+# B-573 third repair: the lines follow the Architecture Decisions section. While CLAUDE.md still holds the instructions, its own
+# Architecture Decisions section included, both lines stay, whatever AGENTS.md holds: one this update creates from the release's
+# template (AGENTS.md deleted, CLAUDE.md naming @AGENTS.md in a sentence), or one the team wrote with that section (CLAUDE.md
+# with a bare @AGENTS.md line).
+foreach ($oslSplit in @(
+        @{ Name = 'AGENTS.md deleted and created by this update, CLAUDE.md naming @AGENTS.md in a sentence'; Line = 'Codex reads our own @AGENTS.md, not this file.'; Agents = $null },
+        @{ Name = 'a team AGENTS.md with its own Architecture Decisions section, CLAUDE.md with a bare @AGENTS.md line'; Line = '@AGENTS.md'; Agents = "# Acme`n`n## Conventions`n`nTeam text.`n`n## Architecture Decisions`n`n- ADR-001: we keep one ADR log.`n" })) {
+    & {
+        $files = @{ 'FRAMEWORK-CONTEXT.md' = $oslFcTeam; 'docs/architecture-decisions.md' = $oslAdTeam; 'SECURITY_FINDINGS.md' = $copilotUtf8.GetBytes($oslSecTeam) }
+        $claudeText = $copilotUtf8.GetString((Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/CLAUDE.md')) + "`n$($oslSplit.Line)`n"
+        $agentsText = if ($null -ne $oslSplit.Agents) { $oslSplit.Agents } else { "# placeholder`n" }
+        $t = New-ScanConsumer -Agents $copilotUtf8.GetBytes($agentsText) -Claude $copilotUtf8.GetBytes($claudeText) -Stamp $oslV085Stamp -Files $files -Git
+        try {
+            if ($null -eq $oslSplit.Agents) {
+                & git -C $t rm -q AGENTS.md 2>&1 | Out-Null
+                & git -C $t commit -qm 'AGENTS.md deleted' 2>&1 | Out-Null
+            }
+            $agentsBefore = Test-Path -LiteralPath (Join-Path $t 'AGENTS.md')
+            $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+            $dryExit = $LASTEXITCODE
+            $out = Invoke-Installer -Dist 'dotnet' -Target $t
+            $exit = $LASTEXITCODE
+            $agentsAfter = $copilotUtf8.GetString((Get-SeedBytes $t 'AGENTS.md'))
+
+            It "old seed lines: $($oslSplit.Name): FRAMEWORK-CONTEXT.md and docs/architecture-decisions.md stay byte for byte with nothing said, and SECURITY_FINDINGS.md still changes" {
+                Assert ($exit -eq 0) "update exited ${exit}: $out"
+                Assert ($agentsBefore -eq ($null -ne $oslSplit.Agents)) 'calibration: AGENTS.md is not as the layout needs before the update'
+                Assert ($claudeText -cmatch '(?m)^## Architecture Decisions\r?$') 'calibration: the v0.85.0 CLAUDE.md lacks its Architecture Decisions section'
+                Assert ($agentsAfter -cmatch '(?m)^## Architecture Decisions\r?$') "calibration: AGENTS.md after the update has no Architecture Decisions section. Output:`n$out"
+                Assert ((Get-CopilotLines $out '^\s*moved: CLAUDE\.md -> AGENTS\.md|LAYOUT: moving').Count -eq 0) "calibration: the layout move ran. Output:`n$out"
+                Assert-BytesEqual -Expected $oslFcTeam -Actual (Get-SeedBytes $t 'FRAMEWORK-CONTEXT.md') -Message "FRAMEWORK-CONTEXT.md changed. Output:`n$out"
+                Assert-BytesEqual -Expected $oslAdTeam -Actual (Get-SeedBytes $t 'docs/architecture-decisions.md') -Message "docs/architecture-decisions.md changed. Output:`n$out"
+                Assert ((Get-CopilotLines $out '^(NOTICE|CANT-VERIFY):[^\r\n]*(FRAMEWORK-CONTEXT\.md|docs/architecture-decisions\.md)').Count -eq 0) "a NOTICE or CANT-VERIFY line names either file. Output:`n$out"
+                Assert ($copilotUtf8.GetString((Get-SeedBytes $t 'SECURITY_FINDINGS.md')) -ceq $oslSecExpected) "SECURITY_FINDINGS.md did not get its two lines in the same run. Output:`n$out"
+                Assert ($dryExit -eq 0) "-WhatIf exited ${dryExit}: $dry"
+                Assert ($dry -notmatch '(?m)^PLAN replace (FRAMEWORK-CONTEXT\.md|docs/architecture-decisions\.md)\r?$' -and $dry -match '(?m)^PLAN replace SECURITY_FINDINGS\.md\r?$') "-WhatIf does not plan what the run does. Output:`n$dry"
+            }
+        } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+    }
+}
+& {
+    $files = @{ 'FRAMEWORK-CONTEXT.md' = $oslFcTeam; 'docs/architecture-decisions.md' = $oslAdTeam }
+    $t = New-ScanConsumer -Agents (Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/AGENTS.md') -Claude (Get-CopilotReleasedBytes 'v0.85.0:dist/dotnet/CLAUDE.md') -Stamp $oslV085Stamp -Files $files -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'old seed lines: an old-layout install that is moved gets the AGENTS.md lines in FRAMEWORK-CONTEXT.md and docs/architecture-decisions.md' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ((Get-CopilotLines $out '^\s*moved: CLAUDE\.md -> AGENTS\.md').Count -eq 1) "calibration: the layout move did not run. Output:`n$out"
+            Assert ($copilotUtf8.GetString((Get-SeedBytes $t 'FRAMEWORK-CONTEXT.md')) -ceq $copilotUtf8.GetString($oslFcTeam).Replace($oslFcOld, $oslFcNew)) "FRAMEWORK-CONTEXT.md is not the old file with only the old line reworded. Output:`n$out"
+            Assert ($copilotUtf8.GetString((Get-SeedBytes $t 'docs/architecture-decisions.md')) -ceq $copilotUtf8.GetString($oslAdTeam).Replace($oslAdOld, $oslAdNew)) "docs/architecture-decisions.md is not the old file with only the old line reworded. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+# Old-layout angular installs, committed: after the layout move AGENTS.md holds this release's Common Tasks lines and the
+# Architecture Decisions comment line; a team line right under the old /bootstrap line (not a rename) keeps it, named.
+$oslCtIntro = @('Skills are a delivery-profile superset, not evidence that they apply. Use only when repository', 'evidence satisfies the gate:')
+$oslCtBootstrap = '`/bootstrap` drafts a project skill under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, for an operation this repository repeats at least three times; add its line here once the team approves the draft.'
+$oslCtRegisters = '**Registers**: [TECH_DEBT.md](./TECH_DEBT.md) tracks delivery debt. [SECURITY_FINDINGS.md](./SECURITY_FINDINGS.md) tracks security findings separately with remediation SLAs (Critical = 7 days, High = 30 days). Do not merge them — audit teams treat these differently. Security findings come from `/security-gate` and the `security-auditor` agent, not from feature work. AI-assisted file changes are appended to [.claude/ai-audit.log](./.claude/ai-audit.log) automatically by the PostToolUse hook.'
+$oslAdComment = '     added by the create-adr skill. Rationale: AGENTS.md loads on nearly every agent turn and'
+function Get-OslSection {
+    param([string]$Text, [string]$Heading)
+    $in = $false
+    return , @(foreach ($line in $Text.Split([char]10)) { $c = $line.TrimEnd([char]13); if ($c.StartsWith('## ')) { $in = $c -ceq $Heading; continue }; if ($in) { $c } })
+}
+function Invoke-OslOldLayout {
+    param([string]$Tag, [scriptblock]$Edit)
+    $claude = $copilotUtf8.GetString((Get-CopilotReleasedBytes "${Tag}:dist/angular/CLAUDE.md"))
+    if ($Edit) { $claude = & $Edit $claude }
+    $t = New-StampConsumer -Agents (Get-CopilotReleasedBytes "${Tag}:dist/angular/AGENTS.md") -Claude $copilotUtf8.GetBytes($claude) -Stamp ($copilotUtf8.GetString((Get-CopilotReleasedBytes "${Tag}:dist/angular/.claude/framework-version.json"))) -Git
+    try {
+        $o = Invoke-Installer -Dist 'angular' -Target $t
+        return [pscustomobject]@{ Exit = $LASTEXITCODE; Out = $o; Claude = $claude; Agents = $copilotUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+& {
+    $run = Invoke-OslOldLayout -Tag 'v0.76.0'
+
+    It 'old seed lines: a v0.76.0 angular install moved to AGENTS.md gets today''s Common Tasks lines and Architecture Decisions comment line' {
+        Assert ($run.Exit -eq 0) "update exited $($run.Exit): $($run.Out)"
+        Assert ($run.Claude.Contains('Recipes live as **skills**') -and $run.Claude.Contains('Skills are mirrored to `.github/skills/`') -and $run.Claude.Contains('`/security-review` and the `security-auditor`')) 'calibration: the v0.76.0 CLAUDE.md lacks the old Common Tasks lines'
+        Assert ((Get-CopilotLines $run.Out '^\s*moved: CLAUDE\.md -> AGENTS\.md').Count -eq 1) "calibration: the layout move did not run. Output:`n$($run.Out)"
+        $tasks = Get-OslSection $run.Agents '## Common Tasks'
+        $at = [array]::IndexOf($tasks, $oslCtIntro[0])
+        Assert ($at -ge 0 -and $tasks[$at + 1] -ceq $oslCtIntro[1]) "Common Tasks lacks today's two-line opening: $($tasks -join ' | ')"
+        Assert ($tasks -ccontains $oslCtBootstrap -and $tasks -ccontains $oslCtRegisters) "Common Tasks lacks today's /bootstrap or Registers line: $($tasks -join ' | ')"
+        Assert (@($tasks | Where-Object { $_.Contains('Recipes live as') -or $_.Contains('.github/skills') -or $_.Contains('/security-review') }).Count -eq 0) "an old Common Tasks line is left: $($tasks -join ' | ')"
+        Assert ((Get-OslSection $run.Agents '## Architecture Decisions') -ccontains $oslAdComment) "the Architecture Decisions comment does not name AGENTS.md: $((Get-OslSection $run.Agents '## Architecture Decisions') -join ' | ')"
+        Assert ((Get-CopilotLines $run.Out "updating 4 old template lines in AGENTS\.md > Architecture Decisions and > Common Tasks to this release's wording").Count -eq 1) "expected one NOTICE counting 4 lines. Output:`n$($run.Out)"
+        Assert ((Get-CopilotLines $run.Out 'kept old template text').Count -eq 0) "a line was kept by the hanging-line guard. Output:`n$($run.Out)"
+    }
+}
+& {
+    $old = '`/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real repo exemplar. A legacy `.github/skills/` tree has higher Copilot priority and must be migrated here before framework checks pass.'
+    $team = 'Our team drafts skills in docs/skill-drafts first.'
+    $run = Invoke-OslOldLayout -Tag 'v0.85.0' -Edit { param($c) $c.Replace("$old`n", "$old`n$team`n") }
+
+    It 'old seed lines: a v0.85.0 angular install keeps the /bootstrap line a team line hangs on, names it, and updates the rest' {
+        Assert ($run.Exit -eq 0) "update exited $($run.Exit): $($run.Out)"
+        Assert ($run.Claude.Contains("$old`n$team`n")) 'calibration: the v0.85.0 CLAUDE.md lacks the old /bootstrap line with the team line under it'
+        $tasks = Get-OslSection $run.Agents '## Common Tasks'
+        $at = [array]::IndexOf($tasks, $old)
+        Assert ($at -ge 0 -and $tasks[$at + 1] -ceq $team) "the old /bootstrap line with the team line under it is not kept: $($tasks -join ' | ')"
+        Assert ($tasks -ccontains $oslCtRegisters -and (Get-OslSection $run.Agents '## Architecture Decisions') -ccontains $oslAdComment) "the Registers or comment line is not today's. AGENTS.md:`n$($run.Agents)"
+        $kept = Get-CopilotLines $run.Out "NOTICE: kept old template text in AGENTS\.md as it is: the line '``/bootstrap`` adds project-specific skill\.\.\.' under Common Tasks \(under it: 'Our team drafts skills in docs/skill-dra\.\.\.'\)\."
+        Assert ($kept.Count -eq 1) "expected one NOTICE naming the kept line and the team line. Output:`n$($run.Out)"
+        Assert ((Get-CopilotLines $run.Out "updating 2 old template lines in AGENTS\.md > Architecture Decisions and > Common Tasks").Count -eq 1) "expected one NOTICE counting 2 lines. Output:`n$($run.Out)"
+    }
+}
+
+# The old line inside a fenced block, and in a section that is not its place, is not the seed's line in its place: the file
+# stays byte for byte and nothing is said about it.
+& {
+    $fcOld = '> **Precedence**: If `FRAMEWORK-CONTEXT.md` and `CLAUDE.md` disagree on a convention, **`CLAUDE.md` (this repo''s authoritative source) wins** — but the agent must flag the contradiction. Framework-level conventions are baseline; per-repo conventions can diverge with rationale.'
+    $text = $copilotUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot 'dist/dotnet/FRAMEWORK-CONTEXT.md'))) + "`n## Team history`n`n$fcOld`n`nThe old wording, as it was:`n`n``````text`n$fcOld`n```````n"
+    $bytes = $copilotUtf8.GetBytes($text)
+    $t = New-SeedConsumer -Files @{ 'FRAMEWORK-CONTEXT.md' = $bytes } -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'old seed lines: the old line inside a fenced block and in another section stays byte for byte, with nothing said' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $bytes -Actual (Get-SeedBytes $t 'FRAMEWORK-CONTEXT.md') -Message "FRAMEWORK-CONTEXT.md changed. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'old template (line|text)[^\r\n]*FRAMEWORK-CONTEXT\.md|FRAMEWORK-CONTEXT\.md; updated').Count -eq 0) "the update printed a line about it. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# B-573 repair: a fenced copy of an old line at its own place, above the first heading (FRAMEWORK-CONTEXT.md's Precedence line)
+# and inside its section (AGENTS.md > Common Tasks, the old Registers line), stays byte for byte, while the real line beside it
+# gets this release's wording.
+$oslCtRegistersOld = $oslCtRegisters.Replace('`/security-gate`', '`/security-review`')
+& {
+    $fence = "``````text`n"
+    $fcText = $copilotUtf8.GetString($oslFcTeam).Replace("$oslFcOld`n", "$oslFcOld`n`n$fence$oslFcOld`n```````n")
+    # With its Architecture Decisions section AGENTS.md holds the instructions, so the FRAMEWORK-CONTEXT.md line may change.
+    $agents = "# Acme`n`n## Architecture Decisions`n`n- ADR-001: we keep one ADR log.`n`n## Common Tasks`n`n$oslCtRegistersOld`n`n$fence$oslCtRegistersOld`n```````n"
+    $t = New-ScanConsumer -Agents $copilotUtf8.GetBytes($agents) -Files @{ 'FRAMEWORK-CONTEXT.md' = $copilotUtf8.GetBytes($fcText) } -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'old seed lines: a fenced copy of an old line above the first heading and one inside its section stay byte for byte, and the real lines change' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (([regex]::Matches($fcText, [regex]::Escape($oslFcOld))).Count -eq 2 -and ([regex]::Matches($agents, [regex]::Escape($oslCtRegistersOld))).Count -eq 2) 'calibration: the fixtures lack the real and the fenced copy'
+            Assert ($copilotUtf8.GetString((Get-SeedBytes $t 'FRAMEWORK-CONTEXT.md')) -ceq $fcText.Replace("$oslFcOld`n`n$fence", "$oslFcNew`n`n$fence")) "FRAMEWORK-CONTEXT.md is not the file with only the real line reworded. Output:`n$out"
+            $tasks = Get-OslSection $copilotUtf8.GetString((Get-SeedBytes $t 'AGENTS.md')) '## Common Tasks'
+            Assert (($tasks -join "`n") -ceq "`n$oslCtRegisters`n`n``````text`n$oslCtRegistersOld`n```````n")"AGENTS.md > Common Tasks is not the real line reworded beside the fenced copy: $($tasks -join ' | ')"
+            Assert ((Get-CopilotLines $out "updating 1 old template line in AGENTS\.md > Common Tasks to this release's wording").Count -eq 1 -and (Get-CopilotLines $out "updating 1 old template line in FRAMEWORK-CONTEXT\.md to this release's wording").Count -eq 1) "expected one NOTICE counting 1 line for each file. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# B-573 repair: an old line indented by two spaces, and one with a word added, each at its place, are not the shipped lines: the
+# file stays byte for byte and no line says anything about it.
+& {
+    $text = $oslSecTeam.Replace($oslSecOld1, "  $oslSecOld1").Replace($oslSecOld2, $oslSecOld2.Replace('to add new findings', 'to add new findings quickly'))
+    $bytes = $copilotUtf8.GetBytes($text)
+    $t = New-SeedConsumer -Files @{ 'SECURITY_FINDINGS.md' = $bytes } -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'old seed lines: an old line indented by two spaces and one with a word added stay byte for byte and are not mentioned' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($text.Contains("  $oslSecOld1`n") -and $text.Contains('to add new findings quickly.')) 'calibration: the fixture lacks the indented line or the line with a word added'
+            Assert-BytesEqual -Expected $bytes -Actual (Get-SeedBytes $t 'SECURITY_FINDINGS.md') -Message "SECURITY_FINDINGS.md changed. Output:`n$out"
+            Assert ((Get-CopilotLines $out '^(NOTICE|CANT-VERIFY):[^\r\n]*SECURITY_FINDINGS\.md|SECURITY_FINDINGS\.md; updated').Count -eq 0) "a line names the file. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+# CRLF with a BOM, outside Git: saved byte for byte under seed-files/ first, then only the two lines change, CRLF and BOM kept.
+& {
+    $bom = [byte[]](0xEF, 0xBB, 0xBF)
+    $before = [byte[]]($bom + $copilotUtf8.GetBytes($oslSecTeam.Replace("`n", "`r`n")))
+    $t = New-SeedConsumer -Files @{ 'SECURITY_FINDINGS.md' = $before }
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $saved = Join-Path $t '.claude/framework-update-backup/seed-files/SECURITY_FINDINGS.md'
+
+        It 'old seed lines: a CRLF SECURITY_FINDINGS.md with a BOM no commit holds is saved byte for byte, then gets the new lines with CRLF and BOM kept' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (Test-Path -LiteralPath $saved -PathType Leaf) "no copy was saved. Output:`n$out"
+            Assert-BytesEqual -Expected $before -Actual ([IO.File]::ReadAllBytes($saved)) -Message "the saved copy is not the file byte for byte. Output:`n$out"
+            Assert-BytesEqual -Expected ([byte[]]($bom + $copilotUtf8.GetBytes($oslSecExpected.Replace("`n", "`r`n")))) -Actual (Get-SeedBytes $t 'SECURITY_FINDINGS.md') -Message "the file is not the old one with the two lines reworded, CRLF and BOM kept. Output:`n$out"
+            Assert ((Get-CopilotLines $out "${oslUpdating}SECURITY_FINDINGS\.md [^\r\n]*a copy of the file before this update goes to \.claude/framework-update-backup/seed-files/SECURITY_FINDINGS\.md\.").Count -eq 1) "the NOTICE does not say where the copy goes. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# -WhatIf plans the change and changes nothing; once the update is committed, a second update says nothing about the file.
+& {
+    $before = $copilotUtf8.GetBytes($oslSecTeam)
+    $t = New-SeedConsumer -Files @{ 'SECURITY_FINDINGS.md' = $before } -Git
+    try {
+        $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+        $dryExit = $LASTEXITCODE
+        $dryBytes = Get-SeedBytes $t 'SECURITY_FINDINGS.md'
+        $dryStatus = (& git -C $t status --porcelain --untracked-files=all | Out-String).Trim()
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        & git -C $t add -A 2>&1 | Out-Null
+        & git -C $t commit -qm 'update' 2>&1 | Out-Null
+        $rerun = Invoke-Installer -Dist 'dotnet' -Target $t
+        $rerunExit = $LASTEXITCODE
+
+        It 'old seed lines: -WhatIf plans the change and changes nothing; a second update prints nothing about the file' {
+            Assert ($dryExit -eq 0) "-WhatIf exited ${dryExit}: $dry"
+            Assert ($dry -match '(?m)^PLAN replace SECURITY_FINDINGS\.md\r?$') "-WhatIf does not plan the change. Output:`n$dry"
+            Assert ((Get-CopilotLines $dry "${oslUpdating}SECURITY_FINDINGS\.md").Count -eq 1) "-WhatIf does not print the NOTICE. Output:`n$dry"
+            Assert-BytesEqual -Expected $before -Actual $dryBytes -Message "-WhatIf changed the file. Output:`n$dry"
+            Assert ($dryStatus -eq '') "-WhatIf changed the tree: $dryStatus"
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($rerunExit -eq 0) "second update exited ${rerunExit}: $rerun"
+            Assert ((Get-CopilotLines $rerun 'SECURITY_FINDINGS\.md' | Where-Object { $_ -notmatch 'consumer-owned content files left untouched|^PLAN preserve ' }).Count -eq 0) "a second update printed a line about the file. Output:`n$rerun"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# -Reinstall and a brownfield install do not change old lines on this account.
+& {
+    $before = $copilotUtf8.GetBytes($oslSecTeam)
+    $t = New-SeedConsumer -Files @{ 'SECURITY_FINDINGS.md' = $before } -Git
+    $bf = Join-Path ([IO.Path]::GetTempPath()) "osl-bf-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path $bf | Out-Null
+    [IO.File]::WriteAllText((Join-Path $bf 'CLAUDE.md'), "# Acme`n`nTeam text.`n", $copilotUtf8)
+    [IO.File]::WriteAllBytes((Join-Path $bf 'SECURITY_FINDINGS.md'), $before)
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t -Reinstall
+        $exit = $LASTEXITCODE
+        $outB = Invoke-Installer -Dist 'dotnet' -Target $bf
+        $exitB = $LASTEXITCODE
+
+        It 'old seed lines: -Reinstall leaves a committed SECURITY_FINDINGS.md with old lines byte for byte and prints no line update' {
+            Assert ($exit -eq 0) "-Reinstall exited ${exit}: $out"
+            Assert ($out -match 'mode: reinstall') "calibration: not a reinstall. Output:`n$out"
+            Assert-BytesEqual -Expected $before -Actual (Get-SeedBytes $t 'SECURITY_FINDINGS.md') -Message "-Reinstall changed the file. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'old template line|SECURITY_FINDINGS\.md; updated').Count -eq 0) "-Reinstall updated old lines. Output:`n$out"
+        }
+
+        It 'old seed lines: a brownfield install prints no line update' {
+            Assert ($exitB -eq 0) "brownfield install exited ${exitB}: $outB"
+            Assert ($outB -match 'mode: brownfield|mode=brownfield') "calibration: not a brownfield install. Output:`n$outB"
+            Assert ((Get-CopilotLines $outB 'old template line|SECURITY_FINDINGS\.md; updated').Count -eq 0) "a brownfield install updated old lines. Output:`n$outB"
+        }
+    } finally { Remove-Item -Recurse -Force $t, $bf -ErrorAction SilentlyContinue }
+}
+
+# B-573: the stale-reference scan reads the text a file holds after the update and names the file that holds it: the layout
+# move's AGENTS.md, not the CLAUDE.md the text came from; a line this update rewords asks for nothing. A file it leaves alone
+# is scanned as before. The retired /generate-copilot and scripts/sync-agent-files are named too, with what to do.
+function Invoke-ScanOldLayout {
+    param([string]$Tag, [string]$Append, [hashtable]$Files)
+    $claude = $copilotUtf8.GetString((Get-CopilotReleasedBytes "${Tag}:dist/angular/CLAUDE.md")) + $Append
+    $t = New-ScanConsumer -Agents (Get-CopilotReleasedBytes "${Tag}:dist/angular/AGENTS.md") -Claude $copilotUtf8.GetBytes($claude) -Stamp ($copilotUtf8.GetString((Get-CopilotReleasedBytes "${Tag}:dist/angular/.claude/framework-version.json"))) -Files $Files -Git
+    try {
+        $o = Invoke-Installer -Dist 'angular' -Target $t
+        return [pscustomobject]@{ Exit = $LASTEXITCODE; Out = $o; Claude = $claude; Agents = $copilotUtf8.GetString([IO.File]::ReadAllBytes((Join-Path $t 'AGENTS.md'))) }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+& {
+    $teamSentence = 'Before each release our lead runs `/security-review` on the whole diff.'
+    $run = Invoke-ScanOldLayout -Tag 'v0.76.0' -Append "`n## Team notes`n`n$teamSentence`n" -Files @{ 'TECH_DEBT.md' = $copilotUtf8.GetBytes("# Tech debt`n`nRun ``/security-review`` before closing an item.`n") }
+    $plain = Invoke-ScanOldLayout -Tag 'v0.76.0'
+
+    It 'scan: an old-layout angular install whose CLAUDE.md names /security-review in a team sentence gets the MIGRATION line for AGENTS.md, none for CLAUDE.md' {
+        Assert ($run.Exit -eq 0) "update exited $($run.Exit): $($run.Out)"
+        Assert ((Get-CopilotLines $run.Out '^\s*moved: CLAUDE\.md -> AGENTS\.md').Count -eq 1) "calibration: the layout move did not run. Output:`n$($run.Out)"
+        Assert ($run.Agents.Contains($teamSentence)) "calibration: AGENTS.md lacks the team sentence. Got:`n$($run.Agents)"
+        Assert ((Get-CopilotLines $run.Out "MIGRATION: protected consumer carrier 'AGENTS\.md' names retired framework path '/security-review'\. It was not overwritten; replace that reference with: /security-gate\.").Count -eq 1) "expected one MIGRATION line naming AGENTS.md. Output:`n$($run.Out)"
+        Assert ((Get-CopilotLines $run.Out "MIGRATION: [^\r\n]*'CLAUDE\.md'").Count -eq 0) "a MIGRATION line names CLAUDE.md, now the stub. Output:`n$($run.Out)"
+    }
+
+    It 'scan: the seed''s own Registers line, which the update rewords, and the replaced generated AGENTS.md produce no MIGRATION line' {
+        Assert ($plain.Exit -eq 0) "update exited $($plain.Exit): $($plain.Out)"
+        Assert ($plain.Claude.Contains('`/security-review` and the `security-auditor`')) 'calibration: the v0.76.0 CLAUDE.md lacks the old Registers line'
+        Assert (-not $plain.Agents.Contains('/security-review')) "calibration: AGENTS.md still names /security-review. Got:`n$($plain.Agents)"
+        Assert ((Get-CopilotLines $plain.Out "MIGRATION: [^\r\n]*'(CLAUDE|AGENTS)\.md'").Count -eq 0) "a MIGRATION line names the instruction pair. Output:`n$($plain.Out)"
+    }
+
+    It 'scan: a file the update does not rewrite is scanned as before' {
+        Assert ($run.Exit -eq 0) "update exited $($run.Exit): $($run.Out)"
+        Assert ((Get-CopilotLines $run.Out "MIGRATION: protected consumer carrier 'TECH_DEBT\.md' names retired framework path '/security-review'\. It was not overwritten; replace that reference with: /security-gate\.").Count -eq 1) "expected one MIGRATION line for TECH_DEBT.md. Output:`n$($run.Out)"
+    }
+}
+& {
+    $agents = $copilotUtf8.GetBytes("# Acme`n`n## Conventions`n`nAfter a release we run ``/generate-copilot`` to refresh the Copilot files.`nOur nightly job calls scripts/sync-agent-files.`n")
+    $t = New-ScanConsumer -Agents $agents -Files @{ 'LEARNINGS.md' = $copilotUtf8.GetBytes("# Learnings`n`n- We once ran scripts/sync-agent-files.ps1 by hand.`n") } -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'scan: a team sentence naming /generate-copilot and one naming scripts/sync-agent-files, with or without .ps1, each get a line saying what to do' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            $todo = 'remove the sentence, or say what your team does instead\.'
+            Assert ((Get-CopilotLines $out "MIGRATION: protected consumer carrier 'AGENTS\.md' names retired framework path '/generate-copilot'\. It was not overwritten; the framework retired that command in 0\.90\.0 and it has no successor: $todo").Count -eq 1) "no line for /generate-copilot in AGENTS.md. Output:`n$out"
+            Assert ((Get-CopilotLines $out "MIGRATION: protected consumer carrier 'AGENTS\.md' names retired framework path 'scripts/sync-agent-files'\. It was not overwritten; the framework retired that script in 0\.82\.0 and it has no successor: $todo").Count -eq 1) "no line for scripts/sync-agent-files in AGENTS.md. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'replace that reference with: nothing').Count -eq 0) "a line still offers 'nothing' as a replacement. Output:`n$out"
+            Assert ((Get-CopilotLines $out "MIGRATION: protected consumer carrier 'LEARNINGS\.md' names retired framework path 'scripts/sync-agent-files'\.").Count -eq 1) "no line for scripts/sync-agent-files.ps1 in LEARNINGS.md. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# B-573 repair: a retired name also matches when a full stop ends the sentence right after it (then whitespace or the end), as
+# in a team sentence of a v0.76.0 install whose seed Registers line, which the update rewords, named it too; a longer name such as
+# /security-review.md still does not match as /security-review.
+& {
+    $teamSentence = 'Before a release someone runs /security-review.'
+    $run = Invoke-ScanOldLayout -Tag 'v0.76.0' -Append "`n## Team notes`n`n$teamSentence`n" -Files @{ 'LEARNINGS.md' = $copilotUtf8.GetBytes("# Learnings`n`n- The history is in docs/security-review.md and /security-review.md.`n") }
+
+    It 'scan: a team sentence that ends with /security-review and a full stop gets the MIGRATION line, and /security-review.md does not' {
+        Assert ($run.Exit -eq 0) "update exited $($run.Exit): $($run.Out)"
+        Assert ($run.Agents.Contains($teamSentence) -and -not $run.Agents.Contains('`/security-review`')) "calibration: AGENTS.md lacks the team sentence, or still holds the seed's Registers line. Got:`n$($run.Agents)"
+        Assert ((Get-CopilotLines $run.Out "MIGRATION: protected consumer carrier 'AGENTS\.md' names retired framework path '/security-review'\.").Count -eq 1) "expected one MIGRATION line for the sentence in AGENTS.md. Output:`n$($run.Out)"
+        Assert ((Get-CopilotLines $run.Out "MIGRATION: protected consumer carrier 'LEARNINGS\.md' names retired framework path '/security-review'\.").Count -eq 0) "/security-review.md was taken for /security-review. Output:`n$($run.Out)"
+    }
+}
+
+# B-573 repair: the framework's own Copilot file is never told about /generate-copilot, whatever the mode: under -Reinstall a
+# v0.76.0 released copy gets no such line, and a team-written Copilot file that names the command does.
+& {
+    $released = Get-CopilotReleasedBytes 'v0.76.0:dist/dotnet/.github/copilot-instructions.md'
+    $team = $copilotUtf8.GetBytes("# Copilot rules`n`nWe refresh this file with /generate-copilot after each release.`n")
+    $tr = New-CopilotConsumer -Copilot $released -Git
+    $tt = New-CopilotConsumer -Copilot $team -Git
+    try {
+        $outR = Invoke-Installer -Dist 'dotnet' -Target $tr -Reinstall
+        $exitR = $LASTEXITCODE
+        $outT = Invoke-Installer -Dist 'dotnet' -Target $tt -Reinstall
+        $exitT = $LASTEXITCODE
+
+        It 'scan: under -Reinstall a released Copilot file gets no /generate-copilot line, and a team-written one that names it does' {
+            Assert ($exitR -eq 0 -and $exitT -eq 0) "-Reinstall exited $exitR and ${exitT}:`n$outR`n$outT"
+            Assert ($outR -match 'mode: reinstall' -and $outT -match 'mode: reinstall') "calibration: not a reinstall. Output:`n$outR"
+            Assert ($copilotUtf8.GetString($released).Contains('/generate-copilot')) 'calibration: the v0.76.0 Copilot file does not name /generate-copilot'
+            Assert ((Get-CopilotLines $outR "MIGRATION: [^\r\n]*'\.github/copilot-instructions\.md'[^\r\n]*'/generate-copilot'").Count -eq 0) "the released copy was told to drop /generate-copilot. Output:`n$outR"
+            Assert ((Get-CopilotLines $outT "MIGRATION: protected consumer carrier '\.github/copilot-instructions\.md' names retired framework path '/generate-copilot'\.").Count -eq 1) "the team's Copilot file got no line about /generate-copilot. Output:`n$outT"
+        }
+    } finally { Remove-Item -Recurse -Force $tr, $tt -ErrorAction SilentlyContinue }
+}
+# The plain-update half: a plain update keeps the same released copy (no -RemoveLeftovers) and still tells it nothing about
+# /generate-copilot.
+& {
+    $released = Get-CopilotReleasedBytes 'v0.76.0:dist/dotnet/.github/copilot-instructions.md'
+    $tp = New-CopilotConsumer -Copilot $released -Git
+    try {
+        $outP = Invoke-Installer -Dist 'dotnet' -Target $tp
+        $exitP = $LASTEXITCODE
+
+        It 'scan: a plain update keeps a released Copilot file and gives it no /generate-copilot line' {
+            Assert ($exitP -eq 0) "update exited ${exitP}: $outP"
+            Assert ($outP -notmatch 'mode: reinstall') "calibration: not a plain update. Output:`n$outP"
+            Assert ($copilotUtf8.GetString($released).Contains('/generate-copilot')) 'calibration: the v0.76.0 Copilot file does not name /generate-copilot'
+            Assert-BytesEqual -Expected $released -Actual (Get-SeedBytes $tp $copilotRel) -Message "calibration: the released copy was not kept. Output:`n$outP"
+            Assert ((Get-CopilotLines $outP "MIGRATION: [^\r\n]*'\.github/copilot-instructions\.md'[^\r\n]*'/generate-copilot'").Count -eq 0) "the released copy was told to drop /generate-copilot. Output:`n$outP"
+        }
+    } finally { Remove-Item -Recurse -Force $tp -ErrorAction SilentlyContinue }
+}
+# B-573: the retired scripts/sync-agent-files (0.76.0 to 0.81.0) replaced .github/skills with a byte-for-byte copy of
+# .claude/skills. A plain update removes a file there that is still byte for byte its .claude/skills original, once a commit or
+# a saved copy holds it; any other file there stays, byte for byte, and is named once.
+$ghsSkill = $copilotUtf8.GetBytes("---`nname: team-notes`ndescription: How our team writes release notes.`n---`n`n# Team notes`n`nWrite the notes from the merged PR titles.`n")
+$ghsGuide = $copilotUtf8.GetBytes("# Guide`n`nKeep each note under one line.`n")
+$ghsMirrors = @{ '.claude/skills/team-notes/SKILL.md' = $ghsSkill; '.claude/skills/team-notes/references/guide.md' = $ghsGuide; '.github/skills/team-notes/SKILL.md' = $ghsSkill; '.github/skills/team-notes/references/guide.md' = $ghsGuide }
+function Get-GhsCheck { param([string]$Target) Push-Location $Target; try { return (& (Get-PsExe) -NoProfile -File (Join-Path $Target 'scripts/docs-sync-check.ps1') 2>&1 | Out-String) } finally { Pop-Location } }
+& {
+    $t = New-ScanConsumer -Files $ghsMirrors -Git
+    try {
+        $head = (& git -C $t rev-parse HEAD).Trim()
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $check = Get-GhsCheck $t
+
+        It 'github skills: committed copies identical to their .claude/skills originals are removed, the commit named, and .github/skills is gone' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.github/skills'))) ".github/skills is still there. Output:`n$out"
+            Assert-BytesEqual -Expected $ghsSkill -Actual (Get-SeedBytes $t '.claude/skills/team-notes/SKILL.md') -Message "the .claude/skills original changed. Output:`n$out"
+            $notice = Get-CopilotLines $out 'NOTICE: removing 2 copies under \.github/skills/ that the retired scripts/sync-agent-files wrote'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains(".github/skills/team-notes/SKILL.md (original in commit $head)") -and $notice[0].Contains('.github/skills/team-notes/references/guide.md')) "expected one NOTICE naming both copies and commit $head. Output:`n$out"
+            Assert ($out -match '(?m)^PLAN delete \.github/skills/team-notes/SKILL\.md\r?$') "the plan does not delete the copy. Output:`n$out"
+        }
+
+        It 'github skills: once the copies are removed the target''s scripts/docs-sync-check.ps1 no longer reports .github/skills' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($check -notmatch '\.github/skills exists') "the health check still reports .github/skills. Output:`n$check"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+& {
+    $edited = $copilotUtf8.GetBytes("---`nname: team-notes`ndescription: How our team writes release notes.`n---`n`n# Team notes`n`nWrite the notes from the merged PR titles, then ask the lead.`n")
+    $orphan = $copilotUtf8.GetBytes("---`nname: old-recipe`ndescription: A recipe we only kept here.`n---`n`nSteps.`n")
+    $t = New-ScanConsumer -Files @{ '.claude/skills/team-notes/SKILL.md' = $ghsSkill; '.github/skills/team-notes/SKILL.md' = $edited; '.github/skills/old-recipe/SKILL.md' = $orphan } -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $check = Get-GhsCheck $t
+
+        It 'github skills: an edited copy and one with no counterpart stay byte for byte, each named once, and the health check still fails on them' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert-BytesEqual -Expected $edited -Actual (Get-SeedBytes $t '.github/skills/team-notes/SKILL.md') -Message "the edited copy changed. Output:`n$out"
+            Assert-BytesEqual -Expected $orphan -Actual (Get-SeedBytes $t '.github/skills/old-recipe/SKILL.md') -Message "the copy with no counterpart changed. Output:`n$out"
+            foreach ($name in '\.github/skills/team-notes/SKILL\.md', '\.github/skills/old-recipe/SKILL\.md') {
+                Assert ((Get-CopilotLines $out $name | Where-Object { $_ -notmatch '^PLAN ' }).Count -eq 1) "expected $name named on exactly one line. Output:`n$out"
+            }
+            $kept = Get-CopilotLines $out 'NOTICE: kept files under \.github/skills/: '
+            Assert ($kept.Count -eq 1 -and $kept[0].Contains('scripts/docs-sync-check.ps1 fails while .github/skills holds a file') -and $kept[0].Contains('under .claude/skills/') -and $kept[0].Contains('or delete it')) "expected one NOTICE that says the check fails and what to do. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: removing [^\r\n]*\.github/skills').Count -eq 0) "a removal was announced. Output:`n$out"
+            Assert ($check -match '\.github/skills exists') "calibration: the health check no longer fails on the kept files. Output:`n$check"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+& {
+    $t = New-ScanConsumer -Files @{ '.claude/skills/team-notes/SKILL.md' = $ghsSkill; '.github/skills/team-notes/SKILL.md' = $ghsSkill }
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $saved = Join-Path $t '.claude/framework-update-backup/github-skills/team-notes/SKILL.md'
+
+        It 'github skills: outside Git the copy is saved byte for byte before it is removed' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (Test-Path -LiteralPath $saved -PathType Leaf) "no copy was saved. Output:`n$out"
+            Assert-BytesEqual -Expected $ghsSkill -Actual ([IO.File]::ReadAllBytes($saved)) -Message "the saved copy is not the file byte for byte. Output:`n$out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.github/skills/team-notes/SKILL.md'))) "the copy was not removed. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: removing a copy under \.github/skills/[^\r\n]*\.github/skills/team-notes/SKILL\.md \(original in \.claude/framework-update-backup/github-skills/team-notes/SKILL\.md\)').Count -eq 1) "the NOTICE does not name the saved copy. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+& {
+    $t = New-ScanConsumer -Files @{ '.claude/skills/team-notes/SKILL.md' = $ghsSkill; '.github/skills/team-notes/SKILL.md' = $ghsSkill } -Git
+    try {
+        $dry = & (Get-PsExe) -NoProfile -File (Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1') -Target $t -WhatIf 2>&1 | Out-String
+        $dryExit = $LASTEXITCODE
+        $dryStatus = (& git -C $t status --porcelain --untracked-files=all | Out-String).Trim()
+        $re = Invoke-Installer -Dist 'dotnet' -Target $t -Reinstall
+        $reExit = $LASTEXITCODE
+
+        It 'github skills: -WhatIf plans the removal of a copy and changes nothing' {
+            Assert ($dryExit -eq 0) "-WhatIf exited ${dryExit}: $dry"
+            Assert ($dry -match '(?m)^PLAN delete \.github/skills/team-notes/SKILL\.md\r?$') "-WhatIf does not plan the removal. Output:`n$dry"
+            Assert ((Get-CopilotLines $dry 'NOTICE: removing a copy under \.github/skills/').Count -eq 1) "-WhatIf does not print the NOTICE. Output:`n$dry"
+            Assert ($dryStatus -eq '') "-WhatIf changed the tree: $dryStatus"
+        }
+
+        It 'github skills: -Reinstall prints nothing about .github/skills copies on this account' {
+            Assert ($reExit -eq 0) "-Reinstall exited ${reExit}: $re"
+            Assert ((Get-CopilotLines $re 'under \.github/skills/: |copies? under \.github/skills/ that').Count -eq 0) "-Reinstall printed a line about the copies. Output:`n$re"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+
+# B-573 repair: a .github/skills that is a junction is neither read nor followed: nothing below it or in its target changes, one
+# NOTICE says what it is and what to do, and the closing line counts it as one item.
+& {
+    $t = New-ScanConsumer -Files @{ '.claude/skills/team-notes/SKILL.md' = $ghsSkill }
+    $elsewhere = Join-Path ([IO.Path]::GetTempPath()) "ghs-target-$(Get-Random)"
+    $link = Join-Path $t '.github/skills'
+    try {
+        New-Item -ItemType Directory -Force -Path (Join-Path $elsewhere 'team-notes') | Out-Null
+        [IO.File]::WriteAllBytes((Join-Path $elsewhere 'team-notes/SKILL.md'), $ghsSkill)
+        New-Item -ItemType Directory -Force -Path (Join-Path $t '.github') | Out-Null
+        $made = $null
+        try { $made = New-Item -ItemType Junction -Path $link -Target $elsewhere -ErrorAction Stop } catch { $made = $null }
+        $out = if ($made) { Invoke-Installer -Dist 'dotnet' -Target $t } else { '' }
+        $exit = $LASTEXITCODE
+
+        It 'github skills: a .github/skills junction is not followed, nothing below it changes, one NOTICE names it and the closing line counts it' {
+            Assert ($null -ne $made) "calibration: could not create the junction at $link"
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ((Get-Item -Force -LiteralPath $link).LinkType -eq 'Junction') ".github/skills is no longer the junction. Output:`n$out"
+            Assert-BytesEqual -Expected $ghsSkill -Actual ([IO.File]::ReadAllBytes((Join-Path $elsewhere 'team-notes/SKILL.md'))) -Message "the file in the junction's target changed. Output:`n$out"
+            Assert (@(Get-ChildItem -Force -Recurse -LiteralPath $elsewhere).Count -eq 2) "the junction's target holds other entries now: $((Get-ChildItem -Force -Recurse -LiteralPath $elsewhere).FullName -join ', ')"
+            $notice = Get-CopilotLines $out 'NOTICE: kept \.github/skills as it is: it is a symbolic link or a junction, or lies below one, and this update did not read it or follow it'
+            Assert ($notice.Count -eq 1 -and $notice[0].Contains('scripts/docs-sync-check.ps1 fails while .github/skills is there') -and $notice[0].Contains('under .claude/skills/') -and $notice[0].Contains('remove the link')) "expected one NOTICE that says what it is and what to do. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: (removing|kept files under) [^\r\n]*\.github/skills').Count -eq 0) "a line names a file below the junction. Output:`n$out"
+            Assert ((Get-CopilotLines $out '^\s*the clean-up of old framework text and copies left 1 item in place, named above \(1 link at \.github/skills\)').Count -eq 1) "the closing line does not count the link as one item. Output:`n$out"
+        }
+    } finally {
+        if (Test-Path -LiteralPath $link) { try { [IO.Directory]::Delete($link) } catch { } }
+        Remove-Item -Recurse -Force $t, $elsewhere -ErrorAction SilentlyContinue
+    }
+}
+
+# B-573 repair: a copy identical to its original that cannot be opened for writing stays, is named with that reason, and counts as
+# kept; a copy of the same length as its original that differs in one byte is kept byte for byte and named.
+& {
+    $sameLength = [byte[]]$ghsSkill.Clone(); $sameLength[$sameLength.Length - 2] = if ($sameLength[$sameLength.Length - 2] -eq 0x2E) { 0x21 } else { 0x2E }
+    $t = New-ScanConsumer -Files @{ '.claude/skills/team-notes/SKILL.md' = $ghsSkill; '.github/skills/team-notes/SKILL.md' = $ghsSkill; '.claude/skills/old-notes/SKILL.md' = $ghsSkill; '.github/skills/old-notes/SKILL.md' = $sameLength } -Git
+    $readOnly = Join-Path $t '.github/skills/team-notes/SKILL.md'
+    try {
+        (Get-Item -LiteralPath $readOnly).IsReadOnly = $true
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'github skills: a read-only copy stays and is named with its reason, a same-length copy one byte off stays and is named, and both count as kept' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ($sameLength.Length -eq $ghsSkill.Length -and [Convert]::ToBase64String($sameLength) -cne [Convert]::ToBase64String($ghsSkill)) 'calibration: the one-byte copy is not the same length and different'
+            Assert-BytesEqual -Expected $ghsSkill -Actual (Get-SeedBytes $t '.github/skills/team-notes/SKILL.md') -Message "the read-only copy changed or went. Output:`n$out"
+            Assert-BytesEqual -Expected $sameLength -Actual (Get-SeedBytes $t '.github/skills/old-notes/SKILL.md') -Message "the one-byte copy changed or went. Output:`n$out"
+            $kept = Get-CopilotLines $out 'NOTICE: kept files under \.github/skills/: '
+            Assert ($kept.Count -eq 1) "expected one NOTICE about kept files. Output:`n$out"
+            Assert ($kept[0].Contains('.github/skills/old-notes/SKILL.md is not byte for byte the file at the same path under .claude/skills/')) "the one-byte copy is not named as differing: $($kept[0])"
+            Assert ($kept[0].Contains('.github/skills/team-notes/SKILL.md (it is read-only, or this account may not write it) is byte for byte the file at the same path under .claude/skills/ but could not be opened for writing')) "the read-only copy is not named with its reason: $($kept[0])"
+            Assert ((Get-CopilotLines $out 'NOTICE: removing [^\r\n]*\.github/skills|^\s*removed: \.github/skills').Count -eq 0) "a removal was announced. Output:`n$out"
+            Assert ((Get-CopilotLines $out '^\s*the clean-up of old framework text and copies left 2 items in place, named above \(1 file under \.github/skills/, 1 copy under \.github/skills/ that could not be written\)').Count -eq 1) "the closing line does not count both. Output:`n$out"
+        }
+    } finally {
+        Get-ChildItem -LiteralPath $t -Recurse -Force -File -ErrorAction SilentlyContinue | ForEach-Object { $_.IsReadOnly = $false }
+        Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue
+    }
+}
+# A .github/skills nested deeper than the update reads, beside one identical copy: the copy goes, the NOTICE says the folder was
+# not read in full, and the closing line counts that as one item.
+& {
+    $deep = '.github/skills/deep/1/2/3/4/5/6/7/8/notes.md'
+    $deepBytes = $copilotUtf8.GetBytes("Deep notes.`n")
+    $t = New-ScanConsumer -Files @{ '.claude/skills/team-notes/SKILL.md' = $ghsSkill; '.github/skills/team-notes/SKILL.md' = $ghsSkill; $deep = $deepBytes } -Git
+    try {
+        $head = (& git -C $t rev-parse HEAD).Trim()
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+
+        It 'github skills: a folder nested deeper than the update reads is named as not read in full and counted once, and the identical copy beside it is removed' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert (-not (Test-Path -LiteralPath (Join-Path $t '.github/skills/team-notes/SKILL.md'))) "the identical copy was not removed. Output:`n$out"
+            Assert ((Get-CopilotLines $out "NOTICE: removing a copy under \.github/skills/[^\r\n]*\.github/skills/team-notes/SKILL\.md \(original in commit $head\)").Count -eq 1) "the removal NOTICE does not name the copy and commit $head. Output:`n$out"
+            Assert-BytesEqual -Expected $deepBytes -Actual (Get-SeedBytes $t $deep) -Message "the deep file changed or went. Output:`n$out"
+            $kept = Get-CopilotLines $out 'NOTICE: kept files under \.github/skills/: '
+            Assert ($kept.Count -eq 1 -and $kept[0].Contains('this update did not read all of .github/skills (it nests folders deeper than this update reads)')) "expected one NOTICE saying the folder was not read in full. Output:`n$out"
+            Assert ((Get-CopilotLines $out '^\s*the clean-up of old framework text and copies left 1 item in place, named above \(1 part of \.github/skills not read\); each line above that names one says what to do with it\.').Count -eq 1) "the closing line does not count the unread folder as one item. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: removed an empty folder on the paths of files the framework retired or of copies this update removed, each holding no file at any depth: \.github/skills/team-notes/').Count -eq 1) "the empty-folder NOTICE does not name the folder the copy removal emptied. Output:`n$out"
+        }
+    } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
+}
+# B-573: one closing line counts what the update recognised as the framework's old text and left in place, by kind; none
+# when there is nothing.
+& {
+    $oldBootstrap = '`/bootstrap` adds project-specific skills under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, grounding instance-shaped recipes in a real repo exemplar. A legacy `.github/skills/` tree has higher Copilot priority and must be migrated here before framework checks pass.'
+    $agents = $copilotUtf8.GetBytes("# Acme`n`n## Common Tasks`n`n$oldBootstrap`nOur team drafts skills in docs/skill-drafts first.`n")
+    $t = New-ScanConsumer -Agents $agents -Files @{ $copilotRel = $copilotReleased; '.github/skills/old-recipe/SKILL.md' = $copilotUtf8.GetBytes("Steps.`n") } -Git
+    $none = New-ScanConsumer -Git
+    try {
+        $out = Invoke-Installer -Dist 'dotnet' -Target $t
+        $exit = $LASTEXITCODE
+        $outNone = Invoke-Installer -Dist 'dotnet' -Target $none
+        $exitNone = $LASTEXITCODE
+
+        It 'kept count: a run that keeps a Copilot file, a line beside a team line and a .github/skills file says 3 items, as its lines name them' {
+            Assert ($exit -eq 0) "update exited ${exit}: $out"
+            Assert ((Get-CopilotLines $out 'NOTICE: kept \.github/copilot-instructions\.md: its text').Count -eq 1) "calibration: the Copilot file was not kept and named. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: kept old template text in AGENTS\.md as it is: the line ').Count -eq 1) "calibration: the /bootstrap line was not kept and named. Output:`n$out"
+            Assert ((Get-CopilotLines $out 'NOTICE: kept files under \.github/skills/: \.github/skills/old-recipe/SKILL\.md is not').Count -eq 1) "calibration: the .github/skills file was not kept and named. Output:`n$out"
+            $count = Get-CopilotLines $out '^\s*the clean-up of old framework text and copies left '
+            Assert ($count.Count -eq 1) "expected one closing count line. Output:`n$out"
+            Assert ($count[0] -match 'the clean-up of old framework text and copies left 3 items in place, named above \(1 copy of \.github/copilot-instructions\.md, 1 old template line kept beside a line of yours, 1 file under \.github/skills/\); each line above that names one says what to do with it\.') "the count line does not count 3 by kind: $($count[0])"
+            Assert ((Get-CopilotLines $out 'item\(s\)|kept old framework text').Count -eq 0) "a line still reads item(s) or the old label. Output:`n$out"
+        }
+
+        It 'kept count: a run that keeps nothing of the framework''s prints no count line' {
+            Assert ($exitNone -eq 0) "update exited ${exitNone}: $outNone"
+            Assert ((Get-CopilotLines $outNone 'clean-up of old framework text and copies left|left for your team to settle|kept old framework text').Count -eq 0) "a count line was printed. Output:`n$outNone"
+        }
+    } finally { Remove-Item -Recurse -Force $t, $none -ErrorAction SilentlyContinue }
 }
 
 exit (Write-TestSummary 'UpdateDelivery4.Tests')

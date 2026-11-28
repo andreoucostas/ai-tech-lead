@@ -170,6 +170,34 @@ Most updates need none of these. Do each only when its condition holds.
   character or more, is never replaced, and the update says nothing about replacing it. A file the update cannot write is kept and
   named on a `CANT-VERIFY:` line. `-Reinstall` and a first install do not do this.
 
+- **An old seeded file you edited keeps a line that tells agents to run a retired command or to
+  read `CLAUDE.md`.** An update now rewrites such a line to this release's wording when it is exactly
+  what an earlier release shipped there and nothing else of the file changes: the two `/security-review`
+  lines at the top of `SECURITY_FINDINGS.md` and its `Findings` placeholder row, the `CLAUDE.md` line at
+  the top of `FRAMEWORK-CONTEXT.md` and of `docs/architecture-decisions.md`, and in `AGENTS.md` the old
+  `Common Tasks` opening and `/bootstrap` line, the `Registers` line that named `/security-review`, and
+  the comment line under `Architecture Decisions`. The two `CLAUDE.md` lines of `FRAMEWORK-CONTEXT.md`
+  and `docs/architecture-decisions.md`, in a file you edited, change only once the `## Architecture
+  Decisions` section is in `AGENTS.md` and no longer in `CLAUDE.md`, each read outside code fences: the
+  same update moves it there, or you merged by hand. Before that they stay as they are, with nothing said
+  about them; where the update prints a `LAYOUT:` line, that line names the merge that is waiting, and
+  where it prints none the lines simply wait until the section has moved. A later update rewrites them
+  once it has. This waiting applies only to
+  lines inside a file you edited: a file that is still exactly a released text is replaced whole with this
+  release's text in any layout (see the item above), also while a `LAYOUT:` line still asks for the merge,
+  so until you merge it names `AGENTS.md` ahead of you. A `NOTICE:` line names each file, how many lines changed
+  and where the original is, as that line says: the last commit, or a copy under
+  `.claude/framework-update-backup/seed-files/`. By hand
+  stays only a line your team reworded, which the update leaves and does not mention; a line inside a
+  fenced block or in another section; a shipped line a line of yours leans on, which a `NOTICE:` line
+  names; and a mention your team wrote, which a `MIGRATION:` line names (it names the file that will
+  hold the text, `AGENTS.md` after the layout move, and never asks for a change the update made).
+  A real update whose clean-up leaves things in place ends its summary with `the clean-up of old framework
+  text and copies left <n> item|items in place, named above (<by kind>); each line above that names one
+  says what to do with it.` It counts only what that clean-up left; a retired file kept because you
+  changed it has its own `CANT-VERIFY:` line and is not in the count, and neither are `MIGRATION:` lines
+  or the `LAYOUT:` line. `-Reinstall` and a first install do not do this.
+
 - **`.claude/ai-audit.log` is tracked by Git.** From the repository root, run
   `git ls-files -- .claude/ai-audit.log`. A non-zero exit means tracking could not be examined;
   resolve that first. If it prints the path, add `ai-audit.log` to `.claude/.gitignore`, then run
@@ -274,6 +302,35 @@ Most updates need none of these. Do each only when its condition holds.
   ```markdown
   > **Framework rules** (Verification Rules, Leanness, SOLID, Agentic Workflow) are in [.github/instructions/framework-rules.instructions.md](./.github/instructions/framework-rules.instructions.md). If your agent has not already loaded that file, read it before planning or editing.
   ```
+
+- **`.github/skills/` exists.** Releases 0.76.0 to 0.81.0 copied every skill under `.claude/skills/` to
+  `.github/skills/` with `scripts/sync-agent-files`, which the framework retired in 0.82.0; the health check
+  (`scripts/docs-sync-check.ps1`) fails while `.github/skills` holds a file, because a copy there can
+  shadow the skill. An update removes a file there that is byte for byte the file at the same path under
+  `.claude/skills/`, once the last commit or a copy under `.claude/framework-update-backup/github-skills/`
+  holds it, and a `NOTICE:` line names it and where the original is, as that line says: the last commit
+  or the saved copy; the emptied folders go with it. A file that is not such a copy stays byte for byte
+  and a `NOTICE:` line names it: one that was edited, one with no counterpart under `.claude/skills/`,
+  and a copy that is identical to its original but that the update cannot open for writing (it names the
+  reason). Move what your team uses under `.claude/skills/`, or delete it. If `.github/skills` is itself a
+  symbolic link or a junction, the update does not read it or follow it, and one `NOTICE:` line says so
+  (a `.github` that is itself a link makes the update stop with an error, as before): `scripts/docs-sync-check.ps1` fails while it is there, so move any skill you
+  still use from behind it under `.claude/skills/`, then remove the link. A folder the update could not read in full (nested deeper than it reads) is named in one `NOTICE:` line and counted as one item. `-Reinstall` does not look for
+  copies: its own sweep deletes every file Git tracks under `.github/skills/`, copies and your own files
+  alike, names them in its summary and leaves them in the commit it names as HEAD; a file Git does not
+  track there stays, and a link there makes it stop with an error before anything is deleted.
+
+- **A sentence of yours names `/generate-copilot` or `scripts/sync-agent-files`.** The command (retired in
+  0.90.0) and the script (retired in 0.82.0, named with or without `.ps1`) have no successor. The update
+  does not edit your text; a `MIGRATION:` line names the file, says the framework retired the command
+  (or the script) and that it has no successor, and asks you to remove the sentence or say what your team
+  does instead.
+
+- **The health check fails on a hazard row.** A row in `FRAMEWORK-CONTEXT.md > Known Hazard Areas` written
+  by set-up before 0.78.0 has no file path, and `scripts/docs-sync-check.ps1` runs `hazard-check.ps1`, which
+  prints `FAIL: hazard row must include at least one exact resolving repository-root-relative path:` and
+  the row's first cell. Put a path that exists in that cell, or refresh the set-up with `/rebootstrap`.
+  The update does not change these rows.
 
 - **`.github/copilot-instructions.md` exists.** Releases up to 0.89.2 shipped this file, and their
   `/generate-copilot` rewrote it from your instruction file; the framework no longer ships, refreshes

@@ -204,9 +204,9 @@ It 'renamed /security-review: an update removes the unmodified wrapper, keeps an
         $commandBytes = (Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/.claude/commands/security-review.md') +
             [Text.UTF8Encoding]::new($false).GetBytes("Also check the team's tenant-header rule.`n")
         [IO.File]::WriteAllBytes($command, $commandBytes)
-        # SECURITY_FINDINGS.md is consumer-owned: the update keeps it, so its stale names are reported, not rewritten.
+        # SECURITY_FINDINGS.md is consumer-owned: the update keeps it, so its stale names outside the old seed lines are reported, not rewritten.
         $registerBytes = (Get-GitBlobBytes -Spec 'v0.94.0:dist/dotnet/SECURITY_FINDINGS.md') +
-            [Text.UTF8Encoding]::new($false).GetBytes("Procedure: ``.claude/commands/security-review.md``.`n")
+            [Text.UTF8Encoding]::new($false).GetBytes("Procedure: ``.claude/commands/security-review.md``; the lead runs ``/security-review`` weekly.`n")
         [IO.File]::WriteAllBytes($register, $registerBytes)
         # A prompt file kept from 0.93.0: its successor is the renamed skill, not "no replacement command".
         $prompt = Join-Path $t '.github/prompts/security-review.prompt.md'
@@ -224,7 +224,10 @@ It 'renamed /security-review: an update removes the unmodified wrapper, keeps an
         Assert (Test-B194BytesEqual $commandBytes ([IO.File]::ReadAllBytes($command))) "the edited retired security-review command was not kept byte-identical: $out"
         Assert ($flat -match "CANT-VERIFY: retained retired path '\.claude/commands/security-review\.md' remains\. This framework's /security-review is now /security-gate") "the kept command was not pointed at its successor: $out"
         Assert ($flat -notmatch "'\.claude/commands/security-review\.md' remains\. It is retired with no replacement command") "the kept command was reported as retired with no replacement: $out"
-        Assert (Test-B194BytesEqual $registerBytes ([IO.File]::ReadAllBytes($register))) "the protected register changed: $out"
+        # Its two old seed lines and its placeholder row naming /security-review get this release's wording (B-573); every other
+        # byte, the team's line included, stays, so the names in that line are still reported below.
+        $registerExpected = [Text.UTF8Encoding]::new($false).GetBytes([Text.UTF8Encoding]::new($false).GetString($registerBytes).Replace('> Managed by `/security-review`.', '> Managed by `/security-gate`.').Replace('> Run `/security-review` to add new findings.', '> Run `/security-gate` to add new findings.').Replace('_Run `/security-review` to populate_', '_Run `/security-gate` to populate_'))
+        Assert (Test-B194BytesEqual $registerExpected ([IO.File]::ReadAllBytes($register))) "the protected register is not its old bytes with only the three seed lines reworded: $out"
         # The replacement must not contain the retired name itself, or applying it never clears the report.
         Assert ($flat -match "MIGRATION: protected consumer carrier 'SECURITY_FINDINGS\.md' names retired framework path '/security-review'\. It was not overwritten; replace that reference with: /security-gate\.") "the register's stale /security-review was not reported with the bare successor: $out"
         Assert ($flat -match "replace that reference with: /security-gate\. Leave a dated history entry, or a mention that deliberately names the host's own built-in command of the old name, as it is\.") "the /security-review MIGRATION did not say which mentions to keep: $out"
@@ -2072,7 +2075,7 @@ function Get-LeftoverLines { param([string]$Output, [string]$Pattern) return , @
             }
             # The folders may be a team's own; what is known is that they hold no file and lie on retired paths.
             Assert ((Get-LeftoverLines $outE 'retired framework files left behind').Count -eq 0) "the NOTICE says retired framework files left the folders behind. Output:`n$outE"
-            $notice = Get-LeftoverLines $outE 'NOTICE: removed \d+ empty folders on the paths of files the framework retired, each holding no file at any depth'
+            $notice = Get-LeftoverLines $outE 'NOTICE: removed \d+ empty folders on the paths of files the framework retired or of copies this update removed, each holding no file at any depth'
             Assert ($notice.Count -eq 1 -and $notice[0].Contains('.github/skills/') -and $notice[0].Contains('docs/presentation/')) "expected one NOTICE naming the folders. Output:`n$outE"
             Assert (Test-Path -LiteralPath (Join-Path $te '.claude/skills') -PathType Container) 'the skills folder itself went'
         }

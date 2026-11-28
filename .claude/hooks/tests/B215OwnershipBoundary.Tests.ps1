@@ -609,6 +609,131 @@ It 'old seed files: the shipped installer reads superseded-seed-files strictly' 
     } finally { Remove-Item -LiteralPath $scratch -Force -ErrorAction SilentlyContinue }
 }
 
+# B-573: the single old seed lines an update rewords (superseded-seed-lines), one key in the source ledger, its maintainer
+# baseline and the three dists. Each listed line is one a release from 0.76.0 shipped at its file and place (AGENTS.md read in
+# CLAUDE.md before the layout moved); each successor's lines stand, in that order, in today's seed at that place for some
+# product; and every distinct old text of each listed slot (found by its opening words) that no product ships there today is
+# listed. The shipped reader takes the key and refuses a malformed one.
+It 'old seed lines: the ledger lists every old text of each listed slot releases from 0.76.0 shipped, each with a successor today ships' {
+    $copies = @('src/core/framework-retirements.json', 'meta/framework-retirements-baseline.json', 'dist/dotnet/framework-retirements.json', 'dist/angular/framework-retirements.json', 'dist/monorepo/framework-retirements.json')
+    $source = ([IO.File]::ReadAllText((Join-Path $repoRoot $copies[0])) | ConvertFrom-Json).'superseded-seed-lines'
+    Assert ($null -ne $source) 'the source ledger has no superseded-seed-lines key'
+    $sourceJson = $source | ConvertTo-Json -Depth 8 -Compress
+    foreach ($copy in $copies) {
+        $other = ([IO.File]::ReadAllText((Join-Path $repoRoot $copy)) | ConvertFrom-Json).'superseded-seed-lines' | ConvertTo-Json -Depth 8 -Compress
+        Assert ($other -ceq $sourceJson) "$copy carries a different superseded-seed-lines"
+    }
+    $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot 'dist/dotnet/scripts/install.ps1'), [ref]$null, [ref]$null)
+    $wanted = @('Read-SupersededSeedLines', 'Get-InstructionLineCore', 'Get-InstructionDigest', 'Get-InstructionFences', 'Get-InstructionSections')
+    $functions = @($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.FunctionDefinitionAst] -and $wanted -ccontains $_.Name })
+    Assert ($functions.Count -eq $wanted.Count) "the shipped installer defines $($functions.Count) of $($wanted -join ', ')"
+    . ([scriptblock]::Create((@($functions | ForEach-Object { $_.Extent.Text }) -join "`n")))
+    # The slots the ledger covers, each found in its place by the opening words every text of it shared.
+    $slots = @(
+        @{ File = 'SECURITY_FINDINGS.md'; Place = ''; Opening = '^> Managed by ' },
+        @{ File = 'SECURITY_FINDINGS.md'; Place = ''; Opening = '^> Run `/security-' },
+        @{ File = 'SECURITY_FINDINGS.md'; Place = '## Findings'; Opening = '^\| _  \| _ ' },
+        @{ File = 'FRAMEWORK-CONTEXT.md'; Place = ''; Opening = '^> \*\*Precedence\*\*: ' },
+        @{ File = 'docs/architecture-decisions.md'; Place = ''; Opening = '^Append-only ADR log\. ' },
+        @{ File = 'AGENTS.md'; Place = '## Common Tasks'; Opening = '^(Recipes live as |Skills are a delivery-profile superset|evidence satisfies the gate)' },
+        @{ File = 'AGENTS.md'; Place = '## Common Tasks'; Opening = '^`/bootstrap` ' },
+        @{ File = 'AGENTS.md'; Place = '## Common Tasks'; Opening = '^\*\*Registers\*\*: ' },
+        @{ File = 'AGENTS.md'; Place = '## Architecture Decisions'; Opening = '^\s+added by the create-adr skill\. ' }
+    )
+    $files = @($slots | ForEach-Object { $_.File } | Select-Object -Unique)
+    # The non-fenced lines of each place of a text, as the installer reads them.
+    $places = {
+        param([string]$Text)
+        $parsed = Get-InstructionSections -Text $Text.TrimStart([char]0xFEFF)
+        $map = @{}
+        $first = if ($parsed.Sections.Count -gt 0) { $parsed.Sections[0].Start } else { $parsed.Lines.Length }
+        $map[''] = @(for ($i = 0; $i -lt $first; $i++) { if (-not $parsed.Fenced[$i]) { Get-InstructionLineCore -Line $parsed.Lines[$i] } })
+        foreach ($section in $parsed.Sections) { $map[$section.Heading] = @(for ($i = $section.Start + 1; $i -lt $section.End; $i++) { if (-not $parsed.Fenced[$i]) { Get-InstructionLineCore -Line $parsed.Lines[$i] } }) }
+        return $map
+    }
+    $show = { param([string]$Spec) $r = Invoke-GitBytes @('cat-file', 'blob', $Spec); if ($r.Exit -ne 0) { return $null }; [Text.UTF8Encoding]::new($false).GetString($r.Bytes) }
+    $shipped = @{}   # file|place|digest -> text, every line a release shipped there
+    $old = @{}       # file|place|digest -> 'tag/product', the slot texts
+    $tags = @(& git -C $repoRoot tag --list 'v*' | Where-Object { $_ -match '^v(\d+\.\d+\.\d+)$' -and [version]$Matches[1] -ge [version]'0.76.0' })
+    Assert ($tags.Count -ge 48) "expected at least 48 tags from v0.76.0, got $($tags.Count)"
+    foreach ($tag in $tags) { foreach ($p in 'dotnet', 'angular', 'monorepo') {
+        $claude = & $show "${tag}:dist/$p/CLAUDE.md"
+        $instruction = if ($claude -match '(?m)^@AGENTS\.md') { 'AGENTS.md' } else { 'CLAUDE.md' }
+        foreach ($file in $files) {
+            $text = & $show "${tag}:dist/$p/$(if ($file -ceq 'AGENTS.md') { $instruction } else { $file })"
+            Assert ($null -ne $text) "could not read $tag dist/$p/$file"
+            $map = & $places $text
+            foreach ($place in $map.Keys) { foreach ($line in $map[$place]) { $shipped["$file|$place|$(Get-InstructionDigest -Text $line)"] = $line } }
+            foreach ($slot in @($slots | Where-Object { $_.File -ceq $file })) {
+                foreach ($line in @($map[$slot.Place] | Where-Object { $_ -cmatch $slot.Opening })) { $old["$file|$($slot.Place)|$(Get-InstructionDigest -Text $line)"] = "$tag/$p" }
+            }
+        }
+    } }
+    $today = @{}     # file|place -> the lines of each product's seed there
+    foreach ($p in 'dotnet', 'angular', 'monorepo') { foreach ($file in $files) {
+        $map = & $places ([Text.UTF8Encoding]::new($false).GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot "dist/$p/$file"))))
+        foreach ($place in $map.Keys) { if (-not $today.ContainsKey("$file|$place")) { $today["$file|$place"] = @() }; $today["$file|$place"] += , @($map[$place]) }
+    } }
+    $todayHas = { param([string]$Key, [string]$Line) @($today[$Key] | Where-Object { $_ -ccontains $Line }).Count -gt 0 }
+    $check = {
+        param($Entries)
+        $listed = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($entry in $Entries) {
+            $key = "$($entry.file)|$($entry.place)|$($entry.'known-line-sha256')"
+            [void]$listed.Add($key)
+            if (-not $shipped.ContainsKey($key)) { throw "listed line $key is no line a release from 0.76.0 shipped at that file and place" }
+            if ($null -ne $entry.replacement) {
+                $want = @($entry.replacement.Split([char]10))
+                $found = $false
+                foreach ($lines in @($today["$($entry.file)|$($entry.place)"])) {
+                    for ($i = 0; $i + $want.Count -le $lines.Count -and -not $found; $i++) { $found = (@($lines[$i..($i + $want.Count - 1)]) -join "`n") -ceq ($want -join "`n") }
+                }
+                if (-not $found) { throw "successor of $key is not in today's seed at that place: $($entry.replacement)" }
+            }
+        }
+        foreach ($key in $old.Keys) {
+            $parts = $key.Split('|')
+            if (& $todayHas "$($parts[0])|$($parts[1])" $shipped[$key]) { continue }
+            if (-not $listed.Contains($key)) { throw "missing old seed line: $($parts[0]) '$($parts[1])' '$($shipped[$key])' ($($old[$key]))" }
+        }
+    }
+    & $check @($source)
+    Assert (@($source).Count -eq 10) "expected 10 old seed lines, got $(@($source).Count)"
+    # Hostile calibration: drop one entry; the same check must go red.
+    $caught = $false
+    try { & $check @($source | Select-Object -Skip 1) } catch { $caught = $_.Exception.Message -match 'missing old seed line' }
+    Assert $caught 'dropping a listed old seed line did not make the completeness check go red'
+    $read = Read-SupersededSeedLines -Path (Join-Path $repoRoot 'dist/dotnet/framework-retirements.json') -Allowed @('AGENTS.md', 'SECURITY_FINDINGS.md', 'FRAMEWORK-CONTEXT.md', 'docs/architecture-decisions.md')
+    Assert ($read.Count -eq 4 -and $read['AGENTS.md'].Count -eq 5) "the shipped reader returned $($read.Count) files and $($read['AGENTS.md'].Count) AGENTS.md lines, expected 4 and 5"
+    $scratch = Join-Path ([IO.Path]::GetTempPath()) ('seed-lines-' + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        $good = [IO.File]::ReadAllText((Join-Path $repoRoot 'dist/dotnet/framework-retirements.json'))
+        $mutations = [ordered]@{
+            'a file not allowed' = { param($d) $d.'superseded-seed-lines'[0].file = 'README.md' }
+            'a place that is no level-2 heading' = { param($d) $d.'superseded-seed-lines'[0].place = '# Top' }
+            'an upper-case digest' = { param($d) $d.'superseded-seed-lines'[0].'known-line-sha256' = $d.'superseded-seed-lines'[0].'known-line-sha256'.ToUpperInvariant() }
+            'a repeated line' = { param($d) $d.'superseded-seed-lines'[1].'known-line-sha256' = $d.'superseded-seed-lines'[0].'known-line-sha256' }
+            'no replacement key' = { param($d) $d.'superseded-seed-lines'[0].PSObject.Properties.Remove('replacement') }
+            'a CR in a successor' = { param($d) $d.'superseded-seed-lines'[0].replacement = "a`r`nb" }
+            'an empty successor line' = { param($d) $d.'superseded-seed-lines'[0].replacement = "a`n " }
+            'a guard that is not true or false' = { param($d) $d.'superseded-seed-lines'[0].'hanging-line-guard' = 'yes' }
+            'no needs-instructions-in-agents key' = { param($d) $d.'superseded-seed-lines'[2].PSObject.Properties.Remove('needs-instructions-in-agents') }
+            'a needs-instructions-in-agents that is not true or false' = { param($d) $d.'superseded-seed-lines'[0].'needs-instructions-in-agents' = 1 }
+            'an empty about' = { param($d) $d.'superseded-seed-lines'[0].about = ' ' }
+            'a successor that is itself listed' = { param($d) $d.'superseded-seed-lines'[0].replacement = $d.'superseded-seed-lines'[0].replacement; $d.'superseded-seed-lines'[1].'known-line-sha256' = (Get-InstructionDigest -Text $d.'superseded-seed-lines'[0].replacement) }
+            'no entry' = { param($d) $d.'superseded-seed-lines' = @() }
+        }
+        foreach ($name in $mutations.Keys) {
+            $doc = $good | ConvertFrom-Json
+            & $mutations[$name] $doc
+            [IO.File]::WriteAllText($scratch, ($doc | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+            $refused = $false
+            try { [void](Read-SupersededSeedLines -Path $scratch -Allowed @('AGENTS.md', 'SECURITY_FINDINGS.md', 'FRAMEWORK-CONTEXT.md', 'docs/architecture-decisions.md')) } catch { $refused = $_.Exception.Message -match 'malformed superseded-seed-lines' }
+            Assert $refused "the reader accepted a superseded-seed-lines key with $name"
+        }
+    } finally { Remove-Item -LiteralPath $scratch -Force -ErrorAction SilentlyContinue }
+}
+
 It '0.95.0 ledger contains every released digest of the renamed security-review command and its wrapper' {
     # B-388: renamed to security-gate, so both installed paths join the ledger.
     $paths = @('.claude/commands/security-review.md', '.agents/skills/security-review/SKILL.md')

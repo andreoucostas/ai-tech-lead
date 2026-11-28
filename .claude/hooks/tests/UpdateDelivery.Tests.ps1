@@ -399,10 +399,12 @@ function Get-B561Lines { param([string]$Output, [string]$Pattern) return , @($Ou
             Assert ((Get-B561Lines $out 'consumer-owned content files left untouched [^\r\n]*AGENTS\.md').Count -eq 0) "AGENTS.md is still listed as left untouched. Output:`n$out"
         }
 
-        It 'B-561 the removal notice says a MIGRATION line about a retired path in the same file may refer to the removed text' {
-            Assert ((Get-B561Lines $out "MIGRATION: [^\r\n]*'AGENTS\.md'[^\r\n]*'/security-review'").Count -eq 1) "calibration: no MIGRATION line names /security-review in AGENTS.md. Output:`n$out"
+        # B-573: the stale-reference scan reads the text the update leaves, so nothing asks about the removed sections.
+        It 'B-561 no MIGRATION line asks about /security-review in the sections the update removes, and the removal notice needs no caveat' {
+            Assert ($b561Utf8.GetString($agents).Contains('/security-review') -and -not $b561Utf8.GetString($after).Contains('/security-review')) "calibration: /security-review is not only in the removed sections. Output:`n$out"
+            Assert ((Get-B561Lines $out "MIGRATION: [^\r\n]*'AGENTS\.md'[^\r\n]*'/security-review'").Count -eq 0) "a MIGRATION line asks about text this update removed. Output:`n$out"
             $notice = Get-B561Lines $out 'NOTICE: [^\r\n]*AGENTS\.md[^\r\n]*exact cop'
-            Assert ($notice.Count -eq 1 -and $notice[0].Contains('The MIGRATION line above about a retired framework path in AGENTS.md may refer to the removed text: check the file after the update.')) "the removal NOTICE does not say the MIGRATION line may refer to the removed text. Output:`n$out"
+            Assert ($notice.Count -eq 1 -and -not $notice[0].Contains('may refer to the removed text')) "the removal NOTICE still carries the MIGRATION caveat. Output:`n$out"
         }
 
         It 'B-561 a second update changes nothing and prints no removal notice' {
@@ -436,7 +438,11 @@ function Get-B561Lines { param([string]$Output, [string]$Pattern) return , @($Ou
             # The Common Tasks lines of three skills 0.92.0 retired, none of which is installed here.
             @("- ``add-endpoint`` — add a new HTTP API endpoint end-to-end (domain → service → DTO → validator → controller → integration test)`n", ''),
             @("- ``add-entity`` — add a new EF Core entity with configuration and migration review`n", ''),
-            @("- ``register-service`` — register a new service in DI with the right lifetime`n", ''),            @("`n`n**When to skip**: hotfixes, time-sensitive production incidents, and proof-of-concept branches. If skipping, add a comment ``// TODO: Boy Scout skipped — [reason]`` so it's picked up on the next pass. Use ``/debt`` to clean up later.`n", "`n"))) {
+            @("- ``register-service`` — register a new service in DI with the right lifetime`n", ''),
+            # The old seed lines a release from 0.76.0 still shipped there, which an update gives this release's wording (B-573).
+            @('     added by the create-adr skill. Rationale: CLAUDE.md loads on nearly every agent turn and', '     added by the create-adr skill. Rationale: AGENTS.md loads on nearly every agent turn and'),
+            @('Recipes live as **skills**, auto-discovered by both Claude Code (`.claude/skills/`) and GitHub Copilot (`.github/skills/`) — the model triggers the relevant one when you describe that kind of task. Current skills:', "Skills are a delivery-profile superset, not evidence that they apply. Use only when repository`nevidence satisfies the gate:"),
+            @('`/bootstrap` adds project-specific skills under `.claude/skills/`, grounding instance-shaped recipes in a real repo exemplar. Skills are mirrored to `.github/skills/` by `/generate-copilot` (and `scripts/sync-agent-files`) so Copilot CLI/agent see them too.', '`/bootstrap` drafts a project skill under `.claude/skills/`, the shared canonical location for Claude Code and supported GitHub Copilot skill surfaces, for an operation this repository repeats at least three times; add its line here once the team approves the draft.'),            @("`n`n**When to skip**: hotfixes, time-sensitive production incidents, and proof-of-concept branches. If skipping, add a comment ``// TODO: Boy Scout skipped — [reason]`` so it's picked up on the next pass. Use ``/debt`` to clean up later.`n", "`n"))) {
             if (-not $expectedBody.Contains($swap[0])) { throw "calibration: the fixture has no line '$($swap[0])'" }
             $expectedBody = $expectedBody.Replace($swap[0], $swap[1])
         }
@@ -451,11 +457,12 @@ function Get-B561Lines { param([string]$Output, [string]$Pattern) return , @($Ou
             Assert ((Get-B561Lines $out 'NOTICE: [^\r\n]*AGENTS\.md[^\r\n]*exact cop[^\r\n]*CLAUDE\.md').Count -eq 1) "the removal NOTICE does not point at the original CLAUDE.md. Output:`n$out"
         }
 
-        It 'B-561 an old-layout update says the MIGRATION line about the moved CLAUDE.md text may refer to the text it removes' {
-            Assert ((Get-B561Lines $out "MIGRATION: [^\r\n]*'CLAUDE\.md'[^\r\n]*'/security-review'").Count -eq 1) "calibration: no MIGRATION line names /security-review in CLAUDE.md. Output:`n$out"
-            Assert (-not $agentsText.Contains('/security-review')) "calibration: the moved AGENTS.md text still names /security-review. Got:`n$agentsText"
+        # B-573: the scan reads the moved, cleaned AGENTS.md, so nothing asks about the text the update removed from it.
+        It 'B-561 an old-layout update prints no MIGRATION line about /security-review in the moved text it removes' {
+            Assert ($b561Fixture.Contains('/security-review') -and -not $agentsText.Contains('/security-review')) "calibration: the moved AGENTS.md text still names /security-review, or the old CLAUDE.md never did. Got:`n$agentsText"
+            Assert ((Get-B561Lines $out "MIGRATION: [^\r\n]*'(CLAUDE|AGENTS)\.md'[^\r\n]*'/security-review'").Count -eq 0) "a MIGRATION line asks about text this update removed. Output:`n$out"
             $notice = Get-B561Lines $out 'NOTICE: [^\r\n]*AGENTS\.md[^\r\n]*exact cop'
-            Assert ($notice.Count -eq 1 -and $notice[0].Contains('The MIGRATION line above about a retired framework path in CLAUDE.md may refer to the removed text: check AGENTS.md after the update.')) "the removal NOTICE does not tie the MIGRATION line about CLAUDE.md to the removed text. Output:`n$out"
+            Assert ($notice.Count -eq 1 -and -not $notice[0].Contains('may refer to the removed text')) "the removal NOTICE still carries the MIGRATION caveat. Output:`n$out"
         }
     } finally { Remove-Item -Recurse -Force $t -ErrorAction SilentlyContinue }
 }

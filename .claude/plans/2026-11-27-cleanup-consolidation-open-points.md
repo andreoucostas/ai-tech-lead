@@ -28,6 +28,8 @@ Rule, in your words: "If the framework doesn't need it we should remove it. We c
 
 First part built 2026-11-27 (WSD-154): a file that is still exactly a released text is replaced, the header stamp is kept in step, and one list of released texts feeds a build check. The sweep was re-done before building: its count of 74 did not hold (about 39 old texts outside the architecture document, the Copilot file and the stamps); what is left is in backlog entry B-573.
 
+Second part built 2026-11-28 (WSD-155): ten exact old lines inside edited files are reworded, the scan reads what the update leaves, exact copies under `.github/skills` are removed, and the update counts what its clean-up left. Not built as listed, and accepted by the maintainer the same day: the count sits in the update's output, not the health check; the audit-log header; hazard rows are documented only. B-573 is closed.
+
 The sweep found 74 old lines or paragraphs in ten of the eleven files an update never rewrites, plus one whole document. Seventeen are instructions today's product contradicts, fourteen point at things that no longer exist.
 
 | File | What is stale | Kind |
